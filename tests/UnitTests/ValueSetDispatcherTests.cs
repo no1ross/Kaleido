@@ -38,6 +38,26 @@ namespace Core.Tests
             private readonly RuntimeRecordMetadata _meta = new("sample","1","s",Array.Empty<RuntimeFieldMetadata>(),Array.Empty<RuntimeAllowedQueryMetadata>(),null);
             public IReadOnlyCollection<RecordRegistration> Registrations => new[] { new RecordRegistration("sample", typeof(SampleRecord), _meta) };
             public RecordRegistration? Find(string recordKey) => recordKey == "sample" ? new RecordRegistration("sample", typeof(SampleRecord), _meta) : null;
+
+            public RecordRegistration? Find(Type recordType)
+            {
+                throw new NotImplementedException();
+            }
+
+            public IReadOnlyCollection<RecordRegistration> GetAll()
+            {
+                throw new NotImplementedException();
+            }
+
+            public RecordRegistration GetRequired(string name)
+            {
+                throw new NotImplementedException();
+            }
+
+            public RecordRegistration GetRequired(Type recordType)
+            {
+                throw new NotImplementedException();
+            }
         }
 
         private class SampleEngine : IRecordQueryEngine<SampleRecord>

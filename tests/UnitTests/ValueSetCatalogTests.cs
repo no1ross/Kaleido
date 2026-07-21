@@ -58,7 +58,27 @@ namespace Core.Tests
             private readonly RecordRegistration[] _regs;
             public TestRegistry(RecordRegistration[] regs) => _regs = regs;
             public IReadOnlyCollection<RecordRegistration> Registrations => _regs;
-            public RecordRegistration? Find(string recordKey) => Array.Find(_regs, r => r.Key == recordKey);
+            public RecordRegistration? Find(string recordKey) => Array.Find(_regs, r => r.Name == recordKey);
+
+            public RecordRegistration? Find(Type recordType)
+            {
+                throw new NotImplementedException();
+            }
+
+            public IReadOnlyCollection<RecordRegistration> GetAll()
+            {
+                throw new NotImplementedException();
+            }
+
+            public RecordRegistration GetRequired(string name)
+            {
+                throw new NotImplementedException();
+            }
+
+            public RecordRegistration GetRequired(Type recordType)
+            {
+                throw new NotImplementedException();
+            }
         }
 
         private class TestDispatcher : IRecordDispatcher
