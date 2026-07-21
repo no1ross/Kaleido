@@ -7,7 +7,7 @@ namespace Kaleido.Validation;
 
 /// <summary>
 /// Validates incoming QueryRequest instances against
-/// value set metadata.
+/// record metadata.
 ///
 /// Validation occurs before query compilation and execution.
 ///

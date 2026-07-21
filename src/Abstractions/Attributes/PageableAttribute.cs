@@ -1,6 +1,6 @@
 ﻿namespace Kaleido.Attributes;
 
-/// <summary>Declares paging support for a value set.</summary>
+/// <summary>Declares paging support for a record.</summary>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 public sealed class PageableAttribute : Attribute
 {

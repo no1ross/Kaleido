@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/samples/">
-    <Project Path="samples/ReferenceData/ReferenceData.csproj" />
+    <Project Path="samples/Shared/Kaleido.Samples.Shared.csproj" />
+    <Project Path="samples/SQLite/Kaleido.Samples.SQLite.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".dockerignore" />

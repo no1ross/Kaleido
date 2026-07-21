@@ -1,6 +1,6 @@
 ﻿namespace Kaleido.Attributes;
 
-/// <summary>Declares a named query that is allowed for a value set.</summary>
+/// <summary>Declares a named query that is allowed for a record.</summary>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public sealed class AllowedQueryAttribute : Attribute
 {

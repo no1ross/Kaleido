@@ -1,15 +1,16 @@
 using Kaleido;
 using Kaleido.Queryable;
 using Microsoft.Extensions.DependencyInjection;
+using Queryable.Tests;
 using Xunit;
-namespace Queryable.Tests;
+namespace Kaleido.UnitTests.Querable;
 
 public sealed class QueryableRecordQueryEngineTests
 {
     [Fact]
     public async Task ExecuteAsync_Should_Compose_Pipeline()
     {
-        var engine = new QueryableRecordSetQueryEngine<ClientRecord>(new RecordMetadataCatalog(), new RecordQueryValidator(), new RecordQueryCompiler(), new Source(), new IQueryableRecordNamedQuery<ClientRecord>[] { new Active() }, new QueryableCompiledQueryApplier<ClientRecord>(), new QueryableRecordExecutor<ClientRecord>());
+        var engine = new QueryableRecordQueryEngine<ClientRecord>(new RecordMetadataCatalog(), new RecordQueryValidator(), new RecordQueryCompiler(), new Source(), new IQueryableRecordNamedQuery<ClientRecord>[] { new Active() }, new QueryableCompiledQueryApplier<ClientRecord>(), new QueryableRecordExecutor<ClientRecord>());
         var request = new KaleidoQueryRequest("active", new QueryBody(new QuerySearch("Blue", MatchMode.StartsWith), new QueryFilter(nameof(ClientRecord.GroupName), FilterOperator.Eq, new List<object?> { "Commercial" }), new[] { new QuerySort(nameof(ClientRecord.ClientName), SortDirection.Desc) }, new QueryPage(1, 0)));
         var result = await engine.ExecuteTypedAsync(request);
         Assert.Single(result.Items);

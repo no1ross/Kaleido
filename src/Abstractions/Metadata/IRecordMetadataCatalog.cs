@@ -5,7 +5,7 @@ using System.Text;
 namespace Kaleido.Metadata;
 
 /// <summary>
-/// Central metadata cache for all registered value set record types.
+/// Central metadata cache for all registered record record types.
 ///
 /// This service is responsible for converting record definitions
 /// (RecordAttribute, FilterableAttribute, SearchableAttribute, etc.)

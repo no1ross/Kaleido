@@ -1,6 +1,6 @@
 namespace Kaleido;
 
-/// <summary>Consumer-safe metadata for a registered value set.</summary>
+/// <summary>Consumer-safe metadata for a registered record.</summary>
 public sealed record RecordDescriptor(
     string Name,
     string Version,
@@ -9,7 +9,7 @@ public sealed record RecordDescriptor(
     IReadOnlyList<AllowedQueryDescriptor> AllowedQueries,
     PageableDescriptor? Pageable);
 
-/// <summary>Consumer-safe metadata for a value-set field.</summary>
+/// <summary>Consumer-safe metadata for a record field.</summary>
 public sealed record FieldDescriptor(
     string Name,
     DataTypeDescriptor DataType,

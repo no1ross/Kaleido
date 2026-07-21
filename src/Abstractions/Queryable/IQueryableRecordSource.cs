@@ -5,7 +5,7 @@ using System.Text;
 namespace Kaleido.Queryable
 {
     /// <summary>
-    /// Provides the root queryable source for a value set.
+    /// Provides the root queryable source for a record.
     ///
     /// Implementations define where data originates.
     ///

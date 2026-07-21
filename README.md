@@ -1,10 +1,10 @@
 # Kaleido
 
-> A metadata-driven framework for exposing queryable business value sets through a consistent, strongly typed contract.
+> A metadata-driven framework for exposing queryable business records through a consistent, strongly typed contract.
 
-Kaleido simplifies the creation, discovery, and querying of reference data, lookup data, configuration datasets, and other business-defined value sets.
+Kaleido simplifies the creation, discovery, and querying of reference data, lookup data, configuration datasets, and other business-defined records.
 
-Rather than building custom endpoints, repositories, filters, sorting logic, and search capabilities for every dataset, Kaleido provides a common metadata-driven model that allows value sets to be exposed consistently across an application.
+Rather than building custom endpoints, repositories, filters, sorting logic, and search capabilities for every dataset, Kaleido provides a common metadata-driven model that allows records to be exposed consistently across an application.
 
 ---
 
@@ -43,7 +43,7 @@ This often leads to:
 - Repeated documentation
 - Increased maintenance costs
 
-Kaleido was created to solve this problem by providing a single framework for exposing queryable business value sets.
+Kaleido was created to solve this problem by providing a single framework for exposing queryable business records.
 
 The goal is simple:
 
@@ -94,7 +94,7 @@ The framework never requires consumers to expose dynamic objects or schema-less 
 
 Kaleido does not assume where data comes from.
 
-A value set may be backed by:
+A record may be backed by:
 
 - Entity Framework
 - In-memory collections
@@ -108,11 +108,11 @@ The framework focuses on query orchestration rather than storage.
 
 ## Consumer Simplicity
 
-Using a value set should be simple.
+Using a record should be simple.
 
 Consumers should only need to:
 
-1. Define a value set
+1. Define a record
 2. Define a source
 3. Optionally define named queries
 4. Register services
@@ -182,7 +182,7 @@ Each stage is responsible for a single concern.
 
 # Creating a Value Set
 
-A value set is represented by a strongly typed record and metadata attributes.
+A record is represented by a strongly typed record and metadata attributes.
 
 ```csharp
 [Record(
@@ -211,7 +211,7 @@ This metadata describes the capabilities available to consumers.
 
 # Creating a Source
 
-Sources provide the data backing a value set.
+Sources provide the data backing a record.
 
 ```csharp
 public sealed class ClientRecordSource
@@ -264,7 +264,7 @@ These are typically used to expose common business views.
 
 # Registering Kaleido
 
-Register the framework and scan an assembly for value sets.
+Register the framework and scan an assembly for records.
 
 ```csharp
 services.AddKaleido();
@@ -273,7 +273,7 @@ services.AddQueryableRecordsFromAssembly(
     typeof(ClientRecord).Assembly);
 ```
 
-Once registered, all discovered value sets become available through the catalog.
+Once registered, all discovered records become available through the catalog.
 
 ---
 
@@ -312,7 +312,7 @@ Metadata is available at runtime.
 var all = _catalog.GetAll();
 ```
 
-Retrieve a specific value set:
+Retrieve a specific record:
 
 ```csharp
 var client = _catalog.Get("client");

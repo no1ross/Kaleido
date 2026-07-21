@@ -17,7 +17,7 @@ public class ReferenceDataController : ControllerBase
         _catalog = catalog;
         //_mapper = mapper;
     }
-    [HttpGet("value-sets")]
+    [HttpGet("records")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public ActionResult<IEnumerable<RecordMetadata>> GetValueSets()
@@ -28,26 +28,26 @@ public class ReferenceDataController : ControllerBase
     }
 
 
-    [HttpGet("value-sets/{valueSetKey}")]
+    [HttpGet("records/{recordKey}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public ActionResult<RecordMetadata> GetValueSetMetadata(string valueSetKey)
+    public ActionResult<RecordMetadata> GetValueSetMetadata(string recordKey)
     {
-        var meta = _catalog.Get(valueSetKey);
+        var meta = _catalog.Get(recordKey);
         if (meta == null) return NotFound();
         //var mapped = _mapper.Map<RecordMetadata>(meta);
         return Ok(meta);
     }
 
-    [HttpPost("value-sets/{valueSetKey}/query")]
+    [HttpPost("records/{recordKey}/query")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public ActionResult<KaleidoQueryResponse> QueryValueSet(string valueSetKey, [FromBody] KaleidoQueryRequest request)
+    public ActionResult<KaleidoQueryResponse> QueryValueSet(string recordKey, [FromBody] KaleidoQueryRequest request)
     {
         try
         {
-            var response = _catalog.QueryAsync(valueSetKey, request);
+            var response = _catalog.QueryAsync(recordKey, request);
             return Ok(response);
         }
         catch (ArgumentException ex)
@@ -58,7 +58,7 @@ public class ReferenceDataController : ControllerBase
                 {
                     code = "FILTER_NOT_SUPPORTED",
                     message = ex.Message,
-                    details = new[] { new { field = "filters", reason = "One or more filters are not supported for this value set." } },
+                    details = new[] { new { field = "filters", reason = "One or more filters are not supported for this record." } },
                     allowedFilters = new[] { "active", "clientId", "groupName", "clientName", "includeAllClientsOption" }
                 }
             };
@@ -66,7 +66,7 @@ public class ReferenceDataController : ControllerBase
         }
     }
 
-    //[HttpGet("value-sets/{valueSetKey}/values/{valueId}")]
+    //[HttpGet("records/{valueSetKey}/values/{valueId}")]
     //public IActionResult GetValue(string valueSetKey, string valueId)
     //{
     //    // Simple stub that returns a resolved item
@@ -88,7 +88,7 @@ public class ReferenceDataController : ControllerBase
     //    var results = new Dictionary<string, QueryResponse>();
     //    foreach (var q in request.Queries)
     //    {
-    //        // reuse single-query behavior by returning empty value-set metadata
+    //        // reuse single-query behavior by returning empty record metadata
     //        results[q.Alias] = new QueryResponse(new ValueSetMetadata(q.ValueSetKey, null, null, null, null, q.QueryName, null, null, null, null, null, null, null, "2026.07.14.1", DateTime.UtcNow.Date, null), q.Query, new QueryResult(0, q.Query?.Page?.Limit ?? 50, false, null), new List<ValueItem>(), new List<object>());
     //    }
 

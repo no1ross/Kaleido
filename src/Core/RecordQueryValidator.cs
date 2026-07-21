@@ -19,7 +19,7 @@ public sealed class RecordQueryValidator : IRecordQueryValidator
     {
         if (string.IsNullOrWhiteSpace(request.QueryName)) return;
         var allowed = metadata.AllowedQueries.SingleOrDefault(x => string.Equals(x.Name, request.QueryName, StringComparison.OrdinalIgnoreCase));
-        if (allowed is null) throw new InvalidOperationException($"Named query '{request.QueryName}' is not allowed for value set '{metadata.Name}'.");
+        if (allowed is null) throw new InvalidOperationException($"Named query '{request.QueryName}' is not allowed for record '{metadata.Name}'.");
         foreach (var p in allowed.Parameters)
         {
             if (request.Parameters is null || !request.Parameters.ContainsKey(p) || request.Parameters[p] is null)
@@ -92,6 +92,6 @@ public sealed class RecordQueryValidator : IRecordQueryValidator
     private static RuntimeFieldMetadata GetField(RuntimeRecordMetadata metadata, string name)
     {
         return metadata.Fields.SingleOrDefault(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException($"Field '{name}' does not exist on value set '{metadata.Name}'.");
+            ?? throw new InvalidOperationException($"Field '{name}' does not exist on record '{metadata.Name}'.");
     }
 }

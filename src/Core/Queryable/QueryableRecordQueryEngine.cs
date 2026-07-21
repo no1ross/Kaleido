@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable;
 
-public sealed class QueryableRecordSetQueryEngine<TRecord> : IRecordQueryEngine<TRecord>
+public sealed class QueryableRecordQueryEngine<TRecord> : IRecordQueryEngine<TRecord>
     where TRecord : class
 {
     private readonly IRecordMetadataCatalog _metadataCatalog;
@@ -15,7 +15,7 @@ public sealed class QueryableRecordSetQueryEngine<TRecord> : IRecordQueryEngine<
     private readonly IQueryableCompiledQueryApplier<TRecord> _applier;
     private readonly IQueryableRecordExecutor<TRecord> _executor;
 
-    public QueryableRecordSetQueryEngine(
+    public QueryableRecordQueryEngine(
         IRecordMetadataCatalog metadataCatalog,
         IRecordQueryValidator validator,
         IRecordQueryCompiler compiler,
@@ -59,7 +59,7 @@ public sealed class QueryableRecordSetQueryEngine<TRecord> : IRecordQueryEngine<
     {
         if (string.IsNullOrWhiteSpace(compiled.NamedQuery)) return query;
         var handler = _namedQueries.SingleOrDefault(x => string.Equals(x.Name, compiled.NamedQuery, StringComparison.OrdinalIgnoreCase));
-        if (handler is null) throw new InvalidOperationException($"Named query '{compiled.NamedQuery}' is allowed by metadata but no handler is registered for value set '{metadata.Name}'.");
+        if (handler is null) throw new InvalidOperationException($"Named query '{compiled.NamedQuery}' is allowed by metadata but no handler is registered for record '{metadata.Name}'.");
         return handler.Apply(query, compiled.Parameters);
     }
 }

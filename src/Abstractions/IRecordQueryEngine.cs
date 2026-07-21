@@ -1,7 +1,7 @@
 ﻿namespace Kaleido
 {
     /// <summary>
-    /// Coordinates the complete value set query pipeline.
+    /// Coordinates the complete record query pipeline.
     ///
     /// Execution Flow:
     ///     1. Retrieve metadata

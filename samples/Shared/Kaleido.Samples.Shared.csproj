@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <TargetFramework>net8.0</TargetFramework>
+	  <ImplicitUsings>enable</ImplicitUsings>
+	  <Nullable>enable</Nullable>
+	  <IsPackable>false</IsPackable>
+	  <RootNamespace>Kaleido.Samples.Shared</RootNamespace>
+	  <AssemblyName>Kaleido.Samples.Shared</AssemblyName>
+	  <Version>1.0.0</Version>
+	  <Authors>Andrew Ross</Authors>
+	  <Company>Andrew Ross</Company>
+	  <Description>Metadata-driven queryable reference data framework.</Description>
+	  <RepositoryUrl>https://github.com/andrew-ross-elv/Kaleido</RepositoryUrl>
+	  <PackageTags>reference-data;metadata;query;framework</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\shared\functional-records.csv" Link="functional-records.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Abstractions\Kaleido.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

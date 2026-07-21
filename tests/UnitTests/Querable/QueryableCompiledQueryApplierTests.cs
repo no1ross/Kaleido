@@ -1,8 +1,9 @@
 using Kaleido;
 using Kaleido.Metadata;
 using Kaleido.Queryable;
+using Queryable.Tests;
 using Xunit;
-namespace Queryable.Tests;
+namespace Kaleido.UnitTests.Querable;
 
 public sealed class QueryableCompiledQueryApplierTests
 {

@@ -26,5 +26,5 @@ public sealed record RuntimeAllowedQueryMetadata(string Name, string Description
 /// <summary>Runtime paging metadata.</summary>
 public sealed record RuntimePageableMetadata(int DefaultSize, int MaxSize);
 
-/// <summary>Associates a value-set key with a record type and runtime metadata.</summary>
-public sealed record RecordRegistration(string Key, Type RecordType, RuntimeRecordMetadata RuntimeMetadata);
+/// <summary>Associates a record key with a record type and runtime metadata.</summary>
+public sealed record RecordRegistration(string Name, Type RecordType, RuntimeRecordMetadata RuntimeMetadata);
