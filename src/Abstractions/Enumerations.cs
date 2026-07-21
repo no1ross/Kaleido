@@ -93,9 +93,9 @@ public enum MatchMode
 public enum SortDirection
 {
     [Description("asc")]
-    Asc,
+    Ascending,
     [Description("desc")]
-    Desc
+    Descending
 }
 
 public enum LogicalOperator

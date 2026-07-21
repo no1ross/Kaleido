@@ -1,37 +1,45 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Compile Include="..\..\shared\SampleKaleidoCsvData.cs" Link="SampleKaleidoCsvData.cs" />
-    <Compile Include="..\..\shared\SampleKaleidoNamedQueries.cs" Link="SampleKaleidoNamedQueries.cs" />
-    <Compile Include="..\..\shared\SampleKaleidoRecord.cs" Link="SampleKaleidoRecord.cs" />
-  </ItemGroup>
+	<ItemGroup>
+		<Compile Include="..\..\shared\SampleKaleidoCsvData.cs" Link="SampleKaleidoCsvData.cs" />
+		<Compile Include="..\..\shared\SampleKaleidoNamedQueries.cs" Link="SampleKaleidoNamedQueries.cs" />
+		<Compile Include="..\..\shared\SampleKaleidoRecord.cs" Link="SampleKaleidoRecord.cs" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.4" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="Moq" Version="4.20.72" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="coverlet.collector" Version="6.0.4" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+		<PackageReference Include="Moq" Version="4.20.72" />
+		<PackageReference Include="xunit" Version="2.9.3" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <Using Include="Xunit" />
-  </ItemGroup>
+	<ItemGroup>
+		<Using Include="Xunit" />
+		<Using Include="Moq" />
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Metadata" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Validation" />
+		<Using Include="Kaleido.Attributes" />
+		<Using Include="Kaleido.Shared" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Core\Kaleido.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\Core\Kaleido.csproj" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Extensions\" />
-  </ItemGroup>
+	<ItemGroup>
+		<Folder Include="Extensions\" />
+	</ItemGroup>
 
 </Project>

@@ -77,10 +77,28 @@ public static class TestData
     }
 }
 
-public sealed class TestRecord
+public sealed class InvalidRecord
 {
 }
 
-public sealed class OtherRecord
+[KaleidoRecord("TestRecord", "1.0.0", "Unit Test")]
+public sealed record TestRecord
 {
+    [Filterable]
+    public string Id { get; init; } = string.Empty;
+}
+
+[KaleidoRecord("AnotherTestRecord", "1.0.0", "Unit Test")]
+public sealed record AnotherTestRecord
+{
+    [Filterable]
+    public string Id { get; init; } = string.Empty;
+}
+
+public sealed class TestRecordSource : IQueryableRecordSource<TestRecord>
+{
+    public IQueryable<TestRecord> CreateQuery(RecordExecutionContext executionContext)
+    {
+        throw new NotImplementedException();
+    }
 }

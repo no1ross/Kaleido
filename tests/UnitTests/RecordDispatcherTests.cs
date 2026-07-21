@@ -1,23 +1,20 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 using Kaleido.Metadata;
-using Kaleido;
 using Kaleido.Registry;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using Xunit;
 
 namespace Kaleido.UnitTests;
 
 public sealed class RecordDispatcherTests
 {
-    private readonly KaleidoTestFixture _fixture;
+    private readonly Fixture _fixture;
     private readonly RecordDispatcher _sut;
 
     public RecordDispatcherTests()
     {
-        _fixture = new KaleidoTestFixture();
+        _fixture = new Fixture();
+
         _sut = new RecordDispatcher(
             _fixture.ScopeFactory.Object,
             _fixture.Registry.Object,
@@ -27,31 +24,11 @@ public sealed class RecordDispatcherTests
     [Fact]
     public async Task DispatchAsync_Should_Find_Registration_By_Record_Key()
     {
-        var request = TestData.Request;
-        var result = TestData.QueryResult();
-
-        var engine = new Mock<IRecordQueryEngine>();
-        engine
-            .Setup(x => x.ExecuteAsync(
-                request,
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(result);
-
-        _fixture.Registry
-            .Setup(x => x.Find(TestData.RecordKey))
-            .Returns(TestData.Registration);
-
-        _fixture.Descriptors
-            .Setup(x => x.Create(TestData.Metadata))
-            .Returns(TestData.Descriptor);
-
-        _fixture.ConfigureScopeService(
-            typeof(IRecordQueryEngine<>).MakeGenericType(typeof(TestRecord)),
-            engine.Object);
+        _fixture.SetupUntypedSuccess();
 
         await _sut.DispatchAsync(
             TestData.RecordKey,
-            request);
+            TestData.Request);
 
         _fixture.Registry.Verify(
             x => x.Find(TestData.RecordKey),
@@ -61,31 +38,11 @@ public sealed class RecordDispatcherTests
     [Fact]
     public async Task DispatchAsync_Should_Create_Service_Scope()
     {
-        var request = TestData.Request;
-        var result = TestData.QueryResult();
-
-        var engine = new Mock<IRecordQueryEngine>();
-        engine
-            .Setup(x => x.ExecuteAsync(
-                request,
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(result);
-
-        _fixture.Registry
-            .Setup(x => x.Find(TestData.RecordKey))
-            .Returns(TestData.Registration);
-
-        _fixture.Descriptors
-            .Setup(x => x.Create(TestData.Metadata))
-            .Returns(TestData.Descriptor);
-
-        _fixture.ConfigureScopeService(
-            typeof(IRecordQueryEngine<>).MakeGenericType(typeof(TestRecord)),
-            engine.Object);
+        _fixture.SetupUntypedSuccess();
 
         await _sut.DispatchAsync(
             TestData.RecordKey,
-            request);
+            TestData.Request);
 
         _fixture.ScopeFactory.Verify(
             x => x.CreateScope(),
@@ -95,35 +52,15 @@ public sealed class RecordDispatcherTests
     [Fact]
     public async Task DispatchAsync_Should_Resolve_Engine_From_Scope()
     {
-        var request = TestData.Request;
-        var result = TestData.QueryResult();
+        _fixture.SetupUntypedSuccess();
 
         var engineType =
             typeof(IRecordQueryEngine<>)
                 .MakeGenericType(typeof(TestRecord));
 
-        var engine = new Mock<IRecordQueryEngine>();
-        engine
-            .Setup(x => x.ExecuteAsync(
-                request,
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(result);
-
-        _fixture.Registry
-            .Setup(x => x.Find(TestData.RecordKey))
-            .Returns(TestData.Registration);
-
-        _fixture.Descriptors
-            .Setup(x => x.Create(TestData.Metadata))
-            .Returns(TestData.Descriptor);
-
-        _fixture.ConfigureScopeService(
-            engineType,
-            engine.Object);
-
         await _sut.DispatchAsync(
             TestData.RecordKey,
-            request);
+            TestData.Request);
 
         _fixture.ServiceProvider.Verify(
             x => x.GetService(engineType),
@@ -131,71 +68,29 @@ public sealed class RecordDispatcherTests
     }
 
     [Fact]
-    public async Task DispatchAsync_Should_Execute_Engine_With_Request_And_CancellationToken()
+    public async Task DispatchAsync_Should_Execute_Engine()
     {
-        var request = TestData.Request;
-        var cancellationToken = new CancellationTokenSource().Token;
-        var result = TestData.QueryResult();
-
-        var engine = new Mock<IRecordQueryEngine>();
-        engine
-            .Setup(x => x.ExecuteAsync(
-                request,
-                cancellationToken))
-            .ReturnsAsync(result);
-
-        _fixture.Registry
-            .Setup(x => x.Find(TestData.RecordKey))
-            .Returns(TestData.Registration);
-
-        _fixture.Descriptors
-            .Setup(x => x.Create(TestData.Metadata))
-            .Returns(TestData.Descriptor);
-
-        _fixture.ConfigureScopeService(
-            typeof(IRecordQueryEngine<>).MakeGenericType(typeof(TestRecord)),
-            engine.Object);
+        _fixture.SetupUntypedSuccess();
 
         await _sut.DispatchAsync(
             TestData.RecordKey,
-            request,
-            cancellationToken);
+            TestData.Request);
 
-        engine.Verify(
+        _fixture.UntypedEngine.Verify(
             x => x.ExecuteAsync(
-                request,
-                cancellationToken),
+                TestData.Request,
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
     [Fact]
-    public async Task DispatchAsync_Should_Create_Descriptor_From_Result_Metadata()
+    public async Task DispatchAsync_Should_Create_Descriptor()
     {
-        var request = TestData.Request;
-        var result = TestData.QueryResult();
-
-        var engine = new Mock<IRecordQueryEngine>();
-        engine
-            .Setup(x => x.ExecuteAsync(
-                request,
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(result);
-
-        _fixture.Registry
-            .Setup(x => x.Find(TestData.RecordKey))
-            .Returns(TestData.Registration);
-
-        _fixture.Descriptors
-            .Setup(x => x.Create(TestData.Metadata))
-            .Returns(TestData.Descriptor);
-
-        _fixture.ConfigureScopeService(
-            typeof(IRecordQueryEngine<>).MakeGenericType(typeof(TestRecord)),
-            engine.Object);
+        _fixture.SetupUntypedSuccess();
 
         await _sut.DispatchAsync(
             TestData.RecordKey,
-            request);
+            TestData.Request);
 
         _fixture.Descriptors.Verify(
             x => x.Create(TestData.Metadata),
@@ -203,67 +98,40 @@ public sealed class RecordDispatcherTests
     }
 
     [Fact]
-    public async Task DispatchAsync_Should_Return_Response_From_Engine_Result()
+    public async Task DispatchAsync_Should_Return_Response()
     {
-        var request = TestData.Request;
-        var result = TestData.QueryResult();
+        _fixture.SetupUntypedSuccess();
 
-        var engine = new Mock<IRecordQueryEngine>();
-        engine
-            .Setup(x => x.ExecuteAsync(
-                request,
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(result);
+        var result =
+            await _sut.DispatchAsync(
+                TestData.RecordKey,
+                TestData.Request);
 
-        _fixture.Registry
-            .Setup(x => x.Find(TestData.RecordKey))
-            .Returns(TestData.Registration);
+        Assert.Equal(
+            TestData.TotalCount,
+            result.TotalCount);
 
-        _fixture.Descriptors
-            .Setup(x => x.Create(TestData.Metadata))
-            .Returns(TestData.Descriptor);
+        Assert.Equal(
+            TestData.TypedItems.Count,
+            result.Items.Count);
 
-        _fixture.ConfigureScopeService(
-            typeof(IRecordQueryEngine<>).MakeGenericType(typeof(TestRecord)),
-            engine.Object);
+        Assert.All(
+            result.Items,
+            x => Assert.IsType<TestRecord>(x));
 
-        var response = await _sut.DispatchAsync(
-            TestData.RecordKey,
-            request);
-
-        Assert.Same(TestData.Descriptor, response.Descriptor);
-        Assert.Equal(TestData.TotalCount, response.TotalCount);
-        Assert.Equal(TestData.Items, response.Items);
+        Assert.Same(
+            TestData.Descriptor,
+            result.Descriptor);
     }
 
     [Fact]
     public async Task DispatchAsync_Should_Dispose_Scope()
     {
-        var request = TestData.Request;
-        var result = TestData.QueryResult();
-
-        var engine = new Mock<IRecordQueryEngine>();
-        engine
-            .Setup(x => x.ExecuteAsync(
-                request,
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(result);
-
-        _fixture.Registry
-            .Setup(x => x.Find(TestData.RecordKey))
-            .Returns(TestData.Registration);
-
-        _fixture.Descriptors
-            .Setup(x => x.Create(TestData.Metadata))
-            .Returns(TestData.Descriptor);
-
-        _fixture.ConfigureScopeService(
-            typeof(IRecordQueryEngine<>).MakeGenericType(typeof(TestRecord)),
-            engine.Object);
+        _fixture.SetupUntypedSuccess();
 
         await _sut.DispatchAsync(
             TestData.RecordKey,
-            request);
+            TestData.Request);
 
         _fixture.Scope.Verify(
             x => x.Dispose(),
@@ -273,8 +141,6 @@ public sealed class RecordDispatcherTests
     [Fact]
     public async Task DispatchAsync_Should_Throw_When_Record_Is_Not_Registered()
     {
-        var request = TestData.Request;
-
         _fixture.Registry
             .Setup(x => x.Find(TestData.RecordKey))
             .Returns((RecordRegistration?)null);
@@ -282,7 +148,7 @@ public sealed class RecordDispatcherTests
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => _sut.DispatchAsync(
                 TestData.RecordKey,
-                request));
+                TestData.Request));
 
         _fixture.ScopeFactory.Verify(
             x => x.CreateScope(),
@@ -292,50 +158,63 @@ public sealed class RecordDispatcherTests
     [Fact]
     public async Task DispatchAsync_Generic_Should_Return_Typed_Response()
     {
-        var request = TestData.Request;
+        _fixture.SetupTypedSuccess();
 
-        var typedResult = new QueryResult<TestRecord>(
-            Items: TestData.TypedItems,
-            TotalCount: TestData.TypedItems.Count,
-            RuntimeMetadata: TestData.Metadata);
-
-        var engine = new Mock<IRecordQueryEngine<TestRecord>>();
-        engine
-            .Setup(x => x.ExecuteTypedAsync(
-                request,
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(typedResult);
-
-        _fixture.Registry
-            .Setup(x => x.Find(TestData.RecordKey))
-            .Returns(TestData.Registration);
-
-        _fixture.Descriptors
-            .Setup(x => x.Create(TestData.Metadata))
-            .Returns(TestData.Descriptor);
-
-        _fixture.ConfigureScopeService(
-            typeof(IRecordQueryEngine<TestRecord>),
-            engine.Object);
-
-        var response =
+        var result =
             await _sut.DispatchAsync<TestRecord>(
                 TestData.RecordKey,
-                request);
+                TestData.Request);
 
-        Assert.Same(TestData.Descriptor, response.Descriptor);
-        Assert.Equal(TestData.TypedItems.Count, response.TotalCount);
-        Assert.Same(TestData.TypedItems, response.Items);
+        Assert.Equal(
+            TestData.TypedItems.Count,
+            result.TotalCount);
+
+        Assert.Same(
+            TestData.TypedItems,
+            result.Items);
+
+        Assert.Same(
+            TestData.Descriptor,
+            result.Descriptor);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_Generic_Should_Resolve_Typed_Engine()
+    {
+        _fixture.SetupTypedSuccess();
+
+        await _sut.DispatchAsync<TestRecord>(
+            TestData.RecordKey,
+            TestData.Request);
+
+        _fixture.ServiceProvider.Verify(
+            x => x.GetService(
+                typeof(IRecordQueryEngine<TestRecord>)),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_Generic_Should_Execute_Typed_Engine()
+    {
+        _fixture.SetupTypedSuccess();
+
+        await _sut.DispatchAsync<TestRecord>(
+            TestData.RecordKey,
+            TestData.Request);
+
+        _fixture.TypedEngine.Verify(
+            x => x.ExecuteTypedAsync(
+                TestData.Request,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
     public async Task DispatchAsync_Generic_Should_Throw_When_Record_Key_Maps_To_Different_Type()
     {
-        var request = TestData.Request;
-
         var registration = new RecordRegistration(
             TestData.RecordKey,
-            typeof(OtherRecord),
+            typeof(AnotherTestRecord),
             TestData.Metadata);
 
         _fixture.Registry
@@ -345,10 +224,135 @@ public sealed class RecordDispatcherTests
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => _sut.DispatchAsync<TestRecord>(
                 TestData.RecordKey,
-                request));
+                TestData.Request));
 
         _fixture.ScopeFactory.Verify(
             x => x.CreateScope(),
             Times.Never);
+    }
+
+    private sealed class Fixture
+    {
+        public Mock<IServiceScopeFactory> ScopeFactory { get; } = new();
+
+        public Mock<IServiceScope> Scope { get; } = new();
+
+        public Mock<IServiceProvider> ServiceProvider { get; } = new();
+
+        public Mock<IRecordRegistry> Registry { get; } = new();
+
+        public Mock<IRecordDescriptorFactory> Descriptors { get; } = new();
+
+        public Mock<IRecordQueryEngine> UntypedEngine { get; } = new();
+
+        public Mock<IRecordQueryEngine<TestRecord>> TypedEngine { get; } = new();
+
+        public Fixture()
+        {
+            Scope
+                .SetupGet(x => x.ServiceProvider)
+                .Returns(ServiceProvider.Object);
+
+            ScopeFactory
+                .Setup(x => x.CreateScope())
+                .Returns(Scope.Object);
+        }
+
+        public void SetupUntypedSuccess()
+        {
+            Registry
+                .Setup(x => x.Find(TestData.RecordKey))
+                .Returns(TestData.Registration);
+
+            Descriptors
+                .Setup(x => x.Create(TestData.Metadata))
+                .Returns(TestData.Descriptor);
+
+            ServiceProvider
+                .Setup(x => x.GetService(
+                    typeof(IRecordQueryEngine<>)
+                        .MakeGenericType(typeof(TestRecord))))
+                .Returns(UntypedEngine.Object);
+
+            UntypedEngine
+                .Setup(x => x.ExecuteAsync(
+                    TestData.Request,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(TestData.QueryResult);
+        }
+
+        public void SetupTypedSuccess()
+        {
+            Registry
+                .Setup(x => x.Find(TestData.RecordKey))
+                .Returns(TestData.Registration);
+
+            Descriptors
+                .Setup(x => x.Create(TestData.Metadata))
+                .Returns(TestData.Descriptor);
+
+            ServiceProvider
+                .Setup(x => x.GetService(
+                    typeof(IRecordQueryEngine<TestRecord>)))
+                .Returns(TypedEngine.Object);
+
+            TypedEngine
+                .Setup(x => x.ExecuteTypedAsync(
+                    TestData.Request,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(TestData.TypedQueryResult);
+        }
+    }
+
+    private static class TestData
+    {
+        public const string RecordKey = "test";
+
+        public static readonly KaleidoQueryRequest Request =
+            new(null, null, null);
+
+        public const int TotalCount = 2;
+
+        public static readonly RuntimeRecordMetadata Metadata =
+            new(
+                "test",
+                "1.0.0",
+                "Unit Test",
+                [],
+                [],
+                null);
+
+        public static readonly RecordDescriptor Descriptor =
+            new(
+                "test",
+                "1.0.0",
+                "Unit Test",
+                [],
+                [],
+                null);
+
+        public static readonly List<TestRecord> TypedItems =
+        [
+            new(),
+            new()
+        ];
+
+        public static readonly IRecordQueryResult QueryResult =
+            new QueryResult<TestRecord>(
+                TypedItems,
+                TotalCount,
+                Metadata);
+
+        public static readonly QueryResult<TestRecord> TypedQueryResult =
+            new(
+                TypedItems,
+                TotalCount,
+                Metadata);
+
+        public static readonly RecordRegistration Registration =
+            new(
+                RecordKey,
+                typeof(TestRecord),
+                Metadata);
     }
 }

@@ -295,8 +295,8 @@ public sealed class QueryableCompiledQueryApplier<TRecord> : IQueryableCompiledQ
         if (member.Type.IsEnum)
         {
             sortExpression = Expression.Call(
-                typeof(EnumSortHelper),
-                nameof(EnumSortHelper.GetSortValue),
+                typeof(EnumExtensions),
+                nameof(EnumExtensions.GetDescription),
                 Type.EmptyTypes,
                 Expression.Convert(member, typeof(Enum)));
         }
@@ -307,10 +307,10 @@ public sealed class QueryableCompiledQueryApplier<TRecord> : IQueryableCompiledQ
 
         var methodName = (thenBy, sort.Direction) switch
         {
-            (false, SortDirection.Asc) => nameof(System.Linq.Queryable.OrderBy),
-            (false, SortDirection.Desc) => nameof(System.Linq.Queryable.OrderByDescending),
-            (true, SortDirection.Asc) => nameof(System.Linq.Queryable.ThenBy),
-            (true, SortDirection.Desc) => nameof(System.Linq.Queryable.ThenByDescending),
+            (false, SortDirection.Ascending) => nameof(System.Linq.Queryable.OrderBy),
+            (false, SortDirection.Descending) => nameof(System.Linq.Queryable.OrderByDescending),
+            (true, SortDirection.Ascending) => nameof(System.Linq.Queryable.ThenBy),
+            (true, SortDirection.Descending) => nameof(System.Linq.Queryable.ThenByDescending),
 
             _ => throw new NotSupportedException(
                 $"Sort direction '{sort.Direction}' is not supported.")
@@ -556,13 +556,4 @@ public sealed class QueryableCompiledQueryApplier<TRecord> : IQueryableCompiledQ
 
         return Convert.ChangeType(value, effectiveType);
     }
-}
-
-public static class EnumSortHelper
-{
-    public static string GetSortValue(Enum value)
-    {
-        return value.GetDescription();
-    }
-    
 }

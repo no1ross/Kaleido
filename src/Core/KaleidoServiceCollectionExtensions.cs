@@ -68,7 +68,7 @@ public static class KaleidoServiceCollectionExtensions
         services.TryAddSingleton<IRecordQueryCompiler, RecordQueryCompiler>();
 
         services.TryAddSingleton<IRecordRegistry>(
-            _ => new RecordRegistry(registrations));
+            _ => new KaleidoRecordRegistry(registrations));
 
         services.TryAddScoped<IRecordDispatcher, RecordDispatcher>();
         services.TryAddScoped<IKaleidoCatalog, KaleidoCatalog>();

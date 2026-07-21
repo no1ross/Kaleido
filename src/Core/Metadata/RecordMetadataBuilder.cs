@@ -10,7 +10,7 @@ public static class RecordMetadataBuilder
     public static RuntimeRecordMetadata Build(Type recordType)
     {
         var record = recordType.GetCustomAttribute<KaleidoRecordAttribute>()
-            ?? throw new InvalidOperationException($"{recordType.Name} is missing RecordAttribute.");
+            ?? throw new InvalidOperationException($"{recordType.Name} is missing KaleidoRecordAttribute.");
         var pageable = recordType.GetCustomAttribute<PageableAttribute>();
         var fields = recordType.GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(BuildField).ToArray();
         var allowed = recordType.GetCustomAttributes<AllowedQueryAttribute>()

@@ -1,7 +1,3 @@
-using Kaleido.Metadata;
-using Kaleido.Registry;
-using Moq;
-
 namespace Kaleido.UnitTests;
 
 public sealed partial class KaleidoCatalogTests

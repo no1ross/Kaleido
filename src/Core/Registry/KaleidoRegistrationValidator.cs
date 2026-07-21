@@ -1,8 +1,6 @@
-using Kaleido.Registry;
+namespace Kaleido.Registry;
 
-namespace Kaleido;
-
-internal static class KaleidoRegistrationValidator
+public static class KaleidoRegistrationValidator
 {
     public static void Validate(
         KaleidoDiscoveryResult discovery)
@@ -58,7 +56,7 @@ internal static class KaleidoRegistrationValidator
         KaleidoDiscoveryResult discovery)
     {
         var duplicates = discovery.Records
-            .GroupBy(x => x.Metadata.Name)
+            .GroupBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
             .Where(x => x.Count() > 1)
             .ToList();
 

@@ -7,7 +7,13 @@ public sealed class RecordQueryCompiler : IRecordQueryCompiler
     public CompiledRecordQuery Compile(KaleidoQueryRequest request, RuntimeRecordMetadata metadata)
     {
         var pageable = metadata.Pageable;
-        var size = request.Query?.Page?.Size ?? pageable?.DefaultSize ?? 50;
+
+        var size = request.Query?.Page?.Size
+                   ?? pageable?.DefaultSize
+                   ?? 50;
+        var maxSize = pageable?.MaxSize ?? int.MaxValue;
+        size = Math.Min(size, maxSize);
+
         var offset = request.Query?.Page?.Offset ?? 0;
         return new CompiledRecordQuery(
             request.QueryName,
@@ -60,6 +66,8 @@ public sealed class RecordQueryCompiler : IRecordQueryCompiler
 
     private static RuntimeFieldMetadata GetField(RuntimeRecordMetadata metadata, string fieldName)
     {
-        return metadata.Fields.Single(x => string.Equals(x.Name, fieldName, StringComparison.OrdinalIgnoreCase));
+        var field = metadata.Fields.SingleOrDefault(x => string.Equals(x.Name, fieldName, StringComparison.OrdinalIgnoreCase));
+        return field ?? 
+            throw new InvalidOperationException($"Field '{fieldName}' is not defined for record '{metadata.Name}'.");
     }
 }

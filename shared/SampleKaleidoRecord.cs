@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Attributes;
 
-namespace Kaleido.Samples.Shared;
+namespace Kaleido.Shared;
 
 public enum RecordStatus
 {

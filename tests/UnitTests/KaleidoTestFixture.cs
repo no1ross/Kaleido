@@ -1,12 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Xunit;
-using Kaleido.Metadata;
-using Kaleido;
-using Kaleido.Registry;
-using Moq;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.UnitTests;
 

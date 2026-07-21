@@ -1,6 +1,6 @@
 using Kaleido.Extensions;
 
-namespace Kaleido.Samples.Shared;
+namespace Kaleido.Shared;
 
 public sealed class SampleKaleidoCsvData
 {

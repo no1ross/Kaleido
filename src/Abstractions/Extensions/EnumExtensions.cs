@@ -5,24 +5,13 @@ namespace Kaleido.Extensions;
 
 public static class EnumExtensions
 {
-    public static string GetDescription<TEnum>(this TEnum value) where TEnum : Enum
+    public static string GetDescription(
+        this Enum value)
     {
-        if (value == null) return string.Empty;
+        ArgumentNullException.ThrowIfNull(value);
 
-        var member = value.GetType().GetMember(value.ToString());
-
-        if (member.Length > 0)
-        {
-            var attribute = member[0]
-                .GetCustomAttribute<DescriptionAttribute>();
-
-            if (attribute != null)
-            {
-                return attribute.Description;
-            }
-        }
-
-        return value.ToString().ToLowerInvariant();
+        return GetDescriptionAttribute(value)?.Description
+            ?? value.ToString();
     }
 
     public static bool TryParseFromDescription<TEnum>(
@@ -30,10 +19,16 @@ public static class EnumExtensions
         out TEnum result)
         where TEnum : struct, Enum
     {
-        var b = TryParseFromDescription(typeof(TEnum), value, out var objResult);
-        result = objResult is TEnum enumResult ? enumResult : default;
+        var success = TryParseFromDescription(
+            typeof(TEnum),
+            value,
+            out var parsed);
 
-        return b;
+        result = parsed is TEnum typed
+            ? typed
+            : default;
+
+        return success;
     }
 
     public static bool TryParseFromDescription(
@@ -43,12 +38,8 @@ public static class EnumExtensions
     {
         result = null;
 
-        if (!enumType.IsEnum)
-        {
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(value))
+        if (!enumType.IsEnum ||
+            string.IsNullOrWhiteSpace(value))
         {
             return false;
         }
@@ -57,10 +48,7 @@ public static class EnumExtensions
 
         foreach (var item in Enum.GetValues(enumType))
         {
-            if (item is not Enum enumValue)
-            {
-                continue;
-            }
+            var enumValue = (Enum)item;
 
             if (string.Equals(
                     enumValue.GetDescription(),
@@ -77,5 +65,15 @@ public static class EnumExtensions
         }
 
         return false;
+    }
+
+    private static DescriptionAttribute? GetDescriptionAttribute(
+        Enum value)
+    {
+        return value
+            .GetType()
+            .GetMember(value.ToString())
+            .FirstOrDefault()?
+            .GetCustomAttribute<DescriptionAttribute>();
     }
 }

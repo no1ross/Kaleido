@@ -49,7 +49,6 @@ public sealed class QueryableRecordQueryEngine<TRecord> : IRecordQueryEngine<TRe
         query = _applier.ApplySearch(query, compiled.Search);
         query = _applier.ApplySort(query, compiled.Sort);
         var totalCount = await _executor.CountAsync(query, cancellationToken);
-        var nextCursor = compiled.Page.Offset + compiled.Page.Size < totalCount;
         query = _applier.ApplyPage(query, compiled.Page);
         var items = await _executor.ToListAsync(query, cancellationToken);
         return new QueryResult<TRecord>(items, totalCount, metadata);

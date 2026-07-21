@@ -1,10 +1,45 @@
-using System.ComponentModel;
 using Kaleido;
+using Kaleido.Extensions;
 using Kaleido.Metadata;
 
 public sealed class RecordDescriptorFactory
     : IRecordDescriptorFactory
 {
+    private static readonly IReadOnlyDictionary<Type, DataTypeDescriptor>
+        TypeMappings =
+            new Dictionary<Type, DataTypeDescriptor>
+            {
+                [typeof(string)] = new("string"),
+
+                [typeof(bool)] = new("boolean"),
+
+                [typeof(byte)] = new("integer"),
+                [typeof(sbyte)] = new("integer"),
+                [typeof(short)] = new("integer"),
+                [typeof(ushort)] = new("integer"),
+                [typeof(int)] = new("integer"),
+                [typeof(uint)] = new("integer"),
+
+                [typeof(long)] = new("integer", "int64"),
+                [typeof(ulong)] = new("integer", "int64"),
+
+                [typeof(float)] = new("number", "float"),
+                [typeof(double)] = new("number", "double"),
+                [typeof(decimal)] = new("number", "decimal"),
+
+                [typeof(Guid)] = new("string", "uuid"),
+
+                [typeof(DateOnly)] = new("string", "date"),
+
+                [typeof(TimeOnly)] = new("string", "time"),
+
+                [typeof(DateTime)] = new("string", "date-time"),
+
+                [typeof(DateTimeOffset)] = new("string", "date-time-offset"),
+
+                [typeof(TimeSpan)] = new("string", "duration")
+            };
+
     public RecordDescriptor Create(
         RuntimeRecordMetadata metadata)
     {
@@ -42,82 +77,34 @@ public sealed class RecordDescriptorFactory
             field.IsFilterable,
 
             field.FilterOperators
-                .Select(GetDescription)
+                .Select(x => x.GetDescription())
                 .ToArray(),
 
             field.IsSearchable,
 
             field.MatchModes
-                .Select(GetDescription)
+                .Select(x => x.GetDescription())
                 .ToArray(),
 
-            field.IsSortable
-        );
-    }
-
-    private static string GetDescription<TEnum>(
-    TEnum value)
-    where TEnum : Enum
-    {
-        var field =
-            typeof(TEnum)
-                .GetField(value.ToString());
-
-        var description =
-            field?
-                .GetCustomAttributes(
-                    typeof(DescriptionAttribute),
-                    false)
-                .Cast<DescriptionAttribute>()
-                .FirstOrDefault();
-
-        return description?.Description
-            ?? value.ToString();
+            field.IsSortable);
     }
 
     private static DataTypeDescriptor CreateDataType(
-    Type fieldType)
+        Type fieldType)
     {
         var type =
             Nullable.GetUnderlyingType(fieldType)
             ?? fieldType;
 
-        if (type == typeof(string))
-            return new("string");
-
-        if (type == typeof(bool))
-            return new("boolean");
-
-        if (type == typeof(int) ||
-            type == typeof(short))
-            return new("integer");
-
-        if (type == typeof(long))
-            return new("integer", "int64");
-
-        if (type == typeof(decimal))
-            return new("number", "decimal");
-
-        if (type == typeof(double))
-            return new("number", "double");
-
-        if (type == typeof(Guid))
-            return new("string", "uuid");
-
-        if (type == typeof(DateOnly))
-            return new("string", "date");
-
-        if (type == typeof(DateTime))
-            return new("string", "date-time");
-
-        if (type == typeof(TimeOnly))
-            return new("string", "time");
-
         if (type.IsEnum)
-            return new(
-                "string",
-                "enum");
+        {
+            return new("string", "enum");
+        }
 
-        return new("object");
+        return TypeMappings.TryGetValue(
+            type,
+            out var descriptor)
+            ? descriptor
+            : new("object");
     }
 }

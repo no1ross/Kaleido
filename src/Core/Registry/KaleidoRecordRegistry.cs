@@ -2,13 +2,13 @@ using Kaleido.Metadata;
 
 namespace Kaleido.Registry;
 
-public sealed class RecordRegistry : IRecordRegistry
+public sealed class KaleidoRecordRegistry : IRecordRegistry
 {
     private readonly IReadOnlyDictionary<string, RecordRegistration> _byName;
     private readonly IReadOnlyDictionary<Type, RecordRegistration> _byType;
     private readonly IReadOnlyCollection<RecordRegistration> _registrations;
 
-    public RecordRegistry(
+    public KaleidoRecordRegistry(
         IEnumerable<RecordRegistration> registrations)
     {
         var items = registrations.ToArray();
@@ -47,14 +47,14 @@ public sealed class RecordRegistry : IRecordRegistry
         return registration;
     }
 
-    public RecordRegistration GetRequired(string name)
+    public RecordRegistration GetRegistration(string name)
     {
         return Find(name)
             ?? throw new KeyNotFoundException(
                 $"Record '{name}' is not registered.");
     }
 
-    public RecordRegistration GetRequired(Type recordType)
+    public RecordRegistration GetRegistration(Type recordType)
     {
         return Find(recordType)
             ?? throw new KeyNotFoundException(

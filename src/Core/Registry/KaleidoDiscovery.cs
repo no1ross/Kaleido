@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace Kaleido.Registry;
 
-internal static class KaleidoDiscovery
+public static class KaleidoDiscovery
 {
     public static KaleidoDiscoveryResult Scan(
         IEnumerable<Assembly> assemblies)

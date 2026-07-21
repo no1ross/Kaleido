@@ -27,7 +27,7 @@ public interface IRecordRegistry
 
     RecordRegistration? Find(Type recordType);
 
-    RecordRegistration GetRequired(string name);
+    RecordRegistration GetRegistration(string name);
 
-    RecordRegistration GetRequired(Type recordType);
+    RecordRegistration GetRegistration(Type recordType);
 }
