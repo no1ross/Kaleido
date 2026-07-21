@@ -62,12 +62,12 @@ public sealed record QueryResult<TRecord>(IReadOnlyList<TRecord> Items, int Tota
 }
 
 public sealed record KaleidoQueryResponse(
-    RecordDescriptor Record,
+    RecordDescriptor Descriptor,
     int TotalCount,
     IReadOnlyList<object> Items);
 
 public sealed record KaleidoQueryResponse<TRecord>(
-    RecordDescriptor Record,
+    RecordDescriptor Descriptor,
     int TotalCount,
     IReadOnlyList<TRecord> Items)
     where TRecord : class;

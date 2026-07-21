@@ -28,11 +28,11 @@ public sealed class KaleidoCatalog : IKaleidoCatalog
 
     public async Task<KaleidoQueryResponse> QueryAsync(string recordKey, KaleidoQueryRequest request, CancellationToken cancellationToken = default)
     {
-        return await _dispatcher.QueryAsync(recordKey, request, cancellationToken);
+        return await _dispatcher.DispatchAsync(recordKey, request, cancellationToken);
     }
 
     public async Task<KaleidoQueryResponse<TRecord>> QueryAsync<TRecord>(string recordKey, KaleidoQueryRequest request, CancellationToken cancellationToken = default) where TRecord : class
     {
-        return await _dispatcher.QueryAsync<TRecord>(recordKey, request, cancellationToken);
+        return await _dispatcher.DispatchAsync<TRecord>(recordKey, request, cancellationToken);
     }
 }

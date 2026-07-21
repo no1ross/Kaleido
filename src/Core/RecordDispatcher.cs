@@ -16,7 +16,7 @@ public sealed class RecordDispatcher : IRecordDispatcher
         _descriptors = descriptors;
     }
 
-    public async Task<KaleidoQueryResponse> QueryAsync(string recordKey, KaleidoQueryRequest request, CancellationToken cancellationToken = default)
+    public async Task<KaleidoQueryResponse> DispatchAsync(string recordKey, KaleidoQueryRequest request, CancellationToken cancellationToken = default)
     {
         var registration = _registry.Find(recordKey)
             ?? throw new KeyNotFoundException($"Record '{recordKey}' is not registered.");
@@ -33,12 +33,19 @@ public sealed class RecordDispatcher : IRecordDispatcher
             result.ItemsAsObjects);
     }
 
-    public async Task<KaleidoQueryResponse<TRecord>> QueryAsync<TRecord>(string recordKey, KaleidoQueryRequest request, CancellationToken cancellationToken = default) where TRecord : class
+    public async Task<KaleidoQueryResponse<TRecord>> DispatchAsync<TRecord>(string recordKey, KaleidoQueryRequest request, CancellationToken cancellationToken = default) where TRecord : class
     {
         var registration = _registry.Find(recordKey)
             ?? throw new KeyNotFoundException($"Record '{recordKey}' is not registered.");
 
-        var engineType = typeof(IRecordQueryEngine<TRecord>).MakeGenericType(registration.RecordType);
+        if (registration.RecordType != typeof(TRecord))
+        {
+            throw new InvalidOperationException(
+                $"Record '{recordKey}' is registered for '{registration.RecordType.Name}' " +
+                $"but was requested as '{typeof(TRecord).Name}'.");
+        }
+
+        var engineType = typeof(IRecordQueryEngine<TRecord>);
         using var scope = _scopeFactory.CreateScope();
         var engine = (IRecordQueryEngine<TRecord>)scope.ServiceProvider.GetRequiredService(engineType);
 
