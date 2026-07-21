@@ -6,7 +6,7 @@ namespace Kaleido;
 public record KaleidoQueryRequest
 (
     string? QueryName,
-    QueryBody? Query,
+    KaleidoQueryBody? Query,
     IReadOnlyDictionary<string, object?>? Parameters = null
 );
 
@@ -25,7 +25,7 @@ public record KaleidoQueryRequest
 //);
 
 /// <summary>Filter/search/sort/page section of a query request.</summary>
-public record QueryBody
+public record KaleidoQueryBody
 (
     ISearchExpression? Search,
     IFilterExpression? Filter,

@@ -6,13 +6,15 @@ namespace Kaleido.UnitTests;
 
 public sealed partial class KaleidoCatalogTests
 {
-    private readonly KaleidoCatalogFixture _fixture;
+    private readonly KaleidoTestFixture _fixture;
     private readonly KaleidoCatalog _sut;
 
     public KaleidoCatalogTests()
     {
-        _fixture = new KaleidoCatalogFixture();
-        _sut = _fixture.CreateSut();
+        _fixture = new KaleidoTestFixture();
+        _sut = new KaleidoCatalog(_fixture.Registry.Object,
+            _fixture.Dispatcher.Object,
+            _fixture.Descriptors.Object);
     }
 
     [Fact]
@@ -145,19 +147,4 @@ public sealed partial class KaleidoCatalogTests
         Assert.Single(result);
     }
 
-    private sealed class KaleidoCatalogFixture
-    {
-        public Mock<IRecordRegistry> Registry { get; } = new();
-
-        public Mock<IRecordDispatcher> Dispatcher { get; } = new();
-        public Mock<IRecordDescriptorFactory> Descriptors { get; } = new();
-
-        public KaleidoCatalog CreateSut()
-        {
-            return new KaleidoCatalog(
-                Registry.Object,
-                Dispatcher.Object,
-                Descriptors.Object);
-        }
-    }
 }

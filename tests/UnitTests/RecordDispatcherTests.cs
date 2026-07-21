@@ -12,13 +12,16 @@ namespace Kaleido.UnitTests;
 
 public sealed class RecordDispatcherTests
 {
-    private readonly Fixture _fixture;
+    private readonly KaleidoTestFixture _fixture;
     private readonly RecordDispatcher _sut;
 
     public RecordDispatcherTests()
     {
-        _fixture = new Fixture();
-        _sut = _fixture.CreateSut();
+        _fixture = new KaleidoTestFixture();
+        _sut = new RecordDispatcher(
+            _fixture.ScopeFactory.Object,
+            _fixture.Registry.Object,
+            _fixture.Descriptors.Object);
     }
 
     [Fact]
@@ -348,46 +351,4 @@ public sealed class RecordDispatcherTests
             x => x.CreateScope(),
             Times.Never);
     }
-
-    private sealed class Fixture
-    {
-        public Mock<IServiceScopeFactory> ScopeFactory { get; } = new();
-
-        public Mock<IServiceScope> Scope { get; } = new();
-
-        public Mock<IServiceProvider> ServiceProvider { get; } = new();
-
-        public Mock<IRecordRegistry> Registry { get; } = new();
-
-        public Mock<IRecordDescriptorFactory> Descriptors { get; } = new();
-
-        public Fixture()
-        {
-            Scope
-                .SetupGet(x => x.ServiceProvider)
-                .Returns(ServiceProvider.Object);
-
-            ScopeFactory
-                .Setup(x => x.CreateScope())
-                .Returns(Scope.Object);
-        }
-
-        public RecordDispatcher CreateSut()
-        {
-            return new RecordDispatcher(
-                ScopeFactory.Object,
-                Registry.Object,
-                Descriptors.Object);
-        }
-
-        public void ConfigureScopeService(
-            Type serviceType,
-            object service)
-        {
-            ServiceProvider
-                .Setup(x => x.GetService(serviceType))
-                .Returns(service);
-        }
-    }
-
 }
