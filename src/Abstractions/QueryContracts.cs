@@ -10,40 +10,140 @@ public record KaleidoQueryRequest
     IReadOnlyDictionary<string, object?>? Parameters = null
 );
 
-//public record QueryContext
-//(
-//    string? BusinessUnit,
-//    string? Solution,
-//    string? SubSolution,
-//    string? Product,
-//    string? ClientId,
-//    string? LineOfBusiness,
-//    DateTime? DateOfService,
-//    DateTime? AsOfDate,
-//    string? WorkflowContextId,
-//    string? MemberContextId
-//);
-
-/// <summary>Filter/search/sort/page section of a query request.</summary>
 public record KaleidoQueryBody
 (
-    ISearchExpression? Search,
-    IFilterExpression? Filter,
+    QuerySearchNode? Search,
+    QueryFilterNode? Filter,
     IReadOnlyList<QuerySort>? Sort,
     QueryPage? Page
 );
 
-public interface IFilterExpression { }
-public record QueryFilterGroup(LogicalOperator Operator, List<IFilterExpression> Expressions) : IFilterExpression;
-public record QueryFilter(string Field, FilterOperator Operator, List<object?> Values) : IFilterExpression;
+#region Filters
 
+public sealed record QueryFilterNode
+(
+    QueryFilterCondition? Condition,
+    QueryFilterGroup? Group
+)
+{
+    public static QueryFilterNode CreateCondition(
+        string field,
+        FilterOperator @operator,
+        params object?[] values)
+    {
+        return new(
+            new QueryFilterCondition(
+                field,
+                @operator,
+                values),
+            null);
+    }
 
-public interface ISearchExpression { }
-public record QuerySearch(string SearchText, MatchMode MatchMode, string? Field = null) : ISearchExpression;
-public record QuerySearchGroup(LogicalOperator Operator, List<ISearchExpression> Expressions) : ISearchExpression;
+    public static QueryFilterNode CreateGroup(
+        LogicalOperator @operator,
+        params QueryFilterNode[] filters)
+    {
+        return new(
+            null,
+            new QueryFilterGroup(
+                @operator,
+                filters.ToList()));
+    }
 
-public record QuerySort(string Field, SortDirection Direction, int? Sequence = null);
-public record QueryPage(int? Size, int? Offset);
+    public void Validate()
+    {
+        if ((Condition is null) == (Group is null))
+        {
+            throw new InvalidOperationException(
+                "Exactly one of Condition or Group must be specified.");
+        }
+    }
+}
+
+public sealed record QueryFilterCondition
+(
+    string Field,
+    FilterOperator Operator,
+    IReadOnlyList<object?> Values
+);
+
+public sealed record QueryFilterGroup
+(
+    LogicalOperator Operator,
+    IReadOnlyList<QueryFilterNode> Filters
+);
+
+#endregion
+
+#region Search
+
+public sealed record QuerySearchNode
+(
+    QuerySearchCondition? Condition,
+    QuerySearchGroup? Group
+)
+{
+    public static QuerySearchNode CreateCondition(
+        string searchText,
+        MatchMode matchMode,
+        string? field = null)
+    {
+        return new(
+            new QuerySearchCondition(
+                searchText,
+                matchMode,
+                field),
+            null);
+    }
+
+    public static QuerySearchNode CreateGroup(
+        LogicalOperator @operator,
+        params QuerySearchNode[] searches)
+    {
+        return new(
+            null,
+            new QuerySearchGroup(
+                @operator,
+                searches.ToList()));
+    }
+
+    public void Validate()
+    {
+        if ((Condition is null) == (Group is null))
+        {
+            throw new InvalidOperationException(
+                "Exactly one of Condition or Group must be specified.");
+        }
+    }
+}
+
+public sealed record QuerySearchCondition
+(
+    string SearchText,
+    MatchMode MatchMode,
+    string? Field = null
+);
+
+public sealed record QuerySearchGroup
+(
+    LogicalOperator Operator,
+    IReadOnlyList<QuerySearchNode> Searches
+);
+
+#endregion
+
+#region Sort/Page
+
+public record QuerySort(
+    string Field,
+    SortDirection Direction,
+    int? Sequence = null);
+
+public record QueryPage(
+    int? Size,
+    int? Offset);
+
+#endregion
 
 public interface IRecordQueryResult
 {
@@ -71,3 +171,26 @@ public sealed record KaleidoQueryResponse<TRecord>(
     int TotalCount,
     IReadOnlyList<TRecord> Items)
     where TRecord : class;
+
+
+public static class QueryFilter
+{
+    public static QueryFilterNode Eq(
+        string field,
+        object? value)
+    {
+        return QueryFilterNode.CreateCondition(
+            field,
+            FilterOperator.Eq,
+            value);
+    }
+
+    public static QueryFilterNode Group(
+        LogicalOperator op,
+        params QueryFilterNode[] filters)
+    {
+        return QueryFilterNode.CreateGroup(
+            op,
+            filters);
+    }
+}

@@ -8,6 +8,37 @@ public sealed class RecordQueryCompilerTests
     private readonly RecordQueryCompiler _sut = new();
 
     [Fact]
+    public void Compile_Should_Throw_When_Request_Is_Null()
+    {
+        // Arrange
+        var metadata = CreateMetadata();
+
+        // Act
+        var exception = Assert.Throws<ArgumentNullException>(
+            () => _sut.Compile(null!, metadata));
+
+        // Assert
+        Assert.Equal("request", exception.ParamName);
+    }
+
+    [Fact]
+    public void Compile_Should_Throw_When_Metadata_Is_Null()
+    {
+        // Arrange
+        var request = new KaleidoQueryRequest(
+            QueryName: null,
+            Query: null,
+            Parameters: null);
+
+        // Act
+        var exception = Assert.Throws<ArgumentNullException>(
+            () => _sut.Compile(request, null!));
+
+        // Assert
+        Assert.Equal("metadata", exception.ParamName);
+    }
+
+    [Fact]
     public void Compile_Should_Copy_QueryName_And_Parameters()
     {
         // Arrange
@@ -53,7 +84,9 @@ public sealed class RecordQueryCompilerTests
     public void Compile_Should_Use_Request_Page_When_Provided()
     {
         // Arrange
-        var metadata = CreateMetadata(defaultPageSize: 25, maxPageSize: 100);
+        var metadata = CreateMetadata(
+            defaultPageSize: 25,
+            maxPageSize: 100);
 
         var request = new KaleidoQueryRequest(
             QueryName: "test",
@@ -61,7 +94,9 @@ public sealed class RecordQueryCompilerTests
                 Search: null,
                 Filter: null,
                 Sort: null,
-                Page: new QueryPage(Size: 10, Offset: 40)),
+                Page: new QueryPage(
+                    Size: 10,
+                    Offset: 40)),
             Parameters: EmptyParameters());
 
         // Act
@@ -76,7 +111,9 @@ public sealed class RecordQueryCompilerTests
     public void Compile_Should_Use_Metadata_Default_Page_Size_When_Request_Size_Is_Null()
     {
         // Arrange
-        var metadata = CreateMetadata(defaultPageSize: 25, maxPageSize: 100);
+        var metadata = CreateMetadata(
+            defaultPageSize: 25,
+            maxPageSize: 100);
 
         var request = new KaleidoQueryRequest(
             QueryName: "test",
@@ -84,7 +121,9 @@ public sealed class RecordQueryCompilerTests
                 Search: null,
                 Filter: null,
                 Sort: null,
-                Page: new QueryPage(Size: null, Offset: 15)),
+                Page: new QueryPage(
+                    Size: null,
+                    Offset: 15)),
             Parameters: EmptyParameters());
 
         // Act
@@ -99,7 +138,8 @@ public sealed class RecordQueryCompilerTests
     public void Compile_Should_Use_Default_Page_Size_Of_50_When_Request_And_Metadata_Do_Not_Provide_Size()
     {
         // Arrange
-        var metadata = CreateMetadata(pageable: null);
+        var metadata = CreateMetadata(
+            supportsPaging: false);
 
         var request = new KaleidoQueryRequest(
             QueryName: "test",
@@ -126,7 +166,9 @@ public sealed class RecordQueryCompilerTests
                 Search: null,
                 Filter: null,
                 Sort: null,
-                Page: new QueryPage(Size: 20, Offset: null)),
+                Page: new QueryPage(
+                    Size: 20,
+                    Offset: null)),
             Parameters: EmptyParameters());
 
         // Act
@@ -135,6 +177,52 @@ public sealed class RecordQueryCompilerTests
         // Assert
         Assert.Equal(20, result.Page.Size);
         Assert.Equal(0, result.Page.Offset);
+    }
+
+    [Fact]
+    public void Compile_Should_Clamp_Page_Size_To_MaxSize()
+    {
+        // Arrange
+        var metadata = CreateMetadata(
+            defaultPageSize: 50,
+            maxPageSize: 100);
+
+        var request = new KaleidoQueryRequest(
+            QueryName: "test",
+            Query: new KaleidoQueryBody(
+                Search: null,
+                Filter: null,
+                Sort: null,
+                Page: new QueryPage(
+                    Size: 500,
+                    Offset: 0)),
+            Parameters: null);
+
+        // Act
+        var result = _sut.Compile(request, metadata);
+
+        // Assert
+        Assert.Equal(100, result.Page.Size);
+    }
+
+    [Fact]
+    public void Compile_Should_Clamp_Default_Page_Size_To_MaxSize()
+    {
+        // Arrange
+        var metadata = CreateMetadata(
+            defaultPageSize: 500,
+            maxPageSize: 100);
+
+        var request = new KaleidoQueryRequest(
+            QueryName: "test",
+            Query: null,
+            Parameters: null);
+
+        // Act
+        var result = _sut.Compile(request, metadata);
+
+        // Assert
+        Assert.Equal(100, result.Page.Size);
     }
 
     [Fact]
@@ -165,16 +253,14 @@ public sealed class RecordQueryCompilerTests
         // Arrange
         var metadata = CreateMetadata();
 
-        var filter = new QueryFilter(
-            Field: "Code",
-            Operator: FilterOperator.Eq,
-            Values: new List<object?> { "ABC" });
-
         var request = new KaleidoQueryRequest(
             QueryName: "test",
             Query: new KaleidoQueryBody(
                 Search: null,
-                Filter: filter,
+                Filter: FilterCondition(
+                    field: "Code",
+                    @operator: FilterOperator.Eq,
+                    "ABC"),
                 Sort: null,
                 Page: null),
             Parameters: EmptyParameters());
@@ -196,16 +282,14 @@ public sealed class RecordQueryCompilerTests
         // Arrange
         var metadata = CreateMetadata();
 
-        var filter = new QueryFilter(
-            Field: "code",
-            Operator: FilterOperator.Eq,
-            Values: new List<object?> { "ABC" });
-
         var request = new KaleidoQueryRequest(
             QueryName: "test",
             Query: new KaleidoQueryBody(
                 Search: null,
-                Filter: filter,
+                Filter: FilterCondition(
+                    field: "code",
+                    @operator: FilterOperator.Eq,
+                    "ABC"),
                 Sort: null,
                 Page: null),
             Parameters: EmptyParameters());
@@ -225,20 +309,16 @@ public sealed class RecordQueryCompilerTests
         // Arrange
         var metadata = CreateMetadata();
 
-        var filter = new QueryFilterGroup(
-            Operator: LogicalOperator.And,
-            Expressions: new List<IFilterExpression>
-            {
-                new QueryFilter(
-                    Field: "Code",
-                    Operator: FilterOperator.Eq,
-                    Values: new List<object?> { "ABC" }),
-
-                new QueryFilter(
-                    Field: "Name",
-                    Operator: FilterOperator.Contains,
-                    Values: new List<object?> { "Test" })
-            });
+        var filter = FilterGroup(
+            LogicalOperator.And,
+            FilterCondition(
+                field: "Code",
+                @operator: FilterOperator.Eq,
+                "ABC"),
+            FilterCondition(
+                field: "Name",
+                @operator: FilterOperator.Contains,
+                "Test"));
 
         var request = new KaleidoQueryRequest(
             QueryName: "test",
@@ -263,6 +343,122 @@ public sealed class RecordQueryCompilerTests
     }
 
     [Fact]
+    public void Compile_Should_Compile_Nested_Filter_Group()
+    {
+        // Arrange
+        var metadata = CreateMetadata();
+
+        var filter = FilterGroup(
+            LogicalOperator.And,
+            FilterCondition(
+                field: "Code",
+                @operator: FilterOperator.Eq,
+                "ABC"),
+            FilterGroup(
+                LogicalOperator.Or,
+                FilterCondition(
+                    field: "Name",
+                    @operator: FilterOperator.Contains,
+                    "Test"),
+                FilterCondition(
+                    field: "Name",
+                    @operator: FilterOperator.Eq,
+                    "Other")));
+
+        var request = new KaleidoQueryRequest(
+            QueryName: "test",
+            Query: new KaleidoQueryBody(
+                Search: null,
+                Filter: filter,
+                Sort: null,
+                Page: null),
+            Parameters: EmptyParameters());
+
+        // Act
+        var result = _sut.Compile(request, metadata);
+
+        // Assert
+        var root = Assert.IsType<CompiledFilterGroup>(result.Filter);
+
+        Assert.Equal(LogicalOperator.And, root.Operator);
+        Assert.Equal(2, root.Expressions.Count);
+
+        Assert.IsType<CompiledFilterCondition>(root.Expressions[0]);
+
+        var nested = Assert.IsType<CompiledFilterGroup>(root.Expressions[1]);
+
+        Assert.Equal(LogicalOperator.Or, nested.Operator);
+        Assert.Equal(2, nested.Expressions.Count);
+    }
+
+    [Fact]
+    public void Compile_Should_Throw_When_Filter_Node_Has_Both_Condition_And_Group()
+    {
+        // Arrange
+        var metadata = CreateMetadata();
+
+        var filter = new QueryFilterNode(
+            Condition: new QueryFilterCondition(
+                Field: "Code",
+                Operator: FilterOperator.Eq,
+                Values: new List<object?> { "ABC" }),
+            Group: new QueryFilterGroup(
+                Operator: LogicalOperator.And,
+                Filters: new List<QueryFilterNode>
+                {
+                    FilterCondition(
+                        field: "Name",
+                        @operator: FilterOperator.Contains,
+                        "Test")
+                }));
+
+        var request = new KaleidoQueryRequest(
+            QueryName: "test",
+            Query: new KaleidoQueryBody(
+                Search: null,
+                Filter: filter,
+                Sort: null,
+                Page: null),
+            Parameters: EmptyParameters());
+
+        // Act
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => _sut.Compile(request, metadata));
+
+        // Assert
+        Assert.Equal(
+            "Filter node cannot specify both Condition and Group.",
+            exception.Message);
+    }
+
+    [Fact]
+    public void Compile_Should_Throw_When_Filter_Node_Has_Neither_Condition_Nor_Group()
+    {
+        // Arrange
+        var metadata = CreateMetadata();
+
+        var request = new KaleidoQueryRequest(
+            QueryName: "test",
+            Query: new KaleidoQueryBody(
+                Search: null,
+                Filter: new QueryFilterNode(
+                    Condition: null,
+                    Group: null),
+                Sort: null,
+                Page: null),
+            Parameters: EmptyParameters());
+
+        // Act
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => _sut.Compile(request, metadata));
+
+        // Assert
+        Assert.Equal(
+            "Filter node must specify either Condition or Group.",
+            exception.Message);
+    }
+
+    [Fact]
     public void Compile_Should_Throw_When_Filter_Field_Does_Not_Exist()
     {
         // Arrange
@@ -272,10 +468,10 @@ public sealed class RecordQueryCompilerTests
             QueryName: "test",
             Query: new KaleidoQueryBody(
                 Search: null,
-                Filter: new QueryFilter(
-                    Field: "MissingField",
-                    Operator: FilterOperator.Eq,
-                    Values: new List<object?> { "ABC" }),
+                Filter: FilterCondition(
+                    field: "MissingField",
+                    @operator: FilterOperator.Eq,
+                    "ABC"),
                 Sort: null,
                 Page: null),
             Parameters: EmptyParameters());
@@ -318,15 +514,13 @@ public sealed class RecordQueryCompilerTests
         // Arrange
         var metadata = CreateMetadata();
 
-        var search = new QuerySearch(
-            SearchText: "abc",
-            MatchMode: MatchMode.Contains,
-            Field: "Name");
-
         var request = new KaleidoQueryRequest(
             QueryName: "test",
             Query: new KaleidoQueryBody(
-                Search: search,
+                Search: SearchCondition(
+                    searchText: "abc",
+                    matchMode: MatchMode.Contains,
+                    field: "Name"),
                 Filter: null,
                 Sort: null,
                 Page: null),
@@ -349,15 +543,13 @@ public sealed class RecordQueryCompilerTests
         // Arrange
         var metadata = CreateMetadata();
 
-        var search = new QuerySearch(
-            SearchText: "abc",
-            MatchMode: MatchMode.Contains,
-            Field: "name");
-
         var request = new KaleidoQueryRequest(
             QueryName: "test",
             Query: new KaleidoQueryBody(
-                Search: search,
+                Search: SearchCondition(
+                    searchText: "abc",
+                    matchMode: MatchMode.Contains,
+                    field: "name"),
                 Filter: null,
                 Sort: null,
                 Page: null),
@@ -378,15 +570,13 @@ public sealed class RecordQueryCompilerTests
         // Arrange
         var metadata = CreateMetadata();
 
-        var search = new QuerySearch(
-            SearchText: "abc",
-            MatchMode: MatchMode.Contains,
-            Field: null);
-
         var request = new KaleidoQueryRequest(
             QueryName: "test",
             Query: new KaleidoQueryBody(
-                Search: search,
+                Search: SearchCondition(
+                    searchText: "abc",
+                    matchMode: MatchMode.Contains,
+                    field: null),
                 Filter: null,
                 Sort: null,
                 Page: null),
@@ -416,15 +606,13 @@ public sealed class RecordQueryCompilerTests
             codePriority: 2,
             namePriority: 1);
 
-        var search = new QuerySearch(
-            SearchText: "abc",
-            MatchMode: MatchMode.Contains,
-            Field: null);
-
         var request = new KaleidoQueryRequest(
             QueryName: "test",
             Query: new KaleidoQueryBody(
-                Search: search,
+                Search: SearchCondition(
+                    searchText: "abc",
+                    matchMode: MatchMode.Contains,
+                    field: null),
                 Filter: null,
                 Sort: null,
                 Page: null),
@@ -449,15 +637,13 @@ public sealed class RecordQueryCompilerTests
         // Arrange
         var metadata = CreateMetadata();
 
-        var search = new QuerySearch(
-            SearchText: "abc",
-            MatchMode: MatchMode.StartsWith,
-            Field: null);
-
         var request = new KaleidoQueryRequest(
             QueryName: "test",
             Query: new KaleidoQueryBody(
-                Search: search,
+                Search: SearchCondition(
+                    searchText: "abc",
+                    matchMode: MatchMode.StartsWith,
+                    field: null),
                 Filter: null,
                 Sort: null,
                 Page: null),
@@ -479,20 +665,16 @@ public sealed class RecordQueryCompilerTests
         // Arrange
         var metadata = CreateMetadata();
 
-        var search = new QuerySearchGroup(
-            Operator: LogicalOperator.And,
-            Expressions: new List<ISearchExpression>
-            {
-                new QuerySearch(
-                    SearchText: "abc",
-                    MatchMode: MatchMode.Contains,
-                    Field: "Code"),
-
-                new QuerySearch(
-                    SearchText: "test",
-                    MatchMode: MatchMode.Contains,
-                    Field: "Name")
-            });
+        var search = SearchGroup(
+            LogicalOperator.And,
+            SearchCondition(
+                searchText: "abc",
+                matchMode: MatchMode.Contains,
+                field: "Code"),
+            SearchCondition(
+                searchText: "test",
+                matchMode: MatchMode.Contains,
+                field: "Name"));
 
         var request = new KaleidoQueryRequest(
             QueryName: "test",
@@ -514,6 +696,122 @@ public sealed class RecordQueryCompilerTests
 
         Assert.All(group.Expressions, expression =>
             Assert.IsType<CompiledSearchCondition>(expression));
+    }
+
+    [Fact]
+    public void Compile_Should_Compile_Nested_Search_Group()
+    {
+        // Arrange
+        var metadata = CreateMetadata();
+
+        var search = SearchGroup(
+            LogicalOperator.And,
+            SearchCondition(
+                searchText: "abc",
+                matchMode: MatchMode.Contains,
+                field: "Code"),
+            SearchGroup(
+                LogicalOperator.Or,
+                SearchCondition(
+                    searchText: "test",
+                    matchMode: MatchMode.Contains,
+                    field: "Name"),
+                SearchCondition(
+                    searchText: "other",
+                    matchMode: MatchMode.Exact,
+                    field: "Code")));
+
+        var request = new KaleidoQueryRequest(
+            QueryName: "test",
+            Query: new KaleidoQueryBody(
+                Search: search,
+                Filter: null,
+                Sort: null,
+                Page: null),
+            Parameters: EmptyParameters());
+
+        // Act
+        var result = _sut.Compile(request, metadata);
+
+        // Assert
+        var root = Assert.IsType<CompiledSearchGroup>(result.Search);
+
+        Assert.Equal(LogicalOperator.And, root.Operator);
+        Assert.Equal(2, root.Expressions.Count);
+
+        Assert.IsType<CompiledSearchCondition>(root.Expressions[0]);
+
+        var nested = Assert.IsType<CompiledSearchGroup>(root.Expressions[1]);
+
+        Assert.Equal(LogicalOperator.Or, nested.Operator);
+        Assert.Equal(2, nested.Expressions.Count);
+    }
+
+    [Fact]
+    public void Compile_Should_Throw_When_Search_Node_Has_Both_Condition_And_Group()
+    {
+        // Arrange
+        var metadata = CreateMetadata();
+
+        var search = new QuerySearchNode(
+            Condition: new QuerySearchCondition(
+                SearchText: "abc",
+                MatchMode: MatchMode.Contains,
+                Field: "Code"),
+            Group: new QuerySearchGroup(
+                Operator: LogicalOperator.And,
+                Searches: new List<QuerySearchNode>
+                {
+                    SearchCondition(
+                        searchText: "test",
+                        matchMode: MatchMode.Contains,
+                        field: "Name")
+                }));
+
+        var request = new KaleidoQueryRequest(
+            QueryName: "test",
+            Query: new KaleidoQueryBody(
+                Search: search,
+                Filter: null,
+                Sort: null,
+                Page: null),
+            Parameters: EmptyParameters());
+
+        // Act
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => _sut.Compile(request, metadata));
+
+        // Assert
+        Assert.Equal(
+            "Search node cannot specify both Condition and Group.",
+            exception.Message);
+    }
+
+    [Fact]
+    public void Compile_Should_Throw_When_Search_Node_Has_Neither_Condition_Nor_Group()
+    {
+        // Arrange
+        var metadata = CreateMetadata();
+
+        var request = new KaleidoQueryRequest(
+            QueryName: "test",
+            Query: new KaleidoQueryBody(
+                Search: new QuerySearchNode(
+                    Condition: null,
+                    Group: null),
+                Filter: null,
+                Sort: null,
+                Page: null),
+            Parameters: EmptyParameters());
+
+        // Act
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => _sut.Compile(request, metadata));
+
+        // Assert
+        Assert.Equal(
+            "Search node must specify either Condition or Group.",
+            exception.Message);
     }
 
     [Fact]
@@ -669,48 +967,59 @@ public sealed class RecordQueryCompilerTests
         Assert.Equal("Code", sort.Field.Name);
     }
 
-    [Fact]
-    public void Compile_Should_Clamp_Page_Size_To_MaxSize()
+    private static QueryFilterNode FilterCondition(
+        string field,
+        FilterOperator @operator,
+        params object?[] values)
     {
-        var metadata = CreateMetadata(
-            defaultPageSize: 50,
-            maxPageSize: 100);
-
-        var request = new KaleidoQueryRequest(
-            QueryName: "test",
-            Query: new KaleidoQueryBody(
-                Search: null,
-                Filter: null,
-                Sort: null,
-                Page: new QueryPage(Size: 500, Offset: 0)),
-            Parameters: null);
-
-        var result = _sut.Compile(request, metadata);
-
-        Assert.Equal(100, result.Page.Size);
+        return new QueryFilterNode(
+            Condition: new QueryFilterCondition(
+                Field: field,
+                Operator: @operator,
+                Values: values.ToList()),
+            Group: null);
     }
 
-    [Fact]
-    public void Compile_Should_Clamp_Default_Page_Size_To_MaxSize()
+    private static QueryFilterNode FilterGroup(
+        LogicalOperator @operator,
+        params QueryFilterNode[] filters)
     {
-        var metadata = CreateMetadata(
-            defaultPageSize: 500,
-            maxPageSize: 100);
+        return new QueryFilterNode(
+            Condition: null,
+            Group: new QueryFilterGroup(
+                Operator: @operator,
+                Filters: filters.ToList()));
+    }
 
-        var request = new KaleidoQueryRequest(
-            QueryName: "test",
-            Query: null,
-            Parameters: null);
+    private static QuerySearchNode SearchCondition(
+        string searchText,
+        MatchMode matchMode,
+        string? field = null)
+    {
+        return new QuerySearchNode(
+            Condition: new QuerySearchCondition(
+                SearchText: searchText,
+                MatchMode: matchMode,
+                Field: field),
+            Group: null);
+    }
 
-        var result = _sut.Compile(request, metadata);
-
-        Assert.Equal(100, result.Page.Size);
+    private static QuerySearchNode SearchGroup(
+        LogicalOperator @operator,
+        params QuerySearchNode[] searches)
+    {
+        return new QuerySearchNode(
+            Condition: null,
+            Group: new QuerySearchGroup(
+                Operator: @operator,
+                Searches: searches.ToList()));
     }
 
     private static RuntimeRecordMetadata CreateMetadata(
         int defaultPageSize = 50,
         int maxPageSize = 500,
-        RuntimePageableMetadata? pageable = null)
+        RuntimePageableMetadata? pageable = null,
+        bool supportsPaging = true)
     {
         return new RuntimeRecordMetadata(
             Name: "TestRecord",
@@ -765,9 +1074,11 @@ public sealed class RecordQueryCompilerTests
                     isSortable: false)
             },
             AllowedQueries: new List<RuntimeAllowedQueryMetadata>(),
-            Pageable: pageable ?? new RuntimePageableMetadata(
-                DefaultSize: defaultPageSize,
-                MaxSize: maxPageSize));
+            Pageable: supportsPaging
+                ? pageable ?? new RuntimePageableMetadata(
+                    DefaultSize: defaultPageSize,
+                    MaxSize: maxPageSize)
+                : null);
     }
 
     private static RuntimeRecordMetadata CreateMetadataWithSearchPriorities(
