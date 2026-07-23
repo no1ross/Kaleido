@@ -1,22 +1,22 @@
-using System.Reflection;
+//using System.Reflection;
 
-namespace Kaleido;
+//namespace Kaleido.Queryable;
 
-public sealed class KaleidoOptions
-{
-    internal HashSet<Assembly> Assemblies { get; } = [];
+//public sealed class KaleidoOptions
+//{
+//    internal HashSet<Assembly> Assemblies { get; } = [];
 
-    public bool ValidateRegistrations { get; set; } = true;
+//    public bool ValidateRegistrations { get; set; } = true;
 
-    public void RegisterAssembly(Assembly assembly)
-    {
-        ArgumentNullException.ThrowIfNull(assembly);
+//    public void RegisterAssembly(Assembly assembly)
+//    {
+//        ArgumentNullException.ThrowIfNull(assembly);
 
-        Assemblies.Add(assembly);
-    }
+//        Assemblies.Add(assembly);
+//    }
 
-    public void RegisterFromAssemblyContaining<T>()
-    {
-        Assemblies.Add(typeof(T).Assembly);
-    }
-}
+//    public void RegisterFromAssemblyContaining<T>()
+//    {
+//        Assemblies.Add(typeof(T).Assembly);
+//    }
+//}

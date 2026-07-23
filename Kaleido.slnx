@@ -12,10 +12,14 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Abstractions/Kaleido.Abstractions.csproj" />
-    <Project Path="src/Core/Kaleido.csproj" />
+    <Project Path="src/Core/Kaleido.Core.csproj" />
+    <Project Path="src/Queryable.Abstractions/Kaleido.Queryable.Abstractions.csproj" Id="76d48d88-2a80-4efa-acb7-4fae998a634f" />
+    <Project Path="src/Queryable/Kaleido.Queryable.csproj" />
+    <Project Path="src/Shared/Kaleido.Shared.csproj" Id="719815c5-0746-45bc-bd5d-ac3bcb017751" />
   </Folder>
   <Folder Name="/test/">
-    <Project Path="tests/FunctionalTests/Kaleido.FunctionalTests.csproj" />
-    <Project Path="tests/UnitTests/Kaleido.UnitTests.csproj" />
+    <Project Path="tests/Core.UnitTests/Kaleido.Core.UnitTests.csproj" Id="d3158058-b54e-4a54-8bb0-5f324d367958" />
+    <Project Path="tests/Queryable.FunctionalTests/Kaleido.FunctionalTests.csproj" />
+    <Project Path="tests/Queryable.UnitTests/Kaleido.Queryable.UnitTests.csproj" />
   </Folder>
 </Solution>

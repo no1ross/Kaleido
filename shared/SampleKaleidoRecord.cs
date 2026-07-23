@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using Kaleido.Attributes;
+using Kaleido.Queryable.Attributes;
+using Kaleido.Queryable;
 
 namespace Kaleido.Shared;
 

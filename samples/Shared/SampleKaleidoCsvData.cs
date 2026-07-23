@@ -1,3 +1,4 @@
+using Kaleido;
 using Kaleido.Extensions;
 
 namespace Kaleido.Samples.Shared;

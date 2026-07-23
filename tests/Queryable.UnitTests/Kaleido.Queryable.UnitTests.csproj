@@ -1,0 +1,54 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IsPackable>false</IsPackable>
+		<IsTestProject>true</IsTestProject>
+		<RootNamespace>Kaleido.Queryable.UnitTests</RootNamespace>
+		<AssemblyName>Kaleido.Queryable.UnitTests</AssemblyName>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Compile Include="..\..\shared\SampleKaleidoCsvData.cs" Link="SampleKaleidoCsvData.cs" />
+		<Compile Include="..\..\shared\SampleKaleidoNamedQueries.cs" Link="SampleKaleidoNamedQueries.cs" />
+		<Compile Include="..\..\shared\SampleKaleidoRecord.cs" Link="SampleKaleidoRecord.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="coverlet.collector" Version="6.0.4">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+		<PackageReference Include="Moq" Version="4.20.72" />
+		<PackageReference Include="xunit" Version="2.9.2" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="Xunit" />
+		<Using Include="Moq" />
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Metadata" />
+		<Using Include="Kaleido.Queryable.Registry" />
+		<Using Include="Kaleido.Queryable.Validation" />
+		<Using Include="Kaleido.Queryable.Attributes" />
+		<Using Include="Kaleido.Shared" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\Queryable\Kaleido.Queryable.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Folder Include="Extensions\" />
+	</ItemGroup>
+
+</Project>

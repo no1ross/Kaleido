@@ -23,7 +23,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Core\Kaleido.csproj" />
+    <ProjectReference Include="..\..\src\Core\Kaleido.Core.csproj" />
+    <ProjectReference Include="..\..\src\Queryable\Kaleido.Queryable.csproj" />
     <ProjectReference Include="..\Shared\Kaleido.Samples.Shared.csproj" />
   </ItemGroup>
 

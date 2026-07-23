@@ -3,6 +3,7 @@ using Kaleido.Samples.SQLite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Kaleido.Samples.Shared;
+using Kaleido.Queryable;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,11 +17,10 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
 });
 
-builder.Services.AddKaleido(options =>
-{
-    options.RegisterAssembly(typeof(SampleKaleidoRecord).Assembly);
-    options.RegisterAssembly(typeof(SampleKaleidoRecordSource).Assembly);
-});
+builder.Services.AddKaleido()
+    .AddAssembly(typeof(SampleKaleidoRecord).Assembly)
+    .AddAssembly(typeof(SampleKaleidoRecordSource).Assembly)
+    .AddQueryable();
 
 builder.Services.AddDbContext<KaleidoTestDbContext>(options =>
 {

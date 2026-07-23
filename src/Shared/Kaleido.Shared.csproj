@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Kaleido</RootNamespace>
+		<AssemblyName>Kaleido.Shared</AssemblyName>
+		<PackageId>Kaleido.Shared</PackageId>
+		<Version>1.0.0</Version>
+		<Authors>Andrew Ross</Authors>
+		<Company>Andrew Ross</Company>
+		<Description>Metadata-driven queryable reference data framework.</Description>
+		<RepositoryUrl>https://github.com/andrew-ross-elv/Kaleido</RepositoryUrl>
+		<PackageTags>reference-data;metadata;query;framework</PackageTags>
+	</PropertyGroup>
+
+</Project>
