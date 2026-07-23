@@ -11,8 +11,10 @@ public static class TestData
 
     public static readonly RuntimeRecordMetadata Metadata =
         new(
+            Key: RecordKey,
             Name: RecordKey,
             Version: "1.0.0",
+            Description: null,
             Source: "Unit Test",
             Fields: [],
             AllowedQueries: [],
@@ -20,14 +22,15 @@ public static class TestData
 
     public static readonly RecordRegistration Registration =
         new(
-            RecordKey,
             typeof(TestRecord),
             Metadata);
 
     public static readonly RecordDescriptor Descriptor =
         new(
+            Key: RecordKey,
             Name: RecordKey,
             Version: "1.0.0",
+            Description: null,
             Source: "Unit Test",
             Fields: [],
             AllowedQueries: [],
@@ -62,7 +65,7 @@ public sealed class InvalidRecord
 {
 }
 
-[KaleidoRecord("TestRecord", "1.0.0", "Unit Test")]
+[KaleidoRecord("TestRecord", null, "1.0.0", "Unit Test")]
 public sealed record TestRecord
 {
     [Filterable]

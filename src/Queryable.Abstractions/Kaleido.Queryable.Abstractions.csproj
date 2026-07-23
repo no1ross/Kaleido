@@ -16,7 +16,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\Abstractions\Kaleido.Abstractions.csproj" />
+	  <ProjectReference Include="..\Abstractions\Kaleido.Core.Abstractions.csproj" />
 	</ItemGroup>
 
 </Project>

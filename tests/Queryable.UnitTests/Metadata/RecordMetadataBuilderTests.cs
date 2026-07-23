@@ -14,7 +14,7 @@ public class RecordMetadataBuilderTests
         Assert.NotNull(result);
 
         Assert.Equal(
-            "functional-records",
+            "SampleKaleidoRecord",
             result.Name);
     }
 
@@ -26,7 +26,7 @@ public class RecordMetadataBuilderTests
                 typeof(SampleKaleidoRecord));
 
         Assert.Equal(
-            "functional-records",
+            "SampleKaleidoRecord",
             result.Name);
 
         Assert.Equal(

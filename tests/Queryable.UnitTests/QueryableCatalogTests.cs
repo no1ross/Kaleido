@@ -47,7 +47,7 @@ public sealed partial class QueryableCatalogTests
     {
         _fixture.Registry
             .Setup(x =>
-                x.Find("functional-records"))
+                x.FindByKey("functional-records"))
             .Returns(TestData.Registration);
 
         _fixture.Descriptors
@@ -68,7 +68,7 @@ public sealed partial class QueryableCatalogTests
     {
         _fixture.Registry
             .Setup(x =>
-                x.Find("missing"))
+                x.FindByKey("missing"))
             .Returns((RecordRegistration?)null);
 
         var result =
@@ -93,7 +93,7 @@ public sealed partial class QueryableCatalogTests
             .Returns(TestData.Descriptor);
 
         var result =
-            _sut.GetAll();
+            _sut.GetRecordDescriptors();
 
         Assert.Single(result);
     }

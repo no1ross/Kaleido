@@ -219,7 +219,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
         // Assert
         Assert.NotNull(registration);
         Assert.Equal(typeof(TestRecord), registration.RecordType);
-        Assert.Equal("TestRecord", registration.Name);
+        Assert.Equal("TestRecord", registration.RuntimeMetadata.Name);
     }
 
     [Fact]

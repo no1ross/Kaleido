@@ -2,9 +2,11 @@ namespace Kaleido.Queryable;
 
 /// <summary>Consumer-safe metadata for a registered record.</summary>
 public sealed record RecordDescriptor(
+    string Key,
     string Name,
-    string Version,
-    string Source,
+    string? Version,
+    string? Description,
+    string? Source,
     IReadOnlyList<FieldDescriptor> Fields,
     IReadOnlyList<AllowedQueryDescriptor> AllowedQueries,
     PageableDescriptor? Pageable);

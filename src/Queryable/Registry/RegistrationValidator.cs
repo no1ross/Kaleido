@@ -6,6 +6,7 @@ public static class RegistrationValidator
         RecordDiscoveryResult discovery)
     {
         ValidateDuplicateRecordNames(discovery);
+        ValidateDuplicateRecordKeys(discovery);
         ValidateDuplicateSources(discovery);
         ValidateMissingSources(discovery);
     }
@@ -67,5 +68,22 @@ public static class RegistrationValidator
 
         throw new InvalidOperationException(
             $"Duplicate record names detected: {string.Join(", ", duplicates.Select(x => x.Key))}");
+    }
+
+    private static void ValidateDuplicateRecordKeys(
+        RecordDiscoveryResult discovery)
+    {
+        var duplicates = discovery.Records
+            .GroupBy(x => x.Metadata.Key, StringComparer.OrdinalIgnoreCase)
+            .Where(x => x.Count() > 1)
+            .ToList();
+
+        if (duplicates.Count == 0)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Duplicate record keys detected: {string.Join(", ", duplicates.Select(x => x.Key))}");
     }
 }

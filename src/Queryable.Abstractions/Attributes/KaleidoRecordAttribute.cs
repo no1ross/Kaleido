@@ -8,14 +8,16 @@ public sealed class KaleidoRecordAttribute : Attribute
     /// <param name="name">Logical record key used for lookup and query execution.</param>
     /// <param name="version">Version of the record metadata.</param>
     /// <param name="source">Name of the authoritative source for the record.</param>
-    public KaleidoRecordAttribute(string name, string version, string source)
+    public KaleidoRecordAttribute(string key, string? description = null, string? version = null, string? source = null)
     {
-        Name = name;
+        Key = key;
+        Description = description;
         Version = version;
         Source = source;
     }
 
-    public string Name { get; }
-    public string Version { get; }
-    public string Source { get; }
+    public string Key { get; }
+    public string? Description { get; }
+    public string? Version { get; }
+    public string? Source { get; }
 }

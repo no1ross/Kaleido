@@ -19,16 +19,4 @@
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <ProjectReference Include="..\Abstractions\Kaleido.Abstractions.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<!-- Expose internals to the test project -->
-		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
-			<_Parameter1>Kaleido.Core.UnitTests</_Parameter1>
-			<_Parameter1>Kaleido.Queryable</_Parameter1>
-			<_Parameter1>Kaleido.Queryable.UnitTests</_Parameter1>
-		</AssemblyAttribute>
-	</ItemGroup>
 </Project>

@@ -5,12 +5,7 @@
     {
         /// <summary>Returns descriptors for all registered records.</summary>
         /// <returns>Registered record descriptors.</returns>
-        IReadOnlyCollection<RecordDescriptor> GetAll();
-
-        /// <summary>Returns one registered record descriptor.</summary>
-        /// <param name="recordKey">Logical key defined by <see cref="KaleidoRecordAttribute"/>.</param>
-        /// <returns>The descriptor, or null when the record is not registered.</returns>
-        RecordDescriptor? Get(string recordKey);
+        IReadOnlyCollection<RecordDescriptor> GetRecordDescriptors();
 
         /// <summary>Executes a query against a registered record.</summary>
         /// <param name="recordKey">Logical key defined by <see cref="KaleidoRecordAttribute"/>.</param>

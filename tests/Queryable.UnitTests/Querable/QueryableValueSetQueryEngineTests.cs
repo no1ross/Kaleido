@@ -456,8 +456,10 @@ public sealed class QueryableRecordQueryEngineTests
 
         public static readonly RuntimeRecordMetadata Metadata =
             new(
+                Key: "test-record",
                 Name: "test-record",
                 Version: "1.0.0",
+                Description: "Test Record for Unit Tests",
                 Source: "Unit Test",
                 Fields: [],
                 AllowedQueries: [],

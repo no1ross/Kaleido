@@ -16,7 +16,7 @@ public static class RecordMetadataBuilder
         var allowed = recordType.GetCustomAttributes<AllowedQueryAttribute>()
             .Select(x => new RuntimeAllowedQueryMetadata(x.Name, x.Description, x.Parameters)).ToArray();
 
-        return new RuntimeRecordMetadata(record.Name, record.Version, record.Source, fields, allowed,
+        return new RuntimeRecordMetadata(record.Key, recordType.Name, record.Description, record.Version, record.Source, fields, allowed,
             pageable is null ? null : new RuntimePageableMetadata(pageable.DefaultSize, pageable.MaxSize));
     }
 

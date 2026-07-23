@@ -1052,8 +1052,10 @@ public sealed class RecordQueryValidatorTests
         RuntimePageableMetadata? pageable = null)
     {
         return new RuntimeRecordMetadata(
+            Key: "TestRecordKey",
             Name: "TestRecord",
             Version: "1.0.0",
+            Description: null,
             Source: "Unit Test",
             Fields: new List<RuntimeFieldMetadata>
             {

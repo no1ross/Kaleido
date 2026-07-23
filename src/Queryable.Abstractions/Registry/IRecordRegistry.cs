@@ -23,9 +23,11 @@ public interface IRecordRegistry
 
     IReadOnlyCollection<RecordRegistration> GetAll();
 
-    RecordRegistration? Find(string name);
+    RecordRegistration? FindByName(string name);
 
-    RecordRegistration? Find(Type recordType);
+    RecordRegistration? FindByKey(string key);
+
+    RecordRegistration? FindByType(Type recordType);
 
     RecordRegistration GetRegistration(string name);
 

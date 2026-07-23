@@ -181,8 +181,10 @@ public sealed class RecordRegistrationValidatorTests
             return new RecordDiscovery(
                 typeof(TRecord),
                 new RuntimeRecordMetadata(
+                    typeof(TRecord).Name.ToLower(),
                     name ?? typeof(TRecord).Name,
                     "1.0.0",
+                    null,
                     "Unit Test",
                     [],
                     [],

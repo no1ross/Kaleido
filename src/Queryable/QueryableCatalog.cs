@@ -15,14 +15,14 @@ public sealed class QueryableCatalog : IQueryableCatalog
         _descriptors = descriptors;
     }
 
-    public IReadOnlyCollection<RecordDescriptor> GetAll()
+    public IReadOnlyCollection<RecordDescriptor> GetRecordDescriptors()
     {
         return _registry.Registrations.Select(x => _descriptors.Create(x.RuntimeMetadata)).ToArray();
     }
 
     public RecordDescriptor? Get(string recordKey)
     {
-        var registration = _registry.Find(recordKey);
+        var registration = _registry.FindByKey(recordKey);
         return registration is null ? null : _descriptors.Create(registration.RuntimeMetadata);
     }
 

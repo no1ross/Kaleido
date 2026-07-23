@@ -1022,8 +1022,10 @@ public sealed class RecordQueryCompilerTests
         bool supportsPaging = true)
     {
         return new RuntimeRecordMetadata(
+            Key: "test-record",
             Name: "TestRecord",
             Version: "1.0.0",
+            Description: null,
             Source: "Unit Test",
             Fields: new List<RuntimeFieldMetadata>
             {
@@ -1086,8 +1088,10 @@ public sealed class RecordQueryCompilerTests
         int? namePriority)
     {
         return new RuntimeRecordMetadata(
+            Key: "TestRecordKey",
             Name: "TestRecord",
             Version: "1.0.0",
+            Description: null,
             Source: "Unit Test",
             Fields: new List<RuntimeFieldMetadata>
             {

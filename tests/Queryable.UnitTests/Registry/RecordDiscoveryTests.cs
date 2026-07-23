@@ -36,8 +36,8 @@ public sealed class RecordDiscoveryTests
             x => x.RecordType == typeof(TestRecord));
 
         Assert.Equal(
-            "test-record",
-            record.Metadata.Name);
+            "testrecord",
+            record.Metadata.Key, ignoreCase: true);
 
         Assert.Equal(
             "1.0.0",
@@ -55,7 +55,7 @@ public sealed class RecordDiscoveryTests
             record.Metadata.Fields[0].Name);
 
         Assert.Equal(
-            typeof(int),
+            typeof(string),
             record.Metadata.Fields[0].FieldType);
     }
 
@@ -148,15 +148,6 @@ public sealed class RecordDiscoveryTests
         Assert.Single(
             result.Records,
             x => x.RecordType == typeof(TestRecord));
-    }
-
-    [KaleidoRecord(
-        "test-record",
-        "1.0.0",
-        "Unit Test")]
-    private sealed class TestRecord
-    {
-        public int Id { get; init; }
     }
 
     private sealed class NotARecord

@@ -42,7 +42,6 @@ public static class QueryableServiceCollectionExtensions
         var registrations = discovery.Records
             .Select(x =>
                 new RecordRegistration(
-                    x.Metadata.Name,
                     x.RecordType,
                     x.Metadata))
             .ToArray();

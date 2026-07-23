@@ -4,9 +4,11 @@ namespace Kaleido.Queryable.Metadata;
 
 /// <summary>Runtime metadata used by validators, compilers, and engines.</summary>
 public sealed record RuntimeRecordMetadata(
+    string Key,
     string Name,
-    string Version,
-    string Source,
+    string? Description,
+    string? Version,
+    string? Source,
     IReadOnlyList<RuntimeFieldMetadata> Fields,
     IReadOnlyList<RuntimeAllowedQueryMetadata> AllowedQueries,
     RuntimePageableMetadata? Pageable);
@@ -29,4 +31,4 @@ public sealed record RuntimeAllowedQueryMetadata(string Name, string Description
 public sealed record RuntimePageableMetadata(int DefaultSize, int MaxSize);
 
 /// <summary>Associates a record key with a record type and runtime metadata.</summary>
-public sealed record RecordRegistration(string Name, Type RecordType, RuntimeRecordMetadata RuntimeMetadata);
+public sealed record RecordRegistration(Type RecordType, RuntimeRecordMetadata RuntimeMetadata);

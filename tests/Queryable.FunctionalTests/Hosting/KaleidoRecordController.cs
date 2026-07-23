@@ -17,15 +17,15 @@ public sealed class KaleidoRecordController : ControllerBase
     [HttpGet]
     public ActionResult<IEnumerable<RecordDescriptor>> GetRecords()
     {
-        return Ok(_catalog.GetAll());
+        return Ok(_catalog.GetRecordDescriptors());
     }
 
-    [HttpGet("{recordKey}")]
-    public ActionResult<RecordDescriptor> GetRecord(string recordKey)
-    {
-        var metadata = _catalog.Get(recordKey);
-        return metadata is null ? NotFound() : Ok(metadata);
-    }
+    //[HttpGet("{recordKey}")]
+    //public ActionResult<RecordDescriptor> GetRecord(string recordKey)
+    //{
+    //    var metadata = _catalog.Get(recordKey);
+    //    return metadata is null ? NotFound() : Ok(metadata);
+    //}
 
     //[HttpPost("{recordKey}/query")]
     //public async Task<ActionResult<KaleidoQueryResponse>> Query(

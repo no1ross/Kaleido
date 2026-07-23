@@ -44,8 +44,10 @@ public sealed class RecordDescriptorFactory
         RuntimeRecordMetadata metadata)
     {
         return new RecordDescriptor(
+            metadata.Key,
             metadata.Name,
             metadata.Version,
+            metadata.Description,
             metadata.Source,
 
             metadata.Fields

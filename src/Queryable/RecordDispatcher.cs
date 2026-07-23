@@ -54,7 +54,7 @@ public sealed class RecordDispatcher : IRecordDispatcher
     private RecordRegistration GetRegistration(
         string recordKey)
     {
-        return _registry.Find(recordKey)
+        return _registry.FindByKey(recordKey)
             ?? throw new KeyNotFoundException(
                 $"Record '{recordKey}' is not registered.");
     }

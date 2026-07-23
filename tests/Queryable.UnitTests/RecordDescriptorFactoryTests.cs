@@ -249,7 +249,9 @@ public sealed class RecordDescriptorFactoryTests
         {
             return new RuntimeRecordMetadata(
                 "test-record",
+                "test-record",
                 "1.0.0",
+                "test-record",
                 "Unit Test",
                 fields ?? [],
                 allowedQueries ?? [],

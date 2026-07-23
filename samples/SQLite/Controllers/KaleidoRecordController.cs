@@ -20,21 +20,21 @@ namespace Kaleido.Samples.SQLite.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public ActionResult<IEnumerable<RecordMetadata>> GetValueSets()
         {
-            var metas = _catalog.GetAll();
+            var metas = _catalog.GetRecordDescriptors();
             return Ok(metas);
         }
 
 
-        [HttpGet("{recordKey}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public ActionResult<RecordMetadata> GetValueSetMetadata(string recordKey)
-        {
-            var meta = _catalog.Get(recordKey);
-            if (meta == null) return NotFound();
-            return Ok(meta);
-        }
+        //[HttpGet("{recordKey}")]
+        //[ProducesResponseType(StatusCodes.Status200OK)]
+        //[ProducesResponseType(StatusCodes.Status404NotFound)]
+        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
+        //public ActionResult<RecordMetadata> GetValueSetMetadata(string recordKey)
+        //{
+        //    var meta = _catalog.Get(recordKey);
+        //    if (meta == null) return NotFound();
+        //    return Ok(meta);
+        //}
 
         //[HttpPost("{recordKey}/query")]
         //[ProducesResponseType(StatusCodes.Status200OK)]

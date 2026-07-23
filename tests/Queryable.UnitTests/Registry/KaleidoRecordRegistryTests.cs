@@ -38,33 +38,33 @@ public sealed class KaleidoRecordRegistryTests
     public void Find_By_Name_Should_Return_Registration()
     {
         var result =
-            _sut.Find("test-record");
+            _sut.FindByName("testrecord");
 
         Assert.NotNull(result);
 
         Assert.Equal(
-            "test-record",
-            result!.Name);
+            "testrecord",
+            result!.RuntimeMetadata.Key);
     }
 
     [Fact]
     public void Find_By_Name_Should_Be_Case_Insensitive()
     {
         var result =
-            _sut.Find("TEST-RECORD");
+            _sut.FindByName("TESTRECORD");
 
         Assert.NotNull(result);
 
         Assert.Equal(
-            "test-record",
-            result!.Name);
+            "testrecord",
+            result!.RuntimeMetadata.Key);
     }
 
     [Fact]
     public void Find_By_Name_Should_Return_Null_When_Not_Found()
     {
         var result =
-            _sut.Find("missing");
+            _sut.FindByName("missing");
 
         Assert.Null(result);
     }
@@ -73,7 +73,7 @@ public sealed class KaleidoRecordRegistryTests
     public void Find_By_Type_Should_Return_Registration()
     {
         var result =
-            _sut.Find(typeof(TestRecord));
+            _sut.FindByType(typeof(TestRecord));
 
         Assert.NotNull(result);
 
@@ -86,7 +86,7 @@ public sealed class KaleidoRecordRegistryTests
     public void Find_By_Type_Should_Return_Null_When_Not_Found()
     {
         var result =
-            _sut.Find(typeof(MissingRecord));
+            _sut.FindByType(typeof(MissingRecord));
 
         Assert.Null(result);
     }
@@ -95,7 +95,7 @@ public sealed class KaleidoRecordRegistryTests
     public void GetRequired_By_Name_Should_Return_Registration()
     {
         var result =
-            _sut.GetRegistration("test-record");
+            _sut.GetRegistration("testrecord");
 
         Assert.Equal(
             typeof(TestRecord),
@@ -121,8 +121,8 @@ public sealed class KaleidoRecordRegistryTests
             _sut.GetRegistration(typeof(TestRecord));
 
         Assert.Equal(
-            "test-record",
-            result.Name);
+            "testrecord",
+            result.RuntimeMetadata.Key);
     }
 
     [Fact]
@@ -142,24 +142,24 @@ public sealed class KaleidoRecordRegistryTests
         public static RecordRegistration Registration()
         {
             return new RecordRegistration(
-                "test-record",
                 typeof(TestRecord),
-                Metadata());
+                Metadata(typeof(TestRecord).Name));
         }
 
         public static RecordRegistration OtherRegistration()
         {
             return new RecordRegistration(
-                "other-record",
                 typeof(OtherRecord),
-                Metadata());
+                Metadata(typeof(OtherRecord).Name));
         }
 
-        public static RuntimeRecordMetadata Metadata()
+        public static RuntimeRecordMetadata Metadata(string name)
         {
             return new RuntimeRecordMetadata(
-                Name: "test-record",
+                Key: name.ToLower(),
+                Name: name.ToUpper(),
                 Version: "1.0.0",
+                Description: null,
                 Source: "Unit Test",
                 Fields: [],
                 AllowedQueries: [],

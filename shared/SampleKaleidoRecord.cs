@@ -19,7 +19,7 @@ public enum RecordStatus
     Retired
 }
 
-[KaleidoRecord("functional-records", "1.0.0", "CSV Functional Test Data")]
+[KaleidoRecord("functional-records", null, "1.0.0", "CSV Functional Test Data")]
 [AllowedQuery("active-records", "Returns active records.")]
 [AllowedQuery("records-by-category", "Returns records for the supplied category.", "category")]
 [AllowedQuery("high-amount-records", "Returns records above the supplied amount.", "minimumAmount")]

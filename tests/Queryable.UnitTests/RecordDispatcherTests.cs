@@ -79,12 +79,11 @@ public sealed class RecordDispatcherTests
     public async Task DispatchAsync_Generic_Should_Throw_When_Record_Key_Maps_To_Different_Type()
     {
         var registration = new RecordRegistration(
-            TestData.RecordKey,
             typeof(AnotherTestRecord),
             TestData.Metadata);
 
         _fixture.Registry
-            .Setup(x => x.Find(TestData.RecordKey))
+            .Setup(x => x.FindByKey(TestData.RecordKey))
             .Returns(registration);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -125,7 +124,7 @@ public sealed class RecordDispatcherTests
         public void SetupTypedSuccess()
         {
             Registry
-                .Setup(x => x.Find(TestData.RecordKey))
+                .Setup(x => x.FindByKey(TestData.RecordKey))
                 .Returns(TestData.Registration);
 
             Descriptors
@@ -157,7 +156,9 @@ public sealed class RecordDispatcherTests
         public static readonly RuntimeRecordMetadata Metadata =
             new(
                 "test",
+                "test",
                 "1.0.0",
+                "test",
                 "Unit Test",
                 [],
                 [],
@@ -166,7 +167,9 @@ public sealed class RecordDispatcherTests
         public static readonly RecordDescriptor Descriptor =
             new(
                 "test",
+                "test",
                 "1.0.0",
+                null,
                 "Unit Test",
                 [],
                 [],
@@ -186,7 +189,6 @@ public sealed class RecordDispatcherTests
 
         public static readonly RecordRegistration Registration =
             new(
-                RecordKey,
                 typeof(TestRecord),
                 Metadata);
     }
