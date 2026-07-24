@@ -31,12 +31,23 @@ public static class QueryableDiscovery
         IEnumerable<Type> types)
     {
         return types
-            .Where(x =>
-                x.GetCustomAttribute<KaleidoRecordAttribute>() != null)
-            .Select(x =>
-                new RecordDiscovery(
-                    x,
-                    RecordMetadataBuilder.Build(x)))
+            .Select(type => new
+            {
+                Type = type,
+                Attribute = type.GetCustomAttribute<KaleidoRecordAttribute>()
+            })
+            .Where(x => x.Attribute is not null)
+            .Select(x => new RecordDiscovery(
+                x.Type,
+                x.Attribute!.Name,
+                x.Attribute.Description,
+                x.Attribute.Version,
+                x.Attribute.Source,
+                x.Type
+                    .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Select(BuildField)
+                    .ToArray(),
+                BuildPageable(x.Type)))
             .ToList();
     }
 
@@ -58,21 +69,66 @@ public static class QueryableDiscovery
             .ToList();
     }
 
-    private static IReadOnlyList<NamedQueryDiscovery> DiscoverNamedQueries(
-        IEnumerable<Type> types)
+    private static IReadOnlyList<NamedQueryDiscovery> DiscoverNamedQueries(IEnumerable<Type> types)
     {
-        return types
-            .SelectMany(type =>
-                type.GetInterfaces()
-                    .Where(i =>
-                        i.IsGenericType &&
-                        i.GetGenericTypeDefinition() ==
-                        typeof(IQueryableRecordNamedQuery<>))
-                    .Select(i =>
-                        new NamedQueryDiscovery(
-                            i.GenericTypeArguments[0],
-                            i,
-                            type)))
-            .ToList();
+        var results = new List<NamedQueryDiscovery>();
+
+        foreach (var type in types)
+        {
+            foreach (var iface in type.GetInterfaces())
+            {
+                if (!iface.IsGenericType ||
+                    iface.GetGenericTypeDefinition() !=
+                    typeof(IQueryableRecordNamedQuery<>))
+                {
+                    continue;
+                }
+
+                var instance =
+                    Activator.CreateInstance(type);
+
+                dynamic query = instance!;
+
+                results.Add(
+                    new NamedQueryDiscovery(
+                        iface.GenericTypeArguments[0],
+                        iface,
+                        type,
+                        query.Name,
+                        query.Description,
+                        query.Parameters));
+            }
+        }
+
+        return results;
+    }
+
+    private static FieldMetadata BuildField(PropertyInfo property)
+    {
+        var filterable = property.GetCustomAttribute<FilterableAttribute>();
+        var searchable = property.GetCustomAttribute<SearchableAttribute>();
+        var sortable = property.GetCustomAttribute<SortableAttribute>();
+
+        return new FieldMetadata(
+            property.Name,
+            property.PropertyType,
+            filterable is not null,
+            filterable?.Operators ?? Array.Empty<FilterOperator>(),
+            searchable is not null,
+            searchable?.Priority,
+            searchable?.MatchModes ?? Array.Empty<MatchMode>(),
+            sortable is not null);
+    }
+
+    private static PageableMetadata? BuildPageable(Type recordType)
+    {
+        var pageable = recordType.GetCustomAttribute<PageableAttribute>();
+        if (pageable is null)
+        {
+            return null;
+        }
+        return new PageableMetadata(
+            pageable.DefaultSize,
+            pageable.MaxSize);
     }
 }

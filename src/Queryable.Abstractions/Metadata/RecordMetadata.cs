@@ -1,14 +1,13 @@
-using Kaleido.Queryable;
-
 namespace Kaleido.Queryable.Metadata;
 
 public sealed record RecordMetadata
 (
     string Name,
-    string Version,
-    string Source,
+    string? Description,
+    string? Version,
+    string? Source,
     IReadOnlyList<FieldMetadata> Fields,
-    IReadOnlyList<AllowedQueryMetadata>? AllowedQueries,
+    IReadOnlyList<NamedQueryMetadata>? NamedQueries,
     PageableMetadata? Pageable
 );
 
@@ -21,20 +20,31 @@ public sealed record FieldMetadata
     bool IsSearchable,
     int? SearchPriority,
     IReadOnlyList<MatchMode> MatchModes,
-    bool IsSortable,
-    IReadOnlyList<SortDirection> SortDirections
-);
+    bool IsSortable
+)
+{
+    public bool IsNullable => Nullable.GetUnderlyingType(FieldType) != null;
+};
 
-public sealed record AllowedQueryMetadata
+public sealed record NamedQueryMetadata
 (
     string Name,
     string Description,
-    IReadOnlyList<string> Parameters
+    IReadOnlyList<QueryParameterMetadata>? Parameters
+);
+
+public sealed record QueryParameterMetadata(
+    string Name,
+    Type Type,
+    bool Required,
+    string Description
 );
 
 public sealed record PageableMetadata
 (
     int DefaultSize,
-    int MaxSize,
-    bool CursorSupported
+    int MaxSize
 );
+
+/// <summary>Associates a record key with a record type and runtime metadata.</summary>
+public sealed record RecordRegistration(Type RecordType, RecordMetadata Metadata);

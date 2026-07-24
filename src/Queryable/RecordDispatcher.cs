@@ -7,16 +7,13 @@ public sealed class RecordDispatcher : IRecordDispatcher
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IRecordRegistry _registry;
-    private readonly IRecordDescriptorFactory _descriptors;
 
     public RecordDispatcher(
         IServiceScopeFactory scopeFactory,
-        IRecordRegistry registry,
-        IRecordDescriptorFactory descriptors)
+        IRecordRegistry registry)
     {
         _scopeFactory = scopeFactory;
         _registry = registry;
-        _descriptors = descriptors;
     }
 
     public async Task<KaleidoQueryResponse<TRecord>> DispatchAsync<TRecord>(
@@ -45,8 +42,7 @@ public sealed class RecordDispatcher : IRecordDispatcher
                 cancellationToken);
 
         return new KaleidoQueryResponse<TRecord>(
-            _descriptors.Create(
-                result.RuntimeMetadata),
+            result.RuntimeMetadata,
             result.TotalCount,
             result.Items);
     }
@@ -54,7 +50,7 @@ public sealed class RecordDispatcher : IRecordDispatcher
     private RecordRegistration GetRegistration(
         string recordKey)
     {
-        return _registry.FindByKey(recordKey)
+        return _registry.Find(recordKey)
             ?? throw new KeyNotFoundException(
                 $"Record '{recordKey}' is not registered.");
     }

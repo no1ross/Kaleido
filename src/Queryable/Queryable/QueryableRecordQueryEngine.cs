@@ -1,4 +1,5 @@
 using Kaleido.Queryable.Metadata;
+using Kaleido.Queryable.Registry;
 using Kaleido.Queryable.Validation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -7,7 +8,7 @@ namespace Kaleido.Queryable.Queryable;
 public sealed class QueryableRecordQueryEngine<TRecord> : IRecordQueryEngine<TRecord>
     where TRecord : class
 {
-    private readonly IRecordMetadataCatalog _metadataCatalog;
+    private readonly IRecordRegistry _recordRegistry;
     private readonly IRecordQueryValidator _validator;
     private readonly IRecordQueryCompiler _compiler;
     private readonly IQueryableRecordSource<TRecord> _source;
@@ -16,7 +17,7 @@ public sealed class QueryableRecordQueryEngine<TRecord> : IRecordQueryEngine<TRe
     private readonly IQueryableRecordExecutor<TRecord> _executor;
 
     public QueryableRecordQueryEngine(
-        IRecordMetadataCatalog metadataCatalog,
+        IRecordRegistry recordRegistry,
         IRecordQueryValidator validator,
         IRecordQueryCompiler compiler,
         IQueryableRecordSource<TRecord> source,
@@ -24,7 +25,7 @@ public sealed class QueryableRecordQueryEngine<TRecord> : IRecordQueryEngine<TRe
         IQueryableCompiledQueryApplier<TRecord> applier,
         IQueryableRecordExecutor<TRecord> executor)
     {
-        _metadataCatalog = metadataCatalog;
+        _recordRegistry = recordRegistry;
         _validator = validator;
         _compiler = compiler;
         _source = source;
@@ -35,7 +36,8 @@ public sealed class QueryableRecordQueryEngine<TRecord> : IRecordQueryEngine<TRe
 
     public async Task<QueryResult<TRecord>> ExecuteAsync(KaleidoQueryRequest request, CancellationToken cancellationToken = default)
     {
-        var metadata = _metadataCatalog.GetMetadata<TRecord>();
+        var registration = _recordRegistry.GetRegistration(typeof(TRecord));
+        var metadata = registration.Metadata;
         _validator.Validate(request, metadata);
         var compiled = _compiler.Compile(request, metadata);
         var query = _source.CreateQuery(new RecordExecutionContext(metadata, request));
@@ -49,11 +51,11 @@ public sealed class QueryableRecordQueryEngine<TRecord> : IRecordQueryEngine<TRe
         return new QueryResult<TRecord>(items, totalCount, metadata);
     }
 
-    private IQueryable<TRecord> ApplyNamedQuery(IQueryable<TRecord> query, CompiledRecordQuery compiled, RuntimeRecordMetadata metadata)
+    private IQueryable<TRecord> ApplyNamedQuery(IQueryable<TRecord> query, CompiledRecordQuery compiled, RecordMetadata metadata)
     {
-        if (string.IsNullOrWhiteSpace(compiled.NamedQuery)) return query;
-        var handler = _namedQueries.SingleOrDefault(x => string.Equals(x.Name, compiled.NamedQuery, StringComparison.OrdinalIgnoreCase));
+        if (compiled.NamedQuery is null) return query;
+        var handler = _namedQueries.SingleOrDefault(x => string.Equals(x.Descriptor.Name, compiled.NamedQuery.Name, StringComparison.OrdinalIgnoreCase));
         if (handler is null) throw new InvalidOperationException($"Named query '{compiled.NamedQuery}' is allowed by metadata but no handler is registered for record '{metadata.Name}'.");
-        return handler.Apply(query, compiled.Parameters);
+        return handler.Apply(query, compiled.NamedQuery);
     }
 }

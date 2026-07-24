@@ -30,7 +30,7 @@ public sealed class FunctionalRecordTypedTests : IClassFixture<FunctionalFixture
         Assert.Equal("1.0.0", record.Version);
         Assert.Equal("CSV Functional Test Data", record.Source);
         Assert.NotEmpty(record.Fields);
-        Assert.NotEmpty(record.AllowedQueries);
+        Assert.NotEmpty(record.NamedQueries);
         Assert.NotNull(record.Pageable);
     }
 

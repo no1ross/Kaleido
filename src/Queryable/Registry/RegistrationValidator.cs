@@ -5,10 +5,33 @@ public static class RegistrationValidator
     public static void Validate(
         RecordDiscoveryResult discovery)
     {
+        ArgumentNullException.ThrowIfNull(discovery);
+
         ValidateDuplicateRecordNames(discovery);
-        ValidateDuplicateRecordKeys(discovery);
         ValidateDuplicateSources(discovery);
         ValidateMissingSources(discovery);
+
+        ValidateDuplicateNamedQueries(discovery);
+        ValidateNamedQueriesReferenceKnownRecords(discovery);
+    }
+
+    private static void ValidateDuplicateRecordNames(
+        RecordDiscoveryResult discovery)
+    {
+        var duplicates = discovery.Records
+            .GroupBy(
+                x => x.RecordName,
+                StringComparer.OrdinalIgnoreCase)
+            .Where(x => x.Count() > 1)
+            .ToList();
+
+        if (duplicates.Count == 0)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Duplicate record names detected: {string.Join(", ", duplicates.Select(x => x.Key))}");
     }
 
     private static void ValidateDuplicateSources(
@@ -53,11 +76,16 @@ public static class RegistrationValidator
             $"The following records do not have a source: {string.Join(", ", missing.Select(x => x.RecordType.Name))}");
     }
 
-    private static void ValidateDuplicateRecordNames(
+    private static void ValidateDuplicateNamedQueries(
         RecordDiscoveryResult discovery)
     {
-        var duplicates = discovery.Records
-            .GroupBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
+        var duplicates = discovery.NamedQueries
+            .GroupBy(
+                x => new
+                {
+                    x.RecordType,
+                    Name = x.Name.ToUpperInvariant()
+                })
             .Where(x => x.Count() > 1)
             .ToList();
 
@@ -66,24 +94,37 @@ public static class RegistrationValidator
             return;
         }
 
+        var details = string.Join(
+            Environment.NewLine,
+            duplicates.Select(group =>
+                $"{group.First().RecordType.Name}: {group.First().Name}"));
+
         throw new InvalidOperationException(
-            $"Duplicate record names detected: {string.Join(", ", duplicates.Select(x => x.Key))}");
+            $"Duplicate named queries detected.{Environment.NewLine}{details}");
     }
 
-    private static void ValidateDuplicateRecordKeys(
+    private static void ValidateNamedQueriesReferenceKnownRecords(
         RecordDiscoveryResult discovery)
     {
-        var duplicates = discovery.Records
-            .GroupBy(x => x.Metadata.Key, StringComparer.OrdinalIgnoreCase)
-            .Where(x => x.Count() > 1)
+        var recordTypes = discovery.Records
+            .Select(x => x.RecordType)
+            .ToHashSet();
+
+        var invalid = discovery.NamedQueries
+            .Where(x => !recordTypes.Contains(x.RecordType))
             .ToList();
 
-        if (duplicates.Count == 0)
+        if (invalid.Count == 0)
         {
             return;
         }
 
+        var details = string.Join(
+            Environment.NewLine,
+            invalid.Select(x =>
+                $"{x.Name} -> {x.RecordType.Name}"));
+
         throw new InvalidOperationException(
-            $"Duplicate record keys detected: {string.Join(", ", duplicates.Select(x => x.Key))}");
+            $"Named queries reference record types that are not registered.{Environment.NewLine}{details}");
     }
 }

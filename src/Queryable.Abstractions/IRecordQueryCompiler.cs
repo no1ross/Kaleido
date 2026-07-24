@@ -17,5 +17,5 @@ namespace Kaleido.Queryable;
 /// </summary>
 public interface IRecordQueryCompiler
 {
-    CompiledRecordQuery Compile(KaleidoQueryRequest request, RuntimeRecordMetadata metadata);
+    CompiledRecordQuery Compile(KaleidoQueryRequest request, RecordMetadata metadata);
 }

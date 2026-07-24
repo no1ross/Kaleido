@@ -1,112 +1,112 @@
-using Kaleido.Extensions;
-using Kaleido.Queryable;
-using Kaleido.Queryable.Metadata;
+//using Kaleido.Extensions;
+//using Kaleido.Queryable;
+//using Kaleido.Queryable.Metadata;
 
-public sealed class RecordDescriptorFactory
-    : IRecordDescriptorFactory
-{
-    private static readonly IReadOnlyDictionary<Type, DataTypeDescriptor>
-        TypeMappings =
-            new Dictionary<Type, DataTypeDescriptor>
-            {
-                [typeof(string)] = new("string"),
+//public sealed class RecordDescriptorFactory
+//    : IRecordDescriptorFactory
+//{
+//    private static readonly IReadOnlyDictionary<Type, DataTypeDescriptor>
+//        TypeMappings =
+//            new Dictionary<Type, DataTypeDescriptor>
+//            {
+//                [typeof(string)] = new("string"),
 
-                [typeof(bool)] = new("boolean"),
+//                [typeof(bool)] = new("boolean"),
 
-                [typeof(byte)] = new("integer"),
-                [typeof(sbyte)] = new("integer"),
-                [typeof(short)] = new("integer"),
-                [typeof(ushort)] = new("integer"),
-                [typeof(int)] = new("integer"),
-                [typeof(uint)] = new("integer"),
+//                [typeof(byte)] = new("integer"),
+//                [typeof(sbyte)] = new("integer"),
+//                [typeof(short)] = new("integer"),
+//                [typeof(ushort)] = new("integer"),
+//                [typeof(int)] = new("integer"),
+//                [typeof(uint)] = new("integer"),
 
-                [typeof(long)] = new("integer", "int64"),
-                [typeof(ulong)] = new("integer", "int64"),
+//                [typeof(long)] = new("integer", "int64"),
+//                [typeof(ulong)] = new("integer", "int64"),
 
-                [typeof(float)] = new("number", "float"),
-                [typeof(double)] = new("number", "double"),
-                [typeof(decimal)] = new("number", "decimal"),
+//                [typeof(float)] = new("number", "float"),
+//                [typeof(double)] = new("number", "double"),
+//                [typeof(decimal)] = new("number", "decimal"),
 
-                [typeof(Guid)] = new("string", "uuid"),
+//                [typeof(Guid)] = new("string", "uuid"),
 
-                [typeof(DateOnly)] = new("string", "date"),
+//                [typeof(DateOnly)] = new("string", "date"),
 
-                [typeof(TimeOnly)] = new("string", "time"),
+//                [typeof(TimeOnly)] = new("string", "time"),
 
-                [typeof(DateTime)] = new("string", "date-time"),
+//                [typeof(DateTime)] = new("string", "date-time"),
 
-                [typeof(DateTimeOffset)] = new("string", "date-time-offset"),
+//                [typeof(DateTimeOffset)] = new("string", "date-time-offset"),
 
-                [typeof(TimeSpan)] = new("string", "duration")
-            };
+//                [typeof(TimeSpan)] = new("string", "duration")
+//            };
 
-    public RecordDescriptor Create(
-        RuntimeRecordMetadata metadata)
-    {
-        return new RecordDescriptor(
-            metadata.Key,
-            metadata.Name,
-            metadata.Version,
-            metadata.Description,
-            metadata.Source,
+//    public RecordDescriptor Create(
+//        RuntimeRecordMetadata metadata)
+//    {
+//        return new RecordDescriptor(
+//            metadata.Key,
+//            metadata.Name,
+//            metadata.Version,
+//            metadata.Description,
+//            metadata.Source,
 
-            metadata.Fields
-                .Select(CreateField)
-                .ToArray(),
+//            metadata.Fields
+//                .Select(CreateField)
+//                .ToArray(),
 
-            metadata.AllowedQueries
-                .Select(x => new AllowedQueryDescriptor(
-                    x.Name,
-                    x.Description,
-                    x.Parameters))
-                .ToArray(),
+//            metadata.NamedQueries
+//                .Select(x => new AllowedQueryDescriptor(
+//                    x.Name,
+//                    x.Description,
+//                    x.Parameters)
+//                .ToArray(),
 
-            metadata.Pageable is null
-                ? null
-                : new PageableDescriptor(
-                    metadata.Pageable.DefaultSize,
-                    metadata.Pageable.MaxSize));
-    }
+//            metadata.Pageable is null
+//                ? null
+//                : new PageableDescriptor(
+//                    metadata.Pageable.DefaultSize,
+//                    metadata.Pageable.MaxSize));
+//    }
 
-    private static FieldDescriptor CreateField(
-        RuntimeFieldMetadata field)
-    {
-        return new FieldDescriptor(
-            field.Name,
+//    private static FieldDescriptor CreateField(
+//        RuntimeFieldMetadata field)
+//    {
+//        return new FieldDescriptor(
+//            field.Name,
 
-            CreateDataType(field.FieldType),
+//            CreateDataType(field.FieldType),
 
-            field.IsFilterable,
+//            field.IsFilterable,
 
-            field.FilterOperators
-                .Select(x => x.GetDescription())
-                .ToArray(),
+//            field.FilterOperators
+//                .Select(x => x.GetDescription())
+//                .ToArray(),
 
-            field.IsSearchable,
+//            field.IsSearchable,
 
-            field.MatchModes
-                .Select(x => x.GetDescription())
-                .ToArray(),
+//            field.MatchModes
+//                .Select(x => x.GetDescription())
+//                .ToArray(),
 
-            field.IsSortable);
-    }
+//            field.IsSortable);
+//    }
 
-    private static DataTypeDescriptor CreateDataType(
-        Type fieldType)
-    {
-        var type =
-            Nullable.GetUnderlyingType(fieldType)
-            ?? fieldType;
+//    private static DataTypeDescriptor CreateDataType(
+//        Type fieldType)
+//    {
+//        var type =
+//            Nullable.GetUnderlyingType(fieldType)
+//            ?? fieldType;
 
-        if (type.IsEnum)
-        {
-            return new("string", "enum");
-        }
+//        if (type.IsEnum)
+//        {
+//            return new("string", "enum");
+//        }
 
-        return TypeMappings.TryGetValue(
-            type,
-            out var descriptor)
-            ? descriptor
-            : new("object");
-    }
-}
+//        return TypeMappings.TryGetValue(
+//            type,
+//            out var descriptor)
+//            ? descriptor
+//            : new("object");
+//    }
+//}

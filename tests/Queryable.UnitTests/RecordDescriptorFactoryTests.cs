@@ -61,7 +61,7 @@ public sealed class RecordDescriptorFactoryTests
 
         var result = _sut.Create(metadata);
 
-        var query = Assert.Single(result.AllowedQueries);
+        var query = Assert.Single(result.NamedQueries);
 
         Assert.Equal("active", query.Name);
         Assert.Equal("Active records", query.Description);

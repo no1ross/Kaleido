@@ -1,3 +1,4 @@
+using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Registry;
 
 namespace Kaleido.Queryable;
@@ -6,24 +7,16 @@ public sealed class QueryableCatalog : IQueryableCatalog
 {
     private readonly IRecordRegistry _registry;
     private readonly IRecordDispatcher _dispatcher;
-    private readonly IRecordDescriptorFactory _descriptors;
 
-    public QueryableCatalog(IRecordRegistry registry, IRecordDispatcher dispatcher, IRecordDescriptorFactory descriptors)
+    public QueryableCatalog(IRecordRegistry registry, IRecordDispatcher dispatcher)
     {
         _registry = registry;
         _dispatcher = dispatcher;
-        _descriptors = descriptors;
     }
 
-    public IReadOnlyCollection<RecordDescriptor> GetRecordDescriptors()
+    public IReadOnlyCollection<RecordMetadata> GetRecordDescriptors()
     {
-        return _registry.Registrations.Select(x => _descriptors.Create(x.RuntimeMetadata)).ToArray();
-    }
-
-    public RecordDescriptor? Get(string recordKey)
-    {
-        var registration = _registry.FindByKey(recordKey);
-        return registration is null ? null : _descriptors.Create(registration.RuntimeMetadata);
+        return _registry.Registrations.Select(x => x.Metadata).ToArray();
     }
 
     public async Task<KaleidoQueryResponse<TRecord>> QueryAsync<TRecord>(string recordKey, KaleidoQueryRequest request, CancellationToken cancellationToken = default) where TRecord : class

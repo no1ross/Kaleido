@@ -7,7 +7,7 @@ public sealed class RecordQueryValidator : IRecordQueryValidator
 {
     public void Validate(
         KaleidoQueryRequest request,
-        RuntimeRecordMetadata metadata)
+        RecordMetadata metadata)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(metadata);
@@ -19,42 +19,40 @@ public sealed class RecordQueryValidator : IRecordQueryValidator
         ValidatePage(request.Query?.Page, metadata);
     }
 
-    private static void ValidateNamedQuery(
-        KaleidoQueryRequest request,
-        RuntimeRecordMetadata metadata)
+    private static void ValidateNamedQuery(KaleidoQueryRequest request, RecordMetadata metadata)
     {
-        if (string.IsNullOrWhiteSpace(request.QueryName))
+        if (string.IsNullOrWhiteSpace(request.NamedQuery!.Name))
         {
             return;
         }
 
-        var allowed = metadata.AllowedQueries.SingleOrDefault(x =>
+        var allowed = metadata.NamedQueries!.SingleOrDefault(x =>
             string.Equals(
                 x.Name,
-                request.QueryName,
+                request.NamedQuery!.Name,
                 StringComparison.OrdinalIgnoreCase));
 
         if (allowed is null)
         {
             throw new InvalidOperationException(
-                $"Named query '{request.QueryName}' is not allowed for record '{metadata.Name}'.");
+                $"Named query '{request.NamedQuery.Name}' is not allowed for record '{metadata.Name}'.");
         }
 
-        foreach (var parameter in allowed.Parameters)
+        foreach (var parameter in allowed.Parameters!)
         {
-            if (request.Parameters is null ||
-                !request.Parameters.ContainsKey(parameter) ||
-                request.Parameters[parameter] is null)
+            if (request.NamedQuery!.Parameters is null ||
+                request.NamedQuery.Parameters[parameter.Name] is null ||
+                !request.NamedQuery.Parameters.ContainsKey(parameter.Name))
             {
                 throw new InvalidOperationException(
-                    $"Named query '{request.QueryName}' requires parameter '{parameter}'.");
+                    $"Named query '{request.NamedQuery.Name}' requires parameter '{parameter}'.");
             }
         }
     }
 
     private static void ValidateFilter(
         QueryFilterNode? node,
-        RuntimeRecordMetadata metadata)
+        RecordMetadata metadata)
     {
         if (node is null)
         {
@@ -91,7 +89,7 @@ public sealed class RecordQueryValidator : IRecordQueryValidator
 
     private static void ValidateFilterGroup(
         QueryFilterGroup group,
-        RuntimeRecordMetadata metadata)
+        RecordMetadata metadata)
     {
         if (group.Filters.Count == 0)
         {
@@ -109,7 +107,7 @@ public sealed class RecordQueryValidator : IRecordQueryValidator
 
     private static void ValidateFilterCondition(
         QueryFilterCondition condition,
-        RuntimeRecordMetadata metadata)
+        RecordMetadata metadata)
     {
         if (string.IsNullOrWhiteSpace(condition.Field))
         {
@@ -136,7 +134,7 @@ public sealed class RecordQueryValidator : IRecordQueryValidator
 
     private static void ValidateSearch(
         QuerySearchNode? node,
-        RuntimeRecordMetadata metadata)
+        RecordMetadata metadata)
     {
         if (node is null)
         {
@@ -173,7 +171,7 @@ public sealed class RecordQueryValidator : IRecordQueryValidator
 
     private static void ValidateSearchGroup(
         QuerySearchGroup group,
-        RuntimeRecordMetadata metadata)
+        RecordMetadata metadata)
     {
         if (group.Searches.Count == 0)
         {
@@ -191,7 +189,7 @@ public sealed class RecordQueryValidator : IRecordQueryValidator
 
     private static void ValidateSearchCondition(
         QuerySearchCondition condition,
-        RuntimeRecordMetadata metadata)
+        RecordMetadata metadata)
     {
         if (string.IsNullOrWhiteSpace(condition.SearchText))
         {
@@ -228,7 +226,7 @@ public sealed class RecordQueryValidator : IRecordQueryValidator
 
     private static void ValidateSort(
         IReadOnlyList<QuerySort>? sorts,
-        RuntimeRecordMetadata metadata)
+        RecordMetadata metadata)
     {
         if (sorts is null)
         {
@@ -251,7 +249,7 @@ public sealed class RecordQueryValidator : IRecordQueryValidator
 
     private static void ValidatePage(
         QueryPage? page,
-        RuntimeRecordMetadata metadata)
+        RecordMetadata metadata)
     {
         if (page is null)
         {
@@ -276,8 +274,8 @@ public sealed class RecordQueryValidator : IRecordQueryValidator
         }
     }
 
-    private static RuntimeFieldMetadata GetField(
-        RuntimeRecordMetadata metadata,
+    private static FieldMetadata GetField(
+        RecordMetadata metadata,
         string name)
     {
         return metadata.Fields.SingleOrDefault(x =>

@@ -33,7 +33,7 @@ public static class TestData
             Description: null,
             Source: "Unit Test",
             Fields: [],
-            AllowedQueries: [],
+            NamedQueries: [],
             Pageable: null);
 
     public static KaleidoQueryRequest Request =>
@@ -72,7 +72,7 @@ public sealed record TestRecord
     public string Id { get; init; } = string.Empty;
 }
 
-[KaleidoRecord("AnotherTestRecord", "1.0.0", "Unit Test")]
+[KaleidoRecord("AnotherTestRecord", null, "1.0.0", "Unit Test")]
 public sealed record AnotherTestRecord
 {
     [Filterable]

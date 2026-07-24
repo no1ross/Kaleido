@@ -5,17 +5,22 @@ namespace Kaleido.Queryable;
 /// <summary>Value-set query request.</summary>
 public record KaleidoQueryRequest
 (
-    string? QueryName,
-    KaleidoQueryBody? Query,
-    IReadOnlyDictionary<string, object?>? Parameters = null
+    KaleidoNamedQuery? NamedQuery = null,
+    KaleidoQueryBody? Query = null
 );
 
 public record KaleidoQueryBody
 (
-    QuerySearchNode? Search,
-    QueryFilterNode? Filter,
-    IReadOnlyList<QuerySort>? Sort,
-    QueryPage? Page
+    QuerySearchNode? Search = null,
+    QueryFilterNode? Filter = null,
+    IReadOnlyList<QuerySort>? Sort = null,
+    QueryPage? Page = null
+);
+
+public record KaleidoNamedQuery
+(
+    string Name,
+    IReadOnlyDictionary<string, object?>? Parameters = null
 );
 
 #region Filters
@@ -145,33 +150,29 @@ public record QueryPage(
 
 #endregion
 
-public sealed record QueryResult<TRecord>(IReadOnlyList<TRecord> Items, int TotalCount, RuntimeRecordMetadata RuntimeMetadata)
+public sealed record QueryResult<TRecord>(IReadOnlyList<TRecord> Items, int TotalCount, RecordMetadata RuntimeMetadata)
     where TRecord : class;
 
 public sealed record KaleidoQueryResponse<TRecord>(
-    RecordDescriptor Descriptor,
+    RecordMetadata Metadata,
     int TotalCount,
     IReadOnlyList<TRecord> Items)
     where TRecord : class;
 
-public static class QueryFilter
-{
-    public static QueryFilterNode Eq(
-        string field,
-        object? value)
-    {
-        return QueryFilterNode.CreateCondition(
-            field,
-            FilterOperator.Eq,
-            value);
-    }
 
-    public static QueryFilterNode Group(
-        LogicalOperator op,
-        params QueryFilterNode[] filters)
-    {
-        return QueryFilterNode.CreateGroup(
-            op,
-            filters);
-    }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -25,5 +25,5 @@ namespace Kaleido.Queryable.Validation;
 /// </summary>
 public interface IRecordQueryValidator
 {
-    void Validate(KaleidoQueryRequest request, RuntimeRecordMetadata metadata);
+    void Validate(KaleidoQueryRequest request, RecordMetadata metadata);
 }

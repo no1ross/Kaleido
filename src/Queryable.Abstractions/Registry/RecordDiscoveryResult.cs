@@ -13,7 +13,12 @@ public sealed class RecordDiscoveryResult
 
 public sealed record RecordDiscovery(
     Type RecordType,
-    RuntimeRecordMetadata Metadata);
+    string RecordName,
+    string? RecordDescription,
+    string? Version,
+    string? Source,
+    FieldMetadata[] Fields,    
+    PageableMetadata? Pageable);
 
 public sealed record SourceDiscovery(
     Type RecordType,
@@ -23,4 +28,7 @@ public sealed record SourceDiscovery(
 public sealed record NamedQueryDiscovery(
     Type RecordType,
     Type InterfaceType,
-    Type ImplementationType);
+    Type ImplementationType,
+    string Name,
+    string Description,
+    IReadOnlyList<QueryParameterMetadata>? Parameters);

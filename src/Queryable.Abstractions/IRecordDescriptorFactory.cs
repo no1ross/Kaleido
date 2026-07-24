@@ -1,9 +1,9 @@
-﻿using Kaleido.Queryable.Metadata;
+﻿//using Kaleido.Queryable.Metadata;
 
-namespace Kaleido.Queryable
-{
-    public interface IRecordDescriptorFactory
-    {
-        RecordDescriptor Create(RuntimeRecordMetadata metadata);
-    }
-}
+//namespace Kaleido.Queryable
+//{
+//    public interface IRecordDescriptorFactory
+//    {
+//        RecordDescriptor Create(RuntimeRecordMetadata metadata);
+//    }
+//}

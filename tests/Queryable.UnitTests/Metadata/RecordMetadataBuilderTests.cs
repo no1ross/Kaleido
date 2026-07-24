@@ -74,22 +74,22 @@ public class RecordMetadataBuilderTests
 
         Assert.Equal(
             4,
-            result.AllowedQueries.Count);
+            result.NamedQueries.Count);
 
         Assert.Contains(
-            result.AllowedQueries,
+            result.NamedQueries,
             x => x.Name == "active-records");
 
         Assert.Contains(
-            result.AllowedQueries,
+            result.NamedQueries,
             x => x.Name == "records-by-category");
 
         Assert.Contains(
-            result.AllowedQueries,
+            result.NamedQueries,
             x => x.Name == "high-amount-records");
 
         Assert.Contains(
-            result.AllowedQueries,
+            result.NamedQueries,
             x => x.Name == "effective-on");
     }
 

@@ -1,9 +1,9 @@
-﻿namespace Kaleido.Queryable
+﻿using Kaleido.Queryable.Metadata;
+
+namespace Kaleido.Queryable;
+
+public interface IQueryableRecordNamedQuery<TRecord> where TRecord : class
 {
-    public interface IQueryableRecordNamedQuery<TRecord>
-        where TRecord : class
-    {
-        string Name { get; }
-        IQueryable<TRecord> Apply(IQueryable<TRecord> query, IReadOnlyDictionary<string, object?>? parameters);
-    }
+    NamedQueryMetadata Descriptor { get; }
+    IQueryable<TRecord> Apply(IQueryable<TRecord> query, KaleidoNamedQuery NamedQuery);
 }

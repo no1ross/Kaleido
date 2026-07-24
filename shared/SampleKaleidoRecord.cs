@@ -19,11 +19,7 @@ public enum RecordStatus
     Retired
 }
 
-[KaleidoRecord("functional-records", null, "1.0.0", "CSV Functional Test Data")]
-[AllowedQuery("active-records", "Returns active records.")]
-[AllowedQuery("records-by-category", "Returns records for the supplied category.", "category")]
-[AllowedQuery("high-amount-records", "Returns records above the supplied amount.", "minimumAmount")]
-[AllowedQuery("effective-on", "Returns records effective on the supplied date.", "effectiveDate")]
+[KaleidoRecord("functional-records", "functional-records", "1.0.0", "CSV Functional Test Data")]
 [Pageable(25, 500)]
 public sealed class SampleKaleidoRecord
 {

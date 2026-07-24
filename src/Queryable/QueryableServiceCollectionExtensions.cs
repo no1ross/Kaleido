@@ -39,12 +39,35 @@ public static class QueryableServiceCollectionExtensions
                 discovery);
         }
 
-        var registrations = discovery.Records
-            .Select(x =>
-                new RecordRegistration(
-                    x.RecordType,
-                    x.Metadata))
-            .ToArray();
+        var registrations =
+            discovery.Records
+                .Select(record =>
+                {
+                    var queries =
+                        discovery.NamedQueries
+                            .Where(x =>
+                                x.RecordType == record.RecordType)
+                            .Select(x =>
+                                new NamedQueryMetadata(
+                                    x.Name,
+                                    x.Description,
+                                    x.Parameters))
+                            .ToArray();
+
+                    return new RecordRegistration(
+                        record.RecordType,
+                        new RecordMetadata
+                        ( 
+                            record.RecordName,
+                            record.RecordDescription,
+                            record.Version,
+                            record.Source,
+                            record.Fields,
+                            queries,
+                            record.Pageable
+                        ));
+                })
+                .ToArray();
 
         RegisterFrameworkServices(
             builder.Services,
@@ -65,15 +88,15 @@ public static class QueryableServiceCollectionExtensions
         IServiceCollection services,
         IReadOnlyList<RecordRegistration> registrations)
     {
-        services.TryAddSingleton<IRecordMetadataCatalog, RecordMetadataCatalog>();
-        services.TryAddSingleton<IRecordDescriptorFactory, RecordDescriptorFactory>();
+        //services.TryAddSingleton<IRecordMetadataCatalog, RecordMetadataCatalog>();
+        //services.TryAddSingleton<IRecordDescriptorFactory, RecordDescriptorFactory>();
         services.TryAddSingleton<IRecordQueryValidator, RecordQueryValidator>();
         services.TryAddSingleton<IRecordQueryCompiler, RecordQueryCompiler>();
 
         services.TryAddSingleton<IRecordRegistry>(
             _ => new RecordRegistry(registrations));
 
-        services.TryAddScoped<IRecordDispatcher, RecordDispatcher>();
+        //services.TryAddScoped<IRecordDispatcher, RecordDispatcher>();
         services.TryAddScoped<IQueryableCatalog, QueryableCatalog>();
 
         services.TryAddSingleton(
