@@ -16,6 +16,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\shared\SampleKaleidoCsvData.cs" Link="SampleKaleidoCsvData.cs" />
+    <Compile Include="..\..\shared\SampleKaleidoNamedQueries.cs" Link="SampleKaleidoNamedQueries.cs" />
+    <Compile Include="..\..\shared\SampleKaleidoRecord.cs" Link="SampleKaleidoRecord.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="..\..\shared\functional-records.csv" Link="functional-records.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

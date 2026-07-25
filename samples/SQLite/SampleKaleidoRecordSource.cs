@@ -1,4 +1,4 @@
-﻿using Kaleido.Queryable;
+﻿using Kaleido.Queryable.Records;
 using Kaleido.Samples.Shared;
 using Microsoft.EntityFrameworkCore;
 

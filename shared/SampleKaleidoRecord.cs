@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable;
 
-namespace Kaleido.Shared;
+namespace Kaleido.Samples.Shared;
 
 public enum RecordStatus
 {

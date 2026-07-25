@@ -15,8 +15,4 @@
 		<PackageTags>reference-data;metadata;query;framework</PackageTags>
 	</PropertyGroup>
 
-	<ItemGroup>
-	  <ProjectReference Include="..\Abstractions\Kaleido.Core.Abstractions.csproj" />
-	</ItemGroup>
-
 </Project>

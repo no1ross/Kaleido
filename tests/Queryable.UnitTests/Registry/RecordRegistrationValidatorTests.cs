@@ -1,64 +1,60 @@
-﻿using Kaleido.Queryable.Metadata;
-using Kaleido.Queryable;
-using Kaleido.Queryable.Registry;
+﻿using Kaleido.Queryable.Attributes;
+using Kaleido.Queryable.Query;
+using Kaleido.Queryable.Records;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Kaleido.UnitTests.Registry;
+namespace Kaleido.Queryable.Tests.Registry;
 
 public sealed class RecordRegistrationValidatorTests
 {
-    [Fact]
-    public void Validate_Should_Succeed_When_Configuration_Is_Valid()
-    {
-        var discovery = TestData.CreateDiscovery();
+    private readonly RecordRegistrationValidator _validator = new();
 
-        RegistrationValidator.Validate(discovery);
+    [Fact]
+    public void Validate_ShouldThrow_WhenRecordTypesIsNull()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => _validator.Validate(
+                null!,
+                new ServiceCollection()));
     }
 
     [Fact]
-    public void Validate_Should_Throw_When_Record_Name_Is_Duplicated()
+    public void Validate_ShouldThrow_WhenServicesIsNull()
     {
-        var discovery = TestData.CreateDiscovery(
-            records:
-            [
-                TestData.RecordDiscovery<TestRecord>("duplicate"),
-                TestData.RecordDiscovery<OtherRecord>("duplicate")
-            ],
-            sources:
-            [
-                TestData.SourceDiscovery<TestRecord, TestSource>(),
-                TestData.SourceDiscovery<OtherRecord, OtherSource>()
-            ]);
-
-        var exception = Assert.Throws<InvalidOperationException>(
-            () => RegistrationValidator.Validate(discovery));
-
-        Assert.Contains(
-            "Duplicate record names",
-            exception.Message);
-
-        Assert.Contains(
-            "duplicate",
-            exception.Message);
+        Assert.Throws<ArgumentNullException>(
+            () => _validator.Validate(
+                [typeof(TestRecord)],
+                null!));
     }
 
     [Fact]
-    public void Validate_Should_Treat_Record_Names_As_Case_Insensitive()
+    public void Validate_ShouldNotThrow_WhenRegistrationsAreValid()
     {
-        var discovery = TestData.CreateDiscovery(
-            records:
-            [
-                TestData.RecordDiscovery<TestRecord>("customer"),
-                TestData.RecordDiscovery<OtherRecord>("CUSTOMER")
-            ],
-            sources:
-            [
-                TestData.SourceDiscovery<TestRecord, TestSource>(),
-                TestData.SourceDiscovery<OtherRecord, OtherSource>()
-            ]);
+        var services = new ServiceCollection();
 
-        var exception = Assert.Throws<InvalidOperationException>(
-            () => RegistrationValidator.Validate(discovery));
+        services.AddScoped<
+            IQueryableRecordNamedQuery<TestRecord>,
+            ActiveQuery>();
+
+        _validator.Validate(
+            [typeof(TestRecord)],
+            services);
+    }
+
+    [Fact]
+    public void Validate_ShouldThrow_WhenDuplicateRecordNamesExist()
+    {
+        var services = new ServiceCollection();
+
+        var exception =
+            Assert.Throws<InvalidOperationException>(
+                () => _validator.Validate(
+                    [
+                        typeof(TestRecord),
+                        typeof(DuplicateRecord)
+                    ],
+                    services));
 
         Assert.Contains(
             "Duplicate record names",
@@ -66,47 +62,42 @@ public sealed class RecordRegistrationValidatorTests
     }
 
     [Fact]
-    public void Validate_Should_Throw_When_Record_Has_Multiple_Sources()
+    public void Validate_ShouldTreatRecordNamesAsCaseInsensitive()
     {
-        var discovery = TestData.CreateDiscovery(
-            sources:
-            [
-                TestData.SourceDiscovery<TestRecord, TestSource>(),
-                TestData.SourceDiscovery<TestRecord, SecondSource>()
-            ]);
+        var services = new ServiceCollection();
 
-        var exception = Assert.Throws<InvalidOperationException>(
-            () => RegistrationValidator.Validate(discovery));
-
-        Assert.Contains(
-            "Multiple sources registered",
-            exception.Message);
+        var exception =
+            Assert.Throws<InvalidOperationException>(
+                () => _validator.Validate(
+                    [
+                        typeof(TestRecord),
+                        typeof(CaseInsensitiveDuplicateRecord)
+                    ],
+                    services));
 
         Assert.Contains(
-            nameof(TestRecord),
-            exception.Message);
-
-        Assert.Contains(
-            nameof(TestSource),
-            exception.Message);
-
-        Assert.Contains(
-            nameof(SecondSource),
+            "Duplicate record names",
             exception.Message);
     }
 
     [Fact]
-    public void Validate_Should_Throw_When_Record_Has_No_Source()
+    public void Validate_ShouldThrow_WhenDuplicateNamedQueriesExist()
     {
-        var discovery = TestData.CreateDiscovery(
-            records:
-            [
-                TestData.RecordDiscovery<TestRecord>()
-            ],
-            sources: []);
+        var services = new ServiceCollection();
 
-        var exception = Assert.Throws<InvalidOperationException>(
-            () => RegistrationValidator.Validate(discovery));
+        services.AddScoped<
+            IQueryableRecordNamedQuery<TestRecord>,
+            ActiveQuery>();
+
+        services.AddScoped<
+            IQueryableRecordNamedQuery<TestRecord>,
+            DuplicateActiveQuery>();
+
+        var exception =
+            Assert.Throws<InvalidOperationException>(
+                () => _validator.Validate(
+                    [typeof(TestRecord)],
+                    services));
 
         Assert.Contains(
             nameof(TestRecord),
@@ -114,125 +105,123 @@ public sealed class RecordRegistrationValidatorTests
     }
 
     [Fact]
-    public void Validate_Should_Allow_Multiple_Named_Queries()
+    public void Validate_ShouldTreatNamedQueryNamesAsCaseInsensitive()
     {
-        var discovery = TestData.CreateDiscovery(
-            namedQueries:
-            [
-                TestData.NamedQueryDiscovery<TestRecord, QueryOne>(),
-                TestData.NamedQueryDiscovery<TestRecord, QueryTwo>()
-            ]);
+        var services = new ServiceCollection();
 
-        RegistrationValidator.Validate(discovery);
-    }
+        services.AddScoped<
+            IQueryableRecordNamedQuery<TestRecord>,
+            ActiveQuery>();
 
-    [Fact]
-    public void Validate_Should_Report_All_Missing_Record_Sources()
-    {
-        var discovery = TestData.CreateDiscovery(
-            records:
-            [
-                TestData.RecordDiscovery<TestRecord>(),
-                TestData.RecordDiscovery<OtherRecord>()
-            ],
-            sources: []);
+        services.AddScoped<
+            IQueryableRecordNamedQuery<TestRecord>,
+            LowerCaseActiveQuery>();
 
-        var exception = Assert.Throws<InvalidOperationException>(
-            () => RegistrationValidator.Validate(discovery));
+        var exception =
+            Assert.Throws<InvalidOperationException>(
+                () => _validator.Validate(
+                    [typeof(TestRecord)],
+                    services));
 
         Assert.Contains(
             nameof(TestRecord),
             exception.Message);
-
-        Assert.Contains(
-            nameof(OtherRecord),
-            exception.Message);
     }
 
-    private static class TestData
+    [Fact]
+    public void Validate_ShouldAllowMultipleUniqueNamedQueries()
     {
-        public static RecordDiscoveryResult CreateDiscovery(
-            IReadOnlyList<RecordDiscovery>? records = null,
-            IReadOnlyList<SourceDiscovery>? sources = null,
-            IReadOnlyList<NamedQueryDiscovery>? namedQueries = null)
+        var services = new ServiceCollection();
+
+        services.AddScoped<
+            IQueryableRecordNamedQuery<TestRecord>,
+            ActiveQuery>();
+
+        services.AddScoped<
+            IQueryableRecordNamedQuery<TestRecord>,
+            ByCategoryQuery>();
+
+        _validator.Validate(
+            [typeof(TestRecord)],
+            services);
+    }
+
+    [Fact]
+    public void Validate_ShouldAllowRecordsWithoutNamedQueries()
+    {
+        var services = new ServiceCollection();
+
+        _validator.Validate(
+            [typeof(TestRecord)],
+            services);
+    }
+
+    [KaleidoRecord(
+        "test-record",
+        "Test",
+        null,
+        "Unit Test")]
+    private sealed record TestRecord;
+
+    [KaleidoRecord(
+        "test-record",
+        "Duplicate",
+        null,
+        "Unit Test")]
+    private sealed record DuplicateRecord;
+
+    [KaleidoRecord(
+        "TEST-RECORD",
+        "Duplicate",
+        null,
+        "Unit Test")]
+    private sealed record CaseInsensitiveDuplicateRecord;
+
+    [NamedQuery(
+        "active",
+        "Active Records")]
+    private sealed class ActiveQuery
+        : IQueryableRecordNamedQuery<TestRecord>
+    {
+        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
         {
-            return new RecordDiscoveryResult
-            {
-                Records = records ??
-                [
-                    RecordDiscovery<TestRecord>()
-                ],
-
-                Sources = sources ??
-                [
-                    SourceDiscovery<TestRecord, TestSource>()
-                ],
-
-                NamedQueries = namedQueries ??
-                [
-                    NamedQueryDiscovery<TestRecord, QueryOne>()
-                ]
-            };
-        }
-
-        public static RecordDiscovery RecordDiscovery<TRecord>(
-            string? name = null)
-        {
-            return new RecordDiscovery(
-                typeof(TRecord),
-                new RuntimeRecordMetadata(
-                    typeof(TRecord).Name.ToLower(),
-                    name ?? typeof(TRecord).Name,
-                    "1.0.0",
-                    null,
-                    "Unit Test",
-                    [],
-                    [],
-                    null));
-        }
-
-        public static SourceDiscovery SourceDiscovery<TRecord, TSource>() where TRecord : class where TSource : class
-        {
-            return new SourceDiscovery(
-                typeof(TRecord),
-                typeof(IQueryableRecordSource<TRecord>),
-                typeof(TSource));
-        }
-
-        public static NamedQueryDiscovery NamedQueryDiscovery<TRecord, TQuery>() where TRecord : class where TQuery : class
-        {
-            return new NamedQueryDiscovery(
-                typeof(TRecord),
-                typeof(IQueryableRecordNamedQuery<TRecord>),
-                typeof(TQuery));
+            throw new NotImplementedException();
         }
     }
 
-    private sealed class TestRecord
+    [NamedQuery(
+        "active",
+        "Duplicate Active Records")]
+    private sealed class DuplicateActiveQuery
+        : IQueryableRecordNamedQuery<TestRecord>
     {
+        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
+        {
+            throw new NotImplementedException();
+        }
     }
 
-    private sealed class OtherRecord
+    [NamedQuery(
+        "ACTIVE",
+        "Duplicate Active Records")]
+    private sealed class LowerCaseActiveQuery
+        : IQueryableRecordNamedQuery<TestRecord>
     {
+        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
+        {
+            throw new NotImplementedException();
+        }
     }
 
-    private sealed class TestSource
+    [NamedQuery(
+        "by-category",
+        "By Category")]
+    private sealed class ByCategoryQuery
+        : IQueryableRecordNamedQuery<TestRecord>
     {
-    }
-
-    private sealed class SecondSource
-    {
-    }
-
-    private sealed class OtherSource
-    {
-    }
-
-    private sealed class QueryOne
-    {
-    }
-
-    private sealed class QueryTwo
-    {
+        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

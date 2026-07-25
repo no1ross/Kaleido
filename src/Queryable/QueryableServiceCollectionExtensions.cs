@@ -1,9 +1,11 @@
+using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
-using Kaleido.Queryable.Queryable;
-using Kaleido.Queryable.Registry;
-using Kaleido.Queryable.Validation;
+using Kaleido.Queryable.Query;
+using Kaleido.Queryable.Records;
+using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Reflection;
 
 namespace Kaleido.Queryable;
 
@@ -30,112 +32,121 @@ public static class QueryableServiceCollectionExtensions
                 "At least one assembly must be registered before AddQueryable().");
         }
 
-        var discovery = QueryableDiscovery.Scan(
-            builder.Assemblies);
+        var types = builder.Assemblies
+            .Distinct()
+            .SelectMany(x => x.DefinedTypes)
+            .Where(x =>
+                x.IsClass &&
+                !x.IsAbstract &&
+                (
+                    x.IsPublic ||
+                    x.IsNestedPublic ||
+                    x.IsNotPublic ||
+                    x.IsNestedAssembly
+                ))
+            .Select(x => x.AsType())
+            .ToArray();
 
-        if (options.ValidateRegistrations)
-        {
-            RegistrationValidator.Validate(
-                discovery);
-        }
-
-        var registrations =
-            discovery.Records
-                .Select(record =>
-                {
-                    var queries =
-                        discovery.NamedQueries
-                            .Where(x =>
-                                x.RecordType == record.RecordType)
-                            .Select(x =>
-                                new NamedQueryMetadata(
-                                    x.Name,
-                                    x.Description,
-                                    x.Parameters))
-                            .ToArray();
-
-                    return new RecordRegistration(
-                        record.RecordType,
-                        new RecordMetadata
-                        ( 
-                            record.RecordName,
-                            record.RecordDescription,
-                            record.Version,
-                            record.Source,
-                            record.Fields,
-                            queries,
-                            record.Pageable
-                        ));
-                })
+        var recordTypes =
+            types
+                .Where(x =>
+                    x.GetCustomAttribute<KaleidoRecordAttribute>() is not null)
                 .ToArray();
 
-        RegisterFrameworkServices(
-            builder.Services,
-            registrations);
+        foreach (var recordType in recordTypes)
+        {
+            RegisterRecord(
+                builder.Services,
+                recordType,
+                types);
+        }
 
-        RegisterSources(
-            builder.Services,
-            discovery);
+        builder.Services.TryAddSingleton<RecordRegistrationValidator, RecordRegistrationValidator>();
 
-        RegisterNamedQueries(
-            builder.Services,
-            discovery);
+        builder.Services.TryAddSingleton<IRecordRegistry>(
+            sp =>
+            {
+                var validator =
+                    sp.GetRequiredService<RecordRegistrationValidator>();
+
+                validator.Validate(
+                    recordTypes,
+                    builder.Services);
+
+                return new RecordRegistry(
+                    builder.Services,
+                    recordTypes);
+            });
+
+        RegisterFrameworkServices(builder.Services);
 
         return builder;
     }
 
-    private static void RegisterFrameworkServices(
-        IServiceCollection services,
-        IReadOnlyList<RecordRegistration> registrations)
+    private static void RegisterFrameworkServices(IServiceCollection services)
     {
-        //services.TryAddSingleton<IRecordMetadataCatalog, RecordMetadataCatalog>();
-        //services.TryAddSingleton<IRecordDescriptorFactory, RecordDescriptorFactory>();
         services.TryAddSingleton<IRecordQueryValidator, RecordQueryValidator>();
         services.TryAddSingleton<IRecordQueryCompiler, RecordQueryCompiler>();
 
-        services.TryAddSingleton<IRecordRegistry>(
-            _ => new RecordRegistry(registrations));
-
-        //services.TryAddScoped<IRecordDispatcher, RecordDispatcher>();
         services.TryAddScoped<IQueryableCatalog, QueryableCatalog>();
 
-        services.TryAddSingleton(
-            typeof(IQueryableCompiledQueryApplier<>),
-            typeof(QueryableCompiledQueryApplier<>));
+        services.TryAddSingleton(typeof(IQueryableCompiledQueryApplier<>), typeof(QueryableCompiledQueryApplier<>));
 
-        services.TryAddSingleton(
-            typeof(IQueryableRecordExecutor<>),
-            typeof(QueryableRecordExecutor<>));
+        services.TryAddSingleton(typeof(IQueryableRecordExecutor<>), typeof(QueryableRecordExecutor<>));
     }
 
-    private static void RegisterSources(
-        IServiceCollection services,
-        RecordDiscoveryResult discovery)
+    private static void RegisterRecord(IServiceCollection services, Type recordType, IReadOnlyCollection<Type> types)
     {
-        foreach (var source in discovery.Sources)
-        {
-            services.TryAddScoped(
-                source.InterfaceType,
-                source.ImplementationType);
+        RegisterSource(services, recordType, types);
 
-            services.TryAdd(
-                ServiceDescriptor.Scoped(
-                    typeof(IRecordQueryEngine<>)
-                        .MakeGenericType(source.RecordType),
-                    typeof(QueryableRecordQueryEngine<>)
-                        .MakeGenericType(source.RecordType)));
-        }
+        RegisterNamedQueries(services, recordType, types);
     }
 
-    private static void RegisterNamedQueries(
-        IServiceCollection services,
-        RecordDiscoveryResult discovery)
+    private static void RegisterSource(IServiceCollection services, Type recordType, IEnumerable<Type> types)
     {
-        foreach (var query in discovery.NamedQueries)
+        var sourceType =
+            types.Single(x =>
+                x.GetInterfaces()
+                    .Any(i =>
+                        i.IsGenericType &&
+                        i.GetGenericTypeDefinition() ==
+                        typeof(IQueryableRecordSource<>) &&
+                        i.GenericTypeArguments[0] == recordType));
+
+        var sourceInterface =
+            typeof(IQueryableRecordSource<>)
+                .MakeGenericType(recordType);
+
+        services.TryAddScoped(
+            sourceInterface,
+            sourceType);
+
+        services.TryAdd(
+            ServiceDescriptor.Scoped(
+                typeof(IRecordQueryEngine<>)
+                    .MakeGenericType(recordType),
+                typeof(QueryableRecordQueryEngine<>)
+                    .MakeGenericType(recordType)));
+    }
+
+    private static void RegisterNamedQueries(IServiceCollection services, Type recordType, IEnumerable<Type> types)
+    {
+        var queryInterface =
+            typeof(IQueryableRecordNamedQuery<>)
+                .MakeGenericType(recordType);
+
+        var queries =
+            types.Where(x =>
+                x.GetInterfaces()
+                    .Any(i =>
+                        i.IsGenericType &&
+                        i.GetGenericTypeDefinition() ==
+                        typeof(IQueryableRecordNamedQuery<>) &&
+                        i.GenericTypeArguments[0] == recordType));
+
+        foreach (var query in queries)
         {
-            services.AddScoped(
-                query.InterfaceType,
-                query.ImplementationType);
+            services.AddScoped(queryInterface, query);
         }
     }
 }

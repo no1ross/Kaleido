@@ -1,59 +1,116 @@
-﻿using Kaleido.Queryable;
+﻿using Kaleido.Queryable.Attributes;
+using Kaleido.Queryable.Query;
+using Kaleido.Queryable.Records;
 
-namespace Kaleido.Shared;
+namespace Kaleido.Samples.Shared;
 
-public sealed class ActiveRecordsQuery : IQueryableRecordNamedQuery<SampleKaleidoRecord>
+[NamedQuery(
+    "active-records",
+    "Returns only active records.")]
+public sealed class ActiveRecordsQuery :
+    IQueryableRecordNamedQuery<SampleKaleidoRecord>
 {
-    public string Name => "active-records";
-
-    public IQueryable<SampleKaleidoRecord> Apply(IQueryable<SampleKaleidoRecord> query, IReadOnlyDictionary<string, object?>? parameters)
+    public IQueryable<SampleKaleidoRecord> Apply(
+        IQueryable<SampleKaleidoRecord> query,
+        KaleidoNamedQuery namedQuery)
     {
         return query.Where(x => x.IsActive);
     }
 }
 
-public sealed class RecordsByCategoryQuery : IQueryableRecordNamedQuery<SampleKaleidoRecord>
+[NamedQuery(
+    "records-by-category",
+    "Returns records by category.")]
+[NamedQueryParameter(
+    nameof(SampleKaleidoRecord.Category),
+    typeof(string),
+    Required = true,
+    Description = "The category to filter records by.")]
+public sealed class RecordsByCategoryQuery :
+    IQueryableRecordNamedQuery<SampleKaleidoRecord>
 {
-    public string Name => "records-by-category";
-
-    public IQueryable<SampleKaleidoRecord> Apply(IQueryable<SampleKaleidoRecord> query, IReadOnlyDictionary<string, object?>? parameters)
+    public IQueryable<SampleKaleidoRecord> Apply(
+        IQueryable<SampleKaleidoRecord> query,
+        KaleidoNamedQuery namedQuery)
     {
-        if (parameters is null || !parameters.TryGetValue("category", out var category) || category is null)
+        if (namedQuery.Parameters is null ||
+            !namedQuery.Parameters.TryGetValue(
+                nameof(SampleKaleidoRecord.Category),
+                out var category) ||
+            category is null)
         {
-            throw new InvalidOperationException("Named query 'records-by-category' requires parameter 'category'.");
+            throw new InvalidOperationException(
+                $"Named query 'records-by-category' requires parameter '{nameof(SampleKaleidoRecord.Category)}'.");
         }
 
         var text = category.ToString();
+
         return query.Where(x => x.Category == text);
     }
 }
 
-public sealed class HighAmountRecordsQuery : IQueryableRecordNamedQuery<SampleKaleidoRecord>
+[NamedQuery(
+    "high-amount-records",
+    "Returns records with amounts above a threshold.")]
+[NamedQueryParameter(
+    nameof(SampleKaleidoRecord.Amount),
+    typeof(decimal),
+    DefaultValue = 100d,
+    Description = "Minimum amount that a record must have.")]
+public sealed class HighAmountRecordsQuery :
+    IQueryableRecordNamedQuery<SampleKaleidoRecord>
 {
-    public string Name => "high-amount-records";
-
-    public IQueryable<SampleKaleidoRecord> Apply(IQueryable<SampleKaleidoRecord> query, IReadOnlyDictionary<string, object?>? parameters)
+    public IQueryable<SampleKaleidoRecord> Apply(
+        IQueryable<SampleKaleidoRecord> query,
+        KaleidoNamedQuery namedQuery)
     {
-        var minimumAmount = parameters is not null && parameters.TryGetValue("minimumAmount", out var value) && value is not null
-            ? Convert.ToDecimal(value)
-            : 100m;
+        var minimumAmount =
+            namedQuery.Parameters is not null &&
+            namedQuery.Parameters.TryGetValue(
+                nameof(SampleKaleidoRecord.Amount),
+                out var value) &&
+            value is not null
+                ? Convert.ToDecimal(value)
+                : 100m;
 
         return query.Where(x => x.Amount >= minimumAmount);
     }
 }
 
-public sealed class EffectiveOnQuery : IQueryableRecordNamedQuery<SampleKaleidoRecord>
+[NamedQuery(
+    "effective-on",
+    "Returns records effective on a specific date.")]
+[NamedQueryParameter(
+    nameof(SampleKaleidoRecord.EffectiveDate),
+    typeof(DateOnly),
+    Required = true,
+    Description = "The date to filter records by.")]
+public sealed class EffectiveOnQuery :
+    IQueryableRecordNamedQuery<SampleKaleidoRecord>
 {
-    public string Name => "effective-on";
-
-    public IQueryable<SampleKaleidoRecord> Apply(IQueryable<SampleKaleidoRecord> query, IReadOnlyDictionary<string, object?>? parameters)
+    public IQueryable<SampleKaleidoRecord> Apply(
+        IQueryable<SampleKaleidoRecord> query,
+        KaleidoNamedQuery namedQuery)
     {
-        if (parameters is null || !parameters.TryGetValue("effectiveDate", out var value) || value is null)
+        if (namedQuery.Parameters is null ||
+            !namedQuery.Parameters.TryGetValue(
+                nameof(SampleKaleidoRecord.EffectiveDate),
+                out var value) ||
+            value is null)
         {
-            throw new InvalidOperationException("Named query 'effective-on' requires parameter 'effectiveDate'.");
+            throw new InvalidOperationException(
+                $"Named query 'effective-on' requires parameter '{nameof(SampleKaleidoRecord.EffectiveDate)}'.");
         }
 
-        var effectiveDate = DateOnly.Parse(value.ToString()!);
-        return query.Where(x => x.EffectiveDate <= effectiveDate && (x.ExpirationDate == null || x.ExpirationDate >= effectiveDate));
+        var effectiveDate =
+            value is DateOnly date
+                ? date
+                : DateOnly.Parse(value.ToString()!);
+
+        return query.Where(
+            x =>
+                x.EffectiveDate <= effectiveDate &&
+                (x.ExpirationDate == null ||
+                 x.ExpirationDate >= effectiveDate));
     }
 }

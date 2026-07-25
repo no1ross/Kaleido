@@ -10,7 +10,7 @@ public sealed class SearchableAttribute : Attribute
     /// <param name="priority">Priority used when a search applies to multiple fields.</param>
     /// <param name="defaultMode">The default match mode for this property.</param>
     /// <param name="matchModes">Search match modes supported by this property.</param>
-    public SearchableAttribute(int priority, params MatchMode[] matchModes)
+    public SearchableAttribute(int priority = 0, params MatchMode[] matchModes)
     {
         Priority = priority;
         MatchModes = matchModes.Length == 0 ? new[] { MatchMode.StartsWith } : matchModes;

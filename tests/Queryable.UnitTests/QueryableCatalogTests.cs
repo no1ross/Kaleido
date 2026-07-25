@@ -1,101 +1,190 @@
 using Kaleido.Queryable.Metadata;
+using Kaleido.Queryable.Records;
+using Kaleido.Queryable.Runtime;
+using Moq;
+using Xunit;
 
-namespace Kaleido.UnitTests;
+namespace Kaleido.Queryable.Tests;
 
-public sealed partial class QueryableCatalogTests
+public sealed class QueryableCatalogTests
 {
-    private readonly QueryableTestFixture _fixture;
-    private readonly QueryableCatalog _sut;
-
-    public QueryableCatalogTests()
+    [Fact]
+    public void GetRecordDescriptors_ShouldReturnMetadataFromRegistry()
     {
-        _fixture = new QueryableTestFixture();
-        _sut = new QueryableCatalog(_fixture.Registry.Object,
-            _fixture.Dispatcher.Object,
-            _fixture.Descriptors.Object);
+        // Arrange
+        var registrations =
+            new[]
+            {
+                CreateRegistration<TestRecord>(
+                    "record-one"),
+
+                CreateRegistration<AnotherRecord>(
+                    "record-two")
+            };
+
+        var registry =
+            new Mock<IRecordRegistry>();
+
+        registry
+            .Setup(x => x.Registrations)
+            .Returns(registrations);
+
+        var dispatcher =
+            new Mock<IRecordDispatcher>();
+
+        var sut =
+            new QueryableCatalog(
+                registry.Object,
+                dispatcher.Object);
+
+        // Act
+        var result =
+            sut.GetRecordDescriptors();
+
+        // Assert
+        Assert.Equal(2, result.Count);
+
+        Assert.Contains(
+            result,
+            x => x.Name == "record-one");
+
+        Assert.Contains(
+            result,
+            x => x.Name == "record-two");
     }
 
     [Fact]
-    public async Task QueryAsync_Generic_Should_Return_Dispatcher_Response()
+    public async Task QueryAsync_ShouldDispatchRequest()
     {
-        var expected =
-            new KaleidoQueryResponse<object>(
-                TestData.Descriptor,
+        // Arrange
+        var registry =
+            new Mock<IRecordRegistry>();
+
+        var dispatcher =
+            new Mock<IRecordDispatcher>();
+
+        var request =
+            new KaleidoQueryRequest();
+
+        var response =
+            new KaleidoQueryResponse<TestRecord>(
+                new RecordMetadata(
+                    "test-record",
+                    "Test Record",
+                    "1.0.0",
+                    "Unit Test",
+                    [],
+                    null),
+                1,
+                []);
+
+        dispatcher
+            .Setup(x => x.DispatchAsync<TestRecord>(
+                "test-record",
+                request,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        var sut =
+            new QueryableCatalog(
+                registry.Object,
+                dispatcher.Object);
+
+        // Act
+        var result =
+            await sut.QueryAsync<TestRecord>(
+                "test-record",
+                request);
+
+        // Assert
+        Assert.Same(
+            response,
+            result);
+
+        dispatcher.Verify(
+            x => x.DispatchAsync<TestRecord>(
+                "test-record",
+                request,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task QueryAsync_ShouldPassCancellationToken()
+    {
+        // Arrange
+        var registry =
+            new Mock<IRecordRegistry>();
+
+        var dispatcher =
+            new Mock<IRecordDispatcher>();
+
+        var request =
+            new KaleidoQueryRequest();
+
+        var cancellationToken =
+            new CancellationTokenSource().Token;
+
+        var response =
+            new KaleidoQueryResponse<TestRecord>(
+                new RecordMetadata(
+                    "test-record",
+                    "Test Record",
+                    "1.0.0",
+                    "Unit Test",
+                    [],
+                    null),
                 0,
                 []);
 
-        _fixture.Dispatcher
-            .Setup(x =>
-                x.DispatchAsync<object>(
-                    "functional-records",
-                    TestData.Request,
-                    It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expected);
+        dispatcher
+            .Setup(x => x.DispatchAsync<TestRecord>(
+                "test-record",
+                request,
+                cancellationToken))
+            .ReturnsAsync(response);
 
-        var result =
-            await _sut.QueryAsync<object>(
-                "functional-records",
-                TestData.Request);
+        var sut =
+            new QueryableCatalog(
+                registry.Object,
+                dispatcher.Object);
 
-        Assert.Same(
-            expected,
-            result);
+        // Act
+        await sut.QueryAsync<TestRecord>(
+            "test-record",
+            request,
+            cancellationToken);
+
+        // Assert
+        dispatcher.Verify(
+            x => x.DispatchAsync<TestRecord>(
+                "test-record",
+                request,
+                cancellationToken),
+            Times.Once);
     }
 
-    [Fact]
-    public void Get_Should_Return_Descriptor()
+    private static RecordRegistration CreateRegistration<TRecord>(
+        string name)
     {
-        _fixture.Registry
-            .Setup(x =>
-                x.FindByKey("functional-records"))
-            .Returns(TestData.Registration);
-
-        _fixture.Descriptors
-            .Setup(x =>
-                x.Create(TestData.Metadata))
-            .Returns(TestData.Descriptor);
-
-        var result =
-            _sut.Get("functional-records");
-
-        Assert.Equal(
-            TestData.Descriptor,
-            result);
+        return new RecordRegistration(
+            typeof(TRecord),
+            typeof(TestSource),
+            new RecordMetadata(
+                name,
+                "Test Record",
+                "1.0.0",
+                "Unit Test",
+                [],
+                null),
+            []);
     }
 
-    [Fact]
-    public void Get_Should_Return_Null_When_Not_Found()
+    private sealed record TestRecord;
+
+    private sealed record AnotherRecord;
+
+    private sealed class TestSource
     {
-        _fixture.Registry
-            .Setup(x =>
-                x.FindByKey("missing"))
-            .Returns((RecordRegistration?)null);
-
-        var result =
-            _sut.Get("missing");
-
-        Assert.Null(result);
     }
-
-    [Fact]
-    public void GetAll_Should_Return_All_Descriptors()
-    {
-        _fixture.Registry
-            .Setup(x => x.Registrations)
-            .Returns(
-            [
-                TestData.Registration
-            ]);
-
-        _fixture.Descriptors
-            .Setup(x =>
-                x.Create(It.IsAny<RuntimeRecordMetadata>()))
-            .Returns(TestData.Descriptor);
-
-        var result =
-            _sut.GetRecordDescriptors();
-
-        Assert.Single(result);
-    }
-
 }

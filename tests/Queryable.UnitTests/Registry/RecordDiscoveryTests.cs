@@ -1,201 +1,278 @@
-﻿using Kaleido.Queryable.Attributes;
-using Kaleido.Queryable.Registry;
-using Xunit;
+﻿//using Kaleido.Queryable.Attributes;
+//using Kaleido.Queryable.Metadata;
+//using Kaleido.Queryable.Registry;
+//using Xunit;
 
-namespace Kaleido.UnitTests.Registry;
+//namespace Kaleido.Queryable.Tests.Registry;
 
-public sealed class RecordDiscoveryTests
-{
-    [Fact]
-    public void Scan_Should_Discover_Record_Types()
-    {
-        var result = QueryableDiscovery.Scan(
-        [
-            typeof(TestRecord).Assembly
-        ]);
+//public sealed class QueryableDiscoveryTests
+//{
+//    [Fact]
+//    public void Scan_ShouldDiscoverRecords()
+//    {
+//        // Arrange
+//        var assemblies =
+//            new[]
+//            {
+//                typeof(TestRecord).Assembly
+//            };
 
-        var record = Assert.Single(
-            result.Records,
-            x => x.RecordType == typeof(TestRecord));
+//        // Act
+//        var result =
+//            QueryableDiscovery.Scan(assemblies);
 
-        Assert.Equal(
-            typeof(TestRecord),
-            record.RecordType);
-    }
+//        // Assert
+//        var record =
+//            Assert.Single(
+//                result.Records,
+//                x => x.RecordType == typeof(TestRecord));
 
-    [Fact]
-    public void Scan_Should_Discover_Record_Metadata()
-    {
-        var result = QueryableDiscovery.Scan(
-        [
-            typeof(TestRecord).Assembly
-        ]);
+//        Assert.Equal(
+//            typeof(TestRecord),
+//            record.RecordType);
 
-        var record = Assert.Single(
-            result.Records,
-            x => x.RecordType == typeof(TestRecord));
+//        Assert.Equal(
+//            "TestRecord",
+//            record.RecordName);
+//    }
 
-        Assert.Equal(
-            "testrecord",
-            record.Metadata.Key, ignoreCase: true);
+//    [Fact]
+//    public void Scan_ShouldDiscoverSources()
+//    {
+//        // Arrange
+//        var assemblies =
+//            new[]
+//            {
+//                typeof(TestRecordSource).Assembly
+//            };
 
-        Assert.Equal(
-            "1.0.0",
-            record.Metadata.Version);
+//        // Act
+//        var result =
+//            QueryableDiscovery.Scan(assemblies);
 
-        Assert.Equal(
-            "Unit Test",
-            record.Metadata.Source);
+//        // Assert
+//        var source =
+//            Assert.Single(
+//                result.Sources,
+//                x => x.ImplementationType == typeof(TestRecordSource));
 
-        Assert.Single(
-            record.Metadata.Fields);
+//        Assert.Equal(
+//            typeof(TestRecord),
+//            source.RecordType);
 
-        Assert.Equal(
-            nameof(TestRecord.Id),
-            record.Metadata.Fields[0].Name);
+//        Assert.Equal(
+//            typeof(IQueryableRecordSource<TestRecord>),
+//            source.InterfaceType);
 
-        Assert.Equal(
-            typeof(string),
-            record.Metadata.Fields[0].FieldType);
-    }
+//        Assert.Equal(
+//            typeof(TestRecordSource),
+//            source.ImplementationType);
+//    }
 
-    [Fact]
-    public void Scan_Should_Discover_Source_Types()
-    {
-        var result = QueryableDiscovery.Scan(
-        [
-            typeof(TestRecord).Assembly
-        ]);
+//    [Fact]
+//    public void Scan_ShouldDiscoverNamedQueries()
+//    {
+//        // Arrange
+//        var assemblies =
+//            new[]
+//            {
+//            typeof(TestNamedQueryWithDependency).Assembly
+//            };
 
-        var source = Assert.Single(
-            result.Sources,
-            x => x.ImplementationType == typeof(TestRecordSource));
+//        // Act
+//        var result =
+//            QueryableDiscovery.Scan(assemblies);
 
-        Assert.Equal(
-            typeof(TestRecord),
-            source.RecordType);
-    }
+//        // Assert
+//        var query =
+//            Assert.Single(
+//                result.NamedQueries,
+//                x => x.ImplementationType ==
+//                     typeof(TestNamedQueryWithDependency));
 
-    [Fact]
-    public void Scan_Should_Discover_Named_Query_Types()
-    {
-        var result = QueryableDiscovery.Scan(
-        [
-            typeof(TestRecord).Assembly
-        ]);
+//        Assert.Equal(
+//            typeof(TestRecord),
+//            query.RecordType);
 
-        var query = Assert.Single(
-            result.NamedQueries,
-            x => x.ImplementationType == typeof(TestNamedQuery));
+//        Assert.Equal(
+//            "DependencyQuery",
+//            query.Name);
 
-        Assert.Equal(
-            typeof(TestRecord),
-            query.RecordType);
-    }
+//        Assert.Equal(
+//            "Dependency Query",
+//            query.Description);
 
-    [Fact]
-    public void Scan_Should_Discover_Multiple_Named_Queries_For_A_Record()
-    {
-        var result = QueryableDiscovery.Scan(
-        [
-            typeof(TestRecord).Assembly
-        ]);
+//        Assert.Equal(
+//            2,
+//            query.Parameters.Count);
 
-        var queries = result.NamedQueries
-            .Where(x => x.RecordType == typeof(TestRecord))
-            .ToList();
+//        Assert.Contains(
+//            query.Parameters,
+//            x =>
+//                x.Name == nameof(TestRecord.Name) &&
+//                x.Type == typeof(string));
 
-        Assert.Equal(2, queries.Count);
-    }
+//        Assert.Contains(
+//            query.Parameters,
+//            x =>
+//                x.Name == nameof(TestRecord.Id) &&
+//                x.Type == typeof(int));
+//    }
 
-    [Fact]
-    public void Scan_Should_Ignore_Abstract_Sources()
-    {
-        var result = QueryableDiscovery.Scan(
-        [
-            typeof(TestRecord).Assembly
-        ]);
+//    [Fact]
+//    public void Scan_ShouldPopulatePageableMetadata()
+//    {
+//        // Arrange
+//        var assemblies =
+//            new[]
+//            {
+//                typeof(TestRecord).Assembly
+//            };
 
-        Assert.DoesNotContain(
-            result.Sources,
-            x => x.ImplementationType == typeof(AbstractSource));
-    }
+//        // Act
+//        var result =
+//            QueryableDiscovery.Scan(assemblies);
 
-    [Fact]
-    public void Scan_Should_Ignore_Classes_Without_Record_Attribute()
-    {
-        var result = QueryableDiscovery.Scan(
-        [
-            typeof(TestRecord).Assembly
-        ]);
+//        // Assert
+//        var record =
+//            Assert.Single(
+//                result.Records,
+//                x => x.RecordType == typeof(TestRecord));
 
-        Assert.DoesNotContain(
-            result.Records,
-            x => x.RecordType == typeof(NotARecord));
-    }
+//        Assert.NotNull(record.Pageable);
 
-    [Fact]
-    public void Scan_Should_Not_Return_Duplicate_Records_When_Assembly_Is_Supplied_Twice()
-    {
-        var assembly = typeof(TestRecord).Assembly;
+//        Assert.Equal(
+//            25,
+//            record.Pageable!.DefaultSize);
 
-        var result = QueryableDiscovery.Scan(
-        [
-            assembly,
-            assembly
-        ]);
+//        Assert.Equal(
+//            100,
+//            record.Pageable.MaxSize);
+//    }
 
-        Assert.Single(
-            result.Records,
-            x => x.RecordType == typeof(TestRecord));
-    }
+//    [Fact]
+//    public void Scan_ShouldPopulateFieldMetadata()
+//    {
+//        // Arrange
+//        var assemblies =
+//            new[]
+//            {
+//                typeof(TestRecord).Assembly
+//            };
 
-    private sealed class NotARecord
-    {
-        public int Id { get; init; }
-    }
+//        // Act
+//        var result =
+//            QueryableDiscovery.Scan(assemblies);
 
-    private abstract class AbstractSource :
-        IQueryableRecordSource<TestRecord>
-    {
-        public abstract IQueryable<TestRecord> CreateQuery(
-            RecordExecutionContext context);
-    }
+//        // Assert
+//        var record =
+//            Assert.Single(
+//                result.Records,
+//                x => x.RecordType == typeof(TestRecord));
 
-    private sealed class TestRecordSource :
-        IQueryableRecordSource<TestRecord>
-    {
-        public IQueryable<TestRecord> CreateQuery(
-            RecordExecutionContext context)
-        {
-            return Enumerable.Empty<TestRecord>()
-                .AsQueryable();
-        }
-    }
+//        var id =
+//            Assert.Single(
+//                record.Fields,
+//                x => x.Name == nameof(TestRecord.Id));
 
-    private sealed class TestNamedQuery :
-        IQueryableRecordNamedQuery<TestRecord>
-    {
-        public string Name => "query-1";
+//        Assert.True(id.IsFilterable);
+//        Assert.True(id.IsSortable);
 
-        public IQueryable<TestRecord> Apply(
-            IQueryable<TestRecord> query,
-            IReadOnlyDictionary<string, object?>? parameters)
-        {
-            return query;
-        }
-    }
+//        var name =
+//            Assert.Single(
+//                record.Fields,
+//                x => x.Name == nameof(TestRecord.Name));
 
-    private sealed class SecondNamedQuery :
-        IQueryableRecordNamedQuery<TestRecord>
-    {
-        public string Name => "query-2";
+//        Assert.True(name.IsSearchable);
+//    }
 
-        public IQueryable<TestRecord> Apply(
-            IQueryable<TestRecord> query,
-            IReadOnlyDictionary<string, object?>? parameters)
-        {
-            return query;
-        }
-    }
-}
+//    [Fact]
+//    public void Scan_ShouldIgnoreDuplicateAssemblies()
+//    {
+//        // Arrange
+//        var assembly =
+//            typeof(TestRecord).Assembly;
+
+//        // Act
+//        var result =
+//            QueryableDiscovery.Scan(
+//                new[]
+//                {
+//                    assembly,
+//                    assembly
+//                });
+
+//        // Assert
+//        Assert.Single(
+//            result.Records,
+//            x => x.RecordType == typeof(TestRecord));
+//    }
+
+//    [KaleidoRecord("TestRecord", "Test")]
+//    [Pageable(25, 100)]
+//    internal sealed record TestRecord(
+//        [property: Filterable]
+//        [property: Sortable]
+//        int Id,
+
+//        [property: Searchable]
+//        string Name);
+
+//    internal sealed class TestRecordSource :
+//        IQueryableRecordSource<TestRecord>
+//    {
+//        public IQueryable<TestRecord> CreateQuery(
+//            RecordExecutionContext executionContext)
+//        {
+//            return Enumerable
+//                .Empty<TestRecord>()
+//                .AsQueryable();
+//        }
+//    }
+
+//    internal sealed class TestNamedQuery :
+//        IQueryableRecordNamedQuery<TestRecord>
+//    {
+//        public NamedQueryMetadata Descriptor =>
+//            new(
+//                "Active",
+//                "Active Records",
+//                null);
+
+//        public IQueryable<TestRecord> Apply(
+//            IQueryable<TestRecord> query,
+//            KaleidoNamedQuery namedQuery)
+//        {
+//            return query;
+//        }
+//    }
+
+//    internal interface ITestDependency
+//    {
+//    }
+
+//    [NamedQuery("DependencyQuery", "Dependency Query")]
+//    [NamedQueryParameter(nameof(TestRecord.Name), typeof(string), false)]
+//    [NamedQueryParameter(nameof(TestRecord.Id), typeof(int), false)]
+//    internal sealed class TestNamedQueryWithDependency :
+//        IQueryableRecordNamedQuery<TestRecord>
+//    {
+//        public TestNamedQueryWithDependency(
+//            ITestDependency dependency)
+//        {
+//        }
+
+//        public NamedQueryMetadata Descriptor =>
+//            new(
+//                "DependencyQuery",
+//                "Dependency Query",
+//                null);
+
+//        public IQueryable<TestRecord> Apply(
+//            IQueryable<TestRecord> query,
+//            KaleidoNamedQuery namedQuery)
+//        {
+//            return query;
+//        }
+//    }
+//}

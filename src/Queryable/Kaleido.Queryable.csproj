@@ -20,13 +20,13 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Validation\" />
-	</ItemGroup>
-
-	<ItemGroup>
 	  <ProjectReference Include="..\Core\Kaleido.Core.csproj" />
 	  <ProjectReference Include="..\Queryable.Abstractions\Kaleido.Queryable.Abstractions.csproj" />
 	  <ProjectReference Include="..\Shared\Kaleido.Shared.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Queryable\" />
 	</ItemGroup>
 
 </Project>
