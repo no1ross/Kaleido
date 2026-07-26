@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Kaleido.FunctionalTests.Infrastructure;
+namespace Kaleido.Queryable.FunctionalTests.Infrastructure;
 
 public static class JsonOptions
 {

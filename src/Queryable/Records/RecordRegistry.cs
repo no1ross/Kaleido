@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace Kaleido.Queryable.Records;
 
-public sealed class RecordRegistry : IRecordRegistry
+internal sealed class RecordRegistry : IRecordRegistry
 {
     private readonly IReadOnlyDictionary<string, RecordRegistration> _byName;
     private readonly IReadOnlyDictionary<Type, RecordRegistration> _byType;

@@ -308,7 +308,7 @@ public sealed class RecordQueryEngineTests
         // Arrange
         var request =
             new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "active"));
 
         var metadata =
@@ -329,7 +329,7 @@ public sealed class RecordQueryEngineTests
 
         var compiled =
             CreateCompiledQuery(
-                new KaleidoNamedQuery(
+                new NamedQuery(
                     "active"));
 
         var sourceQuery =
@@ -543,7 +543,7 @@ public sealed class RecordQueryEngineTests
         // Arrange
         var request =
             new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "missing"));
 
         var metadata =
@@ -555,7 +555,7 @@ public sealed class RecordQueryEngineTests
 
         var compiled =
             CreateCompiledQuery(
-                new KaleidoNamedQuery(
+                new NamedQuery(
                     "missing"));
 
         var registry =
@@ -606,7 +606,7 @@ public sealed class RecordQueryEngineTests
         // Arrange
         var request =
             new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "active"));
 
         var metadata =
@@ -626,7 +626,7 @@ public sealed class RecordQueryEngineTests
 
         var compiled =
             CreateCompiledQuery(
-                new KaleidoNamedQuery(
+                new NamedQuery(
                     "active"));
 
         var registry =
@@ -798,7 +798,7 @@ public sealed class RecordQueryEngineTests
     }
 
     private static CompiledRecordQuery CreateCompiledQuery(
-        KaleidoNamedQuery? namedQuery = null)
+        NamedQuery? namedQuery = null)
     {
         return new CompiledRecordQuery(
             namedQuery,
@@ -849,13 +849,13 @@ public sealed class RecordQueryEngineTests
 
         public IQueryable<TestRecord>? ReceivedQuery { get; private set; }
 
-        public KaleidoNamedQuery? ReceivedNamedQuery { get; private set; }
+        public NamedQuery? ReceivedNamedQuery { get; private set; }
 
         public IQueryable<TestRecord>? QueryToReturn { get; init; }
 
         public IQueryable<TestRecord> Apply(
             IQueryable<TestRecord> query,
-            KaleidoNamedQuery namedQuery)
+            NamedQuery namedQuery)
         {
             WasApplied = true;
             ReceivedQuery = query;

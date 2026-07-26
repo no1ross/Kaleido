@@ -4,7 +4,7 @@ using Kaleido.Queryable.Query;
 using System.Globalization;
 using SampleKaleidoRecord = Kaleido.Samples.Shared.SampleKaleidoRecord;
 
-namespace Kaleido.FunctionalTests.Infrastructure;
+namespace Kaleido.Queryable.FunctionalTests.Infrastructure;
 
 public static class FunctionalScenarios
 {
@@ -138,7 +138,7 @@ public static class FunctionalScenarios
         return Scenario(
             "named-active-records",
             data => new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "active-records"),
                 Query: new QueryBody(
                     Search: null,
@@ -160,7 +160,7 @@ public static class FunctionalScenarios
         return Scenario(
             "named-records-by-category",
             data => new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "records-by-category",
                     new Dictionary<string, object?>
                     {
@@ -186,7 +186,7 @@ public static class FunctionalScenarios
         return Scenario(
             "named-high-amount-records",
             data => new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "high-amount-records",
                     new Dictionary<string, object?>
                     {
@@ -212,7 +212,7 @@ public static class FunctionalScenarios
         return Scenario(
             "named-effective-on",
             data => new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "effective-on",
                     new Dictionary<string, object?>
                     {

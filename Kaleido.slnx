@@ -20,7 +20,7 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="tests/Core.UnitTests/Kaleido.Core.UnitTests.csproj" Id="d3158058-b54e-4a54-8bb0-5f324d367958" />
-    <Project Path="tests/Queryable.FunctionalTests/Kaleido.FunctionalTests.csproj" />
+    <Project Path="tests/Queryable.FunctionalTests/Kaleido.Queryable.FunctionalTests.csproj" />
     <Project Path="tests/Queryable.UnitTests/Kaleido.Queryable.UnitTests.csproj" />
   </Folder>
 </Solution>

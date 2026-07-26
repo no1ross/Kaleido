@@ -1,10 +1,10 @@
-using Kaleido.FunctionalTests.Fixtures;
-using Kaleido.FunctionalTests.Infrastructure;
 using Kaleido.Queryable;
+using Kaleido.Queryable.FunctionalTests.Fixtures;
+using Kaleido.Queryable.FunctionalTests.Infrastructure;
 using Kaleido.Samples.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.FunctionalTests.Typed;
+namespace Kaleido.Queryable.FunctionalTests.Typed;
 
 public sealed class FunctionalRecordTypedTests
     : IClassFixture<FunctionalFixture>

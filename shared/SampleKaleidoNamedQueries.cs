@@ -12,7 +12,7 @@ public sealed class ActiveRecordsQuery :
 {
     public IQueryable<SampleKaleidoRecord> Apply(
         IQueryable<SampleKaleidoRecord> query,
-        KaleidoNamedQuery namedQuery)
+        NamedQuery namedQuery)
     {
         return query.Where(x => x.IsActive);
     }
@@ -31,7 +31,7 @@ public sealed class RecordsByCategoryQuery :
 {
     public IQueryable<SampleKaleidoRecord> Apply(
         IQueryable<SampleKaleidoRecord> query,
-        KaleidoNamedQuery namedQuery)
+        NamedQuery namedQuery)
     {
         if (namedQuery.Parameters is null ||
             !namedQuery.Parameters.TryGetValue(
@@ -62,7 +62,7 @@ public sealed class HighAmountRecordsQuery :
 {
     public IQueryable<SampleKaleidoRecord> Apply(
         IQueryable<SampleKaleidoRecord> query,
-        KaleidoNamedQuery namedQuery)
+        NamedQuery namedQuery)
     {
         var minimumAmount =
             namedQuery.Parameters is not null &&
@@ -90,7 +90,7 @@ public sealed class EffectiveOnQuery :
 {
     public IQueryable<SampleKaleidoRecord> Apply(
         IQueryable<SampleKaleidoRecord> query,
-        KaleidoNamedQuery namedQuery)
+        NamedQuery namedQuery)
     {
         if (namedQuery.Parameters is null ||
             !namedQuery.Parameters.TryGetValue(

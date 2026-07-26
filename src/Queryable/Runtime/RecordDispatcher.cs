@@ -4,7 +4,7 @@ using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 
-public sealed class RecordDispatcher : IRecordDispatcher
+internal sealed class RecordDispatcher : IRecordDispatcher
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IRecordRegistry _registry;

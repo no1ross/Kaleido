@@ -1,7 +1,7 @@
 using Kaleido.Queryable.Records;
 using Kaleido.Samples.Shared;
 
-namespace Kaleido.FunctionalTests.Infrastructure;
+namespace Kaleido.Queryable.FunctionalTests.Infrastructure;
 
 public sealed class SampleKaleidoRecordSource
     : IRecordSource<SampleKaleidoRecord>

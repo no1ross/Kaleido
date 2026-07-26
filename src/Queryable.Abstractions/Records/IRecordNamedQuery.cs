@@ -5,5 +5,5 @@ namespace Kaleido.Queryable.Records;
 
 public interface IRecordNamedQuery<TRecord> where TRecord : class
 {
-    IQueryable<TRecord> Apply(IQueryable<TRecord> query, KaleidoNamedQuery NamedQuery);
+    IQueryable<TRecord> Apply(IQueryable<TRecord> query, NamedQuery NamedQuery);
 }

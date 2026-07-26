@@ -5,6 +5,8 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<IsPackable>false</IsPackable>
+		<RootNamespace>Kaleido.Queryable.FunctionalTests</RootNamespace>
+		<AssemblyName>Kaleido.Queryable.FunctionalTests</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -183,7 +183,7 @@ public sealed class RecordRegistrationValidatorTests
     private sealed class ActiveQuery
         : IRecordNamedQuery<TestRecord>
     {
-        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
+        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, NamedQuery NamedQuery)
         {
             throw new NotImplementedException();
         }
@@ -195,7 +195,7 @@ public sealed class RecordRegistrationValidatorTests
     private sealed class DuplicateActiveQuery
         : IRecordNamedQuery<TestRecord>
     {
-        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
+        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, NamedQuery NamedQuery)
         {
             throw new NotImplementedException();
         }
@@ -207,7 +207,7 @@ public sealed class RecordRegistrationValidatorTests
     private sealed class LowerCaseActiveQuery
         : IRecordNamedQuery<TestRecord>
     {
-        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
+        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, NamedQuery NamedQuery)
         {
             throw new NotImplementedException();
         }
@@ -219,7 +219,7 @@ public sealed class RecordRegistrationValidatorTests
     private sealed class ByCategoryQuery
         : IRecordNamedQuery<TestRecord>
     {
-        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
+        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, NamedQuery NamedQuery)
         {
             throw new NotImplementedException();
         }

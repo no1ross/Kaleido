@@ -15,7 +15,7 @@ namespace Kaleido.Queryable.Query;
 ///
 /// This interface exists to separate validation from execution.
 /// </summary>
-public interface IRecordQueryCompiler
+internal interface IRecordQueryCompiler
 {
     CompiledRecordQuery Compile(QueryRequest request, RecordMetadata metadata);
 }

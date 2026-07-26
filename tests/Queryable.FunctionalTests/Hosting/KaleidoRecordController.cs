@@ -4,7 +4,7 @@ using Kaleido.Queryable.Query;
 using Kaleido.Samples.Shared;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Kaleido.FunctionalTests.Hosting;
+namespace Kaleido.Queryable.FunctionalTests.Hosting;
 
 [ApiController]
 [Route("v1/records")]

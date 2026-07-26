@@ -1,6 +1,6 @@
 namespace Kaleido.Queryable.Runtime;
 
-public sealed class RecordExecutor<TRecord> : IRecordExecutor<TRecord>
+internal sealed class RecordExecutor<TRecord> : IRecordExecutor<TRecord>
     where TRecord : class
 {
     public Task<int> CountAsync(IQueryable<TRecord> query, CancellationToken cancellationToken = default)

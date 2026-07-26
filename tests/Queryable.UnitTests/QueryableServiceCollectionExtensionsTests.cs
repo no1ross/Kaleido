@@ -260,7 +260,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
     {
         public IQueryable<TestRecord> Apply(
             IQueryable<TestRecord> query,
-            KaleidoNamedQuery namedQuery)
+            NamedQuery namedQuery)
         {
             return query;
         }

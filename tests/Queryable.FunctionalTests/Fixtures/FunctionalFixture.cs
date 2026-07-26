@@ -1,12 +1,12 @@
-using Kaleido.FunctionalTests.Infrastructure;
 using Kaleido.Queryable;
+using Kaleido.Queryable.FunctionalTests.Infrastructure;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;
 using Kaleido.Samples.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.FunctionalTests.Fixtures;
+namespace Kaleido.Queryable.FunctionalTests.Fixtures;
 
 public sealed class FunctionalFixture : IDisposable
 {

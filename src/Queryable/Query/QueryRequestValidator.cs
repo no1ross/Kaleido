@@ -2,7 +2,7 @@ using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Query;
 
-public sealed class QueryRequestValidator : IRecordQueryValidator
+internal sealed class QueryRequestValidator : IRecordQueryValidator
 {
     public void Validate(
         QueryRequest request,

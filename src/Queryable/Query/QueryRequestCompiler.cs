@@ -3,7 +3,7 @@ using System.Xml.Linq;
 
 namespace Kaleido.Queryable.Query;
 
-public sealed class QueryRequestCompiler : IRecordQueryCompiler
+internal sealed class QueryRequestCompiler : IRecordQueryCompiler
 {
     public CompiledRecordQuery Compile(
         QueryRequest request,
@@ -32,14 +32,14 @@ public sealed class QueryRequestCompiler : IRecordQueryCompiler
             new CompiledPage(size, offset));
     }
 
-    private static KaleidoNamedQuery? CompiledNamedQuery(KaleidoNamedQuery? namedQuery, RecordMetadata metadata)
+    private static NamedQuery? CompiledNamedQuery(NamedQuery? namedQuery, RecordMetadata metadata)
     {
         if (namedQuery is null)
         {
             return null;
         }
 
-        return new KaleidoNamedQuery(
+        return new NamedQuery(
             namedQuery.Name,
             namedQuery.Parameters
         );

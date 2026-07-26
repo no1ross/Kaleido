@@ -143,7 +143,7 @@ public sealed class QueryRequestCompilerTests
 
         var request =
             new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "by-category",
                     parameters));
 

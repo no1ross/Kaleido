@@ -406,7 +406,7 @@ public sealed class RecordRegistryTests
     private sealed class TestNamedQuery
         : IRecordNamedQuery<TestRecord>
     {
-        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
+        public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, NamedQuery NamedQuery)
         {
             throw new NotImplementedException();
         }

@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace Kaleido.Queryable.Runtime;
 
-public sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRecord>
+internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRecord>
     where TRecord : class
 {
     public IQueryable<TRecord> ApplyFilter(

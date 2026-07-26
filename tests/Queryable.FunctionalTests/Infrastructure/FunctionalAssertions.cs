@@ -1,7 +1,7 @@
 using Kaleido.Samples.Shared;
 using Xunit;
 
-namespace Kaleido.FunctionalTests.Infrastructure;
+namespace Kaleido.Queryable.FunctionalTests.Infrastructure;
 
 public static class FunctionalAssertions
 {

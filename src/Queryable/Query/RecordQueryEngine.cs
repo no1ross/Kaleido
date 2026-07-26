@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable.Query;
 
-public sealed class RecordQueryEngine<TRecord> : IRecordQueryEngine<TRecord>
+internal sealed class RecordQueryEngine<TRecord> : IRecordQueryEngine<TRecord>
     where TRecord : class
 {
     private readonly IRecordRegistry _recordRegistry;

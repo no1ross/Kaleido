@@ -5,7 +5,7 @@ namespace Kaleido.Queryable.Query;
 /// <summary>Value-set query request.</summary>
 public record QueryRequest
 (
-    KaleidoNamedQuery? NamedQuery = null,
+    NamedQuery? NamedQuery = null,
     QueryBody? Query = null
 );
 
@@ -17,7 +17,7 @@ public record QueryBody
     QueryPage? Page = null
 );
 
-public record KaleidoNamedQuery
+public record NamedQuery
 (
     string Name,
     IReadOnlyDictionary<string, object?>? Parameters = null

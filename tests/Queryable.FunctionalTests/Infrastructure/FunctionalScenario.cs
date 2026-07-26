@@ -2,7 +2,7 @@ using Kaleido.Queryable;
 using Kaleido.Queryable.Query;
 using Kaleido.Samples.Shared;
 
-namespace Kaleido.FunctionalTests.Infrastructure;
+namespace Kaleido.Queryable.FunctionalTests.Infrastructure;
 
 public sealed class FunctionalScenario
 {

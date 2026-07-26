@@ -31,7 +31,7 @@ public sealed class RecordQueryValidatorTests
     {
         var request =
             new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "active"));
 
         _validator.Validate(
@@ -44,7 +44,7 @@ public sealed class RecordQueryValidatorTests
     {
         var request =
             new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "does-not-exist"));
 
         Assert.Throws<InvalidOperationException>(
@@ -58,7 +58,7 @@ public sealed class RecordQueryValidatorTests
     {
         var request =
             new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "by-name",
                     new Dictionary<string, object?>()));
 
@@ -73,7 +73,7 @@ public sealed class RecordQueryValidatorTests
     {
         var request =
             new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "by-name",
                     new Dictionary<string, object?>
                     {
@@ -344,7 +344,7 @@ public sealed class RecordQueryValidatorTests
     {
         var request =
             new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "by-amount",
                     new Dictionary<string, object?>()));
 
@@ -358,7 +358,7 @@ public sealed class RecordQueryValidatorTests
     {
         var request =
             new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "by-amount",
                     new Dictionary<string, object?>
                     {
@@ -375,7 +375,7 @@ public sealed class RecordQueryValidatorTests
     {
         var request =
             new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "by-amount",
                     new Dictionary<string, object?>
                     {
@@ -393,7 +393,7 @@ public sealed class RecordQueryValidatorTests
     {
         var request =
             new QueryRequest(
-                NamedQuery: new KaleidoNamedQuery(
+                NamedQuery: new NamedQuery(
                     "by-amount",
                     new Dictionary<string, object?>()));
 
