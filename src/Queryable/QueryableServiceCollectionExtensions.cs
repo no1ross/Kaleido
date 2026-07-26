@@ -50,7 +50,7 @@ public static class QueryableServiceCollectionExtensions
         var recordTypes =
             types
                 .Where(x =>
-                    x.GetCustomAttribute<KaleidoRecordAttribute>() is not null)
+                    x.GetCustomAttribute<QueryableRecordAttribute>() is not null)
                 .ToArray();
 
         foreach (var recordType in recordTypes)

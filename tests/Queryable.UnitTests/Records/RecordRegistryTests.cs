@@ -372,7 +372,7 @@ public sealed class RecordRegistryTests
         return services;
     }
 
-    [KaleidoRecord(
+    [QueryableRecord(
         "test-record",
         "Test Record",
         null,

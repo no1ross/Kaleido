@@ -232,7 +232,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
         public IReadOnlyCollection<System.Reflection.Assembly> Assemblies { get; }
     }
 
-    [KaleidoRecord(
+    [QueryableRecord(
         "test-record",
         "Test Record",
         null,

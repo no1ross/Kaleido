@@ -41,7 +41,7 @@ internal sealed class RecordRegistrationValidator
                 {
                     Type = x,
                     Attribute =
-                        x.GetCustomAttribute<KaleidoRecordAttribute>()
+                        x.GetCustomAttribute<QueryableRecordAttribute>()
                 })
                 .GroupBy(
                     x => x.Attribute!.Name,

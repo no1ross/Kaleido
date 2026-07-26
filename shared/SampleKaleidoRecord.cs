@@ -19,7 +19,7 @@ public enum RecordStatus
     Retired
 }
 
-[KaleidoRecord("functional-records", "SampleKaleidoRecord", "1.0.0", "CSV Functional Test Data")]
+[QueryableRecord("functional-records", "SampleKaleidoRecord", "1.0.0", "CSV Functional Test Data")]
 [Pageable(25, 500)]
 public sealed class SampleKaleidoRecord
 {

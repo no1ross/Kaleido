@@ -156,21 +156,21 @@ public sealed class RecordRegistrationValidatorTests
             services);
     }
 
-    [KaleidoRecord(
+    [QueryableRecord(
         "test-record",
         "Test",
         null,
         "Unit Test")]
     private sealed record TestRecord;
 
-    [KaleidoRecord(
+    [QueryableRecord(
         "test-record",
         "Duplicate",
         null,
         "Unit Test")]
     private sealed record DuplicateRecord;
 
-    [KaleidoRecord(
+    [QueryableRecord(
         "TEST-RECORD",
         "Duplicate",
         null,

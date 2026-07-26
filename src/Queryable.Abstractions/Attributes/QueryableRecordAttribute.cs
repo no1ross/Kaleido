@@ -2,14 +2,14 @@
 
 /// <summary>Marks a record type as a framework-discoverable record.</summary>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-public sealed class KaleidoRecordAttribute : Attribute
+public sealed class QueryableRecordAttribute : Attribute
 {
     /// <summary>Creates record metadata for a record type.</summary>
     /// <param name="name">Logical record key used for lookup and query execution.</param>
     /// <param name="description">Version of the record metadata.</param>
     /// <param name="version">Version of the record metadata.</param>
     /// <param name="source">Name of the authoritative source for the record.</param>
-    public KaleidoRecordAttribute(string name, string? description = null, string? version = null, string? source = null)
+    public QueryableRecordAttribute(string name, string? description = null, string? version = null, string? source = null)
     {
         Name = name;
         Description = description;

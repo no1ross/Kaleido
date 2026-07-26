@@ -170,7 +170,7 @@ internal sealed class RecordRegistry : IRecordRegistry
         Type recordType)
     {
         var attribute =
-            recordType.GetCustomAttribute<KaleidoRecordAttribute>()
+            recordType.GetCustomAttribute<QueryableRecordAttribute>()
             ?? throw new InvalidOperationException(
                 $"Record '{recordType.Name}' is missing KaleidoRecordAttribute.");
 
