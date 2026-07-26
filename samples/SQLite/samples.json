@@ -1,0 +1,373 @@
+﻿{
+  "name": "functional-records",
+  "description": "SampleKaleidoRecord",
+  "version": "1.0.0",
+  "source": "CSV Functional Test Data",
+  "pageable": {
+    "defaultSize": 25,
+    "maxSize": 500
+  },
+  "fields": [
+    {
+      "name": "Id",
+      "dataType": {
+        "type": "integer",
+        "format": null,
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "Gt", "Gte", "Lt", "Lte", "Between", "In", "NotIn" ],
+      "isSearchable": false,
+      "searchPriority": null,
+      "matchModes": [],
+      "isSortable": true
+    },
+    {
+      "name": "ExternalId",
+      "dataType": {
+        "type": "string",
+        "format": "uuid",
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "In" ],
+      "isSearchable": true,
+      "searchPriority": 1,
+      "matchModes": [ "Exact" ],
+      "isSortable": false
+    },
+    {
+      "name": "Code",
+      "dataType": {
+        "type": "string",
+        "format": null,
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "Contains", "NotContains", "StartsWith", "EndsWith", "In", "NotIn" ],
+      "isSearchable": true,
+      "searchPriority": 2,
+      "matchModes": [ "Exact", "StartsWith", "EndsWith", "Contains" ],
+      "isSortable": true
+    },
+    {
+      "name": "Name",
+      "dataType": {
+        "type": "string",
+        "format": null,
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "Contains", "NotContains", "StartsWith", "EndsWith" ],
+      "isSearchable": true,
+      "searchPriority": 3,
+      "matchModes": [ "Exact", "StartsWith", "EndsWith", "Contains" ],
+      "isSortable": true
+    },
+    {
+      "name": "Category",
+      "dataType": {
+        "type": "string",
+        "format": null,
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "In", "NotIn" ],
+      "isSearchable": true,
+      "searchPriority": 4,
+      "matchModes": [ "Exact", "Contains" ],
+      "isSortable": true
+    },
+    {
+      "name": "IsActive",
+      "dataType": {
+        "type": "boolean",
+        "format": null,
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "IsTrue", "IsFalse" ],
+      "isSearchable": false,
+      "searchPriority": null,
+      "matchModes": [],
+      "isSortable": true
+    },
+    {
+      "name": "Quantity",
+      "dataType": {
+        "type": "integer",
+        "format": null,
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "Gt", "Gte", "Lt", "Lte", "Between", "In", "NotIn" ],
+      "isSearchable": false,
+      "searchPriority": null,
+      "matchModes": [],
+      "isSortable": true
+    },
+    {
+      "name": "Amount",
+      "dataType": {
+        "type": "number",
+        "format": "decimal",
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "Gt", "Gte", "Lt", "Lte", "Between" ],
+      "isSearchable": false,
+      "searchPriority": null,
+      "matchModes": [],
+      "isSortable": true
+    },
+    {
+      "name": "Rate",
+      "dataType": {
+        "type": "number",
+        "format": "double",
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "Gt", "Gte", "Lt", "Lte", "Between" ],
+      "isSearchable": false,
+      "searchPriority": null,
+      "matchModes": [],
+      "isSortable": true
+    },
+    {
+      "name": "Score",
+      "dataType": {
+        "type": "number",
+        "format": "float",
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "Gt", "Gte", "Lt", "Lte", "Between" ],
+      "isSearchable": false,
+      "searchPriority": null,
+      "matchModes": [],
+      "isSortable": true
+    },
+    {
+      "name": "EffectiveDate",
+      "dataType": {
+        "type": "string",
+        "format": "date",
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "Gt", "Gte", "Lt", "Lte", "Between" ],
+      "isSearchable": false,
+      "searchPriority": null,
+      "matchModes": [],
+      "isSortable": true
+    },
+    {
+      "name": "CreatedAt",
+      "dataType": {
+        "type": "string",
+        "format": "date-time",
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "Gt", "Gte", "Lt", "Lte", "Between" ],
+      "isSearchable": false,
+      "searchPriority": null,
+      "matchModes": [],
+      "isSortable": true
+    },
+    {
+      "name": "ExpirationDate",
+      "dataType": {
+        "type": "string",
+        "format": "date",
+        "nullable": true,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "Gt", "Gte", "Lt", "Lte", "Between", "IsNull", "IsNotNull" ],
+      "isSearchable": false,
+      "searchPriority": null,
+      "matchModes": [],
+      "isSortable": true
+    },
+    {
+      "name": "Status",
+      "dataType": {
+        "type": "string",
+        "format": "enum",
+        "nullable": false,
+        "enumValues": [ "Unknown", "Draft", "Active", "Suspended", "Retired" ]
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "In", "NotIn" ],
+      "isSearchable": false,
+      "searchPriority": null,
+      "matchModes": [],
+      "isSortable": true
+    },
+    {
+      "name": "Priority",
+      "dataType": {
+        "type": "integer",
+        "format": null,
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "Gt", "Gte", "Lt", "Lte", "In", "NotIn" ],
+      "isSearchable": false,
+      "searchPriority": null,
+      "matchModes": [],
+      "isSortable": true
+    },
+    {
+      "name": "Region",
+      "dataType": {
+        "type": "string",
+        "format": null,
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "In", "NotIn" ],
+      "isSearchable": true,
+      "searchPriority": 5,
+      "matchModes": [ "Exact", "Contains" ],
+      "isSortable": false
+    },
+    {
+      "name": "GroupName",
+      "dataType": {
+        "type": "string",
+        "format": null,
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "In", "NotIn" ],
+      "isSearchable": true,
+      "searchPriority": 6,
+      "matchModes": [ "Exact", "Contains" ],
+      "isSortable": false
+    },
+    {
+      "name": "Version",
+      "dataType": {
+        "type": "integer",
+        "format": "int64",
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "Gt", "Gte", "Lt", "Lte", "Between" ],
+      "isSearchable": false,
+      "searchPriority": null,
+      "matchModes": [],
+      "isSortable": true
+    },
+    {
+      "name": "Notes",
+      "dataType": {
+        "type": "string",
+        "format": null,
+        "nullable": false,
+        "enumValues": null
+      },
+      "isFilterable": false,
+      "filterOperators": [],
+      "isSearchable": true,
+      "searchPriority": 7,
+      "matchModes": [ "Contains" ],
+      "isSortable": false
+    },
+    {
+      "name": "NullableScore",
+      "dataType": {
+        "type": "number",
+        "format": "float",
+        "nullable": true,
+        "enumValues": null
+      },
+      "isFilterable": true,
+      "filterOperators": [ "Eq", "Ne", "Gt", "Gte", "Lt", "Lte", "Between", "IsNull", "IsNotNull" ],
+      "isSearchable": false,
+      "searchPriority": null,
+      "matchModes": [],
+      "isSortable": false
+    }
+  ],
+  "namedQueries": [
+    {
+      "name": "active-records",
+      "description": "Returns only active records.",
+      "parameters": []
+    },
+    {
+      "name": "records-by-category",
+      "description": "Returns records by category.",
+      "parameters": [
+        {
+          "name": "Category",
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null
+          },
+          "required": true,
+          "description": "The category to filter records by.",
+          "defaultValue": null
+        }
+      ]
+    },
+    {
+      "name": "high-amount-records",
+      "description": "Returns records with amounts above a threshold.",
+      "parameters": [
+        {
+          "name": "Amount",
+          "dataType": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": false,
+            "enumValues": null
+          },
+          "required": false,
+          "description": "Minimum amount that a record must have.",
+          "defaultValue": 100
+        }
+      ]
+    },
+    {
+      "name": "effective-on",
+      "description": "Returns records effective on a specific date.",
+      "parameters": [
+        {
+          "name": "EffectiveDate",
+          "dataType": {
+            "type": "string",
+            "format": "date",
+            "nullable": false,
+            "enumValues": null
+          },
+          "required": true,
+          "description": "The date to filter records by.",
+          "defaultValue": null
+        }
+      ]
+    }
+  ]
+}

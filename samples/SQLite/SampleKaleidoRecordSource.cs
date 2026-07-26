@@ -6,64 +6,64 @@ namespace Kaleido.Samples.SQLite;
 
 public sealed class SampleKaleidoRecordSource : IRecordSource<SampleKaleidoRecord>
 {
-    private readonly KaleidoTestDbContext _store;
+    private readonly SampleKaleidoCsvData _data;
 
-    public SampleKaleidoRecordSource(KaleidoTestDbContext store)
+    public SampleKaleidoRecordSource(SampleKaleidoCsvData data)
     {
-        _store = store;
+        _data = data;
     }
 
-    public IQueryable<SampleKaleidoRecord> CreateQuery(RecordExecutionContext context)
+    public IQueryable<SampleKaleidoRecord> CreateQuery(RecordExecutionContext executionContext)
     {
-        return _store.Records.AsQueryable();
-    }
-}
-
-public sealed class KaleidoTestDbContext : DbContext
-{
-    public KaleidoTestDbContext(DbContextOptions<KaleidoTestDbContext> options)
-        : base(options)
-    {
-    }
-
-    public DbSet<SampleKaleidoRecord> Records => Set<SampleKaleidoRecord>();
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<SampleKaleidoRecord>(entity =>
-        {
-            entity.ToTable("Clients");
-            entity.HasKey(x => x.Id);
-            entity.Property(x => x.ExternalId).HasConversion(v => v.ToString(), v => Guid.Parse(v));
-            entity.Property(x => x.Status).HasConversion<string>();
-
-            entity.HasIndex(x => x.Name);
-            entity.HasIndex(x => x.Category);
-            entity.HasIndex(x => x.Code);
-            entity.HasIndex(x => x.Region);
-            entity.HasIndex(x => x.Status);
-            entity.HasIndex(x => x.ExternalId);
-            entity.HasIndex(x => x.CreatedAt);
-            entity.HasIndex(x => x.EffectiveDate);
-        });
+        return _data.Records.AsQueryable();
     }
 }
 
-public static class DbInitializer
-{
-    public static async Task InitializeAsync(KaleidoTestDbContext db, CancellationToken cancellationToken = default)
-    {
-        await db.Database.EnsureCreatedAsync(cancellationToken);
+//public sealed class KaleidoTestDbContext : DbContext
+//{
+//    public KaleidoTestDbContext(DbContextOptions<KaleidoTestDbContext> options)
+//        : base(options)
+//    {
+//    }
 
-        if (await db.Records.AnyAsync(cancellationToken))
-        {
-            return;
-        }
+//    public DbSet<SampleKaleidoRecord> Records => Set<SampleKaleidoRecord>();
 
-        var records = new SampleKaleidoCsvData();
+//    protected override void OnModelCreating(ModelBuilder modelBuilder)
+//    {
+//        modelBuilder.Entity<SampleKaleidoRecord>(entity =>
+//        {
+//            entity.ToTable("Clients");
+//            entity.HasKey(x => x.Id);
+//            entity.Property(x => x.ExternalId).HasConversion(v => v.ToString(), v => Guid.Parse(v));
+//            entity.Property(x => x.Status).HasConversion<string>();
 
-        await db.Records.AddRangeAsync(records.Records, cancellationToken);
+//            entity.HasIndex(x => x.Name);
+//            entity.HasIndex(x => x.Category);
+//            entity.HasIndex(x => x.Code);
+//            entity.HasIndex(x => x.Region);
+//            entity.HasIndex(x => x.Status);
+//            entity.HasIndex(x => x.ExternalId);
+//            entity.HasIndex(x => x.CreatedAt);
+//            entity.HasIndex(x => x.EffectiveDate);
+//        });
+//    }
+//}
 
-        await db.SaveChangesAsync(cancellationToken);
-    }
-}
+//public static class DbInitializer
+//{
+//    public static async Task InitializeAsync(KaleidoTestDbContext db, CancellationToken cancellationToken = default)
+//    {
+//        await db.Database.EnsureCreatedAsync(cancellationToken);
+
+//        if (await db.Records.AnyAsync(cancellationToken))
+//        {
+//            return;
+//        }
+
+//        var records = new SampleKaleidoCsvData();
+
+//        await db.Records.AddRangeAsync(records.Records, cancellationToken);
+
+//        await db.SaveChangesAsync(cancellationToken);
+//    }
+//}

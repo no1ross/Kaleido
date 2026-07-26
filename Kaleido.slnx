@@ -1,26 +1,42 @@
 <Solution>
-  <Folder Name="/samples/">
-    <Project Path="samples/Shared/Kaleido.Samples.Shared.csproj" />
-    <Project Path="samples/SQLite/Kaleido.Samples.SQLite.csproj" />
+  <Folder Name="/shared/">
+    <Project Path="shared/Kaleido.Queryable.Shared/Kaleido.Queryable.Shared.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".dockerignore" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
+    <File Path="build/common.props" />
+    <File Path="build/packages.props" />
+    <File Path="build/samples.props" />
+    <File Path="build/tests.props" />
     <File Path="global.json" />
     <File Path="README.md" />
   </Folder>
-  <Folder Name="/src/">
-    <Project Path="src/Core.Abstractions/Kaleido.Core.Abstractions.csproj" />
-    <Project Path="src/Core.AspNetCore/Kaleido.AspNetCore.csproj" Id="3fc482b8-a2d3-4697-b628-4ec0d3cf0e8b" />
-    <Project Path="src/Core/Kaleido.Core.csproj" />
-    <Project Path="src/Queryable.Abstractions/Kaleido.Queryable.Abstractions.csproj" Id="76d48d88-2a80-4efa-acb7-4fae998a634f" />
-    <Project Path="src/Queryable/Kaleido.Queryable.csproj" />
-    <Project Path="src/Shared/Kaleido.Shared.csproj" Id="719815c5-0746-45bc-bd5d-ac3bcb017751" />
+  <Folder Name="/Solution Items/Build/">
+    <File Path="build/common.props" />
+    <File Path="build/packages.props" />
+    <File Path="build/samples.props" />
+    <File Path="build/tests.props" />
   </Folder>
-  <Folder Name="/test/">
-    <Project Path="tests/Core.UnitTests/Kaleido.Core.UnitTests.csproj" Id="d3158058-b54e-4a54-8bb0-5f324d367958" />
-    <Project Path="tests/Queryable.FunctionalTests/Kaleido.Queryable.FunctionalTests.csproj" />
-    <Project Path="tests/Queryable.UnitTests/Kaleido.Queryable.UnitTests.csproj" />
+  <Folder Name="/src/" />
+  <Folder Name="/src/Core/">
+    <Project Path="src/Core/Abstractions/Kaleido.Abstractions.csproj" />
+    <Project Path="src/Core/AspNetCore/Kaleido.AspNetCore.csproj" Id="3fc482b8-a2d3-4697-b628-4ec0d3cf0e8b" />
+    <Project Path="src/Core/Kaleido/Kaleido.csproj" />
+  </Folder>
+  <Folder Name="/src/Queryable/">
+    <Project Path="src/Queryable/Abstractions/Kaleido.Queryable.Abstractions.csproj" />
+    <Project Path="src/Queryable/AspNetCore/Kaleido.Queryable.AspNetCore.csproj" />
+    <Project Path="src/Queryable/Queryable/Kaleido.Queryable.csproj" />
+  </Folder>
+  <Folder Name="/test/" />
+  <Folder Name="/test/Core/">
+    <Project Path="tests/Core/UnitTests/Kaleido.UnitTests.csproj" Id="d3158058-b54e-4a54-8bb0-5f324d367958" />
+  </Folder>
+  <Folder Name="/test/Queryable/">
+    <Project Path="tests/Queryable/FunctionalTests/Kaleido.Queryable.FunctionalTests.csproj" />
+    <Project Path="tests/Queryable/Testing/Kaleido.Queryable.Testing.csproj" />
+    <Project Path="tests/Queryable/UnitTests/Kaleido.Queryable.UnitTests.csproj" />
   </Folder>
 </Solution>

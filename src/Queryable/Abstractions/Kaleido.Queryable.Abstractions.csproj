@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<Import Project="../../../build/packages.props" />
+	<PropertyGroup>
+		<RootNamespace>Kaleido.Queryable</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\..\Core\Abstractions\Kaleido.Abstractions.csproj" />
+	</ItemGroup>
+
+</Project>
