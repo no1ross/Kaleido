@@ -1,5 +1,8 @@
 using Kaleido.Queryable;
-using Kaleido.Shared;
+using Kaleido.Queryable.Metadata;
+using Kaleido.Queryable.Query;
+using System.Globalization;
+using SampleKaleidoRecord = Kaleido.Samples.Shared.SampleKaleidoRecord;
 
 namespace Kaleido.FunctionalTests.Infrastructure;
 
@@ -134,14 +137,14 @@ public static class FunctionalScenarios
     {
         return Scenario(
             "named-active-records",
-            data => new KaleidoQueryRequest(
-                QueryName: "active-records",
-                Query: new KaleidoQueryBody(
+            data => new QueryRequest(
+                NamedQuery: new KaleidoNamedQuery(
+                    "active-records"),
+                Query: new QueryBody(
                     Search: null,
                     Filter: null,
                     Sort: SortById(),
-                    Page: null),
-                Parameters: null),
+                    Page: null)),
             data => data
                 .Where(x => x.IsActive)
                 .OrderBy(x => x.Id)
@@ -156,17 +159,18 @@ public static class FunctionalScenarios
     {
         return Scenario(
             "named-records-by-category",
-            data => new KaleidoQueryRequest(
-                QueryName: "records-by-category",
-                Query: new KaleidoQueryBody(
+            data => new QueryRequest(
+                NamedQuery: new KaleidoNamedQuery(
+                    "records-by-category",
+                    new Dictionary<string, object?>
+                    {
+                        ["Category"] = FirstCategory(data)
+                    }),
+                Query: new QueryBody(
                     Search: null,
                     Filter: null,
                     Sort: SortById(),
-                    Page: null),
-                Parameters: new Dictionary<string, object?>
-                {
-                    ["category"] = FirstCategory(data)
-                }),
+                    Page: null)),
             data => data
                 .Where(x => x.Category == FirstCategory(data))
                 .OrderBy(x => x.Id)
@@ -181,18 +185,18 @@ public static class FunctionalScenarios
     {
         return Scenario(
             "named-high-amount-records",
-            data => new KaleidoQueryRequest(
-                QueryName: "high-amount-records",
-                Query: new KaleidoQueryBody(
+            data => new QueryRequest(
+                NamedQuery: new KaleidoNamedQuery(
+                    "high-amount-records",
+                    new Dictionary<string, object?>
+                    {
+                        ["Amount"] = MedianAmount(data)
+                    }),
+                Query: new QueryBody(
                     Search: null,
                     Filter: null,
                     Sort: SortById(),
-                    Page: null),
-                Parameters: new Dictionary<string, object?>
-                {
-                    ["minimumAmount"] = MedianAmount(data)
-                        .ToString(System.Globalization.CultureInfo.InvariantCulture)
-                }),
+                    Page: null)),
             data => data
                 .Where(x => x.Amount >= MedianAmount(data))
                 .OrderBy(x => x.Id)
@@ -207,18 +211,18 @@ public static class FunctionalScenarios
     {
         return Scenario(
             "named-effective-on",
-            data => new KaleidoQueryRequest(
-                QueryName: "effective-on",
-                Query: new KaleidoQueryBody(
+            data => new QueryRequest(
+                NamedQuery: new KaleidoNamedQuery(
+                    "effective-on",
+                    new Dictionary<string, object?>
+                    {
+                        ["EffectiveDate"] = MedianEffectiveDate(data)
+                    }),
+                Query: new QueryBody(
                     Search: null,
                     Filter: null,
                     Sort: SortById(),
-                    Page: null),
-                Parameters: new Dictionary<string, object?>
-                {
-                    ["effectiveDate"] = MedianEffectiveDate(data)
-                        .ToString("yyyy-MM-dd")
-                }),
+                    Page: null)),
             data => EffectiveOn(data)
                 .OrderBy(x => x.Id)
                 .ToList(),
@@ -236,7 +240,8 @@ public static class FunctionalScenarios
             "combined-filter-search-sort-page",
             data =>
             {
-                var seed = FirstActiveRecord(data);
+                var seed =
+                    FirstActiveRecord(data);
 
                 return Request(
                     filter: FilterGroup(
@@ -320,7 +325,7 @@ public static class FunctionalScenarios
 
     private static FunctionalScenario Scenario(
         string name,
-        Func<IReadOnlyList<SampleKaleidoRecord>, KaleidoQueryRequest> createRequest,
+        Func<IReadOnlyList<SampleKaleidoRecord>, QueryRequest> createRequest,
         Func<IReadOnlyList<SampleKaleidoRecord>, IReadOnlyList<SampleKaleidoRecord>> expectedUnpaged,
         Func<IReadOnlyList<SampleKaleidoRecord>, IReadOnlyList<SampleKaleidoRecord>> expectedPaged)
     {
@@ -331,20 +336,18 @@ public static class FunctionalScenarios
             expectedPaged);
     }
 
-    private static KaleidoQueryRequest Request(
+    private static QueryRequest Request(
         QuerySearchNode? search = null,
         QueryFilterNode? filter = null,
         IReadOnlyList<QuerySort>? sort = null,
         QueryPage? page = null)
     {
-        return new KaleidoQueryRequest(
-            QueryName: null,
-            Query: new KaleidoQueryBody(
+        return new QueryRequest(
+            Query: new QueryBody(
                 Search: search,
                 Filter: filter,
                 Sort: sort,
-                Page: page),
-            Parameters: null);
+                Page: page));
     }
 
     private static QueryFilterNode FilterCondition(
@@ -352,23 +355,19 @@ public static class FunctionalScenarios
         FilterOperator @operator,
         params object?[] values)
     {
-        return new QueryFilterNode(
-            Condition: new QueryFilterCondition(
-                Field: field,
-                Operator: @operator,
-                Values: values.ToList()),
-            Group: null);
+        return QueryFilterNode.CreateCondition(
+            field,
+            @operator,
+            values);
     }
 
     private static QueryFilterNode FilterGroup(
         LogicalOperator @operator,
         params QueryFilterNode[] filters)
     {
-        return new QueryFilterNode(
-            Condition: null,
-            Group: new QueryFilterGroup(
-                Operator: @operator,
-                Filters: filters.ToList()));
+        return QueryFilterNode.CreateGroup(
+            @operator,
+            filters);
     }
 
     private static QuerySearchNode SearchCondition(
@@ -376,12 +375,10 @@ public static class FunctionalScenarios
         MatchMode matchMode,
         string? field = null)
     {
-        return new QuerySearchNode(
-            Condition: new QuerySearchCondition(
-                SearchText: searchText,
-                MatchMode: matchMode,
-                Field: field),
-            Group: null);
+        return QuerySearchNode.CreateCondition(
+            searchText,
+            matchMode,
+            field);
     }
 
     private static IReadOnlyList<QuerySort> SortById()
@@ -423,10 +420,11 @@ public static class FunctionalScenarios
     private static decimal MedianAmount(
         IReadOnlyList<SampleKaleidoRecord> data)
     {
-        var values = data
-            .Select(x => x.Amount)
-            .OrderBy(x => x)
-            .ToArray();
+        var values =
+            data
+                .Select(x => x.Amount)
+                .OrderBy(x => x)
+                .ToArray();
 
         return values[values.Length / 2];
     }
@@ -434,10 +432,11 @@ public static class FunctionalScenarios
     private static DateOnly MedianEffectiveDate(
         IReadOnlyList<SampleKaleidoRecord> data)
     {
-        var values = data
-            .Select(x => x.EffectiveDate)
-            .OrderBy(x => x)
-            .ToArray();
+        var values =
+            data
+                .Select(x => x.EffectiveDate)
+                .OrderBy(x => x)
+                .ToArray();
 
         return values[values.Length / 2];
     }

@@ -1,4 +1,5 @@
-using Kaleido.Shared;
+
+using Kaleido.Samples.Shared;
 
 namespace Kaleido.FunctionalTests.Infrastructure;
 

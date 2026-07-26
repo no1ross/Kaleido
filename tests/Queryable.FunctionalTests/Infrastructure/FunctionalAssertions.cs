@@ -1,4 +1,4 @@
-using Kaleido.Shared;
+using Kaleido.Samples.Shared;
 using Xunit;
 
 namespace Kaleido.FunctionalTests.Infrastructure;
@@ -10,20 +10,35 @@ public static class FunctionalAssertions
         IReadOnlyList<SampleKaleidoRecord> allRecords,
         FunctionalQueryResult actual)
     {
-        var expectedUnpaged = scenario.ExpectedUnpaged(allRecords);
-        var expectedPaged = scenario.ExpectedPaged(allRecords);
+        var expectedUnpaged =
+            scenario.ExpectedUnpaged(allRecords);
 
-        Assert.Equal(expectedUnpaged.Count, actual.TotalCount);
-        Assert.Equal(expectedPaged.Count, actual.Items.Count);
-        Assert.Equal(expectedPaged.Select(x => x.Id), actual.Items.Select(x => x.Id));
+        var expectedPaged =
+            scenario.ExpectedPaged(allRecords);
+
+        Assert.Equal(
+            expectedUnpaged.Count,
+            actual.TotalCount);
+
+        Assert.Equal(
+            expectedPaged.Count,
+            actual.Items.Count);
+
+        Assert.Equal(
+            expectedPaged.Select(x => x.Id),
+            actual.Items.Select(x => x.Id));
 
         for (var i = 0; i < expectedPaged.Count; i++)
         {
-            AssertEquivalentRecord(expectedPaged[i], actual.Items[i]);
+            AssertEquivalentRecord(
+                expectedPaged[i],
+                actual.Items[i]);
         }
     }
 
-    private static void AssertEquivalentRecord(SampleKaleidoRecord expected, SampleKaleidoRecord actual)
+    private static void AssertEquivalentRecord(
+        SampleKaleidoRecord expected,
+        SampleKaleidoRecord actual)
     {
         Assert.Equal(expected.Id, actual.Id);
         Assert.Equal(expected.ExternalId, actual.ExternalId);

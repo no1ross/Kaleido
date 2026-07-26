@@ -1,5 +1,6 @@
 using Kaleido.Queryable;
-using Kaleido.Shared;
+using Kaleido.Queryable.Query;
+using Kaleido.Samples.Shared;
 
 namespace Kaleido.FunctionalTests.Infrastructure;
 
@@ -7,7 +8,7 @@ public sealed class FunctionalScenario
 {
     public FunctionalScenario(
         string name,
-        Func<IReadOnlyList<SampleKaleidoRecord>, KaleidoQueryRequest> createRequest,
+        Func<IReadOnlyList<SampleKaleidoRecord>, QueryRequest> createRequest,
         Func<IReadOnlyList<SampleKaleidoRecord>, IReadOnlyList<SampleKaleidoRecord>> expectedUnpaged,
         Func<IReadOnlyList<SampleKaleidoRecord>, IReadOnlyList<SampleKaleidoRecord>> expectedPaged)
     {
@@ -18,9 +19,13 @@ public sealed class FunctionalScenario
     }
 
     public string Name { get; }
-    public Func<IReadOnlyList<SampleKaleidoRecord>, KaleidoQueryRequest> CreateRequest { get; }
+
+    public Func<IReadOnlyList<SampleKaleidoRecord>, QueryRequest> CreateRequest { get; }
+
     public Func<IReadOnlyList<SampleKaleidoRecord>, IReadOnlyList<SampleKaleidoRecord>> ExpectedUnpaged { get; }
+
     public Func<IReadOnlyList<SampleKaleidoRecord>, IReadOnlyList<SampleKaleidoRecord>> ExpectedPaged { get; }
 
-    public override string ToString() => Name;
+    public override string ToString()
+        => Name;
 }

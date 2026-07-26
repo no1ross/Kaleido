@@ -1,7 +1,10 @@
 ﻿using Kaleido.FunctionalTests.Hosting;
 using Kaleido.FunctionalTests.Infrastructure;
 using Kaleido.Queryable;
-using Kaleido.Shared;
+using Kaleido.Queryable.Query;
+using Kaleido.Queryable.Records;
+using Kaleido.Queryable.Runtime;
+using Kaleido.Samples.Shared;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -33,22 +36,22 @@ namespace Kaleido.FunctionalTests.Fixtures
                             services.AddSingleton<SampleKaleidoCsvData>();
 
                             services.AddKaleido()
-                            .AddAssembly(typeof(SampleKaleidoRecord).Assembly)
-                            .AddAssembly(typeof(SampleKaleidoRecordSource).Assembly)
-                            .AddAssembly(typeof(ActiveRecordsQuery).Assembly)
-                            .AddQueryable(options =>
-                            {
-                                options.ValidateRegistrations = true;
-                            });
+                                .AddAssembly(typeof(SampleKaleidoRecord).Assembly)
+                                .AddAssembly(typeof(SampleKaleidoRecordSource).Assembly)
+                                .AddAssembly(typeof(ActiveRecordsQuery).Assembly)
+                                .AddQueryable(options =>
+                                {
+                                    options.ValidateRegistrations = true;
+                                });
 
                             services.AddControllers()
-                            .AddJsonOptions(options => 
-                            {
-                                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()); 
-
-                                Console.WriteLine($"Converters: {options.JsonSerializerOptions.Converters.Count}"); 
-                            })
-                                .AddApplicationPart(typeof(KaleidoRecordController).Assembly);
+                                .AddJsonOptions(options =>
+                                {
+                                    options.JsonSerializerOptions.Converters
+                                        .Add(new JsonStringEnumConverter());
+                                })
+                                .AddApplicationPart(
+                                    typeof(KaleidoRecordController).Assembly);
                         });
 
                         webBuilder.Configure(app =>
@@ -62,6 +65,21 @@ namespace Kaleido.FunctionalTests.Fixtures
                         });
                     })
                     .Start();
+
+            using var scope =
+                _host.Services.CreateScope();
+
+            _ = scope.ServiceProvider
+                .GetRequiredService<IQueryableCatalog>();
+
+            _ = scope.ServiceProvider
+                .GetRequiredService<IRecordDispatcher>();
+
+            _ = scope.ServiceProvider
+                .GetRequiredService<IRecordRegistry>();
+
+            _ = scope.ServiceProvider
+                .GetRequiredService<IRecordQueryEngine<SampleKaleidoRecord>>();
         }
 
         public HttpClient Client =>

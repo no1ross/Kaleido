@@ -1,19 +1,21 @@
-using Kaleido.Queryable;
-using Kaleido.Shared;
+using Kaleido.Queryable.Records;
+using Kaleido.Samples.Shared;
 
 namespace Kaleido.FunctionalTests.Infrastructure;
 
 public sealed class SampleKaleidoRecordSource
-    : IQueryableRecordSource<SampleKaleidoRecord>
+    : IRecordSource<SampleKaleidoRecord>
 {
     private readonly SampleKaleidoCsvData _data;
 
-    public SampleKaleidoRecordSource(SampleKaleidoCsvData data)
+    public SampleKaleidoRecordSource(
+        SampleKaleidoCsvData data)
     {
         _data = data;
     }
 
-    public IQueryable<SampleKaleidoRecord> CreateQuery(RecordExecutionContext context)
+    public IQueryable<SampleKaleidoRecord> CreateQuery(
+        RecordExecutionContext executionContext)
     {
         return _data.Records.AsQueryable();
     }
