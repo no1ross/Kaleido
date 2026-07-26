@@ -11,37 +11,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <Compile Remove="Extensions\**" />
-	  <Compile Remove="Metadata\**" />
-	  <Compile Remove="Querable\**" />
-	  <Compile Remove="Registry\**" />
-	  <EmbeddedResource Remove="Extensions\**" />
-	  <EmbeddedResource Remove="Metadata\**" />
-	  <EmbeddedResource Remove="Querable\**" />
-	  <EmbeddedResource Remove="Registry\**" />
-	  <None Remove="Extensions\**" />
-	  <None Remove="Metadata\**" />
-	  <None Remove="Querable\**" />
-	  <None Remove="Registry\**" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Compile Remove="QueryableTestFixture.cs" />
-	  <Compile Remove="RecordDescriptorFactoryTests.cs" />
-	  <Compile Remove="RecordDispatcherTests.cs" />
-	  <Compile Remove="RecordMetadataCatalogTests.cs" />
-	  <Compile Remove="RecordQueryCompilerTests.cs" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<Compile Include="..\..\shared\SampleKaleidoCsvData.cs" Link="SampleKaleidoCsvData.cs" />
-		<Compile Include="..\..\shared\SampleKaleidoNamedQueries.cs" Link="SampleKaleidoNamedQueries.cs" />
-		<Compile Include="..\..\shared\SampleKaleidoRecord.cs" Link="SampleKaleidoRecord.cs" />
-		<Compile Include="Registry\RecordRegistrationValidatorTests.cs" />
-		<Compile Include="Registry\RecordRegistryTests.cs" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<PackageReference Include="coverlet.collector" Version="6.0.4">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

@@ -7,7 +7,7 @@ namespace Kaleido.Queryable.Attributes;
 public sealed class NamedQueryAttribute : Attribute
 {
     /// <summary>Creates allowed-query metadata.</summary>
-    /// <param name="name">Named-query key accepted by <see cref="KaleidoQueryRequest.QueryName"/>.</param>
+    /// <param name="name">Named-query key accepted by <see cref="QueryRequest.QueryName"/>.</param>
     /// <param name="description">Short description of what the named query returns.</param>
     public NamedQueryAttribute(string name, string description)
     {

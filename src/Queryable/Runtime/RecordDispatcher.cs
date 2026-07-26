@@ -9,17 +9,18 @@ public sealed class RecordDispatcher : IRecordDispatcher
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IRecordRegistry _registry;
 
-    public RecordDispatcher(
-        IServiceScopeFactory scopeFactory,
-        IRecordRegistry registry)
+    public RecordDispatcher(IServiceScopeFactory scopeFactory, IRecordRegistry registry)
     {
+        ArgumentNullException.ThrowIfNull(scopeFactory);
+        ArgumentNullException.ThrowIfNull(registry);
+
         _scopeFactory = scopeFactory;
         _registry = registry;
     }
 
-    public async Task<KaleidoQueryResponse<TRecord>> DispatchAsync<TRecord>(
+    public async Task<QueryResponse<TRecord>> DispatchAsync<TRecord>(
         string recordKey,
-        KaleidoQueryRequest request,
+        QueryRequest request,
         CancellationToken cancellationToken = default)
         where TRecord : class
     {
@@ -42,7 +43,7 @@ public sealed class RecordDispatcher : IRecordDispatcher
                 request,
                 cancellationToken);
 
-        return new KaleidoQueryResponse<TRecord>(
+        return new QueryResponse<TRecord>(
             result.RuntimeMetadata,
             result.TotalCount,
             result.Items);

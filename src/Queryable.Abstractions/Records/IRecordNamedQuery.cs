@@ -3,7 +3,7 @@ using Kaleido.Queryable.Query;
 
 namespace Kaleido.Queryable.Records;
 
-public interface IQueryableRecordNamedQuery<TRecord> where TRecord : class
+public interface IRecordNamedQuery<TRecord> where TRecord : class
 {
     IQueryable<TRecord> Apply(IQueryable<TRecord> query, KaleidoNamedQuery NamedQuery);
 }

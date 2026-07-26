@@ -8,7 +8,7 @@ namespace Kaleido.Samples.Shared;
     "active-records",
     "Returns only active records.")]
 public sealed class ActiveRecordsQuery :
-    IQueryableRecordNamedQuery<SampleKaleidoRecord>
+    IRecordNamedQuery<SampleKaleidoRecord>
 {
     public IQueryable<SampleKaleidoRecord> Apply(
         IQueryable<SampleKaleidoRecord> query,
@@ -27,7 +27,7 @@ public sealed class ActiveRecordsQuery :
     Required = true,
     Description = "The category to filter records by.")]
 public sealed class RecordsByCategoryQuery :
-    IQueryableRecordNamedQuery<SampleKaleidoRecord>
+    IRecordNamedQuery<SampleKaleidoRecord>
 {
     public IQueryable<SampleKaleidoRecord> Apply(
         IQueryable<SampleKaleidoRecord> query,
@@ -58,7 +58,7 @@ public sealed class RecordsByCategoryQuery :
     DefaultValue = 100d,
     Description = "Minimum amount that a record must have.")]
 public sealed class HighAmountRecordsQuery :
-    IQueryableRecordNamedQuery<SampleKaleidoRecord>
+    IRecordNamedQuery<SampleKaleidoRecord>
 {
     public IQueryable<SampleKaleidoRecord> Apply(
         IQueryable<SampleKaleidoRecord> query,
@@ -86,7 +86,7 @@ public sealed class HighAmountRecordsQuery :
     Required = true,
     Description = "The date to filter records by.")]
 public sealed class EffectiveOnQuery :
-    IQueryableRecordNamedQuery<SampleKaleidoRecord>
+    IRecordNamedQuery<SampleKaleidoRecord>
 {
     public IQueryable<SampleKaleidoRecord> Apply(
         IQueryable<SampleKaleidoRecord> query,

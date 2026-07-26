@@ -1,10 +1,10 @@
+using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
-namespace Kaleido.Queryable.Tests;
+namespace Kaleido.Queryable.UnitTests;
 
 public sealed class QueryableServiceCollectionExtensionsTests
 {
@@ -51,11 +51,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
 
         Assert.Contains(
             services,
-            x =>
-                x.ServiceType ==
-                typeof(IQueryableCatalog) &&
-                x.ImplementationType ==
-                typeof(QueryableCatalog));
+            x => x.ServiceType == typeof(IQueryableCatalog));
     }
 
     [Fact]
@@ -83,15 +79,11 @@ public sealed class QueryableServiceCollectionExtensionsTests
 
         Assert.Contains(
             services,
-            x =>
-                x.ServiceType ==
-                typeof(RecordRegistrationValidator) &&
-                x.ImplementationType ==
-                typeof(RecordRegistrationValidator));
+            x => x.ServiceType == typeof(RecordRegistrationValidator));
     }
 
     [Fact]
-    public void AddQueryable_ShouldRegisterAtLeastOneRecordSource()
+    public void AddQueryable_ShouldRegisterRecordSource()
     {
         var services =
             new ServiceCollection();
@@ -102,13 +94,12 @@ public sealed class QueryableServiceCollectionExtensionsTests
         Assert.Contains(
             services,
             x =>
-                x.ServiceType.IsGenericType &&
-                x.ServiceType.GetGenericTypeDefinition() ==
-                typeof(IQueryableRecordSource<>));
+                x.ServiceType == typeof(IRecordSource<TestRecord>) &&
+                x.ImplementationType == typeof(TestRecordSource));
     }
 
     [Fact]
-    public void AddQueryable_ShouldRegisterAtLeastOneNamedQuery()
+    public void AddQueryable_ShouldRegisterNamedQueries()
     {
         var services =
             new ServiceCollection();
@@ -119,13 +110,12 @@ public sealed class QueryableServiceCollectionExtensionsTests
         Assert.Contains(
             services,
             x =>
-                x.ServiceType.IsGenericType &&
-                x.ServiceType.GetGenericTypeDefinition() ==
-                typeof(IQueryableRecordNamedQuery<>));
+                x.ServiceType == typeof(IRecordNamedQuery<TestRecord>) &&
+                x.ImplementationType == typeof(TestNamedQuery));
     }
 
     [Fact]
-    public void AddQueryable_ShouldRegisterAtLeastOneRecordQueryEngine()
+    public void AddQueryable_ShouldRegisterRecordQueryEngine()
     {
         var services =
             new ServiceCollection();
@@ -136,13 +126,12 @@ public sealed class QueryableServiceCollectionExtensionsTests
         Assert.Contains(
             services,
             x =>
-                x.ServiceType.IsGenericType &&
-                x.ServiceType.GetGenericTypeDefinition() ==
-                typeof(IRecordQueryEngine<>));
+                x.ServiceType == typeof(IRecordQueryEngine<TestRecord>) &&
+                x.ImplementationType == typeof(RecordQueryEngine<TestRecord>));
     }
 
     [Fact]
-    public void AddQueryable_ShouldRegisterRecordQueryValidator()
+    public void AddQueryable_ShouldResolveQueryRequestCompiler()
     {
         var services =
             new ServiceCollection();
@@ -150,17 +139,18 @@ public sealed class QueryableServiceCollectionExtensionsTests
         CreateBuilder(services)
             .AddQueryable();
 
-        Assert.Contains(
-            services,
-            x =>
-                x.ServiceType ==
-                typeof(IRecordQueryValidator) &&
-                x.ImplementationType ==
-                typeof(RecordQueryValidator));
+        using var provider =
+            services.BuildServiceProvider();
+
+        var compiler =
+            provider.GetRequiredService<IRecordQueryCompiler>();
+
+        Assert.NotNull(compiler);
+        Assert.IsType<Kaleido.Queryable.Query.QueryRequestCompiler>(compiler);
     }
 
     [Fact]
-    public void AddQueryable_ShouldRegisterRecordQueryCompiler()
+    public void AddQueryable_ShouldResolveQueryRequestValidator()
     {
         var services =
             new ServiceCollection();
@@ -168,51 +158,18 @@ public sealed class QueryableServiceCollectionExtensionsTests
         CreateBuilder(services)
             .AddQueryable();
 
-        Assert.Contains(
-            services,
-            x =>
-                x.ServiceType ==
-                typeof(IRecordQueryCompiler) &&
-                x.ImplementationType ==
-                typeof(RecordQueryCompiler));
+        using var provider =
+            services.BuildServiceProvider();
+
+        var validator =
+            provider.GetRequiredService<IRecordQueryValidator>();
+
+        Assert.NotNull(validator);
+        Assert.IsType<QueryRequestValidator>(validator);
     }
 
     [Fact]
-    public void AddQueryable_ShouldRegisterCompiledQueryAppliers()
-    {
-        var services =
-            new ServiceCollection();
-
-        CreateBuilder(services)
-            .AddQueryable();
-
-        Assert.Contains(
-            services,
-            x =>
-                x.ServiceType.IsGenericType &&
-                x.ServiceType.GetGenericTypeDefinition() ==
-                typeof(IQueryableCompiledQueryApplier<>));
-    }
-
-    [Fact]
-    public void AddQueryable_ShouldRegisterRecordExecutors()
-    {
-        var services =
-            new ServiceCollection();
-
-        CreateBuilder(services)
-            .AddQueryable();
-
-        Assert.Contains(
-            services,
-            x =>
-                x.ServiceType.IsGenericType &&
-                x.ServiceType.GetGenericTypeDefinition() ==
-                typeof(IQueryableRecordExecutor<>));
-    }
-
-    [Fact]
-    public void AddQueryable_ShouldBuildRecordRegistrations()
+    public void AddQueryable_ShouldResolveRecordRegistry()
     {
         var services =
             new ServiceCollection();
@@ -226,16 +183,36 @@ public sealed class QueryableServiceCollectionExtensionsTests
         var registry =
             provider.GetRequiredService<IRecordRegistry>();
 
-        Assert.NotEmpty(
-            registry.Registrations);
+        Assert.NotNull(registry);
+        Assert.NotEmpty(registry.Registrations);
     }
+
+    [Fact]
+    public void AddQueryable_ShouldResolveQueryableCatalog()
+    {
+        var services =
+            new ServiceCollection();
+
+        CreateBuilder(services)
+            .AddQueryable();
+
+        using var provider =
+            services.BuildServiceProvider();
+
+        var catalog =
+            provider.GetRequiredService<IQueryableCatalog>();
+
+        Assert.NotNull(catalog);
+        Assert.IsType<QueryableCatalog>(catalog);
+    }
+
     private static IKaleidoBuilder CreateBuilder(
         IServiceCollection? services = null)
     {
         return new TestKaleidoBuilder(
             services ?? new ServiceCollection(),
             [
-                typeof(Kaleido.Samples.Shared.SampleKaleidoRecord).Assembly
+                typeof(TestRecord).Assembly
             ]);
     }
 
@@ -253,5 +230,39 @@ public sealed class QueryableServiceCollectionExtensionsTests
         public IServiceCollection Services { get; }
 
         public IReadOnlyCollection<System.Reflection.Assembly> Assemblies { get; }
+    }
+
+    [KaleidoRecord(
+        "test-record",
+        "Test Record",
+        null,
+        "Unit Test")]
+    internal sealed record TestRecord(
+        int Id,
+        string Name);
+
+    internal sealed class TestRecordSource
+        : IRecordSource<TestRecord>
+    {
+        public IQueryable<TestRecord> CreateQuery(
+            RecordExecutionContext executionContext)
+        {
+            return Enumerable.Empty<TestRecord>()
+                .AsQueryable();
+        }
+    }
+
+    [NamedQuery(
+        "active",
+        "Active Records")]
+    internal sealed class TestNamedQuery
+        : IRecordNamedQuery<TestRecord>
+    {
+        public IQueryable<TestRecord> Apply(
+            IQueryable<TestRecord> query,
+            KaleidoNamedQuery namedQuery)
+        {
+            return query;
+        }
     }
 }

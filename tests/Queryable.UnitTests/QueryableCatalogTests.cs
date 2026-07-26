@@ -4,7 +4,7 @@ using Kaleido.Queryable.Runtime;
 using Moq;
 using Xunit;
 
-namespace Kaleido.Queryable.Tests;
+namespace Kaleido.Queryable.UnitTests;
 
 public sealed class QueryableCatalogTests
 {
@@ -64,10 +64,10 @@ public sealed class QueryableCatalogTests
             new Mock<IRecordDispatcher>();
 
         var request =
-            new KaleidoQueryRequest();
+            new QueryRequest();
 
         var response =
-            new KaleidoQueryResponse<TestRecord>(
+            new QueryResponse<TestRecord>(
                 new RecordMetadata(
                     "test-record",
                     "Test Record",
@@ -120,13 +120,13 @@ public sealed class QueryableCatalogTests
             new Mock<IRecordDispatcher>();
 
         var request =
-            new KaleidoQueryRequest();
+            new QueryRequest();
 
         var cancellationToken =
             new CancellationTokenSource().Token;
 
         var response =
-            new KaleidoQueryResponse<TestRecord>(
+            new QueryResponse<TestRecord>(
                 new RecordMetadata(
                     "test-record",
                     "Test Record",

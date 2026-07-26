@@ -19,6 +19,6 @@
     public interface IRecordQueryEngine<TRecord>
             where TRecord : class
     {
-        Task<QueryResult<TRecord>> ExecuteAsync(KaleidoQueryRequest request, CancellationToken cancellationToken = default);
+        Task<QueryResult<TRecord>> ExecuteAsync(QueryRequest request, CancellationToken cancellationToken = default);
     }
 }

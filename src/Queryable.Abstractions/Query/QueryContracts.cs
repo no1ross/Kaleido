@@ -3,13 +3,13 @@ using Kaleido.Queryable.Metadata;
 namespace Kaleido.Queryable.Query;
 
 /// <summary>Value-set query request.</summary>
-public record KaleidoQueryRequest
+public record QueryRequest
 (
     KaleidoNamedQuery? NamedQuery = null,
-    KaleidoQueryBody? Query = null
+    QueryBody? Query = null
 );
 
-public record KaleidoQueryBody
+public record QueryBody
 (
     QuerySearchNode? Search = null,
     QueryFilterNode? Filter = null,
@@ -153,26 +153,8 @@ public record QueryPage(
 public sealed record QueryResult<TRecord>(IReadOnlyList<TRecord> Items, int TotalCount, RecordMetadata RuntimeMetadata)
     where TRecord : class;
 
-public sealed record KaleidoQueryResponse<TRecord>(
+public sealed record QueryResponse<TRecord>(
     RecordMetadata Metadata,
     int TotalCount,
     IReadOnlyList<TRecord> Items)
     where TRecord : class;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

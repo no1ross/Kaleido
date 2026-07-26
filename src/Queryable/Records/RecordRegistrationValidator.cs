@@ -63,7 +63,7 @@ internal sealed class RecordRegistrationValidator
         IServiceCollection services)
     {
         var queryInterface =
-            typeof(IQueryableRecordNamedQuery<>)
+            typeof(IRecordNamedQuery<>)
                 .MakeGenericType(recordType);
 
         var duplicates =

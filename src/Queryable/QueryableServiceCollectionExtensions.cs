@@ -85,14 +85,15 @@ public static class QueryableServiceCollectionExtensions
 
     private static void RegisterFrameworkServices(IServiceCollection services)
     {
-        services.TryAddSingleton<IRecordQueryValidator, RecordQueryValidator>();
-        services.TryAddSingleton<IRecordQueryCompiler, RecordQueryCompiler>();
+        services.TryAddSingleton<IRecordQueryValidator, QueryRequestValidator>();
+        services.TryAddSingleton<IRecordQueryCompiler, QueryRequestCompiler>();
+        services.TryAddSingleton<IRecordDispatcher, RecordDispatcher>();
 
         services.TryAddScoped<IQueryableCatalog, QueryableCatalog>();
 
-        services.TryAddSingleton(typeof(IQueryableCompiledQueryApplier<>), typeof(QueryableCompiledQueryApplier<>));
+        services.TryAddSingleton(typeof(ICompiledQueryApplier<>), typeof(CompiledQueryApplier<>));
 
-        services.TryAddSingleton(typeof(IQueryableRecordExecutor<>), typeof(QueryableRecordExecutor<>));
+        services.TryAddSingleton(typeof(IRecordExecutor<>), typeof(RecordExecutor<>));
     }
 
     private static void RegisterRecord(IServiceCollection services, Type recordType, IReadOnlyCollection<Type> types)
@@ -110,11 +111,11 @@ public static class QueryableServiceCollectionExtensions
                     .Any(i =>
                         i.IsGenericType &&
                         i.GetGenericTypeDefinition() ==
-                        typeof(IQueryableRecordSource<>) &&
+                        typeof(IRecordSource<>) &&
                         i.GenericTypeArguments[0] == recordType));
 
         var sourceInterface =
-            typeof(IQueryableRecordSource<>)
+            typeof(IRecordSource<>)
                 .MakeGenericType(recordType);
 
         services.TryAddScoped(
@@ -125,14 +126,14 @@ public static class QueryableServiceCollectionExtensions
             ServiceDescriptor.Scoped(
                 typeof(IRecordQueryEngine<>)
                     .MakeGenericType(recordType),
-                typeof(QueryableRecordQueryEngine<>)
+                typeof(RecordQueryEngine<>)
                     .MakeGenericType(recordType)));
     }
 
     private static void RegisterNamedQueries(IServiceCollection services, Type recordType, IEnumerable<Type> types)
     {
         var queryInterface =
-            typeof(IQueryableRecordNamedQuery<>)
+            typeof(IRecordNamedQuery<>)
                 .MakeGenericType(recordType);
 
         var queries =
@@ -141,7 +142,7 @@ public static class QueryableServiceCollectionExtensions
                     .Any(i =>
                         i.IsGenericType &&
                         i.GetGenericTypeDefinition() ==
-                        typeof(IQueryableRecordNamedQuery<>) &&
+                        typeof(IRecordNamedQuery<>) &&
                         i.GenericTypeArguments[0] == recordType));
 
         foreach (var query in queries)

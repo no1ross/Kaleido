@@ -106,7 +106,7 @@ public sealed class RecordRegistry : IRecordRegistry
         Type recordType)
     {
         var sourceInterface =
-            typeof(IQueryableRecordSource<>)
+            typeof(IRecordSource<>)
                 .MakeGenericType(recordType);
 
         var source =
@@ -124,7 +124,7 @@ public sealed class RecordRegistry : IRecordRegistry
             Type recordType)
     {
         var queryInterface =
-            typeof(IQueryableRecordNamedQuery<>)
+            typeof(IRecordNamedQuery<>)
                 .MakeGenericType(recordType);
 
         return services

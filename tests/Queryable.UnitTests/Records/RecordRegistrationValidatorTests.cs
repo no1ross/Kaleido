@@ -4,7 +4,7 @@ using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Kaleido.Queryable.Tests.Registry;
+namespace Kaleido.Queryable.UnitTests.Records;
 
 public sealed class RecordRegistrationValidatorTests
 {
@@ -34,7 +34,7 @@ public sealed class RecordRegistrationValidatorTests
         var services = new ServiceCollection();
 
         services.AddScoped<
-            IQueryableRecordNamedQuery<TestRecord>,
+            IRecordNamedQuery<TestRecord>,
             ActiveQuery>();
 
         _validator.Validate(
@@ -86,11 +86,11 @@ public sealed class RecordRegistrationValidatorTests
         var services = new ServiceCollection();
 
         services.AddScoped<
-            IQueryableRecordNamedQuery<TestRecord>,
+            IRecordNamedQuery<TestRecord>,
             ActiveQuery>();
 
         services.AddScoped<
-            IQueryableRecordNamedQuery<TestRecord>,
+            IRecordNamedQuery<TestRecord>,
             DuplicateActiveQuery>();
 
         var exception =
@@ -110,11 +110,11 @@ public sealed class RecordRegistrationValidatorTests
         var services = new ServiceCollection();
 
         services.AddScoped<
-            IQueryableRecordNamedQuery<TestRecord>,
+            IRecordNamedQuery<TestRecord>,
             ActiveQuery>();
 
         services.AddScoped<
-            IQueryableRecordNamedQuery<TestRecord>,
+            IRecordNamedQuery<TestRecord>,
             LowerCaseActiveQuery>();
 
         var exception =
@@ -134,11 +134,11 @@ public sealed class RecordRegistrationValidatorTests
         var services = new ServiceCollection();
 
         services.AddScoped<
-            IQueryableRecordNamedQuery<TestRecord>,
+            IRecordNamedQuery<TestRecord>,
             ActiveQuery>();
 
         services.AddScoped<
-            IQueryableRecordNamedQuery<TestRecord>,
+            IRecordNamedQuery<TestRecord>,
             ByCategoryQuery>();
 
         _validator.Validate(
@@ -181,7 +181,7 @@ public sealed class RecordRegistrationValidatorTests
         "active",
         "Active Records")]
     private sealed class ActiveQuery
-        : IQueryableRecordNamedQuery<TestRecord>
+        : IRecordNamedQuery<TestRecord>
     {
         public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
         {
@@ -193,7 +193,7 @@ public sealed class RecordRegistrationValidatorTests
         "active",
         "Duplicate Active Records")]
     private sealed class DuplicateActiveQuery
-        : IQueryableRecordNamedQuery<TestRecord>
+        : IRecordNamedQuery<TestRecord>
     {
         public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
         {
@@ -205,7 +205,7 @@ public sealed class RecordRegistrationValidatorTests
         "ACTIVE",
         "Duplicate Active Records")]
     private sealed class LowerCaseActiveQuery
-        : IQueryableRecordNamedQuery<TestRecord>
+        : IRecordNamedQuery<TestRecord>
     {
         public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
         {
@@ -217,7 +217,7 @@ public sealed class RecordRegistrationValidatorTests
         "by-category",
         "By Category")]
     private sealed class ByCategoryQuery
-        : IQueryableRecordNamedQuery<TestRecord>
+        : IRecordNamedQuery<TestRecord>
     {
         public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
         {

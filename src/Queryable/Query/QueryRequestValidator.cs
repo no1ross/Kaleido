@@ -2,10 +2,10 @@ using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Query;
 
-public sealed class RecordQueryValidator : IRecordQueryValidator
+public sealed class QueryRequestValidator : IRecordQueryValidator
 {
     public void Validate(
-        KaleidoQueryRequest request,
+        QueryRequest request,
         RecordRegistration registration)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -33,7 +33,7 @@ public sealed class RecordQueryValidator : IRecordQueryValidator
     }
 
     private static void ValidateNamedQuery(
-        KaleidoQueryRequest request,
+        QueryRequest request,
         RecordRegistration registration)
     {
         if (request.NamedQuery is null ||

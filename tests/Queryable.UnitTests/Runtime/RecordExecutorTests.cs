@@ -1,14 +1,15 @@
-using Kaleido.Queryable.Queryable;
+
+using Kaleido.Queryable.Runtime;
 
 namespace Kaleido.UnitTests.Queryable;
 
-public sealed class QueryableRecordExecutorTests
+public sealed class RecordExecutorTests
 {
-    private readonly QueryableRecordExecutor<TestRecord> _sut;
+    private readonly RecordExecutor<TestRecord> _sut;
 
-    public QueryableRecordExecutorTests()
+    public RecordExecutorTests()
     {
-        _sut = new QueryableRecordExecutor<TestRecord>();
+        _sut = new RecordExecutor<TestRecord>();
     }
 
     [Fact]

@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace Kaleido.Queryable.Runtime;
 
-public sealed class QueryableCompiledQueryApplier<TRecord> : IQueryableCompiledQueryApplier<TRecord>
+public sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRecord>
     where TRecord : class
 {
     public IQueryable<TRecord> ApplyFilter(
@@ -68,7 +68,7 @@ public sealed class QueryableCompiledQueryApplier<TRecord> : IQueryableCompiledQ
             CompiledFilterGroup group =>
                 BuildGroup(
                     group.Operator,
-                    group.Expressions
+                    group.Filters
                         .Select(x => BuildFilter(parameter, x))
                         .ToArray()),
 
@@ -89,7 +89,7 @@ public sealed class QueryableCompiledQueryApplier<TRecord> : IQueryableCompiledQ
             CompiledSearchGroup group =>
                 BuildGroup(
                     group.Operator,
-                    group.Expressions
+                    group.Searches
                         .Select(x => BuildSearch(parameter, x))
                         .ToArray()),
 
@@ -485,12 +485,21 @@ public sealed class QueryableCompiledQueryApplier<TRecord> : IQueryableCompiledQ
             return null;
         }
 
-        var nullableType = Nullable.GetUnderlyingType(targetType);
-        var effectiveType = nullableType ?? targetType;
+        var nullableType =
+            Nullable.GetUnderlyingType(targetType);
+
+        var effectiveType =
+            nullableType ?? targetType;
+
+        if (effectiveType.IsAssignableFrom(value.GetType()))
+        {
+            return value;
+        }
 
         if (effectiveType.IsEnum)
         {
-            var stringValue = value.ToString();
+            var stringValue =
+                value.ToString();
 
             if (EnumExtensions.TryParseFromDescription(
                     effectiveType,
@@ -555,6 +564,14 @@ public sealed class QueryableCompiledQueryApplier<TRecord> : IQueryableCompiledQ
                 : bool.Parse(value.ToString()!);
         }
 
-        return QueryValueConverter.ConvertTo(value, effectiveType);
+        if (effectiveType == typeof(string))
+        {
+            return value.ToString();
+        }
+
+        return Convert.ChangeType(
+            value,
+            effectiveType,
+            System.Globalization.CultureInfo.InvariantCulture);
     }
 }

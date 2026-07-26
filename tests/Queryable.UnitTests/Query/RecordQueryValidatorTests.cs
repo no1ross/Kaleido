@@ -2,11 +2,11 @@ using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 using Xunit;
 
-namespace Kaleido.Queryable.Tests.Validation;
+namespace Kaleido.Queryable.UnitTests.Query;
 
 public sealed class RecordQueryValidatorTests
 {
-    private readonly RecordQueryValidator _validator = new();
+    private readonly QueryRequestValidator _validator = new();
 
     [Fact]
     public void Validate_ShouldThrow_WhenRequestIsNull()
@@ -22,7 +22,7 @@ public sealed class RecordQueryValidatorTests
     {
         Assert.Throws<ArgumentNullException>(
             () => _validator.Validate(
-                new KaleidoQueryRequest(),
+                new QueryRequest(),
                 null!));
     }
 
@@ -30,7 +30,7 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldNotThrow_WhenRequestIsValid()
     {
         var request =
-            new KaleidoQueryRequest(
+            new QueryRequest(
                 NamedQuery: new KaleidoNamedQuery(
                     "active"));
 
@@ -43,7 +43,7 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenNamedQueryIsNotAllowed()
     {
         var request =
-            new KaleidoQueryRequest(
+            new QueryRequest(
                 NamedQuery: new KaleidoNamedQuery(
                     "does-not-exist"));
 
@@ -57,7 +57,7 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenRequiredNamedQueryParameterIsMissing()
     {
         var request =
-            new KaleidoQueryRequest(
+            new QueryRequest(
                 NamedQuery: new KaleidoNamedQuery(
                     "by-name",
                     new Dictionary<string, object?>()));
@@ -72,7 +72,7 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenNamedQueryParameterHasIncorrectType()
     {
         var request =
-            new KaleidoQueryRequest(
+            new QueryRequest(
                 NamedQuery: new KaleidoNamedQuery(
                     "by-name",
                     new Dictionary<string, object?>
@@ -90,8 +90,8 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenFilterFieldDoesNotExist()
     {
         var request =
-            new KaleidoQueryRequest(
-                Query: new KaleidoQueryBody(
+            new QueryRequest(
+                Query: new QueryBody(
                     Filter:
                         QueryFilterNode.CreateCondition(
                             "BadField",
@@ -108,8 +108,8 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenFieldIsNotFilterable()
     {
         var request =
-            new KaleidoQueryRequest(
-                Query: new KaleidoQueryBody(
+            new QueryRequest(
+                Query: new QueryBody(
                     Filter:
                         QueryFilterNode.CreateCondition(
                             "Description",
@@ -126,8 +126,8 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenSortFieldIsNotSortable()
     {
         var request =
-            new KaleidoQueryRequest(
-                Query: new KaleidoQueryBody(
+            new QueryRequest(
+                Query: new QueryBody(
                     Sort:
                     [
                         new QuerySort(
@@ -145,8 +145,8 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenDuplicateSortFieldsExist()
     {
         var request =
-            new KaleidoQueryRequest(
-                Query: new KaleidoQueryBody(
+            new QueryRequest(
+                Query: new QueryBody(
                     Sort:
                     [
                         new QuerySort(
@@ -168,8 +168,8 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenSearchFieldIsNotSearchable()
     {
         var request =
-            new KaleidoQueryRequest(
-                Query: new KaleidoQueryBody(
+            new QueryRequest(
+                Query: new QueryBody(
                     Search:
                         QuerySearchNode.CreateCondition(
                             "test",
@@ -186,8 +186,8 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenPageSizeExceedsMaximum()
     {
         var request =
-            new KaleidoQueryRequest(
-                Query: new KaleidoQueryBody(
+            new QueryRequest(
+                Query: new QueryBody(
                     Page:
                         new QueryPage(
                             999,
@@ -203,8 +203,8 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenFilterGroupIsEmpty()
     {
         var request =
-            new KaleidoQueryRequest(
-                Query: new KaleidoQueryBody(
+            new QueryRequest(
+                Query: new QueryBody(
                     Filter:
                         QueryFilterNode.CreateGroup(
                             LogicalOperator.And)));
@@ -219,8 +219,8 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldValidateNestedFilterGroups()
     {
         var request =
-            new KaleidoQueryRequest(
-                Query: new KaleidoQueryBody(
+            new QueryRequest(
+                Query: new QueryBody(
                     Filter:
                         QueryFilterNode.CreateGroup(
                             LogicalOperator.And,
@@ -252,8 +252,8 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenNestedFilterContainsInvalidField()
     {
         var request =
-            new KaleidoQueryRequest(
-                Query: new KaleidoQueryBody(
+            new QueryRequest(
+                Query: new QueryBody(
                     Filter:
                         QueryFilterNode.CreateGroup(
                             LogicalOperator.And,
@@ -273,8 +273,8 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenSearchGroupIsEmpty()
     {
         var request =
-            new KaleidoQueryRequest(
-                Query: new KaleidoQueryBody(
+            new QueryRequest(
+                Query: new QueryBody(
                     Search:
                         QuerySearchNode.CreateGroup(
                             LogicalOperator.And)));
@@ -289,8 +289,8 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldValidateNestedSearchGroups()
     {
         var request =
-            new KaleidoQueryRequest(
-                Query: new KaleidoQueryBody(
+            new QueryRequest(
+                Query: new QueryBody(
                     Search:
                         QuerySearchNode.CreateGroup(
                             LogicalOperator.And,
@@ -322,8 +322,8 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenNestedSearchContainsInvalidField()
     {
         var request =
-            new KaleidoQueryRequest(
-                Query: new KaleidoQueryBody(
+            new QueryRequest(
+                Query: new QueryBody(
                     Search:
                         QuerySearchNode.CreateGroup(
                             LogicalOperator.And,
@@ -343,7 +343,7 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldAllowMissingOptionalNamedQueryParameter()
     {
         var request =
-            new KaleidoQueryRequest(
+            new QueryRequest(
                 NamedQuery: new KaleidoNamedQuery(
                     "by-amount",
                     new Dictionary<string, object?>()));
@@ -357,7 +357,7 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldAllowOptionalNamedQueryParameter_WhenTypeIsValid()
     {
         var request =
-            new KaleidoQueryRequest(
+            new QueryRequest(
                 NamedQuery: new KaleidoNamedQuery(
                     "by-amount",
                     new Dictionary<string, object?>
@@ -374,7 +374,7 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldThrow_WhenOptionalNamedQueryParameterHasIncorrectType()
     {
         var request =
-            new KaleidoQueryRequest(
+            new QueryRequest(
                 NamedQuery: new KaleidoNamedQuery(
                     "by-amount",
                     new Dictionary<string, object?>
@@ -392,7 +392,7 @@ public sealed class RecordQueryValidatorTests
     public void Validate_ShouldAllowMissingOptionalNamedQueryParameter_WhenDefaultValueExists()
     {
         var request =
-            new KaleidoQueryRequest(
+            new QueryRequest(
                 NamedQuery: new KaleidoNamedQuery(
                     "by-amount",
                     new Dictionary<string, object?>()));

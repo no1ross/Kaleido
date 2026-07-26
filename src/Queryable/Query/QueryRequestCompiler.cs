@@ -3,10 +3,10 @@ using System.Xml.Linq;
 
 namespace Kaleido.Queryable.Query;
 
-public sealed class RecordQueryCompiler : IRecordQueryCompiler
+public sealed class QueryRequestCompiler : IRecordQueryCompiler
 {
     public CompiledRecordQuery Compile(
-        KaleidoQueryRequest request,
+        QueryRequest request,
         RecordMetadata metadata)
     {
         ArgumentNullException.ThrowIfNull(request);

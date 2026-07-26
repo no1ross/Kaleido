@@ -5,25 +5,25 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable.Query;
 
-public sealed class QueryableRecordQueryEngine<TRecord> : IRecordQueryEngine<TRecord>
+public sealed class RecordQueryEngine<TRecord> : IRecordQueryEngine<TRecord>
     where TRecord : class
 {
     private readonly IRecordRegistry _recordRegistry;
     private readonly IRecordQueryValidator _validator;
     private readonly IRecordQueryCompiler _compiler;
-    private readonly IQueryableRecordSource<TRecord> _source;
-    private readonly IEnumerable<IQueryableRecordNamedQuery<TRecord>> _namedQueries;
-    private readonly IQueryableCompiledQueryApplier<TRecord> _applier;
-    private readonly IQueryableRecordExecutor<TRecord> _executor;
+    private readonly IRecordSource<TRecord> _source;
+    private readonly IEnumerable<IRecordNamedQuery<TRecord>> _namedQueries;
+    private readonly ICompiledQueryApplier<TRecord> _applier;
+    private readonly IRecordExecutor<TRecord> _executor;
 
-    public QueryableRecordQueryEngine(
+    public RecordQueryEngine(
         IRecordRegistry recordRegistry,
         IRecordQueryValidator validator,
         IRecordQueryCompiler compiler,
-        IQueryableRecordSource<TRecord> source,
-        IEnumerable<IQueryableRecordNamedQuery<TRecord>> namedQueries,
-        IQueryableCompiledQueryApplier<TRecord> applier,
-        IQueryableRecordExecutor<TRecord> executor)
+        IRecordSource<TRecord> source,
+        IEnumerable<IRecordNamedQuery<TRecord>> namedQueries,
+        ICompiledQueryApplier<TRecord> applier,
+        IRecordExecutor<TRecord> executor)
     {
         _recordRegistry = recordRegistry;
         _validator = validator;
@@ -34,7 +34,7 @@ public sealed class QueryableRecordQueryEngine<TRecord> : IRecordQueryEngine<TRe
         _executor = executor;
     }
 
-    public async Task<QueryResult<TRecord>> ExecuteAsync(KaleidoQueryRequest request, CancellationToken cancellationToken = default)
+    public async Task<QueryResult<TRecord>> ExecuteAsync(QueryRequest request, CancellationToken cancellationToken = default)
     {
         var registration = _recordRegistry.GetRegistration(typeof(TRecord));
         var metadata = registration.Metadata;

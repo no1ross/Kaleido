@@ -4,6 +4,6 @@ namespace Kaleido.Queryable.Runtime
 {
     public interface IRecordDispatcher
     {
-        Task<KaleidoQueryResponse<TRecord>> DispatchAsync<TRecord>(string recordKey, KaleidoQueryRequest request, CancellationToken cancellationToken = default) where TRecord : class;
+        Task<QueryResponse<TRecord>> DispatchAsync<TRecord>(string recordKey, QueryRequest request, CancellationToken cancellationToken = default) where TRecord : class;
     }
 }

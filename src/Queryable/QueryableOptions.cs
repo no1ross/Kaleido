@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace Kaleido.Queryable.Runtime;
+namespace Kaleido.Queryable;
 
 public sealed class QueryableOptions
 {

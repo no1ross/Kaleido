@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.SQLite;
 
-public sealed class SampleKaleidoRecordSource : IQueryableRecordSource<SampleKaleidoRecord>
+public sealed class SampleKaleidoRecordSource : IRecordSource<SampleKaleidoRecord>
 {
     private readonly KaleidoTestDbContext _store;
 

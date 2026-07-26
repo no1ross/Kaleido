@@ -15,6 +15,6 @@ namespace Kaleido.Queryable
         /// <param name="request">Query request containing optional named query, filters, search, sort, and paging.</param>
         /// <param name="cancellationToken">Token used to cancel query execution.</param>
         /// <returns>Query response containing metadata and matching items.</returns>
-        Task<KaleidoQueryResponse<TRecord>> QueryAsync<TRecord>(string recordKey, KaleidoQueryRequest request, CancellationToken cancellationToken = default) where TRecord : class;
+        Task<QueryResponse<TRecord>> QueryAsync<TRecord>(string recordKey, QueryRequest request, CancellationToken cancellationToken = default) where TRecord : class;
     }
 }

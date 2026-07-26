@@ -6,6 +6,6 @@ namespace Kaleido.Queryable.Records
     public sealed record RecordExecutionContext
     (
         RecordMetadata Metadata,
-        KaleidoQueryRequest Request
+        QueryRequest Request
     );
 }

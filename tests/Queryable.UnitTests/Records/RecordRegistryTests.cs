@@ -5,7 +5,7 @@ using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Kaleido.Queryable.Tests.Registry;
+namespace Kaleido.Queryable.UnitTests.Records;
 
 public sealed class RecordRegistryTests
 {
@@ -362,11 +362,11 @@ public sealed class RecordRegistryTests
             new ServiceCollection();
 
         services.AddScoped<
-            IQueryableRecordSource<TestRecord>,
+            IRecordSource<TestRecord>,
             TestRecordSource>();
 
         services.AddScoped<
-            IQueryableRecordNamedQuery<TestRecord>,
+            IRecordNamedQuery<TestRecord>,
             TestNamedQuery>();
 
         return services;
@@ -385,7 +385,7 @@ public sealed class RecordRegistryTests
     private sealed record UnknownRecord;
 
     private sealed class TestRecordSource
-        : IQueryableRecordSource<TestRecord>
+        : IRecordSource<TestRecord>
     {
         public IQueryable<TestRecord> CreateQuery(
             RecordExecutionContext executionContext)
@@ -404,7 +404,7 @@ public sealed class RecordRegistryTests
         Required = true,
         Description = "Category")]
     private sealed class TestNamedQuery
-        : IQueryableRecordNamedQuery<TestRecord>
+        : IRecordNamedQuery<TestRecord>
     {
         public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, KaleidoNamedQuery NamedQuery)
         {

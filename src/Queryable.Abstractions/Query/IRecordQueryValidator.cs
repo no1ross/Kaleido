@@ -24,5 +24,5 @@ namespace Kaleido.Queryable.Query;
 /// </summary>
 public interface IRecordQueryValidator
 {
-    void Validate(KaleidoQueryRequest request, RecordRegistration registration);
+    void Validate(QueryRequest request, RecordRegistration registration);
 }

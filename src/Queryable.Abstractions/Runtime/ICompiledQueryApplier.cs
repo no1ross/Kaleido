@@ -27,7 +27,7 @@ namespace Kaleido.Queryable.Runtime
     ///     Allows alternative execution strategies to be introduced
     ///     without modifying query orchestration logic.
     /// </summary>
-    public interface IQueryableCompiledQueryApplier<TRecord> where TRecord : class
+    public interface ICompiledQueryApplier<TRecord> where TRecord : class
     {
         IQueryable<TRecord> ApplyFilter(IQueryable<TRecord> query, CompiledFilterExpression? filter);
         IQueryable<TRecord> ApplySearch(IQueryable<TRecord> query, CompiledSearchExpression? search);

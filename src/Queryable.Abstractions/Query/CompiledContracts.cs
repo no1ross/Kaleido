@@ -10,11 +10,11 @@ public sealed record CompiledRecordQuery(
     CompiledPage Page);
 
 public abstract record CompiledFilterExpression;
-public sealed record CompiledFilterGroup(LogicalOperator Operator, IReadOnlyList<CompiledFilterExpression> Expressions) : CompiledFilterExpression;
+public sealed record CompiledFilterGroup(LogicalOperator Operator, IReadOnlyList<CompiledFilterExpression> Filters) : CompiledFilterExpression;
 public sealed record CompiledFilterCondition(FieldMetadata Field, FilterOperator Operator, IReadOnlyList<object?> Values) : CompiledFilterExpression;
 
 public abstract record CompiledSearchExpression;
-public sealed record CompiledSearchGroup(LogicalOperator Operator, IReadOnlyList<CompiledSearchExpression> Expressions) : CompiledSearchExpression;
+public sealed record CompiledSearchGroup(LogicalOperator Operator, IReadOnlyList<CompiledSearchExpression> Searches) : CompiledSearchExpression;
 public sealed record CompiledSearchCondition(FieldMetadata Field, string SearchText, MatchMode MatchMode) : CompiledSearchExpression;
 
 public sealed record CompiledSort(FieldMetadata Field, SortDirection Direction, int Sequence);
