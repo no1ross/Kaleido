@@ -10,7 +10,4 @@ public sealed record FieldMetadata
     int? SearchPriority,
     IReadOnlyList<MatchMode> MatchModes,
     bool IsSortable
-)
-{
-    public bool IsNullable => Nullable.GetUnderlyingType(FieldType) != null;
-};
+);

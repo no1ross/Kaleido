@@ -54,15 +54,6 @@ public sealed record QueryFilterNode
                 @operator,
                 filters.ToList()));
     }
-
-    public void Validate()
-    {
-        if ((Condition is null) == (Group is null))
-        {
-            throw new InvalidOperationException(
-                "Exactly one of Condition or Group must be specified.");
-        }
-    }
 }
 
 public sealed record QueryFilterCondition
@@ -110,15 +101,6 @@ public sealed record QuerySearchNode
             new QuerySearchGroup(
                 @operator,
                 searches.ToList()));
-    }
-
-    public void Validate()
-    {
-        if ((Condition is null) == (Group is null))
-        {
-            throw new InvalidOperationException(
-                "Exactly one of Condition or Group must be specified.");
-        }
     }
 }
 
