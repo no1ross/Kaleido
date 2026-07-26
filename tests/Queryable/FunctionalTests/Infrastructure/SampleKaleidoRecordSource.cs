@@ -1,5 +1,5 @@
 using Kaleido.Queryable.Records;
-using Kaleido.Queryable.Testing;
+using Kaleido.Queryable.Shared;
 
 namespace Kaleido.Queryable.FunctionalTests.Infrastructure;
 

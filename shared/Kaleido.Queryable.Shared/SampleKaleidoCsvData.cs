@@ -1,6 +1,6 @@
 using Kaleido.Extensions;
 
-namespace Kaleido.Queryable.Testing;
+namespace Kaleido.Queryable.Shared;
 
 public sealed class SampleKaleidoCsvData
 {

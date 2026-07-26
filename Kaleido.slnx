@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/SQLite/Kaleido.Samples.SQLite.csproj" />
+  </Folder>
   <Folder Name="/shared/">
     <Project Path="shared/Kaleido.Queryable.Shared/Kaleido.Queryable.Shared.csproj" />
   </Folder>

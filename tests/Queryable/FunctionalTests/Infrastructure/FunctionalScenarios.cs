@@ -1,7 +1,7 @@
 using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
-using Kaleido.Queryable.Testing;
+using Kaleido.Queryable.Shared;
 using System.Globalization;
 
 namespace Kaleido.Queryable.FunctionalTests.Infrastructure;

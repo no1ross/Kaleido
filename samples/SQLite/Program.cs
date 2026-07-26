@@ -2,9 +2,9 @@ using Kaleido;
 using Kaleido.Samples.SQLite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using Kaleido.Samples.Shared;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
+using Kaleido.Queryable.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
 

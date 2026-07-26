@@ -2,7 +2,7 @@
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
 
-namespace Kaleido.Queryable.Testing;
+namespace Kaleido.Queryable.Shared;
 
 [NamedQuery(
     "active-records",

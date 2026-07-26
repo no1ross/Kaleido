@@ -1,4 +1,4 @@
-using Kaleido.Queryable.Testing;
+using Kaleido.Queryable.Shared;
 using Xunit;
 
 namespace Kaleido.Queryable.FunctionalTests.Infrastructure;

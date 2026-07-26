@@ -1,9 +1,8 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Queryable.Attributes;
-using Kaleido.Queryable;
 
-namespace Kaleido.Queryable.Testing;
+namespace Kaleido.Queryable.Shared;
 
 public enum RecordStatus
 {

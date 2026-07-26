@@ -1,7 +1,7 @@
 using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
-using Kaleido.Queryable.Testing;
+using Kaleido.Queryable.Shared;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Kaleido.Queryable.FunctionalTests.Hosting;

@@ -1,6 +1,6 @@
 using Kaleido.Queryable;
 using Kaleido.Queryable.Query;
-using Kaleido.Queryable.Testing;
+using Kaleido.Queryable.Shared;
 
 namespace Kaleido.Queryable.FunctionalTests.Infrastructure;
 

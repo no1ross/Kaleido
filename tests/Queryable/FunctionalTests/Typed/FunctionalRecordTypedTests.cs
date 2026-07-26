@@ -1,7 +1,7 @@
 using Kaleido.Queryable;
 using Kaleido.Queryable.FunctionalTests.Fixtures;
 using Kaleido.Queryable.FunctionalTests.Infrastructure;
-using Kaleido.Queryable.Testing;
+using Kaleido.Queryable.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable.FunctionalTests.Typed;
