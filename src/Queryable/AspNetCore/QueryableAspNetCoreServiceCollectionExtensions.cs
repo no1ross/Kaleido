@@ -10,7 +10,7 @@ namespace Kaleido.Queryable.AspNetCore;
 public static class QueryableAspNetCoreServiceCollectionExtensions
 {
     public static IKaleidoBuilder AddQueryableAspNetCore(this IKaleidoBuilder builder,
-        Action<QueryableAspNetCoreOptions>? configure = null)
+        Action<QueryableRouteOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
 

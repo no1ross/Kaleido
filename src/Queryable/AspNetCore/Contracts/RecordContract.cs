@@ -22,7 +22,7 @@ namespace Kaleido.Queryable.AspNetCore.Contracts
 
         public static RecordContract FromRegistration(
             RecordRegistration registration,
-            QueryableAspNetCoreOptions options)
+            QueryableRouteOptions options)
         {
             ArgumentNullException.ThrowIfNull(registration);
 
@@ -71,7 +71,7 @@ namespace Kaleido.Queryable.AspNetCore.Contracts
         }
         public static RecordSummaryContract ToSummary(
             RecordRegistration registration,
-            QueryableAspNetCoreOptions options)
+            QueryableRouteOptions options)
         {
             ArgumentNullException.ThrowIfNull(registration);
             ArgumentNullException.ThrowIfNull(options);

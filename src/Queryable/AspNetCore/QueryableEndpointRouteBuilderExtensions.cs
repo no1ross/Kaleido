@@ -23,7 +23,7 @@ public static class QueryableEndpointRouteBuilderExtensions
 
         var options =
             endpoints.ServiceProvider
-                .GetRequiredService<IOptions<QueryableAspNetCoreOptions>>()
+                .GetRequiredService<IOptions<QueryableRouteOptions>>()
                 .Value;
 
         var group =

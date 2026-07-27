@@ -78,7 +78,7 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
 
         var options =
             provider
-                .GetRequiredService<IOptions<QueryableAspNetCoreOptions>>();
+                .GetRequiredService<IOptions<QueryableRouteOptions>>();
 
         Assert.Equal(
             "/custom",

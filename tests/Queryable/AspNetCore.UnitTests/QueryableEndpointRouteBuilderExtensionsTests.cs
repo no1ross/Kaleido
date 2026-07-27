@@ -406,7 +406,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
 
     private static WebApplication CreateApp(
         RecordRegistration[] registrations,
-        Action<QueryableAspNetCoreOptions>? configure = null)
+        Action<QueryableRouteOptions>? configure = null)
     {
         var builder =
             WebApplication.CreateBuilder();
@@ -438,7 +438,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
 
         builder.Services.AddSingleton(
             Options.Create(
-                new QueryableAspNetCoreOptions()));
+                new QueryableRouteOptions()));
 
         builder.Services.AddSingleton(
             Mock.Of<IQueryableService>());
@@ -446,11 +446,11 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
         return builder.Build();
     }
 
-    private static QueryableAspNetCoreOptions CreateOptions(
-        Action<QueryableAspNetCoreOptions>? configure)
+    private static QueryableRouteOptions CreateOptions(
+        Action<QueryableRouteOptions>? configure)
     {
         var options =
-            new QueryableAspNetCoreOptions();
+            new QueryableRouteOptions();
 
         configure?.Invoke(options);
 

@@ -3,23 +3,23 @@
 internal static class QueryableRoutePaths
 {
     public static string RecordMetadata(
-        QueryableAspNetCoreOptions options,
+        QueryableRouteOptions options,
         string recordName)
         => $"{recordName}/{options.MetadataRoute}";
 
     public static string RecordQuery(
-        QueryableAspNetCoreOptions options,
+        QueryableRouteOptions options,
         string recordName)
         => $"{recordName}/{options.QueryRoute}";
 
     public static string NamedQuery(
-        QueryableAspNetCoreOptions options,
+        QueryableRouteOptions options,
         string recordName,
         string queryName)
         => $"{recordName}/{options.QueriesRoute}/{queryName}";
 
     public static string NamedQueryMetadata(
-        QueryableAspNetCoreOptions options,
+        QueryableRouteOptions options,
         string recordName,
         string queryName)
         => $"{recordName}/{options.QueriesRoute}/{queryName}/{options.MetadataRoute}";

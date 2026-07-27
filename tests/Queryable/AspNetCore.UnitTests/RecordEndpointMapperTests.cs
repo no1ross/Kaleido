@@ -28,7 +28,7 @@ public sealed class RecordEndpointMapperTests
             CreateApp();
 
         var options =
-            new QueryableAspNetCoreOptions();
+            new QueryableRouteOptions();
 
         var registration =
             CreateRegistration();
@@ -56,7 +56,7 @@ public sealed class RecordEndpointMapperTests
             CreateApp();
 
         var options =
-            new QueryableAspNetCoreOptions();
+            new QueryableRouteOptions();
 
         var registration =
             CreateRegistration();
@@ -84,7 +84,7 @@ public sealed class RecordEndpointMapperTests
             CreateApp();
 
         var options =
-            new QueryableAspNetCoreOptions();
+            new QueryableRouteOptions();
 
         var registration =
             CreateRegistration();
@@ -113,7 +113,7 @@ public sealed class RecordEndpointMapperTests
             CreateApp();
 
         var options =
-            new QueryableAspNetCoreOptions();
+            new QueryableRouteOptions();
 
         var registration =
             CreateRegistration();
@@ -142,7 +142,7 @@ public sealed class RecordEndpointMapperTests
             CreateApp();
 
         var options =
-            new QueryableAspNetCoreOptions();
+            new QueryableRouteOptions();
 
         var registration =
             CreateRegistration(
@@ -188,7 +188,7 @@ public sealed class RecordEndpointMapperTests
             CreateApp();
 
         var options =
-            new QueryableAspNetCoreOptions
+            new QueryableRouteOptions
             {
                 MetadataRoute = "schema",
                 QueryRoute = "execute",
@@ -230,7 +230,7 @@ public sealed class RecordEndpointMapperTests
             CreateApp();
 
         var options =
-            new QueryableAspNetCoreOptions();
+            new QueryableRouteOptions();
 
         var registration =
             CreateRegistration(
@@ -258,7 +258,7 @@ public sealed class RecordEndpointMapperTests
             CreateApp();
 
         var options =
-            new QueryableAspNetCoreOptions();
+            new QueryableRouteOptions();
 
         var registration =
             CreateRegistration(
@@ -291,7 +291,7 @@ public sealed class RecordEndpointMapperTests
             CreateApp();
 
         var options =
-            new QueryableAspNetCoreOptions();
+            new QueryableRouteOptions();
 
         var registration =
             CreateRegistration();
@@ -351,7 +351,7 @@ public sealed class RecordEndpointMapperTests
             CreateApp();
 
         var options =
-            new QueryableAspNetCoreOptions();
+            new QueryableRouteOptions();
 
         var registration =
             CreateRegistration();
@@ -426,7 +426,7 @@ public sealed class RecordEndpointMapperTests
                 catalog.Object);
 
         var options =
-            new QueryableAspNetCoreOptions();
+            new QueryableRouteOptions();
 
         var registration =
             CreateRegistration();
@@ -506,7 +506,7 @@ public sealed class RecordEndpointMapperTests
                 catalog.Object);
 
         var options =
-            new QueryableAspNetCoreOptions();
+            new QueryableRouteOptions();
 
         var registration =
             CreateRegistration();

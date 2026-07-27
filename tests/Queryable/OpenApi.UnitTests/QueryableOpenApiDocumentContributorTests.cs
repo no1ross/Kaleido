@@ -9,8 +9,8 @@ public sealed class QueryableOpenApiDocumentContributorTests
     {
         // Arrange
 
-        var contributor =
-            new QueryableOpenApiDocumentContributor();
+        //var contributor =
+        //    new QueryableOpenApiDocumentContributor();
 
         //var catalog =
         //    TestQueryableCatalog.Create();

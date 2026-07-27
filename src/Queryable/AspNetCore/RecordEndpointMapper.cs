@@ -13,7 +13,7 @@ internal static class RecordEndpointMapper
     public static void MapRecord(
         this IEndpointRouteBuilder endpoints,
         RecordRegistration record,
-        QueryableAspNetCoreOptions options)
+        QueryableRouteOptions options)
     {
         var recordName =
             record.Metadata.Name.ToLowerInvariant();
@@ -58,7 +58,7 @@ internal static class RecordEndpointMapper
         this IEndpointRouteBuilder endpoints,
         RecordRegistration record,
         string route,
-        QueryableAspNetCoreOptions options)
+        QueryableRouteOptions options)
     {
         endpoints.MapGet(
                 route,
