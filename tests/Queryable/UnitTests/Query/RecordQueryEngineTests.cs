@@ -5,7 +5,7 @@ using Kaleido.Queryable.Runtime;
 using Moq;
 using Xunit;
 
-namespace Kaleido.Queryable.Tests.Query;
+namespace Kaleido.Queryable.UnitTests.Query;
 
 public sealed class RecordQueryEngineTests
 {
@@ -29,8 +29,8 @@ public sealed class RecordQueryEngineTests
         var sourceQuery =
             new[]
             {
-                new TestRecord(1, "A"),
-                new TestRecord(2, "B")
+            new TestRecord(1, "A"),
+            new TestRecord(2, "B")
             }
             .AsQueryable();
 
@@ -51,10 +51,10 @@ public sealed class RecordQueryEngineTests
                 .Skip(0)
                 .Take(1);
 
-        var items =
+        var records =
             new List<TestRecord>
             {
-                new(1, "A")
+            new(1, "A")
             };
 
         var registry =
@@ -117,7 +117,7 @@ public sealed class RecordQueryEngineTests
             .Setup(x => x.ToListAsync(
                 pagedQuery,
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(items);
+            .ReturnsAsync(records);
 
         var engine =
             new RecordQueryEngine<TestRecord>(
@@ -135,17 +135,21 @@ public sealed class RecordQueryEngineTests
                 request);
 
         // Assert
-        Assert.Same(
-            metadata,
-            result.RuntimeMetadata);
-
         Assert.Equal(
             10,
             result.TotalCount);
 
+        Assert.Equal(
+            compiled.Page?.Offset ?? 0,
+            result.Offset);
+
+        Assert.Equal(
+            compiled.Page?.Size ?? records.Count,
+            result.PageSize);
+
         Assert.Same(
-            items,
-            result.Items);
+            records,
+            result.Records);
 
         validator.Verify(
             x => x.Validate(request, registration),
@@ -782,7 +786,7 @@ public sealed class RecordQueryEngineTests
 
         Assert.Equal(
             2,
-            result.Items.Count);
+            result.Records.Count);
 
         executor.Verify(
             x => x.CountAsync(

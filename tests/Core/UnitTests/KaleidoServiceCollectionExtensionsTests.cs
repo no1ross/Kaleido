@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Core.Tests;
+namespace Kaleido.UnitTests;
 
 public sealed class KaleidoServiceCollectionExtensionsTests
 {

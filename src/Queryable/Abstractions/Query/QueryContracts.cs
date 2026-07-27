@@ -132,11 +132,5 @@ public record QueryPage(
 
 #endregion
 
-public sealed record QueryResult<TRecord>(IReadOnlyList<TRecord> Items, int TotalCount, RecordMetadata RuntimeMetadata)
-    where TRecord : class;
-
-public sealed record QueryResponse<TRecord>(
-    RecordMetadata Metadata,
-    int TotalCount,
-    IReadOnlyList<TRecord> Items)
+public sealed record QueryResult<TRecord>(int TotalCount, int Offset, int PageSize, IReadOnlyCollection<TRecord> Records)
     where TRecord : class;

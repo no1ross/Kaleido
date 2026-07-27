@@ -38,6 +38,8 @@
     <Project Path="tests/Core/UnitTests/Kaleido.UnitTests.csproj" Id="d3158058-b54e-4a54-8bb0-5f324d367958" />
   </Folder>
   <Folder Name="/test/Queryable/">
+    <Project Path="tests/Queryable/AspNetCore.FunctionalTests/Kaleido.Queryable.AspNetCore.FunctionalTests.csproj" />
+    <Project Path="tests/Queryable/AspNetCore.UnitTests/Kaleido.Queryable.AspNetCore.UnitTests.csproj" Id="6175cc57-6479-4da1-972b-4361e6d40ea6" />
     <Project Path="tests/Queryable/FunctionalTests/Kaleido.Queryable.FunctionalTests.csproj" />
     <Project Path="tests/Queryable/Testing/Kaleido.Queryable.Testing.csproj" />
     <Project Path="tests/Queryable/UnitTests/Kaleido.Queryable.UnitTests.csproj" />

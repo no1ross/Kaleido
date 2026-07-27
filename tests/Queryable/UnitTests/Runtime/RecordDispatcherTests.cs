@@ -75,20 +75,12 @@ public sealed class RecordDispatcherTests
         var request =
             new QueryRequest();
 
-        var metadata =
-            new RecordMetadata(
-                "test",
-                "Test Record",
-                "1.0",
-                "Unit Test",
-                [],
-                null);
-
         var result =
             new QueryResult<TestRecord>(
-                [new TestRecord("A")],
                 1,
-                metadata);
+                0,
+                1,
+                [new TestRecord("A")]);
 
         var engine =
             new Mock<IRecordQueryEngine<TestRecord>>();
@@ -148,25 +140,17 @@ public sealed class RecordDispatcherTests
     }
 
     [Fact]
-    public async Task DispatchAsync_ShouldReturnQueryResponse()
+    public async Task DispatchAsync_ShouldReturnQueryResult()
     {
-        var metadata =
-            new RecordMetadata(
-                "test",
-                "Test Record",
-                "1.0",
-                "Unit Test",
-                [],
-                null);
-
         var item =
             new TestRecord("A");
 
         var result =
             new QueryResult<TestRecord>(
-                [item],
                 1,
-                metadata);
+                0,
+                25,
+                [item]);
 
         var engine =
             new Mock<IRecordQueryEngine<TestRecord>>();
@@ -222,16 +206,20 @@ public sealed class RecordDispatcherTests
             1,
             response.TotalCount);
 
-        Assert.Single(
-            response.Items);
+        Assert.Equal(
+            0,
+            response.Offset);
 
-        Assert.Same(
-            metadata,
-            response.Metadata);
+        Assert.Equal(
+            25,
+            response.PageSize);
+
+        Assert.Single(
+            response.Records);
 
         Assert.Same(
             item,
-            response.Items.Single());
+            response.Records.Single());
     }
 
     private static RecordRegistration CreateRegistration(

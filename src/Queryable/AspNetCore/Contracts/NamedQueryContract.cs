@@ -1,24 +1,25 @@
-//using Kaleido.Queryable.Metadata;
+﻿using Kaleido.Queryable.Metadata;
 
-//namespace Kaleido.Queryable.AspNetCore;
+public sealed record NamedQueryContract
+{
+    public required string Name { get; init; }
 
-///// <summary>
-///// API-safe named query metadata.
-///// </summary>
-//public sealed record NamedQueryContract
-//{
-//    public required string Name { get; init; }
+    public required string Description { get; init; }
 
-//    public string? Description { get; init; }
+    public IReadOnlyCollection<QueryParameterContract> Parameters { get; init; }
+        = Array.Empty<QueryParameterContract>();
 
-//    public static NamedQueryContract FromNamedQuery(RuntimeAllowedQueryMetadata namedQuery)
-//    {
-//        ArgumentNullException.ThrowIfNull(namedQuery);
-
-//        return new NamedQueryContract
-//        {
-//            Name = namedQuery.Name,
-//            Description = namedQuery.Description
-//        };
-//    }
-//}
+    public static NamedQueryContract FromRegistration(
+        NamedQueryRegistration registration)
+    {
+        return new NamedQueryContract
+        {
+            Name = registration.Metadata.Name,
+            Description = registration.Metadata.Description,
+            Parameters = registration.Metadata.Parameters?
+                .Select(QueryParameterContract.FromMetadata)
+                .ToArray()
+                ?? Array.Empty<QueryParameterContract>()
+        };
+    }
+}

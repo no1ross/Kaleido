@@ -71,7 +71,7 @@ public sealed class HighAmountRecordsQuery :
                 out var value) &&
             value is not null
                 ? Convert.ToDecimal(value)
-                : 100m;
+                : 25m;
 
         return query.Where(x => x.Amount >= minimumAmount);
     }

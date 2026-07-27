@@ -1,7 +1,6 @@
-
 using Kaleido.Queryable.Runtime;
 
-namespace Kaleido.UnitTests.Queryable;
+namespace Kaleido.Queryable.UnitTests.Runtime;
 
 public sealed class RecordExecutorTests
 {

@@ -78,6 +78,40 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
         }
     }
 
+    private static void ValidateFilterValueTypes(QueryFilterCondition condition)
+    {
+        foreach (var value in condition.Values)
+        {
+            if (value is null)
+            {
+                continue;
+            }
+
+            ValidateSupportedRuntimeType(
+                condition.Field,
+                value);
+        }
+    }
+
+    private static void ValidateSupportedRuntimeType(
+        string name,
+        object value)
+    {
+        var actualType =
+            Nullable.GetUnderlyingType(
+                value.GetType())
+            ?? value.GetType();
+
+        if (DataTypeMapper.IsSupportedType(actualType))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Value '{name}' contains unsupported runtime type '{actualType.FullName}'. " +
+            "Transport layers must normalize values before invoking Queryable.");
+    }
+
     private static void ValidateParameterType(
         QueryParameterMetadata parameter,
         object value)
@@ -180,6 +214,8 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
             throw new InvalidOperationException(
                 $"Operator '{condition.Operator}' is not supported for field '{condition.Field}'.");
         }
+
+        ValidateFilterValueTypes(condition);
     }
 
     private static void ValidateSearch(

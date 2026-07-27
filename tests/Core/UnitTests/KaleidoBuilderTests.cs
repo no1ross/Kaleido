@@ -2,7 +2,7 @@
 using System.Reflection;
 using Xunit;
 
-namespace Kaleido.Core.Tests;
+namespace Kaleido.UnitTests;
 
 public sealed class KaleidoBuilderTests
 {

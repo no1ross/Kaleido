@@ -18,7 +18,7 @@ internal sealed class RecordDispatcher : IRecordDispatcher
         _registry = registry;
     }
 
-    public async Task<QueryResponse<TRecord>> DispatchAsync<TRecord>(
+    public async Task<QueryResult<TRecord>> DispatchAsync<TRecord>(
         string recordKey,
         QueryRequest request,
         CancellationToken cancellationToken = default)
@@ -43,10 +43,7 @@ internal sealed class RecordDispatcher : IRecordDispatcher
                 request,
                 cancellationToken);
 
-        return new QueryResponse<TRecord>(
-            result.RuntimeMetadata,
-            result.TotalCount,
-            result.Items);
+        return result;
     }
 
     private RecordRegistration GetRegistration(

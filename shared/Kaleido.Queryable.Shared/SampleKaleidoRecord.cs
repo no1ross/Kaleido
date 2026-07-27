@@ -23,84 +23,84 @@ public enum RecordStatus
 public sealed class SampleKaleidoRecord
 {
     [Key]
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.Gt, FilterOperator.Gte, FilterOperator.Lt, FilterOperator.Lte, FilterOperator.Between, FilterOperator.In, FilterOperator.NotIn)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.LessThanOrEqual, FilterOperator.Between, FilterOperator.In, FilterOperator.NotIn)]
     [Sortable]
     public int Id { get; init; }
 
-    [Filterable(FilterOperator.Eq, FilterOperator.In)]
+    [Filterable(FilterOperator.Equals, FilterOperator.In)]
     [Searchable(1, MatchMode.Exact)]
     public Guid ExternalId { get; init; }
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.Contains, FilterOperator.NotContains, FilterOperator.StartsWith, FilterOperator.EndsWith, FilterOperator.In, FilterOperator.NotIn)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.Contains, FilterOperator.NotContains, FilterOperator.StartsWith, FilterOperator.EndsWith, FilterOperator.In, FilterOperator.NotIn)]
     [Searchable(2, MatchMode.Exact, MatchMode.StartsWith, MatchMode.EndsWith, MatchMode.Contains)]
     [Sortable]
     public string Code { get; init; } = string.Empty;
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.Contains, FilterOperator.NotContains, FilterOperator.StartsWith, FilterOperator.EndsWith)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.Contains, FilterOperator.NotContains, FilterOperator.StartsWith, FilterOperator.EndsWith)]
     [Searchable(3, MatchMode.Exact, MatchMode.StartsWith, MatchMode.EndsWith, MatchMode.Contains)]
     [Sortable]
     public string Name { get; init; } = string.Empty;
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.In, FilterOperator.NotIn)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.In, FilterOperator.NotIn)]
     [Searchable(4, MatchMode.Exact, MatchMode.Contains)]
     [Sortable]
     public string Category { get; init; } = string.Empty;
 
-    [Filterable(FilterOperator.Eq, FilterOperator.IsTrue, FilterOperator.IsFalse)]
+    [Filterable(FilterOperator.Equals, FilterOperator.IsTrue, FilterOperator.IsFalse)]
     [Sortable]
     public bool IsActive { get; init; }
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.Gt, FilterOperator.Gte, FilterOperator.Lt, FilterOperator.Lte, FilterOperator.Between, FilterOperator.In, FilterOperator.NotIn)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.LessThanOrEqual, FilterOperator.Between, FilterOperator.In, FilterOperator.NotIn)]
     [Sortable]
     public int Quantity { get; init; }
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.Gt, FilterOperator.Gte, FilterOperator.Lt, FilterOperator.Lte, FilterOperator.Between)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.LessThanOrEqual, FilterOperator.Between)]
     [Sortable]
     public decimal Amount { get; init; }
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.Gt, FilterOperator.Gte, FilterOperator.Lt, FilterOperator.Lte, FilterOperator.Between)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.LessThanOrEqual, FilterOperator.Between)]
     [Sortable]
     public double Rate { get; init; }
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.Gt, FilterOperator.Gte, FilterOperator.Lt, FilterOperator.Lte, FilterOperator.Between)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.LessThanOrEqual, FilterOperator.Between)]
     [Sortable]
     public float Score { get; init; }
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.Gt, FilterOperator.Gte, FilterOperator.Lt, FilterOperator.Lte, FilterOperator.Between)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.LessThanOrEqual, FilterOperator.Between)]
     [Sortable]
     public DateOnly EffectiveDate { get; init; }
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.Gt, FilterOperator.Gte, FilterOperator.Lt, FilterOperator.Lte, FilterOperator.Between)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.LessThanOrEqual, FilterOperator.Between)]
     [Sortable]
     public DateTime CreatedAt { get; init; }
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.Gt, FilterOperator.Gte, FilterOperator.Lt, FilterOperator.Lte, FilterOperator.Between, FilterOperator.IsNull, FilterOperator.IsNotNull)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.LessThanOrEqual, FilterOperator.Between, FilterOperator.IsNull, FilterOperator.IsNotNull)]
     [Sortable]
     public DateOnly? ExpirationDate { get; init; }
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.In, FilterOperator.NotIn)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.In, FilterOperator.NotIn)]
     [Sortable]
     public RecordStatus Status { get; init; }
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.Gt, FilterOperator.Gte, FilterOperator.Lt, FilterOperator.Lte, FilterOperator.In, FilterOperator.NotIn)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.LessThanOrEqual, FilterOperator.In, FilterOperator.NotIn)]
     [Sortable]
     public int Priority { get; init; }
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.In, FilterOperator.NotIn)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.In, FilterOperator.NotIn)]
     [Searchable(5, MatchMode.Exact, MatchMode.Contains)]
     public string Region { get; init; } = string.Empty;
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.In, FilterOperator.NotIn)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.In, FilterOperator.NotIn)]
     [Searchable(6, MatchMode.Exact, MatchMode.Contains)]
     public string GroupName { get; init; } = string.Empty;
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.Gt, FilterOperator.Gte, FilterOperator.Lt, FilterOperator.Lte, FilterOperator.Between)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.LessThanOrEqual, FilterOperator.Between)]
     [Sortable]
     public long Version { get; init; }
 
     [Searchable(7, MatchMode.Contains)]
     public string Notes { get; init; } = string.Empty;
 
-    [Filterable(FilterOperator.Eq, FilterOperator.Ne, FilterOperator.Gt, FilterOperator.Gte, FilterOperator.Lt, FilterOperator.Lte, FilterOperator.Between, FilterOperator.IsNull, FilterOperator.IsNotNull)]
+    [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.LessThanOrEqual, FilterOperator.Between, FilterOperator.IsNull, FilterOperator.IsNotNull)]
     public float? NullableScore { get; init; }
 }

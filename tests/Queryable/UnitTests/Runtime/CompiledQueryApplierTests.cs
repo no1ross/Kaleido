@@ -1,7 +1,6 @@
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Runtime;
-using System.ComponentModel;
 using Xunit;
 
 namespace Kaleido.Queryable.UnitTests.Runtime;
@@ -53,7 +52,7 @@ public sealed class CompiledQueryApplierTests
                     CreateRecords().AsQueryable(),
                     Filter(
                         Field(nameof(TestRecord.Name), typeof(string)),
-                        FilterOperator.Eq,
+                        FilterOperator.Equals,
                         "Alpha"))
                 .ToArray();
 
@@ -74,7 +73,7 @@ public sealed class CompiledQueryApplierTests
                     CreateRecords().AsQueryable(),
                     Filter(
                         Field(nameof(TestRecord.Name), typeof(string)),
-                        FilterOperator.Ne,
+                        FilterOperator.NotEquals,
                         "Alpha"))
                 .ToArray();
 
@@ -92,7 +91,7 @@ public sealed class CompiledQueryApplierTests
                     CreateRecords().AsQueryable(),
                     Filter(
                         Field(nameof(TestRecord.Amount), typeof(decimal)),
-                        FilterOperator.Gt,
+                        FilterOperator.GreaterThan,
                         100m))
                 .ToArray();
 
@@ -110,7 +109,7 @@ public sealed class CompiledQueryApplierTests
                     CreateRecords().AsQueryable(),
                     Filter(
                         Field(nameof(TestRecord.Amount), typeof(decimal)),
-                        FilterOperator.Gte,
+                        FilterOperator.GreaterThanOrEqual,
                         100m))
                 .ToArray();
 
@@ -128,7 +127,7 @@ public sealed class CompiledQueryApplierTests
                     CreateRecords().AsQueryable(),
                     Filter(
                         Field(nameof(TestRecord.Amount), typeof(decimal)),
-                        FilterOperator.Lt,
+                        FilterOperator.LessThan,
                         100m))
                 .ToArray();
 
@@ -146,7 +145,7 @@ public sealed class CompiledQueryApplierTests
                     CreateRecords().AsQueryable(),
                     Filter(
                         Field(nameof(TestRecord.Amount), typeof(decimal)),
-                        FilterOperator.Lte,
+                        FilterOperator.LessThanOrEqual,
                         100m))
                 .ToArray();
 
@@ -454,7 +453,7 @@ public sealed class CompiledQueryApplierTests
                 [
                     Filter(
                         Field(nameof(TestRecord.Category), typeof(string)),
-                        FilterOperator.Eq,
+                        FilterOperator.Equals,
                         "A"),
 
                     Filter(
@@ -491,12 +490,12 @@ public sealed class CompiledQueryApplierTests
                 [
                     Filter(
                         Field(nameof(TestRecord.Category), typeof(string)),
-                        FilterOperator.Eq,
+                        FilterOperator.Equals,
                         "A"),
 
                     Filter(
                         Field(nameof(TestRecord.Category), typeof(string)),
-                        FilterOperator.Eq,
+                        FilterOperator.Equals,
                         "C")
                 ]);
 
@@ -702,42 +701,6 @@ public sealed class CompiledQueryApplierTests
     }
 
     [Fact]
-    public void ApplySearch_ShouldThrow_WhenFuzzyIsUsed()
-    {
-        Assert.Throws<NotSupportedException>(
-            () => _applier.ApplySearch(
-                CreateRecords().AsQueryable(),
-                Search(
-                    Field(nameof(TestRecord.Name), typeof(string)),
-                    "Alpha",
-                    MatchMode.Fuzzy)));
-    }
-
-    [Fact]
-    public void ApplySearch_ShouldThrow_WhenSoundexIsUsed()
-    {
-        Assert.Throws<NotSupportedException>(
-            () => _applier.ApplySearch(
-                CreateRecords().AsQueryable(),
-                Search(
-                    Field(nameof(TestRecord.Name), typeof(string)),
-                    "Alpha",
-                    MatchMode.Soundex)));
-    }
-
-    [Fact]
-    public void ApplySearch_ShouldThrow_WhenFullTextIsUsed()
-    {
-        Assert.Throws<NotSupportedException>(
-            () => _applier.ApplySearch(
-                CreateRecords().AsQueryable(),
-                Search(
-                    Field(nameof(TestRecord.Name), typeof(string)),
-                    "Alpha",
-                    MatchMode.FullText)));
-    }
-
-    [Fact]
     public void ApplyFilter_ShouldThrow_WhenStringOperatorIsAppliedToNonStringField()
     {
         Assert.Throws<NotSupportedException>(
@@ -879,7 +842,7 @@ public sealed class CompiledQueryApplierTests
     }
 
     [Fact]
-    public void ApplySort_ShouldSortEnumsByDescription()
+    public void ApplySort_ShouldSortEnumsByValue()
     {
         var result =
             _applier
@@ -896,10 +859,10 @@ public sealed class CompiledQueryApplierTests
         Assert.Equal(
             new[]
             {
+                TestStatus.Unknown,
+                TestStatus.Unknown,
                 TestStatus.Active,
                 TestStatus.Pending,
-                TestStatus.Unknown,
-                TestStatus.Unknown,
                 TestStatus.Retired
             },
             result.Select(x => x.Status).ToArray());
@@ -929,69 +892,45 @@ public sealed class CompiledQueryApplierTests
     }
 
     [Fact]
-    public void ApplyFilter_ShouldConvertStringValueToInt()
+    public void ApplyFilter_ShouldAllowCompatibleNumericValue()
     {
         var result =
             _applier
                 .ApplyFilter(
                     CreateRecords().AsQueryable(),
                     Filter(
-                        Field(nameof(TestRecord.Id), typeof(int)),
-                        FilterOperator.Eq,
-                        "1"))
+                        Field(nameof(TestRecord.Amount), typeof(decimal)),
+                        FilterOperator.Equals,
+                        100))
                 .ToArray();
 
         var item =
             Assert.Single(result);
 
         Assert.Equal(
-            1,
-            item.Id);
+            100m,
+            item.Amount);
     }
 
     [Fact]
-    public void ApplyFilter_ShouldConvertStringValueToDateOnly()
+    public void ApplyFilter_ShouldAllowCompatibleNumericValue_ForBetween()
     {
         var result =
             _applier
                 .ApplyFilter(
                     CreateRecords().AsQueryable(),
                     Filter(
-                        Field(nameof(TestRecord.EffectiveDate), typeof(DateOnly)),
-                        FilterOperator.Eq,
-                        "2026-01-02"))
+                        Field(nameof(TestRecord.Amount), typeof(decimal)),
+                        FilterOperator.Between,
+                        50,
+                        150))
                 .ToArray();
 
-        var item =
-            Assert.Single(result);
-
-        Assert.Equal(
-            new DateOnly(2026, 1, 2),
-            item.EffectiveDate);
-    }
-
-    [Fact]
-    public void ApplyFilter_ShouldConvertStringValueToGuid()
-    {
-        var id =
-            CreateRecords()[0].ExternalId;
-
-        var result =
-            _applier
-                .ApplyFilter(
-                    CreateRecords().AsQueryable(),
-                    Filter(
-                        Field(nameof(TestRecord.ExternalId), typeof(Guid)),
-                        FilterOperator.Eq,
-                        id.ToString()))
-                .ToArray();
-
-        var item =
-            Assert.Single(result);
-
-        Assert.Equal(
-            id,
-            item.ExternalId);
+        Assert.All(
+            result,
+            x => Assert.True(
+                x.Amount >= 50m &&
+                x.Amount <= 150m));
     }
 
     [Fact]
@@ -1003,7 +942,7 @@ public sealed class CompiledQueryApplierTests
                     CreateRecords().AsQueryable(),
                     Filter(
                         Field(nameof(TestRecord.Status), typeof(TestStatus)),
-                        FilterOperator.Eq,
+                        FilterOperator.Equals,
                         "Active"))
                 .ToArray();
 
@@ -1012,6 +951,51 @@ public sealed class CompiledQueryApplierTests
             x => Assert.Equal(
                 TestStatus.Active,
                 x.Status));
+    }
+
+    [Fact]
+    public void ApplyFilter_ShouldThrow_WhenStringValueIsUsedForInt()
+    {
+        Assert.Throws<InvalidOperationException>(
+            () => _applier
+                .ApplyFilter(
+                    CreateRecords().AsQueryable(),
+                    Filter(
+                        Field(nameof(TestRecord.Id), typeof(int)),
+                        FilterOperator.Equals,
+                        "1"))
+                .ToArray());
+    }
+
+    [Fact]
+    public void ApplyFilter_ShouldThrow_WhenStringValueIsUsedForDateOnly()
+    {
+        Assert.Throws<InvalidOperationException>(
+            () => _applier
+                .ApplyFilter(
+                    CreateRecords().AsQueryable(),
+                    Filter(
+                        Field(nameof(TestRecord.EffectiveDate), typeof(DateOnly)),
+                        FilterOperator.Equals,
+                        "2026-01-02"))
+                .ToArray());
+    }
+
+    [Fact]
+    public void ApplyFilter_ShouldThrow_WhenStringValueIsUsedForGuid()
+    {
+        var id =
+            CreateRecords()[0].ExternalId;
+
+        Assert.Throws<InvalidOperationException>(
+            () => _applier
+                .ApplyFilter(
+                    CreateRecords().AsQueryable(),
+                    Filter(
+                        Field(nameof(TestRecord.ExternalId), typeof(Guid)),
+                        FilterOperator.Equals,
+                        id.ToString()))
+                .ToArray());
     }
 
     private static CompiledFilterCondition Filter(
@@ -1125,16 +1109,9 @@ public sealed class CompiledQueryApplierTests
 
     private enum TestStatus
     {
-        [Description("Delta")]
         Unknown,
-
-        [Description("Alpha")]
         Active,
-
-        [Description("Beta")]
         Pending,
-
-        [Description("Gamma")]
         Retired
     }
 }

@@ -96,4 +96,25 @@ public static class DataTypeMapper
         return new DataTypeDescriptor(
             "object");
     }
+
+    public static bool IsSupportedType(Type type)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+
+        var actualType =
+            Nullable.GetUnderlyingType(type)
+            ?? type;
+
+        if (TypeMappings.ContainsKey(actualType))
+        {
+            return true;
+        }
+
+        if (actualType.IsEnum)
+        {
+            return true;
+        }
+
+        return false;
+    }
 }

@@ -7,6 +7,6 @@ namespace Kaleido.Queryable
     {
         IReadOnlyCollection<RecordMetadata> GetRecordDescriptors();
 
-        Task<QueryResponse<TRecord>> QueryAsync<TRecord>(string recordKey, QueryRequest request, CancellationToken cancellationToken = default) where TRecord : class;
+        Task<QueryResult<TRecord>> QueryAsync<TRecord>(string recordKey, QueryRequest request, CancellationToken cancellationToken = default) where TRecord : class;
     }
 }

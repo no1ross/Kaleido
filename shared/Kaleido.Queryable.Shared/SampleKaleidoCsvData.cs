@@ -47,7 +47,7 @@ internal static class FunctionalCsvLoader
                 EffectiveDate = DateOnly.Parse(Get("EffectiveDate")),
                 CreatedAt = DateTime.Parse(Get("CreatedAt")),
                 ExpirationDate = GetNullable("ExpirationDate") is { } expiration ? DateOnly.Parse(expiration) : null,
-                Status = EnumExtensions.TryParseFromDescription<RecordStatus>(Get("Status"), out var status) ? status : Enum.Parse<RecordStatus>(Get("Status"), true),
+                Status = Enum.Parse<RecordStatus>(Get("Status"), ignoreCase: true),
                 Priority = int.Parse(Get("Priority")),
                 Region = Get("Region"),
                 GroupName = Get("GroupName"),

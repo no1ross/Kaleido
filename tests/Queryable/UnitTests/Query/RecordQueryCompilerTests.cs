@@ -196,7 +196,7 @@ public sealed class QueryRequestCompilerTests
                 Query: new QueryBody(
                     Filter: QueryFilterNode.CreateCondition(
                         nameof(TestRecord.Name),
-                        FilterOperator.Eq,
+                        FilterOperator.Equals,
                         "Andrew")));
 
         var result =
@@ -213,7 +213,7 @@ public sealed class QueryRequestCompilerTests
             condition.Field.Name);
 
         Assert.Equal(
-            FilterOperator.Eq,
+            FilterOperator.Equals,
             condition.Operator);
 
         Assert.Single(
@@ -234,17 +234,17 @@ public sealed class QueryRequestCompilerTests
                         LogicalOperator.And,
                         QueryFilterNode.CreateCondition(
                             nameof(TestRecord.Name),
-                            FilterOperator.Eq,
+                            FilterOperator.Equals,
                             "A"),
                         QueryFilterNode.CreateGroup(
                             LogicalOperator.Or,
                             QueryFilterNode.CreateCondition(
                                 nameof(TestRecord.Category),
-                                FilterOperator.Eq,
+                                FilterOperator.Equals,
                                 "One"),
                             QueryFilterNode.CreateCondition(
                                 nameof(TestRecord.Category),
-                                FilterOperator.Eq,
+                                FilterOperator.Equals,
                                 "Two")))));
 
         var result =
@@ -279,7 +279,7 @@ public sealed class QueryRequestCompilerTests
                 Query: new QueryBody(
                     Filter: QueryFilterNode.CreateCondition(
                         "MissingField",
-                        FilterOperator.Eq,
+                        FilterOperator.Equals,
                         "A")));
 
         Assert.Throws<InvalidOperationException>(
@@ -297,7 +297,7 @@ public sealed class QueryRequestCompilerTests
                     Filter: new QueryFilterNode(
                         new QueryFilterCondition(
                             nameof(TestRecord.Name),
-                            FilterOperator.Eq,
+                            FilterOperator.Equals,
                             ["A"]),
                         new QueryFilterGroup(
                             LogicalOperator.And,
@@ -683,7 +683,7 @@ public sealed class QueryRequestCompilerTests
                     nameof(TestRecord.Name),
                     typeof(string),
                     true,
-                    [FilterOperator.Eq],
+                    [FilterOperator.Equals],
                     true,
                     1,
                     [MatchMode.Exact, MatchMode.Contains],
@@ -693,7 +693,7 @@ public sealed class QueryRequestCompilerTests
                     nameof(TestRecord.Category),
                     typeof(string),
                     true,
-                    [FilterOperator.Eq],
+                    [FilterOperator.Equals],
                     true,
                     2,
                     [MatchMode.Contains],
@@ -704,9 +704,9 @@ public sealed class QueryRequestCompilerTests
                     typeof(decimal),
                     true,
                     [
-                        FilterOperator.Eq,
-                        FilterOperator.Gt,
-                        FilterOperator.Gte
+                        FilterOperator.Equals,
+                        FilterOperator.GreaterThan,
+                        FilterOperator.GreaterThanOrEqual
                     ],
                     false,
                     null,
@@ -730,7 +730,7 @@ public sealed class QueryRequestCompilerTests
                     nameof(TestRecord.Name),
                     typeof(string),
                     true,
-                    [FilterOperator.Eq],
+                    [FilterOperator.Equals],
                     true,
                     1,
                     [MatchMode.Exact, MatchMode.Contains],

@@ -3,8 +3,8 @@ using Kaleido.Samples.SQLite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Kaleido.Queryable;
-using Kaleido.Queryable.AspNetCore;
 using Kaleido.Queryable.Shared;
+using Kaleido.Queryable.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 

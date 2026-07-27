@@ -67,15 +67,10 @@ public sealed class QueryableCatalogTests
             new QueryRequest();
 
         var response =
-            new QueryResponse<TestRecord>(
-                new RecordMetadata(
-                    "test-record",
-                    "Test Record",
-                    "1.0.0",
-                    "Unit Test",
-                    [],
-                    null),
+            new QueryResult<TestRecord>(
                 1,
+                0,
+                25,
                 []);
 
         dispatcher
@@ -126,15 +121,10 @@ public sealed class QueryableCatalogTests
             new CancellationTokenSource().Token;
 
         var response =
-            new QueryResponse<TestRecord>(
-                new RecordMetadata(
-                    "test-record",
-                    "Test Record",
-                    "1.0.0",
-                    "Unit Test",
-                    [],
-                    null),
+            new QueryResult<TestRecord>(
                 0,
+                0,
+                25,
                 []);
 
         dispatcher

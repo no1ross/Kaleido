@@ -95,7 +95,7 @@ public sealed class RecordQueryValidatorTests
                     Filter:
                         QueryFilterNode.CreateCondition(
                             "BadField",
-                            FilterOperator.Eq,
+                            FilterOperator.Equals,
                             "value")));
 
         Assert.Throws<InvalidOperationException>(
@@ -113,7 +113,7 @@ public sealed class RecordQueryValidatorTests
                     Filter:
                         QueryFilterNode.CreateCondition(
                             "Description",
-                            FilterOperator.Eq,
+                            FilterOperator.Equals,
                             "value")));
 
         Assert.Throws<InvalidOperationException>(
@@ -227,7 +227,7 @@ public sealed class RecordQueryValidatorTests
 
                             QueryFilterNode.CreateCondition(
                                 "Name",
-                                FilterOperator.Eq,
+                                FilterOperator.Equals,
                                 "Test"),
 
                             QueryFilterNode.CreateGroup(
@@ -235,12 +235,12 @@ public sealed class RecordQueryValidatorTests
 
                                 QueryFilterNode.CreateCondition(
                                     "Name",
-                                    FilterOperator.Eq,
+                                    FilterOperator.Equals,
                                     "A"),
 
                                 QueryFilterNode.CreateCondition(
                                     "Name",
-                                    FilterOperator.Eq,
+                                    FilterOperator.Equals,
                                     "B")))));
 
         _validator.Validate(
@@ -260,7 +260,7 @@ public sealed class RecordQueryValidatorTests
 
                             QueryFilterNode.CreateCondition(
                                 "BadField",
-                                FilterOperator.Eq,
+                                FilterOperator.Equals,
                                 "Test"))));
 
         Assert.Throws<InvalidOperationException>(
@@ -417,7 +417,7 @@ public sealed class RecordQueryValidatorTests
                         "Name",
                         typeof(string),
                         true,
-                        [FilterOperator.Eq],
+                        [FilterOperator.Equals],
                         true,
                         1,
                         [MatchMode.Exact, MatchMode.Contains],

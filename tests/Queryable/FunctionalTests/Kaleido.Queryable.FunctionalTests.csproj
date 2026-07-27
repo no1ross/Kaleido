@@ -6,8 +6,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\..\shared\Kaleido.Queryable.Shared\Kaleido.Queryable.Shared.csproj" />
 		<ProjectReference Include="..\..\..\src\Queryable\Queryable\Kaleido.Queryable.csproj" />
+		<ProjectReference Include="..\Testing\Kaleido.Queryable.Testing.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

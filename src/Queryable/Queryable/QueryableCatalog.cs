@@ -21,7 +21,7 @@ public sealed class QueryableCatalog : IQueryableCatalog
         return _registry.Registrations.Select(x => x.Metadata).ToArray();
     }
 
-    public async Task<QueryResponse<TRecord>> QueryAsync<TRecord>(string recordKey, QueryRequest request, CancellationToken cancellationToken = default) where TRecord : class
+    public async Task<QueryResult<TRecord>> QueryAsync<TRecord>(string recordKey, QueryRequest request, CancellationToken cancellationToken = default) where TRecord : class
     {
         return await _dispatcher.DispatchAsync<TRecord>(recordKey, request, cancellationToken);
     }

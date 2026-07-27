@@ -48,7 +48,7 @@ internal sealed class RecordQueryEngine<TRecord> : IRecordQueryEngine<TRecord>
         var totalCount = await _executor.CountAsync(query, cancellationToken);
         query = _applier.ApplyPage(query, compiled.Page);
         var items = await _executor.ToListAsync(query, cancellationToken);
-        return new QueryResult<TRecord>(items, totalCount, metadata);
+        return new QueryResult<TRecord>(totalCount, compiled.Page?.Offset ?? 0, compiled.Page?.Size ?? int.MaxValue, items);
     }
 
     private IQueryable<TRecord> ApplyNamedQuery(

@@ -1,5 +1,5 @@
-using Kaleido.Extensions;
 using Kaleido.Queryable.Query;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -12,35 +12,67 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
         IQueryable<TRecord> query,
         CompiledFilterExpression? filter)
     {
-        if (filter is null) return query;
+        if (filter is null)
+        {
+            return query;
+        }
 
-        var parameter = Expression.Parameter(typeof(TRecord), "x");
-        var body = BuildFilter(parameter, filter);
+        var parameter =
+            Expression.Parameter(
+                typeof(TRecord),
+                "x");
 
-        return query.Where(Expression.Lambda<Func<TRecord, bool>>(body, parameter));
+        var body =
+            BuildFilter(
+                parameter,
+                filter);
+
+        return query.Where(
+            Expression.Lambda<Func<TRecord, bool>>(
+                body,
+                parameter));
     }
 
     public IQueryable<TRecord> ApplySearch(
         IQueryable<TRecord> query,
         CompiledSearchExpression? search)
     {
-        if (search is null) return query;
+        if (search is null)
+        {
+            return query;
+        }
 
-        var parameter = Expression.Parameter(typeof(TRecord), "x");
-        var body = BuildSearch(parameter, search);
+        var parameter =
+            Expression.Parameter(
+                typeof(TRecord),
+                "x");
 
-        return query.Where(Expression.Lambda<Func<TRecord, bool>>(body, parameter));
+        var body =
+            BuildSearch(
+                parameter,
+                search);
+
+        return query.Where(
+            Expression.Lambda<Func<TRecord, bool>>(
+                body,
+                parameter));
     }
 
     public IQueryable<TRecord> ApplySort(
         IQueryable<TRecord> query,
         IReadOnlyList<CompiledSort> sort)
     {
-        var ordered = false;
+        var ordered =
+            false;
 
         foreach (var item in sort.OrderBy(x => x.Sequence))
         {
-            query = ApplySortItem(query, item, ordered);
+            query =
+                ApplySortItem(
+                    query,
+                    item,
+                    ordered);
+
             ordered = true;
         }
 
@@ -63,7 +95,9 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
         return expression switch
         {
             CompiledFilterCondition condition =>
-                BuildFilterCondition(parameter, condition),
+                BuildFilterCondition(
+                    parameter,
+                    condition),
 
             CompiledFilterGroup group =>
                 BuildGroup(
@@ -84,7 +118,9 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
         return expression switch
         {
             CompiledSearchCondition condition =>
-                BuildSearchCondition(parameter, condition),
+                BuildSearchCondition(
+                    parameter,
+                    condition),
 
             CompiledSearchGroup group =>
                 BuildGroup(
@@ -116,39 +152,54 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
         ParameterExpression parameter,
         CompiledFilterCondition condition)
     {
-        var member = Expression.PropertyOrField(parameter, condition.Field.Name);
+        var member =
+            Expression.PropertyOrField(
+                parameter,
+                condition.Field.Name);
 
         return condition.Operator switch
         {
-            FilterOperator.Eq =>
+            FilterOperator.Equals =>
                 Expression.Equal(
                     member,
-                    Constant(member.Type, GetValue(condition, 0))),
+                    Constant(
+                        member.Type,
+                        GetValue(condition, 0))),
 
-            FilterOperator.Ne =>
+            FilterOperator.NotEquals =>
                 Expression.NotEqual(
                     member,
-                    Constant(member.Type, GetValue(condition, 0))),
+                    Constant(
+                        member.Type,
+                        GetValue(condition, 0))),
 
-            FilterOperator.Gt =>
+            FilterOperator.GreaterThan =>
                 Expression.GreaterThan(
                     member,
-                    Constant(member.Type, GetValue(condition, 0))),
+                    Constant(
+                        member.Type,
+                        GetValue(condition, 0))),
 
-            FilterOperator.Gte =>
+            FilterOperator.GreaterThanOrEqual =>
                 Expression.GreaterThanOrEqual(
                     member,
-                    Constant(member.Type, GetValue(condition, 0))),
+                    Constant(
+                        member.Type,
+                        GetValue(condition, 0))),
 
-            FilterOperator.Lt =>
+            FilterOperator.LessThan =>
                 Expression.LessThan(
                     member,
-                    Constant(member.Type, GetValue(condition, 0))),
+                    Constant(
+                        member.Type,
+                        GetValue(condition, 0))),
 
-            FilterOperator.Lte =>
+            FilterOperator.LessThanOrEqual =>
                 Expression.LessThanOrEqual(
                     member,
-                    Constant(member.Type, GetValue(condition, 0))),
+                    Constant(
+                        member.Type,
+                        GetValue(condition, 0))),
 
             FilterOperator.Contains =>
                 StringCall(
@@ -205,12 +256,16 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
             FilterOperator.IsNull =>
                 Expression.Equal(
                     member,
-                    Expression.Constant(null, member.Type)),
+                    Expression.Constant(
+                        null,
+                        member.Type)),
 
             FilterOperator.IsNotNull =>
                 Expression.NotEqual(
                     member,
-                    Expression.Constant(null, member.Type)),
+                    Expression.Constant(
+                        null,
+                        member.Type)),
 
             FilterOperator.IsTrue =>
                 BooleanCall(
@@ -231,14 +286,19 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
         ParameterExpression parameter,
         CompiledSearchCondition condition)
     {
-        var member = Expression.PropertyOrField(parameter, condition.Field.Name);
+        var member =
+            Expression.PropertyOrField(
+                parameter,
+                condition.Field.Name);
 
         return condition.MatchMode switch
         {
             MatchMode.Exact =>
                 Expression.Equal(
                     member,
-                    Constant(member.Type, condition.SearchText)),
+                    Constant(
+                        member.Type,
+                        condition.SearchText)),
 
             MatchMode.StartsWith =>
                 StringCall(
@@ -261,18 +321,6 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
                     condition.SearchText,
                     negate: false),
 
-            MatchMode.Fuzzy =>
-                throw new NotSupportedException(
-                    "Match mode 'Fuzzy' requires provider-specific support and is not supported by the generic IQueryable applier."),
-
-            MatchMode.Soundex =>
-                throw new NotSupportedException(
-                    "Match mode 'Soundex' requires provider-specific support and is not supported by the generic IQueryable applier."),
-
-            MatchMode.FullText =>
-                throw new NotSupportedException(
-                    "Match mode 'FullText' requires provider-specific support and is not supported by the generic IQueryable applier."),
-
             _ => throw new NotSupportedException(
                 $"Match mode '{condition.MatchMode}' is not supported by the IQueryable provider.")
         };
@@ -283,48 +331,49 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
         CompiledSort sort,
         bool thenBy)
     {
-        var parameter = Expression.Parameter(
-            typeof(TRecord),
-            "x");
-
-        var member = Expression.PropertyOrField(
-            parameter,
-            sort.Field.Name);
-
-        Expression sortExpression = member;
-
-        if (member.Type.IsEnum)
-        {
-            sortExpression = Expression.Call(
-                typeof(EnumExtensions),
-                nameof(EnumExtensions.GetDescription),
-                Type.EmptyTypes,
-                Expression.Convert(member, typeof(Enum)));
-        }
-
-        var lambda = Expression.Lambda(
-            sortExpression,
-            parameter);
-
-        var methodName = (thenBy, sort.Direction) switch
-        {
-            (false, SortDirection.Ascending) => nameof(System.Linq.Queryable.OrderBy),
-            (false, SortDirection.Descending) => nameof(System.Linq.Queryable.OrderByDescending),
-            (true, SortDirection.Ascending) => nameof(System.Linq.Queryable.ThenBy),
-            (true, SortDirection.Descending) => nameof(System.Linq.Queryable.ThenByDescending),
-
-            _ => throw new NotSupportedException(
-                $"Sort direction '{sort.Direction}' is not supported.")
-        };
-
-        var method = typeof(System.Linq.Queryable)
-            .GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Single(m =>
-                m.Name == methodName &&
-                m.GetParameters().Length == 2)
-            .MakeGenericMethod(
+        var parameter =
+            Expression.Parameter(
                 typeof(TRecord),
-                sortExpression.Type);
+                "x");
+
+        var member =
+            Expression.PropertyOrField(
+                parameter,
+                sort.Field.Name);
+
+        var lambda =
+            Expression.Lambda(
+                member,
+                parameter);
+
+        var methodName =
+            (thenBy, sort.Direction) switch
+            {
+                (false, SortDirection.Ascending) =>
+                    nameof(System.Linq.Queryable.OrderBy),
+
+                (false, SortDirection.Descending) =>
+                    nameof(System.Linq.Queryable.OrderByDescending),
+
+                (true, SortDirection.Ascending) =>
+                    nameof(System.Linq.Queryable.ThenBy),
+
+                (true, SortDirection.Descending) =>
+                    nameof(System.Linq.Queryable.ThenByDescending),
+
+                _ => throw new NotSupportedException(
+                    $"Sort direction '{sort.Direction}' is not supported.")
+            };
+
+        var method =
+            typeof(System.Linq.Queryable)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Single(m =>
+                    m.Name == methodName &&
+                    m.GetParameters().Length == 2)
+                .MakeGenericMethod(
+                    typeof(TRecord),
+                    member.Type);
 
         return (IQueryable<TRecord>)
             method.Invoke(
@@ -344,20 +393,36 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
                 $"String operator '{methodName}' can only be applied to string fields. Field expression type was '{member.Type.Name}'.");
         }
 
-        var method = typeof(string).GetMethod(
-            methodName,
-            new[] { typeof(string) })!;
+        var stringValue =
+            ValidateValue(
+                value,
+                typeof(string)) as string
+            ?? string.Empty;
 
-        var notNull = Expression.NotEqual(
-            member,
-            Expression.Constant(null, typeof(string)));
+        var method =
+            typeof(string).GetMethod(
+                methodName,
+                new[] { typeof(string) })!;
 
-        var call = Expression.Call(
-            member,
-            method,
-            Expression.Constant(value?.ToString() ?? string.Empty));
+        var notNull =
+            Expression.NotEqual(
+                member,
+                Expression.Constant(
+                    null,
+                    typeof(string)));
 
-        var expression = Expression.AndAlso(notNull, call);
+        var call =
+            Expression.Call(
+                member,
+                method,
+                Expression.Constant(
+                    stringValue,
+                    typeof(string)));
+
+        var expression =
+            Expression.AndAlso(
+                notNull,
+                call);
 
         return negate
             ? Expression.Not(expression)
@@ -371,24 +436,32 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
     {
         if (values.Count == 0)
         {
-            // IN () should never match.
-            var emptyResult = Expression.Constant(false);
-            return negate ? Expression.Not(emptyResult) : emptyResult;
+            var emptyResult =
+                Expression.Constant(false);
+
+            return negate
+                ? Expression.Not(emptyResult)
+                : emptyResult;
         }
 
-        var array = CreateTypedArray(member.Type, values);
+        var array =
+            CreateTypedArray(
+                member.Type,
+                values);
 
-        var method = typeof(Enumerable)
-            .GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Single(m =>
-                m.Name == nameof(Enumerable.Contains) &&
-                m.GetParameters().Length == 2)
-            .MakeGenericMethod(member.Type);
+        var method =
+            typeof(Enumerable)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Single(m =>
+                    m.Name == nameof(Enumerable.Contains) &&
+                    m.GetParameters().Length == 2)
+                .MakeGenericMethod(member.Type);
 
-        var call = Expression.Call(
-            method,
-            Expression.Constant(array),
-            member);
+        var call =
+            Expression.Call(
+                method,
+                Expression.Constant(array),
+                member);
 
         return negate
             ? Expression.Not(call)
@@ -406,15 +479,30 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
                 "Between and NotBetween require exactly two values.");
         }
 
-        var lower = Constant(member.Type, values[0]);
-        var upper = Constant(member.Type, values[1]);
+        var lower =
+            Constant(
+                member.Type,
+                values[0]);
 
-        var greaterThanOrEqual = Expression.GreaterThanOrEqual(member, lower);
-        var lessThanOrEqual = Expression.LessThanOrEqual(member, upper);
+        var upper =
+            Constant(
+                member.Type,
+                values[1]);
 
-        var between = Expression.AndAlso(
-            greaterThanOrEqual,
-            lessThanOrEqual);
+        var greaterThanOrEqual =
+            Expression.GreaterThanOrEqual(
+                member,
+                lower);
+
+        var lessThanOrEqual =
+            Expression.LessThanOrEqual(
+                member,
+                upper);
+
+        var between =
+            Expression.AndAlso(
+                greaterThanOrEqual,
+                lessThanOrEqual);
 
         return negate
             ? Expression.Not(between)
@@ -425,7 +513,9 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
         Expression member,
         bool expected)
     {
-        var targetType = Nullable.GetUnderlyingType(member.Type) ?? member.Type;
+        var targetType =
+            Nullable.GetUnderlyingType(member.Type)
+            ?? member.Type;
 
         if (targetType != typeof(bool))
         {
@@ -435,19 +525,26 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
 
         return Expression.Equal(
             member,
-            Constant(member.Type, expected));
+            Constant(
+                member.Type,
+                expected));
     }
 
     private static object CreateTypedArray(
         Type memberType,
         IReadOnlyList<object?> values)
     {
-        var array = Array.CreateInstance(memberType, values.Count);
+        var array =
+            Array.CreateInstance(
+                memberType,
+                values.Count);
 
         for (var i = 0; i < values.Count; i++)
         {
             array.SetValue(
-                ConvertValue(values[i], memberType),
+                ValidateValue(
+                    values[i],
+                    memberType),
                 i);
         }
 
@@ -467,111 +564,112 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
         return condition.Values[index];
     }
 
-    private static ConstantExpression Constant(
+    private static Expression Constant(
         Type targetType,
         object? value)
     {
-        return Expression.Constant(
-            ConvertValue(value, targetType),
-            targetType);
-    }
+        var compatibleValue =
+            ValidateValue(
+                value,
+                targetType);
 
-    private static object? ConvertValue(
-        object? value,
-        Type targetType)
-    {
-        if (value is null)
+        if (compatibleValue is null)
         {
-            return null;
+            return Expression.Constant(
+                null,
+                targetType);
         }
 
         var nullableType =
             Nullable.GetUnderlyingType(targetType);
 
-        var effectiveType =
-            nullableType ?? targetType;
+        if (nullableType is null)
+        {
+            return Expression.Constant(
+                compatibleValue,
+                targetType);
+        }
 
-        if (effectiveType.IsAssignableFrom(value.GetType()))
+        return Expression.Convert(
+            Expression.Constant(
+                compatibleValue,
+                nullableType),
+            targetType);
+    }
+
+    private static object? ValidateValue(
+        object? value,
+        Type targetType)
+    {
+        if (value is null)
+        {
+            if (!CanBeNull(targetType))
+            {
+                throw new InvalidOperationException(
+                    $"Value for non-nullable type '{targetType.Name}' cannot be null.");
+            }
+
+            return null;
+        }
+
+        var expectedType =
+            Nullable.GetUnderlyingType(targetType)
+            ?? targetType;
+
+        var actualType =
+            value.GetType();
+
+        if (expectedType.IsAssignableFrom(actualType))
         {
             return value;
         }
 
-        if (effectiveType.IsEnum)
+        if (expectedType.IsEnum &&
+            value is string enumValue)
         {
-            var stringValue =
-                value.ToString();
-
-            if (EnumExtensions.TryParseFromDescription(
-                    effectiveType,
-                    stringValue,
-                    out var enumValue))
-            {
-                return enumValue;
-            }
-
             return Enum.Parse(
-                effectiveType,
-                stringValue!,
+                expectedType,
+                enumValue,
                 ignoreCase: true);
         }
 
-        if (effectiveType == typeof(Guid))
+        if (IsNumericType(expectedType) &&
+            IsNumericType(actualType))
         {
-            return value is Guid guid
-                ? guid
-                : Guid.Parse(value.ToString()!);
+            return Convert.ChangeType(
+                value,
+                expectedType,
+                CultureInfo.InvariantCulture);
         }
 
-        if (effectiveType == typeof(DateOnly))
-        {
-            return value is DateOnly dateOnly
-                ? dateOnly
-                : DateOnly.Parse(value.ToString()!);
-        }
+        throw new InvalidOperationException(
+            $"Value type '{actualType.Name}' is not assignable to expected type '{expectedType.Name}'.");
+    }
 
-        if (effectiveType == typeof(DateTime))
-        {
-            return value is DateTime dateTime
-                ? dateTime
-                : DateTime.Parse(value.ToString()!);
-        }
+    private static bool CanBeNull(
+        Type type)
+    {
+        return !type.IsValueType ||
+               Nullable.GetUnderlyingType(type) is not null;
+    }
 
-        if (effectiveType == typeof(DateTimeOffset))
-        {
-            return value is DateTimeOffset dateTimeOffset
-                ? dateTimeOffset
-                : DateTimeOffset.Parse(value.ToString()!);
-        }
+    private static bool IsNumericType(
+        Type type)
+    {
+        var actualType =
+            Nullable.GetUnderlyingType(type)
+            ?? type;
 
-        if (effectiveType == typeof(TimeOnly))
-        {
-            return value is TimeOnly timeOnly
-                ? timeOnly
-                : TimeOnly.Parse(value.ToString()!);
-        }
-
-        if (effectiveType == typeof(TimeSpan))
-        {
-            return value is TimeSpan timeSpan
-                ? timeSpan
-                : TimeSpan.Parse(value.ToString()!);
-        }
-
-        if (effectiveType == typeof(bool))
-        {
-            return value is bool boolValue
-                ? boolValue
-                : bool.Parse(value.ToString()!);
-        }
-
-        if (effectiveType == typeof(string))
-        {
-            return value.ToString();
-        }
-
-        return Convert.ChangeType(
-            value,
-            effectiveType,
-            System.Globalization.CultureInfo.InvariantCulture);
+        return actualType == typeof(byte) ||
+               actualType == typeof(sbyte) ||
+               actualType == typeof(short) ||
+               actualType == typeof(ushort) ||
+               actualType == typeof(int) ||
+               actualType == typeof(uint) ||
+               actualType == typeof(long) ||
+               actualType == typeof(ulong) ||
+               actualType == typeof(float) ||
+               actualType == typeof(double) ||
+               actualType == typeof(decimal);
     }
 }
