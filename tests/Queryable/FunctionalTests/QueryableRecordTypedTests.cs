@@ -1,5 +1,6 @@
 using Kaleido.Queryable.FunctionalTests.Fixtures;
 using Kaleido.Queryable.FunctionalTests.Infrastructure;
+using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,37 +25,37 @@ public sealed class QueryableRecordTypedTests
 
         var catalog =
             scope.ServiceProvider
-                .GetRequiredService<IQueryableCatalog>();
+                .GetRequiredService<IRecordRegistry>();
 
         var records =
-            catalog.GetRecordDescriptors();
+            catalog.Registrations;
 
         var record =
             Assert.Single(
                 records,
-                x => x.Name == "functional-records");
+                x => x.Metadata.Name == "functional-records");
 
         Assert.Equal(
             "functional-records",
-            record.Name);
+            record.Metadata.Name);
 
         Assert.Equal(
             "SampleKaleidoRecord",
-            record.Description);
+            record.Metadata.Description);
 
         Assert.Equal(
             "1.0.0",
-            record.Version);
+            record.Metadata.Version);
 
         Assert.Equal(
             "CSV Functional Test Data",
-            record.Source);
+            record.Metadata.Source);
 
         Assert.NotEmpty(
-            record.Fields);
+            record.Metadata.Fields);
 
         Assert.NotNull(
-            record.Pageable);
+            record.Metadata.Pageable);
     }
 
     [Theory]
@@ -69,7 +70,7 @@ public sealed class QueryableRecordTypedTests
 
         var catalog =
             scope.ServiceProvider
-                .GetRequiredService<IQueryableCatalog>();
+                .GetRequiredService<IQueryableService>();
 
         var data =
             scope.ServiceProvider

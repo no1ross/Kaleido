@@ -422,7 +422,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
             registry.Object);
 
         builder.Services.AddSingleton(
-            Mock.Of<IQueryableCatalog>());
+            Mock.Of<IQueryableService>());
 
         builder.Services.AddSingleton(
             Options.Create(
@@ -441,7 +441,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
                 new QueryableAspNetCoreOptions()));
 
         builder.Services.AddSingleton(
-            Mock.Of<IQueryableCatalog>());
+            Mock.Of<IQueryableService>());
 
         return builder.Build();
     }

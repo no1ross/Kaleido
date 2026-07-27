@@ -137,7 +137,7 @@ internal static class RecordEndpointMapper
                 route,
                 async (
                     QueryApiRequest request,
-                    IQueryableCatalog catalog,
+                    IQueryableService catalog,
                     CancellationToken cancellationToken) =>
                 {
                     var query =
@@ -172,7 +172,7 @@ internal static class RecordEndpointMapper
                 async (
                     HttpRequest httpRequest,
                     NamedQueryApiRequest request,
-                    IQueryableCatalog catalog,
+                    IQueryableService catalog,
                     CancellationToken cancellationToken) =>
                 {
                     var parameters =

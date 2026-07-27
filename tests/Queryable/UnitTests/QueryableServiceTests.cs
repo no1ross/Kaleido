@@ -5,15 +5,15 @@ using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
-namespace Kaleido.Queryable.UnitTests.Runtime;
+namespace Kaleido.Queryable.UnitTests;
 
-public sealed class RecordDispatcherTests
+public sealed class QueryableServiceTests
 {
     [Fact]
     public void Constructor_ShouldThrow_WhenScopeFactoryIsNull()
     {
         Assert.Throws<ArgumentNullException>(
-            () => new RecordDispatcher(
+            () => new QueryableService(
                 null!,
                 Mock.Of<IRecordRegistry>()));
     }
@@ -22,7 +22,7 @@ public sealed class RecordDispatcherTests
     public void Constructor_ShouldThrow_WhenRegistryIsNull()
     {
         Assert.Throws<ArgumentNullException>(
-            () => new RecordDispatcher(
+            () => new QueryableService(
                 Mock.Of<IServiceScopeFactory>(),
                 null!));
     }
@@ -38,12 +38,12 @@ public sealed class RecordDispatcherTests
             .Returns((RecordRegistration?)null);
 
         var dispatcher =
-            new RecordDispatcher(
+            new QueryableService(
                 Mock.Of<IServiceScopeFactory>(),
                 registry.Object);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => dispatcher.DispatchAsync<TestRecord>(
+            () => dispatcher.QueryAsync<TestRecord>(
                 "test",
                 new QueryRequest()));
     }
@@ -59,12 +59,12 @@ public sealed class RecordDispatcherTests
             .Returns(CreateRegistration(typeof(AnotherRecord)));
 
         var dispatcher =
-            new RecordDispatcher(
+            new QueryableService(
                 Mock.Of<IServiceScopeFactory>(),
                 registry.Object);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => dispatcher.DispatchAsync<TestRecord>(
+            () => dispatcher.QueryAsync<TestRecord>(
                 "test",
                 new QueryRequest()));
     }
@@ -123,11 +123,11 @@ public sealed class RecordDispatcherTests
             .Returns(CreateRegistration(typeof(TestRecord)));
 
         var dispatcher =
-            new RecordDispatcher(
+            new QueryableService(
                 scopeFactory.Object,
                 registry.Object);
 
-        await dispatcher.DispatchAsync<TestRecord>(
+        await dispatcher.QueryAsync<TestRecord>(
             "test",
             request);
 
@@ -193,12 +193,12 @@ public sealed class RecordDispatcherTests
             .Returns(CreateRegistration(typeof(TestRecord)));
 
         var dispatcher =
-            new RecordDispatcher(
+            new QueryableService(
                 scopeFactory.Object,
                 registry.Object);
 
         var response =
-            await dispatcher.DispatchAsync<TestRecord>(
+            await dispatcher.QueryAsync<TestRecord>(
                 "test",
                 new QueryRequest());
 

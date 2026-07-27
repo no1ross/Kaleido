@@ -404,7 +404,7 @@ public sealed class RecordEndpointMapperTests
         string? capturedRecordKey = null;
 
         var catalog =
-            new Mock<IQueryableCatalog>();
+            new Mock<IQueryableService>();
 
         catalog
             .Setup(x =>
@@ -484,7 +484,7 @@ public sealed class RecordEndpointMapperTests
         string? capturedRecordKey = null;
 
         var catalog =
-            new Mock<IQueryableCatalog>();
+            new Mock<IQueryableService>();
 
         catalog
             .Setup(x =>
@@ -574,13 +574,13 @@ public sealed class RecordEndpointMapperTests
     }
 
     private static WebApplication CreateApp(
-        IQueryableCatalog? catalog = null)
+        IQueryableService? catalog = null)
     {
         var builder =
             WebApplication.CreateBuilder();
 
         builder.Services.AddSingleton(
-            catalog ?? Mock.Of<IQueryableCatalog>());
+            catalog ?? Mock.Of<IQueryableService>());
 
         return builder.Build();
     }

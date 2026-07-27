@@ -87,9 +87,7 @@ public static class QueryableServiceCollectionExtensions
     {
         services.TryAddSingleton<IRecordQueryValidator, QueryRequestValidator>();
         services.TryAddSingleton<IRecordQueryCompiler, QueryRequestCompiler>();
-        services.TryAddSingleton<IRecordDispatcher, RecordDispatcher>();
-
-        services.TryAddScoped<IQueryableCatalog, QueryableCatalog>();
+        services.TryAddSingleton<IQueryableService, QueryableService>();
 
         services.TryAddSingleton(typeof(ICompiledQueryApplier<>), typeof(CompiledQueryApplier<>));
 

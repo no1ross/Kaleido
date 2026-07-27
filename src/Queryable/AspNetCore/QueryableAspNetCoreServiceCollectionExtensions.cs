@@ -14,7 +14,7 @@ public static class QueryableAspNetCoreServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        if (!builder.Services.Any(d => d.ServiceType == typeof(IQueryableCatalog)))
+        if (!builder.Services.Any(d => d.ServiceType == typeof(IQueryableService)))
         {
             throw new InvalidOperationException("AddQueryable must be called before AddQueryableAspNetCore.");
         }

@@ -1,15 +1,15 @@
+using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
-using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 
-internal sealed class RecordDispatcher : IRecordDispatcher
+internal sealed class QueryableService : IQueryableService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IRecordRegistry _registry;
 
-    public RecordDispatcher(IServiceScopeFactory scopeFactory, IRecordRegistry registry)
+    public QueryableService(IServiceScopeFactory scopeFactory, IRecordRegistry registry)
     {
         ArgumentNullException.ThrowIfNull(scopeFactory);
         ArgumentNullException.ThrowIfNull(registry);
@@ -18,7 +18,7 @@ internal sealed class RecordDispatcher : IRecordDispatcher
         _registry = registry;
     }
 
-    public async Task<QueryResult<TRecord>> DispatchAsync<TRecord>(
+    public async Task<QueryResult<TRecord>> QueryAsync<TRecord>(
         string recordKey,
         QueryRequest request,
         CancellationToken cancellationToken = default)

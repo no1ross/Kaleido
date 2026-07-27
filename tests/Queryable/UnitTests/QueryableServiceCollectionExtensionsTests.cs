@@ -51,7 +51,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
 
         Assert.Contains(
             services,
-            x => x.ServiceType == typeof(IQueryableCatalog));
+            x => x.ServiceType == typeof(IQueryableService));
     }
 
     [Fact]
@@ -185,25 +185,6 @@ public sealed class QueryableServiceCollectionExtensionsTests
 
         Assert.NotNull(registry);
         Assert.NotEmpty(registry.Registrations);
-    }
-
-    [Fact]
-    public void AddQueryable_ShouldResolveQueryableCatalog()
-    {
-        var services =
-            new ServiceCollection();
-
-        CreateBuilder(services)
-            .AddQueryable();
-
-        using var provider =
-            services.BuildServiceProvider();
-
-        var catalog =
-            provider.GetRequiredService<IQueryableCatalog>();
-
-        Assert.NotNull(catalog);
-        Assert.IsType<QueryableCatalog>(catalog);
     }
 
     private static IKaleidoBuilder CreateBuilder(

@@ -40,7 +40,7 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
             new ServiceCollection();
 
         services.AddSingleton(
-            Mock.Of<IQueryableCatalog>());
+            Mock.Of<IQueryableService>());
 
         var builder =
             services.AddKaleido();
@@ -60,7 +60,7 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
             new ServiceCollection();
 
         services.AddSingleton(
-            Mock.Of<IQueryableCatalog>());
+            Mock.Of<IQueryableService>());
 
         var builder =
             services.AddKaleido();
@@ -104,7 +104,7 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
             new ServiceCollection();
 
         services.AddSingleton(
-            Mock.Of<IQueryableCatalog>());
+            Mock.Of<IQueryableService>());
 
         var builder =
             services.AddKaleido();
