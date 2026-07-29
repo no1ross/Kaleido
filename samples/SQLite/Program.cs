@@ -1,10 +1,9 @@
 using Kaleido;
 using Kaleido.Samples.SQLite;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
 using Kaleido.Queryable;
 using Kaleido.Queryable.Shared;
 using Kaleido.Queryable.AspNetCore;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,11 +11,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-//builder.Services.AddEndpointsApiExplorer();
-//builder.Services.AddSwaggerGen(c =>
-//{
-//    c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
-//});
+//builder.Services.AddOpenApi();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v2", new OpenApiInfo { Title = "My API", Version = "v2" });
+});
 
 builder.Services.AddKaleido()
     .AddAssembly(typeof(SampleKaleidoRecord).Assembly)
@@ -38,9 +39,10 @@ app.MapQueryable();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    //app.UseSwagger();
-    //app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API v1"));
 }
+
+app.UseSwagger();
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v2/swagger.json", "My API v2"));
 
 app.UseHttpsRedirection();
 

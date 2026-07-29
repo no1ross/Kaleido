@@ -1,5 +1,7 @@
 ﻿using Kaleido.Queryable.Metadata;
 
+namespace Kaleido.Queryable.AspNetCore.Contracts;
+
 public sealed record PageableContract
 {
     public int DefaultSize { get; init; }

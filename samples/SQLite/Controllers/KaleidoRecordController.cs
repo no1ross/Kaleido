@@ -1,5 +1,6 @@
 ﻿//using Kaleido.Queryable;
 //using Kaleido.Queryable.Metadata;
+//using Kaleido.Queryable.Records;
 //using Microsoft.AspNetCore.Mvc;
 
 //namespace Kaleido.Samples.SQLite.Controllers
@@ -8,9 +9,9 @@
 //    [Route("v1/records")]
 //    public class KaleidoRecordController : ControllerBase
 //    {
-//        private readonly IQueryableCatalog _catalog;
+//        private readonly IRecordRegistry _catalog;
 
-//        public KaleidoRecordController(IQueryableCatalog catalog
+//        public KaleidoRecordController(IRecordRegistry catalog
 //            )
 //        {
 //            _catalog = catalog;
@@ -20,7 +21,7 @@
 //        [ProducesResponseType(StatusCodes.Status400BadRequest)]
 //        public ActionResult<IEnumerable<RecordMetadata>> GetValueSets()
 //        {
-//            var metas = _catalog.GetRecordDescriptors();
+//            var metas = _catalog.Registrations;
 //            return Ok(metas);
 //        }
 

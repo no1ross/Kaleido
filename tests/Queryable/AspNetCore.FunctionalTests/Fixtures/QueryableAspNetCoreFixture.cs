@@ -1,4 +1,5 @@
-﻿using Kaleido.Queryable.FunctionalTests.Infrastructure;
+﻿using Kaleido.Json;
+using Kaleido.Queryable.FunctionalTests.Infrastructure;
 using Kaleido.Queryable.Shared;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -34,6 +35,11 @@ public sealed class QueryableAspNetCoreFixture
                             .AddQueryableAspNetCore();
 
                         services.AddSingleton<SampleKaleidoCsvData>();
+
+                        services.ConfigureHttpJsonOptions(options =>
+                        {
+                            options.SerializerOptions.Converters.Add(new KaleidoEnumConverterFactory());
+                        });
                     });
 
                     webBuilder.Configure(app =>

@@ -1,6 +1,6 @@
-﻿using Kaleido.Queryable.AspNetCore;
+﻿namespace Kaleido.Queryable.AspNetCore.Contracts;
 
-internal static class QueryableRoutePaths
+public static class QueryableRoutePaths
 {
     public static string RecordMetadata(
         QueryableRouteOptions options,

@@ -39,7 +39,8 @@ public static class QueryableEndpointRouteBuilderExtensions
                                 options))
                         .OrderBy(r => r.Name)))
             .WithName(QueryableEndpointNames.CatalogEndpointName)
-            .WithTags("Queryable");
+            .WithTags("Queryable")
+            .Produces<IReadOnlyCollection<RecordSummaryContract>>();
 
         foreach (var record in registry.Registrations)
         {

@@ -6,11 +6,13 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="Microsoft.OpenApi" Version="3.9.0" />
+		<!--<PackageReference Include="Microsoft.OpenApi" Version="3.9.0" />-->
+		<PackageReference Include="Microsoft.OpenApi" Version="2.7.*" />
+		<!--<PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.2.3" />-->
+		<!--<PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />-->
 	</ItemGroup>
-	
 
 	<ItemGroup>
-	  <ProjectReference Include="..\AspNetCore\Kaleido.Queryable.AspNetCore.csproj" />
+		<ProjectReference Include="..\Queryable\Kaleido.Queryable.csproj" />
 	</ItemGroup>
 </Project>

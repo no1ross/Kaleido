@@ -1,4 +1,6 @@
-﻿internal static class QueryableEndpointNames
+﻿namespace Kaleido.Queryable.AspNetCore.Contracts;
+
+public static class QueryableEndpointNames
 {
     public static string CatalogEndpointName =>
         "queryable-catalog";

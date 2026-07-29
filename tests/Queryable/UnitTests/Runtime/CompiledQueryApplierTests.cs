@@ -1026,6 +1026,7 @@ public sealed class CompiledQueryApplierTests
     {
         return new FieldMetadata(
             name,
+            null,
             type,
             true,
             [],

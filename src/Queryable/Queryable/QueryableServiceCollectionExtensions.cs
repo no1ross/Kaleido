@@ -1,5 +1,4 @@
 using Kaleido.Queryable.Attributes;
-using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;

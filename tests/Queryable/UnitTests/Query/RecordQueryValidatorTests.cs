@@ -415,6 +415,7 @@ public sealed class RecordQueryValidatorTests
                 [
                     new FieldMetadata(
                         "Name",
+                        null,
                         typeof(string),
                         true,
                         [FilterOperator.Equals],
@@ -425,6 +426,7 @@ public sealed class RecordQueryValidatorTests
 
                     new FieldMetadata(
                         "Description",
+                        null,
                         typeof(string),
                         false,
                         [],

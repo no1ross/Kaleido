@@ -1,4 +1,6 @@
-﻿public sealed record NamedQuerySummaryContract
+﻿namespace Kaleido.Queryable.AspNetCore.Contracts;
+
+public sealed record NamedQuerySummaryContract
 {
     public required string Name { get; init; }
 

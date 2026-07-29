@@ -1,11 +1,9 @@
-﻿using Kaleido.Queryable.Metadata;
+﻿using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Moq;
 
 namespace Kaleido.Queryable.AspNetCore.Tests;
 

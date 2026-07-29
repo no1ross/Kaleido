@@ -1,5 +1,6 @@
-﻿using Kaleido;
-using Kaleido.Queryable.Metadata;
+﻿using Kaleido.Queryable.Metadata;
+
+namespace Kaleido.Queryable.AspNetCore.Contracts;
 
 public sealed record QueryParameterContract
 {

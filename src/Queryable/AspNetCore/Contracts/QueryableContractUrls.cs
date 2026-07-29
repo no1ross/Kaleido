@@ -1,4 +1,4 @@
-﻿using Kaleido.Queryable.AspNetCore;
+﻿namespace Kaleido.Queryable.AspNetCore.Contracts;
 
 internal static class QueryableContractUrls
 {

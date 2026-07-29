@@ -6,8 +6,13 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!--<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.*" />-->
+		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.2.3" />
+	</ItemGroup>
+	
+	<ItemGroup>
 	  <ProjectReference Include="..\..\Core\AspNetCore\Kaleido.AspNetCore.csproj" />
-	  <ProjectReference Include="..\Queryable\Kaleido.Queryable.csproj" />
+	  <ProjectReference Include="..\OpenApi\Kaleido.Queryable.OpenApi.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -1,5 +1,4 @@
-﻿using Kaleido.Queryable.Records;
-using Microsoft.AspNetCore.Routing;
+﻿using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -78,23 +77,23 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
 
         var options =
             provider
-                .GetRequiredService<IOptions<QueryableRouteOptions>>();
+                .GetRequiredService<QueryableRouteOptions>();
 
         Assert.Equal(
             "/custom",
-            options.Value.RoutePrefix);
+            options.RoutePrefix);
 
         Assert.Equal(
             "execute",
-            options.Value.QueryRoute);
+            options.QueryRoute);
 
         Assert.Equal(
             "schema",
-            options.Value.MetadataRoute);
+            options.MetadataRoute);
 
         Assert.Equal(
             "named-queries",
-            options.Value.QueriesRoute);
+            options.QueriesRoute);
     }
 
     [Fact]

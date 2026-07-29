@@ -1,6 +1,7 @@
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using Microsoft.Extensions.DependencyInjection;
+using System.ComponentModel;
 using System.Reflection;
 
 namespace Kaleido.Queryable.Records;
@@ -198,8 +199,12 @@ internal sealed class RecordRegistry : IRecordRegistry
         var sortable =
             property.GetCustomAttribute<SortableAttribute>();
 
+        var description =
+            property.GetCustomAttribute<DescriptionAttribute>();
+
         return new FieldMetadata(
             property.Name,
+            description?.Description,
             property.PropertyType,
             filterable is not null,
             filterable?.Operators ?? Array.Empty<FilterOperator>(),

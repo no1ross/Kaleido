@@ -1,11 +1,19 @@
-﻿namespace Kaleido;
+﻿using System.ComponentModel;
+using System.Reflection;
+
+namespace Kaleido;
 
 public sealed record DataTypeDescriptor(
     string Type,
     string? Format = null,
     bool Nullable = false,
-    IReadOnlyCollection<string>? EnumValues = null
+    IReadOnlyCollection<EnumValueDescriptor>? EnumValues = null,
+    DataTypeDescriptor? ItemType = null
 );
+public sealed record EnumValueDescriptor(
+    int Value,
+    string Name,
+    string? Description);
 
 public static class DataTypeMapper
 {
@@ -72,25 +80,51 @@ public static class DataTypeMapper
 
         if (type.IsEnum)
         {
+            var values =
+                Enum.GetValues(type)
+                    .Cast<Enum>()
+                    .Select(x =>
+                    {
+                        var member =
+                            type.GetMember(x.ToString())[0];
+
+                        var description =
+                            member
+                                .GetCustomAttribute<DescriptionAttribute>()
+                                ?.Description;
+
+                        return new EnumValueDescriptor(
+                            Value: Convert.ToInt32(x),
+                            Name: x.ToString(),
+                            Description: description);
+                    })
+                    .ToArray();
+
             return new DataTypeDescriptor(
                 "string",
                 "enum",
-                EnumValues: Enum.GetNames(type)
-            );
+                EnumValues: values);
         }
 
         if (type.IsArray)
         {
             return new DataTypeDescriptor(
-                "array");
+                "array",
+                ItemType: GetDescriptor(type.GetElementType()!));
         }
 
         if (typeof(System.Collections.IEnumerable)
-            .IsAssignableFrom(type)
+                .IsAssignableFrom(type)
             && type != typeof(string))
         {
+            var elementType =
+                type.IsGenericType
+                    ? type.GetGenericArguments()[0]
+                    : typeof(object);
+
             return new DataTypeDescriptor(
-                "array");
+                "array",
+                ItemType: GetDescriptor(elementType));
         }
 
         return new DataTypeDescriptor(

@@ -66,7 +66,8 @@ internal static class RecordEndpointMapper
                     RecordContract.FromRegistration(record, options)))
             .WithName(
                 $"{QueryableEndpointNames.RecordMetadataEndpointName(record.Metadata.Name.ToLowerInvariant())}")
-            .WithTags(record.Metadata.Name);
+            .WithTags(record.Metadata.Name)
+            .Produces<RecordContract>();
     }
 
     private static void MapNamedQueryMetadataEndpoint(
@@ -81,7 +82,8 @@ internal static class RecordEndpointMapper
                     NamedQueryContract.FromRegistration(namedQuery)))
             .WithName(
                 $"{QueryableEndpointNames.NamedQueryMetadataEndpointName(record.Metadata.Name.ToLowerInvariant(), namedQuery.Metadata.Name.ToLowerInvariant())}")
-            .WithTags(record.Metadata.Name);
+            .WithTags(record.Metadata.Name)
+            .Produces<NamedQueryContract>();
     }
 
     private static void MapQueryEndpoint(
@@ -154,9 +156,10 @@ internal static class RecordEndpointMapper
 
                     return Results.Ok(result);
                 })
-            .WithName(
-                $"{QueryableEndpointNames.RecordQueryEndpointName(recordKey.ToLowerInvariant())}")
-            .WithTags(recordKey);
+            .WithName($"{QueryableEndpointNames.RecordQueryEndpointName(recordKey.ToLowerInvariant())}")
+            .WithTags(recordKey)
+            .Accepts<QueryApiRequest>("application/json")
+            .Produces<QueryResult<TRecord>>();
     }
 
     private static void MapTypedNamedQueryEndpoint<TRecord>(
@@ -193,9 +196,10 @@ internal static class RecordEndpointMapper
 
                     return Results.Ok(result);
                 })
-            .WithName(
-                $"{QueryableEndpointNames.NamedQueryEndpointName(recordKey.ToLowerInvariant(), queryName.ToLowerInvariant())}")
-            .WithTags(recordKey);
+            .WithName($"{QueryableEndpointNames.NamedQueryEndpointName(recordKey.ToLowerInvariant(), queryName.ToLowerInvariant())}")
+            .WithTags(recordKey)
+            .Accepts<NamedQueryApiRequest>("application/json")
+            .Produces<QueryResult<TRecord>>();
     }
 
     private static IReadOnlyDictionary<string, object?> GetParameters(HttpRequest request, NamedQueryApiRequest body)

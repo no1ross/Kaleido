@@ -1,4 +1,4 @@
-namespace Kaleido.Queryable.AspNetCore;
+namespace Kaleido.Queryable;
 
 /// <summary>
 /// Configures the HTTP endpoint surface exposed by Kaleido.Queryable.AspNetCore.

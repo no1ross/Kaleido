@@ -5,6 +5,7 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\..\..\src\Queryable\OpenApi\Kaleido.Queryable.OpenApi.csproj" />
+	  <ProjectReference Include="..\Testing\Kaleido.Queryable.Testing.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

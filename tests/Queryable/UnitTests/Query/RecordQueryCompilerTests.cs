@@ -681,6 +681,7 @@ public sealed class QueryRequestCompilerTests
             [
                 new FieldMetadata(
                     nameof(TestRecord.Name),
+                    null,
                     typeof(string),
                     true,
                     [FilterOperator.Equals],
@@ -691,6 +692,7 @@ public sealed class QueryRequestCompilerTests
 
                 new FieldMetadata(
                     nameof(TestRecord.Category),
+                    null,
                     typeof(string),
                     true,
                     [FilterOperator.Equals],
@@ -701,6 +703,7 @@ public sealed class QueryRequestCompilerTests
 
                 new FieldMetadata(
                     nameof(TestRecord.Amount),
+                    null,
                     typeof(decimal),
                     true,
                     [
@@ -728,6 +731,7 @@ public sealed class QueryRequestCompilerTests
             [
                 new FieldMetadata(
                     nameof(TestRecord.Name),
+                    null,
                     typeof(string),
                     true,
                     [FilterOperator.Equals],
