@@ -1,0 +1,1734 @@
+LOL, fair callout. I absolutely underweighted Queryable, and that was a miss because Kaleido.Process only makes sense because of the architectural muscle we already built through Kaleido.Queryable. Queryable is not a side note here. It is the precedent, the proof point, and likely the shared foundation for Process.
+
+Below is the revised architectural review with Queryable treated as a first-class driver, not just background context.
+
+Comprehensive Architectural Review: Kaleido.Queryable and Kaleido.Process
+1. Executive Summary
+Primary Objective of the Discussion
+
+The primary objective of the discussion was to evolve an original service design concept into a credible, implementable enterprise framework architecture.
+
+The original business idea was straightforward:
+
+A consumer starts a request, provides information incrementally, and receives back what operations are available next along with the information required to perform each operation.
+
+Business stakeholders understand and like this model because it mirrors how real work happens. IT stakeholders resist it because they hear:
+
+Dynamic workflow
+Generic API
+Runtime rules
+Unknown payloads
+Cross-product orchestration
+Centralized business logic
+
+
+and immediately conclude:
+
+HELL NO, too complicated.
+
+
+The discussion evolved into something much more precise:
+
+This is not an API design.
+ This is not a workflow engine.
+ This is a metadata-driven process framework.
+
+More specifically, this became the conceptual origin of:
+
+Kaleido.Process
+
+
+as a sibling to:
+
+Kaleido.Queryable
+
+
+under a broader Kaleido umbrella.
+
+The Bigger Kaleido Vision
+
+The conversation established that Kaleido is no longer just a query/reference-data framework.
+
+It is becoming a family of packages for solving complex enterprise integration problems.
+
+Kaleido
+    ├── Kaleido.Queryable
+    │       └── Discover, describe, and query enterprise information
+    │
+    ├── Kaleido.Process
+    │       └── Discover, describe, and execute enterprise process behavior
+    │
+    └── Kaleido.Core / Kaleido.Common
+            └── Shared metadata, registration, result, utility, and extension infrastructure
+
+
+The most important lineage is:
+
+Queryable taught us how to discover data.
+Process extends that thinking to discover behavior.
+
+Primary Conclusion
+
+The core conclusion was:
+
+Kaleido.Process should be a reusable, metadata-driven process runtime that answers:
+ Given everything I know right now, what am I allowed to do next?
+
+This is deliberately broader than workflow.
+
+It does not assume:
+
+A → B → C
+
+
+It supports:
+
+A → B or C or D → E or B or C
+
+
+The process is not driven by a hardcoded path. It is driven by current context, participant metadata, operation availability, and business-owned execution behavior.
+
+Major Decisions Reached
+
+Kaleido.Queryable becomes its own package.
+
+Existing Kaleido work should move under Kaleido.Queryable.
+This preserves the query/data-discovery focus.
+
+Kaleido.Process becomes a new package.
+
+It reuses the same architectural philosophy as Queryable.
+Metadata, registration, discovery, and execution are foundational.
+
+Kaleido becomes an umbrella.
+
+Queryable and Process are sibling frameworks.
+Shared utilities likely move into Kaleido.Core, Kaleido.Common, or similar.
+
+Process is not workflow.
+
+No fixed step graph.
+No mandatory sequence.
+Available operations are context-driven.
+
+Process is not an API.
+
+APIs consume the framework.
+Portals, batch jobs, agents, and other systems can also consume it.
+
+Coordinator and participants are separate concepts.
+
+Coordinator owns discovery, routing, cataloging, orchestration, response aggregation.
+Participants own business behavior.
+
+Capabilities and operations are separate.
+
+Capability is a grouping of related behavior.
+Operation is the executable/requestable thing exposed to consumers.
+
+Participants must be discoverable.
+
+Participants expose metadata.
+Coordinator builds a catalog/registry from that metadata.
+
+Participants may be packages or deployable services.
+
+Framework should not force one deployment model.
+Current IT structure likely requires independently deployable participant services.
+
+Queryable may eventually integrate with Process.
+
+A process operation or attribute could eventually link to a Queryable endpoint/source.
+Queryable can become an information-discovery dependency used by process operations.
+2. Timeline of the Discussion
+Phase 1: Original Step-Based Service Concept
+
+The conversation began with a familiar pattern:
+
+A request moves through a process.
+Each step requires certain information.
+The response tells the consumer what can happen next.
+
+
+At first, this sounded like an API that exposes:
+
+CurrentStep
+NextSteps
+RequiredFields
+CompletedSteps
+
+
+This matched your original prior-auth service thinking.
+
+The initial mental model was still fairly step-based.
+
+Example:
+
+Start request
+Select member
+Select procedure
+Select provider
+Submit
+
+
+The assumption at this stage was that the service itself would guide a consumer through predefined next steps.
+
+Phase 2: Business Likes It, IT Rejects It
+
+You then explained the real organizational challenge:
+
+Business loves this design.
+IT resists it hard.
+IT says it will not work.
+IT sees it as too complicated.
+IT prefers exposing direct capability APIs.
+
+That forced an important reframing.
+
+The problem was not business value.
+
+The problem was implementability.
+
+The architecture needed to be demonstrated in a way IT could understand.
+
+The advice became:
+
+Do not start with a web API.
+Do not start with PowerPoint.
+Build a walking skeleton of the internals.
+
+
+This was important because IT people tend to trust code more than diagrams.
+
+Phase 3: API Becomes a Consumer, Not the Product
+
+You clarified that this should not really be an API.
+
+It should be an engine/framework.
+
+That shifted the model from:
+
+Process API
+
+
+to:
+
+Process Runtime
+
+
+An API might sit on top of it, but so could:
+
+Portal
+Agent
+Batch job
+Another service
+Console demo
+Blazor UI
+Copilot plugin
+
+
+That was the first moment where the architecture started feeling like a framework rather than a service.
+
+Phase 4: Queryable Becomes the Architectural Precedent
+
+This is where the earlier review failed to give proper weight.
+
+The entire Process conversation is heavily influenced by what already happened in Kaleido.Queryable.
+
+Queryable had already dealt with these same enterprise forces:
+
+Many systems
+Inconsistent contracts
+Different data sources
+Different query mechanisms
+Need for discovery
+Need for metadata
+Need for registration
+Need for consumer decoupling
+
+
+Queryable’s core philosophy became:
+
+Do not force consumers to know the implementation.
+Let sources register.
+Let metadata describe what exists.
+Let the engine execute against abstractions.
+
+
+Process is now applying that same philosophy to business behavior.
+
+Queryable answers:
+
+What information exists, and how can I query it?
+
+
+Process answers:
+
+What operations are available, and how can I execute them?
+
+
+This was not just a similarity. It became a design driver.
+
+Phase 5: Workflow Thinking Was Corrected
+
+At first, some of the language still implied workflow:
+
+A → B → C
+
+
+You corrected that hard.
+
+You clarified:
+
+This is a process, not a workflow.
+
+
+The process might be:
+
+A → B or C or D → E or B or C
+
+
+That changed everything.
+
+The key phrase emerged:
+
+Given everything I know right now,
+what am I allowed to do next?
+
+
+That became the center of the architecture.
+
+The process is not navigating a workflow graph. It is evaluating context and discovering available operations.
+
+Phase 6: Step Was Replaced by Operation
+
+Because “step” implies order, it became problematic.
+
+A step sounds like:
+
+Step 1
+Step 2
+Step 3
+
+
+But your model allows:
+
+Add procedure
+Remove procedure
+Add diagnosis
+Select provider
+Change member
+Submit
+
+
+depending on context.
+
+So the language moved toward:
+
+Operation
+
+
+An operation is something a consumer can request.
+
+Examples:
+
+SearchMember
+SelectMember
+SelectProcedure
+AddDiagnosis
+SelectProvider
+SubmitRequest
+CancelRequest
+
+
+This better fits the model because operations are not inherently sequential.
+
+Phase 7: Capability Was Reframed
+
+Initially, “capability” sounded like it might be the executable concept.
+
+You were not sold on it.
+
+That led to an important separation:
+
+Capability = grouping of related behavior
+Operation = executable/requestable behavior
+
+
+Example:
+
+Member Capability
+    - SearchMember
+    - SelectMember
+    - RemoveMember
+
+Procedure Capability
+    - SearchProcedure
+    - AddProcedure
+    - RemoveProcedure
+
+Submission Capability
+    - SubmitRequest
+    - CancelRequest
+
+
+This allows capability to remain useful without making it too vague.
+
+Phase 8: Business Operation Is Not Just Data Assignment
+
+You clarified that an operation like SelectMember is not merely:
+
+context.MemberId = request.MemberId;
+
+
+Instead, it might:
+
+Call member service
+Verify enrollment
+Validate eligibility
+Call product APIs
+Update context
+Determine implications for next operations
+
+
+This was a major realization.
+
+Operations are not simple state transitions.
+
+They are real business execution units.
+
+Process must therefore coordinate operation execution but not own all internal business logic.
+
+Phase 9: Product-Specific Process Ownership Emerged
+
+You introduced the next wrench:
+
+A BU has multiple products.
+Product services have different process behavior.
+Some products share capabilities but expose them at different times.
+Product services must determine their own next available operations.
+The BU-level service/coordinator has to call into those product-owned services.
+
+This changed the model from:
+
+One process engine knows everything
+
+
+to:
+
+Coordinator delegates to participants
+
+
+That was another key direction change.
+
+Phase 10: Avoid Product and Facade Terminology
+
+You did not want code names like:
+
+Product
+Facade
+
+
+because they are too specific to the current healthcare/product structure.
+
+The framework needs abstract terminology.
+
+The emerging hierarchy became:
+
+Process
+    ↓
+Coordinator
+    ↓
+Participant
+    ↓
+Capability
+    ↓
+Operation
+
+
+This was cleaner, more reusable, and less tied to prior-auth/product language.
+
+Phase 11: Registry/Catalog Discovery Became First-Class
+
+You then identified that participants need to tell the coordinator what they offer.
+
+This introduced:
+
+Registration
+Discovery
+Catalog
+Registry
+Metadata
+
+
+This is where Queryable’s influence becomes extremely strong.
+
+Queryable already taught:
+
+Sources register themselves.
+Metadata is collected.
+The engine operates from a catalog.
+
+
+Process now needs the same pattern:
+
+Participants register themselves.
+Participant metadata is collected.
+Capability and operation metadata are cataloged.
+Coordinator uses catalog for discovery and routing.
+
+Phase 12: Initial Unknown Participant Problem
+
+You raised the hardest runtime problem:
+
+At the beginning of prior-auth:
+
+User searches/selects member.
+Member is not yet tied to a participant.
+Coordinator may need product/procedure before routing.
+Only then can participant be determined.
+
+
+This challenged the assumption that every operation is participant-owned.
+
+Several options were considered:
+
+Coordinator owns early operations.
+Coordinator calls all participants.
+Participants expose CanHandle.
+Coordinator uses routing metadata.
+Introduce an intake/discovery participant.
+Introduce a participant resolver.
+
+The preferred direction became:
+
+Use metadata-based participant resolution,
+possibly with an intake/discovery participant for pre-resolution operations.
+
+
+This avoids hardcoding too much into the coordinator while also avoiding runtime fanout to every participant.
+
+Phase 13: Participant Deployment Model Was Reconsidered
+
+You noted that participants do not have to be deployable services. They could be packages.
+
+That opened a clean technical model:
+
+Coordinator references participant packages.
+Participants register metadata in-process.
+Coordinator executes directly.
+
+
+But then you corrected for organizational reality.
+
+In your IT environment:
+
+RBM has its own team.
+AOP/Transportation has its own team.
+RAD has its own team.
+Rehab has its own team.
+Capabilities team likely owns coordinator/framework.
+There are already six huge monoliths supporting thirteen products.
+
+That means selling this as one big service would fail.
+
+So the architecture must support:
+
+Independent participant services
+Owned by separate product/domain teams
+Communicating with a central coordinator through shared contracts
+
+
+The framework can support packages, but the organizationally viable model is distributed participant ownership.
+
+Phase 14: Kaleido Umbrella Was Established
+
+At the end, you stated that current Kaleido work should move into:
+
+Kaleido.Queryable
+
+
+and the new project should become:
+
+Kaleido.Process
+
+
+This was the broader architectural conclusion.
+
+Kaleido is becoming a package family for integration frameworks.
+
+Queryable and Process are not unrelated. They share:
+
+Metadata
+Registration
+Discovery
+Runtime execution
+Consumer decoupling
+
+
+And Process may eventually reference Queryable.
+
+For example:
+
+A process operation may declare that one of its required attributes can be satisfied by a Queryable endpoint/source.
+
+
+That means Queryable could become a data-discovery dependency inside Process metadata or operation execution.
+
+3. Key Architectural Decisions
+Decision 1: Make Kaleido an Umbrella, Not a Single Framework
+Problem Being Solved
+
+Kaleido started around Queryable, but Process is emerging as a separate yet philosophically aligned framework.
+
+Keeping everything under one project would blur responsibilities.
+
+Options Considered
+Keep everything under Kaleido.
+Rename the existing work entirely.
+Split into package families.
+Create unrelated frameworks.
+Chosen Approach
+
+Use Kaleido as the umbrella:
+
+Kaleido.Queryable
+Kaleido.Process
+Kaleido.Common / Kaleido.Core
+
+Why Preferred
+
+Queryable and Process solve different problems but share the same architectural style.
+
+Tradeoffs Accepted
+Package boundaries must be managed carefully.
+Shared utilities must not become a junk drawer.
+Naming must clearly communicate each package’s responsibility.
+Decision 2: Move Existing Queryable Work to Kaleido.Queryable
+Problem Being Solved
+
+The existing Kaleido work is specifically about queryable data access and metadata-driven data source discovery.
+
+Options Considered
+Leave it as Kaleido.
+Rename it to Kaleido.Queryable.
+Merge it with Process later.
+Chosen Approach
+
+Move current work to:
+
+Kaleido.Queryable
+
+Why Preferred
+
+It gives the existing work a precise identity:
+
+Queryable = information discovery and query execution
+
+Tradeoffs Accepted
+Requires namespace/package migration.
+Existing references may need updates.
+Shared utilities may need extraction.
+Decision 3: Create Kaleido.Process as a Separate Framework
+Problem Being Solved
+
+Process has different runtime concerns than Queryable.
+
+Queryable is mostly about:
+
+Discovering and querying data
+
+
+Process is about:
+
+Discovering and executing business operations
+
+Options Considered
+Add process concepts into Queryable.
+Create a totally separate framework.
+Create sibling package under Kaleido.
+Chosen Approach
+
+Create:
+
+Kaleido.Process
+
+Why Preferred
+
+It preserves conceptual separation while allowing shared architectural patterns.
+
+Tradeoffs Accepted
+Some duplicate-looking concepts may appear at first.
+Shared abstractions must be extracted thoughtfully, not prematurely.
+Decision 4: Treat Process as a Framework, Not an API
+Problem Being Solved
+
+IT hears “generic API” and assumes dynamic, unsafe, hard-to-maintain behavior.
+
+Options Considered
+Build REST endpoints as the core design.
+Build a process service.
+Build a reusable runtime that APIs can consume.
+Chosen Approach
+
+Build a framework/runtime.
+
+Why Preferred
+
+Because many consumer types can use it:
+
+API
+Portal
+Agent
+Batch
+Service
+Console demo
+
+Tradeoffs Accepted
+Requires more up-front abstraction.
+Consumers need to understand the framework contract.
+API design becomes downstream, not primary.
+Decision 5: Use Process, Not Workflow
+Problem Being Solved
+
+Workflow implies fixed or semi-fixed sequencing.
+
+Your model is not fixed.
+
+Options Considered
+Workflow
+Process
+State machine
+Decision flow
+Capability engine
+Chosen Approach
+
+Use:
+
+Process
+
+Why Preferred
+
+It better supports dynamic operation discovery.
+
+Tradeoffs Accepted
+“Process” is broad.
+Documentation must repeatedly clarify that this is not traditional workflow.
+Decision 6: Context Drives Availability
+Problem Being Solved
+
+Current-step models break when operations can repeat or appear in different orders.
+
+Options Considered
+Track current step.
+Track completed steps.
+Track context and evaluate availability.
+Store a graph and traverse it.
+Chosen Approach
+
+Use context as the primary driver.
+
+Current Context + Participant Rules = Available Operations
+
+Why Preferred
+
+It matches the real process model.
+
+Tradeoffs Accepted
+Context design becomes critical.
+Persistence/versioning becomes important.
+Participants need consistent access to context.
+Decision 7: Separate Coordinator from Participant
+Problem Being Solved
+
+Centralizing all business rules creates a monolith.
+
+Options Considered
+Coordinator owns everything.
+Participants only execute.
+Participants own behavior; coordinator coordinates.
+Chosen Approach
+
+Coordinator coordinates. Participants own behavior.
+
+Why Preferred
+
+It respects team ownership.
+
+Tradeoffs Accepted
+Distributed ownership adds integration complexity.
+Requires strong shared contracts.
+Requires metadata validation and testing.
+Decision 8: Separate Capability from Operation
+Problem Being Solved
+
+Capability alone was too broad.
+
+Options Considered
+Capability as executable
+Operation as executable
+Action
+Command
+Activity
+Intent
+Chosen Approach
+
+Use both:
+
+Capability = grouping
+Operation = executable/requestable action
+
+Why Preferred
+
+It creates a clean hierarchy.
+
+Participant
+    → Capability
+        → Operation
+
+Tradeoffs Accepted
+More concepts.
+Requires naming discipline.
+Capability must not become a vague bucket.
+Decision 9: Add Catalog/Registry Discovery
+Problem Being Solved
+
+Coordinator must know what participants offer without hardcoding them.
+
+Options Considered
+Hardcode participants.
+Use config only.
+Use DI only.
+Build a runtime catalog from metadata.
+Chosen Approach
+
+Build a catalog/registry from participant metadata.
+
+Why Preferred
+
+It mirrors Queryable’s successful source/metadata discovery pattern.
+
+Tradeoffs Accepted
+Metadata schema must be designed.
+Startup validation becomes important.
+Remote metadata availability becomes a concern.
+Decision 10: Support Both Package and Service Participants
+Problem Being Solved
+
+Different orgs have different ownership/deployment needs.
+
+Options Considered
+Participants as NuGet packages only.
+Participants as services only.
+Support both behind abstraction.
+Chosen Approach
+
+Design for both.
+
+Why Preferred
+
+Smaller orgs can run in-process. Larger orgs can deploy independently.
+
+Tradeoffs Accepted
+Remote participant support adds complexity.
+Versioning becomes harder.
+Error handling differs by topology.
+Decision 11: Queryable May Become a Process Dependency
+Problem Being Solved
+
+Process operations often need data discovery.
+
+Examples:
+
+Search member
+Search provider
+Select procedure
+Find allowed values
+Get reference data
+
+
+Queryable already solves the data-discovery/query side.
+
+Options Considered
+Process reimplements query/data lookup behavior.
+Process calls raw services directly.
+Process operations can link to/query through Queryable.
+Chosen Direction
+
+Keep this as a future integration point.
+
+Potential future idea:
+
+Operation required attribute metadata may reference a Queryable endpoint/source.
+
+
+Example:
+
+SelectProvider operation requires providerId
+providerId can be discovered through Kaleido.Queryable provider search
+
+Tradeoffs Accepted
+Avoid premature coupling now.
+Keep Process clean initially.
+Design metadata so Queryable integration is possible later.
+4. Rejected Ideas and Why
+Rejected: Generic API as the Core
+
+Rejected because it sounds unsafe, dynamic, and too magical to IT.
+
+The design should be framework-first.
+
+Rejected: Workflow Engine
+
+Rejected because this is not A → B → C.
+
+The process is context-driven.
+
+Rejected: CurrentStep as the Center
+
+Rejected because operations may repeat, reorder, or appear/disappear.
+
+Context is the real state.
+
+Rejected: Product/Facade Naming
+
+Rejected because those terms are domain-specific.
+
+The framework must be reusable.
+
+Rejected: Coordinator Owns Product Rules
+
+Rejected because it creates another monolith and violates team ownership.
+
+Rejected: Broadcast to Every Participant
+
+Rejected because it is inefficient and fragile.
+
+Metadata-based resolution is preferred.
+
+Rejected: One Huge Service
+
+Rejected because this IT organization already has too many huge monoliths.
+
+Rejected: Process Reimplements Queryable
+
+Rejected implicitly because Queryable already solved important discovery/query patterns.
+
+Process should eventually leverage, not duplicate, compatible Queryable concepts.
+
+5. Important Insights
+Insight 1: Queryable Is the Architectural Precedent
+
+Queryable already established the pattern:
+
+Register
+Discover
+Describe
+Execute
+
+
+Process applies the same pattern to behavior.
+
+Insight 2: Queryable Discovers Information, Process Discovers Behavior
+
+This is probably the cleanest distinction.
+
+Kaleido.Queryable
+    → What information exists?
+
+Kaleido.Process
+    → What can I do next?
+
+Insight 3: Process Is Context-Driven
+
+The defining phrase remains:
+
+Given everything I know right now,
+what am I allowed to do next?
+
+Insight 4: Operation Is the Consumer-Facing Unit
+
+The consumer requests operations, not steps.
+
+Insight 5: Capability Is a Grouping Concept
+
+Capability organizes operations but is not itself necessarily the executable request.
+
+Insight 6: Participants Own Their Behavior
+
+Participants determine:
+
+Availability
+Validation
+Execution
+Next operations
+
+Insight 7: Coordinator Must Stay Thin
+
+Coordinator should not become the owner of all business logic.
+
+Insight 8: Organizational Architecture Matters
+
+The architecture must match team ownership.
+
+This is not optional.
+
+Insight 9: Queryable May Power Process Metadata
+
+Future process operation metadata could point to Queryable sources for discovering possible values or validating required attributes.
+
+Example:
+
+Required attribute: providerId
+Lookup source: Kaleido.Queryable.Provider
+
+
+That is a very natural future bridge.
+
+6. Domain Rules and Constraints Discovered
+Queryable Rules and Constraints
+Queryable is focused on query/data access.
+Queryable should move into Kaleido.Queryable.
+Queryable discovers data sources through metadata.
+Queryable decouples consumers from underlying systems.
+Queryable patterns should influence Process.
+Queryable utilities may be reused by Process.
+Queryable should remain separate from Process unless integration is intentional.
+Queryable may eventually help Process satisfy required attribute discovery.
+Process Runtime Rules
+Process does not follow a fixed sequence.
+Current context determines available operations.
+A response must include available operations.
+Each operation must describe required attributes.
+Operations may execute real business logic.
+Operations may call downstream services.
+Operations may update context.
+Operation execution may change available operations.
+Participants own operation availability.
+Participants own business validation.
+Coordinator aggregates and routes.
+Participant Rules
+Participants must expose metadata.
+Participants may be services or packages.
+Participants own their capabilities.
+Participants own their operations.
+Participants may share operation names/concepts.
+Participants may expose same capabilities at different process points.
+Participants must communicate responses back through common contracts.
+Participants should be independently owned by product/domain teams where needed.
+Coordinator Rules
+Coordinator owns catalog/registry.
+Coordinator discovers participants.
+Coordinator should not hardcode participant business rules.
+Coordinator may need to handle unresolved participant state.
+Coordinator should use metadata for routing where possible.
+Coordinator should avoid calling every participant unless necessary.
+Coordinator owns aggregation of responses.
+Coordinator likely owned by capabilities/framework team.
+Organizational Constraints
+Different teams own different product areas.
+Existing IT has multiple large monoliths.
+A new giant service would be rejected.
+Team autonomy is required.
+Shared contracts are acceptable.
+Centralized business logic is not acceptable.
+Framework adoption must not force one deployment model.
+7. Current Architecture
+Overall Kaleido Architecture
+Kaleido
+    ├── Queryable
+    │      ├── Record/source registration
+    │      ├── Metadata discovery
+    │      ├── Query execution
+    │      └── Data access normalization
+    │
+    ├── Process
+    │      ├── Participant registration
+    │      ├── Metadata discovery
+    │      ├── Operation availability
+    │      ├── Operation execution
+    │      └── Process coordination
+    │
+    └── Core/Common
+           ├── Shared result models
+           ├── Metadata helpers
+           ├── Registration helpers
+           ├── Enum extensions
+           ├── Reflection helpers
+           └── Validation utilities
+
+Kaleido.Queryable Responsibility
+
+Queryable answers:
+
+What information exists?
+How can I query it?
+Where does it come from?
+What shape does it have?
+
+
+Conceptual components:
+
+Queryable Engine
+Record Metadata
+Field Metadata
+Source Registration
+Query Request
+Query Result
+Source Handlers
+
+Kaleido.Process Responsibility
+
+Process answers:
+
+Given what I know,
+what operations are available,
+what information do they require,
+and who owns execution?
+
+
+Conceptual components:
+
+Process Coordinator
+Process Catalog / Registry
+Participant Resolver
+Process Participant
+Process Capability
+Process Operation
+Process Context
+Process Response
+
+Process Component Responsibilities
+Process Coordinator
+
+Responsibilities:
+
+Start process
+Evaluate current context
+Discover available operations
+Resolve participant ownership
+Route operation execution
+Aggregate responses
+Return current process state
+
+Process Catalog / Registry
+
+Responsibilities:
+
+Store participant metadata
+Store capability metadata
+Store operation metadata
+Build routing indexes
+Support discovery
+Support startup validation
+
+Process Participant
+
+Responsibilities:
+
+Expose metadata
+Own capabilities
+Own operations
+Evaluate availability
+Execute business logic
+Return updated context and next operations
+
+Process Capability
+
+Responsibilities:
+
+Group related operations
+Describe behavioral area
+Organize participant metadata
+
+Process Operation
+
+Responsibilities:
+
+Represent executable/requestable behavior
+Declare required attributes
+Validate inputs structurally or semantically
+Execute participant-owned logic
+Update context
+Influence subsequent availability
+
+Process Context
+
+Responsibilities:
+
+Hold accumulated known information
+Drive operation availability
+Support participant resolution
+Support persistence
+Support cross-operation state
+
+Participant Resolver
+
+Responsibilities:
+
+Determine which participant owns or can handle the process
+Use context
+Use catalog metadata
+Avoid fanout when possible
+Support unresolved participant state
+
+Intake / Discovery Participant
+
+Potential responsibility:
+
+Handle early operations before participant ownership is known
+Search/select member
+Search/select procedure or product
+Gather enough context for participant resolution
+
+Queryable and Process Interaction
+
+Future integration possibility:
+
+Process operation metadata
+    → required attribute
+        → discoverable via Queryable source
+
+
+Example:
+
+Operation: SelectProvider
+Required attribute: providerId
+Queryable source: Providers
+
+
+This would let a UI, API, or agent know not only that providerId is required, but also where/how to search for valid providers.
+
+That is a potentially powerful bridge between Queryable and Process.
+
+8. Open Questions
+Queryable-Related Questions
+What exact package name should current work move into?
+Should there be Kaleido.Queryable.Abstractions?
+What belongs in Queryable vs shared Core?
+Which utilities are truly shared?
+Should Process be allowed to reference Queryable directly?
+Or should Queryable integration happen through optional extensions?
+Could required attributes reference Queryable metadata?
+Could Queryable endpoints become operation input providers?
+How do we avoid Queryable and Process becoming tightly coupled?
+Process Naming Questions
+Is Coordinator the right term?
+Is Participant final?
+Is Capability acceptable as a grouping concept?
+Is Operation final as the executable concept?
+Should Catalog or Registry be preferred?
+Should the core runtime be called coordinator, runtime, or engine?
+Runtime Questions
+Who validates required attributes?
+Can more than one participant be active?
+Can participants share operation names?
+How are operation conflicts resolved?
+How does ownership transfer?
+How is context persisted?
+What is the canonical response shape?
+How are errors returned?
+How is partial failure handled?
+How does process history/audit work?
+Discovery Questions
+Is metadata loaded only at startup?
+Can metadata refresh at runtime?
+What happens when a participant is unavailable?
+How is participant metadata versioned?
+How are routing rules expressed?
+Is participant resolution purely metadata-driven or sometimes executable?
+Deployment Questions
+What is the default participant deployment model?
+Is remote participant support required in v1?
+Should in-process participant support exist from the beginning?
+What transport should remote participants use?
+How will independent team deployments be coordinated?
+How do we avoid introducing monolith number seven?
+9. Risks and Potential Weaknesses
+Risk 1: Queryable and Process Become Too Coupled
+
+Queryable and Process are siblings, not the same framework.
+
+If Process directly depends on Queryable too early, it may blur boundaries.
+
+Mitigation
+
+Keep Queryable integration optional.
+
+Possible package:
+
+Kaleido.Process.Queryable
+
+Risk 2: Shared Core Becomes a Junk Drawer
+
+Once both packages exist, it will be tempting to dump everything into Common/Core.
+
+Mitigation
+
+Only move utilities when there is demonstrated reuse.
+
+Risk 3: Coordinator Becomes a Monolith
+
+If coordinator starts owning product rules, the design fails politically and architecturally.
+
+Mitigation
+
+Participants own business behavior.
+
+Risk 4: Metadata Becomes Too Weak
+
+If metadata is incomplete, the coordinator cannot route or describe operations reliably.
+
+Mitigation
+
+Strong startup validation and participant certification tests.
+
+Risk 5: Context Becomes Untyped Garbage
+
+A flexible process context could devolve into:
+
+Dictionary<string, object>
+
+
+everywhere.
+
+Mitigation
+
+Use strongly modeled context where possible with controlled extension points.
+
+Risk 6: Operation Availability Is Hard to Debug
+
+If participants dynamically determine availability, consumers may ask:
+
+Why is this operation not available?
+
+Mitigation
+
+Availability evaluation should be explainable.
+
+Potential future model:
+
+Operation unavailable because required context X is missing.
+
+Risk 7: Process Looks Too Abstract to IT
+
+Even with better naming, IT may still see magic.
+
+Mitigation
+
+Build a very small runnable reference implementation.
+
+Risk 8: Remote Participants Add Distributed Complexity
+
+If participants are separate services, failures, latency, and version mismatches must be handled.
+
+Mitigation
+
+Define remote participant contracts carefully and support health/version metadata.
+
+Risk 9: Reusing Queryable Patterns Too Blindly
+
+Queryable was read/query oriented. Process is write/execute/orchestrate oriented.
+
+Mitigation
+
+Reuse philosophy, not implementation blindly.
+
+10. Action Items
+Priority 1: Define Kaleido Package Structure
+
+Proposed:
+
+Kaleido.Queryable
+Kaleido.Process
+Kaleido.Core or Kaleido.Common
+
+
+Possible extensions later:
+
+Kaleido.Queryable.AspNetCore
+Kaleido.Process.AspNetCore
+Kaleido.Process.Queryable
+
+Priority 2: Identify What Moves from Current Kaleido to Queryable
+
+Move existing queryable-specific code into:
+
+Kaleido.Queryable
+
+
+Do not mix Process abstractions into it.
+
+Priority 3: Identify Shared Utilities
+
+Candidate shared utilities:
+
+EnumExtensions
+Result types
+Metadata helpers
+Registration helpers
+Reflection helpers
+Attribute helpers
+Validation primitives
+
+
+Move only what is actually shared.
+
+Priority 4: Define Process Vocabulary
+
+Finalize:
+
+Process
+Coordinator
+Participant
+Capability
+Operation
+Context
+Catalog
+Resolver
+Response
+
+Priority 5: Sketch Process Core Interfaces
+
+Start with interfaces only.
+
+IProcessCoordinator
+IProcessCatalog
+IProcessParticipant
+IProcessCapability
+IProcessOperation
+IProcessParticipantResolver
+IProcessContext
+
+Priority 6: Define Metadata Records
+
+Draft:
+
+ParticipantMetadata
+CapabilityMetadata
+OperationMetadata
+RequiredAttributeMetadata
+RoutingMetadata
+QueryableAttributeSourceMetadata // possible future
+
+Priority 7: Define Canonical Process Response
+
+Needs to include:
+
+Process id
+Current context summary
+Resolved participant, if any
+Available operations
+Required attributes per operation
+Messages
+Errors
+
+Priority 8: Work Through the Hard Intake Scenario
+
+Use:
+
+Start prior-auth
+Search member
+Select member
+Select product/procedure
+Resolve participant
+Delegate to participant
+Return participant-owned operations
+
+
+This validates the architecture.
+
+Priority 9: Build a Tiny Reference Implementation
+
+Include:
+
+IntakeParticipant
+RadiologyParticipant
+TransportationParticipant
+
+
+Operations:
+
+SearchMember
+SelectMember
+SelectProcedure
+AddDiagnosis
+SubmitRequest
+
+Priority 10: Explore Queryable Integration Later
+
+Do not build it immediately, but keep metadata open for future links like:
+
+Required attribute can be satisfied by Queryable source
+
+11. Lessons Learned
+Lesson 1: Queryable Was the Prototype for the Pattern
+
+Queryable already proved the value of:
+
+Registration
+Metadata
+Discovery
+Execution
+Consumer decoupling
+
+
+Process should reuse that philosophy.
+
+Lesson 2: Process Is Behavior Discovery
+
+Queryable discovers information.
+
+Process discovers behavior.
+
+That is the cleanest conceptual split.
+
+Lesson 3: Do Not Start With APIs
+
+APIs are adapters.
+
+The framework is the product.
+
+Lesson 4: Avoid Workflow Thinking
+
+Workflow vocabulary pulls people toward fixed paths.
+
+Process vocabulary supports dynamic context-driven operation discovery.
+
+Lesson 5: Context Is the State
+
+The current step is not the center.
+
+The accumulated context is the center.
+
+Lesson 6: Team Ownership Is Architecture
+
+The framework must align with organizational boundaries.
+
+Lesson 7: Coordinator Must Not Own Everything
+
+Central coordination is fine.
+
+Central business logic is not.
+
+Lesson 8: Metadata Is the Decoupling Mechanism
+
+Metadata lets consumers discover what exists without knowing implementations.
+
+This is true for both Queryable and Process.
+
+Lesson 9: Shared Code Should Emerge Naturally
+
+Do not prematurely create a giant shared core.
+
+Let Queryable and Process reveal what they actually share.
+
+Lesson 10: Future Integration Should Be Designed For, Not Forced
+
+Queryable and Process should remain independent, but metadata should allow future bridges.
+
+12. Decision Journey Analysis
+Direction Change 1: From Service/API to Framework
+
+Initially, the idea looked like a service returning next steps.
+
+It changed because the real challenge was IT implementability.
+
+The corrected model:
+
+Framework first, API second.
+
+Direction Change 2: From Workflow to Process
+
+Initially, the model sounded workflow-like.
+
+You corrected it:
+
+This is not A to B to C.
+
+
+The corrected model:
+
+Context-driven process operation discovery.
+
+Direction Change 3: From Step to Operation
+
+“Step” implied ordering.
+
+The corrected model:
+
+Operation = what the consumer can request now.
+
+Direction Change 4: From Capability as Executable to Capability as Grouping
+
+Capability felt too broad.
+
+The corrected model:
+
+Capability groups operations.
+Operation executes.
+
+Direction Change 5: From One Engine to Coordinator and Participants
+
+At first, one engine seemed to determine next operations.
+
+Product-specific process behavior forced separation.
+
+The corrected model:
+
+Coordinator coordinates.
+Participants own behavior.
+
+Direction Change 6: From Product/Facade to Abstract Terms
+
+Product/facade leaked current domain language.
+
+The corrected model:
+
+Participant
+Coordinator
+Capability
+Operation
+
+Direction Change 7: From Static Registration to Catalog Discovery
+
+Simple registration was not enough.
+
+Participants need to describe what they offer.
+
+The corrected model:
+
+Registration builds metadata catalog.
+
+Direction Change 8: From Known Participant to Unresolved Start
+
+Initial operations may happen before participant is known.
+
+The corrected model:
+
+Intake/discovery phase plus participant resolver.
+
+Direction Change 9: From Broadcast to Metadata-Based Resolution
+
+Calling all participants seemed overkill.
+
+The corrected model:
+
+Use catalog/routing metadata where possible.
+
+Direction Change 10: From Package-Only to Deployment-Flexible
+
+Package participants are elegant.
+
+But organizational reality may require deployable services.
+
+The corrected model:
+
+Participant abstraction supports both in-process and remote.
+
+Direction Change 11: From Kaleido as Queryable to Kaleido as Umbrella
+
+The discussion ended with the broader realization:
+
+Kaleido.Queryable = information discovery
+Kaleido.Process = behavior discovery
+
+
+The corrected model:
+
+Kaleido is a family of metadata-driven enterprise integration frameworks.
+
+Final Revised Current-State Summary
+
+The architecture now stands as this:
+
+Kaleido
+    ├── Queryable
+    │       └── Metadata-driven information discovery and query execution
+    │
+    ├── Process
+    │       └── Metadata-driven process behavior discovery and operation execution
+    │
+    └── Core/Common
+            └── Shared infrastructure used only when genuinely common
+
+
+Kaleido.Queryable is the foundation pattern.
+
+It proved that enterprise integration can be made cleaner by:
+
+Registering sources
+Discovering metadata
+Executing through abstractions
+Decoupling consumers from implementation details
+
+
+Kaleido.Process applies that same pattern one layer higher.
+
+Instead of asking:
+
+What data can I query?
+
+
+it asks:
+
+Given everything I know right now,
+what operation can I perform next?
+
+
+The Process model currently looks like:
+
+Process Coordinator
+    ↓
+Process Catalog / Registry
+    ↓
+Participant Resolver
+    ↓
+Process Participants
+    ↓
+Process Capabilities
+    ↓
+Process Operations
+
+
+The coordinator owns:
+
+Discovery
+Routing
+Cataloging
+Coordination
+Aggregation
+
+
+Participants own:
+
+Business rules
+Operation availability
+Validation
+Execution
+Next-operation determination
+
+
+Capabilities group related behavior.
+
+Operations are what consumers request.
+
+Context drives everything.
+
+Queryable remains highly relevant because Process may eventually use Queryable to satisfy or discover operation inputs.
+
+Example future concept:
+
+Operation: SelectProvider
+Required attribute: providerId
+Queryable source: ProviderSearch
+
+
+That means Queryable and Process should remain separate, but intentionally compatible.
+
+The most important final architectural principle is:
+
+Kaleido should not centralize enterprise logic.
+ Kaleido should provide reusable metadata-driven runtimes that allow enterprise teams to expose information and behavior consistently while retaining ownership of their implementations.
+
+That is the throughline from Queryable to Process.

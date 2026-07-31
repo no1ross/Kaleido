@@ -1,0 +1,60 @@
+Analyze this entire chat and produce a comprehensive architectural review.
+
+Do not simply summarize the conversation. Instead, reconstruct the complete thought process and evolution of the discussion.
+
+Include the following sections:
+
+1. Executive Summary
+   - What was the primary objective of the discussion?
+   - What conclusions were ultimately reached?
+   - What major decisions were made?
+
+2. Timeline of the Discussion
+   - Walk through the conversation chronologically.
+   - Explain how the design evolved over time.
+   - Highlight when assumptions changed or were challenged.
+
+3. Key Architectural Decisions
+   For each decision:
+   - What problem was being solved?
+   - What options were considered?
+   - Why was the chosen approach preferred?
+   - What tradeoffs were accepted?
+
+4. Rejected Ideas and Why
+   - Identify approaches that were proposed but later discarded.
+   - Explain why they were rejected.
+
+5. Important Insights
+   - Identify moments where a significant realization occurred.
+   - Explain how these insights affected the design.
+
+6. Domain Rules and Constraints Discovered
+   - Extract all business rules, runtime rules, validation rules, and architectural constraints that emerged during the discussion.
+
+7. Current Architecture
+   - Describe the final state of the design as it exists at the end of the conversation.
+   - Include major components, responsibilities, and interactions.
+
+8. Open Questions
+   - List unresolved concerns.
+   - Identify areas requiring future discussion.
+
+9. Risks and Potential Weaknesses
+   - Point out assumptions that may become problematic.
+   - Highlight areas where additional testing or validation is needed.
+
+10. Action Items
+    - List concrete next implementation tasks in priority order.
+
+11. Lessons Learned
+    - Extract broader architectural principles discussed.
+    - Include design philosophies, patterns, and anti-patterns that influenced decisions.
+
+12. Decision Journey Analysis
+    - Identify every time the design changed direction.
+    - Explain what evidence or reasoning caused the change.
+    - Highlight misconceptions that were corrected.
+    - Call out ideas that initially seemed reasonable but later proved problematic.
+
+Provide substantial detail. Assume the reader was not present for the discussion and needs enough context to continue development without reviewing the original chat.
