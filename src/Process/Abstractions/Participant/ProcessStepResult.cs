@@ -10,16 +10,6 @@ public sealed record ProcessStepResult
     public IReadOnlyCollection<ProcessStepMessage>? Messages { get; init; }
         = [];
 
-    public static ProcessStepResult Success(
-        params string[] availableSteps)
-    {
-        return new()
-        {
-            Outcome = ProcessStepOutcome.Succeeded,
-            AvailableSteps = availableSteps
-        };
-    }
-
     public static ProcessStepResult Completed(
         params ProcessStepMessage[] messages)
     {

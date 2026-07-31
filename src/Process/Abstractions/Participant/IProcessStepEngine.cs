@@ -2,7 +2,9 @@
 
 public interface IProcessStepEngine
 {
-    Task<ProcessStepResult> ExecuteAsync<TProcessStep>(
-        TProcessStep processStep,
+    Task<ProcessStepResult> ExecuteAsync(
+        ProcessStepRegistration registration,
+        object processStep,
+        ProcessStepContext context,
         CancellationToken cancellationToken = default);
 }

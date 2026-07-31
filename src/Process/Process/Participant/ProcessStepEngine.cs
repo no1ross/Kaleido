@@ -5,26 +5,21 @@ namespace Kaleido.Process.Participant;
 internal sealed class ProcessStepEngine : IProcessStepEngine
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IProcessStepRegistry _registry;
 
     public ProcessStepEngine(
-        IServiceScopeFactory scopeFactory,
-        IProcessStepRegistry registry)
+        IServiceScopeFactory scopeFactory)
     {
         ArgumentNullException.ThrowIfNull(scopeFactory);
-        ArgumentNullException.ThrowIfNull(registry);
 
         _scopeFactory = scopeFactory;
-        _registry = registry;
     }
 
-    public async Task<ProcessStepResult> ExecuteAsync<TProcessStep>(
-        TProcessStep processStep,
+    public async Task<ProcessStepResult> ExecuteAsync(
+        ProcessStepRegistration registration,
+        object processStep,
+        ProcessStepContext context,
         CancellationToken cancellationToken = default)
     {
-        var registration =
-            _registry.GetRegistration(typeof(TProcessStep));
-
         using var scope =
             _scopeFactory.CreateScope();
 
@@ -35,18 +30,27 @@ internal sealed class ProcessStepEngine : IProcessStepEngine
         return await ExecuteHandlerAsync(
             handler,
             processStep,
+            context,
             cancellationToken);
     }
 
-    private static async Task<ProcessStepResult> ExecuteHandlerAsync<TProcessStep>(
+    private static async Task<ProcessStepResult> ExecuteHandlerAsync(
         object handler,
-        TProcessStep processStep,
+        object processStep,
+        ProcessStepContext context,
         CancellationToken cancellationToken)
     {
-        return await ((IProcessStepHandler<TProcessStep>)handler)
-            .ExecuteAsync(
+        var method =
+            handler.GetType().GetMethod(
+                nameof(IProcessStepHandler<object>.ExecuteAsync));
+
+        return await (Task<ProcessStepResult>)method!.Invoke(
+            handler,
+            [
                 processStep,
-                cancellationToken);
+                context,
+                cancellationToken
+            ])!;
     }
 }
 

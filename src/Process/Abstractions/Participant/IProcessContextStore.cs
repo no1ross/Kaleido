@@ -7,14 +7,14 @@ using System.Threading.Tasks;
 
 namespace Kaleido.Process.Participant;
 
-public interface IProcessContextStore
+internal interface IProcessContextStore
 {
     Task<ParticipantContext> LoadAsync(string? correlationId, CancellationToken cancellationToken = default);
 
     Task SaveAsync(ParticipantContext context, CancellationToken cancellationToken = default);
 }
 
-public sealed class InMemoryProcessContextStore
+internal sealed class InMemoryProcessContextStore
     : IProcessContextStore
 {
     private readonly ConcurrentDictionary<string, ParticipantContext> _contexts =
@@ -136,7 +136,7 @@ public sealed record ProcessStepContext
 
 public sealed record ProcessStepRequestContext
 {
-    public IDictionary<string, object?>? Request { get; init; }
+    public required object Step { get; init; }
 
     public ProcessStepStatus Status { get; init; }
 

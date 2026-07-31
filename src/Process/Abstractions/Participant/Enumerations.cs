@@ -8,10 +8,10 @@ namespace Kaleido.Process.Participant;
 
 public enum ProcessStepOutcome
 {
-    Succeeded,
+    Pending,
+    Completed,
     Failed,
     Blocked,
-    Completed,
     Cancelled
 }
 public enum ProcessStepStatus
@@ -28,4 +28,25 @@ public enum ProcessStepMessageType
     Information,
     Warning,
     Error
+}
+
+public enum ProcessStepMessageCode
+{
+    UnknownStep,
+    InvalidRequest,
+    PropertyNotFound,
+    ConversionFailed,
+    ValidationFailed,
+    AlreadyProcessed,
+    ConsistencyViolation,
+    DependencyNotSatisfied,
+    DependencySatisfied
+}
+
+internal enum ExecutionCandidateStatus
+{
+    Pending,
+    Built,
+    Invalid,
+    Satisfied
 }

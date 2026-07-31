@@ -46,15 +46,3 @@ public sealed record ParticipantRequest
         = new Dictionary<string, IReadOnlyDictionary<string, object?>>(StringComparer.OrdinalIgnoreCase);
 }
 
-//public class ExecutionPlan
-//{
-//    public IReadOnlyCollection<ExecutionStep> Steps { get; set; } = [];
-//    public IReadOnlyCollection<ValidationError> Errors { get; set; } = [];
-//}
-
-//public class ExecutionStep
-//{
-//    public ProcessStepRegistration? Registration { get; set; }
-//    public ProcessStepRequest? Request { get; set; }
-//    public int Order { get; set; } = 0;
-//}

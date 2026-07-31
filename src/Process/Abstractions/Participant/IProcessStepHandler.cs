@@ -10,5 +10,6 @@ public interface IProcessStepHandler<in TProcessStep>
 {
     Task<ProcessStepResult> ExecuteAsync(
         TProcessStep processStep,
+        ProcessStepContext context,
         CancellationToken cancellationToken = default);
 }
