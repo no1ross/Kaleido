@@ -28,6 +28,10 @@
     <Project Path="src/Core/AspNetCore/Kaleido.AspNetCore.csproj" Id="3fc482b8-a2d3-4697-b628-4ec0d3cf0e8b" />
     <Project Path="src/Core/Kaleido/Kaleido.csproj" />
   </Folder>
+  <Folder Name="/src/Process/">
+    <Project Path="src/Process/Abstractions/Kaleido.Process.Abstractions.csproj" />
+    <Project Path="src/Process/Process/Kaleido.Process.csproj" />
+  </Folder>
   <Folder Name="/src/Queryable/">
     <Project Path="src/Queryable/Abstractions/Kaleido.Queryable.Abstractions.csproj" />
     <Project Path="src/Queryable/AspNetCore/Kaleido.Queryable.AspNetCore.csproj" />
