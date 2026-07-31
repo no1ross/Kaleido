@@ -4,30 +4,20 @@ public sealed record ProcessStepResult
 {
     public ProcessStepOutcome Outcome { get; init; }
 
-    public IReadOnlyCollection<string> AvailableSteps { get; init; }
+    public IReadOnlyCollection<string> RequiredSteps { get; init; }
         = [];
 
-    public IReadOnlyCollection<ProcessStepMessage>? Messages { get; init; }
+    public IReadOnlyCollection<ProcessStepMessage> Messages { get; init; }
         = [];
 
     public static ProcessStepResult Completed(
+        IEnumerable<string>? requiredSteps = null,
         params ProcessStepMessage[] messages)
     {
         return new()
         {
             Outcome = ProcessStepOutcome.Completed,
-            Messages = messages
-        };
-    }
-
-    public static ProcessStepResult Blocked(
-        IEnumerable<string> availableSteps,
-        params ProcessStepMessage[] messages)
-    {
-        return new()
-        {
-            Outcome = ProcessStepOutcome.Blocked,
-            AvailableSteps = availableSteps.ToArray(),
+            RequiredSteps = requiredSteps?.ToArray() ?? [],
             Messages = messages
         };
     }
@@ -42,5 +32,4 @@ public sealed record ProcessStepResult
         };
     }
 }
-
 

@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Kaleido.Process.Participant;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Process.Participant;
 
@@ -20,6 +21,10 @@ internal sealed class ProcessStepEngine : IProcessStepEngine
         ProcessStepContext context,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(registration);
+        ArgumentNullException.ThrowIfNull(processStep);
+        ArgumentNullException.ThrowIfNull(context);
+
         using var scope =
             _scopeFactory.CreateScope();
 
@@ -42,15 +47,25 @@ internal sealed class ProcessStepEngine : IProcessStepEngine
     {
         var method =
             handler.GetType().GetMethod(
-                nameof(IProcessStepHandler<object>.ExecuteAsync));
+                nameof(IProcessStepHandler<>.ExecuteAsync))
+            ?? throw new InvalidOperationException(
+                $"Handler '{handler.GetType().FullName}' does not expose ExecuteAsync.");
 
-        return await (Task<ProcessStepResult>)method!.Invoke(
-            handler,
-            [
-                processStep,
-                context,
-                cancellationToken
-            ])!;
+        var result =
+            method.Invoke(
+                handler,
+                [
+                    processStep,
+                    context,
+                    cancellationToken
+                ]);
+
+        if (result is not Task<ProcessStepResult> task)
+        {
+            throw new InvalidOperationException(
+                $"Handler '{handler.GetType().FullName}' returned an invalid result.");
+        }
+
+        return await task;
     }
 }
-

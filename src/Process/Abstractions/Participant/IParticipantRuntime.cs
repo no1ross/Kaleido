@@ -16,7 +16,7 @@ public class ProcessResult
     public string? CorrelationId { get; init; }
     public ProcessStepOutcome Outcome { get; init; }
     public IReadOnlyCollection<ProcessStepMessage> Messages { get; init; } = [];
-    public IReadOnlyCollection<ProcessStepDefinition> AvailableSteps { get; init; } = [];
+    public IReadOnlyCollection<ProcessStepDefinition> RequiredSteps { get; init; } = [];
 }
 
 public class ParticipantDefinition
