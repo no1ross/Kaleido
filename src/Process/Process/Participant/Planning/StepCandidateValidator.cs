@@ -1,20 +1,17 @@
-﻿
-using Kaleido.Process.Participant.Execution;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace Kaleido.Process.Participant;
+namespace Kaleido.Process.Participant.Planning;
 
-internal static class ExecutionCandidateValidator
+internal class StepCandidateValidator : IStepCandidateValidator
 {
-    public static void Validate(
-        IReadOnlyCollection<ExecutionCandidate> candidates)
+    public void Validate(IReadOnlyCollection<StepCandidate> candidates)
     {
         ArgumentNullException.ThrowIfNull(candidates);
 
         foreach (var candidate in candidates)
         {
             if (candidate.Status ==
-                ExecutionCandidateStatus.Invalid)
+                StepCandidateStatus.Invalid)
             {
                 continue;
             }
@@ -24,7 +21,7 @@ internal static class ExecutionCandidateValidator
     }
 
     private static void ValidateCandidate(
-        ExecutionCandidate candidate)
+        StepCandidate candidate)
     {
         if (candidate.Step is null)
         {
@@ -52,15 +49,14 @@ internal static class ExecutionCandidateValidator
         }
 
         candidate.Status =
-            ExecutionCandidateStatus.Invalid;
+            StepCandidateStatus.Invalid;
 
         foreach (var validationResult in validationResults)
         {
-            candidate.AddMessage(
-                ProcessStepMessage.Error(
-                    ProcessStepMessageCode.ValidationFailed,
+            candidate.AddError(
+                    StepProcessingMessageCode.ValidationFailed,
                     validationResult.ErrorMessage
-                        ?? "Validation failed."));
+                        ?? "Validation failed.");
         }
     }
 }

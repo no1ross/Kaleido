@@ -1,5 +1,6 @@
 ﻿
 using Kaleido.Exceptions;
+using Kaleido.Process.Participant.Context;
 
 namespace Kaleido.Process.Participant;
 
@@ -14,8 +15,8 @@ public interface IParticipantRuntime
 public class ProcessResult
 {
     public string? CorrelationId { get; init; }
-    public ProcessStepOutcome Outcome { get; init; }
-    public IReadOnlyCollection<ProcessStepMessage> Messages { get; init; } = [];
+    public StepExecutionOutcome Outcome { get; init; }
+    public IReadOnlyCollection<StepProcessingMessage> Messages { get; init; } = [];
     public IReadOnlyCollection<ProcessStepDefinition> RequiredSteps { get; init; } = [];
 }
 

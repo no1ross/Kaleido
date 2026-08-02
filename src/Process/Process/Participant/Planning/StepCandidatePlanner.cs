@@ -1,47 +1,56 @@
-﻿namespace Kaleido.Process.Participant.Execution;
+﻿namespace Kaleido.Process.Participant.Planning;
 
-internal static class ExecutionPlanBuilder
+internal interface IStepCandidatePlanner
 {
-    public static ExecutionPlan Build(
-        IReadOnlyCollection<ExecutionCandidate> candidates,
-        IProcessStepRegistry registry)
+    IReadOnlyCollection<StepCandidate> Build(IReadOnlyCollection<StepCandidate> candidates);
+}
+
+internal class StepCandidatePlanner : IStepCandidatePlanner
+{
+    private readonly IProcessStepRegistry _registry;
+
+    public StepCandidatePlanner(IProcessStepRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+
+        _registry = registry;
+    }
+
+    public IReadOnlyCollection<StepCandidate> Build(
+        IReadOnlyCollection<StepCandidate> candidates)
     {
         ArgumentNullException.ThrowIfNull(candidates);
-        ArgumentNullException.ThrowIfNull(registry);
 
         var executableCandidates =
             candidates
                 .Where(IsExecutable)
                 .ToArray();
 
-        if (executableCandidates.Length == 0)
-        {
-            return new ExecutionPlan();
-        }
-
         var ordered =
             OrderByDependencies(
                 executableCandidates,
-                registry);
+                _registry);
 
-        return new ExecutionPlan
+        foreach (var candidate in ordered)
         {
-            Steps = ordered.Select(x => 
-                new ExecutionPlanItem { 
-                    StepName = x.StepName 
-                }).ToArray(),
-        };
+            candidate.IncludedInExecutionPlan = true;
+        }
+
+        return ordered
+            .Concat(candidates.Except(executableCandidates))
+            .Distinct()
+            .ToArray();
     }
 
     private static bool IsExecutable(
-        ExecutionCandidate candidate)
+        StepCandidate candidate)
     {
         return candidate.Status ==
-               ExecutionCandidateStatus.Built;
+               StepCandidateStatus.Built;
     }
 
-    private static IReadOnlyCollection<ExecutionCandidate> OrderByDependencies(
-        IReadOnlyCollection<ExecutionCandidate> candidates,
+    private static IReadOnlyCollection<StepCandidate> OrderByDependencies(
+        IReadOnlyCollection<StepCandidate> candidates,
         IProcessStepRegistry registry)
     {
         var candidatesByType =
@@ -49,7 +58,7 @@ internal static class ExecutionPlanBuilder
                 x => x.Registration!.StepType);
 
         var ordered =
-            new List<ExecutionCandidate>();
+            new List<StepCandidate>();
 
         var visited =
             new HashSet<Type>();
@@ -68,11 +77,11 @@ internal static class ExecutionPlanBuilder
     }
 
     private static void Visit(
-        ExecutionCandidate candidate,
-        IReadOnlyDictionary<Type, ExecutionCandidate> candidatesByType,
+        StepCandidate candidate,
+        IReadOnlyDictionary<Type, StepCandidate> candidatesByType,
         IProcessStepRegistry registry,
         HashSet<Type> visited,
-        List<ExecutionCandidate> ordered)
+        List<StepCandidate> ordered)
     {
         var stepType =
             candidate.Registration!.StepType;
@@ -104,24 +113,5 @@ internal static class ExecutionPlanBuilder
         }
 
         ordered.Add(candidate);
-    }
-}
-
-internal sealed record ExecutionPlan
-{
-    public IReadOnlyCollection<ExecutionPlanItem> Steps
-    {
-        get;
-        init;
-    }
-        = [];
-}
-
-internal sealed record ExecutionPlanItem
-{
-    public required string StepName
-    {
-        get;
-        init;
     }
 }

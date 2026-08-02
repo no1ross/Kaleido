@@ -1,4 +1,4 @@
-﻿using Kaleido.Process.Participant;
+﻿using Kaleido.Process.Participant.Registry;
 
 public interface IProcessStepRegistry
 {

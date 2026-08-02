@@ -1,9 +1,9 @@
 ﻿using Kaleido.Process.Attributes;
-using Kaleido.Process.Participant.Metadata;
+using Kaleido.Process.Participant.Execution;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
-namespace Kaleido.Process.Participant.Steps;
+namespace Kaleido.Process.Participant.Registry;
 
 internal sealed class ProcessStepRegistry : IProcessStepRegistry
 {

@@ -1,5 +1,6 @@
 using Kaleido.Process.Attributes;
 using Kaleido.Process.Participant;
+using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Steps;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

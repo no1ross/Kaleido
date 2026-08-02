@@ -1,6 +1,4 @@
-﻿using Kaleido.Process.Participant.Metadata;
-
-namespace Kaleido.Process.Participant;
+﻿namespace Kaleido.Process.Participant.Registry;
 
 public sealed record ProcessStepRegistration(
     Type StepType,

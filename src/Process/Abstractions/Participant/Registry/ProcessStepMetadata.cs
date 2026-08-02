@@ -1,4 +1,4 @@
-﻿namespace Kaleido.Process.Participant.Metadata;
+﻿namespace Kaleido.Process.Participant.Registry;
 
 public sealed record ProcessStepMetadata(
     string Name,

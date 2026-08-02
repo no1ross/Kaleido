@@ -1,13 +1,15 @@
-﻿using Kaleido.Process.Participant;
+﻿using Kaleido.Process.Participant.Context;
+using Kaleido.Process.Participant.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Process.Participant;
+namespace Kaleido.Process.Participant.Execution;
 
-internal sealed class ProcessStepEngine : IProcessStepEngine
+
+internal sealed class ProcessStepInvoker : IProcessStepInvoker
 {
     private readonly IServiceScopeFactory _scopeFactory;
 
-    public ProcessStepEngine(
+    public ProcessStepInvoker(
         IServiceScopeFactory scopeFactory)
     {
         ArgumentNullException.ThrowIfNull(scopeFactory);
@@ -18,7 +20,7 @@ internal sealed class ProcessStepEngine : IProcessStepEngine
     public async Task<ProcessStepResult> ExecuteAsync(
         ProcessStepRegistration registration,
         object processStep,
-        ProcessStepContext context,
+        StepContext context,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(registration);
@@ -32,22 +34,25 @@ internal sealed class ProcessStepEngine : IProcessStepEngine
             scope.ServiceProvider.GetRequiredService(
                 registration.HandlerType);
 
-        return await ExecuteHandlerAsync(
-            handler,
-            processStep,
-            context,
-            cancellationToken);
+        var handlerResult =
+            await ExecuteHandlerAsync(
+                handler,
+                processStep,
+                context,
+                cancellationToken);
+
+        return handlerResult;
     }
 
     private static async Task<ProcessStepResult> ExecuteHandlerAsync(
         object handler,
         object processStep,
-        ProcessStepContext context,
+        StepContext context,
         CancellationToken cancellationToken)
     {
         var method =
             handler.GetType().GetMethod(
-                nameof(IProcessStepHandler<>.ExecuteAsync))
+                nameof(IProcessStepHandler<object>.ExecuteAsync))
             ?? throw new InvalidOperationException(
                 $"Handler '{handler.GetType().FullName}' does not expose ExecuteAsync.");
 
@@ -56,8 +61,8 @@ internal sealed class ProcessStepEngine : IProcessStepEngine
                 handler,
                 [
                     processStep,
-                    context,
-                    cancellationToken
+                context,
+                cancellationToken
                 ]);
 
         if (result is not Task<ProcessStepResult> task)
