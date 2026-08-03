@@ -1,0 +1,537 @@
+1. Core Requirements
+
+Kaleido is a metadata-driven reference data framework
+
+Supports filtering, searching, sorting, paging, and named queries.
+Must remain data-source agnostic.
+Supported sources may include:
+CSV
+SQLite
+SQL Server
+Sybase
+REST APIs
+Custom providers
+
+Minimum implementation requirements
+
+1 Record
+1 Source (exactly one per Record)
+0..N Named Queries
+
+Consumer definition clarification
+
+Framework Consumer
+Developer using Kaleido.
+Creates Records, Sources, Named Queries.
+API Consumer
+Calls a service that uses Kaleido.
+Should know nothing about Kaleido internals.
+Only sends/receives JSON.
+
+Primary goal
+
+API consumers should only care about valid JSON request/response contracts.
+Framework consumers should not have to understand transport-specific concerns such as:
+JsonElement
+System.Text.Json
+ASP.NET model binding
+2. Architectural & Component Decisions
+Query Contract Redesign
+Removed interface-based request model
+
+Removed:
+
+IFilterExpression
+ISearchExpression
+QueryFilter
+QuerySearch
+
+
+Reason:
+
+Polymorphic JSON is difficult across languages.
+OpenAPI/Swagger support becomes harder.
+REST clients should not need serializer-specific features.
+Introduced Node / Condition / Group model
+
+Filter model:
+
+QueryFilterNode
+├─ QueryFilterCondition
+└─ QueryFilterGroup
+
+
+Search model:
+
+QuerySearchNode
+├─ QuerySearchCondition
+└─ QuerySearchGroup
+
+
+Benefits:
+
+Serializer-friendly.
+OpenAPI-friendly.
+REST-friendly.
+Eliminates interface polymorphism.
+Eliminates unsupported-expression scenarios.
+Root query objects changed
+
+Changed from:
+
+QueryFilterGroup
+QuerySearchGroup
+
+
+to:
+
+QueryFilterNode
+QuerySearchNode
+
+
+Reason:
+
+Allow a single condition at the root.
+Avoid unnecessary AND wrappers.
+Public request contract becomes transport-friendly
+
+Goal:
+
+JSON
+OpenAPI
+Swagger
+Postman
+Java
+Python
+JavaScript
+
+
+must all work naturally.
+
+Compiler Changes
+Compiler updated to consume nodes
+
+Changed:
+
+CompileFilter(IFilterExpression)
+CompileSearch(ISearchExpression)
+
+
+to:
+
+CompileFilter(QueryFilterNode)
+CompileSearch(QuerySearchNode)
+
+Added defensive graph validation
+
+Compiler now rejects:
+
+Condition + Group
+
+
+and
+
+Neither Condition nor Group
+
+Validator Changes
+Validator updated for node model
+
+Added validation for:
+
+Condition only
+Group only
+Both = invalid
+Neither = invalid
+
+Added empty-group validation
+
+Reject:
+
+Filter group with zero filters
+Search group with zero searches
+
+Testing Strategy Decisions
+Keep heavy testing at unit-test level
+
+Unit tests cover:
+
+Discovery
+Registration
+Metadata
+Validation
+Compilation
+Filtering
+Searching
+Sorting
+Paging
+Dispatcher
+
+
+Coverage target remains very high.
+
+Functional tests remain lightweight
+
+Purpose:
+
+Verify end-to-end behavior
+
+
+not:
+
+Re-test every operator
+
+
+Functional tests cover:
+
+Query all
+Simple filter
+Simple search
+Sort
+Paging
+Named queries
+Combined query
+Metadata endpoint
+
+Single provider for functional testing
+
+Decision:
+
+CSV provider only
+
+
+for functional tests.
+
+Reason:
+
+Proves framework behavior.
+Avoids provider-specific duplication.
+Single API sample
+
+Decision:
+
+One API sample only
+
+
+Reason:
+
+API behavior is independent of datasource.
+No need for:
+CSV API
+SQLite API
+SQL Server API
+Sybase API
+
+Instead:
+
+One API sample
+Many datasource samples
+
+Samples strategy
+
+Planned samples:
+
+Kaleido.Samples.Csv
+Kaleido.Samples.Sqlite
+Kaleido.Samples.SqlServer
+Kaleido.Samples.Sybase
+Kaleido.Samples.Api
+
+
+Purpose:
+
+Demonstrate provider setup.
+Demonstrate registration.
+Demonstrate source implementation.
+
+Not provider certification.
+
+Functional Test Architecture
+Typed tests
+
+Exercise:
+
+IKaleidoCatalog
+
+
+directly.
+
+API tests
+
+Exercise:
+
+HTTP
+Model binding
+Serialization
+Controllers
+Kaleido
+
+
+end-to-end.
+
+Removed dependency on Program.cs
+
+Decision:
+
+Do not require:
+
+Program.cs
+Main()
+
+
+inside functional tests.
+
+Use:
+
+TestServer
+
+
+or in-memory host.
+
+Reason:
+
+Eliminate multiple-entry-point issues.
+Eliminate WebApplicationFactory solution discovery issues.
+Request Parameter Handling
+JsonElement issue discovered
+
+Problem:
+
+Typed path:
+
+decimal
+DateOnly
+bool
+string
+
+
+REST path:
+
+JsonElement
+
+
+for:
+
+Dictionary<string, object?>
+
+
+and
+
+Values : IReadOnlyList<object?>
+
+Introduced QueryValueConverter
+
+Purpose:
+
+Normalize:
+
+JsonElement
+→ CLR types
+
+
+Supported conversions:
+
+string
+bool
+int
+long
+decimal
+double
+Guid
+DateOnly
+TimeOnly
+enum
+
+Architectural conclusion
+
+Framework consumers should never need to handle:
+
+JsonElement
+
+
+Decision:
+
+Normalization belongs inside Kaleido.
+
+Not inside:
+
+Named Queries
+Controllers
+Consumers
+
+Named query parameter behavior
+
+Goal:
+
+Framework consumer can safely write:
+
+Convert.ToDecimal(value)
+
+
+without caring whether the request originated from:
+
+Typed request
+REST request
+
+README Decisions
+README should be consumer-first
+
+Order:
+
+Quick Start
+Full Example
+Core Concepts
+Registration
+Querying
+Architecture
+
+
+NOT:
+
+Architecture first
+
+README must contain complete runnable example
+
+Requirements:
+
+Include:
+
+Record
+Source
+Named Query
+AddKaleido
+Query Execution
+
+
+in one copy/paste example.
+
+README must clearly state registration rules
+
+Document:
+
+1 Record
+1 Source
+0..N Named Queries
+
+Long-Term Packaging Discussion
+Future package separation considered
+
+Potential structure:
+
+Kaleido.Abstractions
+Kaleido
+Kaleido.Queryable
+Kaleido.AspNetCore
+Kaleido.OpenApi
+Kaleido.Csv
+Kaleido.Sqlite
+Kaleido.SqlServer
+Kaleido.Sybase
+
+Possible future API package
+
+Discussed:
+
+Kaleido.Api
+
+
+responsible for:
+
+Request DTOs
+Response DTOs
+JSON contracts
+Serialization
+OpenAPI
+Controllers
+
+
+while core Kaleido remains strongly typed.
+
+3. Unresolved Questions / Next Steps
+API Boundary Design
+
+Still unresolved:
+
+Should core Kaleido continue using the same request/response contracts exposed over HTTP?
+Or should a future:
+Kaleido.Api
+
+
+package introduce dedicated transport DTOs?
+
+Current thinking:
+
+Strongly typed core
+Transport-specific wrapper package
+
+
+may ultimately be cleaner.
+
+Parameter Normalization Location
+
+Need to decide where normalization happens.
+
+Candidates:
+
+Before named query execution
+Before validation
+Before compilation
+At API boundary
+
+
+Current leaning:
+
+Centralized inside Kaleido
+
+
+before any consumer extension point executes.
+
+Query Request / Response Separation
+
+Potential future direction:
+
+Internal execution model
+
+
+separate from:
+
+HTTP transport model
+
+
+to avoid transport concerns leaking into framework internals.
+
+Functional Test Stabilization
+
+Remaining work:
+
+Complete API functional test suite.
+Remove remaining JsonElement-related failures.
+Verify named query parameter handling through HTTP.
+Verify request/response contracts behave identically through:
+Typed path
+REST path
+Sample Projects
+
+Need to implement:
+
+CSV sample
+SQLite sample
+SQL Server sample
+Sybase sample
+API sample
+
+
+with sufficient boilerplate that users can validate behavior themselves.
+
+README Deliverable
+
+Still outstanding:
+
+Generate final, complete README.md as a single file artifact.
+Include:
+Full runnable example.
+Registration.
+Query examples.
+REST examples.
+Samples overview.
+Architecture overview.
+Testing strategy.

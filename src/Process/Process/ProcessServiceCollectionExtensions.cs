@@ -99,20 +99,19 @@ public static class ProcessServiceCollectionExtensions
         RegisterHandler(services, stepType, types);
     }
 
-    private static void RegisterHandler(IServiceCollection services, Type stepType, IEnumerable<Type> types)
+    private static void RegisterHandler(
+        IServiceCollection services,
+        Type stepType,
+        IEnumerable<Type> types)
     {
-        var handlerInterface =
-            typeof(IProcessStepHandler<>)
-                .MakeGenericType(stepType);
-
         var handlerType =
             types.Single(x =>
                 x.GetInterfaces()
                     .Any(i =>
-                        i == handlerInterface));
+                        i.IsGenericType
+                        && i.GetGenericTypeDefinition() == typeof(IProcessStepHandler<,>)
+                        && i.GetGenericArguments()[0] == stepType));
 
-        services.AddScoped(
-            handlerInterface,
-            handlerType);
+        services.AddScoped(handlerType);
     }
 }

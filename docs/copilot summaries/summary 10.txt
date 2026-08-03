@@ -1,0 +1,536 @@
+1. Core Requirements
+
+Build a metadata-driven process framework, not a workflow engine.
+
+Build a framework/runtime first, not an API.
+
+API, UI, agents, batch jobs, and services should all be consumers of the same runtime.
+
+The core runtime question is:
+
+Given everything I know right now, what am I allowed to do next?
+
+The framework must:
+
+Track accumulated process context.
+Determine available operations dynamically.
+Return required attributes for each available operation.
+Execute business operations.
+Update context.
+Re-evaluate available operations after execution.
+
+The framework must support:
+
+Non-linear process progression.
+Dynamic branching.
+Repeated operations.
+Context-driven operation availability.
+
+The process model must support:
+
+A → B or C or D → E or B or C
+
+
+rather than:
+
+A → B → C → D
+
+
+Business operations may:
+
+Call external services.
+Perform validations.
+Perform lookups.
+Enrich context.
+Determine future operation availability.
+
+Product/domain teams must retain ownership of business behavior.
+
+A common framework team may own the runtime/coordinator.
+
+The framework must avoid becoming another enterprise monolith.
+
+2. Architectural & Component Decisions
+Kaleido Package Strategy
+Kaleido becomes an umbrella
+Kaleido
+├── Kaleido.Queryable
+├── Kaleido.Process
+└── Kaleido.Core / Kaleido.Common
+
+Kaleido.Queryable responsibility
+Information discovery.
+Source registration.
+Metadata discovery.
+Query execution.
+Consumer decoupling from data sources.
+
+Core question:
+
+What information exists?
+
+Kaleido.Process responsibility
+Process discovery.
+Participant discovery.
+Operation discovery.
+Operation execution.
+Process coordination.
+
+Core question:
+
+What can happen next?
+
+Shared infrastructure
+
+Potentially shared between Queryable and Process:
+
+Enum extensions.
+Metadata infrastructure.
+Registration infrastructure.
+Reflection helpers.
+Result models.
+Validation primitives.
+Configuration helpers.
+Architectural Philosophy
+Queryable patterns reused by Process
+
+The following Queryable principles directly influenced Process:
+
+Registration over hardcoding.
+Discovery over static configuration.
+Metadata over implementation knowledge.
+Runtime catalogs.
+Consumer decoupling.
+Engine-driven execution.
+
+Process is considered the behavioral sibling of Queryable.
+
+Process Runtime Hierarchy
+
+Current conceptual hierarchy:
+
+Process
+    ↓
+Coordinator
+    ↓
+Participants
+    ↓
+Capabilities
+    ↓
+Operations
+
+Process Coordinator
+
+Responsibilities:
+
+Coordinate requests.
+Discover participants.
+Build metadata catalog.
+Resolve participant ownership.
+Route operations.
+Aggregate responses.
+Return process state.
+
+Explicitly does NOT own:
+
+Product-specific business rules.
+Product-specific operation availability logic.
+Product-specific validations.
+Process Participants
+
+Responsibilities:
+
+Own business process behavior.
+Expose metadata.
+Expose capabilities.
+Expose operations.
+Evaluate operation availability.
+Execute operations.
+Return updated process responses.
+
+Examples conceptually:
+
+Radiology Participant
+Transportation Participant
+RBM Participant
+Rehab Participant
+
+
+Participants are logical contributors to a process.
+
+Capabilities
+
+Current role:
+
+Logical grouping construct.
+Organizes related operations.
+Not directly executed by consumers.
+
+Example:
+
+Member Capability
+    SearchMember
+    SelectMember
+
+Procedure Capability
+    SearchProcedure
+    SelectProcedure
+
+Submission Capability
+    SubmitRequest
+
+
+Capability currently remains a valid concept, but may still evolve.
+
+Operations
+
+Operation became the consumer-facing executable unit.
+
+Examples:
+
+SearchMember
+SelectMember
+SearchProcedure
+SelectProcedure
+AddDiagnosis
+SelectProvider
+SubmitRequest
+
+
+An operation may:
+
+Validate data.
+Call product services.
+Call APIs.
+Enrich context.
+Update context.
+Influence future availability.
+
+Operations are not simple property setters.
+
+Context
+
+Context became the central runtime concept.
+
+Availability is determined by:
+
+Current Context
+    +
+Participant Rules
+    =
+Available Operations
+
+
+Context replaces:
+
+Current step.
+Workflow state.
+Fixed progression models.
+Metadata & Discovery
+Participant Registration
+
+Participants should be discoverable rather than hardcoded.
+
+Potential startup flow:
+
+Coordinator Startup
+    ↓
+Load Participants
+    ↓
+Request Metadata
+    ↓
+Build Catalog
+
+Process Catalog / Registry
+
+Proposed responsibility:
+
+Store metadata describing:
+
+Participants.
+Capabilities.
+Operations.
+Routing information.
+
+Catalog becomes the runtime discovery model.
+
+Participant Resolution
+
+A significant discovery:
+
+Process ownership is initially unknown
+
+Example:
+
+Start Prior Auth
+    ↓
+Search Member
+    ↓
+Select Member
+
+
+At this point:
+
+No participant may yet be known.
+
+
+Only after:
+
+Product Selection
+or
+Procedure Selection
+
+
+can ownership be determined.
+
+Participant Resolver Concept
+
+Possible responsibility:
+
+Determine process ownership
+based on context.
+
+
+Uses:
+
+Participant metadata.
+Product metadata.
+Procedure metadata.
+Routing metadata.
+
+Preferred over:
+
+Calling every participant.
+
+Intake / Discovery Participant
+
+Potential solution for unresolved ownership scenarios.
+
+Responsibilities may include:
+
+Search Member
+Select Member
+Search Procedure
+Select Procedure
+
+
+After enough context exists:
+
+Resolve Participant
+Transfer Ownership
+
+
+This avoids coordinator special-case logic.
+
+Deployment Model
+Participants may be packages
+
+Possible implementation:
+
+Coordinator
+    ↓
+Participant Packages
+
+
+Useful for:
+
+Smaller organizations.
+Simple deployments.
+Participants may be services
+
+Likely model in current organization:
+
+Coordinator Service
+    ↓
+Participant Services
+
+
+Allows:
+
+Independent ownership.
+Independent deployment.
+Team autonomy.
+
+Framework should support both models.
+
+Organizational Ownership Model
+
+Current preferred ownership:
+
+Capabilities/Framework Team
+
+Owns:
+
+Coordinator
+Catalog
+Runtime
+Contracts
+Framework
+
+Product/Domain Teams
+
+Own:
+
+Participant logic
+Operations
+Business rules
+Validation
+Availability decisions
+
+
+Examples:
+
+RBM
+AOP/Transportation
+RAD
+Rehab
+
+Queryable ↔ Process Relationship
+
+Future integration was identified.
+
+Potential future concept:
+
+Operation Required Attribute
+    ↓
+Queryable Source
+
+
+Example:
+
+SelectProvider
+    requires providerId
+
+providerId obtained from
+
+Queryable:
+    Provider Search
+
+
+Potential future benefits:
+
+Dynamic lookup-driven process inputs.
+Self-describing operation metadata.
+Shared discovery model across Queryable and Process.
+
+No direct implementation decisions made yet.
+
+3. Unresolved Questions / Next Steps
+Naming Questions
+
+Still open:
+
+Is Participant the final term?
+Is Capability the final grouping term?
+Is Operation final?
+Should Catalog or Registry be preferred?
+Should the runtime be called:
+Coordinator
+Runtime
+Engine
+Process Runtime Design
+
+Need to define:
+
+Process response shape.
+Operation request shape.
+Participant response shape.
+Context model.
+Context persistence model.
+Error model.
+Validation model.
+Discovery & Registration
+
+Need to determine:
+
+How participants register.
+Metadata schema.
+Startup validation behavior.
+Dynamic metadata refresh support.
+Metadata versioning strategy.
+Participant Resolution
+
+Need to determine:
+
+Exact ownership resolution algorithm.
+Metadata required for routing.
+Product-based routing strategy.
+Procedure-based routing strategy.
+Handling multiple possible participants.
+Coordinator Responsibilities
+
+Need to finalize:
+
+What coordinator owns.
+What participants own.
+Whether early operations belong to:
+Coordinator
+Intake Participant
+Resolver
+Capability Design
+
+Need to validate whether capability remains valuable as:
+
+Participant
+    ↓
+Capability
+    ↓
+Operation
+
+
+Or whether another abstraction emerges.
+
+Deployment Strategy
+
+Need to define:
+
+V1
+
+Will participants be:
+
+Packages
+or
+Services
+
+
+first?
+
+Future
+
+How to support both cleanly.
+
+Queryable Integration
+
+Need future conversations around:
+
+Queryable metadata referenced from process metadata.
+Queryable-backed operation attributes.
+Shared metadata contracts.
+Shared registration infrastructure.
+Shared abstractions between Queryable and Process.
+Package Structure
+
+Need to define final package layout.
+
+Current leading direction:
+
+Kaleido.Queryable
+
+Kaleido.Process
+    ├── Abstractions
+    ├── Core
+    └── Extensions
+
+Kaleido.Core / Kaleido.Common
+
+Immediate Next Architectural Tasks
+Finalize terminology.
+Define package structure.
+Define core process interfaces.
+Define catalog metadata model.
+Define participant metadata model.
+Define operation metadata model.
+Define participant resolution model.
+Walk through full intake/prior-auth scenario.
+Build small proof-of-concept runtime.
+Evaluate Queryable/Process integration points.

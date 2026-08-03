@@ -1,0 +1,469 @@
+1. Core Requirements
+
+Keep Queryable transport-agnostic.
+
+Queryable should operate on strongly-typed CLR values.
+Queryable should not know about:
+JsonElement
+ASP.NET Core model binding
+JSON serialization details
+HTTP transport concerns
+
+Preserve strict validation inside Queryable.
+
+Named query parameter validation should remain strongly typed.
+Invalid parameter types should fail validation.
+Queryable should not silently stringify or broadly coerce values.
+
+Allow only intentional compatibility conversions.
+
+Numeric compatibility should be supported:
+int -> decimal
+int -> decimal?
+int -> long
+similar numeric widening scenarios
+Nullable lifting should be supported.
+Enum string parsing may remain supported where appropriate.
+Arbitrary conversions such as:
+123 -> "123"
+Guid -> string
+DateOnly -> string
+broad Convert.ChangeType() behavior
+are not desired.
+
+Move JSON-related conversion responsibility into the ASP.NET Core layer.
+
+ASP.NET should normalize request values before Queryable receives them.
+2. Architectural & Component Decisions
+Queryable Layer
+QueryRequestValidator
+
+Responsibility remains:
+
+named query validation
+required parameter validation
+allowed parameter validation
+parameter type validation
+filter validation
+search validation
+sort validation
+paging validation
+
+Decided that:
+
+required parameter enforcement belongs in Queryable
+unexpected parameter enforcement belongs in Queryable
+metadata-based validation belongs in Queryable
+
+Rejected moving these responsibilities into ASP.NET Core.
+
+Supported Runtime Types
+Added concept of validating supported CLR runtime types.
+Preferred approach:
+Use DataTypeMapper as the source of truth.
+Queryable should throw if unsupported runtime types arrive.
+Goal:
+Catch transport leaks such as:
+JsonElement
+framework-specific types
+arbitrary complex objects
+Queryable should only operate on supported CLR scalar types.
+DataTypeMapper
+Promoted to authoritative source for supported CLR types.
+Added conceptual support for:
+DataTypeMapper.IsSupportedType(Type)
+
+Supported types include:
+string
+bool
+numeric primitives
+Guid
+DateOnly
+TimeOnly
+DateTime
+DateTimeOffset
+TimeSpan
+enums
+CompiledQueryApplier
+Removed Responsibilities
+Removed transport conversion concerns.
+
+Removed logic (or decided to remove):
+
+JSON-related coercion
+broad parsing behavior
+transport-specific conversion logic
+
+Including:
+
+Guid.Parse(...)
+DateOnly.Parse(...)
+DateTime.Parse(...)
+DateTimeOffset.Parse(...)
+TimeOnly.Parse(...)
+TimeSpan.Parse(...)
+bool.Parse(...)
+
+
+and generic:
+
+Convert.ChangeType(...)
+
+
+for arbitrary conversion scenarios.
+
+Kept Responsibilities
+Expression construction.
+Nullable expression handling.
+Type compatibility validation.
+Numeric compatibility conversion.
+Enum compatibility handling where explicitly desired.
+Expression Constants
+
+Decision:
+
+Keep a helper dedicated to expression-tree compatibility.
+Nullable constants require special handling.
+Expression-tree mechanics remain the responsibility of the runtime layer.
+Enum Sorting
+
+Removed:
+
+EnumExtensions.ToName()
+
+
+sorting projection.
+
+Previous behavior:
+
+Sort by enum display name
+
+
+New behavior:
+
+Sort by enum value
+
+
+Result:
+
+Simpler
+Strongly typed
+No presentation logic in Queryable
+Runtime Compatibility Rules
+
+Queryable runtime now supports:
+
+✅ numeric widening
+
+int -> decimal
+int -> decimal?
+int -> long
+
+
+✅ nullable lifting
+
+✅ enum parsing when intentionally supported
+
+Rejected:
+
+❌ random stringification
+
+123 -> "123"
+
+
+❌ arbitrary CLR conversions
+
+DateOnly -> string
+Guid -> string
+
+
+❌ transport-driven conversions
+
+ASP.NET Core Layer
+New Responsibility
+
+ASP.NET Core now owns:
+
+HTTP value
+    ↓
+CLR value
+
+
+normalization.
+
+Examples:
+
+{
+  "Amount": 100
+}
+
+
+becomes:
+
+decimal
+
+
+before Queryable.
+
+QueryNormalizer
+
+Introduced normalization layer.
+
+Responsibilities:
+
+Named Query Parameter Normalization
+
+Input:
+
+IReadOnlyDictionary<string, object?>
+
+
+plus:
+
+QueryParameterMetadata
+
+
+Output:
+
+IReadOnlyDictionary<string, object?>
+
+
+containing normalized CLR values.
+
+Uses:
+
+ValueConverter.Convert(...)
+
+
+at the transport boundary.
+
+Filter Normalization
+
+Input:
+
+QueryBody
+
+
+plus:
+
+RecordMetadata
+
+
+Output:
+
+QueryBody
+
+
+with normalized filter values.
+
+Uses field metadata to convert values to correct CLR types.
+
+Endpoint Mapper Changes
+
+Changed endpoint mapping so metadata is available during normalization.
+
+Query Endpoint
+
+Previously:
+
+MapTypedQueryEndpoint(
+    string recordKey)
+
+
+Now:
+
+MapTypedQueryEndpoint(
+    RecordRegistration record)
+
+
+Allows:
+
+record.Metadata
+
+
+to be used during normalization.
+
+Named Query Endpoint
+
+Previously:
+
+MapTypedNamedQueryEndpoint(
+    string queryName)
+
+
+Now receives:
+
+NamedQueryRegistration namedQuery
+
+
+Allows:
+
+namedQuery.Metadata.Parameters
+
+
+to be used during normalization.
+
+Parameter Handling
+
+Kept support for:
+
+{
+  "values": {
+    "Category": "Medical"
+  }
+}
+
+
+and query-string fallback:
+
+?Category=Medical
+
+
+through common parameter extraction.
+
+Named Query Metadata Handling
+
+Important discussion:
+
+When Metadata Exists
+
+Normalize using metadata.
+
+Example:
+
+Category -> string
+Amount -> decimal
+
+When No Metadata Exists
+
+Observed:
+
+namedQuery.Metadata.Parameters.Count == 0
+
+
+caused values to be dropped.
+
+Decision:
+
+if (parameters is null ||
+    parameters.Count == 0)
+{
+    return values;
+}
+
+
+Reason:
+
+ASP.NET Core should not decide whether parameters are allowed.
+Queryable validator should decide.
+Preserving values is preferable to silently deleting them.
+Test Changes
+Runtime Tests
+
+Removed tests that relied on transport conversion:
+
+Removed:
+
+string -> int
+string -> Guid
+string -> DateOnly
+
+
+inside runtime execution.
+
+Added / updated:
+
+int -> decimal
+
+
+compatibility tests.
+
+Enum Sorting Tests
+
+Changed expectations from:
+
+sort by description
+
+
+to:
+
+sort by enum value
+
+RecordEndpointMapper Tests
+
+Discovered failure because:
+
+Parameters.Count == 0
+
+
+caused normalization to strip parameter values.
+
+Resolved by preserving values when no metadata is available.
+
+3. Unresolved Questions / Next Steps
+
+Verify functional test coverage after normalization refactor.
+
+Named query execution
+Filter execution
+Enum filtering
+Numeric filter normalization
+Date filtering
+
+Consider whether Queryable should eventually enforce:
+
+values supplied
++
+metadata count = 0
+
+
+as a registration/configuration error.
+
+Currently deferred.
+
+Consider adding dedicated tests for QueryNormalizer.
+
+Suggested cases:
+
+int -> decimal
+string -> enum
+nullable conversions
+query-string parameters
+
+
+Review search normalization behavior.
+
+Current normalization only processes filters.
+Search behavior is currently string-based.
+Future searchable non-string fields may require additional normalization.
+
+Continue validating that no transport-specific types can leak into Queryable.
+
+ASP.NET Core should remain the exclusive normalization boundary.
+Queryable should remain strictly CLR-type driven.
+Final Architectural Outcome
+ASP.NET Core
+--------------------------------
+JSON
+Query String
+HttpRequest
+JsonElement
+
+         ↓ Normalize
+
+QueryRequest
+NamedQuery
+
+--------------------------------
+Queryable
+
+Validate
+Compile
+Execute
+
+(No JsonElement awareness)
+(No transport awareness)
+(Strongly typed runtime)
+
+
+This was the primary architectural decision reached during the conversation and drove all subsequent refactoring work.

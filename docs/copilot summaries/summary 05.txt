@@ -1,0 +1,527 @@
+1. Core Requirements
+
+Build a metadata-driven ASP.NET Core surface for Queryable that is:
+
+Self-describing.
+Discoverable from a root catalog endpoint.
+Independent of internal runtime/registry implementation details.
+Suitable for future OpenAPI generation.
+
+Ensure consumers can fully navigate the API from metadata:
+
+Discover records.
+Discover record metadata.
+Discover named queries.
+Discover named query metadata.
+Execute queries.
+
+Verify ASP.NET route registration with unit tests.
+
+Explicitly validate route registration behavior.
+Protect against accidental breakage years later.
+Exercise internal/private traversal paths through public APIs.
+
+Prepare for future adapters:
+
+Queryable.AspNetCore
+Queryable.OpenApi
+Queryable.Grpc
+
+Avoid premature creation of:
+
+Kaleido.AspNetCore
+Shared ASP.NET abstractions
+Common infrastructure projects unless actual reuse emerges.
+2. Architectural & Component Decisions
+Queryable Metadata Contracts
+RecordSummaryContract Expanded
+
+Changed from minimal:
+
+Name
+Description
+
+
+to:
+
+Name
+Description
+MetadataUrl
+QueryUrl
+NamedQueries
+
+
+Purpose:
+
+Enable complete discovery from:
+GET /kaleido/queryable
+Named Query Summaries
+
+Decision:
+
+Do not expose full named query metadata inside record summaries.
+Return summarized query information.
+
+Added:
+
+Name
+Description
+ExecuteUrl
+MetadataUrl
+
+
+Reason:
+
+Avoid duplicating parameter metadata.
+Keep record metadata payloads smaller.
+Use dedicated query metadata endpoint for detailed information.
+Record Metadata Endpoint
+
+Decision:
+
+Record metadata should return:
+Field metadata.
+Named query summaries.
+
+Not:
+
+Full named query parameter metadata.
+
+Reason:
+
+Query metadata already has its own endpoint.
+Route Generation
+Route Registration vs URL Generation
+
+Discovered double-prefix bug:
+
+/kaleido/queryable/kaleido/queryable/...
+
+
+Root cause:
+
+Same helper used for:
+Endpoint registration.
+Contract URL generation.
+
+Decision:
+
+Split responsibilities.
+
+QueryableEndpointPaths
+
+Used by:
+
+MapGet()
+MapPost()
+MapRecord()
+
+
+Produces:
+
+functional-records/metadata
+functional-records/query
+
+
+No prefix.
+
+QueryableContractUrls
+
+Used by:
+
+MetadataUrl
+QueryUrl
+ExecuteUrl
+
+
+Produces:
+
+/kaleido/queryable/functional-records/metadata
+
+
+Includes prefix.
+
+Endpoint Names
+
+Decision:
+
+Centralize endpoint naming.
+
+Examples:
+
+CatalogEndpointName
+RecordMetadataEndpointName(...)
+RecordQueryEndpointName(...)
+NamedQueryEndpointName(...)
+NamedQueryMetadataEndpointName(...)
+
+
+Reason:
+
+Eliminate string duplication.
+Protect OpenAPI operation naming later.
+Route Registration Testing Strategy
+
+Decision:
+
+MapQueryable() deserves tests.
+
+Reason:
+
+It owns:
+
+Catalog registration
+Record registration
+Named query registration
+Route configuration
+
+
+Tests verify:
+
+Routes exist.
+Endpoint names exist.
+HTTP verbs are correct.
+Route options are respected.
+RecordEndpointMapper Testing Strategy
+
+Decision:
+
+Use public:
+
+MapRecord(...)
+
+
+as the entry point.
+
+Use tests to indirectly exercise:
+
+MapMetadataEndpoint
+MapNamedQueryMetadataEndpoint
+MapTypedQueryEndpoint<T>
+MapTypedNamedQueryEndpoint<T>
+
+
+without exposing private methods.
+
+Endpoint Invocation Testing
+
+Decision:
+
+Actually invoke endpoint delegates.
+
+Reason:
+
+Confirms:
+
+Metadata serialization.
+Query construction.
+QueryableCatalog invocation.
+Named query request generation.
+
+This moved tests from:
+
+Route exists
+
+
+to:
+
+Route exists
+Endpoint works
+
+Queryable ASP.NET Contracts Naming
+
+Discussed:
+
+RecordContract
+
+
+vs
+
+QueryableRecordContract
+
+
+Decision leaning toward:
+
+QueryableRecordContract
+QueryableNamedQueryContract
+...
+
+
+Reason:
+
+Future-proof.
+More explicit.
+Distinguishes HTTP contracts from:
+Metadata
+Registrations
+Runtime descriptors.
+Build / Repository Structure
+Props-Based Build Configuration
+
+Introduced:
+
+build/
+    common.props
+    packages.props
+    tests.props
+
+common.props
+
+Contains:
+
+TargetFramework
+ImplicitUsings
+Nullable
+LangVersion
+Deterministic
+
+
+Purpose:
+
+Compiler/build defaults.
+packages.props
+
+Contains:
+
+Version
+PackageVersion
+GenerateDocumentationFile
+TreatWarningsAsErrors
+IsPackable
+NuGet metadata
+
+
+Purpose:
+
+Package-specific behavior.
+tests.props
+
+Contains:
+
+IsPackable=false
+NoWarn=1591
+xUnit references
+Moq references
+Global test usings
+
+
+Purpose:
+
+Test infrastructure.
+XML Documentation Strategy
+
+Initial issue:
+
+GenerateDocumentationFile
++
+TreatWarningsAsErrors
+
+
+caused:
+
+CS1591
+
+
+on every public member.
+
+Decision:
+
+Suppress:
+
+1591
+
+
+inside test projects.
+
+Maintain:
+
+TreatWarningsAsErrors=true
+
+
+for packages.
+
+Project File Simplification
+
+Decision:
+
+Package projects import:
+
+packages.props
+
+
+Test projects import:
+
+tests.props
+
+
+Result:
+
+Project files become very small.
+
+Root Namespace Strategy
+
+Decision:
+
+Keep explicit:
+
+<RootNamespace>
+
+
+for selected projects.
+
+Example:
+
+Assembly: Kaleido.Abstractions
+Namespace: Kaleido
+
+
+Reason:
+
+Separate:
+
+Packaging boundaries.
+Namespace boundaries.
+Shared Sample/Test Data
+
+Current state:
+
+shared/
+
+
+contains:
+
+SampleKaleidoRecord
+SampleKaleidoNamedQueries
+SampleKaleidoCsvData
+
+
+Discussion:
+
+Move into dedicated shared project.
+
+Preferred direction:
+
+Kaleido.Queryable.SampleData
+
+
+Used by:
+
+Samples
+Functional Tests
+
+
+Avoid:
+
+Samples -> Test Project dependency
+
+Testing Philosophy Decisions
+Do Not Test POCOs
+
+Rejected:
+
+QueryableAspNetCoreOptionsTests
+
+
+Reason:
+
+Testing property initialization is testing C# itself.
+
+Valuable Unit Tests
+
+Identified as worthwhile:
+
+QueryableContractMapperTests
+QueryableContractUrlsTests
+QueryableEndpointPathsTests
+DataTypeMapperTests
+QueryableAspNetCoreServiceCollectionExtensionsTests
+RecordEndpointMapperTests
+QueryableEndpointRouteBuilderExtensionsTests
+
+Route Registration Tests Are Valuable
+
+Final conclusion:
+
+Testing route registration is worthwhile because it protects:
+
+Route creation
+Dependency requirements
+Endpoint metadata
+HTTP verbs
+Endpoint names
+
+
+Even when later functional tests exist.
+
+3. Unresolved Questions / Next Steps
+Functional Testing
+
+Next major task:
+
+Build ASP.NET functional tests validating:
+
+GET /kaleido/queryable
+
+GET /kaleido/queryable/{record}/metadata
+
+GET /kaleido/queryable/{record}/queries/{query}/metadata
+
+POST /kaleido/queryable/{record}/query
+
+POST /kaleido/queryable/{record}/queries/{query}
+
+
+Validate:
+
+Serialization.
+Model binding.
+Query execution.
+End-to-end behavior.
+Contract Naming Finalization
+
+Still unresolved:
+
+Whether contracts should become:
+
+QueryableRecordContract
+QueryableNamedQueryContract
+
+
+or remain:
+
+RecordContract
+NamedQueryContract
+
+Shared Sample Data Project
+
+Need final structure for:
+
+Kaleido.Queryable.SampleData
+
+
+vs alternative naming/location.
+
+Lower Package Test Coverage Review
+
+A new concern emerged:
+
+The richer traversal-path testing used in ASP.NET revealed several hidden behaviors.
+
+Future review planned for lower packages:
+
+Kaleido
+Queryable
+Queryable.Query
+Queryable.Metadata
+Queryable.Records
+
+
+to determine whether similar hidden paths lack direct coverage.
+
+OpenAPI Package
+
+Not started.
+
+Current API surface has now been shaped specifically to make future OpenAPI generation easier.
+
+OpenAPI remains a future milestone after functional API verification.

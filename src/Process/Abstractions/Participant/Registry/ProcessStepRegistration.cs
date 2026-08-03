@@ -2,5 +2,6 @@
 
 public sealed record ProcessStepRegistration(
     Type StepType,
+    Type StepResultType,
     Type HandlerType,
     ProcessStepMetadata Metadata);

@@ -1,0 +1,615 @@
+1. Core Requirements
+Build Kaleido.Queryable as a metadata-driven query framework focused on enterprise reference/configuration data.
+Keep the framework:
+Strongly typed
+Provider agnostic
+Minimal dependency footprint
+Extension-oriented only where real extension points exist
+Support a consistent query model across record types:
+Filtering
+Searching
+Sorting
+Paging
+Named Queries
+Avoid turning Queryable into a workflow engine, rule engine, or transport-specific framework.
+Keep consumers focused on:
+Defining records
+Defining sources
+Defining named queries
+Hide framework plumbing from consumers whenever possible.
+Preserve support for future execution providers (especially EF-based async execution) without adding EF dependencies to Queryable core.
+2. Architectural & Component Decisions
+Queryable Architecture
+Final High-Level Flow
+Record Registration
+        ↓
+Registry
+        ↓
+Validation
+        ↓
+Compilation
+        ↓
+Source Creation
+        ↓
+Named Query
+        ↓
+Filter
+        ↓
+Search
+        ↓
+Sort
+        ↓
+Page
+        ↓
+Execution
+
+Metadata vs Registration Separation
+Decision
+
+Separate metadata from runtime registration concerns.
+
+Result
+
+Metadata now focuses on:
+
+RecordMetadata
+FieldMetadata
+NamedQueryMetadata
+QueryParameterMetadata
+PageableMetadata
+
+
+Registration now owns runtime concerns:
+
+SourceType
+NamedQueryType
+RecordType
+Discovery information
+
+Reason
+
+Metadata was becoming polluted by runtime/discovery responsibilities.
+
+Discovery Model
+Decision
+
+Discovery builds registrations.
+
+Responsibilities
+
+Discovery:
+
+Scans assemblies
+Finds records
+Finds sources
+Finds named queries
+Builds registrations
+
+Outcome
+
+Metadata no longer participates in discovery logic.
+
+RecordQueryEngine
+Decision
+
+Keep engine as orchestration layer only.
+
+Responsibilities
+Validation
+Compilation
+Source creation
+Named query application
+Filter application
+Search application
+Sort application
+Paging
+Execution
+
+Explicit Non-Responsibilities
+Metadata construction
+Query compilation logic
+Query validation logic
+Expression building
+
+Query Compiler
+Decision
+
+Keep compilation isolated in:
+
+QueryRequestCompiler
+IRecordQueryCompiler
+
+Outcome
+
+Engine orchestrates but does not compile.
+
+Query Validator
+Decision
+
+Keep validation isolated in:
+
+QueryRequestValidator
+IRecordQueryValidator
+
+Outcome
+
+Engine validates but does not implement validation rules.
+
+CompiledQueryApplier
+Decision
+
+Retain current structure for now.
+
+Current Responsibilities
+Filter expression generation
+Search expression generation
+Sort expression generation
+Paging application
+Type conversion
+Enum description sorting
+
+Observation
+
+Class still feels too large.
+
+Future Candidate Split
+FilterExpressionBuilder
+SearchExpressionBuilder
+SortExpressionBuilder
+TypeConversionService
+
+Status
+
+Deferred until after framework stabilizes.
+
+Record Executor
+Discussion
+
+Questioned value of:
+
+IRecordExecutor<T>
+RecordExecutor<T>
+
+Initial Conclusion
+
+Looked like unnecessary abstraction because it only wrapped:
+
+query.Count()
+query.ToList()
+
+Revised Conclusion
+
+Executor may still be valuable.
+
+Reason
+
+Provides an execution boundary:
+
+Current:
+
+Count()
+ToList()
+
+
+Future:
+
+CountAsync()
+ToListAsync()
+
+
+using EF Core or other providers.
+
+Architectural Direction
+
+Execution strategy belongs to registration metadata, not source.
+
+Source vs Executor Separation
+Decision
+
+Do NOT merge source and executor concepts.
+
+Rejected:
+
+IRecordSource<TRecord, TExecutor>
+
+Reason
+
+Source responsibility:
+
+Create IQueryable<T>
+
+
+Executor responsibility:
+
+Materialize IQueryable<T>
+
+
+Keeping them independent preserves clean separation of concerns.
+
+Future Executor Registration Direction
+Future Design Candidate
+
+Registration may eventually include:
+
+ExecutorType
+
+
+alongside:
+
+SourceType
+NamedQueryTypes
+
+Goal
+
+Allow different records to use different execution strategies.
+
+Query Request Model Refactor
+Old Model
+KaleidoQueryRequest
+KaleidoQueryBody
+QueryName
+Parameters
+
+New Model
+QueryRequest
+QueryBody
+KaleidoNamedQuery
+
+Named Query Parameters
+
+Moved from:
+
+QueryName + Parameters
+
+
+to:
+
+KaleidoNamedQuery(
+    Name,
+    Parameters)
+
+Result
+
+Cleaner request model.
+
+QueryFilterNode / QuerySearchNode Factories
+Decision
+
+Use built-in factory methods.
+
+Preferred:
+
+QueryFilterNode.CreateCondition()
+QueryFilterNode.CreateGroup()
+
+QuerySearchNode.CreateCondition()
+QuerySearchNode.CreateGroup()
+
+
+instead of manual construction.
+
+Query Parameter Validation
+Decision
+
+Named query parameters are strongly typed.
+
+Example
+
+If metadata defines:
+
+Amount = Decimal
+
+
+then:
+
+["Amount"] = decimal
+
+
+is valid.
+
+["Amount"] = decimal.ToString()
+
+
+is invalid.
+
+Result
+
+Functional tests updated to use actual types.
+
+Public Surface Area Review
+Decision
+
+Many framework internals should likely become internal.
+
+Strong Candidates for Internal
+RecordDispatcher
+RecordExecutor
+CompiledQueryApplier
+
+RecordRegistry
+RecordRegistrationValidator
+
+QueryRequestCompiler
+QueryRequestValidator
+
+Possibly:
+RecordQueryEngine
+IRecordQueryEngine
+
+Keep Public
+IQueryableCatalog
+
+IRecordSource<T>
+IRecordNamedQuery<T>
+
+QueryRequest
+QueryResponse<T>
+QueryResult<T>
+
+Metadata records
+
+Attributes
+
+Guiding Principle
+
+Ask:
+
+"Would I want a consumer implementing this?"
+
+If no:
+
+internal
+
+Unit Testing Strategy
+Decision
+
+Unit tests should own their fixtures.
+
+Preferred:
+
+Private test records
+Private test sources
+Private test named queries
+
+
+Avoid:
+
+Samples.Shared
+
+
+for unit tests.
+
+Functional Tests
+
+Continue using:
+
+Shared sample records
+Shared sample data
+
+
+to validate full framework behavior.
+
+Moq / Internal Types
+Discovery
+
+Making compiler/validator internal broke proxy generation.
+
+Options Discussed
+InternalsVisibleTo
+Stop mocking compiler/validator
+Make types public again
+Preferred Direction
+
+Use:
+
+InternalsVisibleTo
+
+
+and eventually replace mocks with real implementations where practical.
+
+Metadata API Serialization Discovery
+Failure
+System.Type serialization
+
+
+failed within:
+
+RecordMetadata
+FieldMetadata
+
+Root Cause
+
+System.Text.Json cannot serialize:
+
+Type
+
+
+directly.
+
+Architectural Conclusion
+
+Runtime metadata is not necessarily an API contract.
+
+Likely Future Direction
+
+Create ASP.NET Core-specific DTOs rather than expose runtime metadata directly.
+
+Functional Scenario Refactor
+Updated To
+QueryRequest
+QueryBody
+KaleidoNamedQuery
+
+Removed
+KaleidoQueryRequest
+KaleidoQueryBody
+QueryName
+Parameters
+
+Result
+
+Scenarios now align with the current query model.
+
+QueryParameterMetadata.ForField
+Observation
+
+After refactoring, likely no longer required.
+
+Reason
+
+Parameter metadata now comes from discovery/attributes.
+
+Strongly-typed expression helper may be obsolete.
+
+Action
+
+Search for references before removal.
+
+Likely deletion candidate.
+
+Readme Direction
+Decision
+
+Stop describing Queryable as a technical component first.
+
+Lead with business value.
+
+Key Message
+
+Queryable helps IT organizations:
+
+Expose reference data
+Expose configuration data
+Avoid API proliferation
+Provide consistent querying
+Reduce duplicate infrastructure
+
+Emphasis
+
+Focus on:
+
+Enterprise reference data
+Configuration data
+Master data
+Metadata-driven querying
+
+
+rather than framework internals.
+
+3. Unresolved Questions / Next Steps
+ASP.NET Core Implementation
+Remaining Work
+
+Resolve API contract strategy.
+
+Questions:
+
+Should runtime metadata be exposed directly?
+Should ASP.NET DTOs exist?
+How should System.Type be represented?
+
+Current Failure
+System.Type serialization
+
+
+in metadata endpoints.
+
+Executor Registration
+Future Design
+
+Determine how executor strategy should be registered.
+
+Current candidate:
+
+ExecutorType
+
+
+stored on registration.
+
+Goal
+
+Support:
+
+In-memory execution
+EF async execution
+Future providers
+
+
+without polluting core Queryable.
+
+CompiledQueryApplier Refactor
+Still Under Consideration
+
+Potential split into:
+
+FilterExpressionBuilder
+SearchExpressionBuilder
+SortExpressionBuilder
+TypeConversionService
+
+Status
+
+Deferred until after stabilization.
+
+Internal vs Public Review
+Remaining Task
+
+Perform a full audit of:
+
+Interfaces
+Services
+Registrations
+Runtime components
+
+
+and move implementation details to:
+
+internal
+
+
+where appropriate.
+
+Functional Test Cleanup
+Remaining Work
+
+Bring all functional scenarios and API tests in line with:
+
+QueryRequest
+QueryBody
+KaleidoNamedQuery
+RecordMetadata
+
+QueryParameterMetadata.ForField
+Open Question
+
+Is it still referenced?
+
+Possible outcomes:
+
+Remove
+Move to builder
+Keep as helper
+
+Queryable Completion Goal
+Agreed Direction
+
+Finish:
+
+ASP.NET Core layer
+API contract decisions
+Functional test stabilization
+
+
+Then stop modifying Queryable and shift focus to:
+
+Kaleido.Process
+
+
+using the lessons learned from Queryable:
+
+Registration model
+Discovery model
+Metadata boundaries
+Pipeline architecture
+Testing strategy
+Separation of concerns

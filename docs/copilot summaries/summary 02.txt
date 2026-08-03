@@ -1,0 +1,449 @@
+1. Core Requirements
+
+Introduce a Kaleido registration pipeline that enforces framework initialization order:
+
+Consumers should be able to do:
+services
+    .AddKaleido()
+    .AddQueryable()
+    .AddProcess();
+
+Consumers should not be able to call:
+services.AddQueryable();
+
+directly.
+
+Support a shared registration context through IKaleidoBuilder.
+
+Allow assemblies to be registered once and reused by multiple Kaleido modules:
+
+Queryable scans assemblies for records, providers, and named queries.
+Process will eventually scan assemblies for participants, capabilities, operations, etc.
+
+Keep assembly registration explicit:
+
+No hidden assembly discovery.
+Consumers must register assemblies intentionally.
+
+Preserve a dependency-light architecture:
+
+Avoid introducing unnecessary framework dependencies.
+Keep abstraction packages as close to dependency-free as possible.
+2. Architectural & Component Decisions
+Builder Pattern
+Adopted
+
+Introduced:
+
+IKaleidoBuilder
+
+
+Builder contains:
+
+IServiceCollection
+Registered assemblies
+
+AddKaleido() returns an IKaleidoBuilder.
+
+Module registration methods target:
+
+IKaleidoBuilder
+
+Result
+services
+    .AddKaleido()
+    .AddAssembly(...)
+    .AddQueryable()
+    .AddProcess();
+
+Assembly Registration
+Assembly Catalog Ownership
+Core registration context owns assembly registration.
+Assemblies are shared across modules.
+Storage Decision
+
+Assemblies stored internally as:
+
+Dictionary<string, Assembly>
+
+
+Key:
+
+assembly.FullName
+
+
+Duplicate registrations are ignored via:
+
+TryAdd(...)
+
+Public Exposure
+
+Assemblies exposed as:
+
+IReadOnlyCollection<Assembly>
+
+
+External consumers cannot modify the collection.
+
+Encapsulation Goal
+Only internal builder code may mutate assemblies.
+Consumers and modules can only read assemblies.
+Queryable Discovery
+Decision
+
+Queryable performs:
+
+Assembly scan
+Validation
+Registration
+
+during service registration.
+
+Rejected
+
+Deferred discovery at runtime.
+
+Reason:
+
+DI registrations must exist before container build.
+Queryable dynamically registers:
+sources
+query engines
+named queries
+
+which requires discovery results at registration time.
+
+Registration Order Requirement
+Decision
+
+Queryable requires assemblies before registration.
+
+Invalid:
+
+services
+    .AddKaleido()
+    .AddQueryable()
+    .AddAssembly(...)
+
+
+Valid:
+
+services
+    .AddKaleido()
+    .AddAssembly(...)
+    .AddQueryable()
+
+Enforcement
+
+Added guard:
+
+if (!builder.Assemblies.Any())
+{
+    throw ...
+}
+
+Queryable Validation Strategy
+Decision
+
+Validator owns correctness checks.
+
+Examples:
+
+Record metadata validity
+Unique record names
+Single source per record
+Query registration validation
+Result
+
+Registration code remains simple:
+
+Scan
+    ↓
+Validate
+    ↓
+Register
+
+Source vs Named Query Registration
+Sources
+
+Decision:
+
+Only one source per record.
+
+Examples:
+
+CustomerRecord
+    -> CustomerSource
+
+
+Duplicate sources are invalid.
+
+Validator should catch violations.
+
+Named Queries
+
+Decision:
+
+Multiple named queries per record are allowed.
+
+Examples:
+
+RecentCustomersQuery
+ActiveCustomersQuery
+InactiveCustomersQuery
+
+
+Multiple registrations are expected behavior.
+
+Runtime Metadata Placement
+Current Classes Discussed
+RuntimeRecordMetadata
+RuntimeFieldMetadata
+RuntimeAllowedQueryMetadata
+RuntimePageableMetadata
+RecordRegistration
+
+Decision
+
+Keep these within:
+
+Kaleido.Queryable
+
+
+Not Core.
+
+Reason
+
+The metadata contains Queryable-specific concerns:
+
+filtering
+sorting
+searching
+paging
+match modes
+
+These concepts do not belong to Process.
+
+Registration Objects
+Decision
+
+Keep:
+
+RecordRegistration
+
+
+inside Queryable.
+
+Rejected
+
+Generic framework abstraction such as:
+
+Registration<TMetadata>
+
+Reason
+
+The shape may look similar across modules, but the meaning is different.
+
+Future Process objects should have their own registration types:
+
+ParticipantRegistration
+OperationRegistration
+CapabilityRegistration
+
+Core vs Module Ownership
+Core Owns
+
+Framework infrastructure:
+
+IKaleidoBuilder
+KaleidoBuilder
+AddKaleido
+AddAssembly
+Assembly Catalog
+
+Queryable Owns
+Records
+Fields
+Queries
+Paging
+Filtering
+Queryable Metadata
+Record Registrations
+
+Process Will Own
+Participants
+Operations
+Capabilities
+Transitions
+Process Metadata
+
+Abstractions Package Strategy
+Decision
+
+Protect dependency-free abstraction packages.
+
+Current Position
+
+Do not move builder infrastructure into abstractions merely to share it.
+
+Reason:
+
+IKaleidoBuilder depends on framework registration concepts and DI concerns.
+
+Preferred Separation
+
+Eventually:
+
+Kaleido.Core
+Kaleido.Queryable.Abstractions
+Kaleido.Queryable
+Kaleido.Process.Abstractions
+Kaleido.Process
+
+Microsoft.Extensions.Options
+Decision
+
+Do not introduce Options into Core.
+
+Reasoning:
+
+No current configuration need.
+Adds unnecessary dependency footprint.
+Can be added later at module level if required.
+Helper / Extension Classes
+Example Discussed
+EnumExtensions
+
+Decisions
+
+Not appropriate for:
+
+*.Abstractions
+
+
+because it is implementation code.
+
+Not appropriate for:
+
+Queryable
+
+
+if used across multiple modules.
+
+Preferred Philosophy
+
+Wait before introducing:
+
+Kaleido.Utilities
+
+
+or
+
+Kaleido.Common
+
+
+until multiple genuinely shared helper classes emerge.
+
+Avoid creating utility projects for a single class.
+
+Utility vs Primitive Distinction
+Conclusion
+
+EnumExtensions is a utility/helper.
+
+It is not a primitive.
+
+Primitives are foundational domain/value types.
+
+Utilities are implementation helpers.
+
+Testing Decisions
+KaleidoBuilder Tests
+
+Cover:
+
+Constructor behavior
+Service collection preservation
+Empty assembly collection
+Adding assemblies
+Preventing duplicates
+Multiple unique assemblies
+Read-only exposure
+Extension Method Tests
+
+Cover:
+
+Null guard validation
+Builder creation
+Assembly registration
+Duplicate registration behavior
+Builder chaining behavior
+3. Unresolved Questions / Next Steps
+Project Structure
+
+Still undecided:
+
+Kaleido.Common
+Kaleido.Shared
+Kaleido.Utilities
+
+
+Should only be introduced if enough shared cross-module helpers emerge.
+
+Core.Abstractions
+
+Not currently justified.
+
+Need to determine whether future framework contracts emerge that are:
+
+truly cross-cutting
+dependency-free
+not infrastructure-related
+Assembly Registration Ordering
+
+Current approach enforces:
+
+AddAssembly(...)
+
+
+before:
+
+AddQueryable()
+
+
+Future consideration:
+
+Better diagnostics
+Additional overloads
+Potential convenience APIs
+Shared Metadata Model
+
+Decision today:
+
+Queryable metadata remains Queryable-specific.
+Process metadata remains Process-specific.
+
+Future validation point:
+
+Determine whether any genuinely cross-module metadata abstractions emerge naturally.
+
+Avoid introducing shared metadata abstractions until there is proven duplication.
+
+Shared Helper Location
+
+Open question:
+
+If multiple helpers emerge:
+
+EnumExtensions
+AttributeExtensions
+ReflectionExtensions
+TypeExtensions
+
+
+should they be extracted into a dedicated package?
+
+Current recommendation:
+
+Wait for a pattern to emerge.
+Do not introduce a new project based on a single utility class.

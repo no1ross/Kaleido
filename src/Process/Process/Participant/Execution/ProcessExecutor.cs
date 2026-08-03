@@ -67,6 +67,12 @@ public sealed record ProcessExecutionOutcome
         init;
     }
         = [];
+
+    public required object Response
+    {
+        get;
+        init;
+    }
 }
 
 internal sealed class ExecutionProcessor : IExecutionProcessor
@@ -223,7 +229,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                             StepProcessingMessage.Error(
                                 StepProcessingMessageCode.ExecutionCancelled,
                                 "Step execution was cancelled.")
-                        ]
+                        ],
+                        Response = new ProcessStepEmptyResponse()
                     });
 
                 break;
@@ -256,7 +263,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                             StepProcessingMessage.Error(
                                 StepProcessingMessageCode.FrameworkException,
                                 $"An unexpected exception occurred while executing '{candidate.StepName}'. {exception.Message}")
-                        ]
+                        ],
+                        Response = new ProcessStepEmptyResponse()
                     });
 
                 break;
@@ -291,7 +299,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
     private static ProcessExecutionOutcome CreateOutcome(
         StepCandidate candidate,
-        ProcessStepHandlerResult result,
+        ProcessStepInvokerResult result,
         ExecutionDecision decision)
     {
         ArgumentNullException.ThrowIfNull(candidate);
@@ -324,7 +332,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 decision.Type,
 
             Messages =
-                messages
+                messages,
+            Response = result.Response
         };
     }
 

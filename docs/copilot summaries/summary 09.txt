@@ -1,0 +1,288 @@
+Based on the conversation we just had (specifically around Kaleido.Process, the ExecutionProcessor, ProcessStateUpdater, state persistence, evaluator behavior, and runtime orchestration), the decisions can be summarized as follows.
+
+1. Core Requirements
+
+Sequential execution only for v1
+
+No parallel step execution.
+Future support could be introduced through explicit metadata such as [AllowParallel] or similar.
+Processor assumes a single execution path at a time.
+
+Process state must be durable
+
+State cannot exist only in memory.
+State must be persisted after every execution pass.
+If a process crashes after step A completed and before step B completes, step A must never execute again.
+
+Processes must be resumable
+
+Consumers should be able to resubmit the same request after failures.
+Previously completed steps should be recognized and skipped.
+State persistence is a resiliency mechanism, not merely a reporting mechanism.
+
+Step execution should be idempotent from the engine perspective
+
+The engine should avoid running a completed step twice.
+Persisted execution state is the source of truth.
+
+Execution results must be returned
+
+The processor should return detailed execution results for every candidate it attempted to execute.
+Higher-level runtime concerns remain outside the processor.
+
+Request identity must be preserved
+
+RequestId / CorrelationId originates from the consumer.
+This identifier becomes part of the process state early in execution.
+State should contain the identifier rather than requiring it to be copied across many contracts.
+2. Architectural & Component Decisions
+Overall Philosophy
+
+Kaleido.Process is not a workflow engine
+
+This was repeatedly reinforced.
+The framework is a metadata-driven business process orchestration system.
+It should not evolve into BPMN/Camunda/BizTalk style workflow complexity.
+
+Keep orchestration thin
+
+Components exist to perform specialized responsibilities.
+Orchestrators coordinate services rather than contain business logic.
+Runtime Responsibilities
+
+Runtime is responsible for:
+
+Building the plan.
+Creating the candidate set.
+Initial orchestration.
+
+Runtime is not responsible for:
+
+Executing business steps directly.
+Re-evaluating process flow after every step.
+Persisting execution state after each execution.
+ExecutionProcessor Responsibilities
+
+ExecutionProcessor owns the execution loop.
+
+It:
+
+Receives process state.
+Receives execution candidates.
+Invokes steps.
+Applies execution outcomes.
+Persists state changes.
+Calls the evaluator after execution.
+Determines the next candidate from evaluator results.
+
+It should not:
+
+Build plans.
+Build candidates.
+Make business decisions itself.
+Duplicate evaluator logic.
+Evaluator Responsibilities
+
+Evaluator becomes the authoritative source for progression decisions.
+
+Graph provides:
+
+Initial available steps.
+Static process structure.
+
+Evaluator provides:
+
+Requested step.
+Available next steps.
+Actual navigation decisions.
+
+Execution flow becomes:
+
+Plan
+  ↓
+Initial Candidate
+  ↓
+Execute Step
+  ↓
+Persist State
+  ↓
+Evaluate
+  ↓
+Determine Next Candidate
+  ↓
+Repeat
+
+The graph determines what could happen.
+The evaluator determines what should happen.
+Graph Responsibilities
+
+Graph contains:
+
+Initial step relationships.
+Potential next steps.
+Structural process metadata.
+
+Graph does not:
+
+Decide execution flow at runtime.
+Override evaluator decisions.
+State Management
+Processor State Usage
+Processor receives an existing state object.
+State is continuously updated throughout execution.
+Processor works against the same state object for the lifetime of execution.
+State Persistence
+Persistence occurs inside the execution processor.
+Runtime should not need to perform additional state updates afterward.
+Hydration
+Processor must:
+Hydrate existing state.
+Reconcile runtime information.
+Save updated state through registered implementations.
+ProcessStateUpdater Responsibilities
+
+StateUpdater becomes the central state mutation component.
+
+It owns:
+
+Initialize
+Reconcile
+ApplyExecution
+ApplyException
+ApplyCancellation
+
+Goals:
+
+Centralize state updates.
+Prevent state mutation logic from being scattered.
+Ensure participant and step state changes remain consistent.
+ParticipantContext vs StepContext
+
+A significant design decision emerged here.
+
+Rejected Direction
+
+Passing StepContext directly into:
+
+ApplyExecution
+ApplyException
+ApplyCancellation
+Accepted Direction
+
+Pass ParticipantContext.
+
+Reasoning:
+
+ParticipantContext owns the step collection.
+Updater is responsible for locating and updating the correct StepContext.
+Avoids forcing execution components to manage correlation logic.
+Keeps update responsibilities centralized.
+Candidate Processing
+Current candidate should be known during execution.
+Candidate selection should not drift or become ambiguous.
+Evaluator decisions drive candidate transitions.
+Candidate transitions occur after execution and evaluation.
+Processor Output Model
+
+Execution results should contain:
+
+Candidate execution outcomes.
+Processing messages.
+Error information when relevant.
+Decision information needed by callers.
+
+The outcome should be focused on execution concerns rather than runtime concerns.
+
+Messaging
+Processor should return StepProcessingMessage.
+Messages already contain the required codes and metadata.
+Avoid introducing duplicate result models if existing message contracts already satisfy the need.
+3. Unresolved Questions / Next Steps
+ExecutionProcessor Finalization
+
+Still needs final verification of:
+
+Exact execution loop implementation.
+Exact processor return model.
+Candidate result structure.
+Cancellation behavior.
+Evaluator Revisit
+
+You explicitly called out that:
+
+"we will go back to the evaluator after all of this"
+
+Areas likely needing review:
+
+Available step calculation.
+Requested step handling.
+Decision contract shape.
+Candidate selection behavior.
+State Persistence Implementation
+
+Architecture is decided, but implementation details still need validation:
+
+Persistence frequency.
+Save failure handling.
+Transaction boundaries.
+Recovery scenarios.
+Resiliency Testing
+
+The design relies heavily on persisted state.
+
+Important scenarios to test:
+
+Service crash after execution but before save.
+Save succeeds but response fails.
+Retry with identical RequestId.
+Mid-process resume.
+Multiple retries of failed requests.
+Future Parallel Execution
+
+Explicitly deferred from v1.
+
+Potential future work:
+
+Parallel execution metadata.
+Dependency management.
+Synchronization strategies.
+State consistency guarantees.
+Documentation Work
+
+A major future documentation task was identified:
+
+Clearly explain that Kaleido.Process is not a workflow engine.
+Document responsibility boundaries:
+Runtime
+Planner
+Evaluator
+Graph
+ExecutionProcessor
+StateUpdater
+Explain resiliency and resume behavior as first-class concepts.
+Final Architectural State Reached
+
+At the end of the discussion, the architecture had converged on:
+
+Runtime
+  └─ Planner
+       └─ Candidate Set
+
+ExecutionProcessor
+  ├─ Invoke Step
+  ├─ StateUpdater.Apply*
+  ├─ Save State
+  ├─ Evaluator.Evaluate
+  └─ Select Next Candidate
+
+Evaluator
+  └─ Authoritative runtime decision maker
+
+Graph
+  └─ Structural process metadata
+
+StateUpdater
+  └─ Sole owner of state mutation logic
+
+
+The biggest decision made during this conversation was the separation of concerns: the ExecutionProcessor owns execution and persistence, the Evaluator owns progression decisions, the Graph owns structure, and the Runtime merely coordinates the services.

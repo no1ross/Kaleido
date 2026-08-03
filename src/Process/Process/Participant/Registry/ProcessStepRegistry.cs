@@ -403,12 +403,24 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
                 services,
                 stepType);
 
+        var handlerInterface =
+            handlerType
+                .GetInterfaces()
+                .Single(i =>
+                    i.IsGenericType
+                    && i.GetGenericTypeDefinition() == typeof(IProcessStepHandler<,>)
+                    && i.GetGenericArguments()[0] == stepType);
+
+        var stepResultType =
+            handlerInterface.GetGenericArguments()[1];
+
         var metadata =
             BuildStepMetadata(
                 stepType);
 
         return new ProcessStepRegistration(
             stepType,
+            stepResultType,
             handlerType,
             metadata);
     }
@@ -417,13 +429,16 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
         IServiceCollection services,
         Type stepType)
     {
-        var handlerInterface =
-            typeof(IProcessStepHandler<>)
-                .MakeGenericType(stepType);
-
         var handlers =
             services
-                .Where(x => x.ServiceType == handlerInterface)
+                .Where(x =>
+                    x.ImplementationType is not null
+                    && x.ImplementationType
+                        .GetInterfaces()
+                        .Any(i =>
+                            i.IsGenericType
+                            && i.GetGenericTypeDefinition() == typeof(IProcessStepHandler<,>)
+                            && i.GetGenericArguments()[0] == stepType))
                 .ToArray();
 
         if (handlers.Length == 0)
@@ -438,9 +453,7 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
                 $"Multiple process step handlers registered for step '{stepType.FullName}'.");
         }
 
-        return handlers[0].ImplementationType
-            ?? throw new InvalidOperationException(
-                $"Process step handler registration '{handlerInterface.Name}' is missing an implementation type.");
+        return handlers[0].ImplementationType!;
     }
 
     private static ProcessStepMetadata BuildStepMetadata(

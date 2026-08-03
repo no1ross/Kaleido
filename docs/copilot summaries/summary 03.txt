@@ -1,0 +1,534 @@
+1. Core Requirements
+Kaleido is metadata-driven, not a traditional CRUD or workflow framework.
+Queryable API surface should be generic and registration-driven, not controller-per-record.
+Goal is to provide an HTTP-accessible Queryable surface without exposing the strongly-typed internal implementation details.
+Support:
+Record discovery
+Metadata discovery
+Query execution
+Named query execution
+Query parameter discovery
+Internal framework remains strongly typed.
+External API remains runtime/metadata driven.
+Consumers should not need to build:
+CustomerController
+ProviderController
+MemberController
+etc.
+Query metadata returned to consumers must include:
+Fields
+Search/filter capabilities
+Paging capabilities
+Named queries
+Named query parameters
+2. Architectural & Component Decisions
+Queryable.AspNetCore
+Purpose
+
+Kaleido.Queryable.AspNetCore owns:
+
+HTTP endpoint surface
+HTTP contracts
+Endpoint discovery
+Query execution transport layer
+
+It does not own:
+
+Record definitions
+Query execution
+Query metadata generation
+
+Those remain in Kaleido.Queryable.
+
+Endpoint Strategy
+
+Consumer usage:
+
+builder.Services
+    .AddKaleido()
+    .AddQueryable()
+    .AddQueryableAspNetCore();
+
+app.MapKaleidoQueryableEndpoints();
+
+
+Optional:
+
+app.MapKaleidoQueryableEndpoints(options =>
+{
+    options.RoutePrefix = "/reference-data";
+});
+
+Default Routes
+
+Preferred initial routes:
+
+GET  /kaleido/queries
+POST /kaleido/queries/{key}
+
+
+Reasons:
+
+Queryable owns "queries"
+Queryable does not own general "registrations"
+Future Process registrations can coexist
+Metadata Ownership
+
+Major architectural decision:
+
+Metadata owns NamedQueries
+
+Conceptually:
+
+Record Metadata
+ ├─ Fields
+ ├─ Pageable
+ └─ NamedQueries
+
+
+Consumers should receive a complete metadata picture.
+
+MetadataBuilder Does NOT Own NamedQuery Discovery
+
+Refactor decision:
+
+RecordMetadataBuilder should only build metadata directly available from the Record Type:
+
+Record attributes
+Fields
+Pageable configuration
+
+It should NOT:
+
+Discover named queries
+Scan query implementations
+Resolve parameter definitions
+
+Reason:
+
+Named query metadata comes from:
+
+IQueryableRecordNamedQuery<TRecord>
+
+
+implementations, not record attributes.
+
+Registration Assembly Owns Aggregation
+
+Responsibility split:
+
+Discovery
+    ↓
+
+Records
+Sources
+NamedQueries
+
+    ↓
+
+Registration Assembly
+
+    ↓
+
+RecordMetadata
+
+
+Registration building combines:
+
+Record Metadata
++
+Named Query Metadata
+
+
+into one complete metadata object.
+
+Named Query Architecture
+Original Design
+string QueryName
+IReadOnlyDictionary<string, object?> Parameters
+
+
+Problem:
+
+Two fields represent one concept.
+Parameters only make sense when QueryName exists.
+New Design
+public record KaleidoQueryRequest
+(
+    KaleidoNamedQuery? NamedQuery,
+    KaleidoQueryBody? Query
+);
+
+public record KaleidoNamedQuery
+(
+    string Name,
+    IReadOnlyDictionary<string, object?>? Parameters = null
+);
+
+
+Benefits:
+
+Better domain model
+Stronger ownership
+Future extensibility
+Named Query Metadata
+
+Query metadata became discoverable:
+
+public sealed record NamedQueryMetadata(
+    string Name,
+    string Description,
+    IReadOnlyList<QueryParameterMetadata>? Parameters = null
+);
+
+Query Parameter Metadata
+
+Final shape:
+
+public sealed record QueryParameterMetadata(
+    string Name,
+    Type Type,
+    bool Required,
+    string Description
+);
+
+Query Parameters Live On Query Implementation
+
+Final interface direction:
+
+public interface IQueryableRecordNamedQuery<TRecord>
+    where TRecord : class
+{
+    IReadOnlyList<QueryParameterMetadata>? Parameters { get; }
+
+    IQueryable<TRecord> Apply(
+        IQueryable<TRecord> query,
+        KaleidoNamedQuery namedQuery);
+}
+
+
+Reason:
+
+Avoid duplication between:
+
+[KaleidoAllowedQuery]
+
+
+and a separate descriptor object.
+
+Attribute Ownership
+
+Attribute owns:
+
+Name
+Description
+
+
+Query implementation owns:
+
+Parameter definitions
+
+
+Result:
+
+No duplicated metadata.
+
+Query Parameter Identification
+
+Problem:
+
+typeof(SampleKaleidoRecord.Category)
+
+
+is invalid.
+
+Resolution:
+
+Parameter Type represents parameter value type:
+
+typeof(string)
+
+
+not property type symbol syntax.
+
+Helper Method Added
+
+Suggested helper:
+
+QueryParameterMetadata.ForField<TRecord>(
+    x => x.Category,
+    required: true,
+    description: "..."
+)
+
+
+Purpose:
+
+Automatically infer:
+
+Name
+Type
+
+
+from property expression.
+
+Metadata Cleanup
+
+Major cleanup performed.
+
+Previous state:
+
+RecordMetadata
+
+RuntimeRecordMetadata
+
+RecordDescriptor
+
+
+all contained largely the same data.
+
+Result:
+
+Recognized significant duplication.
+
+Query Metadata Simplification
+
+Removed duplication between:
+
+RuntimeQueryParameterMetadata
+
+
+and
+
+QueryParameterDescriptor
+
+
+because they were effectively identical.
+
+Direction:
+
+Use a single metadata model whenever no runtime-specific transformation exists.
+
+Registration Discovery Objects
+
+Current discovery objects considered acceptable:
+
+RecordDiscovery
+
+SourceDiscovery
+
+NamedQueryDiscovery
+
+
+Reason:
+
+They store:
+
+Type
+Metadata
+Descriptors
+
+
+not instantiated services.
+
+Minimal memory footprint.
+
+Validation Strategy
+
+Keep validation for:
+
+Records
+Duplicate Record Names
+
+Sources
+Duplicate Sources
+Missing Sources
+
+Named Queries
+
+Added:
+
+Duplicate Named Queries per Record
+
+
+Potentially:
+
+Named Query references unknown record
+
+Record Identity
+
+Major simplification:
+
+Removed:
+
+RecordKey
+
+
+Kept:
+
+RecordName
+
+
+Result:
+
+Validator no longer needs:
+
+DuplicateRecordKeys
+
+
+validation.
+
+Compiler Review
+Compiler Still Valuable
+
+Purpose:
+
+Request
+    ↓
+
+Execution Plan
+
+
+Responsibilities:
+
+Resolve FieldMetadata
+Normalize paging
+Validate fields/operators
+Compiled Types Review
+
+Keep:
+
+CompiledFilterCondition
+CompiledFilterGroup
+
+CompiledSearchCondition
+CompiledSearchGroup
+
+CompiledSort
+
+
+Because:
+
+String field names
+    ↓
+FieldMetadata
+
+
+is valuable compilation.
+
+Candidates For Removal
+
+Questioned:
+
+CompiledNamedQuery
+
+
+because it merely copied:
+
+Name
+Parameters
+
+
+with no transformation.
+
+Also questioned:
+
+CompiledPage
+
+
+depending on final normalization requirements.
+
+3. Unresolved Questions / Next Steps
+Metadata Object Consolidation
+
+Still being evaluated:
+
+RecordMetadata
+RecordDescriptor
+
+
+Potentially further simplification possible.
+
+Named Query Discovery Loading
+
+Need final decision on how parameter metadata is obtained:
+
+Options considered:
+
+A
+
+Instantiate query implementations during discovery.
+
+B
+
+Populate metadata during registration.
+
+Current direction favors registration assembly.
+
+Query Parameter Type Representation
+
+Currently:
+
+Type
+
+
+stored in metadata.
+
+Future consideration:
+
+DataTypeDescriptor
+
+
+to align with:
+
+FieldDescriptor
+
+
+and improve API serialization.
+
+Query Compiler Cleanup
+
+Review all:
+
+Compiled*
+
+
+objects.
+
+Rule established:
+
+If compilation does not add metadata, validation, normalization, or resolution, the compiled type likely should not exist.
+
+Registration Model Final Shape
+
+Need final determination whether:
+
+RecordMetadata
+
+
+stores:
+
+NamedQueryMetadata
+
+
+directly,
+
+or whether registration separately owns:
+
+RecordMetadata
++
+NamedQueries
+
+
+Current lean:
+
+RecordMetadata owns NamedQueries conceptually, even if discovery/assembly populates them later.
+
+Query Execution Model
+
+Need final pass after metadata cleanup to verify whether:
+
+RecordQueryCompiler
+
+
+is still producing a meaningful execution plan versus wrapping existing request models.

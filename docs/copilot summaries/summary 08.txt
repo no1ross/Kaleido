@@ -1,0 +1,708 @@
+1. Core Requirements
+Build a metadata/business-driven process framework, not a BPM/workflow engine.
+Keep orchestration logic minimal; push behavior into dedicated components.
+Persist process state after execution so requests can be safely retried.
+Never re-execute a step that has already been successfully completed with the same request values.
+Allow consumers to submit:
+a single step,
+multiple steps,
+the entire process at once.
+Support strongly typed step contracts.
+Use hydrated step instances throughout the pipeline as early as possible.
+Support:
+primitive types,
+nullable types,
+enums,
+collections,
+nested/complex objects.
+The framework must distinguish:
+request/data problems,
+process consistency problems,
+framework/developer defects.
+2. Architectural & Component Decisions
+Request Model
+Previous
+ParticipantRequest
+{
+    IReadOnlyCollection<ProcessStepRequest>
+}
+
+
+with:
+
+ProcessStepRequest
+{
+    StepName
+    Fields
+}
+
+New Direction
+
+Request becomes a dictionary keyed by step name:
+
+ParticipantRequest
+{
+    IReadOnlyDictionary<
+        string,
+        IReadOnlyDictionary<string, object?>>
+}
+
+
+Example:
+
+{
+  "SelectProcedure": {
+    "ProcedureCode": "123"
+  },
+  "VerifyEligibility": {
+    "MemberId": "ABC"
+  }
+}
+
+
+Benefits:
+
+Prevents duplicate step requests.
+Better represents "step → values".
+Aligns naturally with planner lookup behavior.
+ExecutionCandidate
+
+ExecutionCandidate became the planning aggregate.
+
+Contains:
+
+Registration
+Hydrated Step
+Status
+Messages
+
+It accumulates information as it moves through the planning pipeline.
+
+ProcessStepMessage
+
+Moved away from:
+
+ProcessStepValidationError
+
+
+because not everything is a validation error.
+
+Examples now include:
+
+UnknownStep
+ValidationFailed
+DependencyNotSatisfied
+ConsistencyViolation
+AlreadyProcessed
+ConversionFailed
+
+Design:
+
+ProcessStepMessage
+{
+    Type
+    Code
+    Message
+}
+
+
+Where:
+
+ProcessStepMessageType
+{
+    Information,
+    Warning,
+    Error
+}
+
+
+Messages must be descriptive and explain exactly what happened.
+
+Builder Responsibility
+Responsibility
+
+Only:
+
+Request
+    ->
+Registration Lookup
+    ->
+Hydrated Step Object
+    ->
+ExecutionCandidate
+
+
+Builder owns:
+
+registration lookup
+object creation
+property mapping
+value conversion
+
+Builder does NOT own:
+
+DataAnnotations
+consistency checking
+dependency checking
+planning
+execution
+DataTypeMapper
+Existing Purpose
+
+Originally:
+
+CLR Type
+    ->
+Metadata Descriptor
+
+
+for Queryable/OpenAPI generation.
+
+Expanded Purpose
+
+Added runtime conversion support.
+
+New API:
+
+TryConvertValue(...)
+
+
+Returns:
+
+DataTypeConversionResult
+
+
+instead of throwing.
+
+Conversion Philosophy
+Consumer input problems
+
+Return failed conversion result:
+
+Invalid int
+Invalid Guid
+Invalid enum
+Invalid DateOnly
+
+Unsupported framework types
+
+Throw:
+
+UnsupportedDataTypeException
+
+Framework bugs
+
+Throw immediately.
+
+Conversion Strategy
+
+Prefer:
+
+TryParse
+
+
+over:
+
+Parse
+
+
+for all supported types.
+
+Candidate Status
+
+Settled on:
+
+ExecutionCandidateStatus
+{
+    Pending,
+    Built,
+    Invalid,
+    Satisfied
+}
+
+
+Meanings:
+
+Pending
+
+Initial state.
+
+Built
+
+Successfully hydrated and remains eligible.
+
+Invalid
+
+Cannot proceed.
+
+Examples:
+
+ValidationFailed
+ConversionFailed
+PropertyNotFound
+DependencyNotSatisfied
+ConsistencyViolation
+Satisfied
+
+Valid request but already completed historically with identical values.
+
+No execution required.
+
+Historical Process State
+ProcessStepOutcome
+
+Removed duplicate meaning between:
+
+Succeeded
+Completed
+
+
+Final direction:
+
+ProcessStepOutcome
+{
+    Pending,
+    Completed,
+    Failed,
+    Blocked,
+    Cancelled
+}
+
+Interpretation
+
+Pending:
+
+Known step
+Not yet successfully completed
+
+
+Completed:
+
+Successfully completed
+
+
+Failed/Blocked/Cancelled:
+
+May be attempted again later
+
+
+Only:
+
+Completed
+
+
+is treated as immutable history.
+
+Process Context
+ProcessStepContext
+
+Represents historical state for a step.
+
+Contains:
+
+StepName
+Version
+Requests
+Outcome
+LastProcessed
+ProcessStepRequestContext
+
+Changed from storing request data to storing executed step object.
+
+Old direction:
+
+Request
+
+
+New direction:
+
+Step
+
+
+Store:
+
+object Step
+
+
+Reason:
+
+Store the actual executed step contract instead of transport/request data.
+
+Benefits:
+
+Easier consistency checking.
+Preserves what actually executed.
+Supports future auditing.
+Validator
+
+Responsibility narrowed to:
+
+DataAnnotations only
+
+
+Checks:
+
+Required
+Range
+StringLength
+RegularExpression
+CustomValidation
+
+
+Behavior:
+
+Skip invalid candidates from builder.
+Add validation messages.
+Mark candidate invalid.
+
+Validator does NOT:
+
+inspect graph
+inspect dependencies
+inspect history
+determine execution order
+Consistency Checker
+
+Created as a dedicated component.
+
+Responsibility:
+
+Validate process consistency
+
+
+Consumes:
+
+Candidates
+Context
+Registry graph
+
+Runs after validator.
+
+Historical Consistency Rules
+
+If:
+
+Completed previously
+Different values
+
+
+Result:
+
+ConsistencyViolation
+Invalid
+
+
+If:
+
+Completed previously
+Same values
+
+
+Result:
+
+Satisfied
+
+
+No error message.
+
+Graph Consistency Rules
+
+Example:
+
+A -> B -> C
+
+Request:
+    C
+
+
+Result:
+
+DependencyNotSatisfied
+Invalid
+
+Request Consistency Rules
+
+Example:
+
+A -> B -> C
+
+Request:
+    A
+    C
+
+
+Result:
+
+A valid
+C invalid
+
+Dependency Satisfaction Rules
+
+Dependency may be satisfied by:
+
+Historical completion
+
+
+or
+
+Current request candidate
+
+Consistency Checker Architecture
+
+Operates on the entire request/candidate set, not one candidate in isolation.
+
+ProcessStepRequestComparer
+
+Needed for:
+
+Historical comparison
+
+
+Decision:
+
+Use JSON serialization comparison instead of recursive reflection.
+
+Supports:
+
+classes
+records
+collections
+nullables
+nested objects
+complex object graphs
+
+Intent:
+
+Did the request materially change?
+
+
+not:
+
+Are these CLR objects deeply equal?
+
+
+Method:
+
+AreEquivalent(...)
+
+Execution Plan Builder
+
+Responsibility:
+
+Determine execution order
+
+
+Only.
+
+Consumes:
+
+Candidates
+Registry graph
+
+Does NOT:
+
+validate
+check history
+check dependencies
+check process consistency
+
+Those responsibilities were intentionally pushed earlier in the pipeline.
+
+Plan Builder Rules
+
+Include:
+
+Built
+
+
+Exclude:
+
+Invalid
+Satisfied
+
+
+Ordering:
+
+Topological sort
+
+
+using registry dependencies.
+
+Execution Plan
+
+Decision:
+
+ExecutionPlan should be execution-focused.
+
+Not a reporting structure.
+
+Contains execution order only.
+
+Avoid duplicating full candidate information.
+
+Planner result contains:
+
+Candidates
+ExecutionPlan
+
+
+where:
+
+Candidates
+
+
+are the authoritative source of:
+
+messages
+status
+hydrated steps
+Execution Planner
+
+Final orchestration component.
+
+Responsibilities:
+
+Build candidates
+Validate candidates
+Run consistency checks
+Generate execution plan
+Return planning result
+
+
+Contains almost no business logic.
+
+Acts as a coordinator.
+
+Final Planning Pipeline
+ParticipantRequest
+        |
+        v
+ExecutionCandidateBuilder
+        |
+        v
+ExecutionCandidateValidator
+        |
+        v
+ExecutionCandidateConsistencyChecker
+        |
+        v
+ExecutionPlanBuilder
+        |
+        v
+ExecutionPlanner Result
+
+3. Unresolved Questions / Next Steps
+Runtime
+
+Runtime architecture not finalized.
+
+Needs discussion around:
+
+step execution flow
+orchestrating execution plan
+state persistence timing
+result aggregation
+IProcessStepEngine
+
+Contract not finalized.
+
+Needs decisions around:
+
+input contract
+return contract
+outcome model
+message propagation
+ParticipantResult
+
+Final result model not yet designed.
+
+Needs to aggregate:
+
+planning messages
+consistency messages
+execution messages
+executed steps
+next available steps
+updated context
+Next Available Steps
+
+Rule established:
+
+Example:
+
+A -> B -> C
+
+Request:
+    C
+
+
+Result:
+
+Nothing executes
+Next available = B
+
+
+But exact component responsible for calculating and returning this has not been finalized.
+
+Current leaning:
+
+Post-execution/result aggregation
+
+
+rather than plan building.
+
+Execution Context Evolution
+
+Expectation that additional data will be added later:
+
+execution results
+runtime metadata
+diagnostics
+retry information
+
+Deferred until execution implementation begins.
+
+Topological Ordering Future Enhancements
+
+Current approach:
+
+Dependency-driven topological sort
+
+
+Not yet decided:
+
+priorities
+parallelism
+execution groups
+batching
+
+Explicitly deferred.
+
+Candidate Status Revisit
+
+Current status model:
+
+Pending,
+Built,
+Invalid,
+Satisfied
+
+
+Accepted for now.
+
+May be revisited after runtime implementation.
+
+ProcessStepOutcome Revisit
+
+Current outcome:
+
+Pending,
+Completed,
+Failed,
+Blocked,
+Cancelled
+
+
+Accepted for now.
+
+May evolve once execution/runtime semantics become clearer.

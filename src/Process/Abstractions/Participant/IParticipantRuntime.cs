@@ -94,6 +94,12 @@ public sealed record ParticipantStepResult
         init;
     }
 
+    public required object Response
+    {
+        get;
+        init;
+    }
+
     public StepExecutionStatus? ExecutionStatus
     {
         get;

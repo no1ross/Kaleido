@@ -1,0 +1,475 @@
+1. Core Requirements
+
+Kaleido.Process is not a workflow engine
+
+Runtime orchestration must remain lightweight.
+Process behavior is driven by metadata, planning, evaluation, and state.
+Runtime should not contain business decisions or dependency logic.
+
+State must support resumability
+
+State is persisted after every execution pass.
+A successfully completed step must never execute again.
+If execution crashes after a completed step, subsequent submissions continue from persisted state.
+
+State is not history
+
+ParticipantContext stores only durable process continuation state.
+Historical activity belongs in process events.
+Step execution history was intentionally removed from state.
+
+Request identity
+
+CorrelationId identifies the process instance.
+RequestId identifies an individual submission.
+Consumers own both values and must supply them.
+LastestRequestId is stored in process state for tracking.
+
+Consumers need a complete request-level outcome
+
+Consumer must know what happened to every submitted step.
+Consumer must know overall process outcome.
+Consumer must know required next step or available next steps without digging through individual step outcomes.
+2. Architectural & Component Decisions
+Participant State
+ParticipantContext
+
+State contains only continuation information:
+
+CorrelationId
+LastestRequestId
+State
+RequiredStep
+AvailableSteps
+Steps
+
+State does not contain:
+
+Historical payloads
+Historical execution records
+Prior request history
+Event/audit information
+StepContext
+
+Contains only:
+
+Step name
+Version
+Status
+LastRequestId
+LastExecuted
+
+No historical state retained.
+
+Historical Consistency
+Previous Design
+
+Historical consistency checker compared:
+
+Previously completed step payload
+Current request payload
+
+And raised consistency violations when payloads differed.
+
+New Design
+
+Completed means completed.
+
+Rule:
+
+Historical Step Completed
+    ->
+Candidate Status = Satisfied
+
+
+No payload comparison.
+
+No history comparison.
+
+No consistency violations.
+
+If the step was previously completed:
+
+Ignore whatever the consumer submitted now.
+
+Consistency Checker Responsibility
+
+Current behavior:
+
+Mark previously completed steps as Satisfied
+Validate dependency requirements
+
+Possible future rename deferred until unit testing reveals true behavior.
+
+Process State Updater
+Contract Changes
+
+Removed:
+
+string requestId
+
+
+from:
+
+ApplyExecution
+ApplyException
+ApplyCancellation
+
+Updater now uses:
+
+context.LastestRequestId
+
+
+from state.
+
+StateUpdater Responsibility
+
+Owns:
+
+Updating participant state
+Updating step state
+Returning fully updated ParticipantContext
+
+Processor does not manipulate step state directly.
+
+Execution Processor
+Processor Responsibilities
+
+Owns:
+
+Locate StepContext
+Build ProcessStepContext
+Invoke Step
+Evaluate Result
+Update State
+Persist State
+Create Outcomes
+Continue Execution
+
+
+Does not own:
+
+Planning
+Dependency Analysis
+Graph Construction
+Runtime Orchestration
+
+ProcessStepContext
+
+Contains:
+
+ProcessStepContext
+(
+    StepContext StepContext,
+    IReadOnlyCollection<string> AvailableNextSteps
+)
+
+AvailableNextSteps Meaning
+
+Represents:
+
+Graph-defined possible descendants
+
+
+before execution.
+
+Used by step implementations to:
+
+Understand valid next steps
+Validate requested step selections
+Provide guidance to consumers
+
+Not evaluator output.
+
+AvailableNextSteps Source
+
+Final decision:
+
+Processor requires registry access.
+
+Processor dependency added:
+
+IProcessStepRegistry
+
+
+Available next steps obtained through:
+
+_registry.GetDependents(stepType)
+
+
+Reason:
+
+Registry owns graph relationships.
+
+
+Candidate does not own graph data.
+
+Execution Evaluator
+
+Evaluator remains authoritative after execution.
+
+Flow:
+
+Graph
+    -> Possible Next Steps
+
+Step
+    -> Executes
+
+Evaluator
+    -> Authoritative Decision
+
+
+Examples:
+
+AwaitingRequiredStep
+AwaitingStepSelection
+Continue
+Complete
+BusinessFailure
+ProcessViolation
+
+ProcessExecutionOutcome
+Simplified
+
+Moved process-level data out.
+
+Now contains:
+
+StepName
+StepExecutionStatus
+ExecutionDecisionType
+StepProcessingMessages
+
+Only describes:
+
+What happened to this executed step.
+
+ProcessExecutionResult
+
+Expanded.
+
+Now represents:
+
+Final process execution outcome.
+
+
+Contains:
+
+Final ProcessExecutionState
+Final RequiredStep
+Final AvailableSteps
+Collection of step outcomes
+
+Reason:
+
+Required step and available steps are process-level outcomes, not step-level outcomes.
+
+StepExecutionStatus Mapping
+
+Final mapping:
+
+Continue             -> Completed
+Complete             -> Completed
+BusinessFailure      -> Completed
+ProcessViolation     -> Completed
+AwaitingRequiredStep -> Completed
+AwaitingStepSelection-> Completed
+
+
+Reason:
+
+The step executed successfully.
+
+The process decision is a separate concern.
+
+Exceptions and cancellations remain separate statuses.
+
+Runtime
+Runtime Responsibilities
+
+Runtime became intentionally small.
+
+Owns:
+
+Load/Create State
+Reconcile Existing State
+Apply RequestId
+Build Plan
+Execute Plan
+Build Consumer Result
+
+
+Does not own:
+
+Candidate Building
+Validation
+Consistency Checking
+Execution Logic
+State Mutation Logic
+Evaluation Logic
+Graph Logic
+
+
+Those remain inside planner/processor.
+
+Planning
+
+Runtime does not call:
+
+Builder
+Validator
+Consistency Checker
+
+directly.
+
+Runtime uses:
+
+IExecutionPlanner.BuildPlan(...)
+
+
+Planner encapsulates:
+
+Candidate building
+Validation
+Consistency checking
+Dependency handling
+
+Result:
+
+ExecutionPlanResult
+
+
+containing candidates.
+
+Runtime Request Contract
+
+Separate runtime contract introduced.
+
+ProcessRequest
+
+
+contains:
+
+CorrelationId
+RequestId
+ParticipantRequest
+
+ParticipantRequest remains pure business payload.
+
+Runtime Result Contract
+
+Current direction:
+
+Process-Level
+
+Returned once:
+
+State
+RequiredStep
+AvailableSteps
+Step-Level
+
+Returned for each submitted step:
+
+StepName
+CandidateStatus
+IncludedInExecutionPlan
+ExecutionStatus
+ExecutionDecision
+Messages
+
+Built from:
+
+ExecutionPlanResult
++
+ProcessExecutionResult
+
+
+No state reload required.
+
+No post-execution context loading required.
+
+RequestId Handling
+
+Decision:
+
+Runtime explicitly stamps:
+
+LastestRequestId
+
+
+onto context.
+
+Not hidden inside:
+
+Reconcile
+StateUpdater
+Planner
+
+
+Reason:
+
+RequestId is request metadata, not reconciliation behavior.
+
+3. Unresolved Questions / Next Steps
+Runtime Result Shape
+
+Mostly settled, but still worth validating during implementation:
+
+Whether step-level results need both:
+CandidateStatus
+ExecutionDecision
+Whether additional execution metadata is needed.
+Naming Review During Testing
+
+Likely candidates for reconsideration:
+
+StepCandidateConsistencyChecker
+ParticipantProcessResult
+ParticipantStepResult
+
+Decision deferred until unit tests reveal actual behavior patterns.
+
+Exception / Cancellation Decision Values
+
+Current processor uses:
+
+ProcessViolation
+
+
+for framework exceptions and cancellations.
+
+May eventually introduce:
+
+FrameworkException
+FrameworkCancellation
+
+
+or equivalent process-level concepts.
+
+RequestId Spelling
+
+Current property:
+
+LastestRequestId
+
+
+May need review later if that spelling was unintentional.
+
+Runtime Unit Tests
+
+Key scenarios to validate:
+
+New process initialization
+Existing process reconciliation
+Previously completed steps become satisfied
+Failed execution resumes correctly
+Required step flow
+Available step selection flow
+Business failure flow
+Process violation flow
+Cancellation flow
+Resubmission behavior
+
+These tests are expected to validate both runtime behavior and naming decisions.

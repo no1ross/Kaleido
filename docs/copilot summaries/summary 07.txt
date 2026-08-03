@@ -1,0 +1,426 @@
+1. Core Requirements
+
+OpenAPI support should reflect the actual ASP.NET transport layer
+
+Document the HTTP contracts exposed by MapQueryable().
+Reuse the same route construction logic where possible.
+Ensure OpenAPI represents the actual request/response contracts exposed by the endpoints.
+
+Avoid framework-owned serialization decisions
+
+Queryable should not force:
+camelCase vs PascalCase
+string enums vs numeric enums
+JSON serializer behaviors
+Serialization policy belongs to the consuming service.
+
+Metadata should be the source of truth
+
+Queryable owns:
+record metadata
+field metadata
+named query metadata
+enum metadata
+Transport layers (OpenAPI, JSON, UI, etc.) consume metadata rather than rediscovering it.
+
+Named query request payloads should be accurately documented
+
+Swagger's generic:
+{
+  "values": {}
+}
+
+is insufficient.
+Named query operations should expose real parameter metadata from:
+NamedQueryRegistration.Metadata.Parameters
+
+2. Architectural & Component Decisions
+OpenAPI Ownership
+Original Direction
+Contributor would:
+generate paths
+generate operations
+generate request schemas
+generate response schemas
+generate record schemas
+Final Direction
+
+Swashbuckle already generates:
+
+paths
+operations
+DTO schemas
+QueryResult<TRecord>
+metadata contract schemas
+
+Queryable only enriches what Swagger cannot know:
+
+record descriptions
+field descriptions
+named query descriptions
+named query parameter metadata
+enum metadata
+Final Responsibility Boundary
+Swashbuckle
+    Generates OpenAPI
+
+Queryable
+    Enriches OpenAPI with metadata
+
+Document Filter vs Contributor
+Initial Design
+AspNetCoreOpenApiDocumentContributor
+
+Discussion Outcome
+
+If OpenAPI enrichment is only ever used from Swashbuckle:
+
+contributor abstraction provides little value.
+IDocumentFilter may be sufficient.
+
+If future support is desired for:
+
+Swashbuckle
+Microsoft.AspNetCore.OpenApi
+Scalar
+Other generators
+
+then:
+
+DocumentFilter
+    -> Contributor
+
+
+still has value.
+
+Current Leaning
+Keep things simple.
+Don't introduce abstractions until required.
+Route Lookup Discovery
+Early Mistake
+
+Used:
+
+QueryableRoutePaths
+
+
+during OpenAPI operation lookup.
+
+Correct Decision
+
+Use:
+
+QueryableContractUrls
+
+
+for OpenAPI document traversal.
+
+Reason:
+
+route paths
+!=
+generated OpenAPI URLs
+
+
+This was the root cause of:
+
+operations not found
+descriptions not being applied
+request body schema substitutions not occurring
+Named Query Documentation
+Decision
+
+Generate component schemas for named query parameters:
+
+RecordName.QueryName.Parameters
+
+
+using:
+
+NamedQueryRegistration.Metadata.Parameters
+
+Result
+
+Swagger now displays actual named-query parameter contracts instead of:
+
+{
+  "values": {
+    "additionalProp1": "string"
+  }
+}
+
+Additional Decision
+
+Parameter metadata belongs in component schemas rather than remaining generic dictionaries.
+
+Schema Enrichment Strategy
+Record Schemas
+
+Enrich with:
+
+record description
+field descriptions
+Operation Enrichment
+
+Enrich:
+
+GET metadata
+POST query
+POST named query
+GET named query metadata
+
+
+with:
+
+summary
+description
+
+using metadata registration information.
+
+Enum Metadata Architecture
+Original Direction
+
+Modify OpenAPI enum schema directly:
+
+schema.Type = String
+schema.Enum = [...]
+
+Rejected
+
+Reasons:
+
+Forces transport decisions.
+Assumes string enum serialization.
+OpenAPI layer becomes responsible for enum interpretation.
+Final Direction
+
+Do not let OpenAPI discover enum details.
+
+Instead:
+
+Metadata Layer
+    owns enum discovery
+
+OpenAPI Layer
+    consumes enum metadata
+
+DataTypeDescriptor Evolution
+Original
+EnumValues: IReadOnlyCollection<string>
+
+Final
+
+Introduced:
+
+EnumValueDescriptor
+{
+    Value
+    Name
+    Description
+}
+
+
+and:
+
+DataTypeDescriptor
+{
+    EnumValues : IReadOnlyCollection<EnumValueDescriptor>
+}
+
+Enum Discovery Lives In
+DataTypeMapper
+
+
+not OpenAPI.
+
+This keeps:
+
+reflection
+DescriptionAttribute access
+enum introspection
+
+out of transport layers.
+
+Enum Descriptions
+Investigation Results
+Swagger correctly renders schema descriptions.
+Swagger does not have a strong first-class concept of enum-member descriptions.
+
+Verified via:
+
+schema.Description = "ANDREW TEST";
+
+
+which rendered correctly.
+
+Conclusion
+
+OpenAPI enrichments can describe the enum itself.
+
+Rich enum value information is better exposed through Queryable metadata APIs.
+
+DescriptionAttribute Usage
+Decision
+
+Use:
+
+System.ComponentModel.DescriptionAttribute
+
+
+instead of introducing:
+
+KaleidoDescriptionAttribute
+
+
+Reasons:
+
+Built into .NET
+Familiar to developers
+Reusable
+Avoids unnecessary Kaleido-specific attributes
+Serialization Ownership
+Important Architectural Decision
+
+Queryable remains strongly-typed internally.
+
+Queryable should not:
+
+register enum converters automatically
+dictate JSON naming policy
+dictate enum serialization format
+
+Consumers decide:
+
+JsonStringEnumConverter
+camelCase
+PascalCase
+numeric enums
+custom converters
+
+Final Boundary
+Queryable
+    owns querying
+
+Host Application
+    owns serialization
+
+QueryableRouteOptions
+Initial Approach
+
+Used:
+
+IOptions<QueryableRouteOptions>
+
+Discussion Outcome
+
+The values:
+
+are configured once
+never change
+are runtime configuration only
+Final Leaning
+
+Prefer:
+
+new QueryableRouteOptions()
+
+configure?.Invoke(options)
+
+services.AddSingleton(options)
+
+
+instead of full Options infrastructure.
+
+Reason:
+
+Simpler
+Explicit
+Better aligned with Kaleido design philosophy
+3. Unresolved Questions / Next Steps
+OpenAPI
+Immediate Follow-Up
+Clean up document filter implementation.
+Remove dead code from earlier schema-generation attempts.
+Finalize enrichment-only approach.
+Tests Needed
+
+Create focused tests validating:
+
+record schema descriptions
+field descriptions
+named query parameter schemas
+named query operation enrichment
+enum metadata generation within DataTypeMapper
+
+Avoid large integration-style OpenAPI tests where possible.
+
+Enum Documentation
+
+Open question:
+
+Should OpenAPI display:
+
+0 = And
+1 = Or
+
+
+within schema descriptions?
+
+Current leaning:
+
+Metadata endpoint remains authoritative.
+OpenAPI provides only light enum documentation.
+
+No final decision yet.
+
+Metadata Model Expansion
+
+Likely additions:
+
+FieldMetadata.Description
+
+
+if not already finalized.
+
+Potential future use:
+
+OpenAPI
+UI generation
+Documentation tooling
+Metadata endpoints
+Processor Work
+
+Strong desire to return focus to:
+
+Kaleido.Process
+
+
+particularly:
+
+execution processor
+command/event execution model
+runtime orchestration
+process metadata
+processor showcasing
+
+OpenAPI work is considered largely complete once:
+
+enrichment is stable
+tests exist
+named query documentation is working consistently.
+Key Architectural Conclusion From This Conversation
+Queryable discovers metadata.
+
+Transport layers consume metadata.
+
+Queryable should not own transport behavior.
+
+
+This principle was reinforced repeatedly across:
+
+OpenAPI generation
+Swagger enrichment
+Enum handling
+Serialization
+Route/document mapping
+Metadata ownership.

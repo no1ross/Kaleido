@@ -125,6 +125,8 @@ internal sealed class ParticipantRuntime
                             IncludedInExecutionPlan =
                                 candidate.IncludedInExecutionPlan,
 
+                            Response = outcome?.Response ?? new ProcessStepEmptyResponse(),
+
                             ExecutionStatus =
                                 outcome?.Status,
 

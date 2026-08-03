@@ -17,7 +17,7 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
         _scopeFactory = scopeFactory;
     }
 
-    public async Task<ProcessStepHandlerResult> ExecuteAsync(
+    public async Task<ProcessStepInvokerResult> ExecuteAsync(
         ProcessStepRegistration registration,
         object processStep,
         ProcessStepContext context,
@@ -44,13 +44,12 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
         return handlerResult;
     }
 
-    private static async Task<ProcessStepHandlerResult> ExecuteHandlerAsync(
+    private static async Task<ProcessStepInvokerResult> ExecuteHandlerAsync(
         object handler,
         object processStep,
         ProcessStepContext context,
         CancellationToken cancellationToken)
     {
-        
         var method =
             handler.GetType().GetMethod(
                 nameof(IProcessStepHandler<object>.ExecuteAsync))
@@ -62,16 +61,39 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
                 handler,
                 [
                     processStep,
-                    context,
-                    cancellationToken
-                ]);
+                context,
+                cancellationToken
+                ])
+            ?? throw new InvalidOperationException(
+                $"Handler '{handler.GetType().FullName}' returned null.");
 
-        if (result is not Task<ProcessStepHandlerResult> task)
+        if (result is not Task task)
         {
             throw new InvalidOperationException(
                 $"Handler '{handler.GetType().FullName}' returned an invalid result.");
         }
 
-        return await task;
+        await task;
+
+        var taskResult =
+            task.GetType()
+                .GetProperty(nameof(Task<object>.Result))
+                ?.GetValue(task)
+            ?? throw new InvalidOperationException(
+                $"Handler '{handler.GetType().FullName}' returned a null result.");
+
+        if (taskResult is not IProcessStepHandlerResult handlerResult)
+        {
+            throw new InvalidOperationException(
+                $"Handler '{handler.GetType().FullName}' returned an invalid handler result.");
+        }
+
+        return new ProcessStepInvokerResult
+        {
+            Succeeded = handlerResult.Succeeded,
+            RequiredStep = handlerResult.RequiredStep,
+            Response = handlerResult.Response!,
+            Messages = handlerResult.Messages
+        };
     }
 }
