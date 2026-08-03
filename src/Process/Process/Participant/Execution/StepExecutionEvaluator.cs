@@ -8,7 +8,7 @@ internal interface IStepExecutionEvaluator
 {
     ExecutionDecision Evaluate(
         StepCandidate currentCandidate,
-        ProcessStepResult result,
+        ProcessStepHandlerResult result,
         IReadOnlyCollection<StepCandidate> candidates);
 }
 
@@ -27,7 +27,7 @@ internal sealed class StepExecutionEvaluator
 
     public ExecutionDecision Evaluate(
         StepCandidate currentCandidate,
-        ProcessStepResult result,
+        ProcessStepHandlerResult result,
         IReadOnlyCollection<StepCandidate> candidates)
     {
         ArgumentNullException.ThrowIfNull(currentCandidate);

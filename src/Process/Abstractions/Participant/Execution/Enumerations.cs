@@ -50,7 +50,6 @@ public enum ExecutionDecisionType
     /// </summary>
     AwaitingStepSelection
 }
-
 public enum ProcessExecutionState
 {
     Active,

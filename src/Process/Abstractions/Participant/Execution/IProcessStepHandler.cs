@@ -8,7 +8,7 @@ namespace Kaleido.Process.Participant.Execution;
 
 public interface IProcessStepHandler<in TProcessStep>
 {
-    Task<ProcessStepResult> ExecuteAsync(
+    Task<ProcessStepHandlerResult> ExecuteAsync(
         TProcessStep processStep,
         ProcessStepContext context,
         CancellationToken cancellationToken = default);

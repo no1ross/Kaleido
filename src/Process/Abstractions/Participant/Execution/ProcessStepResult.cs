@@ -1,6 +1,7 @@
-﻿using Kaleido.Process.Participant;
+﻿
+namespace Kaleido.Process.Participant.Execution;
 
-public sealed record ProcessStepResult
+public sealed record ProcessStepHandlerResult
 {
     public bool Succeeded { get; init; }
 
@@ -9,7 +10,7 @@ public sealed record ProcessStepResult
     public IReadOnlyCollection<ProcessMessage> Messages { get; init; }
         = [];
 
-    public static ProcessStepResult Success(
+    public static ProcessStepHandlerResult Success(
         string? requiredStep = null,
         params ProcessMessage[] messages)
     {
@@ -21,7 +22,7 @@ public sealed record ProcessStepResult
         };
     }
 
-    public static ProcessStepResult Failure(
+    public static ProcessStepHandlerResult Failure(
         params ProcessMessage[] messages)
     {
         return new()

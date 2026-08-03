@@ -453,6 +453,7 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
 
         return new ProcessStepMetadata(
             attribute.Name,
-            attribute.Description);
+            attribute.Description,
+            attribute.Version);
     }
 }

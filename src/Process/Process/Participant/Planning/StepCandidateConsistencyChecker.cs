@@ -56,7 +56,7 @@ internal class StepCandidateConsistencyChecker : IStepCandidateConsistencyChecke
         ParticipantContext context)
     {
         var historicalStep =
-            context.ProcessSteps.FirstOrDefault(
+            context.Steps.FirstOrDefault(
                 x => string.Equals(
                     x.StepName,
                     candidate.Registration!.Metadata.Name,
@@ -67,36 +67,12 @@ internal class StepCandidateConsistencyChecker : IStepCandidateConsistencyChecke
             return;
         }
 
-        if (historicalStep.Outcome !=
-            StepExecutionOutcome.Completed)
-        {
-            return;
-        }
-
-        var latestHistory =
-            historicalStep.History
-                .OrderByDescending(x => x.ProcessedOn)
-                .FirstOrDefault();
-
-        if (latestHistory?.Step is null)
-        {
-            return;
-        }
-
-        if (JsonObjectComparer.AreEqual(
-                latestHistory.Step,
-                candidate.Step))
+        if (historicalStep.Status ==
+            StepExecutionStatus.Completed)
         {
             candidate.Status =
                 StepCandidateStatus.Satisfied;
-
-            return;
         }
-
-        candidate.MarkInvalid(
-            StepProcessingMessageCode.ConsistencyViolation,
-            $"Process step '{candidate.Registration!.Metadata.Name}' " +
-            $"was previously completed with different values.");
     }
 
     private void ValidateDependencyConsistency(
@@ -137,7 +113,7 @@ internal class StepCandidateConsistencyChecker : IStepCandidateConsistencyChecke
         ParticipantContext context)
     {
         var historicalStep =
-            context.ProcessSteps.FirstOrDefault(
+            context.Steps.FirstOrDefault(
                 x => string.Equals(
                     x.StepName,
                     dependency.Metadata.Name,
@@ -148,8 +124,8 @@ internal class StepCandidateConsistencyChecker : IStepCandidateConsistencyChecke
             return false;
         }
 
-        return historicalStep.Outcome ==
-               StepExecutionOutcome.Completed;
+        return historicalStep.Status ==
+               StepExecutionStatus.Completed;
     }
 
     private static bool DependencySatisfiedByCandidate(

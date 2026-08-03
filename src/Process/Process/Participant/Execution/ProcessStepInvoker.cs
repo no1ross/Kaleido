@@ -17,7 +17,7 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
         _scopeFactory = scopeFactory;
     }
 
-    public async Task<ProcessStepResult> ExecuteAsync(
+    public async Task<ProcessStepHandlerResult> ExecuteAsync(
         ProcessStepRegistration registration,
         object processStep,
         ProcessStepContext context,
@@ -44,7 +44,7 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
         return handlerResult;
     }
 
-    private static async Task<ProcessStepResult> ExecuteHandlerAsync(
+    private static async Task<ProcessStepHandlerResult> ExecuteHandlerAsync(
         object handler,
         object processStep,
         ProcessStepContext context,
@@ -66,7 +66,7 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
                     cancellationToken
                 ]);
 
-        if (result is not Task<ProcessStepResult> task)
+        if (result is not Task<ProcessStepHandlerResult> task)
         {
             throw new InvalidOperationException(
                 $"Handler '{handler.GetType().FullName}' returned an invalid result.");

@@ -5,7 +5,7 @@ namespace Kaleido.Process.Participant.Execution;
 
 public interface IProcessStepInvoker
 {
-    Task<ProcessStepResult> ExecuteAsync(
+    Task<ProcessStepHandlerResult> ExecuteAsync(
         ProcessStepRegistration registration,
         object processStep,
         ProcessStepContext context,

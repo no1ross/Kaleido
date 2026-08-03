@@ -1,10 +1,8 @@
-﻿using Kaleido.Eventing;
-using Kaleido.Process.Participant;
+﻿using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Planning;
 using Kaleido.Process.Participant.Registry;
-using Microsoft.Win32;
 
 public interface IExecutionProcessor
 {
@@ -14,8 +12,34 @@ public interface IExecutionProcessor
         CancellationToken cancellationToken = default);
 }
 
-public sealed record ProcessExecutionResult(
-    IReadOnlyList<ProcessExecutionOutcome> Outcomes);
+public sealed record ProcessExecutionResult
+{
+    public required ProcessExecutionState State
+    {
+        get;
+        init;
+    }
+
+    public string? RequiredStep
+    {
+        get;
+        init;
+    }
+
+    public IReadOnlyCollection<string> AvailableSteps
+    {
+        get;
+        init;
+    }
+        = [];
+
+    public IReadOnlyList<ProcessExecutionOutcome> Outcomes
+    {
+        get;
+        init;
+    }
+        = [];
+}
 
 public sealed record ProcessExecutionOutcome
 {
@@ -37,19 +61,6 @@ public sealed record ProcessExecutionOutcome
         init;
     }
 
-    public string? RequiredStep
-    {
-        get;
-        init;
-    }
-
-    public IReadOnlyCollection<string> AvailableSteps
-    {
-        get;
-        init;
-    }
-        = [];
-
     public IReadOnlyCollection<StepProcessingMessage> Messages
     {
         get;
@@ -64,7 +75,6 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
     private readonly IStepExecutionEvaluator _evaluator;
     private readonly IProcessStateUpdater _stateUpdater;
     private readonly IProcessContextStore _stateRepository;
-    private readonly IEventPublisher _eventPublisher;
     private readonly IProcessStepRegistry _stepRegistry;
 
     public ExecutionProcessor(
@@ -72,21 +82,18 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         IStepExecutionEvaluator evaluator,
         IProcessStateUpdater stateUpdater,
         IProcessContextStore stateRepository,
-        IEventPublisher eventPublisher,
         IProcessStepRegistry stepRegistry)
     {
         ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(evaluator);
         ArgumentNullException.ThrowIfNull(stateUpdater);
         ArgumentNullException.ThrowIfNull(stateRepository);
-        ArgumentNullException.ThrowIfNull(eventPublisher);
         ArgumentNullException.ThrowIfNull(stepRegistry);
 
         _invoker = invoker;
         _evaluator = evaluator;
         _stateUpdater = stateUpdater;
         _stateRepository = stateRepository;
-        _eventPublisher = eventPublisher;
         _stepRegistry = stepRegistry;
     }
 
@@ -100,7 +107,20 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
         if (candidates.Count == 0)
         {
-            return new ProcessExecutionResult([]);
+            return new ProcessExecutionResult
+            {
+                State =
+                    context.State,
+
+                RequiredStep =
+                    context.RequiredStep,
+
+                AvailableSteps =
+                    context.AvailableSteps,
+
+                Outcomes =
+                    []
+            };
         }
 
         var outcomes =
@@ -116,38 +136,46 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 break;
             }
 
+            var candidate =
+                currentCandidate;
+
             cancellationToken.ThrowIfCancellationRequested();
 
             try
             {
                 var stepContext =
                     context.FindStep(
-                        currentCandidate.StepName)
+                        candidate.StepName)
                     ?? throw new InvalidOperationException(
-                        $"Step '{currentCandidate.StepName}' was not found in participant state.");
+                        $"Step '{candidate.StepName}' was not found in participant state.");
 
                 var processStepContext =
                     new ProcessStepContext(
                         stepContext,
-                        GetAvailableNextSteps(currentCandidate));
+                        GetAvailableNextSteps(
+                            candidate));
 
                 var result =
                     await _invoker.ExecuteAsync(
-                        currentCandidate.Registration!,
-                        currentCandidate.Step!,
+                        candidate.Registration
+                        ?? throw new InvalidOperationException(
+                            $"Step '{candidate.StepName}' does not contain registration metadata."),
+                        candidate.Step
+                        ?? throw new InvalidOperationException(
+                            $"Step '{candidate.StepName}' does not contain a step instance."),
                         processStepContext,
                         cancellationToken);
 
                 var decision =
                     _evaluator.Evaluate(
-                        currentCandidate,
+                        candidate,
                         result,
                         candidates);
 
                 context =
                     _stateUpdater.ApplyExecution(
                         context,
-                        currentCandidate,
+                        candidate,
                         decision);
 
                 await _stateRepository.SaveAsync(
@@ -156,7 +184,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
                 var outcome =
                     CreateOutcome(
-                        currentCandidate,
+                        candidate,
                         result,
                         decision);
 
@@ -172,7 +200,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 context =
                     _stateUpdater.ApplyCancellation(
                         context,
-                        currentCandidate!);
+                        candidate);
 
                 await _stateRepository.SaveAsync(
                     context,
@@ -182,7 +210,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                     new ProcessExecutionOutcome
                     {
                         StepName =
-                            currentCandidate!.StepName,
+                            candidate.StepName,
 
                         Status =
                             StepExecutionStatus.Canceled,
@@ -200,12 +228,12 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
                 break;
             }
-            catch (Exception)
+            catch (Exception exception)
             {
                 context =
                     _stateUpdater.ApplyException(
                         context,
-                        currentCandidate!);
+                        candidate);
 
                 await _stateRepository.SaveAsync(
                     context,
@@ -215,7 +243,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                     new ProcessExecutionOutcome
                     {
                         StepName =
-                            currentCandidate!.StepName,
+                            candidate.StepName,
 
                         Status =
                             StepExecutionStatus.Exception,
@@ -227,7 +255,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                         [
                             StepProcessingMessage.Error(
                                 StepProcessingMessageCode.FrameworkException,
-                                $"An unexpected exception occurred while executing '{currentCandidate.StepName}'.")
+                                $"An unexpected exception occurred while executing '{candidate.StepName}'. {exception.Message}")
                         ]
                     });
 
@@ -235,13 +263,27 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
             }
         }
 
-        return new ProcessExecutionResult(
-            outcomes);
+        return new ProcessExecutionResult
+        {
+            State =
+                context.State,
+
+            RequiredStep =
+                context.RequiredStep,
+
+            AvailableSteps =
+                context.AvailableSteps,
+
+            Outcomes =
+                outcomes
+        };
     }
 
     private static StepCandidate? GetNextCandidate(
         ExecutionDecision decision)
     {
+        ArgumentNullException.ThrowIfNull(decision);
+
         return decision.Type == ExecutionDecisionType.Continue
             ? decision.NextCandidate
             : null;
@@ -249,11 +291,16 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
     private static ProcessExecutionOutcome CreateOutcome(
         StepCandidate candidate,
-        ProcessStepResult result,
+        ProcessStepHandlerResult result,
         ExecutionDecision decision)
     {
+        ArgumentNullException.ThrowIfNull(candidate);
+        ArgumentNullException.ThrowIfNull(result);
+        ArgumentNullException.ThrowIfNull(decision);
+
         var messages =
-            result.Messages
+            result
+                .Messages
                 .Select(
                     ToStepProcessingMessage)
                 .ToList();
@@ -276,12 +323,6 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
             Decision =
                 decision.Type,
 
-            RequiredStep =
-                decision.RequiredStep,
-
-            AvailableSteps =
-                decision.AvailableSteps,
-
             Messages =
                 messages
         };
@@ -290,6 +331,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
     private static StepExecutionStatus MapStatus(
         ExecutionDecision decision)
     {
+        ArgumentNullException.ThrowIfNull(decision);
+
         return decision.Type switch
         {
             ExecutionDecisionType.Continue =>
@@ -319,9 +362,30 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
     private static StepProcessingMessage ToStepProcessingMessage(
         ProcessMessage message)
     {
-        return StepProcessingMessage.Information(
-            StepProcessingMessageCode.ProcessMessage,
-            message.Message);
+        ArgumentNullException.ThrowIfNull(message);
+
+        return message.Type switch
+        {
+            MessageType.Information =>
+                StepProcessingMessage.Information(
+                    StepProcessingMessageCode.ProcessMessage,
+                    message.Message),
+
+            MessageType.Warning =>
+                StepProcessingMessage.Warning(
+                    StepProcessingMessageCode.ProcessMessage,
+                    message.Message),
+
+            MessageType.Error =>
+                StepProcessingMessage.Error(
+                    StepProcessingMessageCode.ProcessMessage,
+                    message.Message),
+
+            _ =>
+                StepProcessingMessage.Information(
+                    StepProcessingMessageCode.ProcessMessage,
+                    message.Message)
+        };
     }
 
     private IReadOnlyCollection<string> GetAvailableNextSteps(
@@ -335,8 +399,10 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 $"Step '{candidate.StepName}' does not contain a step instance.");
 
         return _stepRegistry
-            .GetDependents(stepType)
-            .Select(x => x.Metadata.Name)
-            .ToList();
+            .GetDependents(
+                stepType)
+            .Select(
+                x => x.Metadata.Name)
+            .ToArray();
     }
 }
