@@ -4,14 +4,6 @@ using Kaleido.Process.Participant.Registry;
 
 namespace Kaleido.Process.Participant.Execution;
 
-internal interface IStepExecutionEvaluator
-{
-    ExecutionDecision Evaluate(
-        StepCandidate currentCandidate,
-        ProcessStepInvokerResult result,
-        IReadOnlyCollection<StepCandidate> candidates);
-}
-
 internal sealed class StepExecutionEvaluator
     : IStepExecutionEvaluator
 {

@@ -2,11 +2,6 @@
 
 namespace Kaleido.Process.Participant.Planning;
 
-internal interface IExecutionPlanner
-{
-    ExecutionPlanResult BuildPlan(ParticipantRequest request, ParticipantContext context);
-}
-
 internal sealed class ExecutionPlanner : IExecutionPlanner
 {
     private readonly IStepCandidateBuilder _candidateBuilder;

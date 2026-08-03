@@ -4,11 +4,6 @@ using Kaleido.Json;
 
 namespace Kaleido.Process.Participant.Planning;
 
-internal interface IStepCandidateConsistencyChecker
-{
-    void Validate(IReadOnlyCollection<StepCandidate> candidates, ParticipantContext context);
-}
-
 internal class StepCandidateConsistencyChecker : IStepCandidateConsistencyChecker
 {
     private readonly IProcessStepRegistry _registry;

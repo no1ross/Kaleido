@@ -1,0 +1,624 @@
+1. Core Requirements
+
+Durable process state must be persisted after every meaningful execution boundary
+
+After initialization/reconciliation.
+After each successful step execution.
+After exceptions.
+After cancellations.
+State must never be lost if the service crashes between steps.
+
+The same step should not execute twice once successfully completed
+
+State exists partly to support safe retries and resubmissions.
+A resubmitted request should be able to continue from the last durable state.
+
+Process state and operational evidence are separate concerns
+
+Process state exists to enable future execution.
+Operational evidence exists to explain how decisions were made.
+
+Developers and operations need visibility into process decisions
+
+Which steps were requested.
+Which became candidates.
+Which executed.
+Why steps did or did not execute.
+What decisions and business outcomes occurred.
+
+Process history should not require log correlation
+
+Process evidence should be published as structured events.
+Consumers decide how to persist or consume those events.
+2. Architectural & Component Decisions
+Process State vs Evidence Trail
+Process State
+
+Purpose:
+
+What is the current truth of this process instance?
+
+
+Stored through:
+
+IProcessStateStore
+
+
+Contains only state required for future execution.
+
+Does NOT contain:
+
+Request history
+Journal entries
+Planner history
+Execution history
+Operational telemetry
+
+Evidence Trail
+
+Purpose:
+
+How did we get here?
+
+
+Implemented through:
+
+IEventPublisher
+
+
+The framework publishes events.
+
+Consumers decide whether to:
+
+Persist to file
+Persist to database
+Send to Service Bus
+Send to Kafka
+Send to Event Hub
+Ignore entirely
+
+Event Publishing Abstractions
+Kaleido Abstractions
+public interface IKaleidoEvent
+{
+}
+
+public interface IEventPublisher
+{
+    Task PublishAsync<TEvent>(
+        TEvent processEvent,
+        CancellationToken cancellationToken = default)
+        where TEvent : IKaleidoEvent;
+}
+
+Process-Specific Events
+public interface IProcessEvent : IKaleidoEvent
+{
+    string CorrelationId { get; }
+
+    string RequestId { get; }
+
+    DateTimeOffset OccurredOn { get; }
+}
+
+
+Decision:
+
+Event publishing becomes a common Kaleido capability.
+Process contributes its own event types.
+Journal persistence is removed from the framework design.
+ParticipantContext Design
+
+Purpose:
+
+Current durable process state only.
+
+
+Current structure:
+
+ParticipantContext
+{
+    CorrelationId
+    State
+    RequiredStep
+    AvailableSteps
+    Steps
+}
+
+Process-Level State
+
+Stores:
+
+ProcessExecutionState
+
+
+Examples:
+
+Active
+Complete
+BusinessFailure
+ProcessViolation
+AwaitingRequiredStep
+AwaitingStepSelection
+Exception
+Canceled
+
+Step-Level State
+
+Current structure:
+
+StepContext
+{
+    StepName
+    Version
+    Status
+    LastRequestId
+    LastExecuted
+}
+
+
+Purpose:
+
+Current snapshot of a step.
+
+
+Not:
+
+History
+Audit trail
+Event log
+
+
+Provides fast lookups for:
+
+Has a step completed?
+When did it last execute?
+What was its last status?
+
+State Initialization Strategy
+New Process
+
+When no state exists:
+
+Create state from registry.
+
+
+All registered steps are added.
+
+Initial status:
+
+StepExecutionStatus.Pending
+
+
+Reason:
+
+The step exists but has not yet completed.
+
+Existing Process
+
+When state exists:
+
+Load state.
+Reconcile against current registry.
+
+
+Rules:
+
+Add newly registered steps.
+Keep existing steps.
+Do not delete historical state.
+
+Potential future support:
+
+Registered
+Unregistered
+Deprecated
+
+
+for removed registrations.
+
+State Ownership
+
+Decision:
+
+Only one component may mutate state.
+
+
+That component is:
+
+IProcessStateUpdater
+
+
+No other component touches state.
+
+Not:
+
+Planner
+Evaluator
+Invoker
+Runtime
+Orchestrator
+
+ProcessStateUpdater Responsibility
+
+Owns all state mutations:
+
+Initialize(...)
+Reconcile(...)
+ApplyExecution(...)
+ApplyException(...)
+ApplyCancellation(...)
+
+
+Purpose:
+
+Old State
+    +
+Input
+    ↓
+New State
+
+
+No persistence.
+
+No event publishing.
+
+No orchestration.
+
+State Persistence Responsibility
+
+Decision:
+
+StateUpdater modifies state.
+StateStore persists state.
+Orchestrator coordinates both.
+
+
+Example flow:
+
+ApplyExecution(...)
+    ↓
+SaveAsync(...)
+
+
+StateUpdater remains pure and testable.
+
+Planner vs State
+
+Important decision:
+
+Planner does NOT mutate state
+
+Planner produces:
+
+IReadOnlyCollection<StepCandidate>
+
+
+Planner uses:
+
+StepCandidateStatus
+
+
+to communicate request-level planning outcomes.
+
+State remains unchanged until execution-related state transitions occur.
+
+StepCandidateStatus Ownership
+
+Purpose:
+
+Request-scoped planning state.
+
+
+Current values:
+
+Pending
+Built
+Invalid
+Satisfied
+
+
+Used to answer:
+
+Did this request produce an executable candidate?
+
+
+Not persisted into process state.
+
+StepExecutionStatus Ownership
+
+Purpose:
+
+Current durable execution state of a step.
+
+
+Current values:
+
+Pending
+Completed
+ValidationFailed
+Exception
+Skipped
+Canceled
+
+
+Used to answer:
+
+What is the last known execution status of this step?
+
+Execution Decision Model
+
+Final execution decision types:
+
+Continue
+Complete
+BusinessFailure
+ProcessViolation
+AwaitingRequiredStep
+AwaitingStepSelection
+
+
+These represent:
+
+Workflow state
+
+
+Not:
+
+Execution mechanics
+
+Evaluator Responsibilities
+
+Evaluator answers:
+
+Given current candidate,
+process result,
+candidate list,
+graph
+
+↓
+
+what should happen next?
+
+
+Evaluator only:
+
+Makes decisions.
+
+
+Evaluator does NOT:
+
+Update state
+Persist state
+Build execution history
+Create result artifacts
+
+Required Step Rules
+Valid Required Step
+
+If:
+
+RequiredStep exists
+AND
+is a legal graph transition
+AND
+candidate exists
+
+
+Then:
+
+Continue
+
+Valid Required Step Not Supplied
+
+If:
+
+RequiredStep exists
+AND
+is legal
+AND
+candidate does not exist
+
+
+Then:
+
+AwaitingRequiredStep
+
+
+No error.
+
+No failure.
+
+Illegal Required Step
+
+If:
+
+RequiredStep is not a legal graph transition
+
+
+Then:
+
+ProcessViolation
+
+
+with:
+
+StepProcessingMessageCode.RequiredStepNotAllowed
+
+
+No exception is thrown.
+
+Available Next Steps
+
+If:
+
+No RequiredStep was returned
+
+
+then graph determines:
+
+Available next steps.
+
+
+If no candidate exists for those steps:
+
+AwaitingStepSelection
+
+Exception Handling
+
+Exceptions occur before evaluation.
+
+Pipeline:
+
+Invoke
+    ↓
+Exception
+    ↓
+ApplyException
+    ↓
+Persist State
+    ↓
+Publish Event
+
+
+Evaluator is never invoked.
+
+Cancellation Handling
+
+Cancellation is a first-class path.
+
+Pipeline:
+
+Cancellation Requested
+    ↓
+ApplyCancellation
+    ↓
+Persist State
+    ↓
+Publish Event
+
+
+Not treated as:
+
+Failure
+Exception
+Business error
+
+Business Failure Handling
+
+Decision:
+
+Business Failure
+
+
+does NOT mean:
+
+Step failed
+
+
+Current approach:
+
+Step completed.
+Process entered BusinessFailure state.
+
+
+Kept intentionally simple for now.
+
+3. Unresolved Questions / Next Steps
+Registry Reconciliation State
+
+Need to decide how to represent:
+
+Registered
+Unregistered
+Deprecated
+
+
+when a registry step is removed after process state already exists.
+
+Current decision:
+
+Never delete step state.
+
+
+Representation still undecided.
+
+StepContext Metadata
+
+Need to verify whether additional fields will eventually be required such as:
+
+Last process state
+Last decision
+Additional coordinator metadata
+
+
+Not currently needed.
+
+Process Events
+
+Need to define concrete event types, such as:
+
+RequestReceivedEvent
+CandidateSelectedEvent
+CandidateRejectedEvent
+ExecutionStartedEvent
+ExecutionCompletedEvent
+ExecutionFailedEvent
+ExecutionCancelledEvent
+ProcessAwaitingRequiredStepEvent
+ProcessAwaitingStepSelectionEvent
+ProcessCompletedEvent
+
+Event Payload Design
+
+Need to decide:
+
+What request data is included?
+What process result data is included?
+What decision data is included?
+
+
+Especially for:
+
+ExecutionCompletedEvent
+
+
+which likely needs handler-returned information.
+
+StateUpdater Implementation Details
+
+Need to finalize:
+
+Reconcile logic
+Version update behavior
+New registration handling
+Removed registration handling
+
+Orchestrator Integration
+
+Need to wire final flow:
+
+Load State
+    ↓
+Initialize/Reconcile
+    ↓
+Save
+
+Plan
+    ↓
+Publish Planning Events
+
+Execute
+    ↓
+Evaluate
+    ↓
+Apply State
+    ↓
+Save State
+    ↓
+Publish Events
+
+
+with the explicit guarantee:
+
+Every durable state transition is persisted immediately.

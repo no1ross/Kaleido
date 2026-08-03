@@ -7,4 +7,5 @@ internal sealed record ExecutionPlanResult
         get;
         init;
     }
+     = [];
 }

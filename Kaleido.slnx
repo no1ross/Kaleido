@@ -11,6 +11,7 @@
     <File Path=".dockerignore" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
+    <File Path="architecture.md" />
     <File Path="build/common.props" />
     <File Path="build/packages.props" />
     <File Path="build/samples.props" />
@@ -35,6 +36,7 @@
     <Project Path="src/Process/Process/Kaleido.Process.csproj" />
   </Folder>
   <Folder Name="/src/Queryable/">
+    <File Path="src/Process/Abstractions/AssemblyInfo.cs" />
     <Project Path="src/Queryable/Abstractions/Kaleido.Queryable.Abstractions.csproj" />
     <Project Path="src/Queryable/AspNetCore/Kaleido.Queryable.AspNetCore.csproj" />
     <Project Path="src/Queryable/OpenApi/Kaleido.Queryable.OpenApi.csproj" Id="534b2ee6-e13a-43de-903a-908a85871e08" />

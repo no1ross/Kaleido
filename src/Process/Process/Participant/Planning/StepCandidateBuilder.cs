@@ -69,100 +69,48 @@ internal class StepCandidateBuilder : IStepCandidateBuilder
         Type stepType,
         IReadOnlyDictionary<string, object?> values)
     {
-        var instance =
-            Activator.CreateInstance(stepType)
-            ?? throw new InvalidOperationException(
-                $"Unable to create instance of '{stepType.FullName}'. " +
-                "Process steps must be constructable by the framework.");
-
-        foreach (var value in values)
+        try
         {
-            var property =
-                stepType.GetProperty(
-                    value.Key,
-                    BindingFlags.Public |
-                    BindingFlags.Instance |
-                    BindingFlags.IgnoreCase);
+            var json =
+                JsonSerializer.Serialize(
+                    values,
+                    SerializerOptions);
 
-            if (property is null)
+            var instance =
+                JsonSerializer.Deserialize(
+                    json,
+                    stepType,
+                    SerializerOptions);
+
+            if (instance is null)
             {
                 candidate.MarkInvalid(
-                        StepProcessingMessageCode.PropertyNotFound,
-                        $"Property '{value.Key}' does not exist on process step '{stepType.Name}'.");
-
-                continue;
+                    StepProcessingMessageCode.InvalidRequest,
+                    $"Unable to create process step '{stepType.Name}'.");
             }
 
-            if (!property.CanWrite)
-            {
-                candidate.MarkInvalid(
-                        StepProcessingMessageCode.InvalidRequest,
-                        $"Property '{property.Name}' on process step '{stepType.Name}' cannot be written.");
-
-                continue;
-            }
-
-            var conversion =
-                DataTypeMapper.TryConvertValue(
-                    value.Value,
-                    property.PropertyType);
-
-            if (!conversion.Success)
-            {
-                candidate.MarkInvalid(
-                        StepProcessingMessageCode.ConversionFailed,
-                        $"Unable to convert value for property '{property.Name}' " +
-                        $"on process step '{stepType.Name}' to type '{property.PropertyType.Name}'. " +
-                        conversion.ErrorMessage);
-
-                continue;
-            }
-
-            property.SetValue(
-                instance,
-                conversion.Value);
+            return instance;
         }
-
-        if (candidate.HasErrors)
+        catch (Exception exception) when (
+            exception is JsonException ||
+            exception is NotSupportedException)
         {
+            candidate.MarkInvalid(
+                StepProcessingMessageCode.InvalidRequest,
+                $"Unable to create process step '{stepType.Name}'. {exception.Message}");
+
             return null;
         }
-
-        return instance;
     }
 
-    //private static object? CreateStepInstance(
-    //    StepCandidate candidate,
-    //    Type stepType,
-    //    IReadOnlyDictionary<string, object?> values)
-    //{
-    //    try
-    //    {
-    //        var json =
-    //            JsonSerializer.Serialize(values);
-
-    //        var instance =
-    //            JsonSerializer.Deserialize(
-    //                json,
-    //                stepType);
-
-    //        if (instance is null)
-    //        {
-    //            candidate.MarkInvalid(
-    //                StepProcessingMessageCode.InvalidRequest,
-    //                $"Unable to create process step '{stepType.Name}'.");
-    //        }
-
-    //        return instance;
-    //    }
-    //    catch (JsonException exception)
-    //    {
-    //        candidate.MarkInvalid(
-    //            StepProcessingMessageCode.InvalidRequest,
-    //            $"Unable to create process step '{stepType.Name}'. {exception.Message}");
-
-    //        return null;
-    //    }
-    //}
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        NumberHandling =System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString,
+        Converters =
+        {
+            new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase)
+        }
+    };
 }
 

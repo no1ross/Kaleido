@@ -1,0 +1,475 @@
+1. Core Requirements
+
+Kaleido.Process is not a workflow engine.
+
+It is a metadata-driven and business-driven orchestration framework.
+The runtime/orchestrator should remain relatively "stupid" and delegate decision making to specialized services (planner, evaluator, invoker, state updater, registry, etc.).
+
+The framework is intended to support a multi-BU enterprise architecture:
+
+External consumers call a common API layer.
+A process orchestrator routes requests to the appropriate BU.
+Each BU owns one or more products.
+Each product owns its own participant handlers, business rules, persistence, and internal data.
+The orchestration layer should be independent from product-specific business logic.
+
+Process steps are effectively business capability contracts.
+
+A step receives a request.
+A step executes business logic.
+A step returns a response plus process guidance/messages.
+
+Every step should have a response contract.
+
+The original request-only model is no longer sufficient.
+Responses are considered part of the public contract.
+Even steps with no meaningful payload should return a framework-provided empty response type.
+
+Future endpoint/OpenAPI generation strongly benefits from explicit request/response contracts.
+
+2. Architectural & Component Decisions
+Step Handler Contract
+New primary contract
+IProcessStepHandler<TProcessStep, TProcessStepResult>
+
+Introduced explicit response type support.
+Handler returns:
+ProcessStepHandlerResult<TProcessStepResult>
+
+Handler result contains:
+Success/failure flag.
+Required step override.
+Response payload.
+Process messages.
+Convenience contract
+IProcessStepHandler<TProcessStep>
+
+
+inherits from:
+
+IProcessStepHandler<
+    TProcessStep,
+    ProcessStepEmptyResponse>
+
+Allows "void" style operations while still maintaining a response contract.
+Framework empty response
+ProcessStepEmptyResponse
+
+Official framework type.
+Used whenever a step has nothing meaningful to return.
+Prevents null responses and inconsistent handler contracts.
+ProcessStepHandlerResult
+Updated to be generic:
+ProcessStepHandlerResult<TProcessStepResult>
+
+
+Contains:
+
+Succeeded
+RequiredStep
+Response
+Messages
+Separation of concerns established
+
+Business output:
+
+Response
+
+
+Process control:
+
+Succeeded
+RequiredStep
+Messages
+
+Runtime Invocation Model
+Invoker result
+
+A non-generic runtime result was introduced:
+
+ProcessStepInvokerResult
+
+
+Contains:
+
+Succeeded
+RequiredStep
+Response
+Messages
+
+Reason:
+
+Runtime executes heterogeneous step collections.
+Runtime cannot remain strongly typed across arbitrary step executions.
+Object conversion is isolated to the runtime boundary only.
+ProcessExecutionOutcome
+
+Added:
+
+required object Response
+
+Important decision
+
+Response is now required.
+
+Benefits:
+
+Every executed step produces a response.
+Consumers don't need null checks.
+Empty responses use:
+ProcessStepEmptyResponse
+
+Response location
+
+Response belongs on:
+
+ProcessExecutionOutcome
+
+
+Not on:
+
+ProcessExecutionResult
+
+
+Reason:
+
+Each step may produce a different response type.
+Multiple responses can exist during a single process execution.
+Response Persistence
+
+Decision:
+
+Response persistence is NOT a responsibility of Kaleido.Process.
+
+Reasoning:
+
+Process owns orchestration state.
+Participants own business data.
+Consumers/participants may choose how and whether responses are persisted.
+
+Process state remains focused on:
+
+Execution status
+Messages
+Required step
+Candidate state
+Process state
+
+
+Not:
+
+Business response storage
+
+Registration & Discovery
+Initial registration remains lightweight
+
+Registration phase should only:
+
+Find steps
+Find handlers
+Register handlers
+
+
+No complex metadata construction.
+
+Handler registration updated
+
+Original logic based on:
+
+IProcessStepHandler<TStep>
+
+
+must now discover:
+
+IProcessStepHandler<TStep, TResult>
+
+
+and locate handlers using:
+
+First generic argument == step type
+
+Recommended simplification
+
+Register only handler concrete types.
+
+Example conceptually:
+
+services.AddScoped(handlerType);
+
+
+instead of building complicated interface registrations.
+
+ProcessStepRegistry Responsibilities
+
+ProcessStepRegistry remains the authoritative metadata builder.
+
+Registry should discover:
+
+StepType
+HandlerType
+StepResultType
+Metadata
+Dependency graph
+ProcessStepRegistration expanded
+
+Now includes:
+
+StepType
+StepResultType
+HandlerType
+Metadata
+
+StepResultType discovery
+
+Determined from the handler interface:
+
+IProcessStepHandler<TStep, TResult>
+
+
+Specifically:
+
+Generic argument #2
+
+Important boundary decision
+
+Startup registration:
+
+Registers services
+
+
+Registry:
+
+Analyzes registrations
+Builds metadata
+Builds graph
+Validates dependencies
+Discovers step result types
+
+Type Metadata
+
+Decision:
+
+Type metadata belongs in registration.
+
+Examples:
+
+StepType
+StepResultType
+HandlerType
+
+
+Do NOT persist:
+
+Type names
+Assembly names
+Response type names
+
+
+inside participant/process state.
+
+Reasoning:
+
+Registration metadata is static.
+Runtime state should only represent execution state.
+Reflection Simplification
+
+An interface was introduced for runtime extraction:
+
+IProcessStepHandlerResult
+
+
+Purpose:
+
+Allow runtime access to:
+Succeeded
+RequiredStep
+Response
+Messages
+
+without reflecting individual properties from:
+
+ProcessStepHandlerResult<T>
+
+
+every execution.
+
+ECommerce Sample Direction
+
+Planned primary graph:
+
+ValidateOrder
+    ↓
+AuthorizePayment
+    ↓
+ReserveInventory
+    ↓
+CalculateShipping
+    ↓
+GenerateShipment
+    ↓
+CompleteOrder
+
+
+Special step:
+
+BackOrderReview
+
+Important design
+
+BackOrderReview should NOT be connected in the dependency graph.
+
+Instead it should be reached through:
+
+RequiredStep
+
+
+behavior.
+
+Purpose:
+
+Validate evaluator behavior.
+Validate dynamic routing.
+Validate graph override scenarios.
+Testing Strategy Reaffirmed
+
+Important correction made during discussion:
+
+Unit tests should NOT depend on the ECommerce sample.
+
+Your testing philosophy remains:
+
+Unit Tests
+
+Prove framework behavior.
+
+Use tiny focused step/handler/response assets.
+
+Examples:
+
+StepA
+StepB
+StepC
+
+
+No business domain complexity.
+
+Functional Tests
+
+Verify framework integration using larger realistic assets.
+
+Samples
+
+Demonstrate consumer usage patterns.
+
+Potentially:
+
+Queryable
+Process
+SQLite
+OpenAPI
+
+
+working together.
+
+Order:
+
+Unit Tests
+    ↓
+Functional Tests
+    ↓
+Samples
+
+3. Unresolved Questions / Next Steps
+Unit Test Implementation
+
+The next major activity is:
+
+Build comprehensive unit test suite
+
+
+before functional tests or samples.
+
+Areas to cover:
+
+Registry
+Registration discovery
+Dependency graph
+Invoker
+Execution processor
+Evaluator
+State updater
+Handler result propagation
+Required step behavior
+Response propagation
+Exception handling
+Cancellation handling
+Functional Test Assets
+
+Still to be finalized:
+
+Shared functional-test project.
+Shared ECommerce domain model.
+Exact step/request/response types.
+Record vs class coverage strategy.
+Enum/collection/nullable coverage strategy.
+Sample Application
+
+Future work:
+
+SQLite persistence.
+EF Core integration.
+Kaleido.Queryable integration.
+Process-generated endpoints.
+OpenAPI generation.
+End-to-end e-commerce orchestration sample.
+Dynamic Endpoint Generation
+
+Not yet designed in detail.
+
+Open questions include:
+
+Exact route structure.
+Response envelope shape.
+OpenAPI generation strategy.
+How process execution results and step responses surface externally.
+Registry Validation Enhancements
+
+Future validation considerations:
+
+Missing handlers.
+Multiple handlers.
+Invalid step/result pairings.
+Open generic handlers.
+Additional registration diagnostics.
+Execution Processor Follow-up
+
+After introducing responses:
+
+Ensure response propagation is complete through:
+
+Invoker
+Evaluation
+Outcome creation
+Execution result model
+
+Verify all cancellation and exception paths populate:
+
+ProcessStepEmptyResponse
+
+
+consistently.
+
+Overall Architectural Outcome
+
+The largest decision made in this conversation:
+
+Kaleido.Process has formally evolved from a request-only execution model into a request/response orchestration framework.
+
+Key characteristics:
+
+Every step has a response.
+Responses are contracts.
+Responses are not owned by Process state.
+Response type metadata belongs in registration.
+Business data remains owned by participant services.
+Process remains an orchestration framework, not a workflow engine.

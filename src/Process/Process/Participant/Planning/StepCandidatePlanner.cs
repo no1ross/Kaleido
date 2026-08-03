@@ -1,10 +1,5 @@
 ﻿namespace Kaleido.Process.Participant.Planning;
 
-internal interface IStepCandidatePlanner
-{
-    IReadOnlyCollection<StepCandidate> Build(IReadOnlyCollection<StepCandidate> candidates);
-}
-
 internal class StepCandidatePlanner : IStepCandidatePlanner
 {
     private readonly IProcessStepRegistry _registry;

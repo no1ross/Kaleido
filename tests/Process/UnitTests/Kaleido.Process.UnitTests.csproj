@@ -12,9 +12,4 @@
 		<Using Include="Kaleido.Process" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="Registry\" />
-	  <Folder Include="Participant\" />
-	</ItemGroup>
-
 </Project>

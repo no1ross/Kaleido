@@ -1,5 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("Kaleido.Queryable.UnitTests")]
-[assembly: InternalsVisibleTo("Kaleido.Queryable.FunctionalTests")]
+[assembly: InternalsVisibleTo("Kaleido.Process.UnitTests")]
+[assembly: InternalsVisibleTo("Kaleido.Process.FunctionalTests")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

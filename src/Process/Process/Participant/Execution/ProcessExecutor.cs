@@ -1,79 +1,9 @@
 ﻿using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Context;
-using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Planning;
 using Kaleido.Process.Participant.Registry;
 
-public interface IExecutionProcessor
-{
-    Task<ProcessExecutionResult> ExecuteAsync(
-        IReadOnlyCollection<StepCandidate> candidates,
-        ParticipantContext context,
-        CancellationToken cancellationToken = default);
-}
-
-public sealed record ProcessExecutionResult
-{
-    public required ProcessExecutionState State
-    {
-        get;
-        init;
-    }
-
-    public string? RequiredStep
-    {
-        get;
-        init;
-    }
-
-    public IReadOnlyCollection<string> AvailableSteps
-    {
-        get;
-        init;
-    }
-        = [];
-
-    public IReadOnlyList<ProcessExecutionOutcome> Outcomes
-    {
-        get;
-        init;
-    }
-        = [];
-}
-
-public sealed record ProcessExecutionOutcome
-{
-    public required string StepName
-    {
-        get;
-        init;
-    }
-
-    public required StepExecutionStatus Status
-    {
-        get;
-        init;
-    }
-
-    public required ExecutionDecisionType Decision
-    {
-        get;
-        init;
-    }
-
-    public IReadOnlyCollection<StepProcessingMessage> Messages
-    {
-        get;
-        init;
-    }
-        = [];
-
-    public required object Response
-    {
-        get;
-        init;
-    }
-}
+namespace Kaleido.Process.Participant.Execution;
 
 internal sealed class ExecutionProcessor : IExecutionProcessor
 {
@@ -145,10 +75,10 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
             var candidate =
                 currentCandidate;
 
-            cancellationToken.ThrowIfCancellationRequested();
-
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var stepContext =
                     context.FindStep(
                         candidate.StepName)
@@ -227,8 +157,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                         Messages =
                         [
                             StepProcessingMessage.Error(
-                                StepProcessingMessageCode.ExecutionCancelled,
-                                "Step execution was cancelled.")
+                            StepProcessingMessageCode.ExecutionCancelled,
+                            "Step execution was cancelled.")
                         ],
                         Response = new ProcessStepEmptyResponse()
                     });
@@ -261,8 +191,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                         Messages =
                         [
                             StepProcessingMessage.Error(
-                                StepProcessingMessageCode.FrameworkException,
-                                $"An unexpected exception occurred while executing '{candidate.StepName}'. {exception.Message}")
+                            StepProcessingMessageCode.FrameworkException,
+                            $"An unexpected exception occurred while executing '{candidate.StepName}'. {exception.Message}")
                         ],
                         Response = new ProcessStepEmptyResponse()
                     });
@@ -313,10 +243,10 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                     ToStepProcessingMessage)
                 .ToList();
 
-        if (decision.Message is not null)
+        if (decision.Messages is not null)
         {
-            messages.Add(
-                decision.Message);
+            messages.AddRange(
+                decision.Messages);
         }
 
         return new ProcessExecutionOutcome

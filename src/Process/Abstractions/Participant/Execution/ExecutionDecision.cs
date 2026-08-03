@@ -29,11 +29,12 @@ internal sealed record ExecutionDecision
     }
         = [];
 
-    public StepProcessingMessage? Message
+    public IReadOnlyCollection<StepProcessingMessage> Messages
     {
         get;
         init;
     }
+        = [];
 
     public static ExecutionDecision Continue(
         StepCandidate nextCandidate)
@@ -60,7 +61,7 @@ internal sealed record ExecutionDecision
         => new()
         {
             Type = ExecutionDecisionType.ProcessViolation,
-            Message = message
+            Messages = [message]
         };
 
     public static ExecutionDecision AwaitingRequiredStep(
