@@ -1,5 +1,4 @@
-﻿using Kaleido.Process.Participant.Context;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,6 +10,6 @@ public interface IProcessStepHandler<in TProcessStep>
 {
     Task<ProcessStepResult> ExecuteAsync(
         TProcessStep processStep,
-        StepContext context,
+        ProcessStepContext context,
         CancellationToken cancellationToken = default);
 }

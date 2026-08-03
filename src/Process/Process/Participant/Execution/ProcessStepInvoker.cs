@@ -20,7 +20,7 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
     public async Task<ProcessStepResult> ExecuteAsync(
         ProcessStepRegistration registration,
         object processStep,
-        StepContext context,
+        ProcessStepContext context,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(registration);
@@ -47,9 +47,10 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
     private static async Task<ProcessStepResult> ExecuteHandlerAsync(
         object handler,
         object processStep,
-        StepContext context,
+        ProcessStepContext context,
         CancellationToken cancellationToken)
     {
+        
         var method =
             handler.GetType().GetMethod(
                 nameof(IProcessStepHandler<object>.ExecuteAsync))
@@ -61,8 +62,8 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
                 handler,
                 [
                     processStep,
-                context,
-                cancellationToken
+                    context,
+                    cancellationToken
                 ]);
 
         if (result is not Task<ProcessStepResult> task)

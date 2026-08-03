@@ -144,5 +144,8 @@ public enum StepProcessingMessageCode
     HandlerExecutionFailed,
     ExceptionThrown,
     InvalidRequiredStep,
-    RequiredStepNotAllowed
+    RequiredStepNotAllowed,
+    ExecutionCancelled,
+    FrameworkException,
+    ProcessMessage
 }

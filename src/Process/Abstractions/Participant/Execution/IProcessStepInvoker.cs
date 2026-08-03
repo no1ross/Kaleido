@@ -8,6 +8,6 @@ public interface IProcessStepInvoker
     Task<ProcessStepResult> ExecuteAsync(
         ProcessStepRegistration registration,
         object processStep,
-        StepContext context,
+        ProcessStepContext context,
         CancellationToken cancellationToken = default);
 }
