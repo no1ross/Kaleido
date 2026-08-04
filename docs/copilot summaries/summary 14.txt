@@ -1,0 +1,362 @@
+1. Core Requirements
+
+Unit tests and functional tests must remain separated by purpose:
+
+Unit tests verify framework behavior in isolation using minimal synthetic assets (StepA, StepB, StepC, etc.).
+Functional tests verify real end-to-end framework behavior using realistic business scenarios.
+
+Functional tests must validate the framework the way a consumer uses it:
+
+Through IProcessStepRegistry for metadata.
+Through IParticipantRuntime for execution.
+Without mocking the planning/execution pipeline.
+
+Functional tests must support multi-request process conversations, not just single request/response patterns:
+
+Initial request.
+Duplicate request submission.
+Subsequent requests based on previous responses.
+Resuming execution after interruption or required business intervention.
+
+Test assets must be reusable across:
+
+Runtime functional tests.
+ASP.NET Core functional tests.
+Future samples/demo applications.
+
+Requests should ultimately be represented as reusable JSON assets, but business flows and contracts should be stabilized before generating large numbers of JSON files.
+
+State persistence and resumability remain core framework behaviors and must be validated through functional scenarios.
+
+2. Architectural & Component Decisions
+Functional Test Architecture
+
+Three functional testing layers were defined:
+
+Layer 1: Registry / Metadata Tests
+
+Uses:
+
+IProcessStepRegistry
+
+
+Validates:
+
+Step registration.
+Metadata discovery.
+Dependency discovery.
+Handler discovery.
+Response type discovery.
+
+No runtime execution.
+
+Layer 2: Runtime Functional Tests
+
+Uses:
+
+IParticipantRuntime
+
+
+with real framework services.
+
+Validates:
+
+Planning.
+Execution.
+State persistence.
+Resume behavior.
+Required-step workflows.
+Available-step workflows.
+Business failures.
+Process violations.
+
+No mocks.
+
+Layer 3: ASP.NET Core Functional Tests
+
+Uses:
+
+POST /process
+
+
+or equivalent APIs.
+
+Validates:
+
+Runtime wiring.
+Serialization.
+Request/response contracts.
+OpenAPI compatibility.
+HTTP behaviors.
+
+Must reuse the same underlying scenarios and request assets as Layer 2.
+
+Shared Functional Test Assets
+
+A shared ECommerce test model should be created and reused by:
+
+Runtime functional tests.
+ASP.NET Core functional tests.
+Samples.
+
+The shared assets should include:
+
+ValidateOrder
+AuthorizePayment
+ReserveInventory
+CalculateShipping
+GenerateShipment
+CompleteOrder
+BackOrderReview
+
+
+Each should include:
+
+Step
+Response
+Handler
+
+
+contracts.
+
+ECommerce Process Graph
+
+Primary dependency graph:
+
+ValidateOrder
+        ↓
+AuthorizePayment
+        ↓
+ReserveInventory
+        ↓
+CalculateShipping
+        ↓
+GenerateShipment
+        ↓
+CompleteOrder
+
+
+Special business-review steps:
+
+BackOrderReview
+ManualFraudReview
+
+
+These should not participate in the dependency graph.
+
+Instead they should be reached through:
+
+RequiredStep
+
+
+routing behavior.
+
+This specifically exercises evaluator/runtime decision logic.
+
+Functional Test Fixture
+
+A shared fixture should be created to support all runtime functional tests.
+
+Conceptually:
+
+EcommerceFixture
+
+
+containing:
+
+ServiceProvider
+IParticipantRuntime
+IProcessStepRegistry
+
+
+plus lightweight in-memory business collaborators.
+
+Examples discussed:
+
+TestInventoryStore
+TestPaymentGateway
+
+
+This avoids duplicated test wiring.
+
+Functional Scenarios Are Conversations
+
+A major design decision was made:
+
+Functional tests should model:
+
+request1
+request2
+request3
+
+
+rather than:
+
+request
+response
+
+
+because Kaleido.Process is fundamentally:
+
+Stateful
+Persistent
+Resumable
+
+
+and many important workflows require multiple requests.
+
+Shared Scenario Catalog
+
+A scenario-driven structure was preferred.
+
+Example organization:
+
+Requests/
+    001-HappyPath-Initial
+    002-HappyPath-Resume
+
+    010-InventoryUnavailable-Initial
+    011-InventoryUnavailable-BackorderApproval
+
+    020-PaymentFailure
+
+    030-ShippingReview
+    031-ShippingReview-Approve
+    032-ShippingReview-Reject
+
+    040-DuplicateRequest
+
+
+Both runtime and API tests should consume the same scenarios.
+
+Business Handlers Should Be State-Aware
+
+Rather than building numerous handler variations, ECommerce handlers should be driven by in-memory test collaborators.
+
+Examples:
+
+Inventory available
+Inventory unavailable
+
+Payment approved
+Payment declined
+
+
+Functional tests would manipulate test stores or services to drive behavior.
+
+This keeps the scenarios realistic while avoiding duplicate handlers.
+
+3. Unresolved Questions / Next Steps
+Define Concrete ECommerce Contracts
+
+Still needed:
+
+Request contracts
+Response contracts
+
+
+for:
+
+ValidateOrder
+AuthorizePayment
+ReserveInventory
+CalculateShipping
+GenerateShipment
+CompleteOrder
+BackOrderReview
+
+
+These should be shared across all functional testing layers.
+
+Define JSON Asset Shape
+
+Requests will eventually be stored as reusable JSON files.
+
+Not yet decided:
+
+Exact file structure.
+Expected-result asset structure.
+Versioning strategy.
+Naming conventions.
+
+Decision deferred until process contracts and scenarios stabilize.
+
+Duplicate Request Behavior
+
+Needs a formal decision.
+
+Possible outcomes:
+
+Treat as replay and return existing state
+
+
+or
+
+Allow re-execution
+
+
+Functional tests should lock down whichever behavior is chosen.
+
+State Resumption Scenarios
+
+Need complete end-to-end scenarios proving:
+
+StepA completed
+StepB failed
+
+Second request resumes at StepB
+
+
+This was identified as one of the highest-value functional test cases.
+
+Awaiting Required Step Scenarios
+
+Need full end-to-end validation of:
+
+ExecutionDecision.AwaitingRequiredStep(...)
+
+
+including:
+
+Initial request
+Required-step response
+Follow-up request
+Resume process
+
+Awaiting Step Selection Scenarios
+
+Need dedicated tests validating:
+
+ExecutionDecision.AwaitingStepSelection(...)
+
+
+where multiple valid next steps exist and the caller must choose one.
+
+Shared Scenario Abstraction
+
+Potential future construct:
+
+FunctionalTestScenario
+
+
+containing:
+
+Scenario Name
+Request Sequence
+Expected State
+Expected Outcomes
+
+
+to reduce repetition and unify runtime/API testing.
+
+Immediate Next Priority
+
+Before generating JSON requests:
+
+Finalize shared ECommerce step/response/handler contracts.
+Finalize business flow scenarios.
+Build the shared fixture and in-memory collaborators.
+Create runtime functional tests.
+Reuse the exact same assets in ASP.NET Core functional tests.
+
+This preserves a single source of truth for all end-to-end process behavior.
