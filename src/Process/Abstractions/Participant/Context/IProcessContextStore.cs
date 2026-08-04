@@ -30,7 +30,7 @@ public sealed record ParticipantContext
     /// <summary>
     /// Uniquely identifies the process instance.
     /// </summary>
-    public string? CorrelationId
+    public string? ParticipantProcessId
     {
         get;
         init;

@@ -2,8 +2,7 @@
 
 namespace Kaleido.Process.Participant.Context;
 
-internal sealed class InMemoryProcessContextStore
-    : IProcessContextStore
+internal sealed class InMemoryProcessContextStore : IProcessContextStore
 {
     private readonly ConcurrentDictionary<string, ParticipantContext> _contexts =
         new(StringComparer.OrdinalIgnoreCase);
@@ -17,7 +16,7 @@ internal sealed class InMemoryProcessContextStore
             return Task.FromResult(
                 new ParticipantContext
                 {
-                    CorrelationId = Guid.NewGuid().ToString("N")
+                    ParticipantProcessId = Guid.NewGuid().ToString("N")
                 });
         }
 
@@ -31,7 +30,7 @@ internal sealed class InMemoryProcessContextStore
         return Task.FromResult(
             new ParticipantContext
             {
-                CorrelationId = correlationId
+                ParticipantProcessId = correlationId
             });
     }
 
@@ -41,13 +40,13 @@ internal sealed class InMemoryProcessContextStore
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (string.IsNullOrWhiteSpace(context.CorrelationId))
+        if (string.IsNullOrWhiteSpace(context.ParticipantProcessId))
         {
             throw new InvalidOperationException(
-                "ParticipantContext must contain a CorrelationId before it can be saved.");
+                "ParticipantContext must contain a ParticipantProcessId before it can be saved.");
         }
 
-        _contexts[context.CorrelationId] = context;
+        _contexts[context.ParticipantProcessId] = context;
 
         return Task.CompletedTask;
     }

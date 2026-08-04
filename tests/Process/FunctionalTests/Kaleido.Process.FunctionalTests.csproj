@@ -7,7 +7,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Process\Process\Kaleido.Process.csproj" />
-		<ProjectReference Include="..\Testing\Kaleido.Process.Testing.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -12,7 +12,7 @@ public sealed class Order
     /// Stores the Kaleido.Process correlation id that allows the consumer service
     /// to re-enter the same order process conversation across requests.
     /// </summary>
-    public required string CorrelationId { get; set; }
+    public required string ParticipantProcessId { get; set; }
 
     public required string MemberId { get; set; }
 

@@ -47,6 +47,7 @@
     <Project Path="tests/Core/UnitTests/Kaleido.UnitTests.csproj" Id="d3158058-b54e-4a54-8bb0-5f324d367958" />
   </Folder>
   <Folder Name="/test/Process/">
+    <Project Path="tests/Process/FunctionalTests/Kaleido.Process.FunctionalTests.csproj" />
     <Project Path="tests/Process/UnitTests/Kaleido.Process.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Queryable/">

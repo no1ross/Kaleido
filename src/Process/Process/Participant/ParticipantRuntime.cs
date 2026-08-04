@@ -62,13 +62,13 @@ internal sealed class ParticipantRuntime
     {
         var context =
             await _contextStore.LoadAsync(
-                request.CorrelationId,
+                request.ParticipantProcessId,
                 cancellationToken);
 
         if (context is null)
         {
             return _stateUpdater.Initialize(
-                request.CorrelationId)
+                request.ParticipantProcessId)
                 with
             {
                 LastestRequestId =

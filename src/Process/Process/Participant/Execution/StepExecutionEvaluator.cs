@@ -4,8 +4,7 @@ using Kaleido.Process.Participant.Registry;
 
 namespace Kaleido.Process.Participant.Execution;
 
-internal sealed class StepExecutionEvaluator
-    : IStepExecutionEvaluator
+internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
 {
     private readonly IProcessStepRegistry _registry;
 

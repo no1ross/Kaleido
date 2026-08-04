@@ -1,13 +1,15 @@
 using Kaleido.Process.Attributes;
 using Kaleido.Process.Participant;
+using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
+using Kaleido.Process.Participant.Planning;
 using Kaleido.Process.Participant.Registry;
+using Kaleido.Process.Participant.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
 
 namespace Kaleido.Process;
-
 
 public static class ProcessServiceCollectionExtensions
 {
@@ -51,7 +53,13 @@ public static class ProcessServiceCollectionExtensions
             types
                 .Where(x =>
                     x.GetCustomAttribute<ProcessStepAttribute>() is not null)
+                .Where(x =>
+                    ShouldIncludeProcessStep(
+                        x,
+                        options))
                 .ToArray();
+
+        ValidateProcessSteps(recordTypes);
 
         foreach (var recordType in recordTypes)
         {
@@ -61,18 +69,9 @@ public static class ProcessServiceCollectionExtensions
                 types);
         }
 
-        //builder.Services.TryAddSingleton<RecordRegistrationValidator, RecordRegistrationValidator>();
-
         builder.Services.TryAddSingleton<IProcessStepRegistry>(
             sp =>
             {
-                //var validator =
-                //    sp.GetRequiredService<RecordRegistrationValidator>();
-
-                //validator.Validate(
-                //    recordTypes,
-                //    builder.Services);
-
                 return new ProcessStepRegistry(
                     builder.Services,
                     recordTypes);
@@ -83,20 +82,126 @@ public static class ProcessServiceCollectionExtensions
         return builder;
     }
 
-    private static void RegisterFrameworkServices(IServiceCollection services)
+    private static bool ShouldIncludeProcessStep(
+        Type stepType,
+        ParticipantOptions options)
     {
-        //services.TryAddSingleton<IRecordQueryValidator, QueryRequestValidator>();
-        //services.TryAddSingleton<IRecordQueryCompiler, QueryRequestCompiler>();
-        //services.TryAddSingleton<IQueryableService, QueryableService>();
-
-        //services.TryAddSingleton(typeof(ICompiledQueryApplier<>), typeof(CompiledQueryApplier<>));
-
-        //services.TryAddSingleton(typeof(IRecordExecutor<>), typeof(RecordExecutor<>));
+        try
+        {
+            return options.TypeFilter?.Invoke(stepType) ?? true;
+        }
+        catch (Exception exception)
+        {
+            throw new InvalidOperationException(
+                $"The configured TypeFilter failed while evaluating process step '{stepType.FullName ?? stepType.Name}'.",
+                exception);
+        }
     }
 
-    private static void RegisterProcessStep(IServiceCollection services, Type stepType, IReadOnlyCollection<Type> types)
+    private static void ValidateProcessSteps(
+        IReadOnlyCollection<Type> stepTypes)
     {
-        RegisterHandler(services, stepType, types);
+        if (stepTypes.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "No process steps were discovered for the participant.");
+        }
+
+        foreach (var stepType in stepTypes)
+        {
+            var metadata =
+                GetProcessStepMetadata(stepType);
+
+            if (string.IsNullOrWhiteSpace(metadata.Name))
+            {
+                throw new InvalidOperationException(
+                    $"Process step '{stepType.FullName}' must specify a non-empty name.");
+            }
+
+            if (string.IsNullOrWhiteSpace(metadata.Version))
+            {
+                throw new InvalidOperationException(
+                    $"Process step '{stepType.FullName}' must specify a non-empty version.");
+            }
+        }
+
+        var duplicateNames =
+            stepTypes
+                .Select(x => new
+                {
+                    StepType = x,
+                    Metadata = GetProcessStepMetadata(x)
+                })
+                .GroupBy(
+                    x => x.Metadata.Name,
+                    StringComparer.OrdinalIgnoreCase)
+                .Where(x => x.Count() > 1)
+                .ToArray();
+
+        if (duplicateNames.Length == 0)
+        {
+            return;
+        }
+
+        var duplicateDetails =
+            string.Join(
+                Environment.NewLine,
+                duplicateNames.Select(x =>
+                {
+                    var stepTypesForName =
+                        string.Join(
+                            ", ",
+                            x.Select(y => y.StepType.FullName));
+
+                    return $"Name '{x.Key}' is used by: {stepTypesForName}";
+                }));
+
+        throw new InvalidOperationException(
+            $"Duplicate process step names were found.{Environment.NewLine}{duplicateDetails}");
+    }
+
+    private static ProcessStepAttribute GetProcessStepMetadata(
+        Type stepType)
+    {
+        var metadata =
+            stepType.GetCustomAttribute<ProcessStepAttribute>();
+
+        if (metadata is null)
+        {
+            throw new InvalidOperationException(
+                $"Type '{stepType.FullName}' is not decorated with ProcessStepAttribute.");
+        }
+
+        return metadata;
+    }
+
+    private static void RegisterFrameworkServices(IServiceCollection services)
+    {
+        services.TryAddSingleton<IProcessStepRegistry, ProcessStepRegistry>();
+
+        services.TryAddSingleton<IExecutionPlanner, ExecutionPlanner>();
+        services.TryAddSingleton<IStepCandidateBuilder, StepCandidateBuilder>();
+        services.TryAddSingleton<IStepCandidateConsistencyChecker, StepCandidateConsistencyChecker>();
+        services.TryAddSingleton<IStepCandidatePlanner, StepCandidatePlanner>();
+        services.TryAddSingleton<IStepCandidateValidator, StepCandidateValidator>();
+        services.TryAddSingleton<IExecutionProcessor, ExecutionProcessor>();
+        services.TryAddSingleton<IProcessStepInvoker, ProcessStepInvoker>();
+        services.TryAddSingleton<IStepExecutionEvaluator, StepExecutionEvaluator>();
+        services.TryAddSingleton<IProcessStateUpdater, ProcessStateUpdater>();
+        services.TryAddSingleton<IParticipantRuntime, ParticipantRuntime>();
+
+        services.TryAddSingleton<IProcessContextStore, InMemoryProcessContextStore>();
+    }
+
+    private static void RegisterProcessStep(
+        IServiceCollection services,
+        Type stepType,
+        IReadOnlyCollection<Type> types)
+    {
+        RegisterHandler(
+            services,
+            stepType,
+            types);
     }
 
     private static void RegisterHandler(
@@ -104,14 +209,36 @@ public static class ProcessServiceCollectionExtensions
         Type stepType,
         IEnumerable<Type> types)
     {
-        var handlerType =
-            types.Single(x =>
-                x.GetInterfaces()
-                    .Any(i =>
-                        i.IsGenericType
-                        && i.GetGenericTypeDefinition() == typeof(IProcessStepHandler<,>)
-                        && i.GetGenericArguments()[0] == stepType));
+        var metadata =
+            GetProcessStepMetadata(stepType);
 
-        services.AddScoped(handlerType);
+        var handlerTypes =
+            types
+                .Where(x =>
+                    x.GetInterfaces()
+                        .Any(i =>
+                            i.IsGenericType &&
+                            i.GetGenericTypeDefinition() == typeof(IProcessStepHandler<,>) &&
+                            i.GetGenericArguments()[0] == stepType))
+                .ToArray();
+
+        if (handlerTypes.Length == 0)
+        {
+            throw new InvalidOperationException(
+                $"Process step '{metadata.Name}' ({stepType.FullName}) does not have a registered handler implementing IProcessStepHandler<TStep, TResult>.");
+        }
+
+        if (handlerTypes.Length > 1)
+        {
+            var handlers =
+                string.Join(
+                    ", ",
+                    handlerTypes.Select(x => x.FullName));
+
+            throw new InvalidOperationException(
+                $"Process step '{metadata.Name}' ({stepType.FullName}) has multiple handlers: {handlers}.");
+        }
+
+        services.AddScoped(handlerTypes[0]);
     }
 }

@@ -3,7 +3,7 @@ namespace Kaleido.Process.Eventing;
 
 public interface IProcessEvent : IKaleidoEvent
 {
-    string CorrelationId { get; }
+    string ParticipantProcessId { get; }
 
     string RequestId { get; }
 

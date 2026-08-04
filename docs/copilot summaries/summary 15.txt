@@ -1,0 +1,481 @@
+1. Core Requirements
+Build a realistic Shopping Cart sample as the primary functional test and reference implementation instead of the earlier shipping/warehouse example.
+The sample must demonstrate real-world participant interactions across multiple requests.
+Functional tests must validate both:
+Registry behavior (metadata discovery and graph construction)
+Runtime behavior (planning, execution, persistence, resumption)
+Requests and responses must exercise:
+Complex objects
+Collections
+Enums
+Nullable properties
+Nested objects
+DataAnnotations validation
+Sample contracts must remain business-focused and understandable to future consumers.
+Functional tests should demonstrate how a real service uses Kaleido.Process rather than relying on synthetic StepA/StepB assets.
+The sample should become a future teaching/reference implementation for:
+Process modeling
+Dependency graphs
+Consumer persistence responsibilities
+Process resumption
+2. Architectural & Component Decisions
+Shopping Cart Process Graph
+
+Final direction for the process graph:
+
+AddItemToCart
+    ↓
+StartOrder
+   ↙         ↘
+SubmitBilling   AcceptTermsAndConditions
+   ↘         ↙
+     SubmitOrder
+         ↓
+  ChangePaymentInfo
+         ↓
+     CancelOrder
+
+Graph Features Demonstrated
+Root step
+Linear dependencies
+Multiple available next steps
+Multiple dependencies
+Optional steps
+Required-step scenarios
+Multi-request conversations
+Dependency Semantics
+Confirmed Behavior
+
+A step with multiple [DependsOnStep] attributes requires all dependencies.
+
+Example:
+
+SubmitOrder
+
+
+depends on:
+
+SubmitBilling
+AcceptTermsAndConditions
+
+
+SubmitOrder becomes available only after both are completed.
+
+Important Distinction
+
+Two separate concepts were identified:
+
+Dependencies
+What must happen before a step can execute.
+
+Available Steps
+What steps are valid next actions.
+
+
+These are not the same thing.
+
+Required Step Enforcement
+
+Current framework rule remains:
+
+requiredStep ∈ availableSteps
+
+
+If a handler returns a required step that is not contained in the available-step list:
+
+ProcessViolation
+RequiredStepNotAllowed
+
+
+is returned.
+
+Architectural Decision
+
+Required steps may only elevate a graph-valid next step.
+
+Handlers may not create execution paths outside the defined graph.
+
+Multiple Handlers
+Final Decision
+
+Never support multiple handlers per step.
+
+Current behavior remains:
+
+types.Single(...)
+
+Rationale
+
+A step must have exactly one handler.
+
+Supporting multiple handlers introduces:
+
+Ambiguity
+Selection logic
+Priority rules
+Configuration complexity
+Runtime instability
+
+Fail-fast registration is preferred.
+
+Future Testing
+
+Functional tests should verify:
+
+Missing handler detection
+Duplicate handler detection
+Consumer vs Framework Boundaries
+Framework Owns
+
+Process state:
+
+ParticipantProcessId
+RequestId
+Execution state
+Step history
+Available steps
+Required step
+
+Consumer Owns
+
+Business state:
+
+ShoppingCart
+ShoppingCartItem
+Order
+BillingInfo
+OrderCancellation
+
+Critical Principle
+
+Framework persists orchestration state.
+
+Consumer persists business state.
+
+Process Identifier Rename
+Previous Name
+CorrelationId
+
+New Direction
+ParticipantProcessId
+
+Reason
+
+More accurately represents:
+
+Specific participant process instance
+
+
+rather than generic messaging correlation.
+
+Aggregate Ownership of ParticipantProcessId
+
+Store process identifier on both aggregates:
+
+ShoppingCart
+ShoppingCart.ParticipantProcessId
+
+Order
+Order.ParticipantProcessId
+
+Rationale
+
+Both are valid aggregate roots.
+
+Future versions may separate:
+
+ShoppingCart Process
+
+
+and
+
+Order Process
+
+
+into independent graphs.
+
+Persistence Strategy
+Functional Tests
+
+Use two SQLite databases.
+
+ProcessState.db
+
+Framework owned.
+
+Responsible for:
+
+Participant state
+Execution history
+Required steps
+Available steps
+
+ShoppingCart.db
+
+Consumer owned.
+
+Responsible for:
+
+ShoppingCart
+ShoppingCartItem
+Order
+BillingInfo
+OrderCancellation
+
+Benefits
+Real persistence
+Multi-request support
+Resume testing
+Duplicate request testing
+Easy test setup/cleanup
+Production-like behavior
+DbContext Model
+
+Consumer data model established:
+
+ShoppingCart
+Aggregate root
+Stores ParticipantProcessId
+ShoppingCartItem
+Cart item persistence
+Order
+Aggregate root
+Stores ParticipantProcessId
+BillingInfo
+Payment information
+OrderCancellation
+Cancellation tracking
+Address
+
+Shared value object.
+
+Used by:
+
+Requests
+Responses
+EF owned entities
+Request / Response Design Rules
+Allowed
+
+Shared contract/value objects:
+
+Address
+CartItemRequest
+RefundInformation
+ProcessIssue
+
+Not Allowed
+
+Persistence entities:
+
+ShoppingCart
+ShoppingCartItem
+Order
+BillingInfo
+OrderCancellation
+
+
+must never appear in step contracts.
+
+Principle
+Contract Model != Persistence Model
+
+Validation Strategy
+
+Address should contain DataAnnotations and serve as a reusable validation surface.
+
+Nested DTOs should also contain DataAnnotations.
+
+Examples:
+
+Address
+CartItemRequest
+
+
+This allows testing:
+
+Nested validation
+Collection validation
+Complex-object validation
+ProcessStepContext Changes
+
+Added process identifier access directly to handlers.
+
+Current direction:
+
+public sealed record ProcessStepContext(
+    string ParticipantProcessId,
+    StepContext StepContext,
+    IReadOnlyCollection<string> AvailableNextSteps);
+
+
+(Current implementation still uses CorrelationId; planned rename to ParticipantProcessId.)
+
+Benefits
+
+Handlers can:
+
+Persist process identifier
+Re-enter process conversations
+Associate aggregates with process instances
+
+without framework coupling.
+
+Handler Design
+
+Handlers should remain intentionally simple.
+
+Responsibilities:
+
+Read request
+Read/write business data
+Return response
+
+Framework owns:
+
+Orchestration
+State management
+Progress tracking
+
+Consumer owns:
+
+Business persistence
+3. Unresolved Questions / Next Steps
+Immediate Next Steps
+Registry Functional Tests
+
+Verify:
+
+Step discovery
+Metadata discovery
+Version discovery
+Handler discovery
+Response type discovery
+Dependency discovery
+Multiple dependency discovery
+Duplicate handler failures
+Missing handler failures
+Runtime Functional Tests
+
+Verify:
+
+Happy path
+Available steps
+Required steps
+Invalid required step
+Resume scenarios
+Duplicate requests
+Persistence behavior
+DataAnnotations validation
+Contract Cleanup
+
+Need to reconcile:
+
+Step definitions
+Response definitions
+Handler implementations
+
+to remove drift introduced during design iterations.
+
+Repeatable Steps (Deferred)
+
+Real-world shopping cart flow exposed the need for:
+
+AddItemToCart
+UpdateQuantity
+RemoveItem
+
+
+to execute multiple times.
+
+Potential future concepts:
+
+[RepeatableStep]
+
+
+or
+
+Repeatable = true
+
+
+Not part of current implementation.
+
+Availability Windows (Deferred)
+
+Need a future mechanism to express:
+
+Available after X
+Available until Y
+
+
+Examples:
+
+AddItemToCart
+UpdateQuantity
+RemoveItem
+
+
+remain available until:
+
+StartOrder
+
+
+Potential future concepts:
+
+[AvailableAfter]
+[AvailableUntil]
+
+
+or policy-based equivalents.
+
+Out-of-Band / Control Steps (Deferred)
+
+Future consideration:
+
+CancelOrder
+SuspendOrder
+ResumeOrder
+
+
+that may not fit normal graph traversal.
+
+Potential future concept:
+
+[ProcessControlStep]
+
+
+or similar.
+
+Not included in V1.
+
+Multiple Process Graphs (Future)
+
+Potential future architecture:
+
+ShoppingCart Process
+
+
+and
+
+Order Process
+
+
+as separate participant processes.
+
+This was a major reason for storing ParticipantProcessId on both aggregate roots.
+
+Graph Metadata Export
+
+Future requirement identified:
+
+Expose registry metadata and graph structure.
+
+Potential outputs:
+
+JSON
+Developer tooling
+Visual graph rendering
+Metadata endpoints
+
+
+to help consumers understand and debug process definitions.

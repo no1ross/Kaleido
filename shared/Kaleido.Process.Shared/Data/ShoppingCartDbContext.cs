@@ -54,7 +54,7 @@ public sealed class ShoppingCartDbContext : DbContext
         entity.Property(x => x.ShoppingCartId)
             .ValueGeneratedNever();
 
-        entity.Property(x => x.CorrelationId)
+        entity.Property(x => x.ParticipantProcessId)
             .IsRequired()
             .HasMaxLength(100);
 
@@ -69,7 +69,7 @@ public sealed class ShoppingCartDbContext : DbContext
         entity.Property(x => x.UpdatedOn)
             .IsRequired();
 
-        entity.HasIndex(x => x.CorrelationId)
+        entity.HasIndex(x => x.ParticipantProcessId)
             .IsUnique();
 
         entity.HasMany(x => x.Items)
@@ -149,7 +149,7 @@ public sealed class ShoppingCartDbContext : DbContext
         entity.Property(x => x.ShoppingCartId)
             .IsRequired();
 
-        entity.Property(x => x.CorrelationId)
+        entity.Property(x => x.ParticipantProcessId)
             .IsRequired()
             .HasMaxLength(100);
 
@@ -186,7 +186,7 @@ public sealed class ShoppingCartDbContext : DbContext
         entity.Property(x => x.UpdatedOn)
             .IsRequired();
 
-        entity.HasIndex(x => x.CorrelationId)
+        entity.HasIndex(x => x.ParticipantProcessId)
             .IsUnique();
 
         entity.HasIndex(x => x.ShoppingCartId)

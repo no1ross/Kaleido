@@ -87,6 +87,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
                 var processStepContext =
                     new ProcessStepContext(
+                        context.ParticipantProcessId,
                         stepContext,
                         GetAvailableNextSteps(
                             candidate));

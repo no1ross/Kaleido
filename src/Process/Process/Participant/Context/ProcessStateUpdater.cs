@@ -30,8 +30,7 @@ internal interface IProcessStateUpdater
         StepCandidate candidate);
 }
 
-internal sealed class ProcessStateUpdater
-    : IProcessStateUpdater
+internal sealed class ProcessStateUpdater : IProcessStateUpdater
 {
     private readonly IProcessStepRegistry _registry;
 
@@ -51,7 +50,7 @@ internal sealed class ProcessStateUpdater
 
         return new ParticipantContext
         {
-            CorrelationId = correlationId,
+            ParticipantProcessId = correlationId,
 
             State = ProcessExecutionState.Active,
 

@@ -19,7 +19,7 @@ public sealed record ProcessRequest
     /// Uniquely identifies the durable process instance.
     /// Re-submissions for the same process use the same correlation id.
     /// </summary>
-    public required string CorrelationId
+    public required string ParticipantProcessId
     {
         get;
         init;
@@ -122,7 +122,7 @@ public sealed record ParticipantStepResult
 
 //public class ProcessResult
 //{
-//    public string? CorrelationId { get; init; }
+//    public string? ParticipantProcessId { get; init; }
 //    public StepExecutionOutcome Outcome { get; init; }
 //    public IReadOnlyCollection<StepProcessingMessage> Messages { get; init; } = [];
 //    public IReadOnlyCollection<ProcessStepDefinition> RequiredSteps { get; init; } = [];

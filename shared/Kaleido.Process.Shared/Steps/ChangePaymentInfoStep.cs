@@ -1,4 +1,5 @@
 ﻿using Kaleido.Process.Attributes;
+using Kaleido.Process.Shared.Entities;
 using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Process.Shared.Steps;
@@ -19,6 +20,8 @@ public sealed record ChangePaymentInfoStep
     [Required]
     [StringLength(200)]
     public required string PaymentToken { get; init; }
+
+    public Address BillingAddress { get; init; }
 
     public string? Reason { get; init; }
 }
