@@ -2,13 +2,8 @@
 
 internal class StepCandidatePlanner : IStepCandidatePlanner
 {
-    private readonly IProcessStepRegistry _registry;
-
-    public StepCandidatePlanner(IProcessStepRegistry registry)
+    public StepCandidatePlanner()
     {
-        ArgumentNullException.ThrowIfNull(registry);
-
-        _registry = registry;
     }
 
     public IReadOnlyCollection<StepCandidate> Build(
@@ -23,8 +18,7 @@ internal class StepCandidatePlanner : IStepCandidatePlanner
 
         var ordered =
             OrderByDependencies(
-                executableCandidates,
-                _registry);
+                executableCandidates);
 
         foreach (var candidate in ordered)
         {
@@ -45,8 +39,7 @@ internal class StepCandidatePlanner : IStepCandidatePlanner
     }
 
     private static IReadOnlyCollection<StepCandidate> OrderByDependencies(
-        IReadOnlyCollection<StepCandidate> candidates,
-        IProcessStepRegistry registry)
+        IReadOnlyCollection<StepCandidate> candidates)
     {
         var candidatesByType =
             candidates.ToDictionary(
@@ -63,7 +56,6 @@ internal class StepCandidatePlanner : IStepCandidatePlanner
             Visit(
                 candidate,
                 candidatesByType,
-                registry,
                 visited,
                 ordered);
         }
@@ -74,7 +66,6 @@ internal class StepCandidatePlanner : IStepCandidatePlanner
     private static void Visit(
         StepCandidate candidate,
         IReadOnlyDictionary<Type, StepCandidate> candidatesByType,
-        IProcessStepRegistry registry,
         HashSet<Type> visited,
         List<StepCandidate> ordered)
     {
@@ -87,8 +78,7 @@ internal class StepCandidatePlanner : IStepCandidatePlanner
         }
 
         var dependencies =
-            registry.GetDependencies(
-                stepType);
+            candidate.Registration!.Dependencies;
 
         foreach (var dependency in dependencies)
         {
@@ -102,7 +92,6 @@ internal class StepCandidatePlanner : IStepCandidatePlanner
             Visit(
                 dependencyCandidate,
                 candidatesByType,
-                registry,
                 visited,
                 ordered);
         }

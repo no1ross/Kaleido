@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using Xunit;
 
-namespace Kaleido.Process.Tests.Participant.Execution;
+namespace Kaleido.Process.UnitTests.Participant.Execution;
 
 public sealed class ProcessStepInvokerTests
 {
@@ -408,6 +408,9 @@ public sealed class ProcessStepInvokerTests
             typeof(TestStep),
             typeof(TestStepResponse),
             typeof(THandler),
+            [],
+            [],
+            [],
             new ProcessStepMetadata(
                 "test-step",
                 "Test step.",

@@ -6,7 +6,7 @@ using Kaleido.Process.Participant.Runtime;
 using Moq;
 using Xunit;
 
-namespace Kaleido.Process.Tests.Participant.Runtime;
+namespace Kaleido.Process.UnitTests.Participant;
 
 public sealed class ParticipantRuntimeTests
 {

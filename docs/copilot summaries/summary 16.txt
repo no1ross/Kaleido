@@ -1,0 +1,423 @@
+1. Core Requirements
+
+Preserve the original intent of the runtime architecture:
+
+ExecutionProcessor orchestrates execution.
+IStepExecutionEvaluator determines execution decisions.
+IProcessStateUpdater only mutates/persists process state.
+Availability determination should not live inside the state updater.
+
+Continue providing AvailableSteps to handlers via ProcessStepContext.
+
+This is required so framework consumers (developers implementing handlers) know what steps are legal candidates when returning RequiredStep.
+Handlers should not need to understand process graphs.
+
+Introduce process availability windows:
+
+Support:
+AvailableAfter
+AvailableUntil
+Availability is determined from process history (completed steps), not external state.
+
+Avoid introducing a separate process-state model (e.g. CartOpen, CheckedOut, etc.).
+
+Completed step history remains the source of truth.
+Do not require developers to manually synchronize process state with process execution history.
+
+Maintain startup-time discovery:
+
+Reflection should occur during registration/startup.
+Runtime execution should operate entirely on pre-built metadata.
+2. Architectural & Component Decisions
+Runtime Availability Refactor
+New Component
+Introduced:
+IStepAvailabilityResolver
+
+Responsibility:
+ParticipantContext
++
+ProcessStepRegistration metadata
+↓
+Available Steps
+
+This component now owns:
+dependency evaluation
+availability window evaluation
+future availability rules
+StepExecutionEvaluator Simplification
+Previous State
+
+Evaluator was responsible for:
+
+Decision evaluation
+Availability calculation
+Dependency evaluation
+Graph traversal
+
+New State
+
+Evaluator is responsible only for:
+
+Execution Result
+↓
+Execution Decision
+
+
+Specifically:
+
+BusinessFailure
+Continue
+AwaitingRequiredStep
+AwaitingStepSelection
+Complete
+ProcessViolation
+
+Availability is now delegated to:
+
+IStepAvailabilityResolver
+
+ProcessStepRegistration Refactor
+Old
+ProcessStepRegistration(
+    StepType,
+    StepResultType,
+    HandlerType,
+    Metadata)
+
+New
+ProcessStepRegistration(
+    Type StepType,
+    Type StepResultType,
+    Type HandlerType,
+    IReadOnlyCollection<ProcessStepRegistration> Dependencies,
+    IReadOnlyCollection<ProcessStepRegistration> AvailableAfter,
+    IReadOnlyCollection<ProcessStepRegistration> AvailableUntil,
+    ProcessStepMetadata Metadata)
+
+Intent
+Registration becomes the complete process definition.
+Runtime no longer needs graph traversal APIs.
+Relationship metadata is pre-resolved during startup.
+Registry Simplification
+Removed Responsibilities
+
+Registry is no longer responsible for:
+
+Graph traversal
+Dependency traversal
+Dependent traversal
+Dependency chains
+Dependent chains
+Availability logic
+
+Registry Responsibility Now
+Definition Repository
+
+
+Specifically:
+
+Registrations
+
+Find(name)
+Find(type)
+
+GetRegistration(name)
+GetRegistration(type)
+
+Removal of Runtime Graph Access
+
+The following APIs are effectively obsolete:
+
+HasDependencies()
+
+HasDependents()
+
+GetDependencies()
+
+GetDependents()
+
+GetDependencyChain()
+
+GetDependentChain()
+
+
+Reason:
+
+registration.Dependencies
+registration.AvailableAfter
+registration.AvailableUntil
+
+
+already contain the resolved relationships.
+
+Graph Removal from Registry
+Previous
+IProcessStepRegistry.Graph
+
+Decision
+
+Graph should no longer be a runtime concern.
+
+Instead:
+
+Graph/Visualization
+
+
+becomes a future diagnostic abstraction layered on top of registrations.
+
+Examples:
+
+IProcessDefinitionExplorer
+
+IProcessGraphExporter
+
+
+Possible future outputs:
+
+Mermaid
+PlantUML
+Diagnostic reports
+
+Startup Registration Strategy
+
+Registry now requires a multi-pass build:
+
+Pass 1
+
+Build step definitions:
+
+Attributes
+Handler types
+Metadata
+Raw relationships
+
+Pass 2
+
+Resolve registrations:
+
+Dependencies
+AvailableAfter
+AvailableUntil
+
+
+into actual registration references.
+
+Pass 3
+
+Validate fully-connected registrations.
+
+Availability Rule Model
+Chosen Model
+[AvailableAfter]
+[AvailableUntil]
+
+Rejected Direction
+CartOpen
+CheckedOut
+Refunded
+
+
+or any developer-managed runtime state.
+
+Reason:
+
+Would introduce a second source of truth.
+
+
+Would require developers to manually maintain state.
+
+Availability Evaluation Rules
+
+Availability should eventually evaluate:
+
+DependenciesSatisfied
+AND
+AvailableAfterSatisfied
+AND
+AvailableUntilSatisfied
+
+
+Based only on:
+
+Completed Step History
+
+
+inside ParticipantContext.
+
+Testing Strategy Changes
+Evaluator Tests
+
+Evaluator tests should now focus only on:
+
+Decision Logic
+
+
+Examples:
+
+BusinessFailure
+ProcessViolation
+AwaitingRequiredStep
+Continue
+AwaitingStepSelection
+Complete
+
+
+Availability logic has been removed from evaluator tests.
+
+Availability Tests
+
+New dedicated suite:
+
+StepAvailabilityResolverTests
+
+
+should own:
+
+Dependencies
+AvailableAfter
+AvailableUntil
+Runtime availability calculations
+
+Registry Tests
+
+Registry tests now focus on:
+
+Attribute discovery
+Metadata mapping
+Relationship mapping
+Lookup behavior
+Handler discovery
+
+
+Examples:
+
+Registration_MapsDependencies
+
+Registration_MapsAvailableAfter
+
+Registration_MapsAvailableUntil
+
+Registration_MapsMultipleAvailabilityRules
+
+Validation Tests
+
+Validator should be tested separately.
+
+Ownership:
+
+Startup validation only
+
+
+Expected validation categories:
+
+Missing references
+
+Self dependency
+
+Self AvailableAfter
+
+Self AvailableUntil
+
+Circular dependencies
+
+
+Dependency cycles only.
+
+Availability relationships should NOT be treated as graph cycles.
+
+3. Unresolved Questions / Next Steps
+Availability Resolver Implementation
+
+Still needs final implementation and tests:
+
+IStepAvailabilityResolver
+
+
+including:
+
+Dependencies
+AvailableAfter
+AvailableUntil
+
+
+evaluation.
+
+Registration Construction Bug
+
+Potential issue discovered:
+
+definitions[x].Registration!
+
+
+appears to be referenced during relationship resolution.
+
+Need to verify:
+
+definition.Registration
+
+
+is assigned before relationship wiring occurs.
+
+Likely requires:
+
+Create definitions
+↓
+Create registrations
+↓
+Store registration references
+↓
+Resolve relationships
+
+Registry Tests
+
+Need final clean registry test suite covering:
+
+Metadata mapping
+Dependency mapping
+AvailableAfter mapping
+AvailableUntil mapping
+Multiple rule mapping
+Handler resolution
+Lookup behavior
+
+
+without any graph-based assertions.
+
+Registration Validator
+
+Needs dedicated test class:
+
+RegistrationValidatorTests
+
+
+to replace historical graph validation tests.
+
+ProcessDefinition Diagnostics
+
+Future optional feature:
+
+Registry-based graph visualization
+
+
+for developers to inspect:
+
+Dependencies
+AvailableAfter
+AvailableUntil
+
+
+without reintroducing graph traversal into runtime components.
+
+Multi-Step Submission
+
+Deferred until availability work is completed.
+
+Availability refactor was prioritized ahead of:
+
+Multi-step execution
+Out-of-band processing
+Cancellation
+
+
+because availability is now a foundational runtime concept.

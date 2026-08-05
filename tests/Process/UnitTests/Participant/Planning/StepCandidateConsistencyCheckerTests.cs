@@ -6,20 +6,10 @@ using Kaleido.Process.Participant.Registry;
 using Moq;
 using Xunit;
 
-namespace Kaleido.Process.Tests.Participant.Planning;
+namespace Kaleido.Process.UnitTests.Participant.Planning;
 
 public sealed class StepCandidateConsistencyCheckerTests
 {
-    [Fact]
-    public void Constructor_WhenRegistryIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new StepCandidateConsistencyChecker(null!));
-
-        Assert.Equal("registry", exception.ParamName);
-    }
-
     [Fact]
     public void Validate_WhenCandidatesIsNull_Throws()
     {
@@ -214,7 +204,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             CreateRegistration<StepA>("step-a");
 
         var target =
-            CreateRegistration<StepB>("step-b");
+            CreateRegistration<StepB>("step-b", [dependency]);
 
         var checker =
             CreateChecker(
@@ -260,11 +250,12 @@ public sealed class StepCandidateConsistencyCheckerTests
             CreateRegistration<StepA>("step-a");
 
         var target =
-            CreateRegistration<StepB>("step-b");
+            CreateRegistration<StepB>(
+                "step-b",
+                [dependency]);
 
         var checker =
-            CreateChecker(
-                (typeof(StepB), [dependency]));
+            CreateChecker();
 
         var candidate =
             CreateCandidate(target);
@@ -295,7 +286,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             CreateRegistration<StepB>("step-b");
 
         var stepC =
-            CreateRegistration<StepC>("step-c");
+            CreateRegistration<StepC>("step-c", [stepA, stepB]);
 
         var checker =
             CreateChecker(
@@ -323,37 +314,23 @@ public sealed class StepCandidateConsistencyCheckerTests
     private static StepCandidateConsistencyChecker CreateChecker(
         params (Type StepType, ProcessStepRegistration[] Dependencies)[] registrations)
     {
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        registry
-            .Setup(x =>
-                x.GetDependencies(It.IsAny<Type>()))
-            .Returns([]);
-
-        foreach (var registration in registrations)
-        {
-            registry
-                .Setup(x =>
-                    x.GetDependencies(
-                        registration.StepType))
-                .Returns(registration.Dependencies);
-        }
-
-        return new StepCandidateConsistencyChecker(
-            registry.Object);
+        return new StepCandidateConsistencyChecker();
     }
 
     private static ProcessStepRegistration CreateRegistration<TStep>(
-        string name)
+        string name,
+        IReadOnlyCollection<ProcessStepRegistration>? dependencies = null)
     {
         return new ProcessStepRegistration(
             typeof(TStep),
             typeof(object),
             typeof(object),
+            dependencies ?? [],
+            [],
+            [],
             new ProcessStepMetadata(
                 name,
-                name,
+                $"{name} description.",
                 "1.0"));
     }
 

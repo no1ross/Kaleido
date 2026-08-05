@@ -6,13 +6,8 @@ namespace Kaleido.Process.Participant.Planning;
 
 internal class StepCandidateConsistencyChecker : IStepCandidateConsistencyChecker
 {
-    private readonly IProcessStepRegistry _registry;
-
-    public StepCandidateConsistencyChecker(IProcessStepRegistry registry)
+    public StepCandidateConsistencyChecker()
     {
-        ArgumentNullException.ThrowIfNull(registry);
-
-        _registry = registry;
     }
 
     public void Validate(
@@ -65,8 +60,9 @@ internal class StepCandidateConsistencyChecker : IStepCandidateConsistencyChecke
         if (historicalStep.Status ==
             StepExecutionStatus.Completed)
         {
-            candidate.Status =
-                StepCandidateStatus.Satisfied;
+            candidate.Status = StepCandidateStatus.Satisfied;
+            candidate.AddInformation(StepProcessingMessageCode.AlreadyProcessed,
+                $"Step '{candidate.StepName}' was previously completed and did not require execution.");
         }
     }
 
@@ -76,8 +72,7 @@ internal class StepCandidateConsistencyChecker : IStepCandidateConsistencyChecke
         ParticipantContext context)
     {
         var dependencies =
-            _registry.GetDependencies(
-                candidate.Registration!.StepType);
+            candidate.Registration!.Dependencies;
 
         foreach (var dependency in dependencies)
         {

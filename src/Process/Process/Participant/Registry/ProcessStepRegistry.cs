@@ -13,10 +13,6 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
 
     private readonly IReadOnlyCollection<ProcessStepRegistration> _registrations;
 
-    private readonly IReadOnlyDictionary<Type, IReadOnlyCollection<Type>> _dependencies;
-
-    private readonly IReadOnlyDictionary<Type, IReadOnlyCollection<Type>> _dependents;
-
     public ProcessStepRegistry(
         IServiceCollection services,
         IEnumerable<Type> stepTypes)
@@ -29,15 +25,60 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
                 .Distinct()
                 .ToArray();
 
-        var registrations =
+        // Pass 1
+        var typeDefinitions =
             stepTypeArray
                 .Select(stepType =>
-                    BuildRegistration(
+                    BuildTypeDefinition(
                         services,
                         stepType))
                 .ToArray();
 
-        _registrations = registrations;
+        var typeDefinitionsByType =
+            typeDefinitions.ToDictionary(
+                x => x.StepType);
+
+        // Pass 2a
+        var definitions =
+            typeDefinitions
+                .Select(x =>
+                    new ProcessStepDefinition
+                    {
+                        StepType = x.StepType,
+                        StepResultType = x.StepResultType,
+                        HandlerType = x.HandlerType,
+                        Metadata = x.Metadata
+                    })
+                .ToArray();
+
+        var definitionsByType =
+            definitions.ToDictionary(
+                x => x.StepType);
+
+        // Pass 2b
+        foreach (var definition in definitions)
+        {
+            var typeDefinition =
+                typeDefinitionsByType[
+                    definition.StepType];
+
+            HydrateDefinition(
+                definition,
+                typeDefinition,
+                definitionsByType);
+        }
+
+        // Pass 3
+        RegistrationValidator.Validate(
+            definitions);
+
+        // Pass 4
+        var registrations =
+            BuildRegistrations(
+                definitions);
+
+        _registrations =
+            registrations;
 
         _byName =
             registrations.ToDictionary(
@@ -47,30 +88,10 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
         _byType =
             registrations.ToDictionary(
                 x => x.StepType);
-
-        _dependencies =
-            BuildDependencies(
-                stepTypeArray);
-
-        ValidateDependencyGraph(
-            stepTypeArray,
-            _dependencies);
-
-        _dependents =
-            BuildDependents(
-                stepTypeArray,
-                _dependencies);
-
-        Graph =
-            new ProcessStepDependencyGraph(
-                _dependencies,
-                _dependents);
     }
 
     public IReadOnlyCollection<ProcessStepRegistration> Registrations =>
         _registrations;
-
-    public ProcessStepDependencyGraph Graph { get; }
 
     public ProcessStepRegistration? Find(string name)
     {
@@ -108,293 +129,7 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
                 $"Process step type '{stepType.FullName}' is not registered.");
     }
 
-    public bool HasDependencies(Type stepType)
-    {
-        ArgumentNullException.ThrowIfNull(stepType);
-
-        return _dependencies.TryGetValue(
-                stepType,
-                out var dependencies)
-            && dependencies.Count > 0;
-    }
-
-    public bool HasDependents(Type stepType)
-    {
-        ArgumentNullException.ThrowIfNull(stepType);
-
-        return _dependents.TryGetValue(
-                stepType,
-                out var dependents)
-            && dependents.Count > 0;
-    }
-
-    public IReadOnlyCollection<ProcessStepRegistration> GetDependencies(
-        Type stepType)
-    {
-        ArgumentNullException.ThrowIfNull(stepType);
-
-        if (!_dependencies.TryGetValue(
-                stepType,
-                out var dependencies))
-        {
-            return [];
-        }
-
-        return dependencies
-            .Select(GetRegistration)
-            .ToArray();
-    }
-
-    public IReadOnlyCollection<ProcessStepRegistration> GetDependents(
-        Type stepType)
-    {
-        ArgumentNullException.ThrowIfNull(stepType);
-
-        if (!_dependents.TryGetValue(
-                stepType,
-                out var dependents))
-        {
-            return [];
-        }
-
-        return dependents
-            .Select(GetRegistration)
-            .ToArray();
-    }
-
-    public IReadOnlyCollection<ProcessStepRegistration> GetDependencyChain(
-        Type stepType)
-    {
-        ArgumentNullException.ThrowIfNull(stepType);
-
-        var visited =
-            new HashSet<Type>();
-
-        VisitDependencies(
-            stepType,
-            visited);
-
-        return visited
-            .Select(GetRegistration)
-            .ToArray();
-    }
-
-    public IReadOnlyCollection<ProcessStepRegistration> GetDependentChain(
-        Type stepType)
-    {
-        ArgumentNullException.ThrowIfNull(stepType);
-
-        var visited =
-            new HashSet<Type>();
-
-        VisitDependents(
-            stepType,
-            visited);
-
-        return visited
-            .Select(GetRegistration)
-            .ToArray();
-    }
-
-    private void VisitDependencies(
-        Type stepType,
-        HashSet<Type> visited)
-    {
-        if (!_dependencies.TryGetValue(
-                stepType,
-                out var dependencies))
-        {
-            return;
-        }
-
-        foreach (var dependency in dependencies)
-        {
-            if (visited.Add(dependency))
-            {
-                VisitDependencies(
-                    dependency,
-                    visited);
-            }
-        }
-    }
-
-    private void VisitDependents(
-        Type stepType,
-        HashSet<Type> visited)
-    {
-        if (!_dependents.TryGetValue(
-                stepType,
-                out var dependents))
-        {
-            return;
-        }
-
-        foreach (var dependent in dependents)
-        {
-            if (visited.Add(dependent))
-            {
-                VisitDependents(
-                    dependent,
-                    visited);
-            }
-        }
-    }
-
-    private static IReadOnlyDictionary<Type, IReadOnlyCollection<Type>>
-        BuildDependencies(
-            IReadOnlyCollection<Type> stepTypes)
-    {
-        return stepTypes.ToDictionary(
-            stepType => stepType,
-            stepType => (IReadOnlyCollection<Type>)
-                stepType
-                    .GetCustomAttributes<DependsOnStepAttribute>()
-                    .Select(x => x.DependsOnStep)
-                    .Distinct()
-                    .ToArray());
-    }
-
-    private static IReadOnlyDictionary<Type, IReadOnlyCollection<Type>>
-        BuildDependents(
-            IReadOnlyCollection<Type> stepTypes,
-            IReadOnlyDictionary<Type, IReadOnlyCollection<Type>> dependencies)
-    {
-        var dependents =
-            dependencies
-                .SelectMany(x =>
-                    x.Value.Select(dependency =>
-                        new
-                        {
-                            Dependency = dependency,
-                            Dependent = x.Key
-                        }))
-                .GroupBy(x => x.Dependency)
-                .ToDictionary(
-                    x => x.Key,
-                    x => (IReadOnlyCollection<Type>)
-                        x.Select(y => y.Dependent)
-                            .Distinct()
-                            .ToArray());
-
-        return stepTypes.ToDictionary(
-            stepType => stepType,
-            stepType =>
-                dependents.TryGetValue(
-                    stepType,
-                    out var values)
-                    ? values
-                    : []);
-    }
-
-    private static void ValidateDependencyGraph(
-        IReadOnlyCollection<Type> stepTypes,
-        IReadOnlyDictionary<Type, IReadOnlyCollection<Type>> dependencies)
-    {
-        ValidateMissingDependencies(
-            stepTypes,
-            dependencies);
-
-        ValidateSelfDependencies(
-            dependencies);
-
-        ValidateCircularDependencies(
-            stepTypes,
-            dependencies);
-    }
-
-    private static void ValidateMissingDependencies(
-        IReadOnlyCollection<Type> stepTypes,
-        IReadOnlyDictionary<Type, IReadOnlyCollection<Type>> dependencies)
-    {
-        var registeredStepTypes =
-            stepTypes.ToHashSet();
-
-        foreach (var dependency in dependencies)
-        {
-            foreach (var requiredStepType in dependency.Value)
-            {
-                if (!registeredStepTypes.Contains(requiredStepType))
-                {
-                    throw new InvalidOperationException(
-                        $"Process step '{dependency.Key.FullName}' depends on " +
-                        $"'{requiredStepType.FullName}', but that step is not registered.");
-                }
-            }
-        }
-    }
-
-    private static void ValidateSelfDependencies(
-        IReadOnlyDictionary<Type, IReadOnlyCollection<Type>> dependencies)
-    {
-        foreach (var dependency in dependencies)
-        {
-            if (dependency.Value.Contains(dependency.Key))
-            {
-                throw new InvalidOperationException(
-                    $"Process step '{dependency.Key.FullName}' cannot depend on itself.");
-            }
-        }
-    }
-
-    private static void ValidateCircularDependencies(
-        IReadOnlyCollection<Type> stepTypes,
-        IReadOnlyDictionary<Type, IReadOnlyCollection<Type>> dependencies)
-    {
-        foreach (var stepType in stepTypes)
-        {
-            ValidateCircularDependency(
-                stepType,
-                dependencies,
-                new HashSet<Type>(),
-                new Stack<Type>());
-        }
-    }
-
-    private static void ValidateCircularDependency(
-        Type stepType,
-        IReadOnlyDictionary<Type, IReadOnlyCollection<Type>> dependencies,
-        HashSet<Type> visited,
-        Stack<Type> path)
-    {
-        if (path.Contains(stepType))
-        {
-            var cycle =
-                path
-                    .Reverse()
-                    .Append(stepType)
-                    .SkipWhile(x => x != stepType)
-                    .Select(x => x.Name)
-                    .ToArray();
-
-            throw new InvalidOperationException(
-                $"Circular process step dependency detected: {string.Join(" -> ", cycle)}");
-        }
-
-        if (!visited.Add(stepType))
-        {
-            return;
-        }
-
-        path.Push(stepType);
-
-        if (dependencies.TryGetValue(
-                stepType,
-                out var requiredStepTypes))
-        {
-            foreach (var requiredStepType in requiredStepTypes)
-            {
-                ValidateCircularDependency(
-                    requiredStepType,
-                    dependencies,
-                    visited,
-                    path);
-            }
-        }
-
-        path.Pop();
-    }
-
-    private static ProcessStepRegistration BuildRegistration(
+    private static ProcessStepTypeDefinition BuildTypeDefinition(
         IServiceCollection services,
         Type stepType)
     {
@@ -411,18 +146,139 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
                     && i.GetGenericTypeDefinition() == typeof(IProcessStepHandler<,>)
                     && i.GetGenericArguments()[0] == stepType);
 
-        var stepResultType =
+        var resultType =
             handlerInterface.GetGenericArguments()[1];
 
         var metadata =
             BuildStepMetadata(
                 stepType);
 
-        return new ProcessStepRegistration(
-            stepType,
-            stepResultType,
-            handlerType,
-            metadata);
+        var definition =
+            new ProcessStepTypeDefinition
+            {
+                StepType = stepType,
+                StepResultType = resultType,
+                HandlerType = handlerType,
+                Metadata = metadata
+            };
+
+        foreach (var dependency in
+            stepType.GetCustomAttributes<DependsOnStepAttribute>())
+        {
+            definition.Dependencies.Add(
+                dependency.DependsOnStep);
+        }
+
+        foreach (var availableAfter in
+            stepType.GetCustomAttributes<AvailableAfterAttribute>())
+        {
+            definition.AvailableAfter.Add(
+                availableAfter.AvailableAfterStep);
+        }
+
+        foreach (var availableUntil in
+            stepType.GetCustomAttributes<AvailableUntilAttribute>())
+        {
+            definition.AvailableUntil.Add(
+                availableUntil.AvailableUntilStep);
+        }
+
+        return definition;
+    }
+
+    private static IReadOnlyCollection<ProcessStepRegistration> BuildRegistrations(
+        IReadOnlyCollection<ProcessStepDefinition> definitions)
+    {
+        var registrations =
+            new Dictionary<Type, ProcessStepRegistration>();
+
+        foreach (var definition in definitions)
+        {
+            CreateRegistration(
+                definition,
+                registrations);
+        }
+
+        return registrations.Values.ToArray();
+    }
+
+    private static ProcessStepRegistration CreateRegistration(
+        ProcessStepDefinition definition,
+        IDictionary<Type, ProcessStepRegistration> registrations)
+    {
+        if (registrations.TryGetValue(
+                definition.StepType,
+                out var existing))
+        {
+            return existing;
+        }
+
+        //
+        // Build relationships first.
+        //
+        var dependencies =
+            definition.Dependencies
+                .Select(x =>
+                    CreateRegistration(
+                        x,
+                        registrations))
+                .ToArray();
+
+        var availableAfter =
+            definition.AvailableAfter
+                .Select(x =>
+                    CreateRegistration(
+                        x,
+                        registrations))
+                .ToArray();
+
+        var availableUntil =
+            definition.AvailableUntil
+                .Select(x =>
+                    CreateRegistration(
+                        x,
+                        registrations))
+                .ToArray();
+
+        var registration =
+            new ProcessStepRegistration(
+                definition.StepType,
+                definition.StepResultType,
+                definition.HandlerType,
+                dependencies,
+                availableAfter,
+                availableUntil,
+                definition.Metadata);
+
+        registrations.Add(
+            definition.StepType,
+            registration);
+
+        return registration;
+    }
+
+    private static void HydrateDefinition(
+        ProcessStepDefinition definition,
+        ProcessStepTypeDefinition typeDefinition,
+        IReadOnlyDictionary<Type, ProcessStepDefinition> definitions)
+    {
+        foreach (var dependency in typeDefinition.Dependencies)
+        {
+            definition.Dependencies.Add(
+                definitions[dependency]);
+        }
+
+        foreach (var availableAfter in typeDefinition.AvailableAfter)
+        {
+            definition.AvailableAfter.Add(
+                definitions[availableAfter]);
+        }
+
+        foreach (var availableUntil in typeDefinition.AvailableUntil)
+        {
+            definition.AvailableUntil.Add(
+                definitions[availableUntil]);
+        }
     }
 
     private static Type GetHandlerType(

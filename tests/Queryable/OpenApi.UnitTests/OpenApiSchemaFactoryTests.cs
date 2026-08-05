@@ -4,6 +4,7 @@ using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
+using System.Text.Json;
 
 namespace Kaleido.Queryable.AspNetCore.Tests.OpenApi;
 
@@ -108,7 +109,19 @@ public sealed class OpenApiSchemaFactoryTests
                 {
                     Assert.Contains(
                         property.Enum,
-                        x => x.ToJsonString() == $"\"{enumValue}\"");
+                        x =>
+                        {
+                            using var document =
+                                JsonDocument.Parse(
+                                    x.ToJsonString());
+
+                            var root =
+                                document.RootElement;
+
+                            return root.GetProperty("Value").GetInt32() == enumValue.Value
+                                && root.GetProperty("Name").GetString() == enumValue.Name
+                                && root.GetProperty("Description").GetString() == enumValue.Description;
+                        });
                 }
             }
 

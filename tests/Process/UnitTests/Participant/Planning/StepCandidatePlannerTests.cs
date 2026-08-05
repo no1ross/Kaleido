@@ -3,20 +3,10 @@ using Kaleido.Process.Participant.Registry;
 using Moq;
 using Xunit;
 
-namespace Kaleido.Process.Tests.Participant.Planning;
+namespace Kaleido.Process.UnitTests.Participant.Planning;
 
 public sealed class StepCandidatePlannerTests
 {
-    [Fact]
-    public void Constructor_WhenRegistryIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new StepCandidatePlanner(null!));
-
-        Assert.Equal("registry", exception.ParamName);
-    }
-
     [Fact]
     public void Build_WhenCandidatesIsNull_Throws()
     {
@@ -162,16 +152,16 @@ public sealed class StepCandidatePlannerTests
     [Fact]
     public void Build_WhenDependencyExists_OrdersDependencyBeforeDependent()
     {
-        var dependency =
+        var registrationA =
             CreateRegistration<StepA>("step-a");
 
         var planner =
-            CreatePlanner(
-                (typeof(StepB), [dependency]));
+            CreatePlanner();
 
         var stepB =
             CreateCandidate<StepB>(
-                StepCandidateStatus.Built);
+                StepCandidateStatus.Built,
+                [registrationA]);
 
         var stepA =
             CreateCandidate<StepA>(
@@ -181,16 +171,16 @@ public sealed class StepCandidatePlannerTests
             planner.Build(
             [
                 stepB,
-                stepA
+            stepA
             ]);
 
         Assert.Equal(
             typeof(StepA),
-            result.ElementAt(0).Registration.StepType);
+            result.ElementAt(0).Registration!.StepType);
 
         Assert.Equal(
             typeof(StepB),
-            result.ElementAt(1).Registration.StepType);
+            result.ElementAt(1).Registration!.StepType);
     }
 
     [Fact]
@@ -200,44 +190,52 @@ public sealed class StepCandidatePlannerTests
             CreateRegistration<StepA>("step-a");
 
         var registrationB =
-            CreateRegistration<StepB>("step-b");
+            CreateRegistration<StepB>(
+                "step-b",
+                [registrationA]);
+
+        var registrationC =
+            CreateRegistration<StepC>(
+                "step-c",
+                [registrationB]);
 
         var planner =
-            CreatePlanner(
-                (typeof(StepB), [registrationA]),
-                (typeof(StepC), [registrationB]));
+            CreatePlanner();
 
         var stepC =
-            CreateCandidate<StepC>(
-                StepCandidateStatus.Built);
+            CreateCandidate(
+                StepCandidateStatus.Built,
+                registrationC);
 
         var stepA =
-            CreateCandidate<StepA>(
-                StepCandidateStatus.Built);
+            CreateCandidate(
+                StepCandidateStatus.Built,
+                registrationA);
 
         var stepB =
-            CreateCandidate<StepB>(
-                StepCandidateStatus.Built);
+            CreateCandidate(
+                StepCandidateStatus.Built,
+                registrationB);
 
         var result =
             planner.Build(
             [
                 stepC,
-                stepA,
-                stepB
+            stepA,
+            stepB
             ]);
 
         Assert.Equal(
             typeof(StepA),
-            result.ElementAt(0).Registration.StepType);
+            result.ElementAt(0).Registration!.StepType);
 
         Assert.Equal(
             typeof(StepB),
-            result.ElementAt(1).Registration.StepType);
+            result.ElementAt(1).Registration!.StepType);
 
         Assert.Equal(
             typeof(StepC),
-            result.ElementAt(2).Registration.StepType);
+            result.ElementAt(2).Registration!.StepType);
     }
 
     [Fact]
@@ -309,49 +307,62 @@ public sealed class StepCandidatePlannerTests
         var registry =
             new Mock<IProcessStepRegistry>();
 
-        registry
-            .Setup(x =>
-                x.GetDependencies(It.IsAny<Type>()))
-            .Returns([]);
-
-        foreach (var dependency in dependencies)
-        {
-            registry
-                .Setup(x =>
-                    x.GetDependencies(
-                        dependency.StepType))
-                .Returns(dependency.Dependencies);
-        }
-
-        return new StepCandidatePlanner(
-            registry.Object);
+        return new StepCandidatePlanner();
     }
 
     private static StepCandidate CreateCandidate<TStep>(
-        StepCandidateStatus status)
+        StepCandidateStatus status,
+        IReadOnlyCollection<ProcessStepRegistration>? dependencies = null)
     {
         return new StepCandidate
         {
             StepName = typeof(TStep).Name,
             Status = status,
             Step = new object(),
+
             Registration =
-                CreateRegistration<TStep>(
-                    typeof(TStep).Name)
+                new ProcessStepRegistration(
+                    typeof(TStep),
+                    typeof(object),
+                    typeof(object),
+                    dependencies ?? [],
+                    [],
+                    [],
+                    new ProcessStepMetadata(
+                        typeof(TStep).Name,
+                        $"{typeof(TStep).Name} description.",
+                        "1.0"))
         };
     }
 
     private static ProcessStepRegistration CreateRegistration<TStep>(
-        string name)
+        string name,
+        IReadOnlyCollection<ProcessStepRegistration>? dependencies = null)
     {
         return new ProcessStepRegistration(
             typeof(TStep),
             typeof(object),
             typeof(object),
+            dependencies ?? [],
+            [],
+            [],
             new ProcessStepMetadata(
                 name,
-                name,
+                $"{name} description.",
                 "1.0"));
+    }
+
+    private static StepCandidate CreateCandidate(
+        StepCandidateStatus status,
+        ProcessStepRegistration registration)
+    {
+        return new StepCandidate
+        {
+            StepName = registration.StepType.Name,
+            Status = status,
+            Step = new object(),
+            Registration = registration
+        };
     }
 
     private sealed class StepA;

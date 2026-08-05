@@ -4,7 +4,7 @@ using Kaleido.Process.Participant.Planning;
 using Moq;
 using Xunit;
 
-namespace Kaleido.Process.Tests.Participant.Planning;
+namespace Kaleido.Process.UnitTests.Participant.Planning;
 
 public sealed class ExecutionPlannerTests
 {

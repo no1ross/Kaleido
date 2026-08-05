@@ -12,20 +12,24 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
     private readonly IProcessStateUpdater _stateUpdater;
     private readonly IProcessContextStore _stateRepository;
     private readonly IProcessStepRegistry _stepRegistry;
+    private readonly IStepAvailabilityResolver _availabilityResolver;
 
     public ExecutionProcessor(
         IProcessStepInvoker invoker,
         IStepExecutionEvaluator evaluator,
         IProcessStateUpdater stateUpdater,
         IProcessContextStore stateRepository,
-        IProcessStepRegistry stepRegistry)
+        IProcessStepRegistry stepRegistry,
+        IStepAvailabilityResolver availabilityResolver)
     {
         ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(evaluator);
         ArgumentNullException.ThrowIfNull(stateUpdater);
         ArgumentNullException.ThrowIfNull(stateRepository);
         ArgumentNullException.ThrowIfNull(stepRegistry);
+        ArgumentNullException.ThrowIfNull(availabilityResolver);
 
+        _availabilityResolver = availabilityResolver;
         _invoker = invoker;
         _evaluator = evaluator;
         _stateUpdater = stateUpdater;
@@ -85,12 +89,17 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                     ?? throw new InvalidOperationException(
                         $"Step '{candidate.StepName}' was not found in participant state.");
 
+                var initialAvailableSteps =
+                    _availabilityResolver.Resolve(
+                        currentCandidate,
+                        candidates,
+                        context);
+
                 var processStepContext =
                     new ProcessStepContext(
                         context.ParticipantProcessId,
                         stepContext,
-                        GetAvailableNextSteps(
-                            candidate));
+                        initialAvailableSteps);
 
                 var result =
                     await _invoker.ExecuteAsync(
@@ -107,7 +116,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                     _evaluator.Evaluate(
                         candidate,
                         result,
-                        candidates);
+                        candidates,
+                        context);
 
                 context =
                     _stateUpdater.ApplyExecution(
@@ -326,23 +336,5 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                     StepProcessingMessageCode.ProcessMessage,
                     message.Message)
         };
-    }
-
-    private IReadOnlyCollection<string> GetAvailableNextSteps(
-        StepCandidate candidate)
-    {
-        ArgumentNullException.ThrowIfNull(candidate);
-
-        var stepType =
-            candidate.Step?.GetType()
-            ?? throw new InvalidOperationException(
-                $"Step '{candidate.StepName}' does not contain a step instance.");
-
-        return _stepRegistry
-            .GetDependents(
-                stepType)
-            .Select(
-                x => x.Metadata.Name)
-            .ToArray();
     }
 }

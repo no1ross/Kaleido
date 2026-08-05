@@ -1,4 +1,4 @@
-﻿using Kaleido.Process.Participant.Execution;
+﻿using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Planning;
 using Kaleido.Process.Participant.Registry;
 
@@ -6,24 +6,26 @@ namespace Kaleido.Process.Participant.Execution;
 
 internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
 {
-    private readonly IProcessStepRegistry _registry;
+    private readonly IStepAvailabilityResolver _availabilityResolver;
 
     public StepExecutionEvaluator(
-        IProcessStepRegistry registry)
+        IStepAvailabilityResolver availabilityResolver)
     {
-        ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(availabilityResolver);
 
-        _registry = registry;
+        _availabilityResolver = availabilityResolver;
     }
 
     public ExecutionDecision Evaluate(
         StepCandidate currentCandidate,
         ProcessStepInvokerResult result,
-        IReadOnlyCollection<StepCandidate> candidates)
+        IReadOnlyCollection<StepCandidate> candidates,
+        ParticipantContext context)
     {
         ArgumentNullException.ThrowIfNull(currentCandidate);
         ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(candidates);
+        ArgumentNullException.ThrowIfNull(context);
 
         if (!result.Succeeded)
         {
@@ -35,22 +37,27 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
             return EvaluateRequiredStep(
                 currentCandidate,
                 result.RequiredStep!,
-                candidates);
+                candidates,
+                context);
         }
 
         return EvaluateAvailableSteps(
             currentCandidate,
-            candidates);
+            candidates,
+            context);
     }
 
     private ExecutionDecision EvaluateRequiredStep(
         StepCandidate currentCandidate,
         string requiredStep,
-        IReadOnlyCollection<StepCandidate> candidates)
+        IReadOnlyCollection<StepCandidate> candidates,
+        ParticipantContext context)
     {
         var availableSteps =
-            GetAvailableNextSteps(
-                currentCandidate);
+            _availabilityResolver.Resolve(
+                currentCandidate,
+                candidates,
+                context);
 
         if (!availableSteps.Contains(
                 requiredStep,
@@ -81,11 +88,14 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
 
     private ExecutionDecision EvaluateAvailableSteps(
         StepCandidate currentCandidate,
-        IReadOnlyCollection<StepCandidate> candidates)
+        IReadOnlyCollection<StepCandidate> candidates,
+        ParticipantContext context)
     {
         var availableSteps =
-            GetAvailableNextSteps(
-                currentCandidate);
+            _availabilityResolver.Resolve(
+                currentCandidate,
+                candidates,
+                context);
 
         var nextCandidate =
             candidates.FirstOrDefault(
@@ -108,12 +118,4 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
         return ExecutionDecision.Complete();
     }
 
-    private IReadOnlyCollection<string> GetAvailableNextSteps(
-        StepCandidate candidate)
-    {
-        return _registry
-            .GetDependents(candidate.Registration!.StepType)
-            .Select(x => x.Metadata.Name)
-            .ToArray();
-    }
 }

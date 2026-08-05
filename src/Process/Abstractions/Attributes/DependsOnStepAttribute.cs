@@ -1,19 +1,35 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿
+namespace Kaleido.Process.Attributes;
 
-namespace Kaleido.Process.Attributes
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public class DependsOnStepAttribute : Attribute
 {
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-    public class DependsOnStepAttribute : Attribute
+    public DependsOnStepAttribute(Type dependsOnStep) 
     {
-        public DependsOnStepAttribute(Type dependsOnStep) 
-        {
-            DependsOnStep = dependsOnStep;
-        }
-
-        public Type DependsOnStep { get; }
+        DependsOnStep = dependsOnStep;
     }
+
+    public Type DependsOnStep { get; }
+}
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public class AvailableAfterAttribute : Attribute
+{
+    public AvailableAfterAttribute(Type availableAfterStep)
+    {
+        AvailableAfterStep = availableAfterStep;
+    }
+
+    public Type AvailableAfterStep { get; }
+}
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public class AvailableUntilAttribute : Attribute
+{
+    public AvailableUntilAttribute(Type availableUntilStep)
+    {
+        AvailableUntilStep = availableUntilStep;
+    }
+
+    public Type AvailableUntilStep { get; }
 }

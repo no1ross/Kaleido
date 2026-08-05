@@ -3,7 +3,7 @@ using Kaleido.Process.Participant.Planning;
 using System.ComponentModel.DataAnnotations;
 using Xunit;
 
-namespace Kaleido.Process.Tests.Participant.Planning;
+namespace Kaleido.Process.UnitTests.Participant.Planning;
 
 public sealed class StepCandidateValidatorTests
 {

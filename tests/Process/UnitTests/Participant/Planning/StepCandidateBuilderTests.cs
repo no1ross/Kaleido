@@ -6,7 +6,7 @@ using Kaleido.Process.Participant.Registry;
 using Moq;
 using Xunit;
 
-namespace Kaleido.Process.Tests.Participant.Planning;
+namespace Kaleido.Process.UnitTests.Participant.Planning;
 
 public sealed class StepCandidateBuilderTests
 {
@@ -870,7 +870,10 @@ public sealed class StepCandidateBuilderTests
             typeof(TStep),
             typeof(TResult),
             typeof(THandler),
-            new ProcessStepMetadata(
+             [],
+            [],
+            [],
+           new ProcessStepMetadata(
                 name,
                 $"{name} description.",
                 "1.0"));
