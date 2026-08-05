@@ -7,4 +7,11 @@ public sealed record ProcessStepRegistration(
     IReadOnlyCollection<ProcessStepRegistration> Dependencies,
     IReadOnlyCollection<ProcessStepRegistration> AvailableAfter,
     IReadOnlyCollection<ProcessStepRegistration> AvailableUntil,
+    RepeatableOptions Repeatable,
     ProcessStepMetadata Metadata);
+
+
+public sealed record RepeatableOptions
+{
+    public bool Enabled { get; init; }
+}

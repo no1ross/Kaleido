@@ -33,3 +33,11 @@ public class AvailableUntilAttribute : Attribute
 
     public Type AvailableUntilStep { get; }
 }
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+public class RepeatableAttribute : Attribute
+{
+    public RepeatableAttribute()
+    {
+    }
+}

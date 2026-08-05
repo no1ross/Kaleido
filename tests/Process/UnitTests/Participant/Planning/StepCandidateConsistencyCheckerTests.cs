@@ -310,6 +310,80 @@ public sealed class StepCandidateConsistencyCheckerTests
                 StepProcessingMessageCode.DependencyNotSatisfied));
     }
 
+    [Fact]
+    public void Validate_WhenRepeatableStepPreviouslyCompleted_RemainsBuilt()
+    {
+        var checker =
+            CreateChecker();
+
+        var registration =
+            CreateRegistration<StepA>(
+                "step-a",
+                repeatable: true);
+
+        var candidate =
+            CreateCandidate(
+                registration);
+
+        var context =
+            new ParticipantContext
+            {
+                Steps =
+                [
+                    new StepContext
+                {
+                    StepName = "step-a",
+                    Status = StepExecutionStatus.Completed
+                }
+                ]
+            };
+
+        checker.Validate(
+            [candidate],
+            context);
+
+        Assert.Equal(
+            StepCandidateStatus.Built,
+            candidate.Status);
+    }
+
+    [Fact]
+    public void Validate_WhenRepeatableStepPreviouslyCompleted_AddsRepeatableMessage()
+    {
+        var checker =
+            CreateChecker();
+
+        var registration =
+            CreateRegistration<StepA>(
+                "step-a",
+                repeatable: true);
+
+        var candidate =
+            CreateCandidate(
+                registration);
+
+        var context =
+            new ParticipantContext
+            {
+                Steps =
+                [
+                    new StepContext
+                {
+                    StepName = "step-a",
+                    Status = StepExecutionStatus.Completed
+                }
+                ]
+            };
+
+        checker.Validate(
+            [candidate],
+            context);
+
+        Assert.Contains(
+            candidate.Messages,
+            x => x.Code ==
+                 StepProcessingMessageCode.RepeatableStep);
+    }
 
     private static StepCandidateConsistencyChecker CreateChecker(
         params (Type StepType, ProcessStepRegistration[] Dependencies)[] registrations)
@@ -319,7 +393,8 @@ public sealed class StepCandidateConsistencyCheckerTests
 
     private static ProcessStepRegistration CreateRegistration<TStep>(
         string name,
-        IReadOnlyCollection<ProcessStepRegistration>? dependencies = null)
+        IReadOnlyCollection<ProcessStepRegistration>? dependencies = null,
+        bool repeatable = false)
     {
         return new ProcessStepRegistration(
             typeof(TStep),
@@ -328,7 +403,8 @@ public sealed class StepCandidateConsistencyCheckerTests
             dependencies ?? [],
             [],
             [],
-            new ProcessStepMetadata(
+            repeatable ? new RepeatableOptions { Enabled = true } : new RepeatableOptions(),
+           new ProcessStepMetadata(
                 name,
                 $"{name} description.",
                 "1.0"));

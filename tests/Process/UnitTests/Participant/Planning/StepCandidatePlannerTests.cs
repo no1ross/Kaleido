@@ -328,6 +328,7 @@ public sealed class StepCandidatePlannerTests
                     dependencies ?? [],
                     [],
                     [],
+                    new RepeatableOptions(),
                     new ProcessStepMetadata(
                         typeof(TStep).Name,
                         $"{typeof(TStep).Name} description.",
@@ -346,6 +347,7 @@ public sealed class StepCandidatePlannerTests
             dependencies ?? [],
             [],
             [],
+            new RepeatableOptions(),
             new ProcessStepMetadata(
                 name,
                 $"{name} description.",

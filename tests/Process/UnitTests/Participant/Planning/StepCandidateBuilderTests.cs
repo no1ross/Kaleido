@@ -873,6 +873,7 @@ public sealed class StepCandidateBuilderTests
              [],
             [],
             [],
+            new RepeatableOptions(),
            new ProcessStepMetadata(
                 name,
                 $"{name} description.",

@@ -890,6 +890,94 @@ public sealed class StepAvailabilityResolverTests
             result);
     }
 
+    [Fact]
+    public void Resolve_WhenRepeatableStepPreviouslyCompleted_ReturnsStep()
+    {
+        var registration =
+            CreateRegistration<TestStepA>(
+                "step-a",
+                repeatable: true);
+
+        var candidate =
+            CreateCandidate(
+                "step-a",
+                registration);
+
+        var registry =
+            new Mock<IProcessStepRegistry>();
+
+        registry
+            .Setup(x =>
+                x.Find("step-a"))
+            .Returns(registration);
+
+        var resolver =
+            new StepAvailabilityResolver(
+                registry.Object);
+
+        var result =
+            resolver.Resolve(
+                candidate,
+                [],
+                CreateContext(
+                    ("step-a", StepExecutionStatus.Completed)));
+
+        Assert.Contains(
+            "step-a",
+            result);
+    }
+
+    [Fact]
+    public void Resolve_WhenRepeatableStepPreviouslyCompleted_StillRespectsAvailableUntil()
+    {
+        var closedRegistration =
+            CreateRegistration<TestStepA>(
+                "step-a");
+
+        var repeatableRegistration =
+            CreateRegistration<TestStepB>(
+                "step-b",
+                availableUntil:
+                [
+                    closedRegistration
+                ],
+                repeatable: true);
+
+        var candidate =
+            CreateCandidate(
+                "step-b",
+                repeatableRegistration);
+
+        var registry =
+            new Mock<IProcessStepRegistry>();
+
+        registry
+            .Setup(x =>
+                x.Find("step-a"))
+            .Returns(closedRegistration);
+
+        registry
+            .Setup(x =>
+                x.Find("step-b"))
+            .Returns(repeatableRegistration);
+
+        var resolver =
+            new StepAvailabilityResolver(
+                registry.Object);
+
+        var result =
+            resolver.Resolve(
+                candidate,
+                [],
+                CreateContext(
+                    ("step-a", StepExecutionStatus.Completed),
+                    ("step-b", StepExecutionStatus.Completed)));
+
+        Assert.DoesNotContain(
+            "step-b",
+            result);
+    }
+
     private static StepCandidate CreateCandidate(
         string stepName,
         ProcessStepRegistration? registration)
@@ -906,7 +994,8 @@ public sealed class StepAvailabilityResolverTests
         string name,
         IReadOnlyCollection<ProcessStepRegistration>? dependencies = null,
         IReadOnlyCollection<ProcessStepRegistration>? availableAfter = null,
-        IReadOnlyCollection<ProcessStepRegistration>? availableUntil = null)
+        IReadOnlyCollection<ProcessStepRegistration>? availableUntil = null,
+        bool repeatable = false)
     {
         return new ProcessStepRegistration(
             typeof(TStep),
@@ -915,6 +1004,10 @@ public sealed class StepAvailabilityResolverTests
             dependencies ?? [],
             availableAfter ?? [],
             availableUntil ?? [],
+            new RepeatableOptions
+            {
+                Enabled = repeatable
+            },
             new ProcessStepMetadata(
                 name,
                 $"{name} description",

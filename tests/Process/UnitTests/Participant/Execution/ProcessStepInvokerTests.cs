@@ -411,6 +411,7 @@ public sealed class ProcessStepInvokerTests
             [],
             [],
             [],
+            new RepeatableOptions(),
             new ProcessStepMetadata(
                 "test-step",
                 "Test step.",

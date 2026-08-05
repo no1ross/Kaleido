@@ -242,6 +242,36 @@ public sealed class ProcessStepRegistryTests
             x => x.StepType == typeof(StepD));
     }
 
+    [Fact]
+    public void Registration_MapsRepeatableAttribute()
+    {
+        var registry =
+            CreateRegistry(
+                typeof(RepeatableStep));
+
+        var registration =
+            registry.GetRegistration(
+                typeof(RepeatableStep));
+
+        Assert.True(
+            registration.Repeatable.Enabled);
+    }
+
+    [Fact]
+    public void Registration_MapsNonRepeatableStep()
+    {
+        var registry =
+            CreateRegistry(
+                typeof(StepA));
+
+        var registration =
+            registry.GetRegistration(
+                typeof(StepA));
+
+        Assert.False(
+            registration.Repeatable.Enabled);
+    }
+
     private static ProcessStepRegistry CreateRegistry(
         params Type[] stepTypes)
     {
@@ -270,6 +300,10 @@ public sealed class ProcessStepRegistryTests
         services.AddTransient<
             IProcessStepHandler<StepD, TestResponse>,
             StepDHandler>();
+
+        services.AddTransient<
+            IProcessStepHandler<RepeatableStep, TestResponse>,
+            RepeatableStepHandler>();
 
         services.AddTransient<
             IProcessStepHandler<StepAfter, TestResponse>,
@@ -307,6 +341,10 @@ public sealed class ProcessStepRegistryTests
     [AvailableUntil(typeof(StepA))]
     private sealed class StepUntil;
 
+    [ProcessStep("repeatable-step", "repeatable-step description", "1.0")]
+    [Repeatable]
+    private sealed class RepeatableStep;
+
     [ProcessStep("step-multi", "step-multi description", "1.0")]
     [AvailableAfter(typeof(StepA))]
     [AvailableAfter(typeof(StepB))]
@@ -335,6 +373,9 @@ public sealed class ProcessStepRegistryTests
 
     private sealed class StepUntilHandler
         : BaseHandler<StepUntil, TestResponse>;
+
+    private sealed class RepeatableStepHandler
+    : BaseHandler<RepeatableStep, TestResponse>;
 
     private sealed class StepMultiAvailabilityHandler
         : BaseHandler<StepMultiAvailability, TestResponse>;

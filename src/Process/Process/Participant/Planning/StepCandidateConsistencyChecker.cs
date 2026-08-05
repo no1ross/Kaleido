@@ -57,11 +57,23 @@ internal class StepCandidateConsistencyChecker : IStepCandidateConsistencyChecke
             return;
         }
 
+        if (candidate.Registration!.Repeatable.Enabled)
+        {
+            candidate.AddInformation(
+                StepProcessingMessageCode.RepeatableStep,
+                $"Step '{candidate.StepName}' is repeatable and remains eligible for execution despite prior execution history.");
+
+            return;
+        }
+
         if (historicalStep.Status ==
             StepExecutionStatus.Completed)
         {
-            candidate.Status = StepCandidateStatus.Satisfied;
-            candidate.AddInformation(StepProcessingMessageCode.AlreadyProcessed,
+            candidate.Status =
+                StepCandidateStatus.Satisfied;
+
+            candidate.AddInformation(
+                StepProcessingMessageCode.AlreadyProcessed,
                 $"Step '{candidate.StepName}' was previously completed and did not require execution.");
         }
     }

@@ -240,6 +240,10 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
                         registrations))
                 .ToArray();
 
+        var repeatable =
+            GetRepeatableOptions(
+                definition.StepType); 
+        
         var registration =
             new ProcessStepRegistration(
                 definition.StepType,
@@ -248,6 +252,7 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
                 dependencies,
                 availableAfter,
                 availableUntil,
+                repeatable,
                 definition.Metadata);
 
         registrations.Add(
@@ -255,6 +260,18 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
             registration);
 
         return registration;
+    }
+
+    private static RepeatableOptions GetRepeatableOptions(
+        Type stepType)
+    {
+        return new RepeatableOptions
+        {
+            Enabled =
+                stepType.IsDefined(
+                    typeof(RepeatableAttribute),
+                    inherit: false)
+        };
     }
 
     private static void HydrateDefinition(

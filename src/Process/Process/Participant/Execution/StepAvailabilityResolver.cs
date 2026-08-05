@@ -47,6 +47,7 @@ internal sealed class StepAvailabilityResolver
 
         return registrations
             .Where(x =>
+                x.Repeatable.Enabled ||
                 !completedSteps.Contains(
                     x.Metadata.Name))
             .Where(x =>

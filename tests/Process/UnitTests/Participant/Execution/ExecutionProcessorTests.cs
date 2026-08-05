@@ -5,7 +5,7 @@ using Kaleido.Process.Participant.Planning;
 using Kaleido.Process.Participant.Registry;
 using Moq;
 
-namespace Kaleido.Process.Tests.Participant.Execution;
+namespace Kaleido.Process.UnitTests.Participant.Execution;
 
 public sealed class ExecutionProcessorTests
 {
@@ -1331,6 +1331,7 @@ public sealed class ExecutionProcessorTests
             [],
             [],
             [],
+            new RepeatableOptions(),
             new ProcessStepMetadata(
                 name,
                 $"{name} description",

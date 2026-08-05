@@ -147,5 +147,6 @@ public enum StepProcessingMessageCode
     RequiredStepNotAllowed,
     ExecutionCancelled,
     FrameworkException,
-    ProcessMessage
+    ProcessMessage,
+    RepeatableStep
 }

@@ -425,6 +425,7 @@ public sealed class StepExecutionEvaluatorTests
             [],
             [],
             [],
+            new RepeatableOptions(),
             new ProcessStepMetadata(
                 name,
                 $"{name} description.",
