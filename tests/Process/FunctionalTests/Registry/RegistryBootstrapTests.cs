@@ -38,6 +38,7 @@ public sealed class RegistryBootstrapTests
         Assert.NotNull(_fixture.ServiceProvider.GetRequiredService<IProcessStepInvoker>());
         Assert.NotNull(_fixture.ServiceProvider.GetRequiredService<IProcessStateUpdater>());
         Assert.NotNull(_fixture.ServiceProvider.GetRequiredService<IParticipantRuntime>());
+        Assert.NotNull(_fixture.ServiceProvider.GetRequiredService<IStepAvailabilityResolver>());
     }
 
     [Fact]
@@ -46,7 +47,7 @@ public sealed class RegistryBootstrapTests
         var registry =
             _fixture.ServiceProvider.GetRequiredService<IProcessStepRegistry>();
 
-        Assert.Equal(5, registry.Registrations.Count);
+        Assert.Equal(6, registry.Registrations.Count);
     }
 
     [Fact]
@@ -61,6 +62,7 @@ public sealed class RegistryBootstrapTests
             typeof(RegistryChildStepA),
             typeof(RegistryChildStepB),
             typeof(RegistryMergeStep),
+            typeof(RegistryRepeatableStep),
             typeof(RegistryStandaloneStep));
     }
 }

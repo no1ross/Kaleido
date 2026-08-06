@@ -34,82 +34,94 @@ internal sealed class StepAvailabilityResolver
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(context);
 
-        var registrations =
-            GetScopedRegistrations(
-                currentCandidate,
-                candidates,
-                context);
+        var registrations = _registry.Registrations;
 
         var completedSteps =
             GetCompletedStepNames(
                 currentCandidate,
                 context);
 
-        return registrations
-            .Where(x =>
-                x.Repeatable.Enabled ||
-                !completedSteps.Contains(
-                    x.Metadata.Name))
-            .Where(x =>
-                DependenciesSatisfied(
-                    x,
-                    completedSteps))
-            .Where(x =>
-                AvailableAfterSatisfied(
-                    x,
-                    completedSteps))
-            .Where(x =>
-                AvailableUntilSatisfied(
-                    x,
-                    completedSteps))
+        var filtered =
+            registrations
+                .Where(x =>
+                    x.Repeatable.Enabled ||
+                    !completedSteps.Contains(
+                        x.Metadata.Name))
+                .ToArray();
+
+        var dependenciesSatisfied =
+            filtered
+                .Where(x =>
+                    DependenciesSatisfied(
+                        x,
+                        completedSteps))
+                .ToArray();
+
+        var availableAfterSatisfied =
+            dependenciesSatisfied
+                .Where(x =>
+                    AvailableAfterSatisfied(
+                        x,
+                        completedSteps))
+                .ToArray();
+
+        var availableUntilSatisfied =
+            availableAfterSatisfied
+                .Where(x =>
+                    AvailableUntilSatisfied(
+                        x,
+                        completedSteps))
+                .ToArray();
+
+        return availableUntilSatisfied
             .Select(x =>
                 x.Metadata.Name)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
-    private IReadOnlyCollection<ProcessStepRegistration> GetScopedRegistrations(
-        StepCandidate currentCandidate,
-        IReadOnlyCollection<StepCandidate> candidates,
-        ParticipantContext context)
-    {
-        var registrations =
-            new Dictionary<Type, ProcessStepRegistration>();
+    //private IReadOnlyCollection<ProcessStepRegistration> GetScopedRegistrations(
+    //    StepCandidate currentCandidate,
+    //    IReadOnlyCollection<StepCandidate> candidates,
+    //    ParticipantContext context)
+    //{
+    //    var registrations =
+    //        new Dictionary<Type, ProcessStepRegistration>();
 
-        if (currentCandidate.Registration is not null)
-        {
-            registrations.TryAdd(
-                currentCandidate.Registration.StepType,
-                currentCandidate.Registration);
-        }
+    //    if (currentCandidate.Registration is not null)
+    //    {
+    //        registrations.TryAdd(
+    //            currentCandidate.Registration.StepType,
+    //            currentCandidate.Registration);
+    //    }
 
-        foreach (var candidate in candidates)
-        {
-            if (candidate.Registration is not null)
-            {
-                registrations.TryAdd(
-                    candidate.Registration.StepType,
-                    candidate.Registration);
-            }
-        }
+    //    foreach (var candidate in candidates)
+    //    {
+    //        if (candidate.Registration is not null)
+    //        {
+    //            registrations.TryAdd(
+    //                candidate.Registration.StepType,
+    //                candidate.Registration);
+    //        }
+    //    }
 
-        foreach (var completedStep in context.Steps.Where(
-                     x => x.Status == StepExecutionStatus.Completed))
-        {
-            var registration =
-                _registry.Find(
-                    completedStep.StepName);
+    //    foreach (var completedStep in context.Steps.Where(
+    //                 x => x.Status == StepExecutionStatus.Completed))
+    //    {
+    //        var registration =
+    //            _registry.Find(
+    //                completedStep.StepName);
 
-            if (registration is not null)
-            {
-                registrations.TryAdd(
-                    registration.StepType,
-                    registration);
-            }
-        }
+    //        if (registration is not null)
+    //        {
+    //            registrations.TryAdd(
+    //                registration.StepType,
+    //                registration);
+    //        }
+    //    }
 
-        return registrations.Values.ToArray();
-    }
+    //    return registrations.Values.ToArray();
+    //}
 
     private IReadOnlySet<string> GetCompletedStepNames(
         StepCandidate currentCandidate,

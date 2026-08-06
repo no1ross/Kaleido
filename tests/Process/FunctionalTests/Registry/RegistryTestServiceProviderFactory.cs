@@ -20,6 +20,12 @@ internal static class RegistryTestServiceProviderFactory
                              StringComparison.Ordinal);
             });
 
-        return services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
+
+        Registry = provider.GetRequiredService<IProcessStepRegistry>();
+
+        return provider;
     }
+
+    public static IProcessStepRegistry? Registry { get; private set; }
 }

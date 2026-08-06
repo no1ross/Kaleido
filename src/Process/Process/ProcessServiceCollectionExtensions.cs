@@ -189,6 +189,7 @@ public static class ProcessServiceCollectionExtensions
         services.TryAddSingleton<IStepExecutionEvaluator, StepExecutionEvaluator>();
         services.TryAddSingleton<IProcessStateUpdater, ProcessStateUpdater>();
         services.TryAddSingleton<IParticipantRuntime, ParticipantRuntime>();
+        services.TryAddSingleton<IStepAvailabilityResolver, StepAvailabilityResolver>();
 
         services.TryAddSingleton<IProcessContextStore, InMemoryProcessContextStore>();
     }

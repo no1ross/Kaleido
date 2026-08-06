@@ -11,12 +11,7 @@ public sealed class StepAvailabilityResolverTests
     [Fact]
     public void Resolve_WhenCurrentCandidateIsNull_Throws()
     {
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver();
 
         var context =
             CreateContext();
@@ -31,12 +26,7 @@ public sealed class StepAvailabilityResolverTests
     [Fact]
     public void Resolve_WhenCandidatesIsNull_Throws()
     {
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver();
 
         var current =
             CreateCandidate(
@@ -57,12 +47,7 @@ public sealed class StepAvailabilityResolverTests
     [Fact]
     public void Resolve_WhenContextIsNull_Throws()
     {
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver();
 
         var current =
             CreateCandidate(
@@ -98,12 +83,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-b",
                 nextRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver(nextRegistration);
 
         var result =
             resolver.Resolve(
@@ -141,12 +121,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-b",
                 dependentRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver(dependentRegistration);
 
         var result =
             resolver.Resolve(
@@ -188,17 +163,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-c",
                 dependentRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        registry
-            .Setup(x =>
-                x.Find("step-a"))
-            .Returns(completedRegistration);
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver(completedRegistration, dependentRegistration);
 
         var result =
             resolver.Resolve(
@@ -241,12 +206,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-c",
                 dependentRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver();
 
         var result =
             resolver.Resolve(
@@ -280,17 +240,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-b",
                 currentRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        registry
-            .Setup(x =>
-                x.Find("step-a"))
-            .Returns(completedRegistration);
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver(completedRegistration);
 
         var result =
             resolver.Resolve(
@@ -316,12 +266,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-a",
                 currentRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver();
 
         var result =
             resolver.Resolve(
@@ -359,12 +304,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-b",
                 availableAfterRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver(availableAfterRegistration);
 
         var result =
             resolver.Resolve(
@@ -406,17 +346,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-c",
                 availableAfterRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        registry
-            .Setup(x =>
-                x.Find("step-a"))
-            .Returns(completedRegistration);
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver(completedRegistration, availableAfterRegistration);
 
         var result =
             resolver.Resolve(
@@ -459,12 +389,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-c",
                 availableAfterRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver();
 
         var result =
             resolver.Resolve(
@@ -506,12 +431,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-c",
                 availableUntilRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver(availableUntilRegistration);
 
         var result =
             resolver.Resolve(
@@ -553,17 +473,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-c",
                 availableUntilRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        registry
-            .Setup(x =>
-                x.Find("step-a"))
-            .Returns(completedRegistration);
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver(completedRegistration);
 
         var result =
             resolver.Resolve(
@@ -602,12 +512,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-b",
                 availableUntilRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver();
 
         var result =
             resolver.Resolve(
@@ -665,22 +570,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-e",
                 candidateRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        registry
-            .Setup(x =>
-                x.Find("step-a"))
-            .Returns(dependencyRegistration);
-
-        registry
-            .Setup(x =>
-                x.Find("step-b"))
-            .Returns(availableAfterRegistration);
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver(dependencyRegistration, availableAfterRegistration, candidateRegistration);
 
         var result =
             resolver.Resolve(
@@ -732,17 +622,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-d",
                 candidateRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        registry
-            .Setup(x =>
-                x.Find("step-a"))
-            .Returns(dependencyRegistration);
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver(dependencyRegistration);
 
         var result =
             resolver.Resolve(
@@ -786,12 +666,7 @@ public sealed class StepAvailabilityResolverTests
                 "STEP-B",
                 registration2);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver(currentRegistration, registration1, registration2);
 
         var result =
             resolver.Resolve(
@@ -807,90 +682,6 @@ public sealed class StepAvailabilityResolverTests
     }
 
     [Fact]
-    public void Resolve_WhenCompletedStepRegistrationIsFound_AddsItToScopedRegistrations()
-    {
-        var completedRegistration =
-            CreateRegistration<TestStepA>(
-                "step-a");
-
-        var currentRegistration =
-            CreateRegistration<TestStepB>(
-                "step-b");
-
-        var current =
-            CreateCandidate(
-                "step-b",
-                currentRegistration);
-
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        registry
-            .Setup(x =>
-                x.Find("step-a"))
-            .Returns(completedRegistration);
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
-
-        _ = resolver.Resolve(
-            current,
-            [],
-            CreateContext(
-                ("step-a", StepExecutionStatus.Completed)));
-
-        registry.Verify(
-            x => x.Find("step-a"),
-            Times.Once);
-    }
-
-    [Fact]
-    public void Resolve_WhenCompletedStepRegistrationIsNotFound_IgnoresIt()
-    {
-        var currentRegistration =
-            CreateRegistration<TestStepA>(
-                "step-a");
-
-        var candidateRegistration =
-            CreateRegistration<TestStepB>(
-                "step-b");
-
-        var current =
-            CreateCandidate(
-                "step-a",
-                currentRegistration);
-
-        var candidate =
-            CreateCandidate(
-                "step-b",
-                candidateRegistration);
-
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        registry
-            .Setup(x =>
-                x.Find("missing-step"))
-            .Returns((ProcessStepRegistration?)null);
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
-
-        var result =
-            resolver.Resolve(
-                current,
-                [candidate],
-                CreateContext(
-                    ("missing-step", StepExecutionStatus.Completed)));
-
-        Assert.Contains(
-            "step-b",
-            result);
-    }
-
-    [Fact]
     public void Resolve_WhenRepeatableStepPreviouslyCompleted_ReturnsStep()
     {
         var registration =
@@ -903,17 +694,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-a",
                 registration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        registry
-            .Setup(x =>
-                x.Find("step-a"))
-            .Returns(registration);
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver(registration);
 
         var result =
             resolver.Resolve(
@@ -948,22 +729,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-b",
                 repeatableRegistration);
 
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
-        registry
-            .Setup(x =>
-                x.Find("step-a"))
-            .Returns(closedRegistration);
-
-        registry
-            .Setup(x =>
-                x.Find("step-b"))
-            .Returns(repeatableRegistration);
-
-        var resolver =
-            new StepAvailabilityResolver(
-                registry.Object);
+        var resolver = CreateResolver(closedRegistration, repeatableRegistration);
 
         var result =
             resolver.Resolve(
@@ -1029,6 +795,29 @@ public sealed class StepAvailabilityResolverTests
                         })
                     .ToArray()
         };
+    }
+
+    private static StepAvailabilityResolver CreateResolver(
+        params ProcessStepRegistration[] registrations)
+    {
+        var registry =
+            new Mock<IProcessStepRegistry>();
+
+        registry
+            .Setup(x => x.Registrations)
+            .Returns(registrations);
+
+        foreach (var registration in registrations)
+        {
+            registry
+                .Setup(x =>
+                    x.Find(
+                        registration.Metadata.Name))
+                .Returns(registration);
+        }
+
+        return new StepAvailabilityResolver(
+            registry.Object);
     }
 
     private sealed class TestStepA
