@@ -8,7 +8,8 @@ namespace Kaleido.Process.Shared.Steps;
     "ChangePaymentInfo",
     "Updates payment information.",
     "1.0")]
-[DependsOnStep(typeof(SubmitOrderStep))]
+[AvailableAfter(typeof(SubmitOrderStep))]
+[Repeatable]
 public sealed record ChangePaymentInfoStep
 {
     [Required]

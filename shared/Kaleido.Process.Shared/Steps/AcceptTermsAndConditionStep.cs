@@ -7,7 +7,9 @@ namespace Kaleido.Process.Shared.Steps;
     "AcceptTermsAndConditions",
     "Accepts required terms and conditions.",
     "1.0")]
-[DependsOnStep(typeof(StartOrderStep))]
+[AvailableUntil(typeof(SubmitOrderStep))]
+[AvailableAfter(typeof(StartOrderStep))]
+[Repeatable]
 public sealed record AcceptTermsAndConditionsStep
 {
     [Required]

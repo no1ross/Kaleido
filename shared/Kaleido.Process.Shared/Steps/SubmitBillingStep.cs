@@ -8,7 +8,9 @@ namespace Kaleido.Process.Shared.Steps;
     "SubmitBilling",
     "Collects billing information.",
     "1.0")]
-[DependsOnStep(typeof(StartOrderStep))]
+[AvailableAfter(typeof(StartOrderStep))]
+[AvailableUntil(typeof(SubmitOrderStep))]
+[Repeatable]
 public sealed record SubmitBillingStep
 {
     [Required]

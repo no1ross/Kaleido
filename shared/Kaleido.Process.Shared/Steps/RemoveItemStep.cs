@@ -8,6 +8,7 @@ namespace Kaleido.Process.Shared.Steps;
     "Removes an item from the cart.",
     "1.0")]
 [DependsOnStep(typeof(AddItemToCartStep))]
+[Repeatable]
 public sealed record RemoveItemStep
 {
     [Required]

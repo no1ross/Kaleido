@@ -7,7 +7,7 @@ namespace Kaleido.Process.Shared.Steps;
     "CancelOrder",
     "Cancels a submitted order.",
     "1.0")]
-[DependsOnStep(typeof(SubmitOrderStep))]
+[AvailableAfter(typeof(SubmitOrderStep))]
 public sealed record CancelOrderStep
 {
     [Required]

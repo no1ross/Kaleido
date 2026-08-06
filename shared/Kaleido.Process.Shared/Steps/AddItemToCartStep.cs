@@ -8,6 +8,7 @@ namespace Kaleido.Process.Shared.Steps;
     "AddItemToCart",
     "Adds items to a shopping cart.",
     "1.0")]
+[Repeatable]
 public sealed record AddItemToCartStep
 {
     [Required]

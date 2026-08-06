@@ -8,6 +8,7 @@ namespace Kaleido.Process.Shared.Steps;
     "Updates an item quantity in the cart.",
     "1.0")]
 [DependsOnStep(typeof(AddItemToCartStep))]
+[Repeatable]
 public sealed record UpdateQuantityStep
 {
     [Required]
