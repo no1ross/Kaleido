@@ -4,6 +4,8 @@ public interface IProcessStepRegistry
 {
     IReadOnlyCollection<ProcessStepRegistration> Registrations { get; }
 
+    IReadOnlyCollection<ProcessStepRegistration> InitialRegistrations { get; }
+
     ProcessStepRegistration? Find(string name);
 
     ProcessStepRegistration? Find(Type stepType);

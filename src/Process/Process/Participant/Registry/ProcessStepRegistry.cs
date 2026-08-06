@@ -93,6 +93,14 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
     public IReadOnlyCollection<ProcessStepRegistration> Registrations =>
         _registrations;
 
+
+    public IReadOnlyCollection<ProcessStepRegistration> InitialRegistrations =>
+        _registrations
+            .Where(x =>
+                !x.Dependencies.Any() &&
+                !x.AvailableAfter.Any())
+            .ToArray();
+
     public ProcessStepRegistration? Find(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);

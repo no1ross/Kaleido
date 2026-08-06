@@ -1,0 +1,533 @@
+1. Core Requirements
+
+Repeatable step support added to Kaleido.Process
+
+Repeatability is a step behavior, not a process state feature.
+Repeatable steps may execute again regardless of prior completion history.
+Initial implementation only requires:
+Repeatable metadata
+Consistency checker support
+Availability resolver support
+No execution history tracking required.
+No execution count tracking required.
+No process state changes required.
+
+Repeatable is intentionally lightweight
+
+Historical execution status does not matter for repeatable execution.
+Prior results such as:
+Completed
+Failed
+Skipped
+do not prevent subsequent execution.
+Repeatability means:
+Execute again if requested.
+Remain available when appropriate.
+
+Framework should not own cancellation semantics
+
+CancelOrder is simply another process step.
+Framework should not:
+Close processes
+Terminate processes
+Prevent future requests
+Business meaning of cancellation belongs to the consumer.
+
+Processes are effectively open-ended
+
+No explicit process start concept.
+No explicit process completion concept.
+Processes represent durable step history.
+Future actions may occur long after a process appears "finished."
+Examples:
+Order reinstatement
+Appeals
+Reconsiderations
+Manual overrides
+2. Architectural & Component Decisions
+Repeatable Metadata
+Attribute Design
+Chose standalone attribute:
+[Repeatable]
+
+
+instead of:
+
+[ProcessStep(..., repeatable: true)]
+
+
+Reasons:
+
+Cleaner separation of concerns.
+Easier future expansion.
+Behaviors evolve independently from core step metadata.
+RepeatableOptions Contract
+Decided to introduce:
+RepeatableOptions
+
+
+immediately.
+
+Even though today it only contains:
+
+Enabled
+
+
+Reason:
+
+Avoid future contract shape changes.
+Future additions may include:
+MaxOccurrences
+Concurrent execution flags
+Other repeatability policies
+Registration Storage
+Repeatability was added directly to:
+ProcessStepRegistration
+
+Not added to:
+ProcessStepDefinition
+ProcessStepTypeDefinition
+
+Reason:
+
+Repeatability is runtime metadata.
+Definition graph does not require awareness of repeatability.
+Consistency Checker
+Historical Consistency
+Repeatable steps bypass historical completion suppression.
+Existing behavior:
+Previously Completed
+    →
+Satisfied
+
+New behavior:
+Previously Completed
++
+Repeatable
+    →
+Built
+
+Informational Message
+Added informational messaging for repeatable execution.
+
+Concept:
+
+Step is repeatable and remains eligible for execution.
+
+
+Reason:
+
+Improves diagnostics.
+Explains why a previously completed step remains executable.
+Availability Resolver Refactor
+Major Architectural Change
+
+Originally:
+
+Current candidate
++
+Request candidates
++
+Completed history
+
+
+were used to construct a scoped registration set.
+
+This design failed to discover future graph nodes.
+
+Example:
+
+Root
+ ├─ StepA
+ └─ StepB
+
+
+After Root:
+
+AvailableSteps = []
+
+
+because StepA and StepB were not visible.
+
+Final Resolver Design
+
+Adopted:
+
+_registry.Registrations
+
+
+as the candidate universe.
+
+Availability now means:
+
+Of all registrations,
+which satisfy current rules?
+
+Responsibility Ownership
+
+Framework:
+
+Evaluates graph
+
+
+Developer:
+
+Builds graph
+
+
+This means:
+
+No dependent tracking.
+No reverse graph.
+No graph traversal complexity.
+
+Graph correctness becomes the consumer's responsibility.
+
+Result
+
+Deleted:
+
+GetScopedRegistrations()
+
+
+Completely removed scoping logic.
+
+Availability now relies solely on:
+
+Dependencies
+AvailableAfter
+AvailableUntil
+Repeatable
+
+Registry & Functional Test Updates
+Added Registry Repeatable Asset
+
+Created:
+
+RegistryRepeatableStep
+RegistryRepeatableStepHandler
+RegistryRepeatableStepResponse
+
+
+Purpose:
+
+Functional registration verification.
+
+Registry Repeatable Test
+
+Verified:
+
+[Repeatable]
+    →
+Registration.Repeatable.Enabled == true
+
+Obsolete Resolver Tests Removed
+
+Deleted tests that validated:
+
+Scoped registration construction
+registry.Find()
+completed-step registration lookups
+
+
+These behaviors no longer exist after resolver simplification.
+
+Shopping Cart Sample Updates
+Repeatable Steps
+
+Marked repeatable:
+
+AddItemToCart
+UpdateQuantity
+RemoveItem
+SubmitBilling
+AcceptTermsAndConditions
+ChangePaymentInfo
+
+AvailableUntil
+
+Added:
+
+SubmitBilling
+    AvailableUntil(SubmitOrder)
+
+AcceptTermsAndConditions
+    AvailableUntil(SubmitOrder)
+
+AvailableAfter
+
+Added:
+
+SubmitBilling
+    AvailableAfter(StartOrder)
+
+AcceptTermsAndConditions
+    AvailableAfter(StartOrder)
+
+CancelOrder
+    AvailableAfter(SubmitOrder)
+
+ChangePaymentInfo
+    AvailableAfter(SubmitOrder)
+
+Workflow Shape
+
+Resulting process flow:
+
+AddItemToCart
+    ↓
+StartOrder
+    ↓
+SubmitBilling
+AcceptTerms
+    ↓
+SubmitOrder
+    ↓
+CancelOrder
+ChangePaymentInfo
+
+
+Demonstrates:
+
+DependsOn
+AvailableAfter
+AvailableUntil
+Repeatable
+
+
+within the same sample.
+
+OpenTelemetry Strategy
+Approved
+
+Framework-level OpenTelemetry support:
+
+ActivitySource
+
+
+should be added.
+
+Focus:
+
+Process execution
+Step execution
+Planning
+Availability resolution
+
+ILogger Guidance
+
+Use logging only for:
+
+Framework startup
+Validation failures
+Fatal framework errors
+Exceptions
+
+
+Examples:
+
+Duplicate steps
+Missing handlers
+Serialization failures
+Unhandled exceptions
+
+Activities Used For
+Process execution flow
+Step execution flow
+Planning decisions
+Availability decisions
+
+
+Principle:
+
+Logs = health/problems
+
+Activities = behavior
+
+ASP.NET Core API Design
+Final Endpoint Set
+Process State
+GET /processes/{processId}
+
+
+Returns:
+
+Current process state
+Completed steps
+Available steps
+
+Step Catalog
+GET /processes/steps
+
+
+Returns:
+
+All registered process steps
+
+Step Metadata
+GET /processes/steps/{stepName}
+
+
+Returns:
+
+Description
+Version
+Repeatable
+Dependencies
+AvailableAfter
+AvailableUntil
+Request schema
+
+Start New Process
+POST /processes/steps/{stepName}
+
+
+Framework:
+
+Generates ParticipantProcessId
+Executes first step
+Returns id
+
+Continue Existing Process
+POST /processes/steps/{stepName}/{processId}
+
+
+Executes a step against existing process state.
+
+Process Creation Decision
+
+Framework generates:
+
+ParticipantProcessId
+
+
+Advantages:
+
+No explicit CreateProcess endpoint
+Better developer experience
+Aligns with auto-created process semantics
+
+Metadata Endpoint Contents
+
+Decision:
+
+Schema belongs inside metadata response.
+
+
+No separate schema endpoint required.
+
+Consumers should receive:
+
+Step metadata
++
+Validation metadata
++
+OpenAPI schema
+
+
+in a single call.
+
+OpenAPI / Swagger Decision
+Avoid Swashbuckle Dependency In Core Package
+
+Core ASP.NET package should depend on:
+
+Microsoft.OpenApi
+
+
+not:
+
+Swashbuckle.AspNetCore
+
+Recommended Package Split
+
+Core:
+
+Kaleido.Process.AspNetCore
+
+
+Optional integration:
+
+Kaleido.Process.AspNetCore.Swashbuckle
+
+
+Reason:
+
+OpenAPI-centric
+not Swagger-centric
+
+
+Supports:
+
+Swashbuckle
+NSwag
+Scalar
+Other OpenAPI consumers
+
+3. Unresolved Questions / Next Steps
+ASP.NET Core Integration
+Design endpoint generation mechanism.
+Determine how step endpoints are registered.
+Determine OpenAPI generation strategy.
+Decide how metadata endpoints expose generated schemas.
+OpenTelemetry Implementation
+
+Need decisions around:
+
+Activity names
+Tag conventions
+Process correlation
+Request correlation
+
+
+Potential tags:
+
+process.id
+request.id
+step.name
+step.status
+step.repeatable
+
+Metadata Contract Design
+
+Need to finalize:
+
+Step metadata response shape
+
+
+Including:
+
+Schema representation
+Validation attributes
+Enums
+Nested objects
+Relationship metadata
+
+Shopping Cart Sample Completion
+
+Continue implementation of:
+
+Shopping cart sample
+
+
+using updated:
+
+Repeatable
+AvailableAfter
+AvailableUntil
+
+
+features as the primary validation vehicle for the framework.
+
+ASP.NET Core Consumption Review
+
+Use the ASP.NET Core implementation phase to validate:
+
+Developer experience
+Endpoint usability
+Process id generation
+Swagger/OpenAPI discoverability
+Metadata consumption experience
+
+
+before locking down the public surface area.

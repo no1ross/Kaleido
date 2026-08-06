@@ -33,6 +33,7 @@
   </Folder>
   <Folder Name="/src/Process/">
     <Project Path="src/Process/Abstractions/Kaleido.Process.Abstractions.csproj" />
+    <Project Path="src/Process/AspNetCore/Kaleido.Process.AspNetCore.csproj" />
     <Project Path="src/Process/Process/Kaleido.Process.csproj" />
   </Folder>
   <Folder Name="/src/Queryable/">
