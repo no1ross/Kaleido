@@ -1,6 +1,7 @@
 ﻿using Kaleido.Process.Participant.Planning;
 using Kaleido.Process.Participant.Registry;
 using Moq;
+using System.Xml.Linq;
 using Xunit;
 
 namespace Kaleido.Process.UnitTests.Participant.Planning;
@@ -332,7 +333,8 @@ public sealed class StepCandidatePlannerTests
                     new ProcessStepMetadata(
                         typeof(TStep).Name,
                         $"{typeof(TStep).Name} description.",
-                        "1.0"))
+                        "1.0",
+                        $"{typeof(TStep).Name} displayname"))
         };
     }
 
@@ -351,7 +353,8 @@ public sealed class StepCandidatePlannerTests
             new ProcessStepMetadata(
                 name,
                 $"{name} description.",
-                "1.0"));
+                "1.0",
+                $"{name} displayname"));
     }
 
     private static StepCandidate CreateCandidate(

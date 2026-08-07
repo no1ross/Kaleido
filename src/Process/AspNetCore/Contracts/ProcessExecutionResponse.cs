@@ -2,7 +2,7 @@
 
 namespace Kaleido.Process.AspNetCore.Contracts;
 
-public sealed record ProcessExecutionContract
+public sealed record ProcessExecutionResponse
 {
     public required string ParticipantProcessId
     {
@@ -16,14 +16,14 @@ public sealed record ProcessExecutionContract
         init;
     }
 
-    public IReadOnlyCollection<ProcessStepSummaryContract> AvailableSteps
+    public IReadOnlyCollection<ProcessStepSummary> AvailableSteps
     {
         get;
         init;
     }
         = [];
 
-    public IReadOnlyCollection<ProcessStepResultContract> Results
+    public IReadOnlyCollection<ProcessExecutionStepResponse> Results
     {
         get;
         init;
@@ -31,7 +31,7 @@ public sealed record ProcessExecutionContract
         = [];
 }
 
-public sealed record ProcessStepResultContract
+public sealed record ProcessExecutionStepResponse
 {
     public required string StepName
     {
@@ -39,7 +39,7 @@ public sealed record ProcessStepResultContract
         init;
     }
 
-    public IReadOnlyCollection<ProcessMessageContract> Messages
+    public IReadOnlyCollection<ProcessMessage> Messages
     {
         get;
         init;
@@ -54,7 +54,7 @@ public sealed record ProcessStepResultContract
 }
 
 
-public sealed record ProcessExecutionContract<TResponse>
+public sealed record ProcessExecutionResponse<TResponse>
 {
     public required string ParticipantProcessId
     {
@@ -80,14 +80,14 @@ public sealed record ProcessExecutionContract<TResponse>
         init;
     }
 
-    public IReadOnlyCollection<ProcessStepSummaryContract> AvailableSteps
+    public IReadOnlyCollection<ProcessStepSummary> AvailableSteps
     {
         get;
         init;
     }
         = [];
 
-    public IReadOnlyCollection<ProcessMessageContract> Messages
+    public IReadOnlyCollection<ProcessMessage> Messages
     {
         get;
         init;
@@ -95,7 +95,7 @@ public sealed record ProcessExecutionContract<TResponse>
         = [];
 }
 
-public sealed record ProcessMessageContract
+public sealed record ProcessMessage
 {
     public required MessageType Severity
     {

@@ -3,4 +3,5 @@
 public sealed record ProcessStepMetadata(
     string Name,
     string Description,
-    string Version);
+    string Version,
+    string DisplayName);

@@ -4,27 +4,29 @@ using System.Reflection;
 
 namespace Kaleido.Process.AspNetCore.Contracts;
 
-public sealed record ProcessStepContract
+public sealed record ProcessStepResponse
 {
     public required string Name { get; init; }
 
-    public string? Description { get; init; }
+    public required string Version { get; init; }
 
-    public string? Version { get; init; }
+    public string? DisplayName { get; init; }
+
+    public string? Description { get; init; }
 
     public bool Repeatable { get; init; }
 
-    public IReadOnlyCollection<AttributeContract> Attributes { get; init; }
-        = Array.Empty<AttributeContract>();
+    public IReadOnlyCollection<ProcessFieldMetadata> Fields { get; init; }
+        = Array.Empty<ProcessFieldMetadata>();
 
-    public IReadOnlyCollection<ProcessStepSummaryContract> Dependencies { get; init; }
-        = Array.Empty<ProcessStepSummaryContract>();
+    public IReadOnlyCollection<ProcessStepSummary> Dependencies { get; init; }
+        = Array.Empty<ProcessStepSummary>();
 
-    public IReadOnlyCollection<ProcessStepSummaryContract> AvailableAfter { get; init; }
-        = Array.Empty<ProcessStepSummaryContract>();
+    public IReadOnlyCollection<ProcessStepSummary> AvailableAfter { get; init; }
+        = Array.Empty<ProcessStepSummary>();
 
-    public IReadOnlyCollection<ProcessStepSummaryContract> AvailableUntil { get; init; }
-        = Array.Empty<ProcessStepSummaryContract>();
+    public IReadOnlyCollection<ProcessStepSummary> AvailableUntil { get; init; }
+        = Array.Empty<ProcessStepSummary>();
 
     public string ExecuteUrl { get; init; }
         = string.Empty;
@@ -32,7 +34,7 @@ public sealed record ProcessStepContract
     public string MetadataUrl { get; init; }
         = string.Empty;
 
-    public static ProcessStepContract FromRegistration(
+    public static ProcessStepResponse FromRegistration(
         ProcessStepRegistration registration,
         ProcessRouteOptions options)
     {
@@ -42,16 +44,17 @@ public sealed record ProcessStepContract
         var stepName =
             registration.Metadata.Name.ToLowerInvariant();
 
-        return new ProcessStepContract
+        return new ProcessStepResponse
         {
             Name = registration.Metadata.Name,
             Description = registration.Metadata.Description,
+            DisplayName = registration.Metadata.DisplayName,
             Version = registration.Metadata.Version,
             Repeatable = registration.Repeatable.Enabled,
 
-            Attributes = registration.StepType
+            Fields = registration.StepType
                 .GetProperties()
-                .Select(AttributeContractFactory.FromProperty)
+                .Select(ProcessFieldMetadataFactory.FromProperty)
                 .ToArray(),
 
             Dependencies = registration.Dependencies
@@ -79,7 +82,7 @@ public sealed record ProcessStepContract
         };
     }
 
-    internal static ProcessStepSummaryContract ToSummary(
+    internal static ProcessStepSummary ToSummary(
         ProcessStepRegistration registration,
         ProcessRouteOptions options)
     {
@@ -89,10 +92,11 @@ public sealed record ProcessStepContract
         var stepName =
             registration.Metadata.Name.ToLowerInvariant();
 
-        return new ProcessStepSummaryContract
+        return new ProcessStepSummary
         {
             Name = registration.Metadata.Name,
             Description = registration.Metadata.Description,
+            DisplayName = registration.Metadata.DisplayName,
             Version = registration.Metadata.Version,
             Repeatable = registration.Repeatable.Enabled,
 
@@ -107,13 +111,15 @@ public sealed record ProcessStepContract
     }
 }
 
-public sealed record ProcessStepSummaryContract
+public sealed record ProcessStepSummary
 {
     public required string Name { get; init; }
 
-    public string? Description { get; init; }
+    public required string Version { get; init; }
 
-    public string? Version { get; init; }
+    public string? DisplayName { get; init; }
+
+    public string? Description { get; init; }
 
     public bool Repeatable { get; init; }
 
@@ -124,7 +130,7 @@ public sealed record ProcessStepSummaryContract
         = string.Empty;
 }
 
-public sealed record AttributeContract
+public sealed record ProcessFieldMetadata
 {
     public required string Name { get; init; }
 
@@ -138,14 +144,14 @@ public sealed record AttributeContract
         = [];
 }
 
-internal static class AttributeContractFactory
+internal static class ProcessFieldMetadataFactory
 {
-    public static AttributeContract FromProperty(
+    public static ProcessFieldMetadata FromProperty(
         PropertyInfo property)
     {
         ArgumentNullException.ThrowIfNull(property);
 
-        return new AttributeContract
+        return new ProcessFieldMetadata
         {
             Name = property.Name,
 

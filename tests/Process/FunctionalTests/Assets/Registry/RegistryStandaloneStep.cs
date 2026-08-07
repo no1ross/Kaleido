@@ -6,5 +6,5 @@ namespace Kaleido.Process.FunctionalTests.Assets.Registry;
 /// A valid step intentionally disconnected from the main registry test graph.
 /// This verifies that standalone/root-only process steps are valid registrations.
 /// </summary>
-[ProcessStep("RegistryStandaloneStep", "RegistryStandaloneStep", "1.0")]
+[ProcessStep(Name = "RegistryStandaloneStep", Description = "RegistryStandaloneStep", Version = "1.0")]
 public sealed record RegistryStandaloneStep;

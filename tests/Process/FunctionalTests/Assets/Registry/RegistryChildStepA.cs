@@ -2,6 +2,6 @@ using Kaleido.Process.Attributes;
 
 namespace Kaleido.Process.FunctionalTests.Assets.Registry;
 
-[ProcessStep("RegistryChildStepA", "RegistryChildStepA", "1.0")]
+[ProcessStep(Name = "RegistryChildStepA", Description = "RegistryChildStepA", Version = "1.0")]
 [DependsOnStep(typeof(RegistryRootStep))]
 public sealed record RegistryChildStepA;

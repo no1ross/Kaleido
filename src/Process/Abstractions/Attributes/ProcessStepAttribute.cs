@@ -3,13 +3,8 @@
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 public class ProcessStepAttribute : Attribute
 {
-    public ProcessStepAttribute(string name, string description, string version)
-    {
-        Name = name;
-        Description = description;
-        Version = version;
-    }
-    public string Name { get; }
-    public string Description { get; }
-    public string Version { get; }
+    public required string Name { get; init; }
+    public required string Version { get; init; }
+    public string? Description { get; init; }
+    public string? DisplayName { get; init; }
 }

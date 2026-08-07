@@ -3,6 +3,7 @@ using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Registry;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+using System.Xml.Linq;
 using Xunit;
 
 namespace Kaleido.Process.UnitTests.Participant.Execution;
@@ -415,7 +416,8 @@ public sealed class ProcessStepInvokerTests
             new ProcessStepMetadata(
                 "test-step",
                 "Test step.",
-                "1.0"));
+                "1.0",
+                "displayname"));
     }
 
     private sealed class HandlerRecorder

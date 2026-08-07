@@ -407,7 +407,8 @@ public sealed class StepCandidateConsistencyCheckerTests
            new ProcessStepMetadata(
                 name,
                 $"{name} description.",
-                "1.0"));
+                "1.0",
+                $"{name} displayname"));
     }
 
     private static StepCandidate CreateCandidate(

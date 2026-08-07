@@ -1,13 +1,22 @@
-//using Microsoft.Extensions.DependencyInjection;
-//using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
-//namespace Kaleido;
+namespace Kaleido;
 
-//internal sealed class ProcessBuilder : IProcessBuilder
-//{
-//    public ProcessBuilder(IKaleidoBuilder builder)
-//    {
-//        Builder = builder;
-//    }
-//    public IKaleidoBuilder Builder { get; }
-//}
+internal sealed class ParticipantBuilder
+    : IParticipantBuilder
+{
+    private readonly IKaleidoBuilder _builder;
+
+    public ParticipantBuilder(
+        IKaleidoBuilder builder)
+    {
+        _builder = builder;
+    }
+
+    public IServiceCollection Services
+        => _builder.Services;
+
+    public IReadOnlyCollection<Assembly> Assemblies
+        => _builder.Assemblies;
+}

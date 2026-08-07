@@ -2,5 +2,5 @@ using Kaleido.Process.Attributes;
 
 namespace Kaleido.Process.FunctionalTests.Assets.Runtime;
 
-[ProcessStep(RuntimeStepNames.Root, "Runtime root step", "1.0")]
+[ProcessStep(Name = RuntimeStepNames.Root, Description = "Runtime root step", Version = "1.0")]
 public sealed record RuntimeRootStep;

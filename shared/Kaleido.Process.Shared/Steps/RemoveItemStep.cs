@@ -4,9 +4,10 @@ using System.ComponentModel.DataAnnotations;
 namespace Kaleido.Process.Shared.Steps;
 
 [ProcessStep(
-    "RemoveItem",
-    "Removes an item from the cart.",
-    "1.0")]
+    Name = "RemoveItem",
+    DisplayName = "Remove Item from Cart",
+    Description = "Removes an existing item from the shopping cart.",
+    Version = "1.0")]
 [DependsOnStep(typeof(AddItemToCartStep))]
 [Repeatable]
 public sealed record RemoveItemStep
@@ -16,17 +17,6 @@ public sealed record RemoveItemStep
 
     [Required]
     public required string ItemId { get; init; }
-}
-
-public sealed record RemoveItemResponse
-{
-    public required string CartId { get; init; }
-
-    public required string ItemId { get; init; }
-
-    public required bool Removed { get; init; }
-
-    public required int RemainingItems { get; init; }
 }
 
 

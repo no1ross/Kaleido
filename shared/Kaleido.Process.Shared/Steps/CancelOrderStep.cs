@@ -4,9 +4,10 @@ using System.ComponentModel.DataAnnotations;
 namespace Kaleido.Process.Shared.Steps;
 
 [ProcessStep(
-    "CancelOrder",
-    "Cancels a submitted order.",
-    "1.0")]
+    Name = "CancelOrder",
+    DisplayName = "Cancel Order",
+    Description = "Cancels an order that has already been submitted.",
+    Version = "1.0")]
 [AvailableAfter(typeof(SubmitOrderStep))]
 public sealed record CancelOrderStep
 {
@@ -18,22 +19,4 @@ public sealed record CancelOrderStep
     public required string CancellationReason { get; init; }
 
     public bool RefundRequested { get; init; }
-}
-
-public sealed record CancelOrderResponse
-{
-    public required string CancellationNumber { get; init; }
-
-    public required bool Cancelled { get; init; }
-
-    public RefundInformation? Refund { get; init; }
-}
-
-public sealed record RefundInformation
-{
-    public required decimal Amount { get; init; }
-
-    public required DateTimeOffset ProcessedOn { get; init; }
-
-    public required RefundMethod RefundMethod { get; init; }
 }

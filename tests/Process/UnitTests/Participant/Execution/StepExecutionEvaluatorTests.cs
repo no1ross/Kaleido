@@ -429,7 +429,8 @@ public sealed class StepExecutionEvaluatorTests
             new ProcessStepMetadata(
                 name,
                 $"{name} description.",
-                "1.0"));
+                "1.0",
+                $"{name} displayname"));
     }
 
     private sealed class StepA;

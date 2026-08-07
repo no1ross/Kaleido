@@ -1,6 +1,7 @@
 ﻿using Kaleido.Process.Attributes;
 using Kaleido.Process.Participant.Execution;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.ObjectModel;
 using System.Reflection;
 
 namespace Kaleido.Process.Participant.Registry;
@@ -197,77 +198,85 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
     private static IReadOnlyCollection<ProcessStepRegistration> BuildRegistrations(
         IReadOnlyCollection<ProcessStepDefinition> definitions)
     {
-        var registrations =
-            new Dictionary<Type, ProcessStepRegistration>();
+        ArgumentNullException.ThrowIfNull(definitions);
 
-        foreach (var definition in definitions)
+        //
+        // Pass 4a:
+        // Build node graph from validated definitions.
+        //
+        var nodes =
+            definitions.ToDictionary(
+                x => x.StepType,
+                x => new RegistrationNode
+                {
+                    Definition = x,
+                    Repeatable = GetRepeatableOptions(
+                        x.StepType)
+                });
+
+        //
+        // Pass 4b:
+        // Wire node relationships using direct lookup.
+        //
+        foreach (var node in nodes.Values)
         {
-            CreateRegistration(
-                definition,
-                registrations);
-        }
+            node.Dependencies.AddRange(
+                node.Definition.Dependencies
+                    .Select(x => nodes[x.StepType]));
 
-        return registrations.Values.ToArray();
-    }
+            node.AvailableAfter.AddRange(
+                node.Definition.AvailableAfter
+                    .Select(x => nodes[x.StepType]));
 
-    private static ProcessStepRegistration CreateRegistration(
-        ProcessStepDefinition definition,
-        IDictionary<Type, ProcessStepRegistration> registrations)
-    {
-        if (registrations.TryGetValue(
-                definition.StepType,
-                out var existing))
-        {
-            return existing;
+            node.AvailableUntil.AddRange(
+                node.Definition.AvailableUntil
+                    .Select(x => nodes[x.StepType]));
         }
 
         //
-        // Build relationships first.
+        // Pass 4c:
+        // Create one registration slot per node.
         //
-        var dependencies =
-            definition.Dependencies
-                .Select(x =>
-                    CreateRegistration(
-                        x,
-                        registrations))
-                .ToArray();
+        // IMPORTANT:
+        // This does not recursively create related registrations.
+        // Each slot creates exactly one registration for exactly one node.
+        //
+        var slots =
+            nodes.ToDictionary(
+                x => x.Key,
+                x => new RegistrationSlot(
+                    x.Value));
 
-        var availableAfter =
-            definition.AvailableAfter
-                .Select(x =>
-                    CreateRegistration(
-                        x,
-                        registrations))
-                .ToArray();
+        //
+        // Pass 4d:
+        // Wire each registration's immediate relationships.
+        //
+        // IMPORTANT:
+        // This resolves direct references only.
+        // It does not walk dependency chains.
+        // It does not recursively materialize the graph.
+        //
+        foreach (var slot in slots.Values)
+        {
+            slot.Dependencies.AddRange(
+                slot.Node.Dependencies
+                    .Select(x =>
+                        slots[x.Definition.StepType].Registration));
 
-        var availableUntil =
-            definition.AvailableUntil
-                .Select(x =>
-                    CreateRegistration(
-                        x,
-                        registrations))
-                .ToArray();
+            slot.AvailableAfter.AddRange(
+                slot.Node.AvailableAfter
+                    .Select(x =>
+                        slots[x.Definition.StepType].Registration));
 
-        var repeatable =
-            GetRepeatableOptions(
-                definition.StepType); 
-        
-        var registration =
-            new ProcessStepRegistration(
-                definition.StepType,
-                definition.StepResultType,
-                definition.HandlerType,
-                dependencies,
-                availableAfter,
-                availableUntil,
-                repeatable,
-                definition.Metadata);
+            slot.AvailableUntil.AddRange(
+                slot.Node.AvailableUntil
+                    .Select(x =>
+                        slots[x.Definition.StepType].Registration));
+        }
 
-        registrations.Add(
-            definition.StepType,
-            registration);
-
-        return registration;
+        return definitions
+            .Select(x => slots[x.StepType].Registration)
+            .ToArray();
     }
 
     private static RepeatableOptions GetRepeatableOptions(
@@ -347,7 +356,89 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
 
         return new ProcessStepMetadata(
             attribute.Name,
-            attribute.Description,
-            attribute.Version);
+            attribute.Description ?? attribute.DisplayName ?? attribute.Name,
+            attribute.Version,
+            attribute.DisplayName ?? attribute.Name);
     }
+}
+
+
+internal sealed class RegistrationNode
+{
+    public required ProcessStepDefinition Definition
+    {
+        get;
+        init;
+    }
+
+    public required RepeatableOptions Repeatable
+    {
+        get;
+        init;
+    }
+
+    public List<RegistrationNode> Dependencies
+    {
+        get;
+    } = [];
+
+    public List<RegistrationNode> AvailableAfter
+    {
+        get;
+    } = [];
+
+    public List<RegistrationNode> AvailableUntil
+    {
+        get;
+    } = [];
+}
+
+internal sealed class RegistrationSlot
+{
+    public RegistrationSlot(
+        RegistrationNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        Node = node;
+
+        Registration =
+            new ProcessStepRegistration(
+                node.Definition.StepType,
+                node.Definition.StepResultType,
+                node.Definition.HandlerType,
+                new ReadOnlyCollection<ProcessStepRegistration>(
+                    Dependencies),
+                new ReadOnlyCollection<ProcessStepRegistration>(
+                    AvailableAfter),
+                new ReadOnlyCollection<ProcessStepRegistration>(
+                    AvailableUntil),
+                node.Repeatable,
+                node.Definition.Metadata);
+    }
+
+    public RegistrationNode Node
+    {
+        get;
+    }
+
+    public ProcessStepRegistration Registration
+    {
+        get;
+    }
+
+    public List<ProcessStepRegistration> Dependencies
+    {
+        get;
+    } = [];
+
+    public List<ProcessStepRegistration> AvailableAfter
+    {
+        get;
+    } = [];
+
+    public List<ProcessStepRegistration> AvailableUntil
+    {
+        get;
+    } = [];
 }

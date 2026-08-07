@@ -4,9 +4,10 @@ using System.ComponentModel.DataAnnotations;
 namespace Kaleido.Process.Shared.Steps;
 
 [ProcessStep(
-    "UpdateQuantity",
-    "Updates an item quantity in the cart.",
-    "1.0")]
+    Name = "UpdateQuantity",
+    DisplayName = "Update Item Quantity",
+    Description = "Changes the quantity of an item in the shopping cart.",
+    Version = "1.0")]
 [DependsOnStep(typeof(AddItemToCartStep))]
 [Repeatable]
 public sealed record UpdateQuantityStep
@@ -19,15 +20,4 @@ public sealed record UpdateQuantityStep
 
     [Range(1, 999)]
     public required int Quantity { get; init; }
-}
-
-public sealed record UpdateQuantityResponse
-{
-    public required string CartId { get; init; }
-
-    public required string ItemId { get; init; }
-
-    public required int Quantity { get; init; }
-
-    public required decimal CartTotal { get; init; }
 }

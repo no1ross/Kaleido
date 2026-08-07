@@ -11,14 +11,14 @@ using System.Reflection;
 
 namespace Kaleido.Process;
 
-public static class ProcessServiceCollectionExtensions
+public static class ParticipantServiceCollectionExtensions
 {
-    public static IKaleidoBuilder AddParticipant(this IKaleidoBuilder builder)
+    public static IParticipantBuilder AddParticipant(this IKaleidoBuilder builder)
     {
         return builder.AddParticipant(_ => { });
     }
 
-    public static IKaleidoBuilder AddParticipant(
+    public static IParticipantBuilder AddParticipant(
         this IKaleidoBuilder builder,
         Action<ParticipantOptions> configure)
     {
@@ -79,7 +79,7 @@ public static class ProcessServiceCollectionExtensions
 
         RegisterFrameworkServices(builder.Services);
 
-        return builder;
+        return new ParticipantBuilder(builder);
     }
 
     private static bool ShouldIncludeProcessStep(

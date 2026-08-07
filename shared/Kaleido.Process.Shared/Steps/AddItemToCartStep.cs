@@ -5,9 +5,10 @@ using System.ComponentModel.DataAnnotations;
 namespace Kaleido.Process.Shared.Steps;
 
 [ProcessStep(
-    "AddItemToCart",
-    "Adds items to a shopping cart.",
-    "1.0")]
+    Name = "AddItemToCart",
+    DisplayName = "Add Item to Cart",
+    Description = "Adds one or more products to the shopping cart.",
+    Version = "1.0")]
 [Repeatable]
 public sealed record AddItemToCartStep
 {
@@ -60,15 +61,4 @@ public sealed record CartItemRequest
         get;
         init;
     }
-}
-
-public sealed record AddItemToCartResponse
-{
-    public required string CartId { get; init; }
-
-    public required int ItemCount { get; init; }
-
-    public required decimal CartTotal { get; init; }
-
-    public required DateTimeOffset LastUpdated { get; init; }
 }

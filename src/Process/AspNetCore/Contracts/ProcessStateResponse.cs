@@ -2,7 +2,7 @@
 
 namespace Kaleido.Process.AspNetCore.Contracts;
 
-public sealed record ProcessStateContract
+public sealed record ProcessStateResponse
 {
     public required string ParticipantProcessId
     {
@@ -16,14 +16,14 @@ public sealed record ProcessStateContract
         init;
     }
 
-    public IReadOnlyCollection<ProcessStepSummaryContract> AvailableSteps
+    public IReadOnlyCollection<ProcessStepSummary> AvailableSteps
     {
         get;
         init;
     }
         = [];
 
-    public IReadOnlyCollection<ProcessExecutionHistoryContract> ExecutedSteps
+    public IReadOnlyCollection<ProcessExecutionHistory> ExecutedSteps
     {
         get;
         init;
@@ -31,7 +31,7 @@ public sealed record ProcessStateContract
         = [];
 }
 
-public sealed record ProcessExecutionHistoryContract
+public sealed record ProcessExecutionHistory
 {
     public required string StepName
     {

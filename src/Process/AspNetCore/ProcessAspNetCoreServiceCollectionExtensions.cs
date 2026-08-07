@@ -1,11 +1,13 @@
+using Kaleido.Process.AspNetCore.Srevices;
 using Kaleido.Process.Participant;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Kaleido.Process.AspNetCore;
 
 public static class ProcessAspNetCoreServiceCollectionExtensions
 {
-    public static IKaleidoBuilder AddParticipantAspNetCore(this IKaleidoBuilder builder,
+    public static IParticipantBuilder AddParticipantAspNetCore(this IParticipantBuilder builder, 
         Action<ProcessRouteOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -36,6 +38,9 @@ public static class ProcessAspNetCoreServiceCollectionExtensions
         //{
         //    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
         //});
+
+        builder.Services.TryAddSingleton<IProcessExecutionService, ProcessExecutionService>();
+        builder.Services.TryAddSingleton<IProcessStateService, ProcessStateService>();
 
         return builder;
     }

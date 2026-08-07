@@ -9,16 +9,16 @@ public static class ProcessEndpointNames
         "KaleidoProcessExecute";
 
     public const string ProcessEndpointName =
-        "KaleidoProcess";
+        "KaleidoProcessState";
 
     public const string StepCatalogEndpointName =
         "KaleidoProcessStepCatalog";
 
     public static string StepMetadataEndpointName(
-        string stepName)
-        => $"KaleidoProcessStepMetadata_{stepName}";
+        string stepName) =>
+        $"KaleidoProcessStepMetadata_{stepName}";
 
     public static string StepExecutionEndpointName(
-        string stepName)
-        => $"KaleidoProcessStepExecute_{stepName}";
+        string stepName) =>
+        $"KaleidoProcessStepExecute_{stepName}";
 }

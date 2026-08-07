@@ -320,32 +320,32 @@ public sealed class ProcessStepRegistryTests
         return services;
     }
 
-    [ProcessStep("step-a", "step-a description", "1.0")]
+    [ProcessStep(Name = "step-a", Description = "step-a description", Version = "1.0")]
     private sealed class StepA;
 
-    [ProcessStep("step-b", "step-b description", "1.0")]
+    [ProcessStep(Name = "step-b", Description = "step-b description", Version = "1.0")]
     [DependsOnStep(typeof(StepA))]
     private sealed class StepB;
 
-    [ProcessStep("step-c", "step-c description", "1.0")]
+    [ProcessStep(Name = "step-c", Description = "step-c description", Version = "1.0")]
     private sealed class StepC;
 
-    [ProcessStep("step-d", "step-d description", "1.0")]
+    [ProcessStep(Name = "step-d", Description = "step-d description", Version = "1.0")]
     private sealed class StepD;
 
-    [ProcessStep("step-after", "step-after description", "1.0")]
+    [ProcessStep(Name = "step-after", Description = "step-after description", Version = "1.0")]
     [AvailableAfter(typeof(StepA))]
     private sealed class StepAfter;
 
-    [ProcessStep("step-until", "step-until description", "1.0")]
+    [ProcessStep(Name = "step-until", Description = "step-until description", Version = "1.0")]
     [AvailableUntil(typeof(StepA))]
     private sealed class StepUntil;
 
-    [ProcessStep("repeatable-step", "repeatable-step description", "1.0")]
+    [ProcessStep(Name = "repeatable-step", Description = "repeatable-step description", Version = "1.0")]
     [Repeatable]
     private sealed class RepeatableStep;
 
-    [ProcessStep("step-multi", "step-multi description", "1.0")]
+    [ProcessStep(Name = "step-multi", Description = "step-multi description", Version = "1.0")]
     [AvailableAfter(typeof(StepA))]
     [AvailableAfter(typeof(StepB))]
     [AvailableUntil(typeof(StepC))]

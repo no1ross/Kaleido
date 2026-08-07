@@ -4,6 +4,6 @@ namespace Kaleido.Process.AspNetCore.Srevices;
 
 public interface IProcessMetadataService
 {
-    Task<IReadOnlyCollection<ProcessStepSummaryContract>> GetProcessesAsync(
+    Task<IReadOnlyCollection<ProcessStepSummary>> GetProcessesAsync(
         CancellationToken cancellationToken);
 }

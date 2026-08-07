@@ -877,7 +877,8 @@ public sealed class StepCandidateBuilderTests
            new ProcessStepMetadata(
                 name,
                 $"{name} description.",
-                "1.0"));
+                "1.0",
+                $"{name} displayname."));
     }
 
     private static ParticipantRequest CreateRequest(
@@ -902,7 +903,7 @@ public sealed class StepCandidateBuilderTests
         }
     }
 
-    [ProcessStep("simple-class", "Simple class step.", "1.0")]
+    [ProcessStep(Name = "simple-class", Description = "Simple class step.", Version = "1.0")]
     private sealed class SimpleClassStep
     {
         public string Name { get; set; } = string.Empty;
@@ -917,7 +918,7 @@ public sealed class StepCandidateBuilderTests
     private sealed class SimpleClassStepHandler :
         TestHandler<SimpleClassStep, SimpleClassStepResult>;
 
-    [ProcessStep("init-property", "Init property step.", "1.0")]
+    [ProcessStep(Name = "init-property", Description = "Init property step.", Version = "1.0")]
     private sealed class InitPropertyStep
     {
         public string RequestId { get; init; } = string.Empty;
@@ -930,7 +931,7 @@ public sealed class StepCandidateBuilderTests
     private sealed class InitPropertyStepHandler :
         TestHandler<InitPropertyStep, InitPropertyStepResult>;
 
-    [ProcessStep("record-step", "Record step.", "1.0")]
+    [ProcessStep(Name = "record-step", Description = "Record step.", Version = "1.0")]
     private sealed record RecordStep(
         Guid CustomerId,
         string Name);
@@ -940,7 +941,7 @@ public sealed class StepCandidateBuilderTests
     private sealed class RecordStepHandler :
         TestHandler<RecordStep, RecordStepResult>;
 
-    [ProcessStep("enum-step", "Enum step.", "1.0")]
+    [ProcessStep(Name = "enum-step", Description = "Enum step.", Version = "1.0")]
     private sealed class EnumStep
     {
         public TestStepStatus Status { get; init; }
@@ -951,7 +952,7 @@ public sealed class StepCandidateBuilderTests
     private sealed class EnumStepHandler :
         TestHandler<EnumStep, EnumStepResult>;
 
-    [ProcessStep("nullable-enum-step", "Nullable enum step.", "1.0")]
+    [ProcessStep(Name = "nullable-enum-step", Description = "Nullable enum step.", Version = "1.0")]
     private sealed class NullableEnumStep
     {
         public TestStepStatus? Status { get; init; }
@@ -962,7 +963,7 @@ public sealed class StepCandidateBuilderTests
     private sealed class NullableEnumStepHandler :
         TestHandler<NullableEnumStep, NullableEnumStepResult>;
 
-    [ProcessStep("nullable-value-step", "Nullable value step.", "1.0")]
+    [ProcessStep(Name = "nullable-value-step", Description = "Nullable value step.", Version = "1.0")]
     private sealed class NullableValueStep
     {
         public int? Count { get; init; }
@@ -975,7 +976,7 @@ public sealed class StepCandidateBuilderTests
     private sealed class NullableValueStepHandler :
         TestHandler<NullableValueStep, NullableValueStepResult>;
 
-    [ProcessStep("complex-object-step", "Complex object step.", "1.0")]
+    [ProcessStep(Name = "complex-object-step", Description = "Complex object step.", Version = "1.0")]
     private sealed class ComplexObjectStep
     {
         public Customer? Customer { get; init; }
@@ -1004,7 +1005,7 @@ public sealed class StepCandidateBuilderTests
         public string State { get; init; } = string.Empty;
     }
 
-    [ProcessStep("primitive-collection-step", "Primitive collection step.", "1.0")]
+    [ProcessStep(Name = "primitive-collection-step", Description = "Primitive collection step.", Version = "1.0")]
     private sealed class PrimitiveCollectionStep
     {
         public IReadOnlyCollection<string> Tags { get; init; } =
@@ -1016,7 +1017,7 @@ public sealed class StepCandidateBuilderTests
     private sealed class PrimitiveCollectionStepHandler :
         TestHandler<PrimitiveCollectionStep, PrimitiveCollectionStepResult>;
 
-    [ProcessStep("complex-collection-step", "Complex collection step.", "1.0")]
+    [ProcessStep(Name = "complex-collection-step", Description = "Complex collection step.", Version = "1.0")]
     private sealed class ComplexCollectionStep
     {
         public IReadOnlyCollection<OrderLine> Lines { get; init; } =
@@ -1037,7 +1038,7 @@ public sealed class StepCandidateBuilderTests
         public decimal Price { get; init; }
     }
 
-    [ProcessStep("record-collection-step", "Record collection step.", "1.0")]
+    [ProcessStep(Name = "record-collection-step", Description = "Record collection step.", Version = "1.0")]
     private sealed record RecordCollectionStep(
         string OrderId,
         IReadOnlyCollection<RecordOrderLine> Lines);
@@ -1051,7 +1052,7 @@ public sealed class StepCandidateBuilderTests
     private sealed class RecordCollectionStepHandler :
         TestHandler<RecordCollectionStep, RecordCollectionStepResult>;
 
-    [ProcessStep("numeric-string-step", "Numeric string step.", "1.0")]
+    [ProcessStep(Name = "numeric-string-step", Description = "Numeric string step.", Version = "1.0")]
     private sealed class NumericStringStep
     {
         public int IntValue { get; init; }

@@ -1335,7 +1335,8 @@ public sealed class ExecutionProcessorTests
             new ProcessStepMetadata(
                 name,
                 $"{name} description",
-                "1.0.0"));
+                "1.0.0",
+                $"{name} displayname"));
     }
 
     private static ParticipantContext CreateContext(

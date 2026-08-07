@@ -5,9 +5,10 @@ using System.ComponentModel.DataAnnotations;
 namespace Kaleido.Process.Shared.Steps;
 
 [ProcessStep(
-    "StartOrder",
-    "Creates an order from the shopping cart.",
-    "1.0")]
+    Name = "StartOrder",
+    DisplayName = "Create Order",
+    Description = "Creates an order from the current shopping cart contents.",
+    Version = "1.0")]
 [DependsOnStep(typeof(AddItemToCartStep))]
 public sealed record StartOrderStep
 {
@@ -22,15 +23,4 @@ public sealed record StartOrderStep
 
     [Required]
     public required Address ShippingAddress { get; init; }
-}
-
-public sealed record StartOrderResponse
-{
-    public required string OrderId { get; init; }
-
-    public required DateTimeOffset CreatedOn { get; init; }
-
-    public required OrderPriority Priority { get; init; }
-
-    public string? Notes { get; init; }
 }

@@ -5,9 +5,10 @@ using System.ComponentModel.DataAnnotations;
 namespace Kaleido.Process.Shared.Steps;
 
 [ProcessStep(
-    "SubmitBilling",
-    "Collects billing information.",
-    "1.0")]
+    Name = "SubmitBilling",
+    DisplayName = "Provide Billing Information",
+    Description = "Captures and validates billing information required to complete an order.",
+    Version = "1.0")]
 [AvailableAfter(typeof(StartOrderStep))]
 [AvailableUntil(typeof(SubmitOrderStep))]
 [Repeatable]
@@ -25,15 +26,4 @@ public sealed record SubmitBillingStep
 
     [Required]
     public required Address BillingAddress { get; init; }
-}
-
-public sealed record SubmitBillingResponse
-{
-    public required string BillingId { get; init; }
-
-    public required PaymentMethodType PaymentMethod { get; init; }
-
-    public required bool Accepted { get; init; }
-    public decimal? AuthorizedAmount { get; internal set; }
-    public string[] ValidationWarnings { get; internal set; }
 }

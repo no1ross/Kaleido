@@ -56,19 +56,23 @@ public static class ProcessEndpointRouteBuilderExtensions
                 "",
                 () =>
                     Results.Ok(
-                        new ProcessCatalogContract
+                        new ProcessCatalogRequest
                         {
                             InitialSteps = registry.InitialRegistrations
                                 .OrderBy(x => x.Metadata.Name)
                                 .Select(x =>
-                                    ProcessStepContract.ToSummary(
+                                    ProcessStepResponse.ToSummary(
                                         x,
                                         options))
                                 .ToArray()
                         }))
             .WithName(ProcessEndpointNames.ParticipantCatalogEndpointName)
             .WithTags("Processes")
-            .Produces<ProcessCatalogContract>();
+            .Produces<ProcessCatalogRequest>()
+            .WithSummary("Get process entry points.")
+            .WithDescription(
+                "Returns the initial process steps that can be used to start a new participant process. " +
+                "This endpoint is intended to let consumers discover how a process can begin without understanding the full process graph.");
     }
 
     private static void MapExecuteEndpoint(
@@ -77,7 +81,7 @@ public static class ProcessEndpointRouteBuilderExtensions
         endpoints.MapPost(
                 ProcessRoutePaths.Execute,
                 async (
-                    ExecuteProcessContract request,
+                    ExecuteProcessRequest request,
                     IProcessExecutionService execution,
                     CancellationToken cancellationToken) =>
                 {
@@ -89,8 +93,13 @@ public static class ProcessEndpointRouteBuilderExtensions
                     return Results.Ok(result);
                 })
             .WithName(ProcessEndpointNames.ExecuteEndpointName)
+            .Accepts<ExecuteProcessRequest>("application/json")
             .WithTags("Processes")
-            .Produces<ProcessExecutionContract>();
+            .Produces<ProcessExecutionResponse>()
+            .WithSummary("Execute one or more process steps.")
+            .WithDescription(
+                "Executes one or more process steps from a single request. " +
+                "This endpoint is useful when a consumer wants to submit all information currently available and let the process determine what can happen next.");
     }
 
     private static void MapProcessStateEndpoint(
@@ -114,8 +123,12 @@ public static class ProcessEndpointRouteBuilderExtensions
                 })
             .WithName(ProcessEndpointNames.ProcessEndpointName)
             .WithTags("Processes")
-            .Produces<ProcessStateContract>()
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces<ProcessStateResponse>()
+            .Produces(StatusCodes.Status404NotFound)
+            .WithSummary("Get participant process state.")
+            .WithDescription(
+                "Returns the current state of a participant process, including executed steps and currently available next steps. " +
+                "This endpoint does not execute any process step.");
     }
 
     private static void MapStepCatalogEndpoint(
@@ -132,13 +145,17 @@ public static class ProcessEndpointRouteBuilderExtensions
                     Results.Ok(
                         registry.Registrations
                             .Select(x =>
-                                ProcessStepContract.ToSummary(
+                                ProcessStepResponse.ToSummary(
                                     x,
                                     options))
                             .OrderBy(x => x.Name)))
             .WithName(ProcessEndpointNames.StepCatalogEndpointName)
             .WithTags("Processes")
-            .Produces<IReadOnlyCollection<ProcessStepSummaryContract>>();
+            .Produces<IReadOnlyCollection<ProcessStepSummary>>()
+            .WithSummary("Get registered process steps.")
+            .WithDescription(
+                "Returns a lightweight catalog of all registered process steps, including names, descriptions, repeatability, and links. " +
+                "Use each step's metadata URL to retrieve fields, constraints, dependencies, and availability rules.");
     }
 
     private static void MapProcessStep(
@@ -171,14 +188,21 @@ public static class ProcessEndpointRouteBuilderExtensions
         endpoints.MapGet(
                 route,
                 () => Results.Ok(
-                    ProcessStepContract.FromRegistration(
+                    ProcessStepResponse.FromRegistration(
                         step,
                         options)))
             .WithName(
                 ProcessEndpointNames.StepMetadataEndpointName(
                     step.Metadata.Name.ToLowerInvariant()))
-            .WithTags(step.Metadata.Name)
-            .Produces<ProcessStepContract>();
+            .WithTags(step.Metadata.DisplayName)
+            .Produces<ProcessStepResponse>()
+            .WithSummary($"Get metadata for {step.Metadata.DisplayName}.")
+            .WithDescription(
+                $"Returns metadata describing the '{step.Metadata.DisplayName}' process step, including field definitions, " +
+                "data types, validation constraints, dependency relationships, availability rules, repeatability settings, " +
+                "and links required to execute or discover related process steps. " +
+                "This endpoint is intended for dynamic clients such as user interfaces, workflow explorers, " +
+                "and process discovery tools. This endpoint does not execute the step.");
     }
 
     private static void MapStepExecutionEndpoint(
@@ -189,7 +213,7 @@ public static class ProcessEndpointRouteBuilderExtensions
         var method =
             typeof(ProcessEndpointRouteBuilderExtensions)
                 .GetMethod(
-                    nameof(MapStepExecutionEndpointGeneric),
+                    nameof(MapTypedStepExecutionEndpoint),
                     BindingFlags.NonPublic | BindingFlags.Static)!;
 
         method
@@ -201,15 +225,18 @@ public static class ProcessEndpointRouteBuilderExtensions
                 [endpoints, route, step]);
     }
 
-    private static void MapStepExecutionEndpointGeneric<TProcessStep, TResponse>(
+    private static void MapTypedStepExecutionEndpoint<TProcessStep, TResponse>(
         IEndpointRouteBuilder endpoints,
         string route,
         ProcessStepRegistration step)
     {
+        var stepName =
+            step.Metadata.Name.ToLowerInvariant();
+
         endpoints.MapPost(
                 route,
                 async (
-                    ExecuteStepContract<TProcessStep> request,
+                    ExecuteStepRequest<TProcessStep> request,
                     IProcessExecutionService execution,
                     CancellationToken cancellationToken) =>
                 {
@@ -222,8 +249,18 @@ public static class ProcessEndpointRouteBuilderExtensions
                 })
             .WithName(
                 ProcessEndpointNames.StepExecutionEndpointName(
-                    step.Metadata.Name.ToLowerInvariant()))
-            .WithTags(step.Metadata.Name)
-            .Produces<ProcessExecutionContract<TResponse>>();
+                    stepName))
+            .WithTags(step.Metadata.DisplayName)
+            .WithSummary(
+                $"Execute {step.Metadata.DisplayName}.")
+            .WithDescription(
+                $"Executes the '{step.Metadata.DisplayName}' process step. " +
+                "If the request does not include a participant process id, a new participant process is created. " +
+                "If the request includes a participant process id, the existing participant process is continued. " +
+                "The response includes the step result, consumer-facing messages, required next step if one exists, " +
+                "and currently available next steps.")
+            .Accepts<ExecuteStepRequest<TProcessStep>>(
+                "application/json")
+            .Produces<ProcessExecutionResponse<TResponse>>();
     }
 }
