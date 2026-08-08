@@ -9,5 +9,4 @@ public sealed class QueryableRouteOptions
     public string QueryRoute { get; set; } = "query";
     public string MetadataRoute { get; set; } = "metadata";
     public string QueriesRoute { get; set; } = "queries";
-
 }

@@ -1,7 +1,7 @@
 ﻿using Kaleido.Process.Attributes;
 using System.ComponentModel.DataAnnotations;
 
-namespace Kaleido.Process.Shared.Steps;
+namespace Kaleido.Samples.ECommerce.Steps;
 
 [ProcessStep(
     Name = "RemoveItem",

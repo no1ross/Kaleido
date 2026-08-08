@@ -40,7 +40,7 @@ public sealed class QueryableRecordTypedTests
             record.Metadata.Name);
 
         Assert.Equal(
-            "SampleKaleidoRecord",
+            "Functional Records",
             record.Metadata.Description);
 
         Assert.Equal(

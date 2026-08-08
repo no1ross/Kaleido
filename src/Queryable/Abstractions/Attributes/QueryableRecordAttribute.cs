@@ -4,21 +4,9 @@
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 public sealed class QueryableRecordAttribute : Attribute
 {
-    /// <summary>Creates record metadata for a record type.</summary>
-    /// <param name="name">Logical record key used for lookup and query execution.</param>
-    /// <param name="description">Version of the record metadata.</param>
-    /// <param name="version">Version of the record metadata.</param>
-    /// <param name="source">Name of the authoritative source for the record.</param>
-    public QueryableRecordAttribute(string name, string? description = null, string? version = null, string? source = null)
-    {
-        Name = name;
-        Description = description;
-        Version = version;
-        Source = source;
-    }
-
-    public string Name { get; }
-    public string? Description { get; }
-    public string? Version { get; }
-    public string? Source { get; }
+    public required string Name { get; init; }
+    public required string Version { get; init; }
+    public string? Description { get; init; }
+    public string? DisplayName { get; init; }
+    public string? Source { get; init; }
 }

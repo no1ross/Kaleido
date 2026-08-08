@@ -1,0 +1,186 @@
+﻿{
+  "Electronics": {
+    "Categories": {
+      "Computers": {
+        "Categories": {
+          "Laptops": {},
+          "Desktops": {},
+          "Mini PCs": {},
+          "Tablets": {}
+        }
+      },
+      "Monitors": {
+        "Categories": {
+          "Gaming Monitors": {},
+          "Business Monitors": {},
+          "Professional Displays": {}
+        }
+      },
+      "Peripherals": {
+        "Categories": {
+          "Keyboards": {},
+          "Mice": {},
+          "Webcams": {},
+          "Headsets": {}
+        }
+      },
+      "Networking": {
+        "Categories": {
+          "Routers": {},
+          "Switches": {},
+          "Wireless Access Points": {}
+        }
+      },
+      "Storage": {
+        "Categories": {
+          "Internal SSDs": {},
+          "External SSDs": {},
+          "External Hard Drives": {}
+        }
+      }
+    }
+  },
+
+  "Home & Kitchen": {
+    "Categories": {
+      "Furniture": {
+        "Categories": {
+          "Desks": {},
+          "Office Chairs": {},
+          "Shelving": {}
+        }
+      },
+      "Kitchen": {
+        "Categories": {
+          "Cookware": {},
+          "Small Appliances": {},
+          "Storage & Organization": {}
+        }
+      },
+      "Home Decor": {
+        "Categories": {
+          "Lighting": {},
+          "Wall Art": {},
+          "Rugs": {}
+        }
+      }
+    }
+  },
+
+  "Office": {
+    "Categories": {
+      "Office Computers": {},
+      "Office Furniture": {},
+      "Office Supplies": {},
+      "Printing": {},
+      "Collaboration": {}
+    }
+  },
+
+  "Books & Media": {
+    "Categories": {
+      "Fiction": {},
+      "Technology": {},
+      "Business": {},
+      "History": {},
+      "Education": {}
+    }
+  },
+
+  "Clothing & Apparel": {
+    "Categories": {
+      "Men's Clothing": {
+        "Categories": {
+          "Shirts": {},
+          "Pants": {},
+          "Outerwear": {},
+          "Shoes": {}
+        }
+      },
+      "Women's Clothing": {
+        "Categories": {
+          "Shirts": {},
+          "Pants": {},
+          "Outerwear": {},
+          "Shoes": {}
+        }
+      },
+      "Accessories": {
+        "Categories": {
+          "Bags": {},
+          "Watches": {},
+          "Belts": {}
+        }
+      }
+    }
+  },
+
+  "Sports & Outdoors": {
+    "Categories": {
+      "Fitness Equipment": {
+        "Categories": {
+          "Cardio Equipment": {},
+          "Strength Training": {},
+          "Yoga & Mobility": {}
+        }
+      },
+      "Camping": {
+        "Categories": {
+          "Tents": {},
+          "Sleeping Bags": {},
+          "Camping Furniture": {}
+        }
+      },
+      "Cycling": {
+        "Categories": {
+          "Road Bikes": {},
+          "Mountain Bikes": {},
+          "Cycling Accessories": {}
+        }
+      },
+      "Outdoor Recreation": {
+        "Categories": {
+          "Hiking": {},
+          "Fishing": {},
+          "Water Sports": {}
+        }
+      }
+    }
+  },
+
+  "Automotive": {
+    "Categories": {
+      "Car Electronics": {},
+      "Maintenance": {},
+      "Interior Accessories": {},
+      "Exterior Accessories": {}
+    }
+  },
+
+  "Health & Beauty": {
+    "Categories": {
+      "Personal Care": {},
+      "Wellness": {},
+      "Fitness Accessories": {},
+      "Beauty Products": {}
+    }
+  },
+
+  "Toys & Games": {
+    "Categories": {
+      "Board Games": {},
+      "Educational Toys": {},
+      "Building Sets": {},
+      "Collectibles": {}
+    }
+  },
+
+  "Pet Supplies": {
+    "Categories": {
+      "Dog Supplies": {},
+      "Cat Supplies": {},
+      "Aquariums": {},
+      "Small Animals": {}
+    }
+  }
+}

@@ -214,10 +214,10 @@ public sealed class QueryableServiceCollectionExtensionsTests
     }
 
     [QueryableRecord(
-        "test-record",
-        "Test Record",
-        null,
-        "Unit Test")]
+        Name = "test-record",
+        DisplayName = "Test Record",
+        Version = "1.0.0",
+        Source = "Unit Test")]
     internal sealed record TestRecord(
         int Id,
         string Name);
@@ -234,8 +234,8 @@ public sealed class QueryableServiceCollectionExtensionsTests
     }
 
     [NamedQuery(
-        "active",
-        "Active Records")]
+        Name = "active",
+        DisplayName = "Active Records")]
     internal sealed class TestNamedQuery
         : IRecordNamedQuery<TestRecord>
     {

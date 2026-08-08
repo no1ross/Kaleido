@@ -1,0 +1,50 @@
+﻿[
+  {
+    "FirstName": "Andrey",
+    "LastName": "Bosch",
+    "Email": "andrey.bosch@example.com",
+    "PhoneNumber": "555-100-1000"
+  },
+  {
+    "FirstName": "Jane",
+    "LastName": "Smith",
+    "Email": "jane.smith@example.com",
+    "PhoneNumber": "555-100-1001"
+  },
+  {
+    "FirstName": "Bob",
+    "LastName": "Wilson",
+    "Email": "bob.wilson@example.com",
+    "PhoneNumber": "555-100-1002"
+  },
+  {
+    "FirstName": "Sarah",
+    "LastName": "Davis",
+    "Email": "sarah.davis@example.com",
+    "PhoneNumber": "555-100-1003"
+  },
+  {
+    "FirstName": "Michael",
+    "LastName": "Johnson",
+    "Email": "michael.johnson@example.com",
+    "PhoneNumber": "555-100-1004"
+  },
+  {
+    "FirstName": "Emily",
+    "LastName": "Brown",
+    "Email": "emily.brown@example.com",
+    "PhoneNumber": "555-100-1005"
+  },
+  {
+    "FirstName": "David",
+    "LastName": "Miller",
+    "Email": "david.miller@example.com",
+    "PhoneNumber": "555-100-1006"
+  },
+  {
+    "FirstName": "Jennifer",
+    "LastName": "Taylor",
+    "Email": "jennifer.taylor@example.com",
+    "PhoneNumber": "555-100-1007"
+  }
+]

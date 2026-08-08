@@ -1,0 +1,461 @@
+1. Core Requirements
+
+Participant must stand on its own before Orchestrator exists
+
+Continue proving the Participant model independently.
+Validate real-world behavior using the E-Commerce sample before designing Orchestrator.
+Use lessons learned from Participant to simplify Queryable and eventually Orchestrator.
+
+Metadata must be first-class
+
+Consumers should discover capabilities from metadata endpoints, not OpenAPI schemas.
+APIs should be self-describing via:
+Catalog endpoints
+Metadata endpoints
+Execution endpoints
+OpenAPI should primarily document HTTP transport, not business metadata.
+
+Consumer-facing APIs should be consumer-friendly
+
+Separate framework identifiers from user-facing names.
+Technical names exist for routing and registration.
+Display names exist for Swagger, UIs, documentation, and graph visualization.
+
+Process and Queryable should use consistent API patterns
+
+GET = discover / metadata.
+POST = execute / query.
+Consistent consumer experience across all Kaleido subsystems.
+2. Architectural & Component Decisions
+Registration Graph Materialization
+Core discovery
+The cyclic registration problem was caused by a misunderstanding between:
+Graph construction
+Graph projection
+Key architectural distinction
+
+ProcessStepDefinition
+
+Mutable.
+Used to build and validate relationships.
+Owns graph construction.
+
+ProcessStepRegistration
+
+Immutable.
+Runtime metadata model.
+Must not participate in graph construction.
+Rejected approaches
+Recursive registration construction.
+Mutable runtime registrations.
+SetRelationships(...) style APIs.
+Registration objects owning graph wiring logic.
+Adopted approach
+Build definition graph.
+Build temporary node graph.
+Build all registrations.
+Wire direct relationships through lookup tables.
+Project completed graph into immutable registrations.
+Key insight
+
+A registration only needs references to immediate related registrations.
+
+It does not need recursive expansion of the graph.
+
+Process Metadata Model
+Field metadata
+Moved from:
+Attributes
+To:
+Fields
+
+Reason:
+
+Consumer terminology is clearer.
+Better for Swagger.
+Better for Angular UI.
+Better for future graph/process tooling.
+Constraints
+Validation rules represented as constraint metadata.
+Required treated as a constraint.
+Constraints remain metadata only.
+Metadata does not perform validation.
+Shared Metadata Components
+
+Moved toward shared abstractions:
+
+DataTypeMetadata
+ConstraintMetadata
+Data type mapping helpers
+
+These are reusable across Process and Queryable.
+
+ProcessStepAttribute Redesign
+Old model
+ProcessStepAttribute(
+    name,
+    description,
+    version)
+
+New model
+ProcessStepAttribute
+{
+    Name,
+    Version,
+    Description?,
+    DisplayName?
+}
+
+Reason
+
+Separate:
+
+Stable technical identity
+Consumer-facing display text
+Documentation text
+Metadata normalization
+
+Processing now ensures:
+
+Name         -> always populated
+DisplayName  -> always populated
+Description  -> always populated
+Version      -> always populated
+
+
+Fallbacks:
+
+Description
+    -> Description
+    -> DisplayName
+    -> Name
+
+DisplayName
+    -> DisplayName
+    -> Name
+
+
+This prevents null handling throughout the framework.
+
+Name vs DisplayName
+Established convention
+
+Use:
+
+Name
+
+
+for:
+
+Routing
+Registry lookups
+References
+Internal identifiers
+
+Use:
+
+DisplayName
+
+
+for:
+
+Swagger
+Angular UI
+Graph visualization
+Consumer-facing documentation
+Example
+Name:
+    AcceptTermsAndConditions
+
+DisplayName:
+    Accept Order Terms
+
+Process Endpoint Design
+Endpoint pattern
+GET
+    Learn about it
+
+POST
+    Use it
+
+
+Applied to:
+
+Process Step Metadata
+Process Step Execution
+
+Swagger improvements
+
+Added:
+
+Tags
+Summaries
+Descriptions
+
+Descriptions now explain:
+
+Business intent
+Operation purpose
+
+instead of exposing framework terminology.
+
+Queryable API Cleanup
+Discovery
+
+Queryable followed an older OpenAPI-heavy design.
+
+Process demonstrated a cleaner metadata-driven pattern.
+
+Adopted Queryable pattern
+
+Catalog:
+
+GET /queryable
+
+
+Returns registered records.
+
+Record:
+
+GET metadata
+POST query
+
+
+Named Query:
+
+GET metadata
+POST execute
+
+Named query route redesign
+
+Old:
+
+GET  /queries/<query>/metadata
+POST /queries/<query>
+
+
+New:
+
+GET  /queries/<query>
+POST /queries/<query>
+
+
+Matches Process.
+
+Queryable Swagger Organization
+Previous organization
+
+Everything grouped by record.
+
+Result:
+
+Functional Records
+    metadata
+    query
+    metadata
+    query
+    metadata
+
+
+Became difficult to navigate.
+
+New organization
+
+Record:
+
+Functional Records
+
+
+Named Query:
+
+Functional Records - Active Records
+
+Functional Records - High Amount Records
+
+Functional Records - Records By Category
+
+Reason
+
+Swagger tags are flat.
+
+This convention simulates hierarchy.
+
+Scales well when multiple record types exist.
+
+Queryable Metadata Strategy
+Named queries should provide descriptions
+
+Description should explain:
+
+What business question the query answers.
+
+
+Not:
+
+How the query is executed.
+
+
+Swagger should combine:
+
+Query Description
+Operation Description
+
+to explain both intent and behavior.
+
+OpenAPI Strategy Shift
+Previous strategy
+
+Custom OpenAPI enrichment:
+
+Schema mutation
+Enum enrichment
+Named query schema injection
+Operation manipulation
+Decision
+
+Removed custom OpenAPI infrastructure.
+
+Reason
+
+Metadata endpoints now provide richer information than OpenAPI.
+
+OpenAPI should only describe:
+
+Transport
+Requests
+Responses
+
+
+Metadata endpoints should describe:
+
+Business metadata
+Fields
+Constraints
+Descriptions
+Relationships
+Capabilities
+
+Queryable Field Metadata Discussion
+Discovery
+
+Process and Queryable both define field metadata.
+
+Only a few properties overlap:
+
+Name
+DataType
+
+
+Most properties are specific to their domain.
+
+Decision
+
+Do NOT create a shared FieldMetadata.
+
+Keep:
+
+ProcessFieldMetadata
+QueryableFieldMetadata
+
+
+Reason:
+
+Different intent.
+Different consumers.
+Similar names do not imply same concept.
+Testing Strategy Updates
+Endpoint tests
+
+Switched to using:
+
+WebApplication.CreateBuilder()
+
+
+and a real:
+
+WebApplication
+
+
+for endpoint registration testing.
+
+Test failures
+
+Most failures caused by:
+
+Swagger grouping changes.
+Route organization changes.
+DisplayName adoption.
+
+Very few failures represented actual regressions.
+
+3. Unresolved Questions / Next Steps
+Queryable Cleanup
+Continue applying Participant lessons to Queryable.
+Introduce:
+DisplayName
+Description
+Summary improvements
+Ensure Queryable metadata becomes first-class.
+E-Commerce Integration
+
+Next major milestone:
+
+Queryable models for:
+Products
+Shopping Carts
+Orders
+
+Expose through Queryable APIs.
+
+Angular UI
+
+Build a simple UI that:
+
+Discovers processes.
+Discovers step metadata.
+Renders forms dynamically from metadata.
+Executes process steps.
+Uses Queryable for reads.
+
+Purpose:
+
+Validate metadata-driven consumer experience.
+Validate separation between consumer and process knowledge.
+Process Visualization
+
+Still unresolved.
+
+Potential direction:
+
+Introduce graph metadata endpoint.
+Return graph structure as metadata first.
+Defer actual visualization tooling.
+
+Need further decisions on:
+
+Dependency relationships
+AvailableAfter relationships
+AvailableUntil relationships
+Visual representation of different edge types
+Metadata Convergence
+
+Need to revisit later:
+
+Shared metadata abstractions between Queryable and Process.
+Confirm whether additional metadata concepts belong in Kaleido.Abstractions.
+
+Current stance:
+
+Share infrastructure metadata.
+Avoid sharing domain-specific field models.
+Orchestrator
+
+Still intentionally deferred.
+
+Current plan:
+
+Finish Participant.
+Validate E-Commerce sample.
+Finish Queryable cleanup.
+Build Angular proof-of-concept.
+Return to Orchestrator design using proven patterns from Participant and Queryable.

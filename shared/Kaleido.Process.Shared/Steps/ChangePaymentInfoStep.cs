@@ -1,8 +1,9 @@
 ﻿using Kaleido.Process.Attributes;
-using Kaleido.Process.Shared.Entities;
+using Kaleido.Samples.ECommerce;
+using Kaleido.Samples.ECommerce.Entities;
 using System.ComponentModel.DataAnnotations;
 
-namespace Kaleido.Process.Shared.Steps;
+namespace Kaleido.Samples.ECommerce.Steps;
 
 [ProcessStep(
     Name = "ChangePaymentInfo",

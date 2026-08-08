@@ -5,8 +5,9 @@ using Kaleido.Queryable.Records;
 namespace Kaleido.Queryable.Shared;
 
 [NamedQuery(
-    "active-records",
-    "Returns only active records.")]
+    Name ="active-records",
+    DisplayName = "Active Records",
+    Description ="Returns only active records.")]
 public sealed class ActiveRecordsQuery :
     IRecordNamedQuery<SampleKaleidoRecord>
 {
@@ -19,8 +20,9 @@ public sealed class ActiveRecordsQuery :
 }
 
 [NamedQuery(
-    "records-by-category",
-    "Returns records by category.")]
+    Name = "records-by-category",
+    DisplayName = "Records by Category",
+    Description = "Returns records by category.")]
 [NamedQueryParameter(
     nameof(SampleKaleidoRecord.Category),
     typeof(string),
@@ -50,8 +52,9 @@ public sealed class RecordsByCategoryQuery :
 }
 
 [NamedQuery(
-    "high-amount-records",
-    "Returns records with amounts above a threshold.")]
+    Name = "high-amount-records",
+    DisplayName = "High Amount Records",
+    Description = "Returns records with amounts above a threshold.")]
 [NamedQueryParameter(
     nameof(SampleKaleidoRecord.Amount),
     typeof(decimal),
@@ -78,8 +81,9 @@ public sealed class HighAmountRecordsQuery :
 }
 
 [NamedQuery(
-    "effective-on",
-    "Returns records effective on a specific date.")]
+    Name = "effective-on",
+    DisplayName = "Effective On",
+    Description = "Returns records effective on a specific date.")]
 [NamedQueryParameter(
     nameof(SampleKaleidoRecord.EffectiveDate),
     typeof(DateOnly),

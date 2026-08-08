@@ -32,7 +32,7 @@ public sealed class QueryableDiscoveryTests
     public async Task GetQueryable_Should_Return_Registered_Records()
     {
         var records =
-            await _client.GetFromJsonAsync<RecordSummaryContract[]>(
+            await _client.GetFromJsonAsync<QueryableRecordSummary[]>(
                 "/kaleido/queryable");
 
         Assert.NotNull(records);
@@ -46,7 +46,7 @@ public sealed class QueryableDiscoveryTests
     public async Task GetQueryable_Should_Return_Record_Summary()
     {
         var records =
-            await _client.GetFromJsonAsync<RecordSummaryContract[]>(
+            await _client.GetFromJsonAsync<QueryableRecordSummary[]>(
                 "/kaleido/queryable");
 
         Assert.NotNull(records);
@@ -71,7 +71,7 @@ public sealed class QueryableDiscoveryTests
     public async Task GetQueryable_Should_Return_Named_Query_Summaries()
     {
         var records =
-            await _client.GetFromJsonAsync<RecordSummaryContract[]>(
+            await _client.GetFromJsonAsync<QueryableRecordSummary[]>(
                 "/kaleido/queryable");
 
         Assert.NotNull(records);

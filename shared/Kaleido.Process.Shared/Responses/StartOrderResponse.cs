@@ -1,4 +1,6 @@
-﻿namespace Kaleido.Process.Shared.Responses;
+﻿using Kaleido.Samples.ECommerce;
+
+namespace Kaleido.Samples.ECommerce.Responses;
 
 public sealed record StartOrderResponse
 {

@@ -676,6 +676,7 @@ public sealed class QueryRequestCompilerTests
         return new RecordMetadata(
             "test-record",
             "Test Record",
+            "Test Record",
             "1.0.0",
             "Unit Test",
             [
@@ -725,6 +726,7 @@ public sealed class QueryRequestCompilerTests
     {
         return new RecordMetadata(
             "test-record",
+            "Test Record",
             "Test Record",
             "1.0.0",
             "Unit Test",

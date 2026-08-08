@@ -22,7 +22,7 @@ public sealed class NamedQueryMetadataTests
     {
         var response =
             await _client.GetAsync(
-                "/kaleido/queryable/functional-records/queries/unknown/metadata");
+                "/kaleido/queryable/functional-records/queries/unknown");
 
         Assert.Equal(
             HttpStatusCode.NotFound,
@@ -33,8 +33,8 @@ public sealed class NamedQueryMetadataTests
     public async Task ActiveRecords_Should_Return_Metadata()
     {
         var metadata =
-            await _client.GetFromJsonAsync<NamedQueryContract>(
-                "/kaleido/queryable/functional-records/queries/active-records/metadata");
+            await _client.GetFromJsonAsync<QueryableNamedQuery>(
+                "/kaleido/queryable/functional-records/queries/active-records");
 
         Assert.NotNull(metadata);
 
@@ -54,8 +54,8 @@ public sealed class NamedQueryMetadataTests
     public async Task RecordsByCategory_Should_Return_Metadata()
     {
         var metadata =
-            await _client.GetFromJsonAsync<NamedQueryContract>(
-                "/kaleido/queryable/functional-records/queries/records-by-category/metadata");
+            await _client.GetFromJsonAsync<QueryableNamedQuery>(
+                "/kaleido/queryable/functional-records/queries/records-by-category");
 
         Assert.NotNull(metadata);
 
@@ -99,8 +99,8 @@ public sealed class NamedQueryMetadataTests
     public async Task HighAmountRecords_Should_Return_Metadata()
     {
         var metadata =
-            await _client.GetFromJsonAsync<NamedQueryContract>(
-                "/kaleido/queryable/functional-records/queries/high-amount-records/metadata");
+            await _client.GetFromJsonAsync<QueryableNamedQuery>(
+                "/kaleido/queryable/functional-records/queries/high-amount-records");
 
         Assert.NotNull(metadata);
 
@@ -146,8 +146,8 @@ public sealed class NamedQueryMetadataTests
     public async Task EffectiveOn_Should_Return_Metadata()
     {
         var metadata =
-            await _client.GetFromJsonAsync<NamedQueryContract>(
-                "/kaleido/queryable/functional-records/queries/effective-on/metadata");
+            await _client.GetFromJsonAsync<QueryableNamedQuery>(
+                "/kaleido/queryable/functional-records/queries/effective-on");
 
         Assert.NotNull(metadata);
 

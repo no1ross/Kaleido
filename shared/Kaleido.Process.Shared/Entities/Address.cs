@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Kaleido.Process.Shared.Entities;
+namespace Kaleido.Samples.ECommerce.Entities;
 
 public sealed record Address
 {

@@ -324,6 +324,7 @@ public sealed class RecordQueryEngineTests
                 new NamedQueryMetadata(
                     "active",
                     "Active records",
+                    "Active records",
                     null));
 
         var registration =
@@ -625,6 +626,7 @@ public sealed class RecordQueryEngineTests
                         new NamedQueryMetadata(
                             "active",
                             "Active records",
+                            "Active records",
                             null))
                 ]);
 
@@ -829,6 +831,7 @@ public sealed class RecordQueryEngineTests
     {
         return new RecordMetadata(
             "test-record",
+            "Test Record",
             "Test Record",
             "1.0.0",
             "Unit Test",

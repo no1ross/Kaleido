@@ -1,8 +1,7 @@
 ﻿using Kaleido.Process.Attributes;
-using Kaleido.Process.Shared.Data;
 using System.ComponentModel.DataAnnotations;
 
-namespace Kaleido.Process.Shared.Steps;
+namespace Kaleido.Samples.ECommerce.Steps;
 
 [ProcessStep(
     Name = "AddItemToCart",

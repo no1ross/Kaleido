@@ -1,6 +1,29 @@
-﻿[
-  {
-    "SelectProcedure": {},
-    "VerifyEligibility": {}
-  }
-]
+﻿{
+  "name": "Laptops",
+  "percentage": 30,
+
+  "relatedCategories": [
+    {
+      "name": "Office Computers",
+      "probability": 80
+    }
+  ],
+
+  "brands": [
+    {
+      "name": "Dell",
+
+      "families": [
+        {
+          "name": "Latitude",
+          "models": [
+            "5320",
+            "5420",
+            "7330",
+            "7450"
+          ]
+        }
+      ]
+    }
+  ]
+}

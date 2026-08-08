@@ -32,7 +32,7 @@ public sealed class RecordMetadataTests
     public async Task GetRecordMetadata_Should_Return_Record_Metadata()
     {
         var metadata =
-            await _client.GetFromJsonAsync<RecordContract>(
+            await _client.GetFromJsonAsync<QueryableRecordResponse>(
                 "/kaleido/queryable/functional-records/metadata");
 
         Assert.NotNull(metadata);
@@ -42,7 +42,7 @@ public sealed class RecordMetadataTests
             metadata.Name);
 
         Assert.Equal(
-            "SampleKaleidoRecord",
+            "Functional Records",
             metadata.Description);
 
         Assert.Equal(
@@ -58,7 +58,7 @@ public sealed class RecordMetadataTests
     public async Task GetRecordMetadata_Should_Return_Pageable_Metadata()
     {
         var metadata =
-            await _client.GetFromJsonAsync<RecordContract>(
+            await _client.GetFromJsonAsync<QueryableRecordResponse>(
                 "/kaleido/queryable/functional-records/metadata");
 
         Assert.NotNull(metadata);
@@ -77,7 +77,7 @@ public sealed class RecordMetadataTests
     public async Task GetRecordMetadata_Should_Return_Record_Fields()
     {
         var metadata =
-            await _client.GetFromJsonAsync<RecordContract>(
+            await _client.GetFromJsonAsync<QueryableRecordResponse>(
                 "/kaleido/queryable/functional-records/metadata");
 
         Assert.NotNull(metadata);
@@ -111,7 +111,7 @@ public sealed class RecordMetadataTests
     public async Task GetRecordMetadata_Should_Return_All_Named_Query_Summaries()
     {
         var metadata =
-            await _client.GetFromJsonAsync<RecordContract>(
+            await _client.GetFromJsonAsync<QueryableRecordResponse>(
                 "/kaleido/queryable/functional-records/metadata");
 
         Assert.NotNull(metadata);

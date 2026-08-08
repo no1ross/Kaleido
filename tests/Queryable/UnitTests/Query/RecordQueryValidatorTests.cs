@@ -410,6 +410,7 @@ public sealed class RecordQueryValidatorTests
             new RecordMetadata(
                 "test-record",
                 "Test Record",
+                "Test Record",
                 "1.0.0",
                 "Unit Test",
                 [
@@ -444,12 +445,14 @@ public sealed class RecordQueryValidatorTests
                     new NamedQueryMetadata(
                         "active",
                         "Active Records",
+                        "Active Records",
                         null)),
 
                 new NamedQueryRegistration(
                     typeof(TestNamedQuery),
                     new NamedQueryMetadata(
                         "by-name",
+                        "By Name",
                         "By Name",
                         [
                             new QueryParameterMetadata(
@@ -463,6 +466,7 @@ public sealed class RecordQueryValidatorTests
                     typeof(TestNamedQuery),
                     new NamedQueryMetadata(
                         "by-amount",
+                        "By Amount",
                         "By Amount",
                         [
                             new QueryParameterMetadata(

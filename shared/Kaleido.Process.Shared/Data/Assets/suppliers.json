@@ -1,0 +1,197 @@
+﻿{
+  "Dell": {
+    "ContactName": "Michael Peterson",
+    "Email": "michael.peterson@dell.example",
+    "IsPreferred": true,
+    "Families": {
+      "Latitude": {
+        "PrimaryCategory": "Electronics/Computers/Laptops",
+        "RelatedCategories": [
+          "Office/Office Computers"
+        ],
+        "Models": [
+          "5320",
+          "5420",
+          "7330",
+          "7450"
+        ]
+      },
+      "Precision": {
+        "PrimaryCategory": "Electronics/Computers/Laptops",
+        "RelatedCategories": [
+          "Office/Office Computers",
+          "Electronics/Monitors/Professional Displays"
+        ],
+        "Models": [
+          "3580",
+          "3590"
+        ]
+      },
+      "OptiPlex": {
+        "PrimaryCategory": "Electronics/Computers/Desktops",
+        "RelatedCategories": [
+          "Office/Office Computers"
+        ],
+        "Models": [
+          "7010",
+          "7020",
+          "7420"
+        ]
+      }
+    }
+  },
+
+  "Lenovo": {
+    "ContactName": "Sarah Mitchell",
+    "Email": "sarah.mitchell@lenovo.example",
+    "IsPreferred": true,
+    "Families": {
+      "ThinkPad": {
+        "PrimaryCategory": "Electronics/Computers/Laptops",
+        "RelatedCategories": [
+          "Office/Office Computers"
+        ],
+        "Models": [
+          "T14",
+          "T16",
+          "X1 Carbon",
+          "X13"
+        ]
+      },
+      "ThinkCentre": {
+        "PrimaryCategory": "Electronics/Computers/Desktops",
+        "RelatedCategories": [
+          "Office/Office Computers"
+        ],
+        "Models": [
+          "M70",
+          "M75",
+          "Neo"
+        ]
+      },
+      "Legion": {
+        "PrimaryCategory": "Electronics/Computers/Laptops",
+        "RelatedCategories": [
+          "Electronics/Monitors/Gaming Monitors"
+        ],
+        "Models": [
+          "5",
+          "7",
+          "Pro 7"
+        ]
+      }
+    }
+  },
+
+  "Logitech": {
+    "ContactName": "Brian Walker",
+    "Email": "brian.walker@logitech.example",
+    "IsPreferred": true,
+    "Families": {
+      "MX Master": {
+        "PrimaryCategory": "Electronics/Peripherals/Mice",
+        "RelatedCategories": [
+          "Office/Office Computers"
+        ],
+        "Models": [
+          "3",
+          "3S"
+        ]
+      },
+      "MX Keys": {
+        "PrimaryCategory": "Electronics/Peripherals/Keyboards",
+        "RelatedCategories": [
+          "Office/Office Computers"
+        ],
+        "Models": [
+          "Mini",
+          "S"
+        ]
+      },
+      "Brio": {
+        "PrimaryCategory": "Electronics/Peripherals/Webcams",
+        "RelatedCategories": [
+          "Office/Collaboration"
+        ],
+        "Models": [
+          "100",
+          "300",
+          "500"
+        ]
+      }
+    }
+  },
+
+  "Samsung": {
+    "ContactName": "Jennifer Kim",
+    "Email": "jennifer.kim@samsung.example",
+    "IsPreferred": true,
+    "Families": {
+      "Galaxy Tab": {
+        "PrimaryCategory": "Electronics/Computers/Tablets",
+        "RelatedCategories": [],
+        "Models": [
+          "S9",
+          "S9+",
+          "S9 Ultra"
+        ]
+      },
+      "Odyssey": {
+        "PrimaryCategory": "Electronics/Monitors/Gaming Monitors",
+        "RelatedCategories": [
+          "Electronics/Monitors/Professional Displays"
+        ],
+        "Models": [
+          "G7",
+          "G8",
+          "G9"
+        ]
+      },
+      "990 Pro": {
+        "PrimaryCategory": "Electronics/Storage/Internal SSDs",
+        "RelatedCategories": [],
+        "Models": [
+          "1TB",
+          "2TB",
+          "4TB"
+        ]
+      },
+      "Bespoke": {
+        "PrimaryCategory": "Home & Kitchen/Kitchen/Small Appliances",
+        "RelatedCategories": [],
+        "Models": [
+          "Jet",
+          "Cube",
+          "AirDresser"
+        ]
+      }
+    }
+  },
+
+  "KitchenAid": {
+    "ContactName": "Patricia Baker",
+    "Email": "patricia.baker@kitchenaid.example",
+    "IsPreferred": true,
+    "Families": {
+      "Stand Mixer": {
+        "PrimaryCategory": "Home & Kitchen/Kitchen/Small Appliances",
+        "RelatedCategories": [
+          "Home & Kitchen/Kitchen/Cookware"
+        ],
+        "Models": [
+          "Classic",
+          "Artisan",
+          "Professional"
+        ]
+      },
+      "Coffee Maker": {
+        "PrimaryCategory": "Home & Kitchen/Kitchen/Small Appliances",
+        "RelatedCategories": [],
+        "Models": [
+          "KCM1208",
+          "KCM4212"
+        ]
+      }
+    }
+  }
+}

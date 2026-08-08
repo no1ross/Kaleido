@@ -1,10 +1,12 @@
 using Kaleido;
+using Kaleido.Queryable;
 using Kaleido.Process;
 using Kaleido.Process.AspNetCore;
-using Kaleido.Process.Shared;
-using Kaleido.Process.Shared.Steps;
+using Kaleido.Samples.ECommerce.Data;
+using Kaleido.Samples.ECommerce.Steps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
+using Kaleido.Queryable.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,17 +23,24 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(AddItemToCartStep).Assembly)
-    .AddParticipant()
-        .AddParticipantAspNetCore();
+    //.AddParticipant()
+    //    .AddParticipantAspNetCore()
+    .AddQueryable()
+        .AddQueryableAspNetCore();
 
-builder.Services.AddDbContext<ShoppingCartDbContext>(options =>
+builder.Services.AddDbContext<ECommerceDbContext>(options =>
 {
     options.UseSqlite("Data Source=kaleido-sample-ecomerce.sqlite");
 });
 
 var app = builder.Build();
 
-app.MapParticipant();
+await ECommerceDbInitializer
+    .InitializeAsync(
+        app.Services);
+
+app.MapQueryable();
+//app.MapParticipant();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

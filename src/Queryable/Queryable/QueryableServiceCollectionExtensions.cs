@@ -10,12 +10,12 @@ namespace Kaleido.Queryable;
 
 public static class QueryableServiceCollectionExtensions
 {
-    public static IKaleidoBuilder AddQueryable(this IKaleidoBuilder builder)
+    public static IQueryableBuilder AddQueryable(this IKaleidoBuilder builder)
     {
         return builder.AddQueryable(_ => { });
     }
 
-    public static IKaleidoBuilder AddQueryable(
+    public static IQueryableBuilder AddQueryable(
         this IKaleidoBuilder builder,
         Action<QueryableOptions> configure)
     {
@@ -79,7 +79,7 @@ public static class QueryableServiceCollectionExtensions
 
         RegisterFrameworkServices(builder.Services);
 
-        return builder;
+        return new QueryableBuilder(builder);
     }
 
     private static void RegisterFrameworkServices(IServiceCollection services)

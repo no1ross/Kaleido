@@ -40,7 +40,6 @@
     <File Path="src/Process/Abstractions/AssemblyInfo.cs" />
     <Project Path="src/Queryable/Abstractions/Kaleido.Queryable.Abstractions.csproj" />
     <Project Path="src/Queryable/AspNetCore/Kaleido.Queryable.AspNetCore.csproj" />
-    <Project Path="src/Queryable/OpenApi/Kaleido.Queryable.OpenApi.csproj" Id="534b2ee6-e13a-43de-903a-908a85871e08" />
     <Project Path="src/Queryable/Queryable/Kaleido.Queryable.csproj" />
   </Folder>
   <Folder Name="/test/" />
@@ -55,7 +54,6 @@
     <Project Path="tests/Queryable/AspNetCore.FunctionalTests/Kaleido.Queryable.AspNetCore.FunctionalTests.csproj" />
     <Project Path="tests/Queryable/AspNetCore.UnitTests/Kaleido.Queryable.AspNetCore.UnitTests.csproj" Id="6175cc57-6479-4da1-972b-4361e6d40ea6" />
     <Project Path="tests/Queryable/FunctionalTests/Kaleido.Queryable.FunctionalTests.csproj" />
-    <Project Path="tests/Queryable/OpenApi.UnitTests/Kaleido.Queryable.OpenApi.UnitTests.csproj" />
     <Project Path="tests/Queryable/Testing/Kaleido.Queryable.Testing.csproj" />
     <Project Path="tests/Queryable/UnitTests/Kaleido.Queryable.UnitTests.csproj" />
   </Folder>

@@ -157,29 +157,29 @@ public sealed class RecordRegistrationValidatorTests
     }
 
     [QueryableRecord(
-        "test-record",
-        "Test",
-        null,
-        "Unit Test")]
+        Name = "test-record",
+        DisplayName = "Test Record",
+        Version = "1.0.0",
+        Source = "Unit Test")]
     private sealed record TestRecord;
 
     [QueryableRecord(
-        "test-record",
-        "Duplicate",
-        null,
-        "Unit Test")]
+        Name = "test-record",
+        DisplayName = "Duplicate",
+        Version = "1.0.0",
+        Source = "Unit Test")]
     private sealed record DuplicateRecord;
 
     [QueryableRecord(
-        "TEST-RECORD",
-        "Duplicate",
-        null,
-        "Unit Test")]
+        Name = "TEST-RECORD",
+        DisplayName = "Duplicate",
+        Version = "1.0.0",
+        Source = "Unit Test")]
     private sealed record CaseInsensitiveDuplicateRecord;
 
     [NamedQuery(
-        "active",
-        "Active Records")]
+        Name = "active",
+        DisplayName = "Active Records")]
     private sealed class ActiveQuery
         : IRecordNamedQuery<TestRecord>
     {
@@ -190,8 +190,8 @@ public sealed class RecordRegistrationValidatorTests
     }
 
     [NamedQuery(
-        "active",
-        "Duplicate Active Records")]
+        Name = "active",
+        DisplayName = "Duplicate Active Records")]
     private sealed class DuplicateActiveQuery
         : IRecordNamedQuery<TestRecord>
     {
@@ -202,8 +202,8 @@ public sealed class RecordRegistrationValidatorTests
     }
 
     [NamedQuery(
-        "ACTIVE",
-        "Duplicate Active Records")]
+        Name = "ACTIVE",
+        DisplayName = "Duplicate Active Records")]
     private sealed class LowerCaseActiveQuery
         : IRecordNamedQuery<TestRecord>
     {
@@ -214,8 +214,8 @@ public sealed class RecordRegistrationValidatorTests
     }
 
     [NamedQuery(
-        "by-category",
-        "By Category")]
+        Name = "by-category",
+        DisplayName = "By Category")]
     private sealed class ByCategoryQuery
         : IRecordNamedQuery<TestRecord>
     {

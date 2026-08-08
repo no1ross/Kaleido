@@ -1,11 +1,12 @@
-﻿namespace Kaleido.Process.Shared;
+﻿namespace Kaleido.Samples.ECommerce;
 
 public enum OrderStatus
 {
-    Draft,
-    PendingSubmission,
-    Submitted,
-    Cancelled
+    Started = 1,
+    BillingSubmitted = 2,
+    TermsAccepted = 3,
+    Submitted = 4,
+    Cancelled = 5
 }
 
 public enum ShoppingCartStatus

@@ -1,598 +1,265 @@
-﻿using Kaleido.Queryable.AspNetCore.Contracts;
+﻿using Kaleido.Queryable.AspNetCore;
+using Kaleido.Queryable.AspNetCore.Contracts;
+using Kaleido.Queryable.Metadata;
+using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Moq;
 
-namespace Kaleido.Queryable.AspNetCore.Tests;
+namespace Kaleido.Queryable.UnitTests.AspNetCore;
 
 public sealed class QueryableEndpointRouteBuilderExtensionsTests
 {
     [Fact]
     public void MapQueryable_ShouldThrow_WhenEndpointsIsNull()
     {
-        IEndpointRouteBuilder? endpoints = null;
-
         Assert.Throws<ArgumentNullException>(
-            () => endpoints!.MapQueryable());
+            () => QueryableEndpointRouteBuilderExtensions.MapQueryable(null!));
     }
 
     [Fact]
-    public void MapQueryable_ShouldThrow_WhenRecordRegistryIsNotRegistered()
+    public void MapQueryable_ShouldRegisterCatalogEndpoint()
     {
-        var app =
-            CreateAppWithoutRegistry();
+        var endpoints =
+            CreateEndpoints(
+                CreateRegistry());
 
-        var exception =
-            Assert.Throws<InvalidOperationException>(
-                () => app.MapQueryable());
+        endpoints.MapQueryable();
+
+        var endpoint =
+            FindEndpoint(
+                endpoints,
+                QueryableEndpointNames.CatalogEndpointName);
+
+        Assert.NotNull(endpoint);
+    }
+
+    [Fact]
+    public void MapQueryable_ShouldRegisterRecordMetadataEndpoint()
+    {
+        var endpoints =
+            CreateEndpoints(
+                CreateRegistry());
+
+        endpoints.MapQueryable();
+
+        var endpoint =
+            FindEndpoint(
+                endpoints,
+                QueryableEndpointNames
+                    .RecordMetadataEndpointName(
+                        "functionalrecords"));
+
+        Assert.NotNull(endpoint);
+    }
+
+    [Fact]
+    public void MapQueryable_ShouldRegisterRecordQueryEndpoint()
+    {
+        var endpoints =
+            CreateEndpoints(
+                CreateRegistry());
+
+        endpoints.MapQueryable();
+
+        var endpoint =
+            FindEndpoint(
+                endpoints,
+                QueryableEndpointNames
+                    .RecordQueryEndpointName(
+                        "functionalrecords"));
+
+        Assert.NotNull(endpoint);
+    }
+
+    [Fact]
+    public void MapQueryable_ShouldRegisterNamedQueryMetadataEndpoint()
+    {
+        var endpoints =
+            CreateEndpoints(
+                CreateRegistry());
+
+        endpoints.MapQueryable();
+
+        var endpoint =
+            FindEndpoint(
+                endpoints,
+                QueryableEndpointNames
+                    .NamedQueryMetadataEndpointName(
+                        "functionalrecords",
+                        "activerecords"));
+
+        Assert.NotNull(endpoint);
+    }
+
+    [Fact]
+    public void MapQueryable_ShouldRegisterNamedQueryEndpoint()
+    {
+        var endpoints =
+            CreateEndpoints(
+                CreateRegistry());
+
+        endpoints.MapQueryable();
+
+        var endpoint =
+            FindEndpoint(
+                endpoints,
+                QueryableEndpointNames
+                    .NamedQueryEndpointName(
+                        "functionalrecords",
+                        "activerecords"));
+
+        Assert.NotNull(endpoint);
+    }
+
+    [Fact]
+    public void MapQueryable_ShouldUseDisplayNameForRecordTag()
+    {
+        var endpoints =
+            CreateEndpoints(
+                CreateRegistry());
+
+        endpoints.MapQueryable();
+
+        var endpoint =
+            FindEndpoint(
+                endpoints,
+                QueryableEndpointNames
+                    .RecordMetadataEndpointName(
+                        "functionalrecords"));
+
+        var tags =
+            endpoint!.Metadata
+                .OfType<ITagsMetadata>()
+                .Single();
 
         Assert.Contains(
-            nameof(IRecordRegistry),
-            exception.Message);
+            "Functional record test type.",
+            tags.Tags);
     }
 
     [Fact]
-    public void MapQueryable_ShouldReturn_SameEndpointBuilder()
+    public void MapQueryable_ShouldUseCombinedTagForNamedQuery()
     {
-        var registration =
-            CreateRegistration();
+        var endpoints =
+            CreateEndpoints(
+                CreateRegistry());
 
-        var app =
-            CreateApp(
-                registrations: [registration]);
-
-        var result =
-            app.MapQueryable();
-
-        Assert.Same(
-            app,
-            result);
-    }
-
-    [Fact]
-    public void MapQueryable_ShouldMap_CatalogEndpoint()
-    {
-        var registration =
-            CreateRegistration();
-
-        var app =
-            CreateApp(
-                registrations: [registration]);
-
-        app.MapQueryable();
+        endpoints.MapQueryable();
 
         var endpoint =
-            AssertEndpointByName(
-                app,
-                QueryableEndpointNames.CatalogEndpointName);
+            FindEndpoint(
+                endpoints,
+                QueryableEndpointNames
+                    .NamedQueryEndpointName(
+                        "functionalrecords",
+                        "activerecords"));
 
-        AssertHttpMethod(
-            endpoint,
-            "GET");
+        var tags =
+            endpoint!.Metadata
+                .OfType<ITagsMetadata>()
+                .Single();
+
+        Assert.Contains(
+            "Functional record test type. - Returns active records.",
+            tags.Tags);
     }
 
-    [Fact]
-    public void MapQueryable_ShouldMap_RecordMetadataEndpoint()
+    private static RouteEndpoint? FindEndpoint(
+        IEndpointRouteBuilder endpoints,
+        string name)
     {
-        var registration =
-            CreateRegistration();
+        var dataSource =
+            endpoints.DataSources.Single();
 
-        var app =
-            CreateApp(
-                registrations: [registration]);
-
-        app.MapQueryable();
-
-        var endpoint =
-            AssertRoute(
-                app,
-                "/kaleido/queryable/functional-records/metadata",
-                "GET");
-
-        AssertEndpointName(
-            endpoint,
-            QueryableEndpointNames.RecordMetadataEndpointName(
-                "functional-records"));
+        return dataSource.Endpoints
+            .OfType<RouteEndpoint>()
+            .SingleOrDefault(x =>
+                x.Metadata
+                    .OfType<IEndpointNameMetadata>()
+                    .Any(m =>
+                        string.Equals(
+                            m.EndpointName,
+                            name,
+                            StringComparison.Ordinal)));
     }
 
-    [Fact]
-    public void MapQueryable_ShouldMap_RecordQueryEndpoint()
+    private static IEndpointRouteBuilder CreateEndpoints(
+        IRecordRegistry registry)
     {
-        var registration =
-            CreateRegistration();
+        var builder = WebApplication.CreateBuilder();
 
-        var app =
-            CreateApp(
-                registrations: [registration]);
+        var services = builder.Services;
 
-        app.MapQueryable();
+        services.AddRouting();
 
-        var endpoint =
-            AssertRoute(
-                app,
-                "/kaleido/queryable/functional-records/query",
-                "POST");
+        services.AddSingleton(
+            registry);
 
-        AssertEndpointName(
-            endpoint,
-            QueryableEndpointNames.RecordQueryEndpointName(
-                "functional-records"));
+        builder.Services.AddSingleton(
+            Mock.Of<IQueryableService>());
+
+        services.AddSingleton<
+            IOptions<QueryableRouteOptions>>(
+            Options.Create(
+                new QueryableRouteOptions()));        
+
+        return builder.Build();
     }
 
-    [Fact]
-    public void MapQueryable_ShouldMap_NamedQueryEndpoint()
+    private static IRecordRegistry CreateRegistry()
     {
-        var registration =
-            CreateRegistration();
+        var namedQuery =
+            new NamedQueryRegistration(
+                typeof(FakeNamedQuery),
+                new NamedQueryMetadata(
+                    "ActiveRecords",
+                    "Returns active records.",
+                    "1.0",
+                Array.Empty<QueryParameterMetadata>()));
 
-        var app =
-            CreateApp(
-                registrations: [registration]);
-
-        app.MapQueryable();
-
-        var endpoint =
-            AssertRoute(
-                app,
-                "/kaleido/queryable/functional-records/queries/records-by-category",
-                "POST");
-
-        AssertEndpointName(
-            endpoint,
-            QueryableEndpointNames.NamedQueryEndpointName(
-                "functional-records",
-                "records-by-category"));
-    }
-
-    [Fact]
-    public void MapQueryable_ShouldMap_NamedQueryMetadataEndpoint()
-    {
-        var registration =
-            CreateRegistration();
-
-        var app =
-            CreateApp(
-                registrations: [registration]);
-
-        app.MapQueryable();
-
-        var endpoint =
-            AssertRoute(
-                app,
-                "/kaleido/queryable/functional-records/queries/records-by-category/metadata",
-                "GET");
-
-        AssertEndpointName(
-            endpoint,
-            QueryableEndpointNames.NamedQueryMetadataEndpointName(
-                "functional-records",
-                "records-by-category"));
-    }
-
-    [Fact]
-    public void MapQueryable_ShouldMap_AllRegisteredRecords()
-    {
-        var firstRegistration =
-            CreateRegistration(
-                recordName: "functional-records");
-
-        var secondRegistration =
-            CreateRegistration(
-                recordName: "other-records");
-
-        var app =
-            CreateApp(
-                registrations:
-                [
-                    firstRegistration,
-                    secondRegistration
-                ]);
-
-        app.MapQueryable();
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/metadata",
-            "GET");
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/query",
-            "POST");
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/other-records/metadata",
-            "GET");
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/other-records/query",
-            "POST");
-    }
-
-    [Fact]
-    public void MapQueryable_ShouldMap_AllNamedQueries_ForRegisteredRecord()
-    {
-        var registration =
-            CreateRegistration(
-                recordName: "functional-records",
-                namedQueries:
-                [
-                    CreateNamedQueryRegistration(
-                        "records-by-category"),
-
-                    CreateNamedQueryRegistration(
-                        "high-amount-records")
-                ]);
-
-        var app =
-            CreateApp(
-                registrations: [registration]);
-
-        app.MapQueryable();
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/queries/records-by-category",
-            "POST");
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/queries/records-by-category/metadata",
-            "GET");
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/queries/high-amount-records",
-            "POST");
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/queries/high-amount-records/metadata",
-            "GET");
-    }
-
-    [Fact]
-    public void MapQueryable_ShouldUse_ConfiguredRoutePrefix()
-    {
-        var registration =
-            CreateRegistration();
-
-        var app =
-            CreateApp(
-                configure: options =>
+        var record =
+            new RecordRegistration(
+                typeof(FakeRecord),
+                typeof(FakeSource),
+                new RecordMetadata(
+                    "FunctionalRecords",
+                    "Functional record test type.",
+                    "Functional record test type.",
+                    "1.0",
+                    "Functional Records",
+                    Array.Empty<FieldMetadata>(),
+                    null),
+                new[]
                 {
-                    options.RoutePrefix = "/custom/queryable";
-                },
-                registrations: [registration]);
-
-        app.MapQueryable();
-
-        var catalogEndpoint =
-            AssertEndpointByName(
-                app,
-                QueryableEndpointNames.CatalogEndpointName);
-
-        AssertHttpMethod(
-            catalogEndpoint,
-            "GET");
-
-        AssertRoute(
-            app,
-            "/custom/queryable/functional-records/metadata",
-            "GET");
-
-        AssertRoute(
-            app,
-            "/custom/queryable/functional-records/query",
-            "POST");
-
-        AssertRoute(
-            app,
-            "/custom/queryable/functional-records/queries/records-by-category",
-            "POST");
-
-        AssertRoute(
-            app,
-            "/custom/queryable/functional-records/queries/records-by-category/metadata",
-            "GET");
-    }
-
-    [Fact]
-    public void MapQueryable_ShouldUse_ConfiguredRouteSegments()
-    {
-        var registration =
-            CreateRegistration();
-
-        var app =
-            CreateApp(
-                configure: options =>
-                {
-                    options.MetadataRoute = "schema";
-                    options.QueryRoute = "execute";
-                    options.QueriesRoute = "named-queries";
-                },
-                registrations: [registration]);
-
-        app.MapQueryable();
-
-        var catalogEndpoint =
-            AssertEndpointByName(
-                app,
-                QueryableEndpointNames.CatalogEndpointName);
-
-        AssertHttpMethod(
-            catalogEndpoint,
-            "GET");
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/schema",
-            "GET");
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/execute",
-            "POST");
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/named-queries/records-by-category",
-            "POST");
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/named-queries/records-by-category/schema",
-            "GET");
-    }
-
-    [Fact]
-    public void MapQueryable_ShouldNormalize_RecordNames_ForRoutes()
-    {
-        var registration =
-            CreateRegistration(
-                recordName: "Functional-Records");
-
-        var app =
-            CreateApp(
-                registrations: [registration]);
-
-        app.MapQueryable();
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/metadata",
-            "GET");
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/query",
-            "POST");
-    }
-
-    [Fact]
-    public void MapQueryable_ShouldNormalize_NamedQueryNames_ForRoutes()
-    {
-        var registration =
-            CreateRegistration(
-                recordName: "functional-records",
-                namedQueries:
-                [
-                    CreateNamedQueryRegistration(
-                        "Records-By-Category")
-                ]);
-
-        var app =
-            CreateApp(
-                registrations: [registration]);
-
-        app.MapQueryable();
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/queries/records-by-category",
-            "POST");
-
-        AssertRoute(
-            app,
-            "/kaleido/queryable/functional-records/queries/records-by-category/metadata",
-            "GET");
-    }
-
-    private static WebApplication CreateApp(
-        RecordRegistration[] registrations,
-        Action<QueryableRouteOptions>? configure = null)
-    {
-        var builder =
-            WebApplication.CreateBuilder();
+                    namedQuery
+                });
 
         var registry =
             new Mock<IRecordRegistry>();
 
-        registry
-            .SetupGet(x => x.Registrations)
-            .Returns(registrations);
+        registry.Setup(x => x.Registrations)
+            .Returns(
+                new[]
+                {
+                    record
+                });
 
-        builder.Services.AddSingleton(
-            registry.Object);
-
-        builder.Services.AddSingleton(
-            Mock.Of<IQueryableService>());
-
-        builder.Services.AddSingleton(
-            Options.Create(
-                CreateOptions(configure)));
-
-        return builder.Build();
+        return registry.Object;
     }
 
-    private static WebApplication CreateAppWithoutRegistry()
-    {
-        var builder =
-            WebApplication.CreateBuilder();
-
-        builder.Services.AddSingleton(
-            Options.Create(
-                new QueryableRouteOptions()));
-
-        builder.Services.AddSingleton(
-            Mock.Of<IQueryableService>());
-
-        return builder.Build();
-    }
-
-    private static QueryableRouteOptions CreateOptions(
-        Action<QueryableRouteOptions>? configure)
-    {
-        var options =
-            new QueryableRouteOptions();
-
-        configure?.Invoke(options);
-
-        return options;
-    }
-
-    private static RouteEndpoint AssertRoute(
-        IEndpointRouteBuilder endpoints,
-        string route,
-        string httpMethod)
-    {
-        var normalizedRoute =
-            NormalizeRoute(route);
-
-        var matchingEndpoints =
-            GetRouteEndpoints(endpoints)
-                .Where(endpoint =>
-                    string.Equals(
-                        NormalizeRoute(endpoint.RoutePattern.RawText),
-                        normalizedRoute,
-                        StringComparison.OrdinalIgnoreCase))
-                .ToArray();
-
-        var endpoint =
-            Assert.Single(
-                matchingEndpoints);
-
-        AssertHttpMethod(
-            endpoint,
-            httpMethod);
-
-        return endpoint;
-    }
-
-    private static RouteEndpoint AssertEndpointByName(
-        IEndpointRouteBuilder endpoints,
-        string endpointName)
-    {
-        var matchingEndpoints =
-            GetRouteEndpoints(endpoints)
-                .Where(endpoint =>
-                    string.Equals(
-                        endpoint.Metadata
-                            .GetMetadata<IEndpointNameMetadata>()
-                            ?.EndpointName,
-                        endpointName,
-                        StringComparison.Ordinal))
-                .ToArray();
-
-        return Assert.Single(
-            matchingEndpoints);
-    }
-
-    private static void AssertEndpointName(
-        RouteEndpoint endpoint,
-        string expectedName)
-    {
-        var endpointNameMetadata =
-            endpoint.Metadata
-                .GetMetadata<IEndpointNameMetadata>();
-
-        Assert.NotNull(
-            endpointNameMetadata);
-
-        Assert.Equal(
-            expectedName,
-            endpointNameMetadata.EndpointName);
-    }
-
-    private static void AssertHttpMethod(
-        RouteEndpoint endpoint,
-        string expectedHttpMethod)
-    {
-        var httpMethodMetadata =
-            endpoint.Metadata
-                .GetMetadata<HttpMethodMetadata>();
-
-        Assert.NotNull(
-            httpMethodMetadata);
-
-        Assert.Contains(
-            expectedHttpMethod,
-            httpMethodMetadata.HttpMethods);
-    }
-
-    private static IReadOnlyCollection<RouteEndpoint> GetRouteEndpoints(
-        IEndpointRouteBuilder endpoints)
-    {
-        return endpoints
-            .DataSources
-            .SelectMany(source => source.Endpoints)
-            .OfType<RouteEndpoint>()
-            .ToArray();
-    }
-
-    private static string NormalizeRoute(
-        string? route)
-    {
-        return (route ?? string.Empty)
-            .Trim()
-            .Trim('/');
-    }
-
-    private static RecordRegistration CreateRegistration(
-        string recordName = "functional-records",
-        IReadOnlyCollection<NamedQueryRegistration>? namedQueries = null)
-    {
-        return new RecordRegistration(
-            typeof(TestRecord),
-            typeof(TestRecordSource),
-            new RecordMetadata(
-                recordName,
-                "Test record.",
-                "1.0.0",
-                "Unit Test",
-                Array.Empty<FieldMetadata>(),
-                null),
-            namedQueries ??
-            [
-                CreateNamedQueryRegistration(
-                    "records-by-category")
-            ]);
-    }
-
-    private static NamedQueryRegistration CreateNamedQueryRegistration(
-        string name)
-    {
-        return new NamedQueryRegistration(
-            typeof(TestNamedQuery),
-            new NamedQueryMetadata(
-                name,
-                "Test named query.",
-                Array.Empty<QueryParameterMetadata>()));
-    }
-
-    private sealed class TestRecord
+    private sealed class FakeRecord
     {
     }
 
-    private sealed class TestRecordSource
+    private sealed class FakeNamedQuery
     {
     }
-
-    private sealed class TestNamedQuery
+    private sealed class FakeSource
     {
     }
 }

@@ -2,5 +2,5 @@
 
 public sealed class ProcessRouteOptions
 {
-    public string RoutePrefix { get; set; } = "/processes";
+    public string RoutePrefix { get; set; } = "/kaleido/processes";
 }

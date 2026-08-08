@@ -1,5 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<Import Project="../../build/samples.props" />
+	<PropertyGroup>
+		<RootNamespace>Kaleido.Samples.ECommerce</RootNamespace>
+	</PropertyGroup>
+	<ItemGroup>
+	  <None Remove="Data\Assets\customers.json" />
+	  <None Remove="Data\Assets\suppliers.json" />
+	  <None Remove="Data\Assets\taxonomy.json" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Content Include="Data\Assets\customers.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="Data\Assets\suppliers.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	  <Content Include="Data\Assets\taxonomy.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />

@@ -163,7 +163,8 @@ internal sealed class RecordRegistry : IRecordRegistry
             queryType,
             new NamedQueryMetadata(
                 queryAttribute.Name,
-                queryAttribute.Description,
+                queryAttribute.DisplayName ?? queryAttribute.Name,
+                queryAttribute.Description ?? queryAttribute.DisplayName ?? queryAttribute.Name,
                 parameters));
     }
 
@@ -177,7 +178,8 @@ internal sealed class RecordRegistry : IRecordRegistry
 
         return new RecordMetadata(
             attribute.Name,
-            attribute.Description,
+            attribute.Description ?? attribute.DisplayName ?? attribute.Name,
+            attribute.DisplayName ?? attribute.Name,
             attribute.Version,
             attribute.Source,
             recordType

@@ -231,6 +231,7 @@ public sealed class QueryableServiceTests
             new RecordMetadata(
                 "test",
                 "Test",
+                "Test",
                 "1.0",
                 "Unit Test",
                 [],

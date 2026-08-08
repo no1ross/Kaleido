@@ -373,10 +373,10 @@ public sealed class RecordRegistryTests
     }
 
     [QueryableRecord(
-        "test-record",
-        "Test Record",
-        null,
-        "Unit Test")]
+        Name ="test-record",
+        DisplayName ="Test Record",
+        Version = "1.0.0",
+        Source ="Unit Test")]
     [Pageable(50, 500)]
     private sealed record TestRecord(
         string Name,
@@ -396,8 +396,8 @@ public sealed class RecordRegistryTests
     }
 
     [NamedQuery(
-        "active",
-        "Active Records")]
+        Name = "active",
+        DisplayName = "Active Records")]
     [NamedQueryParameter(
         "Category",
         typeof(string),

@@ -4,15 +4,10 @@
 	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
-
-	<ItemGroup>
-		<!--<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.*" />-->
-		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.2.3" />
-	</ItemGroup>
 	
 	<ItemGroup>
 	  <ProjectReference Include="..\..\Core\AspNetCore\Kaleido.AspNetCore.csproj" />
-	  <ProjectReference Include="..\OpenApi\Kaleido.Queryable.OpenApi.csproj" />
+	  <ProjectReference Include="..\Queryable\Kaleido.Queryable.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -12,6 +12,7 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\..\shared\Kaleido.Process.Shared\Kaleido.Process.Shared.csproj" />
 	  <ProjectReference Include="..\..\src\Process\AspNetCore\Kaleido.Process.AspNetCore.csproj" />
+	  <ProjectReference Include="..\..\src\Queryable\AspNetCore\Kaleido.Queryable.AspNetCore.csproj" />
 	</ItemGroup>
 
 </Project>
