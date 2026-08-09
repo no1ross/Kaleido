@@ -12,6 +12,7 @@ internal sealed class InventorySeeder
 
         var inventories =
             dbContext.Products
+                .AsEnumerable()
                 .Select(
                     product => new Inventory
                     {

@@ -78,7 +78,7 @@ internal sealed class ProductSeeder
                                 GenerateReleaseDate(),
 
                             IsActive =
-                                true
+                                GenerateIsActive()
                         });
                 }
             }
@@ -111,9 +111,17 @@ internal sealed class ProductSeeder
     }
 
     private static decimal GeneratePrice()
-        => Random.Shared.Next(
-            10,
-            5000);
+    {
+        var price =
+            Math.Pow(
+                Random.Shared.NextDouble(),
+                2);
+
+        return Math.Round(
+            (decimal)(
+                10 + price * 4990),
+            2);
+    }
 
     private static double GenerateRating()
         => Math.Round(
@@ -136,4 +144,7 @@ internal sealed class ProductSeeder
             -Random.Shared.Next(
                 0,
                 3650));
+
+    private static bool GenerateIsActive() =>
+        Random.Shared.Next(1, 101) > 10;
 }

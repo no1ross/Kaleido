@@ -1,0 +1,40 @@
+:host {
+  display: block;
+}
+
+.queryable-pager {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 1rem 0;
+  flex-wrap: wrap;
+}
+
+.queryable-pager__summary {
+  font-weight: 500;
+}
+
+.queryable-pager__page-size {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.queryable-pager__navigation {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.queryable-pager__page {
+  padding: 0 0.75rem;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

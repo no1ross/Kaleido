@@ -1,4 +1,5 @@
 using Kaleido.Json;
+using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 
@@ -34,10 +35,20 @@ internal static class QueryableValueNormalizer
                 continue;
             }
 
-            result[parameter.Name] =
-                ValueConverter.Convert(
+            try
+            {
+                result[parameter.Name] =
+                    ValueConverter.Convert(
+                        value,
+                        parameter.Type);
+            }
+            catch (Exception)
+            {
+                throw new InvalidParameterValueException(
+                    parameter.Name,
                     value,
                     parameter.Type);
+            }
         }
 
         return result;
@@ -102,25 +113,42 @@ internal static class QueryableValueNormalizer
         RecordMetadata metadata)
     {
         var field =
-            metadata.Fields.Single(x =>
+            metadata.Fields.SingleOrDefault(x =>
                 string.Equals(
                     x.Name,
                     condition.Field,
                     StringComparison.OrdinalIgnoreCase));
 
-        var values =
-            condition.Values
-                .Select(x =>
-                    x is null
-                        ? null
-                        : ValueConverter.Convert(
-                            x,
-                            field.FieldType))
-                .ToArray();
-
-        return condition with
+        if (field is null)
         {
-            Values = values
-        };
+            throw new InvalidFieldException(
+                condition.Field,
+                metadata.Name);
+        }
+
+        try
+        {
+            var values =
+                condition.Values
+                    .Select(x =>
+                        x is null
+                            ? null
+                            : ValueConverter.Convert(
+                                x,
+                                field.FieldType))
+                    .ToArray();
+
+            return condition with
+            {
+                Values = values
+            };
+        }
+        catch (Exception)
+        {
+            throw new InvalidFilterValueException(
+                condition.Field,
+                condition.Values.FirstOrDefault(),
+                field.FieldType);
+        }
     }
 }

@@ -10,7 +10,7 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
     [Fact]
     public void AddQueryableAspNetCore_ShouldThrow_WhenBuilderIsNull()
     {
-        IKaleidoBuilder? builder = null;
+        IQueryableBuilder? builder = null;
 
         Assert.Throws<ArgumentNullException>(
             () => builder!.AddQueryableAspNetCore());
@@ -21,7 +21,8 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
     {
         var builder =
             new ServiceCollection()
-                .AddKaleido();
+                .AddKaleido()
+                .AddQueryable();
 
         var exception =
             Assert.Throws<InvalidOperationException>(
@@ -42,7 +43,8 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
             Mock.Of<IQueryableService>());
 
         var builder =
-            services.AddKaleido();
+            services.AddKaleido()
+                .AddQueryable();
 
         var result =
             builder.AddQueryableAspNetCore();
@@ -62,7 +64,8 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
             Mock.Of<IQueryableService>());
 
         var builder =
-            services.AddKaleido();
+            services.AddKaleido()
+                .AddQueryable();
 
         builder.AddQueryableAspNetCore(options =>
         {
@@ -106,7 +109,8 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
             Mock.Of<IQueryableService>());
 
         var builder =
-            services.AddKaleido();
+            services.AddKaleido()
+                .AddQueryable();
 
         builder.AddQueryableAspNetCore();
 

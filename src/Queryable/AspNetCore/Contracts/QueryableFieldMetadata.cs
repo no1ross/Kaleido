@@ -10,15 +10,15 @@ public sealed record QueryableFieldMetadata
 
     public bool IsFilterable { get; init; }
 
-    public IReadOnlyCollection<string> FilterOperators { get; init; }
-        = Array.Empty<string>();
+    public IReadOnlyCollection<FilterOperator> FilterOperators { get; init; }
+        = Array.Empty<FilterOperator>();
 
     public bool IsSearchable { get; init; }
 
     public int? SearchPriority { get; init; }
 
-    public IReadOnlyCollection<string> MatchModes { get; init; }
-        = Array.Empty<string>();
+    public IReadOnlyCollection<MatchMode> MatchModes { get; init; }
+        = Array.Empty<MatchMode>();
 
     public bool IsSortable { get; init; }
 
@@ -30,14 +30,10 @@ public sealed record QueryableFieldMetadata
             Name = metadata.Name,
             DataType = DataTypeMapper.GetDescriptor(metadata.FieldType),
             IsFilterable = metadata.IsFilterable,
-            FilterOperators = metadata.FilterOperators
-                .Select(x => x.ToString())
-                .ToArray(),
+            FilterOperators = metadata.FilterOperators,
             IsSearchable = metadata.IsSearchable,
             SearchPriority = metadata.SearchPriority,
-            MatchModes = metadata.MatchModes
-                .Select(x => x.ToString())
-                .ToArray(),
+            MatchModes = metadata.MatchModes,
             IsSortable = metadata.IsSortable
         };
     }

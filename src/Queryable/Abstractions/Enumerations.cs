@@ -1,7 +1,9 @@
 ﻿using System.ComponentModel;
+using System.Text.Json.Serialization;
 
 namespace Kaleido.Queryable;
 /// <summary>Defines the filter operations supported by the framework query model.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum FilterOperator
 {
     // Equality
@@ -63,6 +65,7 @@ public enum FilterOperator
     //NotLike
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum MatchMode
 {
     [Description("Exact Match")]
@@ -75,6 +78,7 @@ public enum MatchMode
     Contains
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum SortDirection
 {
     [Description("Ascending")]
@@ -83,6 +87,7 @@ public enum SortDirection
     Descending
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum LogicalOperator
 {
     [Description("And")]

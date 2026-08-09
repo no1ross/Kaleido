@@ -1,0 +1,165 @@
+<div class="queryable-filtering">
+
+  <div class="queryable-filtering__header">
+
+    <h2>
+      Filters
+    </h2>
+
+    <div class="queryable-filtering__header-actions">
+
+      <button
+        type="button"
+        (click)="addFilter()">
+
+        Add Filter
+
+      </button>
+
+      <button
+        type="button"
+        (click)="apply()">
+
+        Apply
+
+      </button>
+
+    </div>
+
+  </div>
+
+  @if (!hasFilters) {
+
+    <p class="queryable-filtering__empty">
+
+      No filters applied.
+
+    </p>
+
+  } @else {
+
+    @if (showLogicalOperator) {
+
+      <div class="queryable-filtering__operator">
+
+        <label>
+          Combine Filters Using
+        </label>
+
+        <select
+          [value]="rootGroup.operator"
+          (change)="groupOperatorChanged($event)">
+
+          @for (
+            option of logicalOperators;
+            track option.value) {
+
+            <option
+              [value]="option.value">
+
+              {{ option.label }}
+
+            </option>
+          }
+
+        </select>
+
+      </div>
+
+    }
+
+    <div class="queryable-filtering__table">
+
+      <div class="queryable-filtering__table-header">
+
+        <div>
+          Field
+        </div>
+
+        <div>
+          Operator
+        </div>
+
+        <div>
+          Value
+        </div>
+
+        <div>
+        </div>
+
+      </div>
+
+      @for (
+        node of rootGroup.filters;
+        track $index) {
+
+        @if (node.condition) {
+
+          <div class="queryable-filtering__row">
+
+            <select
+              [value]="node.condition.field"
+              (change)="fieldChanged(
+                node.condition,
+                $event)">
+
+              @for (
+                field of fields;
+                track field.field) {
+
+                <option
+                  [value]="field.field">
+
+                  {{ field.label }}
+
+                </option>
+              }
+
+            </select>
+
+            <select
+              [value]="node.condition.operator"
+              (change)="operatorChanged(
+                node.condition,
+                $event)">
+
+              @for (
+                option of filterOperators;
+                track option.value) {
+
+                <option
+                  [value]="option.value">
+
+                  {{ option.label }}
+
+                </option>
+              }
+
+            </select>
+@if (requiresValue(node.condition.operator)) {
+            <input
+              type="text"
+              [value]="node.condition.values[0] ?? ''"
+              (input)="valueChanged(
+                node.condition,
+                $event)">
+}
+            <button
+              type="button"
+              (click)="removeFilter($index)">
+
+              Remove
+
+            </button>
+
+          </div>
+
+        }
+
+      }
+
+    </div>
+
+  }
+
+</div>

@@ -28,8 +28,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-    <ProjectReference Include="..\..\src\Process\Process\Kaleido.Process.csproj" />
-  </ItemGroup>
+	  <ProjectReference Include="..\..\src\Process\Abstractions\Kaleido.Process.Abstractions.csproj" />
+	  <ProjectReference Include="..\..\src\Queryable\Abstractions\Kaleido.Queryable.Abstractions.csproj" />
+	</ItemGroup>
 
 
 </Project>

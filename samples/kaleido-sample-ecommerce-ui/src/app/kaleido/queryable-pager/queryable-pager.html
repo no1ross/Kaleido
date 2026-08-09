@@ -1,0 +1,84 @@
+<div class="queryable-pager">
+
+  <div class="queryable-pager__summary">
+
+    Showing
+    {{ startRecord }}
+    -
+    {{ endRecord }}
+    of
+    {{ totalCount }}
+    records
+
+  </div>
+
+  <div class="queryable-pager__page-size">
+
+    <label for="queryablePageSize">
+      Page Size:
+    </label>
+
+    <select
+      id="queryablePageSize"
+      [value]="pageSize"
+      (change)="pageSizeChanged($event)">
+
+      <option value="25">25</option>
+      <option value="50">50</option>
+      <option value="100">100</option>
+      <option value="250">250</option>
+
+    </select>
+
+  </div>
+
+  <div class="queryable-pager__navigation">
+
+    <button
+      type="button"
+      (click)="firstPage()"
+      [disabled]="!canGoBackward">
+
+      &lt;&lt; First
+
+    </button>
+
+    <button
+      type="button"
+      (click)="previousPage()"
+      [disabled]="!canGoBackward">
+
+      &lt; Previous
+
+    </button>
+
+    <span class="queryable-pager__page">
+
+      Page
+      {{ currentPage }}
+      of
+      {{ totalPages }}
+
+    </span>
+
+    <button
+      type="button"
+      (click)="nextPage()"
+      [disabled]="!canGoForward">
+
+      Next &gt;
+
+    </button>
+
+    <button
+      type="button"
+      (click)="lastPage()"
+      [disabled]="!canGoForward">
+
+      Last &gt;&gt;
+
+    </button>
+
+  </div>
+
+</div>

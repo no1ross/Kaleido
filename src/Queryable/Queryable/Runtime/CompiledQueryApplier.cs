@@ -160,18 +160,16 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
         return condition.Operator switch
         {
             FilterOperator.Equals =>
-                Expression.Equal(
+                EqualityCall(
                     member,
-                    Constant(
-                        member.Type,
-                        GetValue(condition, 0))),
+                    GetValue(condition, 0),
+                    negate: false),
 
             FilterOperator.NotEquals =>
-                Expression.NotEqual(
+                EqualityCall(
                     member,
-                    Constant(
-                        member.Type,
-                        GetValue(condition, 0))),
+                    GetValue(condition, 0),
+                    negate: true),
 
             FilterOperator.GreaterThan =>
                 Expression.GreaterThan(
@@ -294,11 +292,10 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
         return condition.MatchMode switch
         {
             MatchMode.Exact =>
-                Expression.Equal(
+                EqualityCall(
                     member,
-                    Constant(
-                        member.Type,
-                        condition.SearchText)),
+                    condition.SearchText,
+                    negate: false),
 
             MatchMode.StartsWith =>
                 StringCall(
@@ -324,6 +321,79 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
             _ => throw new NotSupportedException(
                 $"Match mode '{condition.MatchMode}' is not supported by the IQueryable provider.")
         };
+    }
+    private static Expression EqualityCall(
+        Expression member,
+        object? value,
+        bool negate)
+    {
+        if (member.Type != typeof(string))
+        {
+            var expression1 =
+                negate
+                    ? Expression.NotEqual(
+                        member,
+                        Constant(
+                            member.Type,
+                            value))
+                    : Expression.Equal(
+                        member,
+                        Constant(
+                            member.Type,
+                            value));
+
+            return expression1;
+        }
+
+        if (value is null)
+        {
+            return negate
+                ? Expression.NotEqual(
+                    member,
+                    Expression.Constant(
+                        null,
+                        typeof(string)))
+                : Expression.Equal(
+                    member,
+                    Expression.Constant(
+                        null,
+                        typeof(string)));
+        }
+
+        var stringValue =
+            ValidateValue(
+                value,
+                typeof(string)) as string
+            ?? string.Empty;
+
+        var notNull =
+            Expression.NotEqual(
+                member,
+                Expression.Constant(
+                    null,
+                    typeof(string)));
+
+        var normalizedMember =
+            ToLower(member);
+
+        var normalizedValue =
+            Expression.Constant(
+                stringValue.ToLowerInvariant(),
+                typeof(string));
+
+        var equals =
+            Expression.Equal(
+                normalizedMember,
+                normalizedValue);
+
+        var expression =
+            Expression.AndAlso(
+                notNull,
+                equals);
+
+        return negate
+            ? Expression.Not(expression)
+            : expression;
     }
 
     private static IQueryable<TRecord> ApplySortItem(
@@ -411,13 +481,19 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
                     null,
                     typeof(string)));
 
+        var normalizedMember =
+            ToLower(member);
+
+        var normalizedValue =
+            Expression.Constant(
+                stringValue.ToLowerInvariant(),
+                typeof(string));
+
         var call =
             Expression.Call(
-                member,
+                normalizedMember,
                 method,
-                Expression.Constant(
-                    stringValue,
-                    typeof(string)));
+                normalizedValue);
 
         var expression =
             Expression.AndAlso(
@@ -444,12 +520,59 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
                 : emptyResult;
         }
 
+        if (member.Type == typeof(string))
+        {
+            var normalizedValues =
+                values
+                    .Select(value =>
+                        ValidateValue(
+                            value,
+                            typeof(string)) as string
+                        ?? string.Empty)
+                    .Select(value =>
+                        value.ToLowerInvariant())
+                    .ToArray();
+
+            var method =
+                typeof(Enumerable)
+                    .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .Single(m =>
+                        m.Name == nameof(Enumerable.Contains) &&
+                        m.GetParameters().Length == 2)
+                    .MakeGenericMethod(typeof(string));
+
+            var notNull =
+                Expression.NotEqual(
+                    member,
+                    Expression.Constant(
+                        null,
+                        typeof(string)));
+
+            var normalizedMember =
+                ToLower(member);
+
+            var call =
+                Expression.Call(
+                    method,
+                    Expression.Constant(normalizedValues),
+                    normalizedMember);
+
+            var expression =
+                Expression.AndAlso(
+                    notNull,
+                    call);
+
+            return negate
+                ? Expression.Not(expression)
+                : expression;
+        }
+
         var array =
             CreateTypedArray(
                 member.Type,
                 values);
 
-        var method =
+        var containsMethod =
             typeof(Enumerable)
                 .GetMethods(BindingFlags.Public | BindingFlags.Static)
                 .Single(m =>
@@ -457,15 +580,15 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
                     m.GetParameters().Length == 2)
                 .MakeGenericMethod(member.Type);
 
-        var call =
+        var containsCall =
             Expression.Call(
-                method,
+                containsMethod,
                 Expression.Constant(array),
                 member);
 
         return negate
-            ? Expression.Not(call)
-            : call;
+            ? Expression.Not(containsCall)
+            : containsCall;
     }
 
     private static Expression BetweenCall(
@@ -644,6 +767,16 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
 
         throw new InvalidOperationException(
             $"Value type '{actualType.Name}' is not assignable to expected type '{expectedType.Name}'.");
+    }
+
+    private static Expression ToLower(
+        Expression expression)
+    {
+        return Expression.Call(
+            expression,
+            typeof(string).GetMethod(
+                nameof(string.ToLower),
+                Type.EmptyTypes)!);
     }
 
     private static bool CanBeNull(

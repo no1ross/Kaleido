@@ -33,7 +33,20 @@ builder.Services.AddDbContext<ECommerceDbContext>(options =>
     options.UseSqlite("Data Source=kaleido-sample-ecomerce.sqlite");
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy
+            .AllowAnyOrigin()   // Allow all origins
+            .AllowAnyMethod()   // Allow all HTTP methods
+            .AllowAnyHeader();  // Allow all headers
+    });
+});
+
 var app = builder.Build();
+
+app.UseCors("AllowAll");
 
 await ECommerceDbInitializer
     .InitializeAsync(

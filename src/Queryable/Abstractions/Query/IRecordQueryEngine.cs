@@ -1,4 +1,6 @@
-﻿namespace Kaleido.Queryable.Query
+﻿using Kaleido.Queryable.Metadata;
+
+namespace Kaleido.Queryable.Query
 {
     internal interface IRecordQueryEngine<TRecord>
             where TRecord : class

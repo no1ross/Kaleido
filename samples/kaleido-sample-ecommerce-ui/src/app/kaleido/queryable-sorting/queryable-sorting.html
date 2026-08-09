@@ -1,0 +1,100 @@
+<div class="queryable-sorting">
+
+  <div class="queryable-sorting__header">
+
+    <h2>
+      Sorting
+    </h2>
+
+    <div>
+
+      <button
+        type="button"
+        (click)="addSort()"
+        [disabled]="workingSorts.length >= fields.length">
+
+        Add Sort
+
+      </button>
+
+      <button
+        type="button"
+        (click)="apply()">
+
+        Apply
+
+      </button>
+
+    </div>
+
+  </div>
+
+  @if (workingSorts.length === 0) {
+
+    <p class="queryable-sorting__empty">
+
+      No sorting applied.
+
+    </p>
+
+  }
+
+  @for (sort of workingSorts; track sort.sequence) {
+
+    <div class="queryable-sorting__row">
+
+      <span class="queryable-sorting__sequence">
+
+        {{ sort.sequence }}.
+
+      </span>
+
+      <select
+        [value]="sort.field"
+        (change)="fieldChanged($index, $event)">
+
+        @for (field of fields; track field.field) {
+
+          <option
+            [value]="field.field"
+            [disabled]="isFieldSelected(field.field, $index)">
+
+            {{ field.label }}
+
+          </option>
+
+        }
+
+      </select>
+
+      <select
+        [value]="sort.direction"
+        (change)="directionChanged($index, $event)">
+
+        @for (
+          option of sortDirections;
+          track option.value) {
+
+          <option
+            [value]="option.value">
+
+            {{ option.label }}
+
+          </option>
+        }
+
+      </select>
+
+      <button
+        type="button"
+        (click)="removeSort($index)">
+
+        Remove
+
+      </button>
+
+    </div>
+
+  }
+
+</div>

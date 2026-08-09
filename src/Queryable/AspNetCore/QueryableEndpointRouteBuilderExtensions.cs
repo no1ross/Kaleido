@@ -1,4 +1,5 @@
 using Kaleido.Queryable.AspNetCore.Contracts;
+using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
@@ -8,6 +9,8 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Kaleido.Queryable.AspNetCore;
 
@@ -209,19 +212,32 @@ public static class QueryableEndpointRouteBuilderExtensions
                     IQueryableService catalog,
                     CancellationToken cancellationToken) =>
                 {
-                    var query =
-                        QueryableValueNormalizer.Normalize(
-                            request.Query,
-                            record.Metadata);
+                    try
+                    {
+                        var query =
+                            QueryableValueNormalizer.Normalize(
+                                request.Query,
+                                record.Metadata);
 
-                    var result =
-                        await catalog.QueryAsync<TRecord>(
-                            recordKey,
-                            new QueryRequest(
-                                Query: query),
-                            cancellationToken);
+                        var result =
+                            await catalog.QueryAsync<TRecord>(
+                                recordKey,
+                                new QueryRequest(
+                                    Query: query),
+                                cancellationToken);
 
-                    return Results.Ok(result);
+                        return Results.Ok(result);
+                    }
+                    catch (QueryableValidationException ex)
+                    {
+                        return Results.BadRequest(
+                            new QueryErrorResponse(
+                            [
+                                new QueryError(
+                                    ex.Code,
+                                    ex.Message)
+                            ]));
+                    }
                 })
             .WithName(
                 QueryableEndpointNames.RecordQueryEndpointName(
@@ -234,7 +250,8 @@ public static class QueryableEndpointRouteBuilderExtensions
                 $"Executes an ad hoc query against the '{record.Metadata.DisplayName}' record type.")
             .Accepts<QueryApiRequest>(
                 "application/json")
-            .Produces<QueryResult<TRecord>>();
+            .Produces<QueryResult<TRecord>>()
+            .Produces<QueryErrorResponse>(400);
     }
 
     private static void MapTypedNamedQueryEndpoint<TRecord>(
@@ -255,23 +272,36 @@ public static class QueryableEndpointRouteBuilderExtensions
                     IQueryableService catalog,
                     CancellationToken cancellationToken) =>
                 {
-                    var parameters =
-                        QueryableValueNormalizer.Normalize(
-                            GetParameters(
-                                httpRequest,
-                                request),
-                            namedQuery.Metadata.Parameters);
+                    try
+                    {
+                        var parameters =
+                            QueryableValueNormalizer.Normalize(
+                                GetParameters(
+                                    httpRequest,
+                                    request),
+                                namedQuery.Metadata.Parameters);
 
-                    var result =
-                        await catalog.QueryAsync<TRecord>(
-                            record.Metadata.Name,
-                            new QueryRequest(
-                                NamedQuery: new NamedQuery(
-                                    queryName,
-                                    parameters)),
-                            cancellationToken);
+                        var result =
+                            await catalog.QueryAsync<TRecord>(
+                                record.Metadata.Name,
+                                new QueryRequest(
+                                    NamedQuery: new NamedQuery(
+                                        queryName,
+                                        parameters)),
+                                cancellationToken);
 
-                    return Results.Ok(result);
+                        return Results.Ok(result);
+                    }
+                    catch (QueryableValidationException ex)
+                    {
+                        return Results.BadRequest(
+                            new QueryErrorResponse(
+                            [
+                                new QueryError(
+                                    ex.Code,
+                                    ex.Message)
+                            ]));
+                    }
                 })
             .WithName(
                 QueryableEndpointNames.NamedQueryEndpointName(
@@ -283,7 +313,8 @@ public static class QueryableEndpointRouteBuilderExtensions
             .WithDescription(namedQuery.Metadata.Description)
             .Accepts<NamedQueryApiRequest>(
                 "application/json")
-            .Produces<QueryResult<TRecord>>();
+            .Produces<QueryResult<TRecord>>()
+            .Produces<QueryErrorResponse>(400);
     }
 
     private static IReadOnlyDictionary<string, object?> GetParameters(

@@ -1,3 +1,4 @@
+using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Query;
@@ -51,8 +52,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
 
         if (allowed is null)
         {
-            throw new InvalidOperationException(
-                $"Named query '{request.NamedQuery.Name}' is not allowed for record '{registration.Metadata.Name}'.");
+            throw new NamedQueryNotAllowedException(request.NamedQuery.Name, registration.Metadata.Name);
         }
 
         foreach (var parameter in allowed.Metadata.Parameters ?? [])
@@ -65,8 +65,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
             {
                 if (parameter.Required)
                 {
-                    throw new InvalidOperationException(
-                        $"Named query '{request.NamedQuery.Name}' requires parameter '{parameter.Name}'.");
+                    throw new NamedQueryRequiredException(request.NamedQuery.Name, parameter.Name);
                 }
 
                 continue;
@@ -107,9 +106,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
             return;
         }
 
-        throw new InvalidOperationException(
-            $"Value '{name}' contains unsupported runtime type '{actualType.FullName}'. " +
-            "Transport layers must normalize values before invoking Queryable.");
+        throw new UnsupportedRuntimeTypeException(name, actualType);
     }
 
     private static void ValidateParameterType(
@@ -128,8 +125,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
             return;
         }
 
-        throw new InvalidOperationException(
-            $"Parameter '{parameter.Name}' expects values of type '{expectedType.Name}' but received '{actualType.Name}'.");
+        throw new InvalidParameterTypeException(parameter.Name, expectedType, actualType);
     }
 
     private static void ValidateFilter(
@@ -144,7 +140,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
         if (node.Condition is not null &&
             node.Group is not null)
         {
-            throw new InvalidOperationException(
+            throw new InvalidFilterNodeException(
                 "Filter node cannot specify both Condition and Group.");
         }
 
@@ -166,7 +162,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
             return;
         }
 
-        throw new InvalidOperationException(
+        throw new InvalidFilterNodeException(
             "Filter node must specify either Condition or Group.");
     }
 
@@ -176,8 +172,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
     {
         if (group.Filters.Count == 0)
         {
-            throw new InvalidOperationException(
-                "Filter group must contain at least one expression.");
+            throw new EmptyFilterGroupException();
         }
 
         foreach (var child in group.Filters)
@@ -194,8 +189,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
     {
         if (string.IsNullOrWhiteSpace(condition.Field))
         {
-            throw new InvalidOperationException(
-                "Filter field is required.");
+            throw new MissingFilterFieldException();
         }
 
         var field =
@@ -205,14 +199,12 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
 
         if (!field.IsFilterable)
         {
-            throw new InvalidOperationException(
-                $"Field '{condition.Field}' is not filterable.");
+            throw new FieldNotFilterableException(condition.Field);
         }
 
         if (!field.FilterOperators.Contains(condition.Operator))
         {
-            throw new InvalidOperationException(
-                $"Operator '{condition.Operator}' is not supported for field '{condition.Field}'.");
+            throw new UnsupportedOperatorException(condition.Field, condition.Operator);
         }
 
         ValidateFilterValueTypes(condition);
@@ -230,7 +222,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
         if (node.Condition is not null &&
             node.Group is not null)
         {
-            throw new InvalidOperationException(
+            throw new InvalidSearchNodeException(
                 "Search node cannot specify both Condition and Group.");
         }
 
@@ -252,7 +244,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
             return;
         }
 
-        throw new InvalidOperationException(
+        throw new InvalidSearchNodeException(
             "Search node must specify either Condition or Group.");
     }
 
@@ -262,8 +254,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
     {
         if (group.Searches.Count == 0)
         {
-            throw new InvalidOperationException(
-                "Search group must contain at least one expression.");
+            throw new EmptySearchGroupException();
         }
 
         foreach (var child in group.Searches)
@@ -280,8 +271,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
     {
         if (string.IsNullOrWhiteSpace(condition.SearchText))
         {
-            throw new InvalidOperationException(
-                "Search text is required.");
+            throw new MissingSearchTextException();
         }
 
         var fields =
@@ -303,7 +293,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
 
         if (list.Length == 0)
         {
-            throw new InvalidOperationException(
+            throw new FieldNotSearchableException(
                 $"No searchable fields exist for search field '{condition.Field ?? "*"}'.");
         }
 
@@ -311,8 +301,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
                 x.MatchModes.Contains(
                     condition.MatchMode)))
         {
-            throw new InvalidOperationException(
-                $"Match mode '{condition.MatchMode}' is not supported for search field '{condition.Field ?? "*"}'.");
+            throw new UnsupportedMatchModeException(condition.Field!, condition.MatchMode);
         }
     }
 
@@ -336,8 +325,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
 
         if (duplicateFields.Length > 0)
         {
-            throw new InvalidOperationException(
-                $"Duplicate sort fields are not allowed: {string.Join(", ", duplicateFields)}.");
+            throw new DuplicateSortFieldException(duplicateFields);
         }
 
         foreach (var sort in sorts)
@@ -349,8 +337,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
 
             if (!field.IsSortable)
             {
-                throw new InvalidOperationException(
-                    $"Field '{sort.Field}' is not sortable.");
+                throw new FieldNotSortableException(sort.Field);
             }
         }
     }
@@ -366,20 +353,17 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
 
         var pageable =
             metadata.Pageable
-            ?? throw new InvalidOperationException(
-                $"Record '{metadata.Name}' does not support paging.");
+            ?? throw new PagingNotSupportedException(metadata.Name);
 
         if (page.Size is <= 0)
         {
-            throw new InvalidOperationException(
-                "Page size must be greater than zero.");
+            throw new InvalidPageSizeException(page.Size.Value, pageable.MaxSize);
         }
 
         if (page.Size.HasValue &&
             page.Size.Value > pageable.MaxSize)
         {
-            throw new InvalidOperationException(
-                $"Page size '{page.Size.Value}' exceeds max page size '{pageable.MaxSize}'.");
+            throw new InvalidPageSizeException(page.Size.Value, pageable.MaxSize);
         }
     }
 
@@ -392,7 +376,6 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
                        x.Name,
                        name,
                        StringComparison.OrdinalIgnoreCase))
-               ?? throw new InvalidOperationException(
-                   $"Field '{name}' does not exist on record '{metadata.Name}'.");
+               ?? throw new InvalidFieldException(name, metadata.Name);
     }
 }

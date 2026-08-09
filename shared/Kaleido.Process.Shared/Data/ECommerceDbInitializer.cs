@@ -16,12 +16,6 @@ public static class ECommerceDbInitializer
             scope.ServiceProvider
                 .GetRequiredService<ECommerceDbContext>();
 
-        Console.WriteLine("Before Migrate");
-
-        await dbContext.Database.MigrateAsync();
-
-        Console.WriteLine("After Migrate");
-
         var recreateDatabase = true;
 
         if (recreateDatabase)

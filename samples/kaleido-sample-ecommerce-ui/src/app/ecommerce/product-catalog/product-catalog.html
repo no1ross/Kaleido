@@ -1,0 +1,74 @@
+@if (errorMessage) {
+
+  <div class="error-banner">
+
+    {{ errorMessage }}
+
+  </div>
+
+}
+<kaleido-queryable-filtering
+  [queryRequest]="queryRequest"
+  (queryRequestChanged)="queryRequestChanged($event)">
+</kaleido-queryable-filtering>
+
+<kaleido-queryable-sorting
+  [queryRequest]="queryRequest"
+  (queryRequestChanged)="queryRequestChanged($event)">
+</kaleido-queryable-sorting>
+
+<kaleido-queryable-pager
+  [queryRequest]="queryRequest"
+  [totalCount]="totalCount"
+  (queryRequestChanged)="queryRequestChanged($event)">
+</kaleido-queryable-pager>
+
+<table>
+
+  <thead>
+
+    <tr>
+      <th>Product</th>
+      <th>Supplier</th>
+      <th>Category</th>
+      <th>Price</th>
+      <th>Rating</th>
+      <th>Reviews</th>
+      <th>Available</th>
+      <th>Active</th>
+    </tr>
+
+  </thead>
+
+  <tbody>
+
+    @for (
+            product of products;
+            track product
+        )
+    {
+
+      <tr>
+
+        <td>{{ product.productName }}</td>
+        <td>{{ product.supplierName }}</td>
+        <td>{{ product.categoryName }}</td>
+        <td>{{ product.price | currency }}</td>
+        <td>{{ product.rating }}</td>
+        <td>{{ product.reviewCount }}</td>
+        <td>{{ product.availableQuantity }}</td>
+        <td>{{ product.isActive ? 'Yes' : 'No' }}</td>
+
+      </tr>
+
+    }
+
+  </tbody>
+
+</table>
+
+<kaleido-queryable-pager
+  [queryRequest]="queryRequest"
+  [totalCount]="totalCount"
+  (queryRequestChanged)="queryRequestChanged($event)">
+</kaleido-queryable-pager>
