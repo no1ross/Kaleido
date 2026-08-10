@@ -18,6 +18,7 @@ internal sealed class TaxonomySeeder
                 definition: category.Value,
                 parentCategoryId: null,
                 parentPath: null,
+                level: 0,
                 categories: categories);
         }
 
@@ -32,6 +33,7 @@ internal sealed class TaxonomySeeder
         TaxonomyNode definition,
         Guid? parentCategoryId,
         string? parentPath,
+        int level,
         ICollection<ProductCategory> categories)
     {
         var categoryId =
@@ -61,16 +63,19 @@ internal sealed class TaxonomySeeder
                     $"Products classified under the {categoryName} category.",
 
                 IsActive =
-                    true
+                    true,
+
+                Level = level,
             });
 
-        foreach (var child in definition)
+        foreach (var category in definition)
         {
             CreateCategory(
-                categoryName: child.Key,
-                definition: child.Value,
-                parentCategoryId: categoryId,
-                parentPath: categoryPath,
+                categoryName: category.Key,
+                definition: category.Value,
+                parentCategoryId: null,
+                parentPath: null,
+                level: level + 1,
                 categories: categories);
         }
     }

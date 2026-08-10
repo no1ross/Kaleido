@@ -11,7 +11,7 @@ public record QueryRequest
 
 public record QueryBody
 (
-    QuerySearchNode? Search = null,
+    string? SearchText = null,
     QueryFilterNode? Filter = null,
     IReadOnlyList<QuerySort>? Sort = null,
     QueryPage? Page = null
@@ -67,54 +67,6 @@ public sealed record QueryFilterGroup
 (
     LogicalOperator Operator,
     IReadOnlyList<QueryFilterNode> Filters
-);
-
-#endregion
-
-#region Search
-
-public sealed record QuerySearchNode
-(
-    QuerySearchCondition? Condition,
-    QuerySearchGroup? Group
-)
-{
-    public static QuerySearchNode CreateCondition(
-        string searchText,
-        MatchMode matchMode,
-        string? field = null)
-    {
-        return new(
-            new QuerySearchCondition(
-                searchText,
-                matchMode,
-                field),
-            null);
-    }
-
-    public static QuerySearchNode CreateGroup(
-        LogicalOperator @operator,
-        params QuerySearchNode[] searches)
-    {
-        return new(
-            null,
-            new QuerySearchGroup(
-                @operator,
-                searches.ToList()));
-    }
-}
-
-public sealed record QuerySearchCondition
-(
-    string SearchText,
-    MatchMode MatchMode,
-    string? Field = null
-);
-
-public sealed record QuerySearchGroup
-(
-    LogicalOperator Operator,
-    IReadOnlyList<QuerySearchNode> Searches
 );
 
 #endregion

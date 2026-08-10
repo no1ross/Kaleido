@@ -74,10 +74,7 @@ public static class FunctionalScenarios
         return Scenario(
             "search-region-contains",
             data => Request(
-                search: SearchCondition(
-                    FirstRegion(data),
-                    MatchMode.Contains,
-                    "Region"),
+                search: FirstRegion(data),
                 sort: SortById()),
             data => data
                 .Where(x => Contains(
@@ -141,7 +138,7 @@ public static class FunctionalScenarios
                 NamedQuery: new NamedQuery(
                     "active-records"),
                 Query: new QueryBody(
-                    Search: null,
+                    SearchText: null,
                     Filter: null,
                     Sort: SortById(),
                     Page: null)),
@@ -167,7 +164,7 @@ public static class FunctionalScenarios
                         ["Category"] = FirstCategory(data)
                     }),
                 Query: new QueryBody(
-                    Search: null,
+                    SearchText: null,
                     Filter: null,
                     Sort: SortById(),
                     Page: null)),
@@ -193,7 +190,7 @@ public static class FunctionalScenarios
                         ["Amount"] = MedianAmount(data)
                     }),
                 Query: new QueryBody(
-                    Search: null,
+                    SearchText: null,
                     Filter: null,
                     Sort: SortById(),
                     Page: null)),
@@ -219,7 +216,7 @@ public static class FunctionalScenarios
                         ["EffectiveDate"] = MedianEffectiveDate(data)
                     }),
                 Query: new QueryBody(
-                    Search: null,
+                    SearchText: null,
                     Filter: null,
                     Sort: SortById(),
                     Page: null)),
@@ -253,10 +250,7 @@ public static class FunctionalScenarios
                         FilterCondition(
                             "IsActive",
                             FilterOperator.IsTrue)),
-                    search: SearchCondition(
-                        seed.Region,
-                        MatchMode.Contains,
-                        "Region"),
+                    search: seed.Region,
                     sort: new List<QuerySort>
                     {
                         new(
@@ -337,14 +331,14 @@ public static class FunctionalScenarios
     }
 
     private static QueryRequest Request(
-        QuerySearchNode? search = null,
+        string? search = null,
         QueryFilterNode? filter = null,
         IReadOnlyList<QuerySort>? sort = null,
         QueryPage? page = null)
     {
         return new QueryRequest(
             Query: new QueryBody(
-                Search: search,
+                SearchText: search,
                 Filter: filter,
                 Sort: sort,
                 Page: page));
@@ -368,17 +362,6 @@ public static class FunctionalScenarios
         return QueryFilterNode.CreateGroup(
             @operator,
             filters);
-    }
-
-    private static QuerySearchNode SearchCondition(
-        string searchText,
-        MatchMode matchMode,
-        string? field = null)
-    {
-        return QuerySearchNode.CreateCondition(
-            searchText,
-            matchMode,
-            field);
     }
 
     private static IReadOnlyList<QuerySort> SortById()

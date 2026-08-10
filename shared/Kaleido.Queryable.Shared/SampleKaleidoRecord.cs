@@ -28,21 +28,21 @@ public sealed class SampleKaleidoRecord
     public int Id { get; init; }
 
     [Filterable(FilterOperator.Equals, FilterOperator.In)]
-    [Searchable(1, MatchMode.Exact)]
+    [Searchable(Priority = 1, MatchMode = MatchMode.Exact)]
     public Guid ExternalId { get; init; }
 
     [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.Contains, FilterOperator.NotContains, FilterOperator.StartsWith, FilterOperator.EndsWith, FilterOperator.In, FilterOperator.NotIn)]
-    [Searchable(2, MatchMode.Exact, MatchMode.StartsWith, MatchMode.EndsWith, MatchMode.Contains)]
+    [Searchable(Priority = 2, MatchMode = MatchMode.Contains)]
     [Sortable]
     public string Code { get; init; } = string.Empty;
 
     [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.Contains, FilterOperator.NotContains, FilterOperator.StartsWith, FilterOperator.EndsWith)]
-    [Searchable(3, MatchMode.Exact, MatchMode.StartsWith, MatchMode.EndsWith, MatchMode.Contains)]
+    [Searchable(Priority = 3, MatchMode = MatchMode.StartsWith)]
     [Sortable]
     public string Name { get; init; } = string.Empty;
 
     [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.In, FilterOperator.NotIn)]
-    [Searchable(4, MatchMode.Exact, MatchMode.Contains)]
+    [Searchable(Priority = 4, MatchMode = MatchMode.EndsWith)]
     [Sortable]
     public string Category { get; init; } = string.Empty;
 
@@ -87,18 +87,18 @@ public sealed class SampleKaleidoRecord
     public int Priority { get; init; }
 
     [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.In, FilterOperator.NotIn)]
-    [Searchable(5, MatchMode.Exact, MatchMode.Contains)]
+    [Searchable(Priority = 5, MatchMode = MatchMode.Exact)]
     public string Region { get; init; } = string.Empty;
 
     [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.In, FilterOperator.NotIn)]
-    [Searchable(6, MatchMode.Exact, MatchMode.Contains)]
+    [Searchable(Priority = 6, MatchMode = MatchMode.Exact)]
     public string GroupName { get; init; } = string.Empty;
 
     [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.LessThanOrEqual, FilterOperator.Between)]
     [Sortable]
     public long Version { get; init; }
 
-    [Searchable(7, MatchMode.Contains)]
+    [Searchable(Priority = 7, MatchMode = MatchMode.Contains)]
     public string Notes { get; init; } = string.Empty;
 
     [Filterable(FilterOperator.Equals, FilterOperator.NotEquals, FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.LessThanOrEqual, FilterOperator.Between, FilterOperator.IsNull, FilterOperator.IsNotNull)]

@@ -538,169 +538,6 @@ public sealed class CompiledQueryApplierTests
     }
 
     [Fact]
-    public void ApplySearch_ShouldApplyExact()
-    {
-        var result =
-            _applier
-                .ApplySearch(
-                    CreateRecords().AsQueryable(),
-                    Search(
-                        Field(nameof(TestRecord.Name), typeof(string)),
-                        "Alpha",
-                        MatchMode.Exact))
-                .ToArray();
-
-        var item =
-            Assert.Single(result);
-
-        Assert.Equal(
-            "Alpha",
-            item.Name);
-    }
-
-    [Fact]
-    public void ApplySearch_ShouldApplyContains()
-    {
-        var result =
-            _applier
-                .ApplySearch(
-                    CreateRecords().AsQueryable(),
-                    Search(
-                        Field(nameof(TestRecord.Name), typeof(string)),
-                        "ph",
-                        MatchMode.Contains))
-                .ToArray();
-
-        var item =
-            Assert.Single(result);
-
-        Assert.Equal(
-            "Alpha",
-            item.Name);
-    }
-
-    [Fact]
-    public void ApplySearch_ShouldApplyStartsWith()
-    {
-        var result =
-            _applier
-                .ApplySearch(
-                    CreateRecords().AsQueryable(),
-                    Search(
-                        Field(nameof(TestRecord.Name), typeof(string)),
-                        "Al",
-                        MatchMode.StartsWith))
-                .ToArray();
-
-        var item =
-            Assert.Single(result);
-
-        Assert.Equal(
-            "Alpha",
-            item.Name);
-    }
-
-    [Fact]
-    public void ApplySearch_ShouldApplyEndsWith()
-    {
-        var result =
-            _applier
-                .ApplySearch(
-                    CreateRecords().AsQueryable(),
-                    Search(
-                        Field(nameof(TestRecord.Name), typeof(string)),
-                        "ta",
-                        MatchMode.EndsWith))
-                .ToArray();
-
-        Assert.Contains(
-            result,
-            x => x.Name == "Beta");
-
-        Assert.Contains(
-            result,
-            x => x.Name == "Delta");
-    }
-
-    [Fact]
-    public void ApplySearch_ShouldApplyOrGroup()
-    {
-        var search =
-            new CompiledSearchGroup(
-                LogicalOperator.Or,
-                [
-                    Search(
-                        Field(nameof(TestRecord.Name), typeof(string)),
-                        "Alpha",
-                        MatchMode.Exact),
-
-                    Search(
-                        Field(nameof(TestRecord.Name), typeof(string)),
-                        "Beta",
-                        MatchMode.Exact)
-                ]);
-
-        var result =
-            _applier
-                .ApplySearch(
-                    CreateRecords().AsQueryable(),
-                    search)
-                .ToArray();
-
-        Assert.Equal(
-            2,
-            result.Length);
-
-        Assert.Contains(
-            result,
-            x => x.Name == "Alpha");
-
-        Assert.Contains(
-            result,
-            x => x.Name == "Beta");
-    }
-
-    [Fact]
-    public void ApplySearch_ShouldApplyAndGroup()
-    {
-        var search =
-            new CompiledSearchGroup(
-                LogicalOperator.And,
-                [
-                    Search(
-                        Field(nameof(TestRecord.Name), typeof(string)),
-                        "a",
-                        MatchMode.Contains),
-
-                    Search(
-                        Field(nameof(TestRecord.Category), typeof(string)),
-                        "A",
-                        MatchMode.Exact)
-                ]);
-
-        var result =
-            _applier
-                .ApplySearch(
-                    CreateRecords().AsQueryable(),
-                    search)
-                .ToArray();
-
-        Assert.All(
-            result,
-            x =>
-            {
-                Assert.Contains(
-                    "a",
-                    x.Name,
-                    StringComparison.Ordinal);
-
-                Assert.Equal(
-                    "A",
-                    x.Category);
-            });
-    }
-
-    [Fact]
     public void ApplyFilter_ShouldThrow_WhenStringOperatorIsAppliedToNonStringField()
     {
         Assert.Throws<NotSupportedException>(
@@ -1009,17 +846,6 @@ public sealed class CompiledQueryApplierTests
             values);
     }
 
-    private static CompiledSearchCondition Search(
-        FieldMetadata field,
-        string searchText,
-        MatchMode matchMode)
-    {
-        return new CompiledSearchCondition(
-            field,
-            searchText,
-            matchMode);
-    }
-
     private static FieldMetadata Field(
         string name,
         Type type)
@@ -1032,7 +858,7 @@ public sealed class CompiledQueryApplierTests
             [],
             true,
             null,
-            [],
+            null,
             true);
     }
 

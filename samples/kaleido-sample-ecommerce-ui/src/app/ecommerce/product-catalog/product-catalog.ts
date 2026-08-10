@@ -5,20 +5,16 @@ import {
   inject
 } from '@angular/core';
 
-import {
-  CurrencyPipe
-} from '@angular/common';
-
 import { ProductCatalogRecord } from '../models/product-catalog-record';
 import { QueryRequest } from '../../kaleido/models/queryable-request';
 import { QueryableService } from '../../kaleido/services/queryable.service';
 import { QueryablePager } from '../../kaleido/queryable-pager/queryable-pager';
 import { QueryableSorting } from '../../kaleido/queryable-sorting/queryable-sorting';
-import { QueryableSortField } from '../../kaleido/models/queryable-sort-field';
-import { QuerySort, QueryFilterNode } from '../../kaleido/models/queryable-request';
 import { QueryableFiltering } from '../../kaleido/queryable-filtering/queryable-filtering';
-import { LogicalOperator } from '../../kaleido/models/logical-operator';
-import { QueryableFilterField } from '../../kaleido/queryable-filtering/queryable-filter-field';
+import { QueryableSearch } from '../../kaleido/queryable-search/queryable-search';
+import { ProductResults } from '../product-results/product-results';
+import { CatalogState } from '../models/catalog-state';
+
 
 @Component({
   selector: 'ecommerce-product-catalog',
@@ -26,7 +22,8 @@ import { QueryableFilterField } from '../../kaleido/queryable-filtering/queryabl
     QueryablePager, 
     QueryableSorting,
     QueryableFiltering,
-    CurrencyPipe
+    QueryableSearch,
+    ProductResults
   ],
   templateUrl: './product-catalog.html',
   styleUrl: './product-catalog.scss',
@@ -47,13 +44,16 @@ export class ProductCatalog implements OnInit {
 
   errorMessage?: string;
 
-  queryRequest: QueryRequest = {
-    query: {
-      page: {
-        size: 25,
-        offset: 0
-      },
-      sort: []
+  catalogState: CatalogState =
+  {
+    productQuery: {
+      query: {
+        page: {
+          offset: 0,
+          size: 25
+        },
+        sort: []
+      }
     }
   };
 
@@ -62,11 +62,11 @@ export class ProductCatalog implements OnInit {
     this.loadProducts();
   }
 
-  queryRequestChanged(
-    queryRequest: QueryRequest): void {
+  productQueryChanged(
+    productQuery: QueryRequest): void {
 
-    this.queryRequest =
-      queryRequest;
+    this.catalogState.productQuery =
+      productQuery;
 
     this.loadProducts();
   }
@@ -78,7 +78,7 @@ export class ProductCatalog implements OnInit {
     this.errorMessage = '';
 
     this.queryableService
-      .query<ProductCatalogRecord>("products", this.queryRequest)
+      .query<ProductCatalogRecord>("products", this.catalogState.productQuery)
       .subscribe({
         next: result => {
 

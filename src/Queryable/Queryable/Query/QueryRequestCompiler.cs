@@ -27,7 +27,7 @@ internal sealed class QueryRequestCompiler : IRecordQueryCompiler
         return new CompiledRecordQuery(
             CompiledNamedQuery(request.NamedQuery, metadata),
             CompileFilter(request.Query?.Filter, metadata),
-            CompileSearch(request.Query?.Search, metadata),
+            CompileSearch(request.Query?.SearchText, metadata),
             CompileSort(request.Query?.Sort, metadata),
             new CompiledPage(size, offset));
     }
@@ -100,75 +100,25 @@ internal sealed class QueryRequestCompiler : IRecordQueryCompiler
                 .ToArray());
     }
 
-    private static CompiledSearchExpression? CompileSearch(
-        QuerySearchNode? node,
+    private static CompiledSearch? CompileSearch(
+        string? searchText,
         RecordMetadata metadata)
     {
-        if (node is null)
+        if (string.IsNullOrWhiteSpace(searchText))
         {
             return null;
         }
 
-        if (node.Condition is not null && node.Group is not null)
-        {
-            throw new InvalidOperationException(
-                "Search node cannot specify both Condition and Group.");
-        }
-
-        if (node.Condition is not null)
-        {
-            return CompileSearchCondition(
-                node.Condition,
-                metadata);
-        }
-
-        if (node.Group is not null)
-        {
-            return CompileSearchGroup(
-                node.Group,
-                metadata);
-        }
-
-        throw new InvalidOperationException(
-            "Search node must specify either Condition or Group.");
-    }
-
-    private static CompiledSearchExpression CompileSearchCondition(
-        QuerySearchCondition condition,
-        RecordMetadata metadata)
-    {
-        var conditions = metadata.Fields
-            .Where(x => x.IsSearchable)
-            .Where(x => x.MatchModes.Contains(condition.MatchMode))
-            .Where(x =>
-                condition.Field is null ||
-                string.Equals(
-                    x.Name,
-                    condition.Field,
-                    StringComparison.OrdinalIgnoreCase))
-            .OrderBy(x => x.SearchPriority ?? int.MaxValue)
-            .Select(x =>
-                (CompiledSearchExpression)new CompiledSearchCondition(
-                    x,
-                    condition.SearchText,
-                    condition.MatchMode))
-            .ToArray();
-
-        return conditions.Length == 1
-            ? conditions[0]
-            : new CompiledSearchGroup(
-                LogicalOperator.Or,
-                conditions);
-    }
-
-    private static CompiledSearchGroup CompileSearchGroup(
-        QuerySearchGroup group,
-        RecordMetadata metadata)
-    {
-        return new CompiledSearchGroup(
-            group.Operator,
-            group.Searches
-                .Select(x => CompileSearch(x, metadata)!)
+        return new CompiledSearch(
+            searchText,
+            metadata.Fields
+                .Where(x => x.IsSearchable)
+                .OrderBy(x => x.SearchPriority ?? int.MaxValue)
+                .Select(x =>
+                    new CompiledSearchField(
+                        x,
+                        x.MatchMode!.Value,
+                        x.SearchPriority ?? int.MaxValue))
                 .ToArray());
     }
 

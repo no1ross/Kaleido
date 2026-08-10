@@ -17,8 +17,7 @@ public sealed record QueryableFieldMetadata
 
     public int? SearchPriority { get; init; }
 
-    public IReadOnlyCollection<MatchMode> MatchModes { get; init; }
-        = Array.Empty<MatchMode>();
+    public MatchMode? MatchMode { get; init; }
 
     public bool IsSortable { get; init; }
 
@@ -33,7 +32,7 @@ public sealed record QueryableFieldMetadata
             FilterOperators = metadata.FilterOperators,
             IsSearchable = metadata.IsSearchable,
             SearchPriority = metadata.SearchPriority,
-            MatchModes = metadata.MatchModes,
+            MatchMode = metadata.MatchMode,
             IsSortable = metadata.IsSortable
         };
     }

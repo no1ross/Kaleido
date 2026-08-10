@@ -42,8 +42,8 @@ internal sealed class RecordQueryEngine<TRecord> : IRecordQueryEngine<TRecord>
         var compiled = _compiler.Compile(request, metadata);
         var query = _source.CreateQuery(new RecordExecutionContext(metadata, request));
         query = ApplyNamedQuery(query, compiled, registration);
-        query = _applier.ApplyFilter(query, compiled.Filter);
         query = _applier.ApplySearch(query, compiled.Search);
+        query = _applier.ApplyFilter(query, compiled.Filter);
         query = _applier.ApplySort(query, compiled.Sort);
         var totalCount = await _executor.CountAsync(query, cancellationToken);
         query = _applier.ApplyPage(query, compiled.Page);

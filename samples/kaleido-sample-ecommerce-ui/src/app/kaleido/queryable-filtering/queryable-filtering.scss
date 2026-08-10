@@ -1,79 +1,121 @@
-:host {
-  display: block;
-}
-
 .queryable-filtering {
-  border: 1px solid #ddd;
-  border-radius: 4px;
+
   padding: 1rem;
-  margin-bottom: 1rem;
+
+  border: 1px solid #d8d8d8;
+
+  border-radius: 8px;
+
+  background-color: #ffffff;
 }
 
-.queryable-filtering__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
+.queryable-filtering__title {
 
-.queryable-filtering__header h2 {
-  margin: 0;
   font-size: 1rem;
+
+  font-weight: 600;
+
+  margin-bottom: 1rem;
 }
 
-.queryable-filtering__header-actions {
+.queryable-filtering__toolbar {
+
   display: flex;
-  gap: 0.25rem;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  margin-bottom: 1rem;
+}
+
+.queryable-filtering__actions {
+
+  display: flex;
+
+  gap: .5rem;
+}
+
+.queryable-filtering__actions button,
+.queryable-filtering__row button {
+
+  padding: .625rem 1rem;
+
+  border: 1px solid #cfcfcf;
+
+  border-radius: 6px;
+
+  background-color: #f8f8f8;
+
+  cursor: pointer;
+}
+
+.queryable-filtering__actions button:hover,
+.queryable-filtering__row button:hover {
+
+  background-color: #ececec;
 }
 
 .queryable-filtering__empty {
+
   margin: 0;
-  color: #444;
 }
 
 .queryable-filtering__operator {
+
   display: flex;
+
   align-items: center;
-  gap: 0.5rem;
+
+  gap: .75rem;
+
   margin-bottom: 1rem;
 }
 
-.queryable-filtering__operator label {
-  font-weight: 600;
-}
-
 .queryable-filtering__table {
+
   display: flex;
+
   flex-direction: column;
-  gap: 0.5rem;
+
+  gap: .5rem;
 }
 
 .queryable-filtering__table-header {
+
   display: grid;
-  grid-template-columns: 12rem 14rem 1fr auto;
-  gap: 0.5rem;
+
+  grid-template-columns: 2fr 2fr 2fr auto;
+
+  gap: .75rem;
+
   font-weight: 600;
 }
 
 .queryable-filtering__row {
+
   display: grid;
-  grid-template-columns: 12rem 14rem 1fr auto;
-  gap: 0.5rem;
+
+  grid-template-columns: 2fr 2fr 2fr auto;
+
+  gap: .75rem;
+
   align-items: center;
 }
 
-select,
-input {
+.queryable-filtering__row select,
+.queryable-filtering__row input,
+.queryable-filtering__operator select {
+
   width: 100%;
+
+  padding: .625rem .75rem;
+
+  border: 1px solid #cfcfcf;
+
+  border-radius: 6px;
+
+  font-size: .875rem;
+
   box-sizing: border-box;
-}
-
-button {
-  cursor: pointer;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }

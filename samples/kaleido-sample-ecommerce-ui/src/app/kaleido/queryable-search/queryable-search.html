@@ -1,0 +1,45 @@
+<div class="queryable-search">
+
+  <div class="queryable-search__title">
+
+    Search
+
+  </div>
+
+  <div class="queryable-search__content">
+
+    <label for="searchText">
+
+      Search Text
+
+    </label>
+
+    <div class="queryable-search__controls">
+
+      <input
+        id="searchText"
+        type="text"
+        [(ngModel)]="searchText"
+        (keydown.enter)="apply()" />
+
+      <button
+        type="button"
+        (click)="apply()">
+
+        Apply
+
+      </button>
+
+      <button
+        type="button"
+        (click)="clear()">
+
+        Clear
+
+      </button>
+
+    </div>
+
+  </div>
+
+</div>

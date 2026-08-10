@@ -212,7 +212,7 @@ internal sealed class RecordRegistry : IRecordRegistry
             filterable?.Operators ?? Array.Empty<FilterOperator>(),
             searchable is not null,
             searchable?.Priority,
-            searchable?.MatchModes ?? Array.Empty<MatchMode>(),
+            searchable?.MatchMode,
             sortable is not null);
     }
 

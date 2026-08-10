@@ -21,4 +21,5 @@ public sealed class ProductCategory
 
     public ICollection<ProductCategoryAssignment> ProductAssignments { get; set; }
         = new List<ProductCategoryAssignment>();
+    public int Level { get; internal set; }
 }

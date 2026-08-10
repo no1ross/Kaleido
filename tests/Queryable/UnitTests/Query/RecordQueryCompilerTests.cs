@@ -338,203 +338,6 @@ public sealed class QueryRequestCompilerTests
     }
 
     [Fact]
-    public void Compile_ShouldCompileSearchCondition_ForSpecificField()
-    {
-        var request =
-            new QueryRequest(
-                Query: new QueryBody(
-                    Search: QuerySearchNode.CreateCondition(
-                        "abc",
-                        MatchMode.Contains,
-                        nameof(TestRecord.Name))));
-
-        var result =
-            _compiler.Compile(
-                request,
-                CreateMetadata());
-
-        var condition =
-            Assert.IsType<CompiledSearchCondition>(
-                result.Search);
-
-        Assert.Equal(
-            nameof(TestRecord.Name),
-            condition.Field.Name);
-
-        Assert.Equal(
-            "abc",
-            condition.SearchText);
-
-        Assert.Equal(
-            MatchMode.Contains,
-            condition.MatchMode);
-    }
-
-    [Fact]
-    public void Compile_ShouldCompileSearchAcrossMatchingFields_AsOrGroup()
-    {
-        var request =
-            new QueryRequest(
-                Query: new QueryBody(
-                    Search: QuerySearchNode.CreateCondition(
-                        "abc",
-                        MatchMode.Contains)));
-
-        var result =
-            _compiler.Compile(
-                request,
-                CreateMetadata());
-
-        var group =
-            Assert.IsType<CompiledSearchGroup>(
-                result.Search);
-
-        Assert.Equal(
-            LogicalOperator.Or,
-            group.Operator);
-
-        Assert.Equal(
-            2,
-            group.Searches.Count);
-
-        var first =
-            Assert.IsType<CompiledSearchCondition>(
-                group.Searches[0]);
-
-        var second =
-            Assert.IsType<CompiledSearchCondition>(
-                group.Searches[1]);
-
-        Assert.Equal(
-            nameof(TestRecord.Name),
-            first.Field.Name);
-
-        Assert.Equal(
-            nameof(TestRecord.Category),
-            second.Field.Name);
-    }
-
-    [Fact]
-    public void Compile_ShouldOrderSearchConditions_BySearchPriority()
-    {
-        var request =
-            new QueryRequest(
-                Query: new QueryBody(
-                    Search: QuerySearchNode.CreateCondition(
-                        "abc",
-                        MatchMode.Contains)));
-
-        var result =
-            _compiler.Compile(
-                request,
-                CreateMetadata());
-
-        var group =
-            Assert.IsType<CompiledSearchGroup>(
-                result.Search);
-
-        var first =
-            Assert.IsType<CompiledSearchCondition>(
-                group.Searches[0]);
-
-        var second =
-            Assert.IsType<CompiledSearchCondition>(
-                group.Searches[1]);
-
-        Assert.Equal(
-            nameof(TestRecord.Name),
-            first.Field.Name);
-
-        Assert.Equal(
-            nameof(TestRecord.Category),
-            second.Field.Name);
-    }
-
-    [Fact]
-    public void Compile_ShouldCompileNestedSearchGroup()
-    {
-        var request =
-            new QueryRequest(
-                Query: new QueryBody(
-                    Search: QuerySearchNode.CreateGroup(
-                        LogicalOperator.And,
-                        QuerySearchNode.CreateCondition(
-                            "abc",
-                            MatchMode.Contains,
-                            nameof(TestRecord.Name)),
-                        QuerySearchNode.CreateGroup(
-                            LogicalOperator.Or,
-                            QuerySearchNode.CreateCondition(
-                                "one",
-                                MatchMode.Contains,
-                                nameof(TestRecord.Category)),
-                            QuerySearchNode.CreateCondition(
-                                "two",
-                                MatchMode.Contains,
-                                nameof(TestRecord.Category))))));
-
-        var result =
-            _compiler.Compile(
-                request,
-                CreateMetadata());
-
-        var group =
-            Assert.IsType<CompiledSearchGroup>(
-                result.Search);
-
-        Assert.Equal(
-            LogicalOperator.And,
-            group.Operator);
-
-        Assert.Equal(
-            2,
-            group.Searches.Count);
-
-        Assert.IsType<CompiledSearchCondition>(
-            group.Searches[0]);
-
-        Assert.IsType<CompiledSearchGroup>(
-            group.Searches[1]);
-    }
-
-    [Fact]
-    public void Compile_ShouldThrow_WhenSearchNodeContainsConditionAndGroup()
-    {
-        var request =
-            new QueryRequest(
-                Query: new QueryBody(
-                    Search: new QuerySearchNode(
-                        new QuerySearchCondition(
-                            "abc",
-                            MatchMode.Contains,
-                            nameof(TestRecord.Name)),
-                        new QuerySearchGroup(
-                            LogicalOperator.And,
-                            []))));
-
-        Assert.Throws<InvalidOperationException>(
-            () => _compiler.Compile(
-                request,
-                CreateMetadata()));
-    }
-
-    [Fact]
-    public void Compile_ShouldThrow_WhenSearchNodeContainsNeitherConditionNorGroup()
-    {
-        var request =
-            new QueryRequest(
-                Query: new QueryBody(
-                    Search: new QuerySearchNode(
-                        null,
-                        null)));
-
-        Assert.Throws<InvalidOperationException>(
-            () => _compiler.Compile(
-                request,
-                CreateMetadata()));
-    }
-
-    [Fact]
     public void Compile_ShouldReturnEmptySorts_WhenSortIsNull()
     {
         var result =
@@ -688,7 +491,7 @@ public sealed class QueryRequestCompilerTests
                     [FilterOperator.Equals],
                     true,
                     1,
-                    [MatchMode.Exact, MatchMode.Contains],
+                    MatchMode.Contains,
                     true),
 
                 new FieldMetadata(
@@ -699,7 +502,7 @@ public sealed class QueryRequestCompilerTests
                     [FilterOperator.Equals],
                     true,
                     2,
-                    [MatchMode.Contains],
+                    MatchMode.Contains,
                     false),
 
                 new FieldMetadata(
@@ -714,7 +517,7 @@ public sealed class QueryRequestCompilerTests
                     ],
                     false,
                     null,
-                    [],
+                    null,
                     true)
             ],
             new PageableMetadata(
@@ -739,7 +542,7 @@ public sealed class QueryRequestCompilerTests
                     [FilterOperator.Equals],
                     true,
                     1,
-                    [MatchMode.Exact, MatchMode.Contains],
+                    MatchMode.Contains,
                     true)
             ],
             null);

@@ -474,10 +474,7 @@ public sealed class QueryExecutionTests
         var request =
             new QueryRequest(
                 Query: new QueryBody(
-                    Search: QuerySearchNode.CreateCondition(
-                        searchText,
-                        MatchMode.Contains,
-                        nameof(SampleKaleidoRecord.Name))));
+                    SearchText: searchText));
 
         var records =
             await PostQueryForRecordsAsync(request);
@@ -528,16 +525,7 @@ public sealed class QueryExecutionTests
         var request =
             new QueryRequest(
                 Query: new QueryBody(
-                    Search: QuerySearchNode.CreateGroup(
-                        LogicalOperator.Or,
-                        QuerySearchNode.CreateCondition(
-                            firstCode,
-                            MatchMode.Exact,
-                            nameof(SampleKaleidoRecord.Code)),
-                        QuerySearchNode.CreateCondition(
-                            secondCode,
-                            MatchMode.Exact,
-                            nameof(SampleKaleidoRecord.Code)))));
+                    SearchText : ""));
 
         var records =
             await PostQueryForRecordsAsync(request);
@@ -771,10 +759,7 @@ public sealed class QueryExecutionTests
         var request =
             new QueryRequest(
                 Query: new QueryBody(
-                    Search: QuerySearchNode.CreateCondition(
-                        "a",
-                        MatchMode.Contains,
-                        nameof(SampleKaleidoRecord.Name)),
+                    SearchText: "a",
                     Filter: QueryFilterNode.CreateCondition(
                         nameof(SampleKaleidoRecord.IsActive),
                         FilterOperator.IsTrue),

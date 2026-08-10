@@ -24,10 +24,8 @@ public sealed class ProductCatalogRecord
         FilterOperator.Contains,
         FilterOperator.StartsWith)]
     [Searchable(
-        1,
-        MatchMode.Exact,
-        MatchMode.StartsWith,
-        MatchMode.Contains)]
+        Priority = 1,
+        MatchMode = MatchMode.Contains)]
     [Sortable]
     public string ProductName { get; init; } = string.Empty;
 
@@ -36,9 +34,8 @@ public sealed class ProductCatalogRecord
         FilterOperator.NotEquals,
         FilterOperator.In)]
     [Searchable(
-        2,
-        MatchMode.Exact,
-        MatchMode.Contains)]
+        Priority = 2,
+        MatchMode = MatchMode.Exact)]
     [Sortable]
     public string SupplierName { get; init; } = string.Empty;
 
@@ -46,17 +43,18 @@ public sealed class ProductCatalogRecord
         FilterOperator.Equals,
         FilterOperator.NotEquals,
         FilterOperator.In)]
-    [Searchable(
-        3,
-        MatchMode.Exact,
-        MatchMode.Contains)]
     [Sortable]
     public string CategoryName { get; init; } = string.Empty;
+
+    public int CategoryLevel { get; init; }
 
     [Filterable(
         FilterOperator.Equals,
         FilterOperator.NotEquals,
         FilterOperator.In)]
+    [Searchable(
+        Priority = 3,
+        MatchMode = MatchMode.Contains)]
     [Sortable]
     public string CategoryPath { get; init; } = string.Empty;
 

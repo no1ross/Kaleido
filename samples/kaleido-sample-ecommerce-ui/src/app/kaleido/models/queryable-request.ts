@@ -6,7 +6,7 @@ export interface QueryRequest {
 }
 
 export interface QueryBody {
-  //search?: SearchDefinition;
+  searchText?: string;
   filter?: QueryFilterNode;
   sort?: QuerySort[];
   page: QueryPage;

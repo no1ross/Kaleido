@@ -1,0 +1,54 @@
+<div class="product-results">
+
+  <div class="product-results__title">
+
+    Products
+
+  </div>
+
+  <table class="product-results__table">
+
+    <thead>
+
+      <tr>
+
+        <th>Product</th>
+        <th>Supplier</th>
+        <th>Category</th>
+        <th>Price</th>
+        <th>Rating</th>
+        <th>Reviews</th>
+        <th>Available</th>
+        <th>Active</th>
+
+      </tr>
+
+    </thead>
+
+    <tbody>
+
+      @for (
+        product of products;
+        track product)
+      {
+
+        <tr>
+
+          <td>{{ product.productName }}</td>
+          <td>{{ product.supplierName }}</td>
+          <td>{{ product.categoryName }}</td>
+          <td>{{ product.price | currency }}</td>
+          <td>{{ product.rating }}</td>
+          <td>{{ product.reviewCount }}</td>
+          <td>{{ product.availableQuantity }}</td>
+          <td>{{ product.isActive ? 'Yes' : 'No' }}</td>
+
+        </tr>
+
+      }
+
+    </tbody>
+
+  </table>
+
+</div>

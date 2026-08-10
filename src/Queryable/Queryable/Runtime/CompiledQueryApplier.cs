@@ -35,7 +35,7 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
 
     public IQueryable<TRecord> ApplySearch(
         IQueryable<TRecord> query,
-        CompiledSearchExpression? search)
+        CompiledSearch? search)
     {
         if (search is null)
         {
@@ -113,26 +113,70 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
 
     private static Expression BuildSearch(
         ParameterExpression parameter,
-        CompiledSearchExpression expression)
+        CompiledSearch search)
     {
-        return expression switch
-        {
-            CompiledSearchCondition condition =>
-                BuildSearchCondition(
-                    parameter,
-                    condition),
+        var expressions =
+            search.Fields
+                .Select(field =>
+                    BuildSearchField(
+                        parameter,
+                        field,
+                        search.SearchText))
+                .ToArray();
 
-            CompiledSearchGroup group =>
-                BuildGroup(
-                    group.Operator,
-                    group.Searches
-                        .Select(x => BuildSearch(parameter, x))
-                        .ToArray()),
+        if (expressions.Length == 0)
+        {
+            return Expression.Constant(true);
+        }
+
+        return expressions.Aggregate(
+            Expression.OrElse);
+    }
+
+    private static Expression BuildSearchField(
+        ParameterExpression parameter,
+        CompiledSearchField field,
+    string searchText)
+    {
+        var member =
+            Expression.PropertyOrField(
+                parameter,
+                field.Field.Name);
+
+        return field.MatchMode switch
+        {
+            MatchMode.Exact =>
+                EqualityCall(
+                    member,
+                    searchText,
+                    negate: false),
+
+            MatchMode.StartsWith =>
+                StringCall(
+                    member,
+                    nameof(string.StartsWith),
+                    searchText,
+                    negate: false),
+
+            MatchMode.EndsWith =>
+                StringCall(
+                    member,
+                    nameof(string.EndsWith),
+                    searchText,
+                    negate: false),
+
+            MatchMode.Contains =>
+                StringCall(
+                    member,
+                    nameof(string.Contains),
+                    searchText,
+                    negate: false),
 
             _ => throw new NotSupportedException(
-                $"Unsupported compiled search type '{expression.GetType().Name}'.")
+                $"Match mode '{field.MatchMode}' is not supported by the IQueryable provider.")
         };
     }
+
 
     private static Expression BuildGroup(
         LogicalOperator op,
@@ -280,48 +324,6 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
         };
     }
 
-    private static Expression BuildSearchCondition(
-        ParameterExpression parameter,
-        CompiledSearchCondition condition)
-    {
-        var member =
-            Expression.PropertyOrField(
-                parameter,
-                condition.Field.Name);
-
-        return condition.MatchMode switch
-        {
-            MatchMode.Exact =>
-                EqualityCall(
-                    member,
-                    condition.SearchText,
-                    negate: false),
-
-            MatchMode.StartsWith =>
-                StringCall(
-                    member,
-                    nameof(string.StartsWith),
-                    condition.SearchText,
-                    negate: false),
-
-            MatchMode.EndsWith =>
-                StringCall(
-                    member,
-                    nameof(string.EndsWith),
-                    condition.SearchText,
-                    negate: false),
-
-            MatchMode.Contains =>
-                StringCall(
-                    member,
-                    nameof(string.Contains),
-                    condition.SearchText,
-                    negate: false),
-
-            _ => throw new NotSupportedException(
-                $"Match mode '{condition.MatchMode}' is not supported by the IQueryable provider.")
-        };
-    }
     private static Expression EqualityCall(
         Expression member,
         object? value,

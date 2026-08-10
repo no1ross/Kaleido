@@ -1,12 +1,16 @@
 <div class="queryable-filtering">
 
-  <div class="queryable-filtering__header">
+  <div class="queryable-filtering__title">
 
-    <h2>
-      Filters
-    </h2>
+    Filters
 
-    <div class="queryable-filtering__header-actions">
+  </div>
+
+  <div class="queryable-filtering__toolbar">
+
+    <div></div>
+
+    <div class="queryable-filtering__actions">
 
       <button
         type="button"
@@ -72,20 +76,10 @@
 
       <div class="queryable-filtering__table-header">
 
-        <div>
-          Field
-        </div>
-
-        <div>
-          Operator
-        </div>
-
-        <div>
-          Value
-        </div>
-
-        <div>
-        </div>
+        <div>Field</div>
+        <div>Operator</div>
+        <div>Value</div>
+        <div></div>
 
       </div>
 
@@ -136,14 +130,18 @@
               }
 
             </select>
-@if (requiresValue(node.condition.operator)) {
-            <input
-              type="text"
-              [value]="node.condition.values[0] ?? ''"
-              (input)="valueChanged(
-                node.condition,
-                $event)">
-}
+
+            @if (requiresValue(node.condition.operator)) {
+
+              <input
+                type="text"
+                [value]="node.condition.values[0] ?? ''"
+                (input)="valueChanged(
+                  node.condition,
+                  $event)" />
+
+            }
+
             <button
               type="button"
               (click)="removeFilter($index)">

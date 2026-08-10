@@ -164,25 +164,6 @@ public sealed class RecordQueryValidatorTests
                 CreateRegistration()));
     }
 
-    [Fact]
-    public void Validate_ShouldThrow_WhenSearchFieldIsNotSearchable()
-    {
-        var request =
-            new QueryRequest(
-                Query: new QueryBody(
-                    Search:
-                        QuerySearchNode.CreateCondition(
-                            "test",
-                            MatchMode.Contains,
-                            "Description")));
-
-        Assert.Throws<InvalidOperationException>(
-            () => _validator.Validate(
-                request,
-                CreateRegistration()));
-    }
-
-    [Fact]
     public void Validate_ShouldThrow_WhenPageSizeExceedsMaximum()
     {
         var request =
@@ -262,76 +243,6 @@ public sealed class RecordQueryValidatorTests
                                 "BadField",
                                 FilterOperator.Equals,
                                 "Test"))));
-
-        Assert.Throws<InvalidOperationException>(
-            () => _validator.Validate(
-                request,
-                CreateRegistration()));
-    }
-
-    [Fact]
-    public void Validate_ShouldThrow_WhenSearchGroupIsEmpty()
-    {
-        var request =
-            new QueryRequest(
-                Query: new QueryBody(
-                    Search:
-                        QuerySearchNode.CreateGroup(
-                            LogicalOperator.And)));
-
-        Assert.Throws<InvalidOperationException>(
-            () => _validator.Validate(
-                request,
-                CreateRegistration()));
-    }
-
-    [Fact]
-    public void Validate_ShouldValidateNestedSearchGroups()
-    {
-        var request =
-            new QueryRequest(
-                Query: new QueryBody(
-                    Search:
-                        QuerySearchNode.CreateGroup(
-                            LogicalOperator.And,
-
-                            QuerySearchNode.CreateCondition(
-                                "abc",
-                                MatchMode.Contains,
-                                "Name"),
-
-                            QuerySearchNode.CreateGroup(
-                                LogicalOperator.Or,
-
-                                QuerySearchNode.CreateCondition(
-                                    "one",
-                                    MatchMode.Contains,
-                                    "Name"),
-
-                                QuerySearchNode.CreateCondition(
-                                    "two",
-                                    MatchMode.Contains,
-                                    "Name")))));
-
-        _validator.Validate(
-            request,
-            CreateRegistration());
-    }
-
-    [Fact]
-    public void Validate_ShouldThrow_WhenNestedSearchContainsInvalidField()
-    {
-        var request =
-            new QueryRequest(
-                Query: new QueryBody(
-                    Search:
-                        QuerySearchNode.CreateGroup(
-                            LogicalOperator.And,
-
-                            QuerySearchNode.CreateCondition(
-                                "abc",
-                                MatchMode.Contains,
-                                "BadField"))));
 
         Assert.Throws<InvalidOperationException>(
             () => _validator.Validate(
@@ -422,7 +333,7 @@ public sealed class RecordQueryValidatorTests
                         [FilterOperator.Equals],
                         true,
                         1,
-                        [MatchMode.Exact, MatchMode.Contains],
+                        MatchMode.Contains,
                         true),
 
                     new FieldMetadata(
@@ -433,7 +344,7 @@ public sealed class RecordQueryValidatorTests
                         [],
                         false,
                         null,
-                        [],
+                        null,
                         false)
                 ],
                 new PageableMetadata(

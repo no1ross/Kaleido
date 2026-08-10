@@ -21,7 +21,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
             registration.Metadata);
 
         ValidateSearch(
-            request.Query?.Search,
+            request.Query?.SearchText,
             registration.Metadata);
 
         ValidateSort(
@@ -211,97 +211,20 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
     }
 
     private static void ValidateSearch(
-        QuerySearchNode? node,
+        string? searchText,
         RecordMetadata metadata)
     {
-        if (node is null)
+        if (string.IsNullOrWhiteSpace(
+                searchText))
         {
             return;
         }
 
-        if (node.Condition is not null &&
-            node.Group is not null)
-        {
-            throw new InvalidSearchNodeException(
-                "Search node cannot specify both Condition and Group.");
-        }
-
-        if (node.Condition is not null)
-        {
-            ValidateSearchCondition(
-                node.Condition,
-                metadata);
-
-            return;
-        }
-
-        if (node.Group is not null)
-        {
-            ValidateSearchGroup(
-                node.Group,
-                metadata);
-
-            return;
-        }
-
-        throw new InvalidSearchNodeException(
-            "Search node must specify either Condition or Group.");
-    }
-
-    private static void ValidateSearchGroup(
-        QuerySearchGroup group,
-        RecordMetadata metadata)
-    {
-        if (group.Searches.Count == 0)
-        {
-            throw new EmptySearchGroupException();
-        }
-
-        foreach (var child in group.Searches)
-        {
-            ValidateSearch(
-                child,
-                metadata);
-        }
-    }
-
-    private static void ValidateSearchCondition(
-        QuerySearchCondition condition,
-        RecordMetadata metadata)
-    {
-        if (string.IsNullOrWhiteSpace(condition.SearchText))
-        {
-            throw new MissingSearchTextException();
-        }
-
-        var fields =
-            metadata.Fields
-                .Where(x => x.IsSearchable);
-
-        if (!string.IsNullOrWhiteSpace(condition.Field))
-        {
-            fields =
-                fields.Where(x =>
-                    string.Equals(
-                        x.Name,
-                        condition.Field,
-                        StringComparison.OrdinalIgnoreCase));
-        }
-
-        var list =
-            fields.ToArray();
-
-        if (list.Length == 0)
+        if (!metadata.Fields.Any(
+                x => x.IsSearchable))
         {
             throw new FieldNotSearchableException(
-                $"No searchable fields exist for search field '{condition.Field ?? "*"}'.");
-        }
-
-        if (!list.Any(x =>
-                x.MatchModes.Contains(
-                    condition.MatchMode)))
-        {
-            throw new UnsupportedMatchModeException(condition.Field!, condition.MatchMode);
+                "No searchable fields are defined.");
         }
     }
 

@@ -9,6 +9,6 @@ public sealed record FieldMetadata
     IReadOnlyList<FilterOperator> FilterOperators,
     bool IsSearchable,
     int? SearchPriority,
-    IReadOnlyList<MatchMode> MatchModes,
+    MatchMode? MatchMode,
     bool IsSortable
 );
