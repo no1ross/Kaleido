@@ -46,3 +46,14 @@
 
   border-bottom: 1px solid #eeeeee;
 }
+
+.product-results__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 250px;
+
+  color: #666;
+  font-size: .95rem;
+}

@@ -1,6 +1,5 @@
 ﻿using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
-using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -13,7 +12,7 @@ public sealed class RecordRegistryTests
     public void Constructor_ShouldThrow_WhenServicesIsNull()
     {
         Assert.Throws<ArgumentNullException>(
-            () => new RecordRegistry(
+            () => new QueryContextRegistry(
                 null!,
                 [typeof(TestRecord)]));
     }
@@ -22,7 +21,7 @@ public sealed class RecordRegistryTests
     public void Constructor_ShouldThrow_WhenRecordTypesIsNull()
     {
         Assert.Throws<ArgumentNullException>(
-            () => new RecordRegistry(
+            () => new QueryContextRegistry(
                 new ServiceCollection(),
                 null!));
     }
@@ -33,7 +32,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -47,7 +46,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -57,7 +56,7 @@ public sealed class RecordRegistryTests
 
         Assert.Equal(
             typeof(TestRecord),
-            registration.RecordType);
+            registration.ContextType);
     }
 
     [Fact]
@@ -66,7 +65,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -85,7 +84,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -112,7 +111,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -135,7 +134,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -145,7 +144,7 @@ public sealed class RecordRegistryTests
 
         var query =
             Assert.Single(
-                registration.NamedQueryTypes);
+                registration.NamedQueries);
 
         Assert.Equal(
             typeof(TestNamedQuery),
@@ -162,7 +161,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -172,7 +171,7 @@ public sealed class RecordRegistryTests
 
         var query =
             Assert.Single(
-                registration.NamedQueryTypes);
+                registration.NamedQueries);
 
         var parameter =
             Assert.Single(
@@ -196,7 +195,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -210,7 +209,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -228,7 +227,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -246,7 +245,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -261,7 +260,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -279,7 +278,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -294,7 +293,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -304,7 +303,7 @@ public sealed class RecordRegistryTests
 
         Assert.Equal(
             typeof(TestRecord),
-            registration.RecordType);
+            registration.ContextType);
     }
 
     [Fact]
@@ -313,7 +312,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -328,7 +327,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -347,7 +346,7 @@ public sealed class RecordRegistryTests
         var services = CreateServices();
 
         var registry =
-            new RecordRegistry(
+            new QueryContextRegistry(
                 services,
                 [typeof(TestRecord)]);
 
@@ -366,18 +365,18 @@ public sealed class RecordRegistryTests
             TestRecordSource>();
 
         services.AddScoped<
-            IRecordNamedQuery<TestRecord>,
+            INamedQuery<TestRecord>,
             TestNamedQuery>();
 
         return services;
     }
 
-    [QueryableRecord(
+    [QueryContext(
         Name ="test-record",
         DisplayName ="Test Record",
         Version = "1.0.0",
         Source ="Unit Test")]
-    [Pageable(50, 500)]
+    [Pageable(DefaultSize = 50, MaxSize = 500)]
     private sealed record TestRecord(
         string Name,
         decimal Amount);
@@ -388,7 +387,7 @@ public sealed class RecordRegistryTests
         : IRecordSource<TestRecord>
     {
         public IQueryable<TestRecord> CreateQuery(
-            RecordExecutionContext executionContext)
+            QueryExecutionContext executionContext)
         {
             return Enumerable.Empty<TestRecord>()
                 .AsQueryable();
@@ -397,14 +396,15 @@ public sealed class RecordRegistryTests
 
     [NamedQuery(
         Name = "active",
+        Version = "1.0",
         DisplayName = "Active Records")]
     [NamedQueryParameter(
-        "Category",
-        typeof(string),
+        Name = "Category",
+        ParameterType = typeof(string),
         Required = true,
         Description = "Category")]
     private sealed class TestNamedQuery
-        : IRecordNamedQuery<TestRecord>
+        : INamedQuery<TestRecord>
     {
         public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, NamedQuery NamedQuery)
         {

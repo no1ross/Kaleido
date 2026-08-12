@@ -20,7 +20,7 @@ internal sealed class ECommerceSeeder
                 "taxonomy.json");
 
         var suppliers =
-            LoadJson<Dictionary<string, SupplierDefinition>>(
+            LoadJson<List<SupplierDefinition>>(
                 "suppliers.json");
 
         var customers =
@@ -53,8 +53,7 @@ internal sealed class ECommerceSeeder
 
         new ProductCategoryAssignmentSeeder()
             .Seed(
-                _dbContext,
-                suppliers);
+                _dbContext);
 
         new InventorySeeder()
             .Seed(

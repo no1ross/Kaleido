@@ -2,7 +2,6 @@ using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
-using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -19,13 +18,18 @@ namespace Kaleido.Queryable.AspNetCore;
 /// </summary>
 public static class QueryableEndpointRouteBuilderExtensions
 {
-    public static IEndpointRouteBuilder MapQueryable(this IEndpointRouteBuilder endpoints)
+    public static IEndpointRouteBuilder MapQueryable(
+        this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
-        var registry =
+        var contextRegistry =
             endpoints.ServiceProvider
-                .GetRequiredService<IRecordRegistry>();
+                .GetRequiredService<IQueryContextRegistry>();
+
+        var viewRegistry =
+            endpoints.ServiceProvider
+                .GetRequiredService<IQueryViewRegistry>();
 
         var options =
             endpoints.ServiceProvider
@@ -38,78 +42,72 @@ public static class QueryableEndpointRouteBuilderExtensions
         group.MapGet(
                 "",
                 () => Results.Ok(
-                    registry.Registrations
+                    contextRegistry.Registrations
                         .Select(r =>
                             QueryableRecordResponse.ToSummary(
                                 r,
                                 options))
                         .OrderBy(r => r.Name)))
-            .WithName(QueryableEndpointNames.CatalogEndpointName)
-            .WithTags("Queryable Records")
-            .WithSummary("Get registered records.")
+            .WithName(
+                QueryableEndpointNames.CatalogEndpointName)
+            .WithTags("Queryable")
+            .WithSummary(
+                "Get registered query contexts.")
             .WithDescription(
-                "Returns all registered queryable records. " +
-                "Each record provides links to retrieve metadata, execute ad hoc queries, " +
-                "and execute named queries.")
+                "Returns all registered query contexts. " +
+                "Each context provides links to retrieve metadata, " +
+                "discover available views, and execute queries through those views.")
             .Produces<IReadOnlyCollection<QueryableRecordSummary>>();
 
-        foreach (var record in registry.Registrations)
+        foreach (var context in contextRegistry.Registrations)
         {
-            group.MapRecord(
-                record,
+            group.MapMetadataEndpoint(
+                context,
+                QueryableRoutePaths.QueryContextMetadata(
+                    options,
+                    context.Metadata.Name.ToLowerInvariant()),
+                options);
+        }
+
+        foreach (var view in viewRegistry.Registrations)
+        {
+            group.MapQueryView(
+                contextRegistry,
+                view,
                 options);
         }
 
         return endpoints;
     }
 
-    public static void MapRecord(
-        this IEndpointRouteBuilder endpoints,
-        RecordRegistration record,
-        QueryableRouteOptions options)
+    public static void MapQueryView(
+      this IEndpointRouteBuilder endpoints,
+      IQueryContextRegistry contextRegistry,
+      QueryViewRegistration view,
+      QueryableRouteOptions options)
     {
-        var recordName =
-            record.Metadata.Name.ToLowerInvariant();
+        var context =
+            contextRegistry.GetRegistration(
+                view.QueryContextType);
 
-        endpoints.MapMetadataEndpoint(
-            record,
-            QueryableRoutePaths.RecordMetadata(
-                options,
-                recordName),
-            options);
+        var contextName =
+            context.Metadata.Name.ToLowerInvariant();
+
+        var viewName =
+            view.Metadata.Name.ToLowerInvariant();
 
         endpoints.MapQueryEndpoint(
-            record,
-            QueryableRoutePaths.RecordQuery(
+            context,
+            view,
+            QueryableRoutePaths.QueryViewQuery(
                 options,
-                recordName));
-
-        foreach (var namedQuery in record.NamedQueryTypes)
-        {
-            var queryName =
-                namedQuery.Metadata.Name.ToLowerInvariant();
-
-            var route =
-                QueryableRoutePaths.NamedQuery(
-                    options,
-                    recordName,
-                    queryName);
-
-            endpoints.MapNamedQueryEndpoint(
-                record,
-                namedQuery,
-                route);
-
-            endpoints.MapNamedQueryMetadataEndpoint(
-                record,
-                namedQuery,
-                route);
-        }
+                contextName,
+                viewName));
     }
 
     private static void MapMetadataEndpoint(
         this IEndpointRouteBuilder endpoints,
-        RecordRegistration record,
+        QueryContextRegistration context,
         string route,
         QueryableRouteOptions options)
     {
@@ -117,99 +115,59 @@ public static class QueryableEndpointRouteBuilderExtensions
                 route,
                 () => Results.Ok(
                     QueryableRecordResponse.FromRegistration(
-                        record,
+                        context,
                         options)))
             .WithName(
-                QueryableEndpointNames.RecordMetadataEndpointName(
-                    record.Metadata.Name.ToLowerInvariant()))
+                QueryableEndpointNames.QueryContextMetadataEndpointName(
+                    context.Metadata.Name.ToLowerInvariant()))
             .WithTags(
-                record.Metadata.DisplayName)
+                context.Metadata.DisplayName)
             .WithSummary(
-                $"Get metadata for {record.Metadata.DisplayName}.")
+                $"Get metadata for {context.Metadata.DisplayName}.")
             .WithDescription(
-                $"Returns metadata describing the '{record.Metadata.DisplayName}' record type, including fields, data types, query capabilities, and available named queries.")
+                $"Returns metadata describing the '{context.Metadata.DisplayName}' query context, including fields, data types, query capabilities, available views, and available named queries.")
             .Produces<QueryableRecordResponse>();
-    }
-
-    private static void MapNamedQueryMetadataEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        RecordRegistration record,
-        NamedQueryRegistration namedQuery,
-        string route)
-    {
-        endpoints.MapGet(
-                route,
-                () => Results.Ok(
-                    QueryableNamedQuery.FromRegistration(
-                        namedQuery)))
-            .WithName(
-                QueryableEndpointNames.NamedQueryMetadataEndpointName(
-                    record.Metadata.Name.ToLowerInvariant(),
-                    namedQuery.Metadata.Name.ToLowerInvariant()))
-            .WithTags($"{record.Metadata.DisplayName} - {namedQuery.Metadata.DisplayName}")
-            .WithSummary(
-                $"Get metadata for {namedQuery.Metadata.DisplayName}.")
-            .WithDescription(
-                $"Returns metadata describing the '{namedQuery.Metadata.DisplayName}' named query, including parameters, supported values, and execution requirements.")
-            .Produces<QueryableNamedQuery>();
     }
 
     private static void MapQueryEndpoint(
         this IEndpointRouteBuilder endpoints,
-        RecordRegistration record,
+        QueryContextRegistration context,
+        QueryViewRegistration view,
         string route)
     {
         typeof(QueryableEndpointRouteBuilderExtensions)
             .GetMethod(
                 nameof(MapTypedQueryEndpoint),
                 BindingFlags.Static | BindingFlags.NonPublic)!
-            .MakeGenericMethod(record.RecordType)
+            .MakeGenericMethod(
+                view.QueryViewType,
+                view.ViewType,
+                view.ViewParametersType)
             .Invoke(
                 null,
                 new object[]
                 {
                     endpoints,
                     route,
-                    record
+                    context,
+                    view
                 });
     }
 
-    private static void MapNamedQueryEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        RecordRegistration record,
-        NamedQueryRegistration namedQuery,
-        string route)
-    {
-        typeof(QueryableEndpointRouteBuilderExtensions)
-            .GetMethod(
-                nameof(MapTypedNamedQueryEndpoint),
-                BindingFlags.Static | BindingFlags.NonPublic)!
-            .MakeGenericMethod(record.RecordType)
-            .Invoke(
-                null,
-                new object[]
-                {
-                    endpoints,
-                    route,
-                    record,
-                    namedQuery
-                });
-    }
-
-    private static void MapTypedQueryEndpoint<TRecord>(
+    private static void MapTypedQueryEndpoint<TQueryView, TView, TViewParameters>(
         IEndpointRouteBuilder endpoints,
         string route,
-        RecordRegistration record)
-        where TRecord : class
+        QueryContextRegistration context,
+        QueryViewRegistration view)
+        where TQueryView : class
+        where TView : class
+        where TViewParameters : class
     {
-        var recordKey =
-            record.Metadata.Name;
-
         endpoints.MapPost(
                 route,
                 async (
-                    QueryApiRequest request,
-                    IQueryableService catalog,
+                    QueryApiRequest<TViewParameters> request,
+                    IQueryableService queryable,
                     CancellationToken cancellationToken) =>
                 {
                     try
@@ -217,13 +175,13 @@ public static class QueryableEndpointRouteBuilderExtensions
                         var query =
                             QueryableValueNormalizer.Normalize(
                                 request.Query,
-                                record.Metadata);
+                                context.Metadata);
 
                         var result =
-                            await catalog.QueryAsync<TRecord>(
-                                recordKey,
-                                new QueryRequest(
-                                    Query: query),
+                            await queryable.QueryAsync<TQueryView, TView>(
+                                new QueryRequest<TViewParameters>(
+                                    Query: query,
+                                    ViewParameters: request.Parameters),
                                 cancellationToken);
 
                         return Results.Ok(result);
@@ -234,102 +192,24 @@ public static class QueryableEndpointRouteBuilderExtensions
                             new QueryErrorResponse(
                             [
                                 new QueryError(
-                                    ex.Code,
-                                    ex.Message)
+                                ex.Code,
+                                ex.Message)
                             ]));
                     }
                 })
             .WithName(
-                QueryableEndpointNames.RecordQueryEndpointName(
-                    recordKey.ToLowerInvariant()))
+                QueryableEndpointNames.QueryViewEndpointName(
+                    context.Metadata.Name.ToLowerInvariant(),
+                    view.Metadata.Name.ToLowerInvariant()))
             .WithTags(
-                record.Metadata.DisplayName)
+                $"{context.Metadata.DisplayName} - {view.Metadata.DisplayName}")
             .WithSummary(
-                $"Query {record.Metadata.DisplayName}.")
+                $"Query {view.Metadata.DisplayName}.")
             .WithDescription(
-                $"Executes an ad hoc query against the '{record.Metadata.DisplayName}' record type.")
+                $"Executes a query against the '{view.Metadata.DisplayName}' view.")
             .Accepts<QueryApiRequest>(
                 "application/json")
-            .Produces<QueryResult<TRecord>>()
+            .Produces<QueryResult<TView>>()
             .Produces<QueryErrorResponse>(400);
-    }
-
-    private static void MapTypedNamedQueryEndpoint<TRecord>(
-        IEndpointRouteBuilder endpoints,
-        string route,
-        RecordRegistration record,
-        NamedQueryRegistration namedQuery)
-        where TRecord : class
-    {
-        var queryName =
-            namedQuery.Metadata.Name;
-
-        endpoints.MapPost(
-                route,
-                async (
-                    HttpRequest httpRequest,
-                    NamedQueryApiRequest request,
-                    IQueryableService catalog,
-                    CancellationToken cancellationToken) =>
-                {
-                    try
-                    {
-                        var parameters =
-                            QueryableValueNormalizer.Normalize(
-                                GetParameters(
-                                    httpRequest,
-                                    request),
-                                namedQuery.Metadata.Parameters);
-
-                        var result =
-                            await catalog.QueryAsync<TRecord>(
-                                record.Metadata.Name,
-                                new QueryRequest(
-                                    NamedQuery: new NamedQuery(
-                                        queryName,
-                                        parameters)),
-                                cancellationToken);
-
-                        return Results.Ok(result);
-                    }
-                    catch (QueryableValidationException ex)
-                    {
-                        return Results.BadRequest(
-                            new QueryErrorResponse(
-                            [
-                                new QueryError(
-                                    ex.Code,
-                                    ex.Message)
-                            ]));
-                    }
-                })
-            .WithName(
-                QueryableEndpointNames.NamedQueryEndpointName(
-                    record.Metadata.Name.ToLowerInvariant(),
-                    queryName.ToLowerInvariant()))
-            .WithTags($"{record.Metadata.DisplayName} - {namedQuery.Metadata.DisplayName}")
-            .WithSummary(
-                $"Execute {namedQuery.Metadata.DisplayName}.")
-            .WithDescription(namedQuery.Metadata.Description)
-            .Accepts<NamedQueryApiRequest>(
-                "application/json")
-            .Produces<QueryResult<TRecord>>()
-            .Produces<QueryErrorResponse>(400);
-    }
-
-    private static IReadOnlyDictionary<string, object?> GetParameters(
-        HttpRequest request,
-        NamedQueryApiRequest body)
-    {
-        if (body.Values?.Count > 0)
-        {
-            return body.Values;
-        }
-
-        return request.Query
-            .ToDictionary(
-                x => x.Key,
-                x => (object?)x.Value.ToString(),
-                StringComparer.OrdinalIgnoreCase);
     }
 }

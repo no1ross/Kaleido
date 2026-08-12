@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 namespace Kaleido.Queryable.AspNetCore.Contracts;
 
 public record QueryApiRequest(
-    QueryBody? Query = null
-);
+    QueryBody? Query = null);
 
-public record NamedQueryApiRequest(
-    IReadOnlyDictionary<string, object?>? Values = null
-);
+public record QueryApiRequest<TParameters>(
+    TParameters? Parameters = null,
+    QueryBody? Query = null)
+    where TParameters : class;

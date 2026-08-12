@@ -2,12 +2,37 @@ using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Query;
 
-/// <summary>Value-set query request.</summary>
-public record QueryRequest
-(
-    NamedQuery? NamedQuery = null,
-    QueryBody? Query = null
-);
+public interface IQueryRequest<TParameters> : IQueryRequest
+    where TParameters : class
+{
+    new TParameters? ViewParameters { get; }
+}
+
+public interface IQueryRequest
+{
+    QueryBody? Query { get; }
+    object? ViewParameters { get; }
+    Type ViewParametersType { get; }
+}
+
+public sealed record QueryRequest(
+    QueryBody? Query = null)
+    : QueryRequest<EmptyQueryViewParameters>(
+        ViewParameters: new EmptyQueryViewParameters(),
+        Query: Query);
+
+public record QueryRequest<TParameters>(
+    TParameters? ViewParameters,
+    QueryBody? Query = null)
+    : IQueryRequest<TParameters>
+    where TParameters : class
+{
+    object? IQueryRequest.ViewParameters =>
+        ViewParameters;
+
+    Type IQueryRequest.ViewParametersType =>
+        typeof(TParameters);
+}
 
 public record QueryBody
 (
@@ -15,12 +40,6 @@ public record QueryBody
     QueryFilterNode? Filter = null,
     IReadOnlyList<QuerySort>? Sort = null,
     QueryPage? Page = null
-);
-
-public record NamedQuery
-(
-    string Name,
-    IReadOnlyDictionary<string, object?>? Parameters = null
 );
 
 #region Filters

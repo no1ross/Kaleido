@@ -4,13 +4,12 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.ECommerce.Records;
 
-[QueryableRecord(
+[QueryContext(
     Name = "products",
     DisplayName = "Products",
     Version = "1.0.0",
     Source = "E-Commerce Catalog")]
-[Pageable(25, 250)]
-public sealed class ProductCatalogRecord
+public sealed class ProductCatalogQuery
 {
     [Key]
     [Filterable(
@@ -44,9 +43,7 @@ public sealed class ProductCatalogRecord
         FilterOperator.NotEquals,
         FilterOperator.In)]
     [Sortable]
-    public string CategoryName { get; init; } = string.Empty;
-
-    public int CategoryLevel { get; init; }
+    public string FamilyName { get; init; } = string.Empty;
 
     [Filterable(
         FilterOperator.Equals,
@@ -56,7 +53,7 @@ public sealed class ProductCatalogRecord
         Priority = 3,
         MatchMode = MatchMode.Contains)]
     [Sortable]
-    public string CategoryPath { get; init; } = string.Empty;
+    public string ModelName { get; init; } = string.Empty;
 
     [Filterable(
         FilterOperator.Equals,

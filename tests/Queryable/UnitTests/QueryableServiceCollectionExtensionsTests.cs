@@ -1,5 +1,4 @@
 using Kaleido.Queryable.Attributes;
-using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,7 +64,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
 
         Assert.Contains(
             services,
-            x => x.ServiceType == typeof(IRecordRegistry));
+            x => x.ServiceType == typeof(IQueryContextRegistry));
     }
 
     [Fact]
@@ -110,7 +109,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
         Assert.Contains(
             services,
             x =>
-                x.ServiceType == typeof(IRecordNamedQuery<TestRecord>) &&
+                x.ServiceType == typeof(INamedQuery<TestRecord>) &&
                 x.ImplementationType == typeof(TestNamedQuery));
     }
 
@@ -126,8 +125,8 @@ public sealed class QueryableServiceCollectionExtensionsTests
         Assert.Contains(
             services,
             x =>
-                x.ServiceType == typeof(IRecordQueryEngine<TestRecord>) &&
-                x.ImplementationType == typeof(RecordQueryEngine<TestRecord>));
+                x.ServiceType == typeof(IQueryContextEngine<TestRecord>) &&
+                x.ImplementationType == typeof(QueryContextEngine<TestRecord>));
     }
 
     [Fact]
@@ -143,7 +142,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
             services.BuildServiceProvider();
 
         var compiler =
-            provider.GetRequiredService<IRecordQueryCompiler>();
+            provider.GetRequiredService<IQueryContextCompiler>();
 
         Assert.NotNull(compiler);
         Assert.IsType<Kaleido.Queryable.Query.QueryRequestCompiler>(compiler);
@@ -162,7 +161,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
             services.BuildServiceProvider();
 
         var validator =
-            provider.GetRequiredService<IRecordQueryValidator>();
+            provider.GetRequiredService<IQueryContextValidator>();
 
         Assert.NotNull(validator);
         Assert.IsType<QueryRequestValidator>(validator);
@@ -181,7 +180,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
             services.BuildServiceProvider();
 
         var registry =
-            provider.GetRequiredService<IRecordRegistry>();
+            provider.GetRequiredService<IQueryContextRegistry>();
 
         Assert.NotNull(registry);
         Assert.NotEmpty(registry.Registrations);
@@ -213,7 +212,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
         public IReadOnlyCollection<System.Reflection.Assembly> Assemblies { get; }
     }
 
-    [QueryableRecord(
+    [QueryContext(
         Name = "test-record",
         DisplayName = "Test Record",
         Version = "1.0.0",
@@ -226,7 +225,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
         : IRecordSource<TestRecord>
     {
         public IQueryable<TestRecord> CreateQuery(
-            RecordExecutionContext executionContext)
+            QueryExecutionContext executionContext)
         {
             return Enumerable.Empty<TestRecord>()
                 .AsQueryable();
@@ -235,9 +234,10 @@ public sealed class QueryableServiceCollectionExtensionsTests
 
     [NamedQuery(
         Name = "active",
+        Version = "1.0",
         DisplayName = "Active Records")]
     internal sealed class TestNamedQuery
-        : IRecordNamedQuery<TestRecord>
+        : INamedQuery<TestRecord>
     {
         public IQueryable<TestRecord> Apply(
             IQueryable<TestRecord> query,

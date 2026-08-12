@@ -18,8 +18,9 @@ public enum RecordStatus
     Retired
 }
 
-[QueryableRecord(Name ="functional-records", DisplayName ="Functional Records", Version = "1.0.0", Source = "CSV Functional Test Data")]
-[Pageable(25, 500)]
+[QueryContext(Name ="functional-records", DisplayName ="Functional Records", Version = "1.0.0", Source = "CSV Functional Test Data")]
+[Pageable(DefaultSize = 25, MaxSize = 500)]
+[QueryView(Name = "sample-view", DisplayName = "Sample View", Version = "1.0.0", Description = "Sample view for functional testing.")]
 public sealed class SampleKaleidoRecord
 {
     [Key]

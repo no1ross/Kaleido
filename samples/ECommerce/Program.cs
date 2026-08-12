@@ -48,9 +48,9 @@ var app = builder.Build();
 
 app.UseCors("AllowAll");
 
-await ECommerceDbInitializer
-    .InitializeAsync(
-        app.Services);
+//await ECommerceDbInitializer
+//    .InitializeAsync(
+//        app.Services);
 
 app.MapQueryable();
 //app.MapParticipant();

@@ -1,6 +1,4 @@
 using Kaleido.Queryable.Metadata;
-using Kaleido.Queryable.Query;
-using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;
 using Moq;
 using Xunit;
@@ -58,17 +56,17 @@ public sealed class RecordQueryEngineTests
             };
 
         var registry =
-            new Mock<IRecordRegistry>();
+            new Mock<IQueryContextRegistry>();
 
         registry
             .Setup(x => x.GetRegistration(typeof(TestRecord)))
             .Returns(registration);
 
         var validator =
-            new Mock<IRecordQueryValidator>();
+            new Mock<IQueryContextValidator>();
 
         var compiler =
-            new Mock<IRecordQueryCompiler>();
+            new Mock<IQueryContextCompiler>();
 
         compiler
             .Setup(x => x.Compile(request, metadata))
@@ -79,7 +77,7 @@ public sealed class RecordQueryEngineTests
 
         source
             .Setup(x => x.CreateQuery(
-                It.Is<RecordExecutionContext>(
+                It.Is<QueryExecutionContext>(
                     context =>
                         ReferenceEquals(context.Metadata, metadata) &&
                         ReferenceEquals(context.Request, request))))
@@ -105,7 +103,7 @@ public sealed class RecordQueryEngineTests
             .Returns(pagedQuery);
 
         var executor =
-            new Mock<IRecordExecutor<TestRecord>>();
+            new Mock<IQueryContextExecutor<TestRecord>>();
 
         executor
             .Setup(x => x.CountAsync(
@@ -161,7 +159,7 @@ public sealed class RecordQueryEngineTests
 
         source.Verify(
             x => x.CreateQuery(
-                It.IsAny<RecordExecutionContext>()),
+                It.IsAny<QueryExecutionContext>()),
             Times.Once);
 
         applier.Verify(
@@ -221,17 +219,17 @@ public sealed class RecordQueryEngineTests
             new CancellationTokenSource().Token;
 
         var registry =
-            new Mock<IRecordRegistry>();
+            new Mock<IQueryContextRegistry>();
 
         registry
             .Setup(x => x.GetRegistration(typeof(TestRecord)))
             .Returns(registration);
 
         var validator =
-            new Mock<IRecordQueryValidator>();
+            new Mock<IQueryContextValidator>();
 
         var compiler =
-            new Mock<IRecordQueryCompiler>();
+            new Mock<IQueryContextCompiler>();
 
         compiler
             .Setup(x => x.Compile(request, metadata))
@@ -241,7 +239,7 @@ public sealed class RecordQueryEngineTests
             new Mock<IRecordSource<TestRecord>>();
 
         source
-            .Setup(x => x.CreateQuery(It.IsAny<RecordExecutionContext>()))
+            .Setup(x => x.CreateQuery(It.IsAny<QueryExecutionContext>()))
             .Returns(query);
 
         var applier =
@@ -264,7 +262,7 @@ public sealed class RecordQueryEngineTests
             .Returns(query);
 
         var executor =
-            new Mock<IRecordExecutor<TestRecord>>();
+            new Mock<IQueryContextExecutor<TestRecord>>();
 
         executor
             .Setup(x => x.CountAsync(query, cancellationToken))
@@ -356,17 +354,17 @@ public sealed class RecordQueryEngineTests
             };
 
         var registry =
-            new Mock<IRecordRegistry>();
+            new Mock<IQueryContextRegistry>();
 
         registry
             .Setup(x => x.GetRegistration(typeof(TestRecord)))
             .Returns(registration);
 
         var validator =
-            new Mock<IRecordQueryValidator>();
+            new Mock<IQueryContextValidator>();
 
         var compiler =
-            new Mock<IRecordQueryCompiler>();
+            new Mock<IQueryContextCompiler>();
 
         compiler
             .Setup(x => x.Compile(request, metadata))
@@ -376,7 +374,7 @@ public sealed class RecordQueryEngineTests
             new Mock<IRecordSource<TestRecord>>();
 
         source
-            .Setup(x => x.CreateQuery(It.IsAny<RecordExecutionContext>()))
+            .Setup(x => x.CreateQuery(It.IsAny<QueryExecutionContext>()))
             .Returns(sourceQuery);
 
         var applier =
@@ -399,7 +397,7 @@ public sealed class RecordQueryEngineTests
             .Returns(namedQueryResult);
 
         var executor =
-            new Mock<IRecordExecutor<TestRecord>>();
+            new Mock<IQueryContextExecutor<TestRecord>>();
 
         executor
             .Setup(x => x.CountAsync(namedQueryResult, It.IsAny<CancellationToken>()))
@@ -467,17 +465,17 @@ public sealed class RecordQueryEngineTests
             new TestNamedQuery();
 
         var registry =
-            new Mock<IRecordRegistry>();
+            new Mock<IQueryContextRegistry>();
 
         registry
             .Setup(x => x.GetRegistration(typeof(TestRecord)))
             .Returns(registration);
 
         var validator =
-            new Mock<IRecordQueryValidator>();
+            new Mock<IQueryContextValidator>();
 
         var compiler =
-            new Mock<IRecordQueryCompiler>();
+            new Mock<IQueryContextCompiler>();
 
         compiler
             .Setup(x => x.Compile(request, metadata))
@@ -487,7 +485,7 @@ public sealed class RecordQueryEngineTests
             new Mock<IRecordSource<TestRecord>>();
 
         source
-            .Setup(x => x.CreateQuery(It.IsAny<RecordExecutionContext>()))
+            .Setup(x => x.CreateQuery(It.IsAny<QueryExecutionContext>()))
             .Returns(query);
 
         var applier =
@@ -510,7 +508,7 @@ public sealed class RecordQueryEngineTests
             .Returns(query);
 
         var executor =
-            new Mock<IRecordExecutor<TestRecord>>();
+            new Mock<IQueryContextExecutor<TestRecord>>();
 
         executor
             .Setup(x => x.CountAsync(query, It.IsAny<CancellationToken>()))
@@ -564,17 +562,17 @@ public sealed class RecordQueryEngineTests
                     "missing"));
 
         var registry =
-            new Mock<IRecordRegistry>();
+            new Mock<IQueryContextRegistry>();
 
         registry
             .Setup(x => x.GetRegistration(typeof(TestRecord)))
             .Returns(registration);
 
         var validator =
-            new Mock<IRecordQueryValidator>();
+            new Mock<IQueryContextValidator>();
 
         var compiler =
-            new Mock<IRecordQueryCompiler>();
+            new Mock<IQueryContextCompiler>();
 
         compiler
             .Setup(x => x.Compile(request, metadata))
@@ -584,7 +582,7 @@ public sealed class RecordQueryEngineTests
             new Mock<IRecordSource<TestRecord>>();
 
         source
-            .Setup(x => x.CreateQuery(It.IsAny<RecordExecutionContext>()))
+            .Setup(x => x.CreateQuery(It.IsAny<QueryExecutionContext>()))
             .Returns(
                 Array.Empty<TestRecord>()
                     .AsQueryable());
@@ -597,7 +595,7 @@ public sealed class RecordQueryEngineTests
                 source.Object,
                 [],
                 Mock.Of<ICompiledQueryApplier<TestRecord>>(),
-                Mock.Of<IRecordExecutor<TestRecord>>());
+                Mock.Of<IQueryContextExecutor<TestRecord>>());
 
         // Act / Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -636,17 +634,17 @@ public sealed class RecordQueryEngineTests
                     "active"));
 
         var registry =
-            new Mock<IRecordRegistry>();
+            new Mock<IQueryContextRegistry>();
 
         registry
             .Setup(x => x.GetRegistration(typeof(TestRecord)))
             .Returns(registration);
 
         var validator =
-            new Mock<IRecordQueryValidator>();
+            new Mock<IQueryContextValidator>();
 
         var compiler =
-            new Mock<IRecordQueryCompiler>();
+            new Mock<IQueryContextCompiler>();
 
         compiler
             .Setup(x => x.Compile(request, metadata))
@@ -656,7 +654,7 @@ public sealed class RecordQueryEngineTests
             new Mock<IRecordSource<TestRecord>>();
 
         source
-            .Setup(x => x.CreateQuery(It.IsAny<RecordExecutionContext>()))
+            .Setup(x => x.CreateQuery(It.IsAny<QueryExecutionContext>()))
             .Returns(
                 Array.Empty<TestRecord>()
                     .AsQueryable());
@@ -669,7 +667,7 @@ public sealed class RecordQueryEngineTests
                 source.Object,
                 [],
                 Mock.Of<ICompiledQueryApplier<TestRecord>>(),
-                Mock.Of<IRecordExecutor<TestRecord>>());
+                Mock.Of<IQueryContextExecutor<TestRecord>>());
 
         // Act / Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -709,17 +707,17 @@ public sealed class RecordQueryEngineTests
                 .Take(2);
 
         var registry =
-            new Mock<IRecordRegistry>();
+            new Mock<IQueryContextRegistry>();
 
         registry
             .Setup(x => x.GetRegistration(typeof(TestRecord)))
             .Returns(registration);
 
         var validator =
-            new Mock<IRecordQueryValidator>();
+            new Mock<IQueryContextValidator>();
 
         var compiler =
-            new Mock<IRecordQueryCompiler>();
+            new Mock<IQueryContextCompiler>();
 
         compiler
             .Setup(x => x.Compile(request, metadata))
@@ -729,7 +727,7 @@ public sealed class RecordQueryEngineTests
             new Mock<IRecordSource<TestRecord>>();
 
         source
-            .Setup(x => x.CreateQuery(It.IsAny<RecordExecutionContext>()))
+            .Setup(x => x.CreateQuery(It.IsAny<QueryExecutionContext>()))
             .Returns(sourceQuery);
 
         var applier =
@@ -752,7 +750,7 @@ public sealed class RecordQueryEngineTests
             .Returns(pagedQuery);
 
         var executor =
-            new Mock<IRecordExecutor<TestRecord>>();
+            new Mock<IQueryContextExecutor<TestRecord>>();
 
         executor
             .Setup(x => x.CountAsync(sortedQuery, It.IsAny<CancellationToken>()))
@@ -816,20 +814,20 @@ public sealed class RecordQueryEngineTests
                 0));
     }
 
-    private static RecordRegistration CreateRegistration(
-        RecordMetadata metadata,
+    private static QueryContextRegistration CreateRegistration(
+        QueryContextMetadata metadata,
         IReadOnlyCollection<NamedQueryRegistration>? namedQueries = null)
     {
-        return new RecordRegistration(
+        return new QueryRegistration(
             typeof(TestRecord),
             typeof(TestRecordSource),
             metadata,
             namedQueries ?? []);
     }
 
-    private static RecordMetadata CreateMetadata()
+    private static QueryContextMetadata CreateMetadata()
     {
-        return new RecordMetadata(
+        return new QueryMetadata(
             "test-record",
             "Test Record",
             "Test Record",
@@ -850,7 +848,7 @@ public sealed class RecordQueryEngineTests
     }
 
     private sealed class TestNamedQuery
-        : IRecordNamedQuery<TestRecord>
+        : INamedQuery<TestRecord>
     {
         public bool WasApplied { get; private set; }
 

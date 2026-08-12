@@ -4,11 +4,11 @@ namespace Kaleido.Queryable.UnitTests.Runtime;
 
 public sealed class RecordExecutorTests
 {
-    private readonly RecordExecutor<TestRecord> _sut;
+    private readonly QueryContextExecutor<TestRecord> _sut;
 
     public RecordExecutorTests()
     {
-        _sut = new RecordExecutor<TestRecord>();
+        _sut = new QueryContextExecutor<TestRecord>();
     }
 
     [Fact]

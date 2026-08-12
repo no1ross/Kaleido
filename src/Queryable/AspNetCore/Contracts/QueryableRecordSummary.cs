@@ -7,8 +7,4 @@ public sealed record QueryableRecordSummary
     public string? Description { get; init; }
 
     public string? MetadataUrl { get; init; }
-
-    public string? QueryUrl { get; init; }
-
-    public IReadOnlyCollection<QueryableNamedQuerySummary>? NamedQueries { get; init; }
 }

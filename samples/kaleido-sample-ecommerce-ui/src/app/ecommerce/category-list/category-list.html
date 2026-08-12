@@ -1,0 +1,42 @@
+<h3>Categories</h3>
+
+@if (selectedCategory) {
+
+    <div class="category-navigation">
+
+        <button
+            type="button"
+            class="back-link"
+            (click)="clearCategory()">
+
+            ← Clear
+
+        </button>
+
+        <span class="current-category">
+            {{ selectedCategory }}
+        </span>
+
+    </div>
+
+}
+
+<ul class="category-list">
+
+    @for (
+        category of categories;
+        track category.categoryPath
+    ) {
+
+        <li
+            class="category-item"
+            (click)="selectCategory(category)">
+
+            {{ category.categoryName }}
+            ({{ category.productCount }})
+
+        </li>
+
+    }
+
+</ul>

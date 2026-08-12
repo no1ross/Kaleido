@@ -1,26 +1,29 @@
-﻿namespace Kaleido.Queryable.AspNetCore.Contracts;
+﻿using Kaleido.Queryable;
 
 internal static class QueryableContractUrls
 {
-    public static string RecordMetadata(
+    public static string QueryContextMetadata(
         QueryableRouteOptions options,
-        string recordName)
-        => $"{options.RoutePrefix.TrimEnd('/')}/{recordName}/{options.MetadataRoute}";
+        string contextName)
+        => $"{options.RoutePrefix.TrimEnd('/')}/{contextName}/{options.MetadataRoute}";
 
-    public static string RecordQuery(
+    public static string QueryViewQuery(
         QueryableRouteOptions options,
-        string recordName)
-        => $"{options.RoutePrefix.TrimEnd('/')}/{recordName}/{options.QueryRoute}";
+        string contextName,
+        string viewName)
+        => $"{options.RoutePrefix.TrimEnd('/')}/{contextName}/{viewName}/{options.QueryRoute}";
 
     public static string NamedQuery(
         QueryableRouteOptions options,
-        string recordName,
+        string contextName,
+        string viewName,
         string queryName)
-        => $"{options.RoutePrefix.TrimEnd('/')}/{recordName}/{options.QueriesRoute}/{queryName}";
+        => $"{options.RoutePrefix.TrimEnd('/')}/{contextName}/{viewName}/{queryName}";
 
     public static string NamedQueryMetadata(
         QueryableRouteOptions options,
-        string recordName,
+        string contextName,
+        string viewName,
         string queryName)
-        => $"{NamedQuery(options, recordName, queryName)}/{options.MetadataRoute}";
+        => $"{options.RoutePrefix.TrimEnd('/')}/{contextName}/{viewName}/{queryName}/{options.MetadataRoute}";
 }

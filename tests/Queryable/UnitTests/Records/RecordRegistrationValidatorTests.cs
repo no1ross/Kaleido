@@ -1,5 +1,4 @@
 ﻿using Kaleido.Queryable.Attributes;
-using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -34,7 +33,7 @@ public sealed class RecordRegistrationValidatorTests
         var services = new ServiceCollection();
 
         services.AddScoped<
-            IRecordNamedQuery<TestRecord>,
+            INamedQuery<TestRecord>,
             ActiveQuery>();
 
         _validator.Validate(
@@ -86,11 +85,11 @@ public sealed class RecordRegistrationValidatorTests
         var services = new ServiceCollection();
 
         services.AddScoped<
-            IRecordNamedQuery<TestRecord>,
+            INamedQuery<TestRecord>,
             ActiveQuery>();
 
         services.AddScoped<
-            IRecordNamedQuery<TestRecord>,
+            INamedQuery<TestRecord>,
             DuplicateActiveQuery>();
 
         var exception =
@@ -110,11 +109,11 @@ public sealed class RecordRegistrationValidatorTests
         var services = new ServiceCollection();
 
         services.AddScoped<
-            IRecordNamedQuery<TestRecord>,
+            INamedQuery<TestRecord>,
             ActiveQuery>();
 
         services.AddScoped<
-            IRecordNamedQuery<TestRecord>,
+            INamedQuery<TestRecord>,
             LowerCaseActiveQuery>();
 
         var exception =
@@ -134,11 +133,11 @@ public sealed class RecordRegistrationValidatorTests
         var services = new ServiceCollection();
 
         services.AddScoped<
-            IRecordNamedQuery<TestRecord>,
+            INamedQuery<TestRecord>,
             ActiveQuery>();
 
         services.AddScoped<
-            IRecordNamedQuery<TestRecord>,
+            INamedQuery<TestRecord>,
             ByCategoryQuery>();
 
         _validator.Validate(
@@ -156,21 +155,21 @@ public sealed class RecordRegistrationValidatorTests
             services);
     }
 
-    [QueryableRecord(
+    [QueryContext(
         Name = "test-record",
         DisplayName = "Test Record",
         Version = "1.0.0",
         Source = "Unit Test")]
     private sealed record TestRecord;
 
-    [QueryableRecord(
+    [QueryContext(
         Name = "test-record",
         DisplayName = "Duplicate",
         Version = "1.0.0",
         Source = "Unit Test")]
     private sealed record DuplicateRecord;
 
-    [QueryableRecord(
+    [QueryContext(
         Name = "TEST-RECORD",
         DisplayName = "Duplicate",
         Version = "1.0.0",
@@ -179,9 +178,10 @@ public sealed class RecordRegistrationValidatorTests
 
     [NamedQuery(
         Name = "active",
+        Version = "1.0",
         DisplayName = "Active Records")]
     private sealed class ActiveQuery
-        : IRecordNamedQuery<TestRecord>
+        : INamedQuery<TestRecord>
     {
         public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, NamedQuery NamedQuery)
         {
@@ -191,9 +191,10 @@ public sealed class RecordRegistrationValidatorTests
 
     [NamedQuery(
         Name = "active",
+        Version = "1.0",
         DisplayName = "Duplicate Active Records")]
     private sealed class DuplicateActiveQuery
-        : IRecordNamedQuery<TestRecord>
+        : INamedQuery<TestRecord>
     {
         public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, NamedQuery NamedQuery)
         {
@@ -203,9 +204,10 @@ public sealed class RecordRegistrationValidatorTests
 
     [NamedQuery(
         Name = "ACTIVE",
+        Version = "1.0",
         DisplayName = "Duplicate Active Records")]
     private sealed class LowerCaseActiveQuery
-        : IRecordNamedQuery<TestRecord>
+        : INamedQuery<TestRecord>
     {
         public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, NamedQuery NamedQuery)
         {
@@ -215,9 +217,10 @@ public sealed class RecordRegistrationValidatorTests
 
     [NamedQuery(
         Name = "by-category",
+        Version = "1.0",
         DisplayName = "By Category")]
     private sealed class ByCategoryQuery
-        : IRecordNamedQuery<TestRecord>
+        : INamedQuery<TestRecord>
     {
         public IQueryable<TestRecord> Apply(IQueryable<TestRecord> query, NamedQuery NamedQuery)
         {

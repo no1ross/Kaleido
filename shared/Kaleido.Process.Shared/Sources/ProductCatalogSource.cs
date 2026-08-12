@@ -1,25 +1,28 @@
 ﻿using Kaleido.Queryable;
 using Kaleido.Queryable.Attributes;
-using Kaleido.Queryable.Records;
+using Kaleido.Queryable.Query;
 using Kaleido.Samples.ECommerce.Data;
 using Kaleido.Samples.ECommerce.Records;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.ECommerce.Sources;
 
-internal sealed class ProductCatalogSource
-    : IRecordSource<ProductCatalogRecord>
+internal sealed class ProductCatalogContextSource
+    : IQueryContextSource<ProductCatalogQuery>
 {
     private readonly ECommerceDbContext _dbContext;
 
-    public ProductCatalogSource(
+    public ProductCatalogContextSource(
         ECommerceDbContext dbContext)
     {
         _dbContext = dbContext;
     }
 
-    public IQueryable<ProductCatalogRecord> CreateQuery(
-        RecordExecutionContext executionContext)
+    public IQueryable<ProductCatalogQuery> CreateQuery(
+        QueryExecutionContext executionContext)
     {
         return
             from product in _dbContext.Products
@@ -30,13 +33,7 @@ internal sealed class ProductCatalogSource
             join inventory in _dbContext.Inventories
                 on product.ProductId equals inventory.ProductId
 
-            join assignment in _dbContext.ProductCategoryAssignments
-                on product.ProductId equals assignment.ProductId
-
-            join category in _dbContext.ProductCategories
-                on assignment.ProductCategoryId equals category.ProductCategoryId
-
-            select new ProductCatalogRecord
+            select new ProductCatalogQuery
             {
                 ProductId = product.ProductId,
 
@@ -44,11 +41,9 @@ internal sealed class ProductCatalogSource
 
                 SupplierName = supplier.Name,
 
-                CategoryName = category.Name,
+                FamilyName = product.FamilyName,
 
-                CategoryPath = category.Path,
-
-                CategoryLevel = category.Level,
+                ModelName = product.ModelName,
 
                 Price = (double)product.Price,
 
@@ -63,77 +58,275 @@ internal sealed class ProductCatalogSource
     }
 }
 
-internal sealed class ProductCatalogRecordView
-    : IRecordView<ProductCatalogRecord, ProductCatalogView>
+[QueryView(
+    Name = "product-list",
+    DisplayName = "Product List",
+    Version = "1.0.0",
+    Description = "Product catalog results.")]
+[Pageable(DefaultSize = 25, MaxSize = 250)]
+internal sealed class ProductListQueryViewSource
+    : IQueryViewSource<ProductCatalogQuery, ProductCatalogView>
 {
-    public IQueryable<ProductCatalogView> CreateView(IQueryable<ProductCatalogRecord> query, RecordExecutionContext executionContext)
+    public IQueryable<ProductCatalogView> CreateView(
+        IQueryable<ProductCatalogQuery> query,
+        QueryExecutionContext executionContext)
     {
-        return query.Select(record => new ProductCatalogView
+        return query.Select(record =>
+            new ProductCatalogView
             {
-                ProductId = record.ProductId,
+                ProductId =
+                    record.ProductId,
 
-                ProductName = record.ProductName,
+                ProductName =
+                    record.ProductName,
 
-                SupplierName = record.SupplierName,
+                SupplierName =
+                    record.SupplierName,
 
-                CategoryName = record.CategoryName,
+                FamilyName =
+                    record.FamilyName,
 
-                CategoryPath = record.CategoryPath,
+                ModelName =
+                    record.ModelName,
 
-                Price = (double)record.Price,
+                Price =
+                    record.Price,
 
-                Rating = record.Rating,
+                Rating =
+                    record.Rating,
 
-                ReviewCount = record.ReviewCount,
+                ReviewCount =
+                    record.ReviewCount,
 
-                AvailableQuantity = record.AvailableQuantity,
+                AvailableQuantity =
+                    record.AvailableQuantity,
 
-                IsActive = record.IsActive
+                IsActive =
+                    record.IsActive
             });
     }
 }
 
-internal sealed class CategoryCatalogViewSource
-    : IRecordView<ProductCatalogRecord, CategoryCatalogView>
+
+[QueryView(
+    Name = "categories",
+    DisplayName = "Categories",
+    Version = "1.0.0",
+    Description = "Category navigation results for the current catalog context.")]
+internal sealed class CategoryListQueryViewSource
+    : IQueryViewSource<ProductCatalogQuery, CategoryCatalogView, ProductByCategoryParameters>
 {
-    public IQueryable<CategoryCatalogView> CreateView(
-        IQueryable<ProductCatalogRecord> query, RecordExecutionContext executionContext)
+    private readonly ECommerceDbContext _dbContext;
+
+    public CategoryListQueryViewSource(
+        ECommerceDbContext dbContext)
     {
-        return query
-            .GroupBy(x =>
-                new
+        _dbContext =
+            dbContext;
+    }
+
+    public IQueryable<CategoryCatalogView> CreateView(
+        IQueryable<ProductCatalogQuery> query,
+        QueryExecutionContext executionContext)
+    {
+        var parameters =
+            executionContext
+                .TryGetViewParameters<ProductByCategoryParameters>();
+
+        var selectedCategoryPath =
+            parameters
+                ?.CategoryPath
+                ?.Trim('/');
+
+        var hasSelectedCategory =
+            !string.IsNullOrWhiteSpace(
+                selectedCategoryPath);
+
+        if (hasSelectedCategory)
+        {
+            query =
+                ApplyCategoryFilter(
+                    query,
+                    selectedCategoryPath!);
+        }
+
+        var categoryRowsQuery =
+            from product in query
+
+            join assignment in _dbContext.ProductCategoryAssignments
+                on product.ProductId equals assignment.ProductId
+
+            join category in _dbContext.ProductCategories
+                on assignment.ProductCategoryId equals category.ProductCategoryId
+
+            select new
+            {
+                product.ProductId,
+
+                CategoryName =
+                    category.Name,
+
+                CategoryPath =
+                    category.Path,
+
+                CategoryLevel =
+                    category.Level
+            };
+
+        if (hasSelectedCategory)
+        {
+            var selectedPath =
+                selectedCategoryPath!;
+
+            categoryRowsQuery =
+                categoryRowsQuery
+                    .Where(x =>
+                        x.CategoryPath == selectedPath ||
+                        x.CategoryPath.StartsWith(
+                            selectedPath + "/"));
+        }
+
+        var categoryRows =
+            categoryRowsQuery
+                .ToList();
+
+        var categoryList =
+            new Dictionary<string, CategoryAccumulator>(
+                StringComparer.OrdinalIgnoreCase);
+
+        foreach (var row in categoryRows)
+        {
+            var segments =
+                row.CategoryPath.Split(
+                    '/',
+                    StringSplitOptions.RemoveEmptyEntries);
+
+            for (var i = 0; i < segments.Length; i++)
+            {
+                var expandedCategoryPath =
+                    string.Join(
+                        '/',
+                        segments.Take(i + 1));
+
+                if (!categoryList.TryGetValue(
+                        expandedCategoryPath,
+                        out var category))
                 {
-                    x.CategoryName,
-                    x.CategoryPath,
-                    x.CategoryLevel
-                })
+                    category =
+                        new CategoryAccumulator
+                        {
+                            CategoryName =
+                                segments[i],
+
+                            CategoryPath =
+                                expandedCategoryPath,
+
+                            Level =
+                                i
+                        };
+
+                    categoryList.Add(
+                        expandedCategoryPath,
+                        category);
+                }
+
+                category.ProductIds.Add(
+                    row.ProductId!);
+            }
+        }
+
+        IEnumerable<CategoryAccumulator> result =
+            categoryList.Values;
+
+        if (hasSelectedCategory)
+        {
+            var selectedSegments =
+                selectedCategoryPath!
+                    .Split(
+                        '/',
+                        StringSplitOptions.RemoveEmptyEntries);
+
+            var childLevel =
+                selectedSegments.Length;
+
+            var selectedPrefix =
+                selectedCategoryPath! + "/";
+
+            result =
+                result.Where(x =>
+                    x.Level == childLevel &&
+                    x.CategoryPath.StartsWith(
+                        selectedPrefix,
+                        StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            result =
+                result.Where(x =>
+                    x.Level == 0);
+        }
+
+        return result
+            .Where(x =>
+                x.ProductIds.Count > 1)
+            .OrderBy(x =>
+                x.CategoryPath)
             .Select(x =>
                 new CategoryCatalogView
                 {
                     CategoryName =
-                        x.Key.CategoryName,
+                        x.CategoryName,
 
                     CategoryPath =
-                        x.Key.CategoryPath,
+                        x.CategoryPath,
 
                     Level =
-                        x.Key.CategoryLevel,
+                        x.Level,
 
                     ProductCount =
-                        x.Count()
+                        x.ProductIds.Count
                 })
-            .OrderBy(x =>
-                x.CategoryName);
+            .AsQueryable();
+    }
+
+    private sealed class CategoryAccumulator
+    {
+        public required string CategoryName { get; init; }
+
+        public required string CategoryPath { get; init; }
+
+        public required int Level { get; init; }
+
+        public HashSet<object> ProductIds { get; } =
+            new();
+    }
+
+    private IQueryable<ProductCatalogQuery> ApplyCategoryFilter(
+        IQueryable<ProductCatalogQuery> query,
+        string categoryPath)
+    {
+        return query
+            .Where(product =>
+                _dbContext.ProductCategoryAssignments
+                    .Any(assignment =>
+                        assignment.ProductId ==
+                            product.ProductId &&
+
+                        _dbContext.ProductCategories
+                            .Any(category =>
+                                category.ProductCategoryId ==
+                                    assignment.ProductCategoryId &&
+
+                                (
+                                    category.Path ==
+                                        categoryPath ||
+
+                                    category.Path.StartsWith(
+                                        categoryPath + "/")
+                                ))));
     }
 }
 
-[RecordView(
-    Name = "products",
-    DisplayName = "Products",
-    Version = "1.0.0",
-    Description = "Product catalog results.",
-    ApplyPaging = true,
-    ApplySorting = true)]
 public sealed class ProductCatalogView
 {
     public Guid ProductId { get; init; }
@@ -142,9 +335,9 @@ public sealed class ProductCatalogView
 
     public string SupplierName { get; init; } = string.Empty;
 
-    public string CategoryName { get; init; } = string.Empty;
+    public string FamilyName { get; init; } = string.Empty;
 
-    public string CategoryPath { get; init; } = string.Empty;
+    public string ModelName { get; init; } = string.Empty;
 
     public double Price { get; init; }
 
@@ -157,14 +350,7 @@ public sealed class ProductCatalogView
     public bool IsActive { get; init; }
 }
 
-[RecordView(
-    Name = "categories",
-    DisplayName = "Categories",
-    Version = "1.0.0",
-    Description = "Category navigation results for the current catalog context.",
-    ApplyPaging = false,
-    ApplySorting = false)]
-public sealed class CategoryCatalogView
+public sealed record CategoryCatalogView
 {
     public string CategoryName
     {
@@ -193,3 +379,93 @@ public sealed class CategoryCatalogView
     }
 }
 
+public sealed class ProductByCategoryParameters
+{
+    [Required]
+    [Description("The category path used to filter products.")]
+    public required string CategoryPath { get; init; }
+}
+
+[QueryView(
+    Name = "product-by-category",
+    DisplayName = "Products By Category",
+    Version = "1.0.0",
+    Description = "Product catalog results.")]
+[Pageable(DefaultSize = 25, MaxSize = 250)]
+internal sealed class ProductByCategoryQueryView
+    : IQueryViewSource<ProductCatalogQuery, ProductCatalogView, ProductByCategoryParameters>
+{
+    private readonly ECommerceDbContext _dbContext;
+
+    public ProductByCategoryQueryView(
+        ECommerceDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public IQueryable<ProductCatalogView> CreateView(
+        IQueryable<ProductCatalogQuery> query,
+        QueryExecutionContext executionContext)
+    {
+        var parameters =
+            executionContext
+                .TryGetViewParameters<ProductByCategoryParameters>();
+
+        var categoryPath =
+            parameters.CategoryPath;
+
+        return query
+            .Where(product =>
+                _dbContext.ProductCategoryAssignments
+                    .Any(assignment =>
+                        assignment.ProductId ==
+                            product.ProductId &&
+
+                        _dbContext.ProductCategories
+                            .Any(category =>
+                                category.ProductCategoryId ==
+                                    assignment.ProductCategoryId &&
+
+                                (
+                                    category.Path ==
+                                        categoryPath ||
+
+                                    category.Path.StartsWith(
+                                        categoryPath + "/")
+                                ))))
+            .Select(record =>
+                new ProductCatalogView
+                {
+                    ProductId =
+                        record.ProductId,
+
+                    ProductName =
+                        record.ProductName,
+
+                    SupplierName =
+                        record.SupplierName,
+
+                    FamilyName =
+                        record.FamilyName,
+
+                    ModelName =
+                        record.ModelName,
+
+                    Price =
+                        record.Price,
+
+                    Rating =
+                        record.Rating,
+
+                    ReviewCount =
+                        record.ReviewCount,
+
+                    AvailableQuantity =
+                        record.AvailableQuantity,
+
+                    IsActive =
+                        record.IsActive
+                });
+
+    }
+}

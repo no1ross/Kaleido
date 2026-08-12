@@ -1,25 +1,26 @@
-﻿namespace Kaleido.Queryable.AspNetCore.Contracts;
-
-public static class QueryableEndpointNames
+﻿public static class QueryableEndpointNames
 {
     public static string CatalogEndpointName =>
         "queryable-catalog";
 
-    public static string RecordMetadataEndpointName(
-        string recordName)
-        => $"{recordName}-metadata";
+    public static string QueryContextMetadataEndpointName(
+        string contextName)
+        => $"{contextName}-metadata";
 
-    public static string RecordQueryEndpointName(
-        string recordName)
-        => $"{recordName}-query";
+    public static string QueryViewEndpointName(
+        string contextName,
+        string viewName)
+        => $"{contextName}-{viewName}-query";
 
     public static string NamedQueryEndpointName(
-        string recordName,
+        string contextName,
+        string viewName,
         string queryName)
-        => $"{recordName}-{queryName}";
+        => $"{contextName}-{viewName}-{queryName}";
 
     public static string NamedQueryMetadataEndpointName(
-        string recordName,
+        string contextName,
+        string viewName,
         string queryName)
-        => $"{recordName}-{queryName}-metadata";
+        => $"{contextName}-{viewName}-{queryName}-metadata";
 }

@@ -313,12 +313,12 @@ public sealed class RecordQueryValidatorTests
             CreateRegistration());
     }
 
-    private static RecordRegistration CreateRegistration()
+    private static QueryContextRegistration CreateRegistration()
     {
-        return new RecordRegistration(
+        return new QueryRegistration(
             typeof(TestRecord),
             typeof(TestRecordSource),
-            new RecordMetadata(
+            new QueryMetadata(
                 "test-record",
                 "Test Record",
                 "Test Record",

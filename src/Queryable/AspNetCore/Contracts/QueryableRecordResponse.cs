@@ -12,78 +12,105 @@ public sealed record QueryableRecordResponse
 
     public string? Source { get; init; }
 
-    public PageableContract? Pageable { get; init; }
-
     public IReadOnlyCollection<QueryableFieldMetadata> Fields { get; init; }
         = Array.Empty<QueryableFieldMetadata>();
 
-    public IReadOnlyCollection<QueryableNamedQuerySummary> NamedQueries { get; init; }
-        = Array.Empty<QueryableNamedQuerySummary>();
+    public IReadOnlyCollection<QueryableViewResponse> Views { get; init; }
+        = Array.Empty<QueryableViewResponse>();
 
     public static QueryableRecordResponse FromRegistration(
-        RecordRegistration registration,
-        QueryableRouteOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(registration);
-
-        return new QueryableRecordResponse
-        {
-            Name = registration.Metadata.Name,
-            Description = registration.Metadata.Description,
-            Version = registration.Metadata.Version,
-            Source = registration.Metadata.Source,
-            Pageable = registration.Metadata.Pageable is null
-                ? null
-                : PageableContract.FromMetadata(
-                    registration.Metadata.Pageable),
-            Fields = registration.Metadata.Fields
-                .Select(QueryableFieldMetadata.FromMetadata)
-                .ToArray(),
-            NamedQueries = registration.NamedQueryTypes
-            .OrderBy(q => q.Metadata.Name)
-            .Select(q =>
-            {
-                var queryName =
-                    q.Metadata.Name.ToLowerInvariant();
-
-                var recordName =
-                    registration.Metadata.Name.ToLowerInvariant();
-
-                return new QueryableNamedQuerySummary
-                {
-                    Name = q.Metadata.Name,
-
-                    Description = q.Metadata.Description,
-
-                    ExecuteUrl = QueryableContractUrls.NamedQuery(
-                        options,
-                        recordName,
-                        queryName),
-
-                    MetadataUrl = QueryableContractUrls.NamedQueryMetadata(
-                        options,
-                        recordName,
-                        queryName)
-                };
-            })
-            .ToArray()
-        };
-    }
-    public static QueryableRecordSummary ToSummary(
-        RecordRegistration registration,
+        QueryContextRegistration registration,
         QueryableRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(registration);
         ArgumentNullException.ThrowIfNull(options);
 
-        var routePrefix =
-            options.RoutePrefix.TrimEnd('/');
-
-        var recordName =
+        var contextName =
             registration.Metadata.Name.ToLowerInvariant();
 
-        var recordBase =
-            $"{routePrefix}/{recordName}";
+        return new QueryableRecordResponse
+        {
+            Name = registration.Metadata.Name,
+
+            Description = registration.Metadata.Description,
+
+            Version = registration.Metadata.Version,
+
+            Source = registration.Metadata.Source,
+
+            Fields = registration.Metadata.Fields
+                .Select(QueryableFieldMetadata.FromMetadata)
+                .ToArray(),
+
+            //Views = registration.QueryViews
+            //    .OrderBy(v => v.Metadata.Name)
+            //    .Select(view =>
+            //    {
+            //        var viewName =
+            //            view.Metadata.Name.ToLowerInvariant();
+
+            //        return new QueryableViewResponse
+            //        {
+            //            Name = view.Metadata.Name,
+
+            //            Description = view.Metadata.Description,
+
+            //            Pageable =
+            //                view.Metadata.Pageable is null
+            //                    ? null
+            //                    : PageableContract.FromMetadata(
+            //                        view.Metadata.Pageable),
+
+            //            QueryUrl =
+            //                QueryableContractUrls.QueryViewQuery(
+            //                    options,
+            //                    contextName,
+            //                    viewName),
+
+            //            NamedQueries = registration.NamedQueries
+            //                .OrderBy(q => q.Metadata.Name)
+            //                .Select(query =>
+            //                {
+            //                    var queryName =
+            //                        query.Metadata.Name.ToLowerInvariant();
+
+            //                    return new QueryableNamedQuerySummary
+            //                    {
+            //                        Name = query.Metadata.Name,
+
+            //                        Description = query.Metadata.Description,
+
+            //                        ExecuteUrl =
+            //                            QueryableContractUrls.NamedQuery(
+            //                                options,
+            //                                contextName,
+            //                                viewName,
+            //                                queryName),
+
+            //                        MetadataUrl =
+            //                            QueryableContractUrls.NamedQueryMetadata(
+            //                                options,
+            //                                contextName,
+            //                                viewName,
+            //                                queryName)
+            //                    };
+            //                })
+            //                .ToArray()
+            //        };
+            //    })
+            //    .ToArray()
+        };
+    }
+
+    public static QueryableRecordSummary ToSummary(
+        QueryContextRegistration registration,
+        QueryableRouteOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(registration);
+        ArgumentNullException.ThrowIfNull(options);
+
+        var contextName =
+            registration.Metadata.Name.ToLowerInvariant();
 
         return new QueryableRecordSummary
         {
@@ -91,32 +118,22 @@ public sealed record QueryableRecordResponse
 
             Description = registration.Metadata.Description,
 
-            MetadataUrl = QueryableContractUrls.RecordMetadata(options, recordName),
-
-            QueryUrl = QueryableContractUrls.RecordQuery(options, recordName),
-
-            NamedQueries = registration.NamedQueryTypes
-            .OrderBy(q => q.Metadata.Name)
-            .Select(q =>
-            {
-                var queryName = q.Metadata.Name.ToLowerInvariant();
-
-                return new QueryableNamedQuerySummary
-                {
-                    Name = q.Metadata.Name,
-                    Description = q.Metadata.Description,
-                    ExecuteUrl = QueryableContractUrls.NamedQuery(
-                        options,
-                        recordName,
-                        queryName),
-                    MetadataUrl = QueryableContractUrls.NamedQueryMetadata(
-                        options,
-                        recordName,
-                        queryName)
-                };
-            })
-            .ToArray()
+            MetadataUrl =
+                QueryableContractUrls.QueryContextMetadata(
+                    options,
+                    contextName)
         };
     }
+}
 
+
+public sealed record QueryableViewResponse
+{
+    public required string Name { get; init; }
+
+    public string? Description { get; init; }
+
+    public PageableContract? Pageable { get; init; }
+
+    public required string QueryUrl { get; init; }
 }

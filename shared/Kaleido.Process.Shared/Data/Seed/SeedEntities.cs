@@ -16,18 +16,11 @@ public sealed class CategoryDefinition
 
 public sealed class SupplierDefinition
 {
+    public required string SupplierName { get; init; }
+
     public required string ContactName { get; init; }
 
     public required string Email { get; init; }
-
-    public bool IsPreferred { get; init; }
-
-    public Dictionary<string, ProductFamilyDefinition> Families
-    {
-        get;
-        init;
-    }
-    = [];
 }
 
 public sealed class ProductFamilyDefinition

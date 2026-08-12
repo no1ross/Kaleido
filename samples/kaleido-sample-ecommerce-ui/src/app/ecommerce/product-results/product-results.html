@@ -1,3 +1,13 @@
+@if (errorMessage) {
+
+  <div class="error-banner">
+
+    {{ errorMessage }}
+
+  </div>
+
+}
+
 <div class="product-results">
 
   <div class="product-results__title">
@@ -6,49 +16,69 @@
 
   </div>
 
-  <table class="product-results__table">
+  @if (isLoading) {
 
-    <thead>
+<div class="product-results__loading">
 
-      <tr>
+  <div class="product-results__loading-content">
 
-        <th>Product</th>
-        <th>Supplier</th>
-        <th>Category</th>
-        <th>Price</th>
-        <th>Rating</th>
-        <th>Reviews</th>
-        <th>Available</th>
-        <th>Active</th>
+    <div class="product-results__spinner"></div>
 
-      </tr>
+    <div>
+      Loading products...
+    </div>
 
-    </thead>
+  </div>
 
-    <tbody>
+</div>
 
-      @for (
-        product of products;
-        track product)
-      {
+  } @else {
+
+    <table class="product-results__table">
+
+      <thead>
 
         <tr>
 
-          <td>{{ product.productName }}</td>
-          <td>{{ product.supplierName }}</td>
-          <td>{{ product.categoryName }}</td>
-          <td>{{ product.price | currency }}</td>
-          <td>{{ product.rating }}</td>
-          <td>{{ product.reviewCount }}</td>
-          <td>{{ product.availableQuantity }}</td>
-          <td>{{ product.isActive ? 'Yes' : 'No' }}</td>
+          <th>Product</th>
+          <th>Supplier</th>
+          <th>Family</th>
+          <th>Model</th>
+          <th>Price</th>
+          <th>Rating</th>
+          <th>Reviews</th>
+          <th>Available</th>
+          <th>Active</th>
 
         </tr>
 
-      }
+      </thead>
 
-    </tbody>
+      <tbody>
 
-  </table>
+        @for (product of products; track product.productId)
+        {
+
+          <tr>
+
+            <td>{{ product.productName }}</td>
+            <td>{{ product.supplierName }}</td>
+            <td>{{ product.familyName }}</td>
+            <td>{{ product.modelName }}</td>
+            <td>{{ product.price | currency }}</td>
+            <td>{{ product.rating }}</td>
+            <td>{{ product.reviewCount }}</td>
+            <td>{{ product.availableQuantity }}</td>
+            <td>{{ product.isActive ? 'Yes' : 'No' }}</td>
+
+          </tr>
+
+        }
+
+      </tbody>
+
+    </table>
+
+  }
 
 </div>

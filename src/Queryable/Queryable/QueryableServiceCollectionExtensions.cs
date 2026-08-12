@@ -46,35 +46,67 @@ public static class QueryableServiceCollectionExtensions
             .Select(x => x.AsType())
             .ToArray();
 
-        var recordTypes =
+        var queryContextTypes =
             types
                 .Where(x =>
-                    x.GetCustomAttribute<QueryableRecordAttribute>() is not null)
+                    x.GetCustomAttribute<QueryContextAttribute>() is not null)
                 .ToArray();
 
-        foreach (var recordType in recordTypes)
+        foreach (var contextType in queryContextTypes)
         {
-            RegisterRecord(
+            RegisterSource(
                 builder.Services,
-                recordType,
+                contextType,
                 types);
         }
 
-        builder.Services.TryAddSingleton<RecordRegistrationValidator, RecordRegistrationValidator>();
+        var queryViewTypes =
+            types
+                .Where(x =>
+                    x.GetCustomAttribute<QueryViewAttribute>() is not null)
+                .ToArray();
 
-        builder.Services.TryAddSingleton<IRecordRegistry>(
+        foreach (var viewType in queryViewTypes)
+        {
+            RegisterQueryView(
+                builder.Services,
+                viewType,
+                types);
+        }
+
+        builder.Services.TryAddSingleton<QueryContextRegistrationValidator>();
+
+        builder.Services.TryAddSingleton<IQueryContextRegistry>(
             sp =>
             {
                 var validator =
-                    sp.GetRequiredService<RecordRegistrationValidator>();
+                    sp.GetRequiredService<QueryContextRegistrationValidator>();
 
                 validator.Validate(
-                    recordTypes,
+                    queryContextTypes,
                     builder.Services);
 
-                return new RecordRegistry(
+                return new QueryContextRegistry(
                     builder.Services,
-                    recordTypes);
+                    queryContextTypes);
+            });
+
+        builder.Services.TryAddSingleton<QueryViewRegistrationValidator>();
+
+        builder.Services.TryAddSingleton<IQueryViewRegistry>(
+            sp =>
+            {
+                var validator =
+                    sp.GetRequiredService<QueryViewRegistrationValidator>();
+
+                validator.Validate(
+                    queryViewTypes,
+                    queryContextTypes,
+                    builder.Services);
+
+                return new QueryViewRegistry(
+                    builder.Services,
+                    queryViewTypes);
             });
 
         RegisterFrameworkServices(builder.Services);
@@ -84,23 +116,23 @@ public static class QueryableServiceCollectionExtensions
 
     private static void RegisterFrameworkServices(IServiceCollection services)
     {
-        services.TryAddSingleton<IRecordQueryValidator, QueryRequestValidator>();
-        services.TryAddSingleton<IRecordQueryCompiler, QueryRequestCompiler>();
+        services.TryAddSingleton<IQueryContextValidator, QueryRequestValidator>();
+        services.TryAddSingleton<IQueryContextCompiler, QueryRequestCompiler>();
         services.TryAddSingleton<IQueryableService, QueryableService>();
 
-        services.TryAddSingleton(typeof(ICompiledQueryApplier<>), typeof(CompiledQueryApplier<>));
+        services.TryAddSingleton(
+            typeof(ICompiledQueryApplier<>),
+            typeof(CompiledQueryApplier<>));
 
-        services.TryAddSingleton(typeof(IRecordExecutor<>), typeof(RecordExecutor<>));
+        services.TryAddSingleton(
+            typeof(IQueryContextExecutor<>),
+            typeof(QueryContextExecutor<>));
     }
 
-    private static void RegisterRecord(IServiceCollection services, Type recordType, IReadOnlyCollection<Type> types)
-    {
-        RegisterSource(services, recordType, types);
-
-        RegisterNamedQueries(services, recordType, types);
-    }
-
-    private static void RegisterSource(IServiceCollection services, Type recordType, IEnumerable<Type> types)
+    private static void RegisterSource(
+        IServiceCollection services,
+        Type contextType,
+        IEnumerable<Type> types)
     {
         var sourceType =
             types.Single(x =>
@@ -108,43 +140,85 @@ public static class QueryableServiceCollectionExtensions
                     .Any(i =>
                         i.IsGenericType &&
                         i.GetGenericTypeDefinition() ==
-                        typeof(IRecordSource<>) &&
-                        i.GenericTypeArguments[0] == recordType));
+                        typeof(IQueryContextSource<>) &&
+                        i.GenericTypeArguments[0] == contextType));
 
         var sourceInterface =
-            typeof(IRecordSource<>)
-                .MakeGenericType(recordType);
+            typeof(IQueryContextSource<>)
+                .MakeGenericType(contextType);
 
         services.TryAddScoped(
             sourceInterface,
             sourceType);
-
-        services.TryAdd(
-            ServiceDescriptor.Scoped(
-                typeof(IRecordQueryEngine<>)
-                    .MakeGenericType(recordType),
-                typeof(RecordQueryEngine<>)
-                    .MakeGenericType(recordType)));
     }
 
-    private static void RegisterNamedQueries(IServiceCollection services, Type recordType, IEnumerable<Type> types)
+    private static void RegisterQueryView(
+        IServiceCollection services,
+        Type queryViewType,
+        IEnumerable<Type> types)
     {
-        var queryInterface =
-            typeof(IRecordNamedQuery<>)
-                .MakeGenericType(recordType);
-
-        var queries =
-            types.Where(x =>
-                x.GetInterfaces()
-                    .Any(i =>
-                        i.IsGenericType &&
+        var interfaces =
+            queryViewType
+                .GetInterfaces()
+                .Where(i =>
+                    i.IsGenericType &&
+                    (
                         i.GetGenericTypeDefinition() ==
-                        typeof(IRecordNamedQuery<>) &&
-                        i.GenericTypeArguments[0] == recordType));
+                            typeof(IQueryViewSource<,>) ||
 
-        foreach (var query in queries)
+                        i.GetGenericTypeDefinition() ==
+                            typeof(IQueryViewSource<,,>)
+                    ))
+                .ToArray();
+
+        if (interfaces.Length == 0)
         {
-            services.AddScoped(queryInterface, query);
+            throw new InvalidOperationException(
+                $"Query view '{queryViewType.FullName}' does not implement IQueryViewSource.");
         }
+
+        //
+        // Register the actual QueryView implementation
+        //
+        services.TryAddScoped(
+            queryViewType);
+
+        //
+        // Register all implemented interfaces
+        //
+        foreach (var queryViewInterface in interfaces)
+        {
+            services.AddScoped(
+                queryViewInterface,
+                sp => sp.GetRequiredService(queryViewType));
+        }
+
+        //
+        // Use the most-specific interface for metadata
+        //
+        var registrationInterface =
+            interfaces
+                .OrderByDescending(
+                    x => x.GenericTypeArguments.Length)
+                .First();
+
+        var queryType =
+            registrationInterface.GenericTypeArguments[0];
+
+        var viewType =
+            registrationInterface.GenericTypeArguments[1];
+
+        //
+        // Register the engine
+        //
+        services.TryAddScoped(
+            typeof(IQueryContextEngine<,>)
+                .MakeGenericType(
+                    queryType,
+                    viewType),
+            typeof(QueryContextEngine<,>)
+                .MakeGenericType(
+                    queryType,
+                    viewType));
     }
 }

@@ -4,8 +4,4 @@ namespace Kaleido.Queryable.Attributes;
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 public sealed class SortableAttribute : Attribute
 {
-    public SortableAttribute()
-    {
-
-    }
 }

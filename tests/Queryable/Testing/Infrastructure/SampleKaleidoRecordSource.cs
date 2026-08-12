@@ -15,7 +15,7 @@ public sealed class SampleKaleidoRecordSource
     }
 
     public IQueryable<SampleKaleidoRecord> CreateQuery(
-        RecordExecutionContext executionContext)
+        QueryExecutionContext executionContext)
     {
         return _data.Records.AsQueryable();
     }

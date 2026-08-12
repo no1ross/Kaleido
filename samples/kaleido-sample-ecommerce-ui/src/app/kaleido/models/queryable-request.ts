@@ -1,7 +1,12 @@
 import { SortDirection } from './sort-direction';
 import { FilterOperator, LogicalOperator } from './enumerations';
 
-export interface QueryRequest {
+//export interface QueryRequest {
+//  query: QueryBody;
+//}
+
+export interface QueryRequest<TParameters = undefined> {
+  parameters?: TParameters;
   query: QueryBody;
 }
 

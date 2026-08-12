@@ -1,6 +1,5 @@
 using Kaleido.Queryable.FunctionalTests.Infrastructure;
 using Kaleido.Queryable.Query;
-using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -43,16 +42,16 @@ public sealed class QueryableFixture : IDisposable
             .GetRequiredService<IQueryableService>();
 
         _ = scope.ServiceProvider
-            .GetRequiredService<IRecordRegistry>();
+            .GetRequiredService<IQueryContextRegistry>();
 
         _ = scope.ServiceProvider
             .GetRequiredService<IRecordSource<SampleKaleidoRecord>>();
 
         _ = scope.ServiceProvider
-            .GetServices<IRecordNamedQuery<SampleKaleidoRecord>>();
+            .GetServices<INamedQuery<SampleKaleidoRecord>>();
 
         _ = scope.ServiceProvider
-            .GetRequiredService<IRecordQueryEngine<SampleKaleidoRecord>>();
+            .GetRequiredService<IQueryContextEngine<SampleKaleidoRecord>>();
     }
 
     public IServiceScope CreateScope()

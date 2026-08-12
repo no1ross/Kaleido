@@ -2,11 +2,10 @@
 
 namespace Kaleido.Queryable.Runtime
 {
-    internal interface ICompiledQueryApplier<TRecord> where TRecord : class
+    internal interface ICompiledQueryApplier<TQueryContext> where TQueryContext : class
     {
-        IQueryable<TRecord> ApplyFilter(IQueryable<TRecord> query, CompiledFilterExpression? filter);
-        IQueryable<TRecord> ApplySearch(IQueryable<TRecord> query, CompiledSearch? search);
-        IQueryable<TRecord> ApplySort(IQueryable<TRecord> query, IReadOnlyList<CompiledSort> sort);
-        IQueryable<TRecord> ApplyPage(IQueryable<TRecord> query, CompiledPage page);
+        IQueryable<TQueryContext> ApplyFilter(IQueryable<TQueryContext> query, CompiledFilterExpression? filter);
+        IQueryable<TQueryContext> ApplySearch(IQueryable<TQueryContext> query, CompiledSearch? search);
+        IQueryable<TQueryContext> ApplySort(IQueryable<TQueryContext> query, IReadOnlyList<CompiledSort> sort);
     }
 }

@@ -3,16 +3,16 @@ using System.Xml.Linq;
 
 namespace Kaleido.Queryable.Query;
 
-internal sealed class QueryRequestCompiler : IRecordQueryCompiler
+internal sealed class QueryRequestCompiler : IQueryContextCompiler
 {
     public CompiledRecordQuery Compile(
-        QueryRequest request,
-        RecordMetadata metadata)
+        IQueryRequest request,
+        QueryContextMetadata metadata, QueryViewMetadata queryViewMetadata)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(metadata);
 
-        var pageable = metadata.Pageable;
+        var pageable = queryViewMetadata.Pageable;
 
         var size = request.Query?.Page?.Size
                    ?? pageable?.DefaultSize
@@ -25,30 +25,15 @@ internal sealed class QueryRequestCompiler : IRecordQueryCompiler
         var offset = request.Query?.Page?.Offset ?? 0;
 
         return new CompiledRecordQuery(
-            CompiledNamedQuery(request.NamedQuery, metadata),
             CompileFilter(request.Query?.Filter, metadata),
             CompileSearch(request.Query?.SearchText, metadata),
             CompileSort(request.Query?.Sort, metadata),
             new CompiledPage(size, offset));
     }
 
-    private static NamedQuery? CompiledNamedQuery(NamedQuery? namedQuery, RecordMetadata metadata)
-    {
-        if (namedQuery is null)
-        {
-            return null;
-        }
-
-        return new NamedQuery(
-            namedQuery.Name,
-            namedQuery.Parameters
-        );
-    }
-
-
     private static CompiledFilterExpression? CompileFilter(
         QueryFilterNode? node,
-        RecordMetadata metadata)
+        QueryContextMetadata metadata)
     {
         if (node is null)
         {
@@ -81,7 +66,7 @@ internal sealed class QueryRequestCompiler : IRecordQueryCompiler
 
     private static CompiledFilterCondition CompileFilterCondition(
         QueryFilterCondition condition,
-        RecordMetadata metadata)
+        QueryContextMetadata metadata)
     {
         return new CompiledFilterCondition(
             GetField(metadata, condition.Field),
@@ -91,7 +76,7 @@ internal sealed class QueryRequestCompiler : IRecordQueryCompiler
 
     private static CompiledFilterGroup CompileFilterGroup(
         QueryFilterGroup group,
-        RecordMetadata metadata)
+        QueryContextMetadata metadata)
     {
         return new CompiledFilterGroup(
             group.Operator,
@@ -102,7 +87,7 @@ internal sealed class QueryRequestCompiler : IRecordQueryCompiler
 
     private static CompiledSearch? CompileSearch(
         string? searchText,
-        RecordMetadata metadata)
+        QueryContextMetadata metadata)
     {
         if (string.IsNullOrWhiteSpace(searchText))
         {
@@ -124,7 +109,7 @@ internal sealed class QueryRequestCompiler : IRecordQueryCompiler
 
     private static IReadOnlyList<CompiledSort> CompileSort(
         IReadOnlyList<QuerySort>? sorts,
-        RecordMetadata metadata)
+        QueryContextMetadata metadata)
     {
         if (sorts is null || sorts.Count == 0)
         {
@@ -141,7 +126,7 @@ internal sealed class QueryRequestCompiler : IRecordQueryCompiler
             .ToArray();
     }
 
-    private static FieldMetadata GetField(RecordMetadata metadata, string fieldName)
+    private static FieldMetadata GetField(QueryContextMetadata metadata, string fieldName)
     {
         var field = metadata.Fields.SingleOrDefault(x =>
             string.Equals(

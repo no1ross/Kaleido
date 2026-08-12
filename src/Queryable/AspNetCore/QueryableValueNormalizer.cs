@@ -56,7 +56,7 @@ internal static class QueryableValueNormalizer
 
     public static QueryBody? Normalize(
         QueryBody? query,
-        RecordMetadata metadata)
+        QueryContextMetadata metadata)
     {
         if (query is null)
         {
@@ -73,7 +73,7 @@ internal static class QueryableValueNormalizer
 
     private static QueryFilterNode? NormalizeFilter(
         QueryFilterNode? node,
-        RecordMetadata metadata)
+        QueryContextMetadata metadata)
     {
         if (node is null)
         {
@@ -110,7 +110,7 @@ internal static class QueryableValueNormalizer
 
     private static QueryFilterCondition NormalizeCondition(
         QueryFilterCondition condition,
-        RecordMetadata metadata)
+        QueryContextMetadata metadata)
     {
         var field =
             metadata.Fields.SingleOrDefault(x =>

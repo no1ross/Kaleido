@@ -1,120 +1,102 @@
-﻿using Kaleido.Queryable.Attributes;
-using Kaleido.Queryable.Query;
-using Kaleido.Queryable.Records;
+﻿//using Kaleido.Queryable.Attributes;
+//using Kaleido.Queryable.Query;
+//using System.ComponentModel;
+//using System.ComponentModel.DataAnnotations;
 
-namespace Kaleido.Queryable.Shared;
+//namespace Kaleido.Queryable.Shared;
 
-[NamedQuery(
-    Name ="active-records",
-    DisplayName = "Active Records",
-    Description ="Returns only active records.")]
-public sealed class ActiveRecordsQuery :
-    IRecordNamedQuery<SampleKaleidoRecord>
-{
-    public IQueryable<SampleKaleidoRecord> Apply(
-        IQueryable<SampleKaleidoRecord> query,
-        NamedQuery namedQuery)
-    {
-        return query.Where(x => x.IsActive);
-    }
-}
+//[NamedQuery(
+//    Name ="active-records",
+//    Version = "1.0",
+//    DisplayName = "Active Records",
+//    Description ="Returns only active records.")]
+//public sealed class ActiveRecordsQuery :
+//    INamedQueryContext<SampleKaleidoRecord>
+//{
+//    public IQueryable<SampleKaleidoRecord> Apply(IQueryable<SampleKaleidoRecord> query, 
+//        EmptyNamedQueryParameters parameters, 
+//        QueryExecutionContext context)
+//    {
+//        return query.Where(x => x.IsActive);
+//    }
+//}
 
-[NamedQuery(
-    Name = "records-by-category",
-    DisplayName = "Records by Category",
-    Description = "Returns records by category.")]
-[NamedQueryParameter(
-    nameof(SampleKaleidoRecord.Category),
-    typeof(string),
-    Required = true,
-    Description = "The category to filter records by.")]
-public sealed class RecordsByCategoryQuery :
-    IRecordNamedQuery<SampleKaleidoRecord>
-{
-    public IQueryable<SampleKaleidoRecord> Apply(
-        IQueryable<SampleKaleidoRecord> query,
-        NamedQuery namedQuery)
-    {
-        if (namedQuery.Parameters is null ||
-            !namedQuery.Parameters.TryGetValue(
-                nameof(SampleKaleidoRecord.Category),
-                out var category) ||
-            category is null)
-        {
-            throw new InvalidOperationException(
-                $"Named query 'records-by-category' requires parameter '{nameof(SampleKaleidoRecord.Category)}'.");
-        }
+//[NamedQuery(
+//    Name = "records-by-category",
+//    Version = "1.0",
+//    DisplayName = "Records by Category",
+//    Description = "Returns records by category.")]
+//public sealed class RecordsByCategoryQuery :
+//    INamedQueryContext<SampleKaleidoRecord, RecordsByCategoryQueryParameters>
+//{
+//    public IQueryable<SampleKaleidoRecord> Apply(
+//        IQueryable<SampleKaleidoRecord> query,
+//        RecordsByCategoryQueryParameters parameters,
+//        QueryExecutionContext context)
+//    {
+//        return query.Where(x => x.Category == parameters.Category);
+//    }
+//}
 
-        var text = category.ToString();
+//public class RecordsByCategoryQueryParameters
+//{
+//    [Required]
+//    [Description("The category to filter records by.")]
+//    public required string Category { get; set; }
+//}
 
-        return query.Where(x => x.Category == text);
-    }
-}
 
-[NamedQuery(
-    Name = "high-amount-records",
-    DisplayName = "High Amount Records",
-    Description = "Returns records with amounts above a threshold.")]
-[NamedQueryParameter(
-    nameof(SampleKaleidoRecord.Amount),
-    typeof(decimal),
-    DefaultValue = 100d,
-    Description = "Minimum amount that a record must have.")]
-public sealed class HighAmountRecordsQuery :
-    IRecordNamedQuery<SampleKaleidoRecord>
-{
-    public IQueryable<SampleKaleidoRecord> Apply(
-        IQueryable<SampleKaleidoRecord> query,
-        NamedQuery namedQuery)
-    {
-        var minimumAmount =
-            namedQuery.Parameters is not null &&
-            namedQuery.Parameters.TryGetValue(
-                nameof(SampleKaleidoRecord.Amount),
-                out var value) &&
-            value is not null
-                ? Convert.ToDecimal(value)
-                : 25m;
 
-        return query.Where(x => x.Amount >= minimumAmount);
-    }
-}
+//[NamedQuery(
+//    Name = "high-amount-records",
+//    Version = "1.0",
+//    DisplayName = "High Amount Records",
+//    Description = "Returns records with amounts above a threshold.")]
+//public sealed class HighAmountRecordsQuery :
+//    INamedQueryContext<SampleKaleidoRecord, HighAmountRecordsQueryParameters>
+//{
+//    public IQueryable<SampleKaleidoRecord> Apply(
+//        IQueryable<SampleKaleidoRecord> query,
+//        HighAmountRecordsQueryParameters parameters,
+//        QueryExecutionContext context)
+//    {
+//        return query.Where(x => x.Amount >= parameters.Amount);
+//    }
+//}
 
-[NamedQuery(
-    Name = "effective-on",
-    DisplayName = "Effective On",
-    Description = "Returns records effective on a specific date.")]
-[NamedQueryParameter(
-    nameof(SampleKaleidoRecord.EffectiveDate),
-    typeof(DateOnly),
-    Required = true,
-    Description = "The date to filter records by.")]
-public sealed class EffectiveOnQuery :
-    IRecordNamedQuery<SampleKaleidoRecord>
-{
-    public IQueryable<SampleKaleidoRecord> Apply(
-        IQueryable<SampleKaleidoRecord> query,
-        NamedQuery namedQuery)
-    {
-        if (namedQuery.Parameters is null ||
-            !namedQuery.Parameters.TryGetValue(
-                nameof(SampleKaleidoRecord.EffectiveDate),
-                out var value) ||
-            value is null)
-        {
-            throw new InvalidOperationException(
-                $"Named query 'effective-on' requires parameter '{nameof(SampleKaleidoRecord.EffectiveDate)}'.");
-        }
+//public class HighAmountRecordsQueryParameters
+//{
+//    [Required]
+//    [Description("The minimum amount that a record must have.")]
+//    public required decimal Amount { get; set; }
+//}
 
-        var effectiveDate =
-            value is DateOnly date
-                ? date
-                : DateOnly.Parse(value.ToString()!);
 
-        return query.Where(
-            x =>
-                x.EffectiveDate <= effectiveDate &&
-                (x.ExpirationDate == null ||
-                 x.ExpirationDate >= effectiveDate));
-    }
-}
+//[NamedQuery(
+//    Name = "effective-on",
+//    Version = "1.0",
+//    DisplayName = "Effective On",
+//    Description = "Returns records effective on a specific date.")]
+//public sealed class EffectiveOnQuery :
+//    INamedQueryContext<SampleKaleidoRecord, EffectiveOnQueryParameters>
+//{
+//    public IQueryable<SampleKaleidoRecord> Apply(
+//        IQueryable<SampleKaleidoRecord> query,
+//        EffectiveOnQueryParameters parameters,
+//        QueryExecutionContext context)
+//    {
+//        var effectiveDate = parameters.EffectiveDate;;
+
+//        return query.Where(
+//            x =>
+//                x.EffectiveDate <= effectiveDate &&
+//                (x.ExpirationDate == null ||
+//                 x.ExpirationDate >= effectiveDate));
+//    }
+//}
+//public class EffectiveOnQueryParameters
+//{
+//    [Required]
+//    [Description("The date to filter records by.")]
+//    public required DateOnly EffectiveDate { get; set; }
+//}

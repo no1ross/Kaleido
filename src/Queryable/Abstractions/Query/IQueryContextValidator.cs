@@ -22,7 +22,7 @@ namespace Kaleido.Queryable.Query;
 /// This component must not execute queries or perform
 /// provider-specific logic.
 /// </summary>
-internal interface IRecordQueryValidator
+internal interface IQueryContextValidator
 {
-    void Validate(QueryRequest request, RecordRegistration registration);
+    void Validate(IQueryRequest request, QueryContextRegistration registration, QueryViewRegistration viewRegistration);
 }

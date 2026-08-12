@@ -1,10 +1,11 @@
-﻿using Kaleido.Queryable.Records;
+﻿using Kaleido.Queryable.Query;
+using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Shared;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.SQLite;
 
-public sealed class SampleKaleidoRecordSource : IRecordSource<SampleKaleidoRecord>
+public sealed class SampleKaleidoRecordSource : IQueryContextSource<SampleKaleidoRecord>
 {
     private readonly SampleKaleidoCsvData _data;
 
@@ -13,11 +14,21 @@ public sealed class SampleKaleidoRecordSource : IRecordSource<SampleKaleidoRecor
         _data = data;
     }
 
-    public IQueryable<SampleKaleidoRecord> CreateQuery(RecordExecutionContext executionContext)
+    public IQueryable<SampleKaleidoRecord> CreateQuery(QueryExecutionContext executionContext)
     {
         return _data.Records.AsQueryable();
     }
 }
+
+public sealed class SampleKalediRecordView : IQueryViewSource<SampleKaleidoRecord, SampleKaleidoRecord>
+{
+    public IQueryable<SampleKaleidoRecord> CreateView(IQueryable<SampleKaleidoRecord> query, QueryExecutionContext executionContext)
+    {
+        return query;
+    }
+}
+
+
 
 //public sealed class KaleidoTestDbContext : DbContext
 //{

@@ -6,7 +6,7 @@ internal sealed class SupplierSeeder
 {
     public void Seed(
         ECommerceDbContext dbContext,
-        IReadOnlyDictionary<string, SupplierDefinition> definitions)
+        IReadOnlyCollection<SupplierDefinition> definitions)
     {
         ArgumentNullException.ThrowIfNull(
             dbContext);
@@ -23,19 +23,17 @@ internal sealed class SupplierSeeder
                             Guid.NewGuid(),
 
                         Name =
-                            definition.Key,
+                            definition.SupplierName,
 
                         ContactName =
-                            definition.Value.ContactName,
+                            definition.ContactName,
 
                         Email =
-                            definition.Value.Email,
+                            definition.Email,
 
-                        IsPreferred =
-                            definition.Value.IsPreferred,
+                        IsPreferred = false,
 
-                        IsActive =
-                            true
+                        IsActive = true
                     })
                 .ToList();
 

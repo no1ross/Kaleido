@@ -474,9 +474,9 @@ public sealed class QueryRequestCompilerTests
                 CreateMetadata()));
     }
 
-    private static RecordMetadata CreateMetadata()
+    private static QueryContextMetadata CreateMetadata()
     {
-        return new RecordMetadata(
+        return new QueryMetadata(
             "test-record",
             "Test Record",
             "Test Record",
@@ -525,9 +525,9 @@ public sealed class QueryRequestCompilerTests
                 100));
     }
 
-    private static RecordMetadata CreateMetadataWithoutPageable()
+    private static QueryContextMetadata CreateMetadataWithoutPageable()
     {
-        return new RecordMetadata(
+        return new QueryMetadata(
             "test-record",
             "Test Record",
             "Test Record",

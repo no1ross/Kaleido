@@ -73,8 +73,8 @@ internal sealed class TaxonomySeeder
             CreateCategory(
                 categoryName: category.Key,
                 definition: category.Value,
-                parentCategoryId: null,
-                parentPath: null,
+                parentCategoryId: categoryId,
+                parentPath: categoryPath,
                 level: level + 1,
                 categories: categories);
         }

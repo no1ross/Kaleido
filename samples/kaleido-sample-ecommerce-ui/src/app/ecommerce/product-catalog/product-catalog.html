@@ -1,17 +1,8 @@
-@if (errorMessage) {
-
-  <div class="error-banner">
-
-    {{ errorMessage }}
-
-  </div>
-
-}
-
 <queryable-search
   [queryRequest]="catalogState.productQuery"
   (queryRequestChanged)="productQueryChanged($event)">
 </queryable-search>
+
 <kaleido-queryable-filtering
   [queryRequest]="catalogState.productQuery"
   (queryRequestChanged)="productQueryChanged($event)">
@@ -22,18 +13,40 @@
   (queryRequestChanged)="productQueryChanged($event)">
 </kaleido-queryable-sorting>
 
+<!---->
 <kaleido-queryable-pager
   [queryRequest]="catalogState.productQuery"
-  [totalCount]="totalCount"
+  [totalCount]="catalogState.productResult.totalCount"
   (queryRequestChanged)="productQueryChanged($event)">
 </kaleido-queryable-pager>
 
-<ecommerce-product-results
-[products]="products">
-</ecommerce-product-results>
 
+<div class="catalog-content">
+
+  <aside class="catalog-content__categories">
+<!---->
+    <ecommerce-category-list
+      [productQuery]="catalogState.productQuery"
+      [selectedCategory]="catalogState.selectedCategory"
+      (categorySelected)="categorySelected($event)">
+    </ecommerce-category-list>
+
+  </aside>
+
+  <main class="catalog-content__products">
+
+    <ecommerce-product-results
+      [productQuery]="catalogState.productQuery"
+      [selectedCategory]="catalogState.selectedCategory"
+      (productsLoaded)="productsLoaded($event)">
+    </ecommerce-product-results>
+
+  </main>
+
+</div>
+<!---->
 <kaleido-queryable-pager
   [queryRequest]="catalogState.productQuery"
-  [totalCount]="totalCount"
+  [totalCount]="catalogState.productResult.totalCount"
   (queryRequestChanged)="productQueryChanged($event)">
 </kaleido-queryable-pager>

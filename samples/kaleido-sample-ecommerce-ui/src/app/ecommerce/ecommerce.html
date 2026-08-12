@@ -1,9 +1,25 @@
-<!-- ecommerce.html -->
+<nav class="navigation">
 
-<nav>
-  Products |
-  Cart |
-  Orders
+    <a
+        routerLink="/ecommerce/products"
+        routerLinkActive="active">
+
+        Products
+
+    </a>
+
+    <a
+        routerLink="/ecommerce/cart"
+        routerLinkActive="active">
+
+        Cart
+
+    </a>
+
+    <span>
+        Orders
+    </span>
+
 </nav>
 
-<ecommerce-product-catalog />
+<router-outlet />

@@ -79,15 +79,6 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
         return query;
     }
 
-    public IQueryable<TRecord> ApplyPage(
-        IQueryable<TRecord> query,
-        CompiledPage page)
-    {
-        return query
-            .Skip(page.Offset)
-            .Take(page.Size);
-    }
-
     private static Expression BuildFilter(
         ParameterExpression parameter,
         CompiledFilterExpression expression)

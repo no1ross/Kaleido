@@ -1,11 +1,8 @@
 import {
-  ChangeDetectorRef,
   Component,
   OnInit,
-  inject
 } from '@angular/core';
 
-import { ProductCatalogRecord } from '../models/product-catalog-record';
 import { QueryRequest } from '../../kaleido/models/queryable-request';
 import { QueryableService } from '../../kaleido/services/queryable.service';
 import { QueryablePager } from '../../kaleido/queryable-pager/queryable-pager';
@@ -13,36 +10,23 @@ import { QueryableSorting } from '../../kaleido/queryable-sorting/queryable-sort
 import { QueryableFiltering } from '../../kaleido/queryable-filtering/queryable-filtering';
 import { QueryableSearch } from '../../kaleido/queryable-search/queryable-search';
 import { ProductResults } from '../product-results/product-results';
-import { CatalogState } from '../models/catalog-state';
-
+import { CategoryList } from '../category-list/category-list';
+import { CatalogState, QueryResponse } from '../models/catalog-state';
 
 @Component({
   selector: 'ecommerce-product-catalog',
-  imports: [ 
-    QueryablePager, 
+  imports: [
+    QueryablePager,
     QueryableSorting,
     QueryableFiltering,
     QueryableSearch,
-    ProductResults
+    ProductResults,
+    CategoryList
   ],
   templateUrl: './product-catalog.html',
   styleUrl: './product-catalog.scss',
 })
-export class ProductCatalog implements OnInit {
-
-  private readonly queryableService =
-    inject(QueryableService);
-
-  private readonly changeDetector =
-    inject(ChangeDetectorRef);
-
-  products: ProductCatalogRecord[] = [];
-
-  totalCount = 0;
-
-  isLoading = false;
-
-  errorMessage?: string;
+export class ProductCatalog {
 
   catalogState: CatalogState =
   {
@@ -54,64 +38,67 @@ export class ProductCatalog implements OnInit {
         },
         sort: []
       }
+    },
+    productResult: {
+      totalCount: 0,
+      offset: 0,
+      pageSize: 0
     }
   };
 
-  ngOnInit(): void {
+  private resetPaging(
+      request: QueryRequest): QueryRequest {
 
-    this.loadProducts();
+      return {
+          ...request,
+          query:
+          {
+              ...request.query,
+              page:
+              {
+                  ...request.query.page,
+                  offset: 0
+              }
+          }
+      };
+  }
+
+  private setProductQuery(
+      productQuery: QueryRequest): void {
+
+      this.catalogState =
+      {
+          ...this.catalogState,
+          productQuery
+      };
   }
 
   productQueryChanged(
-    productQuery: QueryRequest): void {
+      productQuery: QueryRequest): void {
 
-    this.catalogState.productQuery =
-      productQuery;
-
-    this.loadProducts();
+      this.setProductQuery(
+          productQuery);
   }
 
-  private loadProducts(): void {
+  categorySelected(
+      categoryPath: string): void {
 
-    this.isLoading = true;
+      this.catalogState =
+      {
+          ...this.catalogState,
+          selectedCategory: categoryPath,
+          productQuery:
+              this.resetPaging(
+                  this.catalogState.productQuery)
+      };
+  }
 
-    this.errorMessage = '';
+  productsLoaded(
+      productResult: QueryResponse): void {
 
-    this.queryableService
-      .query<ProductCatalogRecord>("products", this.catalogState.productQuery)
-      .subscribe({
-        next: result => {
-
-          this.products =
-            result.records;
-
-          this.totalCount =
-            result.totalCount;
-
-          this.isLoading = false;
-          
-          this.errorMessage = undefined;
-          
-          this.changeDetector.detectChanges();
-        },
-
-        error: error => {
-
-          console.error(error);
-
-          if (error.errors?.length > 0)
-          {
-            this.errorMessage = error.errors[0].message;
-          }
-          else
-          {
-            this.errorMessage = 'An unexpected error occurred.'
-          }
-
-          this.isLoading = false;
-          
-          this.changeDetector.detectChanges();
-        }
-      });
+      this.catalogState = {
+          ...this.catalogState,
+          productResult
+      };
   }
 }

@@ -1,8 +1,6 @@
 ﻿using Kaleido.Queryable.AspNetCore;
 using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Metadata;
-using Kaleido.Queryable.Query;
-using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
@@ -189,7 +187,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
     }
 
     private static IEndpointRouteBuilder CreateEndpoints(
-        IRecordRegistry registry)
+        IQueryContextRegistry registry)
     {
         var builder = WebApplication.CreateBuilder();
 
@@ -211,7 +209,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
         return builder.Build();
     }
 
-    private static IRecordRegistry CreateRegistry()
+    private static IQueryContextRegistry CreateRegistry()
     {
         var namedQuery =
             new NamedQueryRegistration(
@@ -223,10 +221,10 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
                 Array.Empty<QueryParameterMetadata>()));
 
         var record =
-            new RecordRegistration(
+            new QueryRegistration(
                 typeof(FakeRecord),
                 typeof(FakeSource),
-                new RecordMetadata(
+                new QueryMetadata(
                     "FunctionalRecords",
                     "Functional record test type.",
                     "Functional record test type.",
@@ -240,7 +238,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
                 });
 
         var registry =
-            new Mock<IRecordRegistry>();
+            new Mock<IQueryContextRegistry>();
 
         registry.Setup(x => x.Registrations)
             .Returns(

@@ -1,0 +1,547 @@
+1. Core Requirements
+
+Primary Goal Remains Proving Kaleido
+
+The sample application exists to prove that Kaleido can dramatically reduce service development effort while enabling multiple consumers to quickly understand and consume exposed data.
+The focus should remain on validating framework concepts through a real application rather than building a production-quality e-commerce experience.
+
+Queryable Has Been Largely Proven
+
+Successfully validated:
+Search
+Filtering
+Sorting
+Paging
+Search + Filter composition
+Metadata-driven behavior
+Search metadata changes immediately impact behavior without changing APIs or UI code.
+
+Categories Are The Next Major Proof Point
+
+Categories are intended to prove:
+Named Queries + Queryable working together.
+Multiple projections derived from the same business context.
+A realistic application pattern where multiple service calls cooperate through shared UI state.
+
+Category Counts Must Reflect Result Set
+
+Categories must reflect:
+Search criteria
+Filters
+Named Query selection
+Sort criteria
+Categories must not reflect paging.
+Categories should show only categories that contain products in the current filtered result set.
+2. Architectural & Component Decisions
+Product Results Refactor
+Extracted product display from ProductCatalog.
+New component:
+ProductResults
+
+Responsibilities:
+ProductCatalog
+    = orchestration
+
+ProductResults
+    = rendering results
+
+Long-term rendering choice intentionally deferred:
+Could remain table
+Could become cards
+Could become tiles
+Component name remains valid regardless
+Naming Decision
+
+Selected:
+
+ProductResults
+
+
+Rejected:
+
+ProductGrid
+ProductList
+ProductView
+
+
+Reason:
+
+Results describes returned query results
+without constraining layout.
+
+Catalog State
+
+Created concept:
+
+CatalogState
+
+
+Current direction:
+
+CatalogState
+{
+    selectedCategoryPath?: string;
+
+    productQuery: QueryRequest;
+}
+
+
+Purpose:
+
+Single source of truth
+for page state.
+
+Drives:
+    Products
+    Categories
+    Future projections
+
+Queryable Components Stay Generic
+
+Keep:
+
+@Input()
+queryRequest!: QueryRequest;
+
+@Output()
+queryRequestChanged
+
+
+Reason:
+
+QueryableSearch
+QueryableFiltering
+QueryableSorting
+QueryablePager
+
+
+should remain reusable across all application domains.
+
+Only the catalog page owns:
+
+catalogState.productQuery
+
+Categories Are "Dumb"
+
+Categories should:
+
+Display categories
+Raise category selected event
+
+
+They should not:
+
+Own query logic
+Own filtering logic
+Understand products
+
+
+The Catalog page orchestrates everything.
+
+Category Hierarchy
+
+Initial behavior:
+
+Page Load
+    -> Top Level Categories
+
+Click Category
+    -> Child Categories
+
+Products
+    -> Filtered by selected category
+
+
+Avoid building full dynamic tree initially.
+
+Product Categories Must Include Level
+
+Added:
+
+ProductCategory.Level
+
+
+Seeder updated to pass:
+
+level
+
+
+through recursive calls rather than parsing paths later.
+
+Benefits:
+
+No runtime parsing
+No EF translation concerns
+Reusable everywhere
+
+Queryable Architectural Evolution
+
+Major realization:
+
+Current model:
+
+QueryableRecord
+    =
+Query Context
++
+Projection
+
+
+is breaking down.
+
+Categories exposed the problem.
+
+New Separation
+
+Current thinking:
+
+Query Context
+    =
+Search
+Filter
+Sort
+Named Queries
+
+View
+    =
+Returned projection
+
+
+Example:
+
+CatalogQueryContext
+
+
+drives:
+
+ProductCatalogView
+
+CategoryCatalogView
+
+SupplierView
+
+InventoryView
+
+Interface Evolution
+
+Current direction:
+
+IRecordSource<TRecord>
+
+
+returns:
+
+IQueryable<TRecord>
+
+
+where:
+
+TRecord = Query Context
+
+
+New concept:
+
+IRecordView<TRecord, TView>
+
+
+where:
+
+TRecord = Query Context
+
+TView
+    = Returned projection
+
+
+returns:
+
+IQueryable<TView>
+
+Product Context Becomes Shared Query Model
+
+Current ProductCatalogRecord is evolving into:
+
+Catalog Query Context
+
+
+containing fields needed for:
+
+Search
+Filter
+Sort
+
+
+even when a view does not display those fields.
+
+Example:
+
+ProductName
+SupplierName
+CategoryPath
+Price
+Rating
+Inventory
+IsActive
+
+Category View
+
+No longer needs duplicated query fields.
+
+Can simply contain:
+
+CategoryName
+CategoryPath
+Level
+ProductCount
+
+
+because filtering already occurred against the shared context.
+
+Query Pipeline
+
+Current direction:
+
+Create Query Context
+    ↓
+
+Apply Named Query
+
+Apply Search
+
+Apply Filter
+
+Apply Sort
+
+Create View Projection
+
+Count View Results
+
+Optionally Page
+
+Materialize
+
+
+Key conclusion:
+
+Search
+Filter
+Sort
+
+
+belong to the query context.
+
+Paging
+
+
+belongs to the view.
+
+Record vs Context Naming
+
+Strong preference emerging:
+
+Current:
+
+[QueryableRecord]
+
+
+Potential replacement:
+
+[QueryContext]
+
+
+Reason:
+
+"Record" no longer accurately
+describes the responsibility.
+
+View Metadata
+
+Proposed:
+
+[QueryView]
+
+
+(or equivalent)
+
+with:
+
+Name
+DisplayName
+Description
+Version
+ApplyPaging
+ApplySorting
+
+
+Examples:
+
+Products
+    ApplyPaging = true
+
+Categories
+    ApplyPaging = false
+
+Pageable Attribute
+
+Likely moving from:
+
+QueryableRecord
+
+
+to:
+
+QueryView
+
+
+Reason:
+
+Paging is presentation behavior.
+
+Not query-context behavior.
+
+Categories and Product Queries
+
+Critical realization:
+
+Categories should represent:
+
+All products matching:
+    Search
+    Filter
+    Sort
+
+
+But not:
+
+Current page
+
+
+Therefore:
+
+Paging MUST NOT influence category counts.
+
+3. Unresolved Questions / Next Steps
+QueryContext vs QueryRecord Naming
+
+Need final naming decision between:
+
+[QueryableRecord]
+
+
+or
+
+[QueryContext]
+
+
+Current preference:
+
+[QueryContext]
+
+QueryView Naming
+
+Need final decision on:
+
+[RecordView]
+
+
+vs:
+
+[QueryView]
+
+
+Current preference:
+
+[QueryView]
+
+Sort Ownership
+
+Still partially unresolved.
+
+Current conclusion:
+
+Sort affects the underlying result set.
+
+
+Therefore:
+
+Sort likely remains in Query Context.
+
+
+Need to determine how category views handle ordering independently of product sort requests.
+
+Metadata Model Refactor
+
+Need to redesign metadata generation for:
+
+Query Contexts
+
+Views
+
+View-specific paging
+
+
+before further metadata work proceeds.
+
+Endpoint Registration
+
+Potential future model:
+
+Context
+    -> many Views
+
+
+Endpoints become view-centric:
+
+/products
+
+/categories
+
+
+rather than record-centric.
+
+Needs validation before implementation.
+
+Categories Feature Implementation
+
+Next likely steps:
+
+1. Finish Queryable refactor
+
+2. Introduce QueryContext + QueryView concepts
+
+3. Create CategoryCatalogView
+
+4. Create category endpoint
+
+5. Add categories UI component
+
+6. Wire CatalogState
+
+7. Validate:
+       Named Query
+       + Search
+       + Filter
+       + Categories
+       + Product Results
+
+Future Validation Goal
+
+Once categories work:
+
+One CatalogState
+        ↓
+
+Products Projection
+
+Categories Projection
+
+Future Supplier Projection
+
+Future Inventory Projection
+
+
+all driven from:
+
+One query context
+
+
+This is the next major proof point for Kaleido before moving deeper into Process. 🍺

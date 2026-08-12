@@ -1,0 +1,50 @@
+.category-navigation {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.back-link {
+    border: none;
+    background: none;
+
+    padding: 0;
+
+    color: #2563eb;
+
+    cursor: pointer;
+
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+.current-category {
+    color: #6b7280;
+
+    font-size: 0.9rem;
+}
+
+.current-category {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.category-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.category-item {
+    cursor: pointer;
+    padding: 0.35rem 0;
+}

@@ -3,18 +3,16 @@ using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Query;
 
-internal sealed class QueryRequestValidator : IRecordQueryValidator
+internal sealed class QueryRequestValidator : IQueryContextValidator
 {
     public void Validate(
-        QueryRequest request,
-        RecordRegistration registration)
+        IQueryRequest request,
+        QueryContextRegistration registration,
+        QueryViewRegistration viewRegistration)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(registration);
-
-        ValidateNamedQuery(
-            request,
-            registration);
+        ArgumentNullException.ThrowIfNull(viewRegistration);
 
         ValidateFilter(
             request.Query?.Filter,
@@ -30,51 +28,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
 
         ValidatePage(
             request.Query?.Page,
-            registration.Metadata);
-    }
-
-    private static void ValidateNamedQuery(
-        QueryRequest request,
-        RecordRegistration registration)
-    {
-        if (request.NamedQuery is null ||
-            string.IsNullOrWhiteSpace(request.NamedQuery.Name))
-        {
-            return;
-        }
-
-        var allowed =
-            registration.NamedQueryTypes.SingleOrDefault(
-                x => string.Equals(
-                    x.Metadata.Name,
-                    request.NamedQuery.Name,
-                    StringComparison.OrdinalIgnoreCase));
-
-        if (allowed is null)
-        {
-            throw new NamedQueryNotAllowedException(request.NamedQuery.Name, registration.Metadata.Name);
-        }
-
-        foreach (var parameter in allowed.Metadata.Parameters ?? [])
-        {
-            if (request.NamedQuery.Parameters is null ||
-                !request.NamedQuery.Parameters.TryGetValue(
-                    parameter.Name,
-                    out var value) ||
-                value is null)
-            {
-                if (parameter.Required)
-                {
-                    throw new NamedQueryRequiredException(request.NamedQuery.Name, parameter.Name);
-                }
-
-                continue;
-            }
-
-            ValidateParameterType(
-                parameter,
-                value);
-        }
+            viewRegistration.Metadata);
     }
 
     private static void ValidateFilterValueTypes(QueryFilterCondition condition)
@@ -130,7 +84,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
 
     private static void ValidateFilter(
         QueryFilterNode? node,
-        RecordMetadata metadata)
+        QueryContextMetadata metadata)
     {
         if (node is null)
         {
@@ -168,7 +122,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
 
     private static void ValidateFilterGroup(
         QueryFilterGroup group,
-        RecordMetadata metadata)
+        QueryContextMetadata metadata)
     {
         if (group.Filters.Count == 0)
         {
@@ -185,7 +139,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
 
     private static void ValidateFilterCondition(
         QueryFilterCondition condition,
-        RecordMetadata metadata)
+        QueryContextMetadata metadata)
     {
         if (string.IsNullOrWhiteSpace(condition.Field))
         {
@@ -212,7 +166,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
 
     private static void ValidateSearch(
         string? searchText,
-        RecordMetadata metadata)
+        QueryContextMetadata metadata)
     {
         if (string.IsNullOrWhiteSpace(
                 searchText))
@@ -230,7 +184,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
 
     private static void ValidateSort(
         IReadOnlyList<QuerySort>? sorts,
-        RecordMetadata metadata)
+        QueryContextMetadata metadata)
     {
         if (sorts is null)
         {
@@ -267,16 +221,19 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
 
     private static void ValidatePage(
         QueryPage? page,
-        RecordMetadata metadata)
+        QueryViewMetadata metadata)
     {
         if (page is null)
         {
             return;
         }
 
-        var pageable =
-            metadata.Pageable
-            ?? throw new PagingNotSupportedException(metadata.Name);
+        var pageable = metadata.Pageable;
+        
+        if(pageable is null)
+        {
+            return;
+        }
 
         if (page.Size is <= 0)
         {
@@ -291,7 +248,7 @@ internal sealed class QueryRequestValidator : IRecordQueryValidator
     }
 
     private static FieldMetadata GetField(
-        RecordMetadata metadata,
+        QueryContextMetadata metadata,
         string name)
     {
         return metadata.Fields.SingleOrDefault(x =>

@@ -5,46 +5,47 @@ namespace Kaleido.Samples.ECommerce.Data.Seed.Seeders;
 internal sealed class ProductCategoryAssignmentSeeder
 {
     public void Seed(
-        ECommerceDbContext dbContext,
-        IReadOnlyDictionary<string, SupplierDefinition> suppliers)
+        ECommerceDbContext dbContext)
     {
         ArgumentNullException.ThrowIfNull(
             dbContext);
 
-        ArgumentNullException.ThrowIfNull(
-            suppliers);
-
-        var categories =
+        var leafCategories =
             dbContext.ProductCategories
-                .ToDictionary(
-                    x => x.Path,
-                    StringComparer.OrdinalIgnoreCase);
+                .Where(x =>
+                    !dbContext.ProductCategories.Any(
+                        y => y.ParentProductCategoryId ==
+                             x.ProductCategoryId))
+                .ToList();
 
         var products =
             dbContext.Products
-                .ToDictionary(
-                    x => x.Name,
-                    StringComparer.OrdinalIgnoreCase);
+                .ToList();
+
+        var productFamilies =
+            products
+                .GroupBy(x => new
+                {
+                    x.SupplierId,
+                    x.FamilyName
+                })
+                .ToList();
 
         var assignments =
             new List<ProductCategoryAssignment>();
 
-        foreach (var supplier in suppliers)
+        foreach (var family in productFamilies)
         {
-            foreach (var family in supplier.Value.Families)
+            var categories =
+                leafCategories
+                    .OrderBy(_ => Random.Shared.Next())
+                    .Take(Random.Shared.Next(2, 5))
+                    .ToList();
+
+            foreach (var product in family)
             {
-                var category =
-                    categories[
-                        family.Value.PrimaryCategory];
-
-                foreach (var model in family.Value.Models)
+                foreach (var category in categories)
                 {
-                    var productName =
-                        $"{supplier.Key} {family.Key} {model}";
-
-                    var product =
-                        products[productName];
-
                     assignments.Add(
                         new ProductCategoryAssignment
                         {

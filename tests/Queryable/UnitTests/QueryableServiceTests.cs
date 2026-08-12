@@ -1,6 +1,4 @@
 using Kaleido.Queryable.Metadata;
-using Kaleido.Queryable.Query;
-using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -15,7 +13,7 @@ public sealed class QueryableServiceTests
         Assert.Throws<ArgumentNullException>(
             () => new QueryableService(
                 null!,
-                Mock.Of<IRecordRegistry>()));
+                Mock.Of<IQueryContextRegistry>()));
     }
 
     [Fact]
@@ -31,11 +29,11 @@ public sealed class QueryableServiceTests
     public async Task DispatchAsync_ShouldThrow_WhenRecordIsNotRegistered()
     {
         var registry =
-            new Mock<IRecordRegistry>();
+            new Mock<IQueryContextRegistry>();
 
         registry
             .Setup(x => x.Find("test"))
-            .Returns((RecordRegistration?)null);
+            .Returns((QueryContextRegistration?)null);
 
         var dispatcher =
             new QueryableService(
@@ -52,7 +50,7 @@ public sealed class QueryableServiceTests
     public async Task DispatchAsync_ShouldThrow_WhenRecordTypeDoesNotMatch()
     {
         var registry =
-            new Mock<IRecordRegistry>();
+            new Mock<IQueryContextRegistry>();
 
         registry
             .Setup(x => x.Find("test"))
@@ -83,7 +81,7 @@ public sealed class QueryableServiceTests
                 [new TestRecord("A")]);
 
         var engine =
-            new Mock<IRecordQueryEngine<TestRecord>>();
+            new Mock<IQueryContextEngine<TestRecord>>();
 
         engine
             .Setup(x =>
@@ -98,7 +96,7 @@ public sealed class QueryableServiceTests
         provider
             .Setup(x =>
                 x.GetService(
-                    typeof(IRecordQueryEngine<TestRecord>)))
+                    typeof(IQueryContextEngine<TestRecord>)))
             .Returns(engine.Object);
 
         var scope =
@@ -116,7 +114,7 @@ public sealed class QueryableServiceTests
             .Returns(scope.Object);
 
         var registry =
-            new Mock<IRecordRegistry>();
+            new Mock<IQueryContextRegistry>();
 
         registry
             .Setup(x => x.Find("test"))
@@ -153,7 +151,7 @@ public sealed class QueryableServiceTests
                 [item]);
 
         var engine =
-            new Mock<IRecordQueryEngine<TestRecord>>();
+            new Mock<IQueryContextEngine<TestRecord>>();
 
         engine
             .Setup(x =>
@@ -168,7 +166,7 @@ public sealed class QueryableServiceTests
         provider
             .Setup(x =>
                 x.GetService(
-                    typeof(IRecordQueryEngine<TestRecord>)))
+                    typeof(IQueryContextEngine<TestRecord>)))
             .Returns(engine.Object);
 
         var scope =
@@ -186,7 +184,7 @@ public sealed class QueryableServiceTests
             .Returns(scope.Object);
 
         var registry =
-            new Mock<IRecordRegistry>();
+            new Mock<IQueryContextRegistry>();
 
         registry
             .Setup(x => x.Find("test"))
@@ -222,13 +220,13 @@ public sealed class QueryableServiceTests
             response.Records.Single());
     }
 
-    private static RecordRegistration CreateRegistration(
+    private static QueryContextRegistration CreateRegistration(
         Type recordType)
     {
-        return new RecordRegistration(
+        return new QueryRegistration(
             recordType,
             typeof(object),
-            new RecordMetadata(
+            new QueryMetadata(
                 "test",
                 "Test",
                 "Test",

@@ -1,6 +1,5 @@
 using Kaleido.Queryable.FunctionalTests.Fixtures;
 using Kaleido.Queryable.FunctionalTests.Infrastructure;
-using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -25,7 +24,7 @@ public sealed class QueryableRecordTypedTests
 
         var catalog =
             scope.ServiceProvider
-                .GetRequiredService<IRecordRegistry>();
+                .GetRequiredService<IQueryContextRegistry>();
 
         var records =
             catalog.Registrations;

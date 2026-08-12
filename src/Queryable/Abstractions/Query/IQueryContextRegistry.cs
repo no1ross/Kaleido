@@ -1,6 +1,6 @@
 ﻿using Kaleido.Queryable.Metadata;
 
-namespace Kaleido.Queryable.Records;
+namespace Kaleido.Queryable.Query;
 
 /// <summary>
 /// Maintains the list of registered records available
@@ -17,15 +17,15 @@ namespace Kaleido.Queryable.Records;
 /// MetadataCatalog = describes one record
 /// Registry = knows all records
 /// </remarks>
-public interface IRecordRegistry
+public interface IQueryContextRegistry
 {
-    IReadOnlyCollection<RecordRegistration> Registrations { get; }
+    IReadOnlyCollection<QueryContextRegistration> Registrations { get; }
 
-    RecordRegistration? Find(string name);
+    QueryContextRegistration? Find(string name);
 
-    RecordRegistration? Find(Type recordType);
+    QueryContextRegistration? Find(Type recordType);
 
-    RecordRegistration GetRegistration(string name);
+    QueryContextRegistration GetRegistration(string name);
 
-    RecordRegistration GetRegistration(Type recordType);
+    QueryContextRegistration GetRegistration(Type recordType);
 }

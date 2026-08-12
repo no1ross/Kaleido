@@ -1,11 +1,11 @@
-﻿using Kaleido.Queryable.Query;
-
-namespace Kaleido.Queryable.Attributes;
+﻿namespace Kaleido.Queryable.Attributes;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-public sealed class NamedQueryAttribute : Attribute
+public sealed class QueryViewAttribute : Attribute
 {
     public required string Name { get; init; }
+    public required string Version { get; init; }
     public string? Description { get; init; }
     public string? DisplayName { get; init; }
 }
+
