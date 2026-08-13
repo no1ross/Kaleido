@@ -4,13 +4,13 @@ import {
 } from '@angular/core';
 
 import { QueryRequest } from '../../kaleido/models/queryable-request';
-import { QueryableService } from '../../kaleido/services/queryable.service';
+import { QueryableService } from '../../kaleido/services/queryable-service';
 import { QueryablePager } from '../../kaleido/queryable-pager/queryable-pager';
 import { QueryableSorting } from '../../kaleido/queryable-sorting/queryable-sorting';
 import { QueryableFiltering } from '../../kaleido/queryable-filtering/queryable-filtering';
 import { QueryableSearch } from '../../kaleido/queryable-search/queryable-search';
-import { ProductResults } from '../product-results/product-results';
-import { CategoryList } from '../category-list/category-list';
+import { ProductResults } from '../components/product-results/product-results';
+import { CategoryList } from '../components/category-list/category-list';
 import { CatalogState, QueryResponse } from '../models/catalog-state';
 
 @Component({
@@ -28,40 +28,9 @@ import { CatalogState, QueryResponse } from '../models/catalog-state';
 })
 export class ProductCatalog {
 
-  catalogState: CatalogState =
-  {
-    productQuery: {
-      query: {
-        page: {
-          offset: 0,
-          size: 25
-        },
-        sort: []
-      }
-    },
-    productResult: {
-      totalCount: 0,
-      offset: 0,
-      pageSize: 0
-    }
+  catalogState: CatalogState = { 
+    productQuery: {}
   };
-
-  private resetPaging(
-      request: QueryRequest): QueryRequest {
-
-      return {
-          ...request,
-          query:
-          {
-              ...request.query,
-              page:
-              {
-                  ...request.query.page,
-                  offset: 0
-              }
-          }
-      };
-  }
 
   private setProductQuery(
       productQuery: QueryRequest): void {
@@ -73,24 +42,19 @@ export class ProductCatalog {
       };
   }
 
-  productQueryChanged(
+
+  productQueryChange(
       productQuery: QueryRequest): void {
 
       this.setProductQuery(
           productQuery);
   }
 
-  categorySelected(
-      categoryPath: string): void {
+  queryCategoryChanged(
+      productQuery: QueryRequest): void {
 
-      this.catalogState =
-      {
-          ...this.catalogState,
-          selectedCategory: categoryPath,
-          productQuery:
-              this.resetPaging(
-                  this.catalogState.productQuery)
-      };
+      this.setProductQuery(
+          productQuery);
   }
 
   productsLoaded(

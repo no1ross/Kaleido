@@ -49,6 +49,9 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         {
             return new ProcessExecutionResult
             {
+                ParticipantProcessId =
+                    context.ParticipantProcessId,
+
                 State =
                     context.State,
 
@@ -66,8 +69,11 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         var outcomes =
             new List<ProcessExecutionOutcome>();
 
+        var remainingCandidates =
+            candidates.ToList();
+
         var currentCandidate =
-            candidates.FirstOrDefault();
+            remainingCandidates.FirstOrDefault();
 
         while (true)
         {
@@ -78,6 +84,15 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
             var candidate =
                 currentCandidate;
+
+            //
+            // Important:
+            // This candidate has now been selected for execution in
+            // this request. Even if the step is repeatable, this specific
+            // submitted candidate should not be selected again.
+            //
+            remainingCandidates.Remove(
+                candidate);
 
             try
             {
@@ -91,7 +106,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
                 var initialAvailableSteps =
                     _availabilityResolver.Resolve(
-                        currentCandidate,
+                        candidate,
                         candidates,
                         context);
 
@@ -116,7 +131,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                     _evaluator.Evaluate(
                         candidate,
                         result,
-                        candidates,
+                        remainingCandidates,
                         context);
 
                 context =
@@ -171,7 +186,9 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                             StepProcessingMessageCode.ExecutionCancelled,
                             "Step execution was cancelled.")
                         ],
-                        Response = new ProcessStepEmptyResponse()
+
+                        Response =
+                            new ProcessStepEmptyResponse()
                     });
 
                 break;
@@ -205,7 +222,9 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                             StepProcessingMessageCode.FrameworkException,
                             $"An unexpected exception occurred while executing '{candidate.StepName}'. {exception.Message}")
                         ],
-                        Response = new ProcessStepEmptyResponse()
+
+                        Response =
+                            new ProcessStepEmptyResponse()
                     });
 
                 break;
@@ -214,6 +233,9 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
         return new ProcessExecutionResult
         {
+            ParticipantProcessId =
+                context.ParticipantProcessId,
+
             State =
                 context.State,
 

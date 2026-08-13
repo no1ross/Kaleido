@@ -20,7 +20,7 @@ public sealed class RuntimeStateContinuityTests
     [Fact]
     public async Task ExecuteAsync_WhenProcessContinuesAcrossMultipleRequests_RemembersPreviouslyCompletedSteps()
     {
-        var participantProcessId = Guid.NewGuid().ToString("N");
+        var participantProcessId = Guid.NewGuid();
 
         var first = await _runtime.ExecuteAsync(
             RuntimeRequestFactory.Create(

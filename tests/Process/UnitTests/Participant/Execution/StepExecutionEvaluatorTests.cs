@@ -391,7 +391,10 @@ public sealed class StepExecutionEvaluatorTests
 
     private static ParticipantContext CreateContext()
     {
-        return new ParticipantContext();
+        return new ParticipantContext()
+        {
+            ParticipantProcessId = Guid.NewGuid()
+        };
     }
 
     private static StepCandidate CreateCandidate<TStep>(

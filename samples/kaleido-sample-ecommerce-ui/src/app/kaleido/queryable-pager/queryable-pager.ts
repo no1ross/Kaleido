@@ -25,44 +25,46 @@ export class QueryablePager {
   totalCount = 0;
 
   @Output()
-  queryRequestChanged =
+  queryPageChanged =
     new EventEmitter<QueryRequest>();
+
+  private get page() {
+      return this.queryRequest.query?.page;
+  }
 
   get offset(): number {
 
-    return this.queryRequest
-      .query
-      .page
-      .offset;
+    return this.page?.offset ?? 0;
   }
 
   get pageSize(): number {
 
-    return this.queryRequest
-      .query
-      .page
-      .size;
+    return this.page?.size ?? 25;
   }
 
   get currentPage(): number {
 
-    if (this.totalCount === 0) {
-      return 0;
-    }
+      if (
+          this.totalCount === 0 ||
+          this.pageSize <= 0) {
+          return 0;
+      }
 
-    return Math.floor(
-      this.offset / this.pageSize)
-      + 1;
+      return Math.floor(
+          this.offset / this.pageSize)
+          + 1;
   }
 
   get totalPages(): number {
 
-    if (this.totalCount === 0) {
-      return 0;
-    }
+      if (
+          this.totalCount === 0 ||
+          this.pageSize <= 0) {
+          return 0;
+      }
 
-    return Math.ceil(
-      this.totalCount / this.pageSize);
+      return Math.ceil(
+          this.totalCount / this.pageSize);
   }
 
   get startRecord(): number {
@@ -135,32 +137,44 @@ export class QueryablePager {
   }
 
   pageSizeChanged(
-    event: Event): void {
+      event: Event): void {
 
-    const select =
-      event.target as HTMLSelectElement;
+      const select =
+          event.target as HTMLSelectElement;
 
-    this.emitPageChanged(
-      0,
-      Number(
-        select.value));
+      const pageSize =
+          Number(
+              select.value);
+
+      if (
+          Number.isNaN(
+              pageSize) ||
+          pageSize <= 0) {
+          return;
+      }
+
+      this.emitPageChanged(
+          0,
+          pageSize);
   }
 
   private emitPageChanged(
-    offset: number,
-    pageSize: number): void {
+      offset: number,
+      pageSize: number): void {
 
-    const queryRequest =
-      structuredClone(
-        this.queryRequest);
+      const queryRequest =
+          structuredClone(
+              this.queryRequest);
 
-    queryRequest.query.page.offset =
-      offset;
+      queryRequest.query ??= {};
 
-    queryRequest.query.page.size =
-      pageSize;
+      queryRequest.query.page =
+      {
+          offset,
+          size: pageSize
+      };
 
-    this.queryRequestChanged.emit(
-      queryRequest);
+      this.queryPageChanged.emit(
+          queryRequest);
   }
 }

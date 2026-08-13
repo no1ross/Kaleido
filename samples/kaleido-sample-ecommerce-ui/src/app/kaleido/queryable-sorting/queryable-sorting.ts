@@ -37,7 +37,7 @@ export class QueryableSorting
   queryRequest!: QueryRequest;
 
   @Output()
-  queryRequestChanged =
+  querySortChanged =
     new EventEmitter<QueryRequest>();
 
   workingSorts: QuerySort[] = [];
@@ -81,7 +81,7 @@ export class QueryableSorting
     if (changes['queryRequest']) {
 
       this.workingSorts =
-        (this.queryRequest.query.sort ?? [])
+        (this.queryRequest.query?.sort ?? [])
           .map(sort => ({
             ...sort
           }));
@@ -161,24 +161,27 @@ export class QueryableSorting
     };
   }
 
-  apply(): void {
+apply(): void {
 
     const queryRequest =
-      structuredClone(
-        this.queryRequest);
+        structuredClone(
+            this.queryRequest);
+
+    queryRequest.query ??= {};
 
     queryRequest.query.sort =
-      this.workingSorts.map(
-        sort => ({
-          ...sort
-        }));
+        this.workingSorts.map(
+            sort => ({
+                ...sort
+            }));
 
-    queryRequest.query.page.offset =
-      0;
+    if (queryRequest.query.page) {
+        queryRequest.query.page.offset = 0;
+    }
 
-    this.queryRequestChanged.emit(
-      queryRequest);
-  }
+    this.querySortChanged.emit(
+        queryRequest);
+}
 
   getFieldLabel(
     field: string): string {

@@ -6,6 +6,8 @@ public sealed class ShoppingCart
 
     public Guid CustomerId { get; set; }
 
+    public Guid ParticipantProcessId { get; init; }
+
     public bool IsActive { get; set; }
 
     public DateTime CreatedUtc { get; set; }
@@ -16,4 +18,6 @@ public sealed class ShoppingCart
 
     public ICollection<ShoppingCartItem> Items { get; set; }
         = new List<ShoppingCartItem>();
+
+    public int TotalItems => Items.Sum(i => i.Quantity);
 }

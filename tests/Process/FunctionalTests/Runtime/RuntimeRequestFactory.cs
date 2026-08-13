@@ -6,7 +6,7 @@ namespace Kaleido.Process.FunctionalTests.Tests.Runtime;
 internal static class RuntimeRequestFactory
 {
     public static ProcessRequest Create(
-        string participantProcessId,
+        Guid participantProcessId,
         string requestId,
         params string[] stepNames)
     {
@@ -18,7 +18,7 @@ internal static class RuntimeRequestFactory
             {
                 Steps = stepNames.ToDictionary(
                     x => x,
-                    _ => (IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>(),
+                    _ => (object?)null,
                     StringComparer.OrdinalIgnoreCase)
             }
         };

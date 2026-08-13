@@ -30,6 +30,7 @@
 
         <li
             class="category-item"
+            [class.selected]="isSelected(category)"
             (click)="selectCategory(category)">
 
             {{ category.categoryName }}

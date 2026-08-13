@@ -37,7 +37,6 @@
     <Project Path="src/Process/Process/Kaleido.Process.csproj" />
   </Folder>
   <Folder Name="/src/Queryable/">
-    <File Path="src/Process/Abstractions/AssemblyInfo.cs" />
     <Project Path="src/Queryable/Abstractions/Kaleido.Queryable.Abstractions.csproj" />
     <Project Path="src/Queryable/AspNetCore/Kaleido.Queryable.AspNetCore.csproj" />
     <Project Path="src/Queryable/Queryable/Kaleido.Queryable.csproj" />

@@ -40,7 +40,7 @@ export class QueryableFiltering implements OnChanges {
   queryRequest!: QueryRequest;
 
   @Output()
-  queryRequestChanged =
+  queryFilterChanged =
     new EventEmitter<QueryRequest>();
 
   readonly fields: QueryableFilterField[] = [
@@ -107,7 +107,7 @@ export class QueryableFiltering implements OnChanges {
     if (changes['queryRequest']) {
 
       this.workingFilter =
-        this.queryRequest.query.filter
+        this.queryRequest.query?.filter
           ? structuredClone(
               this.queryRequest.query.filter)
           : this.createRootGroup();
@@ -206,19 +206,27 @@ export class QueryableFiltering implements OnChanges {
 
   apply(): void {
 
-    const queryRequest =
-      structuredClone(
-        this.queryRequest);
+      const queryRequest =
+          structuredClone(
+              this.queryRequest);
 
-    queryRequest.query.filter =
-      structuredClone(
-        this.workingFilter);
+      queryRequest.query ??= {};
 
-    queryRequest.query.page.offset =
-      0;
+      const hasFilters =
+          this.rootGroup.filters.length > 0;
 
-    this.queryRequestChanged.emit(
-      queryRequest);
+      queryRequest.query.filter =
+          hasFilters
+              ? structuredClone(
+                  this.workingFilter)
+              : undefined;
+
+      if (queryRequest.query.page) {
+          queryRequest.query.page.offset = 0;
+      }
+
+      this.queryFilterChanged.emit(
+          queryRequest);
   }
 
   private createRootGroup():

@@ -562,7 +562,7 @@ public sealed class ProcessStepInvokerTests
     private static ProcessStepContext CreateContext()
     {
         return new ProcessStepContext(
-            Guid.NewGuid().ToString(),
+            Guid.NewGuid(),
             new StepContext
             {
                 StepName = "test-step"

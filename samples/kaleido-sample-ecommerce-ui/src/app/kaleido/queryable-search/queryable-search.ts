@@ -28,38 +28,54 @@ export class QueryableSearch {
   queryRequest!: QueryRequest;
 
   @Output()
-  queryRequestChanged =
+  querySearchChanged =
     new EventEmitter<QueryRequest>();
 
   searchText = '';
 
   apply(): void {
 
-    const value =
-      this.searchText.trim();
+      const queryRequest =
+          structuredClone(
+              this.queryRequest);
 
-    this.queryRequest.query.searchText =
-      value.length > 0
-        ? value
-        : undefined;
+      queryRequest.query ??= {};
 
-    this.emitChange();
+      const value =
+          this.searchText.trim();
+
+      queryRequest.query.searchText =
+          value.length > 0
+              ? value
+              : undefined;
+
+      if (queryRequest.query.page) {
+          queryRequest.query.page.offset = 0;
+      }
+
+      this.querySearchChanged.emit(
+          queryRequest);
   }
 
   clear(): void {
 
-    this.searchText = '';
+      this.searchText = '';
 
-    this.queryRequest.query.searchText =
-      undefined;
+      const queryRequest =
+          structuredClone(
+              this.queryRequest);
 
-    this.emitChange();
+      queryRequest.query ??= {};
+
+      queryRequest.query.searchText =
+          undefined;
+
+      if (queryRequest.query.page) {
+          queryRequest.query.page.offset = 0;
+      }
+
+      this.querySearchChanged.emit(
+          queryRequest);
   }
 
-  private emitChange(): void {
-
-    this.queryRequestChanged.emit(
-      structuredClone(
-        this.queryRequest));
-  }
 }

@@ -1,4 +1,4 @@
-export interface ProductCatalogRecord {
+export interface ProductCatalogView {
   productId: string;
   productName: string;
   supplierName: string;

@@ -22,7 +22,7 @@ public sealed class RuntimeDependencyViolationTests
     {
         var result = await _runtime.ExecuteAsync(
             RuntimeRequestFactory.Create(
-                Guid.NewGuid().ToString("N"),
+                Guid.NewGuid(),
                 "request-1",
                 RuntimeStepNames.Root,
                 RuntimeStepNames.Merge));
@@ -36,7 +36,7 @@ public sealed class RuntimeDependencyViolationTests
     {
         var result = await _runtime.ExecuteAsync(
             RuntimeRequestFactory.Create(
-                Guid.NewGuid().ToString("N"),
+                Guid.NewGuid(),
                 "request-1",
                 RuntimeStepNames.Root,
                 RuntimeStepNames.StepA,

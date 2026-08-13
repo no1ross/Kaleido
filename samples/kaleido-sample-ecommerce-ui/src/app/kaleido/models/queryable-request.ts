@@ -7,14 +7,14 @@ import { FilterOperator, LogicalOperator } from './enumerations';
 
 export interface QueryRequest<TParameters = undefined> {
   parameters?: TParameters;
-  query: QueryBody;
+  query?: QueryBody;
 }
 
 export interface QueryBody {
   searchText?: string;
   filter?: QueryFilterNode;
   sort?: QuerySort[];
-  page: QueryPage;
+  page?: QueryPage;
 }
 
 export interface QueryPage {

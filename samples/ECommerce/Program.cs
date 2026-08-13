@@ -23,8 +23,8 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(AddItemToCartStep).Assembly)
-    //.AddParticipant()
-    //    .AddParticipantAspNetCore()
+    .AddParticipant()
+        .AddParticipantAspNetCore()
     .AddQueryable()
         .AddQueryableAspNetCore();
 
@@ -53,7 +53,7 @@ app.UseCors("AllowAll");
 //        app.Services);
 
 app.MapQueryable();
-//app.MapParticipant();
+app.MapParticipant();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

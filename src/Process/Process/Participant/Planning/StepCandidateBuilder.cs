@@ -67,7 +67,7 @@ internal class StepCandidateBuilder : IStepCandidateBuilder
     private static object? CreateStepInstance(
         StepCandidate candidate,
         Type stepType,
-        IReadOnlyDictionary<string, object?> values)
+        object? values)
     {
         try
         {

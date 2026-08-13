@@ -11,7 +11,7 @@ using System.ComponentModel.DataAnnotations;
 namespace Kaleido.Samples.ECommerce.Sources;
 
 internal sealed class ProductCatalogContextSource
-    : IQueryContextSource<ProductCatalogQuery>
+    : IQueryContextSource<ProductCatalogQueryContext>
 {
     private readonly ECommerceDbContext _dbContext;
 
@@ -21,7 +21,7 @@ internal sealed class ProductCatalogContextSource
         _dbContext = dbContext;
     }
 
-    public IQueryable<ProductCatalogQuery> CreateQuery(
+    public IQueryable<ProductCatalogQueryContext> CreateQuery(
         QueryExecutionContext executionContext)
     {
         return
@@ -33,7 +33,7 @@ internal sealed class ProductCatalogContextSource
             join inventory in _dbContext.Inventories
                 on product.ProductId equals inventory.ProductId
 
-            select new ProductCatalogQuery
+            select new ProductCatalogQueryContext
             {
                 ProductId = product.ProductId,
 
@@ -65,10 +65,10 @@ internal sealed class ProductCatalogContextSource
     Description = "Product catalog results.")]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class ProductListQueryViewSource
-    : IQueryViewSource<ProductCatalogQuery, ProductCatalogView>
+    : IQueryViewSource<ProductCatalogQueryContext, ProductCatalogView>
 {
     public IQueryable<ProductCatalogView> CreateView(
-        IQueryable<ProductCatalogQuery> query,
+        IQueryable<ProductCatalogQueryContext> query,
         QueryExecutionContext executionContext)
     {
         return query.Select(record =>
@@ -114,7 +114,7 @@ internal sealed class ProductListQueryViewSource
     Version = "1.0.0",
     Description = "Category navigation results for the current catalog context.")]
 internal sealed class CategoryListQueryViewSource
-    : IQueryViewSource<ProductCatalogQuery, CategoryCatalogView, ProductByCategoryParameters>
+    : IQueryViewSource<ProductCatalogQueryContext, CategoryCatalogView, ProductByCategoryParameters>
 {
     private readonly ECommerceDbContext _dbContext;
 
@@ -126,7 +126,7 @@ internal sealed class CategoryListQueryViewSource
     }
 
     public IQueryable<CategoryCatalogView> CreateView(
-        IQueryable<ProductCatalogQuery> query,
+        IQueryable<ProductCatalogQueryContext> query,
         QueryExecutionContext executionContext)
     {
         var parameters =
@@ -301,8 +301,8 @@ internal sealed class CategoryListQueryViewSource
             new();
     }
 
-    private IQueryable<ProductCatalogQuery> ApplyCategoryFilter(
-        IQueryable<ProductCatalogQuery> query,
+    private IQueryable<ProductCatalogQueryContext> ApplyCategoryFilter(
+        IQueryable<ProductCatalogQueryContext> query,
         string categoryPath)
     {
         return query
@@ -393,7 +393,7 @@ public sealed class ProductByCategoryParameters
     Description = "Product catalog results.")]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class ProductByCategoryQueryView
-    : IQueryViewSource<ProductCatalogQuery, ProductCatalogView, ProductByCategoryParameters>
+    : IQueryViewSource<ProductCatalogQueryContext, ProductCatalogView, ProductByCategoryParameters>
 {
     private readonly ECommerceDbContext _dbContext;
 
@@ -404,7 +404,7 @@ internal sealed class ProductByCategoryQueryView
     }
 
     public IQueryable<ProductCatalogView> CreateView(
-        IQueryable<ProductCatalogQuery> query,
+        IQueryable<ProductCatalogQueryContext> query,
         QueryExecutionContext executionContext)
     {
         var parameters =

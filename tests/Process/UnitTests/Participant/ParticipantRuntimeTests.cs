@@ -87,7 +87,7 @@ public sealed class ParticipantRuntimeTests
 
         var initializedContext =
             CreateContext(
-                request.ParticipantProcessId,
+                request.ParticipantProcessId.Value,
                 request.RequestId);
 
         var contextStore =
@@ -96,7 +96,7 @@ public sealed class ParticipantRuntimeTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    request.ParticipantProcessId,
+                    request.ParticipantProcessId.Value,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync((ParticipantContext?)null);
 
@@ -106,9 +106,9 @@ public sealed class ParticipantRuntimeTests
         stateUpdater
             .Setup(x =>
                 x.Initialize(
-                    request.ParticipantProcessId))
+                    request.ParticipantProcessId.Value))
             .Returns(CreateContext(
-                request.ParticipantProcessId,
+                request.ParticipantProcessId.Value,
                 "ignored"));
 
         var planner =
@@ -145,7 +145,7 @@ public sealed class ParticipantRuntimeTests
         stateUpdater.Verify(
             x =>
                 x.Initialize(
-                    request.ParticipantProcessId),
+                    request.ParticipantProcessId.Value),
             Times.Once);
 
         stateUpdater.Verify(
@@ -163,12 +163,12 @@ public sealed class ParticipantRuntimeTests
 
         var existingContext =
             CreateContext(
-                request.ParticipantProcessId,
+                request.ParticipantProcessId.Value,
                 "old-request");
 
         var reconciledContext =
             CreateContext(
-                request.ParticipantProcessId,
+                request.ParticipantProcessId.Value,
                 request.RequestId);
 
         var contextStore =
@@ -177,7 +177,7 @@ public sealed class ParticipantRuntimeTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    request.ParticipantProcessId,
+                    request.ParticipantProcessId.Value,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingContext);
 
@@ -228,7 +228,7 @@ public sealed class ParticipantRuntimeTests
         stateUpdater.Verify(
             x =>
                 x.Initialize(
-                    It.IsAny<string>()),
+                    It.IsAny<Guid>()),
             Times.Never);
     }
 
@@ -240,7 +240,7 @@ public sealed class ParticipantRuntimeTests
 
         var context =
             CreateContext(
-                request.ParticipantProcessId,
+                request.ParticipantProcessId.Value,
                 request.RequestId);
 
         var executableCandidate =
@@ -266,7 +266,7 @@ public sealed class ParticipantRuntimeTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    request.ParticipantProcessId,
+                    request.ParticipantProcessId.Value,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(context);
 
@@ -337,7 +337,7 @@ public sealed class ParticipantRuntimeTests
 
         var context =
             CreateContext(
-                request.ParticipantProcessId,
+                request.ParticipantProcessId.Value,
                 request.RequestId);
 
         var candidate =
@@ -371,6 +371,7 @@ public sealed class ParticipantRuntimeTests
         var executionResult =
             new ProcessExecutionResult
             {
+                ParticipantProcessId = request.ParticipantProcessId.Value,
                 State = ProcessExecutionState.Complete,
                 Outcomes =
                 [
@@ -384,7 +385,7 @@ public sealed class ParticipantRuntimeTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    request.ParticipantProcessId,
+                    request.ParticipantProcessId.Value,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(context);
 
@@ -456,7 +457,7 @@ public sealed class ParticipantRuntimeTests
 
         var context =
             CreateContext(
-                request.ParticipantProcessId,
+                request.ParticipantProcessId.Value,
                 request.RequestId);
 
         var plan =
@@ -475,7 +476,7 @@ public sealed class ParticipantRuntimeTests
             .InSequence(sequence)
             .Setup(x =>
                 x.LoadAsync(
-                    request.ParticipantProcessId,
+                    request.ParticipantProcessId.Value,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(context);
 
@@ -539,19 +540,19 @@ public sealed class ParticipantRuntimeTests
     {
         return new ProcessRequest
         {
-            ParticipantProcessId = "CORR-001",
+            ParticipantProcessId = Guid.NewGuid(),
             RequestId = "REQ-001",
             Participant = new ParticipantRequest()
         };
     }
 
     private static ParticipantContext CreateContext(
-        string correlationId,
+        Guid participantProcessId,
         string requestId)
     {
         return new ParticipantContext
         {
-            ParticipantProcessId = correlationId,
+            ParticipantProcessId = participantProcessId,
             LastestRequestId = requestId
         };
     }
@@ -560,6 +561,7 @@ public sealed class ParticipantRuntimeTests
     {
         return new ProcessExecutionResult
         {
+            ParticipantProcessId = Guid.NewGuid(),
             State = ProcessExecutionState.Active
         };
     }

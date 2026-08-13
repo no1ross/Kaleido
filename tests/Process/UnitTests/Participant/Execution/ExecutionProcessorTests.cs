@@ -1345,7 +1345,7 @@ public sealed class ExecutionProcessorTests
         return new ParticipantContext
         {
             ParticipantProcessId =
-                Guid.NewGuid().ToString(),
+                Guid.NewGuid(),
 
             Steps =
                 stepNames

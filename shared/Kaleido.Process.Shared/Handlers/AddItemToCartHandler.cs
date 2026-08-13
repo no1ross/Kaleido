@@ -1,112 +1,125 @@
-﻿//using Kaleido.Process.Participant.Execution;
-//using Kaleido.Process.Shared.Data;
-//using Kaleido.Process.Shared.Responses;
-//using Kaleido.Process.Shared.Steps;
-//using Microsoft.EntityFrameworkCore;
+﻿using Kaleido.Process.Participant.Execution;
+using Kaleido.Samples.ECommerce.Data;
+using Kaleido.Samples.ECommerce.Data.Entities;
+using Kaleido.Samples.ECommerce.Responses;
+using Kaleido.Samples.ECommerce.Steps;
+using Microsoft.EntityFrameworkCore;
 
-//namespace Kaleido.Process.Shared.Handlers;
+namespace Kaleido.Process.Shared.Handlers;
 
-//public sealed class AddItemToCartHandler(
-//    ShoppingCartDbContext dbContext)
-//    : IProcessStepHandler<AddItemToCartStep, AddItemToCartResponse>
-//{
-//    public async Task<ProcessStepHandlerResult<AddItemToCartResponse>> ExecuteAsync(
-//        AddItemToCartStep step,
-//        ProcessStepContext context,
-//        CancellationToken cancellationToken = default)
-//    {
-//        var now =
-//            DateTimeOffset.UtcNow;
+public sealed class AddItemToCartHandler(
+    ECommerceDbContext dbContext)
+    : IProcessStepHandler<AddItemToCartStep, AddItemToCartResponse>
+{
+    public async Task<ProcessStepHandlerResult<AddItemToCartResponse>> ExecuteAsync(
+        AddItemToCartStep step,
+        ProcessStepContext context,
+        CancellationToken cancellationToken = default)
+    {
+        //var shoppingCartId = step.CartId is null ? Guid.NewGuid() : Guid.Parse(step.CartId);
 
-//        var shoppingCartId =
-//            Guid.Parse(step.CartId);
+        //for now we will use participant id
 
-//        var correlationId =
-//            GetCorrelationId(context);
+        var cartItem = new ShoppingCartItem
+        {
+            ProductId = Guid.Parse(step.ItemId),
+            Quantity = step.Quantity,
+        };
 
-//        var cart =
-//            await dbContext.ShoppingCarts
-//                .Include(x => x.Items)
-//                .SingleOrDefaultAsync(
-//                    x => x.ShoppingCartId == shoppingCartId,
-//                    cancellationToken);
+        TempCart.AddItemToCart(context.ParticipantProcessId, cartItem);
 
-//        if (cart is null)
-//        {
-//            cart =
-//                new ShoppingCart
-//                {
-//                    ShoppingCartId = shoppingCartId,
-//                    ParticipantProcessId = correlationId,
-//                    Status = ShoppingCartStatus.Active,
-//                    CreatedOn = now,
-//                    UpdatedOn = now
-//                };
+        var cart = TempCart.GetCart(context.ParticipantProcessId);
 
-//            dbContext.ShoppingCarts.Add(cart);
-//        }
+        var response = new AddItemToCartResponse();
 
-//        foreach (var itemRequest in step.Items)
-//        {
-//            var existingItem =
-//                cart.Items.SingleOrDefault(x =>
-//                    string.Equals(
-//                        x.ItemId,
-//                        itemRequest.ItemId,
-//                        StringComparison.OrdinalIgnoreCase));
+        return ProcessStepHandlerResult<AddItemToCartResponse>.Success(response);
+    }
+}
 
-//            if (existingItem is null)
-//            {
-//                cart.Items.Add(
-//                    new ShoppingCartItem
-//                    {
-//                        ShoppingCartItemId = Guid.NewGuid(),
-//                        ShoppingCartId = cart.ShoppingCartId,
-//                        ItemId = itemRequest.ItemId,
-//                        Description = itemRequest.Description,
-//                        ItemType = itemRequest.ItemType,
-//                        Quantity = itemRequest.Quantity,
-//                        UnitPrice = itemRequest.UnitPrice,
-//                        CreatedOn = now,
-//                        UpdatedOn = now
-//                    });
-//            }
-//            else
-//            {
-//                existingItem.Quantity += itemRequest.Quantity;
-//                existingItem.Description = itemRequest.Description;
-//                existingItem.ItemType = itemRequest.ItemType;
-//                existingItem.UnitPrice = itemRequest.UnitPrice;
-//                existingItem.UpdatedOn = now;
-//            }
-//        }
+public static class TempCart
+{
+    private static readonly Dictionary<Guid, ShoppingCart> _carts = new();
 
-//        cart.UpdatedOn = now;
+    public static ShoppingCart GetOrCreateCart(Guid cartId)
+    {
+        if (!_carts.TryGetValue(cartId, out var cart))
+        {
+            cart = new ShoppingCart
+            {
+                ShoppingCartId = cartId,
+                CustomerId = Guid.NewGuid(),
+                IsActive = true,
+                CreatedUtc = DateTime.UtcNow,
+                UpdatedUtc = DateTime.UtcNow
+            };
+            _carts[cartId] = cart;
+        }
+        return cart;
+    }
 
-//        await dbContext.SaveChangesAsync(cancellationToken);
+    public static void UpdateCart(ShoppingCart cart)
+    {
+        cart.UpdatedUtc = DateTime.UtcNow;
+        _carts[cart.ShoppingCartId] = cart;
+    }
 
-//        var response =
-//            new AddItemToCartResponse
-//            {
-//                CartId = cart.ShoppingCartId.ToString(),
-//                ItemCount = cart.Items.Sum(x => x.Quantity),
-//                CartTotal = cart.Items.Sum(x => x.Quantity * x.UnitPrice),
-//                LastUpdated = cart.UpdatedOn
-//            };
+    public static void ClearCart(Guid cartId)
+    {
+        _carts.Remove(cartId);
+    }
 
-//        return new ProcessStepHandlerResult<AddItemToCartResponse>
-//        {
-//            Response = response
-//        };
-//    }
+    public static void ClearAllCarts()
+    {
+        _carts.Clear();
+    }
 
-//    private static string GetCorrelationId(
-//        ProcessStepContext context)
-//    {
-//        // KALEIDO_ADAPT:
-//        // The handler needs the runtime correlation id so the consumer database
-//        // can map its aggregate back to the Kaleido.Process conversation.
-//        // Replace this with the actual property once ProcessStepContext exposes it.
-//        return context.ParticipantProcessId;
-//    }
-//}
+    public static IReadOnlyCollection<ShoppingCart> GetAllCarts()
+    {
+        return _carts.Values.ToList();
+    }
+
+    public static void RemoveCart(Guid cartId)
+    {
+        _carts.Remove(cartId);
+    }
+
+    public static bool CartExists(Guid cartId)
+    {
+        return _carts.ContainsKey(cartId);
+    }
+
+    public static ShoppingCart? GetCart(Guid cartId)
+    {
+        _carts.TryGetValue(cartId, out var cart);
+        return cart;
+    }
+
+    public static void AddItemToCart(Guid cartId, ShoppingCartItem item)
+    {
+        var cart = GetOrCreateCart(cartId);
+        var existingItem = cart.Items.FirstOrDefault(i => i.ProductId == item.ProductId);
+        if (existingItem != null)
+        {
+            existingItem.Quantity += item.Quantity;
+        }
+        else
+        {
+            cart.Items.Add(item);
+        }
+        UpdateCart(cart);
+    }
+
+    public static void RemoveItemFromCart(Guid cartId, Guid productId)
+    {
+        var cart = GetCart(cartId);
+        if (cart != null)
+        {
+            var itemToRemove = cart.Items.FirstOrDefault(i => i.ProductId == productId);
+            if (itemToRemove != null)
+            {
+                cart.Items.Remove(itemToRemove);
+                UpdateCart(cart);
+            }
+        }
+    }
+}

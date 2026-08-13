@@ -9,7 +9,7 @@ namespace Kaleido.Process.Participant.Context;
 
 internal interface IProcessContextStore
 {
-    Task<ParticipantContext> LoadAsync(string? correlationId, CancellationToken cancellationToken = default);
+    Task<ParticipantContext> LoadAsync(Guid participantProcessId, CancellationToken cancellationToken = default);
 
     Task SaveAsync(ParticipantContext context, CancellationToken cancellationToken = default);
 }
@@ -30,7 +30,7 @@ public sealed record ParticipantContext
     /// <summary>
     /// Uniquely identifies the process instance.
     /// </summary>
-    public string? ParticipantProcessId
+    public required Guid ParticipantProcessId
     {
         get;
         init;

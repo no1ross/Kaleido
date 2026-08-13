@@ -1,5 +1,7 @@
 ﻿using Kaleido.Process.AspNetCore.Contracts;
+using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Registry;
+using System.Text.Json;
 
 namespace Kaleido.Process.AspNetCore.Srevices;
 
@@ -17,9 +19,15 @@ public interface IProcessExecutionService
 public class ProcessExecutionService : IProcessExecutionService
 {
     private readonly IProcessStepRegistry _registry;
-    public ProcessExecutionService(IProcessStepRegistry registry)
+    private readonly IParticipantRuntime _runtime;
+
+    public ProcessExecutionService(
+        IProcessStepRegistry registry,
+        IParticipantRuntime runtime
+        )
     {
         _registry = registry;
+        _runtime = runtime;
     }
     public async Task<ProcessExecutionResponse> ExecuteAsync(
         ExecuteProcessRequest request,
@@ -31,6 +39,27 @@ public class ProcessExecutionService : IProcessExecutionService
         ExecuteStepRequest<TProcessStep> request,
         CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var stepName = _registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
+
+        var processRequest =
+            request.ToProcessRequest(
+                stepName: stepName,
+                requestId: request.RequestId);
+
+        var processResult =
+            await _runtime.ExecuteAsync(
+                processRequest,
+                cancellationToken);
+
+        var stepResult =
+            processResult.Steps.Single(x =>
+                x.StepName.Equals(
+                    stepName,
+                    StringComparison.OrdinalIgnoreCase));
+
+        return ProcessExecutionResponse<TResponse>.Create(
+            processResult,
+            stepResult,
+            _registry);
     }
 }

@@ -6,7 +6,7 @@ export interface CatalogState {
 
     productQuery: QueryRequest;
 
-    productResult: QueryResponse;
+    productResult?: QueryResponse;
 }
 
 export interface QueryResponse {

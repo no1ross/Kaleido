@@ -23,7 +23,7 @@ public sealed class RuntimeRequiredStepTests
     {
         var result = await _runtime.ExecuteAsync(
             RuntimeRequestFactory.Create(
-                Guid.NewGuid().ToString("N"),
+                Guid.NewGuid(),
                 "request-1",
                 RuntimeStepNames.RequiredRoot,
                 RuntimeStepNames.RequiredStep));
@@ -37,7 +37,7 @@ public sealed class RuntimeRequiredStepTests
     {
         var result = await _runtime.ExecuteAsync(
             RuntimeRequestFactory.Create(
-                Guid.NewGuid().ToString("N"),
+                Guid.NewGuid(),
                 "request-1",
                 RuntimeStepNames.RequiredRoot));
 
@@ -61,7 +61,7 @@ public sealed class RuntimeRequiredStepTests
     {
         var result = await _runtime.ExecuteAsync(
             RuntimeRequestFactory.Create(
-                Guid.NewGuid().ToString("N"),
+                Guid.NewGuid(),
                 "request-1",
                 RuntimeStepNames.InvalidRequiredRoot));
 

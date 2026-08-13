@@ -22,7 +22,7 @@ public sealed class RuntimeUnknownAndAlreadyProcessedTests
     {
         var result = await _runtime.ExecuteAsync(
             RuntimeRequestFactory.Create(
-                Guid.NewGuid().ToString("N"),
+                Guid.NewGuid(),
                 "request-1",
                 RuntimeStepNames.Root,
                 "TotallyFakeStep"));
@@ -33,7 +33,7 @@ public sealed class RuntimeUnknownAndAlreadyProcessedTests
     [Fact]
     public async Task ExecuteAsync_WhenPreviouslyCompletedStepIsSubmittedAgain_ReturnsAlreadyProcessedMessage()
     {
-        var participantProcessId = Guid.NewGuid().ToString("N");
+        var participantProcessId = Guid.NewGuid();
 
         await _runtime.ExecuteAsync(
             RuntimeRequestFactory.Create(

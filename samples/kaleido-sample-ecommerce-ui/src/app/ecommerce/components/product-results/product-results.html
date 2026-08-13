@@ -48,7 +48,7 @@
           <th>Rating</th>
           <th>Reviews</th>
           <th>Available</th>
-          <th>Active</th>
+          <th>Actions</th>
 
         </tr>
 
@@ -69,7 +69,11 @@
             <td>{{ product.rating }}</td>
             <td>{{ product.reviewCount }}</td>
             <td>{{ product.availableQuantity }}</td>
-            <td>{{ product.isActive ? 'Yes' : 'No' }}</td>
+            <td>
+              <button type="button" (click)="addToCart(product)">
+                Add To Cart
+              </button>
+            </td>
 
           </tr>
 

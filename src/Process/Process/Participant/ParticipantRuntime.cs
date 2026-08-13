@@ -60,21 +60,21 @@ internal sealed class ParticipantRuntime
         ProcessRequest request,
         CancellationToken cancellationToken)
     {
-        var context =
-            await _contextStore.LoadAsync(
-                request.ParticipantProcessId,
-                cancellationToken);
-
-        if (context is null)
+        if (request.ParticipantProcessId is null)
         {
             return _stateUpdater.Initialize(
-                request.ParticipantProcessId)
+                Guid.NewGuid())
                 with
             {
                 LastestRequestId =
                         request.RequestId
             };
         }
+
+        var context =
+            await _contextStore.LoadAsync(
+                request.ParticipantProcessId.Value,
+                cancellationToken);
 
         return _stateUpdater.Reconcile(
             context)
@@ -143,6 +143,9 @@ internal sealed class ParticipantRuntime
 
         return new ParticipantProcessResult
         {
+            ParticipantProcessId =
+                executionResult.ParticipantProcessId,
+
             State =
                 executionResult.State,
 

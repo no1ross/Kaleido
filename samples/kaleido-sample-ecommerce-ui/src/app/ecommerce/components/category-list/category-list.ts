@@ -7,10 +7,11 @@ import {
   ChangeDetectorRef
 } from '@angular/core';
 
-import { CatalogState } from '../models/catalog-state';
-import { CategoryCatalogView } from '../models/category-catalog-view';
-import { QueryableService } from '../../kaleido/services/queryable.service';
-import { QueryRequest } from '../../kaleido/models/queryable-request';
+import { CatalogState } from '../../models/catalog-state';
+import { CategoryCatalogView } from '../../models/category-catalog-view';
+import { QueryableService } from '../../../kaleido/services/queryable-service';
+import { QueryRequest } from '../../../kaleido/models/queryable-request';
+import { ProductsByCategoryParameters } from '../../models/product-catalog-view';
 
 @Component({
   selector: 'ecommerce-category-list',
@@ -21,14 +22,11 @@ import { QueryRequest } from '../../kaleido/models/queryable-request';
 export class CategoryList {
 
   @Input({ required: true })
-  productQuery!: QueryRequest;
-
-  @Input()
-  selectedCategory?: string;
+  productQuery!: QueryRequest<any>;
 
   @Output()
-  categorySelected =
-    new EventEmitter<string>();
+  queryCategoryChanged =
+    new EventEmitter<QueryRequest>();
 
     private readonly queryableService =
         inject(QueryableService);
@@ -48,11 +46,29 @@ export class CategoryList {
     }
 
   clearCategory(): void {
-      this.categorySelected.emit(undefined);
+
+      const queryRequest =
+          structuredClone(
+              this.productQuery);
+
+      delete queryRequest.parameters;
+
+      if (queryRequest.query?.page) {
+          queryRequest.query.page.offset = 0;
+      }
+
+      this.queryCategoryChanged.emit(
+          queryRequest);
   }
 
   get hasCategories(): boolean {
     return this.categories.length > 0;
+  }
+
+  get selectedCategory(): string | undefined {
+
+      return this.productQuery
+          .parameters?.categoryPath;
   }
 
   getIndent(
@@ -68,12 +84,26 @@ export class CategoryList {
       category.categoryPath;
   }
 
-  selectCategory(
+selectCategory(
     category: CategoryCatalogView): void {
 
-    this.categorySelected.emit(
-      category.categoryPath);
-  }
+    const queryRequest =
+        structuredClone(
+            this.productQuery);
+
+    queryRequest.parameters =
+    {
+        categoryPath:
+            category.categoryPath
+    };
+
+    if (queryRequest.query?.page) {
+        queryRequest.query.page.offset = 0;
+    }
+
+    this.queryCategoryChanged.emit(
+        queryRequest);
+}
 
   private loadCategories(): void {
 

@@ -93,7 +93,75 @@ public sealed record ProcessExecutionResponse<TResponse>
         init;
     }
         = [];
+
+    public static ProcessExecutionResponse<TResponse> Create(
+        ParticipantProcessResult processResult,
+        ParticipantStepResult stepResult,
+        IProcessStepRegistry registry)
+    {
+        return new()
+        {
+            ParticipantProcessId =
+                processResult.ParticipantProcessId
+                    .ToString(),
+
+            StepName =
+                stepResult.StepName,
+
+            Result =
+                (TResponse)stepResult.Response,
+
+            RequiredStep =
+                processResult.RequiredStep,
+
+            AvailableSteps =
+                processResult.AvailableSteps
+                    .Select(stepName =>
+                    {
+                        var registration =
+                            registry.GetRegistration(
+                                stepName);
+
+                        return new ProcessStepSummary
+                        {
+                            Name =
+                                registration.Metadata.Name,
+
+                            Version =
+                                registration.Metadata.Version,
+
+                            DisplayName =
+                                registration.Metadata.DisplayName,
+
+                            Description =
+                                registration.Metadata.Description,
+
+                            Repeatable =
+                                registration.Repeatable.Enabled,
+
+                            ExecuteUrl =
+                                $"/processes/steps/{registration.Metadata.Name}",
+
+                            MetadataUrl =
+                                $"/processes/steps/{registration.Metadata.Name}/metadata"
+                        };
+                    })
+                    .ToList(),
+
+            Messages =
+                stepResult.Messages
+                    .Select(message =>
+                        new ProcessMessage
+                        {
+                            Severity = message.Type,
+                            Message = message.Message,
+                            Code = message.Code
+                        })
+                    .ToList()
+        };
+    }
 }
+
 
 public sealed record ProcessMessage
 {
@@ -109,7 +177,7 @@ public sealed record ProcessMessage
         init;
     }
 
-    public required string Code
+    public required StepProcessingMessageCode Code
     {
         get;
         init;

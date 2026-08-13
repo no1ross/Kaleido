@@ -20,7 +20,10 @@ public sealed class StepCandidateConsistencyCheckerTests
             Assert.Throws<ArgumentNullException>(() =>
                 checker.Validate(
                     null!,
-                    new ParticipantContext()));
+                    new ParticipantContext
+                    {
+                        ParticipantProcessId = Guid.NewGuid()
+                    }));
 
         Assert.Equal("candidates", exception.ParamName);
     }
@@ -54,7 +57,10 @@ public sealed class StepCandidateConsistencyCheckerTests
 
         checker.Validate(
             [candidate],
-            new ParticipantContext());
+            new ParticipantContext
+            {
+                ParticipantProcessId = Guid.NewGuid()
+            });
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -79,6 +85,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         var context =
             new ParticipantContext
             {
+                ParticipantProcessId = Guid.NewGuid(),
                 Steps =
                 [
                     new StepContext
@@ -113,6 +120,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         var context =
             new ParticipantContext
             {
+                ParticipantProcessId =  Guid.NewGuid(),
                 Steps =
                 [
                     new StepContext
@@ -151,6 +159,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         var context =
             new ParticipantContext
             {
+                ParticipantProcessId = Guid.NewGuid(),
                 Steps =
                 [
                     new StepContext
@@ -192,7 +201,10 @@ public sealed class StepCandidateConsistencyCheckerTests
                 dependencyCandidate,
                 targetCandidate
             ],
-            new ParticipantContext());
+            new ParticipantContext
+            {
+                ParticipantProcessId = Guid.NewGuid()
+            });
 
         Assert.False(targetCandidate.HasErrors);
     }
@@ -231,7 +243,7 @@ public sealed class StepCandidateConsistencyCheckerTests
                 dependencyCandidate,
                 targetCandidate
             ],
-            new ParticipantContext());
+            new ParticipantContext{ ParticipantProcessId = Guid.NewGuid() });
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -262,7 +274,7 @@ public sealed class StepCandidateConsistencyCheckerTests
 
         checker.Validate(
             [candidate],
-            new ParticipantContext());
+            new ParticipantContext{ ParticipantProcessId = Guid.NewGuid() });
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -297,7 +309,7 @@ public sealed class StepCandidateConsistencyCheckerTests
 
         checker.Validate(
             [candidate],
-            new ParticipantContext());
+            new ParticipantContext{ ParticipantProcessId = Guid.NewGuid() });
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -328,6 +340,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         var context =
             new ParticipantContext
             {
+                ParticipantProcessId = Guid.NewGuid(),
                 Steps =
                 [
                     new StepContext
@@ -365,6 +378,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         var context =
             new ParticipantContext
             {
+                ParticipantProcessId = Guid.NewGuid(),
                 Steps =
                 [
                     new StepContext

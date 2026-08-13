@@ -1,23 +1,23 @@
 <queryable-search
   [queryRequest]="catalogState.productQuery"
-  (queryRequestChanged)="productQueryChanged($event)">
+  (querySearchChanged)="productQueryChange($event)">
 </queryable-search>
 
 <kaleido-queryable-filtering
   [queryRequest]="catalogState.productQuery"
-  (queryRequestChanged)="productQueryChanged($event)">
+  (queryFilterChanged)="productQueryChange($event)">
 </kaleido-queryable-filtering>
 
 <kaleido-queryable-sorting
   [queryRequest]="catalogState.productQuery"
-  (queryRequestChanged)="productQueryChanged($event)">
+  (querySortChanged)="productQueryChange($event)">
 </kaleido-queryable-sorting>
 
 <!---->
 <kaleido-queryable-pager
   [queryRequest]="catalogState.productQuery"
-  [totalCount]="catalogState.productResult.totalCount"
-  (queryRequestChanged)="productQueryChanged($event)">
+  [totalCount]="catalogState.productResult?.totalCount ?? 0"
+  (queryPageChanged)="productQueryChange($event)">
 </kaleido-queryable-pager>
 
 
@@ -27,8 +27,7 @@
 <!---->
     <ecommerce-category-list
       [productQuery]="catalogState.productQuery"
-      [selectedCategory]="catalogState.selectedCategory"
-      (categorySelected)="categorySelected($event)">
+      (queryCategoryChanged)="queryCategoryChanged($event)">
     </ecommerce-category-list>
 
   </aside>
@@ -37,7 +36,6 @@
 
     <ecommerce-product-results
       [productQuery]="catalogState.productQuery"
-      [selectedCategory]="catalogState.selectedCategory"
       (productsLoaded)="productsLoaded($event)">
     </ecommerce-product-results>
 
@@ -47,6 +45,6 @@
 <!---->
 <kaleido-queryable-pager
   [queryRequest]="catalogState.productQuery"
-  [totalCount]="catalogState.productResult.totalCount"
-  (queryRequestChanged)="productQueryChanged($event)">
+  [totalCount]="catalogState.productResult?.totalCount ?? 0"
+  (queryPageChanged)="productQueryChange($event)">
 </kaleido-queryable-pager>

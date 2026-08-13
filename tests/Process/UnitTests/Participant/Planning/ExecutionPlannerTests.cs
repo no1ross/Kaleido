@@ -74,7 +74,10 @@ public sealed class ExecutionPlannerTests
             Assert.Throws<ArgumentNullException>(() =>
                 planner.BuildPlan(
                     null!,
-                    new ParticipantContext()));
+                    new ParticipantContext
+                    {
+                        ParticipantProcessId = Guid.NewGuid(),
+                    }));
 
         Assert.Equal("request", exception.ParamName);
     }
@@ -101,7 +104,10 @@ public sealed class ExecutionPlannerTests
             new ParticipantRequest();
 
         var context =
-            new ParticipantContext();
+            new ParticipantContext
+            {
+                ParticipantProcessId = Guid.NewGuid()
+            };
 
         var candidates =
             new[]
@@ -176,7 +182,10 @@ public sealed class ExecutionPlannerTests
             new ParticipantRequest();
 
         var context =
-            new ParticipantContext();
+            new ParticipantContext
+            {
+                ParticipantProcessId = Guid.NewGuid()
+            };
 
         var candidates =
             new[]
@@ -236,7 +245,10 @@ public sealed class ExecutionPlannerTests
             new ParticipantRequest();
 
         var context =
-            new ParticipantContext();
+            new ParticipantContext
+            {
+                ParticipantProcessId = Guid.NewGuid()
+            };
 
         var candidates =
             new[]
@@ -295,7 +307,10 @@ public sealed class ExecutionPlannerTests
             new ParticipantRequest();
 
         var context =
-            new ParticipantContext();
+            new ParticipantContext
+            {
+                ParticipantProcessId = Guid.NewGuid()
+            };
 
         var candidates =
             new[]

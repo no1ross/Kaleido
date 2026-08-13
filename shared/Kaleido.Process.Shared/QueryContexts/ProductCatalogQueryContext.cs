@@ -9,12 +9,9 @@ namespace Kaleido.Samples.ECommerce.Records;
     DisplayName = "Products",
     Version = "1.0.0",
     Source = "E-Commerce Catalog")]
-public sealed class ProductCatalogQuery
+public sealed class ProductCatalogQueryContext
 {
     [Key]
-    [Filterable(
-        FilterOperator.Equals,
-        FilterOperator.In)]
     public Guid ProductId { get; init; }
 
     [Filterable(
