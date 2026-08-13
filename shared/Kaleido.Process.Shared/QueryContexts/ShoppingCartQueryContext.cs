@@ -21,10 +21,13 @@ public sealed class ShoppingCartQueryContext
     public Guid? CustomerId { get; init; } = null;
     public Guid ParticipantProcessId { get; init; }
     public Guid ProductId { get; init; }
-    public string Name { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public string SupplierName { get; set; } = string.Empty;
+    public string FamilyName { get; set; } = string.Empty;
+    public string ModelName { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int Quantity { get; set; } = 0;
-    public decimal Price { get; set; } = decimal.Zero;
+    public decimal UnitPrice { get; set; } = decimal.Zero;
 }
 
 [QueryView(
@@ -118,16 +121,138 @@ internal sealed class ShoppingContextSource
                         ParticipantProcessId =
                             participantProcessId,
 
-                        Name = "Product Name",
+                        ProductName = "Product Name",
 
                         Description = "Product Description",
 
                         Quantity =
                             item.Quantity,
 
-                        Price = 10.0m
+                        UnitPrice = 10.0m
                     });
 
         return rows.AsQueryable();
+    }
+}
+
+public sealed record ShoppingCartDetailView
+{
+    public Guid ShoppingCartId
+    {
+        get;
+        init;
+    }
+
+    public Guid ProductId
+    {
+        get;
+        init;
+    }
+
+    public string ProductName
+    {
+        get;
+        init;
+    } = string.Empty;
+
+    public string SupplierName
+    {
+        get;
+        init;
+    } = string.Empty;
+
+    public string FamilyName
+    {
+        get;
+        init;
+    } = string.Empty;
+
+    public string ModelName
+    {
+        get;
+        init;
+    } = string.Empty;
+
+    public string Description
+    {
+        get;
+        init;
+    } = string.Empty;
+
+    public int Quantity
+    {
+        get;
+        init;
+    }
+
+    public decimal UnitPrice
+    {
+        get;
+        init;
+    }
+
+    public decimal ExtendedPrice
+    {
+        get;
+        init;
+    }
+}
+
+[QueryView(
+    Name = "shopping-cart-detail",
+    DisplayName = "Shopping Cart",
+    Version = "1.0.0",
+    Description = "Shopping cart detail items.")]
+internal sealed class ShoppingCartDetailViewSource
+    : IQueryViewSource<
+        ShoppingCartQueryContext,
+        ShoppingCartDetailView,
+        ShoppingCartSummaryViewParameters>
+{
+    public IQueryable<ShoppingCartDetailView> CreateView(
+        IQueryable<ShoppingCartQueryContext> query,
+        QueryExecutionContext executionContext)
+    {
+        var parameters =
+            executionContext
+                .TryGetViewParameters<ShoppingCartSummaryViewParameters>();
+
+        return query
+            .Where(x =>
+                x.ParticipantProcessId ==
+                parameters!.ParticipantProcessId)
+            .Select(x =>
+                new ShoppingCartDetailView
+                {
+                    ShoppingCartId =
+                        x.ShoppingCartId,
+
+                    ProductId =
+                        x.ProductId,
+
+                    ProductName =
+                        x.ProductName,
+
+                    SupplierName =
+                        x.SupplierName,
+
+                    FamilyName =
+                        x.FamilyName,
+
+                    ModelName =
+                        x.ModelName,
+
+                    Description =
+                        x.Description,
+
+                    Quantity =
+                        x.Quantity,
+
+                    UnitPrice =
+                        x.UnitPrice,
+
+                    ExtendedPrice =
+                        x.Quantity * x.UnitPrice
+                });
     }
 }

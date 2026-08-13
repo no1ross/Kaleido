@@ -1,0 +1,252 @@
+﻿[
+  {
+    "supplierName": "Apex",
+    "contactName": "Mason Reed",
+    "email": "mason.reed@apex.example"
+  },
+  {
+    "supplierName": "Nova",
+    "contactName": "Olivia Brooks",
+    "email": "olivia.brooks@nova.example"
+  },
+  {
+    "supplierName": "Vertex",
+    "contactName": "Ethan Hayes",
+    "email": "ethan.hayes@vertex.example"
+  },
+  {
+    "supplierName": "Zenith",
+    "contactName": "Chloe Parker",
+    "email": "chloe.parker@zenith.example"
+  },
+  {
+    "supplierName": "Nimbus",
+    "contactName": "Liam Foster",
+    "email": "liam.foster@nimbus.example"
+  },
+  {
+    "supplierName": "Orion",
+    "contactName": "Ava Bennett",
+    "email": "ava.bennett@orion.example"
+  },
+  {
+    "supplierName": "Atlas",
+    "contactName": "Noah Griffin",
+    "email": "noah.griffin@atlas.example"
+  },
+  {
+    "supplierName": "Titan",
+    "contactName": "Emma Carter",
+    "email": "emma.carter@titan.example"
+  },
+  {
+    "supplierName": "Summit",
+    "contactName": "Lucas Price",
+    "email": "lucas.price@summit.example"
+  },
+  {
+    "supplierName": "Echo",
+    "contactName": "Sophia Ross",
+    "email": "sophia.ross@echo.example"
+  },
+  {
+    "supplierName": "Pulse",
+    "contactName": "Jackson Ward",
+    "email": "jackson.ward@pulse.example"
+  },
+  {
+    "supplierName": "Fusion",
+    "contactName": "Mia Bailey",
+    "email": "mia.bailey@fusion.example"
+  },
+  {
+    "supplierName": "Vector",
+    "contactName": "Elijah Cooper",
+    "email": "elijah.cooper@vector.example"
+  },
+  {
+    "supplierName": "Vortex",
+    "contactName": "Grace Powell",
+    "email": "grace.powell@vortex.example"
+  },
+  {
+    "supplierName": "Sterling",
+    "contactName": "Logan Hughes",
+    "email": "logan.hughes@sterling.example"
+  },
+  {
+    "supplierName": "Cobalt",
+    "contactName": "Lily Myers",
+    "email": "lily.myers@cobalt.example"
+  },
+  {
+    "supplierName": "Argon",
+    "contactName": "Owen Perry",
+    "email": "owen.perry@argon.example"
+  },
+  {
+    "supplierName": "Ember",
+    "contactName": "Zoe Long",
+    "email": "zoe.long@ember.example"
+  },
+  {
+    "supplierName": "Quartz",
+    "contactName": "Levi Murphy",
+    "email": "levi.murphy@quartz.example"
+  },
+  {
+    "supplierName": "Beacon",
+    "contactName": "Ella Simmons",
+    "email": "ella.simmons@beacon.example"
+  },
+  {
+    "supplierName": "Catalyst",
+    "contactName": "Wyatt Jenkins",
+    "email": "wyatt.jenkins@catalyst.example"
+  },
+  {
+    "supplierName": "Pioneer",
+    "contactName": "Hannah Butler",
+    "email": "hannah.butler@pioneer.example"
+  },
+  {
+    "supplierName": "Meridian",
+    "contactName": "Julian Barnes",
+    "email": "julian.barnes@meridian.example"
+  },
+  {
+    "supplierName": "Harbor",
+    "contactName": "Scarlett Price",
+    "email": "scarlett.price@harbor.example"
+  },
+  {
+    "supplierName": "Falcon",
+    "contactName": "Gabriel Cox",
+    "email": "gabriel.cox@falcon.example"
+  },
+  {
+    "supplierName": "Drift",
+    "contactName": "Nora Howard",
+    "email": "nora.howard@drift.example"
+  },
+  {
+    "supplierName": "Radiant",
+    "contactName": "Caleb Russell",
+    "email": "caleb.russell@radiant.example"
+  },
+  {
+    "supplierName": "Frontier",
+    "contactName": "Victoria Gray",
+    "email": "victoria.gray@frontier.example"
+  },
+  {
+    "supplierName": "Elevate",
+    "contactName": "Ryan Woods",
+    "email": "ryan.woods@elevate.example"
+  },
+  {
+    "supplierName": "Cascade",
+    "contactName": "Claire Flores",
+    "email": "claire.flores@cascade.example"
+  },
+  {
+    "supplierName": "Keystone",
+    "contactName": "Aaron Kelly",
+    "email": "aaron.kelly@keystone.example"
+  },
+  {
+    "supplierName": "Forge",
+    "contactName": "Natalie Sanders",
+    "email": "natalie.sanders@forge.example"
+  },
+  {
+    "supplierName": "Slate",
+    "contactName": "Adam Bryant",
+    "email": "adam.bryant@slate.example"
+  },
+  {
+    "supplierName": "Element",
+    "contactName": "Lucy Bell",
+    "email": "lucy.bell@element.example"
+  },
+  {
+    "supplierName": "Synergy",
+    "contactName": "Connor Rivera",
+    "email": "connor.rivera@synergy.example"
+  },
+  {
+    "supplierName": "Nexus",
+    "contactName": "Stella Morgan",
+    "email": "stella.morgan@nexus.example"
+  },
+  {
+    "supplierName": "Aurora",
+    "contactName": "Isaiah Howard",
+    "email": "isaiah.howard@aurora.example"
+  },
+  {
+    "supplierName": "Velocity",
+    "contactName": "Ruby Jenkins",
+    "email": "ruby.jenkins@velocity.example"
+  },
+  {
+    "supplierName": "Stratus",
+    "contactName": "Eli Patterson",
+    "email": "eli.patterson@stratus.example"
+  },
+  {
+    "supplierName": "Peak",
+    "contactName": "Sarah Perry",
+    "email": "sarah.perry@peak.example"
+  },
+  {
+    "supplierName": "Origin",
+    "contactName": "Nathan Kim",
+    "email": "nathan.kim@origin.example"
+  },
+  {
+    "supplierName": "Vertexa",
+    "contactName": "Madison Reed",
+    "email": "madison.reed@vertexa.example"
+  },
+  {
+    "supplierName": "Solstice",
+    "contactName": "Dylan Brooks",
+    "email": "dylan.brooks@solstice.example"
+  },
+  {
+    "supplierName": "Aspire",
+    "contactName": "Audrey Foster",
+    "email": "audrey.foster@aspire.example"
+  },
+  {
+    "supplierName": "Momentum",
+    "contactName": "Hunter Hayes",
+    "email": "hunter.hayes@momentum.example"
+  },
+  {
+    "supplierName": "Lumen",
+    "contactName": "Penelope Cole",
+    "email": "penelope.cole@lumen.example"
+  },
+  {
+    "supplierName": "Crest",
+    "contactName": "Thomas Ward",
+    "email": "thomas.ward@crest.example"
+  },
+  {
+    "supplierName": "Axiom",
+    "contactName": "Violet Price",
+    "email": "violet.price@axiom.example"
+  },
+  {
+    "supplierName": "Sentinel",
+    "contactName": "Leo Cooper",
+    "email": "leo.cooper@sentinel.example"
+  },
+  {
+    "supplierName": "Vantage",
+    "contactName": "Evelyn Murphy",
+    "email": "evelyn.murphy@vantage.example"
+  }
+]

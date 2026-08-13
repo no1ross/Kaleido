@@ -1,0 +1,474 @@
+Here’s a structured summary of the architectural, functional, and technical decisions made in this conversation. I focused only on decisions and discoveries from this specific thread, not the broader project history.
+
+1. Core requirements
+
+Queryable must support first-class QueryViews
+
+QueryViews are no longer secondary objects hanging off a QueryContext.
+QueryViews became the primary endpoint identity.
+Multiple QueryViews can share the same QueryContext and the same returned view contract.
+Example validated:
+ProductListQueryViewSource
+ProductByCategoryQueryViewSource
+CategoryListQueryViewSource
+all operating over ProductCatalogQuery.
+
+QueryView is not just projection
+
+QueryViews can:
+project data
+filter data
+aggregate data
+shape result sets
+change cardinality
+This was proven by the category navigation view and the product-by-category view.
+The working mental model became:
+QueryContext provides queryable business state.
+Queryable pipeline applies search, filter, sort.
+QueryView shapes the result.
+Count and paging happen after the QueryView.
+
+Queryable request payload should be flexible
+
+QueryRequest was changed so that query is optional.
+This supports views that do not need search, filter, sort, or paging.
+Final TypeScript shape:
+parameters?: TParameters
+query?: QueryBody
+QueryBody contains optional:
+searchText
+filter
+sort
+page
+
+Filtering behavior
+
+Empty filter groups should not be sent to the server.
+If the UI has zero filter conditions, the filtering component should set:
+query.filter = undefined
+This prevents backend validation errors like:
+EMPTY_FILTER_GROUP
+Filter group must contain at least one expression.
+Each UI component only cleans up its own scope.
+Filtering cleans up filters only.
+It should not attempt to clean up the entire query object.
+
+Paging behavior
+
+Search, filter, sort, and category selection should reset paging to the first page.
+The component that causes the query change should own the page reset.
+The parent ProductCatalog should not centrally reset paging for every child component.
+The pager itself should not reset paging when the user is changing pages.
+
+Category navigation behavior
+
+Category selection is query state, not separate parent state.
+The category path is now represented through productQuery.parameters.categoryPath.
+The parent no longer needs to pass selectedCategory separately.
+Category components derive the selected category from query parameters.
+If no category is selected:
+category list should show level 0 categories associated with the current product query.
+If a category is selected:
+product list should be filtered by that category.
+category list should show only relevant child categories from products associated with the selected category.
+categories with no relevant products should not appear.
+
+Process should change state, Queryable should project state
+
+Add-to-cart no longer needs to return cart summary information directly.
+The process step mutates state.
+Queryable views project cart state afterward.
+AddItemToCartResponse can be empty because the process runtime envelope already returns:
+participantProcessId
+available steps
+required step
+messages
+Cart badge state should come from a QueryView, not from the step response.
+
+Request correlation
+
+RequestId is acting as a user-action correlation id.
+It represents one user interaction, not one HTTP request.
+Example:
+user clicks Add To Cart
+process call uses same request id
+cart summary query can use same request id
+This should be generated at the user action boundary, such as button click, not automatically inside every service call if multiple service calls are part of the same user action.
+2. Architectural & component decisions
+
+Validators were split
+
+QueryContextRegistrationValidator owns QueryContext validation only.
+QueryViewRegistrationValidator owns QueryView validation only.
+NamedQuery validation was removed from QueryContext validation because NamedQuery behavior is being replaced by parameterized QueryViews.
+
+QueryContextRegistry was simplified
+
+QueryContextRegistry now owns:
+context type
+source type
+context metadata
+field metadata
+It no longer owns:
+QueryViews
+NamedQueries
+QueryView metadata
+paging metadata
+FindView and GetView behavior was removed from the context registry.
+
+QueryViewRegistry was introduced/cleaned up
+
+QueryViewRegistry owns:
+QueryView registrations
+QueryView metadata
+QueryView type
+QueryContext type
+returned view type
+view parameters type
+pageable metadata
+parameter metadata
+It indexes registrations by:
+QueryView name
+QueryView implementation type
+QueryView discovery had to handle both:
+IQueryViewSource<TQueryView, TView>
+IQueryViewSource<TQueryView, TView, TViewParameters>
+The inherited-interface issue was discovered:
+implementing IQueryViewSource<TQueryView, TView> also exposes the three-generic interface through inheritance.
+reflection code using .Single(...) broke.
+logic was updated to prefer the three-argument interface where needed.
+
+IQueryViewSource contract was clarified
+
+Final conceptual contract:
+TQueryView is the input query shape.
+TView is the returned view contract.
+TViewParameters are optional view-specific parameters.
+The class decorated with [QueryView] is the actual QueryView implementation.
+EmptyQueryViewParameters is used for non-parameterized views.
+
+QueryableService became QueryView-driven
+
+Public query API changed to:
+QueryAsync<TQueryView, TView>()
+TQueryView identifies the endpoint/query view implementation.
+TView preserves typed response results.
+The service uses IQueryViewRegistry to discover the underlying QueryContext type.
+The service dynamically resolves:
+IQueryContextEngine<TQueryContext, TView>
+The QueryContext remains internal execution detail.
+
+QueryContextEngine was fixed for multiple QueryViews
+
+Constructor injection of:
+IQueryViewSource<TQueryContext, TView>
+was removed because multiple QueryViews can implement the same generic contract.
+The engine now resolves the specific QueryView implementation using:
+viewRegistration.QueryViewType
+This fixed the issue where both product-list and product-by-category were executing the same QueryView.
+The engine retained parameter-aware dispatch using:
+viewRegistration.ViewParametersType
+The engine executes the returned IQueryable<TView>, not the QueryView source itself.
+
+Execution pipeline order changed
+
+Old pipeline:
+source query
+search/filter/sort
+count
+page
+view
+New pipeline:
+source query
+search/filter/sort
+QueryView
+count
+page
+execute
+This fixed category count and paging issues.
+Paging had originally been applied to the wrong dataset:
+paging was applied to the base query after the view had already been created.
+fixed by applying paging to the view query.
+
+ASP.NET Core Queryable endpoints were updated
+
+Endpoint generation moved from context-owned views to QueryView registrations.
+NamedQuery endpoints and metadata endpoints were removed.
+Query endpoints now use:
+view.QueryViewType
+view.QuerySourceType
+view.ViewParametersType
+Typed route mappings now call:
+queryable.QueryAsync<TQueryView, TView>()
+Metadata endpoint for QueryContext remains available.
+QueryView routing is now view-centric.
+
+Queryable UI cleanup
+
+Queryable components were updated for optional query body:
+Sorting
+Filtering
+Search
+Pager
+ProductResults
+CategoryList
+ProductCatalog
+Sorting:
+reads query?.sort.
+creates query when applying.
+resets page offset if paging exists.
+Filtering:
+reads query?.filter.
+emits filter = undefined when no filters exist.
+resets page offset if paging exists.
+Search:
+creates query when applying or clearing.
+sets searchText to undefined when empty.
+resets page offset if paging exists.
+Pager:
+safely handles missing query and missing page.
+defaults offset to 0.
+defaults page size to 25.
+writes page state by creating query if needed.
+ProductCatalog:
+simplified to one query update handler.
+child components own page reset behavior.
+CategoryList:
+now emits updated QueryRequest.
+derives selected category from query parameters.
+owns category selection page reset.
+no longer requires parent-managed selectedCategory.
+
+Routing was introduced for e-commerce pages
+
+ECommerce became the route shell.
+Child routes were added:
+/ecommerce/products
+/ecommerce/cart
+ecommerce.html now uses:
+nav links
+router-outlet
+Product catalog is no longer hardcoded into the shell template.
+Absolute router links were preferred:
+/ecommerce/products
+/ecommerce/cart
+
+Shopping cart page skeleton was created
+
+Cart route and page shell were added.
+No cart behavior was added initially.
+Cart work is now being used to validate Process integration.
+
+AddItemToCart step was redesigned
+
+Original design allowed multiple items and required CartId.
+Revised design:
+optional ParticipantProcessId
+single item per step
+ItemId
+ItemType
+Quantity
+The step is repeatable.
+CartId was replaced conceptually by ParticipantProcessId.
+Description and UnitPrice were removed from the request because the system should own product data.
+AddItemToCartResponse became empty because the process runtime result already carries metadata and process state.
+
+Temporary cart storage was introduced
+
+TempCart is static and in-memory.
+It is intentionally temporary until persistence/customer model exists.
+ParticipantProcessId is currently used to identify carts.
+TempCart supports:
+get or create cart
+add item
+update quantity if product already exists
+remove item
+clear cart
+list carts
+State resets when the service restarts.
+
+ShoppingCart QueryContext was introduced
+
+A flat QueryContext was chosen rather than a hierarchy.
+QueryContext represents queryable business state, not a domain aggregate.
+Final direction:
+one row per cart item.
+Includes:
+ShoppingCartId
+optional CustomerId
+ParticipantProcessId
+ProductId
+Name
+Description
+Quantity
+Price
+No filter/search/sort attributes were added initially because cart queries do not need those capabilities yet.
+
+ShoppingCartSummary QueryView was introduced
+
+View name:
+shopping-cart-summary
+It returns:
+ShoppingCartSummaryView
+Parameters:
+ShoppingCartSummaryViewParameters
+includes ParticipantProcessId
+It currently returns:
+total item count
+It projects TempCart state through Queryable.
+
+Process request/response API was clarified
+
+There are two process API paths:
+generic multi-step execution
+strongly typed single-step execution
+Multi-step API works with multiple submitted steps.
+Single-step API returns a typed response for the requested step.
+Runtime remains process-centric and may return multiple step outcomes.
+Typed API response is a projection over the runtime result for the requested step.
+API contracts should be mapped at the transport boundary.
+Runtime should use CLR objects as much as possible.
+Step name should be resolved from the Process registry:
+not from typeof(TProcessStep).Name.
+
+Process execution loop bug was identified and fixed
+
+Repeatable steps stayed available after execution.
+Evaluator treated available steps as next candidates.
+AddItemToCart kept selecting itself and caused infinite execution.
+Decision:
+repeatable means executable in future requests.
+repeatable does not mean re-execute the same submitted candidate in the same request.
+ExecutionProcessor now needs the concept of remaining candidates for the current request.
+Once a candidate executes, that submitted candidate should not be considered again in the same request.
+
+ECommerceStateService was introduced
+
+Shared state across routed pages.
+Holds:
+participantProcessId
+Added cart change notification using Subject<void>.
+ProductResults calls:
+update participant process id
+notify cart changed
+ECommerce shell subscribes to cart changes and calls cart summary QueryView.
+This is intended to update:
+Cart ({totalItems})
+Debugging confirmed:
+add-to-cart succeeds.
+notify method fires.
+subscription receives event.
+loadCartSummary() runs.
+remaining issue is why cart summary network request is not firing or is short-circuiting.
+3. Unresolved questions / next steps
+
+Finish debugging cart summary refresh
+
+Confirm what participantProcessId is inside ECommerce.loadCartSummary().
+Since logs show:
+add-to-cart returned.
+notification fired.
+subscription received.
+loadCartSummary() executed.
+The likely break is inside loadCartSummary().
+Need to verify:
+whether participantProcessId is populated.
+whether the early return is being hit.
+whether QueryableService call is actually reached.
+whether the request is malformed.
+whether shopping-carts/shopping-cart-summary endpoint is correctly routed.
+
+Decide how cart item count should be stored in UI state
+
+Current design queries cart summary after cart changes.
+Alternative would be to store totalItems directly in ECommerceStateService.
+Current direction remains:
+Process mutates state.
+Queryable projects state.
+ECommerce shell displays projected state.
+
+Confirm service instance behavior
+
+If participantProcessId is not available in ECommerce after being set in ProductResults, verify:
+both components import the same ECommerceStateService file.
+no component-level providers array creates a second service instance.
+Current evidence suggests the event flow works, so this may not be the issue, but it remains worth confirming if state looks inconsistent.
+
+Complete single-step Process TypeScript contracts
+
+Replace old ParticipantProcessResult usage in Angular single-step calls.
+Use:
+ProcessExecutionResponse<TResponse>
+ProcessStepSummary
+ProcessMessage
+Keep ParticipantProcessResult only for the generic multi-step endpoint if needed.
+
+Continue cart QueryViews
+
+Current summary view only returns item count.
+Next likely QueryViews:
+shopping-cart-items
+shopping-cart-details
+possibly shopping-cart-checkout
+These should all use ShoppingCartQueryContext.
+
+Wire cart page to Queryable
+
+Cart page currently exists as a skeleton.
+Next step is to query cart items using ParticipantProcessId.
+Cart page should display:
+product name
+description
+quantity
+price
+line total
+Remove and update quantity steps can come later.
+
+Decide whether Step.Response survives long term
+
+Current thinking:
+many step responses may be empty.
+runtime envelope already returns process state.
+Queryable should project business state.
+Keep Step.Response for now.
+Re-evaluate after more Process examples such as checkout or order creation.
+
+Decide whether RequestId should be renamed later
+
+It currently means user-action correlation id.
+It may span multiple HTTP requests.
+It is not the same as ASP.NET request id.
+It may eventually be clearer as:
+CorrelationId
+ActionId
+For now, keep RequestId if that is the framework terminology.
+
+Refine Queryable parameter typing in Angular
+
+Generic QueryRequest<TParameters = undefined> caused TypeScript friction.
+Components that operate over arbitrary query requests may need:
+QueryRequest<any>
+or local casts when reading specific parameter shapes.
+Strongly typed parameter models can be tightened later.
+
+Metadata work remains
+
+Queryable metadata needs to reflect:
+QueryViews
+parameters
+pageable capability
+view-specific behavior
+Process metadata needs to reflect:
+process steps
+repeatability
+input schema
+available step info
+Metadata is still important, but cart/process integration took priority.
+
+Future architectural validation
+
+Orders may become the first scenario that truly requires hierarchical views.
+Current decision:
+keep QueryContexts flat.
+let QueryViews shape hierarchy if needed.
+This mirrors the Product Catalog and Shopping Cart patterns.

@@ -1,0 +1,530 @@
+1. Core Requirements
+Product Catalog & Categories
+
+Product catalog must support:
+
+Search
+Filtering
+Sorting
+Paging
+Category navigation
+
+Category navigation must:
+
+Always remain synchronized with the current product result set
+Respect search/filter/sort criteria
+Ignore paging
+Display counts based on the full matching result set
+Show only categories represented by the current result set
+
+Products may belong to multiple categories.
+
+Category navigation is intended to be:
+
+A browse/navigation mechanism
+Not merely a list of assigned categories
+
+Category counts should represent:
+
+Matching products
+Not paged products
+Shopping Cart
+
+Shopping cart validation goal:
+
+Prove Process can write state
+Prove Queryable can independently read state
+
+Shopping cart UI should:
+
+Never depend on process responses containing updated state
+Refresh itself through Queryable projections
+
+Current proof point:
+
+Add-to-cart updates persisted state
+ShoppingCartSummaryView reflects updated state
+Cart badge updates correctly
+2. Architectural & Component Decisions
+QueryContext / QueryView Separation
+Confirmed Design Direction
+
+QueryContext represents:
+
+Searchable/filterable universe
+Raw source data
+
+QueryViews represent:
+
+Consumer-specific projections
+Aggregations
+Transformations
+Alternative representations
+Proven Examples
+ProductCatalogQueryContext
+        ↓
+
+ProductCatalogView
+
+CategoryCatalogView
+
+
+and
+
+ShoppingCartQueryContext
+        ↓
+
+ShoppingCartSummaryView
+
+ShoppingCartDetailView
+
+Category Hierarchy Architecture
+Original Issue
+
+Category view was returning only:
+
+Laptops
+Mice
+Headsets
+
+
+because products were assigned only to leaf categories.
+
+Final Solution
+Use:
+CategoryPath
+
+
+to build hierarchy.
+
+Roll counts upward.
+
+Example:
+
+Electronics/Computers/Laptops
+
+
+expands to:
+
+Electronics
+Electronics/Computers
+Electronics/Computers/Laptops
+
+
+with aggregated counts.
+
+Important Result
+
+Category hierarchy now derives entirely from:
+
+Current product result set
+
+
+and remains synchronized automatically.
+
+Category View Responsibilities
+
+Moved from:
+
+Product query source
+
+
+to:
+
+CategoryCatalogView
+
+
+Responsibilities:
+
+Join category assignment tables
+Build hierarchy
+Perform category rollup logic
+
+This validated that QueryViews can:
+
+Join additional tables
+Transform data substantially
+Not merely perform projections
+Product Query Context Cleanup
+Removed From Context
+CategoryName
+CategoryPath
+CategoryLevel
+
+
+Reason:
+
+Products may belong to multiple categories.
+
+These fields no longer belong to the product query context.
+
+Added To Context
+FamilyName
+ModelName
+
+
+Reason:
+
+These are intrinsic product attributes.
+
+Product View Cleanup
+
+Product view changed from:
+
+Product + Category Assignment
+
+
+to:
+
+One row per product
+
+
+Result:
+
+Duplicate products removed
+Product count now represents actual products
+Paging became meaningful again
+Angular Ownership Model
+Original Architecture
+ProductCatalog
+    loads products
+
+ProductCatalog
+    loads categories
+
+New Direction
+ProductCatalog
+    owns CatalogState
+
+ProductResults
+    owns ProductCatalogView
+
+CategoryList
+    owns CategoryCatalogView
+
+Key Principle
+
+Components should own their corresponding QueryView.
+
+Catalog State
+
+Established:
+
+export interface CatalogState
+{
+    selectedCategoryPath?: string;
+
+    productQuery: QueryRequest;
+}
+
+
+Purpose:
+
+Shared catalog state
+Single source of truth
+Category navigation state
+Query state
+CategoryList Component
+
+Direction established:
+
+CategoryList should eventually own:
+
+CategoryCatalogView loading
+Category rendering
+Category navigation
+Selected category
+
+
+instead of receiving preloaded categories from ProductCatalog.
+
+ProductResults Component
+
+Moved responsibility for:
+
+loadProducts()
+
+
+from:
+
+ProductCatalog
+
+
+to:
+
+ProductResults
+
+
+Reason:
+
+The component owning a view should own loading that view.
+
+Change Detection Discovery
+
+Reconfirmed longstanding Angular issue:
+
+Symptoms:
+
+First click does not refresh UI
+
+Second click does
+
+
+Resolution:
+
+ChangeDetectorRef.detectChanges()
+
+
+required in several places.
+
+Observation:
+
+Service response was correct
+Event firing was correct
+UI refresh was the failure point
+Product Seeder Rewrite
+Supplier Strategy
+
+Introduced ~50 suppliers.
+
+Family Strategy
+
+Moved from:
+
+Family 1
+Family 2
+
+
+to:
+
+Large family-name pool.
+
+Product Naming
+
+Current pattern:
+
+Supplier
+    ↓
+Family
+        ↓
+Model
+
+
+Example:
+
+Apex Ultra Model 1
+
+Product Fields Added
+FamilyName
+
+ModelName
+
+
+stored on Product.
+
+Category Assignment Strategy
+
+Category assignments moved to separate seeder.
+
+Decisions:
+
+Categories assigned at family level
+Models inherit family assignments
+Prevents random category assignments per model
+
+Assignment strategy:
+
+1 Primary Category
+
+1-3 Additional Categories
+
+
+assigned per family.
+
+Process / Queryable Separation
+
+Major architectural validation.
+
+Confirmed:
+
+Process
+    writes state
+
+Queryable
+    reads state
+
+
+Process does not return updated state.
+
+Queryable owns all projections.
+
+Validated flow:
+
+AddToCart
+        ↓
+
+Process writes state
+
+        ↓
+
+ShoppingCartSummaryView
+
+        ↓
+
+Cart Badge Updates
+
+Shopping Cart Query Context
+
+Introduced:
+
+ShoppingCartQueryContext
+
+
+containing:
+
+ShoppingCartId
+CustomerId
+ParticipantProcessId
+ProductId
+ProductName
+SupplierName
+FamilyName
+ModelName
+Description
+Quantity
+UnitPrice
+
+Purpose:
+
+Acts as the read-side context for all shopping-cart projections.
+
+3. Unresolved Questions / Next Steps
+Category Navigation
+
+Still needs validation:
+
+Hierarchy-aware category filtering
+
+
+Specifically:
+
+Electronics
+
+
+should potentially filter:
+
+Electronics/*
+
+
+subtree products.
+
+The exact navigation behavior remains unresolved.
+
+CategoryList Evolution
+
+Need to complete transition so that:
+
+CategoryList
+
+
+loads its own:
+
+CategoryCatalogView
+
+
+rather than receiving category data from ProductCatalog.
+
+ProductResults Evolution
+
+Need to finish component ownership cleanup:
+
+ProductResults
+
+
+should become the fully autonomous owner of the product view lifecycle.
+
+Shopping Cart Detail View
+
+Next major implementation step.
+
+Need:
+
+QueryView
+ViewSource
+Angular page
+Queryable endpoint
+
+Purpose:
+
+Display cart contents.
+
+Shopping Cart Operations
+
+Future commands:
+
+Update Quantity
+Remove Item
+Clear Cart
+
+
+Expected architecture:
+
+Execute Process Step
+        ↓
+Publish cartChanged
+        ↓
+Reload Queryable Views
+
+Process Validation Still Outstanding
+
+Current validation level:
+
+Basic Process Scenario
+
+
+validated.
+
+Not yet validated:
+
+Multi-step workflows
+State transitions
+Multi-participant processes
+Checkout workflows
+Order lifecycle
+Long-running orchestration
+Queryable Validation Still Outstanding
+
+Current validation level:
+
+Mostly validated
+
+
+Still needs validation around:
+
+Hierarchical filtering/navigation
+More complex category interactions
+Additional real-world projections
+Strategic Conclusion
+
+Most important accomplishment of this conversation:
+
+Products
+    validated QueryView architecture
+
+Shopping Cart
+    began validating Process + Queryable integration
+
+
+without requiring:
+
+Process
+    returning state
+
+
+and while maintaining strict separation between:
+
+Write Side (Process)
+
+and
+
+Read Side (Queryable)

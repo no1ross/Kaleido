@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<Import Project="../../../build/samples.props" />
+	<PropertyGroup>
+		<RootNamespace>Kaleido.Samples.ECommerce.Data</RootNamespace>
+	</PropertyGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\..\..\src\Queryable\Abstractions\Kaleido.Queryable.Abstractions.csproj" />
+	  <ProjectReference Include="..\Data\Kaleido.Samples.ECommerce.Data.csproj" />
+	</ItemGroup>
+
+</Project>

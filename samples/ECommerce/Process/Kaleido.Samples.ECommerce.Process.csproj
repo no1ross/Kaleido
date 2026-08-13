@@ -1,0 +1,8 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<Import Project="../../../build/samples.props" />
+	<ItemGroup>
+	  <ProjectReference Include="..\..\..\src\Process\Abstractions\Kaleido.Process.Abstractions.csproj" />
+	  <ProjectReference Include="..\Data\Kaleido.Samples.ECommerce.Data.csproj" />
+	</ItemGroup>
+
+</Project>

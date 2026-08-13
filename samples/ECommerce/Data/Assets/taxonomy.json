@@ -1,0 +1,136 @@
+﻿{
+  "Electronics": {
+    "Computers": {
+      "Laptops": {},
+      "Desktops": {},
+      "Mini PCs": {},
+      "Tablets": {}
+    },
+    "Monitors": {
+      "Gaming Monitors": {},
+      "Business Monitors": {},
+      "Professional Displays": {}
+    },
+    "Peripherals": {
+      "Keyboards": {},
+      "Mice": {},
+      "Webcams": {},
+      "Headsets": {}
+    },
+    "Networking": {
+      "Routers": {},
+      "Switches": {},
+      "Wireless Access Points": {}
+    },
+    "Storage": {
+      "Internal SSDs": {},
+      "External SSDs": {},
+      "External Hard Drives": {}
+    }
+  },
+
+  "Home & Kitchen": {
+    "Furniture": {
+      "Desks": {},
+      "Office Chairs": {},
+      "Shelving": {}
+    },
+    "Kitchen": {
+      "Cookware": {},
+      "Small Appliances": {},
+      "Storage & Organization": {}
+    },
+    "Home Decor": {
+      "Lighting": {},
+      "Wall Art": {},
+      "Rugs": {}
+    }
+  },
+
+  "Office": {
+    "Office Computers": {},
+    "Office Furniture": {},
+    "Office Supplies": {},
+    "Printing": {},
+    "Collaboration": {}
+  },
+
+  "Books & Media": {
+    "Fiction": {},
+    "Technology": {},
+    "Business": {},
+    "History": {},
+    "Education": {}
+  },
+
+  "Clothing & Apparel": {
+    "Men's Clothing": {
+      "Shirts": {},
+      "Pants": {},
+      "Outerwear": {},
+      "Shoes": {}
+    },
+    "Women's Clothing": {
+      "Shirts": {},
+      "Pants": {},
+      "Outerwear": {},
+      "Shoes": {}
+    },
+    "Accessories": {
+      "Bags": {},
+      "Watches": {},
+      "Belts": {}
+    }
+  },
+
+  "Sports & Outdoors": {
+    "Fitness Equipment": {
+      "Cardio Equipment": {},
+      "Strength Training": {},
+      "Yoga & Mobility": {}
+    },
+    "Camping": {
+      "Tents": {},
+      "Sleeping Bags": {},
+      "Camping Furniture": {}
+    },
+    "Cycling": {
+      "Road Bikes": {},
+      "Mountain Bikes": {},
+      "Cycling Accessories": {}
+    },
+    "Outdoor Recreation": {
+      "Hiking": {},
+      "Fishing": {},
+      "Water Sports": {}
+    }
+  },
+
+  "Automotive": {
+    "Car Electronics": {},
+    "Maintenance": {},
+    "Interior Accessories": {},
+    "Exterior Accessories": {}
+  },
+
+  "Health & Beauty": {
+    "Personal Care": {},
+    "Wellness": {},
+    "Fitness Accessories": {},
+    "Beauty Products": {}
+  },
+
+  "Toys & Games": {
+    "Board Games": {},
+    "Educational Toys": {},
+    "Building Sets": {},
+    "Collectibles": {}
+  },
+
+  "Pet Supplies": {
+    "Dog Supplies": {},
+    "Cat Supplies": {},
+    "Aquariums": {},
+    "Small Animals": {}
+  }
+}

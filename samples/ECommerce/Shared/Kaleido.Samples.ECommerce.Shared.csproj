@@ -1,0 +1,6 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<Import Project="../../../build/samples.props" />
+	<PropertyGroup>
+		<RootNamespace>Kaleido.Samples.ECommerce</RootNamespace>
+	</PropertyGroup>
+</Project>

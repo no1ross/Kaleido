@@ -1,12 +1,13 @@
 using Kaleido;
-using Kaleido.Queryable;
 using Kaleido.Process;
 using Kaleido.Process.AspNetCore;
+using Kaleido.Queryable;
+using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.ECommerce.Data;
-using Kaleido.Samples.ECommerce.Steps;
+using Kaleido.Samples.ECommerce.Data.QueryContexts;
+using Kaleido.Samples.ECommerce.Process.Steps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
-using Kaleido.Queryable.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(AddItemToCartStep).Assembly)
+    .AddAssembly(typeof(ProductCatalogQueryContext).Assembly)
     .AddParticipant()
         .AddParticipantAspNetCore()
     .AddQueryable()
