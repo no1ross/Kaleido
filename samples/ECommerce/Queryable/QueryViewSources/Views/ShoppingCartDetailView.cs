@@ -8,6 +8,12 @@ public sealed record ShoppingCartDetailView
         init;
     }
 
+    public Guid ShoppingCartItemId
+    {
+        get;
+        init;
+    }
+
     public Guid ProductId
     {
         get;

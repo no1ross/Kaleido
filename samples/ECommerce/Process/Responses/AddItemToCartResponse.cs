@@ -1,5 +1,5 @@
-﻿namespace Kaleido.Samples.ECommerce.Process.Responses;
+﻿//namespace Kaleido.Samples.ECommerce.Process.Responses;
 
-public sealed record AddItemToCartResponse
-{
-}
+//public sealed record AddItemToCartResponse
+//{
+//}

@@ -103,7 +103,7 @@ public sealed class AddItemToCartHandler(
                 UnitPrice = product.Price
             };
 
-            shoppingCart.Items.Add(cartItem);
+            dbContext.ShoppingCartItems.Add(cartItem);
         }
         else
         {

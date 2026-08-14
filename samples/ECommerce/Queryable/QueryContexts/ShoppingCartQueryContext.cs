@@ -5,13 +5,14 @@ namespace Kaleido.Samples.ECommerce.Data.QueryContexts;
 
 [QueryContext(
     Name = "shopping-carts",
-    DisplayName = "Shopping Carts",
+    DisplayName = "Shopping Cart",
     Version = "1.0.0",
     Source = "E-Commerce Catalog")]
 public sealed class ShoppingCartQueryContext
 {
     [Key]
     public Guid ShoppingCartId { get; init; }
+    public Guid ShoppingCartItemId { get; init; }
     public Guid? CustomerId { get; init; } = null;
     public Guid? ParticipantProcessId { get; set; }
     public Guid ProductId { get; init; }

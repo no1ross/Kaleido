@@ -1,5 +1,80 @@
-<h2>Shopping Cart</h2>
+@if (errorMessage)
+{
+    <div class="error">
+        {{ errorMessage }}
+    </div>
+}
 
-<p>
-    Shopping cart functionality coming soon.
-</p>
+<div class="shopping-cart">
+
+    <h1>Shopping Cart</h1>
+
+    @for (
+        item of items;
+        track item.shoppingCartItemId)
+    {
+        <div class="cart-item">
+
+            <div class="cart-item-details">
+
+                <h3>
+                    {{ item.familyName }}
+                    {{ item.modelName }}
+                </h3>
+
+                <div class="supplier">
+                    Supplier: {{ item.supplierName }}
+                </div>
+
+                <div class="description">
+                    {{ item.description }}
+                </div>
+
+            </div>
+
+            <div class="cart-item-actions">
+
+                <div class="quantity-editor">
+
+                    <button
+                        (click)="decreaseQuantity(item)">
+                        -
+                    </button>
+
+                    <span>
+                        {{ item.quantity }}
+                    </span>
+
+                    <button
+                        (click)="increaseQuantity(item)">
+                        +
+                    </button>
+
+                </div>
+
+                <div class="pricing">
+
+                    <div>
+                        Unit Price:
+                        {{ item.unitPrice | currency }}
+                    </div>
+
+                    <div>
+                        Total:
+                        {{ item.extendedPrice | currency }}
+                    </div>
+
+                </div>
+
+                <button
+                    class="remove"
+                    (click)="removeItem(item)">
+                    Remove
+                </button>
+
+            </div>
+
+        </div>
+    }
+
+</div>

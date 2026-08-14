@@ -15,17 +15,17 @@ internal sealed class ShoppingCartSummaryQueryViewSource
     : IQueryViewSource<
         ShoppingCartQueryContext,
         ShoppingCartSummaryView,
-        ShoppingCartSummaryViewParameters>
+        ShoppingCartViewParameters>
 {
     public IQueryable<ShoppingCartSummaryView> CreateView(
         IQueryable<ShoppingCartQueryContext> query,
         QueryExecutionContext executionContext)
     {
         var parameters =
-            executionContext.TryGetViewParameters<ShoppingCartSummaryViewParameters>();
+            executionContext.TryGetViewParameters<ShoppingCartViewParameters>();
 
         if (parameters is null)
-            parameters = new ShoppingCartSummaryViewParameters();
+            parameters = new ShoppingCartViewParameters();
 
         if (parameters.ParticipantProcessId is null &&
             parameters.CustomerId is null)

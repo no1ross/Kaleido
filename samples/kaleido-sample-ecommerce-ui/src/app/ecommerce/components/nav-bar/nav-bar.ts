@@ -1,19 +1,24 @@
 import { Component, inject, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 
 import { Subscription } from 'rxjs';
-
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { QueryableService } from '../../../kaleido/services/queryable-service';
 import { QueryRequest } from '../../../kaleido/models/queryable-request';
 
 import { ShoppingCartContextStateService } from '../../services/shoppingcart-context-state-service';
 import { ECommerceStateService } from '../../services/ecommerce-state-service';
+import { ShoppingCartSummaryView, ShoppingCartViewParameters } from '../../models/shopping-cart-models';
 
 @Component({
-    selector: 'ecommerce-cart-summary',
-    templateUrl: './shopping-cart-summary.html',
-    styleUrl: './shopping-cart-summary.scss'
+    selector: 'ecommerce-nav-bar',
+    imports: [
+        RouterLink,
+        RouterLinkActive
+    ],
+    templateUrl: './nav-bar.html',
+    styleUrl: './nav-bar.scss'
 })
-export class ShoppingCartSummary
+export class NavBar
     implements OnInit, OnDestroy {
 
     totalItems = 0;
@@ -52,7 +57,7 @@ export class ShoppingCartSummary
     loadCartSummary(): void {
 
         const request = this.cartState.state.request as
-            QueryRequest<ShoppingCartSummaryViewParameters>;
+            QueryRequest<ShoppingCartViewParameters>;
 
         request.parameters ??= {};
 
@@ -62,7 +67,7 @@ export class ShoppingCartSummary
         this.queryableService
             .query<
                 ShoppingCartSummaryView,
-                ShoppingCartSummaryViewParameters>(
+                ShoppingCartViewParameters>(
                     'shopping-carts',
                     'shopping-cart-summary',
                     request)
@@ -87,22 +92,4 @@ export class ShoppingCartSummary
                 }
             });
     }
-}
-
-export interface ShoppingCartSummaryView {
-
-    participantProcessId?: string;
-
-    shoppingCartId?: string;
-
-    itemCount: number;
-
-    totalPrice: number;
-}
-
-export interface ShoppingCartSummaryViewParameters {
-
-    participantProcessId?: string;
-
-    customerId?: string;
 }
