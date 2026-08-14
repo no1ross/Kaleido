@@ -1,13 +1,14 @@
 import {
   Component,
-  EventEmitter,
-  Input,
-  Output
+  inject,
+  ChangeDetectorRef,
+  OnInit
 } from '@angular/core';
-
+import { Subscription } from 'rxjs';
 import {
-  QueryRequest
-} from '../models/queryable-request';
+  QueryExecutionStateService, QueryResultStateService
+} from '../services/query-state-service';
+
 
 @Component({
   selector: 'kaleido-queryable-pager',
@@ -16,20 +17,37 @@ import {
   styleUrl: './queryable-pager.scss',
 })
 
-export class QueryablePager {
+export class QueryablePager implements OnInit {
 
-  @Input({ required: true })
-  queryRequest!: QueryRequest;
-
-  @Input()
   totalCount = 0;
 
-  @Output()
-  queryPageChanged =
-    new EventEmitter<QueryRequest>();
+  private readonly queryState =
+    inject(QueryExecutionStateService);
+    
+  private readonly resultState =
+    inject(QueryResultStateService);
+
+  private resultSubscription?: Subscription;
+
+  private readonly changeDetector =
+    inject(ChangeDetectorRef);
+
+    ngOnInit(): void {
+      this.resultSubscription =
+        this.resultState.changed
+            .subscribe(() => {
+                this.totalCount = this.resultState.state.totalCount;
+
+                this.changeDetector.detectChanges();
+            });
+  }
+
+  ngOnDestroy(): void {
+      this.resultSubscription?.unsubscribe();
+  }
 
   private get page() {
-      return this.queryRequest.query?.page;
+      return this.queryState.state.request.query?.page;
   }
 
   get offset(): number {
@@ -115,13 +133,27 @@ export class QueryablePager {
 
   nextPage(): void {
 
-    if (!this.canGoForward) {
-      return;
-    }
+      console.log('NEXT PAGE');
 
-    this.emitPageChanged(
-      this.offset + this.pageSize,
-      this.pageSize);
+      console.log(
+          'currentPage',
+          this.currentPage);
+
+      console.log(
+          'totalPages',
+          this.totalPages);
+
+      console.log(
+          'canGoForward',
+          this.canGoForward);
+
+      if (!this.canGoForward) {
+          return;
+      }
+
+      this.emitPageChanged(
+          this.offset + this.pageSize,
+          this.pageSize);
   }
 
   lastPage(): void {
@@ -162,19 +194,22 @@ export class QueryablePager {
       offset: number,
       pageSize: number): void {
 
-      const queryRequest =
-          structuredClone(
-              this.queryRequest);
+      console.log(
+          'SETTING PAGE',
+          offset,
+          pageSize);
 
-      queryRequest.query ??= {};
+      this.queryState.state.request.query ??= {};
 
-      queryRequest.query.page =
-      {
+      this.queryState.state.request.query.page = {
           offset,
           size: pageSize
       };
 
-      this.queryPageChanged.emit(
-          queryRequest);
+      console.log(
+          'NEW PAGE STATE',
+          this.queryState.state.request.query.page);
+
+      this.queryState.notifyChanged();
   }
 }

@@ -878,7 +878,7 @@ public sealed class ExecutionProcessorTests
             outcome.Decision);
 
         Assert.Contains(
-            outcome.Messages,
+            outcome.RuntimeMessages,
             x => x.Code == StepProcessingMessageCode.FrameworkException);
 
         stateUpdater.Verify(
@@ -966,7 +966,7 @@ public sealed class ExecutionProcessorTests
             outcome.Decision);
 
         Assert.Contains(
-            outcome.Messages,
+            outcome.RuntimeMessages,
             x => x.Code == StepProcessingMessageCode.ExecutionCancelled);
 
         invoker.Verify(
@@ -1051,7 +1051,7 @@ public sealed class ExecutionProcessorTests
             outcome.Decision);
 
         Assert.Contains(
-            outcome.Messages,
+            outcome.RuntimeMessages,
             x => x.Code == StepProcessingMessageCode.FrameworkException);
     }
 
@@ -1114,7 +1114,7 @@ public sealed class ExecutionProcessorTests
             outcome.Decision);
 
         Assert.Contains(
-            outcome.Messages,
+            outcome.RuntimeMessages,
             x => x.Code == StepProcessingMessageCode.FrameworkException);
     }
 
@@ -1174,7 +1174,7 @@ public sealed class ExecutionProcessorTests
             outcome.Decision);
 
         Assert.Contains(
-            outcome.Messages,
+            outcome.RuntimeMessages,
             x => x.Code == StepProcessingMessageCode.FrameworkException);
     }
 

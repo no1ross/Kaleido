@@ -69,7 +69,7 @@ public sealed class RuntimeRequiredStepTests
 
         Assert.Equal(ProcessExecutionState.ProcessViolation, result.State);
         Assert.Contains(
-            result.Steps.SelectMany(x => x.Messages),
+            result.Steps.SelectMany(x => x.RuntimeMessages),
             x => x.Code == StepProcessingMessageCode.RequiredStepNotAllowed ||
                  x.Code == StepProcessingMessageCode.InvalidRequiredStep);
     }

@@ -11,7 +11,11 @@ public interface IProcessExecutionService
         ExecuteProcessRequest request,
         CancellationToken cancellationToken);
 
-    Task<ProcessExecutionResponse<TResponse>> ExecuteAsync<TProcessStep, TResponse>(
+    Task<StepExecutionResponse<TResponse>> ExecuteAsync<TProcessStep, TResponse>(
+        ExecuteStepRequest<TProcessStep> request,
+        CancellationToken cancellationToken);
+
+    Task<StepExecutionResponse> ExecuteAsync<TProcessStep>(
         ExecuteStepRequest<TProcessStep> request,
         CancellationToken cancellationToken);
 }
@@ -35,7 +39,7 @@ public class ProcessExecutionService : IProcessExecutionService
     {
         throw new NotImplementedException();
     }
-    public async Task<ProcessExecutionResponse<TResponse>> ExecuteAsync<TProcessStep, TResponse>(
+    public async Task<StepExecutionResponse<TResponse>> ExecuteAsync<TProcessStep, TResponse>(
         ExecuteStepRequest<TProcessStep> request,
         CancellationToken cancellationToken)
     {
@@ -57,7 +61,33 @@ public class ProcessExecutionService : IProcessExecutionService
                     stepName,
                     StringComparison.OrdinalIgnoreCase));
 
-        return ProcessExecutionResponse<TResponse>.Create(
+        return StepExecutionResponse<TResponse>.Create(
+            processResult,
+            stepResult,
+            _registry);
+    }
+
+    public async Task<StepExecutionResponse> ExecuteAsync<TProcessStep>(ExecuteStepRequest<TProcessStep> request, CancellationToken cancellationToken)
+    {
+        var stepName = _registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
+
+        var processRequest =
+            request.ToProcessRequest(
+                stepName: stepName,
+                requestId: request.RequestId);
+
+        var processResult =
+            await _runtime.ExecuteAsync(
+                processRequest,
+                cancellationToken);
+
+        var stepResult =
+            processResult.Steps.Single(x =>
+                x.StepName.Equals(
+                    stepName,
+                    StringComparison.OrdinalIgnoreCase));
+
+        return StepExecutionResponse.Create(
             processResult,
             stepResult,
             _registry);

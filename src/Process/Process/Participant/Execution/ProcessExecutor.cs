@@ -180,15 +180,14 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                         Decision =
                             ExecutionDecisionType.ProcessViolation,
 
-                        Messages =
+                        RuntimeMessages =
                         [
                             StepProcessingMessage.Error(
                             StepProcessingMessageCode.ExecutionCancelled,
                             "Step execution was cancelled.")
                         ],
 
-                        Response =
-                            new ProcessStepEmptyResponse()
+                        Response = null
                     });
 
                 break;
@@ -216,15 +215,14 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                         Decision =
                             ExecutionDecisionType.ProcessViolation,
 
-                        Messages =
+                        RuntimeMessages =
                         [
                             StepProcessingMessage.Error(
                             StepProcessingMessageCode.FrameworkException,
                             $"An unexpected exception occurred while executing '{candidate.StepName}'. {exception.Message}")
                         ],
 
-                        Response =
-                            new ProcessStepEmptyResponse()
+                        Response = null
                     });
 
                 break;
@@ -269,19 +267,6 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(decision);
 
-        var messages =
-            result
-                .Messages
-                .Select(
-                    ToStepProcessingMessage)
-                .ToList();
-
-        if (decision.Messages is not null)
-        {
-            messages.AddRange(
-                decision.Messages);
-        }
-
         return new ProcessExecutionOutcome
         {
             StepName =
@@ -294,8 +279,11 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
             Decision =
                 decision.Type,
 
-            Messages =
-                messages,
+            RuntimeMessages =
+                decision.Messages,
+
+            BusinessMessages = result.Messages,
+
             Response = result.Response
         };
     }

@@ -3,8 +3,15 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { ProcessExecutionResponse, ParticipantProcessResult } from '../models/participant-process-result';
-import { ExecuteStepRequest } from '../models/participant-process-request';
+import { ExecuteStepRequest } from '../../ecommerce/models/participant-process-request';
 import { RequestContextService } from './request-context-service';
+
+import { ProcessMessage } from '../models/participant-process-result';
+import {
+    catchError,
+    map,
+    throwError
+} from 'rxjs';
 
 @Injectable({
     providedIn: 'root'
@@ -28,9 +35,39 @@ export class ProcessService {
                 this.requestContext.currentRequestId
         };
 
+        this.logRequest(stepName, request);
+
         return this.http.post<ProcessExecutionResponse<TResponse>>(
             `https://localhost:7251/kaleido/processes/steps/${stepName}`,
-            processRequest);
+            processRequest)
+                .pipe(
+                    map(result => {
+
+                        this.logStepOutcome(result);
+
+                        if (
+                            result.outcome === 'Failed' ||
+                            result.outcome === 'Blocked' ||
+                            result.outcome === 'Cancelled')
+                        {
+                            throw {
+                                outcome: result.outcome,
+                                messages: result.messages
+                            } satisfies ProcessErrorResponse;
+                        }
+
+                        return result;
+                    }),
+                    catchError(error => {
+                        if (!ProcessErrorResponse.is(error)) {
+                            console.error(
+                                'Unexpected process error',
+                                error);                        
+                        }
+
+                        return throwError(
+                            () => error);
+                    }));
     }
 
     getProcess(
@@ -39,5 +76,118 @@ export class ProcessService {
 
         return this.http.get<ParticipantProcessResult>(
             `https://localhost:7251/kaleido/processes/${participantProcessId}`);
+    }
+
+    private logStepOutcome(
+        result: ProcessExecutionResponse<any>): void {
+
+        const title =
+            `[PROCESS] ${result.stepName} (${result.outcome})`;
+
+        switch (result.outcome) {
+            case 'Completed':
+                console.group(title);
+                break;
+
+            case 'Pending':
+                console.group(title);
+                break;
+
+            case 'Blocked':
+                console.group(title);
+                break;
+
+            case 'Cancelled':
+                console.group(title);
+                break;
+
+            case 'Failed':
+                console.group(title);
+                break;
+
+            default:
+                console.group(title);
+                break;
+        }
+
+        console.log(
+            'Participant Process',
+            result.participantProcessId);
+
+        console.log(
+            'Outcome',
+            result.outcome);
+
+        if (result.requiredStep) {
+
+            console.log(
+                'Required Step',
+                result.requiredStep);
+        }
+
+        if (result.availableSteps.length > 0) {
+
+            console.log(
+                'Available Steps',
+                result.availableSteps);
+        }
+
+        for (const message of result.messages) {
+
+            switch (message.type) {
+
+                case 'Information':
+                    console.info(
+                        `[${message.code}] ${message.message}`);
+                    break;
+
+                case 'Warning':
+                    console.warn(
+                        `[${message.code}] ${message.message}`);
+                    break;
+
+                case 'Error':
+                    console.error(
+                        `[${message.code}] ${message.message}`);
+                    break;
+
+                default:
+                    console.log(
+                        `[${message.code}] ${message.message}`);
+                    break;
+            }
+        }
+
+        //console.log('Response', result);
+
+        console.groupEnd();
+    }
+
+    private logRequest(
+        operation: string,
+        request: unknown): void {
+
+        console.group(`[PROCESS] ${operation}`);
+
+        console.log('Request', request);
+
+        console.groupEnd();
+    }
+}
+
+export class ProcessErrorResponse {
+
+    outcome!: string;
+
+    messages!: ProcessMessage[];
+
+    static is(
+        value: unknown)
+        : value is ProcessErrorResponse {
+
+        return typeof value === 'object'
+            && value !== null
+            && 'outcome' in value
+            && 'messages' in value;
     }
 }

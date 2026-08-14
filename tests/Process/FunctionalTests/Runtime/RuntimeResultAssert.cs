@@ -32,7 +32,7 @@ internal static class RuntimeResultAssert
         StepProcessingMessageCode code)
     {
         Assert.Contains(
-            result.Steps.SelectMany(x => x.Messages),
+            result.Steps.SelectMany(x => x.RuntimeMessages),
             x => x.Code == code);
     }
 
@@ -41,7 +41,7 @@ internal static class RuntimeResultAssert
         StepProcessingMessageCode code)
     {
         Assert.Contains(
-            result.Steps.SelectMany(x => x.Messages),
+            result.Steps.SelectMany(x => x.RuntimeMessages),
             x => x.Type == MessageType.Error &&
                  x.Code == code);
     }

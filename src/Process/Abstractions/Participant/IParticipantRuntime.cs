@@ -96,7 +96,7 @@ public sealed record ParticipantStepResult
         init;
     }
 
-    public required object Response
+    public object? Response
     {
         get;
         init;
@@ -114,12 +114,25 @@ public sealed record ParticipantStepResult
         init;
     }
 
-    public IReadOnlyCollection<StepProcessingMessage> Messages
+    public StepExecutionOutcome? Outcome
+    {
+        get;
+        init;
+    }
+
+    public IReadOnlyCollection<StepProcessingMessage> RuntimeMessages
     {
         get;
         init;
     }
         = [];
+
+    public IReadOnlyCollection<ProcessMessage> BusinessMessages
+    {
+        get;
+        init;
+    }
+= [];
 }
 
 

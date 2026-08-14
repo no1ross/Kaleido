@@ -210,19 +210,30 @@ public static class ProcessEndpointRouteBuilderExtensions
         ProcessStepRegistration step,
         string route)
     {
-        var method =
+        if (step.StepResultType is null)
+        {
+            typeof(ProcessEndpointRouteBuilderExtensions)
+                .GetMethod(
+                    nameof(MapUntypedStepExecutionEndpoint),
+                    BindingFlags.NonPublic | BindingFlags.Static)!
+                .MakeGenericMethod(step.StepType)
+                .Invoke(
+                    null,
+                    [endpoints, route, step]);
+        }
+        else
+        {
             typeof(ProcessEndpointRouteBuilderExtensions)
                 .GetMethod(
                     nameof(MapTypedStepExecutionEndpoint),
-                    BindingFlags.NonPublic | BindingFlags.Static)!;
-
-        method
-            .MakeGenericMethod(
-                step.StepType,
-                step.StepResultType)
-            .Invoke(
-                null,
-                [endpoints, route, step]);
+                    BindingFlags.NonPublic | BindingFlags.Static)!
+                .MakeGenericMethod(
+                    step.StepType,
+                    step.StepResultType)
+                .Invoke(
+                    null,
+                    [endpoints, route, step]);
+        }
     }
 
     private static void MapTypedStepExecutionEndpoint<TProcessStep, TResponse>(
@@ -261,6 +272,45 @@ public static class ProcessEndpointRouteBuilderExtensions
                 "and currently available next steps.")
             .Accepts<ExecuteStepRequest<TProcessStep>>(
                 "application/json")
-            .Produces<ProcessExecutionResponse<TResponse>>();
+            .Produces<StepExecutionResponse<TResponse>>();
+    }
+
+    private static void MapUntypedStepExecutionEndpoint<TProcessStep>(
+        IEndpointRouteBuilder endpoints,
+        string route,
+        ProcessStepRegistration step)
+    {
+        var stepName =
+            step.Metadata.Name.ToLowerInvariant();
+
+        endpoints.MapPost(
+                route,
+                async (
+                    ExecuteStepRequest<TProcessStep> request,
+                    IProcessExecutionService execution,
+                    CancellationToken cancellationToken) =>
+                {
+                    var result =
+                        await execution.ExecuteAsync<TProcessStep>(
+                            request,
+                            cancellationToken);
+
+                    return Results.Ok(result);
+                })
+            .WithName(
+                ProcessEndpointNames.StepExecutionEndpointName(
+                    stepName))
+            .WithTags(step.Metadata.DisplayName)
+            .WithSummary(
+                $"Execute {step.Metadata.DisplayName}.")
+            .WithDescription(
+                $"Executes the '{step.Metadata.DisplayName}' process step. " +
+                "If the request does not include a participant process id, a new participant process is created. " +
+                "If the request includes a participant process id, the existing participant process is continued. " +
+                "The response includes the step result, consumer-facing messages, required next step if one exists, " +
+                "and currently available next steps.")
+            .Accepts<ExecuteStepRequest<TProcessStep>>(
+                "application/json")
+            .Produces<StepExecutionResponse>();
     }
 }

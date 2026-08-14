@@ -97,6 +97,12 @@ internal sealed class QueryViewRegistry
                 ? queryViewInterface.GenericTypeArguments[2]
                 : typeof(EmptyQueryViewParameters);
 
+        var pageable =
+            BuildPageable(
+                queryViewType,
+                contextType,
+                queryViewAttribute);
+
         return new QueryViewRegistration(
             queryViewType,
             sourceType,
@@ -109,7 +115,7 @@ internal sealed class QueryViewRegistry
                 queryViewAttribute.Description
                     ?? queryViewAttribute.DisplayName
                     ?? queryViewAttribute.Name,
-                BuildPageable(queryViewType),
+                pageable,
                 BuildParameters(parametersType)));
     }
 
@@ -136,7 +142,9 @@ internal sealed class QueryViewRegistry
     }
 
     private static PageableMetadata? BuildPageable(
-        Type queryViewType)
+        Type queryViewType,
+        Type contextType,
+        QueryViewAttribute attribute)
     {
         var pageable =
             queryViewType.GetCustomAttribute<PageableAttribute>();
@@ -146,10 +154,45 @@ internal sealed class QueryViewRegistry
             return null;
         }
 
+        ValidateDefaultSort(
+            contextType,
+            attribute);
+
         return new PageableMetadata(
             pageable.DefaultSize,
             pageable.MaxSize);
     }
+
+    private static void ValidateDefaultSort(
+        Type contextType,
+        QueryViewAttribute attribute)
+    {
+        if (string.IsNullOrWhiteSpace(attribute.DefaultSortField))
+        {
+            throw new InvalidOperationException(
+                $"Query view '{attribute.Name}' is pageable and must define a DefaultSortField.");
+        }
+
+        var property =
+            contextType.GetProperty(
+                attribute.DefaultSortField,
+                BindingFlags.Public |
+                BindingFlags.Instance|
+                BindingFlags.IgnoreCase);
+
+        if (property is null)
+        {
+            throw new InvalidOperationException(
+                $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' which does not exist on query context '{contextType.Name}'.");
+        }
+
+        if (property.GetCustomAttribute<SortableAttribute>() is null)
+        {
+            throw new InvalidOperationException(
+                $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' but the field is not marked as sortable.");
+        }
+    }
+
 
     private static Type GetQueryViewInterface(
         Type queryViewType)

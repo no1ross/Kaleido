@@ -360,7 +360,7 @@ public sealed class ParticipantRuntimeTests
                 Decision = ExecutionDecisionType.Complete,
                 Response =
                     new TestResponse(),
-                Messages =
+                RuntimeMessages =
                 [
                     StepProcessingMessage.Information(
                         StepProcessingMessageCode.ProcessMessage,
@@ -446,7 +446,7 @@ public sealed class ParticipantRuntimeTests
 
         Assert.Equal(
             2,
-            step.Messages.Count);
+            step.RuntimeMessages.Count);
     }
 
     [Fact]

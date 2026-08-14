@@ -1,36 +1,121 @@
-﻿using Kaleido.Process.Participant.Execution;
+﻿using Kaleido.Process.Participant;
+using Kaleido.Process.Participant.Execution;
 using Kaleido.Samples.ECommerce.Data;
 using Kaleido.Samples.ECommerce.Data.Entities;
 using Kaleido.Samples.ECommerce.Process.Responses;
 using Kaleido.Samples.ECommerce.Process.Steps;
+using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.ECommerce.Process.Handlers;
 
 public sealed class AddItemToCartHandler(
     ECommerceDbContext dbContext)
-    : IProcessStepHandler<AddItemToCartStep, AddItemToCartResponse>
+    : IProcessStepHandler<AddItemToCartStep>
 {
-    public async Task<ProcessStepHandlerResult<AddItemToCartResponse>> ExecuteAsync(
+    public async Task<ProcessStepHandlerResult> ExecuteAsync(
         AddItemToCartStep step,
         ProcessStepContext context,
         CancellationToken cancellationToken = default)
     {
-        //var shoppingCartId = step.CartId is null ? Guid.NewGuid() : Guid.Parse(step.CartId);
+        var messages = new List<ProcessMessage>();
 
-        //for now we will use participant id
-
-        var cartItem = new ShoppingCartItem
+        if (!Guid.TryParse(
+                step.ItemId,
+                out var productId))
         {
-            ProductId = Guid.Parse(step.ItemId),
-            Quantity = step.Quantity,
-        };
+            return ProcessStepHandlerResult.Failure(
+                ShoppingCartMessages.ProductNotFound(
+                    step.ItemId));
+        }
 
-        TempCart.AddItemToCart(context.ParticipantProcessId, cartItem);
+        var product = await dbContext.Products
+            .FirstOrDefaultAsync(
+                x => x.ProductId == productId,
+                cancellationToken);
 
-        var cart = TempCart.GetCart(context.ParticipantProcessId);
+        if (product is null)
+        {
+            return ProcessStepHandlerResult.Failure(
+                ShoppingCartMessages.ProductNotFound(
+                    step.ItemId));
+        }
 
-        var response = new AddItemToCartResponse();
+        var shoppingCart = await dbContext.ShoppingCarts
+            .Include(x => x.Items)
+            .FirstOrDefaultAsync(
+                x => x.ParticipantProcessId ==
+                     context.ParticipantProcessId,
+                cancellationToken);
 
-        return ProcessStepHandlerResult<AddItemToCartResponse>.Success(response);
+        if (shoppingCart is null &&
+            step.CustomerId.HasValue)
+        {
+            var activeCart = await dbContext.ShoppingCarts
+                .Include(x => x.Items)
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.CustomerId == step.CustomerId.Value &&
+                        x.IsActive,
+                    cancellationToken);
+
+            if (activeCart is not null)
+            {
+                if (activeCart.ParticipantProcessId !=
+                    context.ParticipantProcessId)
+                {
+                    return ProcessStepHandlerResult.Failure(
+                        ShoppingCartMessages.ActiveCartProcessMismatch(
+                            activeCart.ParticipantProcessId,
+                            context.ParticipantProcessId));
+                }
+
+                shoppingCart = activeCart;
+            }
+        }
+
+        if (shoppingCart is null)
+        {
+            shoppingCart = new ShoppingCart
+            {
+                ShoppingCartId = Guid.NewGuid(),
+                CustomerId = step.CustomerId,
+                ParticipantProcessId = context.ParticipantProcessId,
+                IsActive = true,
+                CreatedUtc = DateTime.UtcNow,
+                UpdatedUtc = DateTime.UtcNow
+            };
+
+            dbContext.ShoppingCarts.Add(shoppingCart);
+        }
+
+        var cartItem = shoppingCart.Items
+            .FirstOrDefault(
+                x => x.ProductId == productId);
+
+        if (cartItem is null)
+        {
+            cartItem = new ShoppingCartItem
+            {
+                ShoppingCartItemId = Guid.NewGuid(),
+                ShoppingCartId = shoppingCart.ShoppingCartId,
+                ProductId = product.ProductId,
+                Quantity = step.Quantity,
+                UnitPrice = product.Price
+            };
+
+            shoppingCart.Items.Add(cartItem);
+        }
+        else
+        {
+            cartItem.Quantity += step.Quantity;
+        }
+
+        shoppingCart.UpdatedUtc = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(
+            cancellationToken);
+
+        return ProcessStepHandlerResult.Success(
+            ShoppingCartMessages.ItemAddedToCart(product.Name, step.Quantity));
     }
 }

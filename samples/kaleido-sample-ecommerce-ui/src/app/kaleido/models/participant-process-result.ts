@@ -26,6 +26,8 @@ export interface ProcessExecutionResponse<TResponse> {
 
     stepName: string;
 
+    outcome: StepExecutionOutcome;
+
     result: TResponse;
 
     requiredStep?: string;
@@ -54,9 +56,16 @@ export interface ProcessStepSummary {
 
 export interface ProcessMessage {
 
-    severity: number;
+    type: string;
 
     message: string;
 
-    code: number;
+    code: string;
 }
+
+export type StepExecutionOutcome =
+    'Pending'
+    | 'Completed'
+    | 'Failed'
+    | 'Blocked'
+    | 'Cancelled';

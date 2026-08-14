@@ -1,17 +1,16 @@
 import {
   Component,
-  Input,
-  Output,
-  EventEmitter,
   inject,
-  ChangeDetectorRef
+  ChangeDetectorRef,
+  OnInit,
+  OnDestroy
 } from '@angular/core';
-
-import { CatalogState } from '../../models/catalog-state';
+import { Subscription } from 'rxjs';
 import { CategoryCatalogView } from '../../models/category-catalog-view';
 import { QueryableService } from '../../../kaleido/services/queryable-service';
-import { QueryRequest } from '../../../kaleido/models/queryable-request';
 import { ProductsByCategoryParameters } from '../../models/product-catalog-view';
+
+import { ProductContextStateService } from '../../services/product-context-state-service';
 
 @Component({
   selector: 'ecommerce-category-list',
@@ -19,46 +18,48 @@ import { ProductsByCategoryParameters } from '../../models/product-catalog-view'
   templateUrl: './category-list.html',
   styleUrl: './category-list.scss'
 })
-export class CategoryList {
+export class CategoryList implements OnInit, OnDestroy {
 
-  @Input({ required: true })
-  productQuery!: QueryRequest<any>;
+  private readonly queryState =
+      inject(ProductContextStateService);
 
-  @Output()
-  queryCategoryChanged =
-    new EventEmitter<QueryRequest>();
+  private readonly queryableService =
+      inject(QueryableService);
 
-    private readonly queryableService =
-        inject(QueryableService);
+  private readonly changeDetector =
+      inject(ChangeDetectorRef);
 
-    private readonly changeDetector =
-        inject(ChangeDetectorRef);
-        
-    categories: CategoryCatalogView[] = [];
-    
-    isLoading = false;
+  private querySubscription?: Subscription;
+      
+  categories: CategoryCatalogView[] = [];
 
-    errorMessage?: string;
+  isLoading = false;
 
-    ngOnChanges()
-    {
-        this.loadCategories();
-    }
+  errorMessage?: string;
+
+  ngOnInit(): void {
+      this.querySubscription =
+          this.queryState.changed
+              .subscribe(() => {
+                  this.loadCategories();
+              });
+    this.loadCategories();
+  }
+
+  ngOnDestroy(): void {
+      this.querySubscription?.unsubscribe();
+  }
 
   clearCategory(): void {
+      delete this.queryState.state.request.parameters;
 
-      const queryRequest =
-          structuredClone(
-              this.productQuery);
-
-      delete queryRequest.parameters;
-
-      if (queryRequest.query?.page) {
-          queryRequest.query.page.offset = 0;
+      if (this.queryState.state.request.query?.page) {
+          this.queryState.state.request.query.page.offset = 0;
       }
 
-      this.queryCategoryChanged.emit(
-          queryRequest);
+      this.queryState.notifyChanged();
+
+      this.loadCategories();
   }
 
   get hasCategories(): boolean {
@@ -66,9 +67,13 @@ export class CategoryList {
   }
 
   get selectedCategory(): string | undefined {
+      const parameters =
+          this.queryState.state.request
+              ?.parameters as
+                  ProductsByCategoryParameters
+                  | undefined;
 
-      return this.productQuery
-          .parameters?.categoryPath;
+      return parameters?.categoryPath;
   }
 
   getIndent(
@@ -84,60 +89,57 @@ export class CategoryList {
       category.categoryPath;
   }
 
-selectCategory(
-    category: CategoryCatalogView): void {
+  categorySelected(
+      categoryPath: string): void {
 
-    const queryRequest =
-        structuredClone(
-            this.productQuery);
+      this.queryState.state.request.parameters = {
+          categoryPath
+      };
 
-    queryRequest.parameters =
-    {
-        categoryPath:
-            category.categoryPath
-    };
+      if (this.queryState.state.request.query?.page) {
+          this.queryState.state.request.query.page.offset = 0;
+      }
 
-    if (queryRequest.query?.page) {
-        queryRequest.query.page.offset = 0;
+      this.queryState.notifyChanged();
+
+      this.loadCategories();
+  }
+
+    private get viewName(): string {
+
+        const parameters =
+            this.queryState.state.request.parameters as
+                ProductsByCategoryParameters | undefined;
+
+        return parameters?.categoryPath
+            ? 'product-by-category'
+            : 'product-list';
     }
-
-    this.queryCategoryChanged.emit(
-        queryRequest);
-}
 
   private loadCategories(): void {
+        const context = 'products';
+        const viewName = 'categories';
+        const request = this.queryState.state.request;
 
-    const request: QueryRequest<any> = {
-        ...this.productQuery
-    };
+      this.queryableService
+          .query<CategoryCatalogView>(
+              context,
+              viewName,
+              request)
+          .subscribe({
+              next: result => {
 
-    if (this.selectedCategory) {
-        request.parameters = {
-            categoryPath: this.selectedCategory
-        };
-    }
-    else {
-        delete request.parameters;
-    }
-      
-    this.queryableService
-      .query<CategoryCatalogView>(
-        'products/categories',
-        request)
-      .subscribe({
-        next: result => {
+                  this.categories =
+                      result.records;
 
-          this.categories =
-            result.records;
+                  this.changeDetector.detectChanges();
+              },
 
-          this.changeDetector.detectChanges();
-        },
+              error: error => {
 
-        error: error => {
-
-          this.handleError(error);
-        }        
-      });
+                  this.handleError(error);
+              }
+          });
   }
 
   private handleError(

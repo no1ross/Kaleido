@@ -4,7 +4,7 @@ public sealed class ShoppingCart
 {
     public Guid ShoppingCartId { get; set; }
 
-    public Guid CustomerId { get; set; }
+    public Guid? CustomerId { get; set; }
 
     public Guid ParticipantProcessId { get; init; }
 
@@ -20,4 +20,6 @@ public sealed class ShoppingCart
         = new List<ShoppingCartItem>();
 
     public int TotalItems => Items.Sum(i => i.Quantity);
+
+    public decimal TotalPrice => Items.Sum(i => i.Quantity * i.UnitPrice);
 }

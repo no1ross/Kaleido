@@ -6,15 +6,39 @@ import { Subject } from 'rxjs';
 })
 export class ECommerceStateService {
 
-    participantProcessId?: string;
+    readonly state: ECommerceState = { };
 
-    readonly cartChanged =
-        new Subject<void>();
+    readonly changed =
+        new Subject<ECommerceState>();
 
-    notifyCartChanged(): void {
+    notifyChanged(): void {
 
-        console.log('cart changed event fired');
+        this.changed.next(this.state);
+    }
 
-        this.cartChanged.next();
+    reset(): void {
+
+        this.state.participantProcessId = undefined;
+        this.state.customerId = undefined;
+
+        this.notifyChanged();
+    }
+
+    replace(
+        state: ECommerceState): void {
+
+        Object.assign(
+            this.state,
+            state);
+
+        this.notifyChanged();
     }
 }
+
+
+export interface ECommerceState {
+    participantProcessId?: string;
+
+    customerId?: string;
+}
+

@@ -18,6 +18,10 @@ internal sealed class ShoppingCartItemConfiguration : IEntityTypeConfiguration<S
                 shoppingCartItem => shoppingCartItem.Quantity)
             .IsRequired();
 
+        builder.Property(
+                shoppingCartItem => shoppingCartItem.UnitPrice)
+            .IsRequired();
+
         builder.HasOne(
                 shoppingCartItem => shoppingCartItem.ShoppingCart)
             .WithMany(

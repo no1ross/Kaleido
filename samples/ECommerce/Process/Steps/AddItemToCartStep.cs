@@ -11,9 +11,16 @@ namespace Kaleido.Samples.ECommerce.Process.Steps;
 [Repeatable]
 public sealed record AddItemToCartStep
 {
+
     [Required]
     [StringLength(100)]
     public required string ItemId
+    {
+        get;
+        init;
+    }
+
+    public Guid? CustomerId
     {
         get;
         init;

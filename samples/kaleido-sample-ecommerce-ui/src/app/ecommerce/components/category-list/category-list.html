@@ -31,7 +31,7 @@
         <li
             class="category-item"
             [class.selected]="isSelected(category)"
-            (click)="selectCategory(category)">
+            (click)="categorySelected(category.categoryPath)">
 
             {{ category.categoryName }}
             ({{ category.productCount }})

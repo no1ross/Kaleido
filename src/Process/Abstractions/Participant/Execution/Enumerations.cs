@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Kaleido.Process.Participant.Execution;
@@ -10,6 +11,7 @@ namespace Kaleido.Process.Participant.Execution;
 /// Represents the action the execution processor should take
 /// after evaluating the outcome of a step execution.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ExecutionDecisionType
 {
     /// <summary>
@@ -50,6 +52,7 @@ public enum ExecutionDecisionType
     /// </summary>
     AwaitingStepSelection
 }
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ProcessExecutionState
 {
     Active,

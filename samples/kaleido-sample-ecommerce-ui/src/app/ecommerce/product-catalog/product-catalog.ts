@@ -1,17 +1,17 @@
 import {
   Component,
-  OnInit,
+  inject,
 } from '@angular/core';
 
-import { QueryRequest } from '../../kaleido/models/queryable-request';
-import { QueryableService } from '../../kaleido/services/queryable-service';
 import { QueryablePager } from '../../kaleido/queryable-pager/queryable-pager';
 import { QueryableSorting } from '../../kaleido/queryable-sorting/queryable-sorting';
 import { QueryableFiltering } from '../../kaleido/queryable-filtering/queryable-filtering';
 import { QueryableSearch } from '../../kaleido/queryable-search/queryable-search';
 import { ProductResults } from '../components/product-results/product-results';
 import { CategoryList } from '../components/category-list/category-list';
-import { CatalogState, QueryResponse } from '../models/catalog-state';
+import { ProductContextStateService } from '../services/product-context-state-service';
+import { QueryExecutionStateService } from '../../kaleido/services/query-state-service';
+import { QueryResultStateService } from '../../kaleido/services/query-state-service';
 
 @Component({
   selector: 'ecommerce-product-catalog',
@@ -23,46 +23,23 @@ import { CatalogState, QueryResponse } from '../models/catalog-state';
     ProductResults,
     CategoryList
   ],
+  providers: [
+    ProductContextStateService,
+    {
+      provide: QueryExecutionStateService,
+      useExisting: ProductContextStateService
+    },
+    QueryResultStateService
+  ],
   templateUrl: './product-catalog.html',
   styleUrl: './product-catalog.scss',
 })
 export class ProductCatalog {
 
-  catalogState: CatalogState = { 
-    productQuery: {}
-  };
-
-  private setProductQuery(
-      productQuery: QueryRequest): void {
-
-      this.catalogState =
-      {
-          ...this.catalogState,
-          productQuery
-      };
+  ngOnInit(): void {
   }
 
+  productsLoaded() {
 
-  productQueryChange(
-      productQuery: QueryRequest): void {
-
-      this.setProductQuery(
-          productQuery);
-  }
-
-  queryCategoryChanged(
-      productQuery: QueryRequest): void {
-
-      this.setProductQuery(
-          productQuery);
-  }
-
-  productsLoaded(
-      productResult: QueryResponse): void {
-
-      this.catalogState = {
-          ...this.catalogState,
-          productResult
-      };
   }
 }

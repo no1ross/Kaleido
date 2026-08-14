@@ -10,6 +10,8 @@ public sealed class ShoppingCartItem
 
     public int Quantity { get; set; }
 
+    public decimal UnitPrice { get; set; }
+
     public ShoppingCart ShoppingCart { get; set; } = null!;
 
     public Product Product { get; set; } = null!;

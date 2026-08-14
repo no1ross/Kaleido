@@ -1,17 +1,12 @@
 import {
   Component,
-  EventEmitter,
-  Input,
-  OnChanges,
-  Output,
-  SimpleChanges
+  inject
 } from '@angular/core';
 
 import {
   QueryFilterCondition,
   QueryFilterGroup,
-  QueryFilterNode,
-  QueryRequest
+  QueryFilterNode
 } from '../models/queryable-request';
 
 import {
@@ -28,22 +23,22 @@ import {
   QueryableFilterField
 } from './queryable-filter-field';
 
+import {
+  QueryExecutionStateService
+} from '../services/query-state-service';
+
 @Component({
   selector: 'kaleido-queryable-filtering',
   imports: [],
   templateUrl: './queryable-filtering.html',
   styleUrl: './queryable-filtering.scss'
 })
-export class QueryableFiltering implements OnChanges {
+export class QueryableFiltering {
 
-  @Input({ required: true })
-  queryRequest!: QueryRequest;
-
-  @Output()
-  queryFilterChanged =
-    new EventEmitter<QueryRequest>();
-
-  readonly fields: QueryableFilterField[] = [
+    private readonly queryState =
+      inject(QueryExecutionStateService);
+    
+    readonly fields: QueryableFilterField[] = [
     {
       field: 'productName',
       label: 'Product'
@@ -101,17 +96,13 @@ export class QueryableFiltering implements OnChanges {
   workingFilter: QueryFilterNode =
     this.createRootGroup();
 
-  ngOnChanges(
-    changes: SimpleChanges): void {
-
-    if (changes['queryRequest']) {
+  ngOnInit(): void {
 
       this.workingFilter =
-        this.queryRequest.query?.filter
-          ? structuredClone(
-              this.queryRequest.query.filter)
-          : this.createRootGroup();
-    }
+          this.queryState.state.request.query?.filter
+              ? structuredClone(
+                  this.queryState.state.request.query.filter)
+              : this.createRootGroup();
   }
 
   get rootGroup(): QueryFilterGroup {
@@ -206,27 +197,23 @@ export class QueryableFiltering implements OnChanges {
 
   apply(): void {
 
-      const queryRequest =
-          structuredClone(
-              this.queryRequest);
-
-      queryRequest.query ??= {};
+      this.queryState.state.request.query ??= {};
 
       const hasFilters =
           this.rootGroup.filters.length > 0;
 
-      queryRequest.query.filter =
+      this.queryState.state.request.query.filter =
           hasFilters
               ? structuredClone(
                   this.workingFilter)
               : undefined;
 
-      if (queryRequest.query.page) {
-          queryRequest.query.page.offset = 0;
+      if (this.queryState.state.request.query.page) {
+
+          this.queryState.state.request.query.page.offset = 0;
       }
 
-      this.queryFilterChanged.emit(
-          queryRequest);
+      this.queryState.notifyChanged();
   }
 
   private createRootGroup():

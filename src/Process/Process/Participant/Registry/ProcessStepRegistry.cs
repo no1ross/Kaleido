@@ -143,20 +143,18 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
         Type stepType)
     {
         var handlerType =
-            GetHandlerType(
+            GetSingleHandlerType(
                 services,
                 stepType);
 
         var handlerInterface =
             handlerType
                 .GetInterfaces()
-                .Single(i =>
-                    i.IsGenericType
-                    && i.GetGenericTypeDefinition() == typeof(IProcessStepHandler<,>)
-                    && i.GetGenericArguments()[0] == stepType);
+                .Single(i => IsProcessStepHandler(i, stepType));
 
         var resultType =
-            handlerInterface.GetGenericArguments()[1];
+            GetProcessStepResultType(
+                handlerInterface);
 
         var metadata =
             BuildStepMetadata(
@@ -193,6 +191,26 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
         }
 
         return definition;
+    }
+
+    private static Type? GetProcessStepResultType(
+        Type handlerInterface)
+    {
+        var definition =
+            handlerInterface.GetGenericTypeDefinition();
+
+        if (definition == typeof(IProcessStepHandler<>))
+        {
+            return null;
+        }
+
+        if (definition == typeof(IProcessStepHandler<,>))
+        {
+            return handlerInterface.GenericTypeArguments[1];
+        }
+
+        throw new InvalidOperationException(
+            $"Type '{handlerInterface.FullName}' is not a valid process step handler.");
     }
 
     private static IReadOnlyCollection<ProcessStepRegistration> BuildRegistrations(
@@ -315,7 +333,7 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
         }
     }
 
-    private static Type GetHandlerType(
+    private static Type GetSingleHandlerType(
         IServiceCollection services,
         Type stepType)
     {
@@ -325,10 +343,7 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
                     x.ImplementationType is not null
                     && x.ImplementationType
                         .GetInterfaces()
-                        .Any(i =>
-                            i.IsGenericType
-                            && i.GetGenericTypeDefinition() == typeof(IProcessStepHandler<,>)
-                            && i.GetGenericArguments()[0] == stepType))
+                        .Any(i => IsProcessStepHandler(i, stepType)))
                 .ToArray();
 
         if (handlers.Length == 0)
@@ -344,6 +359,25 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
         }
 
         return handlers[0].ImplementationType!;
+    }
+
+    private static bool IsProcessStepHandler(
+        Type interfaceType,
+        Type stepType)
+    {
+        if (!interfaceType.IsGenericType)
+        {
+            return false;
+        }
+
+        var definition =
+            interfaceType.GetGenericTypeDefinition();
+
+        return
+            (definition == typeof(IProcessStepHandler<>) ||
+             definition == typeof(IProcessStepHandler<,>))
+            &&
+            interfaceType.GetGenericArguments()[0] == stepType;
     }
 
     private static ProcessStepMetadata BuildStepMetadata(

@@ -46,6 +46,11 @@ internal sealed class ShoppingCartConfiguration : IEntityTypeConfiguration<Shopp
             shoppingCart => shoppingCart.CustomerId);
 
         builder.HasIndex(
+            shoppingCart => shoppingCart.ParticipantProcessId)
+            .IsUnique()
+            .HasFilter("[ParticipantProcessId] IS NOT NULL");
+
+        builder.HasIndex(
             shoppingCart => new
             {
                 shoppingCart.CustomerId,

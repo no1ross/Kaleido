@@ -14,10 +14,12 @@ public interface IProcessStepHandler<in TProcessStep, TProcessStepResult>
         CancellationToken cancellationToken = default);
 }
 
-public interface IProcessStepHandler<in TProcessStep> : IProcessStepHandler<TProcessStep, ProcessStepEmptyResponse>
+public interface IProcessStepHandler<in TProcessStep>
 {
+    Task<ProcessStepHandlerResult> ExecuteAsync(
+        TProcessStep processStep,
+        ProcessStepContext context,
+        CancellationToken cancellationToken = default);
 }
-
-public sealed record ProcessStepEmptyResponse;
 
 

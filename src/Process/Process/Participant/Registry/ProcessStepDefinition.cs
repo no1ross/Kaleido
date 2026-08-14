@@ -4,7 +4,7 @@ internal sealed class ProcessStepDefinition
 {
     public required Type StepType { get; init; }
 
-    public required Type StepResultType { get; init; }
+    public Type? StepResultType { get; init; }
 
     public required Type HandlerType { get; init; }
 
@@ -24,7 +24,7 @@ internal sealed class ProcessStepTypeDefinition
 {
     public required Type StepType { get; init; }
 
-    public required Type StepResultType { get; init; }
+    public Type? StepResultType { get; init; }
 
     public required Type HandlerType { get; init; }
 

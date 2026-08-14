@@ -1,17 +1,13 @@
 import {
   Component,
-  EventEmitter,
-  Input,
-  Output
+  inject
 } from '@angular/core';
 
 import {
   FormsModule
 } from '@angular/forms';
 
-import {
-  QueryRequest
-} from '../models/queryable-request';
+import { QueryExecutionStateService } from '../services/query-state-service';
 
 @Component({
   selector: 'queryable-search',
@@ -24,58 +20,45 @@ import {
 })
 export class QueryableSearch {
 
-  @Input({ required: true })
-  queryRequest!: QueryRequest;
-
-  @Output()
-  querySearchChanged =
-    new EventEmitter<QueryRequest>();
+  private readonly queryState =
+    inject(QueryExecutionStateService);
 
   searchText = '';
 
   apply(): void {
 
-      const queryRequest =
-          structuredClone(
-              this.queryRequest);
+    this.queryState.state.request.query ??= {};
 
-      queryRequest.query ??= {};
+    const value =
+      this.searchText.trim();
 
-      const value =
-          this.searchText.trim();
+    this.queryState.state.request.query.searchText =
+      value.length > 0
+        ? value
+        : undefined;
 
-      queryRequest.query.searchText =
-          value.length > 0
-              ? value
-              : undefined;
+    if (this.queryState.state.request.query.page) {
 
-      if (queryRequest.query.page) {
-          queryRequest.query.page.offset = 0;
-      }
+      this.queryState.state.request.query.page.offset = 0;
+    }
 
-      this.querySearchChanged.emit(
-          queryRequest);
+    this.queryState.notifyChanged();
   }
 
   clear(): void {
 
-      this.searchText = '';
+    this.searchText = '';
 
-      const queryRequest =
-          structuredClone(
-              this.queryRequest);
+    this.queryState.state.request.query ??= {};
 
-      queryRequest.query ??= {};
+    this.queryState.state.request.query.searchText =
+      undefined;
 
-      queryRequest.query.searchText =
-          undefined;
+    if (this.queryState.state.request.query.page) {
 
-      if (queryRequest.query.page) {
-          queryRequest.query.page.offset = 0;
-      }
+      this.queryState.state.request.query.page.offset = 0;
+    }
 
-      this.querySearchChanged.emit(
-          queryRequest);
+    this.queryState.notifyChanged();
   }
-
 }

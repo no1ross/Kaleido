@@ -1,27 +1,25 @@
 import {
   Component,
-  Input,
   inject,
-  Output,
-  EventEmitter
+  OnInit,
+  ChangeDetectorRef,
+  OnDestroy
 } from '@angular/core';
 
 import { CurrencyPipe } from '@angular/common';
-
+import { Subscription } from 'rxjs';
 import { ProductCatalogView } from '../../models/product-catalog-view';
-
 import { QueryableService } from '../../../kaleido/services/queryable-service';
-import { QueryResponse } from '../../models/catalog-state';
-import { QueryRequest } from '../../../kaleido/models/queryable-request';
-
-import { ExecuteStepRequest } from '../../../kaleido/models/participant-process-request';
-import { AddItemToCartStep, AddItemToCartResponse } from '../../models/steps/add-item-to-cart';
-
 import { ProcessService } from '../../../kaleido/services/process-service';
-
-import { ECommerceStateService } from '../../services/ecommerce-state-service';
 import { RequestContextService } from '../../../kaleido/services/request-context-service';
+import { QueryResultStateService } from '../../../kaleido/services/query-state-service';
+import { ProductContextStateService } from '../../services/product-context-state-service';
+import { AddItemToCartStep } from '../../models/steps/add-item-to-cart';
+import { ExecuteStepRequest } from '../../models/participant-process-request';
+import { ECommerceStateService } from '../../services/ecommerce-state-service';
+import { AddItemToCartResponse } from '../../models/steps/add-item-to-cart';
 import { ProductsByCategoryParameters } from '../../models/product-catalog-view';
+import { ProcessErrorResponse } from '../../../kaleido/services/process-service';
 
 @Component({
   selector: 'ecommerce-product-results',
@@ -32,17 +30,7 @@ import { ProductsByCategoryParameters } from '../../models/product-catalog-view'
   templateUrl: './product-results.html',
   styleUrl: './product-results.scss'
 })
-export class ProductResults {
-
-    @Input({ required: true })
-    productQuery!: QueryRequest;
-    
-    @Output()
-    productsLoaded =
-        new EventEmitter<QueryResponse>();
-
-    private readonly ecommerceState =
-        inject(ECommerceStateService);        
+export class ProductResults implements OnInit, OnDestroy {
     
     private readonly queryableService =
         inject(QueryableService);
@@ -52,6 +40,20 @@ export class ProductResults {
 
     private readonly requestContext =
         inject(RequestContextService);
+
+    private readonly queryState =
+        inject(ProductContextStateService);
+
+    private readonly resultState =
+        inject(QueryResultStateService);
+
+    private readonly changeDetector =
+        inject(ChangeDetectorRef);
+
+    private readonly ecommerceState =
+        inject(ECommerceStateService); 
+
+    private querySubscription?: Subscription;
         
     products: ProductCatalogView[] = [];
 
@@ -59,91 +61,94 @@ export class ProductResults {
 
     errorMessage?: string;
 
-    ngOnChanges() {
-       this.loadProducts();
+    ngOnInit(): void {
+
+        this.querySubscription =
+            this.queryState.changed
+                .subscribe(() => {
+
+                    console.log(
+                        'PRODUCT RESULTS received query changed');
+
+                    console.log(
+                        'PRODUCT RESULTS page state',
+                        this.queryState.state.request.query?.page);
+
+                    this.loadProducts();
+                });
+
+        this.loadProducts();
     }
 
-  private get categoryPath(): string | undefined {
 
-      const parameters =
-          this.productQuery.parameters as
-              ProductsByCategoryParameters | undefined;
+    ngOnDestroy(): void {
+        this.querySubscription?.unsubscribe();
+    }
 
-      return parameters?.categoryPath;
-  }
+    private get viewName(): string {
 
-private loadProducts(): void {
+        const parameters =
+            this.queryState.state.request.parameters as
+                ProductsByCategoryParameters | undefined;
 
-  this.isLoading = true;
+        return parameters?.categoryPath
+            ? 'product-by-category'
+            : 'product-list';
+    }
 
-  this.errorMessage = undefined;
+    private loadProducts(): void {
 
-  const categoryPath =
-    this.categoryPath;
+        this.isLoading = true;
 
-  const viewName =
-      categoryPath
-          ? 'product-by-category'
-          : 'product-list';
+        this.errorMessage = undefined;
+    
+        const context = 'products';
+        const viewName = this.viewName;
+        const request = this.queryState.state.request;
 
-  const request: QueryRequest<any> =
-    this.categoryPath
-      ? {
-          ...this.productQuery,
-          parameters: {
-            categoryPath: this.categoryPath
-          }
-        }
-      : this.productQuery;
+        this.queryableService
+            .query<ProductCatalogView>(
+                context,
+                viewName,
+                request)
+            .subscribe({
+                next: result => {
 
-  this.queryableService
-    .query<ProductCatalogView>(
-      'products/' + viewName,
-      request)
-    .subscribe({
-      next: result => {
+                    this.products =
+                        result.records;
 
-        this.products =
-          result.records;
+                    this.isLoading =
+                        false;
 
-        this.isLoading =
-          false;
+                    this.errorMessage =
+                        undefined;
 
-        this.errorMessage =
-          undefined;
+                    this.resultState.replace({
+                        totalCount: result.totalCount,
+                        pageSize: result.pageSize,
+                        offset: result.offset
+                    });      
+                    
+                    this.changeDetector.detectChanges();
+                },
 
-        this.productsLoaded.emit({
-          totalCount: result.totalCount,
-          offset: result.offset,
-          pageSize: result.pageSize
-        });
-      },
-
-      error: error => {
-
-        this.handleError(error);
-      }
-    });
-}
+                error: error => {
+                    this.handleError(error);
+                }
+            });
+    }
 
   private handleError(
-    error: any): void {
+    error: ProcessErrorResponse): void {
 
-    console.error(error);
+    this.errorMessage =
+        error.messages
+            .map(x => x.message)
+            .join('\n');
 
-    if (error.errors?.length > 0) {
+    this.isLoading = false;
 
-      this.errorMessage =
-        error.errors[0].message;
-
-    } else {
-
-      this.errorMessage =
-        'An unexpected error occurred.';
-    }
-
-    this.isLoading =
-      false;
+    this.changeDetector.detectChanges();
   }
 
 addToCart(
@@ -154,7 +159,7 @@ addToCart(
     const request: ExecuteStepRequest<AddItemToCartStep> = {
 
         participantProcessId:
-            this.ecommerceState.participantProcessId,
+            this.ecommerceState.state.participantProcessId,
 
         processStep:
         {
@@ -172,17 +177,23 @@ addToCart(
         AddItemToCartResponse>(
             'AddItemToCart',
             request)
-          .subscribe(result => {
+        .subscribe({
+            next: result => {
 
-            console.log('PROCESS RETURNED');
+                this.ecommerceState.state.participantProcessId =
+                    result.participantProcessId;
 
-              this.ecommerceState.participantProcessId =
-                  result.participantProcessId;
-
-                  console.log('ABOUT TO NOTIFY');
-
-              this.ecommerceState.notifyCartChanged();
-
-          });
+                this.ecommerceState.notifyChanged();
+          },
+            error: (error: unknown) => {
+                if (ProcessErrorResponse.is(error)) {
+                    this.handleError(error);
+                    return;
+                }
+                
+                this.errorMessage =
+                    'An unexpected error occurred.';
+            }
+        });
   }
 }

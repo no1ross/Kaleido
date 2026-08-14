@@ -53,8 +53,7 @@ public sealed record ProcessExecutionStepResponse
     }
 }
 
-
-public sealed record ProcessExecutionResponse<TResponse>
+public record StepExecutionResponse
 {
     public required string ParticipantProcessId
     {
@@ -68,13 +67,13 @@ public sealed record ProcessExecutionResponse<TResponse>
         init;
     }
 
-    public required TResponse Result
+    public string? RequiredStep
     {
         get;
         init;
     }
 
-    public string? RequiredStep
+    public StepExecutionOutcome? Outcome
     {
         get;
         init;
@@ -94,7 +93,7 @@ public sealed record ProcessExecutionResponse<TResponse>
     }
         = [];
 
-    public static ProcessExecutionResponse<TResponse> Create(
+    public static StepExecutionResponse Create(
         ParticipantProcessResult processResult,
         ParticipantStepResult stepResult,
         IProcessStepRegistry registry)
@@ -108,11 +107,10 @@ public sealed record ProcessExecutionResponse<TResponse>
             StepName =
                 stepResult.StepName,
 
-            Result =
-                (TResponse)stepResult.Response,
-
             RequiredStep =
                 processResult.RequiredStep,
+
+            Outcome = stepResult.Outcome,
 
             AvailableSteps =
                 processResult.AvailableSteps
@@ -149,37 +147,88 @@ public sealed record ProcessExecutionResponse<TResponse>
                     .ToList(),
 
             Messages =
-                stepResult.Messages
+                stepResult.RuntimeMessages
                     .Select(message =>
                         new ProcessMessage
                         {
-                            Severity = message.Type,
+                            Type = message.Type,
                             Message = message.Message,
-                            Code = message.Code
+                            Code = message.Code.ToString()
                         })
+                    .Concat(
+                        stepResult.BusinessMessages
+                            .Select(message =>
+                                new ProcessMessage
+                                {
+                                    Type = message.Type,
+                                    Message = message.Message,
+                                    Code = message.Code
+                                }))
                     .ToList()
+                    };
+    }
+}
+
+public sealed record StepExecutionResponse<TResponse> : StepExecutionResponse
+{
+    public TResponse? Result
+    {
+        get;
+        init;
+    }
+
+    new public static StepExecutionResponse<TResponse> Create(
+        ParticipantProcessResult processResult,
+        ParticipantStepResult stepResult,
+        IProcessStepRegistry registry)
+    {
+        var response =
+            StepExecutionResponse.Create(
+                processResult,
+                stepResult,
+                registry);
+
+        return new()
+        {
+            ParticipantProcessId =
+                response.ParticipantProcessId,
+
+            StepName =
+                response.StepName,
+
+            RequiredStep =
+                response.RequiredStep,
+
+            AvailableSteps =
+                response.AvailableSteps,
+
+            Messages =
+                response.Messages,
+
+            Result =
+                (TResponse?)stepResult.Response
         };
     }
 }
 
 
-public sealed record ProcessMessage
-{
-    public required MessageType Severity
-    {
-        get;
-        init;
-    }
+//public sealed record ProcessMessage
+//{
+//    public required MessageType Severity
+//    {
+//        get;
+//        init;
+//    }
 
-    public required string Message
-    {
-        get;
-        init;
-    }
+//    public required string Message
+//    {
+//        get;
+//        init;
+//    }
 
-    public required StepProcessingMessageCode Code
-    {
-        get;
-        init;
-    }
-}
+//    public required StepProcessingMessageCode Code
+//    {
+//        get;
+//        init;
+//    }
+//}

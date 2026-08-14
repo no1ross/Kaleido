@@ -2,7 +2,7 @@
 
 public sealed record ProcessStepRegistration(
     Type StepType,
-    Type StepResultType,
+    Type? StepResultType,
     Type HandlerType,
     IReadOnlyCollection<ProcessStepRegistration> Dependencies,
     IReadOnlyCollection<ProcessStepRegistration> AvailableAfter,

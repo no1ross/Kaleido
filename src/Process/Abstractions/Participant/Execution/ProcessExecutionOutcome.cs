@@ -20,14 +20,21 @@ public sealed record ProcessExecutionOutcome
         init;
     }
 
-    public IReadOnlyCollection<StepProcessingMessage> Messages
+    public IReadOnlyCollection<StepProcessingMessage> RuntimeMessages
     {
         get;
         init;
     }
         = [];
 
-    public required object Response
+    public IReadOnlyCollection<ProcessMessage> BusinessMessages
+    {
+        get;
+        init;
+    }
+    = [];
+
+    public object? Response
     {
         get;
         init;

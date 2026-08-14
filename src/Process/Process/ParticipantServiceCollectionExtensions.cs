@@ -215,18 +215,15 @@ public static class ParticipantServiceCollectionExtensions
 
         var handlerTypes =
             types
-                .Where(x =>
-                    x.GetInterfaces()
-                        .Any(i =>
-                            i.IsGenericType &&
-                            i.GetGenericTypeDefinition() == typeof(IProcessStepHandler<,>) &&
-                            i.GetGenericArguments()[0] == stepType))
+                .Where(type =>
+                    type.GetInterfaces()
+                        .Any(i => IsProcessStepHandler(i, stepType)))
                 .ToArray();
 
         if (handlerTypes.Length == 0)
         {
             throw new InvalidOperationException(
-                $"Process step '{metadata.Name}' ({stepType.FullName}) does not have a registered handler implementing IProcessStepHandler<TStep, TResult>.");
+                $"Process step '{metadata.Name}' ({stepType.FullName}) does not have a registered handler.");
         }
 
         if (handlerTypes.Length > 1)
@@ -241,5 +238,24 @@ public static class ParticipantServiceCollectionExtensions
         }
 
         services.AddScoped(handlerTypes[0]);
+    }
+
+    private static bool IsProcessStepHandler(
+        Type interfaceType,
+        Type stepType)
+    {
+        if (!interfaceType.IsGenericType)
+        {
+            return false;
+        }
+
+        var definition =
+            interfaceType.GetGenericTypeDefinition();
+
+        return
+            (definition == typeof(IProcessStepHandler<>) ||
+             definition == typeof(IProcessStepHandler<,>))
+            &&
+            interfaceType.GetGenericArguments()[0] == stepType;
     }
 }

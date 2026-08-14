@@ -125,7 +125,7 @@ internal sealed class ParticipantRuntime
                             IncludedInExecutionPlan =
                                 candidate.IncludedInExecutionPlan,
 
-                            Response = outcome?.Response ?? new ProcessStepEmptyResponse(),
+                            Response = outcome?.Response,
 
                             ExecutionStatus =
                                 outcome?.Status,
@@ -133,10 +133,15 @@ internal sealed class ParticipantRuntime
                             Decision =
                                 outcome?.Decision,
 
-                            Messages =
+                            Outcome =
+                                GetStepOutcome(outcome?.Status ?? StepExecutionStatus.Pending),
+
+                            RuntimeMessages =
                                 MergeMessages(
                                     candidate,
-                                    outcome)
+                                    outcome),
+
+                            BusinessMessages = outcome?.BusinessMessages ?? Array.Empty<ProcessMessage>()
                         };
                     })
                 .ToArray();
@@ -160,6 +165,34 @@ internal sealed class ParticipantRuntime
         };
     }
 
+    private static StepExecutionOutcome GetStepOutcome(
+        StepExecutionStatus status)
+    {
+        return status switch
+        {
+            StepExecutionStatus.Pending =>
+                StepExecutionOutcome.Blocked,
+
+            StepExecutionStatus.Completed =>
+                StepExecutionOutcome.Completed,
+
+            StepExecutionStatus.ValidationFailed =>
+                StepExecutionOutcome.Failed,
+
+            StepExecutionStatus.Exception =>
+                StepExecutionOutcome.Failed,
+
+            StepExecutionStatus.Skipped =>
+                StepExecutionOutcome.Blocked,
+
+            StepExecutionStatus.Canceled =>
+                StepExecutionOutcome.Blocked,
+
+            _ =>
+                StepExecutionOutcome.Pending
+        };
+    }
+
     private static IReadOnlyCollection<StepProcessingMessage> MergeMessages(
         StepCandidate candidate,
         ProcessExecutionOutcome? outcome)
@@ -173,7 +206,7 @@ internal sealed class ParticipantRuntime
         if (outcome is not null)
         {
             messages.AddRange(
-                outcome.Messages);
+                outcome.RuntimeMessages);
         }
 
         return messages;

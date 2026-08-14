@@ -1,8 +1,6 @@
 import {
   Component,
-  EventEmitter,
-  Input,
-  Output,
+  inject,
   OnChanges,
   SimpleChanges
 } from '@angular/core';
@@ -24,21 +22,18 @@ import {
   SORT_DIRECTION_OPTIONS
 } from '../models/sort-direction';
 
+import { QueryExecutionStateService } from '../services/query-state-service';
+
 @Component({
   selector: 'kaleido-queryable-sorting',
   imports: [],
   templateUrl: './queryable-sorting.html',
   styleUrl: './queryable-sorting.scss',
 })
-export class QueryableSorting
-  implements OnChanges {
+export class QueryableSorting {
 
-  @Input({ required: true })
-  queryRequest!: QueryRequest;
-
-  @Output()
-  querySortChanged =
-    new EventEmitter<QueryRequest>();
+  private readonly queryState =
+      inject(QueryExecutionStateService);
 
   workingSorts: QuerySort[] = [];
 
@@ -75,17 +70,13 @@ export class QueryableSorting
     }
   ];
 
-  ngOnChanges(
-    changes: SimpleChanges): void {
-
-    if (changes['queryRequest']) {
+  ngOnInit(): void {
 
       this.workingSorts =
-        (this.queryRequest.query?.sort ?? [])
-          .map(sort => ({
-            ...sort
-          }));
-    }
+          (this.queryState.state.request.query?.sort ?? [])
+              .map(sort => ({
+                  ...sort
+              }));
   }
 
   addSort(): void {
@@ -161,27 +152,23 @@ export class QueryableSorting
     };
   }
 
-apply(): void {
+  apply(): void {
 
-    const queryRequest =
-        structuredClone(
-            this.queryRequest);
+      this.queryState.state.request.query ??= {};
 
-    queryRequest.query ??= {};
+      this.queryState.state.request.query.sort =
+          this.workingSorts.map(
+              sort => ({
+                  ...sort
+              }));
 
-    queryRequest.query.sort =
-        this.workingSorts.map(
-            sort => ({
-                ...sort
-            }));
+      if (this.queryState.state.request.query.page) {
 
-    if (queryRequest.query.page) {
-        queryRequest.query.page.offset = 0;
-    }
+          this.queryState.state.request.query.page.offset = 0;
+      }
 
-    this.querySortChanged.emit(
-        queryRequest);
-}
+      this.queryState.notifyChanged();
+  }
 
   getFieldLabel(
     field: string): string {
