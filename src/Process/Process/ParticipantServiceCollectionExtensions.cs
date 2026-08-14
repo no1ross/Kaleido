@@ -4,7 +4,6 @@ using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Planning;
 using Kaleido.Process.Participant.Registry;
-using Kaleido.Process.Participant.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
@@ -184,14 +183,15 @@ public static class ParticipantServiceCollectionExtensions
         services.TryAddSingleton<IStepCandidateConsistencyChecker, StepCandidateConsistencyChecker>();
         services.TryAddSingleton<IStepCandidatePlanner, StepCandidatePlanner>();
         services.TryAddSingleton<IStepCandidateValidator, StepCandidateValidator>();
-        services.TryAddSingleton<IExecutionProcessor, ExecutionProcessor>();
+
         services.TryAddSingleton<IProcessStepInvoker, ProcessStepInvoker>();
         services.TryAddSingleton<IStepExecutionEvaluator, StepExecutionEvaluator>();
         services.TryAddSingleton<IProcessStateUpdater, ProcessStateUpdater>();
-        services.TryAddSingleton<IParticipantRuntime, ParticipantRuntime>();
         services.TryAddSingleton<IStepAvailabilityResolver, StepAvailabilityResolver>();
-
         services.TryAddSingleton<IProcessContextStore, InMemoryProcessContextStore>();
+
+        services.TryAddScoped<IParticipantRuntime, ParticipantRuntime>();
+        services.TryAddScoped<IExecutionProcessor, ExecutionProcessor>();
     }
 
     private static void RegisterProcessStep(

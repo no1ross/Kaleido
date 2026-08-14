@@ -7,7 +7,7 @@ internal sealed class InMemoryProcessContextStore : IProcessContextStore
     private readonly ConcurrentDictionary<Guid, ParticipantContext> _contexts =
         new();
 
-    public Task<ParticipantContext> LoadAsync(Guid participantProcessId, CancellationToken cancellationToken = default)
+    public async Task<ParticipantContext?> LoadAsync(Guid participantProcessId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -15,10 +15,10 @@ internal sealed class InMemoryProcessContextStore : IProcessContextStore
             participantProcessId,
             out var context))
         {
-            return Task.FromResult(context);
+            return await Task.FromResult(context);
         }
 
-        return Task.FromResult(
+        return await Task.FromResult(
             new ParticipantContext
             {
                 ParticipantProcessId = participantProcessId

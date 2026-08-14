@@ -1,5 +1,4 @@
 using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Runtime;
 
 namespace Kaleido.Process.FunctionalTests.Tests.Runtime;
 

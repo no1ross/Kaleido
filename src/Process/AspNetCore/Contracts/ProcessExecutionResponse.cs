@@ -4,7 +4,7 @@ namespace Kaleido.Process.AspNetCore.Contracts;
 
 public sealed record ProcessExecutionResponse
 {
-    public required string ParticipantProcessId
+    public required Guid ParticipantProcessId
     {
         get;
         init;
@@ -55,7 +55,7 @@ public sealed record ProcessExecutionStepResponse
 
 public record StepExecutionResponse
 {
-    public required string ParticipantProcessId
+    public required Guid ParticipantProcessId
     {
         get;
         init;
@@ -101,8 +101,7 @@ public record StepExecutionResponse
         return new()
         {
             ParticipantProcessId =
-                processResult.ParticipantProcessId
-                    .ToString(),
+                processResult.ParticipantProcessId,
 
             StepName =
                 stepResult.StepName,

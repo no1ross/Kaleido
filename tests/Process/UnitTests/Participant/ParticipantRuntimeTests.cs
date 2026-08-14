@@ -2,7 +2,6 @@
 using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Planning;
-using Kaleido.Process.Participant.Runtime;
 using Moq;
 using Xunit;
 
@@ -553,7 +552,7 @@ public sealed class ParticipantRuntimeTests
         return new ParticipantContext
         {
             ParticipantProcessId = participantProcessId,
-            LastestRequestId = requestId
+            LatestRequestId = requestId
         };
     }
 

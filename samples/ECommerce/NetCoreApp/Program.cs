@@ -1,6 +1,7 @@
 using Kaleido;
 using Kaleido.Process;
 using Kaleido.Process.AspNetCore;
+using Kaleido.Process.Providers.SQLite;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.ECommerce.Data;
@@ -27,6 +28,7 @@ builder.Services.AddKaleido()
     .AddAssembly(typeof(ProductCatalogQueryContext).Assembly)
     .AddParticipant()
         .AddParticipantAspNetCore()
+        .UseSqliteProcessContextStore("Data Source=kaleido-sample-process.sqlite")
     .AddQueryable()
         .AddQueryableAspNetCore();
 
@@ -47,6 +49,16 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db =
+        scope.ServiceProvider
+            .GetRequiredService<
+                SqliteProcessContextDbContext>();
+
+    await db.Database.EnsureCreatedAsync();
+}
 
 app.UseCors("AllowAll");
 

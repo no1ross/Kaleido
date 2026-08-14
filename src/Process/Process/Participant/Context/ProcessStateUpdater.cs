@@ -51,6 +51,10 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
 
             State = ProcessExecutionState.Active,
 
+            CreatedUtc = DateTime.UtcNow,
+
+            UpdatedUtc = DateTime.UtcNow,
+
             Steps =
                 _registry
                     .Registrations
@@ -121,6 +125,7 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
 
         return context with
         {
+            UpdatedUtc = DateTime.UtcNow,
             Steps = steps
         };
     }
@@ -145,8 +150,8 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
                 Status =
                     StepExecutionStatus.Completed,
 
-                LastRequestId =
-                    context.LastestRequestId,
+                LatestRequestId =
+                    context.LatestRequestId,
 
                 LastExecuted =
                     DateTimeOffset.UtcNow
@@ -171,6 +176,8 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
             AvailableSteps =
                 decision.AvailableSteps,
 
+            UpdatedUtc = DateTime.UtcNow,
+
             Steps =
                 steps
         };
@@ -194,8 +201,8 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
                 Status =
                     StepExecutionStatus.Exception,
 
-                LastRequestId =
-                    context.LastestRequestId,
+                LatestRequestId =
+                    context.LatestRequestId,
 
                 LastExecuted =
                     DateTimeOffset.UtcNow
@@ -239,8 +246,8 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
                 Status =
                     StepExecutionStatus.Canceled,
 
-                LastRequestId =
-                    context.LastestRequestId,
+                LatestRequestId =
+                    context.LatestRequestId,
 
                 LastExecuted =
                     DateTimeOffset.UtcNow

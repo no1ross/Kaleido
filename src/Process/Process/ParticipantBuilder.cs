@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
-namespace Kaleido;
+namespace Kaleido.Process;
 
 internal sealed class ParticipantBuilder
     : IParticipantBuilder

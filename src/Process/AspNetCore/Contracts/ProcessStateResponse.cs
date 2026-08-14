@@ -4,7 +4,7 @@ namespace Kaleido.Process.AspNetCore.Contracts;
 
 public sealed record ProcessStateResponse
 {
-    public required string ParticipantProcessId
+    public required Guid ParticipantProcessId
     {
         get;
         init;

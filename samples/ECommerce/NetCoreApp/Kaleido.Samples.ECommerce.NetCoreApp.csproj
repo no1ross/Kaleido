@@ -5,12 +5,12 @@
 	<ItemGroup>
 		<PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\..\src\Process\AspNetCore\Kaleido.Process.AspNetCore.csproj" />
+	  <ProjectReference Include="..\..\..\src\Process\Providers\SQLite\Kaleido.Process.Providers.SQLite.csproj" />
 	  <ProjectReference Include="..\..\..\src\Queryable\AspNetCore\Kaleido.Queryable.AspNetCore.csproj" />
 	  <ProjectReference Include="..\Process\Kaleido.Samples.ECommerce.Process.csproj" />
 	  <ProjectReference Include="..\Queryable\Kaleido.Samples.ECommerce.Queryable.csproj" />

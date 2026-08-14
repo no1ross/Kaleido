@@ -108,7 +108,7 @@ public static class ProcessEndpointRouteBuilderExtensions
         endpoints.MapGet(
                 ProcessRoutePaths.Process,
                 async (
-                    string participantProcessId,
+                    Guid participantProcessId,
                     IProcessStateService stateService,
                     CancellationToken cancellationToken) =>
                 {

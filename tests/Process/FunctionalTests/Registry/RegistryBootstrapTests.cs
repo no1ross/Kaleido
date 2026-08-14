@@ -4,8 +4,6 @@ using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Planning;
-using Kaleido.Process.Participant.Registry;
-using Kaleido.Process.Participant.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 

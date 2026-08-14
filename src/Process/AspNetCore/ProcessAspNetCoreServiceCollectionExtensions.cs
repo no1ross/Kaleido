@@ -23,24 +23,8 @@ public static class ProcessAspNetCoreServiceCollectionExtensions
 
         builder.Services.AddRouting();
 
-        //builder.Services.AddSingleton<AspNetCoreOpenApiDocumentContributor>();
-
-        //builder.Services.AddTransient<KaleidoDocumentFilter>();
-
-        //builder.Services.AddSwaggerGen(options =>
-        //{
-        //    options.DocumentFilter<KaleidoDocumentFilter>();
-        //});
-
-        //// The query model uses enums such as FilterOperator, LogicalOperator, MatchMode, and SortDirection.
-        //// For HTTP contracts, strings are friendlier and less brittle than numeric enum values.
-        //builder.Services.Configure<JsonOptions>(options =>
-        //{
-        //    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
-        //});
-
-        builder.Services.TryAddSingleton<IProcessExecutionService, ProcessExecutionService>();
-        builder.Services.TryAddSingleton<IProcessStateService, ProcessStateService>();
+        builder.Services.TryAddScoped<IProcessExecutionService, ProcessExecutionService>();
+        builder.Services.TryAddScoped<IProcessStateService, ProcessStateService>();
 
         return builder;
     }

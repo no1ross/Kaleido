@@ -1,7 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
-
-namespace Kaleido;
+namespace Kaleido.Process;
 
 public interface IParticipantBuilder
     : IKaleidoBuilder

@@ -42,6 +42,9 @@
     <Project Path="src/Process/AspNetCore/Kaleido.Process.AspNetCore.csproj" />
     <Project Path="src/Process/Process/Kaleido.Process.csproj" />
   </Folder>
+  <Folder Name="/src/Process/Providers/">
+    <Project Path="src/Process/Providers/SQLite/Kaleido.Process.Providers.SQLite.csproj" Id="59eee9c5-f48c-4b8d-8086-a29f7ea7c195" />
+  </Folder>
   <Folder Name="/src/Queryable/">
     <Project Path="src/Queryable/Abstractions/Kaleido.Queryable.Abstractions.csproj" />
     <Project Path="src/Queryable/AspNetCore/Kaleido.Queryable.AspNetCore.csproj" />

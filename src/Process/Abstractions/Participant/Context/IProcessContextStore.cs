@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace Kaleido.Process.Participant.Context;
 
-internal interface IProcessContextStore
+public interface IProcessContextStore
 {
-    Task<ParticipantContext> LoadAsync(Guid participantProcessId, CancellationToken cancellationToken = default);
+    Task<ParticipantContext?> LoadAsync(Guid participantProcessId, CancellationToken cancellationToken = default);
 
     Task SaveAsync(ParticipantContext context, CancellationToken cancellationToken = default);
 }
@@ -36,7 +36,7 @@ public sealed record ParticipantContext
         init;
     }
 
-    public string? LastestRequestId
+    public string? LatestRequestId
     {
         get;
         init;
@@ -71,7 +71,7 @@ public sealed record ParticipantContext
         init;
     }
         = [];
-
+    
     /// <summary>
     /// Current state for each registered process step.
     /// </summary>
@@ -82,6 +82,18 @@ public sealed record ParticipantContext
     }
         = [];
 
+    public DateTimeOffset CreatedUtc
+    {
+        get;
+        init;
+    }
+
+    public DateTimeOffset UpdatedUtc
+    {
+        get;
+        init;
+    }
+    
     public StepContext? FindStep(
         string stepName)
     {
@@ -148,7 +160,7 @@ public sealed record StepContext
     /// Request identifier associated with the most recent
     /// update to this step.
     /// </summary>
-    public string? LastRequestId
+    public string? LatestRequestId
     {
         get;
         init;

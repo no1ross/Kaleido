@@ -2,7 +2,7 @@
 using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Planning;
 
-namespace Kaleido.Process.Participant.Runtime;
+namespace Kaleido.Process.Participant;
 
 internal sealed class ParticipantRuntime
     : IParticipantRuntime
@@ -66,7 +66,7 @@ internal sealed class ParticipantRuntime
                 Guid.NewGuid())
                 with
             {
-                LastestRequestId =
+                LatestRequestId =
                         request.RequestId
             };
         }
@@ -75,12 +75,19 @@ internal sealed class ParticipantRuntime
             await _contextStore.LoadAsync(
                 request.ParticipantProcessId.Value,
                 cancellationToken);
+        
+        if (context is null)
+        {
+            context =
+                _stateUpdater.Initialize(
+                    request.ParticipantProcessId.Value);
+        }
 
         return _stateUpdater.Reconcile(
             context)
             with
         {
-            LastestRequestId =
+            LatestRequestId =
                     request.RequestId
         };
     }
