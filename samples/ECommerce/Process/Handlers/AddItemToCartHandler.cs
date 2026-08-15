@@ -24,7 +24,7 @@ public sealed class AddItemToCartHandler(
                 out var productId))
         {
             return ProcessStepHandlerResult.Failure(
-                ShoppingCartMessages.ProductNotFound(
+                ProcessStpMessages.ProductNotFound(
                     step.ItemId));
         }
 
@@ -36,7 +36,7 @@ public sealed class AddItemToCartHandler(
         if (product is null)
         {
             return ProcessStepHandlerResult.Failure(
-                ShoppingCartMessages.ProductNotFound(
+                ProcessStpMessages.ProductNotFound(
                     step.ItemId));
         }
 
@@ -64,7 +64,7 @@ public sealed class AddItemToCartHandler(
                     context.ParticipantProcessId)
                 {
                     return ProcessStepHandlerResult.Failure(
-                        ShoppingCartMessages.ActiveCartProcessMismatch(
+                        ProcessStpMessages.ActiveCartProcessMismatch(
                             activeCart.ParticipantProcessId,
                             context.ParticipantProcessId));
                 }
@@ -72,6 +72,9 @@ public sealed class AddItemToCartHandler(
                 shoppingCart = activeCart;
             }
         }
+
+        var cartCreated =
+            shoppingCart is null;
 
         if (shoppingCart is null)
         {
@@ -86,6 +89,10 @@ public sealed class AddItemToCartHandler(
             };
 
             dbContext.ShoppingCarts.Add(shoppingCart);
+
+            messages.Add(
+                ProcessStpMessages.ShoppingCartCreated(
+                    shoppingCart.ShoppingCartId));
         }
 
         var cartItem = shoppingCart.Items
@@ -115,7 +122,8 @@ public sealed class AddItemToCartHandler(
         await dbContext.SaveChangesAsync(
             cancellationToken);
 
-        return ProcessStepHandlerResult.Success(
-            ShoppingCartMessages.ItemAddedToCart(product.Name, step.Quantity));
+        messages.Add(ProcessStpMessages.ItemAddedToCart(product.Name, step.Quantity));
+
+        return ProcessStepHandlerResult.Success(messages.ToArray());
     }
 }

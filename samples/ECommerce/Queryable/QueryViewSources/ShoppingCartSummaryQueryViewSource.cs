@@ -67,8 +67,17 @@ internal sealed class ShoppingCartSummaryQueryViewSource
             return CreateEmptySummary();
         }
 
+        cartQuery =
+            cartQuery.Where(
+                x => x.IsActive);
+
         var rows =
             cartQuery.ToList();
+
+        if (rows.Count == 0)
+        {
+            return CreateEmptySummary();
+        }
 
         var firstRow =
             rows.First();

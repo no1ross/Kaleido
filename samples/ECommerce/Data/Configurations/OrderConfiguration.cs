@@ -16,8 +16,7 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         builder.Property(
                 order => order.OrderNumber)
-            .HasMaxLength(50)
-            .IsRequired();
+            .HasMaxLength(50);
 
         builder.Property(
                 order => order.Status)
@@ -40,6 +39,13 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
                 customer => customer.Orders)
             .HasForeignKey(
                 order => order.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(
+                order => order.ShoppingCart)
+            .WithMany()
+            .HasForeignKey(
+                order => order.ShoppingCartId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(
@@ -72,6 +78,12 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         builder.HasIndex(
             order => order.CustomerId);
+
+        builder.HasIndex(
+            order => order.ShoppingCartId);
+
+        builder.HasIndex(
+            order => order.ParticipantProcessId);
 
         builder.HasIndex(
             order => order.Status);

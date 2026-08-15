@@ -2,7 +2,7 @@
 
 namespace Kaleido.Samples.ECommerce.Process;
 
-public static class ShoppingCartMessages
+public static class ProcessStpMessages
 {
     public static ProcessMessage ProductNotFound(
         string productId) =>
@@ -32,12 +32,14 @@ public static class ShoppingCartMessages
                 $"The active cart belongs to process '{cartProcessId}' but the current request is using process '{currentProcessId}'."
         };
 
-    public static ProcessMessage ShoppingCartCreated() =>
+    public static ProcessMessage ShoppingCartCreated(
+        Guid shoppingCartId
+        ) =>
         new()
         {
             Code = "SHOPPING_CART_CREATED",
             Type = MessageType.Information,
-            Message = "A new shopping cart was created."
+            Message = $"A new shopping cart was created {shoppingCartId}."
         };
 
     public static ProcessMessage ItemAddedToCart(
@@ -177,4 +179,118 @@ public static class ShoppingCartMessages
             Message =
                 $"'{firstName} {lastName}' existing cart was merged into the current cart."
         };
+
+    public static ProcessMessage CustomerRequiredForCheckout() =>
+        new()
+        {
+            Code = "CUSTOMER_REQUIRED_FOR_CHECKOUT",
+            Type = MessageType.Error,
+            Message =
+                "A customer must be selected before the shopping cart can be processed."
+        };
+
+    public static ProcessMessage ShoppingCartEmpty(
+        Guid shoppingCartId) =>
+        new()
+        {
+            Code = "SHOPPING_CART_EMPTY",
+            Type = MessageType.Error,
+            Message =
+                $"Shopping cart '{shoppingCartId}' does not contain any items."
+        };
+
+    public static ProcessMessage ShoppingCartCustomerMismatch(
+        Guid shoppingCartId,
+        Guid customerId) =>
+        new()
+        {
+            Code = "SHOPPING_CART_CUSTOMER_MISMATCH",
+            Type = MessageType.Error,
+            Message =
+                $"Shopping cart '{shoppingCartId}' is not associated with customer '{customerId}'."
+        };
+
+    public static ProcessMessage OrderStarted(
+        Guid orderId) =>
+        new()
+        {
+            Code = "ORDER_STARTED",
+            Type = MessageType.Information,
+            Message =
+                $"Order '{orderId}' was started from the shopping cart."
+        };
+
+    public static ProcessMessage OrderUpdatedFromCart(
+        Guid orderId) =>
+        new()
+        {
+            Code = "ORDER_UPDATED_FROM_CART",
+            Type = MessageType.Information,
+            Message =
+                $"Order '{orderId}' was updated from the current shopping cart."
+        };
+
+    public static ProcessMessage OrderNotFound(
+        Guid orderId) =>
+        new()
+        {
+            Code = "ORDER_NOT_FOUND",
+            Type = MessageType.Error,
+            Message =
+                $"Order '{orderId}' was not found."
+        };
+
+    public static ProcessMessage OrderCustomerMismatch(
+        Guid orderId,
+        Guid customerId) =>
+        new()
+        {
+            Code = "ORDER_CUSTOMER_MISMATCH",
+            Type = MessageType.Error,
+            Message =
+                $"Order '{orderId}' is not associated with customer '{customerId}'."
+        };
+
+    public static ProcessMessage OrderProcessMismatch(
+        Guid orderId,
+        Guid participantProcessId) =>
+        new()
+        {
+            Code = "ORDER_PROCESS_MISMATCH",
+            Type = MessageType.Error,
+            Message =
+                $"Order '{orderId}' is not associated with process '{participantProcessId}'."
+        };
+
+    public static ProcessMessage OrderNotStarted(
+        Guid orderId,
+        OrderStatus status) =>
+        new()
+        {
+            Code = "ORDER_NOT_STARTED",
+            Type = MessageType.Error,
+            Message =
+                $"Order '{orderId}' cannot be submitted because its current status is '{status}'."
+        };
+
+    public static ProcessMessage OrderContainsNoItems(
+        Guid orderId) =>
+        new()
+        {
+            Code = "ORDER_CONTAINS_NO_ITEMS",
+            Type = MessageType.Error,
+            Message =
+                $"Order '{orderId}' cannot be submitted because it does not contain any items."
+        };
+    public static ProcessMessage OrderSubmitted(
+        string orderNumber) =>
+        new()
+        {
+            Code = "ORDER_SUBMITTED",
+            Type = MessageType.Information,
+            Message =
+                $"Order '{orderNumber}' was submitted successfully."
+        };
+
+
 }

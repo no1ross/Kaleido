@@ -1,4 +1,5 @@
-﻿using Kaleido.Samples.ECommerce.Process;
+﻿using Kaleido.Process.Participant;
+using Kaleido.Samples.ECommerce.Process;
 
 namespace Kaleido.Samples.ECommerce.Process.Responses;
 
@@ -8,5 +9,5 @@ public sealed record ProcessIssue
 
     public required string Message { get; init; }
 
-    public Severity Severity { get; init; }
+    public MessageType Severity { get; init; }
 }

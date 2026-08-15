@@ -4,6 +4,22 @@
 
         <h1>Shopping Cart</h1>
 
+    @if (items.length === 0)
+    {
+        <div class="empty-cart">
+
+            <h3>
+                Your shopping cart is empty.
+            </h3>
+
+            <p>
+                Browse products to add items to your cart.
+            </p>
+
+        </div>
+    }
+    @else
+    {
         @for (
             item of items;
             track item.shoppingCartItemId)
@@ -73,7 +89,47 @@
 
             </div>
         }
+    }
+@if (items.length > 0)
+{
+    <div class="cart-summary">
 
+        <div class="summary-row">
+
+            <span>
+                Items
+            </span>
+
+            <span>
+                {{ totalItems }}
+            </span>
+
+        </div>
+
+        <div class="summary-row total">
+
+            <span>
+                Cart Total
+            </span>
+
+            <span>
+                {{ cartTotal | currency }}
+            </span>
+
+        </div>
+
+        <button
+            class="checkout-btn"
+            [disabled]="!canCheckout"
+            (click)="checkout()">
+            
+
+            Checkout
+
+        </button>
+
+    </div>
+}
     </div>
 
 </div>

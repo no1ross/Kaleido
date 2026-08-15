@@ -8,7 +8,11 @@ public sealed class Order
 
     public Guid CustomerId { get; set; }
 
-    public string OrderNumber { get; set; } = string.Empty;
+    public Guid ShoppingCartId { get; set; }
+
+    public Guid ParticipantProcessId { get; set; }
+
+    public string? OrderNumber { get; set; }
 
     public OrderStatus Status { get; set; }
 
@@ -20,6 +24,8 @@ public sealed class Order
 
     public Customer Customer { get; set; } = null!;
 
+    public ShoppingCart ShoppingCart { get; set; } = null!;
+
     public BillingInfo? BillingInfo { get; set; }
 
     public ICollection<OrderItem> Items { get; set; }
@@ -29,4 +35,5 @@ public sealed class Order
         = new List<OrderStatusHistory>();
 
     public OrderCancellation? Cancellation { get; set; }
+    public DateTime UpdatedUtc { get; set; }
 }

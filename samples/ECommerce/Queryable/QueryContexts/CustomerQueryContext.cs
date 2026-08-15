@@ -5,7 +5,7 @@ namespace Kaleido.Samples.ECommerce.Data.QueryContexts;
 
 [QueryContext(
     Name = "customers",
-    DisplayName = "Customer",
+    DisplayName = "Customers",
     Version = "1.0.0",
     Source = "E-Commerce Catalog")]
 public sealed record CustomerQueryContext

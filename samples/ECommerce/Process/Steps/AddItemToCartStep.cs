@@ -1,13 +1,15 @@
 ﻿using Kaleido.Process.Attributes;
+using Kaleido.Samples.ECommerce.Steps;
 using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.ECommerce.Process.Steps;
 
 [ProcessStep(
-    Name = "AddItemToCart",
-    DisplayName = "Shopping Cart - Add Item to Cart",
+    Name = "add-item-to-cart",
+    DisplayName = "Shopping Carts - Add Item to Cart",
     Description = "Adds one or more products to the shopping cart.",
     Version = "1.0")]
+[AvailableUntil(typeof(SubmitOrderStep))]
 [Repeatable]
 public sealed record AddItemToCartStep
 {

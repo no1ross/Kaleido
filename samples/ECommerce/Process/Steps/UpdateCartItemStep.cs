@@ -1,14 +1,16 @@
 ﻿using Kaleido.Process.Attributes;
+using Kaleido.Samples.ECommerce.Steps;
 using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.ECommerce.Process.Steps;
 
 [ProcessStep(
-    Name = "UpdateCartItem",
-    DisplayName = "Shopping Cart - Update Item Quantity",
+    Name = "update-cart-item",
+    DisplayName = "Shopping Carts - Update Item Quantity",
     Description = "Changes the quantity of an item in the shopping cart.",
     Version = "1.0")]
-[DependsOnStep(typeof(AddItemToCartStep))]
+[AvailableAfter(typeof(AddItemToCartStep))]
+[AvailableUntil(typeof(SubmitOrderStep))]
 [Repeatable]
 public sealed record UpdateCartItemStep
 {

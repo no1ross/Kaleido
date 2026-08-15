@@ -1,4 +1,5 @@
 import { Component, inject, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
+import { Router } from '@angular/router';
 
 import { CurrencyPipe } from "@angular/common";
 import { Subscription } from 'rxjs';
@@ -12,6 +13,8 @@ import { ExecuteStepRequest } from '../models/participant-process-request';
 import { ProcessService, ProcessErrorResponse } from '../../kaleido/services/process-service';
 import { RemoveCartItemStep, RemoveCartItemResponse } from '../models/steps/remove-item-from-cart';
 import { UpdateCartItemStep, UpdateCartItemResponse } from '../models/steps/update-cart-item';
+import { ProcessCartStep, ProcessCartResponse } from '../models/steps/process-cart';
+
 @Component({
     selector: 'ecommerce-shopping-cart',
     standalone: true,
@@ -47,7 +50,10 @@ export class ShoppingCart
 
     private readonly processService =
         inject(ProcessService);
-        
+
+    private readonly router =
+        inject(Router);
+
     items: ShoppingCartDetailView[] = [];
 
     cartSubscription?: Subscription;
@@ -74,7 +80,31 @@ export class ShoppingCart
 
         this.cartSubscription?.unsubscribe();
     }
-    
+
+    get totalItems(): number {
+
+        return this.items
+            .reduce(
+                (total, item) =>
+                    total + item.quantity,
+                0);
+    }
+        
+    get cartTotal(): number {
+
+        return this.items
+            .reduce(
+                (total, item) =>
+                    total + item.extendedPrice,
+                0);
+    }
+
+    get canCheckout(): boolean {
+
+        return !!this.ecommerceState.state.customerId &&
+            this.items.length > 0;
+    }
+        
     private handleError(
         error: ProcessErrorResponse): void {
 
@@ -151,7 +181,7 @@ export class ShoppingCart
             .executeStep<
             RemoveCartItemStep,
             RemoveCartItemResponse>(
-                'RemoveCartItem',
+                'remove-cart-item',
                 request)
             .subscribe({
                 next: result => {
@@ -219,7 +249,7 @@ export class ShoppingCart
             .executeStep<
             UpdateCartItemStep,
             UpdateCartItemResponse>(
-                'UpdateCartItem',
+                'update-cart-item',
                 request)
             .subscribe({
                 next: result => {
@@ -237,6 +267,44 @@ export class ShoppingCart
                     this.errorMessage =
                         'An unexpected error occurred.';
                 }
+            });
+    }
+
+    checkout(): void {
+
+        const request: ExecuteStepRequest<ProcessCartStep> =
+        {
+            participantProcessId:
+                this.ecommerceState.state.participantProcessId,
+
+            processStep:
+            {
+                shoppingCartId:
+                    this.items[0].shoppingCartId,
+
+                customerId:
+                    this.ecommerceState.state.customerId!
+            }
+        };
+
+        this.processService
+            .executeStep<
+                ProcessCartStep,
+                ProcessCartResponse>(
+                    'process-cart',
+                    request)
+            .subscribe({
+
+                next: () => {
+
+                    this.router.navigate(
+                        ['/ecommerce/order-details']);
+                },
+
+                error: error => {
+                        console.error(
+                            'Failed to redirect to order review',
+                            error);                }
             });
     }
 }

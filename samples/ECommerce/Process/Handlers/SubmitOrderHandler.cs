@@ -1,124 +1,131 @@
-﻿//using Kaleido.Process.Participant.Execution;
-//using Kaleido.Process.Shared.Responses;
-//using Kaleido.Process.Shared.Steps;
-//using Microsoft.EntityFrameworkCore;
+﻿using Kaleido.Process.Participant.Execution;
 
-//namespace Kaleido.Process.Shared.Handlers;
+using Kaleido.Samples.ECommerce.Data;
+using Kaleido.Samples.ECommerce.Data.Entities;
 
-//public sealed class SubmitOrderHandler(
-//    ShoppingCartDbContext dbContext)
-//    : IProcessStepHandler<SubmitOrderStep, SubmitOrderResponse>
-//{
-//    public async Task<ProcessStepHandlerResult<SubmitOrderResponse>> ExecuteAsync(
-//        SubmitOrderStep step,
-//        ProcessStepContext context,
-//        CancellationToken cancellationToken = default)
-//    {
-//        var now =
-//            DateTimeOffset.UtcNow;
+using Kaleido.Samples.ECommerce.Steps;
+using Microsoft.EntityFrameworkCore;
 
-//        var orderId =
-//            Guid.Parse(step.OrderId);
+namespace Kaleido.Samples.ECommerce.Process.Handlers;
 
-//        var order =
-//            await dbContext.Orders
-//                .Include(x => x.BillingInfo)
-//                .SingleAsync(
-//                    x => x.OrderId == orderId,
-//                    cancellationToken);
+internal sealed class SubmitOrderHandler(
+    ECommerceDbContext dbContext)
+    : IProcessStepHandler<SubmitOrderStep>
+{
+    public async Task<ProcessStepHandlerResult> ExecuteAsync(
+        SubmitOrderStep step,
+        ProcessStepContext context,
+        CancellationToken cancellationToken = default)
+    {
+        var order =
+            await dbContext.Orders
+                .Include(x => x.Items)
+                .Include(x => x.StatusHistory)
+                .Include(x => x.ShoppingCart)
+                .FirstOrDefaultAsync(
+                    x => x.OrderId ==
+                         step.OrderId,
+                    cancellationToken);
 
-//        var issues =
-//            new List<ProcessIssue>();
+        if (order is null)
+        {
+            return ProcessStepHandlerResult.Failure(
+                ProcessStpMessages.OrderNotFound(
+                    step.OrderId));
+        }
 
-//        if (order.BillingInfo is null)
-//        {
-//            issues.Add(
-//                new ProcessIssue
-//                {
-//                    Code = "BillingMissing",
-//                    Message = "Billing information has not been submitted.",
-//                    Severity = Severity.Error
-//                });
-//        }
-//        else if (!order.BillingInfo.Accepted || !order.BillingInfo.Validated)
-//        {
-//            issues.Add(
-//                new ProcessIssue
-//                {
-//                    Code = "PaymentCorrectionRequired",
-//                    Message = "Payment information must be corrected before the order can be submitted.",
-//                    Severity = Severity.Error
-//                });
-//        }
+        if (order.ParticipantProcessId !=
+            context.ParticipantProcessId)
+        {
+            return ProcessStepHandlerResult.Failure(
+                ProcessStpMessages.OrderProcessMismatch(
+                    order.OrderId,
+                    context.ParticipantProcessId));
+        }
 
-//        if (!order.TermsAccepted)
-//        {
-//            issues.Add(
-//                new ProcessIssue
-//                {
-//                    Code = "TermsNotAccepted",
-//                    Message = "Terms and conditions must be accepted before the order can be submitted.",
-//                    Severity = Severity.Error
-//                });
-//        }
+        if (order.Status !=
+            OrderStatus.Started)
+        {
+            return ProcessStepHandlerResult.Failure(
+                ProcessStpMessages.OrderNotStarted(
+                    order.OrderId,
+                    order.Status));
+        }
 
-//        var requiresPaymentCorrection =
-//            issues.Any(x =>
-//                string.Equals(
-//                    x.Code,
-//                    "PaymentCorrectionRequired",
-//                    StringComparison.OrdinalIgnoreCase));
+        if (order.Items.Count == 0)
+        {
+            return ProcessStepHandlerResult.Failure(
+                ProcessStpMessages.OrderContainsNoItems(
+                    order.OrderId));
+        }
 
-//        if (issues.Count == 0)
-//        {
-//            order.Submitted = true;
-//            order.SubmissionId = $"sub-{Guid.NewGuid():N}";
-//            order.SubmittedOn = now;
-//            order.Status = OrderStatus.Submitted;
-//            order.UpdatedOn = now;
+        var submittedUtc =
+            DateTime.UtcNow;
 
-//            await dbContext.SaveChangesAsync(cancellationToken);
+        var previousStatus =
+            order.Status;
 
-//            var submittedResponse =
-//                new SubmitOrderResponse
-//                {
-//                    SubmissionId = order.SubmissionId,
-//                    Submitted = true,
-//                    RequiresPaymentCorrection = false,
-//                    Issues = Array.Empty<ProcessIssue>()
-//                };
+        order.Status =
+            OrderStatus.Submitted;
 
-//            return new ProcessStepHandlerResult<SubmitOrderResponse>
-//            {
-//                Response = submittedResponse
-//            };
-//        }
+        order.SubmittedUtc =
+            submittedUtc;
 
-//        order.UpdatedOn = now;
+        if (string.IsNullOrWhiteSpace(
+                order.OrderNumber))
+        {
+            order.OrderNumber =
+                GenerateOrderNumber(
+                    submittedUtc);
+        }
 
-//        await dbContext.SaveChangesAsync(cancellationToken);
+        dbContext.OrderStatusHistories.Add(
+            new OrderStatusHistory
+            {
+                OrderStatusHistoryId =
+                    Guid.NewGuid(),
 
-//        var response =
-//            new SubmitOrderResponse
-//            {
-//                SubmissionId = order.SubmissionId ?? string.Empty,
-//                Submitted = false,
-//                RequiresPaymentCorrection = requiresPaymentCorrection,
-//                Issues = issues
-//            };
+                OrderId =
+                    order.OrderId,
 
-//        if (requiresPaymentCorrection)
-//        {
-//            return new ProcessStepHandlerResult<SubmitOrderResponse>
-//            {
-//                Response = response,
-//                RequiredStep = "ChangePaymentInfo"
-//            };
-//        }
+                FromStatus =
+                    previousStatus,
 
-//        return new ProcessStepHandlerResult<SubmitOrderResponse>
-//        {
-//            Response = response
-//        };
-//    }
-//}
+                ToStatus =
+                    OrderStatus.Submitted,
+
+                ChangedUtc =
+                    submittedUtc,
+
+                Reason =
+                    "Order submitted."
+            });
+
+        if (order.ShoppingCart is not null)
+        {
+            order.ShoppingCart.IsActive =
+                false;
+
+            order.ShoppingCart.UpdatedUtc =
+                submittedUtc;
+        }
+
+        await dbContext.SaveChangesAsync(
+            cancellationToken);
+
+        var cart = dbContext.ShoppingCarts.FirstOrDefault(x => x.ShoppingCartId == order.ShoppingCartId);
+
+        return ProcessStepHandlerResult.Success(
+            ProcessStpMessages.OrderSubmitted(
+                order.OrderNumber));
+    }
+
+    private static string GenerateOrderNumber(
+        DateTime submittedUtc)
+    {
+        return
+            $"ORD-{submittedUtc:yyyyMMddHHmmss}-{Guid.NewGuid():N}"
+                [..28]
+                .ToUpperInvariant();
+    }
+}

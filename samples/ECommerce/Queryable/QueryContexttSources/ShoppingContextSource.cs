@@ -49,7 +49,10 @@ internal sealed class ShoppingCartContextSource(
                         item.Quantity,
 
                     UnitPrice =
-                        item.UnitPrice
+                        item.UnitPrice,
+
+                    IsActive = 
+                        item.ShoppingCart.IsActive
                 });
     }
 }

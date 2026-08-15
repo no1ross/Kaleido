@@ -27,7 +27,7 @@ public sealed class RemoveCartItemHandler(
         if (shoppingCart is null)
         {
             return ProcessStepHandlerResult.Failure(
-                ShoppingCartMessages.ShoppingCartNotFound(
+                ProcessStpMessages.ShoppingCartNotFound(
                     step.ShoppingCartId));
         }
 
@@ -35,7 +35,7 @@ public sealed class RemoveCartItemHandler(
             context.ParticipantProcessId)
         {
             return ProcessStepHandlerResult.Failure(
-                ShoppingCartMessages.ShoppingCartProcessMismatch(
+                ProcessStpMessages.ShoppingCartProcessMismatch(
                     step.ShoppingCartId,
                     context.ParticipantProcessId));
         }
@@ -49,7 +49,7 @@ public sealed class RemoveCartItemHandler(
         if (cartItem is null)
         {
             return ProcessStepHandlerResult.Failure(
-                ShoppingCartMessages.ShoppingCartItemNotFound(
+                ProcessStpMessages.ShoppingCartItemNotFound(
                     step.ShoppingCartItemId));
         }
 
@@ -64,7 +64,7 @@ public sealed class RemoveCartItemHandler(
             cancellationToken);
 
         return ProcessStepHandlerResult.Success(
-            ShoppingCartMessages.ItemRemovedFromCart(
+            ProcessStpMessages.ItemRemovedFromCart(
                 productName));
     }
 }

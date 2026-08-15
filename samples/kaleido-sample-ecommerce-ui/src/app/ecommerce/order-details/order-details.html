@@ -1,0 +1,229 @@
+<div class="order-review-container">
+
+    <div class="order-review">
+
+        <div class="page-header">
+
+            <div>
+
+                <h1>
+                    Order Details
+                </h1>
+
+                <p>
+                    Review order information and line items.
+                </p>
+
+            </div>
+
+        </div>
+
+        @if (items.length === 0)
+        {
+            <div class="empty-order">
+
+                <h3>
+                    No order is available.
+                </h3>
+
+                <p>
+                    Process a shopping cart to create an order.
+                </p>
+
+            </div>
+        }
+        @else
+        {
+            <div class="order-information">
+
+                <div class="info-row">
+
+                    <span class="label">
+                        Order Number
+                    </span>
+
+                    <span class="value">
+
+                        @if (order?.orderNumber)
+                        {
+                            {{ order?.orderNumber }}
+                        }
+                        @else
+                        {
+                            <span class="pending-value">
+                                Pending Submission
+                            </span>
+                        }
+
+                    </span>
+
+                </div>
+
+                <div class="info-row">
+
+                    <span class="label">
+                        Status
+                    </span>
+
+                    <span class="value">
+                        {{ order?.status }}
+                    </span>
+
+                </div>
+
+                <div class="info-row">
+
+                    <span class="label">
+                        Created
+                    </span>
+
+                    <span class="value">
+                        {{ order?.createdUtc | date:'medium' }}
+                    </span>
+
+                </div>
+
+                @if (order?.submittedUtc)
+                {
+                    <div class="info-row">
+
+                        <span class="label">
+                            Submitted
+                        </span>
+
+                        <span class="value">
+                            {{ order?.submittedUtc | date:'medium' }}
+                        </span>
+
+                    </div>
+                }
+
+            </div>
+
+            @for (
+                item of items;
+                track item.orderItemId)
+            {
+                <div class="order-item">
+
+                    <div class="order-item-header">
+
+                        <div>
+
+                            <div class="supplier-name">
+
+                                {{ item.supplierName }}
+
+                            </div>
+
+                            <h3>
+
+                                {{ item.familyName }}
+                                {{ item.modelName }}
+
+                            </h3>
+
+                            <div class="sku">
+
+                                SKU:
+                                {{ item.productSku }}
+
+                            </div>
+
+                            <div class="description">
+
+                                {{ item.description }}
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="order-item-footer">
+
+                        <div class="quantity-info">
+
+                            Quantity:
+                            {{ item.quantity }}
+
+                        </div>
+
+                        <div class="price-info">
+
+                            <div>
+
+                                Unit:
+                                {{ item.unitPrice | currency }}
+
+                            </div>
+
+                            <div>
+
+                                Total:
+                                {{ item.extendedPrice | currency }}
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            }
+
+            <div class="order-summary">
+
+                <div class="summary-row">
+
+                    <span>
+                        Items
+                    </span>
+
+                    <span>
+                        {{ totalItems }}
+                    </span>
+
+                </div>
+
+                <div class="summary-row total">
+
+                    <span>
+                        Order Total
+                    </span>
+
+                    <span>
+                        {{ orderTotal | currency }}
+                    </span>
+
+                </div>
+
+                @if (order?.status === 'Started')
+                {
+                    <div class="button-row">
+
+                        <button
+                            class="secondary-btn"
+                            (click)="returnToCart()">
+
+                            Back To Cart
+
+                        </button>
+
+                        <button
+                            class="primary-btn"
+                            (click)="submitOrder()">
+
+                            Submit Order
+
+                        </button>
+
+                    </div>
+                }
+
+            </div>
+        }
+
+    </div>
+
+</div>

@@ -25,7 +25,7 @@ public sealed class UpdateQuantityHandler(
         if (shoppingCart is null)
         {
             return ProcessStepHandlerResult.Failure(
-                ShoppingCartMessages.ShoppingCartNotFound(
+                ProcessStpMessages.ShoppingCartNotFound(
                     step.ShoppingCartId));
         }
 
@@ -33,7 +33,7 @@ public sealed class UpdateQuantityHandler(
             context.ParticipantProcessId)
         {
             return ProcessStepHandlerResult.Failure(
-                ShoppingCartMessages.ShoppingCartProcessMismatch(
+                ProcessStpMessages.ShoppingCartProcessMismatch(
                     step.ShoppingCartId,
                     context.ParticipantProcessId));
         }
@@ -47,7 +47,7 @@ public sealed class UpdateQuantityHandler(
         if (cartItem is null)
         {
             return ProcessStepHandlerResult.Failure(
-                ShoppingCartMessages.ShoppingCartItemNotFound(
+                ProcessStpMessages.ShoppingCartItemNotFound(
                     step.ShoppingCartItemId));
         }
 
@@ -68,7 +68,7 @@ public sealed class UpdateQuantityHandler(
                 cancellationToken);
 
             return ProcessStepHandlerResult.Success(
-                ShoppingCartMessages.ItemRemovedFromCart(
+                ProcessStpMessages.ItemRemovedFromCart(
                     cartItem.Product.Name));
         }
 
@@ -76,7 +76,7 @@ public sealed class UpdateQuantityHandler(
             cancellationToken);
 
         return ProcessStepHandlerResult.Success(
-            ShoppingCartMessages.ItemQuantityUpdated(
+            ProcessStpMessages.ItemQuantityUpdated(
                 cartItem.Product.Name,
                 previousQuantity,
                 cartItem.Quantity));

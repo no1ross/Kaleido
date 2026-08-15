@@ -109,9 +109,7 @@ internal sealed class ShoppingCartDetailViewSource
 
     private static IQueryable<ShoppingCartDetailView> CreateEmptyView()
     {
-        return new[]
-        {
-            new ShoppingCartDetailView()
-        }.AsQueryable();
+        return Enumerable.Empty<ShoppingCartDetailView>()
+            .AsQueryable();
     }
 }

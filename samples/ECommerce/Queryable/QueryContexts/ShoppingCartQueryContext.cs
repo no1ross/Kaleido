@@ -5,7 +5,7 @@ namespace Kaleido.Samples.ECommerce.Data.QueryContexts;
 
 [QueryContext(
     Name = "shopping-carts",
-    DisplayName = "Shopping Cart",
+    DisplayName = "Shopping Carts",
     Version = "1.0.0",
     Source = "E-Commerce Catalog")]
 public sealed class ShoppingCartQueryContext
@@ -23,4 +23,5 @@ public sealed class ShoppingCartQueryContext
     public string Description { get; set; } = string.Empty;
     public int Quantity { get; set; } = 0;
     public decimal UnitPrice { get; set; } = decimal.Zero;
+    public bool IsActive { get; set; } = false;
 }

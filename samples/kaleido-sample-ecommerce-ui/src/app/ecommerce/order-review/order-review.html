@@ -1,0 +1,172 @@
+<div class="order-review-container">
+
+    <div class="order-review">
+
+        <div class="page-header">
+
+            <div>
+
+                <h1>
+                    Review Order
+                </h1>
+
+                <p>
+                    Review your order before submitting.
+                </p>
+
+            </div>
+
+            @if (items.length > 0)
+            {
+                <div class="order-meta">
+
+                    <div>
+                        <strong>Status:</strong>
+                        {{ items[0].status }}
+                    </div>
+
+                </div>
+            }
+
+        </div>
+
+        @if (items.length === 0)
+        {
+            <div class="empty-order">
+
+                <h3>
+                    No order is available for review.
+                </h3>
+
+                <p>
+                    Process a shopping cart to start an order.
+                </p>
+
+            </div>
+        }
+        @else
+        {
+            @for (
+                item of items;
+                track item.orderItemId)
+            {
+                <div class="order-item">
+
+                    <div class="order-item-header">
+
+                        <div>
+
+                            <div class="supplier-name">
+
+                                {{ item.supplierName }}
+
+                            </div>
+
+                            <h3>
+
+                                {{ item.familyName }}
+                                {{ item.modelName }}
+
+                            </h3>
+
+                            <div class="sku">
+
+                                SKU:
+                                {{ item.productSku }}
+
+                            </div>
+
+                            <div class="description">
+
+                                {{ item.description }}
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="order-item-footer">
+
+                        <div class="quantity-info">
+
+                            Quantity:
+                            {{ item.quantity }}
+
+                        </div>
+
+                        <div class="price-info">
+
+                            <div>
+
+                                Unit:
+                                {{ item.unitPrice | currency }}
+
+                            </div>
+
+                            <div>
+
+                                Total:
+                                {{ item.extendedPrice | currency }}
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            }
+
+            <div class="order-summary">
+
+                <div class="summary-row">
+
+                    <span>
+                        Items
+                    </span>
+
+                    <span>
+                        {{ totalItems }}
+                    </span>
+
+                </div>
+
+                <div class="summary-row total">
+
+                    <span>
+                        Order Total
+                    </span>
+
+                    <span>
+                        {{ orderTotal | currency }}
+                    </span>
+
+                </div>
+
+                <div class="button-row">
+
+                    <button
+                        class="secondary-btn"
+                        (click)="returnToCart()">
+
+                        Back To Cart
+
+                    </button>
+
+                    <button
+                        class="primary-btn"
+                        (click)="submitOrder()">
+
+                        Submit Order
+
+                    </button>
+
+                </div>
+
+            </div>
+        }
+
+    </div>
+
+</div>

@@ -167,7 +167,9 @@ addToCart(
                 product.productId,
 
             quantity:
-                1
+                1,
+            
+            customerId: this.ecommerceState.state.customerId
         }
     };
 
@@ -175,7 +177,7 @@ addToCart(
         .executeStep<
         AddItemToCartStep,
         AddItemToCartResponse>(
-            'AddItemToCart',
+            'add-item-to-cart',
             request)
         .subscribe({
             next: result => {

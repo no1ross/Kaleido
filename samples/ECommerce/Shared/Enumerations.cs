@@ -1,14 +1,19 @@
-﻿namespace Kaleido.Samples.ECommerce;
+﻿using System.Text.Json.Serialization;
 
+namespace Kaleido.Samples.ECommerce;
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum OrderStatus
 {
-    Started = 1,
-    BillingSubmitted = 2,
-    TermsAccepted = 3,
-    Submitted = 4,
-    Cancelled = 5
+    Unknown,
+    Started,
+    BillingSubmitted,
+    TermsAccepted,
+    Submitted,
+    Cancelled
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ShoppingCartStatus
 {
     Active,
@@ -16,6 +21,7 @@ public enum ShoppingCartStatus
     Abandoned
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum PaymentMethodType
 {
     CreditCard,
@@ -24,6 +30,7 @@ public enum PaymentMethodType
     BankAccount
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum OrderPriority
 {
     Standard,
@@ -31,6 +38,7 @@ public enum OrderPriority
     Overnight
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum CartItemType
 {
     Product,
@@ -38,16 +46,10 @@ public enum CartItemType
     Subscription
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum RefundMethod
 {
     OriginalPayment,
     StoreCredit,
     GiftCard
-}
-
-public enum Severity
-{
-    Information,
-    Warning,
-    Error
 }

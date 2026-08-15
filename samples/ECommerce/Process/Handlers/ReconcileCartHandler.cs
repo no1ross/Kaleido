@@ -7,12 +7,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.ECommerce.Process.Handlers;
 
-internal sealed class ReconcileCartOwnershipHandler(
+internal sealed class ReconcileCartHandler(
     ECommerceDbContext dbContext)
-    : IProcessStepHandler<ReconcileCartOwnershipStep>
+    : IProcessStepHandler<ReconcileCartStep>
 {
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
-        ReconcileCartOwnershipStep step,
+        ReconcileCartStep step,
         ProcessStepContext context,
         CancellationToken cancellationToken = default)
     {
@@ -25,21 +25,21 @@ internal sealed class ReconcileCartOwnershipHandler(
         if (customer is null)
         {
             return ProcessStepHandlerResult.Failure(
-                ShoppingCartMessages.CustomerNotFound(
+                ProcessStpMessages.CustomerNotFound(
                     step.CustomerId));
         }
 
         if (!customer.IsActive)
         {
             return ProcessStepHandlerResult.Failure(
-                ShoppingCartMessages.CustomerInactive(
+                ProcessStpMessages.CustomerInactive(
                     step.CustomerId));
         }
 
         var messages =
             new List<ProcessMessage>
             {
-                ShoppingCartMessages.CustomerSelected(
+                ProcessStpMessages.CustomerSelected(
                     customer.FirstName,
                     customer.LastName)
             };
@@ -104,7 +104,7 @@ internal sealed class ReconcileCartOwnershipHandler(
             customerCart is not null)
         {
             messages.Add(
-                ShoppingCartMessages.CustomerCartActivated(
+                ProcessStpMessages.CustomerCartActivated(
                     customer.FirstName,
                     customer.LastName));
 
@@ -132,7 +132,7 @@ internal sealed class ReconcileCartOwnershipHandler(
                 cancellationToken);
 
             messages.Add(
-                ShoppingCartMessages.AnonymousCartTransferredToCustomer(
+                ProcessStpMessages.AnonymousCartTransferredToCustomer(
                     customer.FirstName,
                     customer.LastName));
 
@@ -170,7 +170,7 @@ internal sealed class ReconcileCartOwnershipHandler(
                 cancellationToken);
 
             messages.Add(
-                ShoppingCartMessages.CustomerCartActivated(
+                ProcessStpMessages.CustomerCartActivated(
                     customer.FirstName,
                     customer.LastName));
 
@@ -196,7 +196,7 @@ internal sealed class ReconcileCartOwnershipHandler(
             cancellationToken);
 
         messages.Add(
-            ShoppingCartMessages.CustomerCartMergedIntoCurrentCart(
+            ProcessStpMessages.CustomerCartMergedIntoCurrentCart(
                 customer.FirstName,
                 customer.LastName));
 
