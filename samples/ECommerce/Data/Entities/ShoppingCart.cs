@@ -1,4 +1,6 @@
-﻿namespace Kaleido.Samples.ECommerce.Data.Entities;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Kaleido.Samples.ECommerce.Data.Entities;
 
 public sealed class ShoppingCart
 {
@@ -19,7 +21,9 @@ public sealed class ShoppingCart
     public ICollection<ShoppingCartItem> Items { get; set; }
         = new List<ShoppingCartItem>();
 
+    [NotMapped]
     public int TotalItems => Items.Sum(i => i.Quantity);
 
+    [NotMapped]
     public decimal TotalPrice => Items.Sum(i => i.Quantity * i.UnitPrice);
 }

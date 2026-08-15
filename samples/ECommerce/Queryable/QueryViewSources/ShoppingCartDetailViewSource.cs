@@ -69,9 +69,6 @@ internal sealed class ShoppingCartDetailViewSource
         }
 
         return cartQuery
-            .Where(x =>
-                x.ParticipantProcessId ==
-                parameters!.ParticipantProcessId)
             .Select(x =>
                 new ShoppingCartDetailView
                 {

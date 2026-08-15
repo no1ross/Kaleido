@@ -104,4 +104,77 @@ public static class ShoppingCartMessages
                 $"Updated '{productName}' quantity from {previousQuantity} to {quantity}."
         };
 
+    public static ProcessMessage CustomerNotFound(
+        Guid customerId) =>
+        new()
+        {
+            Code = "CUSTOMER_NOT_FOUND",
+            Type = MessageType.Error,
+            Message =
+                $"Customer '{customerId}' was not found."
+        };
+
+    public static ProcessMessage CustomerInactive(
+        Guid customerId) =>
+        new()
+        {
+            Code = "CUSTOMER_INACTIVE",
+            Type = MessageType.Error,
+            Message =
+                $"Customer '{customerId}' is inactive and cannot be selected."
+        };
+
+    public static ProcessMessage CustomerSelected(
+        string firstName,
+        string lastName) =>
+        new()
+        {
+            Code = "CUSTOMER_SELECTED",
+            Type = MessageType.Information,
+            Message =
+                $"Customer '{firstName} {lastName}' was successfully selected."
+        };
+    public static ProcessMessage AnonymousCartTransferredToCustomer(
+        string firstName,
+        string lastName) =>
+        new()
+        {
+            Code = "ANONYMOUS_CART_TRANSFERRED",
+            Type = MessageType.Information,
+            Message =
+                $"The anonymous cart was transferred to '{firstName} {lastName}'."
+        };
+
+    public static ProcessMessage AnonymousCartMergedIntoCustomerCart(
+        string firstName,
+        string lastName) =>
+        new()
+        {
+            Code = "CUSTOMER_CART_MERGED",
+            Type = MessageType.Information,
+            Message =
+                $"The anonymous cart was merged into '{firstName} {lastName}' existing cart."
+        };
+
+    public static ProcessMessage CustomerCartActivated(
+        string firstName,
+        string lastName) =>
+        new()
+        {
+            Code = "CUSTOMER_CART_ACTIVATED",
+            Type = MessageType.Information,
+            Message =
+                $"'{firstName} {lastName}' existing shopping cart was activated."
+        };
+
+    public static ProcessMessage CustomerCartMergedIntoCurrentCart(
+        string firstName,
+        string lastName) =>
+        new()
+        {
+            Code = "CUSTOMER_CART_MERGED_INTO_CURRENT_CART",
+            Type = MessageType.Information,
+            Message =
+                $"'{firstName} {lastName}' existing cart was merged into the current cart."
+        };
 }

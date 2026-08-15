@@ -1,4 +1,6 @@
-﻿namespace Kaleido.Samples.ECommerce.Data.Entities;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Kaleido.Samples.ECommerce.Data.Entities;
 
 public sealed class Customer
 {
@@ -21,4 +23,7 @@ public sealed class Customer
 
     public ICollection<Order> Orders { get; set; }
         = new List<Order>();
+
+    [NotMapped]
+    public string DisplayName => $"{FirstName} {LastName}";
 }

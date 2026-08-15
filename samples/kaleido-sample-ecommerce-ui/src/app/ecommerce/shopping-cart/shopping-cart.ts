@@ -1,7 +1,7 @@
-import { Component, inject, ChangeDetectorRef, OnInit } from '@angular/core';
+import { Component, inject, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
 
 import { CurrencyPipe } from "@angular/common";
-
+import { Subscription } from 'rxjs';
 import { QueryableService } from '../../kaleido/services/queryable-service';
 import { QueryRequest } from '../../kaleido/models/queryable-request';
 import { ShoppingCartContextStateService } from '../services/shoppingcart-context-state-service';
@@ -28,7 +28,7 @@ import { UpdateCartItemStep, UpdateCartItemResponse } from '../models/steps/upda
     ]
 })
 export class ShoppingCart
-    implements OnInit
+    implements OnInit, OnDestroy
 {
     private readonly queryableService =
         inject(QueryableService);
@@ -50,6 +50,8 @@ export class ShoppingCart
         
     items: ShoppingCartDetailView[] = [];
 
+    cartSubscription?: Subscription;
+
     errorMessage?: string;
 
     shoppingCartItemId?: string;
@@ -59,8 +61,20 @@ export class ShoppingCart
     ngOnInit(): void {
 
         this.loadCart();
+
+        this.cartSubscription =
+        this.ecommerceState.changed
+            .subscribe(() => {
+                this.loadCart();
+            });
     }
 
+
+    ngOnDestroy(): void {
+
+        this.cartSubscription?.unsubscribe();
+    }
+    
     private handleError(
         error: ProcessErrorResponse): void {
 
@@ -84,6 +98,9 @@ export class ShoppingCart
 
         request.parameters.participantProcessId =
             this.ecommerceState.state.participantProcessId;
+
+        request.parameters.customerId =
+            this.ecommerceState.state.customerId;
 
         this.queryableService
             .query<

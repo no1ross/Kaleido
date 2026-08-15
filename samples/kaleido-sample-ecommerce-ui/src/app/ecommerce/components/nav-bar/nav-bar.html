@@ -1,26 +1,61 @@
-<nav class="navigation">
+<nav class="main-nav">
 
-    <a
-        routerLink="/ecommerce/products"
-        routerLinkActive="active">
+    <div class="nav-content">
 
-        Products
+        <div class="nav-links">
 
-    </a>
+            <a
+                routerLink="/ecommerce/products"
+                routerLinkActive="active">
+                Products
+            </a>
 
-    <a
-        routerLink="/ecommerce/cart"
-        routerLinkActive="active">
+            <a
+                routerLink="/ecommerce/cart"
+                routerLinkActive="active">
+                Cart ({{ itemCount }})
+            </a>
 
-        Cart ({{totalItems}})
+            <a
+                routerLink="/orders"
+                routerLinkActive="active">
+                Orders
+            </a>
 
-    </a>
+        </div>
 
-    <span>
-        Orders
-    </span>
+        <div class="persona-selector">
+
+            <label for="customer">
+                Customer
+            </label>
+
+            <select
+                id="customer"
+                [value]="activeCustomerId ?? ''"
+                (change)="onCustomerChanged($event)">
+
+                <option value="">
+                    Anonymous
+                </option>
+
+                @for (
+                    customer of customers;
+                    track customer.customerId)
+                {
+                    <option
+                        [value]="customer.customerId">
+
+                        {{ customer.displayName }}
+
+                    </option>
+                }
+
+            </select>
+
+        </div>
+
+    </div>
 
 </nav>
-
-
-
+`
