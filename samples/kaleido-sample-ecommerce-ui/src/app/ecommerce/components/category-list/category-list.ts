@@ -50,17 +50,21 @@ export class CategoryList implements OnInit, OnDestroy {
       this.querySubscription?.unsubscribe();
   }
 
-  clearCategory(): void {
-      delete this.queryState.state.request.parameters;
+    clearCategory(): void {
 
-      if (this.queryState.state.request.query?.page) {
-          this.queryState.state.request.query.page.offset = 0;
-      }
+        this.queryState.state.request.parameters = {
+            categoryPath: ''
+        };
 
-      this.queryState.notifyChanged();
+        if (this.queryState.state.request.query?.page) {
 
-      this.loadCategories();
-  }
+            this.queryState.state.request.query.page.offset = 0;
+        }
+
+        this.queryState.notifyChanged();
+
+        this.loadCategories();
+    }
 
   get hasCategories(): boolean {
     return this.categories.length > 0;
@@ -105,24 +109,17 @@ export class CategoryList implements OnInit, OnDestroy {
       this.loadCategories();
   }
 
-    private get viewName(): string {
-
-        const parameters =
-            this.queryState.state.request.parameters as
-                ProductsByCategoryParameters | undefined;
-
-        return parameters?.categoryPath
-            ? 'product-by-category'
-            : 'product-list';
-    }
-
   private loadCategories(): void {
-        const viewName = 'categories';
-        const request = this.queryState.state.request;
+    const request =
+        this.queryState.state.request;
+
+    request.parameters ??= {
+        categoryPath: ''
+    };
 
       this.queryableService
           .query<CategoryCatalogView>(
-              viewName,
+              'categories',
               request)
           .subscribe({
               next: result => {

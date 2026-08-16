@@ -95,3 +95,4 @@ export interface QueryableViewRegistration {
 
     view: QueryableView;
 }
+

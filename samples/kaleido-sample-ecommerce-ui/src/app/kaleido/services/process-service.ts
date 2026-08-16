@@ -12,6 +12,7 @@ import { catchError, map, throwError } from 'rxjs';
 import { ProcessRegistry } from './process-registry';
 
 import { buildApiUrl } from '../../../configuration/urlConfig';
+import { ProcessRequestValidator, ProcessRequestValidationError } from './process-request-validator';
 
 @Injectable({
     providedIn: 'root'
@@ -27,12 +28,33 @@ export class ProcessService {
     private readonly processRegistry =
         inject(ProcessRegistry);
 
+private readonly processRequestValidator =
+    inject(ProcessRequestValidator);    
+
     executeStep<TProcessStep, TResponse>(
         stepName: string,
         request: ExecuteStepRequest<TProcessStep>
     ): Observable<ProcessExecutionResponse<TResponse>> {
 
-        const step = this.processRegistry.getStep(stepName);
+        const step =
+            this.processRegistry.getStep(
+                stepName);
+
+        const validationResult =
+            this.processRequestValidator.validate(
+                step,
+                request);
+
+        if (!validationResult.isValid) {
+
+            console.error(
+                '[ProcessService] Request validation failed.',
+                validationResult);
+
+            return throwError(
+                () => new ProcessRequestValidationError(
+                    validationResult.messages));
+        }
 
         console.log(step);
 
@@ -75,14 +97,6 @@ export class ProcessService {
                         return throwError(
                             () => error);
                     }));
-    }
-
-    getProcess(
-        participantProcessId: string
-    ): Observable<ParticipantProcessResult> {
-
-        return this.http.get<ParticipantProcessResult>(
-            `https://localhost:7251/kaleido/processes/${participantProcessId}`);
     }
 
     private logStepOutcome(

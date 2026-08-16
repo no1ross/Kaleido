@@ -9,6 +9,7 @@ import { QueryErrorResponse } from '../models/query-error-response';
 import { catchError, throwError, map } from 'rxjs';
 import { QueryableRegistry } from './queryable-registry';
 import { buildApiUrl } from '../../../configuration/urlConfig';
+import { QueryableRequestValidator, QueryableRequestValidationError } from './queryable-request-validator';
 
 @Injectable({
   providedIn: 'root'
@@ -21,6 +22,9 @@ export class QueryableService {
   private readonly queryableRegistry =
     inject(QueryableRegistry);
 
+private readonly queryRequestValidator =
+    inject(QueryableRequestValidator);    
+
   query<TResponse, TParameters = unknown>(
     view: string,
     request: QueryRequest<TParameters>
@@ -28,6 +32,23 @@ export class QueryableService {
 
     const viewMetadata =
       this.queryableRegistry.getView(view);
+
+    const validationResult =
+        this.queryRequestValidator.validate(
+            viewMetadata,
+            request);
+
+    if (!validationResult.isValid) {
+
+        console.error(
+            '[QueryableService] Request validation failed.',
+            validationResult.messages);
+
+        return throwError(
+            () => new QueryableRequestValidationError(
+                validationResult.messages));
+    }
+
 
     console.log(viewMetadata);
 
