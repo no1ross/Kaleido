@@ -80,7 +80,6 @@ export class NavBar
             .query<
                 CustomerPersonaView,
                 CustomerPersonaParameters>(
-                    'customers',
                     'customer-context',
                     request)
             .subscribe({
@@ -112,7 +111,6 @@ export class NavBar
             .query<
                 ShoppingCartSummaryView,
                 ShoppingCartViewParameters>(
-                    'shopping-carts',
                     'shopping-cart-summary',
                     request)
             .subscribe({

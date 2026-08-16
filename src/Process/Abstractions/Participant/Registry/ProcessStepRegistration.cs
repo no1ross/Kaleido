@@ -15,3 +15,9 @@ public sealed record RepeatableOptions
 {
     public bool Enabled { get; init; }
 }
+
+public sealed record ProcessStepMetadata(
+    string Name,
+    string Description,
+    string Version,
+    string DisplayName);

@@ -102,13 +102,11 @@ export class ProductResults implements OnInit, OnDestroy {
 
         this.errorMessage = undefined;
     
-        const context = 'products';
         const viewName = this.viewName;
         const request = this.queryState.state.request;
 
         this.queryableService
             .query<ProductCatalogView>(
-                context,
                 viewName,
                 request)
             .subscribe({

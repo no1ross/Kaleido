@@ -1,8 +1,8 @@
 import {
   Component,
   inject,
-  OnChanges,
-  SimpleChanges
+  Input,
+  OnInit
 } from '@angular/core';
 
 import {
@@ -23,6 +23,7 @@ import {
 } from '../models/sort-direction';
 
 import { QueryExecutionStateService } from '../services/query-state-service';
+import { QueryableRegistry } from '../services/queryable-registry';
 
 @Component({
   selector: 'kaleido-queryable-sorting',
@@ -30,53 +31,46 @@ import { QueryExecutionStateService } from '../services/query-state-service';
   templateUrl: './queryable-sorting.html',
   styleUrl: './queryable-sorting.scss',
 })
-export class QueryableSorting {
+export class QueryableSorting implements OnInit {
+
+  @Input({ required: true })
+  contextName!: string;
 
   private readonly queryState =
       inject(QueryExecutionStateService);
+
+  private readonly queryableRegistry =
+    inject(QueryableRegistry);
 
   workingSorts: QuerySort[] = [];
 
   readonly sortDirections = SORT_DIRECTION_OPTIONS;
 
-  readonly fields: QueryableSortField[] = [
-    {
-      field: 'productName',
-      label: 'Product'
-    },
-    {
-      field: 'supplierName',
-      label: 'Supplier'
-    },
-    {
-      field: 'categoryName',
-      label: 'Category'
-    },
-    {
-      field: 'price',
-      label: 'Price'
-    },
-    {
-      field: 'rating',
-      label: 'Rating'
-    },
-    {
-      field: 'reviewCount',
-      label: 'Reviews'
-    },
-    {
-      field: 'availableQuantity',
-      label: 'Available'
-    }
-  ];
+  fields: QueryableSortField[] = [];
 
   ngOnInit(): void {
 
-      this.workingSorts =
-          (this.queryState.state.request.query?.sort ?? [])
-              .map(sort => ({
-                  ...sort
-              }));
+    this.loadFieldsFromRegistry();
+
+    this.workingSorts =
+        (this.queryState.state.request.query?.sort ?? [])
+            .map(sort => ({
+                ...sort
+            }));
+  }
+
+  private loadFieldsFromRegistry(): void {
+
+      const sortableFields =
+          this.queryableRegistry.getSortableFields(
+              this.contextName);
+
+      this.fields =
+          sortableFields.map(field => ({
+              field: field.name,
+              label: this.getFieldLabel(
+                  field.name)
+          }));
   }
 
   addSort(): void {
@@ -171,12 +165,11 @@ export class QueryableSorting {
   }
 
   getFieldLabel(
-    field: string): string {
+      field: string): string {
 
-    return this.fields.find(
-      option =>
-        option.field === field)
-      ?.label ?? field;
+      return field.replace(
+          /([a-z])([A-Z])/g,
+          '$1 $2');
   }
 
   isFieldSelected(

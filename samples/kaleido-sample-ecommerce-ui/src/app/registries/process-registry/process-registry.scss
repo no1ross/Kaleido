@@ -1,0 +1,128 @@
+.registry-page {
+    padding: 1rem;
+}
+
+.header {
+    margin-bottom: 1rem;
+}
+
+.summary {
+    color: #666;
+}
+
+.content {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 1rem;
+}
+
+.step-list {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.step-card {
+    padding: 0.75rem;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.step-card:hover {
+    background: #f5f5f5;
+}
+
+.step-card.selected {
+    background: #e9f3ff;
+}
+
+.step-name {
+    font-weight: 600;
+}
+
+.step-display-name {
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+.step-meta {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: #777;
+}
+
+.details {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.section {
+    margin-top: 1.5rem;
+}
+
+.section h3 {
+    margin-bottom: 0.75rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 0.5rem;
+    border: 1px solid #e5e5e5;
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    background: #f5f5f5;
+}
+
+.tag {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    background: #eef5ff;
+}
+
+.empty {
+    color: #888;
+    font-style: italic;
+}
+
+.summary {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.stat {
+    padding: 0.4rem 0.75rem;
+    border-radius: 4px;
+    background: #f5f5f5;
+    font-size: 0.9rem;
+}
+
+.constraint {
+    margin-bottom: 0.5rem;
+}
+
+.constraint-name {
+    font-weight: 600;
+}
+
+.constraint-parameters {
+    margin-left: 0.75rem;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.constraint-parameters span {
+    display: block;
+}

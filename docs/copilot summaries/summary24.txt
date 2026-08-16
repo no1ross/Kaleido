@@ -1,0 +1,551 @@
+1. Core Requirements
+
+Complete the e-commerce workflow end-to-end
+
+Validate the full business flow:
+Browse Products
+    ↓
+AddItemToCart
+    ↓
+ReconcileCartOwnership
+    ↓
+ProcessCart
+    ↓
+Order Details
+    ↓
+SubmitOrder
+
+Prioritize proving the workflow before introducing additional concepts such as billing or terms acceptance.
+
+Command/Query separation remains the primary architectural goal
+
+Process steps mutate state.
+Queryable views read state.
+Process step responses should not be used as the primary mechanism for UI synchronization.
+UI should reload Queryable views after process execution.
+
+Business messaging over framework messaging
+
+Process handlers should return meaningful business outcome messages:
+Shopping cart created.
+Item added to cart.
+Order submitted.
+Framework-generated messages (repeatable step, dependency resolution, etc.) are separate concerns.
+Framework messages may eventually become optional / toggleable.
+
+Metadata should guide consumers
+
+Metadata is not intended to generate UI.
+Metadata exists to help consumers understand:
+What capability exists.
+What parameters are required.
+What endpoint maps to it.
+What operations are available.
+Metadata should remove framework implementation details from consumers.
+2. Architectural & Component Decisions
+Order Details Page
+
+Renamed:
+
+Order Review
+
+
+→
+
+Order Details
+
+
+Reason:
+
+Reusable across:
+Started orders
+Submitted orders
+Cancelled orders
+Future history screens
+
+Page now shows:
+
+Order Number
+Status
+Created Date
+Submitted Date (when available)
+Supplier
+Product Family
+Model
+SKU
+Description
+Quantity
+Unit Price
+Extended Price
+Order Totals
+
+Empty-state handling added:
+
+No fake rows.
+Show:
+No order is available.
+
+Order Query Architecture
+OrderQueryContext expanded to include:
+OrderId
+CustomerId
+ShoppingCartId
+ParticipantProcessId
+OrderNumber
+Status
+CreatedUtc
+UpdatedUtc
+SubmittedUtc
+CancelledUtc
+OrderItem information
+Decision
+Use:
+OrderStatus
+
+instead of:
+string Status
+
+Allow serialization layer to convert enums to strings.
+Reason
+Strong typing.
+Avoid EF translation issues caused by:
+Status.ToString()
+
+OrderDetailsView expanded
+
+Added:
+
+OrderNumber
+CreatedUtc
+UpdatedUtc
+SubmittedUtc
+CancelledUtc
+
+Discussion:
+
+ShoppingCartId
+Remains useful in QueryContext.
+Still undecided whether it belongs in OrderDetailsView.
+OrderDetails QueryView
+Decision
+
+Removed:
+
+.Where(x =>
+    x.Status == OrderStatus.Started)
+
+Reason
+
+Order Details should be reusable for:
+
+Started
+Submitted
+Cancelled
+
+
+Orders.
+
+Submit Order
+SubmitOrderStep
+
+Final shape:
+
+ParticipantProcessId
+CustomerId
+OrderId
+
+Rationale
+
+Explicitly validates:
+
+Aggregate Identity
+
+OrderId
+
+Business Identity
+
+CustomerId
+
+Process Correlation
+
+ParticipantProcessId
+Removed Idea
+
+Avoided:
+
+OrderId only
+
+
+because it provides weaker validation.
+
+Submit Order Behavior
+On submit:
+Generate OrderNumber.
+Set Status = Submitted.
+Set SubmittedUtc.
+Create OrderStatusHistory record.
+Mark ShoppingCart inactive.
+Confirmed
+
+Submitted orders display correctly in Order Details.
+
+Shopping Cart Lifecycle
+New Rule
+
+Submitted orders must deactivate the originating cart.
+
+Implemented:
+
+order.ShoppingCart.IsActive = false;
+
+Bug discovered
+
+Shopping cart queries ignored:
+
+IsActive
+
+
+because:
+
+ShoppingCartQueryContext
+
+
+did not expose it.
+
+Fix
+
+Added:
+
+bool IsActive
+
+
+to the ShoppingCart Query pipeline.
+
+Additional Fix
+
+Summary View needed handling for:
+
+0 active rows
+
+
+after filtering.
+
+Shopping Cart Messages
+Existing Problem
+
+Handler built:
+
+List<ProcessMessage>
+
+
+but did not return it.
+
+Fix
+
+Return accumulated business messages.
+
+New Business Events
+
+Handler now distinguishes:
+
+Existing Cart
+Item added to cart.
+
+New Cart
+Shopping cart created.
+Item added to cart.
+
+Order Number Generation
+SQLite unique constraint issue discovered
+
+Cause discussion:
+
+Initially suspected generator.
+More likely caused by:
+Empty string order numbers.
+Unique index interactions.
+Decision
+
+Prefer nullable order numbers until submission.
+
+Metadata Strategy
+Major realization
+
+Metadata is not for UI generation.
+
+Metadata is for:
+
+Consumer Guidance
+
+
+Specifically:
+
+Endpoint discovery
+Required parameters
+Query execution
+Process execution
+Dependency resolution
+Registry Concept
+Goal
+
+Eliminate duplicated framework identifiers from consumers.
+
+Current:
+
+query(
+    'orders',
+    'order-details',
+    request);
+
+
+and
+
+executeStep(
+    'submit-order',
+    request);
+
+
+contain repeated metadata.
+
+Key Observation
+
+OrderDetailsView already implies:
+
+orders
+order-details
+OrderDetailsViewParameters
+
+
+Likewise:
+
+SubmitOrderStep
+
+
+already implies:
+
+submit-order
+
+Desired Direction
+
+Move from:
+
+query(
+    'orders',
+    'order-details',
+    request);
+
+
+toward:
+
+query(
+    'order-details',
+    request);
+
+
+or something conceptually similar.
+
+Where metadata determines:
+
+context
+view
+endpoint
+required parameters
+
+
+without consumer duplication.
+
+Metadata Registry Direction
+Startup behavior
+
+Consumer should load:
+
+/queryable metadata
+/process metadata
+
+
+once.
+
+Registry purpose
+
+Translate:
+
+OrderDetailsView
+
+
+↓
+
+orders/order-details
+
+
+and:
+
+SubmitOrderStep
+
+
+↓
+
+submit-order
+
+Important Philosophy
+
+Metadata:
+
+✅ Guides execution
+
+✅ Removes framework knowledge from consumers
+
+❌ Does NOT decide what UI to show
+
+❌ Does NOT generate screens
+
+3. Unresolved Questions / Next Steps
+AcceptTermsAndConditionsStep
+
+Planned validation scenario:
+
+SubmitOrder
+    ↓
+RequiredStep Returned
+    ↓
+AcceptTermsAndConditions
+    ↓
+SubmitOrder
+
+
+Goal:
+
+Validate RequiredStep behavior.
+Validate dependency resolution.
+Validate metadata-driven responses.
+SubmitBillingStep
+
+Still undecided.
+
+Questions:
+
+Is it necessary for the sample?
+Does it add value beyond what Prior Authorization will eventually demonstrate?
+
+Current leaning:
+
+Defer.
+Focus on terms acceptance first.
+Metadata Registry Design
+
+Still unresolved:
+
+Registry key
+
+Should the registry be keyed by:
+
+View Name
+
+order-details
+
+
+or
+
+Type Name
+
+OrderDetailsView
+
+
+or both.
+
+Runtime Type Discovery
+
+Major open question:
+
+Can consumers dynamically associate
+view/step types with metadata
+without manual registration?
+
+
+TypeScript runtime limitations still need evaluation.
+
+Service API Simplification
+
+Current signatures:
+
+query(
+    context,
+    view,
+    request);
+
+executeStep(
+    stepName,
+    request);
+
+
+Future goal:
+
+Reduce duplicated identifiers.
+Let metadata resolve:
+context
+view
+endpoint
+parameter requirements
+
+while preserving strong typing.
+
+Framework Message Visibility
+
+Planned future enhancement:
+
+Allow consumers to choose:
+
+Business Messages Only
+
+
+or
+
+Business + Framework Messages
+
+
+Framework messages remain useful for:
+
+Diagnostics
+Debugging
+Dependency analysis
+
+but should not normally be shown to end users.
+
+UI Polish
+
+Potential future improvements:
+
+Status color coding:
+Started = Amber
+Submitted = Green
+Cancelled = Red
+Customer information in Order Details header.
+Order history screen.
+Submitted order navigation flow.
+Cart recreation behavior after submission validation.
+Major Architectural Takeaway
+
+The conversation shifted from proving Process/Queryable mechanics to proving that:
+
+Metadata
+    +
+Registry
+
+
+can remove framework implementation details from consumers.
+
+The primary goal is not dynamic UI generation.
+
+The primary goal is:
+
+Consumer says:
+
+    "Load Order Details"
+
+Metadata determines:
+
+    Context
+    View
+    Endpoint
+    Parameters
+
+Consumer does not care.

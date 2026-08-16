@@ -1,0 +1,109 @@
+.registry-page {
+    padding: 1rem;
+}
+
+.header {
+    margin-bottom: 1rem;
+}
+
+.summary {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.stat {
+    padding: 0.4rem 0.75rem;
+    border-radius: 4px;
+    background: #f5f5f5;
+}
+
+.content {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 1rem;
+}
+
+.context-list {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.context-card {
+    padding: 0.75rem;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.context-card:hover {
+    background: #f5f5f5;
+}
+
+.context-card.selected {
+    background: #e9f3ff;
+}
+
+.context-name {
+    font-weight: 600;
+}
+
+.context-display-name {
+    margin-top: 0.25rem;
+}
+
+.context-meta {
+    margin-top: 0.5rem;
+    color: #777;
+    font-size: 0.85rem;
+}
+
+.details {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.section {
+    margin-top: 1.5rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    background: #f5f5f5;
+}
+
+.view-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.tag {
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    background: #eef5ff;
+    cursor: pointer;
+}
+
+.selected-tag {
+    background: #cfe5ff;
+    font-weight: 600;
+}
+
+.empty {
+    color: #777;
+    font-style: italic;
+}

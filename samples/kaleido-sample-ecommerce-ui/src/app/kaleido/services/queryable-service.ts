@@ -7,6 +7,8 @@ import { QueryRequest } from '../models/queryable-request';
 import { QueryErrorResponse } from '../models/query-error-response';
 
 import { catchError, throwError, map } from 'rxjs';
+import { QueryableRegistry } from './queryable-registry';
+import { buildApiUrl } from '../../../configuration/urlConfig';
 
 @Injectable({
   providedIn: 'root'
@@ -16,22 +18,29 @@ export class QueryableService {
   private readonly http =
     inject(HttpClient);
 
+  private readonly queryableRegistry =
+    inject(QueryableRegistry);
+
   query<TResponse, TParameters = unknown>(
-    context: string,
     view: string,
     request: QueryRequest<TParameters>
   ): Observable<QueryableResult<TResponse>> {
 
-    this.logRequest(context, view, request);
+    const viewMetadata =
+      this.queryableRegistry.getView(view);
+
+    console.log(viewMetadata);
+
+    this.logRequest(view, request);
 
     return this.http.post<
       QueryableResult<TResponse>>(
-        `https://localhost:7251/kaleido/queryable/${context}/${view}/query`,
+        buildApiUrl(viewMetadata.queryUrl),
         request)
       .pipe(
           map(result => {
 
-              this.logResponse(context, view, result);
+              this.logResponse(view, result);
 
               return result;
           }),
@@ -59,11 +68,10 @@ export class QueryableService {
   }
 
     private logRequest(
-        context: string,
         view: string,
         request: unknown): void {
 
-        console.group(`[QUERYABLE] $${context}/${view}`);
+        console.group(`[QUERYABLE] $${view}`);
 
         console.log('Request', request);
 
@@ -71,11 +79,10 @@ export class QueryableService {
     }
     
     private logResponse(
-        context: string,
         view: string,
         request: unknown): void {
 
-        console.group(`[QUERYABLE] $${context}/${view}`);
+        console.group(`[QUERYABLE] $${view}`);
 
         console.log('Response', request);
 

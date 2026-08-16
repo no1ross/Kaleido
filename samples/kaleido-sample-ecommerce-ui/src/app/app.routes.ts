@@ -5,6 +5,9 @@ import { ProductCatalog } from './ecommerce/product-catalog/product-catalog';
 import { ShoppingCart } from './ecommerce/shopping-cart/shopping-cart';
 import { OrderReview } from './ecommerce/order-review/order-review';
 import { OrderDetails } from './ecommerce/order-details/order-details';
+import { Registries } from './registries/registries';
+import { ProcessRegistryViewer } from './registries/process-registry/process-registry';
+import { QueryableRegistryViewer } from './registries/queryable-registry/queryable-registry';
 
 export const routes: Routes = [
   {
@@ -36,6 +39,25 @@ export const routes: Routes = [
       {
           path: 'order-details',
           component: OrderDetails
+      }
+    ]
+  },
+  {
+    path: 'registries',
+    component: Registries,
+    children: [
+      {
+        path: '',
+        redirectTo: 'process',
+        pathMatch: 'full'
+      },
+      {
+        path: 'process',
+        component: ProcessRegistryViewer
+      },
+      {
+        path: 'queryable',
+        component: QueryableRegistryViewer
       }
     ]
   }

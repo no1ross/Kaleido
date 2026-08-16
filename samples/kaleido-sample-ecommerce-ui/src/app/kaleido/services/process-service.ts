@@ -7,11 +7,11 @@ import { ExecuteStepRequest } from '../../ecommerce/models/participant-process-r
 import { RequestContextService } from './request-context-service';
 
 import { ProcessMessage } from '../models/participant-process-result';
-import {
-    catchError,
-    map,
-    throwError
-} from 'rxjs';
+import { catchError, map, throwError } from 'rxjs';
+
+import { ProcessRegistry } from './process-registry';
+
+import { buildApiUrl } from '../../../configuration/urlConfig';
 
 @Injectable({
     providedIn: 'root'
@@ -24,10 +24,17 @@ export class ProcessService {
     private readonly requestContext =
         inject(RequestContextService);
 
+    private readonly processRegistry =
+        inject(ProcessRegistry);
+
     executeStep<TProcessStep, TResponse>(
         stepName: string,
         request: ExecuteStepRequest<TProcessStep>
     ): Observable<ProcessExecutionResponse<TResponse>> {
+
+        const step = this.processRegistry.getStep(stepName);
+
+        console.log(step);
 
         const processRequest = {
             ...request,
@@ -38,7 +45,7 @@ export class ProcessService {
         this.logRequest(stepName, request);
 
         return this.http.post<ProcessExecutionResponse<TResponse>>(
-            `https://localhost:7251/kaleido/processes/steps/${stepName}`,
+            buildApiUrl(step.executeUrl),
             processRequest)
                 .pipe(
                     map(result => {

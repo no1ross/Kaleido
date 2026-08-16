@@ -8,6 +8,9 @@ internal static class ProcessRoutePaths
     public const string StepCatalog =
         "steps";
 
+    public const string StepRegistry =
+        "registry";
+
     public const string Execute =
         "execute";
 

@@ -1,0 +1,14 @@
+.navigation {
+    display: flex;
+    gap: 1rem;
+
+    margin-bottom: 1rem;
+}
+
+.navigation a {
+    text-decoration: none;
+}
+
+.navigation a.active {
+    font-weight: 600;
+}

@@ -1,3 +1,4 @@
+using Kaleido;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
@@ -135,9 +136,8 @@ internal sealed class QueryViewRegistry
                 new QueryParameterMetadata(
                     property.Name,
                     property.PropertyType,
-                    property.GetCustomAttribute<RequiredAttribute>() is not null,
-                    property.GetCustomAttribute<DescriptionAttribute>()?.Description,
-                    property.GetCustomAttribute<DefaultValueAttribute>()?.Value))
+                    ConstraintMapper.Map(property),
+                    property.GetCustomAttribute<DescriptionAttribute>()?.Description))
             .ToArray();
     }
 

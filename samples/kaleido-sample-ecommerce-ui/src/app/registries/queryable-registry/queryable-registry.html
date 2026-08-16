@@ -1,0 +1,420 @@
+<div class="registry-page">
+
+    <div class="header">
+
+        <h1>Queryable Registry</h1>
+
+        <div class="summary">
+
+            <div class="stat">
+                Contexts: {{ contexts.length }}
+            </div>
+
+            <div class="stat">
+                Views: {{ totalViews }}
+            </div>
+
+            <div class="stat">
+                Fields: {{ totalFields }}
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="content">
+
+        <div class="context-list">
+
+            @for (context of contexts; track context.name) {
+
+                <div
+                    class="context-card"
+                    [class.selected]="selectedContext?.name === context.name"
+                    (click)="selectContext(context)">
+
+                    <div class="context-name">
+                        {{ context.name }}
+                    </div>
+
+                    <div class="context-display-name">
+                        {{ context.displayName }}
+                    </div>
+
+                    <div class="context-meta">
+                        Fields: {{ context.fields.length }}
+                        |
+                        Views: {{ context.views.length }}
+                    </div>
+
+                </div>
+
+            }
+
+        </div>
+
+        @if (selectedContext) {
+
+            <div class="details">
+
+                <h2>
+                    {{ selectedContext.displayName }}
+                </h2>
+
+                <div class="section">
+
+                    <h3>Metadata</h3>
+
+                    <table>
+
+                        <tr>
+                            <th>Name</th>
+                            <td>{{ selectedContext.name }}</td>
+                        </tr>
+
+                        <tr>
+                            <th>Version</th>
+                            <td>{{ selectedContext.version }}</td>
+                        </tr>
+
+                        <tr>
+                            <th>Source</th>
+                            <td>{{ selectedContext.source }}</td>
+                        </tr>
+
+                        <tr>
+                            <th>Field Count</th>
+                            <td>{{ selectedContext.fields.length }}</td>
+                        </tr>
+
+                        <tr>
+                            <th>View Count</th>
+                            <td>{{ selectedContext.views.length }}</td>
+                        </tr>
+
+                    </table>
+
+                </div>
+@if (selectedView; as view) {
+
+    <div class="section">
+
+        <h3>View Metadata</h3>
+
+        <table>
+
+            <tr>
+                <th>Name</th>
+                <td>{{ view.name }}</td>
+            </tr>
+
+            <tr>
+                <th>Display Name</th>
+                <td>{{ view.displayName }}</td>
+            </tr>
+
+            <tr>
+                <th>Description</th>
+                <td>{{ view.description }}</td>
+            </tr>
+
+            <tr>
+                <th>Query Url</th>
+                <td>{{ view.queryUrl }}</td>
+            </tr>
+
+        </table>
+
+    </div>
+
+    <div class="section">
+
+        <h3>Parameters</h3>
+
+        @if (view.parameters.length === 0) {
+
+            <div class="empty">
+                None
+            </div>
+
+        } @else {
+
+            <table>
+
+                <thead>
+
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Format</th>
+                        <th>Nullable</th>
+                        <th>Constraints</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    @for (
+                        parameter of view.parameters;
+                        track parameter.name
+                    ) {
+
+                        <tr>
+
+                            <td>
+                                {{ parameter.name }}
+                            </td>
+
+                            <td>
+                                {{ parameter.dataType.type }}
+                            </td>
+
+                            <td>
+                                {{ parameter.dataType.format }}
+                            </td>
+
+                            <td>
+                                {{ parameter.dataType.nullable }}
+                            </td>
+
+                            <td>
+
+                                @if (parameter.constraints.length === 0) {
+
+                                    <span>None</span>
+
+                                }
+
+                                @for (
+                                    constraint of parameter.constraints;
+                                    track constraint.type
+                                ) {
+
+                                    <div class="constraint">
+
+                                        {{ formatConstraint(constraint) }}
+
+                                    </div>
+
+                                }
+
+                            </td>
+
+                        </tr>
+
+                    }
+
+                </tbody>
+
+            </table>
+
+        }
+
+    </div>
+
+    <div class="section">
+
+        <h3>Output Fields</h3>
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Format</th>
+                    <th>Nullable</th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                @for (
+                    field of view.fields;
+                    track field.name
+                ) {
+
+                    <tr>
+
+                        <td>
+                            {{ field.name }}
+                        </td>
+
+                        <td>
+                            {{ field.dataType.type }}
+                        </td>
+
+                        <td>
+                            {{ field.dataType.format }}
+                        </td>
+
+                        <td>
+                            {{ field.dataType.nullable }}
+                        </td>
+
+                    </tr>
+
+                }
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+}
+                <div class="section">
+
+                    <h3>Fields</h3>
+
+                    <table>
+
+                        <thead>
+
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Searchable</th>
+                            <th>Sortable</th>
+                            <th>Filterable</th>
+                            <th>Operators</th>
+                        </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                        @for (
+                            field of selectedContext.fields;
+                            track field.name
+                        ) {
+
+                            <tr>
+
+                                <td>
+                                    {{ field.name }}
+                                </td>
+
+                                <td>
+                                    {{ field.dataType.type }}
+                                </td>
+
+                                <td>
+                                    {{ field.isSearchable }}
+                                </td>
+
+                                <td>
+                                    {{ field.isSortable }}
+                                </td>
+
+                                <td>
+                                    {{ field.isFilterable }}
+                                </td>
+
+                                <td>
+                                    {{ getOperators(field.filterOperators) }}
+                                </td>
+
+                            </tr>
+
+                        }
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                <div class="section">
+
+                    <h3>Views</h3>
+
+                    <div class="view-tags">
+
+                        @for (
+                            view of selectedContext.views;
+                            track view.name
+                        ) {
+
+                            <div
+                                class="tag"
+                                [class.selected-tag]="selectedView?.name === view.name"
+                                (click)="selectView(view)">
+
+                                {{ view.displayName ?? view.name }}
+
+                            </div>
+
+                        }
+
+                    </div>
+
+                </div>
+
+                @if (selectedView) {
+
+                    <div class="section">
+
+                        <h3>Output Fields</h3>
+
+                        <table>
+
+                            <thead>
+
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Format</th>
+                                    <th>Nullable</th>
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                                @for (
+                                    field of selectedView.fields;
+                                    track field.name
+                                ) {
+
+                                    <tr>
+
+                                        <td>
+                                            {{ field.name }}
+                                        </td>
+
+                                        <td>
+                                            {{ field.dataType.type }}
+                                        </td>
+
+                                        <td>
+                                            {{ field.dataType.format }}
+                                        </td>
+
+                                        <td>
+                                            {{ field.dataType.nullable }}
+                                        </td>
+
+                                    </tr>
+
+                                }
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                }
+
+            </div>
+
+        }
+
+    </div>
+
+</div>
+                              

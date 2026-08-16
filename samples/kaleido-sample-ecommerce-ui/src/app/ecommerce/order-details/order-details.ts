@@ -161,7 +161,6 @@ export class OrderDetails
             .query<
                 OrderDetailsView,
                 OrderDetailsViewParameters>(
-                    'orders',
                     'order-details',
                     request)
             .subscribe({

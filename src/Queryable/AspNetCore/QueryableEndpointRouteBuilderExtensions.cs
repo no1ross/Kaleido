@@ -59,10 +59,40 @@ public static class QueryableEndpointRouteBuilderExtensions
                 "discover available views, and execute queries through those views.")
             .Produces<IReadOnlyCollection<QueryableRecordSummary>>();
 
+        group.MapGet(
+            "registry",
+            () => Results.Ok(
+                contextRegistry.Registrations
+                    .Select(r => {
+                        var views = viewRegistry.Registrations
+                            .Where(x => x.QueryContextType == r.ContextType).ToArray();
+                        return QueryableRecordResponse.FromRegistration(
+                            r,
+                            views,
+                            options);
+                        })
+                    .OrderBy(r => r.Name)))
+                .WithName(
+                    QueryableEndpointNames.RegistryEndpointName)
+                .WithTags("Queryable")
+                .WithSummary(
+                    "Get queryable registry metadata.")
+                .WithDescription(
+                    "Returns the complete metadata registry for all registered query contexts and views. " +
+                    "This endpoint is intended for consumer registry initialization and provides the information " +
+                    "required to discover available views, resolve query endpoints, understand query parameters, " +
+                    "and identify supported search, filter, sort, and paging capabilities.")
+                .Produces<IReadOnlyCollection<QueryableRecordResponse>>();
+
+
         foreach (var context in contextRegistry.Registrations)
         {
+            var views = viewRegistry.Registrations
+                .Where(x => x.QueryContextType == context.ContextType).ToArray();
+            
             group.MapMetadataEndpoint(
                 context,
+                views,
                 QueryableRoutePaths.QueryContextMetadata(
                     options,
                     context.Metadata.Name.ToLowerInvariant()),
@@ -108,6 +138,7 @@ public static class QueryableEndpointRouteBuilderExtensions
     private static void MapMetadataEndpoint(
         this IEndpointRouteBuilder endpoints,
         QueryContextRegistration context,
+        IReadOnlyCollection<QueryViewRegistration> views,
         string route,
         QueryableRouteOptions options)
     {
@@ -116,6 +147,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 () => Results.Ok(
                     QueryableRecordResponse.FromRegistration(
                         context,
+                        views,
                         options)))
             .WithName(
                 QueryableEndpointNames.QueryContextMetadataEndpointName(

@@ -46,7 +46,9 @@ internal sealed class ProductCatalogContextSource
 
                 AvailableQuantity = inventory.AvailableQuantity,
 
-                IsActive = product.IsActive
+                IsActive = product.IsActive,
+                
+                ReleasedDate = product.ReleasedUtc
             };
     }
 }

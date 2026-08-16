@@ -6,6 +6,7 @@
 
   </div>
 
+  <div class="queryable-filtering__content">
   <div class="queryable-filtering__toolbar">
 
     <div></div>
@@ -31,6 +32,7 @@
     </div>
 
   </div>
+ 
 
   @if (!hasFilters) {
 
@@ -47,7 +49,9 @@
       <div class="queryable-filtering__operator">
 
         <label>
+
           Combine Filters Using
+
         </label>
 
         <select
@@ -64,6 +68,7 @@
               {{ option.label }}
 
             </option>
+
           }
 
         </select>
@@ -87,14 +92,14 @@
         node of rootGroup.filters;
         track $index) {
 
-        @if (node.condition) {
+        @if (node.condition; as condition) {
 
           <div class="queryable-filtering__row">
 
             <select
-              [value]="node.condition.field"
+              [value]="condition.field"
               (change)="fieldChanged(
-                node.condition,
+                condition,
                 $event)">
 
               @for (
@@ -107,18 +112,19 @@
                   {{ field.label }}
 
                 </option>
+
               }
 
             </select>
 
             <select
-              [value]="node.condition.operator"
+              [value]="condition.operator"
               (change)="operatorChanged(
-                node.condition,
+                condition,
                 $event)">
 
               @for (
-                option of filterOperators;
+                option of getFilterOperators(condition);
                 track option.value) {
 
                 <option
@@ -127,18 +133,71 @@
                   {{ option.label }}
 
                 </option>
+
               }
 
             </select>
 
-            @if (requiresValue(node.condition.operator)) {
+            @if (shouldShowSingleValueInput(condition)) {
 
               <input
-                type="text"
-                [value]="node.condition.values[0] ?? ''"
+                [type]="getInputType(condition)"
+                [value]="getFirstValue(condition)"
                 (input)="valueChanged(
-                  node.condition,
+                  condition,
                   $event)" />
+
+            } @else if (
+              shouldShowBooleanValueSelector(condition)
+            ) {
+
+              <select
+                [value]="getBooleanValue(condition)"
+                (change)="booleanValueChanged(
+                  condition,
+                  $event)">
+
+                <option value="true">
+                  True
+                </option>
+
+                <option value="false">
+                  False
+                </option>
+
+              </select>
+
+            } @else if (
+              shouldShowRangeValueInputs(condition)
+            ) {
+
+              <div class="queryable-filtering__range-values">
+
+                <input
+                  [type]="getInputType(condition)"
+                  [value]="getFirstValue(condition)"
+                  (input)="valueAtIndexChanged(
+                    condition,
+                    0,
+                    $event)" />
+
+                <input
+                  [type]="getInputType(condition)"
+                  [value]="getSecondValue(condition)"
+                  (input)="valueAtIndexChanged(
+                    condition,
+                    1,
+                    $event)" />
+
+              </div>
+
+            } @else {
+
+              <div class="queryable-filtering__value-less">
+
+                N/A
+
+              </div>
 
             }
 
@@ -161,3 +220,5 @@
   }
 
 </div>
+
+ </div>

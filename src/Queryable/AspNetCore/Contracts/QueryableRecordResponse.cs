@@ -1,4 +1,6 @@
 ﻿using Kaleido.Queryable.Metadata;
+using System.Net.Mime;
+using System.Reflection;
 
 namespace Kaleido.Queryable.AspNetCore.Contracts;
 
@@ -7,6 +9,8 @@ public sealed record QueryableRecordResponse
     public required string Name { get; init; }
 
     public string? Description { get; init; }
+
+    public string? DisplayName { get; init; }
 
     public string? Version { get; init; }
 
@@ -20,6 +24,7 @@ public sealed record QueryableRecordResponse
 
     public static QueryableRecordResponse FromRegistration(
         QueryContextRegistration registration,
+        IReadOnlyCollection<QueryViewRegistration> views,
         QueryableRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(registration);
@@ -34,6 +39,8 @@ public sealed record QueryableRecordResponse
 
             Description = registration.Metadata.Description,
 
+            DisplayName = registration.Metadata.DisplayName,
+
             Version = registration.Metadata.Version,
 
             Source = registration.Metadata.Source,
@@ -42,63 +49,46 @@ public sealed record QueryableRecordResponse
                 .Select(QueryableFieldMetadata.FromMetadata)
                 .ToArray(),
 
-            //Views = registration.QueryViews
-            //    .OrderBy(v => v.Metadata.Name)
-            //    .Select(view =>
-            //    {
-            //        var viewName =
-            //            view.Metadata.Name.ToLowerInvariant();
+            Views = views
+                .OrderBy(v => v.Metadata.Name)
+                .Select(view =>
+                {
+                    var viewName =
+                        view.Metadata.Name.ToLowerInvariant();
 
-            //        return new QueryableViewResponse
-            //        {
-            //            Name = view.Metadata.Name,
+                    return new QueryableViewResponse
+                    {
+                        Name = view.Metadata.Name,
 
-            //            Description = view.Metadata.Description,
+                        Description = view.Metadata.Description,
 
-            //            Pageable =
-            //                view.Metadata.Pageable is null
-            //                    ? null
-            //                    : PageableContract.FromMetadata(
-            //                        view.Metadata.Pageable),
+                        DisplayName = view.Metadata.DisplayName,
 
-            //            QueryUrl =
-            //                QueryableContractUrls.QueryViewQuery(
-            //                    options,
-            //                    contextName,
-            //                    viewName),
+                        Pageable =
+                            view.Metadata.Pageable is null
+                                ? null
+                                : PageableContract.FromMetadata(
+                                    view.Metadata.Pageable),
 
-            //            NamedQueries = registration.NamedQueries
-            //                .OrderBy(q => q.Metadata.Name)
-            //                .Select(query =>
-            //                {
-            //                    var queryName =
-            //                        query.Metadata.Name.ToLowerInvariant();
+                        QueryUrl =
+                            QueryableContractUrls.QueryViewQuery(
+                                options,
+                                contextName,
+                                viewName),
 
-            //                    return new QueryableNamedQuerySummary
-            //                    {
-            //                        Name = query.Metadata.Name,
+                        Parameters = view.Metadata.Parameters is null 
+                            ? null 
+                            : view.Metadata.Parameters
+                                .Select(x => QueryableQueryParameter.FromMetadata(x)).ToArray(),
 
-            //                        Description = query.Metadata.Description,
+                        Fields = view.ViewType
+                                    .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                                    .Select(QueryableQueryProperty.FromPropertyInfo)
+                                    .ToArray()
 
-            //                        ExecuteUrl =
-            //                            QueryableContractUrls.NamedQuery(
-            //                                options,
-            //                                contextName,
-            //                                viewName,
-            //                                queryName),
-
-            //                        MetadataUrl =
-            //                            QueryableContractUrls.NamedQueryMetadata(
-            //                                options,
-            //                                contextName,
-            //                                viewName,
-            //                                queryName)
-            //                    };
-            //                })
-            //                .ToArray()
-            //        };
-            //    })
-            //    .ToArray()
+                    };
+                })
+                .ToArray()
         };
     }
 
@@ -133,7 +123,30 @@ public sealed record QueryableViewResponse
 
     public string? Description { get; init; }
 
+    public string? DisplayName { get; init; }
+
     public PageableContract? Pageable { get; init; }
 
     public required string QueryUrl { get; init; }
+
+    public IReadOnlyCollection<QueryableQueryParameter>? Parameters { get; init; }
+
+    public IReadOnlyCollection<QueryableQueryProperty>? Fields { get; init; }
+}
+
+public sealed record QueryableQueryProperty
+{
+    public required string Name { get; init; }
+
+    public required DataTypeDescriptor DataType { get; init; }
+
+
+    public static QueryableQueryProperty FromPropertyInfo(PropertyInfo propertyInfo)
+    {
+        return new QueryableQueryProperty
+        {
+            Name = propertyInfo.Name,
+            DataType = DataTypeMapper.GetDescriptor(propertyInfo.PropertyType)            
+        };
+    }
 }

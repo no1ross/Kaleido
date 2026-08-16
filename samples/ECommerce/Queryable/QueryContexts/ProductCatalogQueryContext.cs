@@ -98,4 +98,15 @@ public sealed class ProductCatalogQueryContext
         FilterOperator.IsFalse)]
     [Sortable]
     public bool IsActive { get; init; }
+
+
+    [Filterable(
+        FilterOperator.Equals,
+        FilterOperator.GreaterThan,
+        FilterOperator.GreaterThanOrEqual,
+        FilterOperator.LessThan,
+        FilterOperator.LessThanOrEqual,
+        FilterOperator.Between)]
+    [Sortable]
+    public DateTime ReleasedDate { get; init; }
 }

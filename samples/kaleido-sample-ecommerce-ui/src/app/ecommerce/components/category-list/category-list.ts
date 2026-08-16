@@ -117,13 +117,11 @@ export class CategoryList implements OnInit, OnDestroy {
     }
 
   private loadCategories(): void {
-        const context = 'products';
         const viewName = 'categories';
         const request = this.queryState.state.request;
 
       this.queryableService
           .query<CategoryCatalogView>(
-              context,
               viewName,
               request)
           .subscribe({

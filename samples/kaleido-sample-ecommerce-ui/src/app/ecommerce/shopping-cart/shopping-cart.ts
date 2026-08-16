@@ -136,7 +136,6 @@ export class ShoppingCart
             .query<
                 ShoppingCartDetailView,
                 ShoppingCartViewParameters>(
-                    'shopping-carts',
                     'shopping-cart-detail',
                     request)
             .subscribe({

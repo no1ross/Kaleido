@@ -37,6 +37,8 @@ public static class ProcessEndpointRouteBuilderExtensions
 
         group.MapStepCatalogEndpoint(registry, options);
 
+        group.MapStepRegistryEndpoint(registry, options);
+
         foreach (var step in registry.Registrations)
         {
             group.MapProcessStep(
@@ -129,6 +131,36 @@ public static class ProcessEndpointRouteBuilderExtensions
             .WithDescription(
                 "Returns the current state of a participant process, including executed steps and currently available next steps. " +
                 "This endpoint does not execute any process step.");
+    }
+
+    private static void MapStepRegistryEndpoint(
+        this IEndpointRouteBuilder endpoints,
+        IProcessStepRegistry registry,
+        ProcessRouteOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(options);
+
+        endpoints.MapGet(
+                ProcessRoutePaths.StepRegistry,
+                () =>
+                    Results.Ok(
+                        registry.Registrations
+                            .Select(x =>
+                                ProcessStepResponse.FromRegistration(
+                                    x,
+                                    options))
+                            .OrderBy(x => x.Name)))
+            .WithName(ProcessEndpointNames.StepRegistryEndpointName)
+            .WithTags("Processes")
+            .Produces<IReadOnlyCollection<ProcessStepResponse>>()
+            .WithSummary("Get process registry metadata.")
+            .WithDescription(
+                "Returns the complete process metadata registry for all registered process steps. " +
+                "The response contains the information required by consumers to discover available " +
+                "process capabilities, resolve execution endpoints, validate required inputs, and " +
+                "initialize local process registries. This endpoint is optimized for application startup " +
+                "and eliminates the need to retrieve metadata for individual process steps.");
     }
 
     private static void MapStepCatalogEndpoint(

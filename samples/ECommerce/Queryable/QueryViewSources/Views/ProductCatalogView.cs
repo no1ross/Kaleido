@@ -21,4 +21,6 @@ public sealed class ProductCatalogView
     public int AvailableQuantity { get; init; }
 
     public bool IsActive { get; init; }
+
+    public DateTime ReleasedDate { get; init; }
 }

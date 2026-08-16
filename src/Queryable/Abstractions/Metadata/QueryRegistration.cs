@@ -25,15 +25,6 @@ public sealed record FieldMetadata
     bool IsSortable
 );
 
-public sealed record NamedQueryMetadata
-(
-    string Name,
-    string Version,
-    string DisplayName,
-    string Description,
-    IReadOnlyList<QueryParameterMetadata>? Parameters
-);
-
 public sealed record QueryViewRegistration
 (
     Type QueryViewType, 
@@ -62,8 +53,7 @@ public sealed record PageableMetadata
 public sealed record QueryParameterMetadata(
     string Name,
     Type Type,
-    bool Required,
-    string? Description,
-    object? DefaultValue);
+    IReadOnlyCollection<ConstraintContract> Constraints,
+    string? Description);
 
 

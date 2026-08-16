@@ -1,0 +1,264 @@
+<div class="registry-page">
+
+    <div class="header">
+
+        <h1>Process Registry</h1>
+
+        <div class="summary">
+
+            <div class="stat">
+                Steps: {{ steps.length }}
+            </div>
+
+            <div class="stat">
+                Fields:
+                {{
+                    steps.reduce(
+                        (sum, step) =>
+                            sum + step.fields.length,
+                        0)
+                }}
+            </div>
+
+            <div class="stat">
+                Dependencies:
+                {{
+                    steps.reduce(
+                        (sum, step) =>
+                            sum + step.dependencies.length,
+                        0)
+                }}
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="content">
+
+        <div class="step-list">
+
+            @for (step of steps; track step.name) {
+
+                <div
+                    class="step-card"
+                    [class.selected]="selectedStep?.name === step.name"
+                    (click)="selectStep(step)">
+
+                    <div class="step-name">
+                        {{ step.name }}
+                    </div>
+
+                    <div class="step-display-name">
+                        {{ step.displayName }}
+                    </div>
+
+                    <div class="step-meta">
+                        Fields: {{ step.fields.length }}
+                        |
+                        Repeatable: {{ step.repeatable }}
+                    </div>
+
+                </div>
+
+            }
+
+        </div>
+
+        @if (selectedStep) {
+
+        <div class="details">
+
+            <h2>
+                {{ selectedStep.displayName }}
+            </h2>
+
+            <div class="section">
+
+                <h3>Metadata</h3>
+
+                <table>
+
+                    <tr>
+                        <th>Name</th>
+                        <td>{{ selectedStep.name }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>Version</th>
+                        <td>{{ selectedStep.version }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>Repeatable</th>
+                        <td>{{ selectedStep.repeatable }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>Execute Url</th>
+                        <td>{{ selectedStep.executeUrl }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>Metadata Url</th>
+                        <td>{{ selectedStep.metadataUrl }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>Field Count</th>
+                        <td>{{ selectedStep.fields.length }}</td>
+                    </tr>                    
+                </table>
+
+            </div>
+
+            <div class="section">
+
+                <h3>Description</h3>
+
+                <p>
+                    {{ selectedStep.description }}
+                </p>
+
+            </div>
+
+            <div class="section">
+
+                <h3>Fields</h3>
+
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Format</th>
+                            <th>Nullable</th>
+                            <th>Constraints</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                    @for (field of selectedStep.fields; track field.name) {
+
+                        <tr>
+
+                            <td>{{ field.name }}</td>
+
+                            <td>
+                                {{ field.dataType.type }}
+                            </td>
+
+                            <td>
+                                {{ field.dataType.format }}
+                            </td>
+
+                            <td>
+                                {{ field.dataType.nullable }}
+                            </td>
+
+                            <td>
+
+                                @if (field.constraints.length === 0) {
+
+                                    <span>None</span>
+
+                                }
+
+                                @for (constraint of field.constraints; track constraint.type) {
+
+                                    <div class="constraint">
+
+                                        {{ formatConstraint(constraint) }}
+
+                                    </div>
+
+                                }
+
+                            </td>
+
+                        </tr>
+
+                    }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <div class="section">
+
+                <h3>Dependencies</h3>
+
+                @if (selectedStep.dependencies.length === 0) {
+
+                    <div class="empty">
+                        None
+                    </div>
+
+                }
+
+                @for (dependency of selectedStep.dependencies; track dependency.name) {
+
+                    <div class="tag">
+                        {{ dependency.name }}
+                    </div>
+
+                }
+
+            </div>
+
+            <div class="section">
+
+                <h3>Available After</h3>
+
+                @if (selectedStep.availableAfter.length === 0) {
+
+                    <div class="empty">
+                        None
+                    </div>
+
+                }
+
+                @for (step of selectedStep.availableAfter; track step.name) {
+
+                    <div class="tag">
+                        {{ step.name }}
+                    </div>
+
+                }
+
+            </div>
+
+            <div class="section">
+
+                <h3>Available Until</h3>
+
+                @if (selectedStep.availableUntil.length === 0) {
+
+                    <div class="empty">
+                        None
+                    </div>
+
+                }
+
+                @for (step of selectedStep.availableUntil; track step.name) {
+
+                    <div class="tag">
+                        {{ step.name }}
+                    </div>
+
+                }
+
+            </div>
+
+        </div>
+
+        }
+
+    </div>
+
+</div>

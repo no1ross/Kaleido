@@ -50,7 +50,9 @@ internal sealed class ProductListQueryViewSource
                     record.AvailableQuantity,
 
                 IsActive =
-                    record.IsActive
+                    record.IsActive,
+
+                ReleasedDate = record.ReleasedDate
             });
     }
 }
