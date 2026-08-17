@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace Kaleido.Queryable.Records;
 
-public interface IQueryViewRegistrationValidator
+internal interface IQueryViewRegistrationValidator
 {
     void Validate(
         IReadOnlyCollection<Type> queryViewTypes,

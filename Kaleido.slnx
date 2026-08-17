@@ -9,6 +9,7 @@
     <Project Path="samples/ECommerce/Queryable/Kaleido.Samples.ECommerce.Queryable.csproj" />
     <Project Path="samples/ECommerce/Shared/Kaleido.Samples.ECommerce.Shared.csproj" />
   </Folder>
+  <Folder Name="/samples/PriorAuth/" />
   <Folder Name="/shared/">
     <Project Path="shared/Kaleido.Process.Shared/Kaleido.Process.Shared.csproj" />
     <Project Path="shared/Kaleido.Queryable.Shared/Kaleido.Queryable.Shared.csproj" />

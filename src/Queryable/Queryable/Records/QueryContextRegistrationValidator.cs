@@ -5,13 +5,6 @@ using System.Reflection;
 
 namespace Kaleido.Queryable.Records;
 
-public interface IQueryContextRegistrationValidator
-{
-    void Validate(
-        IReadOnlyCollection<Type> queryContextTypes,
-        IServiceCollection services);
-}
-
 internal sealed class QueryContextRegistrationValidator
     : IQueryContextRegistrationValidator
 {

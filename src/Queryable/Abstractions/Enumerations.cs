@@ -96,17 +96,3 @@ public enum LogicalOperator
     Or
 }
 
-public enum ValueDataType 
-{ 
-    String, 
-    Integer,
-    Long,
-    Decimal, 
-    Boolean, 
-    Guid,
-    Date,
-    DateTime,
-    Time,
-    Enum, 
-    Unknown
-}

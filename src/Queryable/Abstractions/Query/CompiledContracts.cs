@@ -2,27 +2,27 @@ using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Query;
 
-public sealed record CompiledRecordQuery(
+internal sealed record CompiledRecordQuery(
     CompiledFilterExpression? Filter,
     CompiledSearch? Search,
     IReadOnlyList<CompiledSort> Sort,
     CompiledPage Page);
 
-public abstract record CompiledFilterExpression;
-public sealed record CompiledFilterGroup(LogicalOperator Operator, IReadOnlyList<CompiledFilterExpression> Filters) : CompiledFilterExpression;
-public sealed record CompiledFilterCondition(FieldMetadata Field, FilterOperator Operator, IReadOnlyList<object?> Values) : CompiledFilterExpression;
+internal abstract record CompiledFilterExpression;
+internal sealed record CompiledFilterGroup(LogicalOperator Operator, IReadOnlyList<CompiledFilterExpression> Filters) : CompiledFilterExpression;
+internal sealed record CompiledFilterCondition(FieldMetadata Field, FilterOperator Operator, IReadOnlyList<object?> Values) : CompiledFilterExpression;
 
-public sealed record CompiledSearch
+internal sealed record CompiledSearch
 (
     string SearchText,
     IReadOnlyList<CompiledSearchField> Fields
 );
-public sealed record CompiledSearchField
+internal sealed record CompiledSearchField
 (
     FieldMetadata Field,
     MatchMode MatchMode,
     int Priority
 );
 
-public sealed record CompiledSort(FieldMetadata Field, SortDirection Direction, int Sequence);
-public sealed record CompiledPage(int Size, int Offset);
+internal sealed record CompiledSort(FieldMetadata Field, SortDirection Direction, int Sequence);
+internal sealed record CompiledPage(int Size, int Offset);
