@@ -1,4 +1,4 @@
-﻿using Kaleido.Queryable.AspNetCore;
+using Kaleido.Queryable.AspNetCore;
 using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Metadata;
 using Microsoft.AspNetCore.Builder;
@@ -13,251 +13,167 @@ namespace Kaleido.Queryable.UnitTests.AspNetCore;
 public sealed class QueryableEndpointRouteBuilderExtensionsTests
 {
     [Fact]
-    public void MapQueryable_ShouldThrow_WhenEndpointsIsNull()
+    public void MapQueryable_WhenEndpointsIsNull_Throws()
     {
-        Assert.Throws<ArgumentNullException>(
-            () => QueryableEndpointRouteBuilderExtensions.MapQueryable(null!));
+        Assert.Throws<ArgumentNullException>(() =>
+            QueryableEndpointRouteBuilderExtensions.MapQueryable(null!));
     }
 
     [Fact]
-    public void MapQueryable_ShouldRegisterCatalogEndpoint()
+    public void MapQueryable_RegistersCatalogRegistryAndContextEndpoints()
     {
-        var endpoints =
-            CreateEndpoints(
-                CreateRegistry());
+        var endpoints = CreateEndpoints();
 
         endpoints.MapQueryable();
 
-        var endpoint =
-            FindEndpoint(
-                endpoints,
-                QueryableEndpointNames.CatalogEndpointName);
-
-        Assert.NotNull(endpoint);
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.CatalogEndpointName));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.RegistryEndpointName));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context")));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryViewEndpointName("test-context", "test-view")));
     }
 
     [Fact]
-    public void MapQueryable_ShouldRegisterRecordMetadataEndpoint()
+    public void MapQueryable_UsesExpectedRoutes()
     {
-        var endpoints =
-            CreateEndpoints(
-                CreateRegistry());
+        var options = new QueryableRouteOptions
+        {
+            RoutePrefix = "/data",
+            MetadataRoute = "schema",
+            QueryRoute = "execute"
+        };
+
+        var endpoints = CreateEndpoints(options);
 
         endpoints.MapQueryable();
 
-        var endpoint =
-            FindEndpoint(
-                endpoints,
-                QueryableEndpointNames
-                    .RecordMetadataEndpointName(
-                        "functionalrecords"));
-
-        Assert.NotNull(endpoint);
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/registry"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/test-context/schema"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/test-context/execute"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/test-context/test-view/execute"));
     }
 
     [Fact]
-    public void MapQueryable_ShouldRegisterRecordQueryEndpoint()
+    public void MapQueryable_UsesDisplayNameTags()
     {
-        var endpoints =
-            CreateEndpoints(
-                CreateRegistry());
+        var endpoints = CreateEndpoints();
 
         endpoints.MapQueryable();
 
-        var endpoint =
-            FindEndpoint(
-                endpoints,
-                QueryableEndpointNames
-                    .RecordQueryEndpointName(
-                        "functionalrecords"));
+        var metadataEndpoint = FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context"))!;
+        var viewEndpoint = FindEndpoint(endpoints, QueryableEndpointNames.QueryViewEndpointName("test-context", "test-view"))!;
 
-        Assert.NotNull(endpoint);
+        var metadataTags = metadataEndpoint.Metadata.GetMetadata<ITagsMetadata>();
+        var viewTags = viewEndpoint.Metadata.GetMetadata<ITagsMetadata>();
+
+        Assert.Contains("Test Context", metadataTags!.Tags);
+        Assert.Contains("Test Context - Test View", viewTags!.Tags);
     }
 
     [Fact]
-    public void MapQueryable_ShouldRegisterNamedQueryMetadataEndpoint()
+    public void MapQueryView_ThrowsWhenContextIsMissing()
     {
-        var endpoints =
-            CreateEndpoints(
-                CreateRegistry());
+        var builder = WebApplication.CreateBuilder();
+        builder.Services.AddRouting();
+        using var app = builder.Build();
 
-        endpoints.MapQueryable();
+        var contextRegistry = new Mock<IQueryContextRegistry>();
+        contextRegistry.Setup(x => x.GetRegistration(typeof(TestContext))).Throws(new KeyNotFoundException("missing"));
 
-        var endpoint =
-            FindEndpoint(
-                endpoints,
-                QueryableEndpointNames
-                    .NamedQueryMetadataEndpointName(
-                        "functionalrecords",
-                        "activerecords"));
+        var exception = Assert.Throws<KeyNotFoundException>(() =>
+            app.MapQueryView(
+                contextRegistry.Object,
+                CreateViewRegistration(),
+                new QueryableRouteOptions()));
 
-        Assert.NotNull(endpoint);
+        Assert.Equal("missing", exception.Message);
     }
 
-    [Fact]
-    public void MapQueryable_ShouldRegisterNamedQueryEndpoint()
-    {
-        var endpoints =
-            CreateEndpoints(
-                CreateRegistry());
-
-        endpoints.MapQueryable();
-
-        var endpoint =
-            FindEndpoint(
-                endpoints,
-                QueryableEndpointNames
-                    .NamedQueryEndpointName(
-                        "functionalrecords",
-                        "activerecords"));
-
-        Assert.NotNull(endpoint);
-    }
-
-    [Fact]
-    public void MapQueryable_ShouldUseDisplayNameForRecordTag()
-    {
-        var endpoints =
-            CreateEndpoints(
-                CreateRegistry());
-
-        endpoints.MapQueryable();
-
-        var endpoint =
-            FindEndpoint(
-                endpoints,
-                QueryableEndpointNames
-                    .RecordMetadataEndpointName(
-                        "functionalrecords"));
-
-        var tags =
-            endpoint!.Metadata
-                .OfType<ITagsMetadata>()
-                .Single();
-
-        Assert.Contains(
-            "Functional record test type.",
-            tags.Tags);
-    }
-
-    [Fact]
-    public void MapQueryable_ShouldUseCombinedTagForNamedQuery()
-    {
-        var endpoints =
-            CreateEndpoints(
-                CreateRegistry());
-
-        endpoints.MapQueryable();
-
-        var endpoint =
-            FindEndpoint(
-                endpoints,
-                QueryableEndpointNames
-                    .NamedQueryEndpointName(
-                        "functionalrecords",
-                        "activerecords"));
-
-        var tags =
-            endpoint!.Metadata
-                .OfType<ITagsMetadata>()
-                .Single();
-
-        Assert.Contains(
-            "Functional record test type. - Returns active records.",
-            tags.Tags);
-    }
-
-    private static RouteEndpoint? FindEndpoint(
-        IEndpointRouteBuilder endpoints,
-        string name)
-    {
-        var dataSource =
-            endpoints.DataSources.Single();
-
-        return dataSource.Endpoints
+    private static RouteEndpoint? FindEndpoint(IEndpointRouteBuilder endpoints, string name) =>
+        endpoints.DataSources
+            .SelectMany(x => x.Endpoints)
             .OfType<RouteEndpoint>()
             .SingleOrDefault(x =>
                 x.Metadata
                     .OfType<IEndpointNameMetadata>()
-                    .Any(m =>
-                        string.Equals(
-                            m.EndpointName,
-                            name,
-                            StringComparison.Ordinal)));
-    }
+                    .Any(m => string.Equals(m.EndpointName, name, StringComparison.Ordinal)));
 
-    private static IEndpointRouteBuilder CreateEndpoints(
-        IQueryContextRegistry registry)
+    private static RouteEndpoint? FindEndpointByRoute(IEndpointRouteBuilder endpoints, string route) =>
+        endpoints.DataSources
+            .SelectMany(x => x.Endpoints)
+            .OfType<RouteEndpoint>()
+            .SingleOrDefault(x => string.Equals(Normalize(x.RoutePattern.RawText), Normalize(route), StringComparison.OrdinalIgnoreCase));
+
+    private static string Normalize(string? route) => (route ?? string.Empty).Trim().Trim('/');
+
+    private static WebApplication CreateEndpoints(QueryableRouteOptions? options = null)
     {
         var builder = WebApplication.CreateBuilder();
-
-        var services = builder.Services;
-
-        services.AddRouting();
-
-        services.AddSingleton(
-            registry);
-
-        builder.Services.AddSingleton(
-            Mock.Of<IQueryableService>());
-
-        services.AddSingleton<
-            IOptions<QueryableRouteOptions>>(
-            Options.Create(
-                new QueryableRouteOptions()));        
-
+        builder.Services.AddRouting();
+        builder.Services.AddSingleton(Mock.Of<IQueryableService>());
+        builder.Services.AddSingleton<IQueryContextRegistry>(CreateContextRegistry());
+        builder.Services.AddSingleton<IQueryViewRegistry>(CreateViewRegistry());
+        builder.Services.AddSingleton<IOptions<QueryableRouteOptions>>(Options.Create(options ?? new QueryableRouteOptions()));
         return builder.Build();
     }
 
-    private static IQueryContextRegistry CreateRegistry()
+    private static IQueryContextRegistry CreateContextRegistry()
     {
-        var namedQuery =
-            new NamedQueryRegistration(
-                typeof(FakeNamedQuery),
-                new NamedQueryMetadata(
-                    "ActiveRecords",
-                    "Returns active records.",
-                    "1.0",
-                Array.Empty<QueryParameterMetadata>()));
-
-        var record =
-            new QueryRegistration(
-                typeof(FakeRecord),
-                typeof(FakeSource),
-                new QueryMetadata(
-                    "FunctionalRecords",
-                    "Functional record test type.",
-                    "Functional record test type.",
-                    "1.0",
-                    "Functional Records",
-                    Array.Empty<FieldMetadata>(),
-                    null),
-                new[]
-                {
-                    namedQuery
-                });
-
-        var registry =
-            new Mock<IQueryContextRegistry>();
-
-        registry.Setup(x => x.Registrations)
-            .Returns(
-                new[]
-                {
-                    record
-                });
-
+        var registry = new Mock<IQueryContextRegistry>();
+        registry.Setup(x => x.Registrations).Returns([CreateContextRegistration()]);
+        registry.Setup(x => x.GetRegistration(typeof(TestContext))).Returns(CreateContextRegistration());
         return registry.Object;
     }
 
-    private sealed class FakeRecord
+    private static IQueryViewRegistry CreateViewRegistry()
+    {
+        var registry = new Mock<IQueryViewRegistry>();
+        registry.Setup(x => x.Registrations).Returns([CreateViewRegistration()]);
+        return registry.Object;
+    }
+
+    private static QueryContextRegistration CreateContextRegistration() =>
+        new(
+            typeof(TestContext),
+            typeof(TestSource),
+            new QueryContextMetadata(
+                "Test-Context",
+                "Test Context",
+                "Test Context",
+                "1.0.0",
+                "Unit Test",
+                true,
+                null,
+                []));
+
+    private static QueryViewRegistration CreateViewRegistration() =>
+        new(
+            typeof(TestView),
+            typeof(TestViewContract),
+            typeof(EmptyQueryViewParameters),
+            typeof(TestContext),
+            new QueryViewMetadata(
+                "Test-View",
+                "1.0.0",
+                "Test View",
+                "Test View",
+                null,
+                []));
+
+    public sealed class TestContext
     {
     }
 
-    private sealed class FakeNamedQuery
+    public sealed class TestView
     {
     }
-    private sealed class FakeSource
+
+    public sealed class TestViewContract
+    {
+    }
+
+    public sealed class TestSource
     {
     }
 }

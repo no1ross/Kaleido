@@ -8,7 +8,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Queryable\AspNetCore\Kaleido.Queryable.AspNetCore.csproj" />
-		<ProjectReference Include="..\Testing\Kaleido.Queryable.Testing.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

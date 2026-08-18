@@ -8,238 +8,165 @@ namespace Kaleido.Queryable.UnitTests;
 public sealed class QueryableServiceTests
 {
     [Fact]
-    public void Constructor_ShouldThrow_WhenScopeFactoryIsNull()
+    public void Constructor_WhenScopeFactoryIsNull_Throws()
     {
-        Assert.Throws<ArgumentNullException>(
-            () => new QueryableService(
-                null!,
-                Mock.Of<IQueryContextRegistry>()));
+        Assert.Throws<ArgumentNullException>(() => new QueryableService(null!, Mock.Of<IQueryViewRegistry>(), Mock.Of<IQueryContextRegistry>()));
     }
 
     [Fact]
-    public void Constructor_ShouldThrow_WhenRegistryIsNull()
+    public void Constructor_WhenViewRegistryIsNull_Throws()
     {
-        Assert.Throws<ArgumentNullException>(
-            () => new QueryableService(
-                Mock.Of<IServiceScopeFactory>(),
-                null!));
+        Assert.Throws<ArgumentNullException>(() => new QueryableService(Mock.Of<IServiceScopeFactory>(), null!, Mock.Of<IQueryContextRegistry>()));
     }
 
     [Fact]
-    public async Task DispatchAsync_ShouldThrow_WhenRecordIsNotRegistered()
+    public void Constructor_WhenContextRegistryIsNull_Throws()
     {
-        var registry =
-            new Mock<IQueryContextRegistry>();
-
-        registry
-            .Setup(x => x.Find("test"))
-            .Returns((QueryContextRegistration?)null);
-
-        var dispatcher =
-            new QueryableService(
-                Mock.Of<IServiceScopeFactory>(),
-                registry.Object);
-
-        await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => dispatcher.QueryAsync<TestRecord>(
-                "test",
-                new QueryRequest()));
+        Assert.Throws<ArgumentNullException>(() => new QueryableService(Mock.Of<IServiceScopeFactory>(), Mock.Of<IQueryViewRegistry>(), null!));
     }
 
     [Fact]
-    public async Task DispatchAsync_ShouldThrow_WhenRecordTypeDoesNotMatch()
+    public async Task QueryAsync_WhenViewRegistrationExists_ResolvesTypedEngineAndReturnsResult()
     {
-        var registry =
-            new Mock<IQueryContextRegistry>();
+        var request = new QueryRequest();
+        var expected = new QueryResult<TestViewContract>(1, 0, 25, [new TestViewContract()]);
+        var viewRegistration = CreateViewRegistration();
+        var contextRegistration = CreateContextRegistration();
 
-        registry
-            .Setup(x => x.Find("test"))
-            .Returns(CreateRegistration(typeof(AnotherRecord)));
+        var engine = new Mock<IQueryContextEngine<TestContext, TestViewContract>>();
+        engine.Setup(x => x.ExecuteAsync(request, contextRegistration, viewRegistration, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
-        var dispatcher =
-            new QueryableService(
-                Mock.Of<IServiceScopeFactory>(),
-                registry.Object);
+        var provider = new Mock<IServiceProvider>();
+        provider.Setup(x => x.GetService(typeof(IQueryContextEngine<TestContext, TestViewContract>))).Returns(engine.Object);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => dispatcher.QueryAsync<TestRecord>(
-                "test",
-                new QueryRequest()));
+        var scope = new Mock<IServiceScope>();
+        scope.SetupGet(x => x.ServiceProvider).Returns(provider.Object);
+
+        var scopeFactory = new Mock<IServiceScopeFactory>();
+        scopeFactory.Setup(x => x.CreateScope()).Returns(scope.Object);
+
+        var viewRegistry = new Mock<IQueryViewRegistry>();
+        viewRegistry.Setup(x => x.Find(typeof(TestView))).Returns(viewRegistration);
+
+        var contextRegistry = new Mock<IQueryContextRegistry>();
+        contextRegistry.Setup(x => x.GetRegistration(typeof(TestContext))).Returns(contextRegistration);
+
+        var service = new QueryableService(scopeFactory.Object, viewRegistry.Object, contextRegistry.Object);
+
+        var result = await service.QueryAsync<TestView, TestViewContract>(request);
+
+        Assert.Same(expected, result);
+        engine.Verify(x => x.ExecuteAsync(request, contextRegistration, viewRegistration, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task DispatchAsync_ShouldExecuteQueryEngine()
+    public async Task QueryAsync_WhenNoViewRegistration_UsesDirectQueryPath()
     {
-        var request =
-            new QueryRequest();
+        var request = new QueryRequest();
+        var expected = new QueryResult<TestContext>(1, 0, 25, [new TestContext()]);
+        var contextRegistration = CreateContextRegistration();
 
-        var result =
-            new QueryResult<TestRecord>(
-                1,
-                0,
-                1,
-                [new TestRecord("A")]);
+        var engine = new Mock<IQueryContextEngine<TestContext, TestContext>>();
+        engine.Setup(x => x.ExecuteAsync(request, contextRegistration, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
-        var engine =
-            new Mock<IQueryContextEngine<TestRecord>>();
+        var provider = new Mock<IServiceProvider>();
+        provider.Setup(x => x.GetService(typeof(IQueryContextEngine<TestContext, TestContext>))).Returns(engine.Object);
 
-        engine
-            .Setup(x =>
-                x.ExecuteAsync(
-                    request,
-                    It.IsAny<CancellationToken>()))
-            .ReturnsAsync(result);
+        var scope = new Mock<IServiceScope>();
+        scope.SetupGet(x => x.ServiceProvider).Returns(provider.Object);
 
-        var provider =
-            new Mock<IServiceProvider>();
+        var scopeFactory = new Mock<IServiceScopeFactory>();
+        scopeFactory.Setup(x => x.CreateScope()).Returns(scope.Object);
 
-        provider
-            .Setup(x =>
-                x.GetService(
-                    typeof(IQueryContextEngine<TestRecord>)))
-            .Returns(engine.Object);
+        var viewRegistry = new Mock<IQueryViewRegistry>();
+        viewRegistry.Setup(x => x.Find(typeof(TestContext))).Returns((QueryViewRegistration?)null);
 
-        var scope =
-            new Mock<IServiceScope>();
+        var contextRegistry = new Mock<IQueryContextRegistry>();
+        contextRegistry.Setup(x => x.GetRegistration(typeof(TestContext))).Returns(contextRegistration);
 
-        scope
-            .SetupGet(x => x.ServiceProvider)
-            .Returns(provider.Object);
+        var service = new QueryableService(scopeFactory.Object, viewRegistry.Object, contextRegistry.Object);
 
-        var scopeFactory =
-            new Mock<IServiceScopeFactory>();
+        var result = await service.QueryAsync<TestContext, TestContext>(request);
 
-        scopeFactory
-            .Setup(x => x.CreateScope())
-            .Returns(scope.Object);
-
-        var registry =
-            new Mock<IQueryContextRegistry>();
-
-        registry
-            .Setup(x => x.Find("test"))
-            .Returns(CreateRegistration(typeof(TestRecord)));
-
-        var dispatcher =
-            new QueryableService(
-                scopeFactory.Object,
-                registry.Object);
-
-        await dispatcher.QueryAsync<TestRecord>(
-            "test",
-            request);
-
-        engine.Verify(
-            x =>
-                x.ExecuteAsync(
-                    request,
-                    It.IsAny<CancellationToken>()),
-            Times.Once);
+        Assert.Same(expected, result);
+        engine.Verify(x => x.ExecuteAsync(request, contextRegistration, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task DispatchAsync_ShouldReturnQueryResult()
+    public async Task QueryAsync_WhenViewReturnTypeDoesNotMatch_Throws()
     {
-        var item =
-            new TestRecord("A");
+        var request = new QueryRequest();
+        var viewRegistration = CreateViewRegistration() with { ViewType = typeof(AnotherViewContract) };
 
-        var result =
-            new QueryResult<TestRecord>(
-                1,
-                0,
-                25,
-                [item]);
+        var service = new QueryableService(
+            Mock.Of<IServiceScopeFactory>(),
+            MockViewRegistry(typeof(TestView), viewRegistration),
+            Mock.Of<IQueryContextRegistry>());
 
-        var engine =
-            new Mock<IQueryContextEngine<TestRecord>>();
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.QueryAsync<TestView, TestViewContract>(request));
 
-        engine
-            .Setup(x =>
-                x.ExecuteAsync(
-                    It.IsAny<QueryRequest>(),
-                    It.IsAny<CancellationToken>()))
-            .ReturnsAsync(result);
-
-        var provider =
-            new Mock<IServiceProvider>();
-
-        provider
-            .Setup(x =>
-                x.GetService(
-                    typeof(IQueryContextEngine<TestRecord>)))
-            .Returns(engine.Object);
-
-        var scope =
-            new Mock<IServiceScope>();
-
-        scope
-            .SetupGet(x => x.ServiceProvider)
-            .Returns(provider.Object);
-
-        var scopeFactory =
-            new Mock<IServiceScopeFactory>();
-
-        scopeFactory
-            .Setup(x => x.CreateScope())
-            .Returns(scope.Object);
-
-        var registry =
-            new Mock<IQueryContextRegistry>();
-
-        registry
-            .Setup(x => x.Find("test"))
-            .Returns(CreateRegistration(typeof(TestRecord)));
-
-        var dispatcher =
-            new QueryableService(
-                scopeFactory.Object,
-                registry.Object);
-
-        var response =
-            await dispatcher.QueryAsync<TestRecord>(
-                "test",
-                new QueryRequest());
-
-        Assert.Equal(
-            1,
-            response.TotalCount);
-
-        Assert.Equal(
-            0,
-            response.Offset);
-
-        Assert.Equal(
-            25,
-            response.PageSize);
-
-        Assert.Single(
-            response.Records);
-
-        Assert.Same(
-            item,
-            response.Records.Single());
+        Assert.Contains("returns", exception.Message);
     }
 
-    private static QueryContextRegistration CreateRegistration(
-        Type recordType)
+    [Fact]
+    public async Task QueryAsync_WhenDirectQueryNotAllowed_Throws()
     {
-        return new QueryRegistration(
-            recordType,
+        var request = new QueryRequest();
+        var registration = CreateContextRegistration() with { Metadata = CreateContextRegistration().Metadata with { AllowDirectQuery = false } };
+
+        var service = new QueryableService(
+            Mock.Of<IServiceScopeFactory>(),
+            MockViewRegistry(typeof(TestContext), null),
+            MockContextRegistry(registration));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.QueryAsync<TestContext, TestContext>(request));
+
+        Assert.Contains("does not allow direct query", exception.Message);
+    }
+
+    private static IQueryViewRegistry MockViewRegistry(Type lookupType, QueryViewRegistration? registration)
+    {
+        var registry = new Mock<IQueryViewRegistry>();
+        registry.Setup(x => x.Find(lookupType)).Returns(registration);
+        return registry.Object;
+    }
+
+    private static IQueryContextRegistry MockContextRegistry(QueryContextRegistration registration)
+    {
+        var registry = new Mock<IQueryContextRegistry>();
+        registry.Setup(x => x.GetRegistration(typeof(TestContext))).Returns(registration);
+        return registry.Object;
+    }
+
+    private static QueryContextRegistration CreateContextRegistration() =>
+        new(
+            typeof(TestContext),
             typeof(object),
-            new QueryMetadata(
-                "test",
-                "Test",
-                "Test",
-                "1.0",
-                "Unit Test",
-                [],
-                null),
-            []);
+            new QueryContextMetadata("test-context", "Test Context", "Test Context", "1.0.0", "Unit Test", true, null, []));
+
+    private static QueryViewRegistration CreateViewRegistration() =>
+        new(
+            typeof(TestView),
+            typeof(TestViewContract),
+            typeof(EmptyQueryViewParameters),
+            typeof(TestContext),
+            new QueryViewMetadata("test-view", "1.0.0", "Test View", "Test View", null, []));
+
+    public sealed class TestContext
+    {
     }
 
-    internal sealed record TestRecord(
-        string Name);
+    public sealed class TestView
+    {
+    }
 
-    internal sealed record AnotherRecord(
-        string Name);
+    public sealed class TestViewContract
+    {
+    }
+
+    public sealed class AnotherViewContract
+    {
+    }
 }

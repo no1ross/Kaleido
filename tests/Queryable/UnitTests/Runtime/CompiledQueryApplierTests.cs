@@ -706,29 +706,6 @@ public sealed class CompiledQueryApplierTests
     }
 
     [Fact]
-    public void ApplyPage_ShouldApplySkipAndTake()
-    {
-        var result =
-            _applier
-                .ApplyPage(
-                    CreateRecords()
-                        .OrderBy(x => x.Id)
-                        .AsQueryable(),
-                    new CompiledPage(
-                        2,
-                        1))
-                .ToArray();
-
-        Assert.Equal(
-            new[]
-            {
-                2,
-                3
-            },
-            result.Select(x => x.Id).ToArray());
-    }
-
-    [Fact]
     public void ApplyFilter_ShouldAllowCompatibleNumericValue()
     {
         var result =

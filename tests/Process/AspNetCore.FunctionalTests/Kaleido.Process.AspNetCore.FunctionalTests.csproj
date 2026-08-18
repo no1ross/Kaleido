@@ -8,7 +8,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Process\AspNetCore\Kaleido.Process.AspNetCore.csproj" />
-		<ProjectReference Include="..\Testing\Kaleido.Process.Testing.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

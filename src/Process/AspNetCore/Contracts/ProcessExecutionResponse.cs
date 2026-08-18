@@ -1,4 +1,5 @@
 ﻿using Kaleido.Process.Participant;
+using Kaleido.Process.Participant.Registry;
 
 namespace Kaleido.Process.AspNetCore.Contracts;
 
@@ -29,6 +30,40 @@ public sealed record ProcessExecutionResponse
         init;
     }
         = [];
+
+    public static ProcessExecutionResponse Create(
+        ParticipantProcessResult processResult,
+        IProcessStepRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(processResult);
+        ArgumentNullException.ThrowIfNull(registry);
+
+        return new ProcessExecutionResponse
+        {
+            ParticipantProcessId =
+                processResult.ParticipantProcessId,
+
+            RequiredStep =
+                processResult.RequiredStep,
+
+            AvailableSteps =
+                processResult.AvailableSteps
+                    .Select(stepName =>
+                        ProcessContractMapper.ToSummary(
+                            registry.GetRegistration(stepName)))
+                    .ToArray(),
+
+            Results =
+                processResult.Steps
+                    .Where(x =>
+                        x.ExecutionStatus is not null ||
+                        x.RuntimeMessages.Count > 0 ||
+                        x.BusinessMessages.Count > 0)
+                    .Select(x =>
+                        ProcessExecutionStepResponse.Create(x))
+                    .ToArray()
+        };
+    }
 }
 
 public sealed record ProcessExecutionStepResponse
@@ -50,6 +85,19 @@ public sealed record ProcessExecutionStepResponse
     {
         get;
         init;
+    }
+
+    public static ProcessExecutionStepResponse Create(
+        ParticipantStepResult stepResult)
+    {
+        ArgumentNullException.ThrowIfNull(stepResult);
+
+        return new ProcessExecutionStepResponse
+        {
+            StepName = stepResult.StepName,
+            Response = stepResult.Response ?? new { },
+            Messages = ProcessContractMapper.ToMessages(stepResult).ToArray()
+        };
     }
 }
 
@@ -114,55 +162,12 @@ public record StepExecutionResponse
             AvailableSteps =
                 processResult.AvailableSteps
                     .Select(stepName =>
-                    {
-                        var registration =
-                            registry.GetRegistration(
-                                stepName);
-
-                        return new ProcessStepSummary
-                        {
-                            Name =
-                                registration.Metadata.Name,
-
-                            Version =
-                                registration.Metadata.Version,
-
-                            DisplayName =
-                                registration.Metadata.DisplayName,
-
-                            Description =
-                                registration.Metadata.Description,
-
-                            Repeatable =
-                                registration.Repeatable.Enabled,
-
-                            ExecuteUrl =
-                                $"/processes/steps/{registration.Metadata.Name}",
-
-                            MetadataUrl =
-                                $"/processes/steps/{registration.Metadata.Name}/metadata"
-                        };
-                    })
+                        ProcessContractMapper.ToSummary(
+                            registry.GetRegistration(stepName)))
                     .ToList(),
 
             Messages =
-                stepResult.RuntimeMessages
-                    .Select(message =>
-                        new ProcessMessage
-                        {
-                            Type = message.Type,
-                            Message = message.Message,
-                            Code = message.Code.ToString()
-                        })
-                    .Concat(
-                        stepResult.BusinessMessages
-                            .Select(message =>
-                                new ProcessMessage
-                                {
-                                    Type = message.Type,
-                                    Message = message.Message,
-                                    Code = message.Code
-                                }))
+                ProcessContractMapper.ToMessages(stepResult)
                     .ToList()
                     };
     }
@@ -210,6 +215,49 @@ public sealed record StepExecutionResponse<TResponse> : StepExecutionResponse
     }
 }
 
+internal static class ProcessContractMapper
+{
+    public static ProcessStepSummary ToSummary(
+        ProcessStepRegistration registration)
+    {
+        ArgumentNullException.ThrowIfNull(registration);
+
+        return new ProcessStepSummary
+        {
+            Name = registration.Metadata.Name,
+            Version = registration.Metadata.Version,
+            DisplayName = registration.Metadata.DisplayName,
+            Description = registration.Metadata.Description,
+            Repeatable = registration.Repeatable.Enabled,
+            ExecuteUrl = $"/processes/steps/{registration.Metadata.Name}",
+            MetadataUrl = $"/processes/steps/{registration.Metadata.Name}/metadata"
+        };
+    }
+
+    public static IEnumerable<ProcessMessage> ToMessages(
+        ParticipantStepResult stepResult)
+    {
+        ArgumentNullException.ThrowIfNull(stepResult);
+
+        return stepResult.RuntimeMessages
+            .Select(message =>
+                new ProcessMessage
+                {
+                    Type = message.Type,
+                    Message = message.Message,
+                    Code = message.Code.ToString()
+                })
+            .Concat(
+                stepResult.BusinessMessages
+                    .Select(message =>
+                        new ProcessMessage
+                        {
+                            Type = message.Type,
+                            Message = message.Message,
+                            Code = message.Code
+                        }));
+    }
+}
 
 //public sealed record ProcessMessage
 //{

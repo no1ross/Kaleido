@@ -37,7 +37,31 @@ public class ProcessExecutionService : IProcessExecutionService
         ExecuteProcessRequest request,
         CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        ArgumentNullException.ThrowIfNull(request);
+
+        var processRequest =
+            new ProcessRequest
+            {
+                ParticipantProcessId = request.ParticipantProcessId,
+                RequestId = request.RequestId,
+                Participant =
+                    new ParticipantRequest
+                    {
+                        Steps = request.Steps.ToDictionary(
+                            x => x.StepName,
+                            x => (object?)x.Request,
+                            StringComparer.OrdinalIgnoreCase)
+                    }
+            };
+
+        var processResult =
+            await _runtime.ExecuteAsync(
+                processRequest,
+                cancellationToken);
+
+        return ProcessExecutionResponse.Create(
+            processResult,
+            _registry);
     }
     public async Task<StepExecutionResponse<TResponse>> ExecuteAsync<TProcessStep, TResponse>(
         ExecuteStepRequest<TProcessStep> request,
@@ -56,10 +80,15 @@ public class ProcessExecutionService : IProcessExecutionService
                 cancellationToken);
 
         var stepResult =
-            processResult.Steps.Single(x =>
-                x.StepName.Equals(
-                    stepName,
-                    StringComparison.OrdinalIgnoreCase));
+            processResult.Steps
+                .Where(x =>
+                    x.StepName.Equals(
+                        stepName,
+                        StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(x => x.ExecutionStatus is not null)
+                .ThenByDescending(x => x.RuntimeMessages.Count)
+                .ThenByDescending(x => x.BusinessMessages.Count)
+                .First();
 
         return StepExecutionResponse<TResponse>.Create(
             processResult,
@@ -82,10 +111,15 @@ public class ProcessExecutionService : IProcessExecutionService
                 cancellationToken);
 
         var stepResult =
-            processResult.Steps.Single(x =>
-                x.StepName.Equals(
-                    stepName,
-                    StringComparison.OrdinalIgnoreCase));
+            processResult.Steps
+                .Where(x =>
+                    x.StepName.Equals(
+                        stepName,
+                        StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(x => x.ExecutionStatus is not null)
+                .ThenByDescending(x => x.RuntimeMessages.Count)
+                .ThenByDescending(x => x.BusinessMessages.Count)
+                .First();
 
         return StepExecutionResponse.Create(
             processResult,

@@ -84,7 +84,6 @@ public sealed class UnsupportedDataTypeException : Exception
     {
         DataType = dataType;
     }
-
     public Type DataType { get; }
 }
 

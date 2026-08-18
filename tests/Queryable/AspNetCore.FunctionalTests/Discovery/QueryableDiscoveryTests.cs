@@ -5,105 +5,47 @@ using System.Net.Http.Json;
 
 namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Discovery;
 
-public sealed class QueryableDiscoveryTests
-    : IClassFixture<QueryableAspNetCoreFixture>
+public sealed class QueryableDiscoveryTests : IClassFixture<QueryableAspNetCoreFixture>
 {
     private readonly HttpClient _client;
 
-    public QueryableDiscoveryTests(
-        QueryableAspNetCoreFixture fixture)
+    public QueryableDiscoveryTests(QueryableAspNetCoreFixture fixture)
     {
         _client = fixture.Client;
     }
 
     [Fact]
-    public async Task GetQueryable_Should_Return_Ok()
+    public async Task GetQueryable_ReturnsOk()
     {
-        var response =
-            await _client.GetAsync(
-                "/kaleido/queryable");
+        var response = await _client.GetAsync("/kaleido/queryable");
 
-        Assert.Equal(
-            HttpStatusCode.OK,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
-    public async Task GetQueryable_Should_Return_Registered_Records()
+    public async Task GetQueryable_ReturnsFunctionalRecordSummary()
     {
-        var records =
-            await _client.GetFromJsonAsync<QueryableRecordSummary[]>(
-                "/kaleido/queryable");
+        var records = await _client.GetFromJsonAsync<QueryableRecordSummary[]>("/kaleido/queryable");
 
-        Assert.NotNull(records);
+        var record = Assert.Single(records!, x => x.Name == "functional-records");
 
-        Assert.Contains(
-            records,
-            r => r.Name == "functional-records");
+        Assert.Equal("Functional records for Queryable HTTP tests.", record.Description);
+        Assert.Equal("/kaleido/queryable/functional-records/metadata", record.MetadataUrl);
     }
 
     [Fact]
-    public async Task GetQueryable_Should_Return_Record_Summary()
+    public async Task GetRegistry_ReturnsContextAndViewMetadata()
     {
-        var records =
-            await _client.GetFromJsonAsync<QueryableRecordSummary[]>(
-                "/kaleido/queryable");
+        var response = await _client.GetAsync("/kaleido/queryable/registry");
 
-        Assert.NotNull(records);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var record =
-            Assert.Single(records, r => r.Name == "functional-records");
+        var registry = await response.Content.ReadFromJsonAsync<QueryableRecordResponse[]>();
+        var record = Assert.Single(registry!, x => x.Name == "functional-records");
+        var view = Assert.Single(record.Views, x => x.Name == "grid");
 
-        Assert.Equal(
-            "functional-records",
-            record.Name);
-
-        Assert.False(
-            string.IsNullOrWhiteSpace(
-                record.MetadataUrl));
-
-        Assert.False(
-            string.IsNullOrWhiteSpace(
-                record.QueryUrl));
-    }
-
-    [Fact]
-    public async Task GetQueryable_Should_Return_Named_Query_Summaries()
-    {
-        var records =
-            await _client.GetFromJsonAsync<QueryableRecordSummary[]>(
-                "/kaleido/queryable");
-
-        Assert.NotNull(records);
-
-        var record =
-            Assert.Single(records, r => r.Name == "functional-records");
-
-        Assert.Equal(
-            4,
-            record.NamedQueries.Count);
-
-        var queryNames =
-            record.NamedQueries
-                .Select(q => q.Name)
-                .ToArray();
-
-        Assert.Equal(
-            new[]
-            {
-            "active-records",
-            "effective-on",
-            "high-amount-records",
-            "records-by-category"
-            },
-            queryNames);
-
-        Assert.Equal(
-            "/kaleido/queryable/functional-records/metadata",
-            record.MetadataUrl);
-
-        Assert.Equal(
-            "/kaleido/queryable/functional-records/query",
-            record.QueryUrl);
+        Assert.Equal("Grid View", view.DisplayName);
+        Assert.Equal("/kaleido/queryable/functional-records/grid/query", view.QueryUrl);
+        Assert.Single(view.Parameters!);
     }
 }

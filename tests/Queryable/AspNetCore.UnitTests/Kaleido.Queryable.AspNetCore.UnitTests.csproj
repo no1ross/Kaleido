@@ -9,6 +9,7 @@
 
 	<ItemGroup>
 		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.AspNetCore" />
 		<Using Include="Kaleido.Queryable.Metadata" />
 		<Using Include="Kaleido.Queryable.Query" />
 		<Using Include="Kaleido.Queryable.Attributes" />

@@ -58,6 +58,10 @@ public static class QueryableServiceCollectionExtensions
                 builder.Services,
                 contextType,
                 types);
+
+            RegisterDirectQueryEngine(
+                builder.Services,
+                contextType);
         }
 
         var queryViewTypes =
@@ -150,6 +154,21 @@ public static class QueryableServiceCollectionExtensions
         services.TryAddScoped(
             sourceInterface,
             sourceType);
+    }
+
+    private static void RegisterDirectQueryEngine(
+        IServiceCollection services,
+        Type contextType)
+    {
+        services.TryAddScoped(
+            typeof(IQueryContextEngine<,>)
+                .MakeGenericType(
+                    contextType,
+                    contextType),
+            typeof(QueryContextEngine<,>)
+                .MakeGenericType(
+                    contextType,
+                    contextType));
     }
 
     private static void RegisterQueryView(

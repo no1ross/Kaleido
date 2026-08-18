@@ -1,6 +1,5 @@
 ﻿using Kaleido.Json;
-using Kaleido.Queryable.FunctionalTests.Infrastructure;
-using Kaleido.Queryable.Shared;
+using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -28,13 +27,12 @@ public sealed class QueryableAspNetCoreFixture
                     {
                         services.AddRouting();
 
+                        services.AddSingleton<FunctionalRecordData>();
+
                         services.AddKaleido()
-                            .AddAssembly(typeof(SampleKaleidoRecord).Assembly)
-                            .AddAssembly(typeof(SampleKaleidoRecordSource).Assembly)
+                            .AddAssembly(typeof(FunctionalRecordContext).Assembly)
                             .AddQueryable()
                             .AddQueryableAspNetCore();
-
-                        services.AddSingleton<SampleKaleidoCsvData>();
 
                         services.ConfigureHttpJsonOptions(options =>
                         {

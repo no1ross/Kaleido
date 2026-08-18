@@ -2,248 +2,155 @@ using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace Kaleido.Queryable.UnitTests;
 
 public sealed class QueryableServiceCollectionExtensionsTests
 {
     [Fact]
-    public void AddQueryable_ShouldThrow_WhenBuilderIsNull()
+    public void AddQueryable_WhenBuilderIsNull_Throws()
     {
-        Assert.Throws<ArgumentNullException>(
-            () => QueryableServiceCollectionExtensions.AddQueryable(
-                builder: null!));
+        Assert.Throws<ArgumentNullException>(() =>
+            QueryableServiceCollectionExtensions.AddQueryable(builder: null!));
     }
 
     [Fact]
-    public void AddQueryable_ShouldThrow_WhenConfigureIsNull()
+    public void AddQueryable_WhenConfigureIsNull_Throws()
     {
-        var builder =
-            CreateBuilder();
-
-        Assert.Throws<ArgumentNullException>(
-            () => QueryableServiceCollectionExtensions.AddQueryable(
-                builder,
-                null!));
+        Assert.Throws<ArgumentNullException>(() =>
+            QueryableServiceCollectionExtensions.AddQueryable(CreateBuilder(), null!));
     }
 
     [Fact]
-    public void AddQueryable_ShouldThrow_WhenNoAssembliesRegistered()
+    public void AddQueryable_WhenNoAssembliesAreRegistered_Throws()
     {
-        var builder =
-            new TestKaleidoBuilder(
-                new ServiceCollection(),
-                []);
+        var builder = new TestKaleidoBuilder(new ServiceCollection(), []);
 
-        Assert.Throws<InvalidOperationException>(
-            () => builder.AddQueryable());
+        Assert.Throws<InvalidOperationException>(() => builder.AddQueryable());
     }
 
     [Fact]
-    public void AddQueryable_ShouldRegisterQueryableCatalog()
+    public void AddQueryable_RegistersFrameworkServices()
     {
-        var services =
-            new ServiceCollection();
+        var services = new ServiceCollection();
 
-        CreateBuilder(services)
-            .AddQueryable();
+        CreateBuilder(services).AddQueryable();
 
-        Assert.Contains(
-            services,
-            x => x.ServiceType == typeof(IQueryableService));
+        Assert.Contains(services, x => x.ServiceType == typeof(IQueryableService));
+        Assert.Contains(services, x => x.ServiceType == typeof(IQueryContextValidator));
+        Assert.Contains(services, x => x.ServiceType == typeof(IQueryContextCompiler));
+        Assert.Contains(services, x => x.ServiceType == typeof(ICompiledQueryApplier<>));
+        Assert.Contains(services, x => x.ServiceType == typeof(IQueryContextExecutor<>));
+        Assert.Contains(services, x => x.ServiceType == typeof(IQueryContextRegistry));
+        Assert.Contains(services, x => x.ServiceType == typeof(IQueryViewRegistry));
+        Assert.Contains(services, x => x.ServiceType == typeof(QueryContextRegistrationValidator));
+        Assert.Contains(services, x => x.ServiceType == typeof(QueryViewRegistrationValidator));
     }
 
     [Fact]
-    public void AddQueryable_ShouldRegisterRecordRegistry()
+    public void AddQueryable_RegistersOpenGenericExecutionServices()
     {
-        var services =
-            new ServiceCollection();
+        var services = new ServiceCollection();
 
-        CreateBuilder(services)
-            .AddQueryable();
+        CreateBuilder(services).AddQueryable();
 
-        Assert.Contains(
-            services,
-            x => x.ServiceType == typeof(IQueryContextRegistry));
+        Assert.Contains(services, x =>
+            x.ServiceType == typeof(ICompiledQueryApplier<>) &&
+            x.ImplementationType == typeof(CompiledQueryApplier<>));
+
+        Assert.Contains(services, x =>
+            x.ServiceType == typeof(IQueryContextExecutor<>) &&
+            x.ImplementationType == typeof(QueryContextExecutor<>));
     }
 
     [Fact]
-    public void AddQueryable_ShouldRegisterRecordRegistrationValidator()
+    public void AddQueryable_ResolvesRegistries()
     {
-        var services =
-            new ServiceCollection();
+        var services = new ServiceCollection();
 
-        CreateBuilder(services)
-            .AddQueryable();
+        CreateBuilder(services).AddQueryable();
 
-        Assert.Contains(
-            services,
-            x => x.ServiceType == typeof(RecordRegistrationValidator));
+        using var provider = services.BuildServiceProvider();
+
+        var contextRegistry = provider.GetRequiredService<IQueryContextRegistry>();
+        var viewRegistry = provider.GetRequiredService<IQueryViewRegistry>();
+
+        Assert.NotNull(contextRegistry);
+        Assert.NotNull(viewRegistry);
     }
 
     [Fact]
-    public void AddQueryable_ShouldRegisterRecordSource()
+    public void AddQueryable_IsIdempotentForSingletonFrameworkServices()
     {
-        var services =
-            new ServiceCollection();
+        var services = new ServiceCollection();
+        var builder = CreateBuilder(services);
 
-        CreateBuilder(services)
-            .AddQueryable();
+        builder.AddQueryable();
+        builder.AddQueryable();
 
-        Assert.Contains(
-            services,
-            x =>
-                x.ServiceType == typeof(IRecordSource<TestRecord>) &&
-                x.ImplementationType == typeof(TestRecordSource));
+        Assert.Equal(1, services.Count(x => x.ServiceType == typeof(IQueryableService)));
+        Assert.Equal(1, services.Count(x => x.ServiceType == typeof(IQueryContextValidator)));
+        Assert.Equal(1, services.Count(x => x.ServiceType == typeof(IQueryContextCompiler)));
+        Assert.Equal(1, services.Count(x => x.ServiceType == typeof(IQueryContextRegistry)));
+        Assert.Equal(1, services.Count(x => x.ServiceType == typeof(IQueryViewRegistry)));
     }
 
-    [Fact]
-    public void AddQueryable_ShouldRegisterNamedQueries()
-    {
-        var services =
-            new ServiceCollection();
-
-        CreateBuilder(services)
-            .AddQueryable();
-
-        Assert.Contains(
-            services,
-            x =>
-                x.ServiceType == typeof(INamedQuery<TestRecord>) &&
-                x.ImplementationType == typeof(TestNamedQuery));
-    }
-
-    [Fact]
-    public void AddQueryable_ShouldRegisterRecordQueryEngine()
-    {
-        var services =
-            new ServiceCollection();
-
-        CreateBuilder(services)
-            .AddQueryable();
-
-        Assert.Contains(
-            services,
-            x =>
-                x.ServiceType == typeof(IQueryContextEngine<TestRecord>) &&
-                x.ImplementationType == typeof(QueryContextEngine<TestRecord>));
-    }
-
-    [Fact]
-    public void AddQueryable_ShouldResolveQueryRequestCompiler()
-    {
-        var services =
-            new ServiceCollection();
-
-        CreateBuilder(services)
-            .AddQueryable();
-
-        using var provider =
-            services.BuildServiceProvider();
-
-        var compiler =
-            provider.GetRequiredService<IQueryContextCompiler>();
-
-        Assert.NotNull(compiler);
-        Assert.IsType<Kaleido.Queryable.Query.QueryRequestCompiler>(compiler);
-    }
-
-    [Fact]
-    public void AddQueryable_ShouldResolveQueryRequestValidator()
-    {
-        var services =
-            new ServiceCollection();
-
-        CreateBuilder(services)
-            .AddQueryable();
-
-        using var provider =
-            services.BuildServiceProvider();
-
-        var validator =
-            provider.GetRequiredService<IQueryContextValidator>();
-
-        Assert.NotNull(validator);
-        Assert.IsType<QueryRequestValidator>(validator);
-    }
-
-    [Fact]
-    public void AddQueryable_ShouldResolveRecordRegistry()
-    {
-        var services =
-            new ServiceCollection();
-
-        CreateBuilder(services)
-            .AddQueryable();
-
-        using var provider =
-            services.BuildServiceProvider();
-
-        var registry =
-            provider.GetRequiredService<IQueryContextRegistry>();
-
-        Assert.NotNull(registry);
-        Assert.NotEmpty(registry.Registrations);
-    }
-
-    private static IKaleidoBuilder CreateBuilder(
-        IServiceCollection? services = null)
-    {
-        return new TestKaleidoBuilder(
+    private static IKaleidoBuilder CreateBuilder(IServiceCollection? services = null) =>
+        new TestKaleidoBuilder(
             services ?? new ServiceCollection(),
-            [
-                typeof(TestRecord).Assembly
-            ]);
-    }
+            [typeof(TestContext).Assembly]);
 
-    private sealed class TestKaleidoBuilder
-        : IKaleidoBuilder
+    private sealed class TestKaleidoBuilder : IKaleidoBuilder
     {
-        public TestKaleidoBuilder(
-            IServiceCollection services,
-            IReadOnlyCollection<System.Reflection.Assembly> assemblies)
+        public TestKaleidoBuilder(IServiceCollection services, IReadOnlyCollection<Assembly> assemblies)
         {
             Services = services;
             Assemblies = assemblies;
         }
 
         public IServiceCollection Services { get; }
-
-        public IReadOnlyCollection<System.Reflection.Assembly> Assemblies { get; }
+        public IReadOnlyCollection<Assembly> Assemblies { get; }
     }
 
     [QueryContext(
-        Name = "test-record",
-        DisplayName = "Test Record",
+        Name = "test-context",
+        DisplayName = "Test Context",
+        Description = "Test Context",
         Version = "1.0.0",
-        Source = "Unit Test")]
-    internal sealed record TestRecord(
-        int Id,
-        string Name);
-
-    internal sealed class TestRecordSource
-        : IRecordSource<TestRecord>
+        Source = "Unit Test",
+        AllowDirectQuery = true)]
+    private sealed class TestContext
     {
-        public IQueryable<TestRecord> CreateQuery(
-            QueryExecutionContext executionContext)
-        {
-            return Enumerable.Empty<TestRecord>()
-                .AsQueryable();
-        }
+        [Sortable]
+        public int Id { get; init; }
     }
 
-    [NamedQuery(
-        Name = "active",
-        Version = "1.0",
-        DisplayName = "Active Records")]
-    internal sealed class TestNamedQuery
-        : INamedQuery<TestRecord>
+    private sealed class TestContextSource : IQueryContextSource<TestContext>
     {
-        public IQueryable<TestRecord> Apply(
-            IQueryable<TestRecord> query,
-            NamedQuery namedQuery)
-        {
-            return query;
-        }
+        public IQueryable<TestContext> CreateQuery(QueryExecutionContext executionContext) =>
+            Array.Empty<TestContext>().AsQueryable();
+    }
+
+    [QueryView(
+        Name = "test-view",
+        DisplayName = "Test View",
+        Description = "Test View",
+        Version = "1.0.0",
+        DefaultSortField = nameof(TestContext.Id))]
+    [Pageable(DefaultSize = 25, MaxSize = 100)]
+    private sealed class TestView : IQueryViewSource<TestContext, TestViewContract, TestViewParameters>
+    {
+        public IQueryable<TestViewContract> CreateView(IQueryable<TestContext> query, QueryExecutionContext executionContext) =>
+            Array.Empty<TestViewContract>().AsQueryable();
+    }
+
+    private sealed class TestViewContract
+    {
+    }
+
+    private sealed class TestViewParameters
+    {
+        public string Category { get; init; } = string.Empty;
     }
 }

@@ -5,146 +5,52 @@ using System.Net.Http.Json;
 
 namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Metadata;
 
-public sealed class RecordMetadataTests
-    : IClassFixture<QueryableAspNetCoreFixture>
+public sealed class RecordMetadataTests : IClassFixture<QueryableAspNetCoreFixture>
 {
     private readonly HttpClient _client;
 
-    public RecordMetadataTests(
-        QueryableAspNetCoreFixture fixture)
+    public RecordMetadataTests(QueryableAspNetCoreFixture fixture)
     {
         _client = fixture.Client;
     }
 
     [Fact]
-    public async Task GetRecordMetadata_Should_Return_Ok()
+    public async Task GetRecordMetadata_ReturnsOk()
     {
-        var response =
-            await _client.GetAsync(
-                "/kaleido/queryable/functional-records/metadata");
+        var response = await _client.GetAsync("/kaleido/queryable/functional-records/metadata");
 
-        Assert.Equal(
-            HttpStatusCode.OK,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
-    public async Task GetRecordMetadata_Should_Return_Record_Metadata()
+    public async Task GetRecordMetadata_ReturnsContextMetadataAndViews()
     {
-        var metadata =
-            await _client.GetFromJsonAsync<QueryableRecordResponse>(
-                "/kaleido/queryable/functional-records/metadata");
+        var metadata = await _client.GetFromJsonAsync<QueryableRecordResponse>("/kaleido/queryable/functional-records/metadata");
 
         Assert.NotNull(metadata);
+        Assert.Equal("functional-records", metadata.Name);
+        Assert.Equal("Functional records for Queryable HTTP tests.", metadata.Description);
+        Assert.Equal("Functional Records", metadata.DisplayName);
+        Assert.Equal("1.0.0", metadata.Version);
+        Assert.Equal("AspNetCore Functional Test Data", metadata.Source);
 
-        Assert.Equal(
-            "functional-records",
-            metadata.Name);
+        Assert.Contains(metadata.Fields, x => x.Name == "Id");
+        Assert.Contains(metadata.Fields, x => x.Name == "Code");
+        Assert.Contains(metadata.Fields, x => x.Name == "Amount");
+        Assert.Contains(metadata.Fields, x => x.Name == "NullableScore");
 
-        Assert.Equal(
-            "Functional Records",
-            metadata.Description);
-
-        Assert.Equal(
-            "1.0.0",
-            metadata.Version);
-
-        Assert.Equal(
-            "CSV Functional Test Data",
-            metadata.Source);
+        var view = Assert.Single(metadata.Views, x => x.Name == "grid");
+        Assert.Equal("Grid view for functional records.", view.Description);
+        Assert.NotNull(view.Pageable);
+        Assert.Equal(3, view.Pageable.DefaultSize);
+        Assert.Equal(10, view.Pageable.MaxSize);
     }
 
     [Fact]
-    public async Task GetRecordMetadata_Should_Return_Pageable_Metadata()
+    public async Task GetRecordMetadata_ReturnsNotFoundForUnknownRecord()
     {
-        var metadata =
-            await _client.GetFromJsonAsync<QueryableRecordResponse>(
-                "/kaleido/queryable/functional-records/metadata");
+        var response = await _client.GetAsync("/kaleido/queryable/unknown-record/metadata");
 
-        Assert.NotNull(metadata);
-        Assert.NotNull(metadata.Pageable);
-
-        Assert.Equal(
-            25,
-            metadata.Pageable.DefaultSize);
-
-        Assert.Equal(
-            500,
-            metadata.Pageable.MaxSize);
-    }
-
-    [Fact]
-    public async Task GetRecordMetadata_Should_Return_Record_Fields()
-    {
-        var metadata =
-            await _client.GetFromJsonAsync<QueryableRecordResponse>(
-                "/kaleido/queryable/functional-records/metadata");
-
-        Assert.NotNull(metadata);
-
-        Assert.Contains(
-            metadata.Fields,
-            f => f.Name == "Id");
-
-        Assert.Contains(
-            metadata.Fields,
-            f => f.Name == "Code");
-
-        Assert.Contains(
-            metadata.Fields,
-            f => f.Name == "Name");
-
-        Assert.Contains(
-            metadata.Fields,
-            f => f.Name == "Amount");
-
-        Assert.Contains(
-            metadata.Fields,
-            f => f.Name == "EffectiveDate");
-
-        Assert.Contains(
-            metadata.Fields,
-            f => f.Name == "NullableScore");
-    }
-
-    [Fact]
-    public async Task GetRecordMetadata_Should_Return_All_Named_Query_Summaries()
-    {
-        var metadata =
-            await _client.GetFromJsonAsync<QueryableRecordResponse>(
-                "/kaleido/queryable/functional-records/metadata");
-
-        Assert.NotNull(metadata);
-
-        Assert.Equal(
-            4,
-            metadata.NamedQueries.Count);
-
-        var queryNames =
-            metadata.NamedQueries
-                .Select(q => q.Name)
-                .ToArray();
-
-        Assert.Equal(
-            new[]
-            {
-                "active-records",
-                "effective-on",
-                "high-amount-records",
-                "records-by-category"
-            },
-            queryNames);
-    }
-
-    [Fact]
-    public async Task GetRecordMetadata_Should_Return_NotFound_For_Unknown_Record()
-    {
-        var response =
-            await _client.GetAsync(
-                "/kaleido/queryable/unknown-record/metadata");
-
-        Assert.Equal(
-            HttpStatusCode.NotFound,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

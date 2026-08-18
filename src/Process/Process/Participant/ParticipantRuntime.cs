@@ -78,9 +78,13 @@ internal sealed class ParticipantRuntime
         
         if (context is null)
         {
-            context =
-                _stateUpdater.Initialize(
-                    request.ParticipantProcessId.Value);
+            return _stateUpdater.Initialize(
+                request.ParticipantProcessId.Value)
+                with
+            {
+                LatestRequestId =
+                        request.RequestId
+            };
         }
 
         return _stateUpdater.Reconcile(
