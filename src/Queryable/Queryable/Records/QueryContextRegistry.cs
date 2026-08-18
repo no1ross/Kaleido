@@ -123,16 +123,39 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
             ?? throw new InvalidOperationException(
                 $"Query context '{contextType.Name}' is missing QueryContextAttribute.");
 
+        var pageable =
+            attribute.AllowDirectQuery
+                ? BuildPageable(contextType)
+                : null;
+
         return new QueryContextMetadata(
             attribute.Name,
             attribute.Description ?? attribute.DisplayName ?? attribute.Name,
             attribute.DisplayName ?? attribute.Name,
             attribute.Version,
             attribute.Source,
+            attribute.AllowDirectQuery,
+            pageable,
             contextType
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Select(BuildField)
                 .ToArray());
+    }
+
+    private static PageableMetadata? BuildPageable(
+        Type contextType)
+    {
+        var pageable =
+            contextType.GetCustomAttribute<PageableAttribute>();
+
+        if (pageable is null)
+        {
+            return null;
+        }
+
+        return new PageableMetadata(
+            pageable.DefaultSize,
+            pageable.MaxSize);
     }
 
     private static FieldMetadata BuildField(

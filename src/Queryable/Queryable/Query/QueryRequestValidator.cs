@@ -14,21 +14,45 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         ArgumentNullException.ThrowIfNull(registration);
         ArgumentNullException.ThrowIfNull(viewRegistration);
 
+        ValidateInternal(
+            request,
+            registration.Metadata,
+            viewRegistration.Metadata.Pageable);
+    }
+
+    public void Validate(
+        IQueryRequest request,
+        QueryContextRegistration registration)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(registration);
+
+        ValidateInternal(
+            request,
+            registration.Metadata,
+            registration.Metadata.Pageable);
+    }
+
+    private static void ValidateInternal(
+        IQueryRequest request,
+        QueryContextMetadata metadata,
+        PageableMetadata? pageable)
+    {
         ValidateFilter(
             request.Query?.Filter,
-            registration.Metadata);
+            metadata);
 
         ValidateSearch(
             request.Query?.SearchText,
-            registration.Metadata);
+            metadata);
 
         ValidateSort(
             request.Query?.Sort,
-            registration.Metadata);
+            metadata);
 
         ValidatePage(
             request.Query?.Page,
-            viewRegistration.Metadata);
+            pageable);
     }
 
     private static void ValidateFilterValueTypes(QueryFilterCondition condition)
@@ -221,16 +245,14 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
 
     private static void ValidatePage(
         QueryPage? page,
-        QueryViewMetadata metadata)
+        PageableMetadata? pageable)
     {
         if (page is null)
         {
             return;
         }
 
-        var pageable = metadata.Pageable;
-        
-        if(pageable is null)
+        if (pageable is null)
         {
             return;
         }

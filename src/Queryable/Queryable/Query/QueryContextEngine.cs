@@ -1,7 +1,6 @@
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Win32;
 using System.Reflection;
 
 namespace Kaleido.Queryable.Query;
@@ -33,36 +32,85 @@ internal sealed class QueryContextEngine<TQueryContext, TView> : IQueryContextEn
         _serviceProvider = serviceProvider;
     }
 
-    public async Task<QueryResult<TView>> ExecuteAsync(IQueryRequest request, 
+    public async Task<QueryResult<TView>> ExecuteAsync(
+        IQueryRequest request,
         QueryContextRegistration registration,
-        QueryViewRegistration viewRegistration, 
+        QueryViewRegistration viewRegistration,
         CancellationToken cancellationToken = default)
     {
         var metadata = registration.Metadata;
         _validator.Validate(request, registration, viewRegistration);
 
         var executionContext = new QueryExecutionContext(metadata, request);
-
         var compiled = _compiler.Compile(request, metadata, viewRegistration.Metadata);
+        var query = CreateQuery(executionContext, compiled);
+        var view = CreateView(viewRegistration, query, executionContext);
 
+        return await MaterializeAsync(
+            view,
+            compiled.Page,
+            viewRegistration.Metadata.Pageable is not null,
+            cancellationToken);
+    }
+
+    public async Task<QueryResult<TView>> ExecuteAsync(
+        IQueryRequest request,
+        QueryContextRegistration registration,
+        CancellationToken cancellationToken = default)
+    {
+        var metadata = registration.Metadata;
+        _validator.Validate(request, registration);
+
+        var executionContext = new QueryExecutionContext(metadata, request);
+        var compiled = _compiler.Compile(request, metadata);
+        var query = CreateQuery(executionContext, compiled);
+
+        if (query is not IQueryable<TView> typedQuery)
+        {
+            throw new InvalidOperationException(
+                $"Direct query for context '{typeof(TQueryContext).FullName}' requires result type '{typeof(TView).FullName}' to match the query context type.");
+        }
+
+        return await MaterializeAsync(
+            typedQuery,
+            compiled.Page,
+            metadata.Pageable is not null,
+            cancellationToken);
+    }
+
+    private IQueryable<TQueryContext> CreateQuery(
+        QueryExecutionContext executionContext,
+        CompiledRecordQuery compiled)
+    {
         var query = _source.CreateQuery(executionContext);
 
         query = _applier.ApplySearch(query, compiled.Search);
         query = _applier.ApplyFilter(query, compiled.Filter);
         query = _applier.ApplySort(query, compiled.Sort);
 
-        var view = CreateView(viewRegistration, query, executionContext);
+        return query;
+    }
 
-        var totalCount = await _executor.CountAsync(view, cancellationToken);
+    private async Task<QueryResult<TView>> MaterializeAsync(
+        IQueryable<TView> query,
+        CompiledPage page,
+        bool pageable,
+        CancellationToken cancellationToken)
+    {
+        var totalCount = await _executor.CountAsync(query, cancellationToken);
 
-        if (viewRegistration.Metadata.Pageable is not null)
+        if (pageable)
         {
-            view = _executor.ApplyPage(view, compiled.Page);
+            query = _executor.ApplyPage(query, page);
         }
 
-        var items = await _executor.ToListAsync(view, cancellationToken);
+        var items = await _executor.ToListAsync(query, cancellationToken);
 
-        return new QueryResult<TView>(totalCount, compiled.Page?.Offset ?? 0, compiled.Page?.Size ?? int.MaxValue, items);
+        return new QueryResult<TView>(
+            totalCount,
+            page.Offset,
+            page.Size,
+            items);
     }
 
     private IQueryable<TView> CreateView(

@@ -58,6 +58,8 @@
   </Folder>
   <Folder Name="/test/" />
   <Folder Name="/test/Core/">
+    <Project Path="tests/Core/Abstractions.UnitTests/Kaleido.Abstractions.UnitTests.csproj" />
+    <Project Path="tests/Core/AspNetCore.UnitTests/Kaleido.AspNetCore.UnitTests.csproj" />
     <Project Path="tests/Core/UnitTests/Kaleido.UnitTests.csproj" Id="d3158058-b54e-4a54-8bb0-5f324d367958" />
   </Folder>
   <Folder Name="/test/Process/">

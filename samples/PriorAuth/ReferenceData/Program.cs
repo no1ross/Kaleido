@@ -1,3 +1,6 @@
+using Kaleido;
+using Kaleido.Queryable;
+using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,9 +15,17 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddKaleido()
+    .AddAssembly(typeof(Program).Assembly)
+    .AddAssembly(typeof(ReferenceDataDbContext).Assembly)
+    .AddQueryable()
+        .AddQueryableAspNetCore();
+
 var app = builder.Build();
 
 await ReferenceDataDbInitializer.InitializeAsync(app.Services);
+
+app.MapQueryable();
 
 if (app.Environment.IsDevelopment())
 {

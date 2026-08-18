@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../ReferenceData.Artifacts/Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.csproj" />
+    <ProjectReference Include="..\..\..\src\Queryable\AspNetCore\Kaleido.Queryable.AspNetCore.csproj" />
   </ItemGroup>
 
 </Project>

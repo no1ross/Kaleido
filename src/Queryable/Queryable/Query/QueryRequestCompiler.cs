@@ -7,13 +7,37 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 {
     public CompiledRecordQuery Compile(
         IQueryRequest request,
-        QueryContextMetadata metadata, QueryViewMetadata queryViewMetadata)
+        QueryContextMetadata metadata,
+        QueryViewMetadata queryViewMetadata)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(metadata);
+        ArgumentNullException.ThrowIfNull(queryViewMetadata);
+
+        return CompileInternal(
+            request,
+            metadata,
+            queryViewMetadata.Pageable);
+    }
+
+    public CompiledRecordQuery Compile(
+        IQueryRequest request,
+        QueryContextMetadata metadata)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(metadata);
 
-        var pageable = queryViewMetadata.Pageable;
+        return CompileInternal(
+            request,
+            metadata,
+            metadata.Pageable);
+    }
 
+    private static CompiledRecordQuery CompileInternal(
+        IQueryRequest request,
+        QueryContextMetadata metadata,
+        PageableMetadata? pageable)
+    {
         var size = request.Query?.Page?.Size
                    ?? pageable?.DefaultSize
                    ?? 50;

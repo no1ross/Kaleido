@@ -10,6 +10,10 @@
         string contextName)
         => $"{contextName}-metadata";
 
+    public static string QueryContextEndpointName(
+        string contextName)
+        => $"{contextName}-query";
+
     public static string QueryViewEndpointName(
         string contextName,
         string viewName)

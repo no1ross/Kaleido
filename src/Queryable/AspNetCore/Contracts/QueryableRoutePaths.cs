@@ -7,6 +7,11 @@ public static class QueryableRoutePaths
         string contextName)
         => $"{contextName}/{options.MetadataRoute}";
 
+    public static string QueryContextQuery(
+        QueryableRouteOptions options,
+        string contextName)
+        => $"{contextName}/{options.QueryRoute}";
+
     public static string QueryViewQuery(
         QueryableRouteOptions options,
         string contextName,

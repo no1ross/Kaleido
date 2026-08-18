@@ -9,4 +9,5 @@ public sealed class QueryContextAttribute : Attribute
     public string? Description { get; init; }
     public string? DisplayName { get; init; }
     public string? Source { get; init; }
+    public bool AllowDirectQuery { get; init; }
 }

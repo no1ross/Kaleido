@@ -9,6 +9,8 @@ public sealed record QueryContextMetadata
     string DisplayName,
     string Version,
     string? Source,
+    bool AllowDirectQuery,
+    PageableMetadata? Pageable,
     IReadOnlyList<FieldMetadata> Fields
 );
 

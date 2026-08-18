@@ -18,4 +18,6 @@ namespace Kaleido.Queryable.Query;
 internal interface IQueryContextCompiler
 {
     CompiledRecordQuery Compile(IQueryRequest request, QueryContextMetadata metadata, QueryViewMetadata queryViewMetadata);
+
+    CompiledRecordQuery Compile(IQueryRequest request, QueryContextMetadata metadata);
 }

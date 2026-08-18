@@ -25,4 +25,6 @@ namespace Kaleido.Queryable.Query;
 internal interface IQueryContextValidator
 {
     void Validate(IQueryRequest request, QueryContextRegistration registration, QueryViewRegistration viewRegistration);
+
+    void Validate(IQueryRequest request, QueryContextRegistration registration);
 }

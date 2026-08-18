@@ -63,14 +63,15 @@ public static class QueryableEndpointRouteBuilderExtensions
             "registry",
             () => Results.Ok(
                 contextRegistry.Registrations
-                    .Select(r => {
+                    .Select(r =>
+                    {
                         var views = viewRegistry.Registrations
                             .Where(x => x.QueryContextType == r.ContextType).ToArray();
                         return QueryableRecordResponse.FromRegistration(
                             r,
                             views,
                             options);
-                        })
+                    })
                     .OrderBy(r => r.Name)))
                 .WithName(
                     QueryableEndpointNames.RegistryEndpointName)
@@ -84,12 +85,11 @@ public static class QueryableEndpointRouteBuilderExtensions
                     "and identify supported search, filter, sort, and paging capabilities.")
                 .Produces<IReadOnlyCollection<QueryableRecordResponse>>();
 
-
         foreach (var context in contextRegistry.Registrations)
         {
             var views = viewRegistry.Registrations
                 .Where(x => x.QueryContextType == context.ContextType).ToArray();
-            
+
             group.MapMetadataEndpoint(
                 context,
                 views,
@@ -97,6 +97,13 @@ public static class QueryableEndpointRouteBuilderExtensions
                     options,
                     context.Metadata.Name.ToLowerInvariant()),
                 options);
+
+            if (context.Metadata.AllowDirectQuery)
+            {
+                group.MapDirectQueryContext(
+                    context,
+                    options);
+            }
         }
 
         foreach (var view in viewRegistry.Registrations)
@@ -133,6 +140,29 @@ public static class QueryableEndpointRouteBuilderExtensions
                 options,
                 contextName,
                 viewName));
+    }
+
+    private static void MapDirectQueryContext(
+        this IEndpointRouteBuilder endpoints,
+        QueryContextRegistration context,
+        QueryableRouteOptions options)
+    {
+        typeof(QueryableEndpointRouteBuilderExtensions)
+            .GetMethod(
+                nameof(MapTypedDirectQueryEndpoint),
+                BindingFlags.Static | BindingFlags.NonPublic)!
+            .MakeGenericMethod(
+                context.ContextType)
+            .Invoke(
+                null,
+                new object[]
+                {
+                    endpoints,
+                    QueryableRoutePaths.QueryContextQuery(
+                        options,
+                        context.Metadata.Name.ToLowerInvariant()),
+                    context
+                });
     }
 
     private static void MapMetadataEndpoint(
@@ -242,6 +272,61 @@ public static class QueryableEndpointRouteBuilderExtensions
             .Accepts<QueryApiRequest>(
                 "application/json")
             .Produces<QueryResult<TView>>()
+            .Produces<QueryErrorResponse>(400);
+    }
+
+    private static void MapTypedDirectQueryEndpoint<TQueryContext>(
+        IEndpointRouteBuilder endpoints,
+        string route,
+        QueryContextRegistration context)
+        where TQueryContext : class
+    {
+        endpoints.MapPost(
+                route,
+                async (
+                    QueryApiRequest<EmptyQueryViewParameters> request,
+                    IQueryableService queryable,
+                    CancellationToken cancellationToken) =>
+                {
+                    try
+                    {
+                        var query =
+                            QueryableValueNormalizer.Normalize(
+                                request.Query,
+                                context.Metadata);
+
+                        var result =
+                            await queryable.QueryAsync<TQueryContext, TQueryContext>(
+                                new QueryRequest<EmptyQueryViewParameters>(
+                                    Query: query,
+                                    ViewParameters: request.Parameters),
+                                cancellationToken);
+
+                        return Results.Ok(result);
+                    }
+                    catch (QueryableValidationException ex)
+                    {
+                        return Results.BadRequest(
+                            new QueryErrorResponse(
+                            [
+                                new QueryError(
+                                    ex.Code,
+                                    ex.Message)
+                            ]));
+                    }
+                })
+            .WithName(
+                QueryableEndpointNames.QueryContextEndpointName(
+                    context.Metadata.Name.ToLowerInvariant()))
+            .WithTags(
+                context.Metadata.DisplayName)
+            .WithSummary(
+                $"Query {context.Metadata.DisplayName}.")
+            .WithDescription(
+                $"Executes a query directly against the '{context.Metadata.DisplayName}' query context.")
+            .Accepts<QueryApiRequest>(
+                "application/json")
+            .Produces<QueryResult<TQueryContext>>()
             .Produces<QueryErrorResponse>(400);
     }
 }

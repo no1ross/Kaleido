@@ -1,0 +1,66 @@
+using Kaleido.Queryable;
+using Kaleido.Queryable.Attributes;
+using System.ComponentModel.DataAnnotations;
+
+namespace Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Queryable.Contexts;
+
+[QueryContext(
+    Name = "plans",
+    DisplayName = "Plans",
+    Version = "1.0.0",
+    Source = "Prior Authorization Reference Data",
+    AllowDirectQuery = true)]
+[Pageable(
+    DefaultSize = 25,
+    MaxSize = 100)]
+public sealed class PlanQueryContext
+{
+    [Key]
+    [Searchable(
+        Priority = 1,
+        MatchMode = MatchMode.Exact)]
+    [Sortable]
+    public string PlanId { get; init; } = string.Empty;
+
+    [Searchable(
+        Priority = 2,
+        MatchMode = MatchMode.Contains)]
+    [Sortable]
+    public string PlanName { get; init; } = string.Empty;
+
+    [Filterable(
+        FilterOperator.Equals,
+        FilterOperator.NotEquals,
+        FilterOperator.In)]
+    public LineOfBusiness LineOfBusiness { get; init; }
+
+    [Searchable(
+        Priority = 3,
+        MatchMode = MatchMode.Exact)]
+    [Filterable(
+        FilterOperator.Equals,
+        FilterOperator.NotEquals,
+        FilterOperator.In)]
+    [Sortable]
+    public string StateCode { get; init; } = string.Empty;
+
+    [Filterable(
+        FilterOperator.Equals,
+        FilterOperator.NotEquals)]
+    [Sortable]
+    public DateOnly EffectiveDate { get; init; }
+
+    [Filterable(
+        FilterOperator.Equals,
+        FilterOperator.NotEquals,
+        FilterOperator.IsNull,
+        FilterOperator.IsNotNull)]
+    [Sortable]
+    public DateOnly? TerminationDate { get; init; }
+
+    [Filterable(
+        FilterOperator.Equals,
+        FilterOperator.NotEquals)]
+    [Sortable]
+    public bool IsActive { get; init; }
+}
