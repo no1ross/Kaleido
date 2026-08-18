@@ -1,15 +1,35 @@
+using Kaleido;
+using Kaleido.Process;
+using Kaleido.Process.AspNetCore;
+using Kaleido.Queryable;
+using Kaleido.Queryable.AspNetCore;
+using Kaleido.Samples.PriorAuth.MemberService.Artifacts.Data;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Services.AddDbContext<MemberDbContext>(
+    options => options.UseSqlite(
+        builder.Configuration.GetConnectionString("MemberService")
+        ?? "Data Source=data/memberservice.db"));
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddKaleido()
+    .AddAssembly(typeof(Program).Assembly)
+    .AddAssembly(typeof(MemberDbContext).Assembly)
+    .AddParticipant()
+        .AddParticipantAspNetCore()
+    .AddQueryable()
+        .AddQueryableAspNetCore();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.MapQueryable();
+app.MapParticipant();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

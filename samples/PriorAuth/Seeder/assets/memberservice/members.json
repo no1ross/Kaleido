@@ -1,0 +1,44 @@
+[
+  {
+    "memberId": "8a8ce9fd-e83d-4d53-b7d7-3f0d0b4e0001",
+    "memberNumber": "PA1000001",
+    "firstName": "Ava",
+    "middleName": null,
+    "lastName": "Carter",
+    "dateOfBirth": "1988-04-12",
+    "gender": "Female",
+    "emailAddress": "ava.carter@example.com",
+    "phoneNumber": "555-0101",
+    "isActive": true,
+    "createdUtc": "2025-01-01T00:00:00+00:00",
+    "updatedUtc": "2025-01-01T00:00:00+00:00"
+  },
+  {
+    "memberId": "8a8ce9fd-e83d-4d53-b7d7-3f0d0b4e0002",
+    "memberNumber": "PA1000002",
+    "firstName": "Liam",
+    "middleName": "J",
+    "lastName": "Nguyen",
+    "dateOfBirth": "1979-09-03",
+    "gender": "Male",
+    "emailAddress": "liam.nguyen@example.com",
+    "phoneNumber": "555-0102",
+    "isActive": true,
+    "createdUtc": "2025-01-01T00:00:00+00:00",
+    "updatedUtc": "2025-01-01T00:00:00+00:00"
+  },
+  {
+    "memberId": "8a8ce9fd-e83d-4d53-b7d7-3f0d0b4e0003",
+    "memberNumber": "PA1000003",
+    "firstName": "Sofia",
+    "middleName": null,
+    "lastName": "Ramirez",
+    "dateOfBirth": "1995-11-22",
+    "gender": "Female",
+    "emailAddress": "sofia.ramirez@example.com",
+    "phoneNumber": "555-0103",
+    "isActive": true,
+    "createdUtc": "2025-01-01T00:00:00+00:00",
+    "updatedUtc": "2025-01-01T00:00:00+00:00"
+  }
+]

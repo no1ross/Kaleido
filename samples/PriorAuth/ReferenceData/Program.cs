@@ -6,10 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<ReferenceDataDbContext>(
-    options => options.UseSqlite(
-        builder.Configuration.GetConnectionString("ReferenceData")
-        ?? "Data Source=data/referencedata.db"));
+
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -22,8 +20,6 @@ builder.Services.AddKaleido()
         .AddQueryableAspNetCore();
 
 var app = builder.Build();
-
-await ReferenceDataDbInitializer.InitializeAsync(app.Services);
 
 app.MapQueryable();
 

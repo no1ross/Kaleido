@@ -14,6 +14,7 @@
     <Project Path="samples/priorauth/MemberService/Kaleido.Samples.PriorAuth.MemberService.csproj" Id="ffe87807-be82-43f1-ab60-66964e70be17" />
     <Project Path="samples/priorauth/ReferenceData.Artifacts/Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.csproj" Id="042dc266-a439-477e-9bb4-7252387d4958" />
     <Project Path="samples/PriorAuth/ReferenceData/Kaleido.Samples.PriorAuth.ReferenceData.csproj" />
+    <Project Path="samples/PriorAuth/Seeder/Kaleido.Samples.PriorAuth.Seeder.csproj" />
   </Folder>
   <Folder Name="/shared/">
     <Project Path="shared/Kaleido.Process.Shared/Kaleido.Process.Shared.csproj" />

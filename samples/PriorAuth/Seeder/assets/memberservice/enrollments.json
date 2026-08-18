@@ -1,0 +1,41 @@
+[
+  {
+    "memberEnrollmentId": "6de54f11-40ee-4f61-96ec-4e81b9f80001",
+    "memberId": "8a8ce9fd-e83d-4d53-b7d7-3f0d0b4e0001",
+    "memberAddressId": "7f6db53b-8e37-4f7a-9c8f-16d7bc760001",
+    "planId": "COM-TX-1000",
+    "planName": "Kaleido Commercial Choice TX",
+    "lineOfBusiness": "Commercial",
+    "enrollmentStatus": "Active",
+    "relationshipToSubscriber": "Subscriber",
+    "effectiveDate": "2025-01-01",
+    "terminationDate": null,
+    "isCurrent": true
+  },
+  {
+    "memberEnrollmentId": "6de54f11-40ee-4f61-96ec-4e81b9f80002",
+    "memberId": "8a8ce9fd-e83d-4d53-b7d7-3f0d0b4e0002",
+    "memberAddressId": "7f6db53b-8e37-4f7a-9c8f-16d7bc760002",
+    "planId": "MEDI-FL-2000",
+    "planName": "Kaleido Medicare Advantage FL",
+    "lineOfBusiness": "Medicare",
+    "enrollmentStatus": "Active",
+    "relationshipToSubscriber": "Subscriber",
+    "effectiveDate": "2025-01-01",
+    "terminationDate": null,
+    "isCurrent": true
+  },
+  {
+    "memberEnrollmentId": "6de54f11-40ee-4f61-96ec-4e81b9f80003",
+    "memberId": "8a8ce9fd-e83d-4d53-b7d7-3f0d0b4e0003",
+    "memberAddressId": "7f6db53b-8e37-4f7a-9c8f-16d7bc760003",
+    "planId": "EX-NC-3000",
+    "planName": "Kaleido Exchange Gold NC",
+    "lineOfBusiness": "Exchange",
+    "enrollmentStatus": "Pending",
+    "relationshipToSubscriber": "Subscriber",
+    "effectiveDate": "2025-02-01",
+    "terminationDate": null,
+    "isCurrent": true
+  }
+]

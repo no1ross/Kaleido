@@ -6,7 +6,8 @@ namespace Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data;
 public static class ReferenceDataDbInitializer
 {
     public static async Task InitializeAsync(
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        ReferenceDataSeedModel data)
     {
         await using var scope =
             serviceProvider.CreateAsyncScope();
@@ -17,14 +18,11 @@ public static class ReferenceDataDbInitializer
 
         await dbContext.Database.EnsureCreatedAsync();
 
-        if (await dbContext.States.AnyAsync()
-            || await dbContext.ZipCodes.AnyAsync()
-            || await dbContext.Plans.AnyAsync())
-        {
-            return;
-        }
+        dbContext.States.RemoveRange(dbContext.States);
+        dbContext.ZipCodes.RemoveRange(dbContext.ZipCodes);
+        dbContext.Plans.RemoveRange(dbContext.Plans);
 
-        var data = ReferenceDataSeedData.Create();
+        await dbContext.SaveChangesAsync();
 
         dbContext.States.AddRange(data.States);
         dbContext.ZipCodes.AddRange(data.ZipCodes);

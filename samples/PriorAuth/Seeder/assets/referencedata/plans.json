@@ -1,0 +1,14 @@
+[
+  { "planId": "COM-TX-1000", "planName": "Kaleido Commercial Choice TX", "lineOfBusiness": "Commercial", "stateCode": "TX", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "COM-FL-2000", "planName": "Kaleido Commercial Select FL", "lineOfBusiness": "Commercial", "stateCode": "FL", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "COM-CA-3000", "planName": "Kaleido Commercial Plus CA", "lineOfBusiness": "Commercial", "stateCode": "CA", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isActive": true },
+  { "planId": "MEDI-TX-1000", "planName": "Kaleido Medicare Gold TX", "lineOfBusiness": "Medicare", "stateCode": "TX", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "MEDI-FL-2000", "planName": "Kaleido Medicare Advantage FL", "lineOfBusiness": "Medicare", "stateCode": "FL", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "MEDI-OH-3000", "planName": "Kaleido Medicare Value OH", "lineOfBusiness": "Medicare", "stateCode": "OH", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isActive": true },
+  { "planId": "MCD-TX-1000", "planName": "Kaleido Medicaid Star TX", "lineOfBusiness": "Medicaid", "stateCode": "TX", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "MCD-GA-2000", "planName": "Kaleido Medicaid Access GA", "lineOfBusiness": "Medicaid", "stateCode": "GA", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "MCD-NY-3000", "planName": "Kaleido Medicaid Community NY", "lineOfBusiness": "Medicaid", "stateCode": "NY", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isActive": true },
+  { "planId": "EX-CA-1000", "planName": "Kaleido Exchange Bronze CA", "lineOfBusiness": "Exchange", "stateCode": "CA", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "EX-FL-2000", "planName": "Kaleido Exchange Silver FL", "lineOfBusiness": "Exchange", "stateCode": "FL", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "EX-NC-3000", "planName": "Kaleido Exchange Gold NC", "lineOfBusiness": "Exchange", "stateCode": "NC", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isActive": true }
+]
