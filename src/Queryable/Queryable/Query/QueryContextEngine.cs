@@ -58,8 +58,8 @@ internal sealed class QueryContextEngine<TQueryContext, TView> : IQueryContextEn
         if (viewRegistration.Metadata.Pageable is not null)
         {
             view = _executor.ApplyPage(view, compiled.Page);
-        }        
-        
+        }
+
         var items = await _executor.ToListAsync(view, cancellationToken);
 
         return new QueryResult<TView>(totalCount, compiled.Page?.Offset ?? 0, compiled.Page?.Size ?? int.MaxValue, items);

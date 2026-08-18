@@ -1,0 +1,6 @@
+@ReferenceData_HostAddress = http://localhost:5147
+
+GET {{ReferenceData_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

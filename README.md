@@ -29,6 +29,23 @@ Kaleido provides a common model for exposing business information and business a
 
 ---
 
+## Consumer Experience
+
+Kaleido metadata allows consumers to discover capabilities at runtime.
+
+Consumers can determine:
+
+- What information is available
+- What actions are available
+- Which fields support filtering
+- Which fields support sorting
+- What validation rules exist
+- What inputs are required
+
+This allows applications, components, and tooling to adapt to business capabilities without relying on hardcoded knowledge.
+
+---
+
 ## Core Concepts
 
 Kaleido separates business capabilities into two complementary models.

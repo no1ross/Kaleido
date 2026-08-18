@@ -9,7 +9,12 @@
     <Project Path="samples/ECommerce/Queryable/Kaleido.Samples.ECommerce.Queryable.csproj" />
     <Project Path="samples/ECommerce/Shared/Kaleido.Samples.ECommerce.Shared.csproj" />
   </Folder>
-  <Folder Name="/samples/PriorAuth/" />
+  <Folder Name="/samples/PriorAuth/">
+    <Project Path="samples/PriorAuth/MemberService.Artifacts/Kaleido.Samples.PriorAuth.MemberService.Artifacts.csproj" />
+    <Project Path="samples/priorauth/MemberService/Kaleido.Samples.PriorAuth.MemberService.csproj" Id="ffe87807-be82-43f1-ab60-66964e70be17" />
+    <Project Path="samples/priorauth/ReferenceData.Artifacts/Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.csproj" Id="042dc266-a439-477e-9bb4-7252387d4958" />
+    <Project Path="samples/PriorAuth/ReferenceData/Kaleido.Samples.PriorAuth.ReferenceData.csproj" />
+  </Folder>
   <Folder Name="/shared/">
     <Project Path="shared/Kaleido.Process.Shared/Kaleido.Process.Shared.csproj" />
     <Project Path="shared/Kaleido.Queryable.Shared/Kaleido.Queryable.Shared.csproj" />
