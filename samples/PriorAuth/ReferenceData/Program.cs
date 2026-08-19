@@ -6,8 +6,10 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
-
+builder.Services.AddDbContext<ReferenceDataDbContext>(
+    options => options.UseSqlite(
+        builder.Configuration.GetConnectionString("ReferenceData")
+        ?? "Data Source=data/referencedata.db"));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

@@ -15,7 +15,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../ReferenceData.Artifacts/Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.csproj" />
-    <ProjectReference Include="../MemberService.Artifacts/Kaleido.Samples.PriorAuth.MemberService.Artifacts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

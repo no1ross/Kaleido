@@ -1,0 +1,6 @@
+@ProviderSearch_HostAddress = http://localhost:5147
+
+GET {{ProviderSearch_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

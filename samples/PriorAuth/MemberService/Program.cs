@@ -1,8 +1,8 @@
 using Kaleido;
-using Kaleido.Process;
-using Kaleido.Process.AspNetCore;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
+using Kaleido.Process;
+using Kaleido.Process.AspNetCore;
 using Kaleido.Samples.PriorAuth.MemberService.Artifacts.Data;
 using Microsoft.EntityFrameworkCore;
 
