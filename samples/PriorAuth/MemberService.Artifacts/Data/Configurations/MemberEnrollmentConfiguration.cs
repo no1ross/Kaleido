@@ -18,6 +18,15 @@ internal sealed class MemberEnrollmentConfiguration : IEntityTypeConfiguration<M
             .HasMaxLength(200)
             .IsRequired();
 
+        builder.Property(x => x.LineOfBusiness)
+            .HasConversion<string>();
+
+        builder.Property(x => x.EnrollmentStatus)
+            .HasConversion<string>();
+
+        builder.Property(x => x.RelationshipToSubscriber)
+            .HasConversion<string>();
+
         builder.HasIndex(x => x.MemberId);
 
         builder.HasIndex(x => x.MemberAddressId);

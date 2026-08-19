@@ -22,6 +22,9 @@ internal sealed class PlanConfiguration : IEntityTypeConfiguration<Plan>
             .HasMaxLength(2)
             .IsRequired();
 
+        builder.Property(x => x.LineOfBusiness)
+            .HasConversion<string>();
+
         builder.HasIndex(x => x.PlanName);
 
         builder.HasIndex(x => x.LineOfBusiness);

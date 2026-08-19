@@ -1,14 +1,14 @@
 [
-  { "planId": "COM-TX-1000", "planName": "Kaleido Commercial Choice TX", "lineOfBusiness": "Commercial", "stateCode": "TX", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
-  { "planId": "COM-FL-2000", "planName": "Kaleido Commercial Select FL", "lineOfBusiness": "Commercial", "stateCode": "FL", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
-  { "planId": "COM-CA-3000", "planName": "Kaleido Commercial Plus CA", "lineOfBusiness": "Commercial", "stateCode": "CA", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isActive": true },
-  { "planId": "MEDI-TX-1000", "planName": "Kaleido Medicare Gold TX", "lineOfBusiness": "Medicare", "stateCode": "TX", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
-  { "planId": "MEDI-FL-2000", "planName": "Kaleido Medicare Advantage FL", "lineOfBusiness": "Medicare", "stateCode": "FL", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
-  { "planId": "MEDI-OH-3000", "planName": "Kaleido Medicare Value OH", "lineOfBusiness": "Medicare", "stateCode": "OH", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isActive": true },
-  { "planId": "MCD-TX-1000", "planName": "Kaleido Medicaid Star TX", "lineOfBusiness": "Medicaid", "stateCode": "TX", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
-  { "planId": "MCD-GA-2000", "planName": "Kaleido Medicaid Access GA", "lineOfBusiness": "Medicaid", "stateCode": "GA", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
-  { "planId": "MCD-NY-3000", "planName": "Kaleido Medicaid Community NY", "lineOfBusiness": "Medicaid", "stateCode": "NY", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isActive": true },
-  { "planId": "EX-CA-1000", "planName": "Kaleido Exchange Bronze CA", "lineOfBusiness": "Exchange", "stateCode": "CA", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
-  { "planId": "EX-FL-2000", "planName": "Kaleido Exchange Silver FL", "lineOfBusiness": "Exchange", "stateCode": "FL", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
-  { "planId": "EX-NC-3000", "planName": "Kaleido Exchange Gold NC", "lineOfBusiness": "Exchange", "stateCode": "NC", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isActive": true }
+  { "planId": "COM-IL-1000", "planName": "Kaleido Commercial Choice IL", "lineOfBusiness": "Commercial", "stateCode": "IL", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "COM-IN-2000", "planName": "Kaleido Commercial Select IN", "lineOfBusiness": "Commercial", "stateCode": "IN", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "COM-MI-3000", "planName": "Kaleido Commercial Plus MI", "lineOfBusiness": "Commercial", "stateCode": "MI", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isActive": true },
+  { "planId": "MEDI-IL-1000", "planName": "Kaleido Medicare Gold IL", "lineOfBusiness": "Medicare", "stateCode": "IL", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "MEDI-IN-2000", "planName": "Kaleido Medicare Advantage IN", "lineOfBusiness": "Medicare", "stateCode": "IN", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "MEDI-MI-3000", "planName": "Kaleido Medicare Value MI", "lineOfBusiness": "Medicare", "stateCode": "MI", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isActive": true },
+  { "planId": "MCD-IL-1000", "planName": "Kaleido Medicaid Star IL", "lineOfBusiness": "Medicaid", "stateCode": "IL", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "MCD-IN-2000", "planName": "Kaleido Medicaid Access IN", "lineOfBusiness": "Medicaid", "stateCode": "IN", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "MCD-MI-3000", "planName": "Kaleido Medicaid Community MI", "lineOfBusiness": "Medicaid", "stateCode": "MI", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isActive": true },
+  { "planId": "EX-IL-1000", "planName": "Kaleido Exchange Bronze IL", "lineOfBusiness": "Exchange", "stateCode": "IL", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "EX-IN-2000", "planName": "Kaleido Exchange Silver IN", "lineOfBusiness": "Exchange", "stateCode": "IN", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "planId": "EX-MI-3000", "planName": "Kaleido Exchange Gold MI", "lineOfBusiness": "Exchange", "stateCode": "MI", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isActive": true }
 ]

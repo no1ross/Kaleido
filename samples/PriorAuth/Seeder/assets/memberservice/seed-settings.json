@@ -1,0 +1,15 @@
+{
+  "memberCount": 1000,
+  "additionalEnrollmentModulo": 5,
+  "termedEnrollmentModulo": 20,
+  "secondaryAddressModulo": 10,
+  "middleNameModulo": 6,
+  "addressLine2Modulo": 9,
+  "pendingEnrollmentModulo": 11,
+  "cobraEnrollmentModulo": 17,
+  "baseCreatedUtc": "2025-01-01T00:00:00+00:00",
+  "baseEffectiveDate": "2025-01-01",
+  "minimumAgeYears": 18,
+  "ageRangeYears": 65,
+  "allowedStates": ["IL", "IN", "MI"]
+}

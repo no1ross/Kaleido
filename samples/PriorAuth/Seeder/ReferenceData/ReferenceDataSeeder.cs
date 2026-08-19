@@ -28,12 +28,8 @@ internal sealed class ReferenceDataSeeder(
         var dbContext =
             scope.ServiceProvider.GetRequiredService<ReferenceDataDbContext>();
 
+        await dbContext.Database.EnsureDeletedAsync(cancellationToken);
         await dbContext.Database.EnsureCreatedAsync(cancellationToken);
-
-        dbContext.States.RemoveRange(dbContext.States);
-        dbContext.ZipCodes.RemoveRange(dbContext.ZipCodes);
-        dbContext.Plans.RemoveRange(dbContext.Plans);
-        await dbContext.SaveChangesAsync(cancellationToken);
 
         var states =
             jsonAssetLoader.Load<List<State>>(

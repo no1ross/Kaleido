@@ -31,6 +31,9 @@ internal sealed class MemberConfiguration : IEntityTypeConfiguration<Member>
         builder.Property(x => x.PhoneNumber)
             .HasMaxLength(50);
 
+        builder.Property(x => x.Gender)
+            .HasConversion<string>();
+
         builder.HasIndex(x => x.MemberNumber)
             .IsUnique();
 

@@ -1,5 +1,8 @@
-﻿namespace Kaleido.Samples.PriorAuth.MemberService.Artifacts;
+﻿using System.Text.Json.Serialization;
 
+namespace Kaleido.Samples.PriorAuth.MemberService.Artifacts;
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum MemberGender
 {
     Unknown = 0,
@@ -8,6 +11,7 @@ public enum MemberGender
     NonBinary = 3
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum EnrollmentStatus
 {
     Unknown = 0,
@@ -17,6 +21,7 @@ public enum EnrollmentStatus
     Cobra = 4
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum LineOfBusiness
 {
     Unknown = 0,
@@ -26,6 +31,7 @@ public enum LineOfBusiness
     Exchange = 4
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum RelationshipToSubscriber
 {
     Unknown = 0,

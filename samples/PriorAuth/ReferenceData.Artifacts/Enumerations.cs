@@ -1,5 +1,8 @@
-﻿namespace Kaleido.Samples.PriorAuth.ReferenceData.Artifacts;
+﻿using System.Text.Json.Serialization;
 
+namespace Kaleido.Samples.PriorAuth.ReferenceData.Artifacts;
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum LineOfBusiness
 {
     Unknown = 0,
