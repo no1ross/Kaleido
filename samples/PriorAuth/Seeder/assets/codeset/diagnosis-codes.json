@@ -1,0 +1,92 @@
+[
+  {
+    "DiagnosisCodeId": "2818fae0-ebd3-4b54-b4f1-d76817fcc47d",
+    "CodeValue": "I10",
+    "CodeSystem": "Icd10Cm",
+    "ShortDescription": "Essential primary hypertension",
+    "LongDescription": "Sample seeded diagnosis code for essential primary hypertension.",
+    "EffectiveDate": "2024-12-29",
+    "TerminationDate": null
+  },
+  {
+    "DiagnosisCodeId": "d08ff293-03fb-49ce-9eff-0fbc2d13f332",
+    "CodeValue": "R07.9",
+    "CodeSystem": "Icd10Cm",
+    "ShortDescription": "Chest pain unspecified",
+    "LongDescription": "Sample seeded diagnosis code for chest pain unspecified.",
+    "EffectiveDate": "2024-12-26",
+    "TerminationDate": null
+  },
+  {
+    "DiagnosisCodeId": "9f0a637d-0c5f-4e3d-b9ea-5ce4850e9351",
+    "CodeValue": "M54.50",
+    "CodeSystem": "Icd10Cm",
+    "ShortDescription": "Low back pain unspecified",
+    "LongDescription": "Sample seeded diagnosis code for low back pain unspecified.",
+    "EffectiveDate": "2024-12-23",
+    "TerminationDate": null
+  },
+  {
+    "DiagnosisCodeId": "ad782777-8e4e-4bf4-88aa-d13c58d7b096",
+    "CodeValue": "M25.561",
+    "CodeSystem": "Icd10Cm",
+    "ShortDescription": "Pain in right knee",
+    "LongDescription": "Sample seeded diagnosis code for pain in right knee.",
+    "EffectiveDate": "2024-12-20",
+    "TerminationDate": null
+  },
+  {
+    "DiagnosisCodeId": "e1834b96-4060-4a5d-a494-8a117f9e4e8f",
+    "CodeValue": "M25.562",
+    "CodeSystem": "Icd10Cm",
+    "ShortDescription": "Pain in left knee",
+    "LongDescription": "Sample seeded diagnosis code for pain in left knee.",
+    "EffectiveDate": "2024-12-17",
+    "TerminationDate": null
+  },
+  {
+    "DiagnosisCodeId": "06dac436-823a-47cc-9743-db4d74cf987d",
+    "CodeValue": "M54.16",
+    "CodeSystem": "Icd10Cm",
+    "ShortDescription": "Radiculopathy lumbar region",
+    "LongDescription": "Sample seeded diagnosis code for radiculopathy lumbar region.",
+    "EffectiveDate": "2024-12-14",
+    "TerminationDate": null
+  },
+  {
+    "DiagnosisCodeId": "b0fca43c-91df-46c2-a849-03e7fe32fbd1",
+    "CodeValue": "M17.11",
+    "CodeSystem": "Icd10Cm",
+    "ShortDescription": "Unilateral primary osteoarthritis right knee",
+    "LongDescription": "Sample seeded diagnosis code for unilateral primary osteoarthritis right knee.",
+    "EffectiveDate": "2024-12-11",
+    "TerminationDate": "2027-01-08"
+  },
+  {
+    "DiagnosisCodeId": "911c2d5c-8cd0-4ca8-bff2-3450b89d0613",
+    "CodeValue": "M17.12",
+    "CodeSystem": "Icd10Cm",
+    "ShortDescription": "Unilateral primary osteoarthritis left knee",
+    "LongDescription": "Sample seeded diagnosis code for unilateral primary osteoarthritis left knee.",
+    "EffectiveDate": "2024-12-08",
+    "TerminationDate": null
+  },
+  {
+    "DiagnosisCodeId": "68b4d8dd-9c0f-4b61-9cb7-d95790bcbbe5",
+    "CodeValue": "R06.02",
+    "CodeSystem": "Icd10Cm",
+    "ShortDescription": "Shortness of breath",
+    "LongDescription": "Sample seeded diagnosis code for shortness of breath.",
+    "EffectiveDate": "2024-12-05",
+    "TerminationDate": null
+  },
+  {
+    "DiagnosisCodeId": "72fc2aea-5d28-4fa4-ac6d-db0651986814",
+    "CodeValue": "I25.10",
+    "CodeSystem": "Icd10Cm",
+    "ShortDescription": "Atherosclerotic heart disease of native coronary artery without angina pectoris",
+    "LongDescription": "Sample seeded diagnosis code for atherosclerotic heart disease of native coronary artery without angina pectoris.",
+    "EffectiveDate": "2024-11-26",
+    "TerminationDate": null
+  }
+]

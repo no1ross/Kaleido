@@ -3,5 +3,7 @@ namespace Kaleido.Samples.PriorAuth.Seeder;
 internal enum SupportedDomain
 {
     ReferenceData,
-    MemberService
+    MemberService,
+    CodeSet,
+    ProviderSearch
 }

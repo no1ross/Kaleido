@@ -18,15 +18,22 @@ public static class ReferenceDataDbInitializer
 
         await dbContext.Database.EnsureCreatedAsync();
 
-        dbContext.States.RemoveRange(dbContext.States);
-        dbContext.ZipCodes.RemoveRange(dbContext.ZipCodes);
+        dbContext.PlanNetworks.RemoveRange(dbContext.PlanNetworks);
         dbContext.Plans.RemoveRange(dbContext.Plans);
+        dbContext.ZipCodes.RemoveRange(dbContext.ZipCodes);
+        dbContext.Networks.RemoveRange(dbContext.Networks);
+        dbContext.States.RemoveRange(dbContext.States);
 
         await dbContext.SaveChangesAsync();
 
         dbContext.States.AddRange(data.States);
         dbContext.ZipCodes.AddRange(data.ZipCodes);
         dbContext.Plans.AddRange(data.Plans);
+        dbContext.Networks.AddRange(data.Networks);
+
+        await dbContext.SaveChangesAsync();
+
+        dbContext.PlanNetworks.AddRange(data.PlanNetworks);
 
         await dbContext.SaveChangesAsync();
     }

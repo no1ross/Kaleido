@@ -1,0 +1,5 @@
+[
+  { "providerId": "dab1598d-6113-4fdb-a4e8-86d5f550aa6f", "providerName": "Kaleido Cardiology Group", "doingBusinessAsName": "KCG Heart and Vascular", "phoneNumber": "555-210-1000", "isActive": true, "effectiveDate": "2025-01-01", "terminationDate": null },
+  { "providerId": "bcf57880-7588-4c39-acbf-af0d3ec3c58f", "providerName": "Midwest Orthopedic Institute", "doingBusinessAsName": "MOI Specialty Clinics", "phoneNumber": "555-210-2000", "isActive": true, "effectiveDate": "2025-01-01", "terminationDate": null },
+  { "providerId": "4972bd45-69aa-46c8-a994-619536805ca2", "providerName": "Lakeshore Neurosurgery Partners", "doingBusinessAsName": null, "phoneNumber": "555-210-3000", "isActive": true, "effectiveDate": "2025-01-01", "terminationDate": null }
+]

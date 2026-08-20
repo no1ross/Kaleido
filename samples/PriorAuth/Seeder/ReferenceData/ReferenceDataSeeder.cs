@@ -50,9 +50,26 @@ internal sealed class ReferenceDataSeeder(
                     "plans.json"),
                 jsonAssetLoader.CreateEnumJsonOptions());
 
+        var networks =
+            jsonAssetLoader.Load<List<Network>>(
+                Path.Combine(
+                    "referencedata",
+                    "networks.json"));
+
+        var planNetworks =
+            jsonAssetLoader.Load<List<PlanNetwork>>(
+                Path.Combine(
+                    "referencedata",
+                    "plan-networks.json"));
+
         dbContext.States.AddRange(states);
         dbContext.ZipCodes.AddRange(zipCodes);
         dbContext.Plans.AddRange(plans);
+        dbContext.Networks.AddRange(networks);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        dbContext.PlanNetworks.AddRange(planNetworks);
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }

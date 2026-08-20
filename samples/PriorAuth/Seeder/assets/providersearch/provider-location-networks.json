@@ -1,0 +1,8 @@
+[
+  { "providerLocationId": "fd81dd47-d57e-4725-ac6f-4456f173d9a2", "networkId": "19be4eeb-07b2-4cad-83ee-a2e45e808f8d", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": true },
+  { "providerLocationId": "fd81dd47-d57e-4725-ac6f-4456f173d9a2", "networkId": "36c99cf4-dd45-466d-ac46-4b311751a40a", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": false },
+  { "providerLocationId": "2da99a6c-b65f-4831-996f-fbfc4984d4a0", "networkId": "98d9e545-b5ab-4166-88eb-78f74f049f8e", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": true },
+  { "providerLocationId": "6191f631-df16-4e7d-82b1-725320642a1b", "networkId": "98d9e545-b5ab-4166-88eb-78f74f049f8e", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": true },
+  { "providerLocationId": "9181c4dd-f709-431b-9c7d-7747f9868e62", "networkId": "36c99cf4-dd45-466d-ac46-4b311751a40a", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": true },
+  { "providerLocationId": "51cc48cc-4e0c-4e46-bf4e-a2fabcecd7d4", "networkId": "36c99cf4-dd45-466d-ac46-4b311751a40a", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": true }
+]

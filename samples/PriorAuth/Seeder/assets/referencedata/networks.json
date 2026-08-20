@@ -1,0 +1,5 @@
+[
+  { "networkId": "19be4eeb-07b2-4cad-83ee-a2e45e808f8d", "networkCode": "COMMUNITY", "networkName": "Kaleido Community Network", "description": "Broad community provider network across the sample market.", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "networkId": "98d9e545-b5ab-4166-88eb-78f74f049f8e", "networkCode": "SELECT", "networkName": "Kaleido Select Network", "description": "Narrow provider network with lower unit cost sites.", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true },
+  { "networkId": "36c99cf4-dd45-466d-ac46-4b311751a40a", "networkCode": "PREMIER", "networkName": "Kaleido Premier Network", "description": "Premium network focused on tertiary and specialty care access.", "effectiveDate": "2025-01-01", "terminationDate": null, "isActive": true }
+]

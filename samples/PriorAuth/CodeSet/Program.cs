@@ -1,14 +1,15 @@
 using Kaleido;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
+using Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Data;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//builder.Services.AddDbContext<ProviderSearchDbContext>(
-//    options => options.UseSqlite(
-//        builder.Configuration.GetConnectionString("ProviderSearch")
-//        ?? "Data Source=data/providersearch.db"));
+builder.Services.AddDbContext<CodeSetDbContext>(
+    options => options.UseSqlite(
+        builder.Configuration.GetConnectionString("CodeSet")
+        ?? "Data Source=data/codeset.db"));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -16,7 +17,7 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
-    //.AddAssembly(typeof(ProviderSearchDbContext).Assembly)
+    .AddAssembly(typeof(CodeSetDbContext).Assembly)
     .AddQueryable()
         .AddQueryableAspNetCore();
 

@@ -5,4 +5,6 @@ namespace Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data;
 public sealed record ReferenceDataSeedModel(
     IReadOnlyList<State> States,
     IReadOnlyList<ZipCode> ZipCodes,
-    IReadOnlyList<Plan> Plans);
+    IReadOnlyList<Plan> Plans,
+    IReadOnlyList<Network> Networks,
+    IReadOnlyList<PlanNetwork> PlanNetworks);

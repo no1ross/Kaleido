@@ -1,0 +1,8 @@
+[
+  { "providerIdentifierId": "16df65ef-ef4a-4ddb-9cf7-d4ef06be04b3", "providerId": "dab1598d-6113-4fdb-a4e8-86d5f550aa6f", "identifierType": "TIN", "identifierValue": "36-1234567", "isPrimary": true, "effectiveDate": "2025-01-01", "terminationDate": null },
+  { "providerIdentifierId": "0b2c2f07-1f66-45af-a981-b246c360ceff", "providerId": "dab1598d-6113-4fdb-a4e8-86d5f550aa6f", "identifierType": "NPI", "identifierValue": "1437589123", "isPrimary": true, "effectiveDate": "2025-01-01", "terminationDate": null },
+  { "providerIdentifierId": "f2713724-2cd4-4efa-b94d-e3d28d7281cd", "providerId": "bcf57880-7588-4c39-acbf-af0d3ec3c58f", "identifierType": "TIN", "identifierValue": "35-9876543", "isPrimary": true, "effectiveDate": "2025-01-01", "terminationDate": null },
+  { "providerIdentifierId": "6a5a0ddd-a162-4d63-b132-a24a6959f617", "providerId": "bcf57880-7588-4c39-acbf-af0d3ec3c58f", "identifierType": "NPI", "identifierValue": "1740635812", "isPrimary": true, "effectiveDate": "2025-01-01", "terminationDate": null },
+  { "providerIdentifierId": "b9c4c1f7-5edf-4aa5-91a0-5e204d30eef1", "providerId": "4972bd45-69aa-46c8-a994-619536805ca2", "identifierType": "TIN", "identifierValue": "38-1122334", "isPrimary": true, "effectiveDate": "2025-01-01", "terminationDate": null },
+  { "providerIdentifierId": "d24585d4-3481-446d-8e06-9025c3bbaf32", "providerId": "4972bd45-69aa-46c8-a994-619536805ca2", "identifierType": "NPI", "identifierValue": "1550426781", "isPrimary": true, "effectiveDate": "2025-01-01", "terminationDate": null }
+]

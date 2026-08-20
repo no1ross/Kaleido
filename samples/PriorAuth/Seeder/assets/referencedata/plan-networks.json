@@ -1,0 +1,15 @@
+[
+  { "planId": "COM-IL-1000", "networkId": "19be4eeb-07b2-4cad-83ee-a2e45e808f8d", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": true },
+  { "planId": "COM-IL-1000", "networkId": "98d9e545-b5ab-4166-88eb-78f74f049f8e", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": false },
+  { "planId": "COM-IN-2000", "networkId": "98d9e545-b5ab-4166-88eb-78f74f049f8e", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": true },
+  { "planId": "COM-MI-3000", "networkId": "36c99cf4-dd45-466d-ac46-4b311751a40a", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isPrimary": true },
+  { "planId": "MEDI-IL-1000", "networkId": "36c99cf4-dd45-466d-ac46-4b311751a40a", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": true },
+  { "planId": "MEDI-IN-2000", "networkId": "19be4eeb-07b2-4cad-83ee-a2e45e808f8d", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": true },
+  { "planId": "MEDI-MI-3000", "networkId": "36c99cf4-dd45-466d-ac46-4b311751a40a", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isPrimary": true },
+  { "planId": "MCD-IL-1000", "networkId": "19be4eeb-07b2-4cad-83ee-a2e45e808f8d", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": true },
+  { "planId": "MCD-IN-2000", "networkId": "19be4eeb-07b2-4cad-83ee-a2e45e808f8d", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": true },
+  { "planId": "MCD-MI-3000", "networkId": "98d9e545-b5ab-4166-88eb-78f74f049f8e", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isPrimary": true },
+  { "planId": "EX-IL-1000", "networkId": "98d9e545-b5ab-4166-88eb-78f74f049f8e", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": true },
+  { "planId": "EX-IN-2000", "networkId": "98d9e545-b5ab-4166-88eb-78f74f049f8e", "effectiveDate": "2025-01-01", "terminationDate": null, "isPrimary": true },
+  { "planId": "EX-MI-3000", "networkId": "36c99cf4-dd45-466d-ac46-4b311751a40a", "effectiveDate": "2025-01-01", "terminationDate": "2026-12-31", "isPrimary": true }
+]

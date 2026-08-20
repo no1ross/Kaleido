@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -15,6 +15,9 @@
 
   <ItemGroup>
     <ProjectReference Include="../ReferenceData.Artifacts/Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.csproj" />
+    <ProjectReference Include="..\MemberService.Artifacts\Kaleido.Samples.PriorAuth.MemberService.Artifacts.csproj" />
+    <ProjectReference Include="..\CodeSet.Artifacts\Kaleido.Samples.PriorAuth.CodeSet.Artifacts.csproj" />
+    <ProjectReference Include="..\ProviderSearch.Artifacts\Kaleido.Samples.PriorAuth.ProviderSearch.Artifacts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

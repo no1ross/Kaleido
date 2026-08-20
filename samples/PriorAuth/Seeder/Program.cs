@@ -1,6 +1,8 @@
 using Kaleido.Samples.PriorAuth.Seeder;
+using Kaleido.Samples.PriorAuth.Seeder.CodeSet;
 using Kaleido.Samples.PriorAuth.Seeder.Infrastructure;
 using Kaleido.Samples.PriorAuth.Seeder.MemberService;
+using Kaleido.Samples.PriorAuth.Seeder.ProviderSearch;
 using Kaleido.Samples.PriorAuth.Seeder.ReferenceData;
 
 var rootConfiguration =
@@ -21,6 +23,14 @@ var runner =
     new SeedRunner(
         [
             new ReferenceDataSeeder(
+                projectContextFactory,
+                jsonAssetLoader),
+
+            new CodeSetSeeder(
+                projectContextFactory,
+                jsonAssetLoader),
+
+            new ProviderSearchSeeder(
                 projectContextFactory,
                 jsonAssetLoader),
 

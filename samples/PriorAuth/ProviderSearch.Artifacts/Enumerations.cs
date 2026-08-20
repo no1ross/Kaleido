@@ -2,3 +2,11 @@
 
 namespace Kaleido.Samples.PriorAuth.ProviderSearch.Artifacts;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum ProviderIdentifierType
+{
+    Unknown = 0,
+    TIN = 1,
+    NPI = 2,
+    Internal = 3
+}

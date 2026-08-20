@@ -19,4 +19,6 @@ public sealed class Plan
     public bool IsActive { get; set; }
 
     public State State { get; set; } = null!;
+
+    public ICollection<PlanNetwork> PlanNetworks { get; set; } = new List<PlanNetwork>();
 }

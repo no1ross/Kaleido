@@ -1,0 +1,102 @@
+[
+  {
+    "ProcedureCodeId": "a6f2cc5b-8ad9-4a79-8c7f-748947ee7976",
+    "CodeValue": "93000",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "Electrocardiogram complete",
+    "LongDescription": "Sample seeded procedure code for electrocardiogram complete used to exercise Queryable and Process scenarios.",
+    "EffectiveDate": "2024-12-31",
+    "TerminationDate": null,
+    "RequiresAuthorization": true
+  },
+  {
+    "ProcedureCodeId": "ce2ea86a-5297-47c7-933a-e0d1511b14b8",
+    "CodeValue": "93005",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "Electrocardiogram tracing only",
+    "LongDescription": "Sample seeded procedure code for electrocardiogram tracing only used to exercise Queryable and Process scenarios.",
+    "EffectiveDate": "2024-12-30",
+    "TerminationDate": null,
+    "RequiresAuthorization": false
+  },
+  {
+    "ProcedureCodeId": "6aaf6935-0afc-49a8-a4d1-b420f93ddbe5",
+    "CodeValue": "93010",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "Electrocardiogram interpretation report",
+    "LongDescription": "Sample seeded procedure code for electrocardiogram interpretation report used to exercise Queryable and Process scenarios.",
+    "EffectiveDate": "2024-12-29",
+    "TerminationDate": null,
+    "RequiresAuthorization": true
+  },
+  {
+    "ProcedureCodeId": "031db312-1f4e-41e4-b017-e164ad58f4b5",
+    "CodeValue": "93224",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "Holter monitor recording analysis",
+    "LongDescription": "Sample seeded procedure code for holter monitor recording analysis used to exercise Queryable and Process scenarios.",
+    "EffectiveDate": "2024-12-28",
+    "TerminationDate": null,
+    "RequiresAuthorization": false
+  },
+  {
+    "ProcedureCodeId": "e467d6f5-f501-44e5-857d-0b2f25f34f57",
+    "CodeValue": "93225",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "Holter monitor recording only",
+    "LongDescription": "Sample seeded procedure code for holter monitor recording only used to exercise Queryable and Process scenarios.",
+    "EffectiveDate": "2024-12-27",
+    "TerminationDate": null,
+    "RequiresAuthorization": true
+  },
+  {
+    "ProcedureCodeId": "a602111f-c89a-40f6-9900-1ee71fd6abcb",
+    "CodeValue": "93226",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "Holter monitor scanning analysis",
+    "LongDescription": "Sample seeded procedure code for holter monitor scanning analysis used to exercise Queryable and Process scenarios.",
+    "EffectiveDate": "2024-12-26",
+    "TerminationDate": null,
+    "RequiresAuthorization": false
+  },
+  {
+    "ProcedureCodeId": "892a97fb-9c6f-4ec4-acd8-8ca8c1baf170",
+    "CodeValue": "93227",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "Holter monitor physician review",
+    "LongDescription": "Sample seeded procedure code for holter monitor physician review used to exercise Queryable and Process scenarios.",
+    "EffectiveDate": "2024-12-25",
+    "TerminationDate": null,
+    "RequiresAuthorization": true
+  },
+  {
+    "ProcedureCodeId": "2eb5f3bd-3932-4065-9bf1-647dd732a86a",
+    "CodeValue": "93306",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "Echocardiography complete transthoracic",
+    "LongDescription": "Sample seeded procedure code for echocardiography complete transthoracic used to exercise Queryable and Process scenarios.",
+    "EffectiveDate": "2024-12-24",
+    "TerminationDate": null,
+    "RequiresAuthorization": false
+  },
+  {
+    "ProcedureCodeId": "b7bb4d0d-427b-4d1e-b3b3-d0fcb7adf893",
+    "CodeValue": "93307",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "Echocardiography follow-up study",
+    "LongDescription": "Sample seeded procedure code for echocardiography follow-up study used to exercise Queryable and Process scenarios.",
+    "EffectiveDate": "2024-12-23",
+    "TerminationDate": null,
+    "RequiresAuthorization": true
+  },
+  {
+    "ProcedureCodeId": "5c2d5d62-9837-4fd6-96a6-ae557dfb150c",
+    "CodeValue": "93308",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "Echocardiography limited study",
+    "LongDescription": "Sample seeded procedure code for echocardiography limited study used to exercise Queryable and Process scenarios.",
+    "EffectiveDate": "2024-12-22",
+    "TerminationDate": null,
+    "RequiresAuthorization": false
+  }
+]

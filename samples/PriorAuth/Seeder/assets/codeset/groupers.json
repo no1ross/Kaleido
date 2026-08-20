@@ -1,0 +1,32 @@
+[
+  {
+    "CodeGrouperId": "0700788a-7e59-4f56-a699-6c1e0e8eb7be",
+    "Name": "Lumbar Spine Surgery Bundle",
+    "GroupingType": "Authorization",
+    "Description": "Lumbar spine surgery approval bundle with anchor procedure and supporting services, devices, and adjunct procedure codes.",
+    "Source": "PriorAuth Sample",
+    "Version": "1.0",
+    "EffectiveDate": "2025-01-01",
+    "TerminationDate": null
+  },
+  {
+    "CodeGrouperId": "c6fa72f4-cd85-4a98-b9dc-b125fe5f01ca",
+    "Name": "Cardiac Procedure Bundle",
+    "GroupingType": "Authorization",
+    "Description": "Cardiac procedure approval bundle with anchor procedure and supporting imaging, supplies, and related services.",
+    "Source": "PriorAuth Sample",
+    "Version": "1.0",
+    "EffectiveDate": "2025-01-01",
+    "TerminationDate": null
+  },
+  {
+    "CodeGrouperId": "2f7d92e0-cb6d-4f64-8b9f-9b9b202ac642",
+    "Name": "Orthopedic Repair Bundle",
+    "GroupingType": "Authorization",
+    "Description": "Orthopedic repair approval bundle with anchor procedure plus related imaging, devices, and supporting services.",
+    "Source": "PriorAuth Sample",
+    "Version": "1.0",
+    "EffectiveDate": "2025-01-01",
+    "TerminationDate": null
+  }
+]

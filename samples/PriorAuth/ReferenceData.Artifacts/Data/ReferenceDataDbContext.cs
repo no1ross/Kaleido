@@ -12,6 +12,10 @@ public sealed class ReferenceDataDbContext(
 
     public DbSet<Plan> Plans => Set<Plan>();
 
+    public DbSet<Network> Networks => Set<Network>();
+
+    public DbSet<PlanNetwork> PlanNetworks => Set<PlanNetwork>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
