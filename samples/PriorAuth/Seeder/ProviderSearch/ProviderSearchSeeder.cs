@@ -18,9 +18,7 @@ internal sealed class ProviderSearchSeeder(
     {
         await using var provider =
             projectContextFactory.CreateSqliteDbContextProvider<ProviderSearchDbContext>(
-                serviceProjectName: "ProviderSearch",
-                connectionStringName: "ProviderSearch",
-                fallbackConnectionString: "Data Source=data/providersearch.db");
+                connectionString: "Data Source=ProviderSearch/data/providersearch.db");
 
         await using var scope =
             provider.CreateAsyncScope();

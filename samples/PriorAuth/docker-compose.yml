@@ -1,0 +1,142 @@
+services:
+  seeder:
+    build:
+      context: ../..
+      dockerfile: samples/PriorAuth/Seeder/Dockerfile
+    command: ["--domains=ReferenceData,CodeSet,ProviderSearch,MemberService"]
+    volumes:
+      - referencedata-data:/app/ReferenceData/data
+      - codeset-data:/app/CodeSet/data
+      - providersearch-data:/app/ProviderSearch/data
+      - memberservice-data:/app/MemberService/data
+    restart: "no"
+
+  referencedata:
+    build:
+      context: ../..
+      dockerfile: samples/PriorAuth/ReferenceData/Dockerfile
+    depends_on:
+      seeder:
+        condition: service_completed_successfully
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__ReferenceData: Data Source=/app/data/referencedata.db
+    volumes:
+      - referencedata-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    ports:
+      - "8081:8080"
+
+  codeset:
+    build:
+      context: ../..
+      dockerfile: samples/PriorAuth/CodeSet/Dockerfile
+    depends_on:
+      seeder:
+        condition: service_completed_successfully
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__CodeSet: Data Source=/app/data/codeset.db
+    volumes:
+      - codeset-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    ports:
+      - "8082:8080"
+
+  providersearch:
+    build:
+      context: ../..
+      dockerfile: samples/PriorAuth/ProviderSearch/Dockerfile
+    depends_on:
+      seeder:
+        condition: service_completed_successfully
+      referencedata:
+        condition: service_healthy
+      codeset:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__ProviderSearch: Data Source=/app/data/providersearch.db
+    volumes:
+      - providersearch-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    ports:
+      - "8083:8080"
+
+  memberservice:
+    build:
+      context: ../..
+      dockerfile: samples/PriorAuth/MemberService/Dockerfile
+    depends_on:
+      seeder:
+        condition: service_completed_successfully
+      referencedata:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__MemberService: Data Source=/app/data/memberservice.db
+    volumes:
+      - memberservice-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    ports:
+      - "8084:8080"
+
+  intake:
+    build:
+      context: ../..
+      dockerfile: samples/PriorAuth/Intake/Dockerfile
+    depends_on:
+      memberservice:
+        condition: service_healthy
+      providersearch:
+        condition: service_healthy
+      referencedata:
+        condition: service_healthy
+      codeset:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Intake: Data Source=/app/data/intake.db
+      Services__ReferenceData__BaseUrl: http://referencedata:8080
+    volumes:
+      - intake-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    ports:
+      - "8085:8080"
+
+volumes:
+  referencedata-data:
+  codeset-data:
+  providersearch-data:
+  memberservice-data:
+  intake-data:

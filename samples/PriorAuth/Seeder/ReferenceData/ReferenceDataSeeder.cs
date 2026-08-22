@@ -18,9 +18,7 @@ internal sealed class ReferenceDataSeeder(
     {
         await using var provider =
             projectContextFactory.CreateSqliteDbContextProvider<ReferenceDataDbContext>(
-                serviceProjectName: "ReferenceData",
-                connectionStringName: "ReferenceData",
-                fallbackConnectionString: "Data Source=data/referencedata.db");
+                connectionString: "Data Source=ReferenceData/data/referencedata.db");
 
         await using var scope =
             provider.CreateAsyncScope();

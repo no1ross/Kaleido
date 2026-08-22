@@ -1,45 +1,14 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Samples.PriorAuth.Seeder.Infrastructure;
 
 internal sealed class ServiceProjectContextFactory
 {
-    public string GetServiceProjectPath(
-        string projectName)
-    {
-        return Path.GetFullPath(
-            Path.Combine(
-                AppContext.BaseDirectory,
-                "..",
-                "..",
-                "..",
-                "..",
-                projectName));
-    }
-
-    public IConfiguration BuildServiceConfiguration(
-        string serviceProjectPath)
-    {
-        return new ConfigurationBuilder()
-            .SetBasePath(serviceProjectPath)
-            .AddJsonFile("appsettings.json", optional: false)
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            .Build();
-    }
-
     public string ResolveConnectionString(
-        IConfiguration configuration,
-        string connectionStringName,
-        string fallbackConnectionString,
-        string serviceProjectPath)
+        string connectionString)
     {
-        var connectionString =
-            configuration.GetConnectionString(connectionStringName)
-            ?? fallbackConnectionString;
-
         var builder =
             new SqliteConnectionStringBuilder(
                 connectionString);
@@ -50,7 +19,7 @@ internal sealed class ServiceProjectContextFactory
             builder.DataSource =
                 Path.GetFullPath(
                     Path.Combine(
-                        serviceProjectPath,
+                        AppContext.BaseDirectory,
                         builder.DataSource));
         }
 
@@ -67,31 +36,18 @@ internal sealed class ServiceProjectContextFactory
     }
 
     public ServiceProvider CreateSqliteDbContextProvider<TDbContext>(
-        string serviceProjectName,
-        string connectionStringName,
-        string fallbackConnectionString)
+        string connectionString)
         where TDbContext : DbContext
     {
-        var serviceProjectPath =
-            GetServiceProjectPath(
-                serviceProjectName);
-
-        var configuration =
-            BuildServiceConfiguration(
-                serviceProjectPath);
-
-        var connectionString =
+        var resolvedConnectionString =
             ResolveConnectionString(
-                configuration,
-                connectionStringName,
-                fallbackConnectionString,
-                serviceProjectPath);
+                connectionString);
 
         var services =
             new ServiceCollection();
 
         services.AddDbContext<TDbContext>(
-            options => options.UseSqlite(connectionString));
+            options => options.UseSqlite(resolvedConnectionString));
 
         return services.BuildServiceProvider();
     }

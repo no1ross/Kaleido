@@ -3,6 +3,7 @@ using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +15,8 @@ builder.Services.AddDbContext<CodeSetDbContext>(
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<CodeSetDbContext>();
 
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
@@ -23,6 +26,7 @@ builder.Services.AddKaleido()
 
 var app = builder.Build();
 
+app.MapHealthChecks("/health");
 app.MapQueryable();
 
 if (app.Environment.IsDevelopment())
@@ -30,8 +34,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
