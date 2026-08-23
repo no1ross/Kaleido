@@ -1,3 +1,4 @@
+using Kaleido.Observability;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
@@ -8,6 +9,12 @@ public static class KaleidoServiceCollectionExtensions
     public static IKaleidoBuilder AddKaleido(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        services.AddScoped<KaleidoCorrelationContextAccessor>();
+        services.AddScoped<IKaleidoCorrelationContextAccessor>(
+            sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
+        services.AddScoped<IKaleidoCorrelationContextInitializer>(
+            sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
 
         return new KaleidoBuilder(services);
     }

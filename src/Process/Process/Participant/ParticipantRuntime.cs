@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Participant.Context;
+﻿using Kaleido.Process.Observability;
+using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Planning;
 
@@ -11,12 +12,14 @@ internal sealed class ParticipantRuntime
     private readonly IProcessStateUpdater _stateUpdater;
     private readonly IExecutionPlanner _planner;
     private readonly IExecutionProcessor _processor;
+    private readonly IProcessObservability _observability;
 
     public ParticipantRuntime(
         IProcessContextStore contextStore,
         IProcessStateUpdater stateUpdater,
         IExecutionPlanner planner,
-        IExecutionProcessor processor)
+        IExecutionProcessor processor,
+        IProcessObservability observability)
     {
         ArgumentNullException.ThrowIfNull(contextStore);
         ArgumentNullException.ThrowIfNull(stateUpdater);
@@ -27,6 +30,7 @@ internal sealed class ParticipantRuntime
         _stateUpdater = stateUpdater;
         _planner = planner;
         _processor = processor;
+        _observability = observability;
     }
 
     public async Task<ParticipantProcessResult> ExecuteAsync(
@@ -35,40 +39,65 @@ internal sealed class ParticipantRuntime
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var context =
-            await LoadOrCreateContextAsync(
-                request,
-                cancellationToken);
+        using var observation =
+            _observability.BeginExecution(
+                new ProcessExecutionObservationDetails(
+                    request.Participant.Steps.Count));
 
-        var plan =
-            _planner.BuildPlan(
-                request.Participant,
-                context);
+        try
+        {
+            var context =
+                await LoadOrCreateContextAsync(
+                    request,
+                    observation,
+                    cancellationToken);
 
-        var executionResult =
-            await _processor.ExecuteAsync(
-                GetExecutionCandidates(plan),
-                context,
-                cancellationToken);
+            var plan =
+                _planner.BuildPlan(
+                    request.Participant,
+                    context);
 
-        return CreateResult(
-            plan,
-            executionResult);
+            observation.PlanBuilt(
+                plan.Candidates.Count,
+                GetExecutionCandidates(plan).Count);
+
+            var executionResult =
+                await _processor.ExecuteAsync(
+                    GetExecutionCandidates(plan),
+                    context,
+                    cancellationToken);
+
+            return CreateResult(
+                plan,
+                executionResult);
+        }
+        catch (Exception exception)
+        {
+            observation.Failed(exception);
+            throw;
+        }
     }
 
     private async Task<ParticipantContext> LoadOrCreateContextAsync(
         ProcessRequest request,
+        IProcessExecutionObservation observation,
         CancellationToken cancellationToken)
     {
         if (request.ParticipantProcessId is null)
         {
-            return _stateUpdater.Initialize(
-                Guid.NewGuid())
-                with
-            {
-                LatestRequestId =
-                        request.RequestId
-            };
+            var initializedContext =
+                _stateUpdater.Initialize(
+                    Guid.NewGuid())
+                    with
+                {
+                    LatestRequestId =
+                            request.RequestId
+                };
+
+            observation.ContextInitialized(
+                initializedContext.ParticipantProcessId);
+
+            return initializedContext;
         }
 
         var context =
@@ -78,14 +107,23 @@ internal sealed class ParticipantRuntime
         
         if (context is null)
         {
-            return _stateUpdater.Initialize(
-                request.ParticipantProcessId.Value)
-                with
-            {
-                LatestRequestId =
-                        request.RequestId
-            };
+            var initializedContext =
+                _stateUpdater.Initialize(
+                    request.ParticipantProcessId.Value)
+                    with
+                {
+                    LatestRequestId =
+                            request.RequestId
+                };
+
+            observation.ContextInitialized(
+                initializedContext.ParticipantProcessId);
+
+            return initializedContext;
         }
+
+        observation.ContextLoaded(
+            context.ParticipantProcessId);
 
         return _stateUpdater.Reconcile(
             context)

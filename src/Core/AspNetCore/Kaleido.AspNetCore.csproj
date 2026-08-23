@@ -4,6 +4,9 @@
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
 	<ItemGroup>
+	  <ProjectReference Include="..\Kaleido\Kaleido.csproj" />
+	</ItemGroup>
+	<ItemGroup>
 	  <Folder Include="Exceptions\" />
 	</ItemGroup>
 </Project>

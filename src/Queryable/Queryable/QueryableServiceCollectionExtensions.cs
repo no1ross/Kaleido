@@ -1,4 +1,5 @@
 using Kaleido.Queryable.Attributes;
+using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;
@@ -131,6 +132,8 @@ public static class QueryableServiceCollectionExtensions
         services.TryAddSingleton(
             typeof(IQueryContextExecutor<>),
             typeof(QueryContextExecutor<>));
+
+        services.TryAddScoped<IQueryableObservability, QueryableObservability>();
     }
 
     private static void RegisterSource(

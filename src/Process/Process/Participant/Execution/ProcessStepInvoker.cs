@@ -1,12 +1,20 @@
-﻿using Kaleido.Process.Participant.Context;
+﻿using Kaleido.Process.Observability;
+using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Registry;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics;
 
 namespace Kaleido.Process.Participant.Execution;
 
 
 internal sealed class ProcessStepInvoker : IProcessStepInvoker
 {
+    private const string ActivitySourceName =
+        "Kaleido.Process";
+
+    private static readonly ActivitySource ActivitySource =
+        new(ActivitySourceName);
+
     private readonly IServiceScopeFactory _scopeFactory;
 
     public ProcessStepInvoker(
@@ -26,6 +34,11 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
         ArgumentNullException.ThrowIfNull(registration);
         ArgumentNullException.ThrowIfNull(processStep);
         ArgumentNullException.ThrowIfNull(context);
+
+        using var handlerObservation =
+            ActivitySource.StartActivity(
+                "kaleido.process.step.handler",
+                ActivityKind.Internal);
 
         using var scope =
             _scopeFactory.CreateScope();

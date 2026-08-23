@@ -1,4 +1,5 @@
 using Kaleido.Process.Attributes;
+using Kaleido.Process.Observability;
 using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
@@ -184,12 +185,13 @@ public static class ParticipantServiceCollectionExtensions
         services.TryAddSingleton<IStepCandidatePlanner, StepCandidatePlanner>();
         services.TryAddSingleton<IStepCandidateValidator, StepCandidateValidator>();
 
-        services.TryAddSingleton<IProcessStepInvoker, ProcessStepInvoker>();
+        services.TryAddScoped<IProcessStepInvoker, ProcessStepInvoker>();
         services.TryAddSingleton<IStepExecutionEvaluator, StepExecutionEvaluator>();
         services.TryAddSingleton<IProcessStateUpdater, ProcessStateUpdater>();
         services.TryAddSingleton<IStepAvailabilityResolver, StepAvailabilityResolver>();
         services.TryAddSingleton<IProcessContextStore, InMemoryProcessContextStore>();
 
+        services.TryAddScoped<IProcessObservability, ProcessObservability>();
         services.TryAddScoped<IParticipantRuntime, ParticipantRuntime>();
         services.TryAddScoped<IExecutionProcessor, ExecutionProcessor>();
     }

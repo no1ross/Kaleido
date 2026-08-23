@@ -1,4 +1,6 @@
+using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
+using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -14,6 +16,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView> : IQueryContextEn
     private readonly IQueryContextSource<TQueryContext> _source;
     private readonly ICompiledQueryApplier<TQueryContext> _applier;
     private readonly IQueryContextExecutor<TView> _executor;
+    private readonly IQueryableObservability _observability;
     private readonly IServiceProvider _serviceProvider;
 
     public QueryContextEngine(
@@ -22,6 +25,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView> : IQueryContextEn
         IQueryContextSource<TQueryContext> source,
         ICompiledQueryApplier<TQueryContext> applier,
         IQueryContextExecutor<TView> executor,
+        IQueryableObservability observability,
         IServiceProvider serviceProvider)
     {
         _validator = validator;
@@ -29,6 +33,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView> : IQueryContextEn
         _source = source;
         _applier = applier;
         _executor = executor;
+        _observability = observability;
         _serviceProvider = serviceProvider;
     }
 
@@ -38,19 +43,40 @@ internal sealed class QueryContextEngine<TQueryContext, TView> : IQueryContextEn
         QueryViewRegistration viewRegistration,
         CancellationToken cancellationToken = default)
     {
-        var metadata = registration.Metadata;
-        _validator.Validate(request, registration, viewRegistration);
+        using var observation =
+            _observability.BeginExecution(
+                new QueryObservationDetails(
+                    registration.Metadata.Name,
+                    viewRegistration.Metadata.Name,
+                    false));
 
-        var executionContext = new QueryExecutionContext(metadata, request);
-        var compiled = _compiler.Compile(request, metadata, viewRegistration.Metadata);
-        var query = CreateQuery(executionContext, compiled);
-        var view = CreateView(viewRegistration, query, executionContext);
+        try
+        {
+            var metadata = registration.Metadata;
+            _validator.Validate(request, registration, viewRegistration);
 
-        return await MaterializeAsync(
-            view,
-            compiled.Page,
-            viewRegistration.Metadata.Pageable is not null,
-            cancellationToken);
+            var executionContext = new QueryExecutionContext(metadata, request);
+            var compiled = _compiler.Compile(request, metadata, viewRegistration.Metadata);
+            var query = CreateQuery(executionContext, compiled, observation);
+            var view = CreateView(viewRegistration, query, executionContext, observation);
+
+            return await MaterializeAsync(
+                view,
+                compiled.Page,
+                viewRegistration.Metadata.Pageable is not null,
+                observation,
+                cancellationToken);
+        }
+        catch (QueryableValidationException exception)
+        {
+            observation.ValidationFailed(exception);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            observation.Failed(exception);
+            throw;
+        }
     }
 
     public async Task<QueryResult<TView>> ExecuteAsync(
@@ -58,30 +84,55 @@ internal sealed class QueryContextEngine<TQueryContext, TView> : IQueryContextEn
         QueryContextRegistration registration,
         CancellationToken cancellationToken = default)
     {
-        var metadata = registration.Metadata;
-        _validator.Validate(request, registration);
+        using var observation =
+            _observability.BeginExecution(
+                new QueryObservationDetails(
+                    registration.Metadata.Name,
+                    null,
+                    true));
 
-        var executionContext = new QueryExecutionContext(metadata, request);
-        var compiled = _compiler.Compile(request, metadata);
-        var query = CreateQuery(executionContext, compiled);
-
-        if (query is not IQueryable<TView> typedQuery)
+        try
         {
-            throw new InvalidOperationException(
-                $"Direct query for context '{typeof(TQueryContext).FullName}' requires result type '{typeof(TView).FullName}' to match the query context type.");
-        }
+            var metadata = registration.Metadata;
+            _validator.Validate(request, registration);
 
-        return await MaterializeAsync(
-            typedQuery,
-            compiled.Page,
-            metadata.Pageable is not null,
-            cancellationToken);
+            var executionContext = new QueryExecutionContext(metadata, request);
+            var compiled = _compiler.Compile(request, metadata);
+            var query = CreateQuery(executionContext, compiled, observation);
+
+            if (query is not IQueryable<TView> typedQuery)
+            {
+                throw new InvalidOperationException(
+                    $"Direct query for context '{typeof(TQueryContext).FullName}' requires result type '{typeof(TView).FullName}' to match the query context type.");
+            }
+
+            return await MaterializeAsync(
+                typedQuery,
+                compiled.Page,
+                metadata.Pageable is not null,
+                observation,
+                cancellationToken);
+        }
+        catch (QueryableValidationException exception)
+        {
+            observation.ValidationFailed(exception);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            observation.Failed(exception);
+            throw;
+        }
     }
 
     private IQueryable<TQueryContext> CreateQuery(
         QueryExecutionContext executionContext,
-        CompiledRecordQuery compiled)
+        CompiledRecordQuery compiled,
+        IQueryExecutionObservation observation)
     {
+        using var scope =
+            observation.BeginSource();
+
         var query = _source.CreateQuery(executionContext);
 
         query = _applier.ApplySearch(query, compiled.Search);
@@ -95,8 +146,12 @@ internal sealed class QueryContextEngine<TQueryContext, TView> : IQueryContextEn
         IQueryable<TView> query,
         CompiledPage page,
         bool pageable,
+        IQueryExecutionObservation observation,
         CancellationToken cancellationToken)
     {
+        using var scope =
+            observation.BeginMaterialization();
+
         var totalCount = await _executor.CountAsync(query, cancellationToken);
 
         if (pageable)
@@ -105,6 +160,12 @@ internal sealed class QueryContextEngine<TQueryContext, TView> : IQueryContextEn
         }
 
         var items = await _executor.ToListAsync(query, cancellationToken);
+
+        observation.Materialized(
+            totalCount,
+            items.Count,
+            page.Size,
+            page.Offset);
 
         return new QueryResult<TView>(
             totalCount,
@@ -116,8 +177,12 @@ internal sealed class QueryContextEngine<TQueryContext, TView> : IQueryContextEn
     private IQueryable<TView> CreateView(
         QueryViewRegistration viewRegistration,
         IQueryable<TQueryContext> query,
-        QueryExecutionContext executionContext)
+        QueryExecutionContext executionContext,
+        IQueryExecutionObservation observation)
     {
+        using var scope =
+            observation.BeginView();
+
         var queryView =
             _serviceProvider.GetRequiredService(
                 viewRegistration.QueryViewType);

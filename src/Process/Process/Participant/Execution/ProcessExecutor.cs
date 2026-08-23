@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Participant;
+﻿using Kaleido.Process.Observability;
+using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Planning;
 using Kaleido.Process.Participant.Registry;
@@ -13,6 +14,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
     private readonly IProcessContextStore _stateRepository;
     private readonly IProcessStepRegistry _stepRegistry;
     private readonly IStepAvailabilityResolver _availabilityResolver;
+    private readonly IProcessObservability _observability;
 
     public ExecutionProcessor(
         IProcessStepInvoker invoker,
@@ -20,7 +22,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         IProcessStateUpdater stateUpdater,
         IProcessContextStore stateRepository,
         IProcessStepRegistry stepRegistry,
-        IStepAvailabilityResolver availabilityResolver)
+        IStepAvailabilityResolver availabilityResolver,
+        IProcessObservability observability)
     {
         ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(evaluator);
@@ -35,6 +38,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         _stateUpdater = stateUpdater;
         _stateRepository = stateRepository;
         _stepRegistry = stepRegistry;
+        _observability = observability;
     }
 
     public async Task<ProcessExecutionResult> ExecuteAsync(
@@ -98,6 +102,12 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                using var stepObservation =
+                    _observability.BeginStep(
+                        new ProcessStepObservationDetails(
+                            candidate.StepName,
+                            candidate.Registration?.Metadata.Version));
+
                 var stepContext =
                     context.FindStep(
                         candidate.StepName)
@@ -143,6 +153,11 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 await _stateRepository.SaveAsync(
                     context,
                     cancellationToken);
+
+                stepObservation.DecisionRecorded(
+                    decision.Type.ToString(),
+                    MapStatus(
+                        decision).ToString());
 
                 var outcome =
                     CreateOutcome(
