@@ -10,4 +10,8 @@
 	  <ProjectReference Include="..\Queryable\Kaleido.Queryable.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <PackageReference Include="OpenTelemetry" Version="1.18.0" />
+	</ItemGroup>
+
 </Project>

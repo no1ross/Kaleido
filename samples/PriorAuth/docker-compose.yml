@@ -1,4 +1,13 @@
 services:
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:8.2
+    environment:
+      ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "18888:18888"
+      - "4317:18889"
+      - "4318:18890"
+
   seeder:
     build:
       context: ../..
@@ -22,6 +31,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__ReferenceData: Data Source=/app/data/referencedata.db
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: priorauth-referencedata
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=Development,service.version=1.0.0
     volumes:
       - referencedata-data:/app/data
     healthcheck:
@@ -44,6 +57,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__CodeSet: Data Source=/app/data/codeset.db
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: priorauth-codeset
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=Development,service.version=1.0.0
     volumes:
       - codeset-data:/app/data
     healthcheck:
@@ -70,6 +87,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__ProviderSearch: Data Source=/app/data/providersearch.db
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: priorauth-providersearch
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=Development,service.version=1.0.0
     volumes:
       - providersearch-data:/app/data
     healthcheck:
@@ -94,6 +115,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__MemberService: Data Source=/app/data/memberservice.db
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: priorauth-memberservice
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=Development,service.version=1.0.0
     volumes:
       - memberservice-data:/app/data
     healthcheck:
@@ -123,6 +148,10 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Intake: Data Source=/app/data/intake.db
       Services__ReferenceData__BaseUrl: http://referencedata:8080
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: priorauth-intake
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=Development,service.version=1.0.0
     volumes:
       - intake-data:/app/data
     healthcheck:

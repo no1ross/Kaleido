@@ -2,6 +2,7 @@ using Kaleido.Observability;
 using Kaleido.Process.Observability;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.Diagnostics.Metrics;
 
 namespace Kaleido.Process.UnitTests.Observability;
 
@@ -62,6 +63,71 @@ public sealed class ProcessObservabilityTests
         observation.ContextLoaded(Guid.NewGuid());
         observation.PlanBuilt(3, 2);
         observation.ExecutionFailed(new InvalidOperationException("boom"));
+    }
+
+    [Fact]
+    public void Observation_EmitsExpectedMetrics()
+    {
+        using var listener = new MeterListener();
+        var measurements = new List<(string InstrumentName, long Value)>();
+
+        listener.InstrumentPublished = (instrument, meterListener) =>
+        {
+            if (instrument.Meter.Name == ProcessTelemetry.MeterName)
+            {
+                meterListener.EnableMeasurementEvents(instrument);
+            }
+        };
+
+        listener.SetMeasurementEventCallback<long>((instrument, measurement, _, _) =>
+        {
+            measurements.Add((instrument.Name, measurement));
+        });
+
+        listener.Start();
+
+        var observability = CreateObservability();
+
+        using var executionObservation =
+            observability.BeginExecution(
+                new ProcessExecutionObservationDetails(2));
+
+        executionObservation.ContextInitialized(Guid.NewGuid());
+        executionObservation.ContextLoaded(Guid.NewGuid());
+        executionObservation.PlanBuilt(3, 2);
+        executionObservation.ExecutionFailed(new InvalidOperationException("boom"));
+
+        using var stepObservation =
+            observability.BeginStep(
+                new ProcessStepObservationDetails(
+                    "Step-A",
+                    "1.0.0"));
+
+        stepObservation.Canceled();
+        stepObservation.StepFailed(new InvalidOperationException("boom"));
+
+        using var handlerObservation =
+            observability.BeginHandler(
+                new ProcessHandlerObservationDetails(
+                    "Step-A",
+                    "1.0.0"));
+
+        handlerObservation.HandlerFailed(new InvalidOperationException("boom"));
+
+        listener.RecordObservableInstruments();
+
+        Assert.Contains(measurements, x => x == ("kaleido.process.executions", 1));
+        Assert.Contains(measurements, x => x == ("kaleido.process.submitted_step_count", 2));
+        Assert.Contains(measurements, x => x == ("kaleido.process.contexts_initialized", 1));
+        Assert.Contains(measurements, x => x == ("kaleido.process.contexts_loaded", 1));
+        Assert.Contains(measurements, x => x == ("kaleido.process.plan_candidate_count", 3));
+        Assert.Contains(measurements, x => x == ("kaleido.process.plan_executable_count", 2));
+        Assert.Contains(measurements, x => x == ("kaleido.process.execution_failures", 1));
+        Assert.Contains(measurements, x => x == ("kaleido.process.step_executions", 1));
+        Assert.Contains(measurements, x => x == ("kaleido.process.step_cancellations", 1));
+        Assert.Contains(measurements, x => x == ("kaleido.process.step_failures", 1));
+        Assert.Contains(measurements, x => x == ("kaleido.process.handler_executions", 1));
+        Assert.Contains(measurements, x => x == ("kaleido.process.handler_failures", 1));
     }
 
     [Fact]

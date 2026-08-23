@@ -1,6 +1,7 @@
 using Kaleido.Observability;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace Kaleido.Process.Observability;
 
@@ -67,11 +68,59 @@ internal sealed record ProcessHandlerObservationDetails(
 internal sealed class ProcessObservability
     : IProcessObservability
 {
-    private const string ActivitySourceName =
-        "Kaleido.Process";
-
     private static readonly ActivitySource ActivitySource =
-        new(ActivitySourceName);
+        new(ProcessTelemetry.ActivitySourceName);
+
+    private static readonly Meter Meter =
+        new(ProcessTelemetry.MeterName);
+
+    private static readonly Counter<long> ProcessExecutionsCounter =
+        Meter.CreateCounter<long>(
+            "kaleido.process.executions");
+
+    private static readonly Counter<long> ProcessExecutionFailuresCounter =
+        Meter.CreateCounter<long>(
+            "kaleido.process.execution_failures");
+
+    private static readonly Counter<long> ProcessContextsInitializedCounter =
+        Meter.CreateCounter<long>(
+            "kaleido.process.contexts_initialized");
+
+    private static readonly Counter<long> ProcessContextsLoadedCounter =
+        Meter.CreateCounter<long>(
+            "kaleido.process.contexts_loaded");
+
+    private static readonly Histogram<long> ProcessSubmittedStepCountHistogram =
+        Meter.CreateHistogram<long>(
+            "kaleido.process.submitted_step_count");
+
+    private static readonly Histogram<long> ProcessPlanCandidateCountHistogram =
+        Meter.CreateHistogram<long>(
+            "kaleido.process.plan_candidate_count");
+
+    private static readonly Histogram<long> ProcessPlanExecutableCountHistogram =
+        Meter.CreateHistogram<long>(
+            "kaleido.process.plan_executable_count");
+
+    private static readonly Counter<long> ProcessStepExecutionsCounter =
+        Meter.CreateCounter<long>(
+            "kaleido.process.step_executions");
+
+    private static readonly Counter<long> ProcessStepCancellationsCounter =
+        Meter.CreateCounter<long>(
+            "kaleido.process.step_cancellations");
+
+    private static readonly Counter<long> ProcessStepFailuresCounter =
+        Meter.CreateCounter<long>(
+            "kaleido.process.step_failures");
+
+    private static readonly Counter<long> ProcessHandlerExecutionsCounter =
+        Meter.CreateCounter<long>(
+            "kaleido.process.handler_executions");
+
+    private static readonly Counter<long> ProcessHandlerFailuresCounter =
+        Meter.CreateCounter<long>(
+            "kaleido.process.handler_failures");
 
     private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
     private readonly ILogger<ProcessObservability> _logger;
@@ -128,6 +177,18 @@ internal sealed class ProcessObservability
             "kaleido.process.submitted_step_count",
             details.SubmittedStepCount);
 
+        var executionTags =
+            CreateExecutionTags(
+                correlation.ParticipantId);
+
+        ProcessExecutionsCounter.Add(
+            1,
+            executionTags);
+
+        ProcessSubmittedStepCountHistogram.Record(
+            details.SubmittedStepCount,
+            executionTags);
+
         _logger.LogDebug(
             "Process execution started with submitted step count {SubmittedStepCount}.",
             details.SubmittedStepCount);
@@ -154,6 +215,12 @@ internal sealed class ProcessObservability
         activity?.SetTag(
             "kaleido.process.step_version",
             details.StepVersion);
+
+        ProcessStepExecutionsCounter.Add(
+            1,
+            CreateStepTags(
+                details.StepName,
+                details.StepVersion));
 
         _logger.LogDebug(
             "Process step execution started for step {StepName} version {StepVersion}.",
@@ -184,6 +251,12 @@ internal sealed class ProcessObservability
             "kaleido.process.step_version",
             details.StepVersion);
 
+        ProcessHandlerExecutionsCounter.Add(
+            1,
+            CreateStepTags(
+                details.StepName,
+                details.StepVersion));
+
         _logger.LogTrace(
             "Process handler execution started for step {StepName} version {StepVersion}.",
             details.StepName,
@@ -193,6 +266,40 @@ internal sealed class ProcessObservability
             activity,
             _logger,
             details);
+    }
+
+    private static TagList CreateExecutionTags(
+        string? participantId)
+    {
+        TagList tags = [];
+
+        if (!string.IsNullOrWhiteSpace(participantId))
+        {
+            tags.Add(
+                "participant.id",
+                participantId);
+        }
+
+        return tags;
+    }
+
+    private static TagList CreateStepTags(
+        string stepName,
+        string? stepVersion)
+    {
+        TagList tags =
+        [
+            new("step.name", stepName)
+        ];
+
+        if (!string.IsNullOrWhiteSpace(stepVersion))
+        {
+            tags.Add(
+                "step.version",
+                stepVersion);
+        }
+
+        return tags;
     }
 
     private sealed class ProcessExecutionObservation
@@ -220,6 +327,9 @@ internal sealed class ProcessObservability
                 new ActivityEvent(
                     "kaleido.process.context.initialized"));
 
+            ProcessContextsInitializedCounter.Add(
+                1);
+
             _logger.LogDebug(
                 "Process context initialized for process {ProcessId}.",
                 processId);
@@ -236,6 +346,9 @@ internal sealed class ProcessObservability
                 new ActivityEvent(
                     "kaleido.process.context.loaded"));
 
+            ProcessContextsLoadedCounter.Add(
+                1);
+
             _logger.LogDebug(
                 "Process context loaded for process {ProcessId}.",
                 processId);
@@ -251,6 +364,12 @@ internal sealed class ProcessObservability
 
             _activity?.SetTag(
                 "kaleido.process.plan.executable_count",
+                executableCount);
+
+            ProcessPlanCandidateCountHistogram.Record(
+                candidateCount);
+
+            ProcessPlanExecutableCountHistogram.Record(
                 executableCount);
 
             _logger.LogDebug(
@@ -271,6 +390,9 @@ internal sealed class ProcessObservability
             _activity?.AddEvent(
                 new ActivityEvent(
                     "kaleido.process.exception"));
+
+            ProcessExecutionFailuresCounter.Add(
+                1);
 
             _logger.LogError(
                 exception,
@@ -312,6 +434,19 @@ internal sealed class ProcessObservability
                 "kaleido.process.execution_status",
                 executionStatus);
 
+            var tags =
+                CreateStepTags(
+                    _details.StepName,
+                    _details.StepVersion);
+
+            tags.Add(
+                "decision.type",
+                decisionType);
+
+            tags.Add(
+                "execution.status",
+                executionStatus);
+
             _logger.LogDebug(
                 "Process step decision recorded for step {StepName} version {StepVersion} decision {DecisionType} status {ExecutionStatus}.",
                 _details.StepName,
@@ -325,6 +460,12 @@ internal sealed class ProcessObservability
             _activity?.AddEvent(
                 new ActivityEvent(
                     "kaleido.process.step.canceled"));
+
+            ProcessStepCancellationsCounter.Add(
+                1,
+                CreateStepTags(
+                    _details.StepName,
+                    _details.StepVersion));
 
             _logger.LogWarning(
                 "Process step execution was canceled for step {StepName} version {StepVersion}.",
@@ -344,6 +485,12 @@ internal sealed class ProcessObservability
             _activity?.AddEvent(
                 new ActivityEvent(
                     "kaleido.process.step.exception"));
+
+            ProcessStepFailuresCounter.Add(
+                1,
+                CreateStepTags(
+                    _details.StepName,
+                    _details.StepVersion));
 
             _logger.LogError(
                 exception,
@@ -387,6 +534,12 @@ internal sealed class ProcessObservability
             _activity?.AddEvent(
                 new ActivityEvent(
                     "kaleido.process.handler.exception"));
+
+            ProcessHandlerFailuresCounter.Add(
+                1,
+                CreateStepTags(
+                    _details.StepName,
+                    _details.StepVersion));
 
             _logger.LogError(
                 exception,

@@ -10,4 +10,8 @@
 	  <ProjectReference Include="..\Process\Kaleido.Process.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <PackageReference Include="OpenTelemetry" Version="1.18.0" />
+	</ItemGroup>
+
 </Project>

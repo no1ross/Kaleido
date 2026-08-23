@@ -6,8 +6,51 @@ using Kaleido.Process.AspNetCore;
 using Kaleido.Samples.PriorAuth.MemberService.Artifacts.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var serviceName =
+    builder.Configuration["OTEL_SERVICE_NAME"]
+    ?? builder.Environment.ApplicationName;
+
+var resourceBuilder =
+    ResourceBuilder.CreateDefault()
+        .AddService(serviceName: serviceName);
+
+builder.Logging.AddOpenTelemetry(options =>
+{
+    options.IncludeFormattedMessage = true;
+    options.IncludeScopes = true;
+    options.SetResourceBuilder(resourceBuilder);
+    options.AddOtlpExporter();
+});
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource =>
+        resource.AddService(serviceName: serviceName))
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddKaleidoProcessInstrumentation()
+            .AddKaleidoQueryableInstrumentation()
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddOtlpExporter();
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddKaleidoProcessInstrumentation()
+            .AddKaleidoQueryableInstrumentation()
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddOtlpExporter();
+    });
 
 builder.Services.AddDbContext<MemberDbContext>(
     options => options.UseSqlite(

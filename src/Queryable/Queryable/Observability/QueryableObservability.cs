@@ -2,6 +2,7 @@ using Kaleido.Observability;
 using Kaleido.Queryable.Exceptions;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace Kaleido.Queryable.Observability;
 
@@ -41,11 +42,39 @@ internal sealed record QueryObservationDetails(
 internal sealed class QueryableObservability
     : IQueryableObservability
 {
-    private const string ActivitySourceName =
-        "Kaleido.Queryable";
-
     private static readonly ActivitySource ActivitySource =
-        new(ActivitySourceName);
+        new(QueryableTelemetry.ActivitySourceName);
+
+    private static readonly Meter Meter =
+        new(QueryableTelemetry.MeterName);
+
+    private static readonly Counter<long> QueryExecutionsCounter =
+        Meter.CreateCounter<long>(
+            "kaleido.queryable.executions");
+
+    private static readonly Counter<long> QueryValidationFailuresCounter =
+        Meter.CreateCounter<long>(
+            "kaleido.queryable.validation_failures");
+
+    private static readonly Counter<long> QueryExecutionFailuresCounter =
+        Meter.CreateCounter<long>(
+            "kaleido.queryable.execution_failures");
+
+    private static readonly Histogram<long> QueryTotalCountHistogram =
+        Meter.CreateHistogram<long>(
+            "kaleido.queryable.total_count");
+
+    private static readonly Histogram<long> QueryReturnedCountHistogram =
+        Meter.CreateHistogram<long>(
+            "kaleido.queryable.returned_count");
+
+    private static readonly Histogram<long> QueryPageSizeHistogram =
+        Meter.CreateHistogram<long>(
+            "kaleido.queryable.page_size");
+
+    private static readonly Histogram<long> QueryPageOffsetHistogram =
+        Meter.CreateHistogram<long>(
+            "kaleido.queryable.page_offset");
 
     private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
     private readonly ILogger<QueryableObservability> _logger;
@@ -90,6 +119,10 @@ internal sealed class QueryableObservability
             "kaleido.query.direct",
             details.IsDirectQuery);
 
+        QueryExecutionsCounter.Add(
+            1,
+            CreateExecutionTags(details));
+
         _logger.LogDebug(
             "Queryable execution started for context {QueryContextName} view {QueryViewName} direct {IsDirectQuery}.",
             details.QueryContextName,
@@ -100,6 +133,25 @@ internal sealed class QueryableObservability
             activity,
             _logger,
             details);
+    }
+
+    private static TagList CreateExecutionTags(
+        QueryObservationDetails details)
+    {
+        TagList tags =
+        [
+            new("query.context", details.QueryContextName),
+            new("query.direct", details.IsDirectQuery)
+        ];
+
+        if (!string.IsNullOrWhiteSpace(details.QueryViewName))
+        {
+            tags.Add(
+                "query.view",
+                details.QueryViewName);
+        }
+
+        return tags;
     }
 
     private static void SetCorrelationTags(
@@ -179,6 +231,12 @@ internal sealed class QueryableObservability
                 "kaleido.validation.code",
                 exception.Code);
 
+            QueryValidationFailuresCounter.Add(
+                1,
+                CreateValidationTags(
+                    _details,
+                    exception.Code));
+
             _logger.LogWarning(
                 exception,
                 "Queryable validation failed for context {QueryContextName} view {QueryViewName} with code {ValidationCode}.",
@@ -209,6 +267,31 @@ internal sealed class QueryableObservability
                 "kaleido.query.page_offset",
                 pageOffset);
 
+            var tags =
+                CreateExecutionTags(_details);
+
+            QueryTotalCountHistogram.Record(
+                totalCount,
+                tags);
+
+            QueryReturnedCountHistogram.Record(
+                returnedCount,
+                tags);
+
+            if (pageSize is not null)
+            {
+                QueryPageSizeHistogram.Record(
+                    pageSize.Value,
+                    tags);
+            }
+
+            if (pageOffset is not null)
+            {
+                QueryPageOffsetHistogram.Record(
+                    pageOffset.Value,
+                    tags);
+            }
+
             _logger.LogDebug(
                 "Queryable materialization completed for context {QueryContextName} view {QueryViewName} total {TotalCount} returned {ReturnedCount} pageSize {PageSize} pageOffset {PageOffset}.",
                 _details.QueryContextName,
@@ -232,6 +315,10 @@ internal sealed class QueryableObservability
                 new ActivityEvent(
                     "kaleido.queryable.exception"));
 
+            QueryExecutionFailuresCounter.Add(
+                1,
+                CreateExecutionTags(_details));
+
             _logger.LogError(
                 exception,
                 "Queryable execution failed for context {QueryContextName} view {QueryViewName}.",
@@ -242,6 +329,20 @@ internal sealed class QueryableObservability
         public void Dispose()
         {
             _activity?.Dispose();
+        }
+
+        private static TagList CreateValidationTags(
+            QueryObservationDetails details,
+            string validationCode)
+        {
+            var tags =
+                CreateExecutionTags(details);
+
+            tags.Add(
+                "validation.code",
+                validationCode);
+
+            return tags;
         }
 
         private static IDisposable BeginChild(
