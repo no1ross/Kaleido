@@ -24,8 +24,8 @@ internal sealed class ShoppingCartContextSource(
                     CustomerId =
                         item.ShoppingCart.CustomerId,
 
-                    ParticipantProcessId =
-                        item.ShoppingCart.ParticipantProcessId,
+                    ProcessId =
+                        item.ShoppingCart.ProcessId,
 
                     ProductId =
                         item.ProductId,

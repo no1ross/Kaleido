@@ -393,7 +393,7 @@ public sealed class StepExecutionEvaluatorTests
     {
         return new ParticipantContext()
         {
-            ParticipantProcessId = Guid.NewGuid()
+            ProcessId = Guid.NewGuid()
         };
     }
 

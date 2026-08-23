@@ -1,6 +1,8 @@
-﻿using Kaleido.Process.AspNetCore.Contracts;
+﻿using Kaleido.AspNetCore.Observability;
+using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Registry;
+using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 
 namespace Kaleido.Process.AspNetCore.Srevices;
@@ -22,14 +24,17 @@ public interface IProcessExecutionService
 
 public class ProcessExecutionService : IProcessExecutionService
 {
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IProcessStepRegistry _registry;
     private readonly IParticipantRuntime _runtime;
 
     public ProcessExecutionService(
+        IHttpContextAccessor httpContextAccessor,
         IProcessStepRegistry registry,
         IParticipantRuntime runtime
         )
     {
+        _httpContextAccessor = httpContextAccessor;
         _registry = registry;
         _runtime = runtime;
     }
@@ -42,7 +47,7 @@ public class ProcessExecutionService : IProcessExecutionService
         var processRequest =
             new ProcessRequest
             {
-                ParticipantProcessId = request.ParticipantProcessId,
+                ProcessId = request.ProcessId,
                 RequestId = request.RequestId,
                 Participant =
                     new ParticipantRequest
@@ -58,6 +63,9 @@ public class ProcessExecutionService : IProcessExecutionService
             await _runtime.ExecuteAsync(
                 processRequest,
                 cancellationToken);
+
+        WriteProcessIdHeader(
+            processResult.ProcessId);
 
         return ProcessExecutionResponse.Create(
             processResult,
@@ -90,6 +98,9 @@ public class ProcessExecutionService : IProcessExecutionService
                 .ThenByDescending(x => x.BusinessMessages.Count)
                 .First();
 
+        WriteProcessIdHeader(
+            processResult.ProcessId);
+
         return StepExecutionResponse<TResponse>.Create(
             processResult,
             stepResult,
@@ -121,9 +132,20 @@ public class ProcessExecutionService : IProcessExecutionService
                 .ThenByDescending(x => x.BusinessMessages.Count)
                 .First();
 
+        WriteProcessIdHeader(
+            processResult.ProcessId);
+
         return StepExecutionResponse.Create(
             processResult,
             stepResult,
             _registry);
+    }
+
+    private void WriteProcessIdHeader(
+        Guid processId)
+    {
+        _httpContextAccessor.HttpContext?
+            .Response.Headers[KaleidoAspNetCoreHeaders.ProcessId] =
+                processId.ToString();
     }
 }

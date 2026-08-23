@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Reflection;
 
@@ -26,8 +27,19 @@ public static class ProcessEndpointRouteBuilderExtensions
                 .GetRequiredService<IOptions<ProcessRouteOptions>>()
                 .Value;
 
+        var logger =
+            endpoints.ServiceProvider
+                .GetRequiredService<ILoggerFactory>()
+                .CreateLogger("Kaleido.Process.Startup");
+
         var group =
             endpoints.MapGroup(options.RoutePrefix);
+
+        logger.LogInformation(
+            "Process endpoints mapped at route prefix {RoutePrefix} with {ProcessStepCount} process steps and {InitialStepCount} initial steps.",
+            options.RoutePrefix,
+            registry.Registrations.Count,
+            registry.InitialRegistrations.Count);
 
         group.MapParticipantCatalogEndpoint(registry, options);
 
@@ -110,13 +122,13 @@ public static class ProcessEndpointRouteBuilderExtensions
         endpoints.MapGet(
                 ProcessRoutePaths.Process,
                 async (
-                    Guid participantProcessId,
+                    Guid processId,
                     IProcessStateService stateService,
                     CancellationToken cancellationToken) =>
                 {
                     var process =
                         await stateService.GetCurrentState(
-                            participantProcessId,
+                            processId,
                             cancellationToken);
 
                     return process is null

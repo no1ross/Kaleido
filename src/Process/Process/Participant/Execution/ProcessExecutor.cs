@@ -53,8 +53,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         {
             return new ProcessExecutionResult
             {
-                ParticipantProcessId =
-                    context.ParticipantProcessId,
+                ProcessId =
+                    context.ProcessId,
 
                 State =
                     context.State,
@@ -98,15 +98,15 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
             remainingCandidates.Remove(
                 candidate);
 
+            using var stepObservation =
+                _observability.BeginStep(
+                    new ProcessStepObservationDetails(
+                        candidate.StepName,
+                        candidate.Registration?.Metadata.Version));
+
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-
-                using var stepObservation =
-                    _observability.BeginStep(
-                        new ProcessStepObservationDetails(
-                            candidate.StepName,
-                            candidate.Registration?.Metadata.Version));
 
                 var stepContext =
                     context.FindStep(
@@ -122,7 +122,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
                 var processStepContext =
                     new ProcessStepContext(
-                        context.ParticipantProcessId,
+                        context.ProcessId,
                         stepContext,
                         initialAvailableSteps);
 
@@ -174,6 +174,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
             }
             catch (OperationCanceledException)
             {
+                stepObservation.Canceled();
+
                 context =
                     _stateUpdater.ApplyCancellation(
                         context,
@@ -209,6 +211,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
             }
             catch (Exception exception)
             {
+                stepObservation.StepFailed(exception);
+
                 context =
                     _stateUpdater.ApplyException(
                         context,
@@ -246,8 +250,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
         return new ProcessExecutionResult
         {
-            ParticipantProcessId =
-                context.ParticipantProcessId,
+            ProcessId =
+                context.ProcessId,
 
             State =
                 context.State,

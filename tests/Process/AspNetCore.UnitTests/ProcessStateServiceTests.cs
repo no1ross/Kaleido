@@ -35,13 +35,13 @@ public sealed class ProcessStateServiceTests
     [Fact]
     public async Task GetCurrentState_WhenContextExists_MapsView()
     {
-        var participantProcessId =
+        var processId =
             Guid.NewGuid();
 
         var context =
             new ParticipantContext
             {
-                ParticipantProcessId = participantProcessId,
+                ProcessId = processId,
                 State = ProcessExecutionState.AwaitingStepSelection,
                 RequiredStep = "Step-B",
                 AvailableSteps = ["Step-A"],
@@ -71,7 +71,7 @@ public sealed class ProcessStateServiceTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    participantProcessId,
+                    processId,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(context);
 
@@ -81,11 +81,11 @@ public sealed class ProcessStateServiceTests
 
         var result =
             await service.GetCurrentState(
-                participantProcessId,
+                processId,
                 CancellationToken.None);
 
         Assert.NotNull(result);
-        Assert.Equal(participantProcessId, result.ParticipantProcessId);
+        Assert.Equal(processId, result.ProcessId);
         Assert.Equal(ProcessExecutionState.AwaitingStepSelection, result.State);
         Assert.Equal("Step-B", result.RequiredStep);
         Assert.Equal("Step-A", Assert.Single(result.AvailableSteps));

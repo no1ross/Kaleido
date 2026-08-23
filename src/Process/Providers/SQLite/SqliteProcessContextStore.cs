@@ -9,7 +9,7 @@ internal sealed class SqliteProcessContextStore(
     : IProcessContextStore
 {
     public async Task<ParticipantContext?> LoadAsync(
-        Guid participantProcessId,
+        Guid processId,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -20,16 +20,16 @@ internal sealed class SqliteProcessContextStore(
                 .Include(x => x.Steps)
                 .Include(x => x.AvailableSteps)
                 .FirstOrDefaultAsync(
-                    x => x.ParticipantProcessId ==
-                         participantProcessId,
+                    x => x.ProcessId ==
+                         processId,
                     cancellationToken);
 
         if (entity is null)
         {
             return new ParticipantContext
             {
-                ParticipantProcessId =
-                    participantProcessId
+                ProcessId =
+                    processId
             };
         }
 
@@ -53,8 +53,8 @@ internal sealed class SqliteProcessContextStore(
         var entity =
             await dbContext.ProcessContexts
                 .FirstOrDefaultAsync(
-                    x => x.ParticipantProcessId ==
-                         context.ParticipantProcessId,
+                    x => x.ProcessId ==
+                         context.ProcessId,
                     cancellationToken);
 
         if (entity is null)
@@ -62,8 +62,8 @@ internal sealed class SqliteProcessContextStore(
             entity =
                 new ProcessContextEntity
                 {
-                    ParticipantProcessId =
-                        context.ParticipantProcessId
+                    ProcessId =
+                        context.ProcessId
                 };
 
             dbContext.ProcessContexts.Add(
@@ -73,15 +73,15 @@ internal sealed class SqliteProcessContextStore(
         {
             await dbContext.ProcessStepContexts
                 .Where(x =>
-                    x.ParticipantProcessId ==
-                    context.ParticipantProcessId)
+                    x.ProcessId ==
+                    context.ProcessId)
                 .ExecuteDeleteAsync(
                     cancellationToken);
 
             await dbContext.ProcessAvailableSteps
                 .Where(x =>
-                    x.ParticipantProcessId ==
-                    context.ParticipantProcessId)
+                    x.ProcessId ==
+                    context.ProcessId)
                 .ExecuteDeleteAsync(
                     cancellationToken);
         }
@@ -110,8 +110,8 @@ internal sealed class SqliteProcessContextStore(
                 .Select(step =>
                     new ProcessStepContextEntity
                     {
-                        ParticipantProcessId =
-                            context.ParticipantProcessId,
+                        ProcessId =
+                            context.ProcessId,
 
                         StepName =
                             step.StepName,
@@ -136,8 +136,8 @@ internal sealed class SqliteProcessContextStore(
                     (stepName, index) =>
                         new ProcessAvailableStepEntity
                         {
-                            ParticipantProcessId =
-                                context.ParticipantProcessId,
+                            ProcessId =
+                                context.ProcessId,
 
                             StepName =
                                 stepName,
@@ -165,8 +165,8 @@ internal sealed class SqliteProcessContextStore(
     {
         return new ParticipantContext
         {
-            ParticipantProcessId =
-                entity.ParticipantProcessId,
+            ProcessId =
+                entity.ProcessId,
 
             LatestRequestId =
                 entity.LatestRequestId,

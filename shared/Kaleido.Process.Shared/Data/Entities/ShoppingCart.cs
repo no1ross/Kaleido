@@ -6,7 +6,7 @@ public sealed class ShoppingCart
 
     public Guid CustomerId { get; set; }
 
-    public Guid ParticipantProcessId { get; init; }
+    public Guid ProcessId { get; init; }
 
     public bool IsActive { get; set; }
 

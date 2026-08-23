@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Participant;
+﻿using Kaleido.Process.Observability;
+using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Planning;
@@ -18,7 +19,8 @@ public sealed class ParticipantRuntimeTests
                     null!,
                     Mock.Of<IProcessStateUpdater>(),
                     Mock.Of<IExecutionPlanner>(),
-                    Mock.Of<IExecutionProcessor>()));
+                    Mock.Of<IExecutionProcessor>(),
+                    Mock.Of<IProcessObservability>()));
 
         Assert.Equal("contextStore", exception.ParamName);
     }
@@ -32,7 +34,8 @@ public sealed class ParticipantRuntimeTests
                     Mock.Of<IProcessContextStore>(),
                     null!,
                     Mock.Of<IExecutionPlanner>(),
-                    Mock.Of<IExecutionProcessor>()));
+                    Mock.Of<IExecutionProcessor>(),
+                    Mock.Of<IProcessObservability>()));
 
         Assert.Equal("stateUpdater", exception.ParamName);
     }
@@ -46,7 +49,8 @@ public sealed class ParticipantRuntimeTests
                     Mock.Of<IProcessContextStore>(),
                     Mock.Of<IProcessStateUpdater>(),
                     null!,
-                    Mock.Of<IExecutionProcessor>()));
+                    Mock.Of<IExecutionProcessor>(),
+                    Mock.Of<IProcessObservability>()));
 
         Assert.Equal("planner", exception.ParamName);
     }
@@ -60,7 +64,8 @@ public sealed class ParticipantRuntimeTests
                     Mock.Of<IProcessContextStore>(),
                     Mock.Of<IProcessStateUpdater>(),
                     Mock.Of<IExecutionPlanner>(),
-                    null!));
+                    null!,
+                    Mock.Of<IProcessObservability>()));
 
         Assert.Equal("processor", exception.ParamName);
     }
@@ -84,13 +89,13 @@ public sealed class ParticipantRuntimeTests
         var request =
             CreateRequest();
 
-        var participantProcessId =
+        var processId =
             Assert.IsType<Guid>(
-                request.ParticipantProcessId);
+                request.ProcessId);
 
         var initializedContext =
             CreateContext(
-                participantProcessId,
+                processId,
                 request.RequestId);
 
         var contextStore =
@@ -99,7 +104,7 @@ public sealed class ParticipantRuntimeTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    participantProcessId,
+                    processId,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync((ParticipantContext?)null);
 
@@ -109,9 +114,9 @@ public sealed class ParticipantRuntimeTests
         stateUpdater
             .Setup(x =>
                 x.Initialize(
-                    request.ParticipantProcessId.Value))
+                    request.ProcessId.Value))
             .Returns(CreateContext(
-                request.ParticipantProcessId.Value,
+                request.ProcessId.Value,
                 "ignored"));
 
         var planner =
@@ -141,14 +146,15 @@ public sealed class ParticipantRuntimeTests
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
-                processor.Object);
+                processor.Object,
+                Mock.Of<IProcessObservability>());
 
         await runtime.ExecuteAsync(request);
 
         stateUpdater.Verify(
             x =>
                 x.Initialize(
-                    request.ParticipantProcessId.Value),
+                    request.ProcessId.Value),
             Times.Once);
 
         stateUpdater.Verify(
@@ -164,18 +170,18 @@ public sealed class ParticipantRuntimeTests
         var request =
             CreateRequest();
 
-        var participantProcessId =
+        var processId =
             Assert.IsType<Guid>(
-                request.ParticipantProcessId);
+                request.ProcessId);
 
         var existingContext =
             CreateContext(
-                participantProcessId,
+                processId,
                 "old-request");
 
         var reconciledContext =
             CreateContext(
-                participantProcessId,
+                processId,
                 request.RequestId);
 
         var contextStore =
@@ -184,7 +190,7 @@ public sealed class ParticipantRuntimeTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    participantProcessId,
+                    processId,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingContext);
 
@@ -223,7 +229,8 @@ public sealed class ParticipantRuntimeTests
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
-                processor.Object);
+                processor.Object,
+                Mock.Of<IProcessObservability>());
 
         await runtime.ExecuteAsync(request);
 
@@ -245,13 +252,13 @@ public sealed class ParticipantRuntimeTests
         var request =
             CreateRequest();
 
-        var participantProcessId =
+        var processId =
             Assert.IsType<Guid>(
-                request.ParticipantProcessId);
+                request.ProcessId);
 
         var context =
             CreateContext(
-                participantProcessId,
+                processId,
                 request.RequestId);
 
         var executableCandidate =
@@ -277,7 +284,7 @@ public sealed class ParticipantRuntimeTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    participantProcessId,
+                    processId,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(context);
 
@@ -326,7 +333,8 @@ public sealed class ParticipantRuntimeTests
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
-                processor.Object);
+                processor.Object,
+                Mock.Of<IProcessObservability>());
 
         await runtime.ExecuteAsync(request);
 
@@ -346,13 +354,13 @@ public sealed class ParticipantRuntimeTests
         var request =
             CreateRequest();
 
-        var participantProcessId =
+        var processId =
             Assert.IsType<Guid>(
-                request.ParticipantProcessId);
+                request.ProcessId);
 
         var context =
             CreateContext(
-                participantProcessId,
+                processId,
                 request.RequestId);
 
         var candidate =
@@ -386,7 +394,7 @@ public sealed class ParticipantRuntimeTests
         var executionResult =
             new ProcessExecutionResult
             {
-                ParticipantProcessId = participantProcessId,
+                ProcessId = processId,
                 State = ProcessExecutionState.Complete,
                 Outcomes =
                 [
@@ -400,7 +408,7 @@ public sealed class ParticipantRuntimeTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    participantProcessId,
+                    processId,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(context);
 
@@ -442,7 +450,8 @@ public sealed class ParticipantRuntimeTests
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
-                processor.Object);
+                processor.Object,
+                Mock.Of<IProcessObservability>());
 
         var result =
             await runtime.ExecuteAsync(request);
@@ -470,13 +479,13 @@ public sealed class ParticipantRuntimeTests
         var request =
             CreateRequest();
 
-        var participantProcessId =
+        var processId =
             Assert.IsType<Guid>(
-                request.ParticipantProcessId);
+                request.ProcessId);
 
         var context =
             CreateContext(
-                participantProcessId,
+                processId,
                 request.RequestId);
 
         var plan =
@@ -495,7 +504,7 @@ public sealed class ParticipantRuntimeTests
             .InSequence(sequence)
             .Setup(x =>
                 x.LoadAsync(
-                    participantProcessId,
+                    processId,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(context);
 
@@ -536,7 +545,8 @@ public sealed class ParticipantRuntimeTests
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
-                processor.Object);
+                processor.Object,
+                Mock.Of<IProcessObservability>());
 
         await runtime.ExecuteAsync(request);
 
@@ -552,26 +562,27 @@ public sealed class ParticipantRuntimeTests
             Mock.Of<IProcessContextStore>(),
             Mock.Of<IProcessStateUpdater>(),
             Mock.Of<IExecutionPlanner>(),
-            Mock.Of<IExecutionProcessor>());
+            Mock.Of<IExecutionProcessor>(),
+            Mock.Of<IProcessObservability>());
     }
 
     private static ProcessRequest CreateRequest()
     {
         return new ProcessRequest
         {
-            ParticipantProcessId = Guid.NewGuid(),
+            ProcessId = Guid.NewGuid(),
             RequestId = "REQ-001",
             Participant = new ParticipantRequest()
         };
     }
 
     private static ParticipantContext CreateContext(
-        Guid participantProcessId,
+        Guid processId,
         string requestId)
     {
         return new ParticipantContext
         {
-            ParticipantProcessId = participantProcessId,
+            ProcessId = processId,
             LatestRequestId = requestId
         };
     }
@@ -580,7 +591,7 @@ public sealed class ParticipantRuntimeTests
     {
         return new ProcessExecutionResult
         {
-            ParticipantProcessId = Guid.NewGuid(),
+            ProcessId = Guid.NewGuid(),
             State = ProcessExecutionState.Active
         };
     }

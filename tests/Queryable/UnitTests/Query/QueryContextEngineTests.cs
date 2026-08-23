@@ -1,5 +1,6 @@
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
+using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Runtime;
 using Moq;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,6 +46,7 @@ public sealed class QueryContextEngineTests
             source.Object,
             applier.Object,
             executor.Object,
+            new TestQueryableObservability(),
             provider);
 
         var result = await engine.ExecuteAsync(request, registration, viewRegistration);
@@ -83,6 +85,7 @@ public sealed class QueryContextEngineTests
             source.Object,
             applier.Object,
             executor.Object,
+            new TestQueryableObservability(),
             new ServiceCollection().BuildServiceProvider());
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -146,5 +149,67 @@ public sealed class QueryContextEngineTests
         }
 
         public IQueryable<TestViewContract> CreateView(IQueryable<TestContext> query, QueryExecutionContext executionContext) => _result;
+    }
+
+    private sealed class TestQueryableObservability
+        : IQueryableObservability
+    {
+        public IQueryExecutionObservation BeginExecution(
+            QueryObservationDetails details)
+        {
+            return new TestQueryExecutionObservation();
+        }
+    }
+
+    private sealed class TestQueryExecutionObservation
+        : IQueryExecutionObservation
+    {
+        public IDisposable BeginSource()
+        {
+            return NullScope.Instance;
+        }
+
+        public IDisposable BeginView()
+        {
+            return NullScope.Instance;
+        }
+
+        public IDisposable BeginMaterialization()
+        {
+            return NullScope.Instance;
+        }
+
+        public void ValidationFailed(
+            Queryable.Exceptions.QueryableValidationException exception)
+        {
+        }
+
+        public void Materialized(
+            int totalCount,
+            int returnedCount,
+            int? pageSize,
+            int? pageOffset)
+        {
+        }
+
+        public void ExecutionFailed(
+            Exception exception)
+        {
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private sealed class NullScope
+        : IDisposable
+    {
+        public static readonly NullScope Instance =
+            new();
+
+        public void Dispose()
+        {
+        }
     }
 }

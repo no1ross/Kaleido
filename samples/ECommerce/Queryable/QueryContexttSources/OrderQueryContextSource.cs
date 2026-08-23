@@ -27,8 +27,8 @@ internal sealed class OrderQueryContextSource(
                     ShoppingCartId =
                         orderItem.Order.ShoppingCartId,
 
-                    ParticipantProcessId =
-                        orderItem.Order.ParticipantProcessId,
+                    ProcessId =
+                        orderItem.Order.ProcessId,
 
                     OrderNumber =
                         orderItem.Order.OrderNumber,

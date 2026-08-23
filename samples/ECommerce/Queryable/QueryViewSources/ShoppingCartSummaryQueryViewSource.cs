@@ -27,7 +27,7 @@ internal sealed class ShoppingCartSummaryQueryViewSource
         if (parameters is null)
             parameters = new ShoppingCartViewParameters();
 
-        if (parameters.ParticipantProcessId is null &&
+        if (parameters.ProcessId is null &&
             parameters.CustomerId is null)
         {
             return CreateEmptySummary();
@@ -35,12 +35,12 @@ internal sealed class ShoppingCartSummaryQueryViewSource
 
         IQueryable<ShoppingCartQueryContext>? cartQuery = null;
 
-        if (parameters.ParticipantProcessId is not null)
+        if (parameters.ProcessId is not null)
         {
             cartQuery =
                 query.Where(x =>
-                    x.ParticipantProcessId ==
-                    parameters.ParticipantProcessId);
+                    x.ProcessId ==
+                    parameters.ProcessId);
 
             if (!cartQuery.Any())
             {
@@ -85,8 +85,8 @@ internal sealed class ShoppingCartSummaryQueryViewSource
         var summary =
             new ShoppingCartSummaryView
             {
-                ParticipantProcessId =
-                    firstRow.ParticipantProcessId,
+                ProcessId =
+                    firstRow.ProcessId,
 
                 ShoppingCartId =
                     firstRow.ShoppingCartId,

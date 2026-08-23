@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Observability;
+﻿using Kaleido.Exceptions;
+using Kaleido.Process.Observability;
 using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Planning;
@@ -39,6 +40,8 @@ internal sealed class ParticipantRuntime
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        ValidateRequest(request);
+
         using var observation =
             _observability.BeginExecution(
                 new ProcessExecutionObservationDetails(
@@ -73,7 +76,7 @@ internal sealed class ParticipantRuntime
         }
         catch (Exception exception)
         {
-            observation.Failed(exception);
+            observation.ExecutionFailed(exception);
             throw;
         }
     }
@@ -83,7 +86,7 @@ internal sealed class ParticipantRuntime
         IProcessExecutionObservation observation,
         CancellationToken cancellationToken)
     {
-        if (request.ParticipantProcessId is null)
+        if (request.ProcessId is null)
         {
             var initializedContext =
                 _stateUpdater.Initialize(
@@ -95,21 +98,21 @@ internal sealed class ParticipantRuntime
                 };
 
             observation.ContextInitialized(
-                initializedContext.ParticipantProcessId);
+                initializedContext.ProcessId);
 
             return initializedContext;
         }
 
         var context =
             await _contextStore.LoadAsync(
-                request.ParticipantProcessId.Value,
+                request.ProcessId.Value,
                 cancellationToken);
         
         if (context is null)
         {
             var initializedContext =
                 _stateUpdater.Initialize(
-                    request.ParticipantProcessId.Value)
+                    request.ProcessId.Value)
                     with
                 {
                     LatestRequestId =
@@ -117,13 +120,13 @@ internal sealed class ParticipantRuntime
                 };
 
             observation.ContextInitialized(
-                initializedContext.ParticipantProcessId);
+                initializedContext.ProcessId);
 
             return initializedContext;
         }
 
         observation.ContextLoaded(
-            context.ParticipantProcessId);
+            context.ProcessId);
 
         return _stateUpdater.Reconcile(
             context)
@@ -132,6 +135,32 @@ internal sealed class ParticipantRuntime
             LatestRequestId =
                     request.RequestId
         };
+    }
+
+    private static void ValidateRequest(
+        ProcessRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            request.RequestId);
+
+        var hasProcessId =
+            request.ProcessId is not null;
+
+        if (hasProcessId)
+        {
+            return;
+        }
+
+        if (request.Participant.Steps.Count != 1)
+        {
+            throw new ValidationException(
+            [
+                new ValidationError(
+                    "ProcessIdRequired",
+                    "ProcessId is required when executing more than one process step in a single request.")
+            ]);
+        }
     }
 
     private static IReadOnlyCollection<StepCandidate> GetExecutionCandidates(
@@ -197,8 +226,8 @@ internal sealed class ParticipantRuntime
 
         return new ParticipantProcessResult
         {
-            ParticipantProcessId =
-                executionResult.ParticipantProcessId,
+            ProcessId =
+                executionResult.ProcessId,
 
             State =
                 executionResult.State,

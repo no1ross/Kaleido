@@ -4,6 +4,7 @@ using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Planning;
 using Kaleido.Process.Participant.Registry;
+using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 
 namespace Kaleido.Process.AspNetCore.Tests;
@@ -39,13 +40,17 @@ public sealed class ProcessExecutionServiceTests
 
         var service =
             new ProcessExecutionService(
+                new HttpContextAccessor
+                {
+                    HttpContext = new DefaultHttpContext()
+                },
                 registry,
                 runtime.Object);
 
         var request =
             new ExecuteProcessRequest
             {
-                ParticipantProcessId = Guid.NewGuid(),
+                ProcessId = Guid.NewGuid(),
                 RequestId = "REQ-001",
                 Steps =
                 [
@@ -63,11 +68,11 @@ public sealed class ProcessExecutionServiceTests
                 CancellationToken.None);
 
         Assert.NotNull(capturedRequest);
-        Assert.Equal(request.ParticipantProcessId, capturedRequest.ParticipantProcessId);
+        Assert.Equal(request.ProcessId, capturedRequest.ProcessId);
         Assert.Equal(request.RequestId, capturedRequest.RequestId);
         Assert.True(capturedRequest.Participant.Steps.ContainsKey(registration.Metadata.Name));
 
-        Assert.Equal(processResult.ParticipantProcessId, response.ParticipantProcessId);
+        Assert.Equal(processResult.ProcessId, response.ProcessId);
         Assert.Equal(registration.Metadata.Name, Assert.Single(response.Results).StepName);
         Assert.Equal(registration.Metadata.Name, Assert.Single(response.AvailableSteps).Name);
     }
@@ -97,13 +102,17 @@ public sealed class ProcessExecutionServiceTests
 
         var service =
             new ProcessExecutionService(
+                new HttpContextAccessor
+                {
+                    HttpContext = new DefaultHttpContext()
+                },
                 registry,
                 runtime.Object);
 
         var request =
             new ExecuteStepRequest<TestStep>
             {
-                ParticipantProcessId = Guid.NewGuid(),
+                ProcessId = Guid.NewGuid(),
                 RequestId = "REQ-002",
                 ProcessStep = new TestStep()
             };
@@ -141,13 +150,17 @@ public sealed class ProcessExecutionServiceTests
 
         var service =
             new ProcessExecutionService(
+                new HttpContextAccessor
+                {
+                    HttpContext = new DefaultHttpContext()
+                },
                 registry,
                 runtime.Object);
 
         var request =
             new ExecuteStepRequest<TestStep>
             {
-                ParticipantProcessId = Guid.NewGuid(),
+                ProcessId = Guid.NewGuid(),
                 RequestId = "REQ-003",
                 ProcessStep = new TestStep()
             };
@@ -166,7 +179,7 @@ public sealed class ProcessExecutionServiceTests
         object response) =>
         new()
         {
-            ParticipantProcessId = Guid.NewGuid(),
+            ProcessId = Guid.NewGuid(),
             State = ProcessExecutionState.Active,
             AvailableSteps = [stepName],
             Steps =

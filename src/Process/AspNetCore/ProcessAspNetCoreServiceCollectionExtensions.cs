@@ -22,6 +22,7 @@ public static class ProcessAspNetCoreServiceCollectionExtensions
         builder.Services.AddSingleton(routeOptions);
 
         builder.Services.AddRouting();
+        builder.Services.AddHttpContextAccessor();
 
         builder.Services.TryAddScoped<IProcessExecutionService, ProcessExecutionService>();
         builder.Services.TryAddScoped<IProcessStateService, ProcessStateService>();

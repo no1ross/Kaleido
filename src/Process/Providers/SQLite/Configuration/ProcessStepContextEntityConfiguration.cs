@@ -16,7 +16,7 @@ internal sealed class ProcessStepContextEntityConfiguration
         builder.HasKey(
             x => new
             {
-                x.ParticipantProcessId,
+                x.ProcessId,
                 x.StepName
             });
 

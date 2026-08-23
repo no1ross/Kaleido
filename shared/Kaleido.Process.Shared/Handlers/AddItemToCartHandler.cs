@@ -26,9 +26,9 @@ public sealed class AddItemToCartHandler(
             Quantity = step.Quantity,
         };
 
-        TempCart.AddItemToCart(context.ParticipantProcessId, cartItem);
+        TempCart.AddItemToCart(context.ProcessId, cartItem);
 
-        var cart = TempCart.GetCart(context.ParticipantProcessId);
+        var cart = TempCart.GetCart(context.ProcessId);
 
         var response = new AddItemToCartResponse();
 

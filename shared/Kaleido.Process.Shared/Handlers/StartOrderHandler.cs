@@ -43,7 +43,7 @@
 //            {
 //                OrderId = Guid.NewGuid(),
 //                ShoppingCartId = shoppingCartId,
-//                ParticipantProcessId = correlationId,
+//                ProcessId = correlationId,
 //                MemberId = step.MemberId,
 //                Status = OrderStatus.Draft,
 //                Priority = step.Priority,
@@ -91,6 +91,6 @@
 //    {
 //        // KALEIDO_ADAPT:
 //        // Replace with the actual correlation id property exposed by ProcessStepContext.
-//        return context.ParticipantProcessId;
+//        return context.ProcessId;
 //    }
 //}

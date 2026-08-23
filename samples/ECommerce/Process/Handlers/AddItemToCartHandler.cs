@@ -43,8 +43,8 @@ public sealed class AddItemToCartHandler(
         var shoppingCart = await dbContext.ShoppingCarts
             .Include(x => x.Items)
             .FirstOrDefaultAsync(
-                x => x.ParticipantProcessId ==
-                     context.ParticipantProcessId,
+                x => x.ProcessId ==
+                     context.ProcessId,
                 cancellationToken);
 
         if (shoppingCart is null &&
@@ -60,13 +60,13 @@ public sealed class AddItemToCartHandler(
 
             if (activeCart is not null)
             {
-                if (activeCart.ParticipantProcessId !=
-                    context.ParticipantProcessId)
+                if (activeCart.ProcessId !=
+                    context.ProcessId)
                 {
                     return ProcessStepHandlerResult.Failure(
                         ProcessStpMessages.ActiveCartProcessMismatch(
-                            activeCart.ParticipantProcessId,
-                            context.ParticipantProcessId));
+                            activeCart.ProcessId,
+                            context.ProcessId));
                 }
 
                 shoppingCart = activeCart;
@@ -82,7 +82,7 @@ public sealed class AddItemToCartHandler(
             {
                 ShoppingCartId = Guid.NewGuid(),
                 CustomerId = step.CustomerId,
-                ParticipantProcessId = context.ParticipantProcessId,
+                ProcessId = context.ProcessId,
                 IsActive = true,
                 CreatedUtc = DateTime.UtcNow,
                 UpdatedUtc = DateTime.UtcNow

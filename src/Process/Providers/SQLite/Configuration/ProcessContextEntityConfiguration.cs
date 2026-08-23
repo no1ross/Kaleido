@@ -14,7 +14,7 @@ internal sealed class ProcessContextEntityConfiguration
             "ProcessContexts");
 
         builder.HasKey(
-            x => x.ParticipantProcessId);
+            x => x.ProcessId);
 
         builder.Property(
                 x => x.LatestRequestId)
@@ -42,7 +42,7 @@ internal sealed class ProcessContextEntityConfiguration
             .WithOne(
                 x => x.Context)
             .HasForeignKey(
-                x => x.ParticipantProcessId)
+                x => x.ProcessId)
             .OnDelete(
                 DeleteBehavior.Cascade);
 
@@ -51,7 +51,7 @@ internal sealed class ProcessContextEntityConfiguration
             .WithOne(
                 x => x.Context)
             .HasForeignKey(
-                x => x.ParticipantProcessId)
+                x => x.ProcessId)
             .OnDelete(
                 DeleteBehavior.Cascade);
 

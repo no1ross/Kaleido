@@ -368,7 +368,7 @@ State exists to support continuation.
 State is not history.
 
 ParticipantContext
-ParticipantProcessId
+ProcessId
 LatestRequestId
 State
 RequiredStep

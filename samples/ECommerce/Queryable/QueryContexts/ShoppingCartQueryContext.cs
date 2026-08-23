@@ -14,7 +14,7 @@ public sealed class ShoppingCartQueryContext
     public Guid ShoppingCartId { get; init; }
     public Guid ShoppingCartItemId { get; init; }
     public Guid? CustomerId { get; init; } = null;
-    public Guid? ParticipantProcessId { get; set; }
+    public Guid? ProcessId { get; set; }
     public Guid ProductId { get; init; }
     public string ProductName { get; set; } = string.Empty;
     public string SupplierName { get; set; } = string.Empty;

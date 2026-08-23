@@ -8,13 +8,31 @@ public sealed record KaleidoCorrelationContext
         init;
     }
 
-    public Guid? ParticipantProcessInstanceId
+    public Guid? ProcessId
     {
         get;
         init;
     }
 
-    public Guid? OrchestratorProcessInstanceId
+    public string? ParticipantId
+    {
+        get;
+        init;
+    }
+
+    public Guid? ParticipantInstanceId
+    {
+        get;
+        init;
+    }
+
+    public string? OrchestratorId
+    {
+        get;
+        init;
+    }
+
+    public Guid? OrchestratorInstanceId
     {
         get;
         init;
@@ -22,8 +40,11 @@ public sealed record KaleidoCorrelationContext
 
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(RequestId)
-        && ParticipantProcessInstanceId is null
-        && OrchestratorProcessInstanceId is null;
+        && ProcessId is null
+        && string.IsNullOrWhiteSpace(ParticipantId)
+        && ParticipantInstanceId is null
+        && string.IsNullOrWhiteSpace(OrchestratorId)
+        && OrchestratorInstanceId is null;
 }
 
 public interface IKaleidoCorrelationContextAccessor

@@ -16,7 +16,7 @@ public sealed record SubmittedOrderView
         init;
     }
 
-    public Guid ParticipantProcessId
+    public Guid ProcessId
     {
         get;
         init;

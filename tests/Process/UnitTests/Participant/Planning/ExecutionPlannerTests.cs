@@ -76,7 +76,7 @@ public sealed class ExecutionPlannerTests
                     null!,
                     new ParticipantContext
                     {
-                        ParticipantProcessId = Guid.NewGuid(),
+                        ProcessId = Guid.NewGuid(),
                     }));
 
         Assert.Equal("request", exception.ParamName);
@@ -106,7 +106,7 @@ public sealed class ExecutionPlannerTests
         var context =
             new ParticipantContext
             {
-                ParticipantProcessId = Guid.NewGuid()
+                ProcessId = Guid.NewGuid()
             };
 
         var candidates =
@@ -184,7 +184,7 @@ public sealed class ExecutionPlannerTests
         var context =
             new ParticipantContext
             {
-                ParticipantProcessId = Guid.NewGuid()
+                ProcessId = Guid.NewGuid()
             };
 
         var candidates =
@@ -247,7 +247,7 @@ public sealed class ExecutionPlannerTests
         var context =
             new ParticipantContext
             {
-                ParticipantProcessId = Guid.NewGuid()
+                ProcessId = Guid.NewGuid()
             };
 
         var candidates =
@@ -309,7 +309,7 @@ public sealed class ExecutionPlannerTests
         var context =
             new ParticipantContext
             {
-                ParticipantProcessId = Guid.NewGuid()
+                ProcessId = Guid.NewGuid()
             };
 
         var candidates =

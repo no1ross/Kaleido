@@ -19,7 +19,7 @@ public sealed class ShoppingCartQueryContext
     [Key]
     public Guid ShoppingCartId { get; init; }
     public Guid? CustomerId { get; init; } = null;
-    public Guid ParticipantProcessId { get; init; }
+    public Guid ProcessId { get; init; }
     public Guid ProductId { get; init; }
     public string ProductName { get; set; } = string.Empty;
     public string SupplierName { get; set; } = string.Empty;
@@ -69,7 +69,7 @@ public sealed record ShoppingCartSummaryView
 
 public sealed record ShoppingCartSummaryViewParameters
 {
-    public required Guid ParticipantProcessId
+    public required Guid ProcessId
     {
         get;
         init;
@@ -93,12 +93,12 @@ internal sealed class ShoppingContextSource
                 .AsQueryable();
         }
 
-        var participantProcessId =
-                parameters.ParticipantProcessId;
+        var processId =
+                parameters.ProcessId;
 
         var cart =
             TempCart.GetCart(
-                participantProcessId);
+                processId);
 
         if (cart is null)
         {
@@ -118,8 +118,8 @@ internal sealed class ShoppingContextSource
                         CustomerId =
                             cart.CustomerId,
 
-                        ParticipantProcessId =
-                            participantProcessId,
+                        ProcessId =
+                            processId,
 
                         ProductName = "Product Name",
 
@@ -219,8 +219,8 @@ internal sealed class ShoppingCartDetailViewSource
 
         return query
             .Where(x =>
-                x.ParticipantProcessId ==
-                parameters!.ParticipantProcessId)
+                x.ProcessId ==
+                parameters!.ProcessId)
             .Select(x =>
                 new ShoppingCartDetailView
                 {

@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Participant;
+﻿using Kaleido.Process.Observability;
+using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Planning;
@@ -19,7 +20,8 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IProcessStateUpdater>(),
                 Mock.Of<IProcessContextStore>(),
                 Mock.Of<IProcessStepRegistry>(),
-                Mock.Of<IStepAvailabilityResolver>()));
+                Mock.Of<IStepAvailabilityResolver>(),
+                Mock.Of<IProcessObservability>()));
     }
 
     [Fact]
@@ -32,7 +34,8 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IProcessStateUpdater>(),
                 Mock.Of<IProcessContextStore>(),
                 Mock.Of<IProcessStepRegistry>(),
-                Mock.Of<IStepAvailabilityResolver>()));
+                Mock.Of<IStepAvailabilityResolver>(),
+                Mock.Of<IProcessObservability>()));
     }
 
     [Fact]
@@ -45,7 +48,8 @@ public sealed class ExecutionProcessorTests
                 null!,
                 Mock.Of<IProcessContextStore>(),
                 Mock.Of<IProcessStepRegistry>(),
-                Mock.Of<IStepAvailabilityResolver>()));
+                Mock.Of<IStepAvailabilityResolver>(),
+                Mock.Of<IProcessObservability>()));
     }
 
     [Fact]
@@ -58,7 +62,8 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IProcessStateUpdater>(),
                 null!,
                 Mock.Of<IProcessStepRegistry>(),
-                Mock.Of<IStepAvailabilityResolver>()));
+                Mock.Of<IStepAvailabilityResolver>(),
+                Mock.Of<IProcessObservability>()));
     }
 
     [Fact]
@@ -71,7 +76,8 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IProcessStateUpdater>(),
                 Mock.Of<IProcessContextStore>(),
                 null!,
-                Mock.Of<IStepAvailabilityResolver>()));
+                Mock.Of<IStepAvailabilityResolver>(),
+                Mock.Of<IProcessObservability>()));
     }
 
     [Fact]
@@ -84,7 +90,8 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IProcessStateUpdater>(),
                 Mock.Of<IProcessContextStore>(),
                 Mock.Of<IProcessStepRegistry>(),
-                null!));
+                null!,
+                Mock.Of<IProcessObservability>()));
     }
 
     [Fact]
@@ -1255,7 +1262,8 @@ public sealed class ExecutionProcessorTests
             (stateUpdater ?? new Mock<IProcessStateUpdater>()).Object,
             (stateRepository ?? new Mock<IProcessContextStore>()).Object,
             (stepRegistry ?? new Mock<IProcessStepRegistry>()).Object,
-            (availabilityResolver ?? new Mock<IStepAvailabilityResolver>()).Object);
+            (availabilityResolver ?? new Mock<IStepAvailabilityResolver>()).Object,
+            Mock.Of<IProcessObservability>());
     }
 
     private static Mock<IStepAvailabilityResolver> CreateAvailabilityResolver(
@@ -1344,7 +1352,7 @@ public sealed class ExecutionProcessorTests
     {
         return new ParticipantContext
         {
-            ParticipantProcessId =
+            ProcessId =
                 Guid.NewGuid(),
 
             Steps =

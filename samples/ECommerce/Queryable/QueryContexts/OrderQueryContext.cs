@@ -29,7 +29,7 @@ public sealed record OrderQueryContext
         init;
     }
 
-    public Guid ParticipantProcessId
+    public Guid ProcessId
     {
         get;
         init;

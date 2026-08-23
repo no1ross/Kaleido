@@ -5,7 +5,7 @@ namespace Kaleido.Samples.ECommerce.Data.QueryViewSources.Parameters;
 public sealed record SubmittedOrderViewParameters
 {
     [Required]
-    public Guid? ParticipantProcessId
+    public Guid? ProcessId
     {
         get;
         init;

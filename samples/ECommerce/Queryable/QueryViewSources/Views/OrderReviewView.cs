@@ -14,7 +14,7 @@ public sealed record OrderReviewView
         init;
     }
 
-    public Guid ParticipantProcessId
+    public Guid ProcessId
     {
         get;
         init;

@@ -1,5 +1,6 @@
 using Kaleido.Observability;
 using Kaleido.Queryable.Exceptions;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace Kaleido.Queryable.Observability;
@@ -28,7 +29,7 @@ internal interface IQueryExecutionObservation
         int? pageSize,
         int? pageOffset);
 
-    void Failed(
+    void ExecutionFailed(
         Exception exception);
 }
 
@@ -47,13 +48,17 @@ internal sealed class QueryableObservability
         new(ActivitySourceName);
 
     private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
+    private readonly ILogger<QueryableObservability> _logger;
 
     public QueryableObservability(
-        IKaleidoCorrelationContextAccessor correlationAccessor)
+        IKaleidoCorrelationContextAccessor correlationAccessor,
+        ILogger<QueryableObservability> logger)
     {
         ArgumentNullException.ThrowIfNull(correlationAccessor);
+        ArgumentNullException.ThrowIfNull(logger);
 
         _correlationAccessor = correlationAccessor;
+        _logger = logger;
     }
 
     public IQueryExecutionObservation BeginExecution(
@@ -85,8 +90,16 @@ internal sealed class QueryableObservability
             "kaleido.query.direct",
             details.IsDirectQuery);
 
+        _logger.LogDebug(
+            "Queryable execution started for context {QueryContextName} view {QueryViewName} direct {IsDirectQuery}.",
+            details.QueryContextName,
+            details.QueryViewName,
+            details.IsDirectQuery);
+
         return new QueryExecutionObservation(
-            activity);
+            activity,
+            _logger,
+            details);
     }
 
     private static void SetCorrelationTags(
@@ -98,23 +111,41 @@ internal sealed class QueryableObservability
             correlation.RequestId);
 
         activity?.SetTag(
-            "kaleido.participant.process_instance_id",
-            correlation.ParticipantProcessInstanceId?.ToString());
+            "kaleido.process.id",
+            correlation.ProcessId?.ToString());
 
         activity?.SetTag(
-            "kaleido.orchestrator.process_instance_id",
-            correlation.OrchestratorProcessInstanceId?.ToString());
+            "kaleido.participant.id",
+            correlation.ParticipantId);
+
+        activity?.SetTag(
+            "kaleido.participant.instance_id",
+            correlation.ParticipantInstanceId?.ToString());
+
+        activity?.SetTag(
+            "kaleido.orchestrator.id",
+            correlation.OrchestratorId);
+
+        activity?.SetTag(
+            "kaleido.orchestrator.instance_id",
+            correlation.OrchestratorInstanceId?.ToString());
     }
 
     private sealed class QueryExecutionObservation
         : IQueryExecutionObservation
     {
         private readonly Activity? _activity;
+        private readonly QueryObservationDetails _details;
+        private readonly ILogger _logger;
 
         public QueryExecutionObservation(
-            Activity? activity)
+            Activity? activity,
+            ILogger logger,
+            QueryObservationDetails details)
         {
             _activity = activity;
+            _logger = logger;
+            _details = details;
         }
 
         public IDisposable BeginSource()
@@ -147,6 +178,13 @@ internal sealed class QueryableObservability
             _activity?.SetTag(
                 "kaleido.validation.code",
                 exception.Code);
+
+            _logger.LogWarning(
+                exception,
+                "Queryable validation failed for context {QueryContextName} view {QueryViewName} with code {ValidationCode}.",
+                _details.QueryContextName,
+                _details.QueryViewName,
+                exception.Code);
         }
 
         public void Materialized(
@@ -170,9 +208,18 @@ internal sealed class QueryableObservability
             _activity?.SetTag(
                 "kaleido.query.page_offset",
                 pageOffset);
+
+            _logger.LogDebug(
+                "Queryable materialization completed for context {QueryContextName} view {QueryViewName} total {TotalCount} returned {ReturnedCount} pageSize {PageSize} pageOffset {PageOffset}.",
+                _details.QueryContextName,
+                _details.QueryViewName,
+                totalCount,
+                returnedCount,
+                pageSize,
+                pageOffset);
         }
 
-        public void Failed(
+        public void ExecutionFailed(
             Exception exception)
         {
             ArgumentNullException.ThrowIfNull(exception);
@@ -184,6 +231,12 @@ internal sealed class QueryableObservability
             _activity?.AddEvent(
                 new ActivityEvent(
                     "kaleido.queryable.exception"));
+
+            _logger.LogError(
+                exception,
+                "Queryable execution failed for context {QueryContextName} view {QueryViewName}.",
+                _details.QueryContextName,
+                _details.QueryViewName);
         }
 
         public void Dispose()

@@ -8,11 +8,20 @@ public static class KaleidoAspNetCoreHeaders
     public const string RequestId =
         "X-Kaleido-Request-Id";
 
-    public const string ParticipantProcessInstanceId =
-        "X-Kaleido-Participant-Process-Instance-Id";
+    public const string ProcessId =
+        "X-Kaleido-Process-Id";
 
-    public const string OrchestratorProcessInstanceId =
-        "X-Kaleido-Orchestrator-Process-Instance-Id";
+    public const string ParticipantId =
+        "X-Kaleido-Participant-Id";
+
+    public const string ParticipantInstanceId =
+        "X-Kaleido-Participant-Instance-Id";
+
+    public const string OrchestratorId =
+        "X-Kaleido-Orchestrator-Id";
+
+    public const string OrchestratorInstanceId =
+        "X-Kaleido-Orchestrator-Instance-Id";
 }
 
 internal static class KaleidoAspNetCoreCorrelation
@@ -29,15 +38,30 @@ internal static class KaleidoAspNetCoreCorrelation
                     context,
                     KaleidoAspNetCoreHeaders.RequestId),
 
-            ParticipantProcessInstanceId =
+            ProcessId =
                 ReadGuid(
                     context,
-                    KaleidoAspNetCoreHeaders.ParticipantProcessInstanceId),
+                    KaleidoAspNetCoreHeaders.ProcessId),
 
-            OrchestratorProcessInstanceId =
+            ParticipantId =
+                ReadString(
+                    context,
+                    KaleidoAspNetCoreHeaders.ParticipantId),
+
+            ParticipantInstanceId =
                 ReadGuid(
                     context,
-                    KaleidoAspNetCoreHeaders.OrchestratorProcessInstanceId)
+                    KaleidoAspNetCoreHeaders.ParticipantInstanceId),
+
+            OrchestratorId =
+                ReadString(
+                    context,
+                    KaleidoAspNetCoreHeaders.OrchestratorId),
+
+            OrchestratorInstanceId =
+                ReadGuid(
+                    context,
+                    KaleidoAspNetCoreHeaders.OrchestratorInstanceId)
         };
     }
 

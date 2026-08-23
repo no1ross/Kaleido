@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Participant.Context;
+﻿using Kaleido.Process.Observability;
+using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
 using Kaleido.Process.Participant.Registry;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,10 +16,12 @@ public sealed class ProcessStepInvokerTests
     {
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
-                new ProcessStepInvoker(null!));
+                new ProcessStepInvoker(
+                    null!,
+                    null!));
 
         Assert.Equal(
-            "scopeFactory",
+            "observability",
             exception.ParamName);
     }
 
@@ -391,15 +394,21 @@ public sealed class ProcessStepInvokerTests
         var services =
             new ServiceCollection();
 
+        services.AddScoped<IProcessObservability, TestProcessObservability>();
+
         configureServices?.Invoke(services);
 
         var provider =
             services.BuildServiceProvider();
 
+        var observability =
+            provider.GetRequiredService<IProcessObservability>();
+
         var scopeFactory =
             provider.GetRequiredService<IServiceScopeFactory>();
 
         return new ProcessStepInvoker(
+            observability,
             scopeFactory);
     }
 
@@ -429,6 +438,41 @@ public sealed class ProcessStepInvokerTests
         public ProcessStepContext? Context { get; set; }
 
         public CancellationToken CancellationToken { get; set; }
+    }
+
+    private sealed class TestProcessObservability
+        : IProcessObservability
+    {
+        public IProcessExecutionObservation BeginExecution(
+            ProcessExecutionObservationDetails details)
+        {
+            throw new NotSupportedException();
+        }
+
+        public IProcessStepObservation BeginStep(
+            ProcessStepObservationDetails details)
+        {
+            throw new NotSupportedException();
+        }
+
+        public IProcessHandlerObservation BeginHandler(
+            ProcessHandlerObservationDetails details)
+        {
+            return new TestProcessHandlerObservation();
+        }
+    }
+
+    private sealed class TestProcessHandlerObservation
+        : IProcessHandlerObservation
+    {
+        public void HandlerFailed(
+            Exception exception)
+        {
+        }
+
+        public void Dispose()
+        {
+        }
     }
 
     private sealed class TestStep

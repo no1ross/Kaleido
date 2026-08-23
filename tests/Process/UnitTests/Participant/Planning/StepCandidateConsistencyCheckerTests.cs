@@ -22,7 +22,7 @@ public sealed class StepCandidateConsistencyCheckerTests
                     null!,
                     new ParticipantContext
                     {
-                        ParticipantProcessId = Guid.NewGuid()
+                        ProcessId = Guid.NewGuid()
                     }));
 
         Assert.Equal("candidates", exception.ParamName);
@@ -59,7 +59,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             [candidate],
             new ParticipantContext
             {
-                ParticipantProcessId = Guid.NewGuid()
+                ProcessId = Guid.NewGuid()
             });
 
         Assert.Equal(
@@ -85,7 +85,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         var context =
             new ParticipantContext
             {
-                ParticipantProcessId = Guid.NewGuid(),
+                ProcessId = Guid.NewGuid(),
                 Steps =
                 [
                     new StepContext
@@ -120,7 +120,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         var context =
             new ParticipantContext
             {
-                ParticipantProcessId =  Guid.NewGuid(),
+                ProcessId =  Guid.NewGuid(),
                 Steps =
                 [
                     new StepContext
@@ -159,7 +159,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         var context =
             new ParticipantContext
             {
-                ParticipantProcessId = Guid.NewGuid(),
+                ProcessId = Guid.NewGuid(),
                 Steps =
                 [
                     new StepContext
@@ -203,7 +203,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             ],
             new ParticipantContext
             {
-                ParticipantProcessId = Guid.NewGuid()
+                ProcessId = Guid.NewGuid()
             });
 
         Assert.False(targetCandidate.HasErrors);
@@ -243,7 +243,7 @@ public sealed class StepCandidateConsistencyCheckerTests
                 dependencyCandidate,
                 targetCandidate
             ],
-            new ParticipantContext{ ParticipantProcessId = Guid.NewGuid() });
+            new ParticipantContext{ ProcessId = Guid.NewGuid() });
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -274,7 +274,7 @@ public sealed class StepCandidateConsistencyCheckerTests
 
         checker.Validate(
             [candidate],
-            new ParticipantContext{ ParticipantProcessId = Guid.NewGuid() });
+            new ParticipantContext{ ProcessId = Guid.NewGuid() });
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -309,7 +309,7 @@ public sealed class StepCandidateConsistencyCheckerTests
 
         checker.Validate(
             [candidate],
-            new ParticipantContext{ ParticipantProcessId = Guid.NewGuid() });
+            new ParticipantContext{ ProcessId = Guid.NewGuid() });
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -340,7 +340,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         var context =
             new ParticipantContext
             {
-                ParticipantProcessId = Guid.NewGuid(),
+                ProcessId = Guid.NewGuid(),
                 Steps =
                 [
                     new StepContext
@@ -378,7 +378,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         var context =
             new ParticipantContext
             {
-                ParticipantProcessId = Guid.NewGuid(),
+                ProcessId = Guid.NewGuid(),
                 Steps =
                 [
                     new StepContext

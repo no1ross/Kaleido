@@ -11,7 +11,7 @@ namespace Kaleido.Process.Participant.Context;
 internal interface IProcessStateUpdater
 {
     ParticipantContext Initialize(
-        Guid participantProcessId);
+        Guid processId);
 
     ParticipantContext Reconcile(
         ParticipantContext context);
@@ -43,11 +43,11 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
     }
 
     public ParticipantContext Initialize(
-        Guid participantProcessId)
+        Guid processId)
     {
         return new ParticipantContext
         {
-            ParticipantProcessId = participantProcessId,
+            ProcessId = processId,
 
             State = ProcessExecutionState.Active,
 

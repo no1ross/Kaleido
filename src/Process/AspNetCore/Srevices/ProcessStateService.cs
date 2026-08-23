@@ -8,16 +8,16 @@ namespace Kaleido.Process.AspNetCore.Srevices;
 public interface IProcessStateService
 {
     Task<ParticipantProcessView?> GetCurrentState(
-        Guid participantProcessId,
+        Guid processId,
         CancellationToken cancellationToken);
 }
 
 public class ProcessStateService(IProcessContextStore contextStore)
     : IProcessStateService
 {
-    public async Task<ParticipantProcessView?> GetCurrentState(Guid participantProcessId, CancellationToken cancellationToken)
+    public async Task<ParticipantProcessView?> GetCurrentState(Guid processId, CancellationToken cancellationToken)
     {
-        var context = await contextStore.LoadAsync(participantProcessId, cancellationToken);
+        var context = await contextStore.LoadAsync(processId, cancellationToken);
         if (context == null) return null;
         return ParticipantProcessViewMapper.ToView(context);
     }
@@ -26,7 +26,7 @@ public class ProcessStateService(IProcessContextStore contextStore)
 
 public sealed record ParticipantProcessView
 {
-    public Guid ParticipantProcessId
+    public Guid ProcessId
     {
         get;
         init;
@@ -105,8 +105,8 @@ internal static class ParticipantProcessViewMapper
     {
         return new ParticipantProcessView
         {
-            ParticipantProcessId =
-                context.ParticipantProcessId,
+            ProcessId =
+                context.ProcessId,
 
             State =
                 context.State,

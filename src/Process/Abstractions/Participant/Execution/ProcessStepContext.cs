@@ -4,7 +4,7 @@ namespace Kaleido.Process.Participant.Execution;
 
 public sealed record ProcessStepContext
 (
-    Guid ParticipantProcessId,
+    Guid ProcessId,
     StepContext StepContext,
     IReadOnlyCollection<string> AvailableNextSteps
 );

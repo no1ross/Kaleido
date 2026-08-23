@@ -83,7 +83,7 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             order => order.ShoppingCartId);
 
         builder.HasIndex(
-            order => order.ParticipantProcessId);
+            order => order.ProcessId);
 
         builder.HasIndex(
             order => order.Status);

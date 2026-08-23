@@ -2,7 +2,7 @@
 
 public sealed class ProcessAvailableStepEntity
 {
-    public Guid ParticipantProcessId
+    public Guid ProcessId
     {
         get;
         set;

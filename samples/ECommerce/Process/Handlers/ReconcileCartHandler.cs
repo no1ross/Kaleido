@@ -59,8 +59,8 @@ internal sealed class ReconcileCartHandler(
                     .ThenInclude(x => x.Product)
                 .FirstOrDefaultAsync(
                     x =>
-                        x.ParticipantProcessId ==
-                            context.ParticipantProcessId &&
+                        x.ProcessId ==
+                            context.ProcessId &&
                         x.CustomerId == null &&
                         x.IsActive,
                     cancellationToken);
@@ -93,7 +93,7 @@ internal sealed class ReconcileCartHandler(
         // No anonymous cart in the current process.
         // Customer already has an active cart.
         //
-        // Do not change the cart's ParticipantProcessId.
+        // Do not change the cart's ProcessId.
         // The cart owns that process identity.
         //
         // If the runtime was started without a process id, this
@@ -117,7 +117,7 @@ internal sealed class ReconcileCartHandler(
         // Customer has no active cart.
         //
         // Transfer the anonymous cart to the selected customer.
-        // This does NOT change the ParticipantProcessId.
+        // This does NOT change the ProcessId.
         //
         if (currentAnonymousCart is not null &&
             customerCart is null)
@@ -147,7 +147,7 @@ internal sealed class ReconcileCartHandler(
         // Merge the customer's existing cart into the current
         // anonymous cart, then assign the current cart to the customer.
         //
-        // This preserves the current ParticipantProcessId and does
+        // This preserves the current ProcessId and does
         // not mutate the process id on either cart.
         //
         if (currentAnonymousCart is null ||

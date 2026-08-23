@@ -31,13 +31,13 @@ public sealed class RemoveCartItemHandler(
                     step.ShoppingCartId));
         }
 
-        if (shoppingCart.ParticipantProcessId !=
-            context.ParticipantProcessId)
+        if (shoppingCart.ProcessId !=
+            context.ProcessId)
         {
             return ProcessStepHandlerResult.Failure(
                 ProcessStpMessages.ShoppingCartProcessMismatch(
                     step.ShoppingCartId,
-                    context.ParticipantProcessId));
+                    context.ProcessId));
         }
 
         var cartItem =

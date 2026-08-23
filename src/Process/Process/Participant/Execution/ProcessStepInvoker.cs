@@ -2,26 +2,23 @@
 using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Registry;
 using Microsoft.Extensions.DependencyInjection;
-using System.Diagnostics;
 
 namespace Kaleido.Process.Participant.Execution;
 
 
 internal sealed class ProcessStepInvoker : IProcessStepInvoker
 {
-    private const string ActivitySourceName =
-        "Kaleido.Process";
-
-    private static readonly ActivitySource ActivitySource =
-        new(ActivitySourceName);
-
+    private readonly IProcessObservability _observability;
     private readonly IServiceScopeFactory _scopeFactory;
 
     public ProcessStepInvoker(
+        IProcessObservability observability,
         IServiceScopeFactory scopeFactory)
     {
+        ArgumentNullException.ThrowIfNull(observability);
         ArgumentNullException.ThrowIfNull(scopeFactory);
 
+        _observability = observability;
         _scopeFactory = scopeFactory;
     }
 
@@ -36,9 +33,10 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
         ArgumentNullException.ThrowIfNull(context);
 
         using var handlerObservation =
-            ActivitySource.StartActivity(
-                "kaleido.process.step.handler",
-                ActivityKind.Internal);
+            _observability.BeginHandler(
+                new ProcessHandlerObservationDetails(
+                    registration.Metadata.Name,
+                    registration.Metadata.Version));
 
         using var scope =
             _scopeFactory.CreateScope();
@@ -47,14 +45,22 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
             scope.ServiceProvider.GetRequiredService(
                 registration.HandlerType);
 
-        var handlerResult =
-            await ExecuteHandlerAsync(
-                handler,
-                processStep,
-                context,
-                cancellationToken);
+        try
+        {
+            var handlerResult =
+                await ExecuteHandlerAsync(
+                    handler,
+                    processStep,
+                    context,
+                    cancellationToken);
 
-        return handlerResult;
+            return handlerResult;
+        }
+        catch (Exception exception)
+        {
+            handlerObservation.HandlerFailed(exception);
+            throw;
+        }
     }
 
     private static async Task<ProcessStepInvokerResult> ExecuteHandlerAsync(

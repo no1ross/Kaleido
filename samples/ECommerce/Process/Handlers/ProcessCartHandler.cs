@@ -65,13 +65,13 @@ internal sealed class ProcessCartHandler(
                     step.CustomerId));
         }
 
-        if (shoppingCart.ParticipantProcessId !=
-            context.ParticipantProcessId)
+        if (shoppingCart.ProcessId !=
+            context.ProcessId)
         {
             return ProcessStepHandlerResult.Failure(
                 ProcessStpMessages.ShoppingCartProcessMismatch(
                     step.ShoppingCartId,
-                    context.ParticipantProcessId));
+                    context.ProcessId));
         }
 
         if (shoppingCart.Items.Count == 0)
@@ -87,8 +87,8 @@ internal sealed class ProcessCartHandler(
                 .Include(x => x.StatusHistory)
                 .FirstOrDefaultAsync(
                     x =>
-                        x.ParticipantProcessId ==
-                            context.ParticipantProcessId &&
+                        x.ProcessId ==
+                            context.ProcessId &&
                         x.CustomerId ==
                             step.CustomerId &&
                         x.Status ==
@@ -112,8 +112,8 @@ internal sealed class ProcessCartHandler(
                     ShoppingCartId = 
                         shoppingCart.ShoppingCartId,
 
-                    ParticipantProcessId =
-                        context.ParticipantProcessId,
+                    ProcessId =
+                        context.ProcessId,
 
                     Status =
                         OrderStatus.Started,

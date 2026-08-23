@@ -36,12 +36,12 @@ internal sealed class OrderDetailsViewSource
         }
         else
         {
-            if (parameters.ParticipantProcessId is not null)
+            if (parameters.ProcessId is not null)
             {
                 query =
                     query.Where(x =>
-                        x.ParticipantProcessId ==
-                        parameters.ParticipantProcessId);
+                        x.ProcessId ==
+                        parameters.ProcessId);
             }
 
             if (parameters.CustomerId is not null)
@@ -65,8 +65,8 @@ internal sealed class OrderDetailsViewSource
                     CustomerId =
                         x.CustomerId,
 
-                    ParticipantProcessId =
-                        x.ParticipantProcessId,
+                    ProcessId =
+                        x.ProcessId,
 
                     OrderNumber =
                         x.OrderNumber,

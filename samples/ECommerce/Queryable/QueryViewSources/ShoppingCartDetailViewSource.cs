@@ -28,7 +28,7 @@ internal sealed class ShoppingCartDetailViewSource
         if (parameters is null)
             parameters = new ShoppingCartViewParameters();
 
-        if (parameters.ParticipantProcessId is null &&
+        if (parameters.ProcessId is null &&
             parameters.CustomerId is null)
         {
             return CreateEmptyView();
@@ -36,12 +36,12 @@ internal sealed class ShoppingCartDetailViewSource
 
         IQueryable<ShoppingCartQueryContext>? cartQuery = null;
 
-        if (parameters.ParticipantProcessId is not null)
+        if (parameters.ProcessId is not null)
         {
             cartQuery =
                 query.Where(x =>
-                    x.ParticipantProcessId ==
-                    parameters.ParticipantProcessId);
+                    x.ProcessId ==
+                    parameters.ProcessId);
 
             if (!cartQuery.Any())
             {

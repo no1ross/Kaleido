@@ -10,7 +10,7 @@ public sealed class Order
 
     public Guid ShoppingCartId { get; set; }
 
-    public Guid ParticipantProcessId { get; set; }
+    public Guid ProcessId { get; set; }
 
     public string? OrderNumber { get; set; }
 

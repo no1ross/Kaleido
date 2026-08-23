@@ -74,7 +74,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView> : IQueryContextEn
         }
         catch (Exception exception)
         {
-            observation.Failed(exception);
+            observation.ExecutionFailed(exception);
             throw;
         }
     }
@@ -120,7 +120,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView> : IQueryContextEn
         }
         catch (Exception exception)
         {
-            observation.Failed(exception);
+            observation.ExecutionFailed(exception);
             throw;
         }
     }

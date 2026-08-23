@@ -26,7 +26,7 @@ public sealed class StepExecutionEndpointTests
                 "/kaleido/processes/steps/runtimeroot",
                 new ExecuteStepRequest<RuntimeRootStep>
                 {
-                    ParticipantProcessId = Guid.NewGuid(),
+                    ProcessId = Guid.NewGuid(),
                     RequestId = "request-1",
                     ProcessStep = new RuntimeRootStep()
                 });
@@ -45,14 +45,14 @@ public sealed class StepExecutionEndpointTests
     [Fact]
     public async Task PostStepExecute_AcrossRequests_PersistsProcessState()
     {
-        var participantProcessId =
+        var processId =
             Guid.NewGuid();
 
         await _client.PostAsJsonAsync(
             "/kaleido/processes/steps/runtimeroot",
             new ExecuteStepRequest<RuntimeRootStep>
             {
-                ParticipantProcessId = participantProcessId,
+                ProcessId = processId,
                 RequestId = "request-1",
                 ProcessStep = new RuntimeRootStep()
             });
@@ -62,7 +62,7 @@ public sealed class StepExecutionEndpointTests
                 "/kaleido/processes/steps/runtimestepa",
                 new ExecuteStepRequest<RuntimeStepA>
                 {
-                    ParticipantProcessId = participantProcessId,
+                    ProcessId = processId,
                     RequestId = "request-2",
                     ProcessStep = new RuntimeStepA()
                 });
@@ -70,7 +70,7 @@ public sealed class StepExecutionEndpointTests
         Assert.Equal(HttpStatusCode.OK, executeResponse.StatusCode);
 
         var stateResponse =
-            await _client.GetAsync($"/kaleido/processes/{participantProcessId}");
+            await _client.GetAsync($"/kaleido/processes/{processId}");
 
         Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);
 

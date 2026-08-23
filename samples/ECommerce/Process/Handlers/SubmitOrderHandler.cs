@@ -34,13 +34,13 @@ internal sealed class SubmitOrderHandler(
                     step.OrderId));
         }
 
-        if (order.ParticipantProcessId !=
-            context.ParticipantProcessId)
+        if (order.ProcessId !=
+            context.ProcessId)
         {
             return ProcessStepHandlerResult.Failure(
                 ProcessStpMessages.OrderProcessMismatch(
                     order.OrderId,
-                    context.ParticipantProcessId));
+                    context.ProcessId));
         }
 
         if (order.Status !=

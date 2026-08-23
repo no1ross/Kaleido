@@ -2,7 +2,7 @@
 
 public sealed record ProcessExecutionResult
 {
-    public required Guid ParticipantProcessId { get; init; }
+    public required Guid ProcessId { get; init; }
 
     public required ProcessExecutionState State
     {

@@ -19,7 +19,7 @@ public sealed record ProcessRequest
     /// Uniquely identifies the durable process instance.
     /// Re-submissions for the same process use the same correlation id.
     /// </summary>
-    public Guid? ParticipantProcessId
+    public Guid? ProcessId
     {
         get;
         init;
@@ -47,7 +47,7 @@ public sealed record ProcessRequest
 
 public sealed record ParticipantProcessResult
 {
-    public required Guid ParticipantProcessId { get; init; }
+    public required Guid ProcessId { get; init; }
 
     public required ProcessExecutionState State
     {

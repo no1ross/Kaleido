@@ -22,7 +22,7 @@ public sealed class ProcessExecutionEndpointTests
         var request =
             new ExecuteProcessRequest
             {
-                ParticipantProcessId = Guid.NewGuid(),
+                ProcessId = Guid.NewGuid(),
                 RequestId = "request-1",
                 Steps =
                 [
@@ -56,7 +56,7 @@ public sealed class ProcessExecutionEndpointTests
         var request =
             new ExecuteProcessRequest
             {
-                ParticipantProcessId = Guid.NewGuid(),
+                ProcessId = Guid.NewGuid(),
                 RequestId = "request-2",
                 Steps =
                 [
@@ -86,7 +86,7 @@ public sealed class ProcessExecutionEndpointTests
         var request =
             new ExecuteProcessRequest
             {
-                ParticipantProcessId = Guid.NewGuid(),
+                ProcessId = Guid.NewGuid(),
                 RequestId = "request-3",
                 Steps =
                 [

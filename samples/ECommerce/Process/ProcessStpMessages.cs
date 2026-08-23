@@ -65,13 +65,13 @@ public static class ProcessStpMessages
 
     public static ProcessMessage ShoppingCartProcessMismatch(
         Guid shoppingCartId,
-        Guid participantProcessId) =>
+        Guid processId) =>
         new()
         {
             Code = "SHOPPING_CART_PROCESS_MISMATCH",
             Type = MessageType.Error,
             Message =
-                $"Shopping cart '{shoppingCartId}' is not associated with process '{participantProcessId}'."
+                $"Shopping cart '{shoppingCartId}' is not associated with process '{processId}'."
         };
 
     public static ProcessMessage ShoppingCartItemNotFound(
@@ -253,13 +253,13 @@ public static class ProcessStpMessages
 
     public static ProcessMessage OrderProcessMismatch(
         Guid orderId,
-        Guid participantProcessId) =>
+        Guid processId) =>
         new()
         {
             Code = "ORDER_PROCESS_MISMATCH",
             Type = MessageType.Error,
             Message =
-                $"Order '{orderId}' is not associated with process '{participantProcessId}'."
+                $"Order '{orderId}' is not associated with process '{processId}'."
         };
 
     public static ProcessMessage OrderNotStarted(

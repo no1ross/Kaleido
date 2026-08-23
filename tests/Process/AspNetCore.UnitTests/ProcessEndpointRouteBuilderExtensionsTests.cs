@@ -52,7 +52,7 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
 
         Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows"));
         Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/execute"));
-        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/{participantProcessId}"));
+        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/{processId}"));
         Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/steps"));
         Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/registry"));
         Assert.Equal(2, FindEndpointsByRoute(endpoints, "/workflows/steps/test-step").Count);

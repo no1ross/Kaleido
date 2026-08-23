@@ -786,7 +786,7 @@ public sealed class StepAvailabilityResolverTests
     {
         return new ParticipantContext
         {
-            ParticipantProcessId = Guid.NewGuid(),
+            ProcessId = Guid.NewGuid(),
             Steps =
                 steps
                     .Select(x =>

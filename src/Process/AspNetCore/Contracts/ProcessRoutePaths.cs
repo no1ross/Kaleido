@@ -3,7 +3,7 @@ namespace Kaleido.Process.AspNetCore.Contracts;
 internal static class ProcessRoutePaths
 {
     public const string Process =
-        "{participantProcessId}";
+        "{processId}";
 
     public const string StepCatalog =
         "steps";
