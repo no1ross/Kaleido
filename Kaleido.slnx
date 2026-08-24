@@ -10,11 +10,13 @@
     <Project Path="samples/ECommerce/Shared/Kaleido.Samples.ECommerce.Shared.csproj" />
   </Folder>
   <Folder Name="/samples/PriorAuth/">
-    <Project Path="samples/PriorAuth/docker-compose.dcproj" />
     <Project Path="samples/PriorAuth/Common/Kaleido.Samples.PriorAuth.Common.csproj" />
     <Project Path="samples/PriorAuth/EventCollector/Kaleido.Samples.PriorAuth.EventCollector.csproj" />
     <Project Path="samples/PriorAuth/Intake.Artifacts/Kaleido.Samples.PriorAuth.Intake.Artifacts.csproj" />
     <Project Path="samples/PriorAuth/Intake/Kaleido.Samples.PriorAuth.Intake.csproj" />
+    <Project Path="samples/PriorAuth/Kaleido.Samples.PriorAuth.Compose.dcproj">
+      <Build />
+    </Project>
   </Folder>
   <Folder Name="/samples/PriorAuth/Common/">
     <Project Path="samples/PriorAuth/CodeSet.Artifacts/Kaleido.Samples.PriorAuth.CodeSet.Artifacts.csproj" />

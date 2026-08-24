@@ -71,9 +71,15 @@ builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MemberDbContext).Assembly)
     .AddParticipant()
-        .AddParticipantAspNetCore()
+        .AddParticipantAspNetCore(o =>
+        {
+            o.RoutePrefix = "member";
+        })
     .AddQueryable()
-        .AddQueryableAspNetCore();
+        .AddQueryableAspNetCore(o =>
+        {
+            o.RoutePrefix = "member";
+        });
 
 var app = builder.Build();
 

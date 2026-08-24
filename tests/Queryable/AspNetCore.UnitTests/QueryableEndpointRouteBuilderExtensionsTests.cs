@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Moq;
 
 namespace Kaleido.Queryable.UnitTests.AspNetCore;
@@ -47,11 +46,11 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
 
         endpoints.MapQueryable();
 
-        Assert.NotNull(FindEndpointByRoute(endpoints, "/data"));
-        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/registry"));
-        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/test-context/schema"));
-        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/test-context/execute"));
-        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/test-context/test-view/execute"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/registry"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/schema"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/execute"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/test-view/execute"));
     }
 
     [Fact]
@@ -111,10 +110,12 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        var routeOptions = options ?? new QueryableRouteOptions();
+
         builder.Services.AddSingleton(Mock.Of<IQueryableService>());
         builder.Services.AddSingleton<IQueryContextRegistry>(CreateContextRegistry());
         builder.Services.AddSingleton<IQueryViewRegistry>(CreateViewRegistry());
-        builder.Services.AddSingleton<IOptions<QueryableRouteOptions>>(Options.Create(options ?? new QueryableRouteOptions()));
+        builder.Services.AddSingleton(routeOptions);
         return builder.Build();
     }
 

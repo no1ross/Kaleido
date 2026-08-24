@@ -5,7 +5,7 @@ namespace Kaleido.Queryable;
 /// </summary>
 public sealed class QueryableRouteOptions
 {
-    public string RoutePrefix { get; set; } = "/kaleido/queryable";
+    public string RoutePrefix { get; set; } = "/kaleido";
     public string QueryRoute { get; set; } = "query";
     public string MetadataRoute { get; set; } = "metadata";
     public string QueriesRoute { get; set; } = "queries";

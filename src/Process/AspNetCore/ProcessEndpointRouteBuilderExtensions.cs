@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System.Reflection;
 
 namespace Kaleido.Process.AspNetCore;
@@ -24,8 +23,7 @@ public static class ProcessEndpointRouteBuilderExtensions
 
         var options =
             endpoints.ServiceProvider
-                .GetRequiredService<IOptions<ProcessRouteOptions>>()
-                .Value;
+                .GetRequiredService<ProcessRouteOptions>();
 
         var logger =
             endpoints.ServiceProvider
@@ -33,11 +31,11 @@ public static class ProcessEndpointRouteBuilderExtensions
                 .CreateLogger("Kaleido.Process.Startup");
 
         var group =
-            endpoints.MapGroup(options.RoutePrefix);
+            endpoints.MapGroup(options.ProcessesRoutePrefix);
 
         logger.LogInformation(
             "Process endpoints mapped at route prefix {RoutePrefix} with {ProcessStepCount} process steps and {InitialStepCount} initial steps.",
-            options.RoutePrefix,
+            options.ProcessesRoutePrefix,
             registry.Registrations.Count,
             registry.InitialRegistrations.Count);
 

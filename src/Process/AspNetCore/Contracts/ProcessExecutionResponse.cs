@@ -33,10 +33,12 @@ public sealed record ProcessExecutionResponse
 
     public static ProcessExecutionResponse Create(
         ParticipantProcessResult processResult,
-        IProcessStepRegistry registry)
+        IProcessStepRegistry registry,
+        ProcessRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(processResult);
         ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(options);
 
         return new ProcessExecutionResponse
         {
@@ -50,7 +52,8 @@ public sealed record ProcessExecutionResponse
                 processResult.AvailableSteps
                     .Select(stepName =>
                         ProcessContractMapper.ToSummary(
-                            registry.GetRegistration(stepName)))
+                            registry.GetRegistration(stepName),
+                            options))
                     .ToArray(),
 
             Results =
@@ -144,8 +147,11 @@ public record StepExecutionResponse
     public static StepExecutionResponse Create(
         ParticipantProcessResult processResult,
         ParticipantStepResult stepResult,
-        IProcessStepRegistry registry)
+        IProcessStepRegistry registry,
+        ProcessRouteOptions options)
     {
+        ArgumentNullException.ThrowIfNull(options);
+
         return new()
         {
             ProcessId =
@@ -163,7 +169,8 @@ public record StepExecutionResponse
                 processResult.AvailableSteps
                     .Select(stepName =>
                         ProcessContractMapper.ToSummary(
-                            registry.GetRegistration(stepName)))
+                            registry.GetRegistration(stepName),
+                            options))
                     .ToList(),
 
             Messages =
@@ -184,13 +191,15 @@ public sealed record StepExecutionResponse<TResponse> : StepExecutionResponse
     new public static StepExecutionResponse<TResponse> Create(
         ParticipantProcessResult processResult,
         ParticipantStepResult stepResult,
-        IProcessStepRegistry registry)
+        IProcessStepRegistry registry,
+        ProcessRouteOptions options)
     {
         var response =
             StepExecutionResponse.Create(
                 processResult,
                 stepResult,
-                registry);
+                registry,
+                options);
 
         return new()
         {
@@ -218,9 +227,14 @@ public sealed record StepExecutionResponse<TResponse> : StepExecutionResponse
 internal static class ProcessContractMapper
 {
     public static ProcessStepSummary ToSummary(
-        ProcessStepRegistration registration)
+        ProcessStepRegistration registration,
+        ProcessRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(registration);
+        ArgumentNullException.ThrowIfNull(options);
+
+        var stepName =
+            registration.Metadata.Name.ToLowerInvariant();
 
         return new ProcessStepSummary
         {
@@ -229,8 +243,12 @@ internal static class ProcessContractMapper
             DisplayName = registration.Metadata.DisplayName,
             Description = registration.Metadata.Description,
             Repeatable = registration.Repeatable.Enabled,
-            ExecuteUrl = $"/processes/steps/{registration.Metadata.Name}",
-            MetadataUrl = $"/processes/steps/{registration.Metadata.Name}/metadata"
+            ExecuteUrl = ProcessContractUrls.ExecuteStep(
+                options,
+                stepName),
+            MetadataUrl = ProcessContractUrls.StepMetadata(
+                options,
+                stepName)
         };
     }
 

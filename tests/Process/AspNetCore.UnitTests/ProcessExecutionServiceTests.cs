@@ -45,7 +45,8 @@ public sealed class ProcessExecutionServiceTests
                     HttpContext = new DefaultHttpContext()
                 },
                 registry,
-                runtime.Object);
+                runtime.Object,
+                new ProcessRouteOptions());
 
         var request =
             new ExecuteProcessRequest
@@ -107,7 +108,8 @@ public sealed class ProcessExecutionServiceTests
                     HttpContext = new DefaultHttpContext()
                 },
                 registry,
-                runtime.Object);
+                runtime.Object,
+                new ProcessRouteOptions());
 
         var request =
             new ExecuteStepRequest<TestStep>
@@ -155,7 +157,8 @@ public sealed class ProcessExecutionServiceTests
                     HttpContext = new DefaultHttpContext()
                 },
                 registry,
-                runtime.Object);
+                runtime.Object,
+                new ProcessRouteOptions());
 
         var request =
             new ExecuteStepRequest<TestStep>

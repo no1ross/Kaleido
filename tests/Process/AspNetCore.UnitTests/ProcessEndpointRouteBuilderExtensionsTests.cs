@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 
 namespace Kaleido.Process.AspNetCore.Tests;
 
@@ -50,12 +49,12 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
 
         endpoints.MapParticipant();
 
-        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows"));
-        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/execute"));
-        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/{processId}"));
-        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/steps"));
-        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/registry"));
-        Assert.Equal(2, FindEndpointsByRoute(endpoints, "/workflows/steps/test-step").Count);
+        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes"));
+        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes/execute"));
+        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes/{processId}"));
+        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes/steps"));
+        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes/registry"));
+        Assert.Equal(2, FindEndpointsByRoute(endpoints, "/workflows/processes/steps/test-step").Count);
     }
 
     [Fact]
@@ -128,8 +127,7 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
         builder.Services.AddSingleton<IProcessStepRegistry>(CreateRegistry());
-        builder.Services.AddSingleton<IOptions<ProcessRouteOptions>>(
-            Options.Create(options ?? new ProcessRouteOptions()));
+        builder.Services.AddSingleton(options ?? new ProcessRouteOptions());
 
         return builder.Build();
     }

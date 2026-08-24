@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -34,8 +33,7 @@ public static class QueryableEndpointRouteBuilderExtensions
 
         var options =
             endpoints.ServiceProvider
-                .GetRequiredService<IOptions<QueryableRouteOptions>>()
-                .Value;
+                .GetRequiredService<QueryableRouteOptions>();
 
         var logger =
             endpoints.ServiceProvider
@@ -43,11 +41,13 @@ public static class QueryableEndpointRouteBuilderExtensions
                 .CreateLogger("Kaleido.Queryable.Startup");
 
         var group =
-            endpoints.MapGroup(options.RoutePrefix);
+            endpoints.MapGroup(
+                QueryableContractUrls.QueryablePrefix(
+                    options));
 
         logger.LogInformation(
             "Queryable mapped at route prefix {RoutePrefix} with {QueryContextCount} query contexts and {QueryViewCount} query views.",
-            options.RoutePrefix,
+            QueryableContractUrls.QueryablePrefix(options),
             contextRegistry.Registrations.Count,
             viewRegistry.Registrations.Count);
 

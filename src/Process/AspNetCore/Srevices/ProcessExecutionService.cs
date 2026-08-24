@@ -27,16 +27,20 @@ public class ProcessExecutionService : IProcessExecutionService
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IProcessStepRegistry _registry;
     private readonly IParticipantRuntime _runtime;
+    private readonly ProcessRouteOptions _routeOptions;
+
 
     public ProcessExecutionService(
         IHttpContextAccessor httpContextAccessor,
         IProcessStepRegistry registry,
-        IParticipantRuntime runtime
+        IParticipantRuntime runtime,
+        ProcessRouteOptions routeOptions
         )
     {
         _httpContextAccessor = httpContextAccessor;
         _registry = registry;
         _runtime = runtime;
+        _routeOptions = routeOptions;
     }
     public async Task<ProcessExecutionResponse> ExecuteAsync(
         ExecuteProcessRequest request,
@@ -69,7 +73,8 @@ public class ProcessExecutionService : IProcessExecutionService
 
         return ProcessExecutionResponse.Create(
             processResult,
-            _registry);
+            _registry,
+            _routeOptions);
     }
     public async Task<StepExecutionResponse<TResponse>> ExecuteAsync<TProcessStep, TResponse>(
         ExecuteStepRequest<TProcessStep> request,
@@ -104,7 +109,8 @@ public class ProcessExecutionService : IProcessExecutionService
         return StepExecutionResponse<TResponse>.Create(
             processResult,
             stepResult,
-            _registry);
+            _registry,
+            _routeOptions);
     }
 
     public async Task<StepExecutionResponse> ExecuteAsync<TProcessStep>(ExecuteStepRequest<TProcessStep> request, CancellationToken cancellationToken)
@@ -138,7 +144,8 @@ public class ProcessExecutionService : IProcessExecutionService
         return StepExecutionResponse.Create(
             processResult,
             stepResult,
-            _registry);
+            _registry,
+            _routeOptions);
     }
 
     private void WriteProcessIdHeader(
