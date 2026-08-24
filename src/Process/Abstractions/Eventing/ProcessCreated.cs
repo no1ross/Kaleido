@@ -1,7 +1,9 @@
+using Kaleido.Eventing;
 using Kaleido.Process.Participant.Execution;
 
 namespace Kaleido.Process.Eventing;
 
+[KaleidoEvent(Type = "process.created.v1")]
 public sealed record ProcessCreated : ProcessEventBase
 {
     public required ProcessExecutionState State { get; init; }

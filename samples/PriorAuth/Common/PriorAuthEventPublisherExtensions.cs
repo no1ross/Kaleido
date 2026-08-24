@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Reflection;
 using System.Text.Json;
 using Kaleido.Eventing;
 using Kaleido.Process.Eventing;
@@ -78,16 +79,20 @@ public sealed record EventEnvelope(
         TEvent eventData)
         where TEvent : IKaleidoEvent
     {
-        return eventData switch
+        ArgumentNullException.ThrowIfNull(eventData);
+
+        var attribute =
+            eventData
+                .GetType()
+                .GetCustomAttribute<KaleidoEventAttribute>();
+
+        if (attribute?.Type is null)
         {
-            ProcessCreated => "process.created.v1",
-            PlanBuilt => "process.plan-built.v1",
-            StepCompleted => "process.step-completed.v1",
-            ExecutionCompleted => "process.execution-completed.v1",
-            QueryExecuted => "query.executed.v1",
-            _ => throw new InvalidOperationException(
-                $"No transport event type mapping exists for '{typeof(TEvent).FullName}'.")
-        };
+            throw new InvalidOperationException(
+                $"No KaleidoEventAttribute type metadata exists for '{eventData.GetType().FullName}'.");
+        }
+
+        return attribute.Type;
     }
 
     private static Guid? GetProcessId<TEvent>(

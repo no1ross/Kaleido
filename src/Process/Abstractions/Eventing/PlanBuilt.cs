@@ -1,7 +1,9 @@
+using Kaleido.Eventing;
 using Kaleido.Process.Participant.Execution;
 
 namespace Kaleido.Process.Eventing;
 
+[KaleidoEvent(Type = "process.plan-built.v1")]
 public sealed record PlanBuilt : ProcessEventBase
 {
     public required ProcessExecutionState State { get; init; }

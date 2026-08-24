@@ -1,8 +1,10 @@
+using Kaleido.Eventing;
 using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Execution;
 
 namespace Kaleido.Process.Eventing;
 
+[KaleidoEvent(Type = "process.step-completed.v1")]
 public sealed record StepCompleted : ProcessEventBase
 {
     public required string StepName { get; init; }
