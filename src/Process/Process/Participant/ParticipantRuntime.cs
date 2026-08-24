@@ -1,4 +1,5 @@
-﻿using Kaleido.Exceptions;
+﻿using Kaleido.Eventing;
+using Kaleido.Exceptions;
 using Kaleido.Process.Observability;
 using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
@@ -13,6 +14,8 @@ internal sealed class ParticipantRuntime
     private readonly IProcessStateUpdater _stateUpdater;
     private readonly IExecutionPlanner _planner;
     private readonly IExecutionProcessor _processor;
+    private readonly IProcessEventFactory _eventFactory;
+    private readonly IEventPublisher _eventPublisher;
     private readonly IProcessObservability _observability;
 
     public ParticipantRuntime(
@@ -20,17 +23,24 @@ internal sealed class ParticipantRuntime
         IProcessStateUpdater stateUpdater,
         IExecutionPlanner planner,
         IExecutionProcessor processor,
+        IProcessEventFactory eventFactory,
+        IEventPublisher eventPublisher,
         IProcessObservability observability)
     {
         ArgumentNullException.ThrowIfNull(contextStore);
         ArgumentNullException.ThrowIfNull(stateUpdater);
         ArgumentNullException.ThrowIfNull(planner);
         ArgumentNullException.ThrowIfNull(processor);
+        ArgumentNullException.ThrowIfNull(eventFactory);
+        ArgumentNullException.ThrowIfNull(eventPublisher);
+        ArgumentNullException.ThrowIfNull(observability);
 
         _contextStore = contextStore;
         _stateUpdater = stateUpdater;
         _planner = planner;
         _processor = processor;
+        _eventFactory = eventFactory;
+        _eventPublisher = eventPublisher;
         _observability = observability;
     }
 
@@ -60,19 +70,38 @@ internal sealed class ParticipantRuntime
                     request.Participant,
                     context);
 
+            var executionCandidates =
+                GetExecutionCandidates(plan);
+
             observation.PlanBuilt(
                 plan.Candidates.Count,
-                GetExecutionCandidates(plan).Count);
+                executionCandidates.Count);
+
+            await _eventPublisher.PublishAsync(
+                _eventFactory.CreatePlanBuilt(
+                    context,
+                    request,
+                    plan,
+                    executionCandidates.Count),
+                cancellationToken);
 
             var executionResult =
                 await _processor.ExecuteAsync(
-                    GetExecutionCandidates(plan),
+                    executionCandidates,
                     context,
                     cancellationToken);
 
-            return CreateResult(
-                plan,
-                executionResult);
+            var result =
+                CreateResult(
+                    plan,
+                    executionResult);
+
+            await _eventPublisher.PublishAsync(
+                _eventFactory.CreateExecutionCompleted(
+                    executionResult),
+                cancellationToken);
+
+            return result;
         }
         catch (Exception exception)
         {
@@ -100,6 +129,12 @@ internal sealed class ParticipantRuntime
             observation.ContextInitialized(
                 initializedContext.ProcessId);
 
+            await _eventPublisher.PublishAsync(
+                _eventFactory.CreateProcessCreated(
+                    initializedContext,
+                    request),
+                cancellationToken);
+
             return initializedContext;
         }
 
@@ -121,6 +156,12 @@ internal sealed class ParticipantRuntime
 
             observation.ContextInitialized(
                 initializedContext.ProcessId);
+
+            await _eventPublisher.PublishAsync(
+                _eventFactory.CreateProcessCreated(
+                    initializedContext,
+                    request),
+                cancellationToken);
 
             return initializedContext;
         }

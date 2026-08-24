@@ -1,4 +1,6 @@
-﻿using Kaleido.Process.Observability;
+﻿using Kaleido.Eventing;
+using Kaleido.Process.Eventing;
+using Kaleido.Process.Observability;
 using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Planning;
@@ -14,6 +16,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
     private readonly IProcessContextStore _stateRepository;
     private readonly IProcessStepRegistry _stepRegistry;
     private readonly IStepAvailabilityResolver _availabilityResolver;
+    private readonly IProcessEventFactory _eventFactory;
+    private readonly IEventPublisher _eventPublisher;
     private readonly IProcessObservability _observability;
 
     public ExecutionProcessor(
@@ -23,6 +27,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         IProcessContextStore stateRepository,
         IProcessStepRegistry stepRegistry,
         IStepAvailabilityResolver availabilityResolver,
+        IProcessEventFactory eventFactory,
+        IEventPublisher eventPublisher,
         IProcessObservability observability)
     {
         ArgumentNullException.ThrowIfNull(invoker);
@@ -31,6 +37,9 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         ArgumentNullException.ThrowIfNull(stateRepository);
         ArgumentNullException.ThrowIfNull(stepRegistry);
         ArgumentNullException.ThrowIfNull(availabilityResolver);
+        ArgumentNullException.ThrowIfNull(eventFactory);
+        ArgumentNullException.ThrowIfNull(eventPublisher);
+        ArgumentNullException.ThrowIfNull(observability);
 
         _availabilityResolver = availabilityResolver;
         _invoker = invoker;
@@ -38,6 +47,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         _stateUpdater = stateUpdater;
         _stateRepository = stateRepository;
         _stepRegistry = stepRegistry;
+        _eventFactory = eventFactory;
+        _eventPublisher = eventPublisher;
         _observability = observability;
     }
 
@@ -168,6 +179,15 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 outcomes.Add(
                     outcome);
 
+                await _eventPublisher.PublishAsync(
+                    _eventFactory.CreateStepCompleted(
+                        context,
+                        candidate,
+                        outcome,
+                        result,
+                        GetStepOutcome(outcome.Status)),
+                    cancellationToken);
+
                 currentCandidate =
                     GetNextCandidate(
                         decision);
@@ -275,6 +295,34 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         return decision.Type == ExecutionDecisionType.Continue
             ? decision.NextCandidate
             : null;
+    }
+
+    private static StepExecutionOutcome GetStepOutcome(
+        StepExecutionStatus status)
+    {
+        return status switch
+        {
+            StepExecutionStatus.Pending =>
+                StepExecutionOutcome.Blocked,
+
+            StepExecutionStatus.Completed =>
+                StepExecutionOutcome.Completed,
+
+            StepExecutionStatus.ValidationFailed =>
+                StepExecutionOutcome.Failed,
+
+            StepExecutionStatus.Exception =>
+                StepExecutionOutcome.Failed,
+
+            StepExecutionStatus.Skipped =>
+                StepExecutionOutcome.Blocked,
+
+            StepExecutionStatus.Canceled =>
+                StepExecutionOutcome.Blocked,
+
+            _ =>
+                StepExecutionOutcome.Pending
+        };
     }
 
     private static ProcessExecutionOutcome CreateOutcome(

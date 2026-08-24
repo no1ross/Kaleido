@@ -20,6 +20,29 @@ services:
       - memberservice-data:/app/MemberService/data
     restart: "no"
 
+  eventcollector:
+    build:
+      context: ../..
+      dockerfile: samples/PriorAuth/EventCollector/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__EventCollector: Data Source=/app/data/eventcollector.db
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: priorauth-eventcollector
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=Development,service.version=1.0.0
+    volumes:
+      - eventcollector-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    ports:
+      - "8086:8080"
+
   referencedata:
     build:
       context: ../..
@@ -27,10 +50,13 @@ services:
     depends_on:
       seeder:
         condition: service_completed_successfully
+      eventcollector:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__ReferenceData: Data Source=/app/data/referencedata.db
+      Services__EventCollector__BaseUrl: http://eventcollector:8080
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-referencedata
@@ -53,10 +79,13 @@ services:
     depends_on:
       seeder:
         condition: service_completed_successfully
+      eventcollector:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__CodeSet: Data Source=/app/data/codeset.db
+      Services__EventCollector__BaseUrl: http://eventcollector:8080
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-codeset
@@ -79,6 +108,8 @@ services:
     depends_on:
       seeder:
         condition: service_completed_successfully
+      eventcollector:
+        condition: service_healthy
       referencedata:
         condition: service_healthy
       codeset:
@@ -87,6 +118,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__ProviderSearch: Data Source=/app/data/providersearch.db
+      Services__EventCollector__BaseUrl: http://eventcollector:8080
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-providersearch
@@ -109,12 +141,15 @@ services:
     depends_on:
       seeder:
         condition: service_completed_successfully
+      eventcollector:
+        condition: service_healthy
       referencedata:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__MemberService: Data Source=/app/data/memberservice.db
+      Services__EventCollector__BaseUrl: http://eventcollector:8080
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-memberservice
@@ -148,6 +183,7 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Intake: Data Source=/app/data/intake.db
       Services__ReferenceData__BaseUrl: http://referencedata:8080
+      Services__EventCollector__BaseUrl: http://eventcollector:8080
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-intake
@@ -164,6 +200,7 @@ services:
       - "8085:8080"
 
 volumes:
+  eventcollector-data:
   referencedata-data:
   codeset-data:
   providersearch-data:

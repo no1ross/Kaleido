@@ -191,6 +191,7 @@ public static class ParticipantServiceCollectionExtensions
         services.TryAddSingleton<IStepAvailabilityResolver, StepAvailabilityResolver>();
         services.TryAddSingleton<IProcessContextStore, InMemoryProcessContextStore>();
 
+        services.TryAddSingleton<IProcessEventFactory, ProcessEventFactory>();
         services.TryAddScoped<IProcessObservability, ProcessObservability>();
         services.TryAddScoped<IParticipantRuntime, ParticipantRuntime>();
         services.TryAddScoped<IExecutionProcessor, ExecutionProcessor>();

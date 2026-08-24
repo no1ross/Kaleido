@@ -1,0 +1,49 @@
+services:
+  eventcollector:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    labels:
+      com.microsoft.visualstudio.debuggee.program: dotnet
+      com.microsoft.visualstudio.debuggee.arguments: --additionalProbingPath /root/.nuget/packages /app/Kaleido.Samples.PriorAuth.EventCollector.dll
+      com.microsoft.visualstudio.debuggee.workingdirectory: /app
+      com.microsoft.visualstudio.debuggee.killprogram: /bin/sh -c "if PID=$$(pidof dotnet); then kill $$PID; fi"
+  referencedata:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    labels:
+      com.microsoft.visualstudio.debuggee.program: dotnet
+      com.microsoft.visualstudio.debuggee.arguments: --additionalProbingPath /root/.nuget/packages /app/Kaleido.Samples.PriorAuth.ReferenceData.dll
+      com.microsoft.visualstudio.debuggee.workingdirectory: /app
+      com.microsoft.visualstudio.debuggee.killprogram: /bin/sh -c "if PID=$$(pidof dotnet); then kill $$PID; fi"
+  codeset:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    labels:
+      com.microsoft.visualstudio.debuggee.program: dotnet
+      com.microsoft.visualstudio.debuggee.arguments: --additionalProbingPath /root/.nuget/packages /app/Kaleido.Samples.PriorAuth.CodeSet.dll
+      com.microsoft.visualstudio.debuggee.workingdirectory: /app
+      com.microsoft.visualstudio.debuggee.killprogram: /bin/sh -c "if PID=$$(pidof dotnet); then kill $$PID; fi"
+  providersearch:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    labels:
+      com.microsoft.visualstudio.debuggee.program: dotnet
+      com.microsoft.visualstudio.debuggee.arguments: --additionalProbingPath /root/.nuget/packages /app/Kaleido.Samples.PriorAuth.ProviderSearch.dll
+      com.microsoft.visualstudio.debuggee.workingdirectory: /app
+      com.microsoft.visualstudio.debuggee.killprogram: /bin/sh -c "if PID=$$(pidof dotnet); then kill $$PID; fi"
+  memberservice:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    labels:
+      com.microsoft.visualstudio.debuggee.program: dotnet
+      com.microsoft.visualstudio.debuggee.arguments: --additionalProbingPath /root/.nuget/packages /app/Kaleido.Samples.PriorAuth.MemberService.dll
+      com.microsoft.visualstudio.debuggee.workingdirectory: /app
+      com.microsoft.visualstudio.debuggee.killprogram: /bin/sh -c "if PID=$$(pidof dotnet); then kill $$PID; fi"
+  intake:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    labels:
+      com.microsoft.visualstudio.debuggee.program: dotnet
+      com.microsoft.visualstudio.debuggee.arguments: --additionalProbingPath /root/.nuget/packages /app/Kaleido.Samples.PriorAuth.Intake.dll
+      com.microsoft.visualstudio.debuggee.workingdirectory: /app
+      com.microsoft.visualstudio.debuggee.killprogram: /bin/sh -c "if PID=$$(pidof dotnet); then kill $$PID; fi"

@@ -1,6 +1,7 @@
 using Kaleido;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
+using Kaleido.Samples.PriorAuth.Common;
 using Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,6 +59,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ReferenceDataDbContext>();
+
+builder.Services.AddPriorAuthEventPublishing(
+    builder.Configuration);
 
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)

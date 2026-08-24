@@ -10,6 +10,9 @@
     <Project Path="samples/ECommerce/Shared/Kaleido.Samples.ECommerce.Shared.csproj" />
   </Folder>
   <Folder Name="/samples/PriorAuth/">
+    <Project Path="samples/PriorAuth/docker-compose.dcproj" />
+    <Project Path="samples/PriorAuth/Common/Kaleido.Samples.PriorAuth.Common.csproj" />
+    <Project Path="samples/PriorAuth/EventCollector/Kaleido.Samples.PriorAuth.EventCollector.csproj" />
     <Project Path="samples/PriorAuth/Intake.Artifacts/Kaleido.Samples.PriorAuth.Intake.Artifacts.csproj" />
     <Project Path="samples/PriorAuth/Intake/Kaleido.Samples.PriorAuth.Intake.csproj" />
   </Folder>
@@ -39,6 +42,11 @@
     <File Path="build/tests.props" />
     <File Path="global.json" />
     <File Path="README.md" />
+  </Folder>
+  <Folder Name="/Solution Items/PriorAuth Compose/">
+    <File Path="samples/PriorAuth/.env" />
+    <File Path="samples/PriorAuth/docker-compose.override.yml" />
+    <File Path="samples/PriorAuth/docker-compose.yml" />
   </Folder>
   <Folder Name="/Solution Items/Build/">
     <File Path="build/common.props" />

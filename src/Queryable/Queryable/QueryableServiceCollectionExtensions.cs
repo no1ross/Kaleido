@@ -133,6 +133,7 @@ public static class QueryableServiceCollectionExtensions
             typeof(IQueryContextExecutor<>),
             typeof(QueryContextExecutor<>));
 
+        services.TryAddSingleton<IQueryEventFactory, QueryEventFactory>();
         services.TryAddScoped<IQueryableObservability, QueryableObservability>();
     }
 

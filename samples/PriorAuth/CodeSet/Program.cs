@@ -2,6 +2,7 @@ using Kaleido;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Data;
+using Kaleido.Samples.PriorAuth.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Logs;
@@ -58,6 +59,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<CodeSetDbContext>();
+
+builder.Services.AddPriorAuthEventPublishing(
+    builder.Configuration);
 
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)

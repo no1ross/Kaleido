@@ -1,4 +1,7 @@
-﻿using Kaleido.Process.Observability;
+﻿using Kaleido.Eventing;
+using Kaleido.Process;
+using Kaleido.Process.Eventing;
+using Kaleido.Process.Observability;
 using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
@@ -20,7 +23,9 @@ public sealed class ParticipantRuntimeTests
                     Mock.Of<IProcessStateUpdater>(),
                     Mock.Of<IExecutionPlanner>(),
                     Mock.Of<IExecutionProcessor>(),
-                    Mock.Of<IProcessObservability>()));
+                    Mock.Of<IProcessEventFactory>(),
+                    CreateEventPublisher().Object,
+                    CreateObservability().Object));
 
         Assert.Equal("contextStore", exception.ParamName);
     }
@@ -35,7 +40,9 @@ public sealed class ParticipantRuntimeTests
                     null!,
                     Mock.Of<IExecutionPlanner>(),
                     Mock.Of<IExecutionProcessor>(),
-                    Mock.Of<IProcessObservability>()));
+                    Mock.Of<IProcessEventFactory>(),
+                    CreateEventPublisher().Object,
+                    CreateObservability().Object));
 
         Assert.Equal("stateUpdater", exception.ParamName);
     }
@@ -50,7 +57,9 @@ public sealed class ParticipantRuntimeTests
                     Mock.Of<IProcessStateUpdater>(),
                     null!,
                     Mock.Of<IExecutionProcessor>(),
-                    Mock.Of<IProcessObservability>()));
+                    Mock.Of<IProcessEventFactory>(),
+                    CreateEventPublisher().Object,
+                    CreateObservability().Object));
 
         Assert.Equal("planner", exception.ParamName);
     }
@@ -65,7 +74,9 @@ public sealed class ParticipantRuntimeTests
                     Mock.Of<IProcessStateUpdater>(),
                     Mock.Of<IExecutionPlanner>(),
                     null!,
-                    Mock.Of<IProcessObservability>()));
+                    Mock.Of<IProcessEventFactory>(),
+                    CreateEventPublisher().Object,
+                    CreateObservability().Object));
 
         Assert.Equal("processor", exception.ParamName);
     }
@@ -139,7 +150,7 @@ public sealed class ParticipantRuntimeTests
                     It.IsAny<ParticipantContext>(),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(
-                CreateExecutionResult());
+                CreateExecutionResult(processId));
 
         var runtime =
             new ParticipantRuntime(
@@ -147,7 +158,9 @@ public sealed class ParticipantRuntimeTests
                 stateUpdater.Object,
                 planner.Object,
                 processor.Object,
-                Mock.Of<IProcessObservability>());
+                CreateProcessEventFactory().Object,
+                CreateEventPublisher().Object,
+                CreateObservability().Object);
 
         await runtime.ExecuteAsync(request);
 
@@ -222,7 +235,7 @@ public sealed class ParticipantRuntimeTests
                     reconciledContext,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(
-                CreateExecutionResult());
+                CreateExecutionResult(processId));
 
         var runtime =
             new ParticipantRuntime(
@@ -230,7 +243,9 @@ public sealed class ParticipantRuntimeTests
                 stateUpdater.Object,
                 planner.Object,
                 processor.Object,
-                Mock.Of<IProcessObservability>());
+                CreateProcessEventFactory().Object,
+                CreateEventPublisher().Object,
+                CreateObservability().Object);
 
         await runtime.ExecuteAsync(request);
 
@@ -326,7 +341,7 @@ public sealed class ParticipantRuntimeTests
             .Callback<IReadOnlyCollection<StepCandidate>, ParticipantContext, CancellationToken>(
                 (candidates, _, _) => capturedCandidates = candidates)
             .ReturnsAsync(
-                CreateExecutionResult());
+                CreateExecutionResult(processId));
 
         var runtime =
             new ParticipantRuntime(
@@ -334,7 +349,9 @@ public sealed class ParticipantRuntimeTests
                 stateUpdater.Object,
                 planner.Object,
                 processor.Object,
-                Mock.Of<IProcessObservability>());
+                CreateProcessEventFactory().Object,
+                CreateEventPublisher().Object,
+                CreateObservability().Object);
 
         await runtime.ExecuteAsync(request);
 
@@ -451,7 +468,9 @@ public sealed class ParticipantRuntimeTests
                 stateUpdater.Object,
                 planner.Object,
                 processor.Object,
-                Mock.Of<IProcessObservability>());
+                CreateProcessEventFactory().Object,
+                CreateEventPublisher().Object,
+                CreateObservability().Object);
 
         var result =
             await runtime.ExecuteAsync(request);
@@ -492,7 +511,7 @@ public sealed class ParticipantRuntimeTests
             new ExecutionPlanResult { Candidates = [] };
 
         var executionResult =
-            CreateExecutionResult();
+            CreateExecutionResult(processId);
 
         var sequence =
             new MockSequence();
@@ -546,7 +565,9 @@ public sealed class ParticipantRuntimeTests
                 stateUpdater.Object,
                 planner.Object,
                 processor.Object,
-                Mock.Of<IProcessObservability>());
+                CreateProcessEventFactory().Object,
+                CreateEventPublisher().Object,
+                CreateObservability().Object);
 
         await runtime.ExecuteAsync(request);
 
@@ -563,7 +584,130 @@ public sealed class ParticipantRuntimeTests
             Mock.Of<IProcessStateUpdater>(),
             Mock.Of<IExecutionPlanner>(),
             Mock.Of<IExecutionProcessor>(),
-            Mock.Of<IProcessObservability>());
+            CreateProcessEventFactory().Object,
+            CreateEventPublisher().Object,
+            CreateObservability().Object);
+    }
+
+    private static Mock<IProcessObservability> CreateObservability()
+    {
+        var executionObservation =
+            new Mock<IProcessExecutionObservation>();
+
+        executionObservation
+            .Setup(x => x.Dispose());
+
+        var observability =
+            new Mock<IProcessObservability>();
+
+        observability
+            .Setup(x =>
+                x.BeginExecution(
+                    It.IsAny<ProcessExecutionObservationDetails>()))
+            .Returns(executionObservation.Object);
+
+        return observability;
+    }
+
+    private static Mock<IEventPublisher> CreateEventPublisher()
+    {
+        var publisher =
+            new Mock<IEventPublisher>(MockBehavior.Strict);
+
+        publisher
+            .Setup(x =>
+                x.PublishAsync(
+                    It.IsAny<ProcessCreated>(),
+                    It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        publisher
+            .Setup(x =>
+                x.PublishAsync(
+                    It.IsAny<PlanBuilt>(),
+                    It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        publisher
+            .Setup(x =>
+                x.PublishAsync(
+                    It.IsAny<ExecutionCompleted>(),
+                    It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        return publisher;
+    }
+
+    private static Mock<IProcessEventFactory> CreateProcessEventFactory()
+    {
+        var factory =
+            new Mock<IProcessEventFactory>(MockBehavior.Strict);
+
+        factory
+            .Setup(x =>
+                x.CreateProcessCreated(
+                    It.IsAny<ParticipantContext>(),
+                    It.IsAny<ProcessRequest>()))
+            .Returns<ParticipantContext, ProcessRequest>((context, request) =>
+            {
+                var participant =
+                    request.Participant ?? new ParticipantRequest();
+
+                return new Eventing.ProcessCreated
+                {
+                    ProcessId = context.ProcessId,
+                    OccurredOn = DateTimeOffset.UtcNow,
+                    State = context.State,
+                    CreatedUtc = context.CreatedUtc,
+                    UpdatedUtc = context.UpdatedUtc,
+                    SubmittedStepNames = participant.Steps.Keys.ToArray(),
+                    SubmittedStepCount = participant.Steps.Count
+                };
+            });
+
+        factory
+            .Setup(x =>
+                x.CreatePlanBuilt(
+                    It.IsAny<ParticipantContext>(),
+                    It.IsAny<ProcessRequest>(),
+                    It.IsAny<ExecutionPlanResult>(),
+                    It.IsAny<int>()))
+            .Returns<ParticipantContext, ProcessRequest, ExecutionPlanResult, int>((context, request, plan, executableCount) =>
+            {
+                var participant =
+                    request.Participant ?? new ParticipantRequest();
+
+                return new Eventing.PlanBuilt
+                {
+                    ProcessId = context.ProcessId,
+                    OccurredOn = DateTimeOffset.UtcNow,
+                    State = context.State,
+                    RequiredStep = context.RequiredStep,
+                    AvailableSteps = context.AvailableSteps,
+                    SubmittedStepNames = participant.Steps.Keys.ToArray(),
+                    SubmittedStepCount = participant.Steps.Count,
+                    CandidateCount = plan.Candidates.Count,
+                    ExecutableCount = executableCount,
+                    Candidates = []
+                };
+            });
+
+        factory
+            .Setup(x =>
+                x.CreateExecutionCompleted(
+                    It.IsAny<ProcessExecutionResult>()))
+            .Returns<ProcessExecutionResult>(executionResult =>
+                new Eventing.ExecutionCompleted
+                {
+                    ProcessId = executionResult.ProcessId,
+                    OccurredOn = DateTimeOffset.UtcNow,
+                    State = executionResult.State,
+                    RequiredStep = executionResult.RequiredStep,
+                    AvailableSteps = executionResult.AvailableSteps,
+                    ExecutedStepCount = executionResult.Outcomes.Count
+                });
+
+        return factory;
     }
 
     private static ProcessRequest CreateRequest()
@@ -583,16 +727,24 @@ public sealed class ParticipantRuntimeTests
         return new ParticipantContext
         {
             ProcessId = processId,
-            LatestRequestId = requestId
+            LatestRequestId = requestId,
+            State = ProcessExecutionState.Active,
+            AvailableSteps = [],
+            Steps = [],
+            CreatedUtc = DateTimeOffset.UtcNow,
+            UpdatedUtc = DateTimeOffset.UtcNow
         };
     }
 
-    private static ProcessExecutionResult CreateExecutionResult()
+    private static ProcessExecutionResult CreateExecutionResult(
+        Guid? processId = null)
     {
         return new ProcessExecutionResult
         {
-            ProcessId = Guid.NewGuid(),
-            State = ProcessExecutionState.Active
+            ProcessId = processId ?? Guid.NewGuid(),
+            State = ProcessExecutionState.Active,
+            AvailableSteps = [],
+            Outcomes = []
         };
     }
 

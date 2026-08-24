@@ -1,4 +1,7 @@
+using Kaleido.Eventing;
+using Kaleido.Observability;
 using Kaleido.Queryable.Attributes;
+using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Runtime;
@@ -46,6 +49,9 @@ public sealed class QueryContextEngineTests
             source.Object,
             applier.Object,
             executor.Object,
+            CreateQueryEventFactory().Object,
+            CreateEventPublisher().Object,
+            CreateCorrelationAccessor().Object,
             new TestQueryableObservability(),
             provider);
 
@@ -85,6 +91,9 @@ public sealed class QueryContextEngineTests
             source.Object,
             applier.Object,
             executor.Object,
+            CreateQueryEventFactory().Object,
+            CreateEventPublisher().Object,
+            CreateCorrelationAccessor().Object,
             new TestQueryableObservability(),
             new ServiceCollection().BuildServiceProvider());
 
@@ -92,6 +101,69 @@ public sealed class QueryContextEngineTests
             engine.ExecuteAsync(request, registration));
 
         Assert.Contains("requires result type", exception.Message);
+    }
+
+    private static Mock<IEventPublisher> CreateEventPublisher()
+    {
+        var publisher =
+            new Mock<IEventPublisher>();
+
+        publisher
+            .Setup(x =>
+                x.PublishAsync(
+                    It.IsAny<QueryExecuted>(),
+                    It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        return publisher;
+    }
+
+    private static Mock<IKaleidoCorrelationContextAccessor> CreateCorrelationAccessor()
+    {
+        var accessor =
+            new Mock<IKaleidoCorrelationContextAccessor>();
+
+        accessor
+            .SetupGet(x => x.Current)
+            .Returns(new KaleidoCorrelationContext());
+
+        return accessor;
+    }
+
+    private static Mock<IQueryEventFactory> CreateQueryEventFactory()
+    {
+        var factory =
+            new Mock<IQueryEventFactory>();
+
+        factory
+            .Setup(x =>
+                x.CreateQueryExecuted(
+                    It.IsAny<KaleidoCorrelationContext>(),
+                    It.IsAny<QueryObservationDetails>(),
+                    It.IsAny<IQueryRequest>(),
+                    It.IsAny<CompiledRecordQuery>(),
+                    It.IsAny<QueryResult<TestViewContract>>()))
+            .Returns<KaleidoCorrelationContext, QueryObservationDetails, IQueryRequest, CompiledRecordQuery, QueryResult<TestViewContract>>((correlation, details, request, _, result) =>
+                new Eventing.QueryExecuted
+                {
+                    ProcessId = correlation.ProcessId,
+                    OccurredOn = DateTimeOffset.UtcNow,
+                    QueryContextName = details.QueryContextName,
+                    QueryViewName = details.QueryViewName,
+                    IsDirectQuery = details.IsDirectQuery,
+                    Request = request,
+                    TotalCount = result.TotalCount,
+                    ReturnedCount = result.Records.Count,
+                    PageSize = result.PageSize,
+                    Offset = result.Offset,
+                    Records = result.Records.Cast<object?>().ToArray(),
+                    SearchText = request.Query?.SearchText,
+                    SortCount = request.Query?.Sort?.Count ?? 0,
+                    FilterProvided = request.Query?.Filter is not null,
+                    ViewParameters = request.ViewParameters
+                });
+
+        return factory;
     }
 
     private static QueryContextRegistration CreateContextRegistration() =>

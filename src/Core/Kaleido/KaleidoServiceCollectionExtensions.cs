@@ -1,5 +1,7 @@
+using Kaleido.Eventing;
 using Kaleido.Observability;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
 
 namespace Kaleido;
@@ -15,6 +17,7 @@ public static class KaleidoServiceCollectionExtensions
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
         services.AddScoped<IKaleidoCorrelationContextInitializer>(
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
+        services.TryAddSingleton<IEventPublisher, NullEventPublisher>();
 
         return new KaleidoBuilder(services);
     }

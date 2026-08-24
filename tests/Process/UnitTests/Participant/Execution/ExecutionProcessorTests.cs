@@ -1,4 +1,7 @@
-﻿using Kaleido.Process.Observability;
+﻿using Kaleido.Eventing;
+using Kaleido.Process;
+using Kaleido.Process.Eventing;
+using Kaleido.Process.Observability;
 using Kaleido.Process.Participant;
 using Kaleido.Process.Participant.Context;
 using Kaleido.Process.Participant.Execution;
@@ -21,7 +24,9 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IProcessContextStore>(),
                 Mock.Of<IProcessStepRegistry>(),
                 Mock.Of<IStepAvailabilityResolver>(),
-                Mock.Of<IProcessObservability>()));
+                Mock.Of<IProcessEventFactory>(),
+                CreateEventPublisher().Object,
+                CreateObservability().Object));
     }
 
     [Fact]
@@ -35,7 +40,9 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IProcessContextStore>(),
                 Mock.Of<IProcessStepRegistry>(),
                 Mock.Of<IStepAvailabilityResolver>(),
-                Mock.Of<IProcessObservability>()));
+                Mock.Of<IProcessEventFactory>(),
+                CreateEventPublisher().Object,
+                CreateObservability().Object));
     }
 
     [Fact]
@@ -49,7 +56,9 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IProcessContextStore>(),
                 Mock.Of<IProcessStepRegistry>(),
                 Mock.Of<IStepAvailabilityResolver>(),
-                Mock.Of<IProcessObservability>()));
+                Mock.Of<IProcessEventFactory>(),
+                CreateEventPublisher().Object,
+                CreateObservability().Object));
     }
 
     [Fact]
@@ -63,7 +72,9 @@ public sealed class ExecutionProcessorTests
                 null!,
                 Mock.Of<IProcessStepRegistry>(),
                 Mock.Of<IStepAvailabilityResolver>(),
-                Mock.Of<IProcessObservability>()));
+                Mock.Of<IProcessEventFactory>(),
+                CreateEventPublisher().Object,
+                CreateObservability().Object));
     }
 
     [Fact]
@@ -77,7 +88,9 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IProcessContextStore>(),
                 null!,
                 Mock.Of<IStepAvailabilityResolver>(),
-                Mock.Of<IProcessObservability>()));
+                Mock.Of<IProcessEventFactory>(),
+                CreateEventPublisher().Object,
+                CreateObservability().Object));
     }
 
     [Fact]
@@ -91,7 +104,9 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IProcessContextStore>(),
                 Mock.Of<IProcessStepRegistry>(),
                 null!,
-                Mock.Of<IProcessObservability>()));
+                Mock.Of<IProcessEventFactory>(),
+                CreateEventPublisher().Object,
+                CreateObservability().Object));
     }
 
     [Fact]
@@ -1263,7 +1278,86 @@ public sealed class ExecutionProcessorTests
             (stateRepository ?? new Mock<IProcessContextStore>()).Object,
             (stepRegistry ?? new Mock<IProcessStepRegistry>()).Object,
             (availabilityResolver ?? new Mock<IStepAvailabilityResolver>()).Object,
-            Mock.Of<IProcessObservability>());
+            CreateProcessEventFactory().Object,
+            CreateEventPublisher().Object,
+            CreateObservability().Object);
+    }
+
+    private static Mock<IProcessObservability> CreateObservability()
+    {
+        var stepObservation =
+            new Mock<IProcessStepObservation>();
+
+        stepObservation
+            .Setup(x => x.Dispose());
+
+        var observability =
+            new Mock<IProcessObservability>();
+
+        observability
+            .Setup(x =>
+                x.BeginStep(
+                    It.IsAny<ProcessStepObservationDetails>()))
+            .Returns(stepObservation.Object);
+
+        return observability;
+    }
+
+    private static Mock<IEventPublisher> CreateEventPublisher()
+    {
+        var publisher =
+            new Mock<IEventPublisher>(MockBehavior.Strict);
+
+        publisher
+            .Setup(x =>
+                x.PublishAsync(
+                    It.IsAny<StepCompleted>(),
+                    It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        return publisher;
+    }
+
+    private static Mock<IProcessEventFactory> CreateProcessEventFactory()
+    {
+        var factory =
+            new Mock<IProcessEventFactory>(MockBehavior.Strict);
+
+        factory
+            .Setup(x =>
+                x.CreateStepCompleted(
+                    It.IsAny<ParticipantContext>(),
+                    It.IsAny<StepCandidate>(),
+                    It.IsAny<ProcessExecutionOutcome>(),
+                    It.IsAny<ProcessStepInvokerResult>(),
+                    It.IsAny<StepExecutionOutcome>()))
+            .Returns<ParticipantContext, StepCandidate, ProcessExecutionOutcome, ProcessStepInvokerResult, StepExecutionOutcome>((context, candidate, outcome, _, executionOutcome) =>
+            {
+                var stepContext =
+                    context.FindStep(candidate.StepName);
+
+                return new Eventing.StepCompleted
+                {
+                    ProcessId = context.ProcessId,
+                    OccurredOn = DateTimeOffset.UtcNow,
+                    StepName = candidate.StepName,
+                    StepVersion = candidate.Registration?.Metadata.Version ?? string.Empty,
+                    Request = candidate.Step,
+                    Response = outcome.Response,
+                    DecisionType = outcome.Decision,
+                    ExecutionStatus = outcome.Status,
+                    Outcome = executionOutcome,
+                    BusinessMessages = outcome.BusinessMessages,
+                    RuntimeMessages = outcome.RuntimeMessages,
+                    ProcessState = context.State,
+                    RequiredStep = context.RequiredStep,
+                    AvailableSteps = context.AvailableSteps,
+                    StepLatestRequestId = stepContext?.LatestRequestId,
+                    StepLastExecuted = stepContext?.LastExecuted
+                };
+            });
+
+        return factory;
     }
 
     private static Mock<IStepAvailabilityResolver> CreateAvailabilityResolver(
@@ -1355,6 +1449,17 @@ public sealed class ExecutionProcessorTests
             ProcessId =
                 Guid.NewGuid(),
 
+            State =
+                ProcessExecutionState.Active,
+
+            AvailableSteps = [],
+
+            CreatedUtc =
+                DateTimeOffset.UtcNow,
+
+            UpdatedUtc =
+                DateTimeOffset.UtcNow,
+
             Steps =
                 stepNames
                     .Select(x =>
@@ -1362,6 +1467,9 @@ public sealed class ExecutionProcessorTests
                         {
                             StepName =
                                 x,
+
+                            Version =
+                                "1.0.0",
 
                             Status =
                                 StepExecutionStatus.Pending

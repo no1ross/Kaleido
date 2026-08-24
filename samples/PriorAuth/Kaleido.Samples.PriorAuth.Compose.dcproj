@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.Docker.Sdk">
+  <PropertyGroup>
+    <ProjectVersion>2.1</ProjectVersion>
+    <DockerTargetOS>Linux</DockerTargetOS>
+    <DockerLaunchAction>LaunchBrowser</DockerLaunchAction>
+    <DockerServiceUrl>{Scheme}://localhost:{ServicePort}</DockerServiceUrl>
+    <DockerServiceName>intake</DockerServiceName>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="docker-compose.yml" />
+    <None Include="docker-compose.override.yml" />
+    <None Include=".env" />
+  </ItemGroup>
+</Project>
