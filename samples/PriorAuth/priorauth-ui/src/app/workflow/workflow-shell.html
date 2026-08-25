@@ -1,0 +1,36 @@
+<section class="workflow-shell">
+    <div class="workflow-shell__summary">
+        <div class="workflow-shell__summary-header">
+            <div>
+                <div class="workflow-shell__eyebrow">Create Prior Auth</div>
+                <h1>Workflow Summary</h1>
+            </div>
+            <a routerLink="/" class="workflow-shell__home-link">Exit workflow</a>
+        </div>
+
+        @if (workflowState.state.selectedMember) {
+            <div class="workflow-shell__card">
+                <h2>Selected Member</h2>
+                <div class="workflow-shell__grid">
+                    <div><span>Name</span><strong>{{ workflowState.state.selectedMember.displayName }}</strong></div>
+                    <div><span>Member Number</span><strong>{{ workflowState.state.selectedMember.memberNumber }}</strong></div>
+                    <div><span>Date of Birth</span><strong>{{ workflowState.state.selectedMember.dateOfBirth }}</strong></div>
+                    <div><span>LOB</span><strong>{{ workflowState.state.selectedMember.lineOfBusiness }}</strong></div>
+                    <div><span>Plan</span><strong>{{ workflowState.state.selectedMember.planName }}</strong></div>
+                </div>
+            </div>
+        } @else {
+            <div class="workflow-shell__card workflow-shell__card--empty">
+                Select a member to begin building the intake context.
+            </div>
+        }
+
+        <div class="workflow-shell__card workflow-shell__card--empty">
+            Process Id and additional intake selections will appear here as the workflow grows.
+        </div>
+    </div>
+
+    <div class="workflow-shell__content">
+        <router-outlet />
+    </div>
+</section>

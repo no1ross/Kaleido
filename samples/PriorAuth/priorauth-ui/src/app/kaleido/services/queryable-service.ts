@@ -5,6 +5,13 @@ import { Observable, catchError, map, throwError } from 'rxjs';
 import { QueryableResult } from '../models/queryable-result';
 import { QueryRequest } from '../models/queryable-request';
 import { QueryErrorResponse } from '../models/query-error-response';
+import {
+    QueryableField,
+    QueryablePagingMetadata,
+    QueryableParameter,
+    ServiceQueryableRecord,
+    ServiceQueryableViewRegistration
+} from '../models/queryable-registry';
 import { QueryableRegistry } from './queryable-registry';
 import {
     QueryableRequestValidationError,
@@ -32,34 +39,14 @@ export class QueryableService {
         const registration =
             this.queryableRegistry.getViewRegistration(view);
 
-        const validationResult =
-            this.queryRequestValidator.validate(
-                registration.view,
-                request);
-
-        if (!validationResult.isValid) {
-            console.error(
-                '[QueryableService] Request validation failed.',
-                validationResult.messages);
-
-            return throwError(
-                () => new QueryableRequestValidationError(
-                    validationResult.messages));
-        }
-
-        const url =
-            buildServiceUrl(
-                registration.service,
-                registration.view.queryUrl);
-
-        console.log(registration.view);
-        this.logRequest(view, url, request, registration.service.displayName);
-
-        return this.executeQuery<TResponse>(
+        return this.executeValidatedQuery<TResponse, TParameters>(
             view,
-            url,
             request,
-            registration.service.displayName);
+            registration,
+            registration.view.queryUrl,
+            registration.view.parameters,
+            registration.context.fields,
+            registration.view.pageable);
     }
 
     queryContext<TResponse, TParameters = unknown>(
@@ -75,16 +62,53 @@ export class QueryableService {
                     `Queryable context '${contextName}' does not support direct query.`));
         }
 
+        return this.executeValidatedQuery<TResponse, TParameters>(
+            contextName,
+            request,
+            registration,
+            registration.context.queryUrl,
+            [],
+            registration.context.fields,
+            null);
+    }
+
+    private executeValidatedQuery<TResponse, TParameters>(
+        operation: string,
+        request: QueryRequest<TParameters>,
+        registration: ServiceQueryableViewRegistration | ServiceQueryableRecord,
+        path: string,
+        parameters: readonly QueryableParameter[],
+        fields: readonly QueryableField[],
+        pageable: QueryablePagingMetadata | null
+    ): Observable<QueryableResult<TResponse>> {
+        const validationResult =
+            this.queryRequestValidator.validate(
+                {
+                    parameters,
+                    fields,
+                    pageable
+                },
+                request);
+
+        if (!validationResult.isValid) {
+            console.error(
+                '[QueryableService] Request validation failed.',
+                validationResult.messages);
+
+            return throwError(
+                () => new QueryableRequestValidationError(
+                    validationResult.messages));
+        }
+
         const url =
             buildServiceUrl(
                 registration.service,
-                registration.context.queryUrl);
+                path);
 
-        console.log(registration.context);
-        this.logRequest(contextName, url, request, registration.service.displayName);
+        this.logRequest(operation, url, request, registration.service.displayName);
 
         return this.executeQuery<TResponse>(
-            contextName,
+            operation,
             url,
             request,
             registration.service.displayName);

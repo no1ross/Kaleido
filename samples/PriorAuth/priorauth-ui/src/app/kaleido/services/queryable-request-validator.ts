@@ -1,10 +1,15 @@
 import { Injectable } from '@angular/core';
 
-import { QueryRequest } from '../models/queryable-request';
+import {
+    QueryFilterNode,
+    QueryRequest,
+    QuerySort
+} from '../models/queryable-request';
 import {
     QueryableConstraint,
-    QueryableParameter,
-    QueryableView
+    QueryableField,
+    QueryablePagingMetadata,
+    QueryableParameter
 } from '../models/queryable-registry';
 
 export interface QueryableRequestValidationResult {
@@ -15,6 +20,12 @@ export interface QueryableRequestValidationResult {
 export interface QueryableRequestValidationMessage {
     parameter: string;
     message: string;
+}
+
+export interface QueryableValidationTarget {
+    parameters: readonly QueryableParameter[];
+    fields: readonly QueryableField[];
+    pageable: QueryablePagingMetadata | null;
 }
 
 export class QueryableRequestValidationError extends Error {
@@ -30,13 +41,13 @@ export class QueryableRequestValidationError extends Error {
 })
 export class QueryableRequestValidator {
     validate<TParameters>(
-        viewMetadata: QueryableView,
+        target: QueryableValidationTarget,
         request: QueryRequest<TParameters>
     ): QueryableRequestValidationResult {
         const messages: QueryableRequestValidationMessage[] = [];
         const parameters = this.getParameters(request);
 
-        for (const parameter of viewMetadata.parameters) {
+        for (const parameter of target.parameters) {
             const value = this.getParameterValue(parameters, parameter.name);
             const requiredMessage = this.validateRequired(parameter, value);
 
@@ -62,10 +73,36 @@ export class QueryableRequestValidator {
             }
         }
 
+        this.validateQueryBody(target, request, messages);
+
         return {
             isValid: messages.length === 0,
             messages
         };
+    }
+
+    private validateQueryBody<TParameters>(
+        target: QueryableValidationTarget,
+        request: QueryRequest<TParameters>,
+        messages: QueryableRequestValidationMessage[]
+    ): void {
+        const query = request.query;
+
+        if (!query) {
+            return;
+        }
+
+        if (query.page) {
+            messages.push(...this.validatePage(query.page.size, query.page.offset, target.pageable));
+        }
+
+        if (query.sort) {
+            messages.push(...this.validateSorts(query.sort, target.fields));
+        }
+
+        if (query.filter) {
+            messages.push(...this.validateFilterNode(query.filter, target.fields));
+        }
     }
 
     private getParameters<TParameters>(
@@ -176,6 +213,119 @@ export class QueryableRequestValidator {
         }
 
         return null;
+    }
+
+    private validateFilterNode(
+        node: QueryFilterNode,
+        fields: readonly QueryableField[]
+    ): QueryableRequestValidationMessage[] {
+        const messages: QueryableRequestValidationMessage[] = [];
+
+        if (node.condition) {
+            const field = fields.find(x => x.name === node.condition?.field);
+
+            if (!field) {
+                messages.push({
+                    parameter: node.condition.field,
+                    message: `Filter field '${node.condition.field}' is not defined in the registry.`
+                });
+            } else {
+                if (!field.isFilterable) {
+                    messages.push({
+                        parameter: field.name,
+                        message: `${field.name} does not support filtering.`
+                    });
+                }
+
+                if (!field.filterOperators.includes(node.condition.operator)) {
+                    messages.push({
+                        parameter: field.name,
+                        message: `${field.name} does not support the ${node.condition.operator} filter operator.`
+                    });
+                }
+            }
+        }
+
+        if (node.group) {
+            if (node.group.filters.length === 0) {
+                messages.push({
+                    parameter: 'filter',
+                    message: 'Filter groups must contain at least one filter.'
+                });
+            }
+
+            for (const child of node.group.filters) {
+                messages.push(...this.validateFilterNode(child, fields));
+            }
+        }
+
+        if (!node.condition && !node.group) {
+            messages.push({
+                parameter: 'filter',
+                message: 'Filter nodes must contain either a condition or a group.'
+            });
+        }
+
+        return messages;
+    }
+
+    private validateSorts(
+        sorts: readonly QuerySort[],
+        fields: readonly QueryableField[]
+    ): QueryableRequestValidationMessage[] {
+        const messages: QueryableRequestValidationMessage[] = [];
+
+        for (const sort of sorts) {
+            const field = fields.find(x => x.name === sort.field);
+
+            if (!field) {
+                messages.push({
+                    parameter: sort.field,
+                    message: `Sort field '${sort.field}' is not defined in the registry.`
+                });
+                continue;
+            }
+
+            if (!field.isSortable) {
+                messages.push({
+                    parameter: field.name,
+                    message: `${field.name} does not support sorting.`
+                });
+            }
+        }
+
+        return messages;
+    }
+
+    private validatePage(
+        size: number,
+        offset: number,
+        pageable: QueryablePagingMetadata | null
+    ): QueryableRequestValidationMessage[] {
+        const messages: QueryableRequestValidationMessage[] = [];
+
+        if (size < 0) {
+            messages.push({
+                parameter: 'page.size',
+                message: 'Page size cannot be negative.'
+            });
+        }
+
+        if (offset < 0) {
+            messages.push({
+                parameter: 'page.offset',
+                message: 'Page offset cannot be negative.'
+            });
+        }
+
+        if (pageable && size > pageable.maxSize) {
+            messages.push({
+                parameter: 'page.size',
+                message: `Page size cannot exceed ${pageable.maxSize}.`
+            });
+        }
+
+        return messages;
     }
 
     private getConstraint(
