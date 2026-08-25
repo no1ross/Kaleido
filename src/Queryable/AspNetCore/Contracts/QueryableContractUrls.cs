@@ -13,6 +13,11 @@ internal static class QueryableContractUrls
         string contextName)
         => $"{QueryablePrefix(options)}/{contextName}/{options.MetadataRoute}";
 
+    public static string QueryContextQuery(
+        QueryableRouteOptions options,
+        string contextName)
+        => $"{QueryablePrefix(options)}/{contextName}/{options.QueryRoute}";
+
     public static string QueryViewQuery(
         QueryableRouteOptions options,
         string contextName,

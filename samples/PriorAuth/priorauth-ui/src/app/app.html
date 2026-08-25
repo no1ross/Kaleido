@@ -1,0 +1,19 @@
+<div class="shell">
+  <header class="shell__header">
+    <div>
+      <h1>{{ title() }}</h1>
+      <p>Prior authorization workflow scaffolding with member search and registry diagnostics.</p>
+    </div>
+
+    <nav class="shell__nav">
+      <a routerLink="/" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="is-active">Home</a>
+      <a routerLink="/member-search" routerLinkActive="is-active">Member Search</a>
+      <a routerLink="/registries/process" routerLinkActive="is-active">Process Registries</a>
+      <a routerLink="/registries/queryable" routerLinkActive="is-active">Queryable Registries</a>
+    </nav>
+  </header>
+
+  <main class="shell__content">
+    <router-outlet />
+  </main>
+</div>

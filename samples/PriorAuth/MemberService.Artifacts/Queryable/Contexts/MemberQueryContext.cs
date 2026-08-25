@@ -40,9 +40,8 @@ public sealed class MemberQueryContext
     [Sortable]
     public string DisplayName { get; init; } = string.Empty;
 
-    [Searchable(
-        Priority = 5,
-        MatchMode = MatchMode.Exact)]
+    [Filterable(
+        FilterOperator.Equals)]
     [Sortable]
     public DateOnly DateOfBirth { get; init; }
 

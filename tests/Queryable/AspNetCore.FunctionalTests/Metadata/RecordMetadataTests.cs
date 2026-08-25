@@ -33,6 +33,8 @@ public sealed class RecordMetadataTests : IClassFixture<QueryableAspNetCoreFixtu
         Assert.Equal("Functional Records", metadata.DisplayName);
         Assert.Equal("1.0.0", metadata.Version);
         Assert.Equal("AspNetCore Functional Test Data", metadata.Source);
+        Assert.Equal("/kaleido/queryable/functional-records/metadata", metadata.MetadataUrl);
+        Assert.Equal("/kaleido/queryable/functional-records/query", metadata.QueryUrl);
 
         Assert.Contains(metadata.Fields, x => x.Name == "Id");
         Assert.Contains(metadata.Fields, x => x.Name == "Code");

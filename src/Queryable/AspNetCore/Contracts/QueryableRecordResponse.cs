@@ -16,6 +16,10 @@ public sealed record QueryableRecordResponse
 
     public string? Source { get; init; }
 
+    public required string MetadataUrl { get; init; }
+
+    public string? QueryUrl { get; init; }
+
     public IReadOnlyCollection<QueryableFieldMetadata> Fields { get; init; }
         = Array.Empty<QueryableFieldMetadata>();
 
@@ -44,6 +48,18 @@ public sealed record QueryableRecordResponse
             Version = registration.Metadata.Version,
 
             Source = registration.Metadata.Source,
+
+            MetadataUrl =
+                QueryableContractUrls.QueryContextMetadata(
+                    options,
+                    contextName),
+
+            QueryUrl =
+                registration.Metadata.AllowDirectQuery
+                    ? QueryableContractUrls.QueryContextQuery(
+                        options,
+                        contextName)
+                    : null,
 
             Fields = registration.Metadata.Fields
                 .Select(QueryableFieldMetadata.FromMetadata)

@@ -10,7 +10,7 @@ services:
 
   seeder:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: samples/PriorAuth/Seeder/Dockerfile
     command: ["--domains=ReferenceData,CodeSet,ProviderSearch,MemberService"]
     volumes:
@@ -22,7 +22,7 @@ services:
 
   eventcollector:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: samples/PriorAuth/EventCollector/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -45,7 +45,7 @@ services:
 
   referencedata:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: samples/PriorAuth/ReferenceData/Dockerfile
     depends_on:
       seeder:
@@ -74,7 +74,7 @@ services:
 
   codeset:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: samples/PriorAuth/CodeSet/Dockerfile
     depends_on:
       seeder:
@@ -103,7 +103,7 @@ services:
 
   providersearch:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: samples/PriorAuth/ProviderSearch/Dockerfile
     depends_on:
       seeder:
@@ -136,7 +136,7 @@ services:
 
   memberservice:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: samples/PriorAuth/MemberService/Dockerfile
     depends_on:
       seeder:
@@ -167,7 +167,7 @@ services:
 
   intake:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: samples/PriorAuth/Intake/Dockerfile
     depends_on:
       memberservice:
@@ -198,6 +198,31 @@ services:
       start_period: 10s
     ports:
       - "8085:8080"
+
+  priorauth-ui:
+    build:
+      context: ../priorauth-ui
+      dockerfile: Dockerfile
+
+  router:
+    image: nginx:1.29-alpine
+    depends_on:
+      referencedata:
+        condition: service_healthy
+      codeset:
+        condition: service_healthy
+      providersearch:
+        condition: service_healthy
+      memberservice:
+        condition: service_healthy
+      intake:
+        condition: service_healthy
+      priorauth-ui:
+        condition: service_started
+    volumes:
+      - ./router.nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8080:8080"
 
 volumes:
   eventcollector-data:

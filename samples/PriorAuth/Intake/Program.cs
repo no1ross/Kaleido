@@ -56,12 +56,24 @@ builder.Services.AddHttpClient("ReferenceData", client =>
 });
 
 builder.Services.AddControllers();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<IntakeDbContext>();
 
 var app = builder.Build();
+
+app.UseCors("AllowAll");
 
 app.MapHealthChecks("/health");
 

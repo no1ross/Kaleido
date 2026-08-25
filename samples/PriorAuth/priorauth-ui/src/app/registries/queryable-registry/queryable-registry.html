@@ -1,0 +1,167 @@
+@if (state$ | async; as state) {
+    {{ ensureSelection(state.snapshots) }}
+
+    <div class="registry-page">
+        <div class="header">
+            <div>
+                <h1>Queryable Registries</h1>
+
+                <div class="summary">
+                    <div class="stat">Services: {{ state.snapshots.filter(x => x.queryable.configured).length }}</div>
+                    <div class="stat">Views: {{ getTotalViews(state.snapshots) }}</div>
+                    <div class="stat">Fields: {{ getTotalFields(state.snapshots) }}</div>
+                    <div class="stat">Conflicts: {{ getQueryableConflicts(state).length }}</div>
+                </div>
+            </div>
+
+            <button class="refresh-button" type="button" (click)="refresh()">
+                Refresh Queryable Registries
+            </button>
+        </div>
+
+        @if (getQueryableConflicts(state).length > 0) {
+            <div class="conflict-banner">
+                <h2>Queryable registry conflicts detected</h2>
+                <div class="conflict-banner__copy">
+                    Duplicate queryable context or view names cannot be resolved globally until the conflicts are fixed.
+                </div>
+                <ul class="conflict-list">
+                    @for (conflict of getQueryableConflicts(state); track conflict.type + ':' + conflict.name) {
+                        <li>
+                            <strong>{{ conflict.name }}</strong>
+                            <span>({{ conflict.type }})</span>
+                            <span>— {{ conflict.services.join(', ') }}</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <div class="content service-layout">
+            <div class="service-list">
+                @for (snapshot of state.snapshots; track snapshot.service.key) {
+                    @if (snapshot.queryable.configured) {
+                        <div class="service-group">
+                            <div class="service-group__header">
+                                <div>
+                                    <div class="context-name">{{ snapshot.service.displayName }}</div>
+                                    <div class="context-meta">{{ snapshot.service.key }}</div>
+                                </div>
+                                <span class="status-badge" [class.status-badge--error]="!snapshot.queryable.ok || getQueryableConflicts(state).some(conflict => conflict.services.includes(snapshot.service.displayName))">
+                                    @if (!snapshot.queryable.ok) {
+                                        Error
+                                    } @else if (getQueryableConflicts(state).some(conflict => conflict.services.includes(snapshot.service.displayName))) {
+                                        Conflict
+                                    } @else {
+                                        Ready
+                                    }
+                                </span>
+                            </div>
+
+                            @if (snapshot.queryable.ok) {
+                                @for (context of snapshot.queryable.data ?? []; track context.name) {
+                                    <div
+                                        class="context-card"
+                                        [class.context-card--conflict]="getQueryableConflicts(state).some(conflict => conflict.name === context.name || context.views.some(view => view.name === conflict.name))"
+                                        [class.selected]="selectedContext?.name === context.name && selectedService?.service?.key === snapshot.service.key"
+                                        (click)="selectService(snapshot); selectContext(context)">
+                                        <div class="context-name">{{ context.name }}</div>
+                                        <div class="context-display-name">{{ context.displayName }}</div>
+                                        <div class="context-meta">
+                                            Fields: {{ context.fields.length }} | Views: {{ context.views.length }}
+                                        </div>
+                                        @if (getQueryableConflicts(state).some(conflict => conflict.name === context.name || context.views.some(view => view.name === conflict.name))) {
+                                            <div class="conflict-inline">Contains a context or view name that conflicts with another service.</div>
+                                        }
+                                    </div>
+                                }
+                            } @else {
+                                <div class="service-error">
+                                    <div class="context-meta">{{ snapshot.queryable.url }}</div>
+                                    <div class="service-error__message">{{ snapshot.queryable.error }}</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="content details-layout">
+                @if (selectedContext) {
+                    <div class="details">
+                        <h2>{{ selectedContext.displayName }}</h2>
+                        <div class="context-meta">Service: {{ selectedService?.service?.displayName }}</div>
+
+                        <div class="section">
+                            <h3>Metadata</h3>
+                            <table>
+                                <tr><th>Name</th><td>{{ selectedContext.name }}</td></tr>
+                                <tr><th>Version</th><td>{{ selectedContext.version }}</td></tr>
+                                <tr><th>Source</th><td>{{ selectedContext.source }}</td></tr>
+                                <tr><th>Metadata Url</th><td>{{ selectedContext.metadataUrl }}</td></tr>
+                                <tr><th>Query Url</th><td>{{ selectedContext.queryUrl ?? 'Direct query not supported' }}</td></tr>
+                                <tr><th>Field Count</th><td>{{ selectedContext.fields.length }}</td></tr>
+                                <tr><th>View Count</th><td>{{ selectedContext.views.length }}</td></tr>
+                            </table>
+                        </div>
+
+                        <div class="section">
+                            <h3>Views</h3>
+                            <div class="view-tags">
+                                @for (view of selectedContext.views; track view.name) {
+                                    <div
+                                        class="tag"
+                                        [class.tag--conflict]="getQueryableConflicts(state).some(conflict => conflict.name === view.name)"
+                                        [class.selected-tag]="selectedView?.name === view.name"
+                                        (click)="selectView(view)">
+                                        {{ view.displayName ?? view.name }}
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        @if (selectedView) {
+                            <div class="section">
+                                <h3>View Metadata</h3>
+                                <table>
+                                    <tr><th>Name</th><td>{{ selectedView.name }}</td></tr>
+                                    <tr><th>Display Name</th><td>{{ selectedView.displayName }}</td></tr>
+                                    <tr><th>Description</th><td>{{ selectedView.description }}</td></tr>
+                                    <tr><th>Query Url</th><td>{{ selectedView.queryUrl }}</td></tr>
+                                </table>
+                            </div>
+                        }
+
+                        <div class="section">
+                            <h3>Fields</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Searchable</th>
+                                        <th>Sortable</th>
+                                        <th>Filterable</th>
+                                        <th>Operators</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (field of selectedContext.fields; track field.name) {
+                                        <tr>
+                                            <td>{{ field.name }}</td>
+                                            <td>{{ field.dataType.type }}</td>
+                                            <td>{{ field.isSearchable }}</td>
+                                            <td>{{ field.isSortable }}</td>
+                                            <td>{{ field.isFilterable }}</td>
+                                            <td>{{ getOperators(field.filterOperators) }}</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}

@@ -1,0 +1,219 @@
+:host {
+    display: block;
+}
+
+.member-search-page {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.member-search-page__header h2 {
+    margin: 0.4rem 0 0;
+    font-size: 2rem;
+}
+
+.member-search-page__header p {
+    margin: 0.75rem 0 0;
+    color: #556070;
+}
+
+.member-search-page__eyebrow {
+    color: #315efb;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.member-search-page__layout {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+    align-items: start;
+}
+
+.member-search-card,
+.member-search-results,
+.member-search-selection {
+    background: #fff;
+    border: 1px solid #dde5ef;
+    border-radius: 16px;
+    padding: 1.25rem;
+}
+
+.member-search-card__title,
+.member-search-results__header h3,
+.member-search-selection h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.member-search-card__meta {
+    margin-top: 0.35rem;
+    color: #6b7788;
+    font-size: 0.9rem;
+}
+
+.member-search-card__form {
+    display: grid;
+    gap: 0.9rem;
+    margin-top: 1rem;
+}
+
+.member-search-card__field label {
+    display: block;
+    margin-bottom: 0.45rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.member-search-card__field input,
+.member-search-card__field select {
+    width: 100%;
+    min-width: 0;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid #cfd8e3;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    background: #fff;
+    color: #172033;
+}
+
+.member-search-card__actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.member-search-card__hint {
+    margin-top: 0.4rem;
+    color: #6b7788;
+    font-size: 0.8rem;
+}
+
+.member-search-card__hint--error {
+    color: #9f1d1d;
+}
+
+.primary-button,
+.secondary-button {
+    border-radius: 999px;
+    padding: 0.75rem 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.primary-button {
+    border: 1px solid #315efb;
+    background: #315efb;
+    color: #fff;
+}
+
+.secondary-button {
+    border: 1px solid #cfd8e3;
+    background: #f7f9fc;
+    color: #25324a;
+}
+
+.member-search-page__error {
+    margin-top: 1rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid #f3b6b6;
+    border-radius: 12px;
+    background: #fff4f4;
+    color: #9f1d1d;
+}
+
+.member-search-results__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.member-search-results__count {
+    color: #6b7788;
+    font-size: 0.9rem;
+}
+
+.member-search-results__empty {
+    margin-top: 1rem;
+    color: #6b7788;
+}
+
+.member-search-results__list {
+    margin-top: 1rem;
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.member-record {
+    width: 100%;
+    text-align: left;
+    border: 1px solid #d9e2ee;
+    border-radius: 14px;
+    background: #fbfcfe;
+    padding: 0.85rem 0.9rem;
+    cursor: pointer;
+}
+
+.member-record--selected {
+    border-color: #315efb;
+    box-shadow: 0 0 0 2px rgba(49, 94, 251, 0.12);
+    background: #eef4ff;
+}
+
+.member-record__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.65rem;
+}
+
+.member-record__title {
+    font-weight: 700;
+    color: #172033;
+}
+
+.member-record__action {
+    color: #315efb;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.member-record__grid {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.member-record__field {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 0.5rem;
+    align-items: start;
+}
+
+.member-record__label {
+    color: #6b7788;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.member-record__value {
+    color: #172033;
+    overflow-wrap: anywhere;
+    font-size: 0.85rem;
+}
+
+.member-search-selection pre {
+    margin: 1rem 0 0;
+    padding: 1rem;
+    border-radius: 12px;
+    background: #0f172a;
+    color: #d9e2f2;
+    overflow: auto;
+}

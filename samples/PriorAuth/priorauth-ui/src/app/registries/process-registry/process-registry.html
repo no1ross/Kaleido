@@ -1,0 +1,149 @@
+@if (state$ | async; as state) {
+    {{ ensureSelection(state.snapshots) }}
+
+    <div class="registry-page">
+        <div class="header">
+            <div>
+                <h1>Process Registries</h1>
+
+                <div class="summary">
+                    <div class="stat">Services: {{ state.snapshots.filter(x => x.process.configured).length }}</div>
+                    <div class="stat">Total Steps: {{ getTotalSteps(state.snapshots) }}</div>
+                    <div class="stat">Conflicts: {{ getProcessConflicts(state).length }}</div>
+                </div>
+            </div>
+
+            <button class="refresh-button" type="button" (click)="refresh()">
+                Refresh Process Registries
+            </button>
+        </div>
+
+        @if (getProcessConflicts(state).length > 0) {
+            <div class="conflict-banner">
+                <h2>Process registry conflicts detected</h2>
+                <div class="conflict-banner__copy">
+                    Duplicate step names cannot be resolved globally until the conflicts are fixed.
+                </div>
+                <ul class="conflict-list">
+                    @for (conflict of getProcessConflicts(state); track conflict.type + ':' + conflict.name) {
+                        <li>
+                            <strong>{{ conflict.name }}</strong>
+                            <span>({{ conflict.type }})</span>
+                            <span>— {{ conflict.services.join(', ') }}</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <div class="content service-layout">
+            <div class="service-list">
+                @for (snapshot of state.snapshots; track snapshot.service.key) {
+                    @if (snapshot.process.configured) {
+                        <div class="service-group">
+                            <div class="service-group__header">
+                                <div>
+                                    <div class="step-name">{{ snapshot.service.displayName }}</div>
+                                    <div class="step-meta">{{ snapshot.service.key }}</div>
+                                </div>
+                                <span class="status-badge" [class.status-badge--error]="!snapshot.process.ok || getProcessConflicts(state).some(conflict => conflict.services.includes(snapshot.service.displayName))">
+                                    @if (!snapshot.process.ok) {
+                                        Error
+                                    } @else if (getProcessConflicts(state).some(conflict => conflict.services.includes(snapshot.service.displayName))) {
+                                        Conflict
+                                    } @else {
+                                        Ready
+                                    }
+                                </span>
+                            </div>
+
+                            @if (snapshot.process.ok) {
+                                @for (step of snapshot.process.data ?? []; track step.name) {
+                                    <div
+                                        class="step-card"
+                                        [class.step-card--conflict]="getProcessConflicts(state).some(conflict => conflict.name === step.name)"
+                                        [class.selected]="selectedStep?.name === step.name && selectedService?.service?.key === snapshot.service.key"
+                                        (click)="selectService(snapshot); selectStep(step)">
+                                        <div class="step-name">{{ step.name }}</div>
+                                        <div class="step-display-name">{{ step.displayName }}</div>
+                                        <div class="step-meta">
+                                            Fields: {{ step.fields.length }} | Repeatable: {{ step.repeatable }}
+                                        </div>
+                                        @if (getProcessConflicts(state).some(conflict => conflict.name === step.name)) {
+                                            <div class="conflict-inline">Conflicts with another service step of the same name.</div>
+                                        }
+                                    </div>
+                                }
+                            } @else {
+                                <div class="service-error">
+                                    <div class="step-meta">{{ snapshot.process.url }}</div>
+                                    <div class="service-error__message">{{ snapshot.process.error }}</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="content details-layout">
+                @if (selectedStep) {
+                    <div class="details">
+                        <h2>{{ selectedStep.displayName }}</h2>
+                        <div class="step-meta">Service: {{ selectedService?.service?.displayName }}</div>
+
+                        <div class="section">
+                            <h3>Metadata</h3>
+                            <table>
+                                <tr><th>Name</th><td>{{ selectedStep.name }}</td></tr>
+                                <tr><th>Version</th><td>{{ selectedStep.version }}</td></tr>
+                                <tr><th>Repeatable</th><td>{{ selectedStep.repeatable }}</td></tr>
+                                <tr><th>Execute Url</th><td>{{ selectedStep.executeUrl }}</td></tr>
+                                <tr><th>Metadata Url</th><td>{{ selectedStep.metadataUrl }}</td></tr>
+                                <tr><th>Field Count</th><td>{{ selectedStep.fields.length }}</td></tr>
+                            </table>
+                        </div>
+
+                        <div class="section">
+                            <h3>Description</h3>
+                            <p>{{ selectedStep.description }}</p>
+                        </div>
+
+                        <div class="section">
+                            <h3>Fields</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Format</th>
+                                        <th>Nullable</th>
+                                        <th>Constraints</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (field of selectedStep.fields; track field.name) {
+                                        <tr>
+                                            <td>{{ field.name }}</td>
+                                            <td>{{ field.dataType.type }}</td>
+                                            <td>{{ field.dataType.format }}</td>
+                                            <td>{{ field.dataType.nullable }}</td>
+                                            <td>
+                                                @if (field.constraints.length === 0) {
+                                                    <span>None</span>
+                                                }
+
+                                                @for (constraint of field.constraints; track constraint.type) {
+                                                    <div class="constraint">{{ formatConstraint(constraint) }}</div>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
