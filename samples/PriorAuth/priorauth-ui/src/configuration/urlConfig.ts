@@ -1,3 +1,6 @@
+import { environment } from '../environments/environment';
+import { PriorAuthApiMode } from '../environments/environment.model';
+
 export interface PriorAuthServiceRouteConfig {
     readonly key: string;
     readonly displayName: string;
@@ -6,69 +9,30 @@ export interface PriorAuthServiceRouteConfig {
     readonly queryableRegistryPath?: string;
 }
 
-export type PriorAuthApiMode = 'router' | 'direct';
-
-const apiMode: PriorAuthApiMode = 'direct';
-const routerBaseUrl = '/';
-
-const serviceRoutes = [
-    {
-        key: 'member',
-        displayName: 'Member Service',
-        //baseUrl: 'https://localhost:7015',
-        baseUrl: 'http://localhost:8084',
-        processRegistryPath: '/member/processes/registry',
-        queryableRegistryPath: '/member/queryable/registry'
-    },
-    {
-        key: 'reference-data',
-        displayName: 'Reference Data',
-        baseUrl: 'http://localhost:8081',
-        queryableRegistryPath: '/reference-data/queryable/registry'
-    },
-    {
-        key: 'provider',
-        displayName: 'Provider Search',
-        baseUrl: 'http://localhost:8083',
-        queryableRegistryPath: '/provider/queryable/registry'
-    },
-    {
-        key: 'code-set',
-        displayName: 'Code Set',
-        baseUrl: 'http://localhost:8082',
-        queryableRegistryPath: '/code-set/queryable/registry'
-    },
-    {
-        key: 'intake',
-        displayName: 'Intake',
-        baseUrl: 'http://localhost:8085'
-    }
-] as const satisfies readonly PriorAuthServiceRouteConfig[];
-
 export function getApiMode(): PriorAuthApiMode {
-    return apiMode;
+    return environment.apiMode;
 }
 
 export function getRouterBaseUrl(): string {
-    return routerBaseUrl;
+    return environment.routerBaseUrl;
 }
 
 export function getServiceRoutes(): readonly PriorAuthServiceRouteConfig[] {
-    return serviceRoutes;
+    return environment.serviceRoutes;
 }
 
 export function buildRegistryUrl(
     service: PriorAuthServiceRouteConfig,
     path: string
 ): string {
-    if (apiMode === 'direct') {
+    if (environment.apiMode === 'direct') {
         return buildUrl(
             service.baseUrl,
             path);
     }
 
     return buildUrl(
-        routerBaseUrl,
+        environment.routerBaseUrl,
         path);
 }
 
@@ -76,6 +40,12 @@ export function buildServiceUrl(
     service: PriorAuthServiceRouteConfig,
     path: string
 ): string {
+    if (environment.apiMode === 'router') {
+        return buildUrl(
+            environment.routerBaseUrl,
+            path);
+    }
+
     return buildUrl(
         service.baseUrl,
         path);

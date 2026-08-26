@@ -20,7 +20,7 @@ public static class PriorAuthEventPublisherExtensions
 
         var baseUrl =
             configuration["Services:EventCollector:BaseUrl"]
-            ?? "https://localhost:8446";
+            ?? "http://localhost:8086";
 
         services.AddHttpClient("PriorAuthEventCollector", client =>
         {

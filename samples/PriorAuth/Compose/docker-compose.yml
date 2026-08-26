@@ -28,6 +28,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__EventCollector: Data Source=/app/data/eventcollector.db
+      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
+      OpenTelemetry__Protocol: grpc
+      OpenTelemetry__ServiceName: priorauth-eventcollector
+      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-eventcollector
@@ -57,6 +61,10 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__ReferenceData: Data Source=/app/data/referencedata.db
       Services__EventCollector__BaseUrl: http://eventcollector:8080
+      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
+      OpenTelemetry__Protocol: grpc
+      OpenTelemetry__ServiceName: priorauth-referencedata
+      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-referencedata
@@ -86,6 +94,10 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__CodeSet: Data Source=/app/data/codeset.db
       Services__EventCollector__BaseUrl: http://eventcollector:8080
+      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
+      OpenTelemetry__Protocol: grpc
+      OpenTelemetry__ServiceName: priorauth-codeset
+      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-codeset
@@ -119,6 +131,10 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__ProviderSearch: Data Source=/app/data/providersearch.db
       Services__EventCollector__BaseUrl: http://eventcollector:8080
+      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
+      OpenTelemetry__Protocol: grpc
+      OpenTelemetry__ServiceName: priorauth-providersearch
+      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-providersearch
@@ -150,6 +166,10 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__MemberService: Data Source=/app/data/memberservice.db
       Services__EventCollector__BaseUrl: http://eventcollector:8080
+      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
+      OpenTelemetry__Protocol: grpc
+      OpenTelemetry__ServiceName: priorauth-memberservice
+      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-memberservice
@@ -182,8 +202,14 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Intake: Data Source=/app/data/intake.db
+      ConnectionStrings__IntakeProcess: Data Source=/app/data/intake-process.db
       Services__ReferenceData__BaseUrl: http://referencedata:8080
+      Services__MemberService__BaseUrl: http://memberservice:8080
       Services__EventCollector__BaseUrl: http://eventcollector:8080
+      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
+      OpenTelemetry__Protocol: grpc
+      OpenTelemetry__ServiceName: priorauth-intake
+      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-intake
@@ -203,6 +229,8 @@ services:
     build:
       context: ../priorauth-ui
       dockerfile: Dockerfile
+      args:
+        BUILD_CONFIGURATION: container
 
   router:
     image: nginx:1.29-alpine

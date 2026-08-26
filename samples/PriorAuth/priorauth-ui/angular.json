@@ -53,6 +53,17 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "container": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.container.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -65,6 +76,9 @@
             },
             "development": {
               "buildTarget": "priorauth-ui:build:development"
+            },
+            "container": {
+              "buildTarget": "priorauth-ui:build:container"
             }
           },
           "defaultConfiguration": "development"
