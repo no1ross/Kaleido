@@ -184,24 +184,6 @@ internal sealed class ParticipantRuntime
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(
             request.RequestId);
-
-        var hasProcessId =
-            request.ProcessId is not null;
-
-        if (hasProcessId)
-        {
-            return;
-        }
-
-        if (request.Participant.Steps.Count != 1)
-        {
-            throw new ValidationException(
-            [
-                new ValidationError(
-                    "ProcessIdRequired",
-                    "ProcessId is required when executing more than one process step in a single request.")
-            ]);
-        }
     }
 
     private static IReadOnlyCollection<StepCandidate> GetExecutionCandidates(

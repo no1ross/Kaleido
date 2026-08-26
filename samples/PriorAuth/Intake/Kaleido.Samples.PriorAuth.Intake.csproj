@@ -22,6 +22,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Process\AspNetCore\Kaleido.Process.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\..\src\Process\Providers\SQLite\Kaleido.Process.Providers.SQLite.csproj" />
+    <ProjectReference Include="..\Intake.Artifacts\Kaleido.Samples.PriorAuth.Intake.Artifacts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="data\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

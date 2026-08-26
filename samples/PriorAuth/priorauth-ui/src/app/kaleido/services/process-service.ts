@@ -14,6 +14,7 @@ import {
     ProcessRequestValidator
 } from './process-request-validator';
 import { buildServiceUrl } from '../../../configuration/urlConfig';
+import { ProcessStateService } from '../../process/services/process-state-service';
 
 @Injectable({
     providedIn: 'root'
@@ -30,6 +31,9 @@ export class ProcessService {
 
     private readonly processRequestValidator =
         inject(ProcessRequestValidator);
+
+    private readonly processState =
+        inject(ProcessStateService);
 
     executeStep<TProcessStep, TResponse>(
         stepName: string,
@@ -71,6 +75,8 @@ export class ProcessService {
             processRequest)
             .pipe(
                 map(result => {
+                    this.processState.setProcessId(result.participantProcessId);
+                    this.processState.setProcessMessages(result.messages);
                     this.logStepOutcome(result);
 
                     if (
@@ -87,7 +93,9 @@ export class ProcessService {
                     return result;
                 }),
                 catchError(error => {
-                    if (!ProcessErrorResponse.is(error)) {
+                    if (ProcessErrorResponse.is(error)) {
+                        this.processState.setProcessMessages(error.messages);
+                    } else {
                         console.error(
                             'Unexpected process error',
                             error);

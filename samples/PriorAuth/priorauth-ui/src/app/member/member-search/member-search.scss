@@ -23,6 +23,13 @@
     padding: 1rem;
 }
 
+.member-search-card--details-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
 .member-search-card__title,
 .member-search-results__header h3,
 .member-search-selection h3,

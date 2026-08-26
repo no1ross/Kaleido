@@ -1,5 +1,6 @@
 import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 
 import { FilterOperator, LogicalOperator } from '../../kaleido/models/enumerations';
 import { QueryErrorResponse } from '../../kaleido/models/query-error-response';
@@ -15,9 +16,11 @@ import {
 } from '../../kaleido/models/queryable-registry';
 import { QueryableRegistry } from '../../kaleido/services/queryable-registry';
 import { QueryableRequestValidationError } from '../../kaleido/services/queryable-request-validator';
+import { ProcessErrorResponse, ProcessService } from '../../kaleido/services/process-service';
 import { QueryableService } from '../../kaleido/services/queryable-service';
-import { WorkflowStateService } from '../../workflow/services/workflow-state-service';
+import { ProcessStateService } from '../../process/services/process-state-service';
 import { MemberDetailsParameters } from '../models/member-details-parameters';
+import { CaptureMemberStep } from '../models/capture-member-step';
 import { MemberDetailsResult } from '../models/member-details-result';
 import { MemberSearchResult } from '../models/member-search-result';
 import { StateOption } from '../models/state-option';
@@ -37,14 +40,20 @@ export class MemberSearch {
     private readonly queryableService =
         inject(QueryableService);
 
+    private readonly processService =
+        inject(ProcessService);
+
     private readonly changeDetector =
         inject(ChangeDetectorRef);
 
     private readonly queryableRegistry =
         inject(QueryableRegistry);
 
-    private readonly workflowState =
-        inject(WorkflowStateService);
+    private readonly processState =
+        inject(ProcessStateService);
+
+    private readonly router =
+        inject(Router);
 
     readonly searchViewName =
         'member-search';
@@ -73,6 +82,7 @@ export class MemberSearch {
     isLoading = false;
     isLoadingStates = false;
     isLoadingDetails = false;
+    isCreatingPriorAuth = false;
     errorMessage?: string;
     detailsError?: string;
     viewMode: 'results' | 'details' = 'results';
@@ -107,7 +117,7 @@ export class MemberSearch {
         this.request.query.page.offset = 0;
 
         this.queryableService
-            .query<MemberSearchResult>(this.searchViewName, this.request)
+            .queryView<MemberSearchResult>(this.searchViewName, this.request)
             .subscribe({
                 next: result => {
                     this.results = result.records;
@@ -140,7 +150,8 @@ export class MemberSearch {
         this.errorMessage = undefined;
         this.detailsError = undefined;
         this.viewMode = 'results';
-        this.workflowState.clearSelectedMember();
+        this.processState.clearSelectedMember();
+        this.processState.clearProcessMessages();
     }
 
     selectRecord(
@@ -152,7 +163,7 @@ export class MemberSearch {
         this.isLoadingDetails = true;
         this.viewMode = 'details';
 
-        this.workflowState.setSelectedMember({
+        this.processState.setSelectedMember({
             memberId: record.memberId,
             memberEnrollmentId: record.memberEnrollmentId,
             displayName: this.getRecordSummary(record),
@@ -170,7 +181,7 @@ export class MemberSearch {
         };
 
         this.queryableService
-            .query<MemberDetailsResult, MemberDetailsParameters>(
+            .queryView<MemberDetailsResult, MemberDetailsParameters>(
                 this.detailsViewName,
                 request)
             .subscribe({
@@ -189,6 +200,40 @@ export class MemberSearch {
 
     backToResults(): void {
         this.viewMode = 'results';
+    }
+
+    createPriorAuth(): void {
+        if (!this.selectedRecord || this.isCreatingPriorAuth) {
+            return;
+        }
+
+        this.isCreatingPriorAuth = true;
+        this.processState.clearProcessMessages();
+
+        this.processService
+            .executeStep<CaptureMemberStep, object>('CaptureMember', {
+                participantProcessId: this.processState.state.processId,
+                processStep: {
+                    memberId: this.selectedRecord.memberId,
+                    memberEnrollmentId: this.selectedRecord.memberEnrollmentId
+                }
+            })
+            .subscribe({
+                next: result => {
+                    this.processState.setProcessId(result.participantProcessId);
+                    this.isCreatingPriorAuth = false;
+                    void this.router.navigate(['/process']);
+                },
+                error: error => {
+                    this.isCreatingPriorAuth = false;
+
+                    if (ProcessErrorResponse.is(error)) {
+                        return;
+                    }
+
+                    this.detailsError = this.formatError(error);
+                }
+            });
     }
 
     loadStateOptions(): void {

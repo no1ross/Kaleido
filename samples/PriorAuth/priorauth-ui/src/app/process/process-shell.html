@@ -1,0 +1,50 @@
+<section class="process-shell">
+    <div class="process-shell__summary">
+        <div class="process-shell__summary-header">
+            <div>
+                <div class="process-shell__eyebrow">Create Prior Auth</div>
+                <h1>Process Summary</h1>
+            </div>
+            <a routerLink="/" class="process-shell__home-link">Exit process</a>
+        </div>
+
+        @if (processState.state.selectedMember) {
+            <div class="process-shell__card">
+                <h2>Selected Member</h2>
+                <div class="process-shell__grid">
+                    <div><span>Name</span><strong>{{ processState.state.selectedMember.displayName }}</strong></div>
+                    <div><span>Member Number</span><strong>{{ processState.state.selectedMember.memberNumber }}</strong></div>
+                    <div><span>Date of Birth</span><strong>{{ processState.state.selectedMember.dateOfBirth }}</strong></div>
+                    <div><span>LOB</span><strong>{{ processState.state.selectedMember.lineOfBusiness }}</strong></div>
+                    <div><span>Plan</span><strong>{{ processState.state.selectedMember.planName }}</strong></div>
+                </div>
+            </div>
+        } @else {
+            <div class="process-shell__card process-shell__card--empty">
+                Select a member to begin building the intake context.
+            </div>
+        }
+
+        <div class="process-shell__card">
+            <h2>Process Context</h2>
+            @if (processState.state.processId) {
+                <div class="process-shell__context-field">
+                    <span>Process Id</span>
+                    <strong>{{ processState.state.processId }}</strong>
+                </div>
+            } @else {
+                <div class="process-shell__card--empty">
+                    Process Id and additional intake selections will appear here as the process grows.
+                </div>
+            }
+        </div>
+
+        <div class="process-shell__card">
+            <priorauth-process-messages />
+        </div>
+    </div>
+
+    <div class="process-shell__content">
+        <router-outlet />
+    </div>
+</section>

@@ -95,6 +95,107 @@ public sealed class ParticipantRuntimeTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WhenInitialRequestContainsMultipleStepsWithoutProcessId_InitializesContextAndExecutes()
+    {
+        var request =
+            new ProcessRequest
+            {
+                ProcessId = null,
+                RequestId = "REQ-INITIAL-MULTI",
+                Participant = new ParticipantRequest
+                {
+                    Steps = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["step-a"] = new { Value = 1 },
+                        ["step-b"] = new { Value = 2 }
+                    }
+                }
+            };
+
+        var initializedContext =
+            CreateContext(
+                Guid.NewGuid(),
+                request.RequestId);
+
+        var contextStore =
+            new Mock<IProcessContextStore>(MockBehavior.Strict);
+
+        var stateUpdater =
+            new Mock<IProcessStateUpdater>(MockBehavior.Strict);
+
+        stateUpdater
+            .Setup(x =>
+                x.Initialize(
+                    It.IsAny<Guid>()))
+            .Returns<Guid>(processId =>
+                initializedContext with
+                {
+                    ProcessId = processId
+                });
+
+        var planner =
+            new Mock<IExecutionPlanner>(MockBehavior.Strict);
+
+        planner
+            .Setup(x =>
+                x.BuildPlan(
+                    request.Participant,
+                    It.IsAny<ParticipantContext>()))
+            .Returns<ParticipantRequest, ParticipantContext>((participant, context) =>
+            {
+                Assert.Equal(request.RequestId, context.LatestRequestId);
+                Assert.NotEqual(Guid.Empty, context.ProcessId);
+
+                return new ExecutionPlanResult
+                {
+                    Candidates = []
+                };
+            });
+
+        var processor =
+            new Mock<IExecutionProcessor>(MockBehavior.Strict);
+
+        processor
+            .Setup(x =>
+                x.ExecuteAsync(
+                    It.IsAny<IReadOnlyCollection<StepCandidate>>(),
+                    It.IsAny<ParticipantContext>(),
+                    It.IsAny<CancellationToken>()))
+            .Returns<IReadOnlyCollection<StepCandidate>, ParticipantContext, CancellationToken>((_, context, _) =>
+                Task.FromResult(
+                    CreateExecutionResult(
+                        context.ProcessId)));
+
+        var runtime =
+            new ParticipantRuntime(
+                contextStore.Object,
+                stateUpdater.Object,
+                planner.Object,
+                processor.Object,
+                CreateProcessEventFactory().Object,
+                CreateEventPublisher().Object,
+                CreateObservability().Object);
+
+        var result =
+            await runtime.ExecuteAsync(request);
+
+        Assert.NotEqual(Guid.Empty, result.ProcessId);
+
+        contextStore.Verify(
+            x =>
+                x.LoadAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        stateUpdater.Verify(
+            x =>
+                x.Initialize(
+                    It.IsAny<Guid>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WhenContextDoesNotExist_InitializesContext()
     {
         var request =

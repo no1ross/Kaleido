@@ -1,0 +1,17 @@
+@if (processState.state.processMessages.length > 0) {
+    <section class="process-messages" aria-live="polite" aria-label="Process messages">
+        <div class="process-messages__header">
+            <h2>Process Messages</h2>
+            <span>{{ processState.state.processMessages.length }} message(s)</span>
+        </div>
+
+        <div class="process-messages__list">
+            @for (message of processState.state.processMessages; track trackMessage($index, message)) {
+                <div class="process-messages__item" [class]="'process-messages__item ' + getMessageClass(message.type)">
+                    <div class="process-messages__type">{{ message.type }}</div>
+                    <div class="process-messages__text">{{ message.message }}</div>
+                </div>
+            }
+        </div>
+    </section>
+}

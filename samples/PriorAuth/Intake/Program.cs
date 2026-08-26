@@ -1,4 +1,8 @@
-using Kaleido.Samples.PriorAuth.Intake.Data;
+using Kaleido;
+using Kaleido.Process;
+using Kaleido.Process.AspNetCore;
+using Kaleido.Process.Providers.SQLite;
+using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Logs;
@@ -43,10 +47,17 @@ builder.Services.AddOpenTelemetry()
             .AddOtlpExporter();
     });
 
+var intakeConnectionString =
+    builder.Configuration.GetConnectionString("Intake")
+    ?? "Data Source=data/intake.db";
+
+var processConnectionString =
+    builder.Configuration.GetConnectionString("IntakeProcess")
+    ?? "Data Source=data/intake-process.db";
+
 builder.Services.AddDbContext<IntakeDbContext>(
     options => options.UseSqlite(
-        builder.Configuration.GetConnectionString("Intake")
-        ?? "Data Source=data/intake.db"));
+        intakeConnectionString));
 
 builder.Services.AddHttpClient("ReferenceData", client =>
 {
@@ -54,6 +65,14 @@ builder.Services.AddHttpClient("ReferenceData", client =>
         builder.Configuration["Services:ReferenceData:BaseUrl"]
         ?? "https://localhost:8441");
 });
+
+builder.Services.AddHttpClient("MemberService", client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["Services:MemberService:BaseUrl"]
+        ?? "https://localhost:8444");
+});
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.MemberDetailsClient>();
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
@@ -71,16 +90,29 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<IntakeDbContext>();
 
+builder.Services.AddKaleido()
+    .AddAssembly(typeof(Program).Assembly)
+    .AddAssembly(typeof(IntakeDbContext).Assembly)
+    .AddParticipant()
+        .AddParticipantAspNetCore(o =>
+        {
+            o.RoutePrefix = "intake";
+        })
+        .UseSqliteProcessContextStore(processConnectionString);
+
 var app = builder.Build();
 
 app.UseCors("AllowAll");
 
 app.MapHealthChecks("/health");
+app.MapParticipant();
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var dbContext =
         scope.ServiceProvider.GetRequiredService<IntakeDbContext>();
+    var processDbContext =
+        scope.ServiceProvider.GetRequiredService<SqliteProcessContextDbContext>();
     var httpClientFactory =
         scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
     var logger =
@@ -88,6 +120,7 @@ await using (var scope = app.Services.CreateAsyncScope())
             .CreateLogger("Startup");
 
     await dbContext.Database.EnsureCreatedAsync();
+    await processDbContext.Database.EnsureCreatedAsync();
 
     try
     {

@@ -5,7 +5,7 @@ import { MemberSearch } from './member/member-search/member-search';
 import { Registries } from './registries/registries';
 import { ProcessRegistryViewer } from './registries/process-registry/process-registry';
 import { QueryableRegistryViewer } from './registries/queryable-registry/queryable-registry';
-import { WorkflowShell } from './workflow/workflow-shell';
+import { ProcessShell } from './process/process-shell';
 
 export const routes: Routes = [
   {
@@ -13,8 +13,8 @@ export const routes: Routes = [
     component: PriorAuthHome
   },
   {
-    path: 'workflow',
-    component: WorkflowShell,
+    path: 'process',
+    component: ProcessShell,
     children: [
       {
         path: '',

@@ -1,9 +1,9 @@
-<div class="shell" [class.shell--workflow]="isWorkflowRoute()">
-  @if (!isWorkflowRoute()) {
+<div class="shell" [class.shell--process]="isProcessRoute()">
+  @if (!isProcessRoute()) {
     <header class="shell__header">
       <div>
         <h1>{{ title() }}</h1>
-        <p>Prior authorization workflow scaffolding with registry diagnostics.</p>
+        <p>Prior authorization process scaffolding with registry diagnostics.</p>
       </div>
 
       <nav class="shell__nav">

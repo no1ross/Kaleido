@@ -32,7 +32,7 @@ export class QueryableService {
     private readonly queryRequestValidator =
         inject(QueryableRequestValidator);
 
-    query<TResponse, TParameters = unknown>(
+    queryView<TResponse, TParameters = unknown>(
         view: string,
         request: QueryRequest<TParameters>
     ): Observable<QueryableResult<TResponse>> {

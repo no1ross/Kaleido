@@ -13,17 +13,17 @@ export class App {
 
   protected readonly title = signal('Prior Auth UI');
 
-  readonly isWorkflowRoute =
-    signal(this.router.url.startsWith('/workflow'));
+  readonly isProcessRoute =
+    signal(this.router.url.startsWith('/process'));
 
   constructor() {
     this.router.events
       .pipe(
         filter(event => event instanceof NavigationEnd),
-        map(() => this.router.url.startsWith('/workflow')),
-        startWith(this.router.url.startsWith('/workflow')))
-      .subscribe(isWorkflowRoute => {
-        this.isWorkflowRoute.set(isWorkflowRoute);
+        map(() => this.router.url.startsWith('/process')),
+        startWith(this.router.url.startsWith('/process')))
+      .subscribe(isProcessRoute => {
+        this.isProcessRoute.set(isProcessRoute);
       });
   }
 }
