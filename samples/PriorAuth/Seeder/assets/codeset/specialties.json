@@ -1,8 +1,8 @@
 [
   {
     "MedicalSpecialtyId": "ed2f590c-9c07-4c2d-bb44-f2f90920cc72",
-    "SpecialtyCode": "CARD",
-    "Name": "Cardiology",
-    "Description": "Cardiology and non-invasive cardiac procedural services."
+    "SpecialtyCode": "RAD",
+    "Name": "Radiology",
+    "Description": "Radiology imaging services for the PriorAuth workflow sample."
   }
 ]

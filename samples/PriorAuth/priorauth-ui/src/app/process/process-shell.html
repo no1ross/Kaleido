@@ -53,6 +53,19 @@
         <div class="process-shell__card">
             <priorauth-process-messages />
         </div>
+
+        @if (processState.state.availableSteps.length > 0) {
+            <div class="process-shell__card">
+                <div class="process-shell__eyebrow">Available Steps</div>
+                <div class="process-shell__step-links">
+                    @for (step of processState.state.availableSteps; track step.name) {
+                        @if (getStepRoute(step.name); as route) {
+                            <a [routerLink]="['/process', route]">{{ step.displayName || step.name }}</a>
+                        }
+                    }
+                </div>
+            </div>
+        }
     </div>
 
     <div class="process-shell__content">

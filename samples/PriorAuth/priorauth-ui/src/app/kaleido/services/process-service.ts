@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { Observable, catchError, map, throwError } from 'rxjs';
 
 import {
@@ -15,6 +16,7 @@ import {
 } from './process-request-validator';
 import { buildServiceUrl } from '../../../configuration/urlConfig';
 import { ProcessStateService } from '../../process/services/process-state-service';
+import { getRouteForStep } from '../../process/services/step-route';
 
 @Injectable({
     providedIn: 'root'
@@ -34,6 +36,9 @@ export class ProcessService {
 
     private readonly processState =
         inject(ProcessStateService);
+
+    private readonly router =
+        inject(Router);
 
     executeStep<TProcessStep, TResponse>(
         stepName: string,
@@ -77,6 +82,10 @@ export class ProcessService {
                 map(result => {
                     this.processState.setProcessId(result.participantProcessId);
                     this.processState.setProcessMessages(result.messages);
+                    this.processState.setProcessFlow(
+                        result.requiredStep,
+                        result.availableSteps);
+                    this.navigateToRequiredStep(result.requiredStep);
                     this.logStepOutcome(result);
 
                     if (
@@ -139,6 +148,22 @@ export class ProcessService {
         }
 
         console.groupEnd();
+    }
+
+    private navigateToRequiredStep(
+        requiredStep: string | undefined
+    ): void {
+        if (!requiredStep) {
+            return;
+        }
+
+        const route = getRouteForStep(requiredStep);
+
+        if (!route) {
+            return;
+        }
+
+        void this.router.navigate(['/process', route]);
     }
 
     private logRequest(

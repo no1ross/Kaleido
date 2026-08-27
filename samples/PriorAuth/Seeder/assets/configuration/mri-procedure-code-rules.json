@@ -1,0 +1,92 @@
+[
+  {
+    "MriProcedureCodeRuleId": "6d22e879-760f-441a-aad1-e6989924db0b",
+    "SelectedCodeSystem": "Cpt",
+    "SelectedCodeValue": "72141",
+    "BodyPart": "Spine",
+    "Laterality": "None",
+    "Contrast": "WithoutContrast",
+    "ResolvedCodeSystem": "Cpt",
+    "ResolvedCodeValue": "72141"
+  },
+  {
+    "MriProcedureCodeRuleId": "9bd52546-5808-41e9-b1d7-d8b7af212d5d",
+    "SelectedCodeSystem": "Cpt",
+    "SelectedCodeValue": "72141",
+    "BodyPart": "Spine",
+    "Laterality": "None",
+    "Contrast": "WithContrast",
+    "ResolvedCodeSystem": "Cpt",
+    "ResolvedCodeValue": "72142"
+  },
+  {
+    "MriProcedureCodeRuleId": "67bd1326-2f62-4cfa-b4fb-26e83c2b4fdc",
+    "SelectedCodeSystem": "Cpt",
+    "SelectedCodeValue": "72141",
+    "BodyPart": "Spine",
+    "Laterality": "None",
+    "Contrast": "WithAndWithoutContrast",
+    "ResolvedCodeSystem": "Cpt",
+    "ResolvedCodeValue": "72156"
+  },
+  {
+    "MriProcedureCodeRuleId": "adf0e6d0-f1de-4f1d-8b55-b1b19fb412f7",
+    "SelectedCodeSystem": "Cpt",
+    "SelectedCodeValue": "73721",
+    "BodyPart": "Knee",
+    "Laterality": "Left",
+    "Contrast": "WithoutContrast",
+    "ResolvedCodeSystem": "Cpt",
+    "ResolvedCodeValue": "73721"
+  },
+  {
+    "MriProcedureCodeRuleId": "b8fb6c7e-9428-42c4-8d3a-e014e8360d03",
+    "SelectedCodeSystem": "Cpt",
+    "SelectedCodeValue": "73721",
+    "BodyPart": "Knee",
+    "Laterality": "Right",
+    "Contrast": "WithoutContrast",
+    "ResolvedCodeSystem": "Cpt",
+    "ResolvedCodeValue": "73721"
+  },
+  {
+    "MriProcedureCodeRuleId": "0c2bd178-8f92-4fc3-9273-2f2f90f8d481",
+    "SelectedCodeSystem": "Cpt",
+    "SelectedCodeValue": "73721",
+    "BodyPart": "Knee",
+    "Laterality": "Left",
+    "Contrast": "WithContrast",
+    "ResolvedCodeSystem": "Cpt",
+    "ResolvedCodeValue": "73722"
+  },
+  {
+    "MriProcedureCodeRuleId": "bcdd465d-57e2-45cc-9c20-e078bdab82e6",
+    "SelectedCodeSystem": "Cpt",
+    "SelectedCodeValue": "73721",
+    "BodyPart": "Knee",
+    "Laterality": "Right",
+    "Contrast": "WithContrast",
+    "ResolvedCodeSystem": "Cpt",
+    "ResolvedCodeValue": "73722"
+  },
+  {
+    "MriProcedureCodeRuleId": "b1a9042d-cf63-4890-abcf-5bba2a7664b2",
+    "SelectedCodeSystem": "Cpt",
+    "SelectedCodeValue": "73721",
+    "BodyPart": "Knee",
+    "Laterality": "Left",
+    "Contrast": "WithAndWithoutContrast",
+    "ResolvedCodeSystem": "Cpt",
+    "ResolvedCodeValue": "73723"
+  },
+  {
+    "MriProcedureCodeRuleId": "dd7e36f2-a512-40a2-a8dc-f2d42fe44dd8",
+    "SelectedCodeSystem": "Cpt",
+    "SelectedCodeValue": "73721",
+    "BodyPart": "Knee",
+    "Laterality": "Right",
+    "Contrast": "WithAndWithoutContrast",
+    "ResolvedCodeSystem": "Cpt",
+    "ResolvedCodeValue": "73723"
+  }
+]

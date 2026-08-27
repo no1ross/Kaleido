@@ -8,11 +8,17 @@ public sealed class PriorAuthorizationRequestedService
 
     public Guid PriorAuthorizationId { get; set; }
 
-    public Guid? ProcedureCodeId { get; set; }
+    public Guid? UserEnteredProcedureCodeId { get; set; }
 
-    public string CodeValue { get; set; } = string.Empty;
+    public string UserEnteredCodeValue { get; set; } = string.Empty;
 
-    public ProcedureCodeSystem CodeSystem { get; set; }
+    public ProcedureCodeSystem UserEnteredCodeSystem { get; set; }
+
+    public Guid? ResolvedProcedureCodeId { get; set; }
+
+    public string ResolvedCodeValue { get; set; } = string.Empty;
+
+    public ProcedureCodeSystem ResolvedCodeSystem { get; set; }
 
     public string Description { get; set; } = string.Empty;
 

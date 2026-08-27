@@ -1,62 +1,9 @@
 [
-  {
-    "CodeValue": "93000",
-    "CodeSystem": "Cpt",
-    "SpecialtyCode": "CARD",
-    "IsPrimary": true
-  },
-  {
-    "CodeValue": "93005",
-    "CodeSystem": "Cpt",
-    "SpecialtyCode": "CARD",
-    "IsPrimary": true
-  },
-  {
-    "CodeValue": "93010",
-    "CodeSystem": "Cpt",
-    "SpecialtyCode": "CARD",
-    "IsPrimary": true
-  },
-  {
-    "CodeValue": "93224",
-    "CodeSystem": "Cpt",
-    "SpecialtyCode": "CARD",
-    "IsPrimary": true
-  },
-  {
-    "CodeValue": "93225",
-    "CodeSystem": "Cpt",
-    "SpecialtyCode": "CARD",
-    "IsPrimary": true
-  },
-  {
-    "CodeValue": "93226",
-    "CodeSystem": "Cpt",
-    "SpecialtyCode": "CARD",
-    "IsPrimary": true
-  },
-  {
-    "CodeValue": "93227",
-    "CodeSystem": "Cpt",
-    "SpecialtyCode": "CARD",
-    "IsPrimary": true
-  },
-  {
-    "CodeValue": "93306",
-    "CodeSystem": "Cpt",
-    "SpecialtyCode": "CARD",
-    "IsPrimary": true
-  },
-  {
-    "CodeValue": "93307",
-    "CodeSystem": "Cpt",
-    "SpecialtyCode": "CARD",
-    "IsPrimary": true
-  },
-  {
-    "CodeValue": "93308",
-    "CodeSystem": "Cpt",
-    "SpecialtyCode": "CARD",
-    "IsPrimary": true
-  }
+  { "CodeValue": "72141", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true },
+  { "CodeValue": "72142", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true },
+  { "CodeValue": "72156", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true },
+  { "CodeValue": "73721", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true },
+  { "CodeValue": "73722", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true },
+  { "CodeValue": "73723", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true },
+  { "CodeValue": "70450", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true }
 ]

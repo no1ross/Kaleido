@@ -1,0 +1,26 @@
+[
+  {
+    "ProcedureModalityRuleId": "5c6d432f-8d49-470d-85cb-b365aa6b8911",
+    "CodeSystem": "Cpt",
+    "CodeRangeStart": 70450,
+    "CodeRangeEnd": 70470,
+    "Modality": "Ct",
+    "Name": "CT head/brain"
+  },
+  {
+    "ProcedureModalityRuleId": "2f3ad4a4-cf0e-4f54-8894-b4f4f35e5b49",
+    "CodeSystem": "Cpt",
+    "CodeRangeStart": 72141,
+    "CodeRangeEnd": 72158,
+    "Modality": "Mri",
+    "Name": "MRI spine"
+  },
+  {
+    "ProcedureModalityRuleId": "da30fcce-aef6-4a4d-bf3b-b23cb8ef65ce",
+    "CodeSystem": "Cpt",
+    "CodeRangeStart": 73721,
+    "CodeRangeEnd": 73723,
+    "Modality": "Mri",
+    "Name": "MRI knee"
+  }
+]

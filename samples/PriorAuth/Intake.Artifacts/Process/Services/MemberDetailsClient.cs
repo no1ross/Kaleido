@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Http;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
 
@@ -24,7 +23,7 @@ public sealed class MemberDetailsClient(
         using var response =
             await client.PostAsJsonAsync(
                 memberDetailsQueryPath,
-                new MemberDetailsQueryRequest
+                new QueryRequest<MemberDetailsQueryParameters>
                 {
                     Parameters = new MemberDetailsQueryParameters
                     {

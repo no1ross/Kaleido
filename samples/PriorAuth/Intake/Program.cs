@@ -72,7 +72,25 @@ builder.Services.AddHttpClient("MemberService", client =>
         builder.Configuration["Services:MemberService:BaseUrl"]
         ?? "https://localhost:8444");
 });
+
+builder.Services.AddHttpClient("CodeSet", client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["Services:CodeSet:BaseUrl"]
+        ?? "https://localhost:8442");
+});
+
+builder.Services.AddHttpClient("Configuration", client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["Services:Configuration:BaseUrl"]
+        ?? "https://localhost:8447");
+});
+
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.MemberDetailsClient>();
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.ProcedureCodeClient>();
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.ProcedureModalityClient>();
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.MriProcedureCodeResolverClient>();
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>

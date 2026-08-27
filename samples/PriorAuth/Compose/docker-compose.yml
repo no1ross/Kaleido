@@ -12,10 +12,11 @@ services:
     build:
       context: ../../..
       dockerfile: samples/PriorAuth/Seeder/Dockerfile
-    command: ["--domains=ReferenceData,CodeSet,ProviderSearch,MemberService"]
+    command: ["--domains=ReferenceData,CodeSet,Configuration,ProviderSearch,MemberService"]
     volumes:
       - referencedata-data:/app/ReferenceData/data
       - codeset-data:/app/CodeSet/data
+      - configuration-data:/app/Configuration/data
       - providersearch-data:/app/ProviderSearch/data
       - memberservice-data:/app/MemberService/data
     restart: "no"
@@ -113,6 +114,39 @@ services:
     ports:
       - "8082:8080"
 
+  configuration:
+    build:
+      context: ../../..
+      dockerfile: samples/PriorAuth/Configuration/Dockerfile
+    depends_on:
+      seeder:
+        condition: service_completed_successfully
+      eventcollector:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Configuration: Data Source=/app/data/configuration.db
+      Services__EventCollector__BaseUrl: http://eventcollector:8080
+      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
+      OpenTelemetry__Protocol: grpc
+      OpenTelemetry__ServiceName: priorauth-configuration
+      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: priorauth-configuration
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=Development,service.version=1.0.0
+    volumes:
+      - configuration-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    ports:
+      - "8087:8080"
+
   providersearch:
     build:
       context: ../../..
@@ -198,6 +232,8 @@ services:
         condition: service_healthy
       codeset:
         condition: service_healthy
+      configuration:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
@@ -205,6 +241,8 @@ services:
       ConnectionStrings__IntakeProcess: Data Source=/app/data/intake-process.db
       Services__ReferenceData__BaseUrl: http://referencedata:8080
       Services__MemberService__BaseUrl: http://memberservice:8080
+      Services__CodeSet__BaseUrl: http://codeset:8080
+      Services__Configuration__BaseUrl: http://configuration:8080
       Services__EventCollector__BaseUrl: http://eventcollector:8080
       OpenTelemetry__Endpoint: http://aspire-dashboard:18889
       OpenTelemetry__Protocol: grpc
@@ -256,6 +294,7 @@ volumes:
   eventcollector-data:
   referencedata-data:
   codeset-data:
+  configuration-data:
   providersearch-data:
   memberservice-data:
   intake-data:

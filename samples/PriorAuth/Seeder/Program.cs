@@ -1,5 +1,6 @@
 using Kaleido.Samples.PriorAuth.Seeder;
 using Kaleido.Samples.PriorAuth.Seeder.CodeSet;
+using Kaleido.Samples.PriorAuth.Seeder.Configuration;
 using Kaleido.Samples.PriorAuth.Seeder.Infrastructure;
 using Kaleido.Samples.PriorAuth.Seeder.MemberService;
 using Kaleido.Samples.PriorAuth.Seeder.ProviderSearch;
@@ -27,6 +28,10 @@ var runner =
                 jsonAssetLoader),
 
             new CodeSetSeeder(
+                projectContextFactory,
+                jsonAssetLoader),
+
+            new ConfigurationSeeder(
                 projectContextFactory,
                 jsonAssetLoader),
 

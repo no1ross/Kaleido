@@ -5,5 +5,6 @@ internal enum SupportedDomain
     ReferenceData,
     MemberService,
     CodeSet,
-    ProviderSearch
+    ProviderSearch,
+    Configuration
 }

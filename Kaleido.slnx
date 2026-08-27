@@ -10,23 +10,44 @@
     <Project Path="samples/ECommerce/Shared/Kaleido.Samples.ECommerce.Shared.csproj" />
   </Folder>
   <Folder Name="/samples/PriorAuth/">
+    <File Path="samples/PriorAuth/AGENTS.md" />
+  </Folder>
+  <Folder Name="/samples/PriorAuth/CodeSet/">
+    <Project Path="samples/PriorAuth/CodeSet.Artifacts/Kaleido.Samples.PriorAuth.CodeSet.Artifacts.csproj" />
+    <Project Path="samples/PriorAuth/CodeSet/Kaleido.Samples.PriorAuth.CodeSet.csproj" />
+  </Folder>
+  <Folder Name="/samples/PriorAuth/Common/">
     <Project Path="samples/PriorAuth/Common/Kaleido.Samples.PriorAuth.Common.csproj" />
+  </Folder>
+  <Folder Name="/samples/PriorAuth/Compose/">
     <Project Path="samples/PriorAuth/Compose/Kaleido.Samples.PriorAuth.Compose.dcproj" Id="dfa3ef7b-d8d9-8b28-30b1-e97146d284f8">
       <Build />
     </Project>
+  </Folder>
+  <Folder Name="/samples/PriorAuth/Configuration/">
+    <Project Path="samples/PriorAuth/Configuration.Artifacts/Kaleido.Samples.PriorAuth.Configuration.Artifacts.csproj" />
+    <Project Path="samples/PriorAuth/Configuration/Kaleido.Samples.PriorAuth.Configuration.csproj" />
+  </Folder>
+  <Folder Name="/samples/PriorAuth/EventCollector/">
     <Project Path="samples/PriorAuth/EventCollector/Kaleido.Samples.PriorAuth.EventCollector.csproj" />
+  </Folder>
+  <Folder Name="/samples/PriorAuth/Intake/">
     <Project Path="samples/PriorAuth/Intake.Artifacts/Kaleido.Samples.PriorAuth.Intake.Artifacts.csproj" />
     <Project Path="samples/PriorAuth/Intake/Kaleido.Samples.PriorAuth.Intake.csproj" />
   </Folder>
-  <Folder Name="/samples/PriorAuth/Common/">
-    <Project Path="samples/PriorAuth/CodeSet.Artifacts/Kaleido.Samples.PriorAuth.CodeSet.Artifacts.csproj" />
-    <Project Path="samples/PriorAuth/CodeSet/Kaleido.Samples.PriorAuth.CodeSet.csproj" />
+  <Folder Name="/samples/PriorAuth/MemberService/">
     <Project Path="samples/PriorAuth/MemberService.Artifacts/Kaleido.Samples.PriorAuth.MemberService.Artifacts.csproj" />
-    <Project Path="samples/priorauth/MemberService/Kaleido.Samples.PriorAuth.MemberService.csproj" />
+    <Project Path="samples/PriorAuth/MemberService/Kaleido.Samples.PriorAuth.MemberService.csproj" />
+  </Folder>
+  <Folder Name="/samples/PriorAuth/ProviderSearch/">
     <Project Path="samples/PriorAuth/ProviderSearch.Artifacts/Kaleido.Samples.PriorAuth.ProviderSearch.Artifacts.csproj" />
     <Project Path="samples/PriorAuth/ProviderSearch/Kaleido.Samples.PriorAuth.ProviderSearch.csproj" />
-    <Project Path="samples/priorauth/ReferenceData.Artifacts/Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.csproj" Id="042dc266-a439-477e-9bb4-7252387d4958" />
+  </Folder>
+  <Folder Name="/samples/PriorAuth/ReferenceData/">
+    <Project Path="samples/PriorAuth/ReferenceData.Artifacts/Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.csproj" Id="042dc266-a439-477e-9bb4-7252387d4958" />
     <Project Path="samples/PriorAuth/ReferenceData/Kaleido.Samples.PriorAuth.ReferenceData.csproj" />
+  </Folder>
+  <Folder Name="/samples/PriorAuth/Seeder/">
     <Project Path="samples/PriorAuth/Seeder/Kaleido.Samples.PriorAuth.Seeder.csproj" />
   </Folder>
   <Folder Name="/shared/">
@@ -75,7 +96,9 @@
     <Project Path="src/Queryable/AspNetCore/Kaleido.Queryable.AspNetCore.csproj" />
     <Project Path="src/Queryable/Queryable/Kaleido.Queryable.csproj" />
   </Folder>
-  <Folder Name="/test/" />
+  <Folder Name="/test/">
+    <File Path="tests/AGENTS.md" />
+  </Folder>
   <Folder Name="/test/Core/">
     <Project Path="tests/Core/Abstractions.UnitTests/Kaleido.Abstractions.UnitTests.csproj" />
     <Project Path="tests/Core/AspNetCore.UnitTests/Kaleido.AspNetCore.UnitTests.csproj" />

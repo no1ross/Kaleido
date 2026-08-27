@@ -1,0 +1,45 @@
+<section class="process-step-card">
+  <header class="process-step-card__header">
+    <div>
+      <div class="process-step-card__eyebrow">MRI Information</div>
+      <h2>Capture MRI details</h2>
+    </div>
+  </header>
+
+  <div class="process-step-card__body">
+    <label>
+      <span>Body part</span>
+      <select [(ngModel)]="bodyPart">
+        @for (option of bodyPartOptions; track option) {
+          <option [ngValue]="option">{{ option }}</option>
+        }
+      </select>
+    </label>
+
+    <label>
+      <span>Laterality</span>
+      <select [(ngModel)]="laterality" [disabled]="bodyPart === 'Spine'">
+        @for (option of lateralityOptions; track option) {
+          <option [ngValue]="option">{{ option }}</option>
+        }
+      </select>
+    </label>
+
+    <label>
+      <span>Contrast</span>
+      <select [(ngModel)]="contrast">
+        @for (option of contrastOptions; track option) {
+          <option [ngValue]="option">{{ option }}</option>
+        }
+      </select>
+    </label>
+
+    <div class="process-step-card__actions">
+      <button type="button" (click)="submit()" [disabled]="isSubmitting">Submit MRI Information</button>
+    </div>
+
+    @if (errorMessage) {
+      <p class="process-step-card__error">{{ errorMessage }}</p>
+    }
+  </div>
+</section>

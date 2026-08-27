@@ -1,6 +1,9 @@
 import { Injectable } from '@angular/core';
 
-import { ProcessMessage } from '../../kaleido/models/participant-process-result';
+import {
+    ProcessMessage,
+    ProcessStepSummary
+} from '../../kaleido/models/participant-process-result';
 
 export interface ProcessSelectedMemberSummary {
     memberId: string;
@@ -20,6 +23,8 @@ export interface ProcessState {
     isDateOfServiceLocked: boolean;
     selectedMember?: ProcessSelectedMemberSummary;
     processMessages: ProcessMessage[];
+    requiredStep?: string;
+    availableSteps: ProcessStepSummary[];
 }
 
 @Injectable({
@@ -29,7 +34,8 @@ export class ProcessStateService {
     readonly state: ProcessState = {
         dateOfService: this.getTodayDate(),
         isDateOfServiceLocked: false,
-        processMessages: []
+        processMessages: [],
+        availableSteps: []
     };
 
     setSelectedMember(
@@ -58,6 +64,14 @@ export class ProcessStateService {
 
     clearProcessMessages(): void {
         this.state.processMessages = [];
+    }
+
+    setProcessFlow(
+        requiredStep: string | undefined,
+        availableSteps: ProcessStepSummary[]
+    ): void {
+        this.state.requiredStep = requiredStep;
+        this.state.availableSteps = availableSteps;
     }
 
     setDateOfService(

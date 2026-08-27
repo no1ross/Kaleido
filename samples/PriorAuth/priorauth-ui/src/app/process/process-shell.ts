@@ -4,6 +4,7 @@ import { RouterLink, RouterOutlet } from '@angular/router';
 
 import { ProcessMessages } from './process-messages';
 import { ProcessStateService } from './services/process-state-service';
+import { getRouteForStep } from './services/step-route';
 
 @Component({
     selector: 'priorauth-process-shell',
@@ -15,6 +16,12 @@ import { ProcessStateService } from './services/process-state-service';
 export class ProcessShell {
     readonly processState =
         inject(ProcessStateService);
+
+    getStepRoute(
+        stepName: string
+    ): string | undefined {
+        return getRouteForStep(stepName);
+    }
 
     updateDateOfService(
         value: string

@@ -6,6 +6,9 @@ import { Registries } from './registries/registries';
 import { ProcessRegistryViewer } from './registries/process-registry/process-registry';
 import { QueryableRegistryViewer } from './registries/queryable-registry/queryable-registry';
 import { ProcessShell } from './process/process-shell';
+import { RequestedService } from './process/requested-service';
+import { CaptureMriInfo } from './process/capture-mri-info';
+import { ConfirmCtInsteadOfMri } from './process/confirm-ct-instead-of-mri';
 
 export const routes: Routes = [
   {
@@ -24,6 +27,18 @@ export const routes: Routes = [
       {
         path: 'member-search',
         component: MemberSearch
+      },
+      {
+        path: 'requested-service',
+        component: RequestedService
+      },
+      {
+        path: 'capture-mri-info',
+        component: CaptureMriInfo
+      },
+      {
+        path: 'confirm-ct-instead-of-mri',
+        component: ConfirmCtInsteadOfMri
       }
     ]
   },

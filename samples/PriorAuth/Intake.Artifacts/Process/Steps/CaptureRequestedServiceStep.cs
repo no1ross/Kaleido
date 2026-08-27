@@ -13,16 +13,36 @@ namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
 [Repeatable]
 public sealed record CaptureRequestedServiceStep
 {
-    public Guid? ProcedureCodeId { get; init; }
-
     [Required]
     [StringLength(50)]
     public string CodeValue { get; init; } = string.Empty;
 
     [Required]
     public ProcedureCodeSystem CodeSystem { get; init; }
+}
+
+[ProcessStep(
+    Name = "CaptureMriInfo",
+    DisplayName = "Intake - Capture MRI Information",
+    Description = "Captures MRI-specific information for the requested service.",
+    Version = "1.0.0")]
+[DependsOnStep(typeof(CaptureRequestedServiceStep))]
+public sealed record CaptureMriInfoStep
+{
+    [Required]
+    public MriBodyPart BodyPart { get; init; }
 
     [Required]
-    [StringLength(200)]
-    public string Description { get; init; } = string.Empty;
+    public Laterality Laterality { get; init; }
+
+    [Required]
+    public ContrastOption Contrast { get; init; }
 }
+
+[ProcessStep(
+    Name = "ConfirmCtInsteadOfMri",
+    DisplayName = "Intake - Confirm CT Instead Of MRI",
+    Description = "Captures the current CT recommendation branch placeholder.",
+    Version = "1.0.0")]
+[DependsOnStep(typeof(CaptureRequestedServiceStep))]
+public sealed record ConfirmCtInsteadOfMriStep;

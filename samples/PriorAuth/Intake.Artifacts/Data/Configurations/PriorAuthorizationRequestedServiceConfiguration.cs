@@ -10,11 +10,18 @@ internal sealed class PriorAuthorizationRequestedServiceConfiguration : IEntityT
     {
         builder.HasKey(x => x.PriorAuthorizationRequestedServiceId);
 
-        builder.Property(x => x.CodeValue)
+        builder.Property(x => x.UserEnteredCodeValue)
             .HasMaxLength(50)
             .IsRequired();
 
-        builder.Property(x => x.CodeSystem)
+        builder.Property(x => x.UserEnteredCodeSystem)
+            .HasConversion<string>();
+
+        builder.Property(x => x.ResolvedCodeValue)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        builder.Property(x => x.ResolvedCodeSystem)
             .HasConversion<string>();
 
         builder.Property(x => x.Description)
@@ -23,6 +30,8 @@ internal sealed class PriorAuthorizationRequestedServiceConfiguration : IEntityT
 
         builder.HasIndex(x => x.PriorAuthorizationId);
 
-        builder.HasIndex(x => x.CodeValue);
+        builder.HasIndex(x => x.UserEnteredCodeValue);
+
+        builder.HasIndex(x => x.ResolvedCodeValue);
     }
 }
