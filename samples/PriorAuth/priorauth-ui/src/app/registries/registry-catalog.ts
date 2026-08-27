@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, ReplaySubject, catchError, forkJoin, map, of, switchMap, tap } from 'rxjs';
+import { Observable, ReplaySubject, catchError, forkJoin, map, of, shareReplay, switchMap, tap } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 
 import {
@@ -67,7 +67,8 @@ export class RegistryCatalog {
     private readonly state$ =
         this.refreshTrigger.pipe(
             switchMap(() =>
-                this.createStateObservable()));
+                this.createStateObservable()),
+            shareReplay(1));
 
     constructor() {
         this.refresh();

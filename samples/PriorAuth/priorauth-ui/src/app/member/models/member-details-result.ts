@@ -12,7 +12,8 @@ export interface MemberDetailsResult {
     planId: string;
     planName: string;
     lineOfBusiness: string;
-    enrollmentStatus: string;
+    effectiveDate: string;
+    terminationDate?: string;
     relationshipToSubscriber: string;
     issuanceState: string;
     addressLine1: string;

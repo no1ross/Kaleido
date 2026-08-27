@@ -14,8 +14,6 @@ public sealed class MemberEnrollment
 
     public LineOfBusiness LineOfBusiness { get; set; }
 
-    public EnrollmentStatus EnrollmentStatus { get; set; }
-
     public RelationshipToSubscriber RelationshipToSubscriber { get; set; }
 
     public DateOnly EffectiveDate { get; set; }

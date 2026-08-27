@@ -42,6 +42,42 @@
     font-weight: 700;
 }
 
+.process-shell__inline-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+    color: #4f5d73;
+}
+
+.process-shell__inline-summary-label,
+.process-shell__context-field span,
+.process-shell__grid span {
+    display: block;
+    font-size: 0.78rem;
+    color: #6b7788;
+    margin-bottom: 0.2rem;
+}
+
+.process-shell__inline-summary strong {
+    color: #172033;
+}
+
+.process-shell__dos-field {
+    display: block;
+}
+
+.process-shell__dos-field input {
+    width: 170px;
+    min-width: 0;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid #d4dbe6;
+    border-radius: 10px;
+    font-size: 0.84rem;
+    background: #fff;
+    color: #172033;
+}
+
 .process-shell__card {
     border: 1px solid #e3eaf3;
     border-radius: 14px;
@@ -49,13 +85,12 @@
     background: #fbfcfe;
 }
 
-.process-shell__card h2 {
-    margin: 0 0 0.75rem;
-    font-size: 1rem;
-}
-
 .process-shell__card--empty {
     color: #5f6c80;
+}
+
+.process-shell__card-note {
+    margin-top: 0.85rem;
 }
 
 .process-shell__grid {
@@ -64,25 +99,7 @@
     gap: 0.75rem;
 }
 
-.process-shell__grid span {
-    display: block;
-    font-size: 0.78rem;
-    color: #6b7788;
-    margin-bottom: 0.2rem;
-}
-
-.process-shell__grid strong {
-    display: block;
-    color: #172033;
-}
-
-.process-shell__context-field span {
-    display: block;
-    font-size: 0.78rem;
-    color: #6b7788;
-    margin-bottom: 0.2rem;
-}
-
+.process-shell__grid strong,
 .process-shell__context-field strong {
     display: block;
     color: #172033;

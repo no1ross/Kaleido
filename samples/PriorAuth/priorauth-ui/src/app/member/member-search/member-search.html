@@ -88,10 +88,16 @@
                                     type="button"
                                     class="member-record"
                                     [class.member-record--selected]="selectedRecord === record"
+                                    [class.member-record--upcoming]="getCoverageClass(record.effectiveDate, record.terminationDate) === 'member-coverage--upcoming'"
+                                    [class.member-record--expired]="getCoverageClass(record.effectiveDate, record.terminationDate) === 'member-coverage--expired'"
                                     (click)="selectRecord(record)">
                                     <div class="member-record__header">
                                         <div class="member-record__title">{{ getRecordSummary(record) }}</div>
                                         <div class="member-record__action">View details</div>
+                                    </div>
+
+                                    <div class="member-record__status" [class]="'member-record__status ' + getCoverageClass(record.effectiveDate, record.terminationDate)">
+                                        {{ getCoverageMessage(record.effectiveDate, record.terminationDate) }}
                                     </div>
 
                                     <div class="member-record__grid">
@@ -132,6 +138,13 @@
                             <button type="button" class="primary-button" (click)="createPriorAuth()" [disabled]="isCreatingPriorAuth">
                                 {{ isCreatingPriorAuth ? 'Creating Prior Auth...' : 'Create Prior Auth' }}
                             </button>
+                        </div>
+                    </div>
+
+                    <div class="member-search-selection">
+                        <h3>Coverage for Date of Service</h3>
+                        <div class="member-record__status member-details-page__coverage" [class]="'member-record__status member-details-page__coverage ' + getCoverageClass(selectedMemberDetails.effectiveDate, selectedMemberDetails.terminationDate)">
+                            {{ getCoverageMessage(selectedMemberDetails.effectiveDate, selectedMemberDetails.terminationDate) }}
                         </div>
                     </div>
 

@@ -23,4 +23,8 @@ public sealed record MemberSearchView
     public string PlanId { get; init; } = string.Empty;
 
     public string PlanName { get; init; } = string.Empty;
+
+    public DateOnly EffectiveDate { get; init; }
+
+    public DateOnly? TerminationDate { get; init; }
 }

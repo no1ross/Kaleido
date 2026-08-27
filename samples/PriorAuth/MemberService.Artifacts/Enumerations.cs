@@ -12,16 +12,6 @@ public enum MemberGender
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
-public enum EnrollmentStatus
-{
-    Unknown = 0,
-    Active = 1,
-    Pending = 2,
-    Termed = 3,
-    Cobra = 4
-}
-
-[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum LineOfBusiness
 {
     Unknown = 0,

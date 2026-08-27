@@ -47,7 +47,6 @@ public sealed class GenerateSnapshotHandler(
                 LineOfBusiness = enrollment.LineOfBusiness,
                 PlanId = enrollment.PlanId,
                 PlanName = enrollment.PlanName,
-                EnrollmentStatus = enrollment.EnrollmentStatus,
                 EffectiveDate = enrollment.EffectiveDate,
                 TerminationDate = enrollment.TerminationDate,
                 CapturedUtc = capturedUtc

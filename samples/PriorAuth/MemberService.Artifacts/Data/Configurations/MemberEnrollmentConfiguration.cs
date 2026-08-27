@@ -21,9 +21,6 @@ internal sealed class MemberEnrollmentConfiguration : IEntityTypeConfiguration<M
         builder.Property(x => x.LineOfBusiness)
             .HasConversion<string>();
 
-        builder.Property(x => x.EnrollmentStatus)
-            .HasConversion<string>();
-
         builder.Property(x => x.RelationshipToSubscriber)
             .HasConversion<string>();
 

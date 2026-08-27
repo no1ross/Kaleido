@@ -27,7 +27,8 @@ const serviceRouteTemplates = {
     },
     intake: {
         key: 'intake',
-        displayName: 'Intake'
+        displayName: 'Intake',
+        processRegistryPath: '/intake/processes/registry'
     }
 } as const satisfies Record<string, Omit<PriorAuthServiceRouteConfig, 'baseUrl'>>;
 

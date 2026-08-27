@@ -10,10 +10,14 @@ export interface ProcessSelectedMemberSummary {
     dateOfBirth: string;
     lineOfBusiness: string;
     planName: string;
+    effectiveDate: string;
+    terminationDate?: string;
 }
 
 export interface ProcessState {
     processId?: string;
+    dateOfService: string;
+    isDateOfServiceLocked: boolean;
     selectedMember?: ProcessSelectedMemberSummary;
     processMessages: ProcessMessage[];
 }
@@ -23,6 +27,8 @@ export interface ProcessState {
 })
 export class ProcessStateService {
     readonly state: ProcessState = {
+        dateOfService: this.getTodayDate(),
+        isDateOfServiceLocked: false,
         processMessages: []
     };
 
@@ -30,10 +36,12 @@ export class ProcessStateService {
         member: ProcessSelectedMemberSummary
     ): void {
         this.state.selectedMember = member;
+        this.state.isDateOfServiceLocked = true;
     }
 
     clearSelectedMember(): void {
         this.state.selectedMember = undefined;
+        this.state.isDateOfServiceLocked = false;
     }
 
     setProcessId(
@@ -50,5 +58,19 @@ export class ProcessStateService {
 
     clearProcessMessages(): void {
         this.state.processMessages = [];
+    }
+
+    setDateOfService(
+        dateOfService: string
+    ): void {
+        if (this.state.isDateOfServiceLocked) {
+            return;
+        }
+
+        this.state.dateOfService = dateOfService || this.getTodayDate();
+    }
+
+    private getTodayDate(): string {
+        return new Date().toISOString().slice(0, 10);
     }
 }

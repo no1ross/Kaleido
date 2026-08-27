@@ -1,12 +1,18 @@
 using System.Net.Http.Json;
 using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Http;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
 
 public sealed class MemberDetailsClient(
-    IHttpClientFactory httpClientFactory)
+    IHttpClientFactory httpClientFactory,
+    IConfiguration configuration)
 {
+    private readonly string memberDetailsQueryPath =
+        configuration["Services:MemberService:MemberDetailsQueryPath"]
+        ?? "/member/queryable/members/member-details/query";
+
     public async Task<MemberDetailsRecord?> GetMemberDetailsAsync(
         Guid memberId,
         Guid memberEnrollmentId,
@@ -17,7 +23,7 @@ public sealed class MemberDetailsClient(
 
         using var response =
             await client.PostAsJsonAsync(
-                "/member/queryable/views/member-details/query",
+                memberDetailsQueryPath,
                 new MemberDetailsQueryRequest
                 {
                     Parameters = new MemberDetailsQueryParameters

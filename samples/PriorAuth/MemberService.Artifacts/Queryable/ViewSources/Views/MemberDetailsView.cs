@@ -28,7 +28,9 @@ public sealed record MemberDetailsView
 
     public LineOfBusiness LineOfBusiness { get; init; }
 
-    public EnrollmentStatus EnrollmentStatus { get; init; }
+    public DateOnly EffectiveDate { get; init; }
+
+    public DateOnly? TerminationDate { get; init; }
 
     public RelationshipToSubscriber RelationshipToSubscriber { get; init; }
 

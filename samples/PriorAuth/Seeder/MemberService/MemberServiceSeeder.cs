@@ -139,9 +139,7 @@ internal sealed class MemberServiceSeeder(
             || settings.TermedEnrollmentModulo <= 0
             || settings.SecondaryAddressModulo <= 0
             || settings.MiddleNameModulo <= 0
-            || settings.AddressLine2Modulo <= 0
-            || settings.PendingEnrollmentModulo <= 0
-            || settings.CobraEnrollmentModulo <= 0)
+            || settings.AddressLine2Modulo <= 0)
         {
             throw new InvalidOperationException("Member seed settings modulo values must all be positive.");
         }
@@ -256,15 +254,6 @@ internal sealed class MemberServiceSeeder(
         var plan = plans[((memberIndex - 1) * 3 + enrollmentSequence - 1) % plans.Count];
         var effectiveDate = settings.BaseEffectiveDate.AddDays(-((memberIndex - 1) % 180) - ((enrollmentSequence - 1) * 45));
         var isTermed = memberIndex % settings.TermedEnrollmentModulo == 0 && enrollmentSequence == 1;
-        var isCobra = !isTermed && memberIndex % settings.CobraEnrollmentModulo == 0 && enrollmentSequence == 2;
-        var isPending = !isTermed && !isCobra && memberIndex % settings.PendingEnrollmentModulo == 0 && enrollmentSequence == 1;
-        var enrollmentStatus = isTermed
-            ? EnrollmentStatus.Termed
-            : isCobra
-                ? EnrollmentStatus.Cobra
-                : isPending
-                    ? EnrollmentStatus.Pending
-                    : EnrollmentStatus.Active;
 
         return new MemberEnrollment
         {
@@ -274,11 +263,10 @@ internal sealed class MemberServiceSeeder(
             PlanId = plan.PlanId,
             PlanName = plan.PlanName,
             LineOfBusiness = MapLineOfBusiness(plan.LineOfBusiness),
-            EnrollmentStatus = enrollmentStatus,
             RelationshipToSubscriber = GetRelationship(memberIndex, enrollmentSequence),
             EffectiveDate = effectiveDate,
             TerminationDate = isTermed ? effectiveDate.AddDays(180 + (memberIndex % 90)) : null,
-            IsCurrent = enrollmentStatus != EnrollmentStatus.Termed
+            IsCurrent = !isTermed
         };
     }
 

@@ -1,6 +1,8 @@
-import { Component, inject, ChangeDetectorRef } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { catchError, take } from 'rxjs/operators';
 
 import { FilterOperator, LogicalOperator } from '../../kaleido/models/enumerations';
 import { QueryErrorResponse } from '../../kaleido/models/query-error-response';
@@ -19,6 +21,7 @@ import { QueryableRequestValidationError } from '../../kaleido/services/queryabl
 import { ProcessErrorResponse, ProcessService } from '../../kaleido/services/process-service';
 import { QueryableService } from '../../kaleido/services/queryable-service';
 import { ProcessStateService } from '../../process/services/process-state-service';
+import { RegistryCatalog } from '../../registries/registry-catalog';
 import { MemberDetailsParameters } from '../models/member-details-parameters';
 import { CaptureMemberStep } from '../models/capture-member-step';
 import { MemberDetailsResult } from '../models/member-details-result';
@@ -51,6 +54,9 @@ export class MemberSearch {
 
     private readonly processState =
         inject(ProcessStateService);
+
+    private readonly registryCatalog =
+        inject(RegistryCatalog);
 
     private readonly router =
         inject(Router);
@@ -162,36 +168,69 @@ export class MemberSearch {
         this.detailsError = undefined;
         this.isLoadingDetails = true;
         this.viewMode = 'details';
+        this.processState.clearProcessMessages();
 
-        this.processState.setSelectedMember({
-            memberId: record.memberId,
-            memberEnrollmentId: record.memberEnrollmentId,
-            displayName: this.getRecordSummary(record),
-            memberNumber: record.memberNumber,
-            dateOfBirth: record.dateOfBirth,
-            lineOfBusiness: record.lineOfBusiness,
-            planName: record.planName
-        });
-
-        const request: QueryRequest<MemberDetailsParameters> = {
-            parameters: {
-                MemberId: record.memberId,
-                MemberEnrollmentId: record.memberEnrollmentId
-            }
-        };
-
-        this.queryableService
-            .queryView<MemberDetailsResult, MemberDetailsParameters>(
-                this.detailsViewName,
-                request)
+        this.registryCatalog.loadState()
+            .pipe(take(1))
             .subscribe({
-                next: result => {
-                    this.selectedMemberDetails = result.records[0];
-                    this.isLoadingDetails = false;
-                    this.changeDetector.detectChanges();
+                next: () => {
+                    this.processState.setSelectedMember({
+                        memberId: record.memberId,
+                        memberEnrollmentId: record.memberEnrollmentId,
+                        displayName: this.getRecordSummary(record),
+                        memberNumber: record.memberNumber,
+                        dateOfBirth: record.dateOfBirth,
+                        lineOfBusiness: record.lineOfBusiness,
+                        planName: record.planName,
+                        effectiveDate: record.effectiveDate,
+                        terminationDate: record.terminationDate
+                    });
+
+                    const detailsRequest: QueryRequest<MemberDetailsParameters> = {
+                        parameters: {
+                            MemberId: record.memberId,
+                            MemberEnrollmentId: record.memberEnrollmentId
+                        }
+                    };
+
+                    const captureRequest = {
+                        participantProcessId: this.processState.state.processId,
+                        processStep: {
+                            memberId: record.memberId,
+                            memberEnrollmentId: record.memberEnrollmentId,
+                            dateOfService: this.processState.state.dateOfService
+                        } satisfies CaptureMemberStep
+                    };
+
+                    forkJoin({
+                        details: this.queryableService
+                            .queryView<MemberDetailsResult, MemberDetailsParameters>(
+                                this.detailsViewName,
+                                detailsRequest),
+                        capture: this.processService
+                            .executeStep<CaptureMemberStep, object>('CaptureMember', captureRequest)
+                            .pipe(
+                                catchError(error => {
+                                    if (ProcessErrorResponse.is(error)) {
+                                        return of(null);
+                                    }
+
+                                    throw error;
+                                }))
+                    }).subscribe({
+                        next: result => {
+                            this.selectedMemberDetails = result.details.records[0];
+                            this.isLoadingDetails = false;
+                            this.changeDetector.detectChanges();
+                        },
+                        error: error => {
+                            this.selectedMemberDetails = undefined;
+                            this.isLoadingDetails = false;
+                            this.detailsError = this.formatError(error);
+                        }
+                    });
                 },
                 error: error => {
-                    this.selectedMemberDetails = undefined;
                     this.isLoadingDetails = false;
                     this.detailsError = this.formatError(error);
                 }
@@ -208,14 +247,14 @@ export class MemberSearch {
         }
 
         this.isCreatingPriorAuth = true;
-        this.processState.clearProcessMessages();
 
         this.processService
             .executeStep<CaptureMemberStep, object>('CaptureMember', {
                 participantProcessId: this.processState.state.processId,
                 processStep: {
                     memberId: this.selectedRecord.memberId,
-                    memberEnrollmentId: this.selectedRecord.memberEnrollmentId
+                    memberEnrollmentId: this.selectedRecord.memberEnrollmentId,
+                    dateOfService: this.processState.state.dateOfService
                 }
             })
             .subscribe({
@@ -291,7 +330,8 @@ export class MemberSearch {
             ['Member Number', record.memberNumber],
             ['Date of Birth', record.dateOfBirth],
             ['State', record.issuanceState],
-            ['Line of Business', record.lineOfBusiness],
+            ['Effective', record.effectiveDate],
+            ['Termination', record.terminationDate ?? 'Open-ended'],
             ['Plan', record.planName]
         ];
 
@@ -347,7 +387,8 @@ export class MemberSearch {
                 entries: [
                     ['Plan', details.planName],
                     ['Line of Business', details.lineOfBusiness],
-                    ['Enrollment Status', details.enrollmentStatus],
+                    ['Effective Date', details.effectiveDate],
+                    ['Termination Date', details.terminationDate ?? 'Open-ended'],
                     ['Relationship', details.relationshipToSubscriber],
                     ['Issuance State', details.issuanceState]
                 ]
@@ -378,6 +419,44 @@ export class MemberSearch {
                 value !== null &&
                 `${value}`.length > 0)
         }));
+    }
+
+    getCoverageClass(
+        effectiveDate: string,
+        terminationDate?: string
+    ): string {
+        const dateOfService = this.processState.state.dateOfService;
+
+        if (!dateOfService) {
+            return 'member-coverage--unknown';
+        }
+
+        if (dateOfService < effectiveDate) {
+            return 'member-coverage--upcoming';
+        }
+
+        if (terminationDate && dateOfService > terminationDate) {
+            return 'member-coverage--expired';
+        }
+
+        return 'member-coverage--active';
+    }
+
+    getCoverageMessage(
+        effectiveDate: string,
+        terminationDate?: string
+    ): string {
+        const dateOfService = this.processState.state.dateOfService;
+
+        if (dateOfService < effectiveDate) {
+            return `Coverage starts after the current date of service (${dateOfService}).`;
+        }
+
+        if (terminationDate && dateOfService > terminationDate) {
+            return `Coverage ended before the current date of service (${dateOfService}).`;
+        }
+
+        return `Coverage includes the current date of service (${dateOfService}).`;
     }
 
     private buildFilter(): QueryFilterNode | undefined {

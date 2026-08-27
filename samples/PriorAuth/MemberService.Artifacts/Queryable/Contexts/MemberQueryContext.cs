@@ -63,4 +63,10 @@ public sealed class MemberQueryContext
 
     [Sortable]
     public string PlanName { get; init; } = string.Empty;
+
+    [Sortable]
+    public DateOnly EffectiveDate { get; init; }
+
+    [Sortable]
+    public DateOnly? TerminationDate { get; init; }
 }

@@ -33,7 +33,9 @@ internal sealed class MemberSearchViewSource
                     IssuanceState = x.IssuanceState,
                     LineOfBusiness = x.LineOfBusiness,
                     PlanId = x.PlanId,
-                    PlanName = x.PlanName
+                    PlanName = x.PlanName,
+                    EffectiveDate = x.EffectiveDate,
+                    TerminationDate = x.TerminationDate
                 });
     }
 }

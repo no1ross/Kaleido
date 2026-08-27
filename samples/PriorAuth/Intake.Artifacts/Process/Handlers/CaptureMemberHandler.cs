@@ -5,7 +5,6 @@ using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data.Entities;
 using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Messages;
 using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
 using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
-using Kaleido.Samples.PriorAuth.MemberService.Artifacts;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Handlers;
@@ -34,12 +33,23 @@ public sealed class CaptureMemberHandler(
                     processStep.MemberEnrollmentId));
         }
 
-        if (memberDetails.EnrollmentStatus != EnrollmentStatus.Active)
+        if (processStep.DateOfService < memberDetails.EffectiveDate)
         {
             return ProcessStepHandlerResult.Failure(
-                IntakeProcessMessages.InactiveEnrollment(
+                IntakeProcessMessages.CoverageNotYetEffective(
                     processStep.MemberEnrollmentId,
-                    memberDetails.EnrollmentStatus.ToString()));
+                    processStep.DateOfService,
+                    memberDetails.EffectiveDate));
+        }
+
+        if (memberDetails.TerminationDate is DateOnly terminationDate
+            && processStep.DateOfService > terminationDate)
+        {
+            return ProcessStepHandlerResult.Failure(
+                IntakeProcessMessages.CoverageTerminated(
+                    processStep.MemberEnrollmentId,
+                    processStep.DateOfService,
+                    terminationDate));
         }
 
         var priorAuthorization =

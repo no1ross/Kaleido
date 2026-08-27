@@ -27,7 +27,9 @@ internal sealed class MemberQueryContextSource(
                     IssuanceState = enrollment.Address.State,
                     LineOfBusiness = enrollment.LineOfBusiness,
                     PlanId = enrollment.PlanId,
-                    PlanName = enrollment.PlanName
+                    PlanName = enrollment.PlanName,
+                    EffectiveDate = enrollment.EffectiveDate,
+                    TerminationDate = enrollment.TerminationDate
                 });
     }
 }

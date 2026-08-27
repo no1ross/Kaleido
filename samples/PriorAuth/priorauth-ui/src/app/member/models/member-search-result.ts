@@ -10,4 +10,6 @@ export interface MemberSearchResult {
     lineOfBusiness: string;
     planId: string;
     planName: string;
+    effectiveDate: string;
+    terminationDate?: string;
 }

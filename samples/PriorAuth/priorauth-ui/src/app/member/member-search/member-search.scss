@@ -157,6 +157,16 @@
     background: #eef4ff;
 }
 
+.member-record--upcoming {
+    border-color: #f1dd9b;
+    background: #fff9e8;
+}
+
+.member-record--expired {
+    border-color: #f0b7d1;
+    background: #fff1f7;
+}
+
 .member-record__header {
     display: flex;
     align-items: center;
@@ -174,6 +184,33 @@
     color: #315efb;
     font-size: 0.8rem;
     font-weight: 700;
+}
+
+.member-record__status {
+    margin-bottom: 0.65rem;
+    border: 1px solid #d9e2ee;
+    border-radius: 12px;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.member-coverage--active {
+    border-color: #bfd9c2;
+    background: #eef9f0;
+    color: #1f6b2c;
+}
+
+.member-coverage--upcoming {
+    border-color: #f1dd9b;
+    background: #fff9e8;
+    color: #8a6300;
+}
+
+.member-coverage--expired {
+    border-color: #f0b7d1;
+    background: #fff1f7;
+    color: #9b2960;
 }
 
 .member-record__grid {
@@ -209,6 +246,11 @@
     display: flex;
     align-items: start;
     gap: 1rem;
+}
+
+.member-details-page__coverage {
+    margin-top: 0.85rem;
+    margin-bottom: 0;
 }
 
 .member-details-sections {

@@ -30,8 +30,6 @@ public sealed record MemberSnapshotView
 
     public string PlanName { get; init; } = string.Empty;
 
-    public EnrollmentStatus EnrollmentStatus { get; init; }
-
     public DateOnly EffectiveDate { get; init; }
 
     public DateOnly? TerminationDate { get; init; }

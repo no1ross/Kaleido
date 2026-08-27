@@ -1,5 +1,6 @@
 using Kaleido.Process.Attributes;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
 
@@ -15,4 +16,7 @@ public sealed record CaptureMemberStep
 
     [Required]
     public Guid MemberEnrollmentId { get; init; }
+
+    [Required]
+    public DateOnly DateOfService { get; init; }
 }
