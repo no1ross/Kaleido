@@ -133,7 +133,7 @@ private readonly processRequestValidator =
 
         console.log(
             'Participant Process',
-            result.participantProcessId);
+            result.processId);
 
         console.log(
             'Outcome',

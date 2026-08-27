@@ -16,13 +16,13 @@
 
             </div>
 
-            @if (items.length > 0)
+            @if (items().length > 0)
             {
                 <div class="order-meta">
 
                     <div>
                         <strong>Status:</strong>
-                        {{ items[0].status }}
+                        {{ items()[0].status }}
                     </div>
 
                 </div>
@@ -30,7 +30,7 @@
 
         </div>
 
-        @if (items.length === 0)
+        @if (items().length === 0)
         {
             <div class="empty-order">
 
@@ -47,7 +47,7 @@
         @else
         {
             @for (
-                item of items;
+                item of items();
                 track item.orderItemId)
             {
                 <div class="order-item">
@@ -127,7 +127,7 @@
                     </span>
 
                     <span>
-                        {{ totalItems }}
+                        {{ totalItems() }}
                     </span>
 
                 </div>
@@ -139,7 +139,7 @@
                     </span>
 
                     <span>
-                        {{ orderTotal | currency }}
+                        {{ orderTotal() | currency }}
                     </span>
 
                 </div>

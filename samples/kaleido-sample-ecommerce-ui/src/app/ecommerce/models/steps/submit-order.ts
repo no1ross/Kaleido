@@ -1,6 +1,6 @@
 export interface SubmitOrderStep {
 
-    participantProcessId: string;
+    processId: string;
 
     customerId: string;
 

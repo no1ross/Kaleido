@@ -1,8 +1,9 @@
 import {
   Component,
+  computed,
   inject,
-  ChangeDetectorRef,
-  OnInit
+  OnInit,
+  signal
 } from '@angular/core';
 import { Subscription } from 'rxjs';
 import {
@@ -19,7 +20,8 @@ import {
 
 export class QueryablePager implements OnInit {
 
-  totalCount = 0;
+  readonly totalCount =
+    signal(0);
 
   private readonly queryState =
     inject(QueryExecutionStateService);
@@ -29,16 +31,12 @@ export class QueryablePager implements OnInit {
 
   private resultSubscription?: Subscription;
 
-  private readonly changeDetector =
-    inject(ChangeDetectorRef);
-
     ngOnInit(): void {
       this.resultSubscription =
         this.resultState.changed
             .subscribe(() => {
-                this.totalCount = this.resultState.state.totalCount;
-
-                this.changeDetector.detectChanges();
+                this.totalCount.set(
+                  this.resultState.state.totalCount);
             });
   }
 
@@ -60,56 +58,66 @@ export class QueryablePager implements OnInit {
     return this.page?.size ?? 25;
   }
 
-  get currentPage(): number {
+  readonly currentPage =
+    computed(() => {
+
+      const totalCount =
+        this.totalCount();
+
+      const pageSize =
+        this.pageSize;
 
       if (
-          this.totalCount === 0 ||
-          this.pageSize <= 0) {
+          totalCount === 0 ||
+          pageSize <= 0) {
           return 0;
       }
 
       return Math.floor(
-          this.offset / this.pageSize)
+          this.offset / pageSize)
           + 1;
-  }
+    });
 
-  get totalPages(): number {
+  readonly totalPages =
+    computed(() => {
+
+      const totalCount =
+        this.totalCount();
+
+      const pageSize =
+        this.pageSize;
 
       if (
-          this.totalCount === 0 ||
-          this.pageSize <= 0) {
+          totalCount === 0 ||
+          pageSize <= 0) {
           return 0;
       }
 
       return Math.ceil(
-          this.totalCount / this.pageSize);
-  }
+          totalCount / pageSize);
+    });
 
-  get startRecord(): number {
+  readonly startRecord =
+    computed(() => {
 
-    if (this.totalCount === 0) {
-      return 0;
-    }
+      if (this.totalCount() === 0) {
+        return 0;
+      }
 
-    return this.offset + 1;
-  }
+      return this.offset + 1;
+    });
 
-  get endRecord(): number {
-
-    return Math.min(
+  readonly endRecord =
+    computed(() => Math.min(
       this.offset + this.pageSize,
-      this.totalCount);
-  }
+      this.totalCount()));
 
-  get canGoBackward(): boolean {
+  readonly canGoBackward =
+    computed(() => this.offset > 0);
 
-    return this.offset > 0;
-  }
-
-  get canGoForward(): boolean {
-
-    return this.currentPage < this.totalPages;
-  }
+  readonly canGoForward =
+    computed(() =>
+      this.currentPage() < this.totalPages());
 
   firstPage(): void {
 
@@ -120,7 +128,7 @@ export class QueryablePager implements OnInit {
 
   previousPage(): void {
 
-    if (!this.canGoBackward) {
+    if (!this.canGoBackward()) {
       return;
     }
 
@@ -137,17 +145,17 @@ export class QueryablePager implements OnInit {
 
       console.log(
           'currentPage',
-          this.currentPage);
+          this.currentPage());
 
       console.log(
           'totalPages',
-          this.totalPages);
+          this.totalPages());
 
       console.log(
           'canGoForward',
-          this.canGoForward);
+          this.canGoForward());
 
-      if (!this.canGoForward) {
+      if (!this.canGoForward()) {
           return;
       }
 
@@ -158,12 +166,12 @@ export class QueryablePager implements OnInit {
 
   lastPage(): void {
 
-    if (this.totalPages === 0) {
+    if (this.totalPages() === 0) {
       return;
     }
 
     this.emitPageChanged(
-      (this.totalPages - 1)
+      (this.totalPages() - 1)
         * this.pageSize,
       this.pageSize);
   }

@@ -1,9 +1,10 @@
 import {
   Component,
+  computed,
   inject,
-  ChangeDetectorRef,
   OnInit,
-  OnDestroy
+  OnDestroy,
+  signal
 } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { CategoryCatalogView } from '../../models/category-catalog-view';
@@ -26,16 +27,27 @@ export class CategoryList implements OnInit, OnDestroy {
   private readonly queryableService =
       inject(QueryableService);
 
-  private readonly changeDetector =
-      inject(ChangeDetectorRef);
-
   private querySubscription?: Subscription;
       
-  categories: CategoryCatalogView[] = [];
+  readonly categories =
+      signal<CategoryCatalogView[]>([]);
 
-  isLoading = false;
+  readonly isLoading =
+      signal(false);
 
-  errorMessage?: string;
+  readonly errorMessage =
+      signal<string | undefined>(undefined);
+
+  readonly selectedCategory =
+      computed(() => {
+          const parameters =
+              this.queryState.state.request
+                  ?.parameters as
+                      ProductsByCategoryParameters
+                      | undefined;
+
+          return parameters?.categoryPath;
+      });
 
   ngOnInit(): void {
       this.querySubscription =
@@ -43,7 +55,7 @@ export class CategoryList implements OnInit, OnDestroy {
               .subscribe(() => {
                   this.loadCategories();
               });
-    this.loadCategories();
+    this.queryState.notifyChanged();
   }
 
   ngOnDestroy(): void {
@@ -62,22 +74,10 @@ export class CategoryList implements OnInit, OnDestroy {
         }
 
         this.queryState.notifyChanged();
-
-        this.loadCategories();
     }
 
   get hasCategories(): boolean {
-    return this.categories.length > 0;
-  }
-
-  get selectedCategory(): string | undefined {
-      const parameters =
-          this.queryState.state.request
-              ?.parameters as
-                  ProductsByCategoryParameters
-                  | undefined;
-
-      return parameters?.categoryPath;
+    return this.categories().length > 0;
   }
 
   getIndent(
@@ -89,7 +89,7 @@ export class CategoryList implements OnInit, OnDestroy {
   isSelected(
     category: CategoryCatalogView): boolean {
 
-    return this.selectedCategory ===
+    return this.selectedCategory() ===
       category.categoryPath;
   }
 
@@ -105,11 +105,12 @@ export class CategoryList implements OnInit, OnDestroy {
       }
 
       this.queryState.notifyChanged();
-
-      this.loadCategories();
   }
 
   private loadCategories(): void {
+    this.isLoading.set(true);
+    this.errorMessage.set(undefined);
+
     const request =
         this.queryState.state.request;
 
@@ -124,10 +125,10 @@ export class CategoryList implements OnInit, OnDestroy {
           .subscribe({
               next: result => {
 
-                  this.categories =
-                      result.records;
+                  this.categories.set(
+                      result.records);
 
-                  this.changeDetector.detectChanges();
+                  this.isLoading.set(false);
               },
 
               error: error => {
@@ -144,16 +145,15 @@ export class CategoryList implements OnInit, OnDestroy {
 
     if (error.errors?.length > 0) {
 
-      this.errorMessage =
-        error.errors[0].message;
+      this.errorMessage.set(
+        error.errors[0].message);
 
     } else {
 
-      this.errorMessage =
-        'An unexpected error occurred.';
+      this.errorMessage.set(
+        'An unexpected error occurred.');
     }
 
-    this.isLoading =
-      false;
+    this.isLoading.set(false);
   }
 }

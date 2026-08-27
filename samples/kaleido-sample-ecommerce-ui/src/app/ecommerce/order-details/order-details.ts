@@ -1,9 +1,10 @@
 import {
     Component,
+    computed,
     inject,
-    ChangeDetectorRef,
     OnInit,
-    OnDestroy
+    OnDestroy,
+    signal
 } from '@angular/core';
 
 import {
@@ -62,9 +63,6 @@ export class OrderDetails
     private readonly ecommerceState =
         inject(ECommerceStateService);
 
-    private readonly changeDetector =
-        inject(ChangeDetectorRef);
-
     private readonly router =
         inject(Router);
 
@@ -76,39 +74,38 @@ export class OrderDetails
 
     orderSubscription?: Subscription;
 
-    items: OrderDetailsView[] = [];
+    readonly items =
+        signal<OrderDetailsView[]>([]);
 
-    errorMessage?: string;
+    readonly errorMessage =
+        signal<string | undefined>(undefined);
 
-    isLoading = false;
+    readonly isLoading =
+        signal(false);
 
-    get order(): OrderDetailsView | undefined {
+    readonly order =
+        computed<OrderDetailsView | undefined>(() =>
+            this.items().length > 0
+                ? this.items()[0]
+                : undefined);
 
-        return this.items.length > 0
-            ? this.items[0]
-            : undefined;
-    }
+    readonly totalItems =
+        computed(() =>
+            this.items().reduce(
+                (total, item) =>
+                    total + item.quantity,
+                0));
 
-    get totalItems(): number {
+    readonly orderTotal =
+        computed(() =>
+            this.items().reduce(
+                (total, item) =>
+                    total + item.extendedPrice,
+                0));
 
-        return this.items.reduce(
-            (total, item) =>
-                total + item.quantity,
-            0);
-    }
-
-    get orderTotal(): number {
-
-        return this.items.reduce(
-            (total, item) =>
-                total + item.extendedPrice,
-            0);
-    }
-
-    get isStarted(): boolean {
-
-        return this.order?.status === 'Started';
-    }
+    readonly isStarted =
+        computed(() =>
+            this.order()?.status === 'Started');
 
     ngOnInit(): void {
 
@@ -130,26 +127,27 @@ export class OrderDetails
     private handleError(
         error: ProcessErrorResponse): void {
 
-        this.errorMessage =
+        this.errorMessage.set(
             error.messages
                 .map(x => x.message)
-                .join('\n');
+                .join('\n'));
 
-        this.isLoading = false;
-
-        this.changeDetector.detectChanges();
+        this.isLoading.set(false);
     }
 
     private loadOrder(): void {
+
+        this.isLoading.set(true);
+        this.errorMessage.set(undefined);
 
         const request:
             QueryRequest<OrderDetailsViewParameters> =
         {
             parameters:
             {
-                participantProcessId:
+                processId:
                     this.ecommerceState.state
-                        .participantProcessId,
+                        .processId,
 
                 customerId:
                     this.ecommerceState.state
@@ -167,22 +165,23 @@ export class OrderDetails
 
                 next: result => {
 
-                    this.items =
-                        result.records;
+                    this.items.set(
+                        result.records);
 
-                    this.errorMessage =
-                        undefined;
+                    this.errorMessage.set(
+                        undefined);
 
-                    this.changeDetector
-                        .detectChanges();
+                    this.isLoading.set(false);
                 },
 
                 error: error => {
 
                     console.error(error);
 
-                    this.errorMessage =
-                        'Failed to load order details.';
+                    this.errorMessage.set(
+                        'Failed to load order details.');
+
+                    this.isLoading.set(false);
                 }
             });
     }
@@ -195,7 +194,7 @@ export class OrderDetails
 
     submitOrder(): void {
 
-        if (!this.order)
+        if (!this.order())
         {
             return;
         }
@@ -205,22 +204,22 @@ export class OrderDetails
         const request:
             ExecuteStepRequest<SubmitOrderStep> =
         {
-            participantProcessId:
+            processId:
                 this.ecommerceState.state
-                    .participantProcessId!,
+                    .processId!,
 
             processStep:
             {
-                participantProcessId:
+                processId:
                     this.ecommerceState.state
-                        .participantProcessId!,
+                        .processId!,
 
                 customerId:
                     this.ecommerceState.state
                         .customerId!,
 
                 orderId:
-                    this.order.orderId
+                    this.order()!.orderId
             }
         };
 
@@ -234,8 +233,8 @@ export class OrderDetails
 
                 next: () => {
 
-                    this.errorMessage =
-                        undefined;
+                    this.errorMessage.set(
+                        undefined);
 
                     this.loadOrder();
 
@@ -252,8 +251,8 @@ export class OrderDetails
                         return;
                     }
 
-                    this.errorMessage =
-                        'An unexpected error occurred while submitting the order.';
+                    this.errorMessage.set(
+                        'An unexpected error occurred while submitting the order.');
                 }
             });
     }

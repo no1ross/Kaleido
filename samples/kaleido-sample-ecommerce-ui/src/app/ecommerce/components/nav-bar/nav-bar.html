@@ -13,7 +13,7 @@
             <a
                 routerLink="/ecommerce/shopping-cart"
                 routerLinkActive="active">
-                Cart ({{ itemCount }})
+                Cart ({{ itemCount() }})
             </a>
 
             <a
@@ -32,7 +32,7 @@
 
             <select
                 id="customer"
-                [value]="activeCustomerId ?? ''"
+                [value]="activeCustomerId() ?? ''"
                 (change)="onCustomerChanged($event)">
 
                 <option value="">
@@ -40,7 +40,7 @@
                 </option>
 
                 @for (
-                    customer of customers;
+                    customer of customers();
                     track customer.customerId)
                 {
                     <option
@@ -58,4 +58,3 @@
     </div>
 
 </nav>
-`

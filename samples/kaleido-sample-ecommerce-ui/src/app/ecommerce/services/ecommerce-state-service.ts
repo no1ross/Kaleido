@@ -18,7 +18,7 @@ export class ECommerceStateService {
 
     reset(): void {
 
-        this.state.participantProcessId = undefined;
+        this.state.processId = undefined;
         this.state.customerId = undefined;
 
         this.notifyChanged();
@@ -37,8 +37,7 @@ export class ECommerceStateService {
 
 
 export interface ECommerceState {
-    participantProcessId?: string;
+    processId?: string;
 
     customerId?: string;
 }
-

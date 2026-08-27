@@ -1,6 +1,6 @@
 export interface ShoppingCartSummaryView {
 
-    participantProcessId?: string;
+    processId?: string;
 
     shoppingCartId?: string;
 
@@ -11,7 +11,7 @@ export interface ShoppingCartSummaryView {
 
 export interface ShoppingCartViewParameters {
 
-    participantProcessId?: string;
+    processId?: string;
 
     customerId?: string;
 }

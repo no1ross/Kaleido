@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 
 import { Subscription } from 'rxjs';
 import { RouterLink, RouterLinkActive } from '@angular/router';
@@ -27,14 +27,12 @@ import { CommonModule } from '@angular/common';
 export class NavBar
     implements OnInit, OnDestroy {
 
-    itemCount = 0;
+    readonly itemCount =
+        signal(0);
 
     private readonly queryableService =
         inject(QueryableService);
 
-    private readonly changeDetector =
-        inject(ChangeDetectorRef);
-        
     private readonly cartState =
         inject(ShoppingCartContextStateService); 
 
@@ -46,9 +44,11 @@ export class NavBar
         
     private cartSubscription?: Subscription;
 
-    customers: CustomerPersonaView[] = [];
+    readonly customers =
+        signal<CustomerPersonaView[]>([]);
 
-    activeCustomerId?: string;
+    readonly activeCustomerId =
+        signal<string | undefined>(undefined);
 
     ngOnInit(): void {
         
@@ -86,10 +86,8 @@ export class NavBar
 
                 next: result => {
 
-                    this.customers =
-                        result.records;
-
-                    this.changeDetector.detectChanges();
+                    this.customers.set(
+                        result.records);
                 }
             });
     }
@@ -101,8 +99,8 @@ export class NavBar
 
         request.parameters ??= {};
 
-        request.parameters.participantProcessId =
-            this.ecommerceState.state.participantProcessId;
+        request.parameters.processId =
+            this.ecommerceState.state.processId;
         
         request.parameters.customerId =
             this.ecommerceState.state.customerId;
@@ -116,26 +114,25 @@ export class NavBar
             .subscribe({
                 next: result => {
 
-                    this.itemCount =
+                    this.itemCount.set(
                         result.records.length > 0
                             ? result.records[0].itemCount
-                            : 0;
+                            : 0);
 
                     const recoveredProcessId =
-                        result.records[0].participantProcessId;
+                        result.records[0].processId;
 
                     if (
                         recoveredProcessId &&
                         recoveredProcessId !==
-                            this.ecommerceState.state.participantProcessId)
+                            this.ecommerceState.state.processId)
                     {
-                        this.ecommerceState.state.participantProcessId =
+                        this.ecommerceState.state.processId =
                             recoveredProcessId;
 
                         this.ecommerceState.notifyChanged();
                     }
                     
-                    this.changeDetector.detectChanges();
                 },
 
                 error: error => {
@@ -144,7 +141,7 @@ export class NavBar
                         'Failed to load cart summary.',
                         error);
 
-                    this.itemCount = 0;
+                    this.itemCount.set(0);
                 }
             });
     }
@@ -161,7 +158,7 @@ export class NavBar
             this.ecommerceState.state.customerId;
 
         const hasCurrentProcess =
-            !!this.ecommerceState.state.participantProcessId;    
+            !!this.ecommerceState.state.processId;    
     
         //
         // Scenario:
@@ -169,13 +166,13 @@ export class NavBar
         //
         if (previousCustomerId && !newCustomerId)
         {
-            this.activeCustomerId =
-                undefined;
+            this.activeCustomerId.set(
+                undefined);
 
             this.ecommerceState.state.customerId =
                 undefined;
 
-            this.ecommerceState.state.participantProcessId =
+            this.ecommerceState.state.processId =
                 undefined;
 
             this.ecommerceState.notifyChanged();
@@ -191,13 +188,13 @@ export class NavBar
             newCustomerId &&
             previousCustomerId !== newCustomerId)
         {
-            this.activeCustomerId =
-                newCustomerId;
+            this.activeCustomerId.set(
+                newCustomerId);
 
             this.ecommerceState.state.customerId =
                 newCustomerId;
 
-            this.ecommerceState.state.participantProcessId =
+            this.ecommerceState.state.processId =
                 undefined;
 
             this.ecommerceState.notifyChanged();
@@ -220,13 +217,13 @@ export class NavBar
                     // Just switch personas and let Queryable
                     // recover the cart/process.
                     //
-                    this.activeCustomerId =
-                        newCustomerId;
+                    this.activeCustomerId.set(
+                        newCustomerId);
 
                     this.ecommerceState.state.customerId =
                         newCustomerId;
 
-                    this.ecommerceState.state.participantProcessId =
+                    this.ecommerceState.state.processId =
                         undefined;
 
                     this.ecommerceState.notifyChanged();
@@ -241,8 +238,8 @@ export class NavBar
                 const request:
                 ExecuteStepRequest<ReconcileCartOwnershipStep> =
             {
-                participantProcessId:
-                    this.ecommerceState.state.participantProcessId,
+                processId:
+                    this.ecommerceState.state.processId,
 
                 processStep:
                 {
@@ -261,8 +258,8 @@ export class NavBar
 
                     next: () => {
 
-                        this.activeCustomerId =
-                            newCustomerId;
+                        this.activeCustomerId.set(
+                            newCustomerId);
 
                         this.ecommerceState.state.customerId =
                             newCustomerId;

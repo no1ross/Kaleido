@@ -3,11 +3,11 @@
   <div class="queryable-pager__summary">
 
     Showing
-    {{ startRecord }}
+    {{ startRecord() }}
     -
-    {{ endRecord }}
+    {{ endRecord() }}
     of
-    {{ totalCount }}
+    {{ totalCount() }}
     records
 
   </div>
@@ -37,7 +37,7 @@
     <button
       type="button"
       (click)="firstPage()"
-      [disabled]="!canGoBackward">
+      [disabled]="!canGoBackward()">
 
       << First
 
@@ -46,7 +46,7 @@
     <button
       type="button"
       (click)="previousPage()"
-      [disabled]="!canGoBackward">
+      [disabled]="!canGoBackward()">
 
       < Previous
 
@@ -55,16 +55,16 @@
     <span class="queryable-pager__page">
 
       Page
-      {{ currentPage }}
+      {{ currentPage() }}
       of
-      {{ totalPages }}
+      {{ totalPages() }}
 
     </span>
 
     <button
       type="button"
       (click)="nextPage()"
-      [disabled]="!canGoForward">
+      [disabled]="!canGoForward()">
 
       Next >
 
@@ -73,7 +73,7 @@
     <button
       type="button"
       (click)="lastPage()"
-      [disabled]="!canGoForward">
+      [disabled]="!canGoForward()">
 
       Last >>
 

@@ -1,5 +1,5 @@
 export interface ParticipantProcessResult {
-    participantProcessId: string;
+    processId: string;
 
     state: string;
 
@@ -22,7 +22,7 @@ export interface ParticipantStepResult {
 
 export interface ProcessExecutionResponse<TResponse> {
 
-    participantProcessId: string;
+    processId: string;
 
     stepName: string;
 

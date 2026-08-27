@@ -1,0 +1,19 @@
+<h2>Basic Query Test</h2>
+
+@if (errorMessage()) {
+  <div>{{ errorMessage() }}</div>
+}
+
+@if (isLoading()) {
+  <div>Loading products...</div>
+} @else {
+  <div>Total Count: {{ totalCount() }}</div>
+
+  <ul>
+    @for (product of products(); track product.productId) {
+      <li>
+        {{ product.productName }} - {{ product.price | currency }}
+      </li>
+    }
+  </ul>
+}

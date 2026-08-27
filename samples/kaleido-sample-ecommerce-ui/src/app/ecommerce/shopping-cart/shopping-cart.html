@@ -4,7 +4,7 @@
 
         <h1>Shopping Cart</h1>
 
-    @if (items.length === 0)
+    @if (items().length === 0)
     {
         <div class="empty-cart">
 
@@ -21,7 +21,7 @@
     @else
     {
         @for (
-            item of items;
+            item of items();
             track item.shoppingCartItemId)
         {
             <div class="cart-item">
@@ -90,7 +90,7 @@
             </div>
         }
     }
-@if (items.length > 0)
+@if (items().length > 0)
 {
     <div class="cart-summary">
 
@@ -101,7 +101,7 @@
             </span>
 
             <span>
-                {{ totalItems }}
+                {{ totalItems() }}
             </span>
 
         </div>
@@ -113,14 +113,14 @@
             </span>
 
             <span>
-                {{ cartTotal | currency }}
+                {{ cartTotal() | currency }}
             </span>
 
         </div>
 
         <button
             class="checkout-btn"
-            [disabled]="!canCheckout"
+            [disabled]="!canCheckout()"
             (click)="checkout()">
             
 

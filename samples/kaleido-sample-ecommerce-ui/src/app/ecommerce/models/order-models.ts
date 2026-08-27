@@ -4,7 +4,7 @@ export interface OrderReviewView {
 
     customerId: string;
 
-    participantProcessId: string;
+    processId: string;
 
     status: string;
 
@@ -33,7 +33,7 @@ export interface OrderReviewView {
 
 export interface OrderReviewViewParameters {
 
-    participantProcessId?: string;
+    processId?: string;
 
     customerId?: string;
 
@@ -46,7 +46,7 @@ export interface OrderDetailsView {
 
     customerId: string;
 
-    participantProcessId: string;
+    processId: string;
 
     orderNumber: string;
 
@@ -81,7 +81,7 @@ export interface OrderDetailsView {
 
 export interface OrderDetailsViewParameters {
 
-    participantProcessId?: string;
+    processId?: string;
 
     customerId?: string;
 

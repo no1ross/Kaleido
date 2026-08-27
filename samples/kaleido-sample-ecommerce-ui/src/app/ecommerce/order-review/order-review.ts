@@ -1,9 +1,10 @@
 import {
     Component,
+    computed,
     inject,
-    ChangeDetectorRef,
     OnInit,
-    OnDestroy
+    OnDestroy,
+    signal
 } from '@angular/core';
 
 import { Router } from '@angular/router';
@@ -53,37 +54,35 @@ export class OrderReview
     private readonly ecommerceState =
         inject(ECommerceStateService);
 
-    private readonly changeDetector =
-        inject(ChangeDetectorRef);
-
     private readonly router =
         inject(Router);
 
     orderSubscription?: Subscription;
 
-    items: OrderReviewView[] = [];
+    readonly items =
+        signal<OrderReviewView[]>([]);
 
-    errorMessage?: string;
+    readonly errorMessage =
+        signal<string | undefined>(undefined);
 
-    isLoading = false;
+    readonly isLoading =
+        signal(false);
 
-    get totalItems(): number {
+    readonly totalItems =
+        computed(() =>
+            this.items()
+                .reduce(
+                    (total, item) =>
+                        total + item.quantity,
+                    0));
 
-        return this.items
-            .reduce(
-                (total, item) =>
-                    total + item.quantity,
-                0);
-    }
-
-    get orderTotal(): number {
-
-        return this.items
-            .reduce(
-                (total, item) =>
-                    total + item.extendedPrice,
-                0);
-    }
+    readonly orderTotal =
+        computed(() =>
+            this.items()
+                .reduce(
+                    (total, item) =>
+                        total + item.extendedPrice,
+                    0));
 
     ngOnInit(): void {
 
@@ -104,13 +103,16 @@ export class OrderReview
 
     private loadOrder(): void {
 
+        this.isLoading.set(true);
+        this.errorMessage.set(undefined);
+
         const request:
             QueryRequest<OrderReviewViewParameters> =
         {
             parameters:
             {
-                participantProcessId:
-                    this.ecommerceState.state.participantProcessId,
+                processId:
+                    this.ecommerceState.state.processId,
 
                 customerId:
                     this.ecommerceState.state.customerId
@@ -127,21 +129,23 @@ export class OrderReview
 
                 next: result => {
 
-                    this.items =
-                        result.records;
+                    this.items.set(
+                        result.records);
 
-                    this.errorMessage =
-                        undefined;
+                    this.errorMessage.set(
+                        undefined);
 
-                    this.changeDetector.detectChanges();
+                    this.isLoading.set(false);
                 },
 
                 error: error => {
 
                     console.error(error);
 
-                    this.errorMessage =
-                        'Failed to load order review.';
+                    this.errorMessage.set(
+                        'Failed to load order review.');
+
+                    this.isLoading.set(false);
                 }
             });
     }

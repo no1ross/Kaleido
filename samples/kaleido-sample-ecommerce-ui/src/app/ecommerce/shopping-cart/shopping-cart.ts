@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
+import { Component, computed, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { CurrencyPipe } from "@angular/common";
@@ -42,9 +42,6 @@ export class ShoppingCart
     private readonly cartState =
         inject(ShoppingCartContextStateService);
 
-    private readonly changeDetector =
-        inject(ChangeDetectorRef);
-
     private readonly requestContext =
         inject(RequestContextService);
 
@@ -54,15 +51,18 @@ export class ShoppingCart
     private readonly router =
         inject(Router);
 
-    items: ShoppingCartDetailView[] = [];
+    readonly items =
+        signal<ShoppingCartDetailView[]>([]);
 
     cartSubscription?: Subscription;
 
-    errorMessage?: string;
+    readonly errorMessage =
+        signal<string | undefined>(undefined);
 
     shoppingCartItemId?: string;
 
-    isLoading = false;
+    readonly isLoading =
+        signal(false);
 
     ngOnInit(): void {
 
@@ -81,44 +81,42 @@ export class ShoppingCart
         this.cartSubscription?.unsubscribe();
     }
 
-    get totalItems(): number {
-
-        return this.items
-            .reduce(
-                (total, item) =>
-                    total + item.quantity,
-                0);
-    }
+    readonly totalItems =
+        computed(() =>
+            this.items()
+                .reduce(
+                    (total, item) =>
+                        total + item.quantity,
+                    0));
         
-    get cartTotal(): number {
+    readonly cartTotal =
+        computed(() =>
+            this.items()
+                .reduce(
+                    (total, item) =>
+                        total + item.extendedPrice,
+                    0));
 
-        return this.items
-            .reduce(
-                (total, item) =>
-                    total + item.extendedPrice,
-                0);
-    }
-
-    get canCheckout(): boolean {
-
-        return !!this.ecommerceState.state.customerId &&
-            this.items.length > 0;
-    }
+    readonly canCheckout =
+        computed(() =>
+            !!this.ecommerceState.state.customerId &&
+            this.items().length > 0);
         
     private handleError(
         error: ProcessErrorResponse): void {
 
-        this.errorMessage =
+        this.errorMessage.set(
             error.messages
                 .map(x => x.message)
-                .join('\n');
+                .join('\n'));
 
-        this.isLoading = false;
-
-        this.changeDetector.detectChanges();
+        this.isLoading.set(false);
     }
 
     private loadCart(): void {
+
+        this.isLoading.set(true);
+        this.errorMessage.set(undefined);
 
         const request =
             this.cartState.state.request as
@@ -126,8 +124,8 @@ export class ShoppingCart
 
         request.parameters ??= {};
 
-        request.parameters.participantProcessId =
-            this.ecommerceState.state.participantProcessId;
+        request.parameters.processId =
+            this.ecommerceState.state.processId;
 
         request.parameters.customerId =
             this.ecommerceState.state.customerId;
@@ -141,21 +139,23 @@ export class ShoppingCart
             .subscribe({
                 next: result => {
 
-                    this.items =
-                        result.records;
+                    this.items.set(
+                        result.records);
 
-                    this.errorMessage =
-                        undefined;
+                    this.errorMessage.set(
+                        undefined);
 
-                    this.changeDetector.detectChanges();
+                    this.isLoading.set(false);
                 },
 
                 error: error => {
 
                     console.error(error);
 
-                    this.errorMessage =
-                        'Failed to load shopping cart.';
+                    this.errorMessage.set(
+                        'Failed to load shopping cart.');
+
+                    this.isLoading.set(false);
                 }
             });
     }
@@ -166,8 +166,8 @@ export class ShoppingCart
         this.requestContext.beginAction();
 
         const request: ExecuteStepRequest<RemoveCartItemStep> = {
-            participantProcessId:
-                this.ecommerceState.state.participantProcessId,
+            processId:
+                this.ecommerceState.state.processId,
             processStep: {
                 shoppingCartId:
                     item.shoppingCartId,
@@ -195,8 +195,8 @@ export class ShoppingCart
                         return;
                     }
                     
-                    this.errorMessage =
-                        'An unexpected error occurred.';
+                    this.errorMessage.set(
+                        'An unexpected error occurred.');
                 }
             });
     }
@@ -229,8 +229,8 @@ export class ShoppingCart
 
         const request: ExecuteStepRequest<UpdateCartItemStep> =
         {
-            participantProcessId:
-                this.ecommerceState.state.participantProcessId,
+            processId:
+                this.ecommerceState.state.processId,
 
             processStep:
             {
@@ -263,8 +263,8 @@ export class ShoppingCart
                         return;
                     }
                     
-                    this.errorMessage =
-                        'An unexpected error occurred.';
+                    this.errorMessage.set(
+                        'An unexpected error occurred.');
                 }
             });
     }
@@ -273,13 +273,13 @@ export class ShoppingCart
 
         const request: ExecuteStepRequest<ProcessCartStep> =
         {
-            participantProcessId:
-                this.ecommerceState.state.participantProcessId,
+            processId:
+                this.ecommerceState.state.processId,
 
             processStep:
             {
                 shoppingCartId:
-                    this.items[0].shoppingCartId,
+                    this.items()[0].shoppingCartId,
 
                 customerId:
                     this.ecommerceState.state.customerId!

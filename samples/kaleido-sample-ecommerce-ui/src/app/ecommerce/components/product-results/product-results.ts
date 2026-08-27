@@ -2,8 +2,8 @@ import {
   Component,
   inject,
   OnInit,
-  ChangeDetectorRef,
-  OnDestroy
+  OnDestroy,
+  signal
 } from '@angular/core';
 
 import { CurrencyPipe } from '@angular/common';
@@ -47,19 +47,19 @@ export class ProductResults implements OnInit, OnDestroy {
     private readonly resultState =
         inject(QueryResultStateService);
 
-    private readonly changeDetector =
-        inject(ChangeDetectorRef);
-
     private readonly ecommerceState =
         inject(ECommerceStateService); 
 
     private querySubscription?: Subscription;
         
-    products: ProductCatalogView[] = [];
+    readonly products =
+        signal<ProductCatalogView[]>([]);
 
-    isLoading = false;
+    readonly isLoading =
+        signal(false);
 
-    errorMessage?: string;
+    readonly errorMessage =
+        signal<string | undefined>(undefined);
 
     ngOnInit(): void {
 
@@ -77,7 +77,7 @@ export class ProductResults implements OnInit, OnDestroy {
                     this.loadProducts();
                 });
 
-        this.loadProducts();
+        this.queryState.notifyChanged();
     }
 
 
@@ -98,9 +98,9 @@ export class ProductResults implements OnInit, OnDestroy {
 
     private loadProducts(): void {
 
-        this.isLoading = true;
+        this.isLoading.set(true);
 
-        this.errorMessage = undefined;
+        this.errorMessage.set(undefined);
     
         const viewName = this.viewName;
         const request = this.queryState.state.request;
@@ -112,22 +112,20 @@ export class ProductResults implements OnInit, OnDestroy {
             .subscribe({
                 next: result => {
 
-                    this.products =
-                        result.records;
+                    this.products.set(
+                        result.records);
 
-                    this.isLoading =
-                        false;
+                    this.isLoading.set(
+                        false);
 
-                    this.errorMessage =
-                        undefined;
+                    this.errorMessage.set(
+                        undefined);
 
                     this.resultState.replace({
                         totalCount: result.totalCount,
                         pageSize: result.pageSize,
                         offset: result.offset
-                    });      
-                    
-                    this.changeDetector.detectChanges();
+                    });
                 },
 
                 error: error => {
@@ -139,14 +137,12 @@ export class ProductResults implements OnInit, OnDestroy {
   private handleError(
     error: ProcessErrorResponse): void {
 
-    this.errorMessage =
+    this.errorMessage.set(
         error.messages
             .map(x => x.message)
-            .join('\n');
+            .join('\n'));
 
-    this.isLoading = false;
-
-    this.changeDetector.detectChanges();
+    this.isLoading.set(false);
   }
 
 addToCart(
@@ -156,8 +152,8 @@ addToCart(
 
     const request: ExecuteStepRequest<AddItemToCartStep> = {
 
-        participantProcessId:
-            this.ecommerceState.state.participantProcessId,
+        processId:
+            this.ecommerceState.state.processId,
 
         processStep:
         {
@@ -180,8 +176,8 @@ addToCart(
         .subscribe({
             next: result => {
 
-                this.ecommerceState.state.participantProcessId =
-                    result.participantProcessId;
+                this.ecommerceState.state.processId =
+                    result.processId;
 
                 this.ecommerceState.notifyChanged();
           },
@@ -191,8 +187,8 @@ addToCart(
                     return;
                 }
                 
-                this.errorMessage =
-                    'An unexpected error occurred.';
+                this.errorMessage.set(
+                    'An unexpected error occurred.');
             }
         });
   }

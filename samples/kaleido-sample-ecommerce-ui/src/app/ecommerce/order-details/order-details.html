@@ -18,7 +18,7 @@
 
         </div>
 
-        @if (items.length === 0)
+        @if (items().length === 0)
         {
             <div class="empty-order">
 
@@ -44,9 +44,9 @@
 
                     <span class="value">
 
-                        @if (order?.orderNumber)
+                        @if (order()?.orderNumber)
                         {
-                            {{ order?.orderNumber }}
+                            {{ order()?.orderNumber }}
                         }
                         @else
                         {
@@ -66,7 +66,7 @@
                     </span>
 
                     <span class="value">
-                        {{ order?.status }}
+                        {{ order()?.status }}
                     </span>
 
                 </div>
@@ -78,12 +78,12 @@
                     </span>
 
                     <span class="value">
-                        {{ order?.createdUtc | date:'medium' }}
+                        {{ order()?.createdUtc | date:'medium' }}
                     </span>
 
                 </div>
 
-                @if (order?.submittedUtc)
+                @if (order()?.submittedUtc)
                 {
                     <div class="info-row">
 
@@ -92,7 +92,7 @@
                         </span>
 
                         <span class="value">
-                            {{ order?.submittedUtc | date:'medium' }}
+                            {{ order()?.submittedUtc | date:'medium' }}
                         </span>
 
                     </div>
@@ -101,7 +101,7 @@
             </div>
 
             @for (
-                item of items;
+                item of items();
                 track item.orderItemId)
             {
                 <div class="order-item">
@@ -181,7 +181,7 @@
                     </span>
 
                     <span>
-                        {{ totalItems }}
+                        {{ totalItems() }}
                     </span>
 
                 </div>
@@ -193,12 +193,12 @@
                     </span>
 
                     <span>
-                        {{ orderTotal | currency }}
+                        {{ orderTotal() | currency }}
                     </span>
 
                 </div>
 
-                @if (order?.status === 'Started')
+                @if (isStarted())
                 {
                     <div class="button-row">
 
