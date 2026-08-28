@@ -17,6 +17,9 @@ export const environment: PriorAuthUiEnvironment = {
         codeSet: {
             baseUrl: 'http://localhost:8082'
         },
+        configuration: {
+            baseUrl: 'http://localhost:8087'
+        },
         intake: {
             baseUrl: 'http://localhost:8085'
         }

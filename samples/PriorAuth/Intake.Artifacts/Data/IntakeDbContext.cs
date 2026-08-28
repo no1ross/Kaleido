@@ -14,6 +14,8 @@ public sealed class IntakeDbContext(
 
     public DbSet<PriorAuthorizationRequestingProvider> PriorAuthorizationRequestingProviders => Set<PriorAuthorizationRequestingProvider>();
 
+    public DbSet<PriorAuthorizationQuestionnaireAssignment> PriorAuthorizationQuestionnaireAssignments => Set<PriorAuthorizationQuestionnaireAssignment>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {

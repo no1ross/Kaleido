@@ -1,1 +1,36 @@
 @use './requested-service.scss';
+@use '../member/member-search/member-search.scss';
+
+.process-step-card__field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.process-step-card__field span {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #25324a;
+}
+
+.process-step-card__field select {
+  width: 100%;
+  min-width: 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #cfd8e3;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  background: #fff;
+  color: #172033;
+}
+
+.process-step-card__field select:focus {
+  outline: none;
+  border-color: #315efb;
+  box-shadow: 0 0 0 3px rgba(49, 94, 251, 0.12);
+}
+
+.process-step-card__actions {
+  display: flex;
+  justify-content: flex-end;
+}

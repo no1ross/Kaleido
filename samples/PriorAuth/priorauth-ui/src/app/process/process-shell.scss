@@ -23,6 +23,17 @@
     gap: 1rem;
 }
 
+.process-shell__summary-header-actions {
+    display: flex;
+    align-items: start;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.process-shell__header-process-id {
+    text-align: right;
+}
+
 .process-shell__eyebrow {
     color: #315efb;
     text-transform: uppercase;
@@ -37,6 +48,9 @@
 }
 
 .process-shell__home-link {
+    border: 0;
+    background: transparent;
+    padding: 0;
     text-decoration: none;
     color: #315efb;
     font-weight: 700;

@@ -4,6 +4,7 @@ import {
     ProcessMessage,
     ProcessStepSummary
 } from '../../kaleido/models/participant-process-result';
+import { QuestionnaireDefinition } from '../../kaleido/models/questionnaire';
 
 export interface ProcessSelectedMemberSummary {
     memberId: string;
@@ -25,6 +26,8 @@ export interface ProcessState {
     processMessages: ProcessMessage[];
     requiredStep?: string;
     availableSteps: ProcessStepSummary[];
+    questionnaireStepName?: string;
+    questionnaire?: QuestionnaireDefinition;
 }
 
 @Injectable({
@@ -32,12 +35,7 @@ export interface ProcessState {
 })
 export class ProcessStateService {
     readonly state =
-        signal<ProcessState>({
-            dateOfService: this.getTodayDate(),
-            isDateOfServiceLocked: false,
-            processMessages: [],
-            availableSteps: []
-        });
+        signal<ProcessState>(this.createInitialState());
 
     setSelectedMember(
         member: ProcessSelectedMemberSummary
@@ -93,6 +91,17 @@ export class ProcessStateService {
         }));
     }
 
+    setQuestionnaire(
+        stepName: string | undefined,
+        questionnaire: QuestionnaireDefinition | undefined
+    ): void {
+        this.state.update(state => ({
+            ...state,
+            questionnaireStepName: stepName,
+            questionnaire
+        }));
+    }
+
     setDateOfService(
         dateOfService: string
     ): void {
@@ -104,6 +113,19 @@ export class ProcessStateService {
             ...state,
             dateOfService: dateOfService || this.getTodayDate()
         }));
+    }
+
+    reset(): void {
+        this.state.set(this.createInitialState());
+    }
+
+    private createInitialState(): ProcessState {
+        return {
+            dateOfService: this.getTodayDate(),
+            isDateOfServiceLocked: false,
+            processMessages: [],
+            availableSteps: []
+        };
     }
 
     private getTodayDate(): string {

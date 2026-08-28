@@ -9,6 +9,8 @@ namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
     DisplayName = "Intake - Capture Member",
     Description = "Creates or updates the prior authorization with the selected member.",
     Version = "1.0.0")]
+[AvailableUntil(typeof(CaptureRequestingProviderStep))]
+[Repeatable]
 public sealed record CaptureMemberStep
 {
     [Required]

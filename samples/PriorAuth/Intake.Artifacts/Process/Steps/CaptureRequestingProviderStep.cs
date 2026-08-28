@@ -8,7 +8,8 @@ namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
     DisplayName = "Intake - Capture Requesting Provider",
     Description = "Captures the requesting provider for the current prior authorization.",
     Version = "1.0.0")]
-[DependsOnStep(typeof(CaptureRequestedServiceStep))]
+[AvailableAfter(typeof(CaptureRequestedServiceStep))]
+[Repeatable]
 public sealed record CaptureRequestingProviderStep
 {
     [Required]

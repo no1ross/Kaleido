@@ -2,44 +2,53 @@
   <header class="process-step-card__header">
     <div>
       <div class="process-step-card__eyebrow">MRI Information</div>
-      <h2>Capture MRI details</h2>
+      <h2>{{ title() }}</h2>
+      @if (description()) {
+        <p>{{ description() }}</p>
+      }
     </div>
   </header>
 
-  <div class="process-step-card__body">
-    <label>
-      <span>Body part</span>
-      <select [(ngModel)]="bodyPart">
-        @for (option of bodyPartOptions; track option) {
-          <option [ngValue]="option">{{ option }}</option>
-        }
-      </select>
-    </label>
-
-    <label>
-      <span>Laterality</span>
-      <select [(ngModel)]="laterality" [disabled]="bodyPart === 'Spine'">
-        @for (option of lateralityOptions; track option) {
-          <option [ngValue]="option">{{ option }}</option>
-        }
-      </select>
-    </label>
-
-    <label>
-      <span>Contrast</span>
-      <select [(ngModel)]="contrast">
-        @for (option of contrastOptions; track option) {
-          <option [ngValue]="option">{{ option }}</option>
-        }
-      </select>
-    </label>
-
-    <div class="process-step-card__actions">
-      <button type="button" (click)="submit()" [disabled]="isSubmitting()">Submit MRI Information</button>
+  @if (!questionnaire()) {
+    <div class="process-step-card__body">
+      <p class="process-step-card__error">MRI questionnaire content is not available for this process.</p>
     </div>
+  } @else {
+    <div class="process-step-card__body">
+      <label class="process-step-card__field">
+        <span>{{ bodyPartQuestion()?.text ?? 'Body part' }}</span>
+        <select [(ngModel)]="bodyPart">
+          @for (option of bodyPartQuestion()?.answerOptions ?? []; track trackOption($index, option)) {
+            <option [ngValue]="option.value">{{ option.displayText }}</option>
+          }
+        </select>
+      </label>
 
-    @if (errorMessage()) {
-      <p class="process-step-card__error">{{ errorMessage() }}</p>
-    }
-  </div>
+      <label class="process-step-card__field">
+        <span>{{ lateralityQuestion()?.text ?? 'Laterality' }}</span>
+        <select [(ngModel)]="laterality" [disabled]="!isQuestionEnabled(lateralityQuestion())">
+          @for (option of lateralityQuestion()?.answerOptions ?? []; track trackOption($index, option)) {
+            <option [ngValue]="option.value">{{ option.displayText }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="process-step-card__field">
+        <span>{{ contrastQuestion()?.text ?? 'Contrast' }}</span>
+        <select [(ngModel)]="contrast">
+          @for (option of contrastQuestion()?.answerOptions ?? []; track trackOption($index, option)) {
+            <option [ngValue]="option.value">{{ option.displayText }}</option>
+          }
+        </select>
+      </label>
+
+      <div class="process-step-card__actions">
+        <button type="button" class="primary-button" (click)="submit()" [disabled]="isSubmitting()">Submit MRI Information</button>
+      </div>
+
+      @if (errorMessage()) {
+        <p class="process-step-card__error">{{ errorMessage() }}</p>
+      }
+    </div>
+  }
 </section>

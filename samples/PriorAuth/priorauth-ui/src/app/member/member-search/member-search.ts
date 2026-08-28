@@ -93,7 +93,7 @@ export class MemberSearch {
         signal(false);
     readonly isLoadingDetails =
         signal(false);
-    readonly isCreatingPriorAuth =
+    readonly isNavigatingToRequestedService =
         signal(false);
     readonly errorMessage =
         signal<string | undefined>(undefined);
@@ -251,37 +251,17 @@ export class MemberSearch {
         this.viewMode.set('results');
     }
 
-    createPriorAuth(): void {
-        if (!this.selectedRecord() || this.isCreatingPriorAuth()) {
+    goToRequestedService(): void {
+        if (!this.selectedRecord() || this.isNavigatingToRequestedService()) {
             return;
         }
 
-        this.isCreatingPriorAuth.set(true);
+        this.isNavigatingToRequestedService.set(true);
+        this.detailsError.set(undefined);
 
-        this.processService
-            .executeStep<CaptureMemberStep, object>('CaptureMember', {
-                processId: this.processState.state().processId,
-                processStep: {
-                    memberId: this.selectedRecord()!.memberId,
-                    memberEnrollmentId: this.selectedRecord()!.memberEnrollmentId,
-                    dateOfService: this.processState.state().dateOfService
-                }
-            })
-            .subscribe({
-                next: result => {
-                    this.processState.setProcessId(result.processId);
-                    this.isCreatingPriorAuth.set(false);
-                    void this.router.navigate(['/process']);
-                },
-                error: error => {
-                    this.isCreatingPriorAuth.set(false);
-
-                    if (ProcessErrorResponse.is(error)) {
-                        return;
-                    }
-
-                    this.detailsError.set(this.formatError(error));
-                }
+        void this.router.navigate(['/process', 'requested-service'])
+            .finally(() => {
+                this.isNavigatingToRequestedService.set(false);
             });
     }
 

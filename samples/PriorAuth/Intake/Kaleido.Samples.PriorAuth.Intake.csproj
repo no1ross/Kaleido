@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Process\AspNetCore\Kaleido.Process.AspNetCore.csproj" />
     <ProjectReference Include="..\..\..\src\Process\Providers\SQLite\Kaleido.Process.Providers.SQLite.csproj" />
+    <ProjectReference Include="..\..\..\src\Queryable\AspNetCore\Kaleido.Queryable.AspNetCore.csproj" />
     <ProjectReference Include="..\Intake.Artifacts\Kaleido.Samples.PriorAuth.Intake.Artifacts.csproj" />
   </ItemGroup>
 

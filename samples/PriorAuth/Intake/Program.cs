@@ -2,6 +2,8 @@ using Kaleido;
 using Kaleido.Process;
 using Kaleido.Process.AspNetCore;
 using Kaleido.Process.Providers.SQLite;
+using Kaleido.Queryable;
+using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -87,10 +89,12 @@ builder.Services.AddHttpClient("Configuration", client =>
         ?? "https://localhost:8447");
 });
 
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.QueryableHttpClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.MemberDetailsClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.ProcedureCodeClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.ProcedureModalityClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.MriProcedureCodeResolverClient>();
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.QuestionnaireDefinitionClient>();
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
@@ -116,14 +120,21 @@ builder.Services.AddKaleido()
         {
             o.RoutePrefix = "intake";
         })
-        .UseSqliteProcessContextStore(processConnectionString);
+        .UseSqliteProcessContextStore(processConnectionString)
+    .AddQueryable()
+        .AddQueryableAspNetCore(o =>
+        {
+            o.RoutePrefix = "intake";
+        });
 
 var app = builder.Build();
 
 app.UseCors("AllowAll");
 
 app.MapHealthChecks("/health");
+
 app.MapParticipant();
+app.MapQueryable();
 
 await using (var scope = app.Services.CreateAsyncScope())
 {

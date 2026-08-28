@@ -1,0 +1,36 @@
+<section class="process-step-card">
+  <header class="process-step-card__header process-step-card__header--split">
+    <div>
+      <div class="process-step-card__eyebrow">Requested Services</div>
+      <h2>Selected exam services</h2>
+      <p>Review the services already added to this prior authorization, add another service, or continue to ordering provider selection.</p>
+    </div>
+    <div class="process-step-card__actions process-step-card__actions--stacked">
+      <button type="button" class="primary-button" (click)="addAnotherService()">Add another service</button>
+      <button type="button" class="secondary-button" (click)="selectOrderingProvider()">Select ordering provider</button>
+    </div>
+  </header>
+
+  <div class="process-step-card__body">
+    @if (isLoading()) {
+      <div class="process-step-card__hint">Loading requested services...</div>
+    } @else if (errorMessage()) {
+      <p class="process-step-card__error">{{ errorMessage() }}</p>
+    } @else if (results().length === 0) {
+      <div class="process-step-card__empty">No requested services have been added yet.</div>
+    } @else {
+      <div class="process-step-card__results">
+        @for (record of results(); track record.priorAuthorizationRequestedServiceId) {
+          <div class="process-step-card__result process-step-card__result--static">
+            <div class="process-step-card__result-header">
+              <strong>{{ record.resolvedCodeValue }}</strong>
+              <span>{{ record.resolvedCodeSystem }}</span>
+            </div>
+            <span>{{ record.description }}</span>
+            <span class="process-step-card__detail">Originally selected: {{ record.userEnteredCodeSystem }} {{ record.userEnteredCodeValue }}</span>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</section>

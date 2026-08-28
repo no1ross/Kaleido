@@ -1,1 +1,14 @@
 @use './requested-service.scss';
+@use '../member/member-search/member-search.scss';
+
+.process-step-card__body--actions {
+  display: grid;
+  gap: 1rem;
+}
+
+.process-step-card__actions--stacked {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}

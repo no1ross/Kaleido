@@ -2,12 +2,11 @@ using Kaleido.Samples.PriorAuth.Configuration.Artifacts;
 using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
 using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
 using Microsoft.Extensions.Configuration;
-using System.Net.Http.Json;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
 
 public sealed class ProcedureModalityClient(
-    IHttpClientFactory httpClientFactory,
+    QueryableHttpClient queryableHttpClient,
     IConfiguration configuration)
 {
     private readonly string modalityRuleQueryPath =
@@ -24,24 +23,15 @@ public sealed class ProcedureModalityClient(
             return ProcedureModality.Unknown;
         }
 
-        var client =
-            httpClientFactory.CreateClient("Configuration");
-
-        using var response =
-            await client.PostAsJsonAsync(
+        var rule =
+            (await queryableHttpClient.QueryAsync<ProcedureModalityRuleRecord, QueryableResult<ProcedureModalityRuleRecord>>(
+                "Configuration",
                 modalityRuleQueryPath,
                 QueryRequestFactory.CreateEqualsRequest(
                     ("CodeSystem", codeSystem.ToString())),
-                cancellationToken);
-
-        response.EnsureSuccessStatusCode();
-
-        var result =
-            await response.Content.ReadFromJsonAsync<QueryableResult<ProcedureModalityRuleRecord>>(
-                cancellationToken: cancellationToken);
-
-        var rule =
-            result?.Records.SingleOrDefault(x =>
+                result => result,
+                cancellationToken))
+            .Records.SingleOrDefault(x =>
                 numericCode >= x.CodeRangeStart &&
                 numericCode <= x.CodeRangeEnd);
 

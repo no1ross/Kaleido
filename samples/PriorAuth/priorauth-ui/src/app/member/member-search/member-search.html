@@ -118,10 +118,9 @@
             <div class="member-details-page">
                 <div class="member-details-page__header">
                     <button type="button" class="secondary-button" (click)="backToResults()">Back to results</button>
-                    <div>
-                        <h2>{{ selectedRecord() ? getRecordSummary(selectedRecord()!) : 'Member Details' }}</h2>
-                        <p>Review the selected member details before continuing the intake process.</p>
-                    </div>
+                    <button type="button" class="primary-button" (click)="goToRequestedService()" [disabled]="isNavigatingToRequestedService()">
+                        {{ isNavigatingToRequestedService() ? 'Selecting Service/Procedure...' : 'Select Service/Procedure' }}
+                    </button>
                 </div>
 
                 @if (isLoadingDetails()) {
@@ -129,18 +128,6 @@
                 } @else if (detailsError()) {
                     <div class="member-search-page__error">{{ detailsError() }}</div>
                 } @else if (selectedMemberDetails()) {
-                    <div class="member-search-card member-search-card--details-actions">
-                        <div>
-                            <div class="member-search-card__title">Ready to continue?</div>
-                            <div class="member-search-card__meta">Create a prior auth process with this selected member.</div>
-                        </div>
-                        <div class="member-search-card__actions">
-                            <button type="button" class="primary-button" (click)="createPriorAuth()" [disabled]="isCreatingPriorAuth()">
-                                {{ isCreatingPriorAuth() ? 'Creating Prior Auth...' : 'Create Prior Auth' }}
-                            </button>
-                        </div>
-                    </div>
-
                     <div class="member-search-selection">
                         <h3>Coverage for Date of Service</h3>
                         <div class="member-record__status member-details-page__coverage" [class]="'member-record__status member-details-page__coverage ' + getCoverageClass(selectedMemberDetails()!.effectiveDate, selectedMemberDetails()!.terminationDate)">

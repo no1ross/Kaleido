@@ -2,12 +2,16 @@
   <header class="process-step-card__header">
     <div>
       <div class="process-step-card__eyebrow">CT Recommendation</div>
-      <h2>Consider MRI instead</h2>
+      <h2>Would you like to continue with CT or switch to MRI?</h2>
+      <p>The service returned a follow-up question for this CT request. The UI is presenting that question on this screen.</p>
     </div>
   </header>
 
-  <div class="process-step-card__body">
-    <p>Based on what we know, we are suggesting that you do an MRI instead.</p>
-    <p>This placeholder step intentionally remains empty for the current workflow slice.</p>
+  <div class="process-step-card__body process-step-card__body--actions">
+    <p>Choosing MRI will take you to the MRI details questionnaire. Choosing CT will keep the currently selected CT service on the request.</p>
+    <div class="process-step-card__actions process-step-card__actions--stacked">
+      <button type="button" class="secondary-button" (click)="continueWithCt()">Continue with CT</button>
+      <button type="button" class="primary-button" (click)="switchToMri()">Switch to MRI</button>
+    </div>
   </div>
 </section>

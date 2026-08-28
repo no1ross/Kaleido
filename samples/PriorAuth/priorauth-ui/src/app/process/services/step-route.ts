@@ -8,6 +8,8 @@ export function getRouteForStep(
             return 'capture-mri-info';
         case 'ConfirmCtInsteadOfMri':
             return 'confirm-ct-instead-of-mri';
+        case 'RequestedServices':
+            return 'requested-services';
         default:
             return undefined;
     }

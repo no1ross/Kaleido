@@ -1,4 +1,5 @@
-using System.Net.Http.Json;
+using Kaleido.Queryable;
+using Kaleido.Queryable.Query;
 using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
 using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
 using Microsoft.Extensions.Configuration;
@@ -6,7 +7,7 @@ using Microsoft.Extensions.Configuration;
 namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
 
 public sealed class ProcedureCodeClient(
-    IHttpClientFactory httpClientFactory,
+    QueryableHttpClient queryableHttpClient,
     IConfiguration configuration)
 {
     private readonly string procedureCodeQueryPath =
@@ -18,23 +19,21 @@ public sealed class ProcedureCodeClient(
         ProcedureCodeSystem codeSystem,
         CancellationToken cancellationToken = default)
     {
-        var client =
-            httpClientFactory.CreateClient("CodeSet");
-
-        using var response =
-            await client.PostAsJsonAsync(
-                procedureCodeQueryPath,
-                QueryRequestFactory.CreateEqualsRequest(
-                    ("CodeValue", codeValue),
-                    ("CodeSystem", codeSystem.ToString())),
-                cancellationToken);
-
-        response.EnsureSuccessStatusCode();
-
-        var result =
-            await response.Content.ReadFromJsonAsync<QueryableResult<ProcedureCodeRecord>>(
-                cancellationToken: cancellationToken);
-
-        return result?.Records.SingleOrDefault();
+        return await queryableHttpClient.QueryAsync<ProcedureCodeRecord, ProcedureCodeRecord?>(
+            "CodeSet",
+            procedureCodeQueryPath,
+            new QueryRequest(
+                new QueryBody(
+                    SearchText: codeValue,
+                    Filter: QueryFilterNode.CreateCondition(
+                        "CodeSystem",
+                        FilterOperator.Equals,
+                        codeSystem.ToString()),
+                    Page: new QueryPage(
+                        Size: 25,
+                        Offset: 0))),
+            result => result.Records.SingleOrDefault(
+                x => string.Equals(x.CodeValue, codeValue, StringComparison.OrdinalIgnoreCase)),
+            cancellationToken);
     }
 }

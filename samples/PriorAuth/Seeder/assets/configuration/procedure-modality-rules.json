@@ -3,9 +3,9 @@
     "ProcedureModalityRuleId": "5c6d432f-8d49-470d-85cb-b365aa6b8911",
     "CodeSystem": "Cpt",
     "CodeRangeStart": 70450,
-    "CodeRangeEnd": 70470,
+    "CodeRangeEnd": 70486,
     "Modality": "Ct",
-    "Name": "CT head/brain"
+    "Name": "CT head/brain and maxillofacial"
   },
   {
     "ProcedureModalityRuleId": "2f3ad4a4-cf0e-4f54-8894-b4f4f35e5b49",

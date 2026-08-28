@@ -31,6 +31,7 @@ internal sealed class ConfigurationSeeder(
 
         dbContext.ProcedureModalityRules.AddRange(assets.ProcedureModalityRules);
         dbContext.MriProcedureCodeRules.AddRange(assets.MriProcedureCodeRules);
+        dbContext.QuestionnaireDefinitions.AddRange(assets.QuestionnaireDefinitions);
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -43,7 +44,8 @@ internal sealed class ConfigurationSeeder(
         return new ConfigurationSeedAssets
         {
             ProcedureModalityRules = jsonAssetLoader.Load<List<Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data.Entities.ProcedureModalityRule>>(Path.Combine(basePath, "procedure-modality-rules.json"), enumOptions),
-            MriProcedureCodeRules = jsonAssetLoader.Load<List<Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data.Entities.MriProcedureCodeRule>>(Path.Combine(basePath, "mri-procedure-code-rules.json"), enumOptions)
+            MriProcedureCodeRules = jsonAssetLoader.Load<List<Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data.Entities.MriProcedureCodeRule>>(Path.Combine(basePath, "mri-procedure-code-rules.json"), enumOptions),
+            QuestionnaireDefinitions = jsonAssetLoader.Load<List<Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data.Entities.QuestionnaireDefinition>>(Path.Combine(basePath, "questionnaire-definitions.json"), enumOptions)
         };
     }
 }

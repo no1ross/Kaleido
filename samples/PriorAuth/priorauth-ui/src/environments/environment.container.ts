@@ -17,6 +17,9 @@ export const environment: PriorAuthUiEnvironment = {
         codeSet: {
             baseUrl: '/'
         },
+        configuration: {
+            baseUrl: '/'
+        },
         intake: {
             baseUrl: '/'
         }

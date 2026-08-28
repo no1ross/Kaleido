@@ -68,5 +68,45 @@
     "EffectiveDate": "2025-01-01",
     "TerminationDate": null,
     "RequiresAuthorization": true
+  },
+  {
+    "ProcedureCodeId": "4a4da2c9-1e3d-4a53-8af4-2a1c5445ec2a",
+    "CodeValue": "70460",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "CT head or brain with contrast",
+    "LongDescription": "Demo CT head or brain code with contrast for requested-service search results.",
+    "EffectiveDate": "2025-01-01",
+    "TerminationDate": null,
+    "RequiresAuthorization": true
+  },
+  {
+    "ProcedureCodeId": "f894328f-f949-42fe-98cd-5dd1a6f3d6f6",
+    "CodeValue": "70470",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "CT head or brain without contrast, followed by contrast and further sections",
+    "LongDescription": "Demo CT head or brain code with and without contrast for requested-service search results.",
+    "EffectiveDate": "2025-01-01",
+    "TerminationDate": null,
+    "RequiresAuthorization": true
+  },
+  {
+    "ProcedureCodeId": "5a7f53a7-7925-421e-9b35-c39b470ad4d0",
+    "CodeValue": "70480",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "CT orbit, sella, posterior fossa, or outer, middle, or inner ear without contrast",
+    "LongDescription": "Demo CT orbit and ear code without contrast for requested-service search results.",
+    "EffectiveDate": "2025-01-01",
+    "TerminationDate": null,
+    "RequiresAuthorization": true
+  },
+  {
+    "ProcedureCodeId": "2152d970-53c0-4aab-a955-b7d9df2b2c1d",
+    "CodeValue": "70486",
+    "CodeSystem": "Cpt",
+    "ShortDescription": "CT maxillofacial area without contrast",
+    "LongDescription": "Demo CT maxillofacial code without contrast for requested-service search results.",
+    "EffectiveDate": "2025-01-01",
+    "TerminationDate": null,
+    "RequiresAuthorization": true
   }
 ]

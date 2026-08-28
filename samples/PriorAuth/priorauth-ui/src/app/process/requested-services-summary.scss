@@ -1,0 +1,30 @@
+@use './requested-service.scss';
+
+@use '../member/member-search/member-search.scss';
+
+.process-step-card__header--split {
+  display: grid;
+  gap: 1rem;
+}
+
+.process-step-card__actions--stacked {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.process-step-card__result--static {
+  cursor: default;
+}
+
+.process-step-card__result--static:hover {
+  border-color: #d9e2ee;
+  box-shadow: none;
+  background: #fbfcfe;
+}
+
+.process-step-card__detail {
+  font-size: 0.82rem;
+  color: #6b7788;
+}

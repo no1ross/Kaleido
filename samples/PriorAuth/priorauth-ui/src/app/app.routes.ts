@@ -9,6 +9,8 @@ import { ProcessShell } from './process/process-shell';
 import { RequestedService } from './process/requested-service';
 import { CaptureMriInfo } from './process/capture-mri-info';
 import { ConfirmCtInsteadOfMri } from './process/confirm-ct-instead-of-mri';
+import { RequestedServicesSummary } from './process/requested-services-summary';
+import { RequestingProvider } from './process/requesting-provider';
 
 export const routes: Routes = [
   {
@@ -39,6 +41,14 @@ export const routes: Routes = [
       {
         path: 'confirm-ct-instead-of-mri',
         component: ConfirmCtInsteadOfMri
+      },
+      {
+        path: 'requested-services',
+        component: RequestedServicesSummary
+      },
+      {
+        path: 'requesting-provider',
+        component: RequestingProvider
       }
     ]
   },

@@ -3,31 +3,53 @@
     <div>
       <div class="process-step-card__eyebrow">Requested Service</div>
       <h2>Select a procedure code</h2>
+      <p>Start typing a procedure code or description, then select a result to continue.</p>
     </div>
   </header>
 
   <div class="process-step-card__body">
-    <label>
+    <label class="process-step-card__field">
       <span>Procedure code or description</span>
-      <input [(ngModel)]="searchText" placeholder="Search MRI spine, knee, CT head..." />
+      <input
+        [ngModel]="searchText"
+        (ngModelChange)="onSearchTextChange($event)"
+        placeholder="Search MRI spine, knee, CT head..."
+        autocomplete="off" />
     </label>
-    <div class="process-step-card__actions">
-      <button type="button" (click)="search()" [disabled]="isLoading()">Search</button>
-      <button type="button" (click)="submit()" [disabled]="!selectedRecord() || isSubmitting()">Continue</button>
-    </div>
+
+    @if (isLoading()) {
+      <div class="process-step-card__hint">Searching procedure codes...</div>
+    } @else if (searchText.trim().length > 0 && searchText.trim().length < 2) {
+      <div class="process-step-card__hint">Type at least 2 characters to search.</div>
+    }
 
     @if (errorMessage()) {
       <p class="process-step-card__error">{{ errorMessage() }}</p>
     }
 
-    <div class="process-step-card__results">
-      @for (record of results(); track record.procedureCodeId) {
-        <button type="button" class="process-step-card__result" [class.process-step-card__result--selected]="selectedRecord()?.procedureCodeId === record.procedureCodeId" (click)="selectRecord(record)">
-          <strong>{{ record.codeValue }}</strong>
-          <span>{{ record.codeSystem }}</span>
-          <span>{{ record.shortDescription }}</span>
-        </button>
-      }
-    </div>
+    @if (results().length > 0) {
+      <div class="process-step-card__results">
+        @for (record of results(); track record.procedureCodeId) {
+          <button
+            type="button"
+            class="process-step-card__result"
+            [class.process-step-card__result--selected]="selectedRecord()?.procedureCodeId === record.procedureCodeId"
+            [disabled]="isSubmitting()"
+            (click)="selectRecord(record)">
+            <div class="process-step-card__result-header">
+              <strong>{{ record.codeValue }}</strong>
+              <span>{{ record.codeSystem }}</span>
+            </div>
+            <span>{{ record.shortDescription }}</span>
+          </button>
+        }
+      </div>
+    } @else if (searchText.trim().length >= 2 && !isLoading()) {
+      <div class="process-step-card__empty">No matching procedure codes found.</div>
+    }
+
+    @if (isSubmitting()) {
+      <div class="process-step-card__hint">Loading next step...</div>
+    }
   </div>
 </section>

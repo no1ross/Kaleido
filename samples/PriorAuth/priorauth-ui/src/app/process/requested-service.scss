@@ -1,38 +1,118 @@
 .process-step-card {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 1rem;
+  background: #fff;
+  border: 1px solid #dde5ef;
+  border-radius: 16px;
+  padding: 1rem;
+}
+
+.process-step-card__header h2 {
+  margin: 0.35rem 0 0;
+  font-size: 1.05rem;
+  color: #172033;
+}
+
+.process-step-card__header p {
+  margin: 0.35rem 0 0;
+  color: #6b7788;
+  font-size: 0.9rem;
+}
+
+.process-step-card__eyebrow {
+  color: #315efb;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .process-step-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  display: grid;
+  gap: 0.85rem;
 }
 
-.process-step-card__actions {
-  display: flex;
-  gap: 0.75rem;
+.process-step-card__field span {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #25324a;
+}
+
+.process-step-card__field input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #cfd8e3;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  background: #fff;
+  color: #172033;
+}
+
+.process-step-card__field input:focus {
+  outline: none;
+  border-color: #315efb;
+  box-shadow: 0 0 0 3px rgba(49, 94, 251, 0.12);
+}
+
+.process-step-card__hint,
+.process-step-card__empty {
+  color: #6b7788;
+  font-size: 0.88rem;
 }
 
 .process-step-card__results {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  display: grid;
+  gap: 0.65rem;
 }
 
 .process-step-card__result {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.25rem;
-  padding: 0.75rem;
+  width: 100%;
+  text-align: left;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid #d9e2ee;
+  border-radius: 14px;
+  background: #fbfcfe;
+  color: #172033;
+  cursor: pointer;
 }
 
+.process-step-card__result:hover:not(:disabled),
 .process-step-card__result--selected {
-  outline: 2px solid #4f46e5;
+  border-color: #315efb;
+  box-shadow: 0 0 0 2px rgba(49, 94, 251, 0.12);
+  background: #eef4ff;
+}
+
+.process-step-card__result:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.process-step-card__result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.process-step-card__result strong {
+  font-size: 1rem;
+}
+
+.process-step-card__result span {
+  color: #4f5d73;
 }
 
 .process-step-card__error {
-  color: #b91c1c;
+  margin: 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #f3b6b6;
+  border-radius: 12px;
+  background: #fff4f4;
+  color: #9f1d1d;
 }

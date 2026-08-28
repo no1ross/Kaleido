@@ -1,0 +1,140 @@
+[
+  {
+    "QuestionnaireDefinitionId": "f5c7a0a8-8d42-4cd3-91a5-8e65b9f96301",
+    "QuestionnaireId": "priorauth-mri-intake-basic",
+    "Version": "1.0.0",
+    "Name": "mri-intake-basic",
+    "Title": "Capture MRI details",
+    "Description": "Collect the MRI-specific details needed to resolve the requested procedure.",
+    "IsActive": true,
+    "Items": [
+      {
+        "QuestionnaireDefinitionItemId": "cb44f327-fa96-4752-b35d-f0a7a85da211",
+        "QuestionnaireDefinitionId": "f5c7a0a8-8d42-4cd3-91a5-8e65b9f96301",
+        "LinkId": "body-part",
+        "Text": "Which body part is being imaged?",
+        "Type": "choice",
+        "BindingKey": "BodyPart",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": "Spine",
+        "Order": 1,
+        "AnswerOptions": [
+          {
+            "QuestionnaireDefinitionItemAnswerOptionId": "3da8540a-f4e2-4bd3-8b1f-8eb0b87f56a1",
+            "QuestionnaireDefinitionItemId": "cb44f327-fa96-4752-b35d-f0a7a85da211",
+            "Value": "Spine",
+            "DisplayText": "Spine",
+            "Order": 1
+          },
+          {
+            "QuestionnaireDefinitionItemAnswerOptionId": "0c441dc8-fb13-4eb8-a939-f2ac4be9a4c6",
+            "QuestionnaireDefinitionItemId": "cb44f327-fa96-4752-b35d-f0a7a85da211",
+            "Value": "Knee",
+            "DisplayText": "Knee",
+            "Order": 2
+          }
+        ]
+      },
+      {
+        "QuestionnaireDefinitionItemId": "1c664cef-d1df-40f6-8ddd-c446227ebae7",
+        "QuestionnaireDefinitionId": "f5c7a0a8-8d42-4cd3-91a5-8e65b9f96301",
+        "LinkId": "laterality",
+        "Text": "Which side is affected?",
+        "Type": "choice",
+        "BindingKey": "Laterality",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": "None",
+        "Order": 2,
+        "AnswerOptions": [
+          {
+            "QuestionnaireDefinitionItemAnswerOptionId": "aeaf59df-6139-4630-9734-f581cc21fd6a",
+            "QuestionnaireDefinitionItemId": "1c664cef-d1df-40f6-8ddd-c446227ebae7",
+            "Value": "None",
+            "DisplayText": "None",
+            "Order": 1
+          },
+          {
+            "QuestionnaireDefinitionItemAnswerOptionId": "f3385b10-d080-429e-b010-d0d72bb66ad9",
+            "QuestionnaireDefinitionItemId": "1c664cef-d1df-40f6-8ddd-c446227ebae7",
+            "Value": "Left",
+            "DisplayText": "Left",
+            "Order": 2
+          },
+          {
+            "QuestionnaireDefinitionItemAnswerOptionId": "2789bf2d-f842-4278-b8c1-c6b8368c0573",
+            "QuestionnaireDefinitionItemId": "1c664cef-d1df-40f6-8ddd-c446227ebae7",
+            "Value": "Right",
+            "DisplayText": "Right",
+            "Order": 3
+          },
+          {
+            "QuestionnaireDefinitionItemAnswerOptionId": "51393fde-f375-42ab-bde7-fc9f4959e403",
+            "QuestionnaireDefinitionItemId": "1c664cef-d1df-40f6-8ddd-c446227ebae7",
+            "Value": "Bilateral",
+            "DisplayText": "Bilateral",
+            "Order": 4
+          }
+        ],
+        "EnableWhen": [
+          {
+            "QuestionnaireDefinitionItemEnableWhenId": "f1cb1526-fb6c-4bd9-a13b-bf03ff3f9b66",
+            "QuestionnaireDefinitionItemId": "1c664cef-d1df-40f6-8ddd-c446227ebae7",
+            "QuestionBindingKey": "BodyPart",
+            "Operator": "NotEquals",
+            "AnswerValue": "Spine"
+          }
+        ]
+      },
+      {
+        "QuestionnaireDefinitionItemId": "0ccb2a3d-9f80-43da-8d03-cf17cd3ddeee",
+        "QuestionnaireDefinitionId": "f5c7a0a8-8d42-4cd3-91a5-8e65b9f96301",
+        "LinkId": "contrast",
+        "Text": "Was contrast ordered?",
+        "Type": "choice",
+        "BindingKey": "Contrast",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": "WithoutContrast",
+        "Order": 3,
+        "AnswerOptions": [
+          {
+            "QuestionnaireDefinitionItemAnswerOptionId": "7f3cc4b4-5dda-4ea9-b75a-a9dddc5d60ab",
+            "QuestionnaireDefinitionItemId": "0ccb2a3d-9f80-43da-8d03-cf17cd3ddeee",
+            "Value": "WithoutContrast",
+            "DisplayText": "Without contrast",
+            "Order": 1
+          },
+          {
+            "QuestionnaireDefinitionItemAnswerOptionId": "6f2a4f97-b793-4e34-b1c3-0bbf1537d251",
+            "QuestionnaireDefinitionItemId": "0ccb2a3d-9f80-43da-8d03-cf17cd3ddeee",
+            "Value": "WithContrast",
+            "DisplayText": "With contrast",
+            "Order": 2
+          },
+          {
+            "QuestionnaireDefinitionItemAnswerOptionId": "884fd635-eccb-4ffc-999c-32681ac98bde",
+            "QuestionnaireDefinitionItemId": "0ccb2a3d-9f80-43da-8d03-cf17cd3ddeee",
+            "Value": "WithAndWithoutContrast",
+            "DisplayText": "With and without contrast",
+            "Order": 3
+          }
+        ]
+      }
+    ],
+    "MappingRules": [
+      {
+        "QuestionnaireMappingRuleId": "fb60b588-9b3a-4499-a2b7-208e9869a2aa",
+        "QuestionnaireDefinitionId": "f5c7a0a8-8d42-4cd3-91a5-8e65b9f96301",
+        "StepName": "CaptureMriInfo",
+        "PlanId": null,
+        "LineOfBusiness": null,
+        "ProcedureModality": "Mri",
+        "ProcedureCodeValue": null,
+        "Priority": 100,
+        "IsActive": true
+      }
+    ]
+  }
+]

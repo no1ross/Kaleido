@@ -7,6 +7,7 @@ import {
     ProcessExecutionResponse,
     ProcessMessage
 } from '../models/participant-process-result';
+import { CaptureRequestedServiceResponse } from '../models/questionnaire';
 import { ExecuteStepRequest } from '../models/participant-process-request';
 import { RequestContextService } from './request-context-service';
 import { ProcessRegistry } from './process-registry';
@@ -85,6 +86,7 @@ export class ProcessService {
                     this.processState.setProcessFlow(
                         result.requiredStep,
                         result.availableSteps);
+                    this.captureQuestionnaireState(result.requiredStep, result.result);
                     this.navigateToRequiredStep(result.requiredStep);
                     this.logStepOutcome(result);
 
@@ -113,6 +115,18 @@ export class ProcessService {
                     return throwError(
                         () => error);
                 }));
+    }
+
+    private captureQuestionnaireState(
+        requiredStep: string | undefined,
+        result: unknown
+    ): void {
+        const questionnaireResponse =
+            result as CaptureRequestedServiceResponse | undefined;
+
+        this.processState.setQuestionnaire(
+            requiredStep,
+            questionnaireResponse?.questionnaire);
     }
 
     private logStepOutcome(

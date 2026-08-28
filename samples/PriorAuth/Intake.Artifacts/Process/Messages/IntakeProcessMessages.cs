@@ -1,5 +1,6 @@
 using Kaleido.Process.Participant;
 using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
+using Kaleido.Samples.PriorAuth.Configuration.Artifacts;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Messages;
 
@@ -57,5 +58,35 @@ public static class IntakeProcessMessages
             Code = "PROCEDURE_CODE_UPDATED",
             Type = MessageType.Information,
             Message = $"Requested service code was updated from '{originalCodeSystem}:{originalCodeValue}' to '{updatedCodeSystem}:{updatedCodeValue}' based on the selected MRI details."
+        };
+
+    public static ProcessMessage QueryableRequestFailed(
+        string code,
+        string message) =>
+        new()
+        {
+            Code = code,
+            Type = MessageType.Error,
+            Message = message
+        };
+
+    public static ProcessMessage MixedRequestedServiceModalitiesNotAllowed(
+        ProcedureModality existingModality,
+        ProcedureModality requestedModality) =>
+        new()
+        {
+            Code = "MIXED_REQUESTED_SERVICE_MODALITIES_NOT_ALLOWED",
+            Type = MessageType.Error,
+            Message = $"A prior authorization request cannot contain both '{existingModality}' and '{requestedModality}' services. Add only additional '{existingModality}' services to this request."
+        };
+
+    public static ProcessMessage DuplicateRequestedServiceNotAllowed(
+        ProcedureCodeSystem codeSystem,
+        string codeValue) =>
+        new()
+        {
+            Code = "DUPLICATE_REQUESTED_SERVICE_NOT_ALLOWED",
+            Type = MessageType.Error,
+            Message = $"The requested service '{codeSystem}:{codeValue}' has already been added to this prior authorization request."
         };
 }

@@ -10,6 +10,16 @@ public sealed class ConfigurationDbContext(
 
     public DbSet<MriProcedureCodeRule> MriProcedureCodeRules => Set<MriProcedureCodeRule>();
 
+    public DbSet<QuestionnaireDefinition> QuestionnaireDefinitions => Set<QuestionnaireDefinition>();
+
+    public DbSet<QuestionnaireDefinitionItem> QuestionnaireDefinitionItems => Set<QuestionnaireDefinitionItem>();
+
+    public DbSet<QuestionnaireDefinitionItemAnswerOption> QuestionnaireDefinitionItemAnswerOptions => Set<QuestionnaireDefinitionItemAnswerOption>();
+
+    public DbSet<QuestionnaireDefinitionItemEnableWhen> QuestionnaireDefinitionItemEnableWhen => Set<QuestionnaireDefinitionItemEnableWhen>();
+
+    public DbSet<QuestionnaireMappingRule> QuestionnaireMappingRules => Set<QuestionnaireMappingRule>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {

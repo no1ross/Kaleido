@@ -17,49 +17,59 @@ public sealed class CaptureMriInfoHandler(
         ProcessStepContext context,
         CancellationToken cancellationToken = default)
     {
-        var requestedService =
-            await dbContext.PriorAuthorizationRequestedServices
-                .Join(
-                    dbContext.PriorAuthorizations,
-                    requestedService => requestedService.PriorAuthorizationId,
-                    priorAuthorization => priorAuthorization.PriorAuthorizationId,
-                    (requestedService, priorAuthorization) => new { requestedService, priorAuthorization.ProcessId })
-                .Where(x => x.ProcessId == context.ProcessId)
-                .Select(x => x.requestedService)
-                .OrderByDescending(x => x.PriorAuthorizationRequestedServiceId)
-                .FirstAsync(cancellationToken);
-
-        var originalCodeValue = requestedService.ResolvedCodeValue;
-        var originalCodeSystem = requestedService.ResolvedCodeSystem;
-
-        var resolvedRule =
-            await mriProcedureCodeResolverClient.ResolveAsync(
-                requestedService.UserEnteredCodeValue,
-                requestedService.UserEnteredCodeSystem,
-                processStep,
-                cancellationToken);
-
-        if (resolvedRule is null)
+        try
         {
-            return ProcessStepHandlerResult.Success();
+            var requestedService =
+                await dbContext.PriorAuthorizationRequestedServices
+                    .Join(
+                        dbContext.PriorAuthorizations,
+                        requestedService => requestedService.PriorAuthorizationId,
+                        priorAuthorization => priorAuthorization.PriorAuthorizationId,
+                        (requestedService, priorAuthorization) => new { requestedService, priorAuthorization.ProcessId })
+                    .Where(x => x.ProcessId == context.ProcessId)
+                    .Select(x => x.requestedService)
+                    .OrderByDescending(x => x.PriorAuthorizationRequestedServiceId)
+                    .FirstAsync(cancellationToken);
+
+            var originalCodeValue = requestedService.ResolvedCodeValue;
+            var originalCodeSystem = requestedService.ResolvedCodeSystem;
+
+            var resolvedRule =
+                await mriProcedureCodeResolverClient.ResolveAsync(
+                    requestedService.UserEnteredCodeValue,
+                    requestedService.UserEnteredCodeSystem,
+                    processStep,
+                    cancellationToken);
+
+            if (resolvedRule is null)
+            {
+                return ProcessStepHandlerResult.Success();
+            }
+
+            requestedService.ResolvedCodeValue = resolvedRule.ResolvedCodeValue;
+            requestedService.ResolvedCodeSystem = resolvedRule.ResolvedCodeSystem;
+            requestedService.Description = $"MRI {processStep.BodyPart}";
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            if (requestedService.ResolvedCodeValue == originalCodeValue && requestedService.ResolvedCodeSystem == originalCodeSystem)
+            {
+                return ProcessStepHandlerResult.Success();
+            }
+
+            return ProcessStepHandlerResult.Success(
+                IntakeProcessMessages.ProcedureCodeUpdated(
+                    originalCodeSystem,
+                    originalCodeValue,
+                    requestedService.ResolvedCodeSystem,
+                    requestedService.ResolvedCodeValue));
         }
-
-        requestedService.ResolvedCodeValue = resolvedRule.ResolvedCodeValue;
-        requestedService.ResolvedCodeSystem = resolvedRule.ResolvedCodeSystem;
-        requestedService.Description = $"MRI {processStep.BodyPart}";
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        if (requestedService.ResolvedCodeValue == originalCodeValue && requestedService.ResolvedCodeSystem == originalCodeSystem)
+        catch (QueryableClientException ex)
         {
-            return ProcessStepHandlerResult.Success();
+            return ProcessStepHandlerResult.Failure(
+                IntakeProcessMessages.QueryableRequestFailed(
+                    ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
+                    ex.Message));
         }
-
-        return ProcessStepHandlerResult.Success(
-            IntakeProcessMessages.ProcedureCodeUpdated(
-                originalCodeSystem,
-                originalCodeValue,
-                requestedService.ResolvedCodeSystem,
-                requestedService.ResolvedCodeValue));
     }
 }

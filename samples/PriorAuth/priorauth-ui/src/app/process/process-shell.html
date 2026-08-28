@@ -5,7 +5,15 @@
                 <div class="process-shell__eyebrow">Create Prior Auth</div>
                 <h1>Process Summary</h1>
             </div>
-            <a routerLink="/" class="process-shell__home-link">Exit process</a>
+            <div class="process-shell__summary-header-actions">
+                @if (processState.state().processId) {
+                    <div class="process-shell__header-process-id">
+                        <span>Process Id</span>
+                        <strong>{{ processState.state().processId }}</strong>
+                    </div>
+                }
+                <button type="button" class="process-shell__home-link" (click)="exitProcess()">Exit process</button>
+            </div>
         </div>
 
         <div class="process-shell__card">
@@ -34,13 +42,6 @@
                     <div><span>Effective Date</span><strong>{{ processState.state().selectedMember!.effectiveDate }}</strong></div>
                     <div><span>Termination Date</span><strong>{{ processState.state().selectedMember!.terminationDate || 'Open-ended' }}</strong></div>
                 }
-
-                @if (processState.state().processId) {
-                    <div>
-                        <span>Process Id</span>
-                        <strong>{{ processState.state().processId }}</strong>
-                    </div>
-                }
             </div>
 
             @if (!processState.state().selectedMember) {
@@ -54,18 +55,6 @@
             <priorauth-process-messages />
         </div>
 
-        @if (processState.state().availableSteps.length > 0) {
-            <div class="process-shell__card">
-                <div class="process-shell__eyebrow">Available Steps</div>
-                <div class="process-shell__step-links">
-                    @for (step of processState.state().availableSteps; track step.name) {
-                        @if (getStepRoute(step.name); as route) {
-                            <a [routerLink]="['/process', route]">{{ step.displayName || step.name }}</a>
-                        }
-                    }
-                </div>
-            </div>
-        }
     </div>
 
     <div class="process-shell__content">
