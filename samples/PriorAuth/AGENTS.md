@@ -22,6 +22,12 @@
 - Use the smaller compose file for backend-only work
 - Use the full compose file when testing the full sample including router/UI/intake
 - If only the UI is changing, prefer running the Angular dev server directly
+- The PriorAuth seeder is now a local-only workflow; it is no longer run as a compose service
+- Seed shared databases locally before starting compose-backed services:
+  - `dotnet run --project samples/PriorAuth/Seeder/Kaleido.Samples.PriorAuth.Seeder.csproj -- --domains=ReferenceData,CodeSet,Configuration,ProviderSearch,MemberService`
+- Shared SQLite files live under `samples/PriorAuth/data/`
+- Compose mounts that host directory into service containers as `/app/data`
+- Runtime-created DBs like `eventcollector.db`, `intake.db`, and `intake-process.db` may appear in `samples/PriorAuth/data/` after services start
 
 ## Environment assumptions
 - Assume `ASPNETCORE_ENVIRONMENT=Development` for local work unless told otherwise

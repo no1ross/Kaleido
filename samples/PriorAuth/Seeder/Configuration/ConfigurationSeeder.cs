@@ -16,7 +16,7 @@ internal sealed class ConfigurationSeeder(
     {
         await using var provider =
             projectContextFactory.CreateSqliteDbContextProvider<ConfigurationDbContext>(
-                connectionString: "Data Source=Configuration/data/configuration.db");
+                connectionString: "Data Source=configuration.db");
 
         await using var scope =
             provider.CreateAsyncScope();

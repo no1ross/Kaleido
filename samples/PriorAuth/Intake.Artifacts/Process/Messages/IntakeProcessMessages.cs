@@ -89,4 +89,13 @@ public static class IntakeProcessMessages
             Type = MessageType.Error,
             Message = $"The requested service '{codeSystem}:{codeValue}' has already been added to this prior authorization request."
         };
+
+    public static ProcessMessage RequestedServiceNotFound(
+        Guid priorAuthorizationRequestedServiceId) =>
+        new()
+        {
+            Code = "REQUESTED_SERVICE_NOT_FOUND",
+            Type = MessageType.Warning,
+            Message = $"Requested service '{priorAuthorizationRequestedServiceId}' was not found and may already have been removed."
+        };
 }

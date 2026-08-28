@@ -21,13 +21,20 @@
     } @else {
       <div class="process-step-card__results">
         @for (record of results(); track record.priorAuthorizationRequestedServiceId) {
-          <div class="process-step-card__result process-step-card__result--static">
-            <div class="process-step-card__result-header">
-              <strong>{{ record.resolvedCodeValue }}</strong>
-              <span>{{ record.resolvedCodeSystem }}</span>
+          <div class="process-step-card__result process-step-card__result--static process-step-card__result--with-action">
+            <div class="process-step-card__result-content">
+              <div class="process-step-card__result-header">
+                <strong>{{ record.resolvedCodeValue }}</strong>
+                <span>{{ record.resolvedCodeSystem }}</span>
+              </div>
+              <span>{{ record.description }}</span>
+              <span class="process-step-card__detail">Originally selected: {{ record.userEnteredCodeSystem }} {{ record.userEnteredCodeValue }}</span>
             </div>
-            <span>{{ record.description }}</span>
-            <span class="process-step-card__detail">Originally selected: {{ record.userEnteredCodeSystem }} {{ record.userEnteredCodeValue }}</span>
+            <div class="process-step-card__result-actions">
+              <button type="button" class="secondary-button" (click)="removeService(record.priorAuthorizationRequestedServiceId)" [disabled]="isRemoving(record.priorAuthorizationRequestedServiceId)">
+                {{ isRemoving(record.priorAuthorizationRequestedServiceId) ? 'Removing...' : 'Remove service' }}
+              </button>
+            </div>
           </div>
         }
       </div>

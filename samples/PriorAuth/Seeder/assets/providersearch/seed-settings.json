@@ -1,0 +1,9 @@
+{
+  "providerCount": 1000,
+  "requestingProviderPercentage": 30,
+  "minimumLocationsPerFacility": 1,
+  "maximumLocationsPerFacility": 4,
+  "requestingProviderAdditionalLocationModulo": 8,
+  "baseEffectiveDate": "2025-01-01",
+  "allowedStates": ["IL", "IN", "MI"]
+}

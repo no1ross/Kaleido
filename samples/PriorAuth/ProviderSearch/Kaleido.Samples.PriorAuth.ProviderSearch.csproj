@@ -22,12 +22,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="data\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Common\Kaleido.Samples.PriorAuth.Common.csproj" />
     <ProjectReference Include="..\..\..\src\Queryable\AspNetCore\Kaleido.Queryable.AspNetCore.csproj" />
     <ProjectReference Include="..\ProviderSearch.Artifacts\Kaleido.Samples.PriorAuth.ProviderSearch.Artifacts.csproj" />

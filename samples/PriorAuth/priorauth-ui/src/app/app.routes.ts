@@ -11,6 +11,7 @@ import { CaptureMriInfo } from './process/capture-mri-info';
 import { ConfirmCtInsteadOfMri } from './process/confirm-ct-instead-of-mri';
 import { RequestedServicesSummary } from './process/requested-services-summary';
 import { RequestingProvider } from './process/requesting-provider';
+import { ServicingProvider } from './process/servicing-provider';
 
 export const routes: Routes = [
   {
@@ -49,6 +50,10 @@ export const routes: Routes = [
       {
         path: 'requesting-provider',
         component: RequestingProvider
+      },
+      {
+        path: 'servicing-provider',
+        component: ServicingProvider
       }
     ]
   },

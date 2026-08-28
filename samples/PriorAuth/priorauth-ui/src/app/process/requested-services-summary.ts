@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { FilterOperator } from '../kaleido/models/enumerations';
 import { QueryErrorResponse } from '../kaleido/models/query-error-response';
 import { QueryRequest } from '../kaleido/models/queryable-request';
+import { ProcessErrorResponse, ProcessService } from '../kaleido/services/process-service';
 import { QueryableService } from '../kaleido/services/queryable-service';
 import { ProcessStateService } from './services/process-state-service';
 
@@ -15,6 +16,10 @@ interface RequestedServiceSummaryResult {
     resolvedCodeValue: string;
     resolvedCodeSystem: string;
     description: string;
+}
+
+interface RemoveRequestedServiceStep {
+    priorAuthorizationRequestedServiceId: string;
 }
 
 @Component({
@@ -31,6 +36,9 @@ export class RequestedServicesSummary {
     private readonly queryableService =
         inject(QueryableService);
 
+    private readonly processService =
+        inject(ProcessService);
+
     readonly processState =
         inject(ProcessStateService);
 
@@ -41,6 +49,8 @@ export class RequestedServicesSummary {
         signal<RequestedServiceSummaryResult[]>([]);
     readonly isLoading =
         signal(false);
+    readonly removingServiceId =
+        signal<string | undefined>(undefined);
     readonly errorMessage =
         signal<string | undefined>(undefined);
 
@@ -50,6 +60,46 @@ export class RequestedServicesSummary {
 
     selectOrderingProvider(): void {
         void this.router.navigate(['/process', 'requesting-provider']);
+    }
+
+    removeService(
+        requestedServiceId: string
+    ): void {
+        const processId = this.processState.state().processId;
+
+        if (!processId || this.removingServiceId()) {
+            return;
+        }
+
+        this.removingServiceId.set(requestedServiceId);
+        this.errorMessage.set(undefined);
+
+        this.processService
+            .executeStep<RemoveRequestedServiceStep, object>('RemoveRequestedService', {
+                processId,
+                processStep: {
+                    priorAuthorizationRequestedServiceId: requestedServiceId
+                }
+            })
+            .subscribe({
+                next: result => {
+                    this.removingServiceId.set(undefined);
+
+                    if (result.requiredStep !== 'CaptureRequestedService') {
+                        this.loadRequestedServices();
+                    }
+                },
+                error: error => {
+                    this.removingServiceId.set(undefined);
+                    this.errorMessage.set(this.getProcessErrorMessage(error) ?? 'Unable to remove requested service.');
+                }
+            });
+    }
+
+    isRemoving(
+        requestedServiceId: string
+    ): boolean {
+        return this.removingServiceId() === requestedServiceId;
     }
 
     private loadRequestedServices(): void {
@@ -112,5 +162,17 @@ export class RequestedServicesSummary {
             && error !== null
             && 'errors' in error
             && Array.isArray((error as QueryErrorResponse).errors);
+    }
+
+    private getProcessErrorMessage(
+        error: unknown
+    ): string | undefined {
+        if (ProcessErrorResponse.is(error) && error.messages.length > 0) {
+            return error.messages
+                .map(message => message.message)
+                .join(' ');
+        }
+
+        return undefined;
     }
 }

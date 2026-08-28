@@ -10,3 +10,11 @@ public enum ProviderIdentifierType
     NPI = 2,
     Internal = 3
 }
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum ProviderType
+{
+    Unknown = 0,
+    RequestingProvider = 1,
+    ServicingFacility = 2
+}

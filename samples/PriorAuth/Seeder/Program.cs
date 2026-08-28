@@ -9,13 +9,21 @@ using Kaleido.Samples.PriorAuth.Seeder.ReferenceData;
 var rootConfiguration =
     SeedConfiguration.CreateRootConfiguration();
 
+var seedSettings =
+    SeedConfiguration.ResolveSettings(
+        rootConfiguration);
+
 var requestedDomains =
     SeedConfiguration.ResolveRequestedDomains(
         args,
-        rootConfiguration);
+        seedSettings);
 
 var projectContextFactory =
-    new ServiceProjectContextFactory();
+    new ServiceProjectContextFactory(
+        dataRoot: Path.GetFullPath(
+            Path.Combine(
+                AppContext.BaseDirectory,
+                seedSettings.DataRoot)));
 
 var jsonAssetLoader =
     new JsonAssetLoader();

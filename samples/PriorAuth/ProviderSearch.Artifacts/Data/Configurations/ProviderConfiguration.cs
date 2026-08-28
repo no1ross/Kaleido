@@ -17,10 +17,14 @@ internal sealed class ProviderConfiguration : IEntityTypeConfiguration<Provider>
         builder.Property(x => x.DoingBusinessAsName)
             .HasMaxLength(200);
 
+        builder.Property(x => x.ProviderType)
+            .HasConversion<string>();
+
         builder.Property(x => x.PhoneNumber)
             .HasMaxLength(50);
 
         builder.HasIndex(x => x.ProviderName);
+        builder.HasIndex(x => x.ProviderType);
 
         builder.HasMany(x => x.Identifiers)
             .WithOne(x => x.Provider)

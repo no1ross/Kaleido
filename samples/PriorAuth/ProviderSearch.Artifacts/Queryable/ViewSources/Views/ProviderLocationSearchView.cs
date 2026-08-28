@@ -16,9 +16,17 @@ public sealed record ProviderLocationSearchView
 
     public string PostalCode { get; init; } = string.Empty;
 
+    public string? PhoneNumber { get; init; }
+
     public string? PrimaryTin { get; init; }
 
     public string? PrimaryNpi { get; init; }
+
+    public Guid? PrimaryMedicalSpecialtyId { get; init; }
+
+    public string? PrimaryMedicalSpecialtyName { get; init; }
+
+    public string? PrimaryMedicalSpecialtyCode { get; init; }
 
     public IReadOnlyCollection<Guid> NetworkIds { get; init; } = [];
 

@@ -12,9 +12,31 @@ internal static class SeedConfiguration
             .Build();
     }
 
+    public static SeedSettings ResolveSettings(
+        IConfiguration configuration)
+    {
+        var settings = new SeedSettings
+        {
+            DataRoot = configuration["Seed:DataRoot"] ?? "data",
+            Domains = configuration.GetSection("Seed:Domains")
+                .GetChildren()
+                .Select(x => x.Value)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Cast<string>()
+                .ToList()
+        };
+
+        if (string.IsNullOrWhiteSpace(settings.DataRoot))
+        {
+            settings.DataRoot = "data";
+        }
+
+        return settings;
+    }
+
     public static IReadOnlyList<SupportedDomain> ResolveRequestedDomains(
         string[] args,
-        IConfiguration configuration)
+        SeedSettings settings)
     {
         var overrideValue =
             args.FirstOrDefault(
@@ -22,11 +44,8 @@ internal static class SeedConfiguration
 
         var domainValues =
             overrideValue is null
-                ? configuration.GetSection("Seed:Domains")
-                    .GetChildren()
-                    .Select(x => x.Value)
+                ? settings.Domains
                     .Where(x => !string.IsNullOrWhiteSpace(x))
-                    .Cast<string>()
                     .ToArray()
                 : overrideValue[10..].Split(
                     ',',

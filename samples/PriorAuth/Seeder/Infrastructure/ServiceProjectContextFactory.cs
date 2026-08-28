@@ -4,7 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Samples.PriorAuth.Seeder.Infrastructure;
 
-internal sealed class ServiceProjectContextFactory
+internal sealed class ServiceProjectContextFactory(
+    string dataRoot)
 {
     public string ResolveConnectionString(
         string connectionString)
@@ -19,7 +20,7 @@ internal sealed class ServiceProjectContextFactory
             builder.DataSource =
                 Path.GetFullPath(
                     Path.Combine(
-                        AppContext.BaseDirectory,
+                        dataRoot,
                         builder.DataSource));
         }
 

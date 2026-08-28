@@ -19,7 +19,7 @@ internal sealed class CodeSetSeeder(
     {
         await using var provider =
             projectContextFactory.CreateSqliteDbContextProvider<CodeSetDbContext>(
-                connectionString: "Data Source=CodeSet/data/codeset.db");
+                connectionString: "Data Source=codeset.db");
 
         await using var scope =
             provider.CreateAsyncScope();

@@ -1,13 +1,152 @@
-<section class="process-step-card">
-  <header class="process-step-card__header">
-    <div>
-      <div class="process-step-card__eyebrow">Ordering Provider</div>
-      <h2>Select ordering provider</h2>
-      <p>This step is ready for the ordering provider workflow to be added next.</p>
-    </div>
-  </header>
+<section class="member-search-page">
+    @if (!registration) {
+        <div class="member-search-page__error">
+            The <strong>{{ searchViewName }}</strong> queryable view is not available. Check registry conflicts and service registration.
+        </div>
+    } @else {
+        @if (viewMode() === 'results') {
+            <div class="member-search-page__layout">
+                <div class="member-search-card">
+                    <div class="member-search-card__title">Requesting Provider Search</div>
+                    <div class="member-search-card__meta">Service: {{ registration.service.displayName }}</div>
+                    <div class="member-search-card__meta">Context: {{ context?.displayName ?? context?.name }}</div>
 
-  <div class="process-step-card__body">
-    <div class="process-step-card__empty">Ordering provider selection is not implemented yet.</div>
-  </div>
+                    <div class="member-search-card__form">
+                        <div class="member-search-card__field">
+                            <label for="providerSearchText">Search Text</label>
+                            <input
+                                id="providerSearchText"
+                                type="text"
+                                [(ngModel)]="request.query!.searchText"
+                                (keydown.enter)="search()" />
+                        </div>
+
+                        <div class="member-search-card__field">
+                            <label for="providerStateCode">State</label>
+                            <select
+                                id="providerStateCode"
+                                [(ngModel)]="stateCode"
+                                [disabled]="isLoadingStates() || !!stateOptionsError()">
+                                <option value="">All states</option>
+                                @for (state of stateOptions(); track state.stateCode) {
+                                    <option [value]="state.stateCode">{{ state.name }}</option>
+                                }
+                            </select>
+                            @if (isLoadingStates()) {
+                                <div class="member-search-card__hint">Loading states...</div>
+                            }
+                            @if (stateOptionsError()) {
+                                <div class="member-search-card__hint member-search-card__hint--error">{{ stateOptionsError() }}</div>
+                            }
+                        </div>
+
+                        <div class="member-search-card__field">
+                            <label for="providerSpecialtyId">Specialty</label>
+                            <select
+                                id="providerSpecialtyId"
+                                [(ngModel)]="specialtyId"
+                                [disabled]="isLoadingSpecialties() || !!specialtyOptionsError()">
+                                <option value="">All specialties</option>
+                                @for (specialty of specialtyOptions(); track specialty.medicalSpecialtyId) {
+                                    <option [value]="specialty.medicalSpecialtyId">{{ specialty.name }}</option>
+                                }
+                            </select>
+                            @if (isLoadingSpecialties()) {
+                                <div class="member-search-card__hint">Loading specialties...</div>
+                            }
+                            @if (specialtyOptionsError()) {
+                                <div class="member-search-card__hint member-search-card__hint--error">{{ specialtyOptionsError() }}</div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="member-search-card__actions">
+                        <button type="button" class="primary-button" (click)="search()">Search</button>
+                        <button type="button" class="secondary-button" (click)="clear()">Clear</button>
+                    </div>
+
+                    @if (errorMessage()) {
+                        <div class="member-search-page__error">{{ errorMessage() }}</div>
+                    }
+                </div>
+
+                <div class="member-search-results">
+                    <div class="member-search-results__header">
+                        <h3>Results</h3>
+                        <div class="member-search-results__count">{{ results().length }} records</div>
+                    </div>
+
+                    @if (isLoading()) {
+                        <div class="member-search-results__empty">Loading...</div>
+                    } @else if (results().length === 0) {
+                        <div class="member-search-results__empty">Run a search to see matching providers.</div>
+                    } @else {
+                        <div class="member-search-results__list">
+                            @for (record of results(); track trackResult($index, record)) {
+                                <button
+                                    type="button"
+                                    class="member-record"
+                                    [class.member-record--selected]="selectedRecord() === record"
+                                    (click)="selectRecord(record)">
+                                    <div class="member-record__header">
+                                        <div class="member-record__title">{{ record.providerName }}</div>
+                                        <div class="member-record__action">View details</div>
+                                    </div>
+
+                                    <div class="member-record__status member-coverage--active">
+                                        {{ record.locationName }} · {{ record.city }}, {{ record.stateCode }} {{ record.postalCode }}
+                                    </div>
+
+                                    <div class="member-record__grid">
+                                        @for (entry of getCompactEntries(record); track entry[0]) {
+                                            <div class="member-record__field">
+                                                <span class="member-record__label">{{ entry[0] }}</span>
+                                                <span class="member-record__value">{{ entry[1] }}</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        } @else {
+            <div class="member-details-page">
+                <div class="member-details-page__header">
+                    <button type="button" class="secondary-button" (click)="backToResults()">Back to results</button>
+                    <button type="button" class="primary-button" (click)="confirmSelection()" [disabled]="isSubmitting()">
+                        {{ isSubmitting() ? 'Saving Requesting Provider...' : 'Use Requesting Provider' }}
+                    </button>
+                </div>
+
+                @if (detailsError()) {
+                    <div class="member-search-page__error">{{ detailsError() }}</div>
+                } @else if (selectedRecord()) {
+                    <div class="member-search-selection">
+                        <h3>{{ selectedRecordSummary() }}</h3>
+                        <div class="member-record__status member-coverage--active">
+                            {{ selectedRecord()!.locationName }} · {{ selectedRecord()!.city }}, {{ selectedRecord()!.stateCode }} {{ selectedRecord()!.postalCode }}
+                        </div>
+                    </div>
+
+                    <div class="member-details-sections">
+                        <div class="member-search-selection">
+                            <h3>Provider Information</h3>
+                            <div class="member-search-selection__grid">
+                                @for (entry of getRecordEntries(selectedRecord()!); track entry[0]) {
+                                    <div class="member-search-selection__field">
+                                        <span>{{ entry[0] }}</span>
+                                        <strong>{{ entry[1] }}</strong>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                } @else {
+                    <div class="member-search-selection member-search-selection--empty">No provider details are available for the current selection.</div>
+                }
+            </div>
+        }
+    }
 </section>

@@ -10,6 +10,8 @@ export function getRouteForStep(
             return 'confirm-ct-instead-of-mri';
         case 'RequestedServices':
             return 'requested-services';
+        case 'CaptureServicingProvider':
+            return 'servicing-provider';
         default:
             return undefined;
     }

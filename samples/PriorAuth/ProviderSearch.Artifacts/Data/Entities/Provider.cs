@@ -6,6 +6,8 @@ public sealed class Provider
 
     public string ProviderName { get; set; } = string.Empty;
 
+    public ProviderType ProviderType { get; set; }
+
     public string? DoingBusinessAsName { get; set; }
 
     public string? PhoneNumber { get; set; }

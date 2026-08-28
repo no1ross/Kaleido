@@ -36,5 +36,22 @@ public sealed class ProviderLocationQueryContext
     [Sortable]
     public string City { get; init; } = string.Empty;
 
+    public string? PhoneNumber { get; init; }
+
+    public string? PrimaryTin { get; init; }
+
+    public string? PrimaryNpi { get; init; }
+
+    [Filterable(FilterOperator.Equals, FilterOperator.In)]
+    public Guid? PrimaryMedicalSpecialtyId { get; init; }
+
+    [Searchable(Priority = 5, MatchMode = MatchMode.Contains)]
+    [Filterable(FilterOperator.Equals, FilterOperator.In)]
+    public string? PrimaryMedicalSpecialtyName { get; init; }
+
+    [Searchable(Priority = 6, MatchMode = MatchMode.Exact)]
+    [Filterable(FilterOperator.Equals, FilterOperator.In)]
+    public string? PrimaryMedicalSpecialtyCode { get; init; }
+
     public bool IsActive { get; init; }
 }

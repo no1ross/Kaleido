@@ -18,10 +18,30 @@
   cursor: default;
 }
 
+.process-step-card__result--with-action {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.process-step-card__result-content {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1;
+}
+
 .process-step-card__result--static:hover {
   border-color: #d9e2ee;
   box-shadow: none;
   background: #fbfcfe;
+}
+
+.process-step-card__result-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .process-step-card__detail {

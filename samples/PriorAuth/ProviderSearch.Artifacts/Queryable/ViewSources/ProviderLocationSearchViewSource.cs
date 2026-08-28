@@ -31,8 +31,12 @@ internal sealed class ProviderLocationSearchViewSource
                     City = x.City,
                     StateCode = x.StateCode,
                     PostalCode = x.PostalCode,
-                    PrimaryTin = null,
-                    PrimaryNpi = null,
+                    PhoneNumber = x.PhoneNumber,
+                    PrimaryTin = x.PrimaryTin,
+                    PrimaryNpi = x.PrimaryNpi,
+                    PrimaryMedicalSpecialtyId = x.PrimaryMedicalSpecialtyId,
+                    PrimaryMedicalSpecialtyName = x.PrimaryMedicalSpecialtyName,
+                    PrimaryMedicalSpecialtyCode = x.PrimaryMedicalSpecialtyCode,
                     NetworkIds = Array.Empty<Guid>(),
                     MedicalSpecialtyIds = Array.Empty<Guid>()
                 });

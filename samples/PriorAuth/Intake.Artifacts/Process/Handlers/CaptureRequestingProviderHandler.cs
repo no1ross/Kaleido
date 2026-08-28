@@ -38,6 +38,7 @@ public sealed class CaptureRequestingProviderHandler(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return ProcessStepHandlerResult.Success();
+        return ProcessStepHandlerResult.Success(
+            requiredStep: nameof(CaptureServicingProviderStep).Replace("Step", string.Empty));
     }
 }
