@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 
 import {
     ProcessMessage,
@@ -31,57 +31,79 @@ export interface ProcessState {
     providedIn: 'root'
 })
 export class ProcessStateService {
-    readonly state: ProcessState = {
-        dateOfService: this.getTodayDate(),
-        isDateOfServiceLocked: false,
-        processMessages: [],
-        availableSteps: []
-    };
+    readonly state =
+        signal<ProcessState>({
+            dateOfService: this.getTodayDate(),
+            isDateOfServiceLocked: false,
+            processMessages: [],
+            availableSteps: []
+        });
 
     setSelectedMember(
         member: ProcessSelectedMemberSummary
     ): void {
-        this.state.selectedMember = member;
-        this.state.isDateOfServiceLocked = true;
+        this.state.update(state => ({
+            ...state,
+            selectedMember: member,
+            isDateOfServiceLocked: true
+        }));
     }
 
     clearSelectedMember(): void {
-        this.state.selectedMember = undefined;
-        this.state.isDateOfServiceLocked = false;
+        this.state.update(state => ({
+            ...state,
+            selectedMember: undefined,
+            isDateOfServiceLocked: false
+        }));
     }
 
     setProcessId(
         processId: string | undefined
     ): void {
-        this.state.processId = processId;
+        this.state.update(state => ({
+            ...state,
+            processId
+        }));
     }
 
     setProcessMessages(
         messages: ProcessMessage[]
     ): void {
-        this.state.processMessages = messages;
+        this.state.update(state => ({
+            ...state,
+            processMessages: messages
+        }));
     }
 
     clearProcessMessages(): void {
-        this.state.processMessages = [];
+        this.state.update(state => ({
+            ...state,
+            processMessages: []
+        }));
     }
 
     setProcessFlow(
         requiredStep: string | undefined,
         availableSteps: ProcessStepSummary[]
     ): void {
-        this.state.requiredStep = requiredStep;
-        this.state.availableSteps = availableSteps;
+        this.state.update(state => ({
+            ...state,
+            requiredStep,
+            availableSteps
+        }));
     }
 
     setDateOfService(
         dateOfService: string
     ): void {
-        if (this.state.isDateOfServiceLocked) {
+        if (this.state().isDateOfServiceLocked) {
             return;
         }
 
-        this.state.dateOfService = dateOfService || this.getTodayDate();
+        this.state.update(state => ({
+            ...state,
+            dateOfService: dateOfService || this.getTodayDate()
+        }));
     }
 
     private getTodayDate(): string {

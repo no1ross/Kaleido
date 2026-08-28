@@ -80,7 +80,7 @@ export class ProcessService {
             processRequest)
             .pipe(
                 map(result => {
-                    this.processState.setProcessId(result.participantProcessId);
+                    this.processState.setProcessId(result.processId);
                     this.processState.setProcessMessages(result.messages);
                     this.processState.setProcessFlow(
                         result.requiredStep,
@@ -125,7 +125,7 @@ export class ProcessService {
 
         console.log(
             'Participant Process',
-            result.participantProcessId);
+            result.processId);
 
         console.log(
             'Outcome',

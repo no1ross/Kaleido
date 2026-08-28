@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ProcessService } from '../kaleido/services/process-service';
@@ -31,24 +31,26 @@ export class CaptureMriInfo {
     bodyPart: MriBodyPart = 'Spine';
     laterality: Laterality = 'None';
     contrast: ContrastOption = 'WithoutContrast';
-    isSubmitting = false;
-    errorMessage?: string;
+    readonly isSubmitting =
+        signal(false);
+    readonly errorMessage =
+        signal<string | undefined>(undefined);
 
     readonly bodyPartOptions: MriBodyPart[] = ['Spine', 'Knee'];
     readonly lateralityOptions: Laterality[] = ['None', 'Left', 'Right', 'Bilateral'];
     readonly contrastOptions: ContrastOption[] = ['WithoutContrast', 'WithContrast', 'WithAndWithoutContrast'];
 
     submit(): void {
-        if (!this.processState.state.processId || this.isSubmitting) {
+        if (!this.processState.state().processId || this.isSubmitting()) {
             return;
         }
 
-        this.isSubmitting = true;
-        this.errorMessage = undefined;
+        this.isSubmitting.set(true);
+        this.errorMessage.set(undefined);
 
         this.processService
             .executeStep<CaptureMriInfoStep, object>('CaptureMriInfo', {
-                participantProcessId: this.processState.state.processId,
+                processId: this.processState.state().processId,
                 processStep: {
                     bodyPart: this.bodyPart,
                     laterality: this.bodyPart === 'Spine' ? 'None' : this.laterality,
@@ -57,11 +59,11 @@ export class CaptureMriInfo {
             })
             .subscribe({
                 next: () => {
-                    this.isSubmitting = false;
+                    this.isSubmitting.set(false);
                 },
                 error: () => {
-                    this.isSubmitting = false;
-                    this.errorMessage = 'Unable to capture MRI information.';
+                    this.isSubmitting.set(false);
+                    this.errorMessage.set('Unable to capture MRI information.');
                 }
             });
     }

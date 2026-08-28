@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ProcedureCodeSystem } from '../shared/procedure-code-system';
@@ -37,19 +37,21 @@ export class RequestedService {
     private readonly processState =
         inject(ProcessStateService);
 
-    private readonly changeDetector =
-        inject(ChangeDetectorRef);
-
     searchText = '';
-    results: ProcedureCodeSearchResult[] = [];
-    selectedRecord?: ProcedureCodeSearchResult;
-    isLoading = false;
-    isSubmitting = false;
-    errorMessage?: string;
+    readonly results =
+        signal<ProcedureCodeSearchResult[]>([]);
+    readonly selectedRecord =
+        signal<ProcedureCodeSearchResult | undefined>(undefined);
+    readonly isLoading =
+        signal(false);
+    readonly isSubmitting =
+        signal(false);
+    readonly errorMessage =
+        signal<string | undefined>(undefined);
 
     search(): void {
-        this.errorMessage = undefined;
-        this.isLoading = true;
+        this.errorMessage.set(undefined);
+        this.isLoading.set(true);
 
         const request: QueryRequest = {
             query: {
@@ -65,45 +67,44 @@ export class RequestedService {
             .queryContext<ProcedureCodeSearchResult>('procedure-codes', request)
             .subscribe({
                 next: result => {
-                    this.results = result.records;
-                    this.isLoading = false;
-                    this.changeDetector.detectChanges();
+                    this.results.set(result.records);
+                    this.isLoading.set(false);
                 },
                 error: () => {
-                    this.results = [];
-                    this.isLoading = false;
-                    this.errorMessage = 'Unable to search procedure codes.';
+                    this.results.set([]);
+                    this.isLoading.set(false);
+                    this.errorMessage.set('Unable to search procedure codes.');
                 }
             });
     }
 
     selectRecord(record: ProcedureCodeSearchResult): void {
-        this.selectedRecord = record;
+        this.selectedRecord.set(record);
     }
 
     submit(): void {
-        if (!this.selectedRecord || !this.processState.state.processId || this.isSubmitting) {
+        if (!this.selectedRecord() || !this.processState.state().processId || this.isSubmitting()) {
             return;
         }
 
-        this.isSubmitting = true;
-        this.errorMessage = undefined;
+        this.isSubmitting.set(true);
+        this.errorMessage.set(undefined);
 
         this.processService
             .executeStep<CaptureRequestedServiceStep, object>('CaptureRequestedService', {
-                participantProcessId: this.processState.state.processId,
+                processId: this.processState.state().processId,
                 processStep: {
-                    codeValue: this.selectedRecord.codeValue,
-                    codeSystem: this.selectedRecord.codeSystem
+                    codeValue: this.selectedRecord()!.codeValue,
+                    codeSystem: this.selectedRecord()!.codeSystem
                 }
             })
             .subscribe({
                 next: () => {
-                    this.isSubmitting = false;
+                    this.isSubmitting.set(false);
                 },
                 error: () => {
-                    this.isSubmitting = false;
-                    this.errorMessage = 'Unable to capture the requested service.';
+                    this.isSubmitting.set(false);
+                    this.errorMessage.set('Unable to capture the requested service.');
                 }
             });
     }

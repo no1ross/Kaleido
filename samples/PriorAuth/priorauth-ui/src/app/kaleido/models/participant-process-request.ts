@@ -1,5 +1,5 @@
 export interface ExecuteStepRequest<TStep> {
-    participantProcessId?: string;
+    processId?: string;
     requestId?: string;
     processStep: TStep;
 }

@@ -35,11 +35,11 @@
     </label>
 
     <div class="process-step-card__actions">
-      <button type="button" (click)="submit()" [disabled]="isSubmitting">Submit MRI Information</button>
+      <button type="button" (click)="submit()" [disabled]="isSubmitting()">Submit MRI Information</button>
     </div>
 
-    @if (errorMessage) {
-      <p class="process-step-card__error">{{ errorMessage }}</p>
+    @if (errorMessage()) {
+      <p class="process-step-card__error">{{ errorMessage() }}</p>
     }
   </div>
 </section>

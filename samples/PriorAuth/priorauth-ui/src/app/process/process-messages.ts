@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 
 import { ProcessMessage } from '../kaleido/models/participant-process-result';
 import { ProcessStateService } from './services/process-state-service';
@@ -10,16 +10,8 @@ import { ProcessStateService } from './services/process-state-service';
     styleUrl: './process-messages.scss'
 })
 export class ProcessMessages {
-    private readonly changeDetector =
-        inject(ChangeDetectorRef);
-
     readonly processState =
         inject(ProcessStateService);
-
-    constructor() {
-        queueMicrotask(() =>
-            this.changeDetector.detectChanges());
-    }
 
     trackMessage(
         index: number,

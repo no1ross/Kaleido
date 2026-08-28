@@ -12,17 +12,17 @@
       <input [(ngModel)]="searchText" placeholder="Search MRI spine, knee, CT head..." />
     </label>
     <div class="process-step-card__actions">
-      <button type="button" (click)="search()" [disabled]="isLoading">Search</button>
-      <button type="button" (click)="submit()" [disabled]="!selectedRecord || isSubmitting">Continue</button>
+      <button type="button" (click)="search()" [disabled]="isLoading()">Search</button>
+      <button type="button" (click)="submit()" [disabled]="!selectedRecord() || isSubmitting()">Continue</button>
     </div>
 
-    @if (errorMessage) {
-      <p class="process-step-card__error">{{ errorMessage }}</p>
+    @if (errorMessage()) {
+      <p class="process-step-card__error">{{ errorMessage() }}</p>
     }
 
     <div class="process-step-card__results">
-      @for (record of results; track record.procedureCodeId) {
-        <button type="button" class="process-step-card__result" [class.process-step-card__result--selected]="selectedRecord?.procedureCodeId === record.procedureCodeId" (click)="selectRecord(record)">
+      @for (record of results(); track record.procedureCodeId) {
+        <button type="button" class="process-step-card__result" [class.process-step-card__result--selected]="selectedRecord()?.procedureCodeId === record.procedureCodeId" (click)="selectRecord(record)">
           <strong>{{ record.codeValue }}</strong>
           <span>{{ record.codeSystem }}</span>
           <span>{{ record.shortDescription }}</span>

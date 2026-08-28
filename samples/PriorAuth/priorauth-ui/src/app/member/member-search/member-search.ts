@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, inject } from '@angular/core';
+import { computed, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
@@ -46,9 +46,6 @@ export class MemberSearch {
     private readonly processService =
         inject(ProcessService);
 
-    private readonly changeDetector =
-        inject(ChangeDetectorRef);
-
     private readonly queryableRegistry =
         inject(QueryableRegistry);
 
@@ -77,21 +74,33 @@ export class MemberSearch {
         }
     };
 
-    results: MemberSearchResult[] = [];
-    selectedRecord?: MemberSearchResult;
-    selectedMemberDetails?: MemberDetailsResult;
+    readonly results =
+        signal<MemberSearchResult[]>([]);
+    readonly selectedRecord =
+        signal<MemberSearchResult | undefined>(undefined);
+    readonly selectedMemberDetails =
+        signal<MemberDetailsResult | undefined>(undefined);
     dateOfBirth = '';
     issuanceState = '';
     lineOfBusiness = '';
-    stateOptions: StateOption[] = [];
-    stateOptionsError?: string;
-    isLoading = false;
-    isLoadingStates = false;
-    isLoadingDetails = false;
-    isCreatingPriorAuth = false;
-    errorMessage?: string;
-    detailsError?: string;
-    viewMode: 'results' | 'details' = 'results';
+    readonly stateOptions =
+        signal<StateOption[]>([]);
+    readonly stateOptionsError =
+        signal<string | undefined>(undefined);
+    readonly isLoading =
+        signal(false);
+    readonly isLoadingStates =
+        signal(false);
+    readonly isLoadingDetails =
+        signal(false);
+    readonly isCreatingPriorAuth =
+        signal(false);
+    readonly errorMessage =
+        signal<string | undefined>(undefined);
+    readonly detailsError =
+        signal<string | undefined>(undefined);
+    readonly viewMode =
+        signal<'results' | 'details'>('results');
 
     get registration(): ServiceQueryableViewRegistration | undefined {
         return this.queryableRegistry.tryGetViewRegistration(this.searchViewName);
@@ -101,19 +110,22 @@ export class MemberSearch {
         return this.registration?.context;
     }
 
-    get lineOfBusinessOptions(): readonly QueryableEnumValue[] {
-        const field = this.getMemberField('LineOfBusiness');
+    readonly lineOfBusinessOptions =
+        computed(() => {
+            const field =
+                this.getMemberField('LineOfBusiness');
 
-        return field?.dataType.enumValues?.filter(option => option.name !== 'Unknown') ?? [];
-    }
+            return field?.dataType.enumValues?.filter(
+                option => option.name !== 'Unknown') ?? [];
+        });
 
     search(): void {
-        this.errorMessage = undefined;
-        this.isLoading = true;
-        this.selectedRecord = undefined;
-        this.selectedMemberDetails = undefined;
-        this.detailsError = undefined;
-        this.viewMode = 'results';
+        this.errorMessage.set(undefined);
+        this.isLoading.set(true);
+        this.selectedRecord.set(undefined);
+        this.selectedMemberDetails.set(undefined);
+        this.detailsError.set(undefined);
+        this.viewMode.set('results');
         this.request.query ??= {};
         this.request.query.filter = this.buildFilter();
         this.request.query.page ??= {
@@ -126,14 +138,13 @@ export class MemberSearch {
             .queryView<MemberSearchResult>(this.searchViewName, this.request)
             .subscribe({
                 next: result => {
-                    this.results = result.records;
-                    this.isLoading = false;
-                    this.changeDetector.detectChanges();
+                    this.results.set(result.records);
+                    this.isLoading.set(false);
                 },
                 error: error => {
-                    this.results = [];
-                    this.isLoading = false;
-                    this.errorMessage = this.formatError(error);
+                    this.results.set([]);
+                    this.isLoading.set(false);
+                    this.errorMessage.set(this.formatError(error));
                 }
             });
     }
@@ -150,12 +161,12 @@ export class MemberSearch {
         this.dateOfBirth = '';
         this.issuanceState = '';
         this.lineOfBusiness = '';
-        this.results = [];
-        this.selectedRecord = undefined;
-        this.selectedMemberDetails = undefined;
-        this.errorMessage = undefined;
-        this.detailsError = undefined;
-        this.viewMode = 'results';
+        this.results.set([]);
+        this.selectedRecord.set(undefined);
+        this.selectedMemberDetails.set(undefined);
+        this.errorMessage.set(undefined);
+        this.detailsError.set(undefined);
+        this.viewMode.set('results');
         this.processState.clearSelectedMember();
         this.processState.clearProcessMessages();
     }
@@ -163,11 +174,11 @@ export class MemberSearch {
     selectRecord(
         record: MemberSearchResult
     ): void {
-        this.selectedRecord = record;
-        this.selectedMemberDetails = undefined;
-        this.detailsError = undefined;
-        this.isLoadingDetails = true;
-        this.viewMode = 'details';
+        this.selectedRecord.set(record);
+        this.selectedMemberDetails.set(undefined);
+        this.detailsError.set(undefined);
+        this.isLoadingDetails.set(true);
+        this.viewMode.set('details');
         this.processState.clearProcessMessages();
 
         this.registryCatalog.loadState()
@@ -194,11 +205,11 @@ export class MemberSearch {
                     };
 
                     const captureRequest = {
-                        participantProcessId: this.processState.state.processId,
+                        processId: this.processState.state().processId,
                         processStep: {
                             memberId: record.memberId,
                             memberEnrollmentId: record.memberEnrollmentId,
-                            dateOfService: this.processState.state.dateOfService
+                            dateOfService: this.processState.state().dateOfService
                         } satisfies CaptureMemberStep
                     };
 
@@ -219,65 +230,64 @@ export class MemberSearch {
                                 }))
                     }).subscribe({
                         next: result => {
-                            this.selectedMemberDetails = result.details.records[0];
-                            this.isLoadingDetails = false;
-                            this.changeDetector.detectChanges();
+                            this.selectedMemberDetails.set(result.details.records[0]);
+                            this.isLoadingDetails.set(false);
                         },
                         error: error => {
-                            this.selectedMemberDetails = undefined;
-                            this.isLoadingDetails = false;
-                            this.detailsError = this.formatError(error);
+                            this.selectedMemberDetails.set(undefined);
+                            this.isLoadingDetails.set(false);
+                            this.detailsError.set(this.formatError(error));
                         }
                     });
                 },
                 error: error => {
-                    this.isLoadingDetails = false;
-                    this.detailsError = this.formatError(error);
+                    this.isLoadingDetails.set(false);
+                    this.detailsError.set(this.formatError(error));
                 }
             });
     }
 
     backToResults(): void {
-        this.viewMode = 'results';
+        this.viewMode.set('results');
     }
 
     createPriorAuth(): void {
-        if (!this.selectedRecord || this.isCreatingPriorAuth) {
+        if (!this.selectedRecord() || this.isCreatingPriorAuth()) {
             return;
         }
 
-        this.isCreatingPriorAuth = true;
+        this.isCreatingPriorAuth.set(true);
 
         this.processService
             .executeStep<CaptureMemberStep, object>('CaptureMember', {
-                participantProcessId: this.processState.state.processId,
+                processId: this.processState.state().processId,
                 processStep: {
-                    memberId: this.selectedRecord.memberId,
-                    memberEnrollmentId: this.selectedRecord.memberEnrollmentId,
-                    dateOfService: this.processState.state.dateOfService
+                    memberId: this.selectedRecord()!.memberId,
+                    memberEnrollmentId: this.selectedRecord()!.memberEnrollmentId,
+                    dateOfService: this.processState.state().dateOfService
                 }
             })
             .subscribe({
                 next: result => {
-                    this.processState.setProcessId(result.participantProcessId);
-                    this.isCreatingPriorAuth = false;
+                    this.processState.setProcessId(result.processId);
+                    this.isCreatingPriorAuth.set(false);
                     void this.router.navigate(['/process']);
                 },
                 error: error => {
-                    this.isCreatingPriorAuth = false;
+                    this.isCreatingPriorAuth.set(false);
 
                     if (ProcessErrorResponse.is(error)) {
                         return;
                     }
 
-                    this.detailsError = this.formatError(error);
+                    this.detailsError.set(this.formatError(error));
                 }
             });
     }
 
     loadStateOptions(): void {
-        this.isLoadingStates = true;
-        this.stateOptionsError = undefined;
+        this.isLoadingStates.set(true);
+        this.stateOptionsError.set(undefined);
 
         this.queryableService
             .queryContext<StateOption>('states', {
@@ -290,16 +300,16 @@ export class MemberSearch {
             })
             .subscribe({
                 next: result => {
-                    this.stateOptions = result.records
-                        .filter(record => record.isActive)
-                        .sort((left, right) => left.name.localeCompare(right.name));
-                    this.isLoadingStates = false;
-                    this.changeDetector.detectChanges();
+                    this.stateOptions.set(
+                        result.records
+                            .filter(record => record.isActive)
+                            .sort((left, right) => left.name.localeCompare(right.name)));
+                    this.isLoadingStates.set(false);
                 },
                 error: error => {
-                    this.stateOptions = [];
-                    this.isLoadingStates = false;
-                    this.stateOptionsError = this.formatError(error);
+                    this.stateOptions.set([]);
+                    this.isLoadingStates.set(false);
+                    this.stateOptionsError.set(this.formatError(error));
                 }
             });
     }
@@ -367,11 +377,11 @@ export class MemberSearch {
     }
 
     getDetailSections(): Array<{ title: string; entries: [string, unknown][] }> {
-        if (!this.selectedMemberDetails) {
+        if (!this.selectedMemberDetails()) {
             return [];
         }
 
-        const details = this.selectedMemberDetails;
+        const details = this.selectedMemberDetails()!;
         const sections: Array<{ title: string; entries: [string, unknown][] }> = [
             {
                 title: 'Identity',
@@ -425,7 +435,7 @@ export class MemberSearch {
         effectiveDate: string,
         terminationDate?: string
     ): string {
-        const dateOfService = this.processState.state.dateOfService;
+        const dateOfService = this.processState.state().dateOfService;
 
         if (!dateOfService) {
             return 'member-coverage--unknown';
@@ -446,7 +456,7 @@ export class MemberSearch {
         effectiveDate: string,
         terminationDate?: string
     ): string {
-        const dateOfService = this.processState.state.dateOfService;
+        const dateOfService = this.processState.state().dateOfService;
 
         if (dateOfService < effectiveDate) {
             return `Coverage starts after the current date of service (${dateOfService}).`;

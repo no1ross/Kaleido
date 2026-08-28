@@ -11,39 +11,39 @@
         <div class="process-shell__card">
             <div class="process-shell__inline-summary">
                 <span class="process-shell__inline-summary-label">Date of Service</span>
-                @if (processState.state.isDateOfServiceLocked) {
-                    <strong>{{ processState.state.dateOfService }}</strong>
+                @if (processState.state().isDateOfServiceLocked) {
+                    <strong>{{ processState.state().dateOfService }}</strong>
                 } @else {
                     <label class="process-shell__dos-field" for="dateOfService">
                         <input
                             id="dateOfService"
                             type="date"
-                            [ngModel]="processState.state.dateOfService"
+                            [ngModel]="processState.state().dateOfService"
                             (ngModelChange)="updateDateOfService($event)" />
                     </label>
                 }
             </div>
 
             <div class="process-shell__grid">
-                @if (processState.state.selectedMember) {
-                    <div><span>Name</span><strong>{{ processState.state.selectedMember.displayName }}</strong></div>
-                    <div><span>Member Number</span><strong>{{ processState.state.selectedMember.memberNumber }}</strong></div>
-                    <div><span>Date of Birth</span><strong>{{ processState.state.selectedMember.dateOfBirth }}</strong></div>
-                    <div><span>LOB</span><strong>{{ processState.state.selectedMember.lineOfBusiness }}</strong></div>
-                    <div><span>Plan</span><strong>{{ processState.state.selectedMember.planName }}</strong></div>
-                    <div><span>Effective Date</span><strong>{{ processState.state.selectedMember.effectiveDate }}</strong></div>
-                    <div><span>Termination Date</span><strong>{{ processState.state.selectedMember.terminationDate || 'Open-ended' }}</strong></div>
+                @if (processState.state().selectedMember) {
+                    <div><span>Name</span><strong>{{ processState.state().selectedMember!.displayName }}</strong></div>
+                    <div><span>Member Number</span><strong>{{ processState.state().selectedMember!.memberNumber }}</strong></div>
+                    <div><span>Date of Birth</span><strong>{{ processState.state().selectedMember!.dateOfBirth }}</strong></div>
+                    <div><span>LOB</span><strong>{{ processState.state().selectedMember!.lineOfBusiness }}</strong></div>
+                    <div><span>Plan</span><strong>{{ processState.state().selectedMember!.planName }}</strong></div>
+                    <div><span>Effective Date</span><strong>{{ processState.state().selectedMember!.effectiveDate }}</strong></div>
+                    <div><span>Termination Date</span><strong>{{ processState.state().selectedMember!.terminationDate || 'Open-ended' }}</strong></div>
                 }
 
-                @if (processState.state.processId) {
+                @if (processState.state().processId) {
                     <div>
                         <span>Process Id</span>
-                        <strong>{{ processState.state.processId }}</strong>
+                        <strong>{{ processState.state().processId }}</strong>
                     </div>
                 }
             </div>
 
-            @if (!processState.state.selectedMember) {
+            @if (!processState.state().selectedMember) {
                 <div class="process-shell__card--empty process-shell__card-note">
                     Member details will appear here after selection. Date of service locks once a member is captured.
                 </div>
@@ -54,11 +54,11 @@
             <priorauth-process-messages />
         </div>
 
-        @if (processState.state.availableSteps.length > 0) {
+        @if (processState.state().availableSteps.length > 0) {
             <div class="process-shell__card">
                 <div class="process-shell__eyebrow">Available Steps</div>
                 <div class="process-shell__step-links">
-                    @for (step of processState.state.availableSteps; track step.name) {
+                    @for (step of processState.state().availableSteps; track step.name) {
                         @if (getStepRoute(step.name); as route) {
                             <a [routerLink]="['/process', route]">{{ step.displayName || step.name }}</a>
                         }
