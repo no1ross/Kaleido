@@ -15,6 +15,7 @@ import { RegistryCatalog } from '../registries/registry-catalog';
 import { CaptureRequestingProviderStep } from './models/capture-requesting-provider-step';
 import { ProviderSearchResult } from './models/provider-search-result';
 import { ProviderSpecialtyOption } from './models/provider-specialty-option';
+import { buildProcessRoute } from './services/process-navigation';
 import { ProcessStateService } from './services/process-state-service';
 
 @Component({
@@ -49,9 +50,12 @@ export class RequestingProvider {
         inject(Router);
 
     readonly searchViewName =
-        'provider-search';
+        'requesting-provider-search';
 
-    readonly request: QueryRequest = {
+    readonly request: QueryRequest<{ processId: string | undefined }> = {
+        parameters: {
+            processId: undefined
+        },
         query: {
             searchText: '',
             page: {
@@ -107,6 +111,9 @@ export class RequestingProvider {
         this.isLoading.set(true);
         this.selectedRecord.set(undefined);
         this.viewMode.set('results');
+        this.request.parameters = {
+            processId: this.processState.state().processId
+        };
         this.request.query ??= {};
         this.request.query.filter = this.buildFilter();
         this.request.query.page ??= {
@@ -116,7 +123,7 @@ export class RequestingProvider {
         this.request.query.page.offset = 0;
 
         this.queryableService
-            .queryView<ProviderSearchResult>(this.searchViewName, this.request)
+            .queryView<ProviderSearchResult, { processId: string | undefined }>(this.searchViewName, this.request)
             .subscribe({
                 next: result => {
                     this.results.set(result.records);
@@ -188,7 +195,10 @@ export class RequestingProvider {
                             this.isSubmitting.set(false);
 
                             if (result.requiredStep !== 'CaptureServicingProvider') {
-                                void this.router.navigate(['/process', 'servicing-provider']);
+                                void this.router.navigate(
+                                    buildProcessRoute(
+                                        this.processState.state().processId,
+                                        'servicing-provider'));
                             }
                         },
                         error: error => {
@@ -271,6 +281,7 @@ export class RequestingProvider {
             ['City', record.city],
             ['State', record.stateCode],
             ['ZIP', record.postalCode],
+            ['Network Status', record.isInNetwork === undefined ? undefined : (record.isInNetwork ? 'In Network' : 'Out of Network')],
             ['Specialty', record.primaryMedicalSpecialtyName],
             ['NPI', record.primaryNpi],
             ['TIN', record.primaryTin],
@@ -311,6 +322,10 @@ export class RequestingProvider {
                     values: [this.specialtyId]
                 }
             });
+        }
+
+        if (filters.length === 0) {
+            return undefined;
         }
 
         if (filters.length === 1) {

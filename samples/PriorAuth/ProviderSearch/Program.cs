@@ -54,6 +54,15 @@ builder.Services.AddDbContext<ProviderSearchDbContext>(
         builder.Configuration.GetConnectionString("ProviderSearch")
         ?? "Data Source=data/providersearch.db"));
 
+builder.Services.AddHttpClient("ReferenceData", client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["Services:ReferenceData:BaseUrl"]
+        ?? "https://localhost:8441");
+});
+
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.ProviderSearch.Artifacts.Queryable.Clients.ReferenceDataClient>();
+
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
 {

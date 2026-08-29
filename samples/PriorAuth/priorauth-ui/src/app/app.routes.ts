@@ -20,6 +20,11 @@ export const routes: Routes = [
   },
   {
     path: 'process',
+    redirectTo: 'process/new/member-search',
+    pathMatch: 'full'
+  },
+  {
+    path: 'process/:processId',
     component: ProcessShell,
     children: [
       {

@@ -93,8 +93,11 @@
                                         <div class="member-record__action">View details</div>
                                     </div>
 
-                                    <div class="member-record__status member-coverage--active">
+                                    <div class="member-record__status" [class.member-coverage--active]="record.isInNetwork !== false" [class.member-coverage--inactive]="record.isInNetwork === false">
                                         {{ record.locationName }} · {{ record.city }}, {{ record.stateCode }} {{ record.postalCode }}
+                                        @if (record.isInNetwork !== undefined) {
+                                            · {{ record.isInNetwork ? 'In Network' : 'Out of Network' }}
+                                        }
                                     </div>
 
                                     <div class="member-record__grid">
@@ -125,8 +128,11 @@
                 } @else if (selectedRecord()) {
                     <div class="member-search-selection">
                         <h3>{{ selectedRecordSummary() }}</h3>
-                        <div class="member-record__status member-coverage--active">
+                        <div class="member-record__status" [class.member-coverage--active]="selectedRecord()!.isInNetwork !== false" [class.member-coverage--inactive]="selectedRecord()!.isInNetwork === false">
                             {{ selectedRecord()!.locationName }} · {{ selectedRecord()!.city }}, {{ selectedRecord()!.stateCode }} {{ selectedRecord()!.postalCode }}
+                            @if (selectedRecord()!.isInNetwork !== undefined) {
+                                · {{ selectedRecord()!.isInNetwork ? 'In Network' : 'Out of Network' }}
+                            }
                         </div>
                     </div>
 

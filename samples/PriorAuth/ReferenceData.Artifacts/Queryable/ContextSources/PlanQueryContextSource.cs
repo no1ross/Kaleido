@@ -23,7 +23,10 @@ internal sealed class PlanQueryContextSource(
                     StateCode = plan.StateCode,
                     EffectiveDate = plan.EffectiveDate,
                     TerminationDate = plan.TerminationDate,
-                    IsActive = plan.IsActive
+                    IsActive = plan.IsActive,
+                    NetworkIds = plan.PlanNetworks
+                        .Select(planNetwork => planNetwork.NetworkId)
+                        .ToArray()
                 });
     }
 }

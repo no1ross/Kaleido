@@ -17,6 +17,7 @@ import {
 } from './process-request-validator';
 import { buildServiceUrl } from '../../../configuration/urlConfig';
 import { ProcessStateService } from '../../process/services/process-state-service';
+import { buildProcessRoute } from '../../process/services/process-navigation';
 import { getRouteForStep } from '../../process/services/step-route';
 
 @Injectable({
@@ -177,7 +178,10 @@ export class ProcessService {
             return;
         }
 
-        void this.router.navigate(['/process', route]);
+        void this.router.navigate(
+            buildProcessRoute(
+                this.processState.state().processId,
+                route));
     }
 
     private logRequest(

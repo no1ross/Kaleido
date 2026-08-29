@@ -53,5 +53,7 @@ public sealed class ProviderLocationQueryContext
     [Filterable(FilterOperator.Equals, FilterOperator.In)]
     public string? PrimaryMedicalSpecialtyCode { get; init; }
 
+    public ProviderType ProviderType { get; init; }
+
     public bool IsActive { get; init; }
 }

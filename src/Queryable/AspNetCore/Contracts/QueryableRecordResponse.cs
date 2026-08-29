@@ -66,6 +66,7 @@ public sealed record QueryableRecordResponse
                 .ToArray(),
 
             Views = views
+                .Where(view => view.Metadata.Visibility == QueryViewVisibility.Public)
                 .OrderBy(v => v.Metadata.Name)
                 .Select(view =>
                 {

@@ -8,6 +8,7 @@ import {
     QuestionnaireEnableWhen,
     QuestionnaireItem
 } from '../kaleido/models/questionnaire';
+import { buildProcessRoute } from './services/process-navigation';
 import { ProcessStateService } from './services/process-state-service';
 
 type MriBodyPart = 'Spine' | 'Knee';
@@ -117,7 +118,10 @@ export class CaptureMriInfo {
             .subscribe({
                 next: () => {
                     this.isSubmitting.set(false);
-                    void this.router.navigate(['/process', 'requested-services']);
+                    void this.router.navigate(
+                        buildProcessRoute(
+                            this.processState.state().processId,
+                            'requested-services'));
                 },
                 error: error => {
                     this.isSubmitting.set(false);

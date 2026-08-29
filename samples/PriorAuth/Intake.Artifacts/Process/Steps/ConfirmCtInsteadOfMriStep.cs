@@ -9,7 +9,6 @@ namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
     Description = "Captures the current CT recommendation branch placeholder.",
     Version = "1.0.0")]
 [AvailableAfter(typeof(CaptureRequestedServiceStep))]
-[AvailableUntil(typeof(CaptureMriInfoStep))]
 [AvailableUntil(typeof(CaptureRequestingProviderStep))]
 [Repeatable]
 public sealed record ConfirmCtInsteadOfMriStep;

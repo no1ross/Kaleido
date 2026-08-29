@@ -8,5 +8,6 @@ public sealed class QueryViewAttribute : Attribute
     public string? DefaultSortField { get; init; }
     public string? Description { get; init; }
     public string? DisplayName { get; init; }
+    public QueryViewVisibility Visibility { get; init; } = QueryViewVisibility.Public;
 }
 

@@ -49,6 +49,7 @@ internal sealed class ProviderLocationQueryContextSource(
                 PrimaryMedicalSpecialtyId = primarySpecialtyId,
                 PrimaryMedicalSpecialtyName = primarySpecialtyId == null ? null : "Radiology",
                 PrimaryMedicalSpecialtyCode = primarySpecialtyId == null ? null : "RAD",
+                ProviderType = location.Provider.ProviderType,
                 IsActive = location.IsActive
             };
 

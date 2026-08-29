@@ -6,6 +6,7 @@ import { QueryErrorResponse } from '../kaleido/models/query-error-response';
 import { QueryRequest } from '../kaleido/models/queryable-request';
 import { ProcessErrorResponse, ProcessService } from '../kaleido/services/process-service';
 import { QueryableService } from '../kaleido/services/queryable-service';
+import { buildProcessRoute } from './services/process-navigation';
 import { ProcessStateService } from './services/process-state-service';
 
 interface RequestedServiceSummaryResult {
@@ -55,11 +56,17 @@ export class RequestedServicesSummary {
         signal<string | undefined>(undefined);
 
     addAnotherService(): void {
-        void this.router.navigate(['/process', 'requested-service']);
+        void this.router.navigate(
+            buildProcessRoute(
+                this.processState.state().processId,
+                'requested-service'));
     }
 
     selectOrderingProvider(): void {
-        void this.router.navigate(['/process', 'requesting-provider']);
+        void this.router.navigate(
+            buildProcessRoute(
+                this.processState.state().processId,
+                'requesting-provider'));
     }
 
     removeService(

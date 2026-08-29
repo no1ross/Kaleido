@@ -191,7 +191,7 @@ internal sealed class ProviderSearchSeeder(
         ProviderSearchSeedAssets assets)
     {
         var providerName = providerType == ProviderType.RequestingProvider
-            ? $"Dr. {assets.PersonFirstNames[(providerIndex - 1) % assets.PersonFirstNames.Count]} {assets.PersonLastNames[((providerIndex - 1) * 7) % assets.PersonLastNames.Count]}"
+            ? $"{assets.PersonFirstNames[(providerIndex - 1) % assets.PersonFirstNames.Count]} {assets.PersonLastNames[((providerIndex - 1) * 7) % assets.PersonLastNames.Count]}"
             : $"{assets.FacilityPrefixes[(providerIndex - 1) % assets.FacilityPrefixes.Count]} {assets.FacilitySpecialties[((providerIndex - 1) * 3) % assets.FacilitySpecialties.Count]} {assets.FacilitySuffixes[((providerIndex - 1) * 5) % assets.FacilitySuffixes.Count]}";
 
         return new Provider

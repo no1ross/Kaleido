@@ -89,12 +89,20 @@ builder.Services.AddHttpClient("Configuration", client =>
         ?? "https://localhost:8447");
 });
 
+builder.Services.AddHttpClient("ProviderSearch", client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["Services:ProviderSearch:BaseUrl"]
+        ?? "https://localhost:8443");
+});
+
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.QueryableHttpClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.MemberDetailsClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.ProcedureCodeClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.ProcedureModalityClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.MriProcedureCodeResolverClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.QuestionnaireDefinitionClient>();
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.RequestingProviderSearchClient>();
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>

@@ -116,6 +116,7 @@ internal sealed class QueryViewRegistry
                 queryViewAttribute.Description
                     ?? queryViewAttribute.DisplayName
                     ?? queryViewAttribute.Name,
+                queryViewAttribute.Visibility,
                 pageable,
                 BuildParameters(parametersType)));
     }

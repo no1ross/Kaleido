@@ -12,6 +12,5 @@ export interface ProviderSearchResult {
     primaryMedicalSpecialtyId?: string;
     primaryMedicalSpecialtyName?: string;
     primaryMedicalSpecialtyCode?: string;
-    networkIds: string[];
-    medicalSpecialtyIds: string[];
+    isInNetwork?: boolean;
 }

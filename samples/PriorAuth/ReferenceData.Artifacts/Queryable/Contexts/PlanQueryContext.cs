@@ -63,4 +63,9 @@ public sealed class PlanQueryContext
         FilterOperator.NotEquals)]
     [Sortable]
     public bool IsActive { get; init; }
+
+    [Filterable(
+        FilterOperator.Equals,
+        FilterOperator.In)]
+    public Guid[] NetworkIds { get; init; } = [];
 }

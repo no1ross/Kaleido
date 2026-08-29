@@ -42,6 +42,7 @@ public sealed record QueryViewMetadata
     string Version,
     string DisplayName,
     string Description,
+    QueryViewVisibility Visibility,
     PageableMetadata? Pageable,
     IReadOnlyList<QueryParameterMetadata>? Parameters
 );

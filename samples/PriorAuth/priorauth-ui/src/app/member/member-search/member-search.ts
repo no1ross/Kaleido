@@ -20,6 +20,7 @@ import { QueryableRegistry } from '../../kaleido/services/queryable-registry';
 import { QueryableRequestValidationError } from '../../kaleido/services/queryable-request-validator';
 import { ProcessErrorResponse, ProcessService } from '../../kaleido/services/process-service';
 import { QueryableService } from '../../kaleido/services/queryable-service';
+import { buildProcessRoute } from '../../process/services/process-navigation';
 import { ProcessStateService } from '../../process/services/process-state-service';
 import { RegistryCatalog } from '../../registries/registry-catalog';
 import { MemberDetailsParameters } from '../models/member-details-parameters';
@@ -259,7 +260,10 @@ export class MemberSearch {
         this.isNavigatingToRequestedService.set(true);
         this.detailsError.set(undefined);
 
-        void this.router.navigate(['/process', 'requested-service'])
+        void this.router.navigate(
+            buildProcessRoute(
+                this.processState.state().processId,
+                'requested-service'))
             .finally(() => {
                 this.isNavigatingToRequestedService.set(false);
             });
