@@ -113,7 +113,7 @@ public sealed class QueryableServiceTests
     public async Task QueryAsync_WhenDirectQueryNotAllowed_Throws()
     {
         var request = new QueryRequest();
-        var registration = CreateContextRegistration() with { Metadata = CreateContextRegistration().Metadata with { AllowDirectQuery = false } };
+        var registration = CreateContextRegistration() with { Metadata = CreateContextRegistration().Metadata with { Kind = QueryContextKind.Local } };
 
         var service = new QueryableService(
             Mock.Of<IServiceScopeFactory>(),
@@ -124,6 +124,39 @@ public sealed class QueryableServiceTests
             service.QueryAsync<TestContext, TestContext>(request));
 
         Assert.Contains("does not allow direct query", exception.Message);
+    }
+
+    [Fact]
+    public async Task QueryAsync_WhenDelegatedContextHasNoViewRegistration_UsesDelegatedContextEngine()
+    {
+        var request = new QueryRequest();
+        var expected = new QueryResult<TestViewContract>(40, 0, 25, [new TestViewContract()]);
+        var contextRegistration = CreateDelegatedContextRegistration();
+
+        var engine = new Mock<IDelegatedQueryContextEngine<TestContext, TestViewContract>>();
+        engine.Setup(x => x.ExecuteAsync(request, contextRegistration, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
+
+        var provider = new Mock<IServiceProvider>();
+        provider.Setup(x => x.GetService(typeof(IDelegatedQueryContextEngine<TestContext, TestViewContract>))).Returns(engine.Object);
+
+        var scope = new Mock<IServiceScope>();
+        scope.SetupGet(x => x.ServiceProvider).Returns(provider.Object);
+
+        var scopeFactory = new Mock<IServiceScopeFactory>();
+        scopeFactory.Setup(x => x.CreateScope()).Returns(scope.Object);
+
+        var viewRegistry = new Mock<IQueryViewRegistry>();
+        viewRegistry.Setup(x => x.Find(typeof(TestContext))).Returns((QueryViewRegistration?)null);
+
+        var contextRegistry = new Mock<IQueryContextRegistry>();
+        contextRegistry.Setup(x => x.GetRegistration(typeof(TestContext))).Returns(contextRegistration);
+
+        var service = new QueryableService(scopeFactory.Object, viewRegistry.Object, contextRegistry.Object);
+
+        var result = await service.QueryAsync<TestContext, TestViewContract>(request);
+
+        Assert.Same(expected, result);
+        engine.Verify(x => x.ExecuteAsync(request, contextRegistration, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private static IQueryViewRegistry MockViewRegistry(Type lookupType, QueryViewRegistration? registration)
@@ -144,7 +177,13 @@ public sealed class QueryableServiceTests
         new(
             typeof(TestContext),
             typeof(object),
-            new QueryContextMetadata("test-context", "Test Context", "Test Context", "1.0.0", "Unit Test", true, null, []));
+            new QueryContextMetadata("test-context", "Test Context", "Test Context", "1.0.0", "Unit Test", QueryContextKind.Direct, null, []));
+
+    private static QueryContextRegistration CreateDelegatedContextRegistration() =>
+        new(
+            typeof(TestContext),
+            typeof(object),
+            new QueryContextMetadata("test-context", "Test Context", "Test Context", "1.0.0", "Unit Test", QueryContextKind.Delegated, new PageableMetadata(25, 250), []));
 
     private static QueryViewRegistration CreateViewRegistration() =>
         new(
@@ -152,7 +191,7 @@ public sealed class QueryableServiceTests
             typeof(TestViewContract),
             typeof(EmptyQueryViewParameters),
             typeof(TestContext),
-            new QueryViewMetadata("test-view", "1.0.0", "Test View", "Test View", null, []));
+            new QueryViewMetadata("test-view", "1.0.0", "Test View", "Test View", QueryViewVisibility.Public, null, []));
 
     public sealed class TestContext
     {

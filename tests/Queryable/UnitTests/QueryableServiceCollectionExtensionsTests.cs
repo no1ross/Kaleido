@@ -1,4 +1,5 @@
 using Kaleido.Queryable.Attributes;
+using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
@@ -96,6 +97,26 @@ public sealed class QueryableServiceCollectionExtensionsTests
         Assert.Equal(1, services.Count(x => x.ServiceType == typeof(IQueryViewRegistry)));
     }
 
+    [Fact]
+    public void AddQueryable_RegistersDelegatedContextWithoutLocalDirectEngine()
+    {
+        var services = new ServiceCollection();
+
+        CreateBuilder(services).AddQueryable();
+
+        using var provider = services.BuildServiceProvider();
+
+        var registration = provider
+            .GetRequiredService<IQueryContextRegistry>()
+            .GetRegistration(typeof(DelegatedContext));
+
+        Assert.Equal(typeof(DelegatedSource), registration.SourceType);
+        Assert.Equal(QueryContextKind.Delegated, registration.Metadata.Kind);
+
+        Assert.DoesNotContain(services, x =>
+            x.ServiceType == typeof(IQueryContextEngine<,>).MakeGenericType(typeof(DelegatedContext), typeof(DelegatedContext)));
+    }
+
     private static IKaleidoBuilder CreateBuilder(IServiceCollection? services = null) =>
         new TestKaleidoBuilder(
             services ?? new ServiceCollection(),
@@ -119,7 +140,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
         Description = "Test Context",
         Version = "1.0.0",
         Source = "Unit Test",
-        AllowDirectQuery = true)]
+        Kind = QueryContextKind.Direct)]
     private sealed class TestContext
     {
         [Sortable]
@@ -152,5 +173,28 @@ public sealed class QueryableServiceCollectionExtensionsTests
     private sealed class TestViewParameters
     {
         public string Category { get; init; } = string.Empty;
+    }
+
+    [QueryContext(
+        Name = "delegated-context",
+        DisplayName = "Delegated Context",
+        Description = "Delegated Context",
+        Version = "1.0.0",
+        Source = "Unit Test",
+        Kind = QueryContextKind.Delegated)]
+    public sealed class DelegatedContext
+    {
+    }
+
+    public sealed class DelegatedRecord
+    {
+    }
+
+    public sealed class DelegatedSource : IDelegatedQueryContextSource<DelegatedContext, DelegatedRecord>
+    {
+        public Task<QueryResult<DelegatedRecord>> ExecuteAsync(
+            IQueryRequest request,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new QueryResult<DelegatedRecord>(0, 0, 25, []));
     }
 }

@@ -12,7 +12,7 @@ public sealed class QueryableHttpClient(
         string clientName,
         string requestPath,
         QueryRequest request,
-        Func<QueryableResult<TRecord>, TResult> selector,
+        Func<QueryResult<TRecord>, TResult> selector,
         CancellationToken cancellationToken = default)
         where TRecord : class
     {
@@ -34,7 +34,7 @@ public sealed class QueryableHttpClient(
         string clientName,
         string requestPath,
         QueryApiRequest<TParameters> request,
-        Func<QueryableResult<TRecord>, TResult> selector,
+        Func<QueryResult<TRecord>, TResult> selector,
         CancellationToken cancellationToken = default)
         where TParameters : class
         where TRecord : class
@@ -53,16 +53,15 @@ public sealed class QueryableHttpClient(
         return selector(result);
     }
 
-    private static async Task<QueryableResult<TRecord>> ReadResultAsync<TRecord>(
+    private static async Task<QueryResult<TRecord>> ReadResultAsync<TRecord>(
         HttpResponseMessage response,
         CancellationToken cancellationToken)
         where TRecord : class
     {
         if (response.IsSuccessStatusCode)
         {
-            return await response.Content.ReadFromJsonAsync<QueryableResult<TRecord>>(
-                       cancellationToken: cancellationToken)
-                   ?? new QueryableResult<TRecord>();
+            return await response.Content.ReadFromJsonAsync<QueryResult<TRecord>>(
+                       cancellationToken: cancellationToken);
         }
 
         var queryableError =

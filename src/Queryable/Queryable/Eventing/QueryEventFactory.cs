@@ -11,7 +11,6 @@ internal interface IQueryEventFactory
         KaleidoCorrelationContext correlation,
         QueryObservationDetails details,
         IQueryRequest request,
-        CompiledRecordQuery compiled,
         QueryResult<TView> result)
         where TView : class;
 }
@@ -23,14 +22,12 @@ internal sealed class QueryEventFactory
         KaleidoCorrelationContext correlation,
         QueryObservationDetails details,
         IQueryRequest request,
-        CompiledRecordQuery compiled,
         QueryResult<TView> result)
         where TView : class
     {
         ArgumentNullException.ThrowIfNull(correlation);
         ArgumentNullException.ThrowIfNull(details);
         ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(compiled);
         ArgumentNullException.ThrowIfNull(result);
 
         return new QueryExecuted
@@ -40,6 +37,7 @@ internal sealed class QueryEventFactory
             QueryContextName = details.QueryContextName,
             QueryViewName = details.QueryViewName,
             IsDirectQuery = details.IsDirectQuery,
+            ExecutionMode = details.ExecutionMode.ToString(),
             Request = request,
             TotalCount = result.TotalCount,
             ReturnedCount = result.Records.Count,

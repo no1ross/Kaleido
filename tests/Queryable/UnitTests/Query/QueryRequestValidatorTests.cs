@@ -107,7 +107,7 @@ public sealed class QueryRequestValidatorTests
                 "Test Record",
                 "1.0.0",
                 "Unit Test",
-                true,
+                QueryContextKind.Direct,
                 new PageableMetadata(25, 100),
                 [
                     new FieldMetadata("Code", null, typeof(string), true, [FilterOperator.Equals], false, null, null, true),
@@ -124,7 +124,7 @@ public sealed class QueryRequestValidatorTests
                 "Test Record",
                 "1.0.0",
                 "Unit Test",
-                true,
+                QueryContextKind.Direct,
                 new PageableMetadata(25, 100),
                 [new FieldMetadata("Code", null, typeof(string), true, [FilterOperator.Equals], false, null, null, true)]));
 

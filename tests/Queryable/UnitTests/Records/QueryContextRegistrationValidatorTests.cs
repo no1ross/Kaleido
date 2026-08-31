@@ -75,7 +75,7 @@ public sealed class QueryContextRegistrationValidatorTests
                 [typeof(TestContext)],
                 services));
 
-        Assert.Contains("has multiple registered sources", exception.Message);
+        Assert.Contains("has multiple registered local sources", exception.Message);
     }
 
     [QueryContext(Name = "test-context", Version = "1.0.0")]

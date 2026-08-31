@@ -9,12 +9,12 @@ public sealed class QueryMetadataTests
     {
         var field = new FieldMetadata("Code", "Code description", typeof(string), true, [FilterOperator.Equals], true, 1, MatchMode.Contains, true);
         var pageable = new PageableMetadata(25, 100);
-        var metadata = new QueryContextMetadata("context", "Context description", "Context", "1.0.0", "Unit Test", true, pageable, [field]);
+        var metadata = new QueryContextMetadata("context", "Context description", "Context", "1.0.0", "Unit Test", QueryContextKind.Direct, pageable, [field]);
         var registration = new QueryContextRegistration(typeof(TestContext), typeof(TestSource), metadata);
 
         Assert.Equal(typeof(TestContext), registration.ContextType);
         Assert.Equal(typeof(TestSource), registration.SourceType);
-        Assert.True(registration.Metadata.AllowDirectQuery);
+        Assert.Equal(QueryContextKind.Direct, registration.Metadata.Kind);
         Assert.Equal(25, registration.Metadata.Pageable!.DefaultSize);
         Assert.Same(field, registration.Metadata.Fields.Single());
     }
@@ -24,7 +24,7 @@ public sealed class QueryMetadataTests
     {
         var parameter = new QueryParameterMetadata("Category", typeof(string), [], "Category description");
         var pageable = new PageableMetadata(10, 20);
-        var metadata = new QueryViewMetadata("grid", "1.0.0", "Grid", "Grid description", pageable, [parameter]);
+        var metadata = new QueryViewMetadata("grid", "1.0.0", "Grid", "Grid description", QueryViewVisibility.Public, pageable, [parameter]);
         var registration = new QueryViewRegistration(typeof(TestView), typeof(TestContract), typeof(TestParameters), typeof(TestContext), metadata);
 
         Assert.Equal(typeof(TestView), registration.QueryViewType);

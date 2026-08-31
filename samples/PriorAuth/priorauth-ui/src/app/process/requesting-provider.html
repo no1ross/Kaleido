@@ -1,15 +1,15 @@
 <section class="member-search-page">
-    @if (!registration) {
+    @if (!context) {
         <div class="member-search-page__error">
-            The <strong>{{ searchViewName }}</strong> queryable view is not available. Check registry conflicts and service registration.
+            The <strong>{{ searchContextName }}</strong> queryable query context is not available. Check registry conflicts and service registration.
         </div>
     } @else {
         @if (viewMode() === 'results') {
             <div class="member-search-page__layout">
                 <div class="member-search-card">
                     <div class="member-search-card__title">Requesting Provider Search</div>
-                    <div class="member-search-card__meta">Service: {{ registration.service.displayName }}</div>
-                    <div class="member-search-card__meta">Context: {{ context?.displayName ?? context?.name }}</div>
+                    <div class="member-search-card__meta">Service: {{ registrationServiceName }}</div>
+                    <div class="member-search-card__meta">Context: {{ context.displayName }}</div>
 
                     <div class="member-search-card__form">
                         <div class="member-search-card__field">
@@ -58,6 +58,15 @@
                                 <div class="member-search-card__hint member-search-card__hint--error">{{ specialtyOptionsError() }}</div>
                             }
                         </div>
+
+                        <div class="member-search-card__field">
+                            <label for="providerNetworkStatus">Network Status</label>
+                            <select id="providerNetworkStatus" [(ngModel)]="networkStatus">
+                                <option value="">All providers</option>
+                                <option value="in">In network only</option>
+                                <option value="out">Out of network only</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="member-search-card__actions">
@@ -73,7 +82,7 @@
                 <div class="member-search-results">
                     <div class="member-search-results__header">
                         <h3>Results</h3>
-                        <div class="member-search-results__count">{{ results().length }} records</div>
+                        <div class="member-search-results__count">{{ pageLabel() }}</div>
                     </div>
 
                     @if (isLoading()) {
@@ -110,6 +119,12 @@
                                     </div>
                                 </button>
                             }
+                        </div>
+
+                        <div class="member-search-results__pager">
+                            <button type="button" class="secondary-button" (click)="previousPage()" [disabled]="!hasPreviousPage() || isLoading()">Previous</button>
+                            <span class="member-search-results__pager-label">{{ pageLabel() }}</span>
+                            <button type="button" class="secondary-button" (click)="nextPage()" [disabled]="!hasNextPage() || isLoading()">Next</button>
                         </div>
                     }
                 </div>

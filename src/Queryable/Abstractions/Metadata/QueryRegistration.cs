@@ -1,6 +1,19 @@
+using System.Text.Json.Serialization;
+
 namespace Kaleido.Queryable.Metadata;
 
-public sealed record QueryContextRegistration(Type ContextType, Type SourceType, QueryContextMetadata Metadata);
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum QueryContextKind
+{
+    Local,
+    Direct,
+    Delegated
+}
+
+public sealed record QueryContextRegistration(
+    Type ContextType,
+    Type SourceType,
+    QueryContextMetadata Metadata);
 
 public sealed record QueryContextMetadata
 (
@@ -9,7 +22,7 @@ public sealed record QueryContextMetadata
     string DisplayName,
     string Version,
     string? Source,
-    bool AllowDirectQuery,
+    QueryContextKind Kind,
     PageableMetadata? Pageable,
     IReadOnlyList<FieldMetadata> Fields
 );

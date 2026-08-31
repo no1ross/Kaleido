@@ -55,7 +55,7 @@ public sealed record QueryableRecordResponse
                     contextName),
 
             QueryUrl =
-                registration.Metadata.AllowDirectQuery
+                registration.Metadata.Kind is QueryContextKind.Direct or QueryContextKind.Delegated
                     ? QueryableContractUrls.QueryContextQuery(
                         options,
                         contextName)

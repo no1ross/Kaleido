@@ -1,3 +1,4 @@
+using Kaleido.Queryable.Query;
 using Kaleido.Samples.PriorAuth.Configuration.Artifacts;
 using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
 using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
@@ -24,7 +25,7 @@ public sealed class ProcedureModalityClient(
         }
 
         var rule =
-            (await queryableHttpClient.QueryAsync<ProcedureModalityRuleRecord, QueryableResult<ProcedureModalityRuleRecord>>(
+            (await queryableHttpClient.QueryAsync<ProcedureModalityRuleRecord, QueryResult<ProcedureModalityRuleRecord>>(
                 "Configuration",
                 modalityRuleQueryPath,
                 QueryRequestFactory.CreateEqualsRequest(

@@ -15,6 +15,15 @@ internal sealed class QueryableService : IQueryableService
         ?? throw new InvalidOperationException(
             $"Could not locate method '{nameof(ExecuteTypedAsync)}'.");
 
+    private static readonly MethodInfo ExecuteDelegatedTypedAsyncMethod =
+        typeof(QueryableService)
+            .GetMethod(
+                nameof(ExecuteDelegatedTypedAsync),
+                BindingFlags.Instance |
+                BindingFlags.NonPublic)
+        ?? throw new InvalidOperationException(
+            $"Could not locate method '{nameof(ExecuteDelegatedTypedAsync)}'.");
+
     private static readonly MethodInfo ExecuteDirectTypedAsyncMethod =
         typeof(QueryableService)
             .GetMethod(
@@ -23,6 +32,15 @@ internal sealed class QueryableService : IQueryableService
                 BindingFlags.NonPublic)
         ?? throw new InvalidOperationException(
             $"Could not locate method '{nameof(ExecuteDirectTypedAsync)}'.");
+
+    private static readonly MethodInfo ExecuteDelegatedDirectTypedAsyncMethod =
+        typeof(QueryableService)
+            .GetMethod(
+                nameof(ExecuteDelegatedDirectTypedAsync),
+                BindingFlags.Instance |
+                BindingFlags.NonPublic)
+        ?? throw new InvalidOperationException(
+            $"Could not locate method '{nameof(ExecuteDelegatedDirectTypedAsync)}'.");
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IQueryViewRegistry _viewRegistry;
@@ -79,17 +97,26 @@ internal sealed class QueryableService : IQueryableService
                 cancellationToken);
         }
 
-        var directRegistration =
+        var directContextRegistration =
             _contextRegistry.GetRegistration(
                 typeof(TQueryView));
 
+        if (directContextRegistration.Metadata.Kind == QueryContextKind.Delegated)
+        {
+            return await ExecuteDelegatedDirectWithDiscoveredContextAsync<TView>(
+                scope.ServiceProvider,
+                request,
+                directContextRegistration,
+                cancellationToken);
+        }
+
         ValidateDirectQuery<TQueryView, TView>(
-            directRegistration);
+            directContextRegistration);
 
         return await ExecuteDirectWithDiscoveredContextAsync<TView>(
             scope.ServiceProvider,
             request,
-            directRegistration,
+            directContextRegistration,
             cancellationToken);
     }
 
@@ -102,9 +129,13 @@ internal sealed class QueryableService : IQueryableService
         where TView : class
     {
         var typedMethod =
-            ExecuteTypedAsyncMethod.MakeGenericMethod(
-                viewRegistration.QueryContextType,
-                typeof(TView));
+            contextRegistration.Metadata.Kind == QueryContextKind.Delegated
+                ? ExecuteDelegatedTypedAsyncMethod.MakeGenericMethod(
+                    viewRegistration.QueryContextType,
+                    typeof(TView))
+                : ExecuteTypedAsyncMethod.MakeGenericMethod(
+                    viewRegistration.QueryContextType,
+                    typeof(TView));
 
         var result =
             typedMethod.Invoke(
@@ -181,6 +212,25 @@ internal sealed class QueryableService : IQueryableService
             cancellationToken);
     }
 
+    private async Task<QueryResult<TView>> ExecuteDelegatedTypedAsync<TContext, TView>(
+        IServiceProvider serviceProvider,
+        IQueryRequest request,
+        QueryContextRegistration contextRegistration,
+        QueryViewRegistration viewRegistration,
+        CancellationToken cancellationToken)
+        where TContext : class
+        where TView : class
+    {
+        var engine =
+            serviceProvider.GetRequiredService<
+                IDelegatedQueryContextEngine<TContext, TView>>();
+
+        return await engine.ExecuteAsync(
+            request,
+            contextRegistration,
+            cancellationToken);
+    }
+
     private async Task<QueryResult<TView>> ExecuteDirectTypedAsync<TContext, TView>(
         IServiceProvider serviceProvider,
         IQueryRequest request,
@@ -192,6 +242,56 @@ internal sealed class QueryableService : IQueryableService
         var engine =
             serviceProvider.GetRequiredService<
                 IQueryContextEngine<TContext, TView>>();
+
+        return await engine.ExecuteAsync(
+            request,
+            contextRegistration,
+            cancellationToken);
+    }
+
+    private async Task<QueryResult<TView>> ExecuteDelegatedDirectWithDiscoveredContextAsync<TView>(
+        IServiceProvider serviceProvider,
+        IQueryRequest request,
+        QueryContextRegistration contextRegistration,
+        CancellationToken cancellationToken)
+        where TView : class
+    {
+        var typedMethod =
+            ExecuteDelegatedDirectTypedAsyncMethod.MakeGenericMethod(
+                contextRegistration.ContextType,
+                typeof(TView));
+
+        var result =
+            typedMethod.Invoke(
+                this,
+                new object[]
+                {
+                    serviceProvider,
+                    request,
+                    contextRegistration,
+                    cancellationToken
+                });
+
+        if (result is not Task<QueryResult<TView>> typedTask)
+        {
+            throw new InvalidOperationException(
+                $"Delegated query execution for context '{contextRegistration.ContextType.FullName}' did not return '{typeof(QueryResult<TView>).FullName}'.");
+        }
+
+        return await typedTask;
+    }
+
+    private async Task<QueryResult<TView>> ExecuteDelegatedDirectTypedAsync<TContext, TView>(
+        IServiceProvider serviceProvider,
+        IQueryRequest request,
+        QueryContextRegistration contextRegistration,
+        CancellationToken cancellationToken)
+        where TContext : class
+        where TView : class
+    {
+        var engine =
+            serviceProvider.GetRequiredService<
+                IDelegatedQueryContextEngine<TContext, TView>>();
 
         return await engine.ExecuteAsync(
             request,
@@ -232,7 +332,7 @@ internal sealed class QueryableService : IQueryableService
         where TQueryView : class
         where TView : class
     {
-        if (!contextRegistration.Metadata.AllowDirectQuery)
+        if (contextRegistration.Metadata.Kind != QueryContextKind.Direct)
         {
             throw new InvalidOperationException(
                 $"Query context '{contextRegistration.ContextType.FullName}' does not allow direct query.");

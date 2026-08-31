@@ -1,5 +1,6 @@
 using Kaleido.Queryable;
 using Kaleido.Queryable.Attributes;
+using Kaleido.Queryable.Metadata;
 using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
 using System.ComponentModel.DataAnnotations;
 
@@ -10,7 +11,7 @@ namespace Kaleido.Samples.PriorAuth.Configuration.Artifacts.Queryable.Contexts;
     DisplayName = "MRI Procedure Code Rules",
     Version = "1.0.0",
     Source = "Prior Authorization Configuration",
-    AllowDirectQuery = true)]
+    Kind = QueryContextKind.Direct)]
 public sealed class MriProcedureCodeRuleQueryContext
 {
     [Key]

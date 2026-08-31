@@ -134,7 +134,7 @@ public sealed class QueryRequestCompilerTests
             "Test Record",
             "1.0.0",
             "Unit Test",
-            true,
+            QueryContextKind.Direct,
             new PageableMetadata(25, 100),
             [
                 new FieldMetadata(nameof(TestRecord.Code), null, typeof(string), true, [FilterOperator.Equals], false, null, null, true),
@@ -151,6 +151,7 @@ public sealed class QueryRequestCompilerTests
             "1.0.0",
             "Test View",
             "Test View",
+            QueryViewVisibility.Public,
             new PageableMetadata(10, 20),
             []);
 

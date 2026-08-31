@@ -1,5 +1,6 @@
 using Kaleido.Queryable;
 using Kaleido.Queryable.Attributes;
+using Kaleido.Queryable.Metadata;
 using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Queryable.Contexts;
@@ -9,7 +10,7 @@ namespace Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Queryable.Contexts;
     DisplayName = "Diagnosis Codes",
     Version = "1.0.0",
     Source = "Prior Authorization Code Set",
-    AllowDirectQuery = true)]
+    Kind = QueryContextKind.Direct)]
 [Pageable(
     DefaultSize = 25,
     MaxSize = 100)]

@@ -60,9 +60,10 @@ public static class QueryableServiceCollectionExtensions
                 contextType,
                 types);
 
-            RegisterDirectQueryEngine(
+            RegisterContextEngines(
                 builder.Services,
-                contextType);
+                contextType,
+                types);
         }
 
         var queryViewTypes =
@@ -142,37 +143,139 @@ public static class QueryableServiceCollectionExtensions
         Type contextType,
         IEnumerable<Type> types)
     {
-        var sourceType =
-            types.Single(x =>
+        var localSources =
+            types
+                .Where(x =>
+                    x.GetInterfaces()
+                        .Any(i =>
+                            i.IsGenericType &&
+                            i.GetGenericTypeDefinition() == typeof(IQueryContextSource<>) &&
+                            i.GenericTypeArguments[0] == contextType))
+                .ToArray();
+
+        var delegatedSources =
+            types
+                .Where(x =>
+                    x.GetInterfaces()
+                        .Any(i =>
+                            i.IsGenericType &&
+                            i.GetGenericTypeDefinition() == typeof(IDelegatedQueryContextSource<,>) &&
+                            i.GenericTypeArguments[0] == contextType))
+                .ToArray();
+
+        if (localSources.Length > 1 || delegatedSources.Length > 1 || (localSources.Length > 0 && delegatedSources.Length > 0))
+        {
+            return;
+        }
+
+        if (localSources.Length == 1)
+        {
+            var sourceInterface =
+                typeof(IQueryContextSource<>)
+                    .MakeGenericType(contextType);
+
+            services.TryAddScoped(
+                sourceInterface,
+                localSources[0]);
+        }
+
+        if (delegatedSources.Length == 1)
+        {
+            var sourceInterface =
+                delegatedSources[0]
+                    .GetInterfaces()
+                    .Single(i =>
+                        i.IsGenericType &&
+                        i.GetGenericTypeDefinition() == typeof(IDelegatedQueryContextSource<,>) &&
+                        i.GenericTypeArguments[0] == contextType);
+
+            services.TryAddScoped(
+                sourceInterface,
+                delegatedSources[0]);
+        }
+    }
+
+    private static void RegisterContextEngines(
+        IServiceCollection services,
+        Type contextType,
+        IEnumerable<Type> types)
+    {
+        var hasLocalSource =
+            types.Any(x =>
                 x.GetInterfaces()
                     .Any(i =>
                         i.IsGenericType &&
-                        i.GetGenericTypeDefinition() ==
-                        typeof(IQueryContextSource<>) &&
+                        i.GetGenericTypeDefinition() == typeof(IQueryContextSource<>) &&
                         i.GenericTypeArguments[0] == contextType));
 
-        var sourceInterface =
-            typeof(IQueryContextSource<>)
-                .MakeGenericType(contextType);
+        var localViewTypes =
+            types
+                .Where(x =>
+                    x.GetCustomAttribute<QueryViewAttribute>() is not null)
+                .SelectMany(x =>
+                    x.GetInterfaces()
+                        .Where(i =>
+                            i.IsGenericType &&
+                            (
+                                i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,>) ||
+                                i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,,>)
+                            ) &&
+                            i.GenericTypeArguments[0] == contextType)
+                        .Select(i => i.GenericTypeArguments[1]))
+                .Where(x => x != contextType)
+                .Distinct()
+                .ToArray();
 
-        services.TryAddScoped(
-            sourceInterface,
-            sourceType);
-    }
+        var delegatedViewTypes =
+            types
+                .SelectMany(x =>
+                    x.GetInterfaces()
+                        .Where(i =>
+                            i.IsGenericType &&
+                            i.GetGenericTypeDefinition() == typeof(IDelegatedQueryContextSource<,>) &&
+                            i.GenericTypeArguments[0] == contextType)
+                        .Select(i => i.GenericTypeArguments[1]))
+                .Distinct()
+                .ToArray();
 
-    private static void RegisterDirectQueryEngine(
-        IServiceCollection services,
-        Type contextType)
-    {
-        services.TryAddScoped(
-            typeof(IQueryContextEngine<,>)
-                .MakeGenericType(
-                    contextType,
-                    contextType),
-            typeof(QueryContextEngine<,>)
-                .MakeGenericType(
-                    contextType,
-                    contextType));
+        if (hasLocalSource)
+        {
+            services.TryAddScoped(
+                typeof(IQueryContextEngine<,>)
+                    .MakeGenericType(
+                        contextType,
+                        contextType),
+                typeof(QueryContextEngine<,>)
+                    .MakeGenericType(
+                        contextType,
+                        contextType));
+
+            foreach (var viewType in localViewTypes)
+            {
+                services.TryAddScoped(
+                    typeof(IQueryContextEngine<,>)
+                        .MakeGenericType(
+                            contextType,
+                            viewType),
+                    typeof(QueryContextEngine<,>)
+                        .MakeGenericType(
+                            contextType,
+                            viewType));
+            }
+        }
+
+        foreach (var viewType in delegatedViewTypes)
+        {
+            services.TryAddScoped(
+                typeof(IDelegatedQueryContextEngine<,>)
+                    .MakeGenericType(
+                        contextType,
+                        viewType),
+                typeof(DelegatedQueryContextEngine<,>)
+                    .MakeGenericType(
+                        contextType,
+                        viewType));
+        }
     }
 
     private static void RegisterQueryView(
@@ -225,23 +328,10 @@ public static class QueryableServiceCollectionExtensions
                     x => x.GenericTypeArguments.Length)
                 .First();
 
-        var queryType =
+        _ =
             registrationInterface.GenericTypeArguments[0];
 
-        var viewType =
+        _ =
             registrationInterface.GenericTypeArguments[1];
-
-        //
-        // Register the engine
-        //
-        services.TryAddScoped(
-            typeof(IQueryContextEngine<,>)
-                .MakeGenericType(
-                    queryType,
-                    viewType),
-            typeof(QueryContextEngine<,>)
-                .MakeGenericType(
-                    queryType,
-                    viewType));
     }
 }

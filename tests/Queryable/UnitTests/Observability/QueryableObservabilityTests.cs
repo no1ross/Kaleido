@@ -61,7 +61,8 @@ public sealed class QueryableObservabilityTests
                 new QueryObservationDetails(
                     "TestContext",
                     "TestView",
-                    false));
+                    false,
+                    QueryExecutionMode.LocalView));
 
         using var sourceScope = observation.BeginSource();
         using var viewScope = observation.BeginView();
@@ -100,7 +101,8 @@ public sealed class QueryableObservabilityTests
                 new QueryObservationDetails(
                     "TestContext",
                     "TestView",
-                    false));
+                    false,
+                    QueryExecutionMode.LocalView));
 
         observation.Materialized(10, 5, 5, 0);
         observation.ValidationFailed(new InvalidFieldException("Field-A", "TestContext"));
@@ -127,7 +129,8 @@ public sealed class QueryableObservabilityTests
                 new QueryObservationDetails(
                     "TestContext",
                     "TestView",
-                    false));
+                    false,
+                    QueryExecutionMode.LocalView));
 
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
@@ -148,7 +151,8 @@ public sealed class QueryableObservabilityTests
                 new QueryObservationDetails(
                     "TestContext",
                     null,
-                    true));
+                    true,
+                    QueryExecutionMode.DirectContext));
 
         var exception =
             Assert.Throws<ArgumentNullException>(() =>

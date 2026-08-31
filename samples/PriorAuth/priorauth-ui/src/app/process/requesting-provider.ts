@@ -4,8 +4,9 @@ import { Router } from '@angular/router';
 
 import { FilterOperator, LogicalOperator } from '../kaleido/models/enumerations';
 import { QueryErrorResponse } from '../kaleido/models/query-error-response';
-import { QueryFilterNode, QueryRequest } from '../kaleido/models/queryable-request';
-import { QueryableField, QueryableRecord, ServiceQueryableViewRegistration } from '../kaleido/models/queryable-registry';
+import { QueryRequest } from '../kaleido/models/queryable-request';
+import { QueryableRecord } from '../kaleido/models/queryable-registry';
+import { QueryableResult } from '../kaleido/models/queryable-result';
 import { QueryableRegistry } from '../kaleido/services/queryable-registry';
 import { QueryableRequestValidationError } from '../kaleido/services/queryable-request-validator';
 import { ProcessErrorResponse, ProcessService } from '../kaleido/services/process-service';
@@ -49,8 +50,8 @@ export class RequestingProvider {
     private readonly router =
         inject(Router);
 
-    readonly searchViewName =
-        'requesting-provider-search';
+    readonly searchContextName =
+        'requesting-provider-searches';
 
     readonly request: QueryRequest<{ processId: string | undefined }> = {
         parameters: {
@@ -67,10 +68,17 @@ export class RequestingProvider {
 
     readonly results =
         signal<ProviderSearchResult[]>([]);
+    readonly totalCount =
+        signal(0);
+    readonly pageOffset =
+        signal(0);
+    readonly pageSize =
+        signal(25);
     readonly selectedRecord =
         signal<ProviderSearchResult | undefined>(undefined);
     stateCode = '';
     specialtyId = '';
+    networkStatus = '';
     readonly stateOptions =
         signal<StateOption[]>([]);
     readonly specialtyOptions =
@@ -94,47 +102,36 @@ export class RequestingProvider {
     readonly viewMode =
         signal<'results' | 'details'>('results');
 
-    get registration(): ServiceQueryableViewRegistration | undefined {
-        return this.queryableRegistry.tryGetViewRegistration(this.searchViewName);
+    get registrationServiceName(): string | undefined {
+        return this.queryableRegistry
+            .tryGetServiceContext(this.searchContextName)
+            ?.service.displayName;
     }
 
     get context(): QueryableRecord | undefined {
-        return this.registration?.context;
+        return this.queryableRegistry.tryGetContext(this.searchContextName);
     }
 
     readonly selectedRecordSummary =
         computed(() => this.selectedRecord()?.providerName ?? 'Provider result');
+    readonly hasPreviousPage =
+        computed(() => this.pageOffset() > 0);
+    readonly hasNextPage =
+        computed(() => this.pageOffset() + this.results().length < this.totalCount());
+    readonly pageLabel =
+        computed(() => {
+            if (this.totalCount() === 0 || this.results().length === 0) {
+                return 'No results';
+            }
+
+            const start = this.pageOffset() + 1;
+            const end = this.pageOffset() + this.results().length;
+            return `${start}-${end} of ${this.totalCount()}`;
+        });
 
     search(): void {
-        this.errorMessage.set(undefined);
-        this.detailsError.set(undefined);
-        this.isLoading.set(true);
-        this.selectedRecord.set(undefined);
-        this.viewMode.set('results');
-        this.request.parameters = {
-            processId: this.processState.state().processId
-        };
-        this.request.query ??= {};
-        this.request.query.filter = this.buildFilter();
-        this.request.query.page ??= {
-            size: 25,
-            offset: 0
-        };
-        this.request.query.page.offset = 0;
-
-        this.queryableService
-            .queryView<ProviderSearchResult, { processId: string | undefined }>(this.searchViewName, this.request)
-            .subscribe({
-                next: result => {
-                    this.results.set(result.records);
-                    this.isLoading.set(false);
-                },
-                error: error => {
-                    this.results.set([]);
-                    this.isLoading.set(false);
-                    this.errorMessage.set(this.formatError(error));
-                }
-            });
+        this.pageOffset.set(0);
+        this.executeSearch();
     }
 
     clear(): void {
@@ -148,7 +145,10 @@ export class RequestingProvider {
         this.request.query.page.offset = 0;
         this.stateCode = '';
         this.specialtyId = '';
+        this.networkStatus = '';
         this.results.set([]);
+        this.totalCount.set(0);
+        this.pageOffset.set(0);
         this.selectedRecord.set(undefined);
         this.errorMessage.set(undefined);
         this.detailsError.set(undefined);
@@ -244,18 +244,45 @@ export class RequestingProvider {
     }
 
     loadSpecialtyOptions(): void {
-        const field =
-            this.getProviderField('PrimaryMedicalSpecialtyId');
+        this.isLoadingSpecialties.set(true);
+        this.specialtyOptionsError.set(undefined);
 
-        const enumValues =
-            field?.dataType.enumValues ?? [];
+        this.queryableService
+            .queryContext<ProviderSearchResult, { processId: string | undefined }>(
+                this.searchContextName,
+                {
+                    parameters: {
+                        processId: this.processState.state().processId
+                    },
+                    query: {
+                        page: {
+                            size: 100,
+                            offset: 0
+                        }
+                    }
+                })
+            .subscribe({
+                next: result => {
+                    const options = result.records
+                        .filter(record => !!record.primaryMedicalSpecialtyId && !!record.primaryMedicalSpecialtyName)
+                        .map(record => ({
+                            medicalSpecialtyId: record.primaryMedicalSpecialtyId!,
+                            specialtyCode: record.primaryMedicalSpecialtyCode ?? record.primaryMedicalSpecialtyName!,
+                            name: record.primaryMedicalSpecialtyName!
+                        }))
+                        .filter((option, index, options) =>
+                            options.findIndex(candidate => candidate.medicalSpecialtyId === option.medicalSpecialtyId) === index)
+                        .sort((left, right) => left.name.localeCompare(right.name));
 
-        this.specialtyOptions.set(
-            enumValues.map(option => ({
-                medicalSpecialtyId: `${option.value}`,
-                specialtyCode: option.description ?? option.name,
-                name: option.name
-            })));
+                    this.specialtyOptions.set(options);
+                    this.isLoadingSpecialties.set(false);
+                },
+                error: error => {
+                    this.specialtyOptions.set([]);
+                    this.isLoadingSpecialties.set(false);
+                    this.specialtyOptionsError.set(this.formatError(error));
+                }
+            });
     }
 
     trackResult(
@@ -301,8 +328,65 @@ export class RequestingProvider {
             .slice(0, 4);
     }
 
-    private buildFilter(): QueryFilterNode | undefined {
-        const filters: QueryFilterNode[] = [];
+    previousPage(): void {
+        if (!this.hasPreviousPage()) {
+            return;
+        }
+
+        this.pageOffset.update(offset => Math.max(0, offset - this.pageSize()));
+        this.executeSearch();
+    }
+
+    nextPage(): void {
+        if (!this.hasNextPage()) {
+            return;
+        }
+
+        this.pageOffset.update(offset => offset + this.pageSize());
+        this.executeSearch();
+    }
+
+    private executeSearch(): void {
+        this.errorMessage.set(undefined);
+        this.detailsError.set(undefined);
+        this.isLoading.set(true);
+        this.selectedRecord.set(undefined);
+        this.viewMode.set('results');
+        this.request.parameters = {
+            processId: this.processState.state().processId
+        };
+        this.request.query ??= {};
+        this.request.query.filter = this.buildFilter();
+        this.request.query.page = {
+            size: this.pageSize(),
+            offset: this.pageOffset()
+        };
+
+        this.queryableService
+            .queryContext<ProviderSearchResult, { processId: string | undefined }>(this.searchContextName, this.request)
+            .subscribe({
+                next: result => this.applySearchResult(result),
+                error: error => {
+                    this.results.set([]);
+                    this.totalCount.set(0);
+                    this.isLoading.set(false);
+                    this.errorMessage.set(this.formatError(error));
+                }
+            });
+    }
+
+    private applySearchResult(
+        result: QueryableResult<ProviderSearchResult>
+    ): void {
+        this.results.set(result.records);
+        this.totalCount.set(result.totalCount);
+        this.pageOffset.set(result.offset);
+        this.pageSize.set(result.pageSize);
+        this.isLoading.set(false);
+    }
+
+    private buildFilter() {
+        const filters = [];
 
         if (this.stateCode) {
             filters.push({
@@ -324,6 +408,26 @@ export class RequestingProvider {
             });
         }
 
+        if (this.networkStatus === 'in') {
+            filters.push({
+                condition: {
+                    field: 'IsInNetwork',
+                    operator: FilterOperator.Equals,
+                    values: [true]
+                }
+            });
+        }
+
+        if (this.networkStatus === 'out') {
+            filters.push({
+                condition: {
+                    field: 'IsInNetwork',
+                    operator: FilterOperator.Equals,
+                    values: [false]
+                }
+            });
+        }
+
         if (filters.length === 0) {
             return undefined;
         }
@@ -338,13 +442,6 @@ export class RequestingProvider {
                 filters
             }
         };
-    }
-
-    private getProviderField(
-        fieldName: string
-    ): QueryableField | undefined {
-        return this.context?.fields.find(
-            field => field.name === fieldName);
     }
 
     private getProcessErrorMessage(

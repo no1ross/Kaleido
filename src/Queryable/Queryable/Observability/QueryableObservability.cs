@@ -21,6 +21,8 @@ internal interface IQueryExecutionObservation
 
     IDisposable BeginMaterialization();
 
+    IDisposable BeginDelegate();
+
     void ValidationFailed(
         QueryableValidationException exception);
 
@@ -34,10 +36,18 @@ internal interface IQueryExecutionObservation
         Exception exception);
 }
 
+public enum QueryExecutionMode
+{
+    LocalView = 0,
+    DirectContext = 1,
+    DelegatedContext = 2
+}
+
 internal sealed record QueryObservationDetails(
     string QueryContextName,
     string? QueryViewName,
-    bool IsDirectQuery);
+    bool IsDirectQuery,
+    QueryExecutionMode ExecutionMode);
 
 internal sealed class QueryableObservability
     : IQueryableObservability
@@ -119,15 +129,20 @@ internal sealed class QueryableObservability
             "kaleido.query.direct",
             details.IsDirectQuery);
 
+        activity?.SetTag(
+            "kaleido.query.execution_mode",
+            details.ExecutionMode.ToString());
+
         QueryExecutionsCounter.Add(
             1,
             CreateExecutionTags(details));
 
         _logger.LogDebug(
-            "Queryable execution started for context {QueryContextName} view {QueryViewName} direct {IsDirectQuery}.",
+            "Queryable execution started for context {QueryContextName} view {QueryViewName} direct {IsDirectQuery} mode {ExecutionMode}.",
             details.QueryContextName,
             details.QueryViewName,
-            details.IsDirectQuery);
+            details.IsDirectQuery,
+            details.ExecutionMode);
 
         return new QueryExecutionObservation(
             activity,
@@ -141,7 +156,8 @@ internal sealed class QueryableObservability
         TagList tags =
         [
             new("query.context", details.QueryContextName),
-            new("query.direct", details.IsDirectQuery)
+            new("query.direct", details.IsDirectQuery),
+            new("query.execution_mode", details.ExecutionMode.ToString())
         ];
 
         if (!string.IsNullOrWhiteSpace(details.QueryViewName))
@@ -216,6 +232,12 @@ internal sealed class QueryableObservability
         {
             return BeginChild(
                 "kaleido.queryable.materialize");
+        }
+
+        public IDisposable BeginDelegate()
+        {
+            return BeginChild(
+                "kaleido.queryable.delegate");
         }
 
         public void ValidationFailed(

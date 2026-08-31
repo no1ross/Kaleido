@@ -1,5 +1,6 @@
 using Kaleido.Queryable;
 using Kaleido.Queryable.Attributes;
+using Kaleido.Queryable.Metadata;
 using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Queryable.Contexts;
@@ -8,7 +9,9 @@ namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Queryable.Contexts;
     Name = "requesting-provider-searches",
     DisplayName = "Intake - Requesting Provider Searches",
     Version = "1.0.0",
-    Source = "Prior Authorization Intake")]
+    Source = "Prior Authorization Intake",
+    Kind = QueryContextKind.Delegated)]
+[Pageable(DefaultSize = 25, MaxSize = 250)]
 public sealed class RequestingProviderSearchQueryContext
 {
     [Key]

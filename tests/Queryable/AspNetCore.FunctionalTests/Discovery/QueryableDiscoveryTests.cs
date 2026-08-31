@@ -47,6 +47,7 @@ public sealed class QueryableDiscoveryTests : IClassFixture<QueryableAspNetCoreF
         Assert.Equal("/kaleido/queryable/functional-records/metadata", record.MetadataUrl);
         Assert.Equal("/kaleido/queryable/functional-records/query", record.QueryUrl);
         Assert.Equal("Grid View", view.DisplayName);
+        Assert.Equal("/kaleido/queryable/functional-records/query", record.QueryUrl);
         Assert.Equal("/kaleido/queryable/functional-records/grid/query", view.QueryUrl);
         Assert.Single(view.Parameters!);
     }

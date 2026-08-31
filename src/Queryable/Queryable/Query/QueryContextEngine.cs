@@ -34,7 +34,8 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             new QueryObservationDetails(
                 registration.Metadata.Name,
                 viewRegistration.Metadata.Name,
-                false);
+                false,
+                QueryExecutionMode.LocalView);
 
         using var observation =
             observability.BeginExecution(
@@ -61,7 +62,6 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
                     correlationAccessor.Current,
                     details,
                     request,
-                    compiled,
                     result),
                 cancellationToken);
 
@@ -88,7 +88,8 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             new QueryObservationDetails(
                 registration.Metadata.Name,
                 null,
-                true);
+                true,
+                QueryExecutionMode.DirectContext);
 
         using var observation =
             observability.BeginExecution(
@@ -121,7 +122,6 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
                     correlationAccessor.Current,
                     details,
                     request,
-                    compiled,
                     result),
                 cancellationToken);
 

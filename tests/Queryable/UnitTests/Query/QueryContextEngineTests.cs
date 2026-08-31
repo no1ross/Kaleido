@@ -141,9 +141,8 @@ public sealed class QueryContextEngineTests
                     It.IsAny<KaleidoCorrelationContext>(),
                     It.IsAny<QueryObservationDetails>(),
                     It.IsAny<IQueryRequest>(),
-                    It.IsAny<CompiledRecordQuery>(),
                     It.IsAny<QueryResult<TestViewContract>>()))
-            .Returns<KaleidoCorrelationContext, QueryObservationDetails, IQueryRequest, CompiledRecordQuery, QueryResult<TestViewContract>>((correlation, details, request, _, result) =>
+            .Returns<KaleidoCorrelationContext, QueryObservationDetails, IQueryRequest, QueryResult<TestViewContract>>((correlation, details, request, result) =>
                 new Eventing.QueryExecuted
                 {
                     ProcessId = correlation.ProcessId,
@@ -176,7 +175,7 @@ public sealed class QueryContextEngineTests
                 "Test Context",
                 "1.0.0",
                 "Unit Test",
-                true,
+                QueryContextKind.Direct,
                 new PageableMetadata(25, 100),
                 []));
 
@@ -191,6 +190,7 @@ public sealed class QueryContextEngineTests
                 "1.0.0",
                 "Test View",
                 "Test View",
+                QueryViewVisibility.Public,
                 new PageableMetadata(25, 100),
                 []));
 
@@ -247,6 +247,11 @@ public sealed class QueryContextEngineTests
         }
 
         public IDisposable BeginMaterialization()
+        {
+            return NullScope.Instance;
+        }
+
+        public IDisposable BeginDelegate()
         {
             return NullScope.Instance;
         }

@@ -1,5 +1,6 @@
 using Kaleido.Queryable;
 using Kaleido.Queryable.Attributes;
+using Kaleido.Queryable.Metadata;
 using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.PriorAuth.Configuration.Artifacts.Queryable.Contexts;
@@ -9,7 +10,7 @@ namespace Kaleido.Samples.PriorAuth.Configuration.Artifacts.Queryable.Contexts;
     DisplayName = "Questionnaire Definitions",
     Version = "1.0.0",
     Source = "Prior Authorization Configuration",
-    AllowDirectQuery = true)]
+    Kind = QueryContextKind.Direct)]
 public sealed class QuestionnaireDefinitionQueryContext
 {
     [Key]

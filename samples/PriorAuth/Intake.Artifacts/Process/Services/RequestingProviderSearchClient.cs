@@ -14,7 +14,7 @@ public sealed class RequestingProviderSearchClient(
         configuration["Services:ProviderSearch:RequestingProviderSearchQueryPath"]
         ?? "/provider/queryable/requesting-providers/requesting-provider-search/query";
 
-    public async Task<QueryableResult<RequestingProviderSearchRecord>> SearchAsync(
+    public async Task<QueryResult<RequestingProviderSearchRecord>> SearchAsync(
         Guid processId,
         QueryBody? query,
         CancellationToken cancellationToken = default)
@@ -31,7 +31,7 @@ public sealed class RequestingProviderSearchClient(
             throw new InvalidOperationException("A captured member plan is required before requesting provider search can run.");
         }
 
-        return await queryableHttpClient.QueryAsync<ProviderRequestingSearchViewParameters, RequestingProviderSearchRecord, QueryableResult<RequestingProviderSearchRecord>>(
+        return await queryableHttpClient.QueryAsync<ProviderRequestingSearchViewParameters, RequestingProviderSearchRecord, QueryResult<RequestingProviderSearchRecord>>(
             "ProviderSearch",
             requestingProviderSearchQueryPath,
             new QueryApiRequest<ProviderRequestingSearchViewParameters>
@@ -42,10 +42,13 @@ public sealed class RequestingProviderSearchClient(
                 },
                 Query = query
             },
-            result => new QueryableResult<RequestingProviderSearchRecord>
-            {
-                Records = result.Records.ToArray()
-            },
+            result => new QueryResult<RequestingProviderSearchRecord>
+            (
+                result.TotalCount,
+                result.Offset,
+                result.PageSize,
+                result.Records.ToArray()
+            ),
             cancellationToken);
     }
 

@@ -94,7 +94,7 @@ public sealed class QueryContextRegistryTests
         Description = "Test context description",
         Version = "1.0.0",
         Source = "Unit Test",
-        AllowDirectQuery = true)]
+        Kind = QueryContextKind.Direct)]
     [Pageable(DefaultSize = 25, MaxSize = 100)]
     private sealed class TestContext
     {

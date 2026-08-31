@@ -1,12 +1,15 @@
 {
+  "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "Kaleido.Samples.PriorAuth.Configuration": {
+    "Configuration": {
       "commandName": "Project",
       "launchBrowser": true,
+      "launchUrl": "swagger",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "applicationUrl": "https://localhost:50579;http://localhost:50580"
+      "dotnetRunMessages": true,
+      "applicationUrl": "http://localhost:8087"
     }
   }
 }

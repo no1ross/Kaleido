@@ -7,40 +7,27 @@ namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Queryable.ContextSources;
 
 internal sealed class RequestingProviderSearchQueryContextSource(
     RequestingProviderSearchClient requestingProviderSearchClient)
-    : IQueryContextSource<RequestingProviderSearchQueryContext>
+    : IDelegatedQueryContextSource<RequestingProviderSearchQueryContext, RequestingProviderSearchRecord>
 {
-    public IQueryable<RequestingProviderSearchQueryContext> CreateQuery(
-        QueryExecutionContext executionContext)
+    public async Task<QueryResult<RequestingProviderSearchRecord>> ExecuteAsync(
+        IQueryRequest request,
+        CancellationToken cancellationToken = default)
     {
-        var parameters =
-            executionContext.TryGetViewParameters<RequestingProviderSearchQueryParameters>()
-            ?? throw new InvalidOperationException("RequestingProviderSearchQueryParameters are required.");
+        if (request.ViewParameters is not RequestingProviderSearchQueryParameters parameters)
+        {
+            throw new InvalidOperationException("RequestingProviderSearchQueryParameters are required.");
+        }
 
         var result =
-            requestingProviderSearchClient.SearchAsync(
-                    parameters.ProcessId,
-                    executionContext.Request.Query)
-                .GetAwaiter()
-                .GetResult();
+            await requestingProviderSearchClient.SearchAsync(
+                parameters.ProcessId,
+                request.Query,
+                cancellationToken);
 
-        return result.Records
-            .Select(record => new RequestingProviderSearchQueryContext
-            {
-                ProviderLocationId = record.ProviderLocationId,
-                ProviderId = record.ProviderId,
-                ProviderName = record.ProviderName,
-                LocationName = record.LocationName,
-                StateCode = record.StateCode,
-                PostalCode = record.PostalCode,
-                City = record.City,
-                PhoneNumber = record.PhoneNumber,
-                PrimaryTin = record.PrimaryTin,
-                PrimaryNpi = record.PrimaryNpi,
-                PrimaryMedicalSpecialtyId = record.PrimaryMedicalSpecialtyId,
-                PrimaryMedicalSpecialtyName = record.PrimaryMedicalSpecialtyName,
-                PrimaryMedicalSpecialtyCode = record.PrimaryMedicalSpecialtyCode,
-                IsInNetwork = record.IsInNetwork
-            })
-            .AsQueryable();
+        return new QueryResult<RequestingProviderSearchRecord>(
+            result.TotalCount,
+            result.Offset,
+            result.PageSize,
+            result.Records.ToArray());
     }
 }

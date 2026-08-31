@@ -55,27 +55,45 @@ internal sealed class QueryContextRegistrationValidator
     {
         foreach (var queryContextType in queryContextTypes)
         {
-            var sourceInterface =
+            var localSourceInterface =
                 typeof(IQueryContextSource<>)
                     .MakeGenericType(queryContextType);
 
-            var registrations =
+            var localRegistrations =
                 services
-                    .Where(x =>
-                        x.ServiceType ==
-                        sourceInterface)
+                    .Where(x => x.ServiceType == localSourceInterface)
                     .ToArray();
 
-            if (registrations.Length == 0)
+            var delegatedRegistrations =
+                services
+                    .Where(x =>
+                        x.ServiceType.IsGenericType &&
+                        x.ServiceType.GetGenericTypeDefinition() == typeof(IDelegatedQueryContextSource<,>) &&
+                        x.ServiceType.GenericTypeArguments[0] == queryContextType)
+                    .ToArray();
+
+            if (localRegistrations.Length == 0 && delegatedRegistrations.Length == 0)
             {
                 throw new InvalidOperationException(
                     $"Query context '{queryContextType.Name}' does not have a registered source.");
             }
 
-            if (registrations.Length > 1)
+            if (localRegistrations.Length > 1)
             {
                 throw new InvalidOperationException(
-                    $"Query context '{queryContextType.Name}' has multiple registered sources.");
+                    $"Query context '{queryContextType.Name}' has multiple registered local sources.");
+            }
+
+            if (delegatedRegistrations.Length > 1)
+            {
+                throw new InvalidOperationException(
+                    $"Query context '{queryContextType.Name}' has multiple registered delegated sources.");
+            }
+
+            if (localRegistrations.Length > 0 && delegatedRegistrations.Length > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Query context '{queryContextType.Name}' cannot have both local and delegated sources.");
             }
         }
     }

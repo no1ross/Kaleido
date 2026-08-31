@@ -110,7 +110,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                     context.Metadata.Name.ToLowerInvariant()),
                 options);
 
-            if (context.Metadata.AllowDirectQuery)
+            if (context.Metadata.Kind is QueryContextKind.Direct or QueryContextKind.Delegated)
             {
                 group.MapDirectQueryContext(
                     context,

@@ -83,7 +83,7 @@ public sealed class QueryableValueNormalizerTests
             "Test Context",
             "1.0.0",
             "Unit Test",
-            true,
+            QueryContextKind.Direct,
             null,
             [new FieldMetadata("Amount", null, typeof(decimal), true, [FilterOperator.Equals], false, null, null, false)]);
 }

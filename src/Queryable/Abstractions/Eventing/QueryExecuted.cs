@@ -15,6 +15,8 @@ public sealed record QueryExecuted : IQueryEvent
 
     public required bool IsDirectQuery { get; init; }
 
+    public string? ExecutionMode { get; init; }
+
     public object? Request { get; init; }
 
     public required int TotalCount { get; init; }

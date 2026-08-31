@@ -144,7 +144,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
                 "Test Context",
                 "1.0.0",
                 "Unit Test",
-                true,
+                QueryContextKind.Direct,
                 null,
                 []));
 
@@ -159,6 +159,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
                 "1.0.0",
                 "Test View",
                 "Test View",
+                QueryViewVisibility.Public,
                 null,
                 []));
 

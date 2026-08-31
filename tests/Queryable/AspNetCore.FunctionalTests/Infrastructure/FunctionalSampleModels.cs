@@ -21,7 +21,7 @@ public enum FunctionalRecordStatus
     Description = "Functional records for Queryable HTTP tests.",
     Version = "1.0.0",
     Source = "AspNetCore Functional Test Data",
-    AllowDirectQuery = true)]
+    Kind = QueryContextKind.Direct)]
 [Pageable(DefaultSize = 3, MaxSize = 10)]
 public sealed class FunctionalRecordContext
 {
