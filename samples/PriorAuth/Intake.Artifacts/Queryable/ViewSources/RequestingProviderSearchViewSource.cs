@@ -19,7 +19,7 @@ internal sealed class RequestingProviderSearchViewSource(
     RequestingProviderSearchClient requestingProviderSearchClient)
     : IDelegateQueryViewSource<RequestingProviderSearchQueryContext, RequestingProviderSearchRecord, RequestingProviderSearchQueryParameters>
 {
-    public Task<QueryResult<RequestingProviderSearchRecord>> ExecuteAsync(
+    public async Task<QueryResult<RequestingProviderSearchRecord>> ExecuteAsync(
         IQueryRequest<RequestingProviderSearchQueryParameters> request,
         CancellationToken cancellationToken = default)
     {
@@ -28,7 +28,7 @@ internal sealed class RequestingProviderSearchViewSource(
             ?? throw new InvalidOperationException(
                 $"{nameof(RequestingProviderSearchQueryParameters)} are required.");
 
-        return requestingProviderSearchClient.SearchAsync(
+        return await requestingProviderSearchClient.SearchAsync(
             parameters.ProcessId,
             request.Query,
             cancellationToken);

@@ -1,68 +1,64 @@
-# Kaleido.Queryable
+# Queryable runtime
 
-Kaleido.Queryable provides a standardized model for exposing business information.
+This project contains the runtime implementation of Queryable.
 
-Rather than creating custom search endpoints, filtering endpoints, sorting endpoints, paging endpoints, metadata endpoints, and consumer documentation for every business entity, developers expose information through Queryables.
+See also:
+- [`../README.md`](../README.md)
+- [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
+- [`../AGENTS.md`](../AGENTS.md)
 
-A Queryable provides a consistent contract for retrieving business data while exposing metadata that allows consumers and tools to discover available capabilities at runtime.
+## What lives here
 
----
+This project contains:
+- `AddQueryable()` registration and assembly scanning
+- context and view registries
+- registration validators
+- request validation and compilation
+- query dispatch and execution
+- local and delegated execution engines
+- compiled query application
+- materialization
+- observability and query event publishing
 
-## The Problem
+Key files include:
+- [`QueryableServiceCollectionExtensions`](./QueryableServiceCollectionExtensions.cs)
+- [`QueryableService`](./QueryableService.cs)
+- [`QueryContextEngine`](./Query/QueryContextEngine.cs)
+- [`DelegatedQueryViewEngine`](./Query/DelegatedQueryViewEngine.cs)
+- [`QueryContextRegistry`](./Records/QueryContextRegistry.cs)
+- [`QueryViewRegistry`](./Records/QueryViewRegistry.cs)
+- [`DelegatedQueryViewRegistry`](./Records/DelegatedQueryViewRegistry.cs)
 
-Many applications expose business information through custom APIs.
+## What this project is for
 
-Examples:
+Work here when you are changing:
+- registration behavior
+- execution dispatch
+- validators
+- registries
+- query compilation or query application
+- delegated-view runtime behavior
+- observability around query execution
 
-- Products
-- Customers
-- Orders
-- Prior Authorizations
+## Execution lanes
 
-Although these capabilities often support similar behaviors, implementations frequently differ.
+This project owns the runtime behavior for:
+- direct context queries
+- local view queries
+- delegated view queries
 
-Consumers must learn:
+Current dispatch order is:
+1. delegated view registry
+2. local view registry
+3. direct context fallback
 
-- Available endpoints
-- Available fields
-- Search capabilities
-- Filtering capabilities
-- Sorting capabilities
-- Validation requirements
+## Verification
 
-This information is often undocumented, duplicated, or tightly coupled to implementation details.
+Typical verification for this project:
 
----
+- `dotnet build src/Queryable/Queryable/Kaleido.Queryable.csproj`
+- `dotnet test tests/Queryable/UnitTests/Kaleido.Queryable.UnitTests.csproj`
 
-## The Goal
-
-Queryable standardizes how business information is exposed.
-
-The goal is to allow developers to focus on exposing business data while the framework provides:
-
-- Consistent contracts
-- Search support
-- Filtering support
-- Sorting support
-- Paging support
-- Validation
-- Metadata
-- Discoverability
-
----
-
-## Queryable Concepts
-
-Queryable consists of two primary concepts:
-
-### Context
-
-A Context represents a business information area.
-
-Examples:
-
-```text
-Products
-Customers
-Orders
-Prior Authorizations
+Also run ASP.NET Core tests if your runtime change affects discovery or endpoint behavior:
+- `dotnet test tests/Queryable/AspNetCore.UnitTests/Kaleido.Queryable.AspNetCore.UnitTests.csproj`
+- `dotnet test tests/Queryable/AspNetCore.FunctionalTests/Kaleido.Queryable.AspNetCore.FunctionalTests.csproj`
