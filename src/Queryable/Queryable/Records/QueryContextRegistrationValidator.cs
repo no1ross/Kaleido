@@ -64,15 +64,7 @@ internal sealed class QueryContextRegistrationValidator
                     .Where(x => x.ServiceType == localSourceInterface)
                     .ToArray();
 
-            var delegatedRegistrations =
-                services
-                    .Where(x =>
-                        x.ServiceType.IsGenericType &&
-                        x.ServiceType.GetGenericTypeDefinition() == typeof(IDelegatedQueryContextSource<,>) &&
-                        x.ServiceType.GenericTypeArguments[0] == queryContextType)
-                    .ToArray();
-
-            if (localRegistrations.Length == 0 && delegatedRegistrations.Length == 0)
+            if (localRegistrations.Length == 0)
             {
                 throw new InvalidOperationException(
                     $"Query context '{queryContextType.Name}' does not have a registered source.");
@@ -82,18 +74,6 @@ internal sealed class QueryContextRegistrationValidator
             {
                 throw new InvalidOperationException(
                     $"Query context '{queryContextType.Name}' has multiple registered local sources.");
-            }
-
-            if (delegatedRegistrations.Length > 1)
-            {
-                throw new InvalidOperationException(
-                    $"Query context '{queryContextType.Name}' has multiple registered delegated sources.");
-            }
-
-            if (localRegistrations.Length > 0 && delegatedRegistrations.Length > 0)
-            {
-                throw new InvalidOperationException(
-                    $"Query context '{queryContextType.Name}' cannot have both local and delegated sources.");
             }
         }
     }

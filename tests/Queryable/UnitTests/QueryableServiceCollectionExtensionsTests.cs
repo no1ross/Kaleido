@@ -45,6 +45,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
         Assert.Contains(services, x => x.ServiceType == typeof(IQueryContextExecutor<>));
         Assert.Contains(services, x => x.ServiceType == typeof(IQueryContextRegistry));
         Assert.Contains(services, x => x.ServiceType == typeof(IQueryViewRegistry));
+        Assert.Contains(services, x => x.ServiceType == typeof(IDelegatedQueryViewRegistry));
         Assert.Contains(services, x => x.ServiceType == typeof(QueryContextRegistrationValidator));
         Assert.Contains(services, x => x.ServiceType == typeof(QueryViewRegistrationValidator));
     }
@@ -76,9 +77,11 @@ public sealed class QueryableServiceCollectionExtensionsTests
 
         var contextRegistry = provider.GetRequiredService<IQueryContextRegistry>();
         var viewRegistry = provider.GetRequiredService<IQueryViewRegistry>();
+        var delegatedViewRegistry = provider.GetRequiredService<IDelegatedQueryViewRegistry>();
 
         Assert.NotNull(contextRegistry);
         Assert.NotNull(viewRegistry);
+        Assert.NotNull(delegatedViewRegistry);
     }
 
     [Fact]
@@ -95,10 +98,11 @@ public sealed class QueryableServiceCollectionExtensionsTests
         Assert.Equal(1, services.Count(x => x.ServiceType == typeof(IQueryContextCompiler)));
         Assert.Equal(1, services.Count(x => x.ServiceType == typeof(IQueryContextRegistry)));
         Assert.Equal(1, services.Count(x => x.ServiceType == typeof(IQueryViewRegistry)));
+        Assert.Equal(1, services.Count(x => x.ServiceType == typeof(IDelegatedQueryViewRegistry)));
     }
 
     [Fact]
-    public void AddQueryable_RegistersDelegatedContextWithoutLocalDirectEngine()
+    public void AddQueryable_RegistersDelegatedViewInDelegatedRegistry()
     {
         var services = new ServiceCollection();
 
@@ -107,11 +111,12 @@ public sealed class QueryableServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
 
         var registration = provider
-            .GetRequiredService<IQueryContextRegistry>()
-            .GetRegistration(typeof(DelegatedContext));
+            .GetRequiredService<IDelegatedQueryViewRegistry>()
+            .GetRegistration(typeof(DelegatedView));
 
-        Assert.Equal(typeof(DelegatedSource), registration.SourceType);
-        Assert.Equal(QueryContextKind.Delegated, registration.Metadata.Kind);
+        Assert.Equal(typeof(DelegatedViewContract), registration.ViewType);
+        Assert.Equal(typeof(DelegatedContext), registration.QueryContextType);
+        Assert.Equal(QueryContextKind.Delegated, registration.QueryMetadata.Kind);
 
         Assert.DoesNotContain(services, x =>
             x.ServiceType == typeof(IQueryContextEngine<,>).MakeGenericType(typeof(DelegatedContext), typeof(DelegatedContext)));
@@ -186,15 +191,24 @@ public sealed class QueryableServiceCollectionExtensionsTests
     {
     }
 
-    public sealed class DelegatedRecord
+    public sealed class DelegatedViewContract
     {
     }
 
-    public sealed class DelegatedSource : IDelegatedQueryContextSource<DelegatedContext, DelegatedRecord>
+    public sealed class DelegatedViewParameters
     {
-        public Task<QueryResult<DelegatedRecord>> ExecuteAsync(
-            IQueryRequest request,
+    }
+
+    [QueryView(
+        Name = "delegated-view",
+        DisplayName = "Delegated View",
+        Description = "Delegated View",
+        Version = "1.0.0")]
+    public sealed class DelegatedView : IDelegateQueryViewSource<DelegatedContext, DelegatedViewContract, DelegatedViewParameters>
+    {
+        public Task<QueryResult<DelegatedViewContract>> ExecuteAsync(
+            IQueryRequest<DelegatedViewParameters> request,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult(new QueryResult<DelegatedRecord>(0, 0, 25, []));
+            Task.FromResult(new QueryResult<DelegatedViewContract>(0, 0, 25, []));
     }
 }

@@ -33,30 +33,28 @@ internal sealed class QueryableService : IQueryableService
         ?? throw new InvalidOperationException(
             $"Could not locate method '{nameof(ExecuteDirectTypedAsync)}'.");
 
-    private static readonly MethodInfo ExecuteDelegatedDirectTypedAsyncMethod =
-        typeof(QueryableService)
-            .GetMethod(
-                nameof(ExecuteDelegatedDirectTypedAsync),
-                BindingFlags.Instance |
-                BindingFlags.NonPublic)
-        ?? throw new InvalidOperationException(
-            $"Could not locate method '{nameof(ExecuteDelegatedDirectTypedAsync)}'.");
 
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IDelegatedQueryViewRegistry _delegatedViewRegistry;
     private readonly IQueryViewRegistry _viewRegistry;
     private readonly IQueryContextRegistry _contextRegistry;
 
     public QueryableService(
         IServiceScopeFactory scopeFactory,
+        IDelegatedQueryViewRegistry delegatedViewRegistry,
         IQueryViewRegistry viewRegistry,
         IQueryContextRegistry contextRegistry)
     {
         ArgumentNullException.ThrowIfNull(scopeFactory);
+        ArgumentNullException.ThrowIfNull(delegatedViewRegistry);
         ArgumentNullException.ThrowIfNull(viewRegistry);
         ArgumentNullException.ThrowIfNull(contextRegistry);
 
         _scopeFactory =
             scopeFactory;
+
+        _delegatedViewRegistry =
+            delegatedViewRegistry;
 
         _viewRegistry =
             viewRegistry;
@@ -73,12 +71,28 @@ internal sealed class QueryableService : IQueryableService
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        var delegatedViewRegistration =
+            _delegatedViewRegistry.Find(
+                typeof(TQueryView));
+
         var viewRegistration =
             _viewRegistry.Find(
                 typeof(TQueryView));
 
         using var scope =
             _scopeFactory.CreateScope();
+
+        if (delegatedViewRegistration is not null)
+        {
+            ValidateDelegatedViewRegistration<TQueryView, TView>(
+                delegatedViewRegistration);
+
+            return await ExecuteDelegatedViewAsync<TView>(
+                scope.ServiceProvider,
+                request,
+                delegatedViewRegistration,
+                cancellationToken);
+        }
 
         if (viewRegistration is not null)
         {
@@ -101,15 +115,6 @@ internal sealed class QueryableService : IQueryableService
             _contextRegistry.GetRegistration(
                 typeof(TQueryView));
 
-        if (directContextRegistration.Metadata.Kind == QueryContextKind.Delegated)
-        {
-            return await ExecuteDelegatedDirectWithDiscoveredContextAsync<TView>(
-                scope.ServiceProvider,
-                request,
-                directContextRegistration,
-                cancellationToken);
-        }
-
         ValidateDirectQuery<TQueryView, TView>(
             directContextRegistration);
 
@@ -129,13 +134,9 @@ internal sealed class QueryableService : IQueryableService
         where TView : class
     {
         var typedMethod =
-            contextRegistration.Metadata.Kind == QueryContextKind.Delegated
-                ? ExecuteDelegatedTypedAsyncMethod.MakeGenericMethod(
-                    viewRegistration.QueryContextType,
-                    typeof(TView))
-                : ExecuteTypedAsyncMethod.MakeGenericMethod(
-                    viewRegistration.QueryContextType,
-                    typeof(TView));
+            ExecuteTypedAsyncMethod.MakeGenericMethod(
+                viewRegistration.QueryContextType,
+                typeof(TView));
 
         var result =
             typedMethod.Invoke(
@@ -215,19 +216,18 @@ internal sealed class QueryableService : IQueryableService
     private async Task<QueryResult<TView>> ExecuteDelegatedTypedAsync<TContext, TView>(
         IServiceProvider serviceProvider,
         IQueryRequest request,
-        QueryContextRegistration contextRegistration,
-        QueryViewRegistration viewRegistration,
+        DelegatedQueryViewRegistration viewRegistration,
         CancellationToken cancellationToken)
         where TContext : class
         where TView : class
     {
         var engine =
             serviceProvider.GetRequiredService<
-                IDelegatedQueryContextEngine<TContext, TView>>();
+                IDelegatedQueryViewEngine<TContext, TView>>();
 
         return await engine.ExecuteAsync(
             request,
-            contextRegistration,
+            viewRegistration,
             cancellationToken);
     }
 
@@ -249,16 +249,16 @@ internal sealed class QueryableService : IQueryableService
             cancellationToken);
     }
 
-    private async Task<QueryResult<TView>> ExecuteDelegatedDirectWithDiscoveredContextAsync<TView>(
+    private async Task<QueryResult<TView>> ExecuteDelegatedViewAsync<TView>(
         IServiceProvider serviceProvider,
         IQueryRequest request,
-        QueryContextRegistration contextRegistration,
+        DelegatedQueryViewRegistration viewRegistration,
         CancellationToken cancellationToken)
         where TView : class
     {
         var typedMethod =
-            ExecuteDelegatedDirectTypedAsyncMethod.MakeGenericMethod(
-                contextRegistration.ContextType,
+            ExecuteDelegatedTypedAsyncMethod.MakeGenericMethod(
+                viewRegistration.QueryContextType,
                 typeof(TView));
 
         var result =
@@ -268,35 +268,39 @@ internal sealed class QueryableService : IQueryableService
                 {
                     serviceProvider,
                     request,
-                    contextRegistration,
+                    viewRegistration,
                     cancellationToken
                 });
 
         if (result is not Task<QueryResult<TView>> typedTask)
         {
             throw new InvalidOperationException(
-                $"Delegated query execution for context '{contextRegistration.ContextType.FullName}' did not return '{typeof(QueryResult<TView>).FullName}'.");
+                $"Delegated query execution for view '{viewRegistration.QueryViewType.FullName}' did not return '{typeof(QueryResult<TView>).FullName}'.");
         }
 
         return await typedTask;
     }
 
-    private async Task<QueryResult<TView>> ExecuteDelegatedDirectTypedAsync<TContext, TView>(
-        IServiceProvider serviceProvider,
-        IQueryRequest request,
-        QueryContextRegistration contextRegistration,
-        CancellationToken cancellationToken)
-        where TContext : class
+    private static void ValidateDelegatedViewRegistration<TQueryView, TView>(
+        DelegatedQueryViewRegistration viewRegistration)
+        where TQueryView : class
         where TView : class
     {
-        var engine =
-            serviceProvider.GetRequiredService<
-                IDelegatedQueryContextEngine<TContext, TView>>();
+        if (viewRegistration.QueryViewType != typeof(TQueryView))
+        {
+            throw new InvalidOperationException(
+                $"Delegated query view registration mismatch. Requested query view " +
+                $"'{typeof(TQueryView).FullName}', but registration contains " +
+                $"'{viewRegistration.QueryViewType.FullName}'.");
+        }
 
-        return await engine.ExecuteAsync(
-            request,
-            contextRegistration,
-            cancellationToken);
+        if (viewRegistration.ViewType != typeof(TView))
+        {
+            throw new InvalidOperationException(
+                $"Delegated query view '{viewRegistration.QueryViewType.FullName}' returns " +
+                $"'{viewRegistration.ViewType.FullName}', but query requested " +
+                $"'{typeof(TView).FullName}'.");
+        }
     }
 
     private static void ValidateViewRegistration<TQueryView, TView>(

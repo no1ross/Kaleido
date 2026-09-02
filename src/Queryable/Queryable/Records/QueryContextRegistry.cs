@@ -90,8 +90,7 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
 
         var metadata =
             BuildQueryContextMetadata(
-                contextType,
-                sourceType);
+                contextType);
 
         return new QueryContextRegistration(
             contextType,
@@ -112,19 +111,6 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
                 .Where(x => x.ServiceType == localSourceInterface)
                 .ToArray();
 
-        var delegatedSources =
-            services
-                .Where(x =>
-                    x.ServiceType.IsGenericType &&
-                    x.ServiceType.GetGenericTypeDefinition() == typeof(IDelegatedQueryContextSource<,>) &&
-                    x.ServiceType.GenericTypeArguments[0] == contextType)
-                .ToArray();
-
-        if (localSources.Length > 0 && delegatedSources.Length > 0)
-        {
-            throw new InvalidOperationException(
-                $"Query context '{contextType.Name}' cannot register both local and delegated sources.");
-        }
 
         if (localSources.Length == 1)
         {
@@ -133,23 +119,10 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
                     $"No implementation type registered for source '{localSourceInterface.Name}'.");
         }
 
-        if (delegatedSources.Length == 1)
-        {
-            return delegatedSources[0].ImplementationType
-                ?? throw new InvalidOperationException(
-                    $"No implementation type registered for delegated source '{delegatedSources[0].ServiceType.Name}'.");
-        }
-
         if (localSources.Length > 1)
         {
             throw new InvalidOperationException(
                 $"Query context '{contextType.Name}' has multiple registered local sources.");
-        }
-
-        if (delegatedSources.Length > 1)
-        {
-            throw new InvalidOperationException(
-                $"Query context '{contextType.Name}' has multiple registered delegated sources.");
         }
 
         throw new InvalidOperationException(
@@ -157,21 +130,15 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
     }
 
     private static QueryContextMetadata BuildQueryContextMetadata(
-        Type contextType,
-        Type sourceType)
+        Type contextType)
     {
         var attribute =
             contextType.GetCustomAttribute<QueryContextAttribute>()
             ?? throw new InvalidOperationException(
                 $"Query context '{contextType.Name}' is missing QueryContextAttribute.");
 
-        ValidateSourceKindCompatibility(
-            contextType,
-            sourceType,
-            attribute.Kind);
-
         var pageable =
-            attribute.Kind is QueryContextKind.Direct or QueryContextKind.Delegated
+            attribute.Kind == QueryContextKind.Direct
                 ? BuildPageable(contextType)
                 : null;
 
@@ -187,32 +154,6 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Select(BuildField)
                 .ToArray());
-    }
-
-    private static void ValidateSourceKindCompatibility(
-        Type contextType,
-        Type sourceType,
-        QueryContextKind kind)
-    {
-        var isDelegated =
-            sourceType
-                .GetInterfaces()
-                .Any(i =>
-                    i.IsGenericType &&
-                    i.GetGenericTypeDefinition() == typeof(IDelegatedQueryContextSource<,>) &&
-                    i.GenericTypeArguments[0] == contextType);
-
-        if (kind == QueryContextKind.Delegated && !isDelegated)
-        {
-            throw new InvalidOperationException(
-                $"Query context '{contextType.Name}' is marked Delegated but source '{sourceType.Name}' is not delegated.");
-        }
-
-        if (kind != QueryContextKind.Delegated && isDelegated)
-        {
-            throw new InvalidOperationException(
-                $"Query context '{contextType.Name}' uses delegated source '{sourceType.Name}' but is marked '{kind}'.");
-        }
     }
 
     private static PageableMetadata? BuildPageable(

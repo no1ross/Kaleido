@@ -1,4 +1,5 @@
 using Kaleido.Queryable.Attributes;
+using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
@@ -53,7 +54,17 @@ public static class QueryableServiceCollectionExtensions
                     x.GetCustomAttribute<QueryContextAttribute>() is not null)
                 .ToArray();
 
-        foreach (var contextType in queryContextTypes)
+        var delegatedContextTypes =
+            queryContextTypes
+                .Where(x => x.GetCustomAttribute<QueryContextAttribute>()!.Kind == QueryContextKind.Delegated)
+                .ToArray();
+
+        var localContextTypes =
+            queryContextTypes
+                .Except(delegatedContextTypes)
+                .ToArray();
+
+        foreach (var contextType in localContextTypes)
         {
             RegisterSource(
                 builder.Services,
@@ -72,12 +83,29 @@ public static class QueryableServiceCollectionExtensions
                     x.GetCustomAttribute<QueryViewAttribute>() is not null)
                 .ToArray();
 
-        foreach (var viewType in queryViewTypes)
+        var delegatedQueryViewTypes =
+            queryViewTypes
+                .Where(IsDelegatedQueryView)
+                .ToArray();
+
+        var localQueryViewTypes =
+            queryViewTypes
+                .Except(delegatedQueryViewTypes)
+                .ToArray();
+
+        foreach (var viewType in localQueryViewTypes)
         {
             RegisterQueryView(
                 builder.Services,
                 viewType,
                 types);
+        }
+
+        foreach (var viewType in delegatedQueryViewTypes)
+        {
+            RegisterDelegatedQueryView(
+                builder.Services,
+                viewType);
         }
 
         builder.Services.TryAddSingleton<QueryContextRegistrationValidator>();
@@ -89,12 +117,12 @@ public static class QueryableServiceCollectionExtensions
                     sp.GetRequiredService<QueryContextRegistrationValidator>();
 
                 validator.Validate(
-                    queryContextTypes,
+                    localContextTypes,
                     builder.Services);
 
                 return new QueryContextRegistry(
                     builder.Services,
-                    queryContextTypes);
+                    localContextTypes);
             });
 
         builder.Services.TryAddSingleton<QueryViewRegistrationValidator>();
@@ -106,14 +134,18 @@ public static class QueryableServiceCollectionExtensions
                     sp.GetRequiredService<QueryViewRegistrationValidator>();
 
                 validator.Validate(
-                    queryViewTypes,
-                    queryContextTypes,
+                    localQueryViewTypes,
+                    localContextTypes,
                     builder.Services);
 
                 return new QueryViewRegistry(
                     builder.Services,
-                    queryViewTypes);
+                    localQueryViewTypes);
             });
+
+        builder.Services.TryAddSingleton<IDelegatedQueryViewRegistry>(
+            _ => new DelegatedQueryViewRegistry(
+                delegatedQueryViewTypes));
 
         RegisterFrameworkServices(builder.Services);
 
@@ -153,17 +185,7 @@ public static class QueryableServiceCollectionExtensions
                             i.GenericTypeArguments[0] == contextType))
                 .ToArray();
 
-        var delegatedSources =
-            types
-                .Where(x =>
-                    x.GetInterfaces()
-                        .Any(i =>
-                            i.IsGenericType &&
-                            i.GetGenericTypeDefinition() == typeof(IDelegatedQueryContextSource<,>) &&
-                            i.GenericTypeArguments[0] == contextType))
-                .ToArray();
-
-        if (localSources.Length > 1 || delegatedSources.Length > 1 || (localSources.Length > 0 && delegatedSources.Length > 0))
+        if (localSources.Length > 1)
         {
             return;
         }
@@ -179,20 +201,6 @@ public static class QueryableServiceCollectionExtensions
                 localSources[0]);
         }
 
-        if (delegatedSources.Length == 1)
-        {
-            var sourceInterface =
-                delegatedSources[0]
-                    .GetInterfaces()
-                    .Single(i =>
-                        i.IsGenericType &&
-                        i.GetGenericTypeDefinition() == typeof(IDelegatedQueryContextSource<,>) &&
-                        i.GenericTypeArguments[0] == contextType);
-
-            services.TryAddScoped(
-                sourceInterface,
-                delegatedSources[0]);
-        }
     }
 
     private static void RegisterContextEngines(
@@ -226,17 +234,6 @@ public static class QueryableServiceCollectionExtensions
                 .Distinct()
                 .ToArray();
 
-        var delegatedViewTypes =
-            types
-                .SelectMany(x =>
-                    x.GetInterfaces()
-                        .Where(i =>
-                            i.IsGenericType &&
-                            i.GetGenericTypeDefinition() == typeof(IDelegatedQueryContextSource<,>) &&
-                            i.GenericTypeArguments[0] == contextType)
-                        .Select(i => i.GenericTypeArguments[1]))
-                .Distinct()
-                .ToArray();
 
         if (hasLocalSource)
         {
@@ -264,17 +261,50 @@ public static class QueryableServiceCollectionExtensions
             }
         }
 
-        foreach (var viewType in delegatedViewTypes)
+    }
+
+    private static bool IsDelegatedQueryView(Type queryViewType) =>
+        queryViewType
+            .GetInterfaces()
+            .Any(i =>
+                i.IsGenericType &&
+                (
+                    i.GetGenericTypeDefinition() == typeof(IDelegateQueryViewSource<,>) ||
+                    i.GetGenericTypeDefinition() == typeof(IDelegateQueryViewSource<,,>)
+                ));
+
+    private static void RegisterDelegatedQueryView(
+        IServiceCollection services,
+        Type queryViewType)
+    {
+        services.TryAddScoped(queryViewType);
+
+        var interfaces =
+            queryViewType
+                .GetInterfaces()
+                .Where(i =>
+                    i.IsGenericType &&
+                    (
+                        i.GetGenericTypeDefinition() == typeof(IDelegateQueryViewSource<,>) ||
+                        i.GetGenericTypeDefinition() == typeof(IDelegateQueryViewSource<,,>)
+                    ))
+                .ToArray();
+
+        foreach (var queryViewInterface in interfaces)
         {
+            services.AddScoped(
+                queryViewInterface,
+                sp => sp.GetRequiredService(queryViewType));
+
             services.TryAddScoped(
-                typeof(IDelegatedQueryContextEngine<,>)
+                typeof(IDelegatedQueryViewEngine<,>)
                     .MakeGenericType(
-                        contextType,
-                        viewType),
-                typeof(DelegatedQueryContextEngine<,>)
+                        queryViewInterface.GenericTypeArguments[0],
+                        queryViewInterface.GenericTypeArguments[1]),
+                typeof(DelegatedQueryViewEngine<,>)
                     .MakeGenericType(
-                        contextType,
-                        viewType));
+                        queryViewInterface.GenericTypeArguments[0],
+                        queryViewInterface.GenericTypeArguments[1]));
         }
     }
 

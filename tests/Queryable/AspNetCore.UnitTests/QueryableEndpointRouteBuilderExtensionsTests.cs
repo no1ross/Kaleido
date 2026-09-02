@@ -115,6 +115,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton(Mock.Of<IQueryableService>());
         builder.Services.AddSingleton<IQueryContextRegistry>(CreateContextRegistry());
         builder.Services.AddSingleton<IQueryViewRegistry>(CreateViewRegistry());
+        builder.Services.AddSingleton<IDelegatedQueryViewRegistry>(CreateDelegatedViewRegistry());
         builder.Services.AddSingleton(routeOptions);
         return builder.Build();
     }
@@ -131,6 +132,13 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
     {
         var registry = new Mock<IQueryViewRegistry>();
         registry.Setup(x => x.Registrations).Returns([CreateViewRegistration()]);
+        return registry.Object;
+    }
+
+    private static IDelegatedQueryViewRegistry CreateDelegatedViewRegistry()
+    {
+        var registry = new Mock<IDelegatedQueryViewRegistry>();
+        registry.Setup(x => x.Registrations).Returns(Array.Empty<DelegatedQueryViewRegistration>());
         return registry.Object;
     }
 

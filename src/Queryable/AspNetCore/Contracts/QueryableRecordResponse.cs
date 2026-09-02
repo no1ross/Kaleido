@@ -29,101 +29,49 @@ public sealed record QueryableRecordResponse
     public static QueryableRecordResponse FromRegistration(
         QueryContextRegistration registration,
         IReadOnlyCollection<QueryViewRegistration> views,
-        QueryableRouteOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(registration);
-        ArgumentNullException.ThrowIfNull(options);
+        QueryableRouteOptions options) =>
+        FromMetadata(
+            registration.Metadata,
+            views.Select(view => new QueryableViewDefinition(
+                view.ViewType,
+                view.Metadata)),
+            options,
+            includeDirectQueryUrl: registration.Metadata.Kind == QueryContextKind.Direct);
 
-        var contextName =
-            registration.Metadata.Name.ToLowerInvariant();
-
-        return new QueryableRecordResponse
-        {
-            Name = registration.Metadata.Name,
-
-            Description = registration.Metadata.Description,
-
-            DisplayName = registration.Metadata.DisplayName,
-
-            Version = registration.Metadata.Version,
-
-            Source = registration.Metadata.Source,
-
-            MetadataUrl =
-                QueryableContractUrls.QueryContextMetadata(
-                    options,
-                    contextName),
-
-            QueryUrl =
-                registration.Metadata.Kind is QueryContextKind.Direct or QueryContextKind.Delegated
-                    ? QueryableContractUrls.QueryContextQuery(
-                        options,
-                        contextName)
-                    : null,
-
-            Fields = registration.Metadata.Fields
-                .Select(QueryableFieldMetadata.FromMetadata)
-                .ToArray(),
-
-            Views = views
-                .Where(view => view.Metadata.Visibility == QueryViewVisibility.Public)
-                .OrderBy(v => v.Metadata.Name)
-                .Select(view =>
-                {
-                    var viewName =
-                        view.Metadata.Name.ToLowerInvariant();
-
-                    return new QueryableViewResponse
-                    {
-                        Name = view.Metadata.Name,
-
-                        Description = view.Metadata.Description,
-
-                        DisplayName = view.Metadata.DisplayName,
-
-                        Pageable =
-                            view.Metadata.Pageable is null
-                                ? null
-                                : PageableContract.FromMetadata(
-                                    view.Metadata.Pageable),
-
-                        QueryUrl =
-                            QueryableContractUrls.QueryViewQuery(
-                                options,
-                                contextName,
-                                viewName),
-
-                        Parameters = view.Metadata.Parameters is null 
-                            ? null 
-                            : view.Metadata.Parameters
-                                .Select(x => QueryableQueryParameter.FromMetadata(x)).ToArray(),
-
-                        Fields = view.ViewType
-                                    .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                                    .Select(QueryableQueryProperty.FromPropertyInfo)
-                                    .ToArray()
-
-                    };
-                })
-                .ToArray()
-        };
-    }
+    public static QueryableRecordResponse FromDelegatedRegistration(
+        QueryContextMetadata metadata,
+        IReadOnlyCollection<DelegatedQueryViewRegistration> views,
+        QueryableRouteOptions options) =>
+        FromMetadata(
+            metadata,
+            views.Select(view => new QueryableViewDefinition(
+                view.ViewType,
+                view.ViewMetadata)),
+            options,
+            includeDirectQueryUrl: false);
 
     public static QueryableRecordSummary ToSummary(
         QueryContextRegistration registration,
+        QueryableRouteOptions options) =>
+        ToSummary(
+            registration.Metadata,
+            options);
+
+    public static QueryableRecordSummary ToSummary(
+        QueryContextMetadata metadata,
         QueryableRouteOptions options)
     {
-        ArgumentNullException.ThrowIfNull(registration);
+        ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(options);
 
         var contextName =
-            registration.Metadata.Name.ToLowerInvariant();
+            metadata.Name.ToLowerInvariant();
 
         return new QueryableRecordSummary
         {
-            Name = registration.Metadata.Name,
+            Name = metadata.Name,
 
-            Description = registration.Metadata.Description,
+            Description = metadata.Description,
 
             MetadataUrl =
                 QueryableContractUrls.QueryContextMetadata(
@@ -131,6 +79,70 @@ public sealed record QueryableRecordResponse
                     contextName)
         };
     }
+
+    private static QueryableRecordResponse FromMetadata(
+        QueryContextMetadata metadata,
+        IEnumerable<QueryableViewDefinition> views,
+        QueryableRouteOptions options,
+        bool includeDirectQueryUrl)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+        ArgumentNullException.ThrowIfNull(options);
+
+        var contextName =
+            metadata.Name.ToLowerInvariant();
+
+        return new QueryableRecordResponse
+        {
+            Name = metadata.Name,
+            Description = metadata.Description,
+            DisplayName = metadata.DisplayName,
+            Version = metadata.Version,
+            Source = metadata.Source,
+            MetadataUrl = QueryableContractUrls.QueryContextMetadata(options, contextName),
+            QueryUrl = includeDirectQueryUrl
+                ? QueryableContractUrls.QueryContextQuery(options, contextName)
+                : null,
+            Fields = metadata.Fields
+                .Select(QueryableFieldMetadata.FromMetadata)
+                .ToArray(),
+            Views = views
+                .Where(view => view.Metadata.Visibility == QueryViewVisibility.Public)
+                .OrderBy(view => view.Metadata.Name)
+                .Select(view =>
+                {
+                    var viewName = view.Metadata.Name.ToLowerInvariant();
+
+                    return new QueryableViewResponse
+                    {
+                        Name = view.Metadata.Name,
+                        Description = view.Metadata.Description,
+                        DisplayName = view.Metadata.DisplayName,
+                        Pageable = view.Metadata.Pageable is null
+                            ? null
+                            : PageableContract.FromMetadata(view.Metadata.Pageable),
+                        QueryUrl = QueryableContractUrls.QueryViewQuery(
+                            options,
+                            contextName,
+                            viewName),
+                        Parameters = view.Metadata.Parameters is null
+                            ? null
+                            : view.Metadata.Parameters
+                                .Select(QueryableQueryParameter.FromMetadata)
+                                .ToArray(),
+                        Fields = view.ViewType
+                            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                            .Select(QueryableQueryProperty.FromPropertyInfo)
+                            .ToArray()
+                    };
+                })
+                .ToArray()
+        };
+    }
+
+    private sealed record QueryableViewDefinition(
+        Type ViewType,
+        QueryViewMetadata Metadata);
 }
 
 

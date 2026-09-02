@@ -61,7 +61,10 @@ public sealed class QueryableHttpClient(
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<QueryResult<TRecord>>(
-                       cancellationToken: cancellationToken);
+                       cancellationToken: cancellationToken)
+                   ?? throw new QueryableClientException(
+                       "Queryable request succeeded but returned no payload.",
+                       response.StatusCode);
         }
 
         var queryableError =

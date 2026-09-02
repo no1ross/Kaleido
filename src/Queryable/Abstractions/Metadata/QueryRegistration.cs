@@ -49,6 +49,16 @@ public sealed record QueryViewRegistration
     QueryViewMetadata Metadata
 );
 
+public sealed record DelegatedQueryViewRegistration
+(
+    Type QueryViewType,
+    Type ViewType,
+    Type ViewParametersType,
+    Type QueryContextType,
+    QueryContextMetadata QueryMetadata,
+    QueryViewMetadata ViewMetadata
+);
+
 public sealed record QueryViewMetadata
 (
     string Name,
