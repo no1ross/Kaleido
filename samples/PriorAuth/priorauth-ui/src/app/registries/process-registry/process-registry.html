@@ -58,19 +58,31 @@
                             </div>
 
                             @if (snapshot.process.ok) {
-                                @for (step of snapshot.process.data ?? []; track step.name) {
-                                    <div
-                                        class="step-card"
-                                        [class.step-card--conflict]="getProcessConflicts(state).some(conflict => conflict.name === step.name)"
-                                        [class.selected]="selectedStep?.name === step.name && selectedService?.service?.key === snapshot.service.key"
-                                        (click)="selectService(snapshot); selectStep(step)">
-                                        <div class="step-name">{{ step.name }}</div>
-                                        <div class="step-display-name">{{ step.displayName }}</div>
-                                        <div class="step-meta">
-                                            Fields: {{ step.fields.length }} | Repeatable: {{ step.repeatable }}
+                                @for (participant of getParticipants(snapshot); track participant.name) {
+                                    <div class="section">
+                                        <div class="service-group__header">
+                                            <div>
+                                                <div class="step-name">{{ participant.displayName }}</div>
+                                                <div class="step-meta">{{ participant.name }} | v{{ participant.version }}</div>
+                                                <div class="step-meta">Initial Steps: {{ getInitialStepNames(participant) || 'None' }}</div>
+                                            </div>
                                         </div>
-                                        @if (getProcessConflicts(state).some(conflict => conflict.name === step.name)) {
-                                            <div class="conflict-inline">Conflicts with another service step of the same name.</div>
+
+                                        @for (step of participant.steps; track step.name) {
+                                            <div
+                                                class="step-card"
+                                                [class.step-card--conflict]="getProcessConflicts(state).some(conflict => conflict.name === step.name)"
+                                                [class.selected]="selectedStep?.name === step.name && selectedParticipant?.name === participant.name && selectedService?.service?.key === snapshot.service.key"
+                                                (click)="selectStep(snapshot, participant, step)">
+                                                <div class="step-name">{{ step.name }}</div>
+                                                <div class="step-display-name">{{ step.displayName }}</div>
+                                                <div class="step-meta">
+                                                    Fields: {{ step.fields.length }} | Repeatable: {{ step.repeatable }}
+                                                </div>
+                                                @if (getProcessConflicts(state).some(conflict => conflict.name === step.name)) {
+                                                    <div class="conflict-inline">Conflicts with another service step of the same name.</div>
+                                                }
+                                            </div>
                                         }
                                     </div>
                                 }
@@ -90,6 +102,7 @@
                     <div class="details">
                         <h2>{{ selectedStep.displayName }}</h2>
                         <div class="step-meta">Service: {{ selectedService?.service?.displayName }}</div>
+                        <div class="step-meta">Participant: {{ selectedParticipant?.displayName }} ({{ selectedParticipant?.name }})</div>
 
                         <div class="section">
                             <h3>Metadata</h3>
@@ -100,6 +113,16 @@
                                 <tr><th>Execute Url</th><td>{{ selectedStep.executeUrl }}</td></tr>
                                 <tr><th>Metadata Url</th><td>{{ selectedStep.metadataUrl }}</td></tr>
                                 <tr><th>Field Count</th><td>{{ selectedStep.fields.length }}</td></tr>
+                            </table>
+                        </div>
+
+                        <div class="section">
+                            <h3>Participant</h3>
+                            <table>
+                                <tr><th>Name</th><td>{{ selectedParticipant?.name }}</td></tr>
+                                <tr><th>Display Name</th><td>{{ selectedParticipant?.displayName }}</td></tr>
+                                <tr><th>Version</th><td>{{ selectedParticipant?.version }}</td></tr>
+                                <tr><th>Registry Url</th><td>{{ selectedParticipant?.registryUrl }}</td></tr>
                             </table>
                         </div>
 
@@ -141,6 +164,32 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        @if (selectedStep.result) {
+                            <div class="section">
+                                <h3>Result Output Fields</h3>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Format</th>
+                                            <th>Nullable</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for (field of selectedStep.result.outputFields; track field.name) {
+                                            <tr>
+                                                <td>{{ field.name }}</td>
+                                                <td>{{ field.dataType.type }}</td>
+                                                <td>{{ field.dataType.format }}</td>
+                                                <td>{{ field.dataType.nullable }}</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
                     </div>
                 }
             </div>

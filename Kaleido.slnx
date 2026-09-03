@@ -84,6 +84,9 @@
     <Project Path="src/Core/Kaleido/Kaleido.csproj" />
   </Folder>
   <Folder Name="/src/Process/">
+    <File Path="src/Process/AGENTS.md" />
+    <File Path="src/Process/ARCHITECTURE.md" />
+    <File Path="src/Process/README.md" />
     <Project Path="src/Process/Abstractions/Kaleido.Process.Abstractions.csproj" />
     <Project Path="src/Process/AspNetCore/Kaleido.Process.AspNetCore.csproj" />
     <Project Path="src/Process/Process/Kaleido.Process.csproj" />

@@ -10,6 +10,8 @@ namespace Kaleido.Process.Participant
     {
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public string Version { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
         internal Func<Type, bool>? TypeFilter { get; set; }
     }
 }

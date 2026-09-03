@@ -3,7 +3,9 @@ import { Observable, ReplaySubject, catchError, forkJoin, map, of, shareReplay, 
 import { HttpClient } from '@angular/common/http';
 
 import {
+    ProcessParticipantRegistryRecord,
     ProcessStepRegistryRecord,
+    ServiceProcessParticipantRegistryRecord,
     ServiceProcessStepRegistryRecord
 } from '../kaleido/models/process-registry';
 import {
@@ -22,7 +24,7 @@ import { QueryableRegistry } from '../kaleido/services/queryable-registry';
 
 export interface ServiceRegistrySnapshot {
     readonly service: PriorAuthServiceRouteConfig;
-    readonly process: RegistryLoadResult<ProcessStepRegistryRecord[]>;
+    readonly process: RegistryLoadResult<ProcessParticipantRegistryRecord[]>;
     readonly queryable: RegistryLoadResult<QueryableRecord[]>;
 }
 
@@ -122,15 +124,23 @@ export class RegistryCatalog {
     private buildState(
         snapshots: readonly ServiceRegistrySnapshot[]
     ): RegistryCatalogState {
-        const processSteps =
+        const processParticipants =
             snapshots.flatMap(snapshot =>
                 (snapshot.process.ok
                     ? snapshot.process.data ?? []
                     : [])
-                    .map(step => ({
+                    .map(participant => ({
                         service: snapshot.service,
-                        step
-                    } satisfies ServiceProcessStepRegistryRecord)));
+                        participant
+                    } satisfies ServiceProcessParticipantRegistryRecord)));
+
+        const processSteps =
+            processParticipants.flatMap(entry =>
+                entry.participant.steps.map(step => ({
+                    service: entry.service,
+                    participant: entry.participant,
+                    step
+                } satisfies ServiceProcessStepRegistryRecord)));
 
         const queryableContexts =
             snapshots.flatMap(snapshot =>
@@ -258,7 +268,7 @@ export class RegistryCatalog {
 
     private loadProcessRegistry(
         service: PriorAuthServiceRouteConfig
-    ): Observable<RegistryLoadResult<ProcessStepRegistryRecord[]>> {
+    ): Observable<RegistryLoadResult<ProcessParticipantRegistryRecord[]>> {
         if (!service.processRegistryPath) {
             return of({
                 configured: false,
@@ -279,7 +289,7 @@ export class RegistryCatalog {
             performance.now();
 
         return this.http
-            .get<ProcessStepRegistryRecord[]>(url)
+            .get<ProcessParticipantRegistryRecord[]>(url)
             .pipe(
                 map(data => ({
                     configured: true,
@@ -293,16 +303,15 @@ export class RegistryCatalog {
                             performance.now() - started);
 
                     console.group(`[ProcessRegistry:${service.key}]`);
-                    console.log(`Loaded ${result.data?.length ?? 0} steps in ${duration}ms.`);
+                    console.log(`Loaded ${result.data?.length ?? 0} participants in ${duration}ms.`);
                     console.log('Service', service.displayName);
                     console.log('Url', url);
                     console.table(
-                        (result.data ?? []).map(step => ({
-                            Name: step.name,
-                            DisplayName: step.displayName,
-                            Repeatable: step.repeatable,
-                            Fields: step.fields.length,
-                            Dependencies: step.dependencies.length
+                        (result.data ?? []).map(participant => ({
+                            Name: participant.name,
+                            DisplayName: participant.displayName,
+                            InitialSteps: participant.initialSteps.length,
+                            Steps: participant.steps.length
                         })));
                     console.groupEnd();
                 }),

@@ -127,6 +127,7 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
         builder.Services.AddSingleton<IProcessStepRegistry>(CreateRegistry());
+        builder.Services.AddSingleton<IParticipantRegistry>(CreateParticipantRegistry());
         builder.Services.AddSingleton(options ?? new ProcessRouteOptions());
 
         return builder.Build();
@@ -162,6 +163,49 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
         registry
             .Setup(x => x.InitialRegistrations)
             .Returns([registration]);
+
+        return registry.Object;
+    }
+
+    private static IParticipantRegistry CreateParticipantRegistry()
+    {
+        var registry =
+            new Mock<IParticipantRegistry>();
+
+        registry
+            .Setup(x => x.Registrations)
+            .Returns(
+            [
+                new ParticipantRegistryItem
+                {
+                    Name = "test-participant",
+                    Description = "Test participant",
+                    Version = "1.0.0",
+                    DisplayName = "Test Participant",
+                    InitialSteps =
+                    [
+                        new ParticipantStepSummary
+                        {
+                            Name = "Test-Step",
+                            Description = "Test step",
+                            Version = "1.0.0",
+                            DisplayName = "Test Step",
+                            Repeatable = false
+                        }
+                    ],
+                    Steps =
+                    [
+                        new ParticipantStepRegistryItem
+                        {
+                            Name = "Test-Step",
+                            Description = "Test step",
+                            Version = "1.0.0",
+                            DisplayName = "Test Step",
+                            Repeatable = false
+                        }
+                    ]
+                }
+            ]);
 
         return registry.Object;
     }

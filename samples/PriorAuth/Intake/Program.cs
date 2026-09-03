@@ -123,7 +123,13 @@ builder.Services.AddHealthChecks()
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(IntakeDbContext).Assembly)
-    .AddParticipant()
+    .AddParticipant(o =>
+        {
+            o.Name = "intake";
+            o.Description = "Prior authorization intake participant.";
+            o.Version = "1.0.0";
+            o.DisplayName = "Prior Auth Intake";
+        })
         .AddParticipantAspNetCore(o =>
         {
             o.RoutePrefix = "intake";

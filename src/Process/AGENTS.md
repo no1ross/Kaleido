@@ -67,7 +67,10 @@ Do not import Queryable terminology like direct contexts, local views, or delega
 
 These rules are fundamental to startup and runtime correctness:
 
-- At least one assembly must be registered before `AddParticipant()`.
+- At least one assembly must be registered before `AddParticipant(...)`.
+- Every participant registration must provide a non-empty `Name`.
+- Every participant registration must provide a non-empty `Version`.
+- Every participant registration must provide a non-empty `DisplayName`.
 - At least one process step must be discovered.
 - Every `[ProcessStep]` must have a non-empty `Name`.
 - Every `[ProcessStep]` must have a non-empty `Version`.
@@ -149,16 +152,21 @@ In particular:
 The registry is the source of truth for published step metadata.
 
 Published metadata currently includes:
-- step identity and descriptions
+- participant identity and descriptions
+- participant version and display name
+- initial-step summaries grouped by participant
+- full step identity and descriptions
 - repeatability
 - input field metadata
 - validation constraints
+- typed-result output field metadata
 - dependency relationships
 - availability relationships
 - execute URL
 - metadata URL
 
 Input field metadata is inferred from public step properties.
+Typed result metadata is inferred from the typed handler result object in the same field-descriptor style used by Queryable `TView` outputs.
 
 If you change:
 - step property interpretation
@@ -168,10 +176,10 @@ If you change:
 
 then also verify the corresponding HTTP metadata responses and registry endpoints.
 
-The discovery model is step-centric:
-- participant catalog exposes initial steps
+The discovery model is participant-grouped and step-centric:
+- participant catalog exposes participant summaries with grouped initial steps
 - step catalog exposes all steps in lightweight form
-- full registry exposes all step metadata
+- full registry exposes participant records with full step metadata
 - per-step metadata exposes one detailed step record
 
 ---

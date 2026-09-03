@@ -16,7 +16,7 @@ public sealed class ProcessDiscoveryTests
     }
 
     [Fact]
-    public async Task GetCatalog_ReturnsInitialSteps()
+    public async Task GetCatalog_ReturnsParticipantsWithInitialSteps()
     {
         var response =
             await _client.GetAsync("/kaleido/processes");
@@ -24,16 +24,21 @@ public sealed class ProcessDiscoveryTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var contract =
-            await response.Content.ReadAsync<ProcessCatalogRequest>();
+            await response.Content.ReadAsync<ProcessCatalogResponse>();
 
         Assert.NotNull(contract);
-        Assert.Contains(contract.InitialSteps, x => x.Name == RuntimeStepNames.Root);
-        Assert.Contains(contract.InitialSteps, x => x.Name == RuntimeStepNames.RequiredRoot);
-        Assert.Contains(contract.InitialSteps, x => x.Name == RuntimeStepNames.InvalidRequiredRoot);
+
+        var participant =
+            Assert.Single(contract.Participants);
+
+        Assert.Equal("test-participant", participant.Name);
+        Assert.Contains(participant.InitialSteps, x => x.Name == RuntimeStepNames.Root);
+        Assert.Contains(participant.InitialSteps, x => x.Name == RuntimeStepNames.RequiredRoot);
+        Assert.Contains(participant.InitialSteps, x => x.Name == RuntimeStepNames.InvalidRequiredRoot);
     }
 
     [Fact]
-    public async Task GetStepMetadata_ReturnsDependenciesAndLinks()
+    public async Task GetStepMetadata_ReturnsDependenciesLinksAndResultMetadata()
     {
         var response =
             await _client.GetAsync("/kaleido/processes/steps/runtimemerge");
@@ -48,7 +53,9 @@ public sealed class ProcessDiscoveryTests
         Assert.Equal(2, contract.Dependencies.Count);
         Assert.Contains(contract.Dependencies, x => x.Name == RuntimeStepNames.StepA);
         Assert.Contains(contract.Dependencies, x => x.Name == RuntimeStepNames.StepB);
+        Assert.NotNull(contract.Result);
+        Assert.NotEmpty(contract.Result!.OutputFields);
         Assert.Equal("/kaleido/processes/steps/runtimemerge", contract.ExecuteUrl);
-        Assert.Equal("/kaleido/processes/steps/runtimemerge", contract.MetadataUrl);
+        Assert.Equal("/kaleido/processes/steps/runtimemerge/metadata", contract.MetadataUrl);
     }
 }

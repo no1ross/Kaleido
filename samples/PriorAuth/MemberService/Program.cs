@@ -80,7 +80,13 @@ builder.Services.AddHealthChecks()
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MemberDbContext).Assembly)
-    .AddParticipant()
+    .AddParticipant(o =>
+        {
+            o.Name = "member-service";
+            o.Description = "Member service participant.";
+            o.Version = "1.0.0";
+            o.DisplayName = "Member Service";
+        })
         .AddParticipantAspNetCore(o =>
         {
             o.RoutePrefix = "member";

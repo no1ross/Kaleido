@@ -28,6 +28,8 @@ public static class ParticipantServiceCollectionExtensions
         var options = new ParticipantOptions();
         configure(options);
 
+        ValidateParticipantOptions(options);
+
         if (!builder.Assemblies.Any())
         {
             throw new InvalidOperationException(
@@ -69,6 +71,8 @@ public static class ParticipantServiceCollectionExtensions
                 types);
         }
 
+        builder.Services.TryAddSingleton(options);
+
         builder.Services.TryAddSingleton<IProcessStepRegistry>(
             sp =>
             {
@@ -77,9 +81,35 @@ public static class ParticipantServiceCollectionExtensions
                     recordTypes);
             });
 
+        builder.Services.TryAddSingleton<IParticipantRegistry, ParticipantRegistry>();
+
         RegisterFrameworkServices(builder.Services);
 
         return new ParticipantBuilder(builder);
+    }
+
+    private static void ValidateParticipantOptions(
+        ParticipantOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (string.IsNullOrWhiteSpace(options.Name))
+        {
+            throw new InvalidOperationException(
+                "Participant must specify a non-empty name.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.Version))
+        {
+            throw new InvalidOperationException(
+                "Participant must specify a non-empty version.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.DisplayName))
+        {
+            throw new InvalidOperationException(
+                "Participant must specify a non-empty display name.");
+        }
     }
 
     private static bool ShouldIncludeProcessStep(

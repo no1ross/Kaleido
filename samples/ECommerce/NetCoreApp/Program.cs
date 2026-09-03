@@ -26,7 +26,13 @@ builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(AddItemToCartStep).Assembly)
     .AddAssembly(typeof(ProductCatalogQueryContext).Assembly)
-    .AddParticipant()
+    .AddParticipant(o =>
+        {
+            o.Name = "ecommerce";
+            o.Description = "ECommerce participant workflow.";
+            o.Version = "1.0.0";
+            o.DisplayName = "ECommerce";
+        })
         .AddParticipantAspNetCore()
         .UseSqliteProcessContextStore("Data Source=kaleido-sample-process.sqlite")
     .AddQueryable()

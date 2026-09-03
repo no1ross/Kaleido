@@ -21,6 +21,10 @@ public static class ProcessEndpointRouteBuilderExtensions
             endpoints.ServiceProvider
                 .GetRequiredService<IProcessStepRegistry>();
 
+        var participantRegistry =
+            endpoints.ServiceProvider
+                .GetRequiredService<IParticipantRegistry>();
+
         var options =
             endpoints.ServiceProvider
                 .GetRequiredService<ProcessRouteOptions>();
@@ -39,20 +43,21 @@ public static class ProcessEndpointRouteBuilderExtensions
             registry.Registrations.Count,
             registry.InitialRegistrations.Count);
 
-        group.MapParticipantCatalogEndpoint(registry, options);
+        group.MapParticipantCatalogEndpoint(participantRegistry, options);
 
         group.MapExecuteEndpoint();
 
         group.MapProcessStateEndpoint();
 
-        group.MapStepCatalogEndpoint(registry, options);
+        group.MapStepCatalogEndpoint(participantRegistry, options);
 
-        group.MapStepRegistryEndpoint(registry, options);
+        group.MapStepRegistryEndpoint(participantRegistry, options);
 
         foreach (var step in registry.Registrations)
         {
             group.MapProcessStep(
                 step,
+                participantRegistry,
                 options);
         }
 
@@ -61,26 +66,26 @@ public static class ProcessEndpointRouteBuilderExtensions
 
     private static void MapParticipantCatalogEndpoint(
         this IEndpointRouteBuilder endpoints,
-        IProcessStepRegistry registry,
+        IParticipantRegistry registry,
         ProcessRouteOptions options)
     {
         endpoints.MapGet(
                 "",
                 () =>
                     Results.Ok(
-                        new ProcessCatalogRequest
+                        new ProcessCatalogResponse
                         {
-                            InitialSteps = registry.InitialRegistrations
-                                .OrderBy(x => x.Metadata.Name)
+                            Participants = registry.Registrations
+                                .OrderBy(x => x.Name)
                                 .Select(x =>
-                                    ProcessStepResponse.ToSummary(
+                                    ParticipantCatalogResponse.FromRegistration(
                                         x,
                                         options))
                                 .ToArray()
                         }))
             .WithName(ProcessEndpointNames.ParticipantCatalogEndpointName)
             .WithTags("Processes")
-            .Produces<ProcessCatalogRequest>()
+            .Produces<ProcessCatalogResponse>()
             .WithSummary("Get process entry points.")
             .WithDescription(
                 "Returns the initial process steps that can be used to start a new participant process. " +
@@ -145,7 +150,7 @@ public static class ProcessEndpointRouteBuilderExtensions
 
     private static void MapStepRegistryEndpoint(
         this IEndpointRouteBuilder endpoints,
-        IProcessStepRegistry registry,
+        IParticipantRegistry registry,
         ProcessRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(registry);
@@ -157,13 +162,13 @@ public static class ProcessEndpointRouteBuilderExtensions
                     Results.Ok(
                         registry.Registrations
                             .Select(x =>
-                                ProcessStepResponse.FromRegistration(
+                                ParticipantRegistryResponse.FromRegistration(
                                     x,
                                     options))
                             .OrderBy(x => x.Name)))
             .WithName(ProcessEndpointNames.StepRegistryEndpointName)
             .WithTags("Processes")
-            .Produces<IReadOnlyCollection<ProcessStepResponse>>()
+            .Produces<IReadOnlyCollection<ParticipantRegistryResponse>>()
             .WithSummary("Get process registry metadata.")
             .WithDescription(
                 "Returns the complete process metadata registry for all registered process steps. " +
@@ -175,7 +180,7 @@ public static class ProcessEndpointRouteBuilderExtensions
 
     private static void MapStepCatalogEndpoint(
         this IEndpointRouteBuilder endpoints,
-        IProcessStepRegistry registry,
+        IParticipantRegistry registry,
         ProcessRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(registry);
@@ -186,9 +191,17 @@ public static class ProcessEndpointRouteBuilderExtensions
                 () =>
                     Results.Ok(
                         registry.Registrations
+                            .SelectMany(x => x.Steps)
                             .Select(x =>
                                 ProcessStepResponse.ToSummary(
-                                    x,
+                                    new ParticipantStepSummary
+                                    {
+                                        Name = x.Name,
+                                        Description = x.Description,
+                                        DisplayName = x.DisplayName,
+                                        Version = x.Version,
+                                        Repeatable = x.Repeatable
+                                    },
                                     options))
                             .OrderBy(x => x.Name)))
             .WithName(ProcessEndpointNames.StepCatalogEndpointName)
@@ -203,16 +216,27 @@ public static class ProcessEndpointRouteBuilderExtensions
     private static void MapProcessStep(
         this IEndpointRouteBuilder endpoints,
         ProcessStepRegistration step,
+        IParticipantRegistry participantRegistry,
         ProcessRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(step);
+        ArgumentNullException.ThrowIfNull(participantRegistry);
         ArgumentNullException.ThrowIfNull(options);
 
         var stepName =
             step.Metadata.Name.ToLowerInvariant();
 
+        var registryStep =
+            participantRegistry.Registrations
+                .SelectMany(x => x.Steps)
+                .Single(x => string.Equals(
+                    x.Name,
+                    step.Metadata.Name,
+                    StringComparison.OrdinalIgnoreCase));
+
         endpoints.MapStepMetadataEndpoint(
             step,
+            registryStep,
             ProcessRoutePaths.StepMetadata(stepName),
             options);
 
@@ -224,6 +248,7 @@ public static class ProcessEndpointRouteBuilderExtensions
     private static void MapStepMetadataEndpoint(
         this IEndpointRouteBuilder endpoints,
         ProcessStepRegistration step,
+        ParticipantStepRegistryItem registryStep,
         string route,
         ProcessRouteOptions options)
     {
@@ -231,7 +256,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                 route,
                 () => Results.Ok(
                     ProcessStepResponse.FromRegistration(
-                        step,
+                        registryStep,
                         options)))
             .WithName(
                 ProcessEndpointNames.StepMetadataEndpointName(

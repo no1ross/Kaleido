@@ -7,7 +7,12 @@ import {
     RegistryConflict,
     ServiceRegistrySnapshot
 } from '../registry-catalog';
-import { ProcessFieldConstraintMetadata, ProcessStepRegistryRecord } from '../../kaleido/models/process-registry';
+import {
+    ProcessFieldConstraintMetadata,
+    ProcessParticipantRegistryRecord,
+    ProcessStepRegistryRecord,
+    ProcessStepSummary
+} from '../../kaleido/models/process-registry';
 
 @Component({
     selector: 'priorauth-process-registry',
@@ -24,10 +29,12 @@ export class ProcessRegistryViewer {
         this.registryCatalog.loadState();
 
     selectedService?: ServiceRegistrySnapshot;
+    selectedParticipant?: ProcessParticipantRegistryRecord;
     selectedStep?: ProcessStepRegistryRecord;
 
     refresh(): void {
         this.selectedService = undefined;
+        this.selectedParticipant = undefined;
         this.selectedStep = undefined;
         this.registryCatalog.refresh();
     }
@@ -36,12 +43,24 @@ export class ProcessRegistryViewer {
         snapshot: ServiceRegistrySnapshot
     ): void {
         this.selectedService = snapshot;
-        this.selectedStep = snapshot.process.data?.[0];
+        this.selectedParticipant = snapshot.process.data?.[0];
+        this.selectedStep = this.selectedParticipant?.steps[0];
+    }
+
+    selectParticipant(
+        participant: ProcessParticipantRegistryRecord
+    ): void {
+        this.selectedParticipant = participant;
+        this.selectedStep = participant.steps[0];
     }
 
     selectStep(
+        snapshot: ServiceRegistrySnapshot,
+        participant: ProcessParticipantRegistryRecord,
         step: ProcessStepRegistryRecord
     ): void {
+        this.selectedService = snapshot;
+        this.selectedParticipant = participant;
         this.selectedStep = step;
     }
 
@@ -58,26 +77,38 @@ export class ProcessRegistryViewer {
                 ?? processSnapshots[0];
         }
 
+        if (!this.selectedParticipant) {
+            this.selectedParticipant =
+                this.selectedService?.process.data?.[0];
+        }
+
         if (!this.selectedStep) {
             this.selectedStep =
-                this.selectedService?.process.data?.[0];
+                this.selectedParticipant?.steps[0];
         }
     }
 
-    getSelectedSteps(
-        snapshots: readonly ServiceRegistrySnapshot[]
-    ): readonly ProcessStepRegistryRecord[] {
-        this.ensureSelection(snapshots);
-
-        return this.selectedService?.process.data ?? [];
+    getParticipants(
+        snapshot: ServiceRegistrySnapshot
+    ): readonly ProcessParticipantRegistryRecord[] {
+        return snapshot.process.data ?? [];
     }
 
     getTotalSteps(
         snapshots: readonly ServiceRegistrySnapshot[]
     ): number {
         return snapshots.reduce(
-            (sum, snapshot) => sum + (snapshot.process.data?.length ?? 0),
+            (sum, snapshot) =>
+                sum + (snapshot.process.data?.reduce((inner, participant) => inner + participant.steps.length, 0) ?? 0),
             0);
+    }
+
+    getInitialStepNames(
+        participant: ProcessParticipantRegistryRecord
+    ): string {
+        return participant.initialSteps
+            .map((step: ProcessStepSummary) => step.displayName ?? step.name)
+            .join(', ');
     }
 
     getProcessConflicts(

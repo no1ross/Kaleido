@@ -28,7 +28,13 @@ public sealed class ProcessAspNetCoreFixture
 
                         services.AddKaleido()
                             .AddAssembly(typeof(ProcessAspNetCoreFixture).Assembly)
-                            .AddParticipant()
+                            .AddParticipant(o =>
+                            {
+                                o.Name = "test-participant";
+                                o.Description = "Test participant.";
+                                o.Version = "1.0.0";
+                                o.DisplayName = "Test Participant";
+                            })
                             .AddParticipantAspNetCore();
 
                         services.ConfigureHttpJsonOptions(options =>

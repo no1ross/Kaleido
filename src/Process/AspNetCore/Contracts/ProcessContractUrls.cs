@@ -2,6 +2,10 @@
 
 internal static class ProcessContractUrls
 {
+    public static string Registry(
+        ProcessRouteOptions options)
+        => $"{options.ProcessesRoutePrefix}/registry";
+
     public static string StepMetadata(
         ProcessRouteOptions options,
         string stepName)

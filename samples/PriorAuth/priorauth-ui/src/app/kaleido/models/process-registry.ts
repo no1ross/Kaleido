@@ -1,10 +1,20 @@
 import { PriorAuthServiceRouteConfig } from '../../../configuration/urlConfig';
 
+export interface ProcessParticipantRegistryRecord {
+    name: string;
+    version: string;
+    displayName: string;
+    description: string | null;
+    registryUrl: string;
+    initialSteps: ProcessStepSummary[];
+    steps: ProcessStepRegistryRecord[];
+}
+
 export interface ProcessStepRegistryRecord {
     name: string;
     version: string;
     displayName: string;
-    description: string;
+    description: string | null;
     repeatable: boolean;
 
     fields: ProcessStepFieldMetadata[];
@@ -13,12 +23,20 @@ export interface ProcessStepRegistryRecord {
     availableAfter: ProcessStepSummary[];
     availableUntil: ProcessStepSummary[];
 
+    result: ProcessStepResultMetadata | null;
+
     executeUrl: string;
     metadataUrl: string;
 }
 
+export interface ServiceProcessParticipantRegistryRecord {
+    service: PriorAuthServiceRouteConfig;
+    participant: ProcessParticipantRegistryRecord;
+}
+
 export interface ServiceProcessStepRegistryRecord {
     service: PriorAuthServiceRouteConfig;
+    participant: ProcessParticipantRegistryRecord;
     step: ProcessStepRegistryRecord;
 }
 
@@ -26,7 +44,7 @@ export interface ProcessStepSummary {
     name: string;
     version: string;
     displayName: string;
-    description: string;
+    description: string | null;
     repeatable: boolean;
     executeUrl: string;
     metadataUrl: string;
@@ -34,8 +52,19 @@ export interface ProcessStepSummary {
 
 export interface ProcessStepFieldMetadata {
     name: string;
+    description?: string | null;
     dataType: ProcessDataTypeMetadata;
     constraints: ProcessFieldConstraintMetadata[];
+}
+
+export interface ProcessStepResultMetadata {
+    outputFields: ProcessOutputFieldMetadata[];
+}
+
+export interface ProcessOutputFieldMetadata {
+    name: string;
+    description: string | null;
+    dataType: ProcessDataTypeMetadata;
 }
 
 export interface ProcessDataTypeMetadata {

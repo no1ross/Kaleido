@@ -32,20 +32,26 @@ Process consumer setup follows a simple pattern:
 1. define one or more process step types
 2. implement exactly one handler for each step
 3. register the assemblies that contain those types
-4. call `AddParticipant()`
+4. call `AddParticipant(...)` and supply participant metadata
 5. optionally configure durable state storage
 6. optionally call `AddParticipantAspNetCore(...)` and map endpoints with `MapParticipant()`
 
 ## How a developer uses Process
 
 ### 1. Register Process in your application
-At minimum, register the assemblies that contain your process steps and handlers, then call `AddParticipant()`.
+At minimum, register the assemblies that contain your process steps and handlers, then call `AddParticipant(...)` with participant metadata.
 
 ```csharp
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MyDbContext).Assembly)
-    .AddParticipant();
+    .AddParticipant(options =>
+    {
+        options.Name = "my-participant";
+        options.Description = "My participant workflow.";
+        options.Version = "1.0.0";
+        options.DisplayName = "My Participant";
+    });
 ```
 
 If you want HTTP discovery and execution endpoints:
@@ -54,7 +60,13 @@ If you want HTTP discovery and execution endpoints:
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MyDbContext).Assembly)
-    .AddParticipant()
+    .AddParticipant(options =>
+    {
+        options.Name = "my-participant";
+        options.Description = "My participant workflow.";
+        options.Version = "1.0.0";
+        options.DisplayName = "My Participant";
+    })
         .AddParticipantAspNetCore(options =>
         {
             options.RoutePrefix = "my-service";
@@ -77,7 +89,13 @@ Example using the SQLite provider:
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MyProcessStep).Assembly)
-    .AddParticipant()
+    .AddParticipant(options =>
+    {
+        options.Name = "my-participant";
+        options.Description = "My participant workflow.";
+        options.Version = "1.0.0";
+        options.DisplayName = "My Participant";
+    })
         .AddParticipantAspNetCore()
         .UseSqliteProcessContextStore(
             "Data Source=my-process.sqlite");
@@ -170,13 +188,14 @@ Use **multiple related steps** when:
 - the consumer needs guidance on what can happen next
 
 ### 7. What Process registers for you
-After `AddParticipant()` runs, the framework scans the registered assemblies and automatically discovers:
+After `AddParticipant(...)` runs, the framework scans the registered assemblies and automatically discovers:
 - `[ProcessStep]` types
 - matching step handlers
 - step dependency and availability relationships
 
 It then builds:
-- the runtime step registry
+- the runtime step registry used by planning and execution
+- the participant registry used by discovery and metadata publication
 - the planning/execution services
 - the default context store
 - observability and eventing services
@@ -185,13 +204,15 @@ You do not manually register each step one by one. The assembly scan and registr
 
 ### 8. What HTTP endpoints Process can publish
 If you add `AddParticipantAspNetCore(...)` and call `MapParticipant()`, Process publishes endpoints for:
-- participant catalog
+- participant catalog grouped by participant
 - full step catalog
-- full registry metadata
+- full participant registry metadata
 - per-step metadata
 - process execution
 - process state
 - per-step execution
+
+The participant catalog returns participant-level entries with metadata, registry URLs, and initial step summaries. The full registry endpoint returns participant registry records with full step metadata, including input constraints and typed-result output field metadata.
 
 See the endpoint publisher in <ref_file file="C:\Repos\Kaleido\src\Process\AspNetCore\ProcessEndpointRouteBuilderExtensions.cs" />.
 

@@ -163,7 +163,9 @@ Current decisions include:
 See [`ExecutionDecision.cs`](./Abstractions/Participant/Execution/ExecutionDecision.cs).
 
 ### Registry
-The step registry is the runtime metadata index for all registered process steps.
+Process now has two related registry layers.
+
+`IProcessStepRegistry` is the runtime metadata index for execution/planning.
 
 It supports:
 - lookup by step name
@@ -171,7 +173,13 @@ It supports:
 - enumeration of all registered steps
 - enumeration of initial steps that can begin a process
 
-See [`IProcessStepRegistry`](./Abstractions/Participant/Registry/IProcessStepRegistry.cs).
+`IParticipantRegistry` is the participant-facing discovery registry.
+
+It projects participant metadata plus step metadata into transport-neutral discovery records that can be consumed by ASP.NET Core, the Kaleido registry, and downstream OpenAPI generation.
+
+See:
+- [`IProcessStepRegistry`](./Abstractions/Participant/Registry/IProcessStepRegistry.cs)
+- [`IParticipantRegistry`](./Abstractions/Participant/Registry/IParticipantRegistry.cs)
 
 ---
 
@@ -214,38 +222,51 @@ Handlers receive:
 Handlers do not own planning, dependency evaluation, or durable state mutation.
 
 ### [`IProcessStepRegistry`](./Abstractions/Participant/Registry/IProcessStepRegistry.cs)
-This is the discovery/metadata registry for registered steps.
+This is the execution/planning registry for registered steps.
 
 It is used by:
 - planning
 - execution
-- HTTP metadata endpoints
 - HTTP step-name/type resolution
+
+### [`IParticipantRegistry`](./Abstractions/Participant/Registry/IParticipantRegistry.cs)
+This is the discovery/metadata registry for registered participants.
+
+It is used by:
+- participant catalog publication
+- full participant registry publication
+- per-step metadata publication through projected participant step records
+- registry consumers such as the Kaleido registry and downstream OpenAPI generation
 
 ---
 
 ## 4. Registration model
 
 ### [`AddParticipant`](./Process/ParticipantServiceCollectionExtensions.cs)
-`AddParticipant()` is the main Process registration entry point.
+`AddParticipant(...)` is the main Process registration entry point.
 
 It requires that at least one assembly has already been registered on the outer Kaleido builder.
 
 The registration flow is:
-1. scan registered assemblies for candidate classes
-2. keep types decorated with `[ProcessStep]`
-3. apply the optional `ParticipantOptions.TypeFilter`
-4. validate discovered step metadata
-5. validate duplicate step names
-6. resolve and register exactly one handler for each step
-7. construct the runtime step registry
-8. register framework services
+1. validate participant metadata from `ParticipantOptions` (`Name`, `Description`, `Version`, `DisplayName`)
+2. scan registered assemblies for candidate classes
+3. keep types decorated with `[ProcessStep]`
+4. apply the optional `ParticipantOptions.TypeFilter`
+5. validate discovered step metadata
+6. validate duplicate step names
+7. resolve and register exactly one handler for each step
+8. construct the runtime step registry
+9. construct the participant discovery registry
+10. register framework services
 
 ### Assembly scanning
 The runtime scans all registered assemblies and considers non-abstract classes, including internal/non-public step or handler types that live in the scanned assemblies.
 
 ### Step validation during registration
 Registration currently enforces:
+- participant must have a non-empty name
+- participant must have a non-empty version
+- participant must have a non-empty display name
 - at least one step must be discovered
 - every step must have a non-empty name
 - every step must have a non-empty version
