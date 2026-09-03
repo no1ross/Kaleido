@@ -1,623 +1,181 @@
-This is exactly the kind of thing I would want as the authoritative document for Kaleido going forward. Since you've now made enough architectural decisions that future conversations risk re-litigating old ideas, I'd intentionally make this document opinionated and treat it as the source of truth until explicitly amended.
-
 # Kaleido Architecture
 
-> Version: 1.0 Baseline
->
-> This document captures the currently accepted architecture, design principles, and implementation decisions for the Kaleido framework.
->
-> The purpose of this document is to:
->
-> - Provide a single architectural source of truth.
-> - Prevent previously-settled decisions from being repeatedly revisited.
-> - Clearly define responsibility boundaries.
-> - Guide future implementation and refactoring.
-> - Document deferred ideas separately from approved architecture.
+This document describes the current top-level architecture of the Kaleido repository. It is the entry point for understanding how the major framework areas fit together and where responsibility boundaries live.
+
+Kaleido is a metadata-driven framework for exposing business capabilities through consistent, discoverable contracts.
+
+At the highest level, the repository is organized around three framework areas:
+
+- [`Core`](./src/Core/README.md) — foundational bootstrap, shared abstractions, metadata primitives, eventing, correlation context, and thin ASP.NET Core support
+- [`Queryable`](./src/Queryable/README.md) — discoverable information retrieval, query metadata, and query execution
+- [`Process`](./src/Process/README.md) — discoverable business actions, durable state, step orchestration, and execution guidance
+
+See also:
+- [`README.md`](./README.md)
+- [`AGENTS.md`](./AGENTS.md)
 
 ---
 
-# 1. Executive Overview
+## 1. Architectural overview
 
-Kaleido is a metadata-driven framework family designed to help organizations expose data and orchestrate business processes without coupling consumers to implementation details.
+Kaleido separates foundational infrastructure from business-capability frameworks.
 
-The framework currently consists of two primary modules:
+### Core
+Core provides the common substrate that other framework layers build on:
+- bootstrap and builder state
+- shared metadata/type mapping
+- validation metadata mapping
+- eventing abstractions
+- correlation context
+- thin ASP.NET Core infrastructure
 
-```text
-Kaleido
-├── Queryable
-└── Process
+Core does not define business-capability runtimes on its own.
 
+See:
+- [`src/Core/README.md`](./src/Core/README.md)
+- [`src/Core/ARCHITECTURE.md`](./src/Core/ARCHITECTURE.md)
 
-Each module answers a different question:
+### Queryable
+Queryable exposes business information through metadata-driven query contracts.
 
-Module	Core QuestionQueryable	What information exists and how can it be queried?
-Process	Given everything known right now, what can happen next?
+It is responsible for:
+- query context and view discovery
+- validation, compilation, and execution of queries
+- registry metadata for discoverable information surfaces
+- transport adapters for HTTP querying and metadata publication
 
-Although related, the modules are intentionally independent.
+See:
+- [`src/Queryable/README.md`](./src/Queryable/README.md)
+- [`src/Queryable/ARCHITECTURE.md`](./src/Queryable/ARCHITECTURE.md)
 
-Queryable focuses on information discovery and retrieval.
+### Process
+Process exposes business actions through metadata-driven steps and durable execution state.
 
-Process focuses on business orchestration and execution.
+It is responsible for:
+- process-step discovery
+- planning and execution
+- durable process state
+- registry metadata for discoverable action surfaces
+- transport adapters for HTTP execution and state endpoints
 
-2. Architectural Principles
+See:
+- [`src/Process/README.md`](./src/Process/README.md)
+- [`src/Process/ARCHITECTURE.md`](./src/Process/ARCHITECTURE.md)
 
-The following principles apply across the entire framework.
+---
 
-Metadata First
+## 2. Top-level design principles
 
-Behavior should be driven by metadata and registrations rather than hardcoded implementations.
+The current repository architecture follows these principles:
 
-Registration Over Configuration
+### Metadata first
+Capabilities should be described through metadata and registrations rather than ad hoc, hardcoded integration knowledge.
 
-Consumers explicitly register assemblies and framework components.
+### Explicit registration
+Assemblies and framework components are registered intentionally. Discovery should happen from known registration input rather than hidden global scanning.
 
-Hidden discovery is avoided.
+### Strongly typed internals
+Runtime components should operate on CLR types and internal contracts rather than transport-specific types.
 
-Strongly Typed Internals
+### Thin transport layers
+HTTP layers should adapt requests and responses to runtime contracts, not reimplement business semantics.
 
-Runtime components operate on CLR types.
+### Clear subsystem boundaries
+Core, Queryable, and Process should each own their respective responsibilities without leaking capability-specific concerns into the wrong layer.
 
-Transport-specific concerns do not leak into framework internals.
+---
 
-Thin Orchestrators
+## 3. Repository structure
 
-Coordinators should coordinate.
+### Root-level docs
+- [`README.md`](./README.md) — overall framework overview
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — this document
+- [`AGENTS.md`](./AGENTS.md) — repo-level contributor guide
 
-Business logic belongs elsewhere.
+### Source areas
+- [`src/Core`](./src/Core/README.md)
+- [`src/Queryable`](./src/Queryable/README.md)
+- [`src/Process`](./src/Process/README.md)
 
-Separation Of Concerns
+### Tests
+- [`tests`](./tests)
+- [`tests/AGENTS.md`](./tests/AGENTS.md)
 
-Every component should have a single responsibility.
+### Samples
+- [`samples/PriorAuth`](./samples/PriorAuth)
+- [`samples/kaleido-sample-ecommerce-ui`](./samples/kaleido-sample-ecommerce-ui)
 
-Validation, planning, evaluation, execution, persistence, and metadata generation remain independent.
+---
 
-Consumer Friendly Public APIs
+## 4. Registration model
 
-Framework consumers work with records, queries, steps, and handlers.
+The repository follows a layered registration model.
 
-API consumers interact only through transport contracts.
+### Step 1: Core bootstrap
+Applications start with the Core bootstrap path and root builder.
 
-Extension Points Must Be Earned
+### Step 2: Shared assembly registration
+Assemblies are recorded on the builder and become shared registration input for higher-level frameworks.
 
-Complex abstractions are not introduced until real usage justifies them.
+### Step 3: Capability registration
+Queryable and Process consume the shared builder state to scan, validate, construct registries, and register their own runtime services.
 
-3. System Boundaries
-Kaleido Core
+This keeps:
+- bootstrap concerns in Core
+- query concerns in Queryable
+- action/orchestration concerns in Process
 
-Owns:
+---
 
-Registration infrastructure
-Assembly catalog
-Builder pipeline
-Shared abstractions
+## 5. Metadata and discoverability
 
-Examples:
+A central repository-level goal is runtime discoverability.
 
-IKaleidoBuilder
-KaleidoBuilder
-AddKaleido()
-AddAssembly()
+The framework exposes metadata so consumers can understand:
+- what information exists
+- what actions exist
+- what contracts and validation rules apply
+- how to navigate the available capability surface
 
+That metadata is layered:
+- Core supplies shared metadata primitives and correlation/eventing foundations
+- Queryable supplies information-discovery metadata
+- Process supplies action/execution metadata
 
-Core does not own Queryable or Process concepts.
+---
 
-Kaleido.Queryable
+## 6. Transport model
 
-Responsible for:
+Transport concerns are layered under the capability frameworks rather than owned centrally by the root architecture.
 
-Record discovery
-Source discovery
-Named query discovery
-Query validation
-Query compilation
-Filtering
-Searching
-Sorting
-Paging
-Query execution
-Metadata generation
+- Core contains shared ASP.NET Core infrastructure and conventions
+- Queryable.AspNetCore adapts query metadata and query execution to HTTP
+- Process.AspNetCore adapts process metadata, execution, and state access to HTTP
 
-Queryable remains:
+This keeps transport-specific code thin and capability-specific while preserving consistent shared conventions.
 
-Provider agnostic
-Transport agnostic
-Serializer agnostic
+---
 
-Queryable does not own:
+## 7. Contributor guidance
 
-ASP.NET Core
-OpenAPI generation
-JSON serialization
-HTTP model binding
-Kaleido.Queryable.AspNetCore
+When working in this repository:
+- start with the parent subsystem docs before changing internals
+- keep Core free of capability-specific behavior unless the concern is truly cross-cutting
+- keep Queryable focused on discoverable information retrieval
+- keep Process focused on discoverable business actions and execution state
+- verify that documentation matches the code, not the other way around
 
-Responsible for:
+For contributor-oriented guidance, see:
+- [`AGENTS.md`](./AGENTS.md)
+- [`src/Core/AGENTS.md`](./src/Core/AGENTS.md)
+- [`src/Queryable/AGENTS.md`](./src/Queryable/AGENTS.md)
+- [`src/Process/AGENTS.md`](./src/Process/AGENTS.md)
 
-HTTP contracts
-Endpoint mapping
-ASP.NET integration
-Request normalization
-Transport-specific behavior
+---
 
-Queryable.AspNetCore converts:
+## 8. Where to look next
 
-JsonElement
-QueryString
-HttpRequest
-
-
-into:
-
-Strongly Typed CLR Values
-
-
-before Queryable executes.
-
-Kaleido.Queryable.OpenApi
-
-Responsible for enriching OpenAPI metadata.
-
-It does not discover metadata itself.
-
-Instead:
-
-Queryable Metadata
-    ↓
-OpenAPI Enrichment
-
-
-OpenAPI generation remains the responsibility of Swagger/Swashbuckle.
-
-Kaleido.Process
-
-Responsible for:
-
-Process discovery
-Planning
-Execution
-Evaluation
-State management
-Process orchestration
-
-Process is NOT:
-
-A workflow engine
-BPMN
-Camunda
-BizTalk
-
-Process is a metadata-driven orchestration framework.
-
-4. Registration Model
-
-Consumers initialize Kaleido through a common builder:
-
-services
-    .AddKaleido()
-    .AddAssembly(typeof(SomeType).Assembly)
-    .AddQueryable()
-    .AddProcess();
-
-
-Rules:
-
-Assemblies must be registered explicitly.
-Assemblies are shared across modules.
-Duplicate registrations are ignored.
-No automatic assembly scanning outside the registered assemblies.
-5. Queryable Architecture
-Request Model
-
-Query contracts use node-based structures.
-
-QueryFilterNode
- ├─ Condition
- └─ Group
-
-QuerySearchNode
- ├─ Condition
- └─ Group
-
-
-Interface-based query expressions were intentionally removed.
-
-Execution Pipeline
-Request
-    ↓
-Validation
-    ↓
-Compilation
-    ↓
-Source Creation
-    ↓
-Named Query
-    ↓
-Filtering
-    ↓
-Searching
-    ↓
-Sorting
-    ↓
-Paging
-    ↓
-Execution
-
-Metadata Model
-
-Queryable metadata includes:
-
-RecordMetadata
-FieldMetadata
-NamedQueryMetadata
-QueryParameterMetadata
-PageableMetadata
-DataTypeDescriptor
-
-
-Metadata represents framework capabilities.
-
-Registration represents runtime implementation details.
-
-The two concepts remain separate.
-
-Type Handling
-
-Queryable operates exclusively on CLR values.
-
-Supported concepts:
-
-Strings
-Booleans
-Numbers
-Guid
-DateOnly
-TimeOnly
-DateTime
-DateTimeOffset
-TimeSpan
-Enums
-
-Queryable should never receive:
-
-JsonElement
-HttpRequest
-Transport-specific types
-
-
-Those are normalized before execution.
-
-6. Process Architecture
-Core Philosophy
-
-Process answers:
-
-Given everything that is currently known, what may happen next?
-
-The framework owns orchestration.
-
-Business units own business behavior.
-
-High-Level Runtime
-Runtime
-    ↓
-Planner
-    ↓
-Execution Processor
-    ↓
-Evaluator
-    ↓
-Updated State
-
-Runtime Responsibilities
-
-Runtime owns:
-
-Load state
-Initialize state
-Reconcile state
-Stamp RequestId
-Build plan
-Execute plan
-Build final result
-
-Runtime does not own:
-
-Validation
-Dependency checking
-Evaluation logic
-State mutation logic
-Graph logic
-Planning Pipeline
-ProcessorRequest
-        ↓
-ExecutionCandidateBuilder
-        ↓
-ExecutionCandidateValidator
-        ↓
-ExecutionCandidateConsistencyChecker
-        ↓
-ExecutionPlanBuilder
-        ↓
-ExecutionPlannerResult
-
-
-Planner primarily coordinates specialized services.
-
-Execution Pipeline
-Execute Step
-       ↓
-Update State
-       ↓
-Persist State
-       ↓
-Evaluate Result
-       ↓
-Select Next Step
-       ↓
-Repeat
-
-
-Execution is sequential in V1.
-
-Parallel execution is intentionally deferred.
-
-7. Process State Model
-
-State exists to support continuation.
-
-State is not history.
-
-ProcessorContext
-ProcessId
-LatestRequestId
-State
-RequiredStep
-AvailableSteps
-Steps
-
-
-Only durable execution state is stored.
-
-StepContext
-StepName
-Version
-Status
-LastRequestId
-LastExecuted
-
-
-StepContext is a snapshot.
-
-It is not an audit record.
-
-Persistence Rules
-
-State must be persisted:
-
-After initialization
-After reconciliation
-After successful execution
-After exceptions
-After cancellations
-
-Completed steps should never execute twice.
-
-8. State Ownership
-
-Only one component may mutate state:
-
-IProcessStateUpdater
-
-
-Responsibilities:
-
-Initialize()
-Reconcile()
-ApplyExecution()
-ApplyException()
-ApplyCancellation()
-
-
-No other component updates state directly.
-
-9. Evaluation Model
-
-The graph determines:
-
-What could happen?
-
-
-The evaluator determines:
-
-What should happen?
-
-
-Evaluator decisions include:
-
-Continue
-Complete
-BusinessFailure
-ProcessViolation
-AwaitingRequiredStep
-AwaitingStepSelection
-
-
-Evaluator is the authoritative progression engine.
-
-10. Process Step Model
-
-Every step has:
-
-Request contract
-Response contract
-
-Primary contract:
-
-IProcessStepHandler<TStep, TResult>
-
-
-Void-style handlers use:
-
-ProcessStepEmptyResponse
-
-
-Every execution produces a response.
-
-Responses are contracts.
-
-Responses are not persisted in process state.
-
-11. Eventing Model
-
-Process state answers:
-
-What is true now?
-
-Events answer:
-
-How did we get here?
-
-Events are published through:
-
-IEventPublisher
-
-
-Consumers decide whether to:
-
-Persist
-Queue
-Publish
-Ignore
-
-Process does not contain a journal subsystem.
-
-12. Testing Strategy
-
-Testing follows three layers.
-
-Unit Tests
-
-Validate framework behavior.
-
-Use minimal assets:
-
-StepA
-StepB
-StepC
-
-
-Do not depend on large sample domains.
-
-Functional Tests
-
-Validate:
-
-Registration
-Execution
-Metadata
-Serialization
-HTTP behavior
-End-to-end framework integration
-Samples
-
-Samples demonstrate consumer usage.
-
-Samples are documentation.
-
-Samples do not exist to prove framework correctness.
-
-Current Decisions
-
-The following decisions are considered settled.
-
-Architecture
-
-✅ Metadata-driven framework
-
-✅ Strongly typed internal runtime
-
-✅ Explicit registration
-
-✅ Thin orchestrators
-
-✅ Queryable and Process remain separate modules
-
-Queryable
-
-✅ Node-based query model
-
-✅ ASP.NET normalization layer
-
-✅ Transport-independent runtime
-
-✅ Metadata-driven OpenAPI enrichment
-
-✅ Metadata and registration separated
-
-Process
-
-✅ Not a workflow engine
-
-✅ Sequential execution in V1
-
-✅ Durable persisted state
-
-✅ Completed steps never re-execute
-
-✅ StateUpdater is sole state mutator
-
-✅ Evaluator is progression authority
-
-✅ Graph provides structure only
-
-✅ Every step has a response contract
-
-✅ State and event history remain separate
-
-Testing
-
-✅ Unit tests prove framework behavior
-
-✅ Functional tests verify integration
-
-✅ Samples demonstrate usage
-
-Deferred / Future
-
-Items intentionally postponed.
-
-Queryable
-Additional providers
-Async execution strategies
-Executor registration model
-OpenAPI package enhancements
-gRPC transport layer
-Process
-Parallel execution
-Execution priorities
-Execution groups
-Dynamic metadata refresh
-Processor routing enhancements
-Advanced event contracts
-Generated endpoints
-OpenAPI generation
-Queryable/Process metadata integration
-Shared
-Common utility package
-Shared metadata abstractions
-Additional cross-module infrastructure
-
-No shared package should be introduced until multiple concrete use cases exist.
-
-Architectural Rule
-
-If a future design discussion conflicts with this document:
-
-Assume this document is correct.
-Change the implementation.
-Only change this document when an intentional architectural decision is made.
-
-This document is the baseline architecture for Kaleido.
-
-
-Honestly Andrew, I'd check this into source control immediately and treat it almost like an ADR index. The most important part is the final **Current Decisions** and **Deferred/Future** sections. Those two sections alone will save you from reopening 80% of the conversations you and I have been having over the last week.
+- Start with [`src/Core/README.md`](./src/Core/README.md) to understand bootstrap and shared primitives
+- Read [`src/Queryable/README.md`](./src/Queryable/README.md) for discoverable information surfaces
+- Read [`src/Process/README.md`](./src/Process/README.md) for discoverable action surfaces
+- Use the subsystem `ARCHITECTURE.md` files for implementation-level architecture details

@@ -252,13 +252,16 @@ Observability should continue to reflect real runtime boundaries:
 
 ## 10. Contributor cautions
 
-### Naming is not fully settled
-The subsystem currently mixes the terms:
+### Naming remains layered
+The subsystem currently uses the terms:
 - Process
 - Processor
 - Step
 
-Be explicit in docs and code changes about which concept you mean.
+Use them intentionally:
+- `Process` for the overall framework and execution lifecycle
+- `Processor` for the top-level registered execution surface and discovery identity
+- `Step` for the individual business actions within a processor
 
 ### `AspNetCore/Srevices` is misspelled
 There is currently a `Srevices` folder in `AspNetCore`.

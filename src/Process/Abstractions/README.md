@@ -13,10 +13,10 @@ See also:
 This project contains:
 - process-step declaration attributes such as [`ProcessStepAttribute`](./Attributes/ProcessStepAttribute.cs)
 - relationship attributes such as [`DependsOnStepAttribute`](./Attributes/DependsOnStepAttribute.cs), `AvailableAfterAttribute`, `AvailableUntilAttribute`, and `RepeatableAttribute`
-- processor runtime contracts such as [`IProcessorRuntime`](./Processor/IProcessorRuntime.cs)
-- step handler contracts such as [`IProcessStepHandler`](./Processor/Execution/IProcessStepHandler.cs)
-- durable state contracts such as [`IProcessContextStore`](./Processor/Context/IProcessContextStore.cs)
-- registry contracts such as [`IProcessStepRegistry`](./Processor/Registry/IProcessStepRegistry.cs)
+- processor runtime contracts such as [`IProcessorRuntime`](./IParticipantRuntime.cs)
+- step handler contracts such as [`IProcessStepHandler`](./Execution/IProcessStepHandler.cs)
+- durable state contracts such as [`IProcessContextStore`](./Context/IProcessContextStore.cs)
+- registry contracts such as [`IProcessStepRegistry`](./Registry/IProcessStepRegistry.cs)
 - planning and execution result types
 - event contracts and observability constants
 

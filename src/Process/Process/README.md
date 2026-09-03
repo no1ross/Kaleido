@@ -76,10 +76,10 @@ A runtime request flows through these layers:
    - centralizes state initialization, reconciliation, and transition rules
 
 See:
-- [`ProcessorRuntime`](./Processor/ProcessorRuntime.cs)
-- [`ExecutionPlanner`](./Processor/Planning/ExecutionPlanner.cs)
-- [`ExecutionProcessor`](./Processor/Execution/ProcessExecutor.cs)
-- [`ProcessStateUpdater`](./Processor/Context/ProcessStateUpdater.cs)
+- [`ProcessorRuntime`](./ParticipantRuntime.cs)
+- [`ExecutionPlanner`](./Planning/ExecutionPlanner.cs)
+- [`ExecutionProcessor`](./Execution/ProcessExecutor.cs)
+- [`ProcessStateUpdater`](./Context/ProcessStateUpdater.cs)
 
 ## Step registration rules
 
@@ -137,9 +137,9 @@ Those live in:
 
 ## Where to look
 
-- [`ProcessorServiceCollectionExtensions`](./ProcessorServiceCollectionExtensions.cs)
-- [`ProcessorRuntime`](./Processor/ProcessorRuntime.cs)
-- [`ProcessStepRegistry`](./Processor/Registry/ProcessStepRegistry.cs)
-- [`ExecutionPlanner`](./Processor/Planning/ExecutionPlanner.cs)
-- [`ExecutionProcessor`](./Processor/Execution/ProcessExecutor.cs)
-- [`ProcessStateUpdater`](./Processor/Context/ProcessStateUpdater.cs)
+- [`ProcessorServiceCollectionExtensions`](./ParticipantServiceCollectionExtensions.cs)
+- [`ProcessorRuntime`](./ParticipantRuntime.cs)
+- [`ProcessStepRegistry`](./Registry/ProcessStepRegistry.cs)
+- [`ExecutionPlanner`](./Planning/ExecutionPlanner.cs)
+- [`ExecutionProcessor`](./Execution/ProcessExecutor.cs)
+- [`ProcessStateUpdater`](./Context/ProcessStateUpdater.cs)

@@ -80,7 +80,7 @@ Returns only the initial steps that can begin a new process instance.
 Returns a lightweight summary of all registered steps.
 
 ### Full registry
-Returns full metadata for all registered steps.
+Returns processor-grouped metadata for all registered processors and their steps.
 
 ### Per-step metadata
 Returns detailed metadata for one step, including:

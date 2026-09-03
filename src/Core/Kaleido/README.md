@@ -1,102 +1,98 @@
 # Kaleido
 
-Kaleido is a framework for exposing business capabilities through consistent, discoverable contracts.
+This project contains the root bootstrap layer for Kaleido.
 
-Most business applications contain two fundamental types of capabilities:
+See also:
+- [`../README.md`](../README.md)
+- [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
+- [`../AGENTS.md`](../AGENTS.md)
+- [`../Abstractions/README.md`](../Abstractions/README.md)
+- [`../AspNetCore/README.md`](../AspNetCore/README.md)
 
-- Information that can be retrieved
-- Actions that can be performed
+## What lives here
 
-Traditional applications often expose these capabilities through custom APIs, custom contracts, custom documentation, and custom user experiences. As applications grow, it becomes increasingly difficult for consumers to discover available functionality and understand how those capabilities should be used.
+This project contains:
+- the root `AddKaleido()` registration entry point
+- the shared `IKaleidoBuilder` abstraction
+- the concrete `KaleidoBuilder` implementation
+- shared assembly registration tracking
+- default event publisher bootstrap behavior
+- correlation context accessor initialization support
+- shared JSON and value-conversion helpers
 
-Kaleido provides a consistent model for exposing business capabilities while allowing developers to focus on business functionality rather than framework infrastructure.
+## Main entry point
 
----
+### `AddKaleido()`
+`AddKaleido()` is the root bootstrap path for the framework.
 
-## The Problem
+It:
+- validates the input `IServiceCollection`
+- registers the scoped correlation accessor
+- exposes that accessor through both accessor and initializer interfaces
+- installs `NullEventPublisher` as the default event publisher
+- returns an `IKaleidoBuilder`
 
-Developers frequently spend significant effort creating:
+```csharp
+builder.Services.AddKaleido();
+```
 
-- API endpoints
-- Request contracts
-- Response contracts
-- Search functionality
-- Filtering functionality
-- Sorting functionality
-- Validation
-- Documentation
-- Consumer integration guidance
+## Assembly registration model
 
-Even when solving similar business problems, these implementations are often inconsistent across applications and teams.
+After calling `AddKaleido()`, a consumer can register assemblies with `AddAssembly(...)`.
 
-This creates friction for both developers and consumers.
+```csharp
+builder.Services.AddKaleido()
+    .AddAssembly(typeof(Program).Assembly);
+```
 
----
+The builder carries:
+- `Services`
+- `Assemblies`
 
-## The Goal
+Important distinction:
+- this project records assemblies
+- it does not itself scan them for higher-level capability registrations
 
-Kaleido attempts to standardize how business capabilities are exposed.
+## Default services
 
-Rather than requiring consumers to have prior knowledge of implementation details, Kaleido promotes:
+By default, this project registers:
+- `KaleidoCorrelationContextAccessor` as a scoped service
+- `IKaleidoCorrelationContextAccessor`
+- `IKaleidoCorrelationContextInitializer`
+- `NullEventPublisher` as the default `IEventPublisher`
 
-- Discoverable capabilities
-- Explicit contracts
-- Metadata-driven validation
-- Consistent consumer experiences
-- Standardized patterns for exposing business functionality
+This gives higher-level frameworks a consistent shared baseline without forcing a concrete eventing implementation up front.
 
-The objective is to reduce the effort required to expose business capabilities while making those capabilities easier to understand and consume.
+## Builder behavior
 
----
+`IKaleidoBuilder` is intentionally minimal.
+It exists to carry the service collection and the registered assembly set.
 
-## Business Capabilities
+`KaleidoBuilder` deduplicates assemblies by identity.
 
-Kaleido models business capabilities through two complementary concepts.
+## Shared helpers
 
-### Queryable
+This project also contains shared helpers used by higher-level layers:
+- enum-related helpers and converters
+- `ValueConverter`
+- JSON conversion infrastructure
 
-Queryable exposes business information.
+Review these carefully before changing them because they can affect shared transport and conversion behavior.
 
-Examples:
+## What this project does not do
 
-- Products
-- Customers
-- Orders
-- Prior Authorizations
+This project does **not** contain:
+- business-capability execution
+- capability-specific registries
+- capability-specific endpoint publication
+- feature-specific discovery models
 
-Queryable enables consumers to discover and retrieve information through consistent support for:
+Its role is bootstrap and shared framework plumbing.
 
-- Search
-- Filtering
-- Sorting
-- Paging
+## Where to look
 
-Queryable metadata allows consumers to understand available fields, query capabilities, validation requirements, and supported operations without requiring external documentation.
-
----
-
-### Process
-
-Process exposes business actions.
-
-Examples:
-
-- Add Item To Cart
-- Submit Order
-- Approve Prior Authorization
-- Request Additional Information
-
-A Process represents something the business can do.
-
-Process metadata allows consumers to discover available actions, understand required inputs, validate requests, and understand the relationships between business actions.
-
----
-
-## Why Separate Queryable and Process?
-
-Business information and business actions solve different problems.
-
-For example:
-
-```text
-Find Products
+- [`KaleidoServiceCollectionExtensions`](./KaleidoServiceCollectionExtensions.cs)
+- [`IKaleidoBuilder`](./IKaleidoBuilder.cs)
+- [`KaleidoBuilder`](./KaleidoBuilder.cs)
+- [`KaleidoCorrelationContextAccessor`](./Observability/KaleidoCorrelationContextAccessor.cs)
+- [`ValueConverter`](./Json/ValueConverter.cs)

@@ -288,16 +288,42 @@ This allows teams to focus on business functionality instead of repeatedly build
 
 ---
 
-## Documentation
+## Documentation Map
 
-Additional documentation is available within the `/docs` folder.
+### Repository-level docs
+- [README.md](./README.md) — framework overview and entry point
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — overall architecture and subsystem boundaries
+- [AGENTS.md](./AGENTS.md) — repo-level contributor guidance
 
-Suggested starting points:
+### Core
+- [src/Core/README.md](./src/Core/README.md)
+- [src/Core/ARCHITECTURE.md](./src/Core/ARCHITECTURE.md)
+- [src/Core/AGENTS.md](./src/Core/AGENTS.md)
+- [src/Core/Abstractions/README.md](./src/Core/Abstractions/README.md)
+- [src/Core/Kaleido/README.md](./src/Core/Kaleido/README.md)
+- [src/Core/AspNetCore/README.md](./src/Core/AspNetCore/README.md)
 
-- Architecture Overview
-- Queryable Overview
-- Process Overview
-- Creating a Queryable
-- Creating a Process
-- Metadata
-- Validation
+### Queryable
+- [src/Queryable/README.md](./src/Queryable/README.md)
+- [src/Queryable/ARCHITECTURE.md](./src/Queryable/ARCHITECTURE.md)
+- [src/Queryable/AGENTS.md](./src/Queryable/AGENTS.md)
+- [src/Queryable/Abstractions/README.md](./src/Queryable/Abstractions/README.md)
+- [src/Queryable/Queryable/README.md](./src/Queryable/Queryable/README.md)
+- [src/Queryable/AspNetCore/README.md](./src/Queryable/AspNetCore/README.md)
+- [src/Queryable/AspNetCore.Abstractions/README.md](./src/Queryable/AspNetCore.Abstractions/README.md)
+
+### Process
+- [src/Process/README.md](./src/Process/README.md)
+- [src/Process/ARCHITECTURE.md](./src/Process/ARCHITECTURE.md)
+- [src/Process/AGENTS.md](./src/Process/AGENTS.md)
+- [src/Process/Abstractions/README.md](./src/Process/Abstractions/README.md)
+- [src/Process/Process/README.md](./src/Process/Process/README.md)
+- [src/Process/AspNetCore/README.md](./src/Process/AspNetCore/README.md)
+
+### Samples
+- [samples/PriorAuth/priorauth-ui/README.md](./samples/PriorAuth/priorauth-ui/README.md)
+- [samples/kaleido-sample-ecommerce-ui/README.md](./samples/kaleido-sample-ecommerce-ui/README.md)
+
+### Tests and contributor notes
+- [tests/AGENTS.md](./tests/AGENTS.md)
+- [samples/PriorAuth/AGENTS.md](./samples/PriorAuth/AGENTS.md)
