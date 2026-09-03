@@ -12,19 +12,51 @@ See also:
 This project contains:
 - ASP.NET Core service registration via [`AddQueryableAspNetCore`](./QueryableAspNetCoreServiceCollectionExtensions.cs)
 - endpoint publishing via [`MapQueryable`](./QueryableEndpointRouteBuilderExtensions.cs)
-- request/response contracts in [`Contracts/`](./Contracts)
+- route/path helpers used by endpoint publishing
 - request normalization in [`QueryableValueNormalizer`](./QueryableValueNormalizer.cs)
 - OpenAPI-related support
+
+HTTP request/response contract types now live in:
+- [`../AspNetCore.Abstractions/README.md`](../AspNetCore.Abstractions/README.md)
 
 ## What this project is for
 
 Work here when you are changing:
 - endpoint shapes or route naming
 - queryable catalog/registry publishing
-- metadata response shaping
-- transport request contracts
+- how ASP.NET Core publishes or enriches metadata responses
 - ASP.NET Core normalization behavior
-- HTTP-facing error behavior
+- HTTP runtime error behavior
+
+## How a developer uses this project
+
+Use this project when you want to expose Queryable over ASP.NET Core.
+
+Typical setup:
+
+1. register Queryable with `AddQueryable()`
+2. call `AddQueryableAspNetCore(...)`
+3. optionally configure route options such as `RoutePrefix`
+4. map the endpoints with `app.MapQueryable()`
+
+Example:
+
+```csharp
+builder.Services.AddKaleido()
+    .AddAssembly(typeof(Program).Assembly)
+    .AddAssembly(typeof(MyDbContext).Assembly)
+    .AddQueryable()
+        .AddQueryableAspNetCore(options =>
+        {
+            options.RoutePrefix = "my-service";
+        });
+
+var app = builder.Build();
+app.MapQueryable();
+```
+
+The published HTTP contracts consumed by clients and documentation tooling live in:
+- [`../AspNetCore.Abstractions/README.md`](../AspNetCore.Abstractions/README.md)
 
 ## HTTP surface
 
