@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Reflection;
 using System.Text.Json;
 
 namespace Kaleido.Abstractions.UnitTests;
@@ -6,21 +7,22 @@ namespace Kaleido.Abstractions.UnitTests;
 public sealed class DataTypeMapperTests
 {
     [Fact]
-    public void GetDescriptor_WhenTypeIsNull_Throws()
+    public void GetDescriptor_WhenPropertyIsNull_Throws()
     {
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
-                DataTypeMapper.GetDescriptor(null!));
+                DataTypeMapper.GetDescriptor((PropertyInfo)null!));
 
         Assert.Equal(
-            "type",
+            "propertyInfo",
             exception.ParamName);
     }
 
     [Fact]
-    public void GetDescriptor_WhenTypeIsNullable_PrservesUnderlyingDescriptorAndMarksNullable()
+    public void GetDescriptor_WhenPropertyIsNullableValueType_PreservesUnderlyingDescriptorAndMarksNullable()
     {
-        var descriptor = DataTypeMapper.GetDescriptor(typeof(int?));
+        var descriptor = DataTypeMapper.GetDescriptor(
+            typeof(TestModel).GetProperty(nameof(TestModel.NullableCount))!);
 
         Assert.Equal("integer", descriptor.Type);
         Assert.True(descriptor.Nullable);
@@ -28,9 +30,32 @@ public sealed class DataTypeMapperTests
     }
 
     [Fact]
-    public void GetDescriptor_WhenTypeIsEnum_MapsEnumValuesAndDescriptions()
+    public void GetDescriptor_WhenPropertyIsNullableReferenceType_MarksNullable()
     {
-        var descriptor = DataTypeMapper.GetDescriptor(typeof(TestStatus));
+        var descriptor = DataTypeMapper.GetDescriptor(
+            typeof(TestModel).GetProperty(nameof(TestModel.NullableName))!);
+
+        Assert.Equal("string", descriptor.Type);
+        Assert.True(descriptor.Nullable);
+        Assert.Null(descriptor.Format);
+    }
+
+    [Fact]
+    public void GetDescriptor_WhenPropertyIsNonNullableReferenceType_DoesNotMarkNullable()
+    {
+        var descriptor = DataTypeMapper.GetDescriptor(
+            typeof(TestModel).GetProperty(nameof(TestModel.RequiredName))!);
+
+        Assert.Equal("string", descriptor.Type);
+        Assert.False(descriptor.Nullable);
+        Assert.Null(descriptor.Format);
+    }
+
+    [Fact]
+    public void GetDescriptor_WhenPropertyIsEnum_MapsEnumValuesAndDescriptions()
+    {
+        var descriptor = DataTypeMapper.GetDescriptor(
+            typeof(TestModel).GetProperty(nameof(TestModel.Status))!);
 
         Assert.Equal("string", descriptor.Type);
         Assert.Equal("enum", descriptor.Format);
@@ -52,9 +77,10 @@ public sealed class DataTypeMapperTests
     }
 
     [Fact]
-    public void GetDescriptor_WhenTypeIsCollection_MapsArrayWithItemType()
+    public void GetDescriptor_WhenPropertyIsCollection_MapsArrayWithItemType()
     {
-        var descriptor = DataTypeMapper.GetDescriptor(typeof(List<Guid>));
+        var descriptor = DataTypeMapper.GetDescriptor(
+            typeof(TestModel).GetProperty(nameof(TestModel.Ids))!);
 
         Assert.Equal("array", descriptor.Type);
         Assert.NotNull(descriptor.ItemType);
@@ -119,6 +145,19 @@ public sealed class DataTypeMapperTests
         [Description("Currently active")]
         Active = 1,
         Inactive = 2
+    }
+
+    private sealed class TestModel
+    {
+        public int? NullableCount { get; init; }
+
+        public string? NullableName { get; init; }
+
+        public string RequiredName { get; init; } = string.Empty;
+
+        public TestStatus Status { get; init; }
+
+        public List<Guid> Ids { get; init; } = [];
     }
 
     private sealed class TestObject

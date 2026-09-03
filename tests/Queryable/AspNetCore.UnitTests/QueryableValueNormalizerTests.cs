@@ -32,7 +32,7 @@ public sealed class QueryableValueNormalizerTests
     public void NormalizeValues_ConvertsKnownParameterTypes()
     {
         var values = new Dictionary<string, object?> { ["Amount"] = "12.5" };
-        var parameters = new[] { new QueryParameterMetadata("Amount", typeof(decimal), DataTypeMapper.GetDescriptor(typeof(decimal)), [], null) };
+        var parameters = new[] { new QueryParameterMetadata("Amount", typeof(decimal), DataTypeMapper.GetDescriptor(typeof(TestParameterModel).GetProperty(nameof(TestParameterModel.Amount))!), [], null) };
 
         var result = QueryableValueNormalizer.Normalize(values, parameters);
 
@@ -43,7 +43,7 @@ public sealed class QueryableValueNormalizerTests
     public void NormalizeValues_WhenConversionFails_ThrowsInvalidParameterValueException()
     {
         var values = new Dictionary<string, object?> { ["Amount"] = "nope" };
-        var parameters = new[] { new QueryParameterMetadata("Amount", typeof(decimal), DataTypeMapper.GetDescriptor(typeof(decimal)), [], null) };
+        var parameters = new[] { new QueryParameterMetadata("Amount", typeof(decimal), DataTypeMapper.GetDescriptor(typeof(TestParameterModel).GetProperty(nameof(TestParameterModel.Amount))!), [], null) };
 
         Assert.Throws<InvalidParameterValueException>(() => QueryableValueNormalizer.Normalize(values, parameters));
     }
@@ -85,5 +85,15 @@ public sealed class QueryableValueNormalizerTests
             "Unit Test",
             QueryContextKind.Direct,
             null,
-            [new FieldMetadata("Amount", null, typeof(decimal), DataTypeMapper.GetDescriptor(typeof(decimal)), true, [FilterOperator.Equals], false, null, null, false)]);
+            [new FieldMetadata("Amount", null, typeof(decimal), DataTypeMapper.GetDescriptor(typeof(TestFieldModel).GetProperty(nameof(TestFieldModel.Amount))!), true, [FilterOperator.Equals], false, null, null, false)]);
+
+    private sealed class TestParameterModel
+    {
+        public decimal Amount { get; init; }
+    }
+
+    private sealed class TestFieldModel
+    {
+        public decimal Amount { get; init; }
+    }
 }

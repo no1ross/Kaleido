@@ -110,8 +110,8 @@ public sealed class QueryRequestValidatorTests
                 QueryContextKind.Direct,
                 new PageableMetadata(25, 100),
                 [
-                    new FieldMetadata("Code", null, typeof(string), DataTypeMapper.GetDescriptor(typeof(string)), true, [FilterOperator.Equals], false, null, null, true),
-                    new FieldMetadata("Description", null, typeof(string), DataTypeMapper.GetDescriptor(typeof(string)), false, [], true, 1, MatchMode.Contains, false)
+                    new FieldMetadata("Code", null, typeof(string), DataTypeMapper.GetDescriptor(typeof(TestRecordMetadata).GetProperty(nameof(TestRecordMetadata.Code))!), true, [FilterOperator.Equals], false, null, null, true),
+                    new FieldMetadata("Description", null, typeof(string), DataTypeMapper.GetDescriptor(typeof(TestRecordMetadata).GetProperty(nameof(TestRecordMetadata.Description))!), false, [], true, 1, MatchMode.Contains, false)
                 ]));
 
     private static QueryContextRegistration CreateRegistrationWithoutSearchableFields() =>
@@ -126,9 +126,16 @@ public sealed class QueryRequestValidatorTests
                 "Unit Test",
                 QueryContextKind.Direct,
                 new PageableMetadata(25, 100),
-                [new FieldMetadata("Code", null, typeof(string), DataTypeMapper.GetDescriptor(typeof(string)), true, [FilterOperator.Equals], false, null, null, true)]));
+                [new FieldMetadata("Code", null, typeof(string), DataTypeMapper.GetDescriptor(typeof(TestRecordMetadata).GetProperty(nameof(TestRecordMetadata.Code))!), true, [FilterOperator.Equals], false, null, null, true)]));
 
     private sealed class TestRecord
     {
+    }
+
+    private sealed class TestRecordMetadata
+    {
+        public string Code { get; init; } = string.Empty;
+
+        public string Description { get; init; } = string.Empty;
     }
 }

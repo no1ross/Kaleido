@@ -142,6 +142,25 @@ public static class DataTypeMapper
             };
 
     public static DataTypeDescriptor GetDescriptor(
+        PropertyInfo propertyInfo)
+    {
+        ArgumentNullException.ThrowIfNull(propertyInfo);
+
+        var descriptor =
+            GetDescriptor(propertyInfo.PropertyType);
+
+        var nullability =
+            new NullabilityInfoContext()
+                .Create(propertyInfo);
+
+        return descriptor with
+        {
+            Nullable = descriptor.Nullable
+                || nullability.ReadState == NullabilityState.Nullable
+        };
+    }
+
+    internal static DataTypeDescriptor GetDescriptor(
         Type type)
     {
         ArgumentNullException.ThrowIfNull(type);

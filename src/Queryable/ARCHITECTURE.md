@@ -108,6 +108,12 @@ A view primarily defines:
 - optional parameter metadata
 - output contract type
 
+Important distinction:
+- query semantics are driven by query context fields and supported parameter metadata
+- `TView` is the returned representation shape
+
+That means a `TView` can legitimately represent a richer detail-style payload than the context itself, including nested objects or child collections. This is especially relevant for detail views where the returned shape may include related items such as notes.
+
 There are two kinds of query views in the current architecture:
 
 1. **Local query views**
@@ -147,6 +153,8 @@ This same result shape is used for:
 - direct context queries
 - local view queries
 - delegated view queries
+
+`Records` are returned as normal `TView` CLR objects. As a result, complex nested output on `TView` can work as a runtime serialization concern even when Queryable metadata does not fully model that nested structure.
 
 ### Registry
 Queryable builds runtime registries that represent discovered contexts and views:
@@ -560,6 +568,16 @@ A `QueryableRecordResponse` contains:
 - view URLs
 - view parameter metadata
 - view output fields
+
+Current output metadata is intentionally shallow:
+- registry output describes the top-level `TView` properties exposed by a view
+- complex nested output members currently fall back to a datatype of `object`
+- nested object graphs are not yet recursively described in published output metadata
+
+This is a metadata limitation, not necessarily a runtime result limitation.
+
+Future enhancement:
+- add recursive/nested output metadata for complex `TView` members so detail views can be fully self-describing for clients, internal services, and orchestrators
 
 ### Direct query URL behavior
 The presence of `QueryUrl` on the context record depends on execution kind:

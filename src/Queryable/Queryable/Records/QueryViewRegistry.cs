@@ -138,7 +138,7 @@ internal sealed class QueryViewRegistry
                 new QueryParameterMetadata(
                     property.Name,
                     property.PropertyType,
-                    DataTypeMapper.GetDescriptor(property.PropertyType),
+                    DataTypeMapper.GetDescriptor(property),
                     ConstraintMapper.Map(property),
                     property.GetCustomAttribute<DescriptionAttribute>()?.Description))
             .ToArray();
@@ -156,7 +156,7 @@ internal sealed class QueryViewRegistry
                     property.Name,
                     property.GetCustomAttribute<DescriptionAttribute>()?.Description,
                     property.PropertyType,
-                    DataTypeMapper.GetDescriptor(property.PropertyType)))
+                    DataTypeMapper.GetDescriptor(property)))
             .ToArray();
     }
 

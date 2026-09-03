@@ -1,4 +1,5 @@
 using Kaleido.Queryable.Metadata;
+using System.Reflection;
 
 namespace Kaleido.Queryable.Abstractions.UnitTests;
 
@@ -7,7 +8,7 @@ public sealed class QueryMetadataTests
     [Fact]
     public void QueryContextRegistration_PreservesMetadataShape()
     {
-        var field = new FieldMetadata("Code", "Code description", typeof(string), DataTypeMapper.GetDescriptor(typeof(string)), true, [FilterOperator.Equals], true, 1, MatchMode.Contains, true);
+        var field = new FieldMetadata("Code", "Code description", typeof(string), DataTypeMapper.GetDescriptor(typeof(TestFieldModel).GetProperty(nameof(TestFieldModel.Code))!), true, [FilterOperator.Equals], true, 1, MatchMode.Contains, true);
         var pageable = new PageableMetadata(25, 100);
         var metadata = new QueryContextMetadata("context", "Context description", "Context", "1.0.0", "Unit Test", QueryContextKind.Direct, pageable, [field]);
         var registration = new QueryContextRegistration(typeof(TestContext), typeof(TestSource), metadata);
@@ -22,8 +23,8 @@ public sealed class QueryMetadataTests
     [Fact]
     public void QueryViewRegistration_PreservesMetadataShape()
     {
-        var parameter = new QueryParameterMetadata("Category", typeof(string), DataTypeMapper.GetDescriptor(typeof(string)), [], "Category description");
-        var outputField = new QueryOutputFieldMetadata("Code", "Code description", typeof(string), DataTypeMapper.GetDescriptor(typeof(string)));
+        var parameter = new QueryParameterMetadata("Category", typeof(string), DataTypeMapper.GetDescriptor(typeof(TestParametersModel).GetProperty(nameof(TestParametersModel.Category))!), [], "Category description");
+        var outputField = new QueryOutputFieldMetadata("Code", "Code description", typeof(string), DataTypeMapper.GetDescriptor(typeof(TestFieldModel).GetProperty(nameof(TestFieldModel.Code))!));
         var pageable = new PageableMetadata(10, 20);
         var metadata = new QueryViewMetadata("grid", "1.0.0", "Grid", "Grid description", QueryViewVisibility.Public, pageable, [parameter], [outputField]);
         var registration = new QueryViewRegistration(typeof(TestView), typeof(TestContract), typeof(TestParameters), typeof(TestContext), metadata);
@@ -55,5 +56,15 @@ public sealed class QueryMetadataTests
 
     private sealed class TestParameters
     {
+    }
+
+    private sealed class TestFieldModel
+    {
+        public string Code { get; init; } = string.Empty;
+    }
+
+    private sealed class TestParametersModel
+    {
+        public string Category { get; init; } = string.Empty;
     }
 }

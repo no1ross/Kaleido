@@ -170,7 +170,23 @@ Example from the functional test models:
 - parameter shape <ref_snippet file="C:\Repos\Kaleido\tests\Queryable\AspNetCore.FunctionalTests\Infrastructure\FunctionalSampleModels.cs" lines="112-117" />
 - paired view <ref_snippet file="C:\Repos\Kaleido\tests\Queryable\AspNetCore.FunctionalTests\Infrastructure\FunctionalSampleModels.cs" lines="69-96" />
 
-### 6. Choose the right execution lane
+### 6. Understand view output shape limits
+`TView` is the returned representation shape for a query result. That means a detail-style view can return a richer object graph than the query context itself, including nested objects or child collections such as notes.
+
+Current behavior:
+- complex nested `TView` output can work as a runtime payload
+- ASP.NET Core can still serialize the returned `QueryResult<TView>` records normally
+- registry output currently describes only the top-level `TView` properties in `OutputFields`
+- complex nested output members are currently represented with a datatype of `object`
+
+This is an important distinction:
+- query context fields and parameter properties are part of Queryable's semantic query model
+- `TView` output is the returned representation model
+
+Future enhancement:
+- recursively describe nested complex `TView` output metadata so detail views are more self-describing for clients and orchestrators
+
+### 7. Choose the right execution lane
 Use a **direct context** when the context itself is the result shape.
 This requires `QueryContextKind.Direct` on the context metadata.
 

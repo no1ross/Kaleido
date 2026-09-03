@@ -34,14 +34,14 @@ public sealed class QueryViewRegistryTests
 
         Assert.Equal(nameof(TestParameters.Category), parameter.Name);
         Assert.Equal(typeof(string), parameter.Type);
-        Assert.Equal(DataTypeMapper.GetDescriptor(typeof(string)), parameter.DataType);
+        Assert.Equal(DataTypeMapper.GetDescriptor(typeof(TestParameters).GetProperty(nameof(TestParameters.Category))!), parameter.DataType);
         Assert.Equal("Category description", parameter.Description);
         Assert.Single(parameter.Constraints);
         Assert.Equal("Required", parameter.Constraints.Single().Type);
 
         var outputField = Assert.Single(registry.GetRegistration(typeof(TestView)).Metadata.OutputFields!, x => x.Name == nameof(TestContract.Id));
         Assert.Equal(typeof(int), outputField.Type);
-        Assert.Equal(DataTypeMapper.GetDescriptor(typeof(int)), outputField.DataType);
+        Assert.Equal(DataTypeMapper.GetDescriptor(typeof(TestContract).GetProperty(nameof(TestContract.Id))!), outputField.DataType);
     }
 
     [Fact]

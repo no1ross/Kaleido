@@ -827,11 +827,15 @@ public sealed class CompiledQueryApplierTests
         string name,
         Type type)
     {
+        var property =
+            typeof(TestRecord).GetProperty(name)
+            ?? throw new InvalidOperationException($"Property '{name}' was not found on {nameof(TestRecord)}.");
+
         return new FieldMetadata(
             name,
             null,
             type,
-            DataTypeMapper.GetDescriptor(type),
+            DataTypeMapper.GetDescriptor(property),
             true,
             [],
             true,

@@ -137,9 +137,9 @@ public sealed class QueryRequestCompilerTests
             QueryContextKind.Direct,
             new PageableMetadata(25, 100),
             [
-                new FieldMetadata(nameof(TestRecord.Code), null, typeof(string), DataTypeMapper.GetDescriptor(typeof(string)), true, [FilterOperator.Equals], false, null, null, true),
-                new FieldMetadata(nameof(TestRecord.Name), null, typeof(string), DataTypeMapper.GetDescriptor(typeof(string)), false, [], true, 1, MatchMode.Contains, false),
-                new FieldMetadata(nameof(TestRecord.Region), null, typeof(string), DataTypeMapper.GetDescriptor(typeof(string)), false, [], true, 2, MatchMode.Contains, true)
+                new FieldMetadata(nameof(TestRecord.Code), null, typeof(string), DataTypeMapper.GetDescriptor(typeof(TestRecord).GetProperty(nameof(TestRecord.Code))!), true, [FilterOperator.Equals], false, null, null, true),
+                new FieldMetadata(nameof(TestRecord.Name), null, typeof(string), DataTypeMapper.GetDescriptor(typeof(TestRecord).GetProperty(nameof(TestRecord.Name))!), false, [], true, 1, MatchMode.Contains, false),
+                new FieldMetadata(nameof(TestRecord.Region), null, typeof(string), DataTypeMapper.GetDescriptor(typeof(TestRecord).GetProperty(nameof(TestRecord.Region))!), false, [], true, 2, MatchMode.Contains, true)
             ]);
 
     private static QueryContextMetadata CreateContextMetadataWithoutPageable() =>

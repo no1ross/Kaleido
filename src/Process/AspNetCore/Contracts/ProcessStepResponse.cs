@@ -157,7 +157,7 @@ internal static class ProcessFieldMetadataFactory
 
             DataType =
                 DataTypeMapper.GetDescriptor(
-                    property.PropertyType),
+                    property),
 
             Constraints =
                 ConstraintMapper.Map(property)

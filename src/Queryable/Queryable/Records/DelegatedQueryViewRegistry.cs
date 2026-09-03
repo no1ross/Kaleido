@@ -134,7 +134,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
                 new QueryParameterMetadata(
                     property.Name,
                     property.PropertyType,
-                    DataTypeMapper.GetDescriptor(property.PropertyType),
+                    DataTypeMapper.GetDescriptor(property),
                     ConstraintMapper.Map(property),
                     property.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>()?.Description))
             .ToArray();
@@ -149,7 +149,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
                     property.Name,
                     property.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>()?.Description,
                     property.PropertyType,
-                    DataTypeMapper.GetDescriptor(property.PropertyType)))
+                    DataTypeMapper.GetDescriptor(property)))
             .ToArray();
     }
 
@@ -198,7 +198,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
             property.Name,
             description?.Description,
             property.PropertyType,
-            DataTypeMapper.GetDescriptor(property.PropertyType),
+            DataTypeMapper.GetDescriptor(property),
             filterable is not null,
             filterable?.Operators ?? Array.Empty<FilterOperator>(),
             searchable is not null,
