@@ -1,237 +1,145 @@
-﻿# Kaleido.Process
+﻿# Process
 
-Kaleido.Process provides a standardized model for exposing business actions.
+This project contains the core runtime for Kaleido Process.
 
-Rather than creating custom command endpoints, validation mechanisms, execution contracts, documentation, and consumer integrations for every business operation, developers expose business actions through Processes.
+See also:
+- [`../README.md`](../README.md)
+- [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
+- [`../AGENTS.md`](../AGENTS.md)
+- [`../Abstractions/README.md`](../Abstractions/README.md)
+- [`../AspNetCore/README.md`](../AspNetCore/README.md)
 
-A Process provides a consistent contract for executing business actions while exposing metadata that allows consumers and tools to discover available capabilities at runtime.
+## What lives here
 
----
+This project contains:
+- assembly scanning for process steps and handlers
+- DI registration for the Process runtime
+- runtime step registry construction
+- request planning and candidate building
+- candidate validation and consistency checking
+- step execution and decision handling
+- participant state mutation and reconciliation
+- event publishing and observability
+- the default in-memory process context store
 
-## The Problem
+## Main entry point
 
-Most business applications contain actions that change business state.
+The main runtime registration entry point is:
+- [`AddParticipant`](./ParticipantServiceCollectionExtensions.cs)
 
-Examples include:
+This extension:
+- scans registered assemblies for `[ProcessStep]` types
+- validates discovered steps
+- finds and registers handlers
+- builds `IProcessStepRegistry`
+- registers the runtime services required for planning, execution, state management, eventing, and observability
 
-- Add Item To Cart
-- Submit Order
-- Cancel Order
-- Approve Prior Authorization
-- Request Additional Information
+## How to register the runtime
 
-These operations are often implemented as custom APIs with independently designed request contracts, validation rules, documentation, and consumer experiences.
+At minimum:
 
-As systems grow, consumers must understand:
-
-- Which actions exist
-- Required inputs
-- Validation requirements
-- Execution order
-- Available actions
-- Action dependencies
-
-This information is frequently undocumented, duplicated, or embedded within application code.
-
----
-
-## The Goal
-
-Process standardizes how business actions are exposed.
-
-The goal is to allow developers to focus on business behavior while the framework provides:
-
-- Consistent execution contracts
-- Validation
-- Metadata
-- Discoverability
-- Consumer guidance
-
-Process makes business actions easier to expose, understand, and consume.
-
----
-
-## Process Concepts
-
-A Process represents something the business can do.
-
-Examples:
-
-```text
-Add Item To Cart
-
-Submit Order
-
-Approve Prior Authorization
-
-Request Additional Information
+```csharp
+builder.Services.AddKaleido()
+    .AddAssembly(typeof(Program).Assembly)
+    .AddAssembly(typeof(MyProcessStep).Assembly)
+    .AddParticipant();
 ```
 
-Each Process is composed of one or more Steps.
+If your step types or handlers live in separate assemblies, register those assemblies before calling `AddParticipant()`.
 
-A Step represents a specific business action that can be executed.
+Real example: <ref_snippet file="C:\Repos\Kaleido\samples\PriorAuth\Intake\Program.cs" lines="123-131" />.
 
-Examples:
+## Runtime lifecycle
 
-```text
-Create Cart
+A runtime request flows through these layers:
 
-Add Item To Cart
+1. `ParticipantRuntime`
+   - validates the outer request
+   - loads or initializes participant state
+   - builds an execution plan
+   - invokes the execution processor
+   - publishes process-level events
 
-Remove Item From Cart
+2. `ExecutionPlanner`
+   - builds candidates from submitted step values
+   - validates payloads
+   - checks dependency/history consistency
+   - orders executable candidates
 
-Submit Order
+3. `ExecutionProcessor`
+   - invokes step handlers
+   - evaluates decisions
+   - updates and persists participant state
+   - publishes step-level events
+
+4. `ProcessStateUpdater`
+   - centralizes state initialization, reconciliation, and transition rules
+
+See:
+- [`ParticipantRuntime`](./Participant/ParticipantRuntime.cs)
+- [`ExecutionPlanner`](./Participant/Planning/ExecutionPlanner.cs)
+- [`ExecutionProcessor`](./Participant/Execution/ProcessExecutor.cs)
+- [`ProcessStateUpdater`](./Participant/Context/ProcessStateUpdater.cs)
+
+## Step registration rules
+
+The runtime depends on these invariants:
+- at least one step must be discovered
+- every step must have a non-empty name and version
+- step names must be unique
+- every step must have exactly one handler
+- dependency graphs must be valid
+
+Those rules are enforced during startup and registry construction.
+
+## State storage
+
+By default, the runtime registers `InMemoryProcessContextStore`.
+
+That is useful for:
+- tests
+- simple local experiments
+- scenarios where state does not need to survive restarts
+
+For durable state, replace the default `IProcessContextStore` with a provider-backed implementation.
+
+Example using SQLite:
+
+```csharp
+builder.Services.AddKaleido()
+    .AddAssembly(typeof(Program).Assembly)
+    .AddAssembly(typeof(MyProcessStep).Assembly)
+    .AddParticipant()
+        .UseSqliteProcessContextStore(
+            "Data Source=my-process.sqlite");
 ```
 
-Process metadata describes:
+Provider extension: <ref_snippet file="C:\Repos\Kaleido\src\Process\Providers\SQLite\SqliteProcessContextStoreServiceCollectionExtensions.cs" lines="8-31" />.
 
-- Available Steps
-- Required Inputs
-- Validation Requirements
-- Step Dependencies
-- Execution Contracts
+## Typed vs untyped step results
 
----
+Use:
+- `IProcessStepHandler<TStep>` when a step only needs to advance state or report messages
+- `IProcessStepHandler<TStep, TResult>` when a step should also return a typed payload to the caller
 
-## Why Use Process?
+Real typed-result example: <ref_snippet file="C:\Repos\Kaleido\samples\PriorAuth\Intake.Artifacts\Process\Handlers\CaptureRequestedServiceHandler.cs" lines="13-23" />.
 
-Business actions are often more complex than simply executing an API.
+## What this project does not do
 
-Consumers need to understand:
+This project does **not** own:
+- the public contract definitions for steps, state, and handlers
+- HTTP endpoint mapping
+- transport request/response contracts
 
-- What actions are available
-- When actions are available
-- What information is required
-- How requests should be validated
+Those live in:
+- [`../Abstractions/README.md`](../Abstractions/README.md)
+- [`../AspNetCore/README.md`](../AspNetCore/README.md)
 
-Process provides a consistent way to expose this information while maintaining clear business contracts.
+## Where to look
 
----
-
-## Validation
-
-Process supports metadata-driven validation.
-
-Validation metadata may define:
-
-- Required values
-- String length constraints
-- Range constraints
-
-Requests can be validated before execution, providing immediate feedback when required inputs are missing or invalid.
-
-Validation protects business contracts while improving the consumer experience.
-
----
-
-## Discoverability
-
-A core goal of Process is discoverability.
-
-Consumers should not be required to inspect source code, reverse engineer APIs, or search through documentation to determine which business actions are available.
-
-Process metadata allows consumers to discover:
-
-- Available Processes
-- Available Steps
-- Input Fields
-- Validation Requirements
-- Execution Capabilities
-- Step Relationships
-
-Consumers can understand business contracts without requiring prior knowledge of implementation details.
-
----
-
-## Metadata
-
-Metadata is a first-class concept within Process.
-
-Metadata is used to describe:
-
-- Business Actions
-- Input Fields
-- Validation Requirements
-- Execution Contracts
-- Dependencies
-- Availability Rules
-
-Metadata is intended to guide consumers and tooling.
-
-It provides a consistent mechanism for understanding how business actions should be executed and validated.
-
----
-
-## Example
-
-Consider a simple ordering process:
-
-```text
-Create Cart
-    ↓
-Add Item To Cart
-    ↓
-Submit Order
-```
-
-Each step exposes:
-
-- Required inputs
-- Validation requirements
-- Execution metadata
-
-Consumers can discover and execute these actions through a consistent contract.
-
----
-
-## Long Running Processes
-
-Some business actions complete immediately.
-
-Others may span multiple stages and participants.
-
-Examples include:
-
-```text
-Prior Authorization
-
-Claims Processing
-
-Enrollment
-
-Case Management
-```
-
-Process provides a consistent model for exposing both simple and complex business actions while maintaining the same execution and metadata experience.
-
----
-
-## Consumer Experience
-
-Process metadata can be used to build consistent consumer experiences.
-
-Examples include:
-
-- Validation experiences
-- Documentation tools
-- Process explorers
-- Administrative applications
-- Business user applications
-
-Process metadata is intended to guide consumers and tooling rather than automatically generate applications.
-
----
-
-## Documentation
-
-Additional documentation is available within the `/docs/process` folder.
-
-Suggested reading:
-
-- Process Overview
-- Creating a Process
-- Creating a Step
-- Metadata
-- Validation
-- Dependencies
-- Process State
+- [`ParticipantServiceCollectionExtensions`](./ParticipantServiceCollectionExtensions.cs)
+- [`ParticipantRuntime`](./Participant/ParticipantRuntime.cs)
+- [`ProcessStepRegistry`](./Participant/Registry/ProcessStepRegistry.cs)
+- [`ExecutionPlanner`](./Participant/Planning/ExecutionPlanner.cs)
+- [`ExecutionProcessor`](./Participant/Execution/ProcessExecutor.cs)
+- [`ProcessStateUpdater`](./Participant/Context/ProcessStateUpdater.cs)
