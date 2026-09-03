@@ -1,5 +1,5 @@
-using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Planning;
+using Kaleido.Process.Planning;
+using Kaleido.Process;
 
 namespace Kaleido.Process.Eventing;
 

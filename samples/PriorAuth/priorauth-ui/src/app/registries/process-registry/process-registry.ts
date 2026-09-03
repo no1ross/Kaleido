@@ -9,7 +9,7 @@ import {
 } from '../registry-catalog';
 import {
     ProcessFieldConstraintMetadata,
-    ProcessParticipantRegistryRecord,
+    ProcessProcessorRegistryRecord,
     ProcessStepRegistryRecord,
     ProcessStepSummary
 } from '../../kaleido/models/process-registry';
@@ -29,12 +29,12 @@ export class ProcessRegistryViewer {
         this.registryCatalog.loadState();
 
     selectedService?: ServiceRegistrySnapshot;
-    selectedParticipant?: ProcessParticipantRegistryRecord;
+    selectedProcessor?: ProcessProcessorRegistryRecord;
     selectedStep?: ProcessStepRegistryRecord;
 
     refresh(): void {
         this.selectedService = undefined;
-        this.selectedParticipant = undefined;
+        this.selectedProcessor = undefined;
         this.selectedStep = undefined;
         this.registryCatalog.refresh();
     }
@@ -43,24 +43,24 @@ export class ProcessRegistryViewer {
         snapshot: ServiceRegistrySnapshot
     ): void {
         this.selectedService = snapshot;
-        this.selectedParticipant = snapshot.process.data?.[0];
-        this.selectedStep = this.selectedParticipant?.steps[0];
+        this.selectedProcessor = snapshot.process.data?.[0];
+        this.selectedStep = this.selectedProcessor?.steps[0];
     }
 
-    selectParticipant(
-        participant: ProcessParticipantRegistryRecord
+    selectProcessor(
+        processor: ProcessProcessorRegistryRecord
     ): void {
-        this.selectedParticipant = participant;
-        this.selectedStep = participant.steps[0];
+        this.selectedProcessor = processor;
+        this.selectedStep = processor.steps[0];
     }
 
     selectStep(
         snapshot: ServiceRegistrySnapshot,
-        participant: ProcessParticipantRegistryRecord,
+        processor: ProcessProcessorRegistryRecord,
         step: ProcessStepRegistryRecord
     ): void {
         this.selectedService = snapshot;
-        this.selectedParticipant = participant;
+        this.selectedProcessor = processor;
         this.selectedStep = step;
     }
 
@@ -77,20 +77,20 @@ export class ProcessRegistryViewer {
                 ?? processSnapshots[0];
         }
 
-        if (!this.selectedParticipant) {
-            this.selectedParticipant =
+        if (!this.selectedProcessor) {
+            this.selectedProcessor =
                 this.selectedService?.process.data?.[0];
         }
 
         if (!this.selectedStep) {
             this.selectedStep =
-                this.selectedParticipant?.steps[0];
+                this.selectedProcessor?.steps[0];
         }
     }
 
     getParticipants(
         snapshot: ServiceRegistrySnapshot
-    ): readonly ProcessParticipantRegistryRecord[] {
+    ): readonly ProcessProcessorRegistryRecord[] {
         return snapshot.process.data ?? [];
     }
 
@@ -99,14 +99,14 @@ export class ProcessRegistryViewer {
     ): number {
         return snapshots.reduce(
             (sum, snapshot) =>
-                sum + (snapshot.process.data?.reduce((inner, participant) => inner + participant.steps.length, 0) ?? 0),
+                sum + (snapshot.process.data?.reduce((inner, processor) => inner + processor.steps.length, 0) ?? 0),
             0);
     }
 
     getInitialStepNames(
-        participant: ProcessParticipantRegistryRecord
+        processor: ProcessProcessorRegistryRecord
     ): string {
-        return participant.initialSteps
+        return processor.initialSteps
             .map((step: ProcessStepSummary) => step.displayName ?? step.name)
             .join(', ');
     }

@@ -1,4 +1,4 @@
-﻿using Kaleido.Process.Participant.Context;
+﻿using Kaleido.Process.Context;
 using Kaleido.Process.Providers.SQLite.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +8,7 @@ internal sealed class SqliteProcessContextStore(
     SqliteProcessContextDbContext dbContext)
     : IProcessContextStore
 {
-    public async Task<ParticipantContext?> LoadAsync(
+    public async Task<ProcessorContext?> LoadAsync(
         Guid processId,
         CancellationToken cancellationToken = default)
     {
@@ -26,19 +26,19 @@ internal sealed class SqliteProcessContextStore(
 
         if (entity is null)
         {
-            return new ParticipantContext
+            return new ProcessorContext
             {
                 ProcessId =
                     processId
             };
         }
 
-        return ToParticipantContext(
+        return ToProcessorContext(
             entity);
     }
 
     public async Task SaveAsync(
-        ParticipantContext context,
+        ProcessorContext context,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(
@@ -160,10 +160,10 @@ internal sealed class SqliteProcessContextStore(
             cancellationToken);
     }
 
-    private static ParticipantContext ToParticipantContext(
+    private static ProcessorContext ToProcessorContext(
         ProcessContextEntity entity)
     {
-        return new ParticipantContext
+        return new ProcessorContext
         {
             ProcessId =
                 entity.ProcessId,

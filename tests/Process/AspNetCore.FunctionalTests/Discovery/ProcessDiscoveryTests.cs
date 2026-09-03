@@ -16,7 +16,7 @@ public sealed class ProcessDiscoveryTests
     }
 
     [Fact]
-    public async Task GetCatalog_ReturnsParticipantsWithInitialSteps()
+    public async Task GetCatalog_ReturnsProcessorsWithInitialSteps()
     {
         var response =
             await _client.GetAsync("/kaleido/processes");
@@ -28,13 +28,13 @@ public sealed class ProcessDiscoveryTests
 
         Assert.NotNull(contract);
 
-        var participant =
-            Assert.Single(contract.Participants);
+        var processor =
+            Assert.Single(contract.Processors);
 
-        Assert.Equal("test-participant", participant.Name);
-        Assert.Contains(participant.InitialSteps, x => x.Name == RuntimeStepNames.Root);
-        Assert.Contains(participant.InitialSteps, x => x.Name == RuntimeStepNames.RequiredRoot);
-        Assert.Contains(participant.InitialSteps, x => x.Name == RuntimeStepNames.InvalidRequiredRoot);
+        Assert.Equal("test-processor", processor.Name);
+        Assert.Contains(processor.InitialSteps, x => x.Name == RuntimeStepNames.Root);
+        Assert.Contains(processor.InitialSteps, x => x.Name == RuntimeStepNames.RequiredRoot);
+        Assert.Contains(processor.InitialSteps, x => x.Name == RuntimeStepNames.InvalidRequiredRoot);
     }
 
     [Fact]

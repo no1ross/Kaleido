@@ -1,4 +1,4 @@
-using Kaleido.Process.Participant;
+using Kaleido.Process;
 using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
 using Kaleido.Samples.PriorAuth.Configuration.Artifacts;
 

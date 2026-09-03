@@ -38,7 +38,7 @@ import {
 } from '../models/order-models';
 
 import { RequestContextService } from '../../kaleido/services/request-context-service';
-import { ExecuteStepRequest } from '../models/participant-process-request';
+import { ExecuteStepRequest } from '../models/processor-process-request';
 import { SubmitOrderStep, SubmitOrderResponse } from '../models/steps/submit-order';
 import { ProcessService, ProcessErrorResponse } from '../../kaleido/services/process-service';
 

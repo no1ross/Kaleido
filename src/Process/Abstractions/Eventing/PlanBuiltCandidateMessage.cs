@@ -1,5 +1,3 @@
-using Kaleido.Process.Participant;
-
 namespace Kaleido.Process.Eventing;
 
 public sealed record PlanBuiltCandidateMessage

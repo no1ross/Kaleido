@@ -1,13 +1,12 @@
 ﻿using Kaleido.Process.AspNetCore.Contracts;
-using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Context;
-using Kaleido.Process.Participant.Execution;
+using Kaleido.Process.Context;
+using Kaleido.Process.Execution;
 
 namespace Kaleido.Process.AspNetCore.Srevices;
 
 public interface IProcessStateService
 {
-    Task<ParticipantProcessView?> GetCurrentState(
+    Task<ProcessorProcessView?> GetCurrentState(
         Guid processId,
         CancellationToken cancellationToken);
 }
@@ -15,16 +14,16 @@ public interface IProcessStateService
 public class ProcessStateService(IProcessContextStore contextStore)
     : IProcessStateService
 {
-    public async Task<ParticipantProcessView?> GetCurrentState(Guid processId, CancellationToken cancellationToken)
+    public async Task<ProcessorProcessView?> GetCurrentState(Guid processId, CancellationToken cancellationToken)
     {
         var context = await contextStore.LoadAsync(processId, cancellationToken);
         if (context == null) return null;
-        return ParticipantProcessViewMapper.ToView(context);
+        return ProcessorProcessViewMapper.ToView(context);
     }
 }
 
 
-public sealed record ParticipantProcessView
+public sealed record ProcessorProcessView
 {
     public Guid ProcessId
     {
@@ -63,7 +62,7 @@ public sealed record ParticipantProcessView
         init;
     }
 
-    public IReadOnlyCollection<ParticipantProcessStepView> Steps
+    public IReadOnlyCollection<ProcessorProcessStepView> Steps
     {
         get;
         init;
@@ -71,7 +70,7 @@ public sealed record ParticipantProcessView
         = [];
 }
 
-public sealed record ParticipantProcessStepView
+public sealed record ProcessorProcessStepView
 {
     public string StepName
     {
@@ -98,12 +97,12 @@ public sealed record ParticipantProcessStepView
     }
 }
 
-internal static class ParticipantProcessViewMapper
+internal static class ProcessorProcessViewMapper
 {
-    public static ParticipantProcessView ToView(
-        ParticipantContext context)
+    public static ProcessorProcessView ToView(
+        ProcessorContext context)
     {
-        return new ParticipantProcessView
+        return new ProcessorProcessView
         {
             ProcessId =
                 context.ProcessId,
@@ -127,7 +126,7 @@ internal static class ParticipantProcessViewMapper
                 context.Steps
                     .OrderBy(x => x.StepName)
                     .Select(x =>
-                        new ParticipantProcessStepView
+                        new ProcessorProcessStepView
                         {
                             StepName = x.StepName,
                             Version = x.Version,

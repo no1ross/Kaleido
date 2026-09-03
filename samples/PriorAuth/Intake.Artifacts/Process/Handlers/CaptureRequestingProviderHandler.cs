@@ -1,4 +1,4 @@
-using Kaleido.Process.Participant.Execution;
+using Kaleido.Process.Execution;
 using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data;
 using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data.Entities;
 using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;

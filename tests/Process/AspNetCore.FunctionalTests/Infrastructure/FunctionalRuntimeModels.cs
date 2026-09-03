@@ -1,6 +1,6 @@
 using Kaleido.Process.Attributes;
-using Kaleido.Process.Participant.Context;
-using Kaleido.Process.Participant.Execution;
+using Kaleido.Process.Execution;
+using Kaleido.Process.Context;
 
 namespace Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
 

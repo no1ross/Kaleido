@@ -9,7 +9,7 @@ import { ShoppingCartContextStateService } from '../services/shoppingcart-contex
 import { ECommerceStateService } from '../services/ecommerce-state-service';
 import { ShoppingCartDetailView, ShoppingCartViewParameters } from '../models/shopping-cart-models';
 import { RequestContextService } from '../../kaleido/services/request-context-service';
-import { ExecuteStepRequest } from '../models/participant-process-request';
+import { ExecuteStepRequest } from '../models/processor-process-request';
 import { ProcessService, ProcessErrorResponse } from '../../kaleido/services/process-service';
 import { RemoveCartItemStep, RemoveCartItemResponse } from '../models/steps/remove-item-from-cart';
 import { UpdateCartItemStep, UpdateCartItemResponse } from '../models/steps/update-cart-item';

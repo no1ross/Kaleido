@@ -28,20 +28,20 @@ Reference this project when you need to:
 
 ## Main entry points
 
-### `AddParticipantAspNetCore(...)`
+### `AddProcessorAspNetCore(...)`
 Adds the ASP.NET Core transport services for Process.
 
 This extension:
-- requires `AddParticipant()` to be called first
+- requires `AddProcessor()` to be called first
 - registers route options
 - adds routing and `IHttpContextAccessor`
 - registers execution and state services
 
-### `MapParticipant()`
+### `MapProcessor()`
 Publishes the Process endpoint set under the configured route prefix.
 
 This extension maps:
-- participant catalog endpoint
+- processor catalog endpoint
 - full step catalog endpoint
 - full registry endpoint
 - per-step metadata endpoints
@@ -57,14 +57,14 @@ See <ref_file file="C:\Repos\Kaleido\src\Process\AspNetCore\ProcessEndpointRoute
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MyProcessStep).Assembly)
-    .AddParticipant()
-        .AddParticipantAspNetCore(options =>
+    .AddProcessor()
+        .AddProcessorAspNetCore(options =>
         {
             options.RoutePrefix = "my-service";
         });
 
 var app = builder.Build();
-app.MapParticipant();
+app.MapProcessor();
 ```
 
 Real example: <ref_snippet file="C:\Repos\Kaleido\samples\PriorAuth\Intake\Program.cs" lines="123-145" />.
@@ -73,7 +73,7 @@ Real example: <ref_snippet file="C:\Repos\Kaleido\samples\PriorAuth\Intake\Progr
 
 The transport layer publishes a step-centric discovery model.
 
-### Participant catalog
+### Processor catalog
 Returns only the initial steps that can begin a new process instance.
 
 ### Step catalog

@@ -11,11 +11,11 @@ public static class KaleidoAspNetCoreHeaders
     public const string ProcessId =
         "X-Kaleido-Process-Id";
 
-    public const string ParticipantId =
-        "X-Kaleido-Participant-Id";
+    public const string ProcessorId =
+        "X-Kaleido-Processor-Id";
 
-    public const string ParticipantInstanceId =
-        "X-Kaleido-Participant-Instance-Id";
+    public const string ProcessorInstanceId =
+        "X-Kaleido-Processor-Instance-Id";
 
     public const string OrchestratorId =
         "X-Kaleido-Orchestrator-Id";
@@ -43,15 +43,15 @@ internal static class KaleidoAspNetCoreCorrelation
                     context,
                     KaleidoAspNetCoreHeaders.ProcessId),
 
-            ParticipantId =
+            ProcessorId =
                 ReadString(
                     context,
-                    KaleidoAspNetCoreHeaders.ParticipantId),
+                    KaleidoAspNetCoreHeaders.ProcessorId),
 
-            ParticipantInstanceId =
+            ProcessorInstanceId =
                 ReadGuid(
                     context,
-                    KaleidoAspNetCoreHeaders.ParticipantInstanceId),
+                    KaleidoAspNetCoreHeaders.ProcessorInstanceId),
 
             OrchestratorId =
                 ReadString(

@@ -1,11 +1,10 @@
 using Kaleido.Process.AspNetCore.Srevices;
-using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Context;
-using Kaleido.Process.Participant.Execution;
+using Kaleido.Process.Execution;
+using Kaleido.Process.Context;
 
 namespace Kaleido.Process.AspNetCore.Tests;
 
-public sealed class ParticipantProcessViewMapperTests
+public sealed class ProcessorProcessViewMapperTests
 {
     [Fact]
     public void ToView_MapsProcessStateAndOrdersStepsByName()
@@ -16,7 +15,7 @@ public sealed class ParticipantProcessViewMapperTests
         var stepBLastExecuted = DateTimeOffset.UtcNow.AddMinutes(-2);
 
         var context =
-            new ParticipantContext
+            new ProcessorContext
             {
                 ProcessId = processId,
                 LatestRequestId = "REQ-001",
@@ -44,7 +43,7 @@ public sealed class ParticipantProcessViewMapperTests
             };
 
         var result =
-            ParticipantProcessViewMapper.ToView(context);
+            ProcessorProcessViewMapper.ToView(context);
 
         Assert.Equal(processId, result.ProcessId);
         Assert.Equal(ProcessExecutionState.AwaitingStepSelection, result.State);

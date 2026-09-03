@@ -1,5 +1,4 @@
-﻿using Kaleido.Process.Participant;
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace Kaleido.Process.AspNetCore.Contracts;
 
@@ -72,8 +71,8 @@ public sealed record ExecuteStepRequest<TProcessStep>
             RequestId =
                 requestId,
 
-            Participant =
-                new ParticipantRequest
+            Processor =
+                new ProcessorRequest
                 {
                     Steps =
                         new Dictionary<string, object?>(

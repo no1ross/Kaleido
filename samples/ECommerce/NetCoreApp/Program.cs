@@ -26,14 +26,14 @@ builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(AddItemToCartStep).Assembly)
     .AddAssembly(typeof(ProductCatalogQueryContext).Assembly)
-    .AddParticipant(o =>
+    .AddProcessor(o =>
         {
             o.Name = "ecommerce";
-            o.Description = "ECommerce participant workflow.";
+            o.Description = "ECommerce processor workflow.";
             o.Version = "1.0.0";
             o.DisplayName = "ECommerce";
         })
-        .AddParticipantAspNetCore()
+        .AddProcessorAspNetCore()
         .UseSqliteProcessContextStore("Data Source=kaleido-sample-process.sqlite")
     .AddQueryable()
         .AddQueryableAspNetCore();
@@ -73,7 +73,7 @@ app.UseCors("AllowAll");
 //        app.Services);
 
 app.MapQueryable();
-app.MapParticipant();
+app.MapProcessor();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

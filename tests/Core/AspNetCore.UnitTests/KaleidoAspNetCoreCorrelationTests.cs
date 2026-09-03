@@ -17,8 +17,8 @@ public sealed class KaleidoAspNetCoreCorrelationTests
     {
         Assert.Equal("X-Kaleido-Request-Id", KaleidoAspNetCoreHeaders.RequestId);
         Assert.Equal("X-Kaleido-Process-Id", KaleidoAspNetCoreHeaders.ProcessId);
-        Assert.Equal("X-Kaleido-Participant-Id", KaleidoAspNetCoreHeaders.ParticipantId);
-        Assert.Equal("X-Kaleido-Participant-Instance-Id", KaleidoAspNetCoreHeaders.ParticipantInstanceId);
+        Assert.Equal("X-Kaleido-Processor-Id", KaleidoAspNetCoreHeaders.ProcessorId);
+        Assert.Equal("X-Kaleido-Processor-Instance-Id", KaleidoAspNetCoreHeaders.ProcessorInstanceId);
         Assert.Equal("X-Kaleido-Orchestrator-Id", KaleidoAspNetCoreHeaders.OrchestratorId);
         Assert.Equal("X-Kaleido-Orchestrator-Instance-Id", KaleidoAspNetCoreHeaders.OrchestratorInstanceId);
     }
@@ -27,14 +27,14 @@ public sealed class KaleidoAspNetCoreCorrelationTests
     public void Create_MapsHeadersToCorrelationContext()
     {
         var processId = Guid.NewGuid();
-        var participantInstanceId = Guid.NewGuid();
+        var processorInstanceId = Guid.NewGuid();
         var orchestratorInstanceId = Guid.NewGuid();
 
         var context = new DefaultHttpContext();
         context.Request.Headers[KaleidoAspNetCoreHeaders.RequestId] = "REQ-001";
         context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessId] = processId.ToString();
-        context.Request.Headers[KaleidoAspNetCoreHeaders.ParticipantId] = "participant-a";
-        context.Request.Headers[KaleidoAspNetCoreHeaders.ParticipantInstanceId] = participantInstanceId.ToString();
+        context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessorId] = "processor-a";
+        context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessorInstanceId] = processorInstanceId.ToString();
         context.Request.Headers[KaleidoAspNetCoreHeaders.OrchestratorId] = "orchestrator-a";
         context.Request.Headers[KaleidoAspNetCoreHeaders.OrchestratorInstanceId] = orchestratorInstanceId.ToString();
 
@@ -42,8 +42,8 @@ public sealed class KaleidoAspNetCoreCorrelationTests
 
         Assert.Equal("REQ-001", result.RequestId);
         Assert.Equal(processId, result.ProcessId);
-        Assert.Equal("participant-a", result.ParticipantId);
-        Assert.Equal(participantInstanceId, result.ParticipantInstanceId);
+        Assert.Equal("processor-a", result.ProcessorId);
+        Assert.Equal(processorInstanceId, result.ProcessorInstanceId);
         Assert.Equal("orchestrator-a", result.OrchestratorId);
         Assert.Equal(orchestratorInstanceId, result.OrchestratorInstanceId);
     }
@@ -54,8 +54,8 @@ public sealed class KaleidoAspNetCoreCorrelationTests
         var context = new DefaultHttpContext();
         context.Request.Headers[KaleidoAspNetCoreHeaders.RequestId] = " ";
         context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessId] = " ";
-        context.Request.Headers[KaleidoAspNetCoreHeaders.ParticipantId] = " ";
-        context.Request.Headers[KaleidoAspNetCoreHeaders.ParticipantInstanceId] = " ";
+        context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessorId] = " ";
+        context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessorInstanceId] = " ";
         context.Request.Headers[KaleidoAspNetCoreHeaders.OrchestratorId] = " ";
         context.Request.Headers[KaleidoAspNetCoreHeaders.OrchestratorInstanceId] = " ";
 
@@ -63,8 +63,8 @@ public sealed class KaleidoAspNetCoreCorrelationTests
 
         Assert.Null(result.RequestId);
         Assert.Null(result.ProcessId);
-        Assert.Null(result.ParticipantId);
-        Assert.Null(result.ParticipantInstanceId);
+        Assert.Null(result.ProcessorId);
+        Assert.Null(result.ProcessorInstanceId);
         Assert.Null(result.OrchestratorId);
         Assert.Null(result.OrchestratorInstanceId);
     }

@@ -1,6 +1,6 @@
 import { PriorAuthServiceRouteConfig } from '../../../configuration/urlConfig';
 
-export interface ProcessParticipantRegistryRecord {
+export interface ProcessProcessorRegistryRecord {
     name: string;
     version: string;
     displayName: string;
@@ -29,14 +29,14 @@ export interface ProcessStepRegistryRecord {
     metadataUrl: string;
 }
 
-export interface ServiceProcessParticipantRegistryRecord {
+export interface ServiceProcessProcessorRegistryRecord {
     service: PriorAuthServiceRouteConfig;
-    participant: ProcessParticipantRegistryRecord;
+    processor: ProcessProcessorRegistryRecord;
 }
 
 export interface ServiceProcessStepRegistryRecord {
     service: PriorAuthServiceRouteConfig;
-    participant: ProcessParticipantRegistryRecord;
+    processor: ProcessProcessorRegistryRecord;
     step: ProcessStepRegistryRecord;
 }
 

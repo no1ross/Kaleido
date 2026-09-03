@@ -1,7 +1,6 @@
 using Kaleido.Process.AspNetCore.Srevices;
-using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Context;
-using Kaleido.Process.Participant.Execution;
+using Kaleido.Process.Context;
+using Kaleido.Process.Execution;
 
 namespace Kaleido.Process.AspNetCore.Tests;
 
@@ -18,7 +17,7 @@ public sealed class ProcessStateServiceTests
                 x.LoadAsync(
                     It.IsAny<Guid>(),
                     It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ParticipantContext?)null);
+            .ReturnsAsync((ProcessorContext?)null);
 
         var service =
             new ProcessStateService(
@@ -39,7 +38,7 @@ public sealed class ProcessStateServiceTests
             Guid.NewGuid();
 
         var context =
-            new ParticipantContext
+            new ProcessorContext
             {
                 ProcessId = processId,
                 State = ProcessExecutionState.AwaitingStepSelection,

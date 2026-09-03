@@ -13,10 +13,10 @@ See also:
 This project contains:
 - process-step declaration attributes such as [`ProcessStepAttribute`](./Attributes/ProcessStepAttribute.cs)
 - relationship attributes such as [`DependsOnStepAttribute`](./Attributes/DependsOnStepAttribute.cs), `AvailableAfterAttribute`, `AvailableUntilAttribute`, and `RepeatableAttribute`
-- participant runtime contracts such as [`IParticipantRuntime`](./Participant/IParticipantRuntime.cs)
-- step handler contracts such as [`IProcessStepHandler`](./Participant/Execution/IProcessStepHandler.cs)
-- durable state contracts such as [`IProcessContextStore`](./Participant/Context/IProcessContextStore.cs)
-- registry contracts such as [`IProcessStepRegistry`](./Participant/Registry/IProcessStepRegistry.cs)
+- processor runtime contracts such as [`IProcessorRuntime`](./Processor/IProcessorRuntime.cs)
+- step handler contracts such as [`IProcessStepHandler`](./Processor/Execution/IProcessStepHandler.cs)
+- durable state contracts such as [`IProcessContextStore`](./Processor/Context/IProcessContextStore.cs)
+- registry contracts such as [`IProcessStepRegistry`](./Processor/Registry/IProcessStepRegistry.cs)
 - planning and execution result types
 - event contracts and observability constants
 
@@ -37,14 +37,14 @@ Use `[ProcessStep]` to declare a business action and supply its identity/documen
 ### Step relationships
 Use relationship attributes to define prerequisites and availability rules between steps.
 
-### Participant runtime
-`IParticipantRuntime` is the runtime execution surface for a process request.
+### Processor runtime
+`IProcessorRuntime` is the runtime execution surface for a process request.
 
 ### Step handlers
 `IProcessStepHandler<TStep>` and `IProcessStepHandler<TStep, TResult>` define the business execution contract for a single step.
 
-### Participant context
-`ParticipantContext` represents resumable durable state for a process instance, not full audit history.
+### Processor context
+`ProcessorContext` represents resumable durable state for a process instance, not full audit history.
 
 ## What this project does not do
 
@@ -63,7 +63,7 @@ Those live in:
 
 A service using Process will usually:
 1. define steps and handlers against the abstractions in this project
-2. register assemblies and call `AddParticipant()` from the runtime project
-3. optionally add `AddParticipantAspNetCore(...)` from the transport project
+2. register assemblies and call `AddProcessor()` from the runtime project
+3. optionally add `AddProcessorAspNetCore(...)` from the transport project
 
 For a full setup example, see the parent README: <ref_file file="C:\Repos\Kaleido\src\Process\README.md" />.

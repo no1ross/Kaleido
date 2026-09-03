@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-import { ExecuteStepRequest } from '../models/participant-process-request';
+import { ExecuteStepRequest } from '../models/processor-process-request';
 import {
     ProcessFieldConstraintMetadata,
     ProcessStepFieldMetadata,

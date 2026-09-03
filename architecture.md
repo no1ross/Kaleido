@@ -328,7 +328,7 @@ Evaluation logic
 State mutation logic
 Graph logic
 Planning Pipeline
-ParticipantRequest
+ProcessorRequest
         ↓
 ExecutionCandidateBuilder
         ↓
@@ -367,7 +367,7 @@ State exists to support continuation.
 
 State is not history.
 
-ParticipantContext
+ProcessorContext
 ProcessId
 LatestRequestId
 State
@@ -597,7 +597,7 @@ Parallel execution
 Execution priorities
 Execution groups
 Dynamic metadata refresh
-Participant routing enhancements
+Processor routing enhancements
 Advanced event contracts
 Generated endpoints
 OpenAPI generation

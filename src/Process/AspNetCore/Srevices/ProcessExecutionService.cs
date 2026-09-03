@@ -1,7 +1,6 @@
 ﻿using Kaleido.AspNetCore.Observability;
 using Kaleido.Process.AspNetCore.Contracts;
-using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Registry;
+using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 
@@ -26,14 +25,14 @@ public class ProcessExecutionService : IProcessExecutionService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IProcessStepRegistry _registry;
-    private readonly IParticipantRuntime _runtime;
+    private readonly IProcessorRuntime _runtime;
     private readonly ProcessRouteOptions _routeOptions;
 
 
     public ProcessExecutionService(
         IHttpContextAccessor httpContextAccessor,
         IProcessStepRegistry registry,
-        IParticipantRuntime runtime,
+        IProcessorRuntime runtime,
         ProcessRouteOptions routeOptions
         )
     {
@@ -53,8 +52,8 @@ public class ProcessExecutionService : IProcessExecutionService
             {
                 ProcessId = request.ProcessId,
                 RequestId = request.RequestId,
-                Participant =
-                    new ParticipantRequest
+                Processor =
+                    new ProcessorRequest
                     {
                         Steps = request.Steps.ToDictionary(
                             x => x.StepName,

@@ -1,5 +1,4 @@
-﻿using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Execution;
+﻿using Kaleido.Process.Execution;
 
 namespace Kaleido.Process.Providers.SQLite.Entities;
 

@@ -1,4 +1,4 @@
-﻿using Kaleido.Process.Participant;
+﻿using Kaleido.Process;
 using Kaleido.Samples.ECommerce.Process;
 
 namespace Kaleido.Samples.ECommerce.Process.Responses;

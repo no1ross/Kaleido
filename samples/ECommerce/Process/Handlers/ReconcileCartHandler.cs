@@ -1,5 +1,5 @@
-﻿using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Execution;
+﻿using Kaleido.Process;
+using Kaleido.Process.Execution;
 using Kaleido.Samples.ECommerce.Data;
 using Kaleido.Samples.ECommerce.Data.Entities;
 using Kaleido.Samples.ECommerce.Process.Steps;

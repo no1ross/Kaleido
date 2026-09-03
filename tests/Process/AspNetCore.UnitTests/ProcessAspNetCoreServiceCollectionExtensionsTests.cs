@@ -1,9 +1,8 @@
 using Kaleido.Process.AspNetCore;
 using Kaleido.Process.AspNetCore.Srevices;
-using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Context;
-using Kaleido.Process.Participant.Execution;
-using Kaleido.Process.Participant.Planning;
+using Kaleido.Process.Context;
+using Kaleido.Process.Execution;
+using Kaleido.Process.Planning;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -14,60 +13,60 @@ namespace Kaleido.Process.AspNetCore.Tests;
 public sealed class ProcessAspNetCoreServiceCollectionExtensionsTests
 {
     [Fact]
-    public void AddParticipantAspNetCore_WhenBuilderIsNull_Throws()
+    public void AddProcessorAspNetCore_WhenBuilderIsNull_Throws()
     {
-        IParticipantBuilder? builder = null;
+        IProcessorBuilder? builder = null;
 
         Assert.Throws<ArgumentNullException>(() =>
-            builder!.AddParticipantAspNetCore());
+            builder!.AddProcessorAspNetCore());
     }
 
     [Fact]
-    public void AddParticipantAspNetCore_WhenParticipantIsNotRegistered_Throws()
+    public void AddProcessorAspNetCore_WhenProcessorIsNotRegistered_Throws()
     {
         var builder =
-            new TestParticipantBuilder(
+            new TestProcessorBuilder(
                 new ServiceCollection(),
                 [typeof(ProcessAspNetCoreServiceCollectionExtensionsTests).Assembly]);
 
         var exception =
             Assert.Throws<InvalidOperationException>(() =>
-                builder.AddParticipantAspNetCore());
+                builder.AddProcessorAspNetCore());
 
         Assert.Equal(
-            "AddParticipant must be called before AddParticipantAspNetCore.",
+            "AddProcessor must be called before AddProcessorAspNetCore.",
             exception.Message);
     }
 
     [Fact]
-    public void AddParticipantAspNetCore_ReturnsSameBuilder()
+    public void AddProcessorAspNetCore_ReturnsSameBuilder()
     {
         var services =
             CreateServices();
 
         var builder =
-            new TestParticipantBuilder(
+            new TestProcessorBuilder(
                 services,
                 [typeof(ProcessAspNetCoreServiceCollectionExtensionsTests).Assembly]);
 
         var result =
-            builder.AddParticipantAspNetCore();
+            builder.AddProcessorAspNetCore();
 
         Assert.Same(builder, result);
     }
 
     [Fact]
-    public void AddParticipantAspNetCore_RegistersConfiguredRouteOptions()
+    public void AddProcessorAspNetCore_RegistersConfiguredRouteOptions()
     {
         var services =
             CreateServices();
 
         var builder =
-            new TestParticipantBuilder(
+            new TestProcessorBuilder(
                 services,
                 [typeof(ProcessAspNetCoreServiceCollectionExtensionsTests).Assembly]);
 
-        builder.AddParticipantAspNetCore(options =>
+        builder.AddProcessorAspNetCore(options =>
         {
             options.RoutePrefix = "/custom/processes";
         });
@@ -84,17 +83,17 @@ public sealed class ProcessAspNetCoreServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddParticipantAspNetCore_RegistersRoutingServices()
+    public void AddProcessorAspNetCore_RegistersRoutingServices()
     {
         var services =
             CreateServices();
 
         var builder =
-            new TestParticipantBuilder(
+            new TestProcessorBuilder(
                 services,
                 [typeof(ProcessAspNetCoreServiceCollectionExtensionsTests).Assembly]);
 
-        builder.AddParticipantAspNetCore();
+        builder.AddProcessorAspNetCore();
 
         using var provider =
             services.BuildServiceProvider();
@@ -104,17 +103,17 @@ public sealed class ProcessAspNetCoreServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddParticipantAspNetCore_RegistersExecutionAndStateServices()
+    public void AddProcessorAspNetCore_RegistersExecutionAndStateServices()
     {
         var services =
             CreateServices();
 
         var builder =
-            new TestParticipantBuilder(
+            new TestProcessorBuilder(
                 services,
                 [typeof(ProcessAspNetCoreServiceCollectionExtensionsTests).Assembly]);
 
-        builder.AddParticipantAspNetCore();
+        builder.AddProcessorAspNetCore();
 
         Assert.Contains(
             services,
@@ -132,14 +131,14 @@ public sealed class ProcessAspNetCoreServiceCollectionExtensionsTests
         var services =
             new ServiceCollection();
 
-        services.AddSingleton<IParticipantRuntime, FakeParticipantRuntime>();
+        services.AddSingleton<IProcessorRuntime, FakeProcessorRuntime>();
 
         return services;
     }
 
-    private sealed class TestParticipantBuilder : IParticipantBuilder
+    private sealed class TestProcessorBuilder : IProcessorBuilder
     {
-        public TestParticipantBuilder(
+        public TestProcessorBuilder(
             IServiceCollection services,
             IReadOnlyCollection<Assembly> assemblies)
         {
@@ -152,9 +151,9 @@ public sealed class ProcessAspNetCoreServiceCollectionExtensionsTests
         public IReadOnlyCollection<Assembly> Assemblies { get; }
     }
 
-    private sealed class FakeParticipantRuntime : IParticipantRuntime
+    private sealed class FakeProcessorRuntime : IProcessorRuntime
     {
-        public Task<ParticipantProcessResult> ExecuteAsync(
+        public Task<ProcessorProcessResult> ExecuteAsync(
             ProcessRequest request,
             CancellationToken cancellationToken = default)
         {

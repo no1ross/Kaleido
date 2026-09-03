@@ -176,8 +176,8 @@ builder.Services
         .AddAssembly(typeof(Program).Assembly)
         .AddAssembly(typeof(AddItemToCartStep).Assembly)
         .AddAssembly(typeof(ProductCatalogQueryContext).Assembly)
-        .AddParticipant()
-            .AddParticipantAspNetCore()
+        .AddProcessor()
+            .AddProcessorAspNetCore()
             .UseSqliteProcessContextStore(
                 "Data Source=kaleido-sample-process.sqlite")
         .AddQueryable()

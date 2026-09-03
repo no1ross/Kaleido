@@ -6,9 +6,9 @@ import { Observable, catchError, map, throwError } from 'rxjs';
 import {
     ProcessExecutionResponse,
     ProcessMessage
-} from '../models/participant-process-result';
+} from '../models/processor-process-result';
 import { CaptureRequestedServiceResponse } from '../models/questionnaire';
-import { ExecuteStepRequest } from '../models/participant-process-request';
+import { ExecuteStepRequest } from '../models/processor-process-request';
 import { RequestContextService } from './request-context-service';
 import { ProcessRegistry } from './process-registry';
 import {
@@ -139,7 +139,7 @@ export class ProcessService {
         console.group(title);
 
         console.log(
-            'Participant Process',
+            'Processor Process',
             result.processId);
 
         console.log(

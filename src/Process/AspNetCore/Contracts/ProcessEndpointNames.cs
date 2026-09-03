@@ -2,7 +2,7 @@
 
 public static class ProcessEndpointNames
 {
-    public const string ParticipantCatalogEndpointName =
+    public const string ProcessorCatalogEndpointName =
         "KaleidoProcessCatalog";
 
     public const string ExecuteEndpointName =

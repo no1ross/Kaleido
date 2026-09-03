@@ -1,25 +1,23 @@
-using Kaleido.Process.Eventing;
-using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Context;
-using Kaleido.Process.Participant.Execution;
-using Kaleido.Process.Participant.Planning;
+using Kaleido.Process.Context;
+using Kaleido.Process.Execution;
+using Kaleido.Process.Planning;
 
-namespace Kaleido.Process;
+namespace Kaleido.Process.Eventing;
 
 internal interface IProcessEventFactory
 {
     ProcessCreated CreateProcessCreated(
-        ParticipantContext context,
+        ProcessorContext context,
         ProcessRequest request);
 
     PlanBuilt CreatePlanBuilt(
-        ParticipantContext context,
+        ProcessorContext context,
         ProcessRequest request,
         ExecutionPlanResult plan,
         int executableCount);
 
     StepCompleted CreateStepCompleted(
-        ParticipantContext context,
+        ProcessorContext context,
         StepCandidate candidate,
         ProcessExecutionOutcome outcome,
         ProcessStepInvokerResult result,
@@ -33,14 +31,14 @@ internal sealed class ProcessEventFactory
     : IProcessEventFactory
 {
     public ProcessCreated CreateProcessCreated(
-        ParticipantContext context,
+        ProcessorContext context,
         ProcessRequest request)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(request);
 
         var submittedStepNames =
-            request.Participant.Steps.Keys.ToArray();
+            request.Processor.Steps.Keys.ToArray();
 
         return new ProcessCreated
         {
@@ -55,7 +53,7 @@ internal sealed class ProcessEventFactory
     }
 
     public PlanBuilt CreatePlanBuilt(
-        ParticipantContext context,
+        ProcessorContext context,
         ProcessRequest request,
         ExecutionPlanResult plan,
         int executableCount)
@@ -65,7 +63,7 @@ internal sealed class ProcessEventFactory
         ArgumentNullException.ThrowIfNull(plan);
 
         var submittedStepNames =
-            request.Participant.Steps.Keys.ToArray();
+            request.Processor.Steps.Keys.ToArray();
 
         return new PlanBuilt
         {
@@ -103,7 +101,7 @@ internal sealed class ProcessEventFactory
     }
 
     public StepCompleted CreateStepCompleted(
-        ParticipantContext context,
+        ProcessorContext context,
         StepCandidate candidate,
         ProcessExecutionOutcome outcome,
         ProcessStepInvokerResult result,

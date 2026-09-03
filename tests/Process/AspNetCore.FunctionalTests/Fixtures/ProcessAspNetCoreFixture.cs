@@ -28,14 +28,14 @@ public sealed class ProcessAspNetCoreFixture
 
                         services.AddKaleido()
                             .AddAssembly(typeof(ProcessAspNetCoreFixture).Assembly)
-                            .AddParticipant(o =>
+                            .AddProcessor(o =>
                             {
-                                o.Name = "test-participant";
-                                o.Description = "Test participant.";
+                                o.Name = "test-processor";
+                                o.Description = "Test processor.";
                                 o.Version = "1.0.0";
-                                o.DisplayName = "Test Participant";
+                                o.DisplayName = "Test Processor";
                             })
-                            .AddParticipantAspNetCore();
+                            .AddProcessorAspNetCore();
 
                         services.ConfigureHttpJsonOptions(options =>
                         {
@@ -49,7 +49,7 @@ public sealed class ProcessAspNetCoreFixture
                         app.UseKaleidoExceptionHandling();
                         app.UseEndpoints(endpoints =>
                         {
-                            endpoints.MapParticipant();
+                            endpoints.MapProcessor();
                         });
                     });
                 })

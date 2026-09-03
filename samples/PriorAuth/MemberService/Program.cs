@@ -80,14 +80,14 @@ builder.Services.AddHealthChecks()
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MemberDbContext).Assembly)
-    .AddParticipant(o =>
+    .AddProcessor(o =>
         {
             o.Name = "member-service";
-            o.Description = "Member service participant.";
+            o.Description = "Member service processor.";
             o.Version = "1.0.0";
             o.DisplayName = "Member Service";
         })
-        .AddParticipantAspNetCore(o =>
+        .AddProcessorAspNetCore(o =>
         {
             o.RoutePrefix = "member";
         })
@@ -103,7 +103,7 @@ app.UseCors("AllowAll");
 
 app.MapHealthChecks("/health");
 app.MapQueryable();
-app.MapParticipant();
+app.MapProcessor();
 
 if (app.Environment.IsDevelopment())
 {

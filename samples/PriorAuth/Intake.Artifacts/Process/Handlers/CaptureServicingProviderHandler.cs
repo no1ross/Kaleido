@@ -1,4 +1,4 @@
-using Kaleido.Process.Participant.Execution;
+using Kaleido.Process.Execution;
 using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Handlers;

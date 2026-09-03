@@ -6,8 +6,4 @@
 	  <ProjectReference Include="..\Abstractions\Kaleido.Process.Abstractions.csproj" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="Coordinator\" />
-	</ItemGroup>
-
 </Project>

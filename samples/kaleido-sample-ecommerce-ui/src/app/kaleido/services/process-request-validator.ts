@@ -2,7 +2,7 @@ import {
     Injectable
 } from '@angular/core';
 
-import { ExecuteStepRequest,  } from '../../ecommerce/models/participant-process-request';
+import { ExecuteStepRequest } from '../../ecommerce/models/processor-process-request';
 import { ProcessStepFieldMetadata, ProcessFieldConstraintMetadata, ProcessStepRegistryRecord } from '../models/process-registry';
 
 export interface ProcessRequestValidationResult {

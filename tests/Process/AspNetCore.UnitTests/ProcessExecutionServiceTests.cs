@@ -1,9 +1,8 @@
 using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.AspNetCore.Srevices;
-using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Execution;
-using Kaleido.Process.Participant.Planning;
-using Kaleido.Process.Participant.Registry;
+using Kaleido.Process.Execution;
+using Kaleido.Process.Planning;
+using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 
@@ -23,7 +22,7 @@ public sealed class ProcessExecutionServiceTests
         ProcessRequest? capturedRequest = null;
 
         var runtime =
-            new Mock<IParticipantRuntime>();
+            new Mock<IProcessorRuntime>();
 
         var processResult =
             CreateProcessResult(
@@ -71,7 +70,7 @@ public sealed class ProcessExecutionServiceTests
         Assert.NotNull(capturedRequest);
         Assert.Equal(request.ProcessId, capturedRequest.ProcessId);
         Assert.Equal(request.RequestId, capturedRequest.RequestId);
-        Assert.True(capturedRequest.Participant.Steps.ContainsKey(registration.Metadata.Name));
+        Assert.True(capturedRequest.Processor.Steps.ContainsKey(registration.Metadata.Name));
 
         Assert.Equal(processResult.ProcessId, response.ProcessId);
         Assert.Equal(registration.Metadata.Name, Assert.Single(response.Results).StepName);
@@ -90,7 +89,7 @@ public sealed class ProcessExecutionServiceTests
         ProcessRequest? capturedRequest = null;
 
         var runtime =
-            new Mock<IParticipantRuntime>();
+            new Mock<IProcessorRuntime>();
 
         runtime
             .Setup(x =>
@@ -125,7 +124,7 @@ public sealed class ProcessExecutionServiceTests
                 CancellationToken.None);
 
         Assert.NotNull(capturedRequest);
-        Assert.True(capturedRequest.Participant.Steps.ContainsKey(registration.Metadata.Name));
+        Assert.True(capturedRequest.Processor.Steps.ContainsKey(registration.Metadata.Name));
         Assert.Equal(registration.Metadata.Name, response.StepName);
         Assert.NotNull(response.Result);
     }
@@ -140,7 +139,7 @@ public sealed class ProcessExecutionServiceTests
             CreateRegistry(registration);
 
         var runtime =
-            new Mock<IParticipantRuntime>();
+            new Mock<IProcessorRuntime>();
 
         runtime
             .Setup(x =>
@@ -177,7 +176,7 @@ public sealed class ProcessExecutionServiceTests
         Assert.Equal(StepExecutionOutcome.Completed, response.Outcome);
     }
 
-    private static ParticipantProcessResult CreateProcessResult(
+    private static ProcessorProcessResult CreateProcessResult(
         string stepName,
         object response) =>
         new()
@@ -187,7 +186,7 @@ public sealed class ProcessExecutionServiceTests
             AvailableSteps = [stepName],
             Steps =
             [
-                new ParticipantStepResult
+                new ProcessorStepResult
                 {
                     StepName = stepName,
                     CandidateStatus = StepCandidateStatus.Built,

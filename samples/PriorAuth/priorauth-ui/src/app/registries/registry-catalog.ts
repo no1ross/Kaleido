@@ -3,9 +3,9 @@ import { Observable, ReplaySubject, catchError, forkJoin, map, of, shareReplay, 
 import { HttpClient } from '@angular/common/http';
 
 import {
-    ProcessParticipantRegistryRecord,
+    ProcessProcessorRegistryRecord,
     ProcessStepRegistryRecord,
-    ServiceProcessParticipantRegistryRecord,
+    ServiceProcessProcessorRegistryRecord,
     ServiceProcessStepRegistryRecord
 } from '../kaleido/models/process-registry';
 import {
@@ -24,7 +24,7 @@ import { QueryableRegistry } from '../kaleido/services/queryable-registry';
 
 export interface ServiceRegistrySnapshot {
     readonly service: PriorAuthServiceRouteConfig;
-    readonly process: RegistryLoadResult<ProcessParticipantRegistryRecord[]>;
+    readonly process: RegistryLoadResult<ProcessProcessorRegistryRecord[]>;
     readonly queryable: RegistryLoadResult<QueryableRecord[]>;
 }
 
@@ -129,16 +129,16 @@ export class RegistryCatalog {
                 (snapshot.process.ok
                     ? snapshot.process.data ?? []
                     : [])
-                    .map(participant => ({
+                    .map(processor => ({
                         service: snapshot.service,
-                        participant
-                    } satisfies ServiceProcessParticipantRegistryRecord)));
+                        processor
+                    } satisfies ServiceProcessProcessorRegistryRecord)));
 
         const processSteps =
             processParticipants.flatMap(entry =>
-                entry.participant.steps.map(step => ({
+                entry.processor.steps.map(step => ({
                     service: entry.service,
-                    participant: entry.participant,
+                    processor: entry.processor,
                     step
                 } satisfies ServiceProcessStepRegistryRecord)));
 
@@ -268,7 +268,7 @@ export class RegistryCatalog {
 
     private loadProcessRegistry(
         service: PriorAuthServiceRouteConfig
-    ): Observable<RegistryLoadResult<ProcessParticipantRegistryRecord[]>> {
+    ): Observable<RegistryLoadResult<ProcessProcessorRegistryRecord[]>> {
         if (!service.processRegistryPath) {
             return of({
                 configured: false,
@@ -289,7 +289,7 @@ export class RegistryCatalog {
             performance.now();
 
         return this.http
-            .get<ProcessParticipantRegistryRecord[]>(url)
+            .get<ProcessProcessorRegistryRecord[]>(url)
             .pipe(
                 map(data => ({
                     configured: true,
@@ -303,15 +303,15 @@ export class RegistryCatalog {
                             performance.now() - started);
 
                     console.group(`[ProcessRegistry:${service.key}]`);
-                    console.log(`Loaded ${result.data?.length ?? 0} participants in ${duration}ms.`);
+                    console.log(`Loaded ${result.data?.length ?? 0} processors in ${duration}ms.`);
                     console.log('Service', service.displayName);
                     console.log('Url', url);
                     console.table(
-                        (result.data ?? []).map(participant => ({
-                            Name: participant.name,
-                            DisplayName: participant.displayName,
-                            InitialSteps: participant.initialSteps.length,
-                            Steps: participant.steps.length
+                        (result.data ?? []).map(processor => ({
+                            Name: processor.name,
+                            DisplayName: processor.displayName,
+                            InitialSteps: processor.initialSteps.length,
+                            Steps: processor.steps.length
                         })));
                     console.groupEnd();
                 }),

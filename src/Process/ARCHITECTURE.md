@@ -2,7 +2,7 @@
 
 This document describes the current architecture of the Process subsystem in `src/Process`. It is intended for contributors working on the framework itself, not just consumers using it from feature code.
 
-Process is Kaleido's metadata-driven framework for exposing business actions as discoverable process steps with durable participant state, validation, dependency rules, and consistent execution contracts.
+Process is Kaleido's metadata-driven framework for exposing business actions as discoverable process steps with durable processor state, validation, dependency rules, and consistent execution contracts.
 
 The code for Process is currently split into three main projects:
 
@@ -17,7 +17,7 @@ The code for Process is currently split into three main projects:
 ### [`Abstractions`](./Abstractions)
 Contains:
 - public attributes for process-step declaration
-- participant request/result types
+- processor request/result types
 - durable state contracts
 - planning and execution contracts
 - step registry contracts
@@ -27,10 +27,10 @@ Contains:
 Examples:
 - [`ProcessStepAttribute`](./Abstractions/Attributes/ProcessStepAttribute.cs)
 - [`DependsOnStepAttribute`](./Abstractions/Attributes/DependsOnStepAttribute.cs)
-- [`IParticipantRuntime`](./Abstractions/Participant/IParticipantRuntime.cs)
-- [`IProcessContextStore`](./Abstractions/Participant/Context/IProcessContextStore.cs)
-- [`IProcessStepHandler`](./Abstractions/Participant/Execution/IProcessStepHandler.cs)
-- [`IProcessStepRegistry`](./Abstractions/Participant/Registry/IProcessStepRegistry.cs)
+- [`IProcessorRuntime`](./Abstractions/Processor/IProcessorRuntime.cs)
+- [`IProcessContextStore`](./Abstractions/Processor/Context/IProcessContextStore.cs)
+- [`IProcessStepHandler`](./Abstractions/Processor/Execution/IProcessStepHandler.cs)
+- [`IProcessStepRegistry`](./Abstractions/Processor/Registry/IProcessStepRegistry.cs)
 
 ### [`Process`](./Process)
 Contains:
@@ -43,12 +43,12 @@ Contains:
 - default in-memory context storage
 
 Examples:
-- [`ParticipantServiceCollectionExtensions`](./Process/ParticipantServiceCollectionExtensions.cs)
-- [`ProcessStepRegistry`](./Process/Participant/Registry/ProcessStepRegistry.cs)
-- [`ParticipantRuntime`](./Process/Participant/ParticipantRuntime.cs)
-- [`ExecutionPlanner`](./Process/Participant/Planning/ExecutionPlanner.cs)
-- [`ExecutionProcessor`](./Process/Participant/Execution/ProcessExecutor.cs)
-- [`ProcessStateUpdater`](./Process/Participant/Context/ProcessStateUpdater.cs)
+- [`ProcessorServiceCollectionExtensions`](./Process/ProcessorServiceCollectionExtensions.cs)
+- [`ProcessStepRegistry`](./Process/Processor/Registry/ProcessStepRegistry.cs)
+- [`ProcessorRuntime`](./Process/Processor/ProcessorRuntime.cs)
+- [`ExecutionPlanner`](./Process/Processor/Planning/ExecutionPlanner.cs)
+- [`ExecutionProcessor`](./Process/Processor/Execution/ProcessExecutor.cs)
+- [`ProcessStateUpdater`](./Process/Processor/Context/ProcessStateUpdater.cs)
 
 ### [`AspNetCore`](./AspNetCore)
 Contains:
@@ -81,7 +81,7 @@ At runtime, a step is represented by:
 - `ProcessStepRegistration`
 - `ProcessStepMetadata`
 
-See [`ProcessStepRegistration.cs`](./Abstractions/Participant/Registry/ProcessStepRegistration.cs).
+See [`ProcessStepRegistration.cs`](./Abstractions/Processor/Registry/ProcessStepRegistration.cs).
 
 ### Step Relationships
 A step can declare graph and availability semantics using attributes:
@@ -100,25 +100,25 @@ These attributes define:
 A handler executes the business behavior for a single step.
 
 The framework supports:
-- [`IProcessStepHandler<TProcessStep>`](./Abstractions/Participant/Execution/IProcessStepHandler.cs)
-- [`IProcessStepHandler<TProcessStep, TProcessStepResult>`](./Abstractions/Participant/Execution/IProcessStepHandler.cs)
+- [`IProcessStepHandler<TProcessStep>`](./Abstractions/Processor/Execution/IProcessStepHandler.cs)
+- [`IProcessStepHandler<TProcessStep, TProcessStepResult>`](./Abstractions/Processor/Execution/IProcessStepHandler.cs)
 
 This means a step may:
 - execute without returning a typed payload
 - or execute and return a typed result object that flows into runtime and HTTP response contracts
 
-### Participant Request
-A participant request is the runtime input model for Process execution.
+### Processor Request
+A processor request is the runtime input model for Process execution.
 
 It consists of:
 - optional `ProcessId`
 - required `RequestId`
-- `ParticipantRequest`, which contains a case-insensitive dictionary of submitted step names to raw request values
+- `ProcessorRequest`, which contains a case-insensitive dictionary of submitted step names to raw request values
 
-See [`IParticipantRuntime.cs`](./Abstractions/Participant/IParticipantRuntime.cs).
+See [`IProcessorRuntime.cs`](./Abstractions/Processor/IProcessorRuntime.cs).
 
-### Participant Context
-A participant context is the durable state of a process instance.
+### Processor Context
+A processor context is the durable state of a process instance.
 
 It contains:
 - process identity
@@ -134,7 +134,7 @@ Important distinction:
 
 Historical evidence is emitted through process events rather than stored in the durable context.
 
-See [`IProcessContextStore.cs`](./Abstractions/Participant/Context/IProcessContextStore.cs).
+See [`IProcessContextStore.cs`](./Abstractions/Processor/Context/IProcessContextStore.cs).
 
 ### Step Candidate
 A step candidate is the planning-time representation of a submitted step.
@@ -147,7 +147,7 @@ A candidate holds:
 - whether it is included in the execution plan
 - runtime and validation messages
 
-See [`StepCandidate.cs`](./Abstractions/Participant/Planning/StepCandidate.cs).
+See [`StepCandidate.cs`](./Abstractions/Processor/Planning/StepCandidate.cs).
 
 ### Execution Decision
 After a step executes, the runtime produces an execution decision that determines what happens next.
@@ -160,7 +160,7 @@ Current decisions include:
 - `AwaitingRequiredStep`
 - `AwaitingStepSelection`
 
-See [`ExecutionDecision.cs`](./Abstractions/Participant/Execution/ExecutionDecision.cs).
+See [`ExecutionDecision.cs`](./Abstractions/Processor/Execution/ExecutionDecision.cs).
 
 ### Registry
 Process now has two related registry layers.
@@ -173,23 +173,23 @@ It supports:
 - enumeration of all registered steps
 - enumeration of initial steps that can begin a process
 
-`IParticipantRegistry` is the participant-facing discovery registry.
+`IProcessorRegistry` is the processor-facing discovery registry.
 
-It projects participant metadata plus step metadata into transport-neutral discovery records that can be consumed by ASP.NET Core, the Kaleido registry, and downstream OpenAPI generation.
+It projects processor metadata plus step metadata into transport-neutral discovery records that can be consumed by ASP.NET Core, the Kaleido registry, and downstream OpenAPI generation.
 
 See:
-- [`IProcessStepRegistry`](./Abstractions/Participant/Registry/IProcessStepRegistry.cs)
-- [`IParticipantRegistry`](./Abstractions/Participant/Registry/IParticipantRegistry.cs)
+- [`IProcessStepRegistry`](./Abstractions/Processor/Registry/IProcessStepRegistry.cs)
+- [`IProcessorRegistry`](./Abstractions/Processor/Registry/IProcessorRegistry.cs)
 
 ---
 
 ## 3. Public framework contracts
 
-### [`IParticipantRuntime`](./Abstractions/Participant/IParticipantRuntime.cs)
+### [`IProcessorRuntime`](./Abstractions/Processor/IProcessorRuntime.cs)
 This is the core runtime entry point for process execution.
 
 ```csharp
-Task<ParticipantProcessResult> ExecuteAsync(
+Task<ProcessorProcessResult> ExecuteAsync(
     ProcessRequest request,
     CancellationToken cancellationToken = default)
 ```
@@ -201,17 +201,17 @@ The runtime owns:
 - state persistence
 - final result shaping
 
-### [`IProcessContextStore`](./Abstractions/Participant/Context/IProcessContextStore.cs)
-This abstraction owns durable participant state persistence.
+### [`IProcessContextStore`](./Abstractions/Processor/Context/IProcessContextStore.cs)
+This abstraction owns durable processor state persistence.
 
 ```csharp
-Task<ParticipantContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default);
-Task SaveAsync(ParticipantContext context, CancellationToken cancellationToken = default);
+Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default);
+Task SaveAsync(ProcessorContext context, CancellationToken cancellationToken = default);
 ```
 
 Use this to replace the default in-memory store when a process must survive service restarts or be shared across instances.
 
-### [`IProcessStepHandler<TProcessStep>` / `IProcessStepHandler<TProcessStep, TProcessStepResult>`](./Abstractions/Participant/Execution/IProcessStepHandler.cs)
+### [`IProcessStepHandler<TProcessStep>` / `IProcessStepHandler<TProcessStep, TProcessStepResult>`](./Abstractions/Processor/Execution/IProcessStepHandler.cs)
 These interfaces define the business handler contract for a step.
 
 Handlers receive:
@@ -221,7 +221,7 @@ Handlers receive:
 
 Handlers do not own planning, dependency evaluation, or durable state mutation.
 
-### [`IProcessStepRegistry`](./Abstractions/Participant/Registry/IProcessStepRegistry.cs)
+### [`IProcessStepRegistry`](./Abstractions/Processor/Registry/IProcessStepRegistry.cs)
 This is the execution/planning registry for registered steps.
 
 It is used by:
@@ -229,34 +229,34 @@ It is used by:
 - execution
 - HTTP step-name/type resolution
 
-### [`IParticipantRegistry`](./Abstractions/Participant/Registry/IParticipantRegistry.cs)
-This is the discovery/metadata registry for registered participants.
+### [`IProcessorRegistry`](./Abstractions/Processor/Registry/IProcessorRegistry.cs)
+This is the discovery/metadata registry for registered processors.
 
 It is used by:
-- participant catalog publication
-- full participant registry publication
-- per-step metadata publication through projected participant step records
+- processor catalog publication
+- full processor registry publication
+- per-step metadata publication through projected processor step records
 - registry consumers such as the Kaleido registry and downstream OpenAPI generation
 
 ---
 
 ## 4. Registration model
 
-### [`AddParticipant`](./Process/ParticipantServiceCollectionExtensions.cs)
-`AddParticipant(...)` is the main Process registration entry point.
+### [`AddProcessor`](./Process/ProcessorServiceCollectionExtensions.cs)
+`AddProcessor(...)` is the main Process registration entry point.
 
 It requires that at least one assembly has already been registered on the outer Kaleido builder.
 
 The registration flow is:
-1. validate participant metadata from `ParticipantOptions` (`Name`, `Description`, `Version`, `DisplayName`)
+1. validate processor metadata from `ProcessorOptions` (`Name`, `Description`, `Version`, `DisplayName`)
 2. scan registered assemblies for candidate classes
 3. keep types decorated with `[ProcessStep]`
-4. apply the optional `ParticipantOptions.TypeFilter`
+4. apply the optional `ProcessorOptions.TypeFilter`
 5. validate discovered step metadata
 6. validate duplicate step names
 7. resolve and register exactly one handler for each step
 8. construct the runtime step registry
-9. construct the participant discovery registry
+9. construct the processor discovery registry
 10. register framework services
 
 ### Assembly scanning
@@ -264,9 +264,9 @@ The runtime scans all registered assemblies and considers non-abstract classes, 
 
 ### Step validation during registration
 Registration currently enforces:
-- participant must have a non-empty name
-- participant must have a non-empty version
-- participant must have a non-empty display name
+- processor must have a non-empty name
+- processor must have a non-empty version
+- processor must have a non-empty display name
 - at least one step must be discovered
 - every step must have a non-empty name
 - every step must have a non-empty version
@@ -274,7 +274,7 @@ Registration currently enforces:
 - every step must have exactly one matching handler
 
 ### Registry construction passes
-[`ProcessStepRegistry`](./Process/Participant/Registry/ProcessStepRegistry.cs) builds registrations in multiple passes:
+[`ProcessStepRegistry`](./Process/Processor/Registry/ProcessStepRegistry.cs) builds registrations in multiple passes:
 
 1. discover each step's handler type, result type, and core metadata
 2. hydrate dependency and availability references
@@ -287,7 +287,7 @@ This multi-pass structure is important because relationship attributes reference
 
 ## 5. Registries and metadata
 
-### [`IProcessStepRegistry`](./Abstractions/Participant/Registry/IProcessStepRegistry.cs)
+### [`IProcessStepRegistry`](./Abstractions/Processor/Registry/IProcessStepRegistry.cs)
 The runtime registry exposes:
 - `Registrations`
 - `InitialRegistrations`
@@ -298,7 +298,7 @@ The runtime registry exposes:
 - no dependencies
 - no `AvailableAfter` requirements
 
-### [`ProcessStepRegistration`](./Abstractions/Participant/Registry/ProcessStepRegistration.cs)
+### [`ProcessStepRegistration`](./Abstractions/Processor/Registry/ProcessStepRegistration.cs)
 A registration contains:
 - `StepType`
 - `StepResultType`
@@ -337,7 +337,7 @@ During startup, Process validates:
 - missing handlers
 - multiple handlers
 
-See [`ParticipantServiceCollectionExtensions.cs`](./Process/ParticipantServiceCollectionExtensions.cs).
+See [`ProcessorServiceCollectionExtensions.cs`](./Process/ProcessorServiceCollectionExtensions.cs).
 
 ### Graph validation
 The registry validation layer prevents:
@@ -346,7 +346,7 @@ The registry validation layer prevents:
 - self-referencing `AvailableUntil`
 - circular dependency chains
 
-See [`RegistrationValidator.cs`](./Process/Participant/Registry/RegistrationValidator.cs).
+See [`RegistrationValidator.cs`](./Process/Processor/Registry/RegistrationValidator.cs).
 
 ### Request and payload validation
 During execution planning, Process validates:
@@ -356,9 +356,9 @@ During execution planning, Process validates:
 - dependency consistency against history or submitted candidates
 
 See:
-- [`StepCandidateBuilder`](./Process/Participant/Planning/StepCandidateBuilder.cs)
-- [`StepCandidateValidator`](./Process/Participant/Planning/StepCandidateValidator.cs)
-- [`StepCandidateConsistencyChecker`](./Process/Participant/Planning/StepCandidateConsistencyChecker.cs)
+- [`StepCandidateBuilder`](./Process/Processor/Planning/StepCandidateBuilder.cs)
+- [`StepCandidateValidator`](./Process/Processor/Planning/StepCandidateValidator.cs)
+- [`StepCandidateConsistencyChecker`](./Process/Processor/Planning/StepCandidateConsistencyChecker.cs)
 
 ### Historical and repeatability validation
 A previously completed step:
@@ -371,21 +371,21 @@ This logic is part of candidate consistency checking.
 
 ## 7. Execution flow
 
-The runtime entry point is [`IParticipantRuntime.ExecuteAsync`](./Abstractions/Participant/IParticipantRuntime.cs), implemented by [`ParticipantRuntime`](./Process/Participant/ParticipantRuntime.cs).
+The runtime entry point is [`IProcessorRuntime.ExecuteAsync`](./Abstractions/Processor/IProcessorRuntime.cs), implemented by [`ProcessorRuntime`](./Process/Processor/ProcessorRuntime.cs).
 
 The execution flow is:
 
 1. validate the outer request shell
-2. load or create participant context
+2. load or create processor context
 3. build step candidates from submitted values
 4. validate candidate payloads
 5. validate candidate/history/dependency consistency
 6. order executable candidates by dependency graph
 7. publish planning events
 8. execute eligible candidates
-9. update and persist participant state after each execution
+9. update and persist processor state after each execution
 10. publish completion events
-11. return participant-facing execution results
+11. return processor-facing execution results
 
 ### 7.1 Context load or creation
 If `ProcessId` is not supplied, the runtime initializes a new process instance.
@@ -420,21 +420,21 @@ Candidates included in the plan are marked `IncludedInExecutionPlan = true`.
 Non-executable candidates remain in the returned result for transparency, but they are not executed.
 
 ### 7.5 Step execution loop
-[`ExecutionProcessor`](./Process/Participant/Execution/ProcessExecutor.cs) executes planned candidates one at a time.
+[`ExecutionProcessor`](./Process/Processor/Execution/ProcessExecutor.cs) executes planned candidates one at a time.
 
 For each candidate it:
-1. resolves current step context from participant state
+1. resolves current step context from processor state
 2. computes available next steps relative to current completion history
 3. invokes the business handler through the step invoker
 4. evaluates the execution decision
-5. updates participant state
-6. persists participant context
+5. updates processor state
+6. persists processor context
 7. publishes a step-completed event
 8. either continues to another candidate or stops
 
 ### 7.6 Failure and cancellation behavior
 If a step is canceled or throws an exception:
-- the runtime updates participant state accordingly
+- the runtime updates processor state accordingly
 - persists the updated state
 - records runtime messages
 - stops further execution for the current request
@@ -449,26 +449,26 @@ The runtime merges:
 - required next step
 - available next steps
 
-into `ParticipantProcessResult`.
+into `ProcessorProcessResult`.
 
 ---
 
 ## 8. ASP.NET Core transport layer
 
-### [`AddParticipantAspNetCore`](./AspNetCore/ProcessAspNetCoreServiceCollectionExtensions.cs)
+### [`AddProcessorAspNetCore`](./AspNetCore/ProcessAspNetCoreServiceCollectionExtensions.cs)
 This extension adds the HTTP transport layer for Process.
 
 It currently:
-- requires `AddParticipant()` to have been called first
+- requires `AddProcessor()` to have been called first
 - registers route options
 - adds routing and `IHttpContextAccessor`
 - registers execution and state services
 
-### [`MapParticipant`](./AspNetCore/ProcessEndpointRouteBuilderExtensions.cs)
+### [`MapProcessor`](./AspNetCore/ProcessEndpointRouteBuilderExtensions.cs)
 This extension publishes the HTTP endpoint set for Process under the configured route prefix.
 
 It maps:
-- participant catalog endpoint
+- processor catalog endpoint
 - execute endpoint
 - process state endpoint
 - step catalog endpoint
@@ -499,8 +499,8 @@ The execution service writes the resolved `ProcessId` into the response headers 
 
 The discovery model is step-centric.
 
-### Participant catalog endpoint
-The participant catalog returns only initial steps that can be used to begin a new process instance.
+### Processor catalog endpoint
+The processor catalog returns only initial steps that can be used to begin a new process instance.
 
 This endpoint is intended as the entry-point discovery surface for clients that need to know how a process can start.
 
@@ -557,8 +557,8 @@ The runtime also records:
 Execution activities include Kaleido correlation tags such as:
 - request id
 - process id
-- participant id
-- participant instance id
+- processor id
+- processor instance id
 - orchestrator id
 - orchestrator instance id
 
@@ -601,10 +601,10 @@ Replace the default in-memory context store when process state must persist acro
 ### 1. Process is step-centric, not query-centric
 Do not import Queryable terminology such as direct contexts, local views, or delegated views into Process documentation or runtime changes unless the underlying model actually changes.
 
-### 2. `ParticipantContext` is not a full audit log
+### 2. `ProcessorContext` is not a full audit log
 Keep durable state limited to resumable current state.
 
-Historical evidence belongs in emitted process events, not in the saved participant context.
+Historical evidence belongs in emitted process events, not in the saved processor context.
 
 ### 3. Registration invariants matter
 Startup validation assumes:
@@ -623,16 +623,16 @@ Be careful not to break backward compatibility for existing process instances.
 The ASP.NET Core layer should adapt contracts and publish endpoints, not reimplement planning or business execution rules that belong in the runtime.
 
 ### 6. Naming is not fully settled
-The current subsystem mixes the terms Process, Participant, and Step across types and APIs. New documentation and code should be careful to define terms explicitly rather than assuming they are self-evident.
+The current subsystem mixes the terms Process, Processor, and Step across types and APIs. New documentation and code should be careful to define terms explicitly rather than assuming they are self-evident.
 
 ---
 
 ## 13. Glossary
 
 ### Process
-A business capability exposed through one or more discoverable steps and executed against durable participant state.
+A business capability exposed through one or more discoverable steps and executed against durable processor state.
 
-### Participant
+### Processor
 The runtime execution model and durable state owner for a process instance.
 
 ### Process Step
@@ -641,10 +641,10 @@ A named business action declared by a CLR type with `ProcessStepAttribute`.
 ### Step Handler
 A DI-resolved component that executes the business behavior for a specific step.
 
-### Participant Request
+### Processor Request
 A runtime request that submits one or more steps for a new or existing process instance.
 
-### Participant Context
+### Processor Context
 The durable current state of a process instance.
 
 ### Step Candidate
@@ -672,8 +672,8 @@ The current architecture document should be enough for contributors to understan
 2. provider guidance for durable `IProcessContextStore` implementations
 3. more precise semantics for `AvailableAfter` vs `DependsOnStep`
 4. typed vs untyped step result guidance for API design
-5. client guidance for using participant catalog vs step catalog vs full registry
-6. the intended long-term relationship between Process terminology and Participant terminology
+5. client guidance for using processor catalog vs step catalog vs full registry
+6. the intended long-term relationship between Process terminology and Processor terminology
 
 ---
 
@@ -683,9 +683,9 @@ If you are new to Process, the simplest accurate mental model is:
 
 1. declare a step type with `[ProcessStep]`
 2. implement exactly one handler for it
-3. register assemblies and call `AddParticipant()`
+3. register assemblies and call `AddProcessor()`
 4. let the runtime build a registry and manage state
-5. submit one or more steps through `IParticipantRuntime` or the HTTP transport layer
+5. submit one or more steps through `IProcessorRuntime` or the HTTP transport layer
 6. let the framework validate, order, execute, persist, and publish next-step guidance
 
 Process is therefore not just a command endpoint helper. It is a stateful, metadata-driven business action framework with built-in discovery, planning, execution, and transport conventions.

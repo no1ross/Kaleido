@@ -4,7 +4,7 @@ Process is Kaleido's metadata-driven framework for exposing business actions as 
 
 It is organized into three main projects:
 
-- [`Abstractions`](./Abstractions/README.md) — public step attributes, participant request/result contracts, handler interfaces, durable state contracts, registry contracts, event contracts, and shared observability constants
+- [`Abstractions`](./Abstractions/README.md) — public step attributes, processor request/result contracts, handler interfaces, durable state contracts, registry contracts, event contracts, and shared observability constants
 - [`Process`](./Process/README.md) — runtime registration, step registry construction, planning, execution, state mutation, persistence integration, and observability
 - [`AspNetCore`](./AspNetCore/README.md) — HTTP request/response contracts, route publishing, execution/state endpoints, and transport adaptation
 
@@ -17,7 +17,7 @@ For the full subsystem model, see:
 Process is step-centric.
 
 A consumer submits one or more process steps for a new or existing process instance. The runtime then:
-- loads or initializes participant state
+- loads or initializes processor state
 - builds and validates submitted step candidates
 - evaluates dependency and repeatability rules
 - orders executable steps
@@ -32,25 +32,25 @@ Process consumer setup follows a simple pattern:
 1. define one or more process step types
 2. implement exactly one handler for each step
 3. register the assemblies that contain those types
-4. call `AddParticipant(...)` and supply participant metadata
+4. call `AddProcessor(...)` and supply processor metadata
 5. optionally configure durable state storage
-6. optionally call `AddParticipantAspNetCore(...)` and map endpoints with `MapParticipant()`
+6. optionally call `AddProcessorAspNetCore(...)` and map endpoints with `MapProcessor()`
 
 ## How a developer uses Process
 
 ### 1. Register Process in your application
-At minimum, register the assemblies that contain your process steps and handlers, then call `AddParticipant(...)` with participant metadata.
+At minimum, register the assemblies that contain your process steps and handlers, then call `AddProcessor(...)` with processor metadata.
 
 ```csharp
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MyDbContext).Assembly)
-    .AddParticipant(options =>
+    .AddProcessor(options =>
     {
-        options.Name = "my-participant";
-        options.Description = "My participant workflow.";
+        options.Name = "my-processor";
+        options.Description = "My processor workflow.";
         options.Version = "1.0.0";
-        options.DisplayName = "My Participant";
+        options.DisplayName = "My Processor";
     });
 ```
 
@@ -60,20 +60,20 @@ If you want HTTP discovery and execution endpoints:
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MyDbContext).Assembly)
-    .AddParticipant(options =>
+    .AddProcessor(options =>
     {
-        options.Name = "my-participant";
-        options.Description = "My participant workflow.";
+        options.Name = "my-processor";
+        options.Description = "My processor workflow.";
         options.Version = "1.0.0";
-        options.DisplayName = "My Participant";
+        options.DisplayName = "My Processor";
     })
-        .AddParticipantAspNetCore(options =>
+        .AddProcessorAspNetCore(options =>
         {
             options.RoutePrefix = "my-service";
         });
 
 var app = builder.Build();
-app.MapParticipant();
+app.MapProcessor();
 ```
 
 This matches the real registration pattern used in the PriorAuth sample. See <ref_snippet file="C:\Repos\Kaleido\samples\PriorAuth\Intake\Program.cs" lines="123-145" />.
@@ -89,14 +89,14 @@ Example using the SQLite provider:
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MyProcessStep).Assembly)
-    .AddParticipant(options =>
+    .AddProcessor(options =>
     {
-        options.Name = "my-participant";
-        options.Description = "My participant workflow.";
+        options.Name = "my-processor";
+        options.Description = "My processor workflow.";
         options.Version = "1.0.0";
-        options.DisplayName = "My Participant";
+        options.DisplayName = "My Processor";
     })
-        .AddParticipantAspNetCore()
+        .AddProcessorAspNetCore()
         .UseSqliteProcessContextStore(
             "Data Source=my-process.sqlite");
 ```
@@ -188,31 +188,31 @@ Use **multiple related steps** when:
 - the consumer needs guidance on what can happen next
 
 ### 7. What Process registers for you
-After `AddParticipant(...)` runs, the framework scans the registered assemblies and automatically discovers:
+After `AddProcessor(...)` runs, the framework scans the registered assemblies and automatically discovers:
 - `[ProcessStep]` types
 - matching step handlers
 - step dependency and availability relationships
 
 It then builds:
 - the runtime step registry used by planning and execution
-- the participant registry used by discovery and metadata publication
+- the processor registry used by discovery and metadata publication
 - the planning/execution services
 - the default context store
 - observability and eventing services
 
-You do not manually register each step one by one. The assembly scan and registration flow is implemented in <ref_file file="C:\Repos\Kaleido\src\Process\Process\ParticipantServiceCollectionExtensions.cs" />.
+You do not manually register each step one by one. The assembly scan and registration flow is implemented in <ref_file file="C:\Repos\Kaleido\src\Process\Process\ProcessorServiceCollectionExtensions.cs" />.
 
 ### 8. What HTTP endpoints Process can publish
-If you add `AddParticipantAspNetCore(...)` and call `MapParticipant()`, Process publishes endpoints for:
-- participant catalog grouped by participant
+If you add `AddProcessorAspNetCore(...)` and call `MapProcessor()`, Process publishes endpoints for:
+- processor catalog grouped by processor
 - full step catalog
-- full participant registry metadata
+- full processor registry metadata
 - per-step metadata
 - process execution
 - process state
 - per-step execution
 
-The participant catalog returns participant-level entries with metadata, registry URLs, and initial step summaries. The full registry endpoint returns participant registry records with full step metadata, including input constraints and typed-result output field metadata.
+The processor catalog returns processor-level entries with metadata, registry URLs, and initial step summaries. The full registry endpoint returns processor registry records with full step metadata, including input constraints and typed-result output field metadata.
 
 See the endpoint publisher in <ref_file file="C:\Repos\Kaleido\src\Process\AspNetCore\ProcessEndpointRouteBuilderExtensions.cs" />.
 

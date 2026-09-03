@@ -1,39 +1,39 @@
 using Kaleido.Process.Attributes;
+using Kaleido.Process.Context;
+using Kaleido.Process.Eventing;
+using Kaleido.Process.Execution;
 using Kaleido.Process.Observability;
-using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Context;
-using Kaleido.Process.Participant.Execution;
-using Kaleido.Process.Participant.Planning;
-using Kaleido.Process.Participant.Registry;
+using Kaleido.Process.Planning;
+using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
 
 namespace Kaleido.Process;
 
-public static class ParticipantServiceCollectionExtensions
+public static class ProcessorServiceCollectionExtensions
 {
-    public static IParticipantBuilder AddParticipant(this IKaleidoBuilder builder)
+    public static IProcessorBuilder AddProcessor(this IKaleidoBuilder builder)
     {
-        return builder.AddParticipant(_ => { });
+        return builder.AddProcessor(_ => { });
     }
 
-    public static IParticipantBuilder AddParticipant(
+    public static IProcessorBuilder AddProcessor(
         this IKaleidoBuilder builder,
-        Action<ParticipantOptions> configure)
+        Action<ProcessorOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);
 
-        var options = new ParticipantOptions();
+        var options = new ProcessorOptions();
         configure(options);
 
-        ValidateParticipantOptions(options);
+        ValidateProcessorOptions(options);
 
         if (!builder.Assemblies.Any())
         {
             throw new InvalidOperationException(
-                "At least one assembly must be registered before AddParticipant().");
+                "At least one assembly must be registered before AddProcessor().");
         }
 
         var types = builder.Assemblies
@@ -81,40 +81,40 @@ public static class ParticipantServiceCollectionExtensions
                     recordTypes);
             });
 
-        builder.Services.TryAddSingleton<IParticipantRegistry, ParticipantRegistry>();
+        builder.Services.TryAddSingleton<IProcessorRegistry, ProcessorRegistry>();
 
         RegisterFrameworkServices(builder.Services);
 
-        return new ParticipantBuilder(builder);
+        return new ProcessorBuilder(builder);
     }
 
-    private static void ValidateParticipantOptions(
-        ParticipantOptions options)
+    private static void ValidateProcessorOptions(
+        ProcessorOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
         if (string.IsNullOrWhiteSpace(options.Name))
         {
             throw new InvalidOperationException(
-                "Participant must specify a non-empty name.");
+                "Processor must specify a non-empty name.");
         }
 
         if (string.IsNullOrWhiteSpace(options.Version))
         {
             throw new InvalidOperationException(
-                "Participant must specify a non-empty version.");
+                "Processor must specify a non-empty version.");
         }
 
         if (string.IsNullOrWhiteSpace(options.DisplayName))
         {
             throw new InvalidOperationException(
-                "Participant must specify a non-empty display name.");
+                "Processor must specify a non-empty display name.");
         }
     }
 
     private static bool ShouldIncludeProcessStep(
         Type stepType,
-        ParticipantOptions options)
+        ProcessorOptions options)
     {
         try
         {
@@ -134,7 +134,7 @@ public static class ParticipantServiceCollectionExtensions
         if (stepTypes.Count == 0)
         {
             throw new InvalidOperationException(
-                "No process steps were discovered for the participant.");
+                "No process steps were discovered for the processor.");
         }
 
         foreach (var stepType in stepTypes)
@@ -223,7 +223,7 @@ public static class ParticipantServiceCollectionExtensions
 
         services.TryAddSingleton<IProcessEventFactory, ProcessEventFactory>();
         services.TryAddScoped<IProcessObservability, ProcessObservability>();
-        services.TryAddScoped<IParticipantRuntime, ParticipantRuntime>();
+        services.TryAddScoped<IProcessorRuntime, ProcessorRuntime>();
         services.TryAddScoped<IExecutionProcessor, ExecutionProcessor>();
     }
 

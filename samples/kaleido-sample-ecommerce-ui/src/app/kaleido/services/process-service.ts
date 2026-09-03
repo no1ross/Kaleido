@@ -2,11 +2,11 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { ProcessExecutionResponse, ParticipantProcessResult } from '../models/participant-process-result';
-import { ExecuteStepRequest } from '../../ecommerce/models/participant-process-request';
+import { ProcessExecutionResponse } from '../models/processor-process-result';
+import { ExecuteStepRequest } from '../../ecommerce/models/processor-process-request';
 import { RequestContextService } from './request-context-service';
 
-import { ProcessMessage } from '../models/participant-process-result';
+import { ProcessMessage } from '../models/processor-process-result';
 import { catchError, map, throwError } from 'rxjs';
 
 import { ProcessRegistry } from './process-registry';
@@ -132,7 +132,7 @@ private readonly processRequestValidator =
         }
 
         console.log(
-            'Participant Process',
+            'Processor Process',
             result.processId);
 
         console.log(

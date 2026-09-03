@@ -1,4 +1,4 @@
-﻿using Kaleido.Process.Participant.Execution;
+﻿using Kaleido.Process.Execution;
 using Kaleido.Samples.ECommerce.Data;
 using Kaleido.Samples.ECommerce.Data.Entities;
 using Kaleido.Samples.ECommerce.Responses;
@@ -18,7 +18,7 @@ public sealed class AddItemToCartHandler(
     {
         //var shoppingCartId = step.CartId is null ? Guid.NewGuid() : Guid.Parse(step.CartId);
 
-        //for now we will use participant id
+        //for now we will use processor id
 
         var cartItem = new ShoppingCartItem
         {

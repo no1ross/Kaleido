@@ -14,13 +14,13 @@ public sealed record KaleidoCorrelationContext
         init;
     }
 
-    public string? ParticipantId
+    public string? ProcessorId
     {
         get;
         init;
     }
 
-    public Guid? ParticipantInstanceId
+    public Guid? ProcessorInstanceId
     {
         get;
         init;
@@ -41,8 +41,8 @@ public sealed record KaleidoCorrelationContext
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(RequestId)
         && ProcessId is null
-        && string.IsNullOrWhiteSpace(ParticipantId)
-        && ParticipantInstanceId is null
+        && string.IsNullOrWhiteSpace(ProcessorId)
+        && ProcessorInstanceId is null
         && string.IsNullOrWhiteSpace(OrchestratorId)
         && OrchestratorInstanceId is null;
 }

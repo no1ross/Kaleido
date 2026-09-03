@@ -1,8 +1,8 @@
-﻿using Kaleido.Process.Participant.Registry;
+﻿using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.AspNetCore.Contracts;
 
-public sealed record ParticipantRegistryResponse : ParticipantRegistryItem
+public sealed record ProcessorRegistryResponse : ProcessorRegistryItem
 {
     public string RegistryUrl { get; init; }
         = string.Empty;
@@ -13,14 +13,14 @@ public sealed record ParticipantRegistryResponse : ParticipantRegistryItem
     public new IReadOnlyCollection<ProcessStepResponse> Steps { get; init; }
         = [];
 
-    public static ParticipantRegistryResponse FromRegistration(
-        ParticipantRegistryItem registration,
+    public static ProcessorRegistryResponse FromRegistration(
+        ProcessorRegistryItem registration,
         ProcessRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(registration);
         ArgumentNullException.ThrowIfNull(options);
 
-        return new ParticipantRegistryResponse
+        return new ProcessorRegistryResponse
         {
             Name = registration.Name,
             Description = registration.Description,
@@ -39,7 +39,7 @@ public sealed record ParticipantRegistryResponse : ParticipantRegistryItem
 
 public sealed record ProcessCatalogResponse
 {
-    public IReadOnlyCollection<ParticipantCatalogResponse> Participants
+    public IReadOnlyCollection<ProcessorCatalogResponse> Processors
     {
         get;
         init;
@@ -47,7 +47,7 @@ public sealed record ProcessCatalogResponse
         = [];
 }
 
-public sealed record ParticipantCatalogResponse
+public sealed record ProcessorCatalogResponse
 {
     public required string Name { get; init; }
 
@@ -63,14 +63,14 @@ public sealed record ParticipantCatalogResponse
     public IReadOnlyCollection<ProcessStepSummary> InitialSteps { get; init; }
         = [];
 
-    public static ParticipantCatalogResponse FromRegistration(
-        ParticipantRegistryItem registration,
+    public static ProcessorCatalogResponse FromRegistration(
+        ProcessorRegistryItem registration,
         ProcessRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(registration);
         ArgumentNullException.ThrowIfNull(options);
 
-        return new ParticipantCatalogResponse
+        return new ProcessorCatalogResponse
         {
             Name = registration.Name,
             Description = registration.Description,
@@ -84,7 +84,7 @@ public sealed record ParticipantCatalogResponse
     }
 }
 
-public sealed record ProcessStepResponse : ParticipantStepRegistryItem
+public sealed record ProcessStepResponse : ProcessorStepRegistryItem
 {
     public string ExecuteUrl { get; init; }
         = string.Empty;
@@ -107,7 +107,7 @@ public sealed record ProcessStepResponse : ParticipantStepRegistryItem
     public new ProcessStepResultMetadata? Result { get; init; }
 
     public static ProcessStepResponse FromRegistration(
-        ParticipantStepRegistryItem registration,
+        ProcessorStepRegistryItem registration,
         ProcessRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(registration);
@@ -151,7 +151,7 @@ public sealed record ProcessStepResponse : ParticipantStepRegistryItem
     }
 
     internal static ProcessStepSummary ToSummary(
-        ParticipantStepSummary registration,
+        ProcessorStepSummary registration,
         ProcessRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(registration);
@@ -177,7 +177,7 @@ public sealed record ProcessStepResponse : ParticipantStepRegistryItem
     }
 }
 
-public sealed record ProcessStepSummary : ParticipantStepSummary
+public sealed record ProcessStepSummary : ProcessorStepSummary
 {
     public string ExecuteUrl { get; init; }
         = string.Empty;
@@ -186,10 +186,10 @@ public sealed record ProcessStepSummary : ParticipantStepSummary
         = string.Empty;
 }
 
-public sealed record ProcessFieldMetadata : ParticipantInputFieldDescriptor
+public sealed record ProcessFieldMetadata : ProcessorInputFieldDescriptor
 {
     public static ProcessFieldMetadata FromRegistryItem(
-        ParticipantInputFieldDescriptor item)
+        ProcessorInputFieldDescriptor item)
     {
         ArgumentNullException.ThrowIfNull(item);
 
@@ -203,10 +203,10 @@ public sealed record ProcessFieldMetadata : ParticipantInputFieldDescriptor
     }
 }
 
-public sealed record ProcessOutputFieldMetadata : ParticipantOutputFieldDescriptor
+public sealed record ProcessOutputFieldMetadata : ProcessorOutputFieldDescriptor
 {
     public static ProcessOutputFieldMetadata FromRegistryItem(
-        ParticipantOutputFieldDescriptor item)
+        ProcessorOutputFieldDescriptor item)
     {
         ArgumentNullException.ThrowIfNull(item);
 
@@ -219,13 +219,13 @@ public sealed record ProcessOutputFieldMetadata : ParticipantOutputFieldDescript
     }
 }
 
-public sealed record ProcessStepResultMetadata : ParticipantStepResultDescriptor
+public sealed record ProcessStepResultMetadata : ProcessorStepResultDescriptor
 {
     public new IReadOnlyCollection<ProcessOutputFieldMetadata> OutputFields { get; init; }
         = [];
 
     public static ProcessStepResultMetadata FromRegistryItem(
-        ParticipantStepResultDescriptor item)
+        ProcessorStepResultDescriptor item)
     {
         ArgumentNullException.ThrowIfNull(item);
 

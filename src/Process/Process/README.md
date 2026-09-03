@@ -18,14 +18,14 @@ This project contains:
 - request planning and candidate building
 - candidate validation and consistency checking
 - step execution and decision handling
-- participant state mutation and reconciliation
+- processor state mutation and reconciliation
 - event publishing and observability
 - the default in-memory process context store
 
 ## Main entry point
 
 The main runtime registration entry point is:
-- [`AddParticipant`](./ParticipantServiceCollectionExtensions.cs)
+- [`AddProcessor`](./ProcessorServiceCollectionExtensions.cs)
 
 This extension:
 - scans registered assemblies for `[ProcessStep]` types
@@ -42,10 +42,10 @@ At minimum:
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MyProcessStep).Assembly)
-    .AddParticipant();
+    .AddProcessor();
 ```
 
-If your step types or handlers live in separate assemblies, register those assemblies before calling `AddParticipant()`.
+If your step types or handlers live in separate assemblies, register those assemblies before calling `AddProcessor()`.
 
 Real example: <ref_snippet file="C:\Repos\Kaleido\samples\PriorAuth\Intake\Program.cs" lines="123-131" />.
 
@@ -53,9 +53,9 @@ Real example: <ref_snippet file="C:\Repos\Kaleido\samples\PriorAuth\Intake\Progr
 
 A runtime request flows through these layers:
 
-1. `ParticipantRuntime`
+1. `ProcessorRuntime`
    - validates the outer request
-   - loads or initializes participant state
+   - loads or initializes processor state
    - builds an execution plan
    - invokes the execution processor
    - publishes process-level events
@@ -69,17 +69,17 @@ A runtime request flows through these layers:
 3. `ExecutionProcessor`
    - invokes step handlers
    - evaluates decisions
-   - updates and persists participant state
+   - updates and persists processor state
    - publishes step-level events
 
 4. `ProcessStateUpdater`
    - centralizes state initialization, reconciliation, and transition rules
 
 See:
-- [`ParticipantRuntime`](./Participant/ParticipantRuntime.cs)
-- [`ExecutionPlanner`](./Participant/Planning/ExecutionPlanner.cs)
-- [`ExecutionProcessor`](./Participant/Execution/ProcessExecutor.cs)
-- [`ProcessStateUpdater`](./Participant/Context/ProcessStateUpdater.cs)
+- [`ProcessorRuntime`](./Processor/ProcessorRuntime.cs)
+- [`ExecutionPlanner`](./Processor/Planning/ExecutionPlanner.cs)
+- [`ExecutionProcessor`](./Processor/Execution/ProcessExecutor.cs)
+- [`ProcessStateUpdater`](./Processor/Context/ProcessStateUpdater.cs)
 
 ## Step registration rules
 
@@ -109,7 +109,7 @@ Example using SQLite:
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MyProcessStep).Assembly)
-    .AddParticipant()
+    .AddProcessor()
         .UseSqliteProcessContextStore(
             "Data Source=my-process.sqlite");
 ```
@@ -137,9 +137,9 @@ Those live in:
 
 ## Where to look
 
-- [`ParticipantServiceCollectionExtensions`](./ParticipantServiceCollectionExtensions.cs)
-- [`ParticipantRuntime`](./Participant/ParticipantRuntime.cs)
-- [`ProcessStepRegistry`](./Participant/Registry/ProcessStepRegistry.cs)
-- [`ExecutionPlanner`](./Participant/Planning/ExecutionPlanner.cs)
-- [`ExecutionProcessor`](./Participant/Execution/ProcessExecutor.cs)
-- [`ProcessStateUpdater`](./Participant/Context/ProcessStateUpdater.cs)
+- [`ProcessorServiceCollectionExtensions`](./ProcessorServiceCollectionExtensions.cs)
+- [`ProcessorRuntime`](./Processor/ProcessorRuntime.cs)
+- [`ProcessStepRegistry`](./Processor/Registry/ProcessStepRegistry.cs)
+- [`ExecutionPlanner`](./Processor/Planning/ExecutionPlanner.cs)
+- [`ExecutionProcessor`](./Processor/Execution/ProcessExecutor.cs)
+- [`ProcessStateUpdater`](./Processor/Context/ProcessStateUpdater.cs)

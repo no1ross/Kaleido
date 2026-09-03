@@ -1,5 +1,4 @@
-﻿using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Registry;
+﻿using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.AspNetCore.Contracts;
 
@@ -32,7 +31,7 @@ public sealed record ProcessExecutionResponse
         = [];
 
     public static ProcessExecutionResponse Create(
-        ParticipantProcessResult processResult,
+        ProcessorProcessResult processResult,
         IProcessStepRegistry registry,
         ProcessRouteOptions options)
     {
@@ -91,7 +90,7 @@ public sealed record ProcessExecutionStepResponse
     }
 
     public static ProcessExecutionStepResponse Create(
-        ParticipantStepResult stepResult)
+        ProcessorStepResult stepResult)
     {
         ArgumentNullException.ThrowIfNull(stepResult);
 
@@ -145,8 +144,8 @@ public record StepExecutionResponse
         = [];
 
     public static StepExecutionResponse Create(
-        ParticipantProcessResult processResult,
-        ParticipantStepResult stepResult,
+        ProcessorProcessResult processResult,
+        ProcessorStepResult stepResult,
         IProcessStepRegistry registry,
         ProcessRouteOptions options)
     {
@@ -189,8 +188,8 @@ public sealed record StepExecutionResponse<TResponse> : StepExecutionResponse
     }
 
     new public static StepExecutionResponse<TResponse> Create(
-        ParticipantProcessResult processResult,
-        ParticipantStepResult stepResult,
+        ProcessorProcessResult processResult,
+        ProcessorStepResult stepResult,
         IProcessStepRegistry registry,
         ProcessRouteOptions options)
     {
@@ -253,7 +252,7 @@ internal static class ProcessContractMapper
     }
 
     public static IEnumerable<ProcessMessage> ToMessages(
-        ParticipantStepResult stepResult)
+        ProcessorStepResult stepResult)
     {
         ArgumentNullException.ThrowIfNull(stepResult);
 

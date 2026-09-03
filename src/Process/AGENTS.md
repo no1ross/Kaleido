@@ -19,7 +19,7 @@ The subsystem is split into three main projects:
 
 - `Abstractions`
   - public attributes
-  - participant request/result contracts
+  - processor request/result contracts
   - step handler contracts
   - durable state contracts
   - registry contracts
@@ -54,8 +54,8 @@ Process is step-centric, not query-centric.
 The core model is:
 1. declare a process step with `[ProcessStep]`
 2. implement exactly one handler for that step
-3. register assemblies with `AddParticipant()`
-4. let the runtime build a registry and participant state
+3. register assemblies with `AddProcessor()`
+4. let the runtime build a registry and processor state
 5. submit one or more steps for a new or existing process instance
 6. let the framework validate, plan, execute, persist, and publish next-step guidance
 
@@ -67,10 +67,10 @@ Do not import Queryable terminology like direct contexts, local views, or delega
 
 These rules are fundamental to startup and runtime correctness:
 
-- At least one assembly must be registered before `AddParticipant(...)`.
-- Every participant registration must provide a non-empty `Name`.
-- Every participant registration must provide a non-empty `Version`.
-- Every participant registration must provide a non-empty `DisplayName`.
+- At least one assembly must be registered before `AddProcessor(...)`.
+- Every processor registration must provide a non-empty `Name`.
+- Every processor registration must provide a non-empty `Version`.
+- Every processor registration must provide a non-empty `DisplayName`.
 - At least one process step must be discovered.
 - Every `[ProcessStep]` must have a non-empty `Name`.
 - Every `[ProcessStep]` must have a non-empty `Version`.
@@ -97,7 +97,7 @@ Those changes ripple into:
 
 ## 4. State model rules
 
-`ParticipantContext` is current resumable state, not an audit log.
+`ProcessorContext` is current resumable state, not an audit log.
 
 That means:
 - keep it small and execution-oriented
@@ -106,7 +106,7 @@ That means:
 
 Historical evidence should be emitted as process events instead.
 
-When modifying participant state behavior:
+When modifying processor state behavior:
 - preserve compatibility for existing saved process instances when possible
 - remember that `Reconcile(...)` updates older contexts to reflect current registrations
 - be cautious about renaming step identities or changing step lifecycle assumptions
@@ -152,9 +152,9 @@ In particular:
 The registry is the source of truth for published step metadata.
 
 Published metadata currently includes:
-- participant identity and descriptions
-- participant version and display name
-- initial-step summaries grouped by participant
+- processor identity and descriptions
+- processor version and display name
+- initial-step summaries grouped by processor
 - full step identity and descriptions
 - repeatability
 - input field metadata
@@ -176,10 +176,10 @@ If you change:
 
 then also verify the corresponding HTTP metadata responses and registry endpoints.
 
-The discovery model is participant-grouped and step-centric:
-- participant catalog exposes participant summaries with grouped initial steps
+The discovery model is processor-grouped and step-centric:
+- processor catalog exposes processor summaries with grouped initial steps
 - step catalog exposes all steps in lightweight form
-- full registry exposes participant records with full step metadata
+- full registry exposes processor records with full step metadata
 - per-step metadata exposes one detailed step record
 
 ---
@@ -203,7 +203,7 @@ It should not:
 
 When updating endpoint contracts or route behavior:
 - verify both process-wide and per-step execution endpoints
-- verify participant catalog, step catalog, full registry, and per-step metadata endpoints
+- verify processor catalog, step catalog, full registry, and per-step metadata endpoints
 - verify response header behavior for `ProcessId`
 
 ---
@@ -255,7 +255,7 @@ Observability should continue to reflect real runtime boundaries:
 ### Naming is not fully settled
 The subsystem currently mixes the terms:
 - Process
-- Participant
+- Processor
 - Step
 
 Be explicit in docs and code changes about which concept you mean.
@@ -322,6 +322,6 @@ Prefer these patterns:
 Avoid these patterns unless there is a deliberate redesign:
 - bypassing the registry for metadata
 - adding HTTP-only execution semantics that runtime does not understand
-- embedding audit history into `ParticipantContext`
+- embedding audit history into `ProcessorContext`
 - weakening step/handler uniqueness guarantees
 - importing Queryable concepts into Process terminology

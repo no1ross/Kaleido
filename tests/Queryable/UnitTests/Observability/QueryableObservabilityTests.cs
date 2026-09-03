@@ -175,8 +175,8 @@ public sealed class QueryableObservabilityTests
                 {
                     RequestId = "REQ-001",
                     ProcessId = Guid.NewGuid(),
-                    ParticipantId = "participant-a",
-                    ParticipantInstanceId = Guid.NewGuid(),
+                    ProcessorId = "processor-a",
+                    ProcessorInstanceId = Guid.NewGuid(),
                     OrchestratorId = "orchestrator-a",
                     OrchestratorInstanceId = Guid.NewGuid()
                 });

@@ -1,6 +1,6 @@
 ﻿using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.AspNetCore.Srevices;
-using Kaleido.Process.Participant.Registry;
+using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -12,7 +12,7 @@ namespace Kaleido.Process.AspNetCore;
 
 public static class ProcessEndpointRouteBuilderExtensions
 {
-    public static IEndpointRouteBuilder MapParticipant(
+    public static IEndpointRouteBuilder MapProcessor(
         this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
@@ -21,9 +21,9 @@ public static class ProcessEndpointRouteBuilderExtensions
             endpoints.ServiceProvider
                 .GetRequiredService<IProcessStepRegistry>();
 
-        var participantRegistry =
+        var processorRegistry =
             endpoints.ServiceProvider
-                .GetRequiredService<IParticipantRegistry>();
+                .GetRequiredService<IProcessorRegistry>();
 
         var options =
             endpoints.ServiceProvider
@@ -43,30 +43,30 @@ public static class ProcessEndpointRouteBuilderExtensions
             registry.Registrations.Count,
             registry.InitialRegistrations.Count);
 
-        group.MapParticipantCatalogEndpoint(participantRegistry, options);
+        group.MapProcessorCatalogEndpoint(processorRegistry, options);
 
         group.MapExecuteEndpoint();
 
         group.MapProcessStateEndpoint();
 
-        group.MapStepCatalogEndpoint(participantRegistry, options);
+        group.MapStepCatalogEndpoint(processorRegistry, options);
 
-        group.MapStepRegistryEndpoint(participantRegistry, options);
+        group.MapStepRegistryEndpoint(processorRegistry, options);
 
         foreach (var step in registry.Registrations)
         {
             group.MapProcessStep(
                 step,
-                participantRegistry,
+                processorRegistry,
                 options);
         }
 
         return endpoints;
     }
 
-    private static void MapParticipantCatalogEndpoint(
+    private static void MapProcessorCatalogEndpoint(
         this IEndpointRouteBuilder endpoints,
-        IParticipantRegistry registry,
+        IProcessorRegistry registry,
         ProcessRouteOptions options)
     {
         endpoints.MapGet(
@@ -75,20 +75,20 @@ public static class ProcessEndpointRouteBuilderExtensions
                     Results.Ok(
                         new ProcessCatalogResponse
                         {
-                            Participants = registry.Registrations
+                            Processors = registry.Registrations
                                 .OrderBy(x => x.Name)
                                 .Select(x =>
-                                    ParticipantCatalogResponse.FromRegistration(
+                                    ProcessorCatalogResponse.FromRegistration(
                                         x,
                                         options))
                                 .ToArray()
                         }))
-            .WithName(ProcessEndpointNames.ParticipantCatalogEndpointName)
+            .WithName(ProcessEndpointNames.ProcessorCatalogEndpointName)
             .WithTags("Processes")
             .Produces<ProcessCatalogResponse>()
             .WithSummary("Get process entry points.")
             .WithDescription(
-                "Returns the initial process steps that can be used to start a new participant process. " +
+                "Returns the initial process steps that can be used to start a new processor process. " +
                 "This endpoint is intended to let consumers discover how a process can begin without understanding the full process graph.");
     }
 
@@ -142,15 +142,15 @@ public static class ProcessEndpointRouteBuilderExtensions
             .WithTags("Processes")
             .Produces<ProcessStateResponse>()
             .Produces(StatusCodes.Status404NotFound)
-            .WithSummary("Get participant process state.")
+            .WithSummary("Get processor process state.")
             .WithDescription(
-                "Returns the current state of a participant process, including executed steps and currently available next steps. " +
+                "Returns the current state of a processor process, including executed steps and currently available next steps. " +
                 "This endpoint does not execute any process step.");
     }
 
     private static void MapStepRegistryEndpoint(
         this IEndpointRouteBuilder endpoints,
-        IParticipantRegistry registry,
+        IProcessorRegistry registry,
         ProcessRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(registry);
@@ -162,13 +162,13 @@ public static class ProcessEndpointRouteBuilderExtensions
                     Results.Ok(
                         registry.Registrations
                             .Select(x =>
-                                ParticipantRegistryResponse.FromRegistration(
+                                ProcessorRegistryResponse.FromRegistration(
                                     x,
                                     options))
                             .OrderBy(x => x.Name)))
             .WithName(ProcessEndpointNames.StepRegistryEndpointName)
             .WithTags("Processes")
-            .Produces<IReadOnlyCollection<ParticipantRegistryResponse>>()
+            .Produces<IReadOnlyCollection<ProcessorRegistryResponse>>()
             .WithSummary("Get process registry metadata.")
             .WithDescription(
                 "Returns the complete process metadata registry for all registered process steps. " +
@@ -180,7 +180,7 @@ public static class ProcessEndpointRouteBuilderExtensions
 
     private static void MapStepCatalogEndpoint(
         this IEndpointRouteBuilder endpoints,
-        IParticipantRegistry registry,
+        IProcessorRegistry registry,
         ProcessRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(registry);
@@ -194,7 +194,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                             .SelectMany(x => x.Steps)
                             .Select(x =>
                                 ProcessStepResponse.ToSummary(
-                                    new ParticipantStepSummary
+                                    new ProcessorStepSummary
                                     {
                                         Name = x.Name,
                                         Description = x.Description,
@@ -216,18 +216,18 @@ public static class ProcessEndpointRouteBuilderExtensions
     private static void MapProcessStep(
         this IEndpointRouteBuilder endpoints,
         ProcessStepRegistration step,
-        IParticipantRegistry participantRegistry,
+        IProcessorRegistry processorRegistry,
         ProcessRouteOptions options)
     {
         ArgumentNullException.ThrowIfNull(step);
-        ArgumentNullException.ThrowIfNull(participantRegistry);
+        ArgumentNullException.ThrowIfNull(processorRegistry);
         ArgumentNullException.ThrowIfNull(options);
 
         var stepName =
             step.Metadata.Name.ToLowerInvariant();
 
         var registryStep =
-            participantRegistry.Registrations
+            processorRegistry.Registrations
                 .SelectMany(x => x.Steps)
                 .Single(x => string.Equals(
                     x.Name,
@@ -248,7 +248,7 @@ public static class ProcessEndpointRouteBuilderExtensions
     private static void MapStepMetadataEndpoint(
         this IEndpointRouteBuilder endpoints,
         ProcessStepRegistration step,
-        ParticipantStepRegistryItem registryStep,
+        ProcessorStepRegistryItem registryStep,
         string route,
         ProcessRouteOptions options)
     {
@@ -333,8 +333,8 @@ public static class ProcessEndpointRouteBuilderExtensions
                 $"Execute {step.Metadata.DisplayName}.")
             .WithDescription(
                 $"Executes the '{step.Metadata.DisplayName}' process step. " +
-                "If the request does not include a participant process id, a new participant process is created. " +
-                "If the request includes a participant process id, the existing participant process is continued. " +
+                "If the request does not include a processor process id, a new processor process is created. " +
+                "If the request includes a processor process id, the existing processor process is continued. " +
                 "The response includes the step result, consumer-facing messages, required next step if one exists, " +
                 "and currently available next steps.")
             .Accepts<ExecuteStepRequest<TProcessStep>>(
@@ -372,8 +372,8 @@ public static class ProcessEndpointRouteBuilderExtensions
                 $"Execute {step.Metadata.DisplayName}.")
             .WithDescription(
                 $"Executes the '{step.Metadata.DisplayName}' process step. " +
-                "If the request does not include a participant process id, a new participant process is created. " +
-                "If the request includes a participant process id, the existing participant process is continued. " +
+                "If the request does not include a processor process id, a new processor process is created. " +
+                "If the request includes a processor process id, the existing processor process is continued. " +
                 "The response includes the step result, consumer-facing messages, required next step if one exists, " +
                 "and currently available next steps.")
             .Accepts<ExecuteStepRequest<TProcessStep>>(

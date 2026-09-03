@@ -58,22 +58,22 @@
                             </div>
 
                             @if (snapshot.process.ok) {
-                                @for (participant of getParticipants(snapshot); track participant.name) {
+                                @for (processor of getParticipants(snapshot); track processor.name) {
                                     <div class="section">
                                         <div class="service-group__header">
                                             <div>
-                                                <div class="step-name">{{ participant.displayName }}</div>
-                                                <div class="step-meta">{{ participant.name }} | v{{ participant.version }}</div>
-                                                <div class="step-meta">Initial Steps: {{ getInitialStepNames(participant) || 'None' }}</div>
+                                                <div class="step-name">{{ processor.displayName }}</div>
+                                                <div class="step-meta">{{ processor.name }} | v{{ processor.version }}</div>
+                                                <div class="step-meta">Initial Steps: {{ getInitialStepNames(processor) || 'None' }}</div>
                                             </div>
                                         </div>
 
-                                        @for (step of participant.steps; track step.name) {
+                                        @for (step of processor.steps; track step.name) {
                                             <div
                                                 class="step-card"
                                                 [class.step-card--conflict]="getProcessConflicts(state).some(conflict => conflict.name === step.name)"
-                                                [class.selected]="selectedStep?.name === step.name && selectedParticipant?.name === participant.name && selectedService?.service?.key === snapshot.service.key"
-                                                (click)="selectStep(snapshot, participant, step)">
+                                                [class.selected]="selectedStep?.name === step.name && selectedProcessor?.name === processor.name && selectedService?.service?.key === snapshot.service.key"
+                                                (click)="selectStep(snapshot, processor, step)">
                                                 <div class="step-name">{{ step.name }}</div>
                                                 <div class="step-display-name">{{ step.displayName }}</div>
                                                 <div class="step-meta">
@@ -102,7 +102,7 @@
                     <div class="details">
                         <h2>{{ selectedStep.displayName }}</h2>
                         <div class="step-meta">Service: {{ selectedService?.service?.displayName }}</div>
-                        <div class="step-meta">Participant: {{ selectedParticipant?.displayName }} ({{ selectedParticipant?.name }})</div>
+                        <div class="step-meta">Processor: {{ selectedProcessor?.displayName }} ({{ selectedProcessor?.name }})</div>
 
                         <div class="section">
                             <h3>Metadata</h3>
@@ -117,12 +117,12 @@
                         </div>
 
                         <div class="section">
-                            <h3>Participant</h3>
+                            <h3>Processor</h3>
                             <table>
-                                <tr><th>Name</th><td>{{ selectedParticipant?.name }}</td></tr>
-                                <tr><th>Display Name</th><td>{{ selectedParticipant?.displayName }}</td></tr>
-                                <tr><th>Version</th><td>{{ selectedParticipant?.version }}</td></tr>
-                                <tr><th>Registry Url</th><td>{{ selectedParticipant?.registryUrl }}</td></tr>
+                                <tr><th>Name</th><td>{{ selectedProcessor?.name }}</td></tr>
+                                <tr><th>Display Name</th><td>{{ selectedProcessor?.displayName }}</td></tr>
+                                <tr><th>Version</th><td>{{ selectedProcessor?.version }}</td></tr>
+                                <tr><th>Registry Url</th><td>{{ selectedProcessor?.registryUrl }}</td></tr>
                             </table>
                         </div>
 

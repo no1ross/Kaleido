@@ -158,12 +158,12 @@ internal sealed class ProcessObservability
             correlation.ProcessId?.ToString());
 
         activity?.SetTag(
-            "kaleido.participant.id",
-            correlation.ParticipantId);
+            "kaleido.processor.id",
+            correlation.ProcessorId?.ToString());
 
         activity?.SetTag(
-            "kaleido.participant.instance_id",
-            correlation.ParticipantInstanceId?.ToString());
+            "kaleido.processor.instance_id",
+            correlation.ProcessorInstanceId?.ToString());
 
         activity?.SetTag(
             "kaleido.orchestrator.id",
@@ -179,7 +179,7 @@ internal sealed class ProcessObservability
 
         var executionTags =
             CreateExecutionTags(
-                correlation.ParticipantId);
+                correlation.ProcessorId?.ToString());
 
         ProcessExecutionsCounter.Add(
             1,
@@ -269,15 +269,15 @@ internal sealed class ProcessObservability
     }
 
     private static TagList CreateExecutionTags(
-        string? participantId)
+        string? processorId)
     {
         TagList tags = [];
 
-        if (!string.IsNullOrWhiteSpace(participantId))
+        if (!string.IsNullOrWhiteSpace(processorId))
         {
             tags.Add(
-                "participant.id",
-                participantId);
+                "processor.id",
+                processorId);
         }
 
         return tags;

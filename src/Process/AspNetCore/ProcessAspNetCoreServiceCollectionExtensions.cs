@@ -1,5 +1,4 @@
 using Kaleido.Process.AspNetCore.Srevices;
-using Kaleido.Process.Participant;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -7,14 +6,14 @@ namespace Kaleido.Process.AspNetCore;
 
 public static class ProcessAspNetCoreServiceCollectionExtensions
 {
-    public static IParticipantBuilder AddParticipantAspNetCore(this IParticipantBuilder builder, 
+    public static IProcessorBuilder AddProcessorAspNetCore(this IProcessorBuilder builder, 
         Action<ProcessRouteOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        if (!builder.Services.Any(d => d.ServiceType == typeof(IParticipantRuntime)))
+        if (!builder.Services.Any(d => d.ServiceType == typeof(IProcessorRuntime)))
         {
-            throw new InvalidOperationException("AddParticipant must be called before AddParticipantAspNetCore.");
+            throw new InvalidOperationException("AddProcessor must be called before AddProcessorAspNetCore.");
         }
 
         var routeOptions = new ProcessRouteOptions(); 

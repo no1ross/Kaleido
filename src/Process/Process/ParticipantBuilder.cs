@@ -3,12 +3,12 @@ using System.Reflection;
 
 namespace Kaleido.Process;
 
-internal sealed class ParticipantBuilder
-    : IParticipantBuilder
+internal sealed class ProcessorBuilder
+    : IProcessorBuilder
 {
     private readonly IKaleidoBuilder _builder;
 
-    public ParticipantBuilder(
+    public ProcessorBuilder(
         IKaleidoBuilder builder)
     {
         _builder = builder;

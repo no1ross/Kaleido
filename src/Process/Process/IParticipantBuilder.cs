@@ -1,6 +1,6 @@
 namespace Kaleido.Process;
 
-public interface IParticipantBuilder
+public interface IProcessorBuilder
     : IKaleidoBuilder
 {
 }

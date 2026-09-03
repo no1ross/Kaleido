@@ -3,7 +3,7 @@ import { Injectable, signal } from '@angular/core';
 import {
     ProcessMessage,
     ProcessStepSummary
-} from '../../kaleido/models/participant-process-result';
+} from '../../kaleido/models/processor-process-result';
 import { QuestionnaireDefinition } from '../../kaleido/models/questionnaire';
 
 export interface ProcessSelectedMemberSummary {

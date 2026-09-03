@@ -1,9 +1,9 @@
 using Kaleido.Process.AspNetCore;
 using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.AspNetCore.Srevices;
-using Kaleido.Process.Participant;
-using Kaleido.Process.Participant.Execution;
-using Kaleido.Process.Participant.Registry;
+using Kaleido.Process.Execution;
+using Kaleido.Process;
+using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
@@ -14,21 +14,21 @@ namespace Kaleido.Process.AspNetCore.Tests;
 public sealed class ProcessEndpointRouteBuilderExtensionsTests
 {
     [Fact]
-    public void MapParticipant_WhenEndpointsIsNull_Throws()
+    public void MapProcessor_WhenEndpointsIsNull_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            ProcessEndpointRouteBuilderExtensions.MapParticipant(null!));
+            ProcessEndpointRouteBuilderExtensions.MapProcessor(null!));
     }
 
     [Fact]
-    public void MapParticipant_RegistersCatalogRegistryStateAndStepEndpoints()
+    public void MapProcessor_RegistersCatalogRegistryStateAndStepEndpoints()
     {
         var endpoints =
             CreateEndpoints();
 
-        endpoints.MapParticipant();
+        endpoints.MapProcessor();
 
-        Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ParticipantCatalogEndpointName));
+        Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ProcessorCatalogEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ProcessEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.StepCatalogEndpointName));
@@ -38,7 +38,7 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
     }
 
     [Fact]
-    public void MapParticipant_UsesExpectedRoutes()
+    public void MapProcessor_UsesExpectedRoutes()
     {
         var endpoints =
             CreateEndpoints(
@@ -47,7 +47,7 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
                     RoutePrefix = "/workflows"
                 });
 
-        endpoints.MapParticipant();
+        endpoints.MapProcessor();
 
         Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes"));
         Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes/execute"));
@@ -58,12 +58,12 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
     }
 
     [Fact]
-    public void MapParticipant_UsesDisplayNameTags()
+    public void MapProcessor_UsesDisplayNameTags()
     {
         var endpoints =
             CreateEndpoints();
 
-        endpoints.MapParticipant();
+        endpoints.MapProcessor();
 
         var metadataEndpoint =
             FindEndpoint(
@@ -127,7 +127,7 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
         builder.Services.AddSingleton<IProcessStepRegistry>(CreateRegistry());
-        builder.Services.AddSingleton<IParticipantRegistry>(CreateParticipantRegistry());
+        builder.Services.AddSingleton<IProcessorRegistry>(CreateProcessorRegistry());
         builder.Services.AddSingleton(options ?? new ProcessRouteOptions());
 
         return builder.Build();
@@ -167,24 +167,24 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
         return registry.Object;
     }
 
-    private static IParticipantRegistry CreateParticipantRegistry()
+    private static IProcessorRegistry CreateProcessorRegistry()
     {
         var registry =
-            new Mock<IParticipantRegistry>();
+            new Mock<IProcessorRegistry>();
 
         registry
             .Setup(x => x.Registrations)
             .Returns(
             [
-                new ParticipantRegistryItem
+                new ProcessorRegistryItem
                 {
-                    Name = "test-participant",
-                    Description = "Test participant",
+                    Name = "test-processor",
+                    Description = "Test processor",
                     Version = "1.0.0",
-                    DisplayName = "Test Participant",
+                    DisplayName = "Test Processor",
                     InitialSteps =
                     [
-                        new ParticipantStepSummary
+                        new ProcessorStepSummary
                         {
                             Name = "Test-Step",
                             Description = "Test step",
@@ -195,7 +195,7 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
                     ],
                     Steps =
                     [
-                        new ParticipantStepRegistryItem
+                        new ProcessorStepRegistryItem
                         {
                             Name = "Test-Step",
                             Description = "Test step",

@@ -183,12 +183,12 @@ internal sealed class QueryableObservability
             correlation.ProcessId?.ToString());
 
         activity?.SetTag(
-            "kaleido.participant.id",
-            correlation.ParticipantId);
+            "kaleido.processor.id",
+            correlation.ProcessorId);
 
         activity?.SetTag(
-            "kaleido.participant.instance_id",
-            correlation.ParticipantInstanceId?.ToString());
+            "kaleido.processor.instance_id",
+            correlation.ProcessorInstanceId?.ToString());
 
         activity?.SetTag(
             "kaleido.orchestrator.id",

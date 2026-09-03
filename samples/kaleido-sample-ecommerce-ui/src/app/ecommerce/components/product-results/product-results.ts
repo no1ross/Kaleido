@@ -15,7 +15,7 @@ import { RequestContextService } from '../../../kaleido/services/request-context
 import { QueryResultStateService } from '../../../kaleido/services/query-state-service';
 import { ProductContextStateService } from '../../services/product-context-state-service';
 import { AddItemToCartStep } from '../../models/steps/add-item-to-cart';
-import { ExecuteStepRequest } from '../../models/participant-process-request';
+import { ExecuteStepRequest } from '../../models/processor-process-request';
 import { ECommerceStateService } from '../../services/ecommerce-state-service';
 import { AddItemToCartResponse } from '../../models/steps/add-item-to-cart';
 import { ProductsByCategoryParameters } from '../../models/product-catalog-view';

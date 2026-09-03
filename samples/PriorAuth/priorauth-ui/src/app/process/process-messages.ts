@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 
-import { ProcessMessage } from '../kaleido/models/participant-process-result';
+import { ProcessMessage } from '../kaleido/models/processor-process-result';
 import { ProcessStateService } from './services/process-state-service';
 
 @Component({

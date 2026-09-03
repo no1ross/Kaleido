@@ -10,7 +10,7 @@ import { ECommerceStateService } from '../../services/ecommerce-state-service';
 import { ShoppingCartSummaryView, ShoppingCartViewParameters } from '../../models/shopping-cart-models';
 
 import { ProcessService } from '../../../kaleido/services/process-service';
-import { ExecuteStepRequest } from '../../models/participant-process-request';
+import { ExecuteStepRequest } from '../../models/processor-process-request';
 import { ReconcileCartOwnershipStep, ReconcileCartOwnershipResponse } from '../../models/steps/reconcile-cart-ownership';
 import { CommonModule } from '@angular/common';
 

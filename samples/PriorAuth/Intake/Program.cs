@@ -123,14 +123,14 @@ builder.Services.AddHealthChecks()
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(IntakeDbContext).Assembly)
-    .AddParticipant(o =>
+    .AddProcessor(o =>
         {
             o.Name = "intake";
-            o.Description = "Prior authorization intake participant.";
+            o.Description = "Prior authorization intake processor.";
             o.Version = "1.0.0";
             o.DisplayName = "Prior Auth Intake";
         })
-        .AddParticipantAspNetCore(o =>
+        .AddProcessorAspNetCore(o =>
         {
             o.RoutePrefix = "intake";
         })
@@ -147,7 +147,7 @@ app.UseCors("AllowAll");
 
 app.MapHealthChecks("/health");
 
-app.MapParticipant();
+app.MapProcessor();
 app.MapQueryable();
 
 await using (var scope = app.Services.CreateAsyncScope())
