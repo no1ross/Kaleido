@@ -23,6 +23,10 @@ public static class QueryableEndpointRouteBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
+        var queryableRegistry =
+            endpoints.ServiceProvider
+                .GetRequiredService<IQueryableRegistry>();
+
         var contextRegistry =
             endpoints.ServiceProvider
                 .GetRequiredService<IQueryContextRegistry>();
@@ -59,15 +63,11 @@ public static class QueryableEndpointRouteBuilderExtensions
         group.MapGet(
                 "",
                 () => Results.Ok(
-                    contextRegistry.Registrations
+                    queryableRegistry.Registrations
                         .Select(r =>
                             QueryableRecordResponse.ToSummary(
                                 r,
                                 options))
-                        .Concat(
-                            delegatedViewRegistry.Registrations
-                                .GroupBy(x => x.QueryMetadata.Name, StringComparer.OrdinalIgnoreCase)
-                                .Select(x => QueryableRecordResponse.ToSummary(x.First().QueryMetadata, options)))
                         .OrderBy(r => r.Name)))
             .WithName(
                 QueryableEndpointNames.CatalogEndpointName)
@@ -83,24 +83,11 @@ public static class QueryableEndpointRouteBuilderExtensions
         group.MapGet(
             "registry",
             () => Results.Ok(
-                contextRegistry.Registrations
+                queryableRegistry.Registrations
                     .Select(r =>
-                    {
-                        var views = viewRegistry.Registrations
-                            .Where(x => x.QueryContextType == r.ContextType).ToArray();
-                        return QueryableRecordResponse.FromRegistration(
+                        QueryableRecordResponse.FromRegistryItem(
                             r,
-                            views,
-                            options);
-                    })
-                    .Concat(
-                        delegatedViewRegistry.Registrations
-                            .GroupBy(x => x.QueryMetadata.Name, StringComparer.OrdinalIgnoreCase)
-                            .Select(grouping =>
-                                QueryableRecordResponse.FromDelegatedRegistration(
-                                    grouping.First().QueryMetadata,
-                                    grouping.ToArray(),
-                                    options)))
+                            options))
                     .OrderBy(r => r.Name)))
                 .WithName(
                     QueryableEndpointNames.RegistryEndpointName)
@@ -120,8 +107,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 .Where(x => x.QueryContextType == context.ContextType).ToArray();
 
             group.MapMetadataEndpoint(
-                context,
-                views,
+                queryableRegistry.GetRegistration(context.Metadata.Name),
                 QueryableRoutePaths.QueryContextMetadata(
                     options,
                     context.Metadata.Name.ToLowerInvariant()),
@@ -140,9 +126,8 @@ public static class QueryableEndpointRouteBuilderExtensions
         {
             var metadata = delegatedContext.First().QueryMetadata;
 
-            group.MapDelegatedMetadataEndpoint(
-                metadata,
-                delegatedContext.ToArray(),
+            group.MapMetadataEndpoint(
+                queryableRegistry.GetRegistration(metadata.Name),
                 QueryableRoutePaths.QueryContextMetadata(
                     options,
                     metadata.Name.ToLowerInvariant()),
@@ -236,53 +221,25 @@ public static class QueryableEndpointRouteBuilderExtensions
 
     private static void MapMetadataEndpoint(
         this IEndpointRouteBuilder endpoints,
-        QueryContextRegistration context,
-        IReadOnlyCollection<QueryViewRegistration> views,
+        QueryableContextRegistryItem context,
         string route,
         QueryableRouteOptions options)
     {
         endpoints.MapGet(
                 route,
                 () => Results.Ok(
-                    QueryableRecordResponse.FromRegistration(
+                    QueryableRecordResponse.FromRegistryItem(
                         context,
-                        views,
                         options)))
             .WithName(
                 QueryableEndpointNames.QueryContextMetadataEndpointName(
-                    context.Metadata.Name.ToLowerInvariant()))
+                    context.Name.ToLowerInvariant()))
             .WithTags(
-                context.Metadata.DisplayName)
+                context.DisplayName ?? context.Name)
             .WithSummary(
-                $"Get metadata for {context.Metadata.DisplayName}.")
+                $"Get metadata for {context.DisplayName ?? context.Name}.")
             .WithDescription(
-                $"Returns metadata describing the '{context.Metadata.DisplayName}' query context, including fields, data types, query capabilities, available views, and available named queries.")
-            .Produces<QueryableRecordResponse>();
-    }
-
-    private static void MapDelegatedMetadataEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        QueryContextMetadata metadata,
-        IReadOnlyCollection<DelegatedQueryViewRegistration> views,
-        string route,
-        QueryableRouteOptions options)
-    {
-        endpoints.MapGet(
-                route,
-                () => Results.Ok(
-                    QueryableRecordResponse.FromDelegatedRegistration(
-                        metadata,
-                        views,
-                        options)))
-            .WithName(
-                QueryableEndpointNames.QueryContextMetadataEndpointName(
-                    metadata.Name.ToLowerInvariant()))
-            .WithTags(
-                metadata.DisplayName)
-            .WithSummary(
-                $"Get metadata for {metadata.DisplayName}.")
-            .WithDescription(
-                $"Returns metadata describing the '{metadata.DisplayName}' query context, including fields, data types, query capabilities, available views, and available named queries.")
+                $"Returns metadata describing the '{context.DisplayName ?? context.Name}' query context, including fields, data types, query capabilities, available views, and available named queries.")
             .Produces<QueryableRecordResponse>();
     }
 

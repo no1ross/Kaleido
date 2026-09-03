@@ -191,6 +191,7 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
             property.Name,
             description?.Description,
             property.PropertyType,
+            DataTypeMapper.GetDescriptor(property.PropertyType),
             filterable is not null,
             filterable?.Operators ?? Array.Empty<FilterOperator>(),
             searchable is not null,

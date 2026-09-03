@@ -32,7 +32,7 @@ public sealed class QueryableValueNormalizerTests
     public void NormalizeValues_ConvertsKnownParameterTypes()
     {
         var values = new Dictionary<string, object?> { ["Amount"] = "12.5" };
-        var parameters = new[] { new QueryParameterMetadata("Amount", typeof(decimal), [], null) };
+        var parameters = new[] { new QueryParameterMetadata("Amount", typeof(decimal), DataTypeMapper.GetDescriptor(typeof(decimal)), [], null) };
 
         var result = QueryableValueNormalizer.Normalize(values, parameters);
 
@@ -43,7 +43,7 @@ public sealed class QueryableValueNormalizerTests
     public void NormalizeValues_WhenConversionFails_ThrowsInvalidParameterValueException()
     {
         var values = new Dictionary<string, object?> { ["Amount"] = "nope" };
-        var parameters = new[] { new QueryParameterMetadata("Amount", typeof(decimal), [], null) };
+        var parameters = new[] { new QueryParameterMetadata("Amount", typeof(decimal), DataTypeMapper.GetDescriptor(typeof(decimal)), [], null) };
 
         Assert.Throws<InvalidParameterValueException>(() => QueryableValueNormalizer.Normalize(values, parameters));
     }
@@ -85,5 +85,5 @@ public sealed class QueryableValueNormalizerTests
             "Unit Test",
             QueryContextKind.Direct,
             null,
-            [new FieldMetadata("Amount", null, typeof(decimal), true, [FilterOperator.Equals], false, null, null, false)]);
+            [new FieldMetadata("Amount", null, typeof(decimal), DataTypeMapper.GetDescriptor(typeof(decimal)), true, [FilterOperator.Equals], false, null, null, false)]);
 }

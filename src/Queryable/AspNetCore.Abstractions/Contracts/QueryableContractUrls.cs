@@ -1,4 +1,4 @@
-﻿using Kaleido.Queryable;
+using Kaleido.Queryable;
 
 internal static class QueryableContractUrls
 {

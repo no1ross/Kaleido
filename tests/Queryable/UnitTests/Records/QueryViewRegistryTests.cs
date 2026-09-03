@@ -34,9 +34,14 @@ public sealed class QueryViewRegistryTests
 
         Assert.Equal(nameof(TestParameters.Category), parameter.Name);
         Assert.Equal(typeof(string), parameter.Type);
+        Assert.Equal(DataTypeMapper.GetDescriptor(typeof(string)), parameter.DataType);
         Assert.Equal("Category description", parameter.Description);
         Assert.Single(parameter.Constraints);
         Assert.Equal("Required", parameter.Constraints.Single().Type);
+
+        var outputField = Assert.Single(registry.GetRegistration(typeof(TestView)).Metadata.OutputFields!, x => x.Name == nameof(TestContract.Id));
+        Assert.Equal(typeof(int), outputField.Type);
+        Assert.Equal(DataTypeMapper.GetDescriptor(typeof(int)), outputField.DataType);
     }
 
     [Fact]
@@ -48,6 +53,7 @@ public sealed class QueryViewRegistryTests
 
         Assert.Equal(typeof(EmptyQueryViewParameters), registration.ViewParametersType);
         Assert.Empty(registration.Metadata.Parameters!);
+        Assert.Single(registration.Metadata.OutputFields!, x => x.Name == nameof(TestContract.Id));
     }
 
     [Fact]
@@ -124,6 +130,7 @@ public sealed class QueryViewRegistryTests
 
     private sealed class TestContract
     {
+        public int Id { get; init; }
     }
 
     private sealed class TestParameters

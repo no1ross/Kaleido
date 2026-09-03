@@ -1,4 +1,4 @@
-﻿namespace Kaleido.Queryable.AspNetCore.Contracts;
+namespace Kaleido.Queryable.AspNetCore.Contracts;
 
 public sealed record QueryableRecordSummary
 {

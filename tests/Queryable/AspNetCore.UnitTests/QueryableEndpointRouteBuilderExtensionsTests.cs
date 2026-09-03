@@ -116,6 +116,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton<IQueryContextRegistry>(CreateContextRegistry());
         builder.Services.AddSingleton<IQueryViewRegistry>(CreateViewRegistry());
         builder.Services.AddSingleton<IDelegatedQueryViewRegistry>(CreateDelegatedViewRegistry());
+        builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry());
         builder.Services.AddSingleton(routeOptions);
         return builder.Build();
     }
@@ -139,6 +140,53 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
     {
         var registry = new Mock<IDelegatedQueryViewRegistry>();
         registry.Setup(x => x.Registrations).Returns(Array.Empty<DelegatedQueryViewRegistration>());
+        return registry.Object;
+    }
+
+    private static IQueryableRegistry CreateQueryableRegistry()
+    {
+        var registry = new Mock<IQueryableRegistry>();
+        registry.Setup(x => x.Registrations).Returns([
+            new QueryableContextRegistryItem
+            {
+                Name = "Test-Context",
+                Description = "Test Context",
+                DisplayName = "Test Context",
+                Version = "1.0.0",
+                Source = "Unit Test",
+                Kind = QueryContextKind.Direct,
+                Views = [
+                    new QueryableViewRegistryItem
+                    {
+                        Name = "Test-View",
+                        Description = "Test View",
+                        DisplayName = "Test View",
+                        Version = "1.0.0",
+                        Visibility = QueryViewVisibility.Public
+                    }
+                ]
+            }
+        ]);
+        registry.Setup(x => x.GetRegistration("Test-Context")).Returns(
+            new QueryableContextRegistryItem
+            {
+                Name = "Test-Context",
+                Description = "Test Context",
+                DisplayName = "Test Context",
+                Version = "1.0.0",
+                Source = "Unit Test",
+                Kind = QueryContextKind.Direct,
+                Views = [
+                    new QueryableViewRegistryItem
+                    {
+                        Name = "Test-View",
+                        Description = "Test View",
+                        DisplayName = "Test View",
+                        Version = "1.0.0",
+                        Visibility = QueryViewVisibility.Public
+                    }
+                ]
+            });
         return registry.Object;
     }
 
@@ -169,6 +217,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
                 "Test View",
                 QueryViewVisibility.Public,
                 null,
+                [],
                 []));
 
     public sealed class TestContext

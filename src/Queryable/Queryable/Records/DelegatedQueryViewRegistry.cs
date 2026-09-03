@@ -91,7 +91,8 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
                 queryViewAttribute.Description ?? queryViewAttribute.DisplayName ?? queryViewAttribute.Name,
                 queryViewAttribute.Visibility,
                 BuildPageable(queryViewType, contextType, queryViewAttribute),
-                BuildParameters(parametersType)));
+                BuildParameters(parametersType),
+                BuildOutputFields(viewType)));
     }
 
     private static QueryContextMetadata BuildQueryMetadata(Type contextType)
@@ -133,8 +134,22 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
                 new QueryParameterMetadata(
                     property.Name,
                     property.PropertyType,
+                    DataTypeMapper.GetDescriptor(property.PropertyType),
                     ConstraintMapper.Map(property),
                     property.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>()?.Description))
+            .ToArray();
+    }
+
+    private static IReadOnlyList<QueryOutputFieldMetadata> BuildOutputFields(Type viewType)
+    {
+        return viewType
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Select(property =>
+                new QueryOutputFieldMetadata(
+                    property.Name,
+                    property.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>()?.Description,
+                    property.PropertyType,
+                    DataTypeMapper.GetDescriptor(property.PropertyType)))
             .ToArray();
     }
 
@@ -183,6 +198,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
             property.Name,
             description?.Description,
             property.PropertyType,
+            DataTypeMapper.GetDescriptor(property.PropertyType),
             filterable is not null,
             filterable?.Operators ?? Array.Empty<FilterOperator>(),
             searchable is not null,

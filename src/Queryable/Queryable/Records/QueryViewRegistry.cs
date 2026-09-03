@@ -118,7 +118,8 @@ internal sealed class QueryViewRegistry
                     ?? queryViewAttribute.Name,
                 queryViewAttribute.Visibility,
                 pageable,
-                BuildParameters(parametersType)));
+                BuildParameters(parametersType),
+                BuildOutputFields(sourceType)));
     }
 
     private static IReadOnlyList<QueryParameterMetadata> BuildParameters(
@@ -137,8 +138,25 @@ internal sealed class QueryViewRegistry
                 new QueryParameterMetadata(
                     property.Name,
                     property.PropertyType,
+                    DataTypeMapper.GetDescriptor(property.PropertyType),
                     ConstraintMapper.Map(property),
                     property.GetCustomAttribute<DescriptionAttribute>()?.Description))
+            .ToArray();
+    }
+
+    private static IReadOnlyList<QueryOutputFieldMetadata> BuildOutputFields(
+        Type viewType)
+    {
+        return viewType
+            .GetProperties(
+                BindingFlags.Public |
+                BindingFlags.Instance)
+            .Select(property =>
+                new QueryOutputFieldMetadata(
+                    property.Name,
+                    property.GetCustomAttribute<DescriptionAttribute>()?.Description,
+                    property.PropertyType,
+                    DataTypeMapper.GetDescriptor(property.PropertyType)))
             .ToArray();
     }
 

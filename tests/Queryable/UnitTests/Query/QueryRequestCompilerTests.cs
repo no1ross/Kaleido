@@ -137,9 +137,9 @@ public sealed class QueryRequestCompilerTests
             QueryContextKind.Direct,
             new PageableMetadata(25, 100),
             [
-                new FieldMetadata(nameof(TestRecord.Code), null, typeof(string), true, [FilterOperator.Equals], false, null, null, true),
-                new FieldMetadata(nameof(TestRecord.Name), null, typeof(string), false, [], true, 1, MatchMode.Contains, false),
-                new FieldMetadata(nameof(TestRecord.Region), null, typeof(string), false, [], true, 2, MatchMode.Contains, true)
+                new FieldMetadata(nameof(TestRecord.Code), null, typeof(string), DataTypeMapper.GetDescriptor(typeof(string)), true, [FilterOperator.Equals], false, null, null, true),
+                new FieldMetadata(nameof(TestRecord.Name), null, typeof(string), DataTypeMapper.GetDescriptor(typeof(string)), false, [], true, 1, MatchMode.Contains, false),
+                new FieldMetadata(nameof(TestRecord.Region), null, typeof(string), DataTypeMapper.GetDescriptor(typeof(string)), false, [], true, 2, MatchMode.Contains, true)
             ]);
 
     private static QueryContextMetadata CreateContextMetadataWithoutPageable() =>
@@ -153,6 +153,7 @@ public sealed class QueryRequestCompilerTests
             "Test View",
             QueryViewVisibility.Public,
             new PageableMetadata(10, 20),
+            [],
             []);
 
     private sealed class TestRecord

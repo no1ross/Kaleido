@@ -46,6 +46,7 @@ public sealed class RecordMetadataTests : IClassFixture<QueryableAspNetCoreFixtu
         Assert.NotNull(view.Pageable);
         Assert.Equal(3, view.Pageable.DefaultSize);
         Assert.Equal(10, view.Pageable.MaxSize);
+        Assert.NotEmpty(view.OutputFields);
     }
 
     [Fact]

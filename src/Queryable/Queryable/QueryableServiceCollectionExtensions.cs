@@ -147,6 +147,8 @@ public static class QueryableServiceCollectionExtensions
             _ => new DelegatedQueryViewRegistry(
                 delegatedQueryViewTypes));
 
+        builder.Services.TryAddSingleton<IQueryableRegistry, QueryableRegistry>();
+
         RegisterFrameworkServices(builder.Services);
 
         return new QueryableBuilder(builder);

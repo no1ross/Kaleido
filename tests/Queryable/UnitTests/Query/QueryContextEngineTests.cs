@@ -192,6 +192,7 @@ public sealed class QueryContextEngineTests
                 "Test View",
                 QueryViewVisibility.Public,
                 new PageableMetadata(25, 100),
+                [],
                 []));
 
     public sealed class TestContext

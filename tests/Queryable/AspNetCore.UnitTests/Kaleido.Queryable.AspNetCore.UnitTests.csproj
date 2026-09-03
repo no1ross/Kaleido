@@ -5,6 +5,7 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\..\..\src\Queryable\AspNetCore\Kaleido.Queryable.AspNetCore.csproj" />
+	  <ProjectReference Include="..\..\..\src\Queryable\AspNetCore.Abstractions\Kaleido.Queryable.AspNetCore.Abstractions.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

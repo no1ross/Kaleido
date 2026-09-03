@@ -831,6 +831,7 @@ public sealed class CompiledQueryApplierTests
             name,
             null,
             type,
+            DataTypeMapper.GetDescriptor(type),
             true,
             [],
             true,
