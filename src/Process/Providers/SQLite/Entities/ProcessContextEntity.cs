@@ -22,12 +22,6 @@ public sealed class ProcessContextEntity
         set;
     }
 
-    public string? RequiredStep
-    {
-        get;
-        set;
-    }
-
     public DateTimeOffset CreatedUtc
     {
         get;
@@ -51,4 +45,13 @@ public sealed class ProcessContextEntity
         get;
         set;
     } = new List<ProcessAvailableStepEntity>();
+
+    /// <summary>
+    /// Zero or one rows — present when the process is awaiting a specific required step.
+    /// </summary>
+    public ProcessRequiredStepEntity? RequiredStep
+    {
+        get;
+        set;
+    }
 }

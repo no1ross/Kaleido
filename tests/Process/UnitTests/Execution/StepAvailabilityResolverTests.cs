@@ -1,7 +1,8 @@
-﻿using Kaleido.Process.Context;
+using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
+using Moq;
 
 namespace Kaleido.Process.UnitTests.Processor.Execution;
 
@@ -90,9 +91,7 @@ public sealed class StepAvailabilityResolverTests
                 [next],
                 CreateContext());
 
-        Assert.Contains(
-            "step-b",
-            result);
+        AssertContainsStep(result, "step-b");
     }
 
     [Fact]
@@ -128,9 +127,7 @@ public sealed class StepAvailabilityResolverTests
                 [dependent],
                 CreateContext());
 
-        Assert.Contains(
-            "step-b",
-            result);
+        AssertContainsStep(result, "step-b");
     }
 
     [Fact]
@@ -171,9 +168,7 @@ public sealed class StepAvailabilityResolverTests
                 CreateContext(
                     ("step-a", StepExecutionStatus.Completed)));
 
-        Assert.Contains(
-            "step-c",
-            result);
+        AssertContainsStep(result, "step-c");
     }
 
     [Fact]
@@ -213,9 +208,7 @@ public sealed class StepAvailabilityResolverTests
                 [dependent],
                 CreateContext());
 
-        Assert.DoesNotContain(
-            "step-c",
-            result);
+        AssertDoesNotContainStep(result, "step-c");
     }
 
     [Fact]
@@ -248,9 +241,7 @@ public sealed class StepAvailabilityResolverTests
                 CreateContext(
                     ("step-a", StepExecutionStatus.Completed)));
 
-        Assert.DoesNotContain(
-            "step-a",
-            result);
+        AssertDoesNotContainStep(result, "step-a");
     }
 
     [Fact]
@@ -273,9 +264,7 @@ public sealed class StepAvailabilityResolverTests
                 [current],
                 CreateContext());
 
-        Assert.DoesNotContain(
-            "step-a",
-            result);
+        AssertDoesNotContainStep(result, "step-a");
     }
 
     [Fact]
@@ -311,9 +300,7 @@ public sealed class StepAvailabilityResolverTests
                 [availableAfter],
                 CreateContext());
 
-        Assert.Contains(
-            "step-b",
-            result);
+        AssertContainsStep(result, "step-b");
     }
 
     [Fact]
@@ -354,9 +341,7 @@ public sealed class StepAvailabilityResolverTests
                 CreateContext(
                     ("step-a", StepExecutionStatus.Completed)));
 
-        Assert.Contains(
-            "step-c",
-            result);
+        AssertContainsStep(result, "step-c");
     }
 
     [Fact]
@@ -396,9 +381,7 @@ public sealed class StepAvailabilityResolverTests
                 [availableAfter],
                 CreateContext());
 
-        Assert.DoesNotContain(
-            "step-c",
-            result);
+        AssertDoesNotContainStep(result, "step-c");
     }
 
     [Fact]
@@ -438,9 +421,7 @@ public sealed class StepAvailabilityResolverTests
                 [availableUntil],
                 CreateContext());
 
-        Assert.Contains(
-            "step-c",
-            result);
+        AssertContainsStep(result, "step-c");
     }
 
     [Fact]
@@ -481,9 +462,7 @@ public sealed class StepAvailabilityResolverTests
                 CreateContext(
                     ("step-a", StepExecutionStatus.Completed)));
 
-        Assert.DoesNotContain(
-            "step-c",
-            result);
+        AssertDoesNotContainStep(result, "step-c");
     }
 
     [Fact]
@@ -519,9 +498,7 @@ public sealed class StepAvailabilityResolverTests
                 [availableUntil],
                 CreateContext());
 
-        Assert.DoesNotContain(
-            "step-b",
-            result);
+        AssertDoesNotContainStep(result, "step-b");
     }
 
     [Fact]
@@ -579,9 +556,7 @@ public sealed class StepAvailabilityResolverTests
                     ("step-a", StepExecutionStatus.Completed),
                     ("step-b", StepExecutionStatus.Completed)));
 
-        Assert.Contains(
-            "step-e",
-            result);
+        AssertContainsStep(result, "step-e");
     }
 
     [Fact]
@@ -630,9 +605,7 @@ public sealed class StepAvailabilityResolverTests
                 CreateContext(
                     ("step-a", StepExecutionStatus.Completed)));
 
-        Assert.DoesNotContain(
-            "step-d",
-            result);
+        AssertDoesNotContainStep(result, "step-d");
     }
 
     [Fact]
@@ -674,10 +647,7 @@ public sealed class StepAvailabilityResolverTests
                 CreateContext());
 
         Assert.Single(result);
-        Assert.Contains(
-            "step-b",
-            result,
-            StringComparer.OrdinalIgnoreCase);
+        AssertContainsStep(result, "step-b");
     }
 
     [Fact]
@@ -702,9 +672,7 @@ public sealed class StepAvailabilityResolverTests
                 CreateContext(
                     ("step-a", StepExecutionStatus.Completed)));
 
-        Assert.Contains(
-            "step-a",
-            result);
+        AssertContainsStep(result, "step-a");
     }
 
     [Fact]
@@ -738,9 +706,36 @@ public sealed class StepAvailabilityResolverTests
                     ("step-a", StepExecutionStatus.Completed),
                     ("step-b", StepExecutionStatus.Completed)));
 
-        Assert.DoesNotContain(
-            "step-b",
-            result);
+        AssertDoesNotContainStep(result, "step-b");
+    }
+
+    [Fact]
+    public void Resolve_ReturnsReferencesWithCurrentProcessorName()
+    {
+        var currentRegistration =
+            CreateRegistration<TestStepA>(
+                "step-a");
+
+        var nextRegistration =
+            CreateRegistration<TestStepB>(
+                "step-b");
+
+        var current =
+            CreateCandidate(
+                "step-a",
+                currentRegistration);
+
+        var resolver = CreateResolver(nextRegistration);
+
+        var result =
+            resolver.Resolve(
+                current,
+                [],
+                CreateContext());
+
+        Assert.All(
+            result,
+            x => Assert.Equal(TestProcessorName, x.ProcessorName));
     }
 
     private static StepCandidate CreateCandidate(
@@ -786,6 +781,7 @@ public sealed class StepAvailabilityResolverTests
         return new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
+            ProcessorName = "test-processor",
             Steps =
                 steps
                     .Select(x =>
@@ -797,6 +793,8 @@ public sealed class StepAvailabilityResolverTests
                     .ToArray()
         };
     }
+
+    private const string TestProcessorName = "test-processor";
 
     private static StepAvailabilityResolver CreateResolver(
         params ProcessStepRegistration[] registrations)
@@ -817,8 +815,48 @@ public sealed class StepAvailabilityResolverTests
                 .Returns(registration);
         }
 
+        var processorRegistryItem = new ProcessorRegistryItem
+        {
+            Name = TestProcessorName,
+            Description = "test",
+            DisplayName = "Test Processor",
+            Version = "1.0"
+        };
+
+        var processorRegistry =
+            new Mock<IProcessorRegistry>();
+
+        processorRegistry
+            .Setup(x => x.Registrations)
+            .Returns([processorRegistryItem]);
+
         return new StepAvailabilityResolver(
-            registry.Object);
+            registry.Object,
+            processorRegistry.Object);
+    }
+
+    /// <summary>
+    /// Checks that the result contains a reference with the given step name.
+    /// </summary>
+    private static void AssertContainsStep(
+        IReadOnlyCollection<ProcessStepReference> result,
+        string stepName)
+    {
+        Assert.Contains(
+            result,
+            x => string.Equals(x.StepName, stepName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Checks that the result does not contain a reference with the given step name.
+    /// </summary>
+    private static void AssertDoesNotContainStep(
+        IReadOnlyCollection<ProcessStepReference> result,
+        string stepName)
+    {
+        Assert.DoesNotContain(
+            result,
+            x => string.Equals(x.StepName, stepName, StringComparison.OrdinalIgnoreCase));
     }
 
     private sealed class TestStepA

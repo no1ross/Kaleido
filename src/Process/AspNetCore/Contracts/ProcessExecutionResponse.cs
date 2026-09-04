@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Registry;
+﻿using Kaleido.Process.Execution;
+using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.AspNetCore.Contracts;
 
@@ -10,13 +11,13 @@ public sealed record ProcessExecutionResponse
         init;
     }
 
-    public string? RequiredStep
+    public ProcessStepInfo? RequiredStep
     {
         get;
         init;
     }
 
-    public IReadOnlyCollection<ProcessStepSummary> AvailableSteps
+    public IReadOnlyCollection<ProcessStepInfo> AvailableSteps
     {
         get;
         init;
@@ -45,13 +46,19 @@ public sealed record ProcessExecutionResponse
                 processResult.ProcessId,
 
             RequiredStep =
-                processResult.RequiredStep,
+                processResult.RequiredStep is null
+                    ? null
+                    : ProcessContractMapper.ToStepInfo(
+                        processResult.RequiredStep,
+                        registry,
+                        options),
 
             AvailableSteps =
                 processResult.AvailableSteps
-                    .Select(stepName =>
-                        ProcessContractMapper.ToSummary(
-                            registry.GetRegistration(stepName),
+                    .Select(reference =>
+                        ProcessContractMapper.ToStepInfo(
+                            reference,
+                            registry,
                             options))
                     .ToArray(),
 
@@ -117,7 +124,7 @@ public record StepExecutionResponse
         init;
     }
 
-    public string? RequiredStep
+    public ProcessStepInfo? RequiredStep
     {
         get;
         init;
@@ -129,7 +136,7 @@ public record StepExecutionResponse
         init;
     }
 
-    public IReadOnlyCollection<ProcessStepSummary> AvailableSteps
+    public IReadOnlyCollection<ProcessStepInfo> AvailableSteps
     {
         get;
         init;
@@ -160,22 +167,28 @@ public record StepExecutionResponse
                 stepResult.StepName,
 
             RequiredStep =
-                processResult.RequiredStep,
+                processResult.RequiredStep is null
+                    ? null
+                    : ProcessContractMapper.ToStepInfo(
+                        processResult.RequiredStep,
+                        registry,
+                        options),
 
             Outcome = stepResult.Outcome,
 
             AvailableSteps =
                 processResult.AvailableSteps
-                    .Select(stepName =>
-                        ProcessContractMapper.ToSummary(
-                            registry.GetRegistration(stepName),
+                    .Select(reference =>
+                        ProcessContractMapper.ToStepInfo(
+                            reference,
+                            registry,
                             options))
                     .ToList(),
 
             Messages =
                 ProcessContractMapper.ToMessages(stepResult)
                     .ToList()
-                    };
+        };
     }
 }
 
@@ -225,6 +238,47 @@ public sealed record StepExecutionResponse<TResponse> : StepExecutionResponse
 
 internal static class ProcessContractMapper
 {
+    /// <summary>
+    /// Converts a <see cref="ProcessStepReference"/> from the runtime into a
+    /// <see cref="ProcessStepInfo"/> for the HTTP response.
+    ///
+    /// Local steps (same processor) are resolved from the registry and get URLs.
+    /// External steps get blank URLs — the consumer resolves them via its own registry.
+    /// </summary>
+    public static ProcessStepInfo ToStepInfo(
+        ProcessStepReference reference,
+        IProcessStepRegistry registry,
+        ProcessRouteOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(reference);
+        ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(options);
+
+        var localRegistration =
+            registry.Find(reference.StepName);
+
+        if (localRegistration is not null)
+        {
+            var stepName =
+                localRegistration.Metadata.Name.ToLowerInvariant();
+
+            return new ProcessStepInfo
+            {
+                ProcessorName = reference.ProcessorName,
+                StepName = localRegistration.Metadata.Name,
+                ExecuteUrl = ProcessContractUrls.ExecuteStep(options, stepName),
+                MetadataUrl = ProcessContractUrls.StepMetadata(options, stepName)
+            };
+        }
+
+        // External processor — no URLs available locally.
+        return new ProcessStepInfo
+        {
+            ProcessorName = reference.ProcessorName,
+            StepName = reference.StepName
+        };
+    }
+
     public static ProcessStepSummary ToSummary(
         ProcessStepRegistration registration,
         ProcessRouteOptions options)

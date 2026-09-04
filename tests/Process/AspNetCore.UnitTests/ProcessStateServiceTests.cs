@@ -1,11 +1,16 @@
+using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.AspNetCore.Srevices;
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
+using Kaleido.Process.Registry;
+using Moq;
 
 namespace Kaleido.Process.AspNetCore.Tests;
 
 public sealed class ProcessStateServiceTests
 {
+    private const string LocalProcessorName = "test-processor";
+
     [Fact]
     public async Task GetCurrentState_WhenContextDoesNotExist_ReturnsNull()
     {
@@ -21,7 +26,9 @@ public sealed class ProcessStateServiceTests
 
         var service =
             new ProcessStateService(
-                contextStore.Object);
+                contextStore.Object,
+                CreateRegistry(),
+                new ProcessRouteOptions());
 
         var result =
             await service.GetCurrentState(
@@ -41,9 +48,21 @@ public sealed class ProcessStateServiceTests
             new ProcessorContext
             {
                 ProcessId = processId,
+                ProcessorName = "test-processor",
                 State = ProcessExecutionState.AwaitingStepSelection,
-                RequiredStep = "Step-B",
-                AvailableSteps = ["Step-A"],
+                RequiredStep = new ProcessStepReference
+                {
+                    ProcessorName = LocalProcessorName,
+                    StepName = "Step-B"
+                },
+                AvailableSteps =
+                [
+                    new ProcessStepReference
+                    {
+                        ProcessorName = LocalProcessorName,
+                        StepName = "Step-A"
+                    }
+                ],
                 CreatedUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
                 UpdatedUtc = DateTimeOffset.UtcNow,
                 Steps =
@@ -76,7 +95,9 @@ public sealed class ProcessStateServiceTests
 
         var service =
             new ProcessStateService(
-                contextStore.Object);
+                contextStore.Object,
+                CreateRegistry(),
+                new ProcessRouteOptions());
 
         var result =
             await service.GetCurrentState(
@@ -86,8 +107,9 @@ public sealed class ProcessStateServiceTests
         Assert.NotNull(result);
         Assert.Equal(processId, result.ProcessId);
         Assert.Equal(ProcessExecutionState.AwaitingStepSelection, result.State);
-        Assert.Equal("Step-B", result.RequiredStep);
-        Assert.Equal("Step-A", Assert.Single(result.AvailableSteps));
+        Assert.Equal("Step-B", result.RequiredStep!.StepName);
+        Assert.Equal(LocalProcessorName, result.RequiredStep.ProcessorName);
+        Assert.Equal("Step-A", Assert.Single(result.AvailableSteps).StepName);
 
         Assert.Collection(
             result.Steps,
@@ -101,5 +123,13 @@ public sealed class ProcessStateServiceTests
                 Assert.Equal("Step-B", step.StepName);
                 Assert.Equal(StepExecutionStatus.Pending, step.Status);
             });
+    }
+
+    private static IProcessStepRegistry CreateRegistry()
+    {
+        var mock = new Mock<IProcessStepRegistry>();
+        mock.Setup(x => x.Find(It.IsAny<string>()))
+            .Returns((ProcessStepRegistration?)null);
+        return mock.Object;
     }
 }

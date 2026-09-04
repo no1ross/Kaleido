@@ -1,5 +1,6 @@
 using Kaleido.Observability;
 using Kaleido.Process.Observability;
+using Kaleido.Process.Registry;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Diagnostics.Metrics;
@@ -15,10 +16,26 @@ public sealed class ProcessObservabilityTests
             Assert.Throws<ArgumentNullException>(() =>
                 new ProcessObservability(
                     null!,
+                    CreateProcessorRegistry(),
                     Mock.Of<ILogger<ProcessObservability>>()));
 
         Assert.Equal(
             "correlationAccessor",
+            exception.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_WhenProcessorRegistryIsNull_Throws()
+    {
+        var exception =
+            Assert.Throws<ArgumentNullException>(() =>
+                new ProcessObservability(
+                    Mock.Of<IKaleidoCorrelationContextAccessor>(),
+                    null!,
+                    Mock.Of<ILogger<ProcessObservability>>()));
+
+        Assert.Equal(
+            "processorRegistry",
             exception.ParamName);
     }
 
@@ -29,6 +46,7 @@ public sealed class ProcessObservabilityTests
             Assert.Throws<ArgumentNullException>(() =>
                 new ProcessObservability(
                     Mock.Of<IKaleidoCorrelationContextAccessor>(),
+                    CreateProcessorRegistry(),
                     null!));
 
         Assert.Equal(
@@ -263,13 +281,34 @@ public sealed class ProcessObservabilityTests
                     RequestId = "REQ-001",
                     ProcessId = Guid.NewGuid(),
                     ProcessorId = "processor-a",
-                    ProcessorInstanceId = Guid.NewGuid(),
-                    OrchestratorId = "orchestrator-a",
-                    OrchestratorInstanceId = Guid.NewGuid()
+                    ProcessorInstanceId = Guid.NewGuid()
                 });
 
         return new ProcessObservability(
             correlationAccessor.Object,
+            CreateProcessorRegistry(),
             Mock.Of<ILogger<ProcessObservability>>());
+    }
+
+    private static IProcessorRegistry CreateProcessorRegistry()
+    {
+        var registry = new Mock<IProcessorRegistry>();
+
+        registry
+            .Setup(x => x.Registrations)
+            .Returns(
+            [
+                new ProcessorRegistryItem
+                {
+                    Name = "test-processor",
+                    Description = "Test processor",
+                    Version = "1.0.0",
+                    DisplayName = "Test Processor",
+                    InitialSteps = [],
+                    Steps = []
+                }
+            ]);
+
+        return registry.Object;
     }
 }

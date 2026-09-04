@@ -8,13 +8,13 @@ public sealed record ProcessStateResponse
         init;
     }
 
-    public string? RequiredStep
+    public ProcessStepInfo? RequiredStep
     {
         get;
         init;
     }
 
-    public IReadOnlyCollection<ProcessStepSummary> AvailableSteps
+    public IReadOnlyCollection<ProcessStepInfo> AvailableSteps
     {
         get;
         init;

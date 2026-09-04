@@ -17,11 +17,6 @@ public static class KaleidoAspNetCoreHeaders
     public const string ProcessorInstanceId =
         "X-Kaleido-Processor-Instance-Id";
 
-    public const string OrchestratorId =
-        "X-Kaleido-Orchestrator-Id";
-
-    public const string OrchestratorInstanceId =
-        "X-Kaleido-Orchestrator-Instance-Id";
 }
 
 internal static class KaleidoAspNetCoreCorrelation
@@ -51,17 +46,7 @@ internal static class KaleidoAspNetCoreCorrelation
             ProcessorInstanceId =
                 ReadGuid(
                     context,
-                    KaleidoAspNetCoreHeaders.ProcessorInstanceId),
-
-            OrchestratorId =
-                ReadString(
-                    context,
-                    KaleidoAspNetCoreHeaders.OrchestratorId),
-
-            OrchestratorInstanceId =
-                ReadGuid(
-                    context,
-                    KaleidoAspNetCoreHeaders.OrchestratorInstanceId)
+                    KaleidoAspNetCoreHeaders.ProcessorInstanceId)
         };
     }
 

@@ -6,5 +6,5 @@ public sealed record ProcessStepContext
 (
     Guid ProcessId,
     StepContext StepContext,
-    IReadOnlyCollection<string> AvailableNextSteps
+    IReadOnlyCollection<ProcessStepReference> AvailableNextSteps
 );

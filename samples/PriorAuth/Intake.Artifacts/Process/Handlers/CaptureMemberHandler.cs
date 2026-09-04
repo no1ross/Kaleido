@@ -90,7 +90,12 @@ public sealed class CaptureMemberHandler(
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            return ProcessStepHandlerResult.Success();
+            return ProcessStepHandlerResult.Success(
+                requiredStep: new ProcessStepReference
+                {
+                    ProcessorName = "intake",
+                    StepName = nameof(CaptureRequestedServiceStep).Replace("Step", string.Empty)
+                });
         }
         catch (QueryableClientException ex)
         {

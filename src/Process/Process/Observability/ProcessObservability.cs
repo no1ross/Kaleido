@@ -1,4 +1,5 @@
 using Kaleido.Observability;
+using Kaleido.Process.Registry;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -124,15 +125,19 @@ internal sealed class ProcessObservability
 
     private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
     private readonly ILogger<ProcessObservability> _logger;
+    private readonly string _processorName;
 
     public ProcessObservability(
         IKaleidoCorrelationContextAccessor correlationAccessor,
+        IProcessorRegistry processorRegistry,
         ILogger<ProcessObservability> logger)
     {
         ArgumentNullException.ThrowIfNull(correlationAccessor);
+        ArgumentNullException.ThrowIfNull(processorRegistry);
         ArgumentNullException.ThrowIfNull(logger);
 
         _correlationAccessor = correlationAccessor;
+        _processorName = processorRegistry.Registrations.Single().Name;
         _logger = logger;
     }
 
@@ -166,12 +171,8 @@ internal sealed class ProcessObservability
             correlation.ProcessorInstanceId?.ToString());
 
         activity?.SetTag(
-            "kaleido.orchestrator.id",
-            correlation.OrchestratorId);
-
-        activity?.SetTag(
-            "kaleido.orchestrator.instance_id",
-            correlation.OrchestratorInstanceId?.ToString());
+            "kaleido.processor.name",
+            _processorName);
 
         activity?.SetTag(
             "kaleido.process.submitted_step_count",
@@ -179,6 +180,7 @@ internal sealed class ProcessObservability
 
         var executionTags =
             CreateExecutionTags(
+                _processorName,
                 correlation.ProcessorId?.ToString());
 
         ProcessExecutionsCounter.Add(
@@ -190,11 +192,13 @@ internal sealed class ProcessObservability
             executionTags);
 
         _logger.LogDebug(
-            "Process execution started with submitted step count {SubmittedStepCount}.",
+            "Process execution started for processor {ProcessorName} with submitted step count {SubmittedStepCount}.",
+            _processorName,
             details.SubmittedStepCount);
 
         return new ProcessExecutionObservation(
             activity,
+            _processorName,
             _logger);
     }
 
@@ -219,16 +223,19 @@ internal sealed class ProcessObservability
         ProcessStepExecutionsCounter.Add(
             1,
             CreateStepTags(
+                _processorName,
                 details.StepName,
                 details.StepVersion));
 
         _logger.LogDebug(
-            "Process step execution started for step {StepName} version {StepVersion}.",
+            "Process step execution started for processor {ProcessorName} step {StepName} version {StepVersion}.",
+            _processorName,
             details.StepName,
             details.StepVersion);
 
         return new ProcessStepObservation(
             activity,
+            _processorName,
             _logger,
             details);
     }
@@ -254,24 +261,31 @@ internal sealed class ProcessObservability
         ProcessHandlerExecutionsCounter.Add(
             1,
             CreateStepTags(
+                _processorName,
                 details.StepName,
                 details.StepVersion));
 
         _logger.LogTrace(
-            "Process handler execution started for step {StepName} version {StepVersion}.",
+            "Process handler execution started for processor {ProcessorName} step {StepName} version {StepVersion}.",
+            _processorName,
             details.StepName,
             details.StepVersion);
 
         return new ProcessHandlerObservation(
             activity,
+            _processorName,
             _logger,
             details);
     }
 
     private static TagList CreateExecutionTags(
+        string processorName,
         string? processorId)
     {
-        TagList tags = [];
+        TagList tags =
+        [
+            new("processor.name", processorName)
+        ];
 
         if (!string.IsNullOrWhiteSpace(processorId))
         {
@@ -284,11 +298,13 @@ internal sealed class ProcessObservability
     }
 
     private static TagList CreateStepTags(
+        string processorName,
         string stepName,
         string? stepVersion)
     {
         TagList tags =
         [
+            new("processor.name", processorName),
             new("step.name", stepName)
         ];
 
@@ -306,13 +322,16 @@ internal sealed class ProcessObservability
         : IProcessExecutionObservation
     {
         private readonly Activity? _activity;
+        private readonly string _processorName;
         private readonly ILogger _logger;
 
         public ProcessExecutionObservation(
             Activity? activity,
+            string processorName,
             ILogger logger)
         {
             _activity = activity;
+            _processorName = processorName;
             _logger = logger;
         }
 
@@ -328,10 +347,15 @@ internal sealed class ProcessObservability
                     "kaleido.process.context.initialized"));
 
             ProcessContextsInitializedCounter.Add(
-                1);
+                1,
+                new TagList
+                {
+                    new("processor.name", _processorName)
+                });
 
             _logger.LogDebug(
-                "Process context initialized for process {ProcessId}.",
+                "Process context initialized for processor {ProcessorName} process {ProcessId}.",
+                _processorName,
                 processId);
         }
 
@@ -347,10 +371,15 @@ internal sealed class ProcessObservability
                     "kaleido.process.context.loaded"));
 
             ProcessContextsLoadedCounter.Add(
-                1);
+                1,
+                new TagList
+                {
+                    new("processor.name", _processorName)
+                });
 
             _logger.LogDebug(
-                "Process context loaded for process {ProcessId}.",
+                "Process context loaded for processor {ProcessorName} process {ProcessId}.",
+                _processorName,
                 processId);
         }
 
@@ -366,14 +395,22 @@ internal sealed class ProcessObservability
                 "kaleido.process.plan.executable_count",
                 executableCount);
 
+            var tags = new TagList
+            {
+                new("processor.name", _processorName)
+            };
+
             ProcessPlanCandidateCountHistogram.Record(
-                candidateCount);
+                candidateCount,
+                tags);
 
             ProcessPlanExecutableCountHistogram.Record(
-                executableCount);
+                executableCount,
+                tags);
 
             _logger.LogDebug(
-                "Process plan built with {CandidateCount} candidates and {ExecutableCount} executable steps.",
+                "Process plan built for processor {ProcessorName} with {CandidateCount} candidates and {ExecutableCount} executable steps.",
+                _processorName,
                 candidateCount,
                 executableCount);
         }
@@ -392,11 +429,16 @@ internal sealed class ProcessObservability
                     "kaleido.process.exception"));
 
             ProcessExecutionFailuresCounter.Add(
-                1);
+                1,
+                new TagList
+                {
+                    new("processor.name", _processorName)
+                });
 
             _logger.LogError(
                 exception,
-                "Process execution failed.");
+                "Process execution failed for processor {ProcessorName}.",
+                _processorName);
         }
 
         public void Dispose()
@@ -409,15 +451,18 @@ internal sealed class ProcessObservability
         : IProcessStepObservation
     {
         private readonly Activity? _activity;
+        private readonly string _processorName;
         private readonly ProcessStepObservationDetails _details;
         private readonly ILogger _logger;
 
         public ProcessStepObservation(
             Activity? activity,
+            string processorName,
             ILogger logger,
             ProcessStepObservationDetails details)
         {
             _activity = activity;
+            _processorName = processorName;
             _logger = logger;
             _details = details;
         }
@@ -436,6 +481,7 @@ internal sealed class ProcessObservability
 
             var tags =
                 CreateStepTags(
+                    _processorName,
                     _details.StepName,
                     _details.StepVersion);
 
@@ -448,7 +494,8 @@ internal sealed class ProcessObservability
                 executionStatus);
 
             _logger.LogDebug(
-                "Process step decision recorded for step {StepName} version {StepVersion} decision {DecisionType} status {ExecutionStatus}.",
+                "Process step decision recorded for processor {ProcessorName} step {StepName} version {StepVersion} decision {DecisionType} status {ExecutionStatus}.",
+                _processorName,
                 _details.StepName,
                 _details.StepVersion,
                 decisionType,
@@ -464,11 +511,13 @@ internal sealed class ProcessObservability
             ProcessStepCancellationsCounter.Add(
                 1,
                 CreateStepTags(
+                    _processorName,
                     _details.StepName,
                     _details.StepVersion));
 
             _logger.LogWarning(
-                "Process step execution was canceled for step {StepName} version {StepVersion}.",
+                "Process step execution was canceled for processor {ProcessorName} step {StepName} version {StepVersion}.",
+                _processorName,
                 _details.StepName,
                 _details.StepVersion);
         }
@@ -489,12 +538,14 @@ internal sealed class ProcessObservability
             ProcessStepFailuresCounter.Add(
                 1,
                 CreateStepTags(
+                    _processorName,
                     _details.StepName,
                     _details.StepVersion));
 
             _logger.LogError(
                 exception,
-                "Process step execution failed for step {StepName} version {StepVersion}.",
+                "Process step execution failed for processor {ProcessorName} step {StepName} version {StepVersion}.",
+                _processorName,
                 _details.StepName,
                 _details.StepVersion);
         }
@@ -509,15 +560,18 @@ internal sealed class ProcessObservability
         : IProcessHandlerObservation
     {
         private readonly Activity? _activity;
+        private readonly string _processorName;
         private readonly ProcessHandlerObservationDetails _details;
         private readonly ILogger _logger;
 
         public ProcessHandlerObservation(
             Activity? activity,
+            string processorName,
             ILogger logger,
             ProcessHandlerObservationDetails details)
         {
             _activity = activity;
+            _processorName = processorName;
             _logger = logger;
             _details = details;
         }
@@ -538,12 +592,14 @@ internal sealed class ProcessObservability
             ProcessHandlerFailuresCounter.Add(
                 1,
                 CreateStepTags(
+                    _processorName,
                     _details.StepName,
                     _details.StepVersion));
 
             _logger.LogError(
                 exception,
-                "Process handler execution failed for step {StepName} version {StepVersion}.",
+                "Process handler execution failed for processor {ProcessorName} step {StepName} version {StepVersion}.",
+                _processorName,
                 _details.StepName,
                 _details.StepVersion);
         }

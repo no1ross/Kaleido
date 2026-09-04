@@ -9,16 +9,33 @@ namespace Kaleido.Process.UnitTests.Processor.Execution;
 
 public sealed class StepExecutionEvaluatorTests
 {
+    private const string LocalProcessorName = "test-processor";
+
     [Fact]
     public void Constructor_WhenAvailabilityResolverIsNull_Throws()
     {
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
                 new StepExecutionEvaluator(
-                    null!));
+                    null!,
+                    CreateProcessorRegistry()));
 
         Assert.Equal(
             "availabilityResolver",
+            exception.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_WhenProcessorRegistryIsNull_Throws()
+    {
+        var exception =
+            Assert.Throws<ArgumentNullException>(() =>
+                new StepExecutionEvaluator(
+                    new Mock<IStepAvailabilityResolver>().Object,
+                    null!));
+
+        Assert.Equal(
+            "processorRegistry",
             exception.ParamName);
     }
 
@@ -124,7 +141,7 @@ public sealed class StepExecutionEvaluatorTests
     {
         var evaluator =
             CreateEvaluator(
-                ["step-b"]);
+                [CreateLocalReference("step-b")]);
 
         var decision =
             evaluator.Evaluate(
@@ -132,7 +149,7 @@ public sealed class StepExecutionEvaluatorTests
                 new ProcessStepInvokerResult
                 {
                     Succeeded = true,
-                    RequiredStep = "step-c"
+                    RequiredStep = CreateLocalReference("step-c")
                 },
                 [],
                 CreateContext());
@@ -155,7 +172,7 @@ public sealed class StepExecutionEvaluatorTests
     {
         var evaluator =
             CreateEvaluator(
-                ["step-b"]);
+                [CreateLocalReference("step-b")]);
 
         var decision =
             evaluator.Evaluate(
@@ -163,7 +180,7 @@ public sealed class StepExecutionEvaluatorTests
                 new ProcessStepInvokerResult
                 {
                     Succeeded = true,
-                    RequiredStep = "step-b"
+                    RequiredStep = CreateLocalReference("step-b")
                 },
                 [],
                 CreateContext());
@@ -174,7 +191,11 @@ public sealed class StepExecutionEvaluatorTests
 
         Assert.Equal(
             "step-b",
-            decision.RequiredStep);
+            decision.RequiredStep!.StepName);
+
+        Assert.Equal(
+            LocalProcessorName,
+            decision.RequiredStep.ProcessorName);
     }
 
     [Fact]
@@ -182,7 +203,7 @@ public sealed class StepExecutionEvaluatorTests
     {
         var evaluator =
             CreateEvaluator(
-                ["step-b"]);
+                [CreateLocalReference("step-b")]);
 
         var nextCandidate =
             CreateCandidate<StepB>(
@@ -194,7 +215,7 @@ public sealed class StepExecutionEvaluatorTests
                 new ProcessStepInvokerResult
                 {
                     Succeeded = true,
-                    RequiredStep = "step-b"
+                    RequiredStep = CreateLocalReference("step-b")
                 },
                 [nextCandidate],
                 CreateContext());
@@ -213,7 +234,7 @@ public sealed class StepExecutionEvaluatorTests
     {
         var evaluator =
             CreateEvaluator(
-                ["step-b"]);
+                [CreateLocalReference("step-b")]);
 
         var nextCandidate =
             CreateCandidate<StepB>(
@@ -244,8 +265,8 @@ public sealed class StepExecutionEvaluatorTests
         var evaluator =
             CreateEvaluator(
                 [
-                    "step-b",
-                    "step-c"
+                    CreateLocalReference("step-b"),
+                    CreateLocalReference("step-c")
                 ]);
 
         var decision =
@@ -263,12 +284,12 @@ public sealed class StepExecutionEvaluatorTests
             decision.Type);
 
         Assert.Contains(
-            "step-b",
-            decision.AvailableSteps);
+            decision.AvailableSteps,
+            x => x.StepName == "step-b");
 
         Assert.Contains(
-            "step-c",
-            decision.AvailableSteps);
+            decision.AvailableSteps,
+            x => x.StepName == "step-c");
     }
 
     [Fact]
@@ -297,7 +318,7 @@ public sealed class StepExecutionEvaluatorTests
     {
         var evaluator =
             CreateEvaluator(
-                ["step-b"]);
+                [CreateLocalReference("step-b")]);
 
         var nextCandidate =
             CreateCandidate<StepB>(
@@ -309,13 +330,81 @@ public sealed class StepExecutionEvaluatorTests
                 new ProcessStepInvokerResult
                 {
                     Succeeded = true,
-                    RequiredStep = "Step-B"
+                    RequiredStep = CreateLocalReference("Step-B")
                 },
                 [nextCandidate],
                 CreateContext());
 
         Assert.Equal(
             ExecutionDecisionType.Continue,
+            decision.Type);
+    }
+
+    [Fact]
+    public void Evaluate_WhenRequiredStepIsExternalProcessor_SkipsLocalValidationAndReturnsAwaitingRequiredStep()
+    {
+        // External processor step — not in local available steps at all.
+        // Should bypass local validation and return AwaitingRequiredStep directly.
+        var evaluator =
+            CreateEvaluator(
+                [CreateLocalReference("step-b")]);
+
+        var externalReference =
+            new ProcessStepReference
+            {
+                ProcessorName = "radiology",
+                StepName = "imaging-request"
+            };
+
+        var decision =
+            evaluator.Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new ProcessStepInvokerResult
+                {
+                    Succeeded = true,
+                    RequiredStep = externalReference
+                },
+                [],
+                CreateContext());
+
+        Assert.Equal(
+            ExecutionDecisionType.AwaitingRequiredStep,
+            decision.Type);
+
+        Assert.Equal(
+            "radiology",
+            decision.RequiredStep!.ProcessorName);
+
+        Assert.Equal(
+            "imaging-request",
+            decision.RequiredStep.StepName);
+    }
+
+    [Fact]
+    public void Evaluate_WhenRequiredStepIsExternalProcessor_DoesNotReturnProcessViolation()
+    {
+        // Even though the external step is not in local available steps,
+        // it must NOT be treated as a process violation.
+        var evaluator =
+            CreateEvaluator();
+
+        var decision =
+            evaluator.Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new ProcessStepInvokerResult
+                {
+                    Succeeded = true,
+                    RequiredStep = new ProcessStepReference
+                    {
+                        ProcessorName = "radiology",
+                        StepName = "imaging-request"
+                    }
+                },
+                [],
+                CreateContext());
+
+        Assert.NotEqual(
+            ExecutionDecisionType.ProcessViolation,
             decision.Type);
     }
 
@@ -369,8 +458,15 @@ public sealed class StepExecutionEvaluatorTests
             decision.Messages.Single());
     }
 
+    private static ProcessStepReference CreateLocalReference(string stepName)
+        => new()
+        {
+            ProcessorName = LocalProcessorName,
+            StepName = stepName
+        };
+
     private static StepExecutionEvaluator CreateEvaluator(
-        IReadOnlyCollection<string>? availableSteps = null)
+        IReadOnlyCollection<ProcessStepReference>? availableSteps = null)
     {
         var resolver =
             new Mock<IStepAvailabilityResolver>();
@@ -385,14 +481,34 @@ public sealed class StepExecutionEvaluatorTests
                 availableSteps ?? []);
 
         return new StepExecutionEvaluator(
-            resolver.Object);
+            resolver.Object,
+            CreateProcessorRegistry());
+    }
+
+    private static IProcessorRegistry CreateProcessorRegistry()
+    {
+        var item = new ProcessorRegistryItem
+        {
+            Name = LocalProcessorName,
+            Description = "test",
+            DisplayName = "Test Processor",
+            Version = "1.0"
+        };
+
+        var mock = new Mock<IProcessorRegistry>();
+
+        mock.Setup(x => x.Registrations)
+            .Returns([item]);
+
+        return mock.Object;
     }
 
     private static ProcessorContext CreateContext()
     {
         return new ProcessorContext()
         {
-            ProcessId = Guid.NewGuid()
+            ProcessId = Guid.NewGuid(),
+            ProcessorName = "test-processor"
         };
     }
 

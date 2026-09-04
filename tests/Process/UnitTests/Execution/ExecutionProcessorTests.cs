@@ -139,10 +139,10 @@ public sealed class ExecutionProcessorTests
             {
                 AvailableSteps =
                 [
-                    "step-a",
-                    "step-b"
+                    new ProcessStepReference { ProcessorName = "test", StepName = "step-a" },
+                    new ProcessStepReference { ProcessorName = "test", StepName = "step-b" }
                 ],
-                RequiredStep = "step-a"
+                RequiredStep = new ProcessStepReference { ProcessorName = "test", StepName = "step-a" }
             };
 
         var invoker =
@@ -276,7 +276,7 @@ public sealed class ExecutionProcessorTests
                     context))
             .Returns(
             [
-                "step-b"
+                new ProcessStepReference { ProcessorName = "test", StepName = "step-b" }
             ]);
 
         var processor =
@@ -295,8 +295,8 @@ public sealed class ExecutionProcessorTests
             capturedContext);
 
         Assert.Contains(
-            "step-b",
-            capturedContext.AvailableNextSteps);
+            capturedContext.AvailableNextSteps,
+            x => x.StepName == "step-b");
     }
 
     [Fact]
@@ -494,7 +494,7 @@ public sealed class ExecutionProcessorTests
             {
                 AvailableSteps =
                 [
-                    "step-b"
+                    new ProcessStepReference { ProcessorName = "test", StepName = "step-b" }
                 ]
             };
 
@@ -1337,6 +1337,7 @@ public sealed class ExecutionProcessorTests
                 return new Eventing.StepCompleted
                 {
                     ProcessId = context.ProcessId,
+                    ProcessorName = context.ProcessorName,
                     OccurredOn = DateTimeOffset.UtcNow,
                     StepName = candidate.StepName,
                     StepVersion = candidate.Registration?.Metadata.Version ?? string.Empty,
@@ -1361,7 +1362,7 @@ public sealed class ExecutionProcessorTests
     private static Mock<IStepAvailabilityResolver> CreateAvailabilityResolver(
         StepCandidate candidate,
         ProcessorContext context,
-        IReadOnlyCollection<string>? availableSteps = null)
+        IReadOnlyCollection<ProcessStepReference>? availableSteps = null)
     {
         var availabilityResolver =
             new Mock<IStepAvailabilityResolver>();
@@ -1446,6 +1447,9 @@ public sealed class ExecutionProcessorTests
         {
             ProcessId =
                 Guid.NewGuid(),
+
+            ProcessorName =
+                "test-processor",
 
             State =
                 ProcessExecutionState.Active,

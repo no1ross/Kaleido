@@ -26,25 +26,11 @@ public sealed record KaleidoCorrelationContext
         init;
     }
 
-    public string? OrchestratorId
-    {
-        get;
-        init;
-    }
-
-    public Guid? OrchestratorInstanceId
-    {
-        get;
-        init;
-    }
-
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(RequestId)
         && ProcessId is null
         && string.IsNullOrWhiteSpace(ProcessorId)
-        && ProcessorInstanceId is null
-        && string.IsNullOrWhiteSpace(OrchestratorId)
-        && OrchestratorInstanceId is null;
+        && ProcessorInstanceId is null;
 }
 
 public interface IKaleidoCorrelationContextAccessor

@@ -81,7 +81,7 @@ export class RequestedService {
     submit(
         record: ProcedureCodeSearchResult = this.selectedRecord()!
     ): void {
-        if (!record || !this.processState.state().processId || this.isSubmitting()) {
+        if (!record || this.isSubmitting()) {
             return;
         }
 

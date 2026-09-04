@@ -1,6 +1,7 @@
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
+using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.Eventing;
 
@@ -24,12 +25,17 @@ internal interface IProcessEventFactory
         StepExecutionOutcome executionOutcome);
 
     ExecutionCompleted CreateExecutionCompleted(
+        ProcessorContext context,
         ProcessExecutionResult executionResult);
 }
 
-internal sealed class ProcessEventFactory
+internal sealed class ProcessEventFactory(
+    IProcessorRegistry processorRegistry)
     : IProcessEventFactory
 {
+    private string ProcessorName =>
+        processorRegistry.Registrations.Single().Name;
+
     public ProcessCreated CreateProcessCreated(
         ProcessorContext context,
         ProcessRequest request)
@@ -43,6 +49,7 @@ internal sealed class ProcessEventFactory
         return new ProcessCreated
         {
             ProcessId = context.ProcessId,
+            ProcessorName = ProcessorName,
             OccurredOn = DateTimeOffset.UtcNow,
             State = context.State,
             CreatedUtc = context.CreatedUtc,
@@ -68,6 +75,7 @@ internal sealed class ProcessEventFactory
         return new PlanBuilt
         {
             ProcessId = context.ProcessId,
+            ProcessorName = ProcessorName,
             OccurredOn = DateTimeOffset.UtcNow,
             State = context.State,
             RequiredStep = context.RequiredStep,
@@ -118,6 +126,7 @@ internal sealed class ProcessEventFactory
         return new StepCompleted
         {
             ProcessId = context.ProcessId,
+            ProcessorName = ProcessorName,
             OccurredOn = DateTimeOffset.UtcNow,
             StepName = candidate.StepName,
             StepVersion = stepContext?.Version ?? candidate.Registration?.Metadata.Version ?? string.Empty,
@@ -137,13 +146,16 @@ internal sealed class ProcessEventFactory
     }
 
     public ExecutionCompleted CreateExecutionCompleted(
+        ProcessorContext context,
         ProcessExecutionResult executionResult)
     {
+        ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(executionResult);
 
         return new ExecutionCompleted
         {
             ProcessId = executionResult.ProcessId,
+            ProcessorName = ProcessorName,
             OccurredOn = DateTimeOffset.UtcNow,
             State = executionResult.State,
             RequiredStep = executionResult.RequiredStep,

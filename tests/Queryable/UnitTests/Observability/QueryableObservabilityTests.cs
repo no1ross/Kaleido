@@ -176,9 +176,7 @@ public sealed class QueryableObservabilityTests
                     RequestId = "REQ-001",
                     ProcessId = Guid.NewGuid(),
                     ProcessorId = "processor-a",
-                    ProcessorInstanceId = Guid.NewGuid(),
-                    OrchestratorId = "orchestrator-a",
-                    OrchestratorInstanceId = Guid.NewGuid()
+                    ProcessorInstanceId = Guid.NewGuid()
                 });
 
         return new QueryableObservability(

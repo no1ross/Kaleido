@@ -75,7 +75,9 @@ public sealed class ProcessExecutionEndpointTests
             await response.Content.ReadAsync<ProcessExecutionResponse>();
 
         Assert.NotNull(contract);
-        Assert.Equal(RuntimeStepNames.RequiredStep, contract.RequiredStep);
+        Assert.NotNull(contract.RequiredStep);
+        Assert.Equal(RuntimeStepNames.RequiredStep, contract.RequiredStep.StepName);
+        Assert.Equal(FunctionalProcessorNames.TestProcessor, contract.RequiredStep.ProcessorName);
         Assert.Empty(contract.AvailableSteps);
         Assert.Contains(contract.Results, x => x.StepName == RuntimeStepNames.RequiredRoot);
     }

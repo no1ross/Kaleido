@@ -8,14 +8,19 @@
             <div class="process-shell__summary-header-actions">
                 @if (processState.state().processId) {
                     <div class="process-shell__header-process-id">
-                        <span>Process Id</span>
+                        <div class="process-shell__header-process-id-header">
+                            <span>Process Id</span>
+                            <button type="button" class="process-shell__home-link" (click)="exitProcess()">Exit process</button>
+                        </div>
                         <strong>{{ processState.state().processId }}</strong>
                     </div>
+                } @else {
+                    <button type="button" class="process-shell__home-link" (click)="exitProcess()">Exit process</button>
                 }
-                <button type="button" class="process-shell__home-link" (click)="exitProcess()">Exit process</button>
             </div>
         </div>
 
+        @if (showSummaryCard()) {
         <div class="process-shell__card">
             <div class="process-shell__inline-summary">
                 <span class="process-shell__inline-summary-label">Date of Service</span>
@@ -50,6 +55,7 @@
                 </div>
             }
         </div>
+        }<!-- /showSummaryCard -->
 
         <div class="process-shell__card">
             <priorauth-process-messages />

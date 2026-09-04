@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
 
 import { ProcessMessages } from './process-messages';
 import { ProcessStateService } from './services/process-state-service';
@@ -26,6 +27,11 @@ export class ProcessShell {
             this.processState.reset();
             void this.router.navigate(['/']);
         }
+
+        this.currentChildRoute.set(this.getChildRoute());
+        this.router.events
+            .pipe(filter(e => e instanceof NavigationEnd))
+            .subscribe(() => this.currentChildRoute.set(this.getChildRoute()));
     }
 
     readonly processState =
@@ -36,6 +42,15 @@ export class ProcessShell {
 
     private readonly activatedRoute =
         inject(ActivatedRoute);
+
+    private readonly currentChildRoute =
+        signal<string>('');
+
+    /** Hide the summary card on the requested-service route when no member is selected yet */
+    readonly showSummaryCard =
+        computed(() =>
+            this.processState.state().selectedMember !== undefined ||
+            this.currentChildRoute() !== 'requested-service');
 
     getStepRoute(
         stepName: string
@@ -52,5 +67,10 @@ export class ProcessShell {
     exitProcess(): void {
         this.processState.reset();
         void this.router.navigate(['/']);
+    }
+
+    private getChildRoute(): string {
+        const segments = this.router.url.split('/');
+        return segments[segments.length - 1]?.split('?')[0] ?? '';
     }
 }

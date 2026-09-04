@@ -43,6 +43,13 @@ Use relationship attributes to define prerequisites and availability rules betwe
 ### Step handlers
 `IProcessStepHandler<TStep>` and `IProcessStepHandler<TStep, TResult>` define the business execution contract for a single step.
 
+### ProcessStepReference
+`ProcessStepReference` identifies a step within a specific processor by `ProcessorName` and `StepName`.
+
+It is used in `RequiredStep` and `AvailableSteps` on execution results, events, and durable state. This allows the runtime to carry step references that may point to a local step or a step in a different processor.
+
+When a handler needs to signal a required next step, it constructs a `ProcessStepReference` explicitly — the framework does not inject the local processor name.
+
 ### Processor context
 `ProcessorContext` represents resumable durable state for a process instance, not full audit history.
 

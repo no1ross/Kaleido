@@ -22,6 +22,9 @@ public sealed class SqliteProcessContextDbContext
     public DbSet<ProcessAvailableStepEntity> ProcessAvailableSteps =>
         Set<ProcessAvailableStepEntity>();
 
+    public DbSet<ProcessRequiredStepEntity> ProcessRequiredSteps =>
+        Set<ProcessRequiredStepEntity>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
@@ -33,5 +36,8 @@ public sealed class SqliteProcessContextDbContext
 
         modelBuilder.ApplyConfiguration(
             new ProcessAvailableStepEntityConfiguration());
+
+        modelBuilder.ApplyConfiguration(
+            new ProcessRequiredStepEntityConfiguration());
     }
 }

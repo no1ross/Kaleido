@@ -17,7 +17,7 @@ public sealed record ProcessStepInvokerResult
 {
     public bool Succeeded { get; init; }
 
-    public string? RequiredStep { get; init; }
+    public ProcessStepReference? RequiredStep { get; init; }
 
     public object Response { get; init; } = null!;
 

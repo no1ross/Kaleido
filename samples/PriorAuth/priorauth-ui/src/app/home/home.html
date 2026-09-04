@@ -3,12 +3,35 @@
         <div class="home-hero__content">
             <div class="home-hero__eyebrow">Prior Authorization</div>
             <h2>Start a new prior auth process</h2>
+
             <p>
-                Begin with member selection. We will wire the process start step in later,
-                but the search and selection flow can be built now.
+                Start an intake session to generate a process ID, then select a member or procedure to continue.
             </p>
+
+            @if (startError()) {
+                <p class="home-hero__error">{{ startError() }}</p>
+            }
+
             <div class="home-hero__actions">
-                <a class="primary-button" routerLink="/process/new/member-search">Create New</a>
+                <button
+                    type="button"
+                    class="primary-button"
+                    [disabled]="isStarting()"
+                    (click)="startIntake()">
+                    {{ isStarting() ? 'Starting...' : 'Start' }}
+                </button>
+                <button
+                    type="button"
+                    class="secondary-button"
+                    (click)="goToMemberSearch()">
+                    Select Member
+                </button>
+                <button
+                    type="button"
+                    class="secondary-button"
+                    (click)="goToRequestedService()">
+                    Select Procedure
+                </button>
             </div>
         </div>
     </div>

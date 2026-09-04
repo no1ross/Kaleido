@@ -271,6 +271,21 @@ Do not silently normalize references in docs or code reviews without deciding wh
 There is an interface for metadata service behavior, but endpoint mapping currently relies directly on the registry for most metadata publication.
 If you expand metadata services later, keep the layering intentional.
 
+### `RequiredStep` is a `ProcessStepReference`, not a string
+`RequiredStep` and `AvailableSteps` on all execution/state contracts (runtime, HTTP, SQLite) are `ProcessStepReference` values — not plain step name strings.
+
+`ProcessStepReference` carries both `ProcessorName` and `StepName`.
+
+When a handler signals a required next step via `requiredStep:`:
+- always construct a `ProcessStepReference` explicitly
+- for local steps, hardcode the processor name as a constant or literal — the framework does not inject it
+- for cross-processor steps, use the target processor's registered name
+- do not pass a bare string; those overloads no longer exist
+
+`AvailableSteps` are always local — the framework populates `ProcessorName` automatically from the local registry.
+
+When adding or changing handlers that return a required step, also update any sample or test code that constructs `ProcessStepHandlerResult` with a `requiredStep` argument.
+
 ### Public abstractions ripple widely
 Changes in `Abstractions` affect:
 - runtime planning/execution
@@ -278,8 +293,9 @@ Changes in `Abstractions` affect:
 - event payloads
 - HTTP contracts
 - tests across multiple projects
+- sample handlers in `samples/`
 
-Treat abstraction changes as broad-impact work.
+Treat abstraction changes as broad-impact work. Always build `src/Process`, `tests/Process`, and `samples/PriorAuth` after changing abstractions.
 
 ---
 

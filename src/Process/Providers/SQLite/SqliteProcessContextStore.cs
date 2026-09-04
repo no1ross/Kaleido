@@ -1,11 +1,14 @@
 ﻿using Kaleido.Process.Context;
+using Kaleido.Process.Execution;
 using Kaleido.Process.Providers.SQLite.Entities;
+using Kaleido.Process.Registry;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Process.Providers.SQLite;
 
 internal sealed class SqliteProcessContextStore(
-    SqliteProcessContextDbContext dbContext)
+    SqliteProcessContextDbContext dbContext,
+    IProcessorRegistry processorRegistry)
     : IProcessContextStore
 {
     public async Task<ProcessorContext?> LoadAsync(
@@ -19,22 +22,29 @@ internal sealed class SqliteProcessContextStore(
                 .AsNoTracking()
                 .Include(x => x.Steps)
                 .Include(x => x.AvailableSteps)
+                .Include(x => x.RequiredStep)
                 .FirstOrDefaultAsync(
                     x => x.ProcessId ==
                          processId,
                     cancellationToken);
 
+        var localProcessorName =
+            processorRegistry.Registrations
+                .Single()
+                .Name;
+
         if (entity is null)
         {
             return new ProcessorContext
             {
-                ProcessId =
-                    processId
+                ProcessId = processId,
+                ProcessorName = localProcessorName
             };
         }
 
         return ToProcessorContext(
-            entity);
+            entity,
+            localProcessorName);
     }
 
     public async Task SaveAsync(
@@ -84,6 +94,13 @@ internal sealed class SqliteProcessContextStore(
                     context.ProcessId)
                 .ExecuteDeleteAsync(
                     cancellationToken);
+
+            await dbContext.ProcessRequiredSteps
+                .Where(x =>
+                    x.ProcessId ==
+                    context.ProcessId)
+                .ExecuteDeleteAsync(
+                    cancellationToken);
         }
 
         entity.LatestRequestId =
@@ -91,9 +108,6 @@ internal sealed class SqliteProcessContextStore(
 
         entity.State =
             context.State;
-
-        entity.RequiredStep =
-            context.RequiredStep;
 
         entity.CreatedUtc =
             context.CreatedUtc == default
@@ -130,17 +144,18 @@ internal sealed class SqliteProcessContextStore(
                     })
                 .ToArray();
 
+        // Available steps are always local — store only the step name.
         var availableStepEntities =
             context.AvailableSteps
                 .Select(
-                    (stepName, index) =>
+                    (reference, index) =>
                         new ProcessAvailableStepEntity
                         {
                             ProcessId =
                                 context.ProcessId,
 
                             StepName =
-                                stepName,
+                                reference.StepName,
 
                             Sequence =
                                 index
@@ -153,6 +168,22 @@ internal sealed class SqliteProcessContextStore(
         dbContext.ProcessAvailableSteps.AddRange(
             availableStepEntities);
 
+        if (context.RequiredStep is not null)
+        {
+            dbContext.ProcessRequiredSteps.Add(
+                new ProcessRequiredStepEntity
+                {
+                    ProcessId =
+                        context.ProcessId,
+
+                    ProcessorName =
+                        context.RequiredStep.ProcessorName,
+
+                    StepName =
+                        context.RequiredStep.StepName
+                });
+        }
+
         await dbContext.SaveChangesAsync(
             cancellationToken);
 
@@ -161,12 +192,16 @@ internal sealed class SqliteProcessContextStore(
     }
 
     private static ProcessorContext ToProcessorContext(
-        ProcessContextEntity entity)
+        ProcessContextEntity entity,
+        string localProcessorName)
     {
         return new ProcessorContext
         {
             ProcessId =
                 entity.ProcessId,
+
+            ProcessorName =
+                localProcessorName,
 
             LatestRequestId =
                 entity.LatestRequestId,
@@ -175,7 +210,16 @@ internal sealed class SqliteProcessContextStore(
                 entity.State,
 
             RequiredStep =
-                entity.RequiredStep,
+                entity.RequiredStep is null
+                    ? null
+                    : new ProcessStepReference
+                    {
+                        ProcessorName =
+                            entity.RequiredStep.ProcessorName,
+
+                        StepName =
+                            entity.RequiredStep.StepName
+                    },
 
             CreatedUtc =
                 entity.CreatedUtc,
@@ -183,10 +227,17 @@ internal sealed class SqliteProcessContextStore(
             UpdatedUtc =
                 entity.UpdatedUtc,
 
+            // Available steps are always local — reconstruct references
+            // using the current processor name.
             AvailableSteps =
                 entity.AvailableSteps
                     .OrderBy(x => x.Sequence)
-                    .Select(x => x.StepName)
+                    .Select(x =>
+                        new ProcessStepReference
+                        {
+                            ProcessorName = localProcessorName,
+                            StepName = x.StepName
+                        })
                     .ToArray(),
 
             Steps =

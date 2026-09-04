@@ -1,5 +1,6 @@
 ﻿using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
+using Kaleido.Process.Registry;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,13 +34,17 @@ internal interface IProcessStateUpdater
 internal sealed class ProcessStateUpdater : IProcessStateUpdater
 {
     private readonly IProcessStepRegistry _registry;
+    private readonly IProcessorRegistry _processorRegistry;
 
     public ProcessStateUpdater(
-        IProcessStepRegistry registry)
+        IProcessStepRegistry registry,
+        IProcessorRegistry processorRegistry)
     {
         ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(processorRegistry);
 
         _registry = registry;
+        _processorRegistry = processorRegistry;
     }
 
     public ProcessorContext Initialize(
@@ -48,6 +53,9 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
         return new ProcessorContext
         {
             ProcessId = processId,
+
+            ProcessorName =
+                _processorRegistry.Registrations.Single().Name,
 
             State = ProcessExecutionState.Active,
 

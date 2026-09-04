@@ -26,10 +26,6 @@ internal sealed class ProcessContextEntityConfiguration
             .IsRequired();
 
         builder.Property(
-                x => x.RequiredStep)
-            .HasMaxLength(200);
-
-        builder.Property(
                 x => x.CreatedUtc)
             .IsRequired();
 
@@ -51,6 +47,15 @@ internal sealed class ProcessContextEntityConfiguration
             .WithOne(
                 x => x.Context)
             .HasForeignKey(
+                x => x.ProcessId)
+            .OnDelete(
+                DeleteBehavior.Cascade);
+
+        builder.HasOne(
+                x => x.RequiredStep)
+            .WithOne(
+                x => x.Context)
+            .HasForeignKey<ProcessRequiredStepEntity>(
                 x => x.ProcessId)
             .OnDelete(
                 DeleteBehavior.Cascade);

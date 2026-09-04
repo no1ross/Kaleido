@@ -30,7 +30,6 @@ public sealed class ProcedureModalityClient(
                 modalityRuleQueryPath,
                 new QueryRequest(
                 new QueryBody(
-                    SearchText: codeValue,
                     Filter: QueryFilterNode.CreateCondition(
                         "CodeSystem",
                         FilterOperator.Equals,

@@ -1,11 +1,16 @@
+using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.AspNetCore.Srevices;
-using Kaleido.Process.Execution;
 using Kaleido.Process.Context;
+using Kaleido.Process.Execution;
+using Kaleido.Process.Registry;
+using Moq;
 
 namespace Kaleido.Process.AspNetCore.Tests;
 
 public sealed class ProcessorProcessViewMapperTests
 {
+    private const string LocalProcessorName = "test-processor";
+
     [Fact]
     public void ToView_MapsProcessStateAndOrdersStepsByName()
     {
@@ -18,10 +23,19 @@ public sealed class ProcessorProcessViewMapperTests
             new ProcessorContext
             {
                 ProcessId = processId,
+                ProcessorName = "test-processor",
                 LatestRequestId = "REQ-001",
                 State = ProcessExecutionState.AwaitingStepSelection,
-                RequiredStep = "Step-B",
-                AvailableSteps = ["Step-B", "Step-C"],
+                RequiredStep = new ProcessStepReference
+                {
+                    ProcessorName = LocalProcessorName,
+                    StepName = "Step-B"
+                },
+                AvailableSteps =
+                [
+                    new ProcessStepReference { ProcessorName = LocalProcessorName, StepName = "Step-B" },
+                    new ProcessStepReference { ProcessorName = LocalProcessorName, StepName = "Step-C" }
+                ],
                 CreatedUtc = createdUtc,
                 UpdatedUtc = updatedUtc,
                 Steps =
@@ -43,14 +57,23 @@ public sealed class ProcessorProcessViewMapperTests
             };
 
         var result =
-            ProcessorProcessViewMapper.ToView(context);
+            ProcessorProcessViewMapper.ToView(
+                context,
+                CreateRegistry(),
+                new ProcessRouteOptions());
 
         Assert.Equal(processId, result.ProcessId);
         Assert.Equal(ProcessExecutionState.AwaitingStepSelection, result.State);
-        Assert.Equal("Step-B", result.RequiredStep);
         Assert.Equal(createdUtc, result.CreatedUtc);
         Assert.Equal(updatedUtc, result.UpdatedUtc);
-        Assert.Equal(context.AvailableSteps, result.AvailableSteps);
+
+        Assert.NotNull(result.RequiredStep);
+        Assert.Equal("Step-B", result.RequiredStep.StepName);
+        Assert.Equal(LocalProcessorName, result.RequiredStep.ProcessorName);
+
+        Assert.Equal(2, result.AvailableSteps.Count);
+        Assert.Contains(result.AvailableSteps, x => x.StepName == "Step-B");
+        Assert.Contains(result.AvailableSteps, x => x.StepName == "Step-C");
 
         Assert.Collection(
             result.Steps,
@@ -68,5 +91,36 @@ public sealed class ProcessorProcessViewMapperTests
                 Assert.Equal(StepExecutionStatus.Pending, step.Status);
                 Assert.Equal(stepBLastExecuted, step.LastExecuted);
             });
+    }
+
+    [Fact]
+    public void ToView_WhenRequiredStepIsNull_MapsNullRequiredStep()
+    {
+        var context =
+            new ProcessorContext
+            {
+                ProcessId = Guid.NewGuid(),
+                ProcessorName = "test-processor",
+                State = ProcessExecutionState.AwaitingStepSelection,
+                RequiredStep = null,
+                AvailableSteps = []
+            };
+
+        var result =
+            ProcessorProcessViewMapper.ToView(
+                context,
+                CreateRegistry(),
+                new ProcessRouteOptions());
+
+        Assert.Null(result.RequiredStep);
+        Assert.Empty(result.AvailableSteps);
+    }
+
+    private static IProcessStepRegistry CreateRegistry()
+    {
+        var mock = new Mock<IProcessStepRegistry>();
+        mock.Setup(x => x.Find(It.IsAny<string>()))
+            .Returns((ProcessStepRegistration?)null);
+        return mock.Object;
     }
 }

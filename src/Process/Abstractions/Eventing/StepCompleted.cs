@@ -26,9 +26,9 @@ public sealed record StepCompleted : ProcessEventBase
 
     public required ProcessExecutionState ProcessState { get; init; }
 
-    public string? RequiredStep { get; init; }
+    public ProcessStepReference? RequiredStep { get; init; }
 
-    public IReadOnlyCollection<string> AvailableSteps { get; init; } = [];
+    public IReadOnlyCollection<ProcessStepReference> AvailableSteps { get; init; } = [];
 
     public string? StepLatestRequestId { get; init; }
 

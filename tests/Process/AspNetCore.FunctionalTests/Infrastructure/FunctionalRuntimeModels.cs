@@ -1,6 +1,6 @@
 using Kaleido.Process.Attributes;
-using Kaleido.Process.Execution;
 using Kaleido.Process.Context;
+using Kaleido.Process.Execution;
 
 namespace Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
 
@@ -8,6 +8,11 @@ internal static class FunctionalRuntimeNamespaces
 {
     public const string Runtime =
         "Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure";
+}
+
+internal static class FunctionalProcessorNames
+{
+    public const string TestProcessor = "test-processor";
 }
 
 internal static class RuntimeStepNames
@@ -147,7 +152,11 @@ public sealed class RuntimeRequiredRootStepHandler :
         return Task.FromResult(
             ProcessStepHandlerResult<RuntimeRequiredRootStepResponse>.Success(
                 new RuntimeRequiredRootStepResponse(),
-                RuntimeStepNames.RequiredStep));
+                new ProcessStepReference
+                {
+                    ProcessorName = FunctionalProcessorNames.TestProcessor,
+                    StepName = RuntimeStepNames.RequiredStep
+                }));
     }
 }
 
@@ -176,7 +185,11 @@ public sealed class RuntimeInvalidRequiredRootStepHandler :
         return Task.FromResult(
             ProcessStepHandlerResult<RuntimeInvalidRequiredRootStepResponse>.Success(
                 new RuntimeInvalidRequiredRootStepResponse(),
-                RuntimeStepNames.Merge));
+                new ProcessStepReference
+                {
+                    ProcessorName = FunctionalProcessorNames.TestProcessor,
+                    StepName = RuntimeStepNames.Merge
+                }));
     }
 }
 

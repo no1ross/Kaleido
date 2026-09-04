@@ -117,14 +117,29 @@ It consists of:
 
 See [`IParticipantRuntime.cs`](./Abstractions/IParticipantRuntime.cs).
 
+### ProcessStepReference
+A `ProcessStepReference` identifies a specific step within a specific processor.
+
+It carries:
+- `ProcessorName` — the name of the processor that owns the step
+- `StepName` — the name of the step within that processor
+
+This type is used wherever the runtime must carry a step reference that could point to either a local step or a step in a different processor — specifically in `RequiredStep` and `AvailableSteps` on execution results, events, and durable state.
+
+`AvailableSteps` are always local steps — the processor name is always the current processor.
+
+`RequiredStep` may be a local step or a step in an external processor. A handler signals a cross-processor required step by supplying the target processor's name explicitly.
+
+See [`ProcessStepReference.cs`](./Abstractions/Execution/ProcessStepReference.cs).
+
 ### Processor Context
 A processor context is the durable state of a process instance.
 
 It contains:
 - process identity
 - current process state
-- required next step if any
-- currently available next steps
+- required next step as a `ProcessStepReference` (processor name + step name), or null
+- currently available next steps as a collection of `ProcessStepReference` values (always local)
 - per-step execution summaries
 - timestamps
 
@@ -490,6 +505,20 @@ The main response contracts are:
 - [`ProcessStepResponse`](./AspNetCore/Contracts/ProcessStepResponse.cs)
 - [`ProcessStateResponse`](./AspNetCore/Contracts/ProcessStateResponse.cs)
 
+Execution and state responses use `ProcessStepInfo` for `RequiredStep` and `AvailableSteps`.
+
+`ProcessStepInfo` is a flat HTTP contract type that carries:
+- `ProcessorName` — the owning processor
+- `StepName` — the step within that processor
+- `ExecuteUrl` — populated for local steps, empty for external processor steps
+- `MetadataUrl` — populated for local steps, empty for external processor steps
+
+Consumers can always unambiguously identify which processor owns a required or available step from the response. For external processor steps, the consumer is expected to resolve URLs using its own registry and the `ProcessorName`/`StepName` values.
+
+`ProcessStepSummary` (used in registry and catalog responses) is separate from `ProcessStepInfo` and is not affected by this. It always describes a local step.
+
+See [`ProcessStepInfo.cs`](./AspNetCore/Contracts/ProcessStepInfo.cs).
+
 ### Header behavior
 The execution service writes the resolved `ProcessId` into the response headers so clients can continue the same process instance in later requests.
 
@@ -606,7 +635,16 @@ Keep durable state limited to resumable current state.
 
 Historical evidence belongs in emitted process events, not in the saved processor context.
 
-### 3. Registration invariants matter
+### 3. `RequiredStep` is a `ProcessStepReference`, not a string
+Handlers that signal a required next step must supply a `ProcessStepReference` with both `ProcessorName` and `StepName`.
+
+For same-processor required steps, hardcode the local processor name as a string constant or literal — the framework does not inject it into handlers.
+
+For cross-processor required steps, supply the target processor's registered name explicitly. The runtime does not validate cross-processor references at execution time; the consumer is responsible for resolving them.
+
+Do not pass bare step name strings to `requiredStep:` parameters. Those signatures have been removed.
+
+### 4. Registration invariants matter
 Startup validation assumes:
 - unique step names
 - exactly one handler per step

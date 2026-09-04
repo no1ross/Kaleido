@@ -190,13 +190,6 @@ internal sealed class QueryableObservability
             "kaleido.processor.instance_id",
             correlation.ProcessorInstanceId?.ToString());
 
-        activity?.SetTag(
-            "kaleido.orchestrator.id",
-            correlation.OrchestratorId);
-
-        activity?.SetTag(
-            "kaleido.orchestrator.instance_id",
-            correlation.OrchestratorInstanceId?.ToString());
     }
 
     private sealed class QueryExecutionObservation

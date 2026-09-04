@@ -36,6 +36,15 @@ public sealed record ProcessorContext
         init;
     }
 
+    /// <summary>
+    /// The registered name of the processor that owns this process instance.
+    /// </summary>
+    public required string ProcessorName
+    {
+        get;
+        init;
+    }
+
     public string? LatestRequestId
     {
         get;
@@ -53,9 +62,9 @@ public sealed record ProcessorContext
 
     /// <summary>
     /// When the process is waiting for a specific next step,
-    /// this contains the required step name.
+    /// this contains the required step reference (processor name + step name).
     /// </summary>
-    public string? RequiredStep
+    public ProcessStepReference? RequiredStep
     {
         get;
         init;
@@ -65,7 +74,7 @@ public sealed record ProcessorContext
     /// The currently available next steps that may be supplied
     /// by the caller.
     /// </summary>
-    public IReadOnlyCollection<string> AvailableSteps
+    public IReadOnlyCollection<ProcessStepReference> AvailableSteps
     {
         get;
         init;

@@ -8,9 +8,9 @@ public sealed record ExecutionCompleted : ProcessEventBase
 {
     public required ProcessExecutionState State { get; init; }
 
-    public string? RequiredStep { get; init; }
+    public ProcessStepReference? RequiredStep { get; init; }
 
-    public IReadOnlyCollection<string> AvailableSteps { get; init; } = [];
+    public IReadOnlyCollection<ProcessStepReference> AvailableSteps { get; init; } = [];
 
     public int? ExecutedStepCount { get; init; }
 }

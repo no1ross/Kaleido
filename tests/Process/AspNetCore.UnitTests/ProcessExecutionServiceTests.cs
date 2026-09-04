@@ -74,7 +74,7 @@ public sealed class ProcessExecutionServiceTests
 
         Assert.Equal(processResult.ProcessId, response.ProcessId);
         Assert.Equal(registration.Metadata.Name, Assert.Single(response.Results).StepName);
-        Assert.Equal(registration.Metadata.Name, Assert.Single(response.AvailableSteps).Name);
+        Assert.Equal(registration.Metadata.Name, Assert.Single(response.AvailableSteps).StepName);
     }
 
     [Fact]
@@ -183,7 +183,7 @@ public sealed class ProcessExecutionServiceTests
         {
             ProcessId = Guid.NewGuid(),
             State = ProcessExecutionState.Active,
-            AvailableSteps = [stepName],
+            AvailableSteps = [new ProcessStepReference { ProcessorName = "test", StepName = stepName }],
             Steps =
             [
                 new ProcessorStepResult

@@ -755,6 +755,7 @@ public sealed class ProcessorRuntimeTests
                 return new Eventing.ProcessCreated
                 {
                     ProcessId = context.ProcessId,
+                    ProcessorName = context.ProcessorName,
                     OccurredOn = DateTimeOffset.UtcNow,
                     State = context.State,
                     CreatedUtc = context.CreatedUtc,
@@ -779,6 +780,7 @@ public sealed class ProcessorRuntimeTests
                 return new Eventing.PlanBuilt
                 {
                     ProcessId = context.ProcessId,
+                    ProcessorName = context.ProcessorName,
                     OccurredOn = DateTimeOffset.UtcNow,
                     State = context.State,
                     RequiredStep = context.RequiredStep,
@@ -794,11 +796,13 @@ public sealed class ProcessorRuntimeTests
         factory
             .Setup(x =>
                 x.CreateExecutionCompleted(
+                    It.IsAny<ProcessorContext>(),
                     It.IsAny<ProcessExecutionResult>()))
-            .Returns<ProcessExecutionResult>(executionResult =>
+            .Returns<ProcessorContext, ProcessExecutionResult>((context, executionResult) =>
                 new Eventing.ExecutionCompleted
                 {
                     ProcessId = executionResult.ProcessId,
+                    ProcessorName = context.ProcessorName,
                     OccurredOn = DateTimeOffset.UtcNow,
                     State = executionResult.State,
                     RequiredStep = executionResult.RequiredStep,
@@ -826,6 +830,7 @@ public sealed class ProcessorRuntimeTests
         return new ProcessorContext
         {
             ProcessId = processId,
+            ProcessorName = "test-processor",
             LatestRequestId = requestId,
             State = ProcessExecutionState.Active,
             AvailableSteps = [],

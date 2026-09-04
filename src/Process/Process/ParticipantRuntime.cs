@@ -99,6 +99,7 @@ internal sealed class ProcessorRuntime
 
             await _eventPublisher.PublishAsync(
                 _eventFactory.CreateExecutionCompleted(
+                    context,
                     executionResult),
                 cancellationToken);
 

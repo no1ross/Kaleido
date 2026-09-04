@@ -55,6 +55,10 @@ public sealed class RemoveRequestedServiceHandler(
         return hasRemainingRequestedServices
             ? ProcessStepHandlerResult.Success()
             : ProcessStepHandlerResult.Success(
-                requiredStep: nameof(CaptureRequestedServiceStep).Replace("Step", string.Empty));
+                requiredStep: new ProcessStepReference
+                {
+                    ProcessorName = "radiology",
+                    StepName = nameof(CaptureRequestedServiceStep).Replace("Step", string.Empty)
+                });
     }
 }

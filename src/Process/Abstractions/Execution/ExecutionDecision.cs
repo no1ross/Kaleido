@@ -16,13 +16,13 @@ internal sealed record ExecutionDecision
         init;
     }
 
-    public string? RequiredStep
+    public ProcessStepReference? RequiredStep
     {
         get;
         init;
     }
 
-    public IReadOnlyCollection<string> AvailableSteps
+    public IReadOnlyCollection<ProcessStepReference> AvailableSteps
     {
         get;
         init;
@@ -65,7 +65,7 @@ internal sealed record ExecutionDecision
         };
 
     public static ExecutionDecision AwaitingRequiredStep(
-        string requiredStep)
+        ProcessStepReference requiredStep)
         => new()
         {
             Type = ExecutionDecisionType.AwaitingRequiredStep,
@@ -73,7 +73,7 @@ internal sealed record ExecutionDecision
         };
 
     public static ExecutionDecision AwaitingStepSelection(
-        IReadOnlyCollection<string> availableSteps)
+        IReadOnlyCollection<ProcessStepReference> availableSteps)
         => new()
         {
             Type = ExecutionDecisionType.AwaitingStepSelection,

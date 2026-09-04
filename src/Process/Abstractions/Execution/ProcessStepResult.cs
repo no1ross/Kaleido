@@ -4,7 +4,7 @@ public interface IProcessStepHandlerResult
 {
     bool Succeeded { get; }
 
-    string? RequiredStep { get; }
+    ProcessStepReference? RequiredStep { get; }
 
     object? Response { get; }
 
@@ -15,7 +15,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
 {
     public bool Succeeded { get; init; }
 
-    public string? RequiredStep { get; init; }
+    public ProcessStepReference? RequiredStep { get; init; }
 
     public required TProcessStepResult Response { get; init; }
 
@@ -26,7 +26,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
 
     public static ProcessStepHandlerResult<TProcessStepResult> Success(
         TProcessStepResult response,
-        string? requiredStep = null,
+        ProcessStepReference? requiredStep = null,
         params ProcessMessage[] messages)
     {
         return new()
@@ -56,7 +56,7 @@ public record ProcessStepHandlerResult
 {
     public bool Succeeded { get; init; }
 
-    public string? RequiredStep { get; init; }
+    public ProcessStepReference? RequiredStep { get; init; }
 
     public object? Response { get; init; }
 
@@ -64,7 +64,7 @@ public record ProcessStepHandlerResult
         = [];
 
     public static ProcessStepHandlerResult Success(
-        string? requiredStep = null,
+        ProcessStepReference? requiredStep = null,
         params ProcessMessage[] messages)
     {
         return new()

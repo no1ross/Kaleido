@@ -21,7 +21,8 @@ public sealed class StepCandidateConsistencyCheckerTests
                     null!,
                     new ProcessorContext
                     {
-                        ProcessId = Guid.NewGuid()
+                        ProcessId = Guid.NewGuid(),
+                        ProcessorName = "test-processor"
                     }));
 
         Assert.Equal("candidates", exception.ParamName);
@@ -58,7 +59,8 @@ public sealed class StepCandidateConsistencyCheckerTests
             [candidate],
             new ProcessorContext
             {
-                ProcessId = Guid.NewGuid()
+                ProcessId = Guid.NewGuid(),
+                ProcessorName = "test-processor"
             });
 
         Assert.Equal(
@@ -85,6 +87,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             new ProcessorContext
             {
                 ProcessId = Guid.NewGuid(),
+                ProcessorName = "test-processor",
                 Steps =
                 [
                     new StepContext
@@ -120,6 +123,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             new ProcessorContext
             {
                 ProcessId =  Guid.NewGuid(),
+                ProcessorName = "test-processor",
                 Steps =
                 [
                     new StepContext
@@ -159,6 +163,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             new ProcessorContext
             {
                 ProcessId = Guid.NewGuid(),
+                ProcessorName = "test-processor",
                 Steps =
                 [
                     new StepContext
@@ -202,7 +207,8 @@ public sealed class StepCandidateConsistencyCheckerTests
             ],
             new ProcessorContext
             {
-                ProcessId = Guid.NewGuid()
+                ProcessId = Guid.NewGuid(),
+                ProcessorName = "test-processor"
             });
 
         Assert.False(targetCandidate.HasErrors);
@@ -242,7 +248,7 @@ public sealed class StepCandidateConsistencyCheckerTests
                 dependencyCandidate,
                 targetCandidate
             ],
-            new ProcessorContext{ ProcessId = Guid.NewGuid() });
+            new ProcessorContext{ ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" });
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -273,7 +279,7 @@ public sealed class StepCandidateConsistencyCheckerTests
 
         checker.Validate(
             [candidate],
-            new ProcessorContext{ ProcessId = Guid.NewGuid() });
+            new ProcessorContext{ ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" });
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -308,7 +314,7 @@ public sealed class StepCandidateConsistencyCheckerTests
 
         checker.Validate(
             [candidate],
-            new ProcessorContext{ ProcessId = Guid.NewGuid() });
+            new ProcessorContext{ ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" });
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -340,6 +346,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             new ProcessorContext
             {
                 ProcessId = Guid.NewGuid(),
+                ProcessorName = "test-processor",
                 Steps =
                 [
                     new StepContext
@@ -378,6 +385,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             new ProcessorContext
             {
                 ProcessId = Guid.NewGuid(),
+                ProcessorName = "test-processor",
                 Steps =
                 [
                     new StepContext

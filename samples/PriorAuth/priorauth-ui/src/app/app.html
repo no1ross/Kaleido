@@ -6,6 +6,16 @@
         <p>Prior authorization process scaffolding with registry diagnostics.</p>
       </div>
 
+      @if (processId()) {
+        <div class="shell__process-id">
+          <div class="shell__process-id-header">
+            <span>Process ID</span>
+            <button type="button" class="shell__exit-process" (click)="exitProcess()">Exit process</button>
+          </div>
+          <strong>{{ processId() }}</strong>
+        </div>
+      }
+
       <nav class="shell__nav">
         <a routerLink="/" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="is-active">Home</a>
         <a routerLink="/registries/process" routerLinkActive="is-active">Process Registries</a>

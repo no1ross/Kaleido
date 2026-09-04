@@ -77,6 +77,7 @@ public sealed class ExecutionPlannerTests
                     new ProcessorContext
                     {
                         ProcessId = Guid.NewGuid(),
+                        ProcessorName = "test-processor"
                     }));
 
         Assert.Equal("request", exception.ParamName);
@@ -106,7 +107,8 @@ public sealed class ExecutionPlannerTests
         var context =
             new ProcessorContext
             {
-                ProcessId = Guid.NewGuid()
+                ProcessId = Guid.NewGuid(),
+                ProcessorName = "test-processor"
             };
 
         var candidates =
@@ -184,7 +186,8 @@ public sealed class ExecutionPlannerTests
         var context =
             new ProcessorContext
             {
-                ProcessId = Guid.NewGuid()
+                ProcessId = Guid.NewGuid(),
+                ProcessorName = "test-processor"
             };
 
         var candidates =
@@ -247,7 +250,8 @@ public sealed class ExecutionPlannerTests
         var context =
             new ProcessorContext
             {
-                ProcessId = Guid.NewGuid()
+                ProcessId = Guid.NewGuid(),
+                ProcessorName = "test-processor"
             };
 
         var candidates =
@@ -309,7 +313,8 @@ public sealed class ExecutionPlannerTests
         var context =
             new ProcessorContext
             {
-                ProcessId = Guid.NewGuid()
+                ProcessId = Guid.NewGuid(),
+                ProcessorName = "test-processor"
             };
 
         var candidates =

@@ -139,11 +139,7 @@ Handlers implement either:
 Use the typed form when the step should return a structured payload.
 
 ```csharp
-public sealed class CaptureRequestedServiceHandler(
-    IntakeDbContext dbContext,
-    ProcedureCodeClient procedureCodeClient,
-    ProcedureModalityClient procedureModalityClient,
-    QuestionnaireDefinitionClient questionnaireDefinitionClient)
+public sealed class CaptureRequestedServiceHandler(...)
     : IProcessStepHandler<CaptureRequestedServiceStep, CaptureRequestedServiceResponse>
 {
     public async Task<ProcessStepHandlerResult<CaptureRequestedServiceResponse>> ExecuteAsync(
@@ -157,6 +153,36 @@ public sealed class CaptureRequestedServiceHandler(
 ```
 
 Real example: <ref_snippet file="C:\Repos\Kaleido\samples\PriorAuth\Intake.Artifacts\Process\Handlers\CaptureRequestedServiceHandler.cs" lines="13-23" />.
+
+#### Signalling a required next step
+
+When a handler needs to direct the process to a specific next step, it returns a `ProcessStepReference` as the `requiredStep` argument.
+
+`ProcessStepReference` carries both `ProcessorName` and `StepName`. For a step in the same processor, supply the local processor's registered name:
+
+```csharp
+return ProcessStepHandlerResult<MyResponse>.Success(
+    response,
+    requiredStep: new ProcessStepReference
+    {
+        ProcessorName = "my-processor",
+        StepName = "NextStep"
+    });
+```
+
+For a step in a different processor, supply the target processor's registered name:
+
+```csharp
+return ProcessStepHandlerResult<MyResponse>.Success(
+    response,
+    requiredStep: new ProcessStepReference
+    {
+        ProcessorName = "radiology",
+        StepName = "CaptureMriInfo"
+    });
+```
+
+The framework does not inject the local processor name into handlers. Use a constant or literal. The framework does not validate cross-processor references at execution time — the consumer is responsible for routing to the target processor.
 
 ### 5. Use step relationships intentionally
 Process supports runtime relationship metadata through:

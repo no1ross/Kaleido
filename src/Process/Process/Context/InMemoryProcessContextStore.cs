@@ -1,8 +1,11 @@
-﻿using System.Collections.Concurrent;
+﻿using Kaleido.Process.Registry;
+using System.Collections.Concurrent;
 
 namespace Kaleido.Process.Context;
 
-internal sealed class InMemoryProcessContextStore : IProcessContextStore
+internal sealed class InMemoryProcessContextStore(
+    IProcessorRegistry processorRegistry)
+    : IProcessContextStore
 {
     private readonly ConcurrentDictionary<Guid, ProcessorContext> _contexts =
         new();
@@ -21,7 +24,8 @@ internal sealed class InMemoryProcessContextStore : IProcessContextStore
         return await Task.FromResult(
             new ProcessorContext
             {
-                ProcessId = processId
+                ProcessId = processId,
+                ProcessorName = processorRegistry.Registrations.Single().Name
             });
     }
 

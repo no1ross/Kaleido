@@ -6,7 +6,7 @@ namespace Kaleido.Process.Execution;
 
 internal interface IStepAvailabilityResolver
 {
-    IReadOnlyCollection<string> Resolve(
+    IReadOnlyCollection<ProcessStepReference> Resolve(
         StepCandidate currentCandidate,
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context);
@@ -16,16 +16,20 @@ internal sealed class StepAvailabilityResolver
     : IStepAvailabilityResolver
 {
     private readonly IProcessStepRegistry _registry;
+    private readonly IProcessorRegistry _processorRegistry;
 
     public StepAvailabilityResolver(
-        IProcessStepRegistry registry)
+        IProcessStepRegistry registry,
+        IProcessorRegistry processorRegistry)
     {
         ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(processorRegistry);
 
         _registry = registry;
+        _processorRegistry = processorRegistry;
     }
 
-    public IReadOnlyCollection<string> Resolve(
+    public IReadOnlyCollection<ProcessStepReference> Resolve(
         StepCandidate currentCandidate,
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context)
@@ -33,6 +37,11 @@ internal sealed class StepAvailabilityResolver
         ArgumentNullException.ThrowIfNull(currentCandidate);
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(context);
+
+        var processorName =
+            _processorRegistry.Registrations
+                .Single()
+                .Name;
 
         var registrations = _registry.Registrations;
 
@@ -75,53 +84,14 @@ internal sealed class StepAvailabilityResolver
 
         return availableUntilSatisfied
             .Select(x =>
-                x.Metadata.Name)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+                new ProcessStepReference
+                {
+                    ProcessorName = processorName,
+                    StepName = x.Metadata.Name
+                })
+            .DistinctBy(x => x.StepName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
-
-    //private IReadOnlyCollection<ProcessStepRegistration> GetScopedRegistrations(
-    //    StepCandidate currentCandidate,
-    //    IReadOnlyCollection<StepCandidate> candidates,
-    //    ProcessorContext context)
-    //{
-    //    var registrations =
-    //        new Dictionary<Type, ProcessStepRegistration>();
-
-    //    if (currentCandidate.Registration is not null)
-    //    {
-    //        registrations.TryAdd(
-    //            currentCandidate.Registration.StepType,
-    //            currentCandidate.Registration);
-    //    }
-
-    //    foreach (var candidate in candidates)
-    //    {
-    //        if (candidate.Registration is not null)
-    //        {
-    //            registrations.TryAdd(
-    //                candidate.Registration.StepType,
-    //                candidate.Registration);
-    //        }
-    //    }
-
-    //    foreach (var completedStep in context.Steps.Where(
-    //                 x => x.Status == StepExecutionStatus.Completed))
-    //    {
-    //        var registration =
-    //            _registry.Find(
-    //                completedStep.StepName);
-
-    //        if (registration is not null)
-    //        {
-    //            registrations.TryAdd(
-    //                registration.StepType,
-    //                registration);
-    //        }
-    //    }
-
-    //    return registrations.Values.ToArray();
-    //}
 
     private IReadOnlySet<string> GetCompletedStepNames(
         StepCandidate currentCandidate,

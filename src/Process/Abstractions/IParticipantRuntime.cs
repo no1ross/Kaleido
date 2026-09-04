@@ -54,13 +54,13 @@ public sealed record ProcessorProcessResult
         init;
     }
 
-    public string? RequiredStep
+    public ProcessStepReference? RequiredStep
     {
         get;
         init;
     }
 
-    public IReadOnlyCollection<string> AvailableSteps
+    public IReadOnlyCollection<ProcessStepReference> AvailableSteps
     {
         get;
         init;
