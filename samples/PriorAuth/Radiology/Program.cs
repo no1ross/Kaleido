@@ -4,9 +4,8 @@ using Kaleido.Process.AspNetCore;
 using Kaleido.Process.Providers.SQLite;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
-using Kaleido.Samples.PriorAuth.Intake.Data;
+using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -49,17 +48,17 @@ builder.Services.AddOpenTelemetry()
             .AddOtlpExporter();
     });
 
-var intakeConnectionString =
-    builder.Configuration.GetConnectionString("Intake")
-    ?? "Data Source=data/intake.db";
+var radiologyConnectionString =
+    builder.Configuration.GetConnectionString("Radiology")
+    ?? "Data Source=data/radiology.db";
 
 var processConnectionString =
-    builder.Configuration.GetConnectionString("IntakeProcess")
-    ?? "Data Source=data/intake-process.db";
+    builder.Configuration.GetConnectionString("RadiologyProcess")
+    ?? "Data Source=data/radiology-process.db";
 
-builder.Services.AddDbContext<IntakeDbContext>(
+builder.Services.AddDbContext<RadiologyDbContext>(
     options => options.UseSqlite(
-        intakeConnectionString));
+        radiologyConnectionString));
 
 builder.Services.AddHttpClient("ReferenceData", client =>
 {
@@ -96,13 +95,13 @@ builder.Services.AddHttpClient("ProviderSearch", client =>
         ?? "https://localhost:8443");
 });
 
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Process.Services.QueryableHttpClient>();
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Process.Services.MemberDetailsClient>();
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Process.Services.ProcedureCodeClient>();
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Process.Services.ProcedureModalityClient>();
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Process.Services.MriProcedureCodeResolverClient>();
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Process.Services.QuestionnaireDefinitionClient>();
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Process.Services.RequestingProviderSearchClient>();
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.QueryableHttpClient>();
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.MemberDetailsClient>();
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.ProcedureCodeClient>();
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.ProcedureModalityClient>();
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.MriProcedureCodeResolverClient>();
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.QuestionnaireDefinitionClient>();
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.RequestingProviderSearchClient>();
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
@@ -118,27 +117,27 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<IntakeDbContext>();
+    .AddDbContextCheck<RadiologyDbContext>();
 
 builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
-    .AddAssembly(typeof(IntakeDbContext).Assembly)
+    .AddAssembly(typeof(RadiologyDbContext).Assembly)
     .AddProcessor(o =>
         {
-            o.Name = "intake";
-            o.Description = "Prior authorization intake processor.";
+            o.Name = "radiology";
+            o.Description = "Prior authorization radiology processor.";
             o.Version = "1.0.0";
-            o.DisplayName = "Prior Auth Intake";
+            o.DisplayName = "Prior Auth Radiology";
         })
         .AddProcessorAspNetCore(o =>
         {
-            o.RoutePrefix = "intake";
+            o.RoutePrefix = "radiology";
         })
         .UseSqliteProcessContextStore(processConnectionString)
     .AddQueryable()
         .AddQueryableAspNetCore(o =>
         {
-            o.RoutePrefix = "intake";
+            o.RoutePrefix = "radiology";
         });
 
 var app = builder.Build();
@@ -153,7 +152,7 @@ app.MapQueryable();
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var dbContext =
-        scope.ServiceProvider.GetRequiredService<IntakeDbContext>();
+        scope.ServiceProvider.GetRequiredService<RadiologyDbContext>();
     var processDbContext =
         scope.ServiceProvider.GetRequiredService<SqliteProcessContextDbContext>();
     var httpClientFactory =

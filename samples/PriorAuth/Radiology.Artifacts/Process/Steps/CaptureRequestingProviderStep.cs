@@ -5,7 +5,7 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
 [ProcessStep(
     Name = "CaptureRequestingProvider",
-    DisplayName = "Intake - Capture Requesting Provider",
+    DisplayName = "Radiology - Capture Requesting Provider",
     Description = "Captures the requesting provider for the current prior authorization.",
     Version = "1.0.0")]
 [AvailableAfter(typeof(CaptureRequestedServiceStep))]

@@ -5,7 +5,7 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
 [ProcessStep(
     Name = "ConfirmCtInsteadOfMri",
-    DisplayName = "Intake - Confirm CT Instead Of MRI",
+    DisplayName = "Radiology - Confirm CT Instead Of MRI",
     Description = "Captures the current CT recommendation branch placeholder.",
     Version = "1.0.0")]
 [AvailableAfter(typeof(CaptureRequestedServiceStep))]

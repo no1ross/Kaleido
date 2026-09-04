@@ -71,7 +71,7 @@ public sealed class QueryableHttpClient(
 
         var queryableError =
             response.StatusCode == HttpStatusCode.BadRequest
-                ? await response.Content.ReadFromJsonAsync<QueryableErrorResponse>(
+                ? await response.Content.ReadFromJsonAsync<QueryErrorResponse>(
                     cancellationToken: cancellationToken)
                 : null;
 

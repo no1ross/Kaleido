@@ -10,7 +10,7 @@ using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 
 public sealed class CaptureMemberHandler(
-    IntakeDbContext dbContext,
+    RadiologyDbContext dbContext,
     MemberDetailsClient memberDetailsClient)
     : IProcessStepHandler<CaptureMemberStep>
 {
@@ -30,7 +30,7 @@ public sealed class CaptureMemberHandler(
             if (memberDetails is null)
             {
                 return ProcessStepHandlerResult.Failure(
-                    IntakeProcessMessages.MemberNotFound(
+                    RadiologyProcessMessages.MemberNotFound(
                         processStep.MemberId,
                         processStep.MemberEnrollmentId));
             }
@@ -38,7 +38,7 @@ public sealed class CaptureMemberHandler(
             if (processStep.DateOfService < memberDetails.EffectiveDate)
             {
                 return ProcessStepHandlerResult.Failure(
-                    IntakeProcessMessages.CoverageNotYetEffective(
+                    RadiologyProcessMessages.CoverageNotYetEffective(
                         processStep.MemberEnrollmentId,
                         processStep.DateOfService,
                         memberDetails.EffectiveDate));
@@ -48,7 +48,7 @@ public sealed class CaptureMemberHandler(
                 && processStep.DateOfService > terminationDate)
             {
                 return ProcessStepHandlerResult.Failure(
-                    IntakeProcessMessages.CoverageTerminated(
+                    RadiologyProcessMessages.CoverageTerminated(
                         processStep.MemberEnrollmentId,
                         processStep.DateOfService,
                         terminationDate));
@@ -99,7 +99,7 @@ public sealed class CaptureMemberHandler(
         catch (QueryableClientException ex)
         {
             return ProcessStepHandlerResult.Failure(
-                IntakeProcessMessages.QueryableRequestFailed(
+                RadiologyProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));
         }

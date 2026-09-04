@@ -7,11 +7,8 @@ namespace Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 [ProcessStep(
     Name = "CaptureRequestedService",
     DisplayName = "Intake - Capture Requested Service",
-    Description = "Adds a requested service to the current prior authorization.",
+    Description = "Validates the procedure code and determines which processor should handle this prior authorization request.",
     Version = "1.0.0")]
-[AvailableAfter(typeof(CaptureMemberStep))]
-[AvailableUntil(typeof(CaptureRequestingProviderStep))]
-[Repeatable]
 public sealed record CaptureRequestedServiceStep
 {
     [Required]

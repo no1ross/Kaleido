@@ -3,8 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Data;
 
-public sealed class IntakeDbContext(
-    DbContextOptions<IntakeDbContext> options) : DbContext(options)
+public sealed class RadiologyDbContext(
+    DbContextOptions<RadiologyDbContext> options) : DbContext(options)
 {
     public DbSet<PriorAuthorization> PriorAuthorizations => Set<PriorAuthorization>();
 
@@ -22,6 +22,6 @@ public sealed class IntakeDbContext(
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(
-            typeof(IntakeDbContext).Assembly);
+            typeof(RadiologyDbContext).Assembly);
     }
 }

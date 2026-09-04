@@ -12,7 +12,7 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 public sealed class QuestionnaireDefinitionClient(
     QueryableHttpClient queryableHttpClient,
     IConfiguration configuration,
-    IntakeDbContext dbContext)
+    RadiologyDbContext dbContext)
 {
     private readonly string questionnaireDefinitionViewPath =
         configuration["Services:Configuration:QuestionnaireDefinitionViewPath"]

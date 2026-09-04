@@ -1,12 +1,6 @@
-using Kaleido.Samples.PriorAuth.Configuration.Process.Models;
-
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Models;
 
 public sealed record CaptureRequestedServiceResponse
 {
-    public string? QuestionnaireId { get; init; }
-
-    public string? QuestionnaireVersion { get; init; }
-
-    public QuestionnaireDefinitionRecord? Questionnaire { get; init; }
+    public string ProcessorName { get; init; } = string.Empty;
 }

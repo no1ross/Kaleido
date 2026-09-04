@@ -3,7 +3,7 @@ using Kaleido.Samples.PriorAuth.Configuration;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Messages;
 
-public static class IntakeProcessMessages
+public static class RadiologyProcessMessages
 {
     public static ProcessMessage MemberNotFound(
         Guid memberId,

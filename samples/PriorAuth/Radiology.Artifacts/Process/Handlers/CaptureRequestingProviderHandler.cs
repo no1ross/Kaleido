@@ -7,7 +7,7 @@ using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 
 public sealed class CaptureRequestingProviderHandler(
-    IntakeDbContext dbContext)
+    RadiologyDbContext dbContext)
     : IProcessStepHandler<CaptureRequestingProviderStep>
 {
     public async Task<ProcessStepHandlerResult> ExecuteAsync(

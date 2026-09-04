@@ -7,9 +7,9 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Queryable.Contexts;
 
 [QueryContext(
     Name = "requesting-provider-searches",
-    DisplayName = "Intake - Requesting Provider Searches",
+    DisplayName = "Radiology - Requesting Provider Searches",
     Version = "1.0.0",
-    Source = "Prior Authorization Intake",
+    Source = "Prior Authorization Radiology",
     Kind = QueryContextKind.Delegated)]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 public sealed class RequestingProviderSearchQueryContext

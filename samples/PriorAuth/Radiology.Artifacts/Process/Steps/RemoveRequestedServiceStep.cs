@@ -5,7 +5,7 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
 [ProcessStep(
     Name = "RemoveRequestedService",
-    DisplayName = "Intake - Remove Requested Service",
+    DisplayName = "Radiology - Remove Requested Service",
     Description = "Removes a requested service from the current prior authorization.",
     Version = "1.0.0")]
 [AvailableAfter(typeof(CaptureRequestedServiceStep))]

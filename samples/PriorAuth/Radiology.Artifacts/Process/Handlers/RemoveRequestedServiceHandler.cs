@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 
 public sealed class RemoveRequestedServiceHandler(
-    IntakeDbContext dbContext)
+    RadiologyDbContext dbContext)
     : IProcessStepHandler<RemoveRequestedServiceStep>
 {
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
@@ -35,7 +35,7 @@ public sealed class RemoveRequestedServiceHandler(
         if (requestedService is null)
         {
             return ProcessStepHandlerResult.Success(
-                IntakeProcessMessages.RequestedServiceNotFound(processStep.PriorAuthorizationRequestedServiceId));
+                RadiologyProcessMessages.RequestedServiceNotFound(processStep.PriorAuthorizationRequestedServiceId));
         }
 
         var priorAuthorizationId =

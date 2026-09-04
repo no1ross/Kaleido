@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 
 public sealed class CaptureMriInfoHandler(
-    IntakeDbContext dbContext,
+    RadiologyDbContext dbContext,
     MriProcedureCodeResolverClient mriProcedureCodeResolverClient)
     : IProcessStepHandler<CaptureMriInfoStep>
 {
@@ -58,7 +58,7 @@ public sealed class CaptureMriInfoHandler(
             }
 
             return ProcessStepHandlerResult.Success(
-                IntakeProcessMessages.ProcedureCodeUpdated(
+                RadiologyProcessMessages.ProcedureCodeUpdated(
                     originalCodeSystem,
                     originalCodeValue,
                     requestedService.ResolvedCodeSystem,
@@ -67,7 +67,7 @@ public sealed class CaptureMriInfoHandler(
         catch (QueryableClientException ex)
         {
             return ProcessStepHandlerResult.Failure(
-                IntakeProcessMessages.QueryableRequestFailed(
+                RadiologyProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));
         }

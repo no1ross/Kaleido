@@ -1,3 +1,4 @@
+using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Samples.PriorAuth.Intake.Process.Models;
 using System.Net;
 
@@ -8,7 +9,7 @@ public sealed class QueryableClientException : Exception
     public QueryableClientException(
         string message,
         HttpStatusCode statusCode,
-        IReadOnlyList<QueryableError>? errors = null)
+        IReadOnlyList<QueryError>? errors = null)
         : base(message)
     {
         StatusCode = statusCode;
@@ -19,7 +20,7 @@ public sealed class QueryableClientException : Exception
         string message,
         HttpStatusCode statusCode,
         Exception innerException,
-        IReadOnlyList<QueryableError>? errors = null)
+        IReadOnlyList<QueryError>? errors = null)
         : base(message, innerException)
     {
         StatusCode = statusCode;
@@ -28,5 +29,5 @@ public sealed class QueryableClientException : Exception
 
     public HttpStatusCode StatusCode { get; }
 
-    public IReadOnlyList<QueryableError> Errors { get; }
+    public IReadOnlyList<QueryError> Errors { get; }
 }

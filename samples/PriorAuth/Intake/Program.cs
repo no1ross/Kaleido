@@ -7,7 +7,6 @@ using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Process.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -90,20 +89,10 @@ builder.Services.AddHttpClient("Configuration", client =>
         ?? "https://localhost:8447");
 });
 
-builder.Services.AddHttpClient("ProviderSearch", client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["Services:ProviderSearch:BaseUrl"]
-        ?? "https://localhost:8443");
-});
-
 builder.Services.AddScoped<QueryableHttpClient>();
 builder.Services.AddScoped<MemberDetailsClient>();
 builder.Services.AddScoped<ProcedureCodeClient>();
 builder.Services.AddScoped<ProcedureModalityClient>();
-builder.Services.AddScoped<MriProcedureCodeResolverClient>();
-builder.Services.AddScoped<QuestionnaireDefinitionClient>();
-builder.Services.AddScoped<RequestingProviderSearchClient>();
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>

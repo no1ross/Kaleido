@@ -1,4 +1,5 @@
 using Kaleido.Process;
+using Kaleido.Samples.PriorAuth.CodeSet;
 using Kaleido.Samples.PriorAuth.Configuration;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Messages;
@@ -47,16 +48,13 @@ public static class IntakeProcessMessages
             Message = $"No procedure code was found for '{codeSystem}:{codeValue}'."
         };
 
-    public static ProcessMessage ProcedureCodeUpdated(
-        ProcedureCodeSystem originalCodeSystem,
-        string originalCodeValue,
-        ProcedureCodeSystem updatedCodeSystem,
-        string updatedCodeValue) =>
+    public static ProcessMessage ProcessorNotFound(
+        ProcedureModality modality) =>
         new()
         {
-            Code = "PROCEDURE_CODE_UPDATED",
-            Type = MessageType.Information,
-            Message = $"Requested service code was updated from '{originalCodeSystem}:{originalCodeValue}' to '{updatedCodeSystem}:{updatedCodeValue}' based on the selected MRI details."
+            Code = "PROCESSOR_NOT_FOUND",
+            Type = MessageType.Error,
+            Message = $"No processor is configured for procedure modality '{modality}'. Unable to determine which service should handle this prior authorization request."
         };
 
     public static ProcessMessage QueryableRequestFailed(
@@ -67,34 +65,5 @@ public static class IntakeProcessMessages
             Code = code,
             Type = MessageType.Error,
             Message = message
-        };
-
-    public static ProcessMessage MixedRequestedServiceModalitiesNotAllowed(
-        ProcedureModality existingModality,
-        ProcedureModality requestedModality) =>
-        new()
-        {
-            Code = "MIXED_REQUESTED_SERVICE_MODALITIES_NOT_ALLOWED",
-            Type = MessageType.Error,
-            Message = $"A prior authorization request cannot contain both '{existingModality}' and '{requestedModality}' services. Add only additional '{existingModality}' services to this request."
-        };
-
-    public static ProcessMessage DuplicateRequestedServiceNotAllowed(
-        ProcedureCodeSystem codeSystem,
-        string codeValue) =>
-        new()
-        {
-            Code = "DUPLICATE_REQUESTED_SERVICE_NOT_ALLOWED",
-            Type = MessageType.Error,
-            Message = $"The requested service '{codeSystem}:{codeValue}' has already been added to this prior authorization request."
-        };
-
-    public static ProcessMessage RequestedServiceNotFound(
-        Guid priorAuthorizationRequestedServiceId) =>
-        new()
-        {
-            Code = "REQUESTED_SERVICE_NOT_FOUND",
-            Type = MessageType.Warning,
-            Message = $"Requested service '{priorAuthorizationRequestedServiceId}' was not found and may already have been removed."
         };
 }

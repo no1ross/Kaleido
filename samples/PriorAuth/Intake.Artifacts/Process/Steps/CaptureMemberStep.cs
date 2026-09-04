@@ -1,15 +1,13 @@
 using Kaleido.Process.Attributes;
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 
 [ProcessStep(
     Name = "CaptureMember",
     DisplayName = "Intake - Capture Member",
-    Description = "Creates or updates the prior authorization with the selected member.",
+    Description = "Records member information against the intake session for auditing and correlation.",
     Version = "1.0.0")]
-[AvailableUntil(typeof(CaptureRequestingProviderStep))]
 [Repeatable]
 public sealed record CaptureMemberStep
 {

@@ -1,4 +1,4 @@
-namespace Intake
+namespace Kaleido.Samples.PriorAuth.Radiology
 {
     public class WeatherForecast
     {

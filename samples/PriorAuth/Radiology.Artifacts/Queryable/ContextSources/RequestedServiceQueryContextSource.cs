@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Kaleido.Samples.PriorAuth.Radiology.Queryable.ContextSources;
 
 internal sealed class RequestedServiceQueryContextSource(
-    IntakeDbContext dbContext)
+    RadiologyDbContext dbContext)
     : IQueryContextSource<RequestedServiceQueryContext>
 {
     public IQueryable<RequestedServiceQueryContext> CreateQuery(

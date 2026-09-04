@@ -1,6 +1,7 @@
+using Kaleido.Samples.PriorAuth.Radiology;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Intake.Controllers
+namespace Kaleido.Samples.PriorAuth.Radiology.Controllers
 {
     [ApiController]
     [Route("[controller]")]

@@ -10,7 +10,7 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 public sealed class RequestingProviderSearchClient(
     QueryableHttpClient queryableHttpClient,
     IConfiguration configuration,
-    IntakeDbContext dbContext)
+    RadiologyDbContext dbContext)
 {
     private readonly string requestingProviderSearchQueryPath =
         configuration["Services:ProviderSearch:RequestingProviderSearchQueryPath"]

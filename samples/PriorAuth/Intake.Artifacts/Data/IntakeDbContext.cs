@@ -6,15 +6,11 @@ namespace Kaleido.Samples.PriorAuth.Intake.Data;
 public sealed class IntakeDbContext(
     DbContextOptions<IntakeDbContext> options) : DbContext(options)
 {
-    public DbSet<PriorAuthorization> PriorAuthorizations => Set<PriorAuthorization>();
+    public DbSet<IntakeSession> IntakeSessions => Set<IntakeSession>();
 
-    public DbSet<PriorAuthorizationMember> PriorAuthorizationMembers => Set<PriorAuthorizationMember>();
+    public DbSet<IntakeSessionMember> IntakeSessionMembers => Set<IntakeSessionMember>();
 
-    public DbSet<PriorAuthorizationRequestedService> PriorAuthorizationRequestedServices => Set<PriorAuthorizationRequestedService>();
-
-    public DbSet<PriorAuthorizationRequestingProvider> PriorAuthorizationRequestingProviders => Set<PriorAuthorizationRequestingProvider>();
-
-    public DbSet<PriorAuthorizationQuestionnaireAssignment> PriorAuthorizationQuestionnaireAssignments => Set<PriorAuthorizationQuestionnaireAssignment>();
+    public DbSet<IntakeSessionProcedure> IntakeSessionProcedures => Set<IntakeSessionProcedure>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

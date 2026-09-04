@@ -11,7 +11,7 @@ using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 
 public sealed class CaptureRequestedServiceHandler(
-    IntakeDbContext dbContext,
+    RadiologyDbContext dbContext,
     ProcedureCodeClient procedureCodeClient,
     ProcedureModalityClient procedureModalityClient,
     QuestionnaireDefinitionClient questionnaireDefinitionClient)
@@ -34,7 +34,7 @@ public sealed class CaptureRequestedServiceHandler(
             {
                 return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
                     new CaptureRequestedServiceResponse(),
-                    IntakeProcessMessages.ProcedureCodeNotFound(
+                    RadiologyProcessMessages.ProcedureCodeNotFound(
                         processStep.CodeSystem,
                         processStep.CodeValue));
             }
@@ -73,7 +73,7 @@ public sealed class CaptureRequestedServiceHandler(
                 {
                     return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
                         new CaptureRequestedServiceResponse(),
-                        IntakeProcessMessages.DuplicateRequestedServiceNotAllowed(
+                        RadiologyProcessMessages.DuplicateRequestedServiceNotAllowed(
                             procedureCode.CodeSystem,
                             procedureCode.CodeValue));
                 }
@@ -90,7 +90,7 @@ public sealed class CaptureRequestedServiceHandler(
                 {
                     return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
                         new CaptureRequestedServiceResponse(),
-                        IntakeProcessMessages.MixedRequestedServiceModalitiesNotAllowed(
+                        RadiologyProcessMessages.MixedRequestedServiceModalitiesNotAllowed(
                             existingModality,
                             modality));
                 }
@@ -171,7 +171,7 @@ public sealed class CaptureRequestedServiceHandler(
         {
             return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
                 new CaptureRequestedServiceResponse(),
-                IntakeProcessMessages.QueryableRequestFailed(
+                RadiologyProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));
         }

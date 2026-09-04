@@ -1,6 +1,6 @@
 using Kaleido.Process.Execution;
-using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 using Kaleido.Samples.PriorAuth.Intake.Data;
+using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 using Kaleido.Samples.PriorAuth.Intake.Process.Messages;
 using Kaleido.Samples.PriorAuth.Intake.Process.Services;
 using Kaleido.Samples.PriorAuth.Intake.Process.Steps;
@@ -53,43 +53,40 @@ public sealed class CaptureMemberHandler(
                         terminationDate));
             }
 
-            var priorAuthorization =
-                await dbContext.PriorAuthorizations
+            var session =
+                await dbContext.IntakeSessions
                     .Include(x => x.Member)
                     .SingleOrDefaultAsync(
                         x => x.ProcessId == context.ProcessId,
                         cancellationToken);
 
-            if (priorAuthorization is null)
+            if (session is null)
             {
-                priorAuthorization =
-                    new PriorAuthorization
+                session =
+                    new IntakeSession
                     {
-                        PriorAuthorizationId = Guid.NewGuid(),
+                        IntakeSessionId = Guid.NewGuid(),
                         ProcessId = context.ProcessId,
-                        Status = PriorAuthorizationStatus.Draft,
                         CreatedUtc = DateTimeOffset.UtcNow
                     };
 
-                dbContext.PriorAuthorizations.Add(priorAuthorization);
+                dbContext.IntakeSessions.Add(session);
             }
 
-            if (priorAuthorization.Member is null)
+            if (session.Member is null)
             {
-                priorAuthorization.Member =
-                    new PriorAuthorizationMember
+                session.Member =
+                    new IntakeSessionMember
                     {
-                        PriorAuthorizationId = priorAuthorization.PriorAuthorizationId
+                        IntakeSessionId = session.IntakeSessionId
                     };
             }
 
-            priorAuthorization.Member.MemberId = memberDetails.MemberId;
-            priorAuthorization.Member.MemberEnrollmentId = memberDetails.MemberEnrollmentId;
-            priorAuthorization.Member.MemberNumber = memberDetails.MemberNumber;
-            priorAuthorization.Member.DisplayName = memberDetails.DisplayName;
-            priorAuthorization.Member.PlanId = memberDetails.PlanId;
-            priorAuthorization.Member.PlanName = memberDetails.PlanName;
-            priorAuthorization.Member.LineOfBusiness = memberDetails.LineOfBusiness;
+            session.Member.MemberId = memberDetails.MemberId;
+            session.Member.MemberEnrollmentId = memberDetails.MemberEnrollmentId;
+            session.Member.MemberNumber = memberDetails.MemberNumber;
+            session.Member.DisplayName = memberDetails.DisplayName;
+            session.Member.DateOfService = processStep.DateOfService;
 
             await dbContext.SaveChangesAsync(cancellationToken);
 

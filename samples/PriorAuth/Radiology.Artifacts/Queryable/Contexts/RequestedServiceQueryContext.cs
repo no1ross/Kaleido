@@ -8,9 +8,9 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Queryable.Contexts;
 
 [QueryContext(
     Name = "requested-services",
-    DisplayName = "Intake - Requested Services",
+    DisplayName = "Radiology - Requested Services",
     Version = "1.0.0",
-    Source = "Prior Authorization Intake",
+    Source = "Prior Authorization Radiology",
     Kind = QueryContextKind.Direct)]
 public sealed class RequestedServiceQueryContext
 {
