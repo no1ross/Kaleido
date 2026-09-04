@@ -183,12 +183,12 @@ internal sealed class QueryableObservability
             correlation.ProcessId?.ToString());
 
         activity?.SetTag(
-            "kaleido.processor.id",
-            correlation.ProcessorId);
-
-        activity?.SetTag(
             "kaleido.processor.instance_id",
             correlation.ProcessorInstanceId?.ToString());
+
+        activity?.SetTag(
+            "kaleido.source.processor",
+            correlation.SourceProcessorName);
 
     }
 

@@ -9,7 +9,7 @@ import {
 } from '../models/processor-process-result';
 import { CaptureRequestedServiceResponse } from '../models/questionnaire';
 import { ExecuteStepRequest } from '../models/processor-process-request';
-import { RequestContextService } from './request-context-service';
+
 import { ProcessRegistry } from './process-registry';
 import {
     ProcessRequestValidationError,
@@ -26,9 +26,6 @@ import { getRouteForStep } from '../../process/services/step-route';
 export class ProcessService {
     private readonly http =
         inject(HttpClient);
-
-    private readonly requestContext =
-        inject(RequestContextService);
 
     private readonly processRegistry =
         inject(ProcessRegistry);
@@ -69,17 +66,12 @@ export class ProcessService {
                 entry.service,
                 entry.step.executeUrl);
 
-        const processRequest = {
-            ...request,
-            requestId: this.requestContext.currentRequestId
-        };
-
         console.log(entry.step);
         this.logRequest(stepName, url, request, entry.service.displayName);
 
         return this.http.post<ProcessExecutionResponse<TResponse>>(
             url,
-            processRequest)
+            request)
             .pipe(
                 map(result => {
                     this.processState.setProcessId(result.processId);

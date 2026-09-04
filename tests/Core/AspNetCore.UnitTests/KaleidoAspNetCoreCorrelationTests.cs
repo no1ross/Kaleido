@@ -17,8 +17,8 @@ public sealed class KaleidoAspNetCoreCorrelationTests
     {
         Assert.Equal("X-Kaleido-Request-Id", KaleidoAspNetCoreHeaders.RequestId);
         Assert.Equal("X-Kaleido-Process-Id", KaleidoAspNetCoreHeaders.ProcessId);
-        Assert.Equal("X-Kaleido-Processor-Id", KaleidoAspNetCoreHeaders.ProcessorId);
         Assert.Equal("X-Kaleido-Processor-Instance-Id", KaleidoAspNetCoreHeaders.ProcessorInstanceId);
+        Assert.Equal("X-Kaleido-Source-Processor", KaleidoAspNetCoreHeaders.SourceProcessor);
     }
 
     [Fact]
@@ -30,15 +30,15 @@ public sealed class KaleidoAspNetCoreCorrelationTests
         var context = new DefaultHttpContext();
         context.Request.Headers[KaleidoAspNetCoreHeaders.RequestId] = "REQ-001";
         context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessId] = processId.ToString();
-        context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessorId] = "processor-a";
         context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessorInstanceId] = processorInstanceId.ToString();
+        context.Request.Headers[KaleidoAspNetCoreHeaders.SourceProcessor] = "intake";
 
         var result = KaleidoAspNetCoreCorrelation.Create(context);
 
         Assert.Equal("REQ-001", result.RequestId);
         Assert.Equal(processId, result.ProcessId);
-        Assert.Equal("processor-a", result.ProcessorId);
         Assert.Equal(processorInstanceId, result.ProcessorInstanceId);
+        Assert.Equal("intake", result.SourceProcessorName);
     }
 
     [Fact]
@@ -47,15 +47,15 @@ public sealed class KaleidoAspNetCoreCorrelationTests
         var context = new DefaultHttpContext();
         context.Request.Headers[KaleidoAspNetCoreHeaders.RequestId] = " ";
         context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessId] = " ";
-        context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessorId] = " ";
         context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessorInstanceId] = " ";
+        context.Request.Headers[KaleidoAspNetCoreHeaders.SourceProcessor] = " ";
 
         var result = KaleidoAspNetCoreCorrelation.Create(context);
 
         Assert.Null(result.RequestId);
         Assert.Null(result.ProcessId);
-        Assert.Null(result.ProcessorId);
         Assert.Null(result.ProcessorInstanceId);
+        Assert.Null(result.SourceProcessorName);
     }
 
     [Fact]

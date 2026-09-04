@@ -17,18 +17,9 @@ public sealed record ProcessRequest
     /// <summary>
     /// Uniquely identifies the durable process instance.
     /// Re-submissions for the same process use the same correlation id.
+    /// Null creates a new process instance.
     /// </summary>
     public Guid? ProcessId
-    {
-        get;
-        init;
-    }
-
-    /// <summary>
-    /// Uniquely identifies the current consumer submission.
-    /// Each submission should provide a new request id.
-    /// </summary>
-    public required string RequestId
     {
         get;
         init;

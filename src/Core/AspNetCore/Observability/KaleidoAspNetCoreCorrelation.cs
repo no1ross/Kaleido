@@ -11,11 +11,11 @@ public static class KaleidoAspNetCoreHeaders
     public const string ProcessId =
         "X-Kaleido-Process-Id";
 
-    public const string ProcessorId =
-        "X-Kaleido-Processor-Id";
-
     public const string ProcessorInstanceId =
         "X-Kaleido-Processor-Instance-Id";
+
+    public const string SourceProcessor =
+        "X-Kaleido-Source-Processor";
 
 }
 
@@ -38,15 +38,15 @@ internal static class KaleidoAspNetCoreCorrelation
                     context,
                     KaleidoAspNetCoreHeaders.ProcessId),
 
-            ProcessorId =
-                ReadString(
-                    context,
-                    KaleidoAspNetCoreHeaders.ProcessorId),
-
             ProcessorInstanceId =
                 ReadGuid(
                     context,
-                    KaleidoAspNetCoreHeaders.ProcessorInstanceId)
+                    KaleidoAspNetCoreHeaders.ProcessorInstanceId),
+
+            SourceProcessorName =
+                ReadString(
+                    context,
+                    KaleidoAspNetCoreHeaders.SourceProcessor)
         };
     }
 

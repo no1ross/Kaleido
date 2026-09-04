@@ -280,8 +280,8 @@ public sealed class ProcessObservabilityTests
                 {
                     RequestId = "REQ-001",
                     ProcessId = Guid.NewGuid(),
-                    ProcessorId = "processor-a",
-                    ProcessorInstanceId = Guid.NewGuid()
+                    ProcessorInstanceId = Guid.NewGuid(),
+                    SourceProcessorName = "source-processor"
                 });
 
         return new ProcessObservability(

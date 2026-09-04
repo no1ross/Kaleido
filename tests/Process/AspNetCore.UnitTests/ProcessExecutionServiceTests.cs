@@ -4,6 +4,7 @@ using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Http;
+using Moq;
 using System.Text.Json;
 
 namespace Kaleido.Process.AspNetCore.Tests;
@@ -44,6 +45,7 @@ public sealed class ProcessExecutionServiceTests
                     HttpContext = new DefaultHttpContext()
                 },
                 registry,
+                CreateProcessorRegistry(),
                 runtime.Object,
                 new ProcessRouteOptions());
 
@@ -51,7 +53,6 @@ public sealed class ProcessExecutionServiceTests
             new ExecuteProcessRequest
             {
                 ProcessId = Guid.NewGuid(),
-                RequestId = "REQ-001",
                 Steps =
                 [
                     new ProcessStepRequest
@@ -69,7 +70,6 @@ public sealed class ProcessExecutionServiceTests
 
         Assert.NotNull(capturedRequest);
         Assert.Equal(request.ProcessId, capturedRequest.ProcessId);
-        Assert.Equal(request.RequestId, capturedRequest.RequestId);
         Assert.True(capturedRequest.Processor.Steps.ContainsKey(registration.Metadata.Name));
 
         Assert.Equal(processResult.ProcessId, response.ProcessId);
@@ -107,6 +107,7 @@ public sealed class ProcessExecutionServiceTests
                     HttpContext = new DefaultHttpContext()
                 },
                 registry,
+                CreateProcessorRegistry(),
                 runtime.Object,
                 new ProcessRouteOptions());
 
@@ -114,7 +115,6 @@ public sealed class ProcessExecutionServiceTests
             new ExecuteStepRequest<TestStep>
             {
                 ProcessId = Guid.NewGuid(),
-                RequestId = "REQ-002",
                 ProcessStep = new TestStep()
             };
 
@@ -156,6 +156,7 @@ public sealed class ProcessExecutionServiceTests
                     HttpContext = new DefaultHttpContext()
                 },
                 registry,
+                CreateProcessorRegistry(),
                 runtime.Object,
                 new ProcessRouteOptions());
 
@@ -163,7 +164,6 @@ public sealed class ProcessExecutionServiceTests
             new ExecuteStepRequest<TestStep>
             {
                 ProcessId = Guid.NewGuid(),
-                RequestId = "REQ-003",
                 ProcessStep = new TestStep()
             };
 
@@ -235,6 +235,29 @@ public sealed class ProcessExecutionServiceTests
                 "Test step",
                 "1.0.0",
                 "Test Step"));
+
+    private static IProcessorRegistry CreateProcessorRegistry()
+    {
+        var registry = new Mock<IProcessorRegistry>();
+
+        registry
+            .Setup(x => x.Registrations)
+            .Returns(
+            [
+                new ProcessorRegistryItem
+                {
+                    Name = "test-processor",
+                    Description = "Test processor",
+                    Version = "1.0.0",
+                    DisplayName = "Test Processor",
+                    InstanceId = Guid.NewGuid(),
+                    InitialSteps = [],
+                    Steps = []
+                }
+            ]);
+
+        return registry.Object;
+    }
 
     public sealed record TestStep;
 

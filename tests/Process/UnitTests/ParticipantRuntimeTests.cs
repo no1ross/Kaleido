@@ -1,4 +1,5 @@
 ﻿using Kaleido.Eventing;
+using Kaleido.Observability;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Execution;
@@ -23,7 +24,8 @@ public sealed class ProcessorRuntimeTests
                     Mock.Of<IExecutionProcessor>(),
                     Mock.Of<IProcessEventFactory>(),
                     CreateEventPublisher().Object,
-                    CreateObservability().Object));
+                    CreateObservability().Object,
+                    Mock.Of<IKaleidoCorrelationContextAccessor>()));
 
         Assert.Equal("contextStore", exception.ParamName);
     }
@@ -40,7 +42,8 @@ public sealed class ProcessorRuntimeTests
                     Mock.Of<IExecutionProcessor>(),
                     Mock.Of<IProcessEventFactory>(),
                     CreateEventPublisher().Object,
-                    CreateObservability().Object));
+                    CreateObservability().Object,
+                    Mock.Of<IKaleidoCorrelationContextAccessor>()));
 
         Assert.Equal("stateUpdater", exception.ParamName);
     }
@@ -57,7 +60,8 @@ public sealed class ProcessorRuntimeTests
                     Mock.Of<IExecutionProcessor>(),
                     Mock.Of<IProcessEventFactory>(),
                     CreateEventPublisher().Object,
-                    CreateObservability().Object));
+                    CreateObservability().Object,
+                    Mock.Of<IKaleidoCorrelationContextAccessor>()));
 
         Assert.Equal("planner", exception.ParamName);
     }
@@ -74,7 +78,8 @@ public sealed class ProcessorRuntimeTests
                     null!,
                     Mock.Of<IProcessEventFactory>(),
                     CreateEventPublisher().Object,
-                    CreateObservability().Object));
+                    CreateObservability().Object,
+                    Mock.Of<IKaleidoCorrelationContextAccessor>()));
 
         Assert.Equal("processor", exception.ParamName);
     }
@@ -99,7 +104,6 @@ public sealed class ProcessorRuntimeTests
             new ProcessRequest
             {
                 ProcessId = null,
-                RequestId = "REQ-INITIAL-MULTI",
                 Processor = new ProcessorRequest
                 {
                     Steps = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
@@ -113,7 +117,7 @@ public sealed class ProcessorRuntimeTests
         var initializedContext =
             CreateContext(
                 Guid.NewGuid(),
-                request.RequestId);
+                "REQ-INITIAL-MULTI");
 
         var contextStore =
             new Mock<IProcessContextStore>(MockBehavior.Strict);
@@ -141,7 +145,7 @@ public sealed class ProcessorRuntimeTests
                     It.IsAny<ProcessorContext>()))
             .Returns<ProcessorRequest, ProcessorContext>((processor, context) =>
             {
-                Assert.Equal(request.RequestId, context.LatestRequestId);
+                Assert.Equal("REQ-INITIAL-MULTI", context.LatestRequestId);
                 Assert.NotEqual(Guid.Empty, context.ProcessId);
 
                 return new ExecutionPlanResult
@@ -172,7 +176,8 @@ public sealed class ProcessorRuntimeTests
                 processor.Object,
                 CreateProcessEventFactory().Object,
                 CreateEventPublisher().Object,
-                CreateObservability().Object);
+                CreateObservability().Object,
+                CreateCorrelationAccessor("REQ-INITIAL-MULTI"));
 
         var result =
             await runtime.ExecuteAsync(request);
@@ -206,7 +211,7 @@ public sealed class ProcessorRuntimeTests
         var initializedContext =
             CreateContext(
                 processId,
-                request.RequestId);
+                "REQ-001");
 
         var contextStore =
             new Mock<IProcessContextStore>();
@@ -259,7 +264,8 @@ public sealed class ProcessorRuntimeTests
                 processor.Object,
                 CreateProcessEventFactory().Object,
                 CreateEventPublisher().Object,
-                CreateObservability().Object);
+                CreateObservability().Object,
+                CreateCorrelationAccessor());
 
         await runtime.ExecuteAsync(request);
 
@@ -294,7 +300,7 @@ public sealed class ProcessorRuntimeTests
         var reconciledContext =
             CreateContext(
                 processId,
-                request.RequestId);
+                "REQ-001");
 
         var contextStore =
             new Mock<IProcessContextStore>();
@@ -344,7 +350,8 @@ public sealed class ProcessorRuntimeTests
                 processor.Object,
                 CreateProcessEventFactory().Object,
                 CreateEventPublisher().Object,
-                CreateObservability().Object);
+                CreateObservability().Object,
+                CreateCorrelationAccessor());
 
         await runtime.ExecuteAsync(request);
 
@@ -373,7 +380,7 @@ public sealed class ProcessorRuntimeTests
         var context =
             CreateContext(
                 processId,
-                request.RequestId);
+                "REQ-001");
 
         var executableCandidate =
             new StepCandidate
@@ -450,7 +457,8 @@ public sealed class ProcessorRuntimeTests
                 processor.Object,
                 CreateProcessEventFactory().Object,
                 CreateEventPublisher().Object,
-                CreateObservability().Object);
+                CreateObservability().Object,
+                CreateCorrelationAccessor());
 
         await runtime.ExecuteAsync(request);
 
@@ -477,7 +485,7 @@ public sealed class ProcessorRuntimeTests
         var context =
             CreateContext(
                 processId,
-                request.RequestId);
+                "REQ-001");
 
         var candidate =
             new StepCandidate
@@ -569,7 +577,8 @@ public sealed class ProcessorRuntimeTests
                 processor.Object,
                 CreateProcessEventFactory().Object,
                 CreateEventPublisher().Object,
-                CreateObservability().Object);
+                CreateObservability().Object,
+                CreateCorrelationAccessor());
 
         var result =
             await runtime.ExecuteAsync(request);
@@ -604,7 +613,7 @@ public sealed class ProcessorRuntimeTests
         var context =
             CreateContext(
                 processId,
-                request.RequestId);
+                "REQ-001");
 
         var plan =
             new ExecutionPlanResult { Candidates = [] };
@@ -666,7 +675,8 @@ public sealed class ProcessorRuntimeTests
                 processor.Object,
                 CreateProcessEventFactory().Object,
                 CreateEventPublisher().Object,
-                CreateObservability().Object);
+                CreateObservability().Object,
+                CreateCorrelationAccessor());
 
         await runtime.ExecuteAsync(request);
 
@@ -685,7 +695,8 @@ public sealed class ProcessorRuntimeTests
             Mock.Of<IExecutionProcessor>(),
             CreateProcessEventFactory().Object,
             CreateEventPublisher().Object,
-            CreateObservability().Object);
+            CreateObservability().Object,
+            CreateCorrelationAccessor());
     }
 
     private static Mock<IProcessObservability> CreateObservability()
@@ -818,9 +829,23 @@ public sealed class ProcessorRuntimeTests
         return new ProcessRequest
         {
             ProcessId = Guid.NewGuid(),
-            RequestId = "REQ-001",
             Processor = new ProcessorRequest()
         };
+    }
+
+    private static IKaleidoCorrelationContextAccessor CreateCorrelationAccessor(
+        string requestId = "REQ-001")
+    {
+        var accessor = new Mock<IKaleidoCorrelationContextAccessor>();
+
+        accessor
+            .SetupGet(x => x.Current)
+            .Returns(new KaleidoCorrelationContext
+            {
+                RequestId = requestId
+            });
+
+        return accessor.Object;
     }
 
     private static ProcessorContext CreateContext(

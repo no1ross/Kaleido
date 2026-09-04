@@ -163,10 +163,6 @@ internal sealed class ProcessObservability
             correlation.ProcessId?.ToString());
 
         activity?.SetTag(
-            "kaleido.processor.id",
-            correlation.ProcessorId?.ToString());
-
-        activity?.SetTag(
             "kaleido.processor.instance_id",
             correlation.ProcessorInstanceId?.ToString());
 
@@ -175,13 +171,17 @@ internal sealed class ProcessObservability
             _processorName);
 
         activity?.SetTag(
+            "kaleido.source.processor",
+            correlation.SourceProcessorName);
+
+        activity?.SetTag(
             "kaleido.process.submitted_step_count",
             details.SubmittedStepCount);
 
         var executionTags =
             CreateExecutionTags(
                 _processorName,
-                correlation.ProcessorId?.ToString());
+                correlation.SourceProcessorName);
 
         ProcessExecutionsCounter.Add(
             1,
@@ -280,18 +280,18 @@ internal sealed class ProcessObservability
 
     private static TagList CreateExecutionTags(
         string processorName,
-        string? processorId)
+        string? sourceProcessorName)
     {
         TagList tags =
         [
             new("processor.name", processorName)
         ];
 
-        if (!string.IsNullOrWhiteSpace(processorId))
+        if (!string.IsNullOrWhiteSpace(sourceProcessorName))
         {
             tags.Add(
-                "processor.id",
-                processorId);
+                "source.processor",
+                sourceProcessorName);
         }
 
         return tags;

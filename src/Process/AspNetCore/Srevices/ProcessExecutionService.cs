@@ -25,19 +25,20 @@ public class ProcessExecutionService : IProcessExecutionService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IProcessStepRegistry _registry;
+    private readonly IProcessorRegistry _processorRegistry;
     private readonly IProcessorRuntime _runtime;
     private readonly ProcessRouteOptions _routeOptions;
-
 
     public ProcessExecutionService(
         IHttpContextAccessor httpContextAccessor,
         IProcessStepRegistry registry,
+        IProcessorRegistry processorRegistry,
         IProcessorRuntime runtime,
-        ProcessRouteOptions routeOptions
-        )
+        ProcessRouteOptions routeOptions)
     {
         _httpContextAccessor = httpContextAccessor;
         _registry = registry;
+        _processorRegistry = processorRegistry;
         _runtime = runtime;
         _routeOptions = routeOptions;
     }
@@ -51,7 +52,6 @@ public class ProcessExecutionService : IProcessExecutionService
             new ProcessRequest
             {
                 ProcessId = request.ProcessId,
-                RequestId = request.RequestId,
                 Processor =
                     new ProcessorRequest
                     {
@@ -67,7 +67,7 @@ public class ProcessExecutionService : IProcessExecutionService
                 processRequest,
                 cancellationToken);
 
-        WriteProcessIdHeader(
+        WriteResponseHeaders(
             processResult.ProcessId);
 
         return ProcessExecutionResponse.Create(
@@ -83,8 +83,7 @@ public class ProcessExecutionService : IProcessExecutionService
 
         var processRequest =
             request.ToProcessRequest(
-                stepName: stepName,
-                requestId: request.RequestId);
+                stepName: stepName);
 
         var processResult =
             await _runtime.ExecuteAsync(
@@ -102,7 +101,7 @@ public class ProcessExecutionService : IProcessExecutionService
                 .ThenByDescending(x => x.BusinessMessages.Count)
                 .First();
 
-        WriteProcessIdHeader(
+        WriteResponseHeaders(
             processResult.ProcessId);
 
         return StepExecutionResponse<TResponse>.Create(
@@ -118,8 +117,7 @@ public class ProcessExecutionService : IProcessExecutionService
 
         var processRequest =
             request.ToProcessRequest(
-                stepName: stepName,
-                requestId: request.RequestId);
+                stepName: stepName);
 
         var processResult =
             await _runtime.ExecuteAsync(
@@ -137,7 +135,7 @@ public class ProcessExecutionService : IProcessExecutionService
                 .ThenByDescending(x => x.BusinessMessages.Count)
                 .First();
 
-        WriteProcessIdHeader(
+        WriteResponseHeaders(
             processResult.ProcessId);
 
         return StepExecutionResponse.Create(
@@ -147,11 +145,27 @@ public class ProcessExecutionService : IProcessExecutionService
             _routeOptions);
     }
 
-    private void WriteProcessIdHeader(
+    private void WriteResponseHeaders(
         Guid processId)
     {
-        _httpContextAccessor.HttpContext?
-            .Response.Headers[KaleidoAspNetCoreHeaders.ProcessId] =
-                processId.ToString();
+        var headers =
+            _httpContextAccessor.HttpContext?.Response.Headers;
+
+        if (headers is null)
+        {
+            return;
+        }
+
+        var registration =
+            _processorRegistry.Registrations.Single();
+
+        headers[KaleidoAspNetCoreHeaders.ProcessId] =
+            processId.ToString();
+
+        headers[KaleidoAspNetCoreHeaders.ProcessorInstanceId] =
+            registration.InstanceId.ToString();
+
+        headers[KaleidoAspNetCoreHeaders.SourceProcessor] =
+            registration.Name;
     }
 }

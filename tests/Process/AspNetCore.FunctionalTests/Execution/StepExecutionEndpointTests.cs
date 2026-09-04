@@ -26,7 +26,6 @@ public sealed class StepExecutionEndpointTests
                 new ExecuteStepRequest<RuntimeRootStep>
                 {
                     ProcessId = Guid.NewGuid(),
-                    RequestId = "request-1",
                     ProcessStep = new RuntimeRootStep()
                 });
 
@@ -52,7 +51,6 @@ public sealed class StepExecutionEndpointTests
             new ExecuteStepRequest<RuntimeRootStep>
             {
                 ProcessId = processId,
-                RequestId = "request-1",
                 ProcessStep = new RuntimeRootStep()
             });
 
@@ -62,7 +60,6 @@ public sealed class StepExecutionEndpointTests
                 new ExecuteStepRequest<RuntimeStepA>
                 {
                     ProcessId = processId,
-                    RequestId = "request-2",
                     ProcessStep = new RuntimeStepA()
                 });
 

@@ -15,7 +15,7 @@ public sealed class KaleidoCorrelationContextAccessorTests
         Assert.NotNull(current);
         Assert.Null(current.RequestId);
         Assert.Null(current.ProcessId);
-        Assert.Null(current.ProcessorId);
+        Assert.Null(current.SourceProcessorName);
         Assert.Null(current.ProcessorInstanceId);
 
     }
@@ -41,8 +41,8 @@ public sealed class KaleidoCorrelationContextAccessorTests
             {
                 RequestId = "REQ-001",
                 ProcessId = Guid.NewGuid(),
-                ProcessorId = "processor-a",
-                ProcessorInstanceId = Guid.NewGuid()
+                ProcessorInstanceId = Guid.NewGuid(),
+                SourceProcessorName = "source-processor"
             };
 
         accessor.Initialize(context);

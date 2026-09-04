@@ -14,13 +14,13 @@ public sealed record KaleidoCorrelationContext
         init;
     }
 
-    public string? ProcessorId
+    public Guid? ProcessorInstanceId
     {
         get;
         init;
     }
 
-    public Guid? ProcessorInstanceId
+    public string? SourceProcessorName
     {
         get;
         init;
@@ -29,8 +29,8 @@ public sealed record KaleidoCorrelationContext
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(RequestId)
         && ProcessId is null
-        && string.IsNullOrWhiteSpace(ProcessorId)
-        && ProcessorInstanceId is null;
+        && ProcessorInstanceId is null
+        && string.IsNullOrWhiteSpace(SourceProcessorName);
 }
 
 public interface IKaleidoCorrelationContextAccessor

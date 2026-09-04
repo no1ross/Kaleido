@@ -1,5 +1,6 @@
 ﻿using Kaleido.Eventing;
 using Kaleido.Exceptions;
+using Kaleido.Observability;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Execution;
@@ -18,6 +19,7 @@ internal sealed class ProcessorRuntime
     private readonly IProcessEventFactory _eventFactory;
     private readonly IEventPublisher _eventPublisher;
     private readonly IProcessObservability _observability;
+    private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
 
     public ProcessorRuntime(
         IProcessContextStore contextStore,
@@ -26,7 +28,8 @@ internal sealed class ProcessorRuntime
         IExecutionProcessor processor,
         IProcessEventFactory eventFactory,
         IEventPublisher eventPublisher,
-        IProcessObservability observability)
+        IProcessObservability observability,
+        IKaleidoCorrelationContextAccessor correlationAccessor)
     {
         ArgumentNullException.ThrowIfNull(contextStore);
         ArgumentNullException.ThrowIfNull(stateUpdater);
@@ -35,6 +38,7 @@ internal sealed class ProcessorRuntime
         ArgumentNullException.ThrowIfNull(eventFactory);
         ArgumentNullException.ThrowIfNull(eventPublisher);
         ArgumentNullException.ThrowIfNull(observability);
+        ArgumentNullException.ThrowIfNull(correlationAccessor);
 
         _contextStore = contextStore;
         _stateUpdater = stateUpdater;
@@ -43,6 +47,7 @@ internal sealed class ProcessorRuntime
         _eventFactory = eventFactory;
         _eventPublisher = eventPublisher;
         _observability = observability;
+        _correlationAccessor = correlationAccessor;
     }
 
     public async Task<ProcessorProcessResult> ExecuteAsync(
@@ -117,6 +122,9 @@ internal sealed class ProcessorRuntime
         IProcessExecutionObservation observation,
         CancellationToken cancellationToken)
     {
+        var requestId =
+            _correlationAccessor.Current.RequestId;
+
         if (request.ProcessId is null)
         {
             var initializedContext =
@@ -124,8 +132,7 @@ internal sealed class ProcessorRuntime
                     Guid.NewGuid())
                     with
                 {
-                    LatestRequestId =
-                            request.RequestId
+                    LatestRequestId = requestId
                 };
 
             observation.ContextInitialized(
@@ -144,7 +151,7 @@ internal sealed class ProcessorRuntime
             await _contextStore.LoadAsync(
                 request.ProcessId.Value,
                 cancellationToken);
-        
+
         if (context is null)
         {
             var initializedContext =
@@ -152,8 +159,7 @@ internal sealed class ProcessorRuntime
                     request.ProcessId.Value)
                     with
                 {
-                    LatestRequestId =
-                            request.RequestId
+                    LatestRequestId = requestId
                 };
 
             observation.ContextInitialized(
@@ -175,8 +181,7 @@ internal sealed class ProcessorRuntime
             context)
             with
         {
-            LatestRequestId =
-                    request.RequestId
+            LatestRequestId = requestId
         };
     }
 
@@ -184,8 +189,6 @@ internal sealed class ProcessorRuntime
         ProcessRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ArgumentException.ThrowIfNullOrWhiteSpace(
-            request.RequestId);
     }
 
     private static IReadOnlyCollection<StepCandidate> GetExecutionCandidates(

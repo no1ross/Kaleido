@@ -10,6 +10,12 @@ public record ProcessorRegistryItem
 
     public string? Version { get; init; }
 
+    /// <summary>
+    /// Uniquely identifies this running instance of the processor.
+    /// Generated at registration time and stable for the lifetime of the process.
+    /// </summary>
+    public Guid InstanceId { get; init; }
+
     public IReadOnlyCollection<ProcessorStepSummary> InitialSteps { get; init; }
         = [];
 

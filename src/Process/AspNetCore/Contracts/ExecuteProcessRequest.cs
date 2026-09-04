@@ -10,12 +10,6 @@ public sealed record ExecuteProcessRequest
         init;
     }
 
-    public required string RequestId
-    {
-        get;
-        init;
-    }
-
     public IReadOnlyCollection<ProcessStepRequest> Steps
     {
         get;
@@ -48,12 +42,6 @@ public sealed record ExecuteStepRequest<TProcessStep>
         init;
     }
 
-    public required string RequestId
-    {
-        get;
-        init;
-    }
-
     public required TProcessStep ProcessStep
     {
         get;
@@ -61,15 +49,11 @@ public sealed record ExecuteStepRequest<TProcessStep>
     }
 
     public ProcessRequest ToProcessRequest(
-        string stepName,
-        string requestId)
+        string stepName)
     {
         return new ProcessRequest
         {
             ProcessId = ProcessId,
-
-            RequestId =
-                requestId,
 
             Processor =
                 new ProcessorRequest
