@@ -1,4 +1,4 @@
-namespace Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data.Entities;
+namespace Kaleido.Samples.PriorAuth.ReferenceData.Data.Entities;
 
 public sealed class Network
 {

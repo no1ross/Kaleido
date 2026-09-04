@@ -1,12 +1,13 @@
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts;
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts.Process.Models;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data.Entities;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+using Kaleido.Queryable.AspNetCore.Contracts;
+using Kaleido.Samples.PriorAuth.Configuration;
+using Kaleido.Samples.PriorAuth.Configuration.Process.Models;
+using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
+using Kaleido.Samples.PriorAuth.Intake.Data;
+using Kaleido.Samples.PriorAuth.Intake.Process.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Services;
 
 public sealed class QuestionnaireDefinitionClient(
     QueryableHttpClient queryableHttpClient,

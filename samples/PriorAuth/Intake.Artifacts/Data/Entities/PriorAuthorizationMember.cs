@@ -1,6 +1,6 @@
-using Kaleido.Samples.PriorAuth.MemberService.Artifacts;
+using Kaleido.Samples.PriorAuth.Member;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Data.Entities;
+namespace Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 
 public sealed class PriorAuthorizationMember
 {

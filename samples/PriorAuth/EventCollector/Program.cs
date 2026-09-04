@@ -1,4 +1,4 @@
-using Kaleido.Samples.PriorAuth.Common;
+using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.EventCollector.Data;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Logs;

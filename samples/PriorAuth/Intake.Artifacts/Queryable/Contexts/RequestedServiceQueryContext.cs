@@ -1,10 +1,10 @@
 using Kaleido.Queryable;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
+using Kaleido.Samples.PriorAuth.CodeSet;
 using System.ComponentModel.DataAnnotations;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Queryable.Contexts;
+namespace Kaleido.Samples.PriorAuth.Intake.Queryable.Contexts;
 
 [QueryContext(
     Name = "requested-services",

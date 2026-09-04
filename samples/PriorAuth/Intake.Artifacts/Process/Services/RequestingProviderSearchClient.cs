@@ -1,14 +1,16 @@
+using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Query;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+using Kaleido.Samples.PriorAuth.Intake.Data;
+using Kaleido.Samples.PriorAuth.Intake.Process.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Services;
 
 public sealed class RequestingProviderSearchClient(
     QueryableHttpClient queryableHttpClient,
     IConfiguration configuration,
-    Data.IntakeDbContext dbContext)
+    IntakeDbContext dbContext)
 {
     private readonly string requestingProviderSearchQueryPath =
         configuration["Services:ProviderSearch:RequestingProviderSearchQueryPath"]

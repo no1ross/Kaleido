@@ -7,7 +7,7 @@ using Kaleido.Queryable.Eventing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Samples.PriorAuth.Common;
+namespace Kaleido.Samples.PriorAuth;
 
 public static class PriorAuthEventPublisherExtensions
 {

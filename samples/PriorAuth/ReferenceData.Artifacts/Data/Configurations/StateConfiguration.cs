@@ -1,8 +1,8 @@
-using Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data.Entities;
+using Kaleido.Samples.PriorAuth.ReferenceData.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data.Configurations;
+namespace Kaleido.Samples.PriorAuth.ReferenceData.Data.Configurations;
 
 internal sealed class StateConfiguration : IEntityTypeConfiguration<State>
 {

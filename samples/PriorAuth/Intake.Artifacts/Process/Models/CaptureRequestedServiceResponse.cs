@@ -1,6 +1,6 @@
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts.Process.Models;
+using Kaleido.Samples.PriorAuth.Configuration.Process.Models;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Models;
 
 public sealed record CaptureRequestedServiceResponse
 {

@@ -1,7 +1,7 @@
-﻿using Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data.Entities;
+﻿using Kaleido.Samples.PriorAuth.ReferenceData.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data;
+namespace Kaleido.Samples.PriorAuth.ReferenceData.Data;
 
 public sealed class ReferenceDataDbContext(
     DbContextOptions<ReferenceDataDbContext> options) : DbContext(options)

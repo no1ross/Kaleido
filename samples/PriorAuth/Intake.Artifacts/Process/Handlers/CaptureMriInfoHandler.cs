@@ -1,11 +1,11 @@
 using Kaleido.Process.Execution;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Messages;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
+using Kaleido.Samples.PriorAuth.Intake.Data;
+using Kaleido.Samples.PriorAuth.Intake.Process.Messages;
+using Kaleido.Samples.PriorAuth.Intake.Process.Services;
+using Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 using Microsoft.EntityFrameworkCore;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Handlers;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Handlers;
 
 public sealed class CaptureMriInfoHandler(
     IntakeDbContext dbContext,

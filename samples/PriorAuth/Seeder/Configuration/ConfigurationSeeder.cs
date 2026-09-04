@@ -1,4 +1,5 @@
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data;
+using Kaleido.Samples.PriorAuth.Configuration.Data;
+using Kaleido.Samples.PriorAuth.Configuration.Data.Entities;
 using Kaleido.Samples.PriorAuth.Seeder.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -43,9 +44,9 @@ internal sealed class ConfigurationSeeder(
 
         return new ConfigurationSeedAssets
         {
-            ProcedureModalityRules = jsonAssetLoader.Load<List<Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data.Entities.ProcedureModalityRule>>(Path.Combine(basePath, "procedure-modality-rules.json"), enumOptions),
-            MriProcedureCodeRules = jsonAssetLoader.Load<List<Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data.Entities.MriProcedureCodeRule>>(Path.Combine(basePath, "mri-procedure-code-rules.json"), enumOptions),
-            QuestionnaireDefinitions = jsonAssetLoader.Load<List<Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data.Entities.QuestionnaireDefinition>>(Path.Combine(basePath, "questionnaire-definitions.json"), enumOptions)
+            ProcedureModalityRules = jsonAssetLoader.Load<List<ProcedureModalityRule>>(Path.Combine(basePath, "procedure-modality-rules.json"), enumOptions),
+            MriProcedureCodeRules = jsonAssetLoader.Load<List<MriProcedureCodeRule>>(Path.Combine(basePath, "mri-procedure-code-rules.json"), enumOptions),
+            QuestionnaireDefinitions = jsonAssetLoader.Load<List<QuestionnaireDefinition>>(Path.Combine(basePath, "questionnaire-definitions.json"), enumOptions)
         };
     }
 }

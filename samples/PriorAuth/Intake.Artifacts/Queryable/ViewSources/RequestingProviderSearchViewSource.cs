@@ -1,11 +1,11 @@
 using Kaleido.Queryable;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Query;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Queryable.Contexts;
+using Kaleido.Samples.PriorAuth.Intake.Process.Models;
+using Kaleido.Samples.PriorAuth.Intake.Process.Services;
+using Kaleido.Samples.PriorAuth.Intake.Queryable.Contexts;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Queryable.ViewSources;
+namespace Kaleido.Samples.PriorAuth.Intake.Queryable.ViewSources;
 
 [QueryView(
     Name = "requesting-provider-search",

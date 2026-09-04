@@ -3,7 +3,7 @@ using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using System.ComponentModel.DataAnnotations;
 
-namespace Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Queryable.Contexts;
+namespace Kaleido.Samples.PriorAuth.ReferenceData.Queryable.Contexts;
 
 [QueryContext(
     Name = "states",

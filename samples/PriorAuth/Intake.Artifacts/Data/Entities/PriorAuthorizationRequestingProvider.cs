@@ -1,4 +1,4 @@
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Data.Entities;
+namespace Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 
 public sealed class PriorAuthorizationRequestingProvider
 {

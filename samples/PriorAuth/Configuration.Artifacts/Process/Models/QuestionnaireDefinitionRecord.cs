@@ -1,4 +1,4 @@
-namespace Kaleido.Samples.PriorAuth.Configuration.Artifacts.Process.Models;
+namespace Kaleido.Samples.PriorAuth.Configuration.Process.Models;
 
 public sealed record QuestionnaireDefinitionRecord
 {

@@ -1,10 +1,10 @@
-using Kaleido.Samples.PriorAuth.MemberService.Artifacts;
-using Kaleido.Samples.PriorAuth.MemberService.Artifacts.Data;
-using Kaleido.Samples.PriorAuth.MemberService.Artifacts.Data.Entities;
-using Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data.Entities;
-using ReferenceLineOfBusiness = Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.LineOfBusiness;
 using Kaleido.Samples.PriorAuth.Seeder.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Kaleido.Samples.PriorAuth.Member.Data.Entities;
+using Kaleido.Samples.PriorAuth.Member;
+using Kaleido.Samples.PriorAuth.Member.Data;
+using Kaleido.Samples.PriorAuth.ReferenceData;
+using Kaleido.Samples.PriorAuth.ReferenceData.Data.Entities;
 
 namespace Kaleido.Samples.PriorAuth.Seeder.MemberService;
 
@@ -35,7 +35,7 @@ internal sealed class MemberServiceSeeder(
         var zipCodesByState = LoadZipCodesByState(assets.Settings.AllowedStates);
         var plansByState = LoadPlansByState(assets.Settings.AllowedStates);
 
-        var members = new List<Member>(assets.Settings.MemberCount);
+        var members = new List<MemberInfo>(assets.Settings.MemberCount);
         var addresses = new List<MemberAddress>(assets.Settings.MemberCount + (assets.Settings.MemberCount / assets.Settings.SecondaryAddressModulo));
         var enrollments = new List<MemberEnrollment>(assets.Settings.MemberCount + (assets.Settings.MemberCount / assets.Settings.AdditionalEnrollmentModulo));
 
@@ -182,7 +182,7 @@ internal sealed class MemberServiceSeeder(
             .ToDictionary(x => x.Key, x => x.ToList(), StringComparer.OrdinalIgnoreCase);
     }
 
-    private static Member CreateMember(
+    private static MemberInfo CreateMember(
         int memberIndex,
         MemberSeedAssets assets)
     {
@@ -195,7 +195,7 @@ internal sealed class MemberServiceSeeder(
         var ageYears = assets.Settings.MinimumAgeYears + ((memberIndex * 7) % assets.Settings.AgeRangeYears);
         var birthDate = assets.Settings.BaseEffectiveDate.AddYears(-ageYears).AddDays(-((memberIndex * 29) % 365));
 
-        return new Member
+        return new MemberInfo
         {
             MemberId = CreateDeterministicGuid(0x1000_0000, memberIndex, 0),
             MemberNumber = $"PA{1_000_000 + memberIndex}",
@@ -262,24 +262,11 @@ internal sealed class MemberServiceSeeder(
             MemberAddressId = memberAddressId,
             PlanId = plan.PlanId,
             PlanName = plan.PlanName,
-            LineOfBusiness = MapLineOfBusiness(plan.LineOfBusiness),
+            LineOfBusiness = plan.LineOfBusiness,
             RelationshipToSubscriber = GetRelationship(memberIndex, enrollmentSequence),
             EffectiveDate = effectiveDate,
             TerminationDate = isTermed ? effectiveDate.AddDays(180 + (memberIndex % 90)) : null,
             IsCurrent = !isTermed
-        };
-    }
-
-    private static LineOfBusiness MapLineOfBusiness(
-        ReferenceLineOfBusiness lineOfBusiness)
-    {
-        return lineOfBusiness switch
-        {
-            ReferenceLineOfBusiness.Commercial => LineOfBusiness.Commercial,
-            ReferenceLineOfBusiness.Medicare => LineOfBusiness.Medicare,
-            ReferenceLineOfBusiness.Medicaid => LineOfBusiness.Medicaid,
-            ReferenceLineOfBusiness.Exchange => LineOfBusiness.Exchange,
-            _ => LineOfBusiness.Unknown
         };
     }
 

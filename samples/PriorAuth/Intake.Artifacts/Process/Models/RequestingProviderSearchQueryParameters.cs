@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Models;
 
 public sealed class RequestingProviderSearchQueryParameters
 {

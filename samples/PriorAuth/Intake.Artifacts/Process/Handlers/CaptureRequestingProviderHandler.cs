@@ -1,10 +1,10 @@
 using Kaleido.Process.Execution;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data.Entities;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
+using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
+using Kaleido.Samples.PriorAuth.Intake.Data;
+using Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 using Microsoft.EntityFrameworkCore;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Handlers;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Handlers;
 
 public sealed class CaptureRequestingProviderHandler(
     IntakeDbContext dbContext)

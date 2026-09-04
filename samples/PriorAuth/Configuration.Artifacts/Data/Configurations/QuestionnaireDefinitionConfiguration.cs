@@ -1,8 +1,8 @@
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data.Entities;
+using Kaleido.Samples.PriorAuth.Configuration.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data.Configurations;
+namespace Kaleido.Samples.PriorAuth.Configuration.Data.Configurations;
 
 internal sealed class QuestionnaireDefinitionConfiguration : IEntityTypeConfiguration<QuestionnaireDefinition>
 {

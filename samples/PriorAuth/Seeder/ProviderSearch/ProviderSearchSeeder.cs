@@ -1,8 +1,8 @@
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Data.Entities;
-using Kaleido.Samples.PriorAuth.ProviderSearch.Artifacts;
-using Kaleido.Samples.PriorAuth.ProviderSearch.Artifacts.Data;
-using Kaleido.Samples.PriorAuth.ProviderSearch.Artifacts.Data.Entities;
-using Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data.Entities;
+using Kaleido.Samples.PriorAuth.CodeSet.Data.Entities;
+using Kaleido.Samples.PriorAuth.Provider;
+using Kaleido.Samples.PriorAuth.Provider.Data;
+using Kaleido.Samples.PriorAuth.Provider.Data.Entities;
+using Kaleido.Samples.PriorAuth.ReferenceData.Data.Entities;
 using Kaleido.Samples.PriorAuth.Seeder.Infrastructure;
 using Kaleido.Samples.PriorAuth.Seeder.ProviderSearch.ReferenceData;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,7 +53,7 @@ internal sealed class ProviderSearchSeeder(
                 StringComparer.OrdinalIgnoreCase);
         var primarySpecialty = assets.Specialties.First();
 
-        var providers = new List<Provider>(assets.Settings.ProviderCount);
+        var providers = new List<ProviderInfo>(assets.Settings.ProviderCount);
         var identifiers = new List<ProviderIdentifier>(assets.Settings.ProviderCount * 2);
         var locations = new List<ProviderLocation>();
         var locationNetworks = new List<ProviderLocationNetwork>();
@@ -185,7 +185,7 @@ internal sealed class ProviderSearchSeeder(
         }
     }
 
-    private static Provider CreateProvider(
+    private static ProviderInfo CreateProvider(
         int providerIndex,
         ProviderType providerType,
         ProviderSearchSeedAssets assets)
@@ -194,7 +194,7 @@ internal sealed class ProviderSearchSeeder(
             ? $"{assets.PersonFirstNames[(providerIndex - 1) % assets.PersonFirstNames.Count]} {assets.PersonLastNames[((providerIndex - 1) * 7) % assets.PersonLastNames.Count]}"
             : $"{assets.FacilityPrefixes[(providerIndex - 1) % assets.FacilityPrefixes.Count]} {assets.FacilitySpecialties[((providerIndex - 1) * 3) % assets.FacilitySpecialties.Count]} {assets.FacilitySuffixes[((providerIndex - 1) * 5) % assets.FacilitySuffixes.Count]}";
 
-        return new Provider
+        return new ProviderInfo
         {
             ProviderId = CreateDeterministicGuid(0x4000_0000, providerIndex, 0),
             ProviderName = providerName,
@@ -211,7 +211,7 @@ internal sealed class ProviderSearchSeeder(
 
     private static IEnumerable<ProviderIdentifier> CreateIdentifiers(
         int providerIndex,
-        Provider provider,
+        ProviderInfo provider,
         DateOnly effectiveDate)
     {
         yield return new ProviderIdentifier
@@ -239,7 +239,7 @@ internal sealed class ProviderSearchSeeder(
 
     private static List<ProviderLocation> CreateLocations(
         int providerIndex,
-        Provider provider,
+        ProviderInfo provider,
         ProviderType providerType,
         ProviderSearchSeedAssets assets,
         IReadOnlyDictionary<string, List<ZipCode>> zipCodesByState)

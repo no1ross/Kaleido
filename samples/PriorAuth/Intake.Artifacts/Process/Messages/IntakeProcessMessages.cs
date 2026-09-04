@@ -1,8 +1,7 @@
 using Kaleido.Process;
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts;
+using Kaleido.Samples.PriorAuth.Configuration;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Messages;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Messages;
 
 public static class IntakeProcessMessages
 {

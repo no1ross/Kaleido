@@ -1,6 +1,6 @@
-using Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data.Entities;
+using Kaleido.Samples.PriorAuth.ReferenceData.Data.Entities;
 
-namespace Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data;
+namespace Kaleido.Samples.PriorAuth.ReferenceData.Data;
 
 public sealed record ReferenceDataSeedModel(
     IReadOnlyList<State> States,

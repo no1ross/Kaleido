@@ -4,7 +4,8 @@ using Kaleido.Process.AspNetCore;
 using Kaleido.Process.Providers.SQLite;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data;
+using Kaleido.Samples.PriorAuth.Intake.Data;
+using Kaleido.Samples.PriorAuth.Intake.Process.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Logs;
@@ -96,13 +97,13 @@ builder.Services.AddHttpClient("ProviderSearch", client =>
         ?? "https://localhost:8443");
 });
 
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.QueryableHttpClient>();
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.MemberDetailsClient>();
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.ProcedureCodeClient>();
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.ProcedureModalityClient>();
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.MriProcedureCodeResolverClient>();
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.QuestionnaireDefinitionClient>();
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services.RequestingProviderSearchClient>();
+builder.Services.AddScoped<QueryableHttpClient>();
+builder.Services.AddScoped<MemberDetailsClient>();
+builder.Services.AddScoped<ProcedureCodeClient>();
+builder.Services.AddScoped<ProcedureModalityClient>();
+builder.Services.AddScoped<MriProcedureCodeResolverClient>();
+builder.Services.AddScoped<QuestionnaireDefinitionClient>();
+builder.Services.AddScoped<RequestingProviderSearchClient>();
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>

@@ -3,7 +3,7 @@ using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using System.ComponentModel.DataAnnotations;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Queryable.Contexts;
+namespace Kaleido.Samples.PriorAuth.Intake.Queryable.Contexts;
 
 [QueryContext(
     Name = "requesting-provider-searches",

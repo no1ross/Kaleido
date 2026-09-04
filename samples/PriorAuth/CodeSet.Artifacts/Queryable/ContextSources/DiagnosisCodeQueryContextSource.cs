@@ -1,9 +1,9 @@
 using Kaleido.Queryable.Query;
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Data;
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Queryable.Contexts;
+using Kaleido.Samples.PriorAuth.CodeSet.Data;
+using Kaleido.Samples.PriorAuth.CodeSet.Queryable.Contexts;
 using Microsoft.EntityFrameworkCore;
 
-namespace Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Queryable.ContextSources;
+namespace Kaleido.Samples.PriorAuth.CodeSet.Queryable.ContextSources;
 
 internal sealed class DiagnosisCodeQueryContextSource(
     CodeSetDbContext dbContext)

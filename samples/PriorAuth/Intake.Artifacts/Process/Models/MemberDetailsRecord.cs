@@ -1,6 +1,6 @@
-using Kaleido.Samples.PriorAuth.MemberService.Artifacts;
+using Kaleido.Samples.PriorAuth.Member;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Models;
 
 public sealed record MemberDetailsRecord
 {

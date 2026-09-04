@@ -1,10 +1,9 @@
 using Kaleido.Queryable;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
 using System.ComponentModel.DataAnnotations;
 
-namespace Kaleido.Samples.PriorAuth.Configuration.Artifacts.Queryable.Contexts;
+namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 
 [QueryContext(
     Name = "mri-procedure-code-rules",

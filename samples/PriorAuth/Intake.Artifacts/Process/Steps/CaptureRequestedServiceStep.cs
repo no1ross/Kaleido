@@ -1,8 +1,8 @@
 using Kaleido.Process.Attributes;
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
+using Kaleido.Samples.PriorAuth.CodeSet;
 using System.ComponentModel.DataAnnotations;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 
 [ProcessStep(
     Name = "CaptureRequestedService",

@@ -1,9 +1,11 @@
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
+using Kaleido.Queryable;
+using Kaleido.Queryable.Query;
+using Kaleido.Samples.PriorAuth.CodeSet;
+using Kaleido.Samples.PriorAuth.Intake.Process.Models;
+using Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 using Microsoft.Extensions.Configuration;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Services;
 
 public sealed class MriProcedureCodeResolverClient(
     QueryableHttpClient queryableHttpClient,
@@ -22,12 +24,15 @@ public sealed class MriProcedureCodeResolverClient(
         return await queryableHttpClient.QueryAsync<MriProcedureCodeRuleRecord, MriProcedureCodeRuleRecord?>(
             "Configuration",
             mriProcedureCodeRuleQueryPath,
-            QueryRequestFactory.CreateEqualsRequest(
-                ("SelectedCodeSystem", selectedCodeSystem.ToString()),
-                ("SelectedCodeValue", selectedCodeValue),
-                ("BodyPart", processStep.BodyPart.ToString()),
-                ("Laterality", processStep.Laterality.ToString()),
-                ("Contrast", processStep.Contrast.ToString())),
+            new QueryRequest(
+                new QueryBody(
+                    Filter: QueryFilterNode.CreateGroup(
+                        LogicalOperator.And,
+                        QueryFilterNode.CreateCondition("SelectedCodeSystem", FilterOperator.Equals, selectedCodeSystem.ToString()),
+                        QueryFilterNode.CreateCondition("SelectedCodeValue", FilterOperator.Equals, selectedCodeValue),
+                        QueryFilterNode.CreateCondition("BodyPart", FilterOperator.Equals, processStep.BodyPart.ToString()),
+                        QueryFilterNode.CreateCondition("Laterality", FilterOperator.Equals, processStep.Laterality.ToString()),
+                        QueryFilterNode.CreateCondition("Contrast", FilterOperator.Equals, processStep.Contrast.ToString())))),
             result => result.Records.SingleOrDefault(),
             cancellationToken);
     }

@@ -1,4 +1,4 @@
-namespace Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data.Entities;
+namespace Kaleido.Samples.PriorAuth.Configuration.Data.Entities;
 
 public sealed class QuestionnaireDefinitionItemAnswerOption
 {

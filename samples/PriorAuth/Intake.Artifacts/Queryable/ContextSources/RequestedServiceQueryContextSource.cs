@@ -1,9 +1,9 @@
 using Kaleido.Queryable.Query;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Queryable.Contexts;
+using Kaleido.Samples.PriorAuth.Intake.Data;
+using Kaleido.Samples.PriorAuth.Intake.Queryable.Contexts;
 using Microsoft.EntityFrameworkCore;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Queryable.ContextSources;
+namespace Kaleido.Samples.PriorAuth.Intake.Queryable.ContextSources;
 
 internal sealed class RequestedServiceQueryContextSource(
     IntakeDbContext dbContext)

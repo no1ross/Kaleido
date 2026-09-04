@@ -1,9 +1,9 @@
 using Kaleido.Queryable.Query;
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data;
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts.Queryable.Contexts;
+using Kaleido.Samples.PriorAuth.Configuration.Data;
+using Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 using Microsoft.EntityFrameworkCore;
 
-namespace Kaleido.Samples.PriorAuth.Configuration.Artifacts.Queryable.ContextSources;
+namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.ContextSources;
 
 internal sealed class QuestionnaireDefinitionQueryContextSource(
     ConfigurationDbContext dbContext)

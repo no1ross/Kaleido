@@ -1,9 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+	<Import Project="../../../build/samples.props" />
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+	  <RootNamespace>Kaleido.Samples.PriorAuth.ReferenceData</RootNamespace>
   </PropertyGroup>
 	
 	<ItemGroup>
@@ -12,7 +10,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="../../../src/Queryable/Abstractions/Kaleido.Queryable.Abstractions.csproj" />
+		<ProjectReference Include="..\Common\Kaleido.Samples.PriorAuth.Common.csproj" />
 	</ItemGroup>
 	
 

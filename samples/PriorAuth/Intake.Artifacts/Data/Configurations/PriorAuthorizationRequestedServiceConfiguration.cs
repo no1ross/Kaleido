@@ -1,8 +1,8 @@
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data.Entities;
+using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Data.Configurations;
+namespace Kaleido.Samples.PriorAuth.Intake.Data.Configurations;
 
 internal sealed class PriorAuthorizationRequestedServiceConfiguration : IEntityTypeConfiguration<PriorAuthorizationRequestedService>
 {

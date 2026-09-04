@@ -1,4 +1,4 @@
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Models;
 
 public sealed record MemberDetailsQueryParameters
 {

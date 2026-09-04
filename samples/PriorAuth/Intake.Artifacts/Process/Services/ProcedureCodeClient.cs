@@ -1,10 +1,10 @@
 using Kaleido.Queryable;
 using Kaleido.Queryable.Query;
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+using Kaleido.Samples.PriorAuth.CodeSet;
+using Kaleido.Samples.PriorAuth.Intake.Process.Models;
 using Microsoft.Extensions.Configuration;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Services;
 
 public sealed class ProcedureCodeClient(
     QueryableHttpClient queryableHttpClient,

@@ -1,4 +1,4 @@
-namespace Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Data.Entities;
+namespace Kaleido.Samples.PriorAuth.CodeSet.Data.Entities;
 
 public sealed class MedicalSpecialty
 {

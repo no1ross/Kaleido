@@ -1,9 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<Import Project="../../../build/samples.props" />
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+	  <RootNamespace>Kaleido.Samples.PriorAuth</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,9 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Core\Abstractions\Kaleido.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\src\Process\Abstractions\Kaleido.Process.Abstractions.csproj" />
-    <ProjectReference Include="..\..\..\src\Queryable\Abstractions\Kaleido.Queryable.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\Queryable\AspNetCore.Abstractions\Kaleido.Queryable.AspNetCore.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

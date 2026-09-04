@@ -1,7 +1,7 @@
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Data.Entities;
+using Kaleido.Samples.PriorAuth.CodeSet.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Data;
+namespace Kaleido.Samples.PriorAuth.CodeSet.Data;
 
 public sealed class CodeSetDbContext(
     DbContextOptions<CodeSetDbContext> options) : DbContext(options)

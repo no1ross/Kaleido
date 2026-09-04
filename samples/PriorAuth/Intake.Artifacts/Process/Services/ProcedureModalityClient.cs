@@ -1,10 +1,10 @@
+using Kaleido.Queryable;
 using Kaleido.Queryable.Query;
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts;
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+using Kaleido.Samples.PriorAuth.Configuration;
+using Kaleido.Samples.PriorAuth.Intake.Process.Models;
 using Microsoft.Extensions.Configuration;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Services;
 
 public sealed class ProcedureModalityClient(
     QueryableHttpClient queryableHttpClient,
@@ -28,8 +28,16 @@ public sealed class ProcedureModalityClient(
             (await queryableHttpClient.QueryAsync<ProcedureModalityRuleRecord, QueryResult<ProcedureModalityRuleRecord>>(
                 "Configuration",
                 modalityRuleQueryPath,
-                QueryRequestFactory.CreateEqualsRequest(
-                    ("CodeSystem", codeSystem.ToString())),
+                new QueryRequest(
+                new QueryBody(
+                    SearchText: codeValue,
+                    Filter: QueryFilterNode.CreateCondition(
+                        "CodeSystem",
+                        FilterOperator.Equals,
+                        codeSystem.ToString()),
+                    Page: new QueryPage(
+                        Size: 25,
+                        Offset: 0))),
                 result => result,
                 cancellationToken))
             .Records.SingleOrDefault(x =>

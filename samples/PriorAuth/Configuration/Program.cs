@@ -1,8 +1,8 @@
 using Kaleido;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
-using Kaleido.Samples.PriorAuth.Common;
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data;
+using Kaleido.Samples.PriorAuth;
+using Kaleido.Samples.PriorAuth.Configuration.Data;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;

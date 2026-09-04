@@ -1,6 +1,6 @@
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts;
+using Kaleido.Samples.PriorAuth.Configuration;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Models;
 
 public sealed record QuestionnaireDefinitionParameters
 {

@@ -1,7 +1,7 @@
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Data.Entities;
+using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Data;
+namespace Kaleido.Samples.PriorAuth.Intake.Data;
 
 public sealed class IntakeDbContext(
     DbContextOptions<IntakeDbContext> options) : DbContext(options)

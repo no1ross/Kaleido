@@ -1,4 +1,4 @@
-namespace Kaleido.Samples.PriorAuth.Configuration.Artifacts.Queryable.ViewSources.Views;
+namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Views;
 
 public sealed record QuestionnaireDefinitionView
 {

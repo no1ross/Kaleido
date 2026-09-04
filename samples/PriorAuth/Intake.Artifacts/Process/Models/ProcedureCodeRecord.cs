@@ -1,6 +1,6 @@
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
+using Kaleido.Samples.PriorAuth.CodeSet;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Models;
 
 public sealed record ProcedureCodeRecord
 {

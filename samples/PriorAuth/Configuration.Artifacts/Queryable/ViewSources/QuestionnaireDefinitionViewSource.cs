@@ -1,11 +1,12 @@
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Query;
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts.Queryable.Contexts;
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts.Queryable.ViewSources.Parameters;
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts.Queryable.ViewSources.Views;
+using Kaleido.Samples.PriorAuth.Configuration.Data;
+using Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
+using Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Parameters;
+using Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Views;
 using Microsoft.EntityFrameworkCore;
 
-namespace Kaleido.Samples.PriorAuth.Configuration.Artifacts.Queryable.ViewSources;
+namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources;
 
 [QueryView(
     Name = "questionnaire-definition",
@@ -13,7 +14,7 @@ namespace Kaleido.Samples.PriorAuth.Configuration.Artifacts.Queryable.ViewSource
     Version = "1.0.0",
     Description = "Resolves a questionnaire definition for a given step and business context.")]
 internal sealed class QuestionnaireDefinitionViewSource(
-    Data.ConfigurationDbContext dbContext)
+    ConfigurationDbContext dbContext)
     : IQueryViewSource<
         QuestionnaireDefinitionQueryContext,
         QuestionnaireDefinitionView,

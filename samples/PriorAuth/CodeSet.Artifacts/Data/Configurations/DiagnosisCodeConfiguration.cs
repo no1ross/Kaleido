@@ -1,8 +1,8 @@
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Data.Entities;
+using Kaleido.Samples.PriorAuth.CodeSet.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Data.Configurations;
+namespace Kaleido.Samples.PriorAuth.CodeSet.Data.Configurations;
 
 internal sealed class DiagnosisCodeConfiguration : IEntityTypeConfiguration<DiagnosisCode>
 {

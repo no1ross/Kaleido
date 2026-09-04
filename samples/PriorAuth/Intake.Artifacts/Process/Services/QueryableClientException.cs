@@ -1,7 +1,7 @@
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+using Kaleido.Samples.PriorAuth.Intake.Process.Models;
 using System.Net;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Services;
 
 public sealed class QueryableClientException : Exception
 {

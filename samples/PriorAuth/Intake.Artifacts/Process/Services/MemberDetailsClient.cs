@@ -1,7 +1,8 @@
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+using Kaleido.Queryable.AspNetCore.Contracts;
+using Kaleido.Samples.PriorAuth.Intake.Process.Models;
 using Microsoft.Extensions.Configuration;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Services;
 
 public sealed class MemberDetailsClient(
     QueryableHttpClient queryableHttpClient,

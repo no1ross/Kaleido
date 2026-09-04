@@ -1,9 +1,9 @@
 using Kaleido.Queryable.Query;
-using Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data;
-using Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Queryable.Contexts;
+using Kaleido.Samples.PriorAuth.ReferenceData.Data;
+using Kaleido.Samples.PriorAuth.ReferenceData.Queryable.Contexts;
 using Microsoft.EntityFrameworkCore;
 
-namespace Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Queryable.ContextSources;
+namespace Kaleido.Samples.PriorAuth.ReferenceData.Queryable.ContextSources;
 
 internal sealed class ZipCodeQueryContextSource(
     ReferenceDataDbContext dbContext)

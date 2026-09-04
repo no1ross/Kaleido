@@ -1,5 +1,5 @@
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Data.Entities;
-using Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data.Entities;
+using Kaleido.Samples.PriorAuth.CodeSet.Data.Entities;
+using Kaleido.Samples.PriorAuth.ReferenceData.Data.Entities;
 using Kaleido.Samples.PriorAuth.Seeder.ProviderSearch.ReferenceData;
 
 namespace Kaleido.Samples.PriorAuth.Seeder.ProviderSearch;

@@ -1,7 +1,7 @@
 using Kaleido.Process.Execution;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
+using Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Handlers;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Handlers;
 
 public sealed class ConfirmCtInsteadOfMriHandler
     : IProcessStepHandler<ConfirmCtInsteadOfMriStep>

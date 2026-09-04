@@ -1,6 +1,6 @@
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts;
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Data;
-using Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Data.Entities;
+using Kaleido.Samples.PriorAuth.CodeSet;
+using Kaleido.Samples.PriorAuth.CodeSet.Data;
+using Kaleido.Samples.PriorAuth.CodeSet.Data.Entities;
 using Kaleido.Samples.PriorAuth.Seeder.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

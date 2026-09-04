@@ -3,7 +3,7 @@ using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using System.ComponentModel.DataAnnotations;
 
-namespace Kaleido.Samples.PriorAuth.CodeSet.Artifacts.Queryable.Contexts;
+namespace Kaleido.Samples.PriorAuth.CodeSet.Queryable.Contexts;
 
 [QueryContext(
     Name = "procedure-codes",

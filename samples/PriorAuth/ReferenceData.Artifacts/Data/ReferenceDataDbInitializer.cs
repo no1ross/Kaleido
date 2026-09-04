@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.Data;
+namespace Kaleido.Samples.PriorAuth.ReferenceData.Data;
 
 public static class ReferenceDataDbInitializer
 {

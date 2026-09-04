@@ -1,6 +1,6 @@
 using Kaleido.Process.Attributes;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 
 [ProcessStep(
     Name = "CaptureServicingProvider",

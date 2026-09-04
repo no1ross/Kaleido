@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
+using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Query;
-using Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Models;
+using Kaleido.Samples.PriorAuth.Intake.Process.Services;
+using Kaleido.Samples.PriorAuth.Intake.Process.Models;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Services;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Services;
 
 public sealed class QueryableHttpClient(
     IHttpClientFactory httpClientFactory)

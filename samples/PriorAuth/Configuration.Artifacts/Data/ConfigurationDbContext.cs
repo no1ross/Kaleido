@@ -1,7 +1,7 @@
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data.Entities;
+using Kaleido.Samples.PriorAuth.Configuration.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data;
+namespace Kaleido.Samples.PriorAuth.Configuration.Data;
 
 public sealed class ConfigurationDbContext(
     DbContextOptions<ConfigurationDbContext> options) : DbContext(options)

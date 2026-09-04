@@ -1,4 +1,4 @@
-using Kaleido.Samples.PriorAuth.Configuration.Artifacts.Data.Entities;
+using Kaleido.Samples.PriorAuth.Configuration.Data.Entities;
 
 namespace Kaleido.Samples.PriorAuth.Seeder.Configuration;
 

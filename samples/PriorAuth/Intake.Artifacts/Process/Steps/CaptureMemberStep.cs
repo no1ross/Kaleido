@@ -2,7 +2,7 @@ using Kaleido.Process.Attributes;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace Kaleido.Samples.PriorAuth.Intake.Artifacts.Process.Steps;
+namespace Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 
 [ProcessStep(
     Name = "CaptureMember",
