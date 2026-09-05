@@ -41,6 +41,7 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
             return EvaluateRequiredStep(
                 currentCandidate,
                 result.RequiredStep,
+                result.TargetProcessorName,
                 candidates,
                 context);
         }
@@ -53,7 +54,8 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
 
     private ExecutionDecision EvaluateRequiredStep(
         StepCandidate currentCandidate,
-        ProcessStepReference requiredStep,
+        string requiredStep,
+        string? targetProcessorName,
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context)
     {
@@ -64,13 +66,15 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
 
         // If the required step belongs to an external processor, skip local
         // availability validation — we cannot evaluate it against our own graph.
-        if (!string.Equals(
-                requiredStep.ProcessorName,
+        if (!string.IsNullOrEmpty(targetProcessorName) &&
+            !string.Equals(
+                targetProcessorName,
                 currentProcessorName,
                 StringComparison.OrdinalIgnoreCase))
         {
             return ExecutionDecision.AwaitingRequiredStep(
-                requiredStep);
+                requiredStep,
+                targetProcessorName);
         }
 
         var availableSteps =
@@ -81,21 +85,21 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
 
         if (!availableSteps.Any(x =>
                 string.Equals(
-                    x.StepName,
-                    requiredStep.StepName,
+                    x,
+                    requiredStep,
                     StringComparison.OrdinalIgnoreCase)))
         {
             return ExecutionDecision.ProcessViolation(
                 StepProcessingMessage.Error(
                     StepProcessingMessageCode.RequiredStepNotAllowed,
-                    $"'{requiredStep.StepName}' is not a valid next step from '{currentCandidate.StepName}'."));
+                    $"'{requiredStep}' is not a valid next step from '{currentCandidate.StepName}'."));
         }
 
         var nextCandidate =
             candidates.FirstOrDefault(
                 x => string.Equals(
                     x.StepName,
-                    requiredStep.StepName,
+                    requiredStep,
                     StringComparison.OrdinalIgnoreCase));
 
         if (nextCandidate is null)
@@ -123,7 +127,7 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
             candidates.FirstOrDefault(
                 x => availableSteps.Any(a =>
                     string.Equals(
-                        a.StepName,
+                        a,
                         x.StepName,
                         StringComparison.OrdinalIgnoreCase)));
 

@@ -1,5 +1,4 @@
-﻿using Kaleido.Process.Execution;
-using Kaleido.Process.Registry;
+﻿using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.AspNetCore.Contracts;
 
@@ -23,20 +22,23 @@ public static class ProcessExecutionResponseFactory
             ProcessId =
                 processResult.ProcessId,
 
+            // RequiredStep is null when TargetProcessorName is set —
+            // consumer must call the target processor's state endpoint instead.
             RequiredStep =
-                processResult.RequiredStep is null
-                    ? null
-                    : ProcessContractMapper.ToStepInfo(
-                        processResult.RequiredStep,
-                        registry,
-                        options),
+                processResult.TargetProcessorName is null
+                    ? processResult.RequiredStep
+                    : null,
+
+            TargetProcessorName =
+                processResult.TargetProcessorName,
 
             AvailableSteps =
                 processResult.AvailableSteps
-                    .Select(reference =>
-                        ProcessContractMapper.ToStepInfo(
-                            reference,
-                            registry,
+                    .Select(stepName =>
+                        ProcessContractMapper.ToSummary(
+                            registry.Find(stepName)
+                                ?? throw new InvalidOperationException(
+                                    $"Available step '{stepName}' was not found in the local registry."),
                             options))
                     .ToArray(),
 
@@ -87,22 +89,25 @@ public static class StepExecutionResponseFactory
             StepName =
                 stepResult.StepName,
 
+            // RequiredStep is null when TargetProcessorName is set —
+            // consumer must call the target processor's state endpoint instead.
             RequiredStep =
-                processResult.RequiredStep is null
-                    ? null
-                    : ProcessContractMapper.ToStepInfo(
-                        processResult.RequiredStep,
-                        registry,
-                        options),
+                processResult.TargetProcessorName is null
+                    ? processResult.RequiredStep
+                    : null,
+
+            TargetProcessorName =
+                processResult.TargetProcessorName,
 
             Outcome = stepResult.Outcome,
 
             AvailableSteps =
                 processResult.AvailableSteps
-                    .Select(reference =>
-                        ProcessContractMapper.ToStepInfo(
-                            reference,
-                            registry,
+                    .Select(stepName =>
+                        ProcessContractMapper.ToSummary(
+                            registry.Find(stepName)
+                                ?? throw new InvalidOperationException(
+                                    $"Available step '{stepName}' was not found in the local registry."),
                             options))
                     .ToList(),
 
@@ -136,6 +141,9 @@ public static class StepExecutionResponseFactory
             RequiredStep =
                 response.RequiredStep,
 
+            TargetProcessorName =
+                response.TargetProcessorName,
+
             AvailableSteps =
                 response.AvailableSteps,
 
@@ -150,47 +158,6 @@ public static class StepExecutionResponseFactory
 
 internal static class ProcessContractMapper
 {
-    /// <summary>
-    /// Converts a <see cref="ProcessStepReference"/> from the runtime into a
-    /// <see cref="ProcessStepInfo"/> for the HTTP response.
-    ///
-    /// Local steps (same processor) are resolved from the registry and get URLs.
-    /// External steps get blank URLs — the consumer resolves them via its own registry.
-    /// </summary>
-    public static ProcessStepInfo ToStepInfo(
-        ProcessStepReference reference,
-        IProcessStepRegistry registry,
-        ProcessRouteOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(reference);
-        ArgumentNullException.ThrowIfNull(registry);
-        ArgumentNullException.ThrowIfNull(options);
-
-        var localRegistration =
-            registry.Find(reference.StepName);
-
-        if (localRegistration is not null)
-        {
-            var stepName =
-                localRegistration.Metadata.Name.ToLowerInvariant();
-
-            return new ProcessStepInfo
-            {
-                ProcessorName = reference.ProcessorName,
-                StepName = localRegistration.Metadata.Name,
-                ExecuteUrl = ProcessContractUrls.ExecuteStep(options, stepName),
-                MetadataUrl = ProcessContractUrls.StepMetadata(options, stepName)
-            };
-        }
-
-        // External processor — no URLs available locally.
-        return new ProcessStepInfo
-        {
-            ProcessorName = reference.ProcessorName,
-            StepName = reference.StepName
-        };
-    }
-
     public static ProcessStepSummary ToSummary(
         ProcessStepRegistration registration,
         ProcessRouteOptions options)

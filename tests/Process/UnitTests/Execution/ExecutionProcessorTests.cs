@@ -140,12 +140,8 @@ public sealed class ExecutionProcessorTests
         var context =
             CreateContext("step-a") with
             {
-                AvailableSteps =
-                [
-                    new ProcessStepReference { ProcessorName = "test", StepName = "step-a" },
-                    new ProcessStepReference { ProcessorName = "test", StepName = "step-b" }
-                ],
-                RequiredStep = new ProcessStepReference { ProcessorName = "test", StepName = "step-a" }
+                AvailableSteps = ["step-a", "step-b"],
+                RequiredStep = "step-a"
             };
 
         var invoker =
@@ -278,10 +274,7 @@ public sealed class ExecutionProcessorTests
                     candidate,
                     It.IsAny<IReadOnlyCollection<StepCandidate>>(),
                     context))
-            .Returns(
-            [
-                new ProcessStepReference { ProcessorName = "test", StepName = "step-b" }
-            ]);
+            .Returns(["step-b"]);
 
         var processor =
             CreateProcessor(
@@ -301,7 +294,7 @@ public sealed class ExecutionProcessorTests
 
         Assert.Contains(
             capturedContext.AvailableNextSteps,
-            x => x.StepName == "step-b");
+            x => x == "step-b");
     }
 
     [Fact]
@@ -499,10 +492,7 @@ public sealed class ExecutionProcessorTests
         var updatedContext =
             CreateContext("step-a") with
             {
-                AvailableSteps =
-                [
-                    new ProcessStepReference { ProcessorName = "test", StepName = "step-b" }
-                ]
+                AvailableSteps = ["step-b"]
             };
 
         var invokerResult =
@@ -1377,7 +1367,7 @@ public sealed class ExecutionProcessorTests
     private static Mock<IStepAvailabilityResolver> CreateAvailabilityResolver(
         StepCandidate candidate,
         ProcessorContext context,
-        IReadOnlyCollection<ProcessStepReference>? availableSteps = null)
+        IReadOnlyCollection<string>? availableSteps = null)
     {
         var availabilityResolver =
             new Mock<IStepAvailabilityResolver>();

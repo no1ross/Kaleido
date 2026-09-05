@@ -111,6 +111,7 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
         {
             Succeeded = handlerResult.Succeeded,
             RequiredStep = handlerResult.RequiredStep,
+            TargetProcessorName = handlerResult.TargetProcessorName,
             Response = handlerResult.Response!,
             Messages = handlerResult.Messages
         };

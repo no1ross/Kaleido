@@ -74,7 +74,7 @@ public sealed class ProcessExecutionServiceTests
 
         Assert.Equal(processResult.ProcessId, response.ProcessId);
         Assert.Equal(registration.Metadata.Name, Assert.Single(response.Results).StepName);
-        Assert.Equal(registration.Metadata.Name, Assert.Single(response.AvailableSteps).StepName);
+        Assert.Equal(registration.Metadata.Name, Assert.Single(response.AvailableSteps).Name);
     }
 
     [Fact]
@@ -183,7 +183,7 @@ public sealed class ProcessExecutionServiceTests
         {
             ProcessId = Guid.NewGuid(),
             State = ProcessExecutionState.Active,
-            AvailableSteps = [new ProcessStepReference { ProcessorName = "test", StepName = stepName }],
+            AvailableSteps = [stepName],
             Steps =
             [
                 new ProcessorStepResult
@@ -213,6 +213,10 @@ public sealed class ProcessExecutionServiceTests
 
         registry
             .Setup(x => x.GetRegistration(registration.Metadata.Name))
+            .Returns(registration);
+
+        registry
+            .Setup(x => x.Find(registration.Metadata.Name))
             .Returns(registration);
 
         return registry.Object;

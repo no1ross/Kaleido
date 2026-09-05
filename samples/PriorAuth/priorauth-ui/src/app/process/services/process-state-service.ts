@@ -20,6 +20,7 @@ export interface ProcessSelectedMemberSummary {
 
 export interface ProcessState {
     processId?: string;
+    currentProcessorName?: string;
     dateOfService: string;
     isDateOfServiceLocked: boolean;
     selectedMember?: ProcessSelectedMemberSummary;
@@ -80,12 +81,21 @@ export class ProcessStateService {
         }));
     }
 
+    setCurrentProcessor(processorName: string): void {
+        this.state.update(state => ({
+            ...state,
+            currentProcessorName: processorName
+        }));
+    }
+
     setProcessFlow(
+        processorName: string,
         requiredStep: string | undefined,
         availableSteps: ProcessStepSummary[]
     ): void {
         this.state.update(state => ({
             ...state,
+            currentProcessorName: processorName,
             requiredStep,
             availableSteps
         }));

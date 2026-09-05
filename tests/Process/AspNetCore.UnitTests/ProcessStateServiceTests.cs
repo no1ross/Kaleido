@@ -9,7 +9,7 @@ namespace Kaleido.Process.AspNetCore.Tests;
 
 public sealed class ProcessStateServiceTests
 {
-    private const string LocalProcessorName = "test-processor";
+
 
     [Fact]
     public async Task GetCurrentState_WhenContextDoesNotExist_ReturnsNull()
@@ -50,19 +50,8 @@ public sealed class ProcessStateServiceTests
                 ProcessId = processId,
                 ProcessorName = "test-processor",
                 State = ProcessExecutionState.AwaitingStepSelection,
-                RequiredStep = new ProcessStepReference
-                {
-                    ProcessorName = LocalProcessorName,
-                    StepName = "Step-B"
-                },
-                AvailableSteps =
-                [
-                    new ProcessStepReference
-                    {
-                        ProcessorName = LocalProcessorName,
-                        StepName = "Step-A"
-                    }
-                ],
+                RequiredStep = "Step-B",
+                AvailableSteps = ["Step-A"],
                 CreatedUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
                 UpdatedUtc = DateTimeOffset.UtcNow,
                 Steps =
@@ -96,7 +85,7 @@ public sealed class ProcessStateServiceTests
         var service =
             new ProcessStateService(
                 contextStore.Object,
-                CreateRegistry(),
+                CreateRegistry("Step-A"),
                 new ProcessRouteOptions());
 
         var result =
@@ -107,9 +96,9 @@ public sealed class ProcessStateServiceTests
         Assert.NotNull(result);
         Assert.Equal(processId, result.ProcessId);
         Assert.Equal(ProcessExecutionState.AwaitingStepSelection, result.State);
-        Assert.Equal("Step-B", result.RequiredStep!.StepName);
-        Assert.Equal(LocalProcessorName, result.RequiredStep.ProcessorName);
-        Assert.Equal("Step-A", Assert.Single(result.AvailableSteps).StepName);
+        Assert.Equal("Step-B", result.RequiredStep);
+        Assert.Null(result.TargetProcessorName);
+        Assert.Equal("Step-A", Assert.Single(result.AvailableSteps).Name);
 
         Assert.Collection(
             result.Steps,
@@ -125,11 +114,27 @@ public sealed class ProcessStateServiceTests
             });
     }
 
-    private static IProcessStepRegistry CreateRegistry()
+    private static IProcessStepRegistry CreateRegistry(
+        params string[] stepNames)
     {
         var mock = new Mock<IProcessStepRegistry>();
-        mock.Setup(x => x.Find(It.IsAny<string>()))
-            .Returns((ProcessStepRegistration?)null);
+
+        foreach (var name in stepNames)
+        {
+            var registration = new ProcessStepRegistration(
+                typeof(object),
+                null,
+                typeof(object),
+                [],
+                [],
+                [],
+                new RepeatableOptions { Enabled = false },
+                new ProcessStepMetadata(name, name, "1.0.0", name));
+
+            mock.Setup(x => x.Find(name))
+                .Returns(registration);
+        }
+
         return mock.Object;
     }
 }

@@ -4,7 +4,9 @@ public interface IProcessStepHandlerResult
 {
     bool Succeeded { get; }
 
-    ProcessStepReference? RequiredStep { get; }
+    string? RequiredStep { get; }
+
+    string? TargetProcessorName { get; }
 
     object? Response { get; }
 
@@ -15,7 +17,9 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
 {
     public bool Succeeded { get; init; }
 
-    public ProcessStepReference? RequiredStep { get; init; }
+    public string? RequiredStep { get; init; }
+
+    public string? TargetProcessorName { get; init; }
 
     public required TProcessStepResult Response { get; init; }
 
@@ -26,13 +30,15 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
 
     public static ProcessStepHandlerResult<TProcessStepResult> Success(
         TProcessStepResult response,
-        ProcessStepReference? requiredStep = null,
+        string? requiredStep = null,
+        string? targetProcessorName = null,
         params ProcessMessage[] messages)
     {
         return new()
         {
             Succeeded = true,
             RequiredStep = requiredStep,
+            TargetProcessorName = targetProcessorName,
             Messages = messages,
             Response = response
         };
@@ -56,7 +62,9 @@ public record ProcessStepHandlerResult
 {
     public bool Succeeded { get; init; }
 
-    public ProcessStepReference? RequiredStep { get; init; }
+    public string? RequiredStep { get; init; }
+
+    public string? TargetProcessorName { get; init; }
 
     public object? Response { get; init; }
 
@@ -64,13 +72,15 @@ public record ProcessStepHandlerResult
         = [];
 
     public static ProcessStepHandlerResult Success(
-        ProcessStepReference? requiredStep = null,
+        string? requiredStep = null,
+        string? targetProcessorName = null,
         params ProcessMessage[] messages)
     {
         return new()
         {
             Succeeded = true,
             RequiredStep = requiredStep,
+            TargetProcessorName = targetProcessorName,
             Messages = messages
         };
     }
@@ -78,7 +88,7 @@ public record ProcessStepHandlerResult
     public static ProcessStepHandlerResult Success(
         params ProcessMessage[] messages)
     {
-        return Success(null, messages);
+        return Success(null, null, messages);
     }
 
     public static ProcessStepHandlerResult Failure(

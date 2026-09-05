@@ -177,7 +177,7 @@ public sealed class ProcessStepInvokerTests
 
         Assert.True(result.Succeeded);
         Assert.NotNull(result.RequiredStep);
-        Assert.Equal("required-step", result.RequiredStep.StepName);
+        Assert.Equal("required-step", result.RequiredStep);
 
         var response =
             Assert.IsType<TestStepResponse>(result.Response);
@@ -511,11 +511,7 @@ public sealed class ProcessStepInvokerTests
                 new ProcessStepHandlerResult<TestStepResponse>
                 {
                     Succeeded = true,
-                    RequiredStep = new ProcessStepReference
-                    {
-                        ProcessorName = "test",
-                        StepName = "required-step"
-                    },
+                    RequiredStep = "required-step",
                     Response =
                         new TestStepResponse
                         {

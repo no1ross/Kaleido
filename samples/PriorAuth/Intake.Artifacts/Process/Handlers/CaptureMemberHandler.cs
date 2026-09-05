@@ -92,11 +92,7 @@ public sealed class CaptureMemberHandler(
             await dbContext.SaveChangesAsync(cancellationToken);
 
             return ProcessStepHandlerResult.Success(
-                requiredStep: new ProcessStepReference
-                {
-                    ProcessorName = "intake",
-                    StepName = nameof(CaptureRequestedServiceStep).Replace("Step", string.Empty)
-                });
+                requiredStep: nameof(CaptureRequestedServiceStep).Replace("Step", string.Empty));
         }
         catch (KaleidoQueryableClientException ex)
         {

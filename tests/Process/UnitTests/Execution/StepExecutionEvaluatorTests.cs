@@ -141,7 +141,7 @@ public sealed class StepExecutionEvaluatorTests
     {
         var evaluator =
             CreateEvaluator(
-                [CreateLocalReference("step-b")]);
+                ["step-b"]);
 
         var decision =
             evaluator.Evaluate(
@@ -149,7 +149,7 @@ public sealed class StepExecutionEvaluatorTests
                 new ProcessStepInvokerResult
                 {
                     Succeeded = true,
-                    RequiredStep = CreateLocalReference("step-c")
+                    RequiredStep = "step-c"
                 },
                 [],
                 CreateContext());
@@ -171,8 +171,7 @@ public sealed class StepExecutionEvaluatorTests
     public void Evaluate_WhenRequiredStepIsAvailableButNotSupplied_ReturnsAwaitingRequiredStep()
     {
         var evaluator =
-            CreateEvaluator(
-                [CreateLocalReference("step-b")]);
+            CreateEvaluator(["step-b"]);
 
         var decision =
             evaluator.Evaluate(
@@ -180,7 +179,7 @@ public sealed class StepExecutionEvaluatorTests
                 new ProcessStepInvokerResult
                 {
                     Succeeded = true,
-                    RequiredStep = CreateLocalReference("step-b")
+                    RequiredStep = "step-b"
                 },
                 [],
                 CreateContext());
@@ -191,11 +190,10 @@ public sealed class StepExecutionEvaluatorTests
 
         Assert.Equal(
             "step-b",
-            decision.RequiredStep!.StepName);
+            decision.RequiredStep);
 
-        Assert.Equal(
-            LocalProcessorName,
-            decision.RequiredStep.ProcessorName);
+        Assert.Null(
+            decision.TargetProcessorName);
     }
 
     [Fact]
@@ -203,7 +201,7 @@ public sealed class StepExecutionEvaluatorTests
     {
         var evaluator =
             CreateEvaluator(
-                [CreateLocalReference("step-b")]);
+                ["step-b"]);
 
         var nextCandidate =
             CreateCandidate<StepB>(
@@ -215,7 +213,7 @@ public sealed class StepExecutionEvaluatorTests
                 new ProcessStepInvokerResult
                 {
                     Succeeded = true,
-                    RequiredStep = CreateLocalReference("step-b")
+                    RequiredStep = "step-b"
                 },
                 [nextCandidate],
                 CreateContext());
@@ -234,7 +232,7 @@ public sealed class StepExecutionEvaluatorTests
     {
         var evaluator =
             CreateEvaluator(
-                [CreateLocalReference("step-b")]);
+                ["step-b"]);
 
         var nextCandidate =
             CreateCandidate<StepB>(
@@ -264,10 +262,7 @@ public sealed class StepExecutionEvaluatorTests
     {
         var evaluator =
             CreateEvaluator(
-                [
-                    CreateLocalReference("step-b"),
-                    CreateLocalReference("step-c")
-                ]);
+                ["step-b", "step-c"]);
 
         var decision =
             evaluator.Evaluate(
@@ -283,13 +278,9 @@ public sealed class StepExecutionEvaluatorTests
             ExecutionDecisionType.AwaitingStepSelection,
             decision.Type);
 
-        Assert.Contains(
-            decision.AvailableSteps,
-            x => x.StepName == "step-b");
+        Assert.Contains(decision.AvailableSteps, x => x == "step-b");
 
-        Assert.Contains(
-            decision.AvailableSteps,
-            x => x.StepName == "step-c");
+        Assert.Contains(decision.AvailableSteps, x => x == "step-c");
     }
 
     [Fact]
@@ -318,7 +309,7 @@ public sealed class StepExecutionEvaluatorTests
     {
         var evaluator =
             CreateEvaluator(
-                [CreateLocalReference("step-b")]);
+                ["step-b"]);
 
         var nextCandidate =
             CreateCandidate<StepB>(
@@ -330,7 +321,7 @@ public sealed class StepExecutionEvaluatorTests
                 new ProcessStepInvokerResult
                 {
                     Succeeded = true,
-                    RequiredStep = CreateLocalReference("Step-B")
+                    RequiredStep = "Step-B"
                 },
                 [nextCandidate],
                 CreateContext());
@@ -347,14 +338,7 @@ public sealed class StepExecutionEvaluatorTests
         // Should bypass local validation and return AwaitingRequiredStep directly.
         var evaluator =
             CreateEvaluator(
-                [CreateLocalReference("step-b")]);
-
-        var externalReference =
-            new ProcessStepReference
-            {
-                ProcessorName = "radiology",
-                StepName = "imaging-request"
-            };
+                ["step-b"]);
 
         var decision =
             evaluator.Evaluate(
@@ -362,7 +346,8 @@ public sealed class StepExecutionEvaluatorTests
                 new ProcessStepInvokerResult
                 {
                     Succeeded = true,
-                    RequiredStep = externalReference
+                    RequiredStep = "imaging-request",
+                    TargetProcessorName = "radiology"
                 },
                 [],
                 CreateContext());
@@ -373,11 +358,11 @@ public sealed class StepExecutionEvaluatorTests
 
         Assert.Equal(
             "radiology",
-            decision.RequiredStep!.ProcessorName);
+            decision.TargetProcessorName);
 
         Assert.Equal(
             "imaging-request",
-            decision.RequiredStep.StepName);
+            decision.RequiredStep);
     }
 
     [Fact]
@@ -394,11 +379,8 @@ public sealed class StepExecutionEvaluatorTests
                 new ProcessStepInvokerResult
                 {
                     Succeeded = true,
-                    RequiredStep = new ProcessStepReference
-                    {
-                        ProcessorName = "radiology",
-                        StepName = "imaging-request"
-                    }
+                    RequiredStep = "imaging-request",
+                    TargetProcessorName = "radiology"
                 },
                 [],
                 CreateContext());
@@ -458,15 +440,8 @@ public sealed class StepExecutionEvaluatorTests
             decision.Messages.Single());
     }
 
-    private static ProcessStepReference CreateLocalReference(string stepName)
-        => new()
-        {
-            ProcessorName = LocalProcessorName,
-            StepName = stepName
-        };
-
     private static StepExecutionEvaluator CreateEvaluator(
-        IReadOnlyCollection<ProcessStepReference>? availableSteps = null)
+        IReadOnlyCollection<string>? availableSteps = null)
     {
         var resolver =
             new Mock<IStepAvailabilityResolver>();

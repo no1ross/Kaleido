@@ -16,13 +16,29 @@ public sealed record ProcessStateResponse
         init;
     }
 
-    public ProcessStepInfo? RequiredStep
+    /// <summary>
+    /// The next required step on the local processor.
+    /// Null when <see cref="TargetProcessorName"/> is set — call the target processor's
+    /// state endpoint instead to get the authoritative required step.
+    /// </summary>
+    public string? RequiredStep
     {
         get;
         init;
     }
 
-    public IReadOnlyCollection<ProcessStepInfo> AvailableSteps
+    /// <summary>
+    /// When set, the process has been handed off to this processor.
+    /// The consumer must call GET /{TargetProcessorName}/processes/{ProcessId} to continue.
+    /// <see cref="RequiredStep"/> will be null in this case.
+    /// </summary>
+    public string? TargetProcessorName
+    {
+        get;
+        init;
+    }
+
+    public IReadOnlyCollection<ProcessStepSummary> AvailableSteps
     {
         get;
         init;

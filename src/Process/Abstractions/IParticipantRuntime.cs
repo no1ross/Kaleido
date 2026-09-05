@@ -45,13 +45,19 @@ public sealed record ProcessorProcessResult
         init;
     }
 
-    public ProcessStepReference? RequiredStep
+    public string? RequiredStep
     {
         get;
         init;
     }
 
-    public IReadOnlyCollection<ProcessStepReference> AvailableSteps
+    public string? TargetProcessorName
+    {
+        get;
+        init;
+    }
+
+    public IReadOnlyCollection<string> AvailableSteps
     {
         get;
         init;

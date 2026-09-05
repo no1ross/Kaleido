@@ -75,6 +75,6 @@ public sealed class StepExecutionEndpointTests
         Assert.NotNull(contract);
         Assert.Contains(contract.Steps, x => x.StepName == RuntimeStepNames.Root && x.Status == StepExecutionStatus.Completed);
         Assert.Contains(contract.Steps, x => x.StepName == RuntimeStepNames.StepA && x.Status == StepExecutionStatus.Completed);
-        Assert.Contains(contract.AvailableSteps, x => x.StepName == RuntimeStepNames.StepB);
+        Assert.Contains(contract.AvailableSteps, x => x.Name == RuntimeStepNames.StepB);
     }
 }

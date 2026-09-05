@@ -73,6 +73,9 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 RequiredStep =
                     context.RequiredStep,
 
+                TargetProcessorName =
+                    context.TargetProcessorName,
+
                 AvailableSteps =
                     context.AvailableSteps,
 
@@ -279,6 +282,9 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
             RequiredStep =
                 context.RequiredStep,
+
+            TargetProcessorName =
+                context.TargetProcessorName,
 
             AvailableSteps =
                 context.AvailableSteps,

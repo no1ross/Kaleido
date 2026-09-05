@@ -264,6 +264,9 @@ internal sealed class ProcessorRuntime
             RequiredStep =
                 executionResult.RequiredStep,
 
+            TargetProcessorName =
+                executionResult.TargetProcessorName,
+
             AvailableSteps =
                 executionResult.AvailableSteps,
 

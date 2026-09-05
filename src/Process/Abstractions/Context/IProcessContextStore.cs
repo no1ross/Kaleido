@@ -1,9 +1,4 @@
 ﻿using Kaleido.Process.Execution;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Kaleido.Process.Context;
 
@@ -61,20 +56,30 @@ public sealed record ProcessorContext
     }
 
     /// <summary>
-    /// When the process is waiting for a specific next step,
-    /// this contains the required step reference (processor name + step name).
+    /// When the process is waiting for a specific next step on the local processor,
+    /// this contains the step name. Null when <see cref="TargetProcessorName"/> is set.
     /// </summary>
-    public ProcessStepReference? RequiredStep
+    public string? RequiredStep
     {
         get;
         init;
     }
 
     /// <summary>
-    /// The currently available next steps that may be supplied
-    /// by the caller.
+    /// When set, the process has been handed off to this processor.
+    /// The consumer must call the target processor's state endpoint to continue.
     /// </summary>
-    public IReadOnlyCollection<ProcessStepReference> AvailableSteps
+    public string? TargetProcessorName
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The currently available next steps on the local processor
+    /// that may be supplied by the caller.
+    /// </summary>
+    public IReadOnlyCollection<string> AvailableSteps
     {
         get;
         init;

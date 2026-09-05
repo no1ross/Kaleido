@@ -110,15 +110,9 @@ public sealed class CaptureRequestedServiceHandler(
                     .GetClient(processorName)
                     .ExecuteAsync(downstreamRequest, cancellationToken);
 
-            var requiredStep = downstreamResult.RequiredStep is not null
-                ? new ProcessStepReference
-                  {
-                      ProcessorName = downstreamResult.RequiredStep.ProcessorName,
-                      StepName = downstreamResult.RequiredStep.StepName
-                  }
-                : null;
-
-            return ProcessStepHandlerResult.Success(requiredStep);
+            return ProcessStepHandlerResult.Success(
+                requiredStep: downstreamResult.RequiredStep,
+                targetProcessorName: downstreamResult.TargetProcessorName ?? processorName);
         }
         catch (KaleidoQueryableClientException ex)
         {

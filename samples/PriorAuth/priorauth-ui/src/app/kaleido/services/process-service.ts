@@ -1,12 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, map, throwError } from 'rxjs';
+import { Observable, catchError, map, switchMap, throwError } from 'rxjs';
 
 import {
     ProcessExecutionResponse,
-    ProcessMessage
+    ProcessMessage,
+    ProcessStepSummary
 } from '../models/processor-process-result';
+import { ProcessStateResponse } from '../models/process-state-response';
 import { CaptureRequestedServiceResponse } from '../models/questionnaire';
 import { ExecuteStepRequest } from '../models/processor-process-request';
 
@@ -43,13 +45,20 @@ export class ProcessService {
         stepName: string,
         request: ExecuteStepRequest<TProcessStep>
     ): Observable<ProcessExecutionResponse<TResponse>> {
+        const processorName = this.processState.state().currentProcessorName;
+
+        if (!processorName) {
+            return throwError(
+                () => new Error(
+                    'No current processor in state. ' +
+                    'Call setCurrentProcessor() before executing steps.'));
+        }
+
         const entry =
-            this.processRegistry.getServiceStep(stepName);
+            this.processRegistry.getServiceStep(processorName, stepName);
 
         const validationResult =
-            this.processRequestValidator.validate(
-                entry.step,
-                request);
+            this.processRequestValidator.validate(entry.step, request);
 
         if (!validationResult.isValid) {
             console.error(
@@ -61,27 +70,49 @@ export class ProcessService {
                     validationResult.messages));
         }
 
-        const url =
-            buildServiceUrl(
-                entry.service,
-                entry.step.executeUrl);
+        const url = buildServiceUrl(entry.service, entry.step.executeUrl);
 
         console.log(entry.step);
         this.logRequest(stepName, url, request, entry.service.displayName);
 
-        return this.http.post<ProcessExecutionResponse<TResponse>>(
-            url,
-            request)
+        return this.http.post<ProcessExecutionResponse<TResponse>>(url, request)
             .pipe(
-                map(result => {
+                switchMap(result => {
                     this.processState.setProcessId(result.processId);
                     this.processState.setProcessMessages(result.messages);
+                    this.logStepOutcome(result);
+
+                    if (result.targetProcessorName) {
+                        // Cross-processor handoff — fetch the target processor's
+                        // state to get the authoritative requiredStep, available
+                        // steps, and questionnaire data before navigating.
+                        // This also switches currentProcessorName in state so
+                        // subsequent steps go to the right processor automatically.
+                        return this.fetchTargetProcessorState(
+                            result.targetProcessorName,
+                            result.processId)
+                            .pipe(
+                                map(targetState => {
+                                    this.processState.setProcessFlow(
+                                        result.targetProcessorName!,
+                                        targetState.requiredStep,
+                                        targetState.availableSteps);
+                                    this.captureQuestionnaireState(
+                                        targetState.requiredStep,
+                                        result.result);
+                                    this.navigateToRequiredStep(
+                                        targetState.requiredStep);
+                                    return result;
+                                }));
+                    }
+
+                    // Local step — use the response directly.
                     this.processState.setProcessFlow(
+                        processorName,
                         result.requiredStep,
                         result.availableSteps);
                     this.captureQuestionnaireState(result.requiredStep, result.result);
                     this.navigateToRequiredStep(result.requiredStep);
-                    this.logStepOutcome(result);
 
                     if (
                         result.outcome === 'Failed' ||
@@ -94,20 +125,41 @@ export class ProcessService {
                         } satisfies ProcessErrorResponse;
                     }
 
-                    return result;
+                    return [result];
                 }),
                 catchError(error => {
                     if (ProcessErrorResponse.is(error)) {
                         this.processState.setProcessMessages(error.messages);
                     } else {
-                        console.error(
-                            'Unexpected process error',
-                            error);
+                        console.error('Unexpected process error', error);
                     }
 
-                    return throwError(
-                        () => error);
+                    return throwError(() => error);
                 }));
+    }
+
+    private fetchTargetProcessorState(
+        targetProcessorName: string,
+        processId: string
+    ): Observable<ProcessStateResponse> {
+        const targetEntry =
+            this.processRegistry.getAnyEntryForProcessor(targetProcessorName);
+
+        if (!targetEntry) {
+            throw new Error(
+                `Cannot resolve service for target processor '${targetProcessorName}'. ` +
+                `No steps from that processor are in the registry.`);
+        }
+
+        const stateUrl = buildServiceUrl(
+            targetEntry.service,
+            `/${targetEntry.service.key}/processes/${processId}`);
+
+        console.log(
+            `[ProcessService] Cross-processor handoff → fetching state from '${targetProcessorName}'`,
+            stateUrl);
+
+        return this.http.get<ProcessStateResponse>(stateUrl);
     }
 
     private captureQuestionnaireState(
@@ -129,25 +181,19 @@ export class ProcessService {
             `[PROCESS] ${result.stepName} (${result.outcome})`;
 
         console.group(title);
+        console.log('Processor Process', result.processId);
+        console.log('Outcome', result.outcome);
 
-        console.log(
-            'Processor Process',
-            result.processId);
-
-        console.log(
-            'Outcome',
-            result.outcome);
+        if (result.targetProcessorName) {
+            console.log('Target Processor (cross-processor handoff)', result.targetProcessorName);
+        }
 
         if (result.requiredStep) {
-            console.log(
-                'Required Step',
-                result.requiredStep);
+            console.log('Required Step', result.requiredStep);
         }
 
         if (result.availableSteps.length > 0) {
-            console.log(
-                'Available Steps',
-                result.availableSteps);
+            console.log('Available Steps', result.availableSteps);
         }
 
         for (const message of result.messages) {

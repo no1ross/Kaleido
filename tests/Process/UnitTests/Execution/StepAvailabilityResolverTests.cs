@@ -710,7 +710,7 @@ public sealed class StepAvailabilityResolverTests
     }
 
     [Fact]
-    public void Resolve_ReturnsReferencesWithCurrentProcessorName()
+    public void Resolve_ReturnsStepNames()
     {
         var currentRegistration =
             CreateRegistration<TestStepA>(
@@ -733,9 +733,7 @@ public sealed class StepAvailabilityResolverTests
                 [],
                 CreateContext());
 
-        Assert.All(
-            result,
-            x => Assert.Equal(TestProcessorName, x.ProcessorName));
+        AssertContainsStep(result, "step-b");
     }
 
     private static StepCandidate CreateCandidate(
@@ -794,7 +792,7 @@ public sealed class StepAvailabilityResolverTests
         };
     }
 
-    private const string TestProcessorName = "test-processor";
+
 
     private static StepAvailabilityResolver CreateResolver(
         params ProcessStepRegistration[] registrations)
@@ -815,48 +813,32 @@ public sealed class StepAvailabilityResolverTests
                 .Returns(registration);
         }
 
-        var processorRegistryItem = new ProcessorRegistryItem
-        {
-            Name = TestProcessorName,
-            Description = "test",
-            DisplayName = "Test Processor",
-            Version = "1.0"
-        };
-
-        var processorRegistry =
-            new Mock<IProcessorRegistry>();
-
-        processorRegistry
-            .Setup(x => x.Registrations)
-            .Returns([processorRegistryItem]);
-
         return new StepAvailabilityResolver(
-            registry.Object,
-            processorRegistry.Object);
+            registry.Object);
     }
 
     /// <summary>
-    /// Checks that the result contains a reference with the given step name.
+    /// Checks that the result contains the given step name.
     /// </summary>
     private static void AssertContainsStep(
-        IReadOnlyCollection<ProcessStepReference> result,
+        IReadOnlyCollection<string> result,
         string stepName)
     {
         Assert.Contains(
             result,
-            x => string.Equals(x.StepName, stepName, StringComparison.OrdinalIgnoreCase));
+            x => string.Equals(x, stepName, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
-    /// Checks that the result does not contain a reference with the given step name.
+    /// Checks that the result does not contain the given step name.
     /// </summary>
     private static void AssertDoesNotContainStep(
-        IReadOnlyCollection<ProcessStepReference> result,
+        IReadOnlyCollection<string> result,
         string stepName)
     {
         Assert.DoesNotContain(
             result,
-            x => string.Equals(x.StepName, stepName, StringComparison.OrdinalIgnoreCase));
+            x => string.Equals(x, stepName, StringComparison.OrdinalIgnoreCase));
     }
 
     private sealed class TestStepA

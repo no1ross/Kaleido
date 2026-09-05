@@ -6,7 +6,7 @@ namespace Kaleido.Process.Execution;
 
 internal interface IStepAvailabilityResolver
 {
-    IReadOnlyCollection<ProcessStepReference> Resolve(
+    IReadOnlyCollection<string> Resolve(
         StepCandidate currentCandidate,
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context);
@@ -16,20 +16,16 @@ internal sealed class StepAvailabilityResolver
     : IStepAvailabilityResolver
 {
     private readonly IProcessStepRegistry _registry;
-    private readonly IProcessorRegistry _processorRegistry;
 
     public StepAvailabilityResolver(
-        IProcessStepRegistry registry,
-        IProcessorRegistry processorRegistry)
+        IProcessStepRegistry registry)
     {
         ArgumentNullException.ThrowIfNull(registry);
-        ArgumentNullException.ThrowIfNull(processorRegistry);
 
         _registry = registry;
-        _processorRegistry = processorRegistry;
     }
 
-    public IReadOnlyCollection<ProcessStepReference> Resolve(
+    public IReadOnlyCollection<string> Resolve(
         StepCandidate currentCandidate,
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context)
@@ -37,11 +33,6 @@ internal sealed class StepAvailabilityResolver
         ArgumentNullException.ThrowIfNull(currentCandidate);
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(context);
-
-        var processorName =
-            _processorRegistry.Registrations
-                .Single()
-                .Name;
 
         var registrations = _registry.Registrations;
 
@@ -83,13 +74,8 @@ internal sealed class StepAvailabilityResolver
                 .ToArray();
 
         return availableUntilSatisfied
-            .Select(x =>
-                new ProcessStepReference
-                {
-                    ProcessorName = processorName,
-                    StepName = x.Metadata.Name
-                })
-            .DistinctBy(x => x.StepName, StringComparer.OrdinalIgnoreCase)
+            .Select(x => x.Metadata.Name)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 

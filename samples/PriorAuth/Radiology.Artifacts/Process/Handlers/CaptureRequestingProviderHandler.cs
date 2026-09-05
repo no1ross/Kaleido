@@ -39,10 +39,6 @@ public sealed class CaptureRequestingProviderHandler(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return ProcessStepHandlerResult.Success(
-            requiredStep: new ProcessStepReference
-            {
-                ProcessorName = "radiology",
-                StepName = nameof(CaptureServicingProviderStep).Replace("Step", string.Empty)
-            });
+            requiredStep: nameof(CaptureServicingProviderStep).Replace("Step", string.Empty));
     }
 }

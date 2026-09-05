@@ -19,6 +19,7 @@ export interface ProcessExecutionResponse<TResponse> {
     outcome: StepExecutionOutcome;
     result: TResponse;
     requiredStep?: string;
+    targetProcessorName?: string;
     availableSteps: ProcessStepSummary[];
     messages: ProcessMessage[];
 }

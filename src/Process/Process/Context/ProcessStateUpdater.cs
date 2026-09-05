@@ -181,6 +181,9 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
             RequiredStep =
                 decision.RequiredStep,
 
+            TargetProcessorName =
+                decision.TargetProcessorName,
+
             AvailableSteps =
                 decision.AvailableSteps,
 
@@ -230,6 +233,8 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
 
             RequiredStep = null,
 
+            TargetProcessorName = null,
+
             AvailableSteps = [],
 
             Steps = steps
@@ -274,6 +279,8 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
                 ProcessExecutionState.Cancelled,
 
             RequiredStep = null,
+
+            TargetProcessorName = null,
 
             AvailableSteps = [],
 

@@ -16,13 +16,19 @@ internal sealed record ExecutionDecision
         init;
     }
 
-    public ProcessStepReference? RequiredStep
+    public string? RequiredStep
     {
         get;
         init;
     }
 
-    public IReadOnlyCollection<ProcessStepReference> AvailableSteps
+    public string? TargetProcessorName
+    {
+        get;
+        init;
+    }
+
+    public IReadOnlyCollection<string> AvailableSteps
     {
         get;
         init;
@@ -65,125 +71,20 @@ internal sealed record ExecutionDecision
         };
 
     public static ExecutionDecision AwaitingRequiredStep(
-        ProcessStepReference requiredStep)
+        string requiredStep,
+        string? targetProcessorName = null)
         => new()
         {
             Type = ExecutionDecisionType.AwaitingRequiredStep,
-            RequiredStep = requiredStep
+            RequiredStep = requiredStep,
+            TargetProcessorName = targetProcessorName
         };
 
     public static ExecutionDecision AwaitingStepSelection(
-        IReadOnlyCollection<ProcessStepReference> availableSteps)
+        IReadOnlyCollection<string> availableSteps)
         => new()
         {
             Type = ExecutionDecisionType.AwaitingStepSelection,
             AvailableSteps = availableSteps
         };
 }
-
-
-//public sealed record StepExecutionResult
-//{
-//    public required StepCandidate Candidate
-//    {
-//        get;
-//        init;
-//    }
-
-//    public required StepExecutionStatus Status
-//    {
-//        get;
-//        init;
-//    }
-
-//    public ProcessStepResult? Result
-//    {
-//        get;
-//        init;
-//    }
-
-//    public IReadOnlyCollection<StepProcessingMessage> ProcessMessages
-//    {
-//        get;
-//        init;
-//    }
-//        = [];
-//}
-
-//internal interface IStepExecutionPolicy
-//{
-//    ExecutionDecision? Evaluate(
-//        StepExecutionPolicyContext context);
-//}
-
-//internal sealed class BusinessFailureExecutionPolicy
-//    : IStepExecutionPolicy
-//{
-//    public ExecutionDecision? Evaluate(
-//        StepExecutionPolicyContext context)
-//    {
-//        ArgumentNullException.ThrowIfNull(context);
-
-//        if (context.Result.Succeeded)
-//        {
-//            return null;
-//        }
-
-//        var results =
-//            new List<StepExecutionResult>
-//            {
-//                new()
-//                {
-//                    Candidate = context.Candidate,
-//                    Status = StepExecutionStatus.Completed,
-//                    Result = context.Result
-//                }
-//            };
-
-//        foreach (var candidate in context.CandidatesToSkip)
-//        {
-//            results.Add(
-//                new StepExecutionResult
-//                {
-//                    Candidate = candidate,
-//                    Status = StepExecutionStatus.Skipped
-//                });
-//        }
-
-//        return new ExecutionDecision
-//        {
-//            Type = ExecutionDecisionType.Stop,
-//            Results = results
-//        };
-//    }
-//}
-
-//public sealed record StepExecutionPolicyContext
-//{
-//    public required StepCandidate Candidate
-//    {
-//        get;
-//        init;
-//    }
-
-//    public required ProcessStepResult Result
-//    {
-//        get;
-//        init;
-//    }
-
-//    public required IReadOnlyCollection<StepCandidate> CandidatesToSkip
-//    {
-//        get;
-//        init;
-//    }
-//}
-
-//public sealed record ProcessExecutionResult
-//{
-//    public required IReadOnlyCollection<StepExecutionResult> Steps
-//    {
-//        get;
-//        init;
-//    }
-//}

@@ -146,11 +146,7 @@ public sealed class CaptureRequestedServiceHandler(
 
                 return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success(
                     response,
-                    requiredStep: new ProcessStepReference
-                    {
-                        ProcessorName = "radiology",
-                        StepName = nameof(CaptureMriInfoStep).Replace("Step", string.Empty)
-                    });
+                    requiredStep: nameof(CaptureMriInfoStep).Replace("Step", string.Empty));
             }
 
             async Task<ProcessStepHandlerResult<CaptureRequestedServiceResponse>> CreateCtResponseAsync(
@@ -169,11 +165,7 @@ public sealed class CaptureRequestedServiceHandler(
 
                 return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success(
                     response,
-                    requiredStep: new ProcessStepReference
-                    {
-                        ProcessorName = "radiology",
-                        StepName = nameof(ConfirmCtInsteadOfMriStep).Replace("Step", string.Empty)
-                    });
+                    requiredStep: nameof(ConfirmCtInsteadOfMriStep).Replace("Step", string.Empty));
             }
         }
         catch (KaleidoQueryableClientException ex)

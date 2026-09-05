@@ -15,9 +15,11 @@ public sealed record StepProcessingRecord
 
     public ProcessExecutionState ProcessState { get; init; }
 
-    public ProcessStepReference? RequiredStep { get; init; }
+    public string? RequiredStep { get; init; }
 
-    public IReadOnlyCollection<ProcessStepReference> AvailableSteps { get; init; }
+    public string? TargetProcessorName { get; init; }
+
+    public IReadOnlyCollection<string> AvailableSteps { get; init; }
         = [];
 
     public IReadOnlyCollection<ProcessMessage> Messages { get; init; }

@@ -66,12 +66,6 @@ public sealed record ProcessStepResponse : ProcessorStepRegistryItem
 
 public sealed record ProcessStepSummary : ProcessorStepSummary
 {
-    /// <summary>
-    /// The name of the processor that owns this step.
-    /// Null for steps belonging to the local processor.
-    /// </summary>
-    public string? ProcessorName { get; init; }
-
     public string ExecuteUrl { get; init; }
         = string.Empty;
 

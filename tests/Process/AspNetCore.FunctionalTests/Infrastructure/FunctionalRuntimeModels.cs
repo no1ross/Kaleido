@@ -152,11 +152,7 @@ public sealed class RuntimeRequiredRootStepHandler :
         return Task.FromResult(
             ProcessStepHandlerResult<RuntimeRequiredRootStepResponse>.Success(
                 new RuntimeRequiredRootStepResponse(),
-                new ProcessStepReference
-                {
-                    ProcessorName = FunctionalProcessorNames.TestProcessor,
-                    StepName = RuntimeStepNames.RequiredStep
-                }));
+                requiredStep: RuntimeStepNames.RequiredStep));
     }
 }
 
@@ -185,11 +181,7 @@ public sealed class RuntimeInvalidRequiredRootStepHandler :
         return Task.FromResult(
             ProcessStepHandlerResult<RuntimeInvalidRequiredRootStepResponse>.Success(
                 new RuntimeInvalidRequiredRootStepResponse(),
-                new ProcessStepReference
-                {
-                    ProcessorName = FunctionalProcessorNames.TestProcessor,
-                    StepName = RuntimeStepNames.Merge
-                }));
+                requiredStep: RuntimeStepNames.Merge));
     }
 }
 

@@ -1,5 +1,4 @@
 ﻿using Kaleido.Process.Context;
-using Kaleido.Process.Execution;
 using Kaleido.Process.Providers.SQLite.Entities;
 using Kaleido.Process.Registry;
 using Microsoft.EntityFrameworkCore;
@@ -144,14 +143,14 @@ internal sealed class SqliteProcessContextStore(
         var availableStepEntities =
             context.AvailableSteps
                 .Select(
-                    (reference, index) =>
+                    (stepName, index) =>
                         new ProcessAvailableStepEntity
                         {
                             ProcessId =
                                 context.ProcessId,
 
                             StepName =
-                                reference.StepName,
+                                stepName,
 
                             Sequence =
                                 index
@@ -166,17 +165,24 @@ internal sealed class SqliteProcessContextStore(
 
         if (context.RequiredStep is not null)
         {
+            var localProcessorName =
+                processorRegistry.Registrations
+                    .Single()
+                    .Name;
+
             dbContext.ProcessRequiredSteps.Add(
                 new ProcessRequiredStepEntity
                 {
                     ProcessId =
                         context.ProcessId,
 
+                    // Store the target processor name when cross-processor,
+                    // otherwise store the local processor name for backwards compatibility.
                     ProcessorName =
-                        context.RequiredStep.ProcessorName,
+                        context.TargetProcessorName ?? localProcessorName,
 
                     StepName =
-                        context.RequiredStep.StepName
+                        context.RequiredStep
                 });
         }
 
@@ -206,16 +212,19 @@ internal sealed class SqliteProcessContextStore(
                 entity.State,
 
             RequiredStep =
+                entity.RequiredStep?.StepName,
+
+            // When the stored processor name differs from the local processor,
+            // this was a cross-processor handoff — surface it as TargetProcessorName.
+            TargetProcessorName =
                 entity.RequiredStep is null
                     ? null
-                    : new ProcessStepReference
-                    {
-                        ProcessorName =
-                            entity.RequiredStep.ProcessorName,
-
-                        StepName =
-                            entity.RequiredStep.StepName
-                    },
+                    : string.Equals(
+                        entity.RequiredStep.ProcessorName,
+                        localProcessorName,
+                        StringComparison.OrdinalIgnoreCase)
+                        ? null
+                        : entity.RequiredStep.ProcessorName,
 
             CreatedUtc =
                 entity.CreatedUtc,
@@ -223,17 +232,11 @@ internal sealed class SqliteProcessContextStore(
             UpdatedUtc =
                 entity.UpdatedUtc,
 
-            // Available steps are always local — reconstruct references
-            // using the current processor name.
+            // Available steps are always local step names.
             AvailableSteps =
                 entity.AvailableSteps
                     .OrderBy(x => x.Sequence)
-                    .Select(x =>
-                        new ProcessStepReference
-                        {
-                            ProcessorName = localProcessorName,
-                            StepName = x.StepName
-                        })
+                    .Select(x => x.StepName)
                     .ToArray(),
 
             Steps =

@@ -29,20 +29,23 @@ public class ProcessStateService(
 
             State = context.State,
 
+            // RequiredStep is null when TargetProcessorName is set —
+            // consumer must call the target processor's state endpoint instead.
             RequiredStep =
-                context.RequiredStep is null
-                    ? null
-                    : ProcessContractMapper.ToStepInfo(
-                        context.RequiredStep,
-                        registry,
-                        routeOptions),
+                context.TargetProcessorName is null
+                    ? context.RequiredStep
+                    : null,
+
+            TargetProcessorName =
+                context.TargetProcessorName,
 
             AvailableSteps =
                 context.AvailableSteps
-                    .Select(reference =>
-                        ProcessContractMapper.ToStepInfo(
-                            reference,
-                            registry,
+                    .Select(stepName =>
+                        ProcessContractMapper.ToSummary(
+                            registry.Find(stepName)
+                                ?? throw new InvalidOperationException(
+                                    $"Available step '{stepName}' was not found in the local registry."),
                             routeOptions))
                     .ToArray(),
 
