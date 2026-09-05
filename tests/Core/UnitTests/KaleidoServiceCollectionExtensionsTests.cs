@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Kaleido.Observability;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.UnitTests;
 
@@ -131,5 +132,77 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         Assert.Equal(
             2,
             concreteBuilder.Assemblies.Count);
+    }
+
+    [Fact]
+    public void AddKaleido_ShouldNotOverride_PreregisteredCorrelationContextAccessor()
+    {
+        var services = new ServiceCollection();
+        var custom = new CustomCorrelationContextAccessor();
+        services.AddScoped<IKaleidoCorrelationContextAccessor>(_ => custom);
+
+        services.AddKaleido();
+
+        using var provider = services.BuildServiceProvider(validateScopes: false);
+        using var scope = provider.CreateScope();
+
+        var resolved = scope.ServiceProvider.GetRequiredService<IKaleidoCorrelationContextAccessor>();
+        Assert.Same(custom, resolved);
+    }
+
+    [Fact]
+    public void AddKaleido_ShouldNotOverride_PreregisteredCorrelationContextInitializer()
+    {
+        var services = new ServiceCollection();
+        var custom = new CustomCorrelationContextInitializer();
+        services.AddScoped<IKaleidoCorrelationContextInitializer>(_ => custom);
+
+        services.AddKaleido();
+
+        using var provider = services.BuildServiceProvider(validateScopes: false);
+        using var scope = provider.CreateScope();
+
+        var resolved = scope.ServiceProvider.GetRequiredService<IKaleidoCorrelationContextInitializer>();
+        Assert.Same(custom, resolved);
+    }
+
+    [Fact]
+    public void AddKaleido_ShouldRegisterDefaultAccessor_WhenNonePreregistered()
+    {
+        var services = new ServiceCollection();
+        services.AddKaleido();
+
+        using var provider = services.BuildServiceProvider(validateScopes: false);
+        using var scope = provider.CreateScope();
+
+        var resolved = scope.ServiceProvider.GetRequiredService<IKaleidoCorrelationContextAccessor>();
+        Assert.NotNull(resolved);
+    }
+
+    [Fact]
+    public void AddKaleido_ShouldRegisterDefaultInitializer_WhenNonePreregistered()
+    {
+        var services = new ServiceCollection();
+        services.AddKaleido();
+
+        using var provider = services.BuildServiceProvider(validateScopes: false);
+        using var scope = provider.CreateScope();
+
+        var resolved = scope.ServiceProvider.GetRequiredService<IKaleidoCorrelationContextInitializer>();
+        Assert.NotNull(resolved);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Test doubles
+    // ---------------------------------------------------------------------------
+
+    private sealed class CustomCorrelationContextAccessor : IKaleidoCorrelationContextAccessor
+    {
+        public KaleidoCorrelationContext Current => new();
+    }
+
+    private sealed class CustomCorrelationContextInitializer : IKaleidoCorrelationContextInitializer
+    {
+        public void Initialize(KaleidoCorrelationContext context) { }
     }
 }

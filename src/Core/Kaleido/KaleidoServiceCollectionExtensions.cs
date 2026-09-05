@@ -13,9 +13,9 @@ public static class KaleidoServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddScoped<KaleidoCorrelationContextAccessor>();
-        services.AddScoped<IKaleidoCorrelationContextAccessor>(
+        services.TryAddScoped<IKaleidoCorrelationContextAccessor>(
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
-        services.AddScoped<IKaleidoCorrelationContextInitializer>(
+        services.TryAddScoped<IKaleidoCorrelationContextInitializer>(
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
         services.TryAddSingleton<IEventPublisher, NullEventPublisher>();
 

@@ -3,7 +3,6 @@ using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Client;
 
@@ -36,6 +35,10 @@ public sealed class QueryableClientHeaderTests : IClassFixture<QueryableAspNetCo
         var services = new ServiceCollection();
         services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory("header-test", _httpClient));
 
+        // Pre-register the test accessor before AddKaleido() so the TryAdd inside
+        // AddKaleido() is a no-op and the client factories use our controllable context.
+        services.AddSingleton<IKaleidoCorrelationContextAccessor>(_correlationAccessor);
+
         services.AddKaleido()
             .AddQueryableClient(o =>
             {
@@ -43,10 +46,6 @@ public sealed class QueryableClientHeaderTests : IClassFixture<QueryableAspNetCo
                 o.BaseUrl = "http://localhost/";
                 o.RoutePrefix = "kaleido";
             });
-
-        // Override the accessor registered by AddKaleido() so the client uses our
-        // controllable context. Replace() removes the previous registration first.
-        services.Replace(ServiceDescriptor.Singleton<IKaleidoCorrelationContextAccessor>(_correlationAccessor));
 
         _clientProvider = services.BuildServiceProvider();
         _factory = _clientProvider.GetRequiredService<IKaleidoQueryableClientFactory>();

@@ -40,19 +40,16 @@ services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory("my-client"
 The `FixedHttpClientFactory` pattern used in `ProcessClientHeaderTests` and
 `QueryableClientHeaderTests` is the canonical example.
 
-#### Pitfall 2 — AddKaleido() overwrites IKaleidoCorrelationContextAccessor
+#### Tip 2 — Substituting IKaleidoCorrelationContextAccessor
 
-`AddKaleido()` calls `services.AddScoped<IKaleidoCorrelationContextAccessor>(...)` (not `TryAdd`).
-Any registration made **before** `AddKaleido()` is appended first and then overwritten because .NET DI
-resolves the **last** registration for a given service type.
+`AddKaleido()` uses `TryAddScoped` for `IKaleidoCorrelationContextAccessor` and
+`IKaleidoCorrelationContextInitializer`, so a pre-existing registration is respected and the
+framework default is skipped.
 
-**Do not** register a test accessor before calling `AddKaleido()`.
-
-**Do** use `services.Replace(...)` after `AddKaleido()` to substitute the accessor:
+Register a test-controlled accessor **before** `AddKaleido()` and it will be used by the client
+factories:
 
 ```csharp
+services.AddScoped<IKaleidoCorrelationContextAccessor>(_ => myAccessor);
 services.AddKaleido().AddQueryableClient(...);
-
-// Replace the scoped accessor AddKaleido() just registered with our controllable one.
-services.Replace(ServiceDescriptor.Singleton<IKaleidoCorrelationContextAccessor>(myAccessor));
 ```
