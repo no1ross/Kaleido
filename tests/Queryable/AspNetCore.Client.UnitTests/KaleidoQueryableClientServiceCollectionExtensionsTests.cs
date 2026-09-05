@@ -163,8 +163,10 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public void AddQueryableClient_WithConfigureClient_CanMutateOptionsBeforeMapIsStored()
+    public void AddQueryableClient_WithConfigureClient_ConfigureIsInvokedFirst()
     {
+        // configure runs before configureClient, so RoutePrefix set in configure is
+        // stored in the map (configureClient no longer receives the options object).
         var services = new ServiceCollection();
         var builder = new FakeKaleidoBuilder(services);
 
@@ -173,11 +175,7 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
             {
                 o.Name = "MemberService";
                 o.BaseUrl = "http://localhost";
-                o.RoutePrefix = "initial";
-            },
-            (opts, _) =>
-            {
-                opts.RoutePrefix = "overridden";
+                o.RoutePrefix = "kaleido";
             });
 
         var descriptor = services.First(
@@ -185,7 +183,7 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         var map = (KaleidoQueryableClientRouteOptionsMap)descriptor.ImplementationInstance!;
 
         Assert.True(map.Options.TryGetValue("MemberService", out var stored));
-        Assert.Equal("overridden", stored!.RoutePrefix);
+        Assert.Equal("kaleido", stored!.RoutePrefix);
     }
 
     [Fact]
@@ -201,7 +199,7 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
                 o.Name = "MemberService";
                 o.BaseUrl = "http://localhost";
             },
-            (_, http) =>
+            http =>
             {
                 Assert.NotNull(http);
                 callbackInvoked = true;

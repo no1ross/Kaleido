@@ -10,7 +10,7 @@ public static class KaleidoProcessClientServiceCollectionExtensions
     public static IKaleidoBuilder AddProcessClient(
         this IKaleidoBuilder builder,
         Action<KaleidoProcessClientOptions> configure,
-        Action<KaleidoProcessClientOptions, IHttpClientBuilder>? configureClient = null)
+        Action<IHttpClientBuilder>? configureClient = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);
@@ -26,7 +26,7 @@ public static class KaleidoProcessClientServiceCollectionExtensions
             client.BaseAddress = new Uri(options.BaseUrl);
         });
 
-        configureClient?.Invoke(options, httpClientBuilder);
+        configureClient?.Invoke(httpClientBuilder);
 
         // Accumulate per-name route options into a shared singleton dictionary.
         // Multiple AddProcessClient calls each add their entry before the factory resolves.

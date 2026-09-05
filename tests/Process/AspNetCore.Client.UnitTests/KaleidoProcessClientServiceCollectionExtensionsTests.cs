@@ -163,8 +163,10 @@ public sealed class KaleidoProcessClientServiceCollectionExtensionsTests
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public void AddProcessClient_WithConfigureClient_CanMutateOptionsBeforeMapIsStored()
+    public void AddProcessClient_WithConfigureClient_ConfigureIsInvokedFirst()
     {
+        // configure runs before configureClient, so RoutePrefix set in configure is
+        // stored in the map (configureClient no longer receives the options object).
         var services = new ServiceCollection();
         var builder = new FakeKaleidoBuilder(services);
 
@@ -173,11 +175,7 @@ public sealed class KaleidoProcessClientServiceCollectionExtensionsTests
             {
                 o.Name = "RemoteProcessor";
                 o.BaseUrl = "http://localhost";
-                o.RoutePrefix = "initial";
-            },
-            (opts, _) =>
-            {
-                opts.RoutePrefix = "overridden";
+                o.RoutePrefix = "kaleido";
             });
 
         var descriptor = services.First(
@@ -185,7 +183,7 @@ public sealed class KaleidoProcessClientServiceCollectionExtensionsTests
         var map = (KaleidoProcessClientRouteOptionsMap)descriptor.ImplementationInstance!;
 
         Assert.True(map.Options.TryGetValue("RemoteProcessor", out var stored));
-        Assert.Equal("overridden", stored!.RoutePrefix);
+        Assert.Equal("kaleido", stored!.RoutePrefix);
     }
 
     [Fact]
@@ -201,7 +199,7 @@ public sealed class KaleidoProcessClientServiceCollectionExtensionsTests
                 o.Name = "RemoteProcessor";
                 o.BaseUrl = "http://localhost";
             },
-            (_, http) =>
+            http =>
             {
                 Assert.NotNull(http);
                 callbackInvoked = true;

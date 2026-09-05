@@ -6,7 +6,7 @@ namespace Kaleido.Queryable.AspNetCore.Client;
 public sealed class KaleidoQueryableClientOptions
 {
     /// <summary>
-    /// The name used to identify this client in <see cref="IKaleidoQueryableClientFactory"/>.
+    /// The name used to identify this client in the queryable client factory.
     /// Also used as the named <see cref="System.Net.Http.IHttpClientFactory"/> key.
     /// </summary>
     public string Name { get; set; } = string.Empty;

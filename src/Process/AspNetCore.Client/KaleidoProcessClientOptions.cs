@@ -6,7 +6,7 @@ namespace Kaleido.Process.AspNetCore.Client;
 public sealed class KaleidoProcessClientOptions
 {
     /// <summary>
-    /// The name used to identify this client in <see cref="IKaleidoProcessClientFactory"/>.
+    /// The name used to identify this client in the process client factory.
     /// Also used as the named <see cref="System.Net.Http.IHttpClientFactory"/> key.
     /// </summary>
     public string Name { get; set; } = string.Empty;

@@ -10,7 +10,7 @@ public static class KaleidoQueryableClientServiceCollectionExtensions
     public static IKaleidoBuilder AddQueryableClient(
         this IKaleidoBuilder builder,
         Action<KaleidoQueryableClientOptions> configure,
-        Action<KaleidoQueryableClientOptions, IHttpClientBuilder>? configureClient = null)
+        Action<IHttpClientBuilder>? configureClient = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);
@@ -26,7 +26,7 @@ public static class KaleidoQueryableClientServiceCollectionExtensions
             client.BaseAddress = new Uri(options.BaseUrl);
         });
 
-        configureClient?.Invoke(options, httpClientBuilder);
+        configureClient?.Invoke(httpClientBuilder);
 
         // Accumulate per-name route options into a shared singleton dictionary.
         // Multiple AddQueryableClient calls each add their entry before the factory resolves.
