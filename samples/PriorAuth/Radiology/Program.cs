@@ -110,22 +110,30 @@ builder.Services.AddKaleido()
         {
             o.RoutePrefix = "radiology";
         })
-    .AddQueryableClient(
-        "MemberService",
-        builder.Configuration["Services:MemberService:BaseUrl"]
-            ?? "https://localhost:8444")
-    .AddQueryableClient(
-        "CodeSet",
-        builder.Configuration["Services:CodeSet:BaseUrl"]
-            ?? "https://localhost:8442")
-    .AddQueryableClient(
-        "Configuration",
-        builder.Configuration["Services:Configuration:BaseUrl"]
-            ?? "https://localhost:8447")
-    .AddQueryableClient(
-        "ProviderSearch",
-        builder.Configuration["Services:ProviderSearch:BaseUrl"]
-            ?? "https://localhost:8443");
+    .AddQueryableClient(o =>
+    {
+        o.Name = "MemberService";
+        o.BaseUrl = builder.Configuration["Services:MemberService:BaseUrl"]
+            ?? "https://localhost:8444";
+    })
+    .AddQueryableClient(o =>
+    {
+        o.Name = "CodeSet";
+        o.BaseUrl = builder.Configuration["Services:CodeSet:BaseUrl"]
+            ?? "https://localhost:8442";
+    })
+    .AddQueryableClient(o =>
+    {
+        o.Name = "Configuration";
+        o.BaseUrl = builder.Configuration["Services:Configuration:BaseUrl"]
+            ?? "https://localhost:8447";
+    })
+    .AddQueryableClient(o =>
+    {
+        o.Name = "ProviderSearch";
+        o.BaseUrl = builder.Configuration["Services:ProviderSearch:BaseUrl"]
+            ?? "https://localhost:8443";
+    });
 
 var app = builder.Build();
 

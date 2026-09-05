@@ -67,7 +67,12 @@ public sealed class ProcessAspNetCoreFixture
         var clientServices = new ServiceCollection();
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();
         clientServices.AddKaleido()
-            .AddProcessClient("test", "http://localhost/", routePrefix: "kaleido");
+            .AddProcessClient(o =>
+            {
+                o.Name = "test";
+                o.BaseUrl = "http://localhost/";
+                o.RoutePrefix = "kaleido";
+            });
 
         // Override the named HttpClient to use the TestServer handler instead of a real socket
         clientServices.AddHttpClient("test")

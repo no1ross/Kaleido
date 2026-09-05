@@ -108,18 +108,24 @@ builder.Services.AddKaleido()
         {
             o.RoutePrefix = "intake";
         })
-    .AddQueryableClient(
-        "MemberService",
-        builder.Configuration["Services:MemberService:BaseUrl"]
-            ?? "https://localhost:8444")
-    .AddQueryableClient(
-        "CodeSet",
-        builder.Configuration["Services:CodeSet:BaseUrl"]
-            ?? "https://localhost:8442")
-    .AddQueryableClient(
-        "Configuration",
-        builder.Configuration["Services:Configuration:BaseUrl"]
-            ?? "https://localhost:8447");
+    .AddQueryableClient(o =>
+    {
+        o.Name = "MemberService";
+        o.BaseUrl = builder.Configuration["Services:MemberService:BaseUrl"]
+            ?? "https://localhost:8444";
+    })
+    .AddQueryableClient(o =>
+    {
+        o.Name = "CodeSet";
+        o.BaseUrl = builder.Configuration["Services:CodeSet:BaseUrl"]
+            ?? "https://localhost:8442";
+    })
+    .AddQueryableClient(o =>
+    {
+        o.Name = "Configuration";
+        o.BaseUrl = builder.Configuration["Services:Configuration:BaseUrl"]
+            ?? "https://localhost:8447";
+    });
 
 var app = builder.Build();
 

@@ -9,23 +9,29 @@ public static class KaleidoProcessClientServiceCollectionExtensions
 {
     public static IKaleidoBuilder AddProcessClient(
         this IKaleidoBuilder builder,
-        string name,
-        string baseUrl,
-        string routePrefix = "")
+        Action<KaleidoProcessClientOptions> configure,
+        Action<KaleidoProcessClientOptions, IHttpClientBuilder>? configureClient = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        ArgumentException.ThrowIfNullOrWhiteSpace(baseUrl);
+        ArgumentNullException.ThrowIfNull(configure);
 
-        builder.Services.AddHttpClient(name, client =>
+        var options = new KaleidoProcessClientOptions();
+        configure(options);
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.Name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.BaseUrl);
+
+        var httpClientBuilder = builder.Services.AddHttpClient(options.Name, client =>
         {
-            client.BaseAddress = new Uri(baseUrl);
+            client.BaseAddress = new Uri(options.BaseUrl);
         });
+
+        configureClient?.Invoke(options, httpClientBuilder);
 
         // Accumulate per-name route options into a shared singleton dictionary.
         // Multiple AddProcessClient calls each add their entry before the factory resolves.
         var routeOptions = GetOrAddRouteOptions(builder.Services);
-        routeOptions[name] = new ProcessRouteOptions { RoutePrefix = routePrefix };
+        routeOptions[options.Name] = new ProcessRouteOptions { RoutePrefix = options.RoutePrefix };
 
         builder.Services.TryAddScoped<IKaleidoProcessClientFactory, KaleidoProcessClientFactory>();
 

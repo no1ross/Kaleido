@@ -67,7 +67,12 @@ public sealed class QueryableAspNetCoreFixture
         var clientServices = new ServiceCollection();
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();
         clientServices.AddKaleido()
-            .AddQueryableClient("test", "http://localhost/", routePrefix: "kaleido");
+            .AddQueryableClient(o =>
+            {
+                o.Name = "test";
+                o.BaseUrl = "http://localhost/";
+                o.RoutePrefix = "kaleido";
+            });
 
         // Override the named HttpClient to use the TestServer handler instead of a real socket
         clientServices.AddHttpClient("test")

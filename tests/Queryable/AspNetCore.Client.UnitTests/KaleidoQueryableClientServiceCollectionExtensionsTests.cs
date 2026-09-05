@@ -15,7 +15,20 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         IKaleidoBuilder? builder = null;
 
         Assert.Throws<ArgumentNullException>(
-            () => builder!.AddQueryableClient("name", "http://localhost"));
+            () => builder!.AddQueryableClient(o =>
+            {
+                o.Name = "name";
+                o.BaseUrl = "http://localhost";
+            }));
+    }
+
+    [Fact]
+    public void AddQueryableClient_WhenConfigureIsNull_Throws()
+    {
+        var builder = new FakeKaleidoBuilder(new ServiceCollection());
+
+        Assert.Throws<ArgumentNullException>(
+            () => builder.AddQueryableClient(null!));
     }
 
     [Fact]
@@ -24,7 +37,11 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         var builder = new FakeKaleidoBuilder(new ServiceCollection());
 
         Assert.Throws<ArgumentException>(
-            () => builder.AddQueryableClient("", "http://localhost"));
+            () => builder.AddQueryableClient(o =>
+            {
+                o.Name = "";
+                o.BaseUrl = "http://localhost";
+            }));
     }
 
     [Fact]
@@ -33,7 +50,11 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         var builder = new FakeKaleidoBuilder(new ServiceCollection());
 
         Assert.Throws<ArgumentException>(
-            () => builder.AddQueryableClient("name", ""));
+            () => builder.AddQueryableClient(o =>
+            {
+                o.Name = "name";
+                o.BaseUrl = "";
+            }));
     }
 
     // ---------------------------------------------------------------------------
@@ -46,7 +67,11 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var builder = new FakeKaleidoBuilder(services);
 
-        builder.AddQueryableClient("MemberService", "http://localhost");
+        builder.AddQueryableClient(o =>
+        {
+            o.Name = "MemberService";
+            o.BaseUrl = "http://localhost";
+        });
 
         Assert.Contains(services,
             d => d.ServiceType == typeof(IKaleidoQueryableClientFactory));
@@ -58,7 +83,11 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var builder = new FakeKaleidoBuilder(services);
 
-        var result = builder.AddQueryableClient("MemberService", "http://localhost");
+        var result = builder.AddQueryableClient(o =>
+        {
+            o.Name = "MemberService";
+            o.BaseUrl = "http://localhost";
+        });
 
         Assert.Same(builder, result);
     }
@@ -73,7 +102,12 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var builder = new FakeKaleidoBuilder(services);
 
-        builder.AddQueryableClient("Radiology", "http://localhost", routePrefix: "radiology");
+        builder.AddQueryableClient(o =>
+        {
+            o.Name = "Radiology";
+            o.BaseUrl = "http://localhost";
+            o.RoutePrefix = "radiology";
+        });
 
         var descriptor = services.First(
             d => d.ServiceType == typeof(KaleidoQueryableClientRouteOptionsMap));
@@ -90,8 +124,8 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         var builder = new FakeKaleidoBuilder(services);
 
         builder
-            .AddQueryableClient("ServiceA", "http://a.localhost")
-            .AddQueryableClient("ServiceB", "http://b.localhost", routePrefix: "prefix");
+            .AddQueryableClient(o => { o.Name = "ServiceA"; o.BaseUrl = "http://a.localhost"; })
+            .AddQueryableClient(o => { o.Name = "ServiceB"; o.BaseUrl = "http://b.localhost"; o.RoutePrefix = "prefix"; });
 
         var maps = services
             .Where(d => d.ServiceType == typeof(KaleidoQueryableClientRouteOptionsMap))
@@ -110,7 +144,11 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var builder = new FakeKaleidoBuilder(services);
 
-        builder.AddQueryableClient("MemberService", "http://localhost");
+        builder.AddQueryableClient(o =>
+        {
+            o.Name = "MemberService";
+            o.BaseUrl = "http://localhost";
+        });
 
         var descriptor = services.First(
             d => d.ServiceType == typeof(KaleidoQueryableClientRouteOptionsMap));
@@ -121,7 +159,59 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
     }
 
     // ---------------------------------------------------------------------------
-    // Test double
+    // configureClient callback
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void AddQueryableClient_WithConfigureClient_CanMutateOptionsBeforeMapIsStored()
+    {
+        var services = new ServiceCollection();
+        var builder = new FakeKaleidoBuilder(services);
+
+        builder.AddQueryableClient(
+            o =>
+            {
+                o.Name = "MemberService";
+                o.BaseUrl = "http://localhost";
+                o.RoutePrefix = "initial";
+            },
+            (opts, _) =>
+            {
+                opts.RoutePrefix = "overridden";
+            });
+
+        var descriptor = services.First(
+            d => d.ServiceType == typeof(KaleidoQueryableClientRouteOptionsMap));
+        var map = (KaleidoQueryableClientRouteOptionsMap)descriptor.ImplementationInstance!;
+
+        Assert.True(map.Options.TryGetValue("MemberService", out var stored));
+        Assert.Equal("overridden", stored!.RoutePrefix);
+    }
+
+    [Fact]
+    public void AddQueryableClient_WithConfigureClient_InvokesCallbackWithHttpClientBuilder()
+    {
+        var services = new ServiceCollection();
+        var builder = new FakeKaleidoBuilder(services);
+        var callbackInvoked = false;
+
+        builder.AddQueryableClient(
+            o =>
+            {
+                o.Name = "MemberService";
+                o.BaseUrl = "http://localhost";
+            },
+            (_, http) =>
+            {
+                Assert.NotNull(http);
+                callbackInvoked = true;
+            });
+
+        Assert.True(callbackInvoked);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Test doubles
     // ---------------------------------------------------------------------------
 
     private sealed class FakeKaleidoBuilder : IKaleidoBuilder
@@ -135,4 +225,6 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         public IServiceCollection Services { get; }
         public IReadOnlyCollection<Assembly> Assemblies { get; }
     }
+
+
 }
