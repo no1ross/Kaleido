@@ -1,6 +1,6 @@
-export interface QueryableResult<TRecord> {
+export interface QueryableResult<TView> {
     totalCount: number;
     offset: number;
     pageSize: number;
-    records: TRecord[];
+    results: TView[];
 }

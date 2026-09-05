@@ -1,4 +1,5 @@
 using Kaleido.Process.Execution;
+using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Samples.PriorAuth.Configuration;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
@@ -97,7 +98,7 @@ public sealed class CaptureRequestedServiceHandler(
                     ProcessorName = processorName
                 });
         }
-        catch (QueryableClientException ex)
+        catch (KaleidoQueryableClientException ex)
         {
             return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
                 new CaptureRequestedServiceResponse(),

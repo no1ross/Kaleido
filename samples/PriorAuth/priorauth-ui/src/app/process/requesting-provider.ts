@@ -238,7 +238,7 @@ export class RequestingProvider {
             .subscribe({
                 next: result => {
                     this.stateOptions.set(
-                        result.records
+                        result.results
                             .filter(record => record.isActive)
                             .sort((left, right) => left.name.localeCompare(right.name)));
                     this.isLoadingStates.set(false);
@@ -271,7 +271,7 @@ export class RequestingProvider {
                 })
             .subscribe({
                 next: result => {
-                    const options = result.records
+                    const options = result.results
                         .filter(record => !!record.primaryMedicalSpecialtyId && !!record.primaryMedicalSpecialtyName)
                         .map(record => ({
                             medicalSpecialtyId: record.primaryMedicalSpecialtyId!,
@@ -386,7 +386,7 @@ export class RequestingProvider {
     private applySearchResult(
         result: QueryableResult<ProviderSearchResult>
     ): void {
-        this.results.set(result.records);
+        this.results.set(result.results);
         this.totalCount.set(result.totalCount);
         this.pageOffset.set(result.offset);
         this.pageSize.set(result.pageSize);

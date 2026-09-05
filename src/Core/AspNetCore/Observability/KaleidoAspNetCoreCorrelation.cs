@@ -3,21 +3,6 @@ using Microsoft.AspNetCore.Http;
 
 namespace Kaleido.AspNetCore.Observability;
 
-public static class KaleidoAspNetCoreHeaders
-{
-    public const string RequestId =
-        "X-Kaleido-Request-Id";
-
-    public const string ProcessId =
-        "X-Kaleido-Process-Id";
-
-    public const string ProcessorInstanceId =
-        "X-Kaleido-Processor-Instance-Id";
-
-    public const string SourceProcessor =
-        "X-Kaleido-Source-Processor";
-
-}
 
 internal static class KaleidoAspNetCoreCorrelation
 {
@@ -31,22 +16,22 @@ internal static class KaleidoAspNetCoreCorrelation
             RequestId =
                 ReadString(
                     context,
-                    KaleidoAspNetCoreHeaders.RequestId),
+                    KaleidoCorrelationHeaders.RequestId),
 
             ProcessId =
                 ReadGuid(
                     context,
-                    KaleidoAspNetCoreHeaders.ProcessId),
+                    KaleidoCorrelationHeaders.ProcessId),
 
             ProcessorInstanceId =
                 ReadGuid(
                     context,
-                    KaleidoAspNetCoreHeaders.ProcessorInstanceId),
+                    KaleidoCorrelationHeaders.ProcessorInstanceId),
 
             SourceProcessorName =
                 ReadString(
                     context,
-                    KaleidoAspNetCoreHeaders.SourceProcessor)
+                    KaleidoCorrelationHeaders.SourceProcessor)
         };
     }
 

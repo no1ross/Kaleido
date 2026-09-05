@@ -103,5 +103,5 @@ public record QueryPage(
 
 #endregion
 
-public sealed record QueryResult<TRecord>(int TotalCount, int Offset, int PageSize, IReadOnlyCollection<TRecord> Records)
-    where TRecord : class;
+public sealed record QueryResult<TView>(int TotalCount, int Offset, int PageSize, IReadOnlyCollection<TView> Results)
+    where TView : class;

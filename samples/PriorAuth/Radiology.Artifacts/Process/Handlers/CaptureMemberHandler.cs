@@ -1,4 +1,5 @@
 using Kaleido.Process.Execution;
+using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Kaleido.Samples.PriorAuth.Radiology;
@@ -96,7 +97,7 @@ public sealed class CaptureMemberHandler(
 
             return ProcessStepHandlerResult.Success();
         }
-        catch (QueryableClientException ex)
+        catch (KaleidoQueryableClientException ex)
         {
             return ProcessStepHandlerResult.Failure(
                 RadiologyProcessMessages.QueryableRequestFailed(

@@ -1,4 +1,5 @@
 using Kaleido.Process.Execution;
+using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Samples.PriorAuth.Configuration;
 using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -175,7 +176,7 @@ public sealed class CaptureRequestedServiceHandler(
                     });
             }
         }
-        catch (QueryableClientException ex)
+        catch (KaleidoQueryableClientException ex)
         {
             return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
                 new CaptureRequestedServiceResponse(),

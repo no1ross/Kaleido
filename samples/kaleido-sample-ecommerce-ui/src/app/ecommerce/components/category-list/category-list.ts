@@ -126,7 +126,7 @@ export class CategoryList implements OnInit, OnDestroy {
               next: result => {
 
                   this.categories.set(
-                      result.records);
+                      result.results);
 
                   this.isLoading.set(false);
               },

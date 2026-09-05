@@ -52,7 +52,7 @@ export class BasicQueryTest implements OnInit {
                 request)
             .subscribe({
                 next: result => {
-                    this.products.set(result.records);
+                    this.products.set(result.results);
                     this.totalCount.set(result.totalCount);
                     this.isLoading.set(false);
                 },

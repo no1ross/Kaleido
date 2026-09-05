@@ -40,7 +40,7 @@ public sealed class ReferenceDataClient(
                     .GetAwaiter()
                     .GetResult();
 
-            return result?.Records
+            return result?.Results
                 .SelectMany(x => x.NetworkIds)
                 .ToHashSet()
                 ?? new HashSet<Guid>();

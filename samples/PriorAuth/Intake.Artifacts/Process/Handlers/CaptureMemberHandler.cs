@@ -1,4 +1,5 @@
 using Kaleido.Process.Execution;
+using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 using Kaleido.Samples.PriorAuth.Intake.Process.Messages;
@@ -97,7 +98,7 @@ public sealed class CaptureMemberHandler(
                     StepName = nameof(CaptureRequestedServiceStep).Replace("Step", string.Empty)
                 });
         }
-        catch (QueryableClientException ex)
+        catch (KaleidoQueryableClientException ex)
         {
             return ProcessStepHandlerResult.Failure(
                 IntakeProcessMessages.QueryableRequestFailed(

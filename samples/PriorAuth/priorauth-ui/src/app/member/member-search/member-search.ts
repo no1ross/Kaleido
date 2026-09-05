@@ -139,7 +139,7 @@ export class MemberSearch {
             .queryView<MemberSearchResult>(this.searchViewName, this.request)
             .subscribe({
                 next: result => {
-                    this.results.set(result.records);
+                    this.results.set(result.results);
                     this.isLoading.set(false);
                 },
                 error: error => {
@@ -231,7 +231,7 @@ export class MemberSearch {
                                 }))
                     }).subscribe({
                         next: result => {
-                            this.selectedMemberDetails.set(result.details.records[0]);
+                            this.selectedMemberDetails.set(result.details.results[0]);
                             this.isLoadingDetails.set(false);
                         },
                         error: error => {
@@ -285,7 +285,7 @@ export class MemberSearch {
             .subscribe({
                 next: result => {
                     this.stateOptions.set(
-                        result.records
+                        result.results
                             .filter(record => record.isActive)
                             .sort((left, right) => left.name.localeCompare(right.name)));
                     this.isLoadingStates.set(false);

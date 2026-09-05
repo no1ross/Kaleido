@@ -1,6 +1,6 @@
 namespace Kaleido.Samples.PriorAuth.ProviderSearch.Models;
 
-public sealed record QueryableResult<TRecord>
+public sealed record QueryableResult<TView>
 {
-    public IReadOnlyCollection<TRecord> Records { get; init; } = [];
+    public IReadOnlyCollection<TView> Results { get; init; } = [];
 }

@@ -68,28 +68,6 @@ builder.Services.AddHttpClient("ReferenceData", client =>
         ?? "https://localhost:8441");
 });
 
-builder.Services.AddHttpClient("MemberService", client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["Services:MemberService:BaseUrl"]
-        ?? "https://localhost:8444");
-});
-
-builder.Services.AddHttpClient("CodeSet", client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["Services:CodeSet:BaseUrl"]
-        ?? "https://localhost:8442");
-});
-
-builder.Services.AddHttpClient("Configuration", client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["Services:Configuration:BaseUrl"]
-        ?? "https://localhost:8447");
-});
-
-builder.Services.AddScoped<QueryableHttpClient>();
 builder.Services.AddScoped<MemberDetailsClient>();
 builder.Services.AddScoped<ProcedureCodeClient>();
 builder.Services.AddScoped<ProcedureModalityClient>();
@@ -129,7 +107,19 @@ builder.Services.AddKaleido()
         .AddQueryableAspNetCore(o =>
         {
             o.RoutePrefix = "intake";
-        });
+        })
+    .AddQueryableClient(
+        "MemberService",
+        builder.Configuration["Services:MemberService:BaseUrl"]
+            ?? "https://localhost:8444")
+    .AddQueryableClient(
+        "CodeSet",
+        builder.Configuration["Services:CodeSet:BaseUrl"]
+            ?? "https://localhost:8442")
+    .AddQueryableClient(
+        "Configuration",
+        builder.Configuration["Services:Configuration:BaseUrl"]
+            ?? "https://localhost:8447");
 
 var app = builder.Build();
 

@@ -5,11 +5,11 @@ using System.Reflection;
 
 namespace Kaleido.Queryable.Runtime;
 
-internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRecord>
-    where TRecord : class
+internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplier<TQueryContext>
+    where TQueryContext : class
 {
-    public IQueryable<TRecord> ApplyFilter(
-        IQueryable<TRecord> query,
+    public IQueryable<TQueryContext> ApplyFilter(
+        IQueryable<TQueryContext> query,
         CompiledFilterExpression? filter)
     {
         if (filter is null)
@@ -19,7 +19,7 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
 
         var parameter =
             Expression.Parameter(
-                typeof(TRecord),
+                typeof(TQueryContext),
                 "x");
 
         var body =
@@ -28,13 +28,13 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
                 filter);
 
         return query.Where(
-            Expression.Lambda<Func<TRecord, bool>>(
+            Expression.Lambda<Func<TQueryContext, bool>>(
                 body,
                 parameter));
     }
 
-    public IQueryable<TRecord> ApplySearch(
-        IQueryable<TRecord> query,
+    public IQueryable<TQueryContext> ApplySearch(
+        IQueryable<TQueryContext> query,
         CompiledSearch? search)
     {
         if (search is null)
@@ -44,7 +44,7 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
 
         var parameter =
             Expression.Parameter(
-                typeof(TRecord),
+                typeof(TQueryContext),
                 "x");
 
         var body =
@@ -53,13 +53,13 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
                 search);
 
         return query.Where(
-            Expression.Lambda<Func<TRecord, bool>>(
+            Expression.Lambda<Func<TQueryContext, bool>>(
                 body,
                 parameter));
     }
 
-    public IQueryable<TRecord> ApplySort(
-        IQueryable<TRecord> query,
+    public IQueryable<TQueryContext> ApplySort(
+        IQueryable<TQueryContext> query,
         IReadOnlyList<CompiledSort> sort)
     {
         var ordered =
@@ -389,14 +389,14 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
             : expression;
     }
 
-    private static IQueryable<TRecord> ApplySortItem(
-        IQueryable<TRecord> query,
+    private static IQueryable<TQueryContext> ApplySortItem(
+        IQueryable<TQueryContext> query,
         CompiledSort sort,
         bool thenBy)
     {
         var parameter =
             Expression.Parameter(
-                typeof(TRecord),
+                typeof(TQueryContext),
                 "x");
 
         var member =
@@ -435,10 +435,10 @@ internal sealed class CompiledQueryApplier<TRecord> : ICompiledQueryApplier<TRec
                     m.Name == methodName &&
                     m.GetParameters().Length == 2)
                 .MakeGenericMethod(
-                    typeof(TRecord),
+                    typeof(TQueryContext),
                     member.Type);
 
-        return (IQueryable<TRecord>)
+        return (IQueryable<TQueryContext>)
             method.Invoke(
                 null,
                 new object[] { query, lambda })!;

@@ -58,7 +58,7 @@ public sealed class QueryContextEngineTests
         var result = await engine.ExecuteAsync(request, registration, viewRegistration);
 
         Assert.Equal(1, result.TotalCount);
-        Assert.Single(result.Records);
+        Assert.Single(result.Results);
         validator.Verify(x => x.Validate(request, registration, viewRegistration), Times.Once);
         executor.Verify(x => x.ApplyPage(viewQuery, compiled.Page), Times.Once);
     }
@@ -152,10 +152,10 @@ public sealed class QueryContextEngineTests
                     IsDirectQuery = details.IsDirectQuery,
                     Request = request,
                     TotalCount = result.TotalCount,
-                    ReturnedCount = result.Records.Count,
+                    ReturnedCount = result.Results.Count,
                     PageSize = result.PageSize,
                     Offset = result.Offset,
-                    Records = result.Records.Cast<object?>().ToArray(),
+                    Records = result.Results.Cast<object?>().ToArray(),
                     SearchText = request.Query?.SearchText,
                     SortCount = request.Query?.Sort?.Count ?? 0,
                     FilterProvided = request.Query?.Filter is not null,

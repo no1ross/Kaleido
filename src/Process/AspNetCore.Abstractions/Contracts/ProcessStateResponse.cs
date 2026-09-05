@@ -1,4 +1,4 @@
-﻿namespace Kaleido.Process.AspNetCore.Contracts;
+namespace Kaleido.Process.AspNetCore.Contracts;
 
 public sealed record ProcessStateResponse
 {

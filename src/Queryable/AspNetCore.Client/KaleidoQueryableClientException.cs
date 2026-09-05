@@ -1,25 +1,25 @@
-using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
+using Kaleido.Queryable.AspNetCore.Contracts;
 using System.Net;
 
-namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
+namespace Kaleido.Queryable.AspNetCore.Client;
 
-public sealed class QueryableClientException : Exception
+public sealed class KaleidoQueryableClientException : Exception
 {
-    public QueryableClientException(
+    public KaleidoQueryableClientException(
         string message,
         HttpStatusCode statusCode,
-        IReadOnlyList<QueryableError>? errors = null)
+        IReadOnlyList<QueryError>? errors = null)
         : base(message)
     {
         StatusCode = statusCode;
         Errors = errors ?? [];
     }
 
-    public QueryableClientException(
+    public KaleidoQueryableClientException(
         string message,
         HttpStatusCode statusCode,
         Exception innerException,
-        IReadOnlyList<QueryableError>? errors = null)
+        IReadOnlyList<QueryError>? errors = null)
         : base(message, innerException)
     {
         StatusCode = statusCode;
@@ -28,5 +28,5 @@ public sealed class QueryableClientException : Exception
 
     public HttpStatusCode StatusCode { get; }
 
-    public IReadOnlyList<QueryableError> Errors { get; }
+    public IReadOnlyList<QueryError> Errors { get; }
 }

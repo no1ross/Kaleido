@@ -87,7 +87,7 @@ export class NavBar
                 next: result => {
 
                     this.customers.set(
-                        result.records);
+                        result.results);
                 }
             });
     }
@@ -115,12 +115,12 @@ export class NavBar
                 next: result => {
 
                     this.itemCount.set(
-                        result.records.length > 0
-                            ? result.records[0].itemCount
+                        result.results.length > 0
+                            ? result.results[0].itemCount
                             : 0);
 
                     const recoveredProcessId =
-                        result.records[0].processId;
+                        result.results[0].processId;
 
                     if (
                         recoveredProcessId &&

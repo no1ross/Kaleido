@@ -63,7 +63,7 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
 
             observation.Materialized(
                 result.TotalCount,
-                result.Records.Count,
+                result.Results.Count,
                 result.PageSize,
                 result.Offset);
 

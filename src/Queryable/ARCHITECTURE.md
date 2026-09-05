@@ -449,7 +449,7 @@ Paging defaults are resolved using:
 Page size is capped by the metadata max size.
 
 ### Query application
-[`CompiledQueryApplier<TRecord>`](./Queryable/Runtime/CompiledQueryApplier.cs) translates compiled query contracts into LINQ expressions.
+[`CompiledQueryApplier<TQueryContext>`](./Queryable/Runtime/CompiledQueryApplier.cs) translates compiled query contracts into LINQ expressions.
 
 It applies:
 - filter

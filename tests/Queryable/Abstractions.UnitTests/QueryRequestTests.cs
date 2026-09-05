@@ -56,7 +56,7 @@ public sealed class QueryRequestTests
         Assert.Equal(2, result.TotalCount);
         Assert.Equal(3, result.Offset);
         Assert.Equal(4, result.PageSize);
-        Assert.Same(record, result.Records.Single());
+        Assert.Same(record, result.Results.Single());
     }
 
     private sealed class TestParameters

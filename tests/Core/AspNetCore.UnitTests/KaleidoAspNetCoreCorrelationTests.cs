@@ -1,4 +1,5 @@
 using Kaleido.AspNetCore.Observability;
+using Kaleido.Observability;
 using Microsoft.AspNetCore.Http;
 
 namespace Kaleido.AspNetCore.UnitTests;
@@ -15,10 +16,10 @@ public sealed class KaleidoAspNetCoreCorrelationTests
     [Fact]
     public void HeaderConstants_UseExpectedNames()
     {
-        Assert.Equal("X-Kaleido-Request-Id", KaleidoAspNetCoreHeaders.RequestId);
-        Assert.Equal("X-Kaleido-Process-Id", KaleidoAspNetCoreHeaders.ProcessId);
-        Assert.Equal("X-Kaleido-Processor-Instance-Id", KaleidoAspNetCoreHeaders.ProcessorInstanceId);
-        Assert.Equal("X-Kaleido-Source-Processor", KaleidoAspNetCoreHeaders.SourceProcessor);
+        Assert.Equal("X-Kaleido-Request-Id", KaleidoCorrelationHeaders.RequestId);
+        Assert.Equal("X-Kaleido-Process-Id", KaleidoCorrelationHeaders.ProcessId);
+        Assert.Equal("X-Kaleido-Processor-Instance-Id", KaleidoCorrelationHeaders.ProcessorInstanceId);
+        Assert.Equal("X-Kaleido-Source-Processor", KaleidoCorrelationHeaders.SourceProcessor);
     }
 
     [Fact]
@@ -28,10 +29,10 @@ public sealed class KaleidoAspNetCoreCorrelationTests
         var processorInstanceId = Guid.NewGuid();
 
         var context = new DefaultHttpContext();
-        context.Request.Headers[KaleidoAspNetCoreHeaders.RequestId] = "REQ-001";
-        context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessId] = processId.ToString();
-        context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessorInstanceId] = processorInstanceId.ToString();
-        context.Request.Headers[KaleidoAspNetCoreHeaders.SourceProcessor] = "intake";
+        context.Request.Headers[KaleidoCorrelationHeaders.RequestId] = "REQ-001";
+        context.Request.Headers[KaleidoCorrelationHeaders.ProcessId] = processId.ToString();
+        context.Request.Headers[KaleidoCorrelationHeaders.ProcessorInstanceId] = processorInstanceId.ToString();
+        context.Request.Headers[KaleidoCorrelationHeaders.SourceProcessor] = "intake";
 
         var result = KaleidoAspNetCoreCorrelation.Create(context);
 
@@ -45,10 +46,10 @@ public sealed class KaleidoAspNetCoreCorrelationTests
     public void Create_WhenHeadersAreBlank_ReturnsNullValues()
     {
         var context = new DefaultHttpContext();
-        context.Request.Headers[KaleidoAspNetCoreHeaders.RequestId] = " ";
-        context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessId] = " ";
-        context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessorInstanceId] = " ";
-        context.Request.Headers[KaleidoAspNetCoreHeaders.SourceProcessor] = " ";
+        context.Request.Headers[KaleidoCorrelationHeaders.RequestId] = " ";
+        context.Request.Headers[KaleidoCorrelationHeaders.ProcessId] = " ";
+        context.Request.Headers[KaleidoCorrelationHeaders.ProcessorInstanceId] = " ";
+        context.Request.Headers[KaleidoCorrelationHeaders.SourceProcessor] = " ";
 
         var result = KaleidoAspNetCoreCorrelation.Create(context);
 
@@ -62,13 +63,13 @@ public sealed class KaleidoAspNetCoreCorrelationTests
     public void Create_WhenGuidHeaderIsInvalid_ThrowsBadHttpRequestException()
     {
         var context = new DefaultHttpContext();
-        context.Request.Headers[KaleidoAspNetCoreHeaders.ProcessId] = "not-a-guid";
+        context.Request.Headers[KaleidoCorrelationHeaders.ProcessId] = "not-a-guid";
 
         var exception = Assert.Throws<BadHttpRequestException>(() =>
             KaleidoAspNetCoreCorrelation.Create(context));
 
         Assert.Contains(
-            KaleidoAspNetCoreHeaders.ProcessId,
+            KaleidoCorrelationHeaders.ProcessId,
             exception.Message);
     }
 }

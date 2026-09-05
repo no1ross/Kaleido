@@ -1,3 +1,4 @@
+using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Samples.PriorAuth.Configuration;
 using Kaleido.Samples.PriorAuth.Configuration.Process.Models;
@@ -10,13 +11,13 @@ using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 
 public sealed class QuestionnaireDefinitionClient(
-    QueryableHttpClient queryableHttpClient,
+    IKaleidoQueryableClientFactory queryableClientFactory,
     IConfiguration configuration,
     RadiologyDbContext dbContext)
 {
-    private readonly string questionnaireDefinitionViewPath =
-        configuration["Services:Configuration:QuestionnaireDefinitionViewPath"]
-        ?? "/configuration/queryable/questionnaire-definitions/questionnaire-definition/query";
+    private readonly string questionnaireDefinitionView =
+        configuration["Services:Configuration:QuestionnaireDefinitionView"]
+        ?? "QuestionnaireDefinition";
 
     public async Task<CaptureRequestedServiceResponse?> ResolveAsync(
         Guid processId,
@@ -32,10 +33,11 @@ public sealed class QuestionnaireDefinitionClient(
                 .Select(x => x.Member)
                 .SingleOrDefaultAsync(cancellationToken);
 
-        var questionnaire =
-            await queryableHttpClient.QueryAsync<QuestionnaireDefinitionParameters, QuestionnaireDefinitionRecord, QuestionnaireDefinitionRecord?>(
-                "Configuration",
-                questionnaireDefinitionViewPath,
+        var result = await queryableClientFactory
+            .GetClient("Configuration")
+            .QueryViewAsync<QuestionnaireDefinitionParameters, QuestionnaireDefinitionRecord>(
+                "QuestionnaireDefinitions",
+                questionnaireDefinitionView,
                 new QueryApiRequest<QuestionnaireDefinitionParameters>
                 {
                     Parameters = new QuestionnaireDefinitionParameters
@@ -47,8 +49,9 @@ public sealed class QuestionnaireDefinitionClient(
                         ProcedureCodeValue = procedureCodeValue
                     }
                 },
-                result => result.Records.SingleOrDefault(),
                 cancellationToken);
+
+        var questionnaire = result.Results.SingleOrDefault();
 
         if (questionnaire is null)
         {

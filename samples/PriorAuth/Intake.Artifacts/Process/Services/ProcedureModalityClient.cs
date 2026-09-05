@@ -1,18 +1,20 @@
 using Kaleido.Queryable;
+using Kaleido.Queryable.AspNetCore.Client;
+using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Query;
-using Kaleido.Samples.PriorAuth.Configuration;
+using Kaleido.Samples.PriorAuth.CodeSet;
 using Kaleido.Samples.PriorAuth.Intake.Process.Models;
 using Microsoft.Extensions.Configuration;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Services;
 
 public sealed class ProcedureModalityClient(
-    QueryableHttpClient queryableHttpClient,
+    IKaleidoQueryableClientFactory queryableClientFactory,
     IConfiguration configuration)
 {
-    private readonly string modalityRuleQueryPath =
-        configuration["Services:Configuration:ProcedureModalityRuleQueryPath"]
-        ?? "/configuration/queryable/procedure-modality-rules/query";
+    private readonly string modalityRuleView =
+        configuration["Services:Configuration:ProcedureModalityRuleView"]
+        ?? "ProcedureModalityRules";
 
     public async Task<ProcedureModality> DetermineModalityAsync(
         string codeValue,
@@ -24,24 +26,26 @@ public sealed class ProcedureModalityClient(
             return ProcedureModality.Unknown;
         }
 
-        var rule =
-            (await queryableHttpClient.QueryAsync<ProcedureModalityRuleRecord, QueryResult<ProcedureModalityRuleRecord>>(
-                "Configuration",
-                modalityRuleQueryPath,
-                new QueryRequest(
-                new QueryBody(
-                    Filter: QueryFilterNode.CreateCondition(
-                        "CodeSystem",
-                        FilterOperator.Equals,
-                        codeSystem.ToString()),
-                    Page: new QueryPage(
-                        Size: 25,
-                        Offset: 0))),
-                result => result,
-                cancellationToken))
-            .Records.SingleOrDefault(x =>
-                numericCode >= x.CodeRangeStart &&
-                numericCode <= x.CodeRangeEnd);
+        var result = await queryableClientFactory
+            .GetClient("Configuration")
+            .QueryContextAsync<ProcedureModalityRuleRecord>(
+                "ProcedureModalityRules",
+                new QueryApiRequest
+                {
+                    Query = new QueryBody(
+                        Filter: QueryFilterNode.CreateCondition(
+                            "CodeSystem",
+                            FilterOperator.Equals,
+                            codeSystem.ToString()),
+                        Page: new QueryPage(
+                            Size: 25,
+                            Offset: 0))
+                },
+                cancellationToken);
+
+        var rule = result.Results.SingleOrDefault(x =>
+            numericCode >= x.CodeRangeStart &&
+            numericCode <= x.CodeRangeEnd);
 
         return rule?.Modality ?? ProcedureModality.Unknown;
     }

@@ -1,3 +1,4 @@
+using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 using Microsoft.Extensions.Configuration;
@@ -5,30 +6,33 @@ using Microsoft.Extensions.Configuration;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 
 public sealed class MemberDetailsClient(
-    QueryableHttpClient queryableHttpClient,
+    IKaleidoQueryableClientFactory queryableClientFactory,
     IConfiguration configuration)
 {
-    private readonly string memberDetailsQueryPath =
-        configuration["Services:MemberService:MemberDetailsQueryPath"]
-        ?? "/member/queryable/members/member-details/query";
+    private readonly string memberDetailsView =
+        configuration["Services:MemberService:MemberDetailsView"]
+        ?? "MemberDetails";
 
     public async Task<MemberDetailsRecord?> GetMemberDetailsAsync(
         Guid memberId,
         Guid memberEnrollmentId,
         CancellationToken cancellationToken = default)
     {
-        return await queryableHttpClient.QueryAsync<MemberDetailsQueryParameters, MemberDetailsRecord, MemberDetailsRecord?>(
-            "MemberService",
-            memberDetailsQueryPath,
-            new QueryApiRequest<MemberDetailsQueryParameters>
-            {
-                Parameters = new MemberDetailsQueryParameters
+        var result = await queryableClientFactory
+            .GetClient("MemberService")
+            .QueryViewAsync<MemberDetailsQueryParameters, MemberDetailsRecord>(
+                "Members",
+                memberDetailsView,
+                new QueryApiRequest<MemberDetailsQueryParameters>
                 {
-                    MemberId = memberId,
-                    MemberEnrollmentId = memberEnrollmentId
-                }
-            },
-            result => result.Records.SingleOrDefault(),
-            cancellationToken);
+                    Parameters = new MemberDetailsQueryParameters
+                    {
+                        MemberId = memberId,
+                        MemberEnrollmentId = memberEnrollmentId
+                    }
+                },
+                cancellationToken);
+
+        return result.Results.SingleOrDefault();
     }
 }

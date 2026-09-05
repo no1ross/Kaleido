@@ -67,35 +67,6 @@ builder.Services.AddHttpClient("ReferenceData", client =>
         ?? "https://localhost:8441");
 });
 
-builder.Services.AddHttpClient("MemberService", client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["Services:MemberService:BaseUrl"]
-        ?? "https://localhost:8444");
-});
-
-builder.Services.AddHttpClient("CodeSet", client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["Services:CodeSet:BaseUrl"]
-        ?? "https://localhost:8442");
-});
-
-builder.Services.AddHttpClient("Configuration", client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["Services:Configuration:BaseUrl"]
-        ?? "https://localhost:8447");
-});
-
-builder.Services.AddHttpClient("ProviderSearch", client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["Services:ProviderSearch:BaseUrl"]
-        ?? "https://localhost:8443");
-});
-
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.QueryableHttpClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.MemberDetailsClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.ProcedureCodeClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.ProcedureModalityClient>();
@@ -138,7 +109,23 @@ builder.Services.AddKaleido()
         .AddQueryableAspNetCore(o =>
         {
             o.RoutePrefix = "radiology";
-        });
+        })
+    .AddQueryableClient(
+        "MemberService",
+        builder.Configuration["Services:MemberService:BaseUrl"]
+            ?? "https://localhost:8444")
+    .AddQueryableClient(
+        "CodeSet",
+        builder.Configuration["Services:CodeSet:BaseUrl"]
+            ?? "https://localhost:8442")
+    .AddQueryableClient(
+        "Configuration",
+        builder.Configuration["Services:Configuration:BaseUrl"]
+            ?? "https://localhost:8447")
+    .AddQueryableClient(
+        "ProviderSearch",
+        builder.Configuration["Services:ProviderSearch:BaseUrl"]
+            ?? "https://localhost:8443");
 
 var app = builder.Build();
 

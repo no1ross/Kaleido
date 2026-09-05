@@ -96,6 +96,8 @@
     <File Path="src/Process/ARCHITECTURE.md" />
     <File Path="src/Process/README.md" />
     <Project Path="src/Process/Abstractions/Kaleido.Process.Abstractions.csproj" />
+    <Project Path="src/Process/AspNetCore.Abstractions/Kaleido.Process.AspNetCore.Abstractions.csproj" />
+    <Project Path="src/Process/AspNetCore.Client/Kaleido.Process.AspNetCore.Client.csproj" />
     <Project Path="src/Process/AspNetCore/Kaleido.Process.AspNetCore.csproj" />
     <Project Path="src/Process/Process/Kaleido.Process.csproj" />
   </Folder>
@@ -108,6 +110,7 @@
     <File Path="src/Queryable/README.md" />
     <Project Path="src/Queryable/Abstractions/Kaleido.Queryable.Abstractions.csproj" />
     <Project Path="src/Queryable/AspNetCore.Abstractions/Kaleido.Queryable.AspNetCore.Abstractions.csproj" />
+    <Project Path="src/Queryable/AspNetCore.Client/Kaleido.Queryable.AspNetCore.Client.csproj" />
     <Project Path="src/Queryable/AspNetCore/Kaleido.Queryable.AspNetCore.csproj" />
     <Project Path="src/Queryable/Queryable/Kaleido.Queryable.csproj" />
   </Folder>

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<Import Project="../../../build/packages.props" />
+	<PropertyGroup>
+	  <RootNamespace>Kaleido.Process.AspNetCore</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\Abstractions\Kaleido.Process.Abstractions.csproj" />
+	</ItemGroup>
+
+</Project>

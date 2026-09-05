@@ -139,7 +139,7 @@ export class RequestedServicesSummary {
             .queryContext<RequestedServiceSummaryResult>('requested-services', request)
             .subscribe({
                 next: result => {
-                    this.results.set(result.records);
+                    this.results.set(result.results);
                     this.isLoading.set(false);
                 },
                 error: error => {

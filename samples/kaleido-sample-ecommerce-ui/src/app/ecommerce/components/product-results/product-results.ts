@@ -113,7 +113,7 @@ export class ProductResults implements OnInit, OnDestroy {
                 next: result => {
 
                     this.products.set(
-                        result.records);
+                        result.results);
 
                     this.isLoading.set(
                         false);

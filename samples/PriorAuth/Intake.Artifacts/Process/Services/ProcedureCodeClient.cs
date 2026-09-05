@@ -1,4 +1,6 @@
 using Kaleido.Queryable;
+using Kaleido.Queryable.AspNetCore.Client;
+using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Query;
 using Kaleido.Samples.PriorAuth.CodeSet;
 using Kaleido.Samples.PriorAuth.Intake.Process.Models;
@@ -7,33 +9,37 @@ using Microsoft.Extensions.Configuration;
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Services;
 
 public sealed class ProcedureCodeClient(
-    QueryableHttpClient queryableHttpClient,
+    IKaleidoQueryableClientFactory queryableClientFactory,
     IConfiguration configuration)
 {
-    private readonly string procedureCodeQueryPath =
-        configuration["Services:CodeSet:ProcedureCodeQueryPath"]
-        ?? "/code-set/queryable/procedure-codes/query";
+    private readonly string procedureCodeView =
+        configuration["Services:CodeSet:ProcedureCodeView"]
+        ?? "ProcedureCodes";
 
     public async Task<ProcedureCodeRecord?> GetProcedureCodeAsync(
         string codeValue,
         ProcedureCodeSystem codeSystem,
         CancellationToken cancellationToken = default)
     {
-        return await queryableHttpClient.QueryAsync<ProcedureCodeRecord, ProcedureCodeRecord?>(
-            "CodeSet",
-            procedureCodeQueryPath,
-            new QueryRequest(
-                new QueryBody(
-                    SearchText: codeValue,
-                    Filter: QueryFilterNode.CreateCondition(
-                        "CodeSystem",
-                        FilterOperator.Equals,
-                        codeSystem.ToString()),
-                    Page: new QueryPage(
-                        Size: 25,
-                        Offset: 0))),
-            result => result.Records.SingleOrDefault(
-                x => string.Equals(x.CodeValue, codeValue, StringComparison.OrdinalIgnoreCase)),
-            cancellationToken);
+        var result = await queryableClientFactory
+            .GetClient("CodeSet")
+            .QueryContextAsync<ProcedureCodeRecord>(
+                "ProcedureCodes",
+                new QueryApiRequest
+                {
+                    Query = new QueryBody(
+                        SearchText: codeValue,
+                        Filter: QueryFilterNode.CreateCondition(
+                            "CodeSystem",
+                            FilterOperator.Equals,
+                            codeSystem.ToString()),
+                        Page: new QueryPage(
+                            Size: 25,
+                            Offset: 0))
+                },
+                cancellationToken);
+
+        return result.Results.SingleOrDefault(
+            x => string.Equals(x.CodeValue, codeValue, StringComparison.OrdinalIgnoreCase));
     }
 }

@@ -191,7 +191,7 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
     }
 
     private static JsonElement[] GetRecords(JsonElement root) =>
-        root.GetProperty("records").EnumerateArray().Select(x => x.Clone()).ToArray();
+        root.GetProperty("results").EnumerateArray().Select(x => x.Clone()).ToArray();
 
     private static int GetTotalCount(JsonElement root) => root.GetProperty("totalCount").GetInt32();
     private static int GetOffset(JsonElement root) => root.GetProperty("offset").GetInt32();

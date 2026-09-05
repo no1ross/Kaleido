@@ -130,7 +130,7 @@ export class OrderReview
                 next: result => {
 
                     this.items.set(
-                        result.records);
+                        result.results);
 
                     this.errorMessage.set(
                         undefined);

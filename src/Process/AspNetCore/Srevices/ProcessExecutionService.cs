@@ -1,4 +1,4 @@
-﻿using Kaleido.AspNetCore.Observability;
+﻿using Kaleido.Observability;
 using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Http;
@@ -70,7 +70,7 @@ public class ProcessExecutionService : IProcessExecutionService
         WriteResponseHeaders(
             processResult.ProcessId);
 
-        return ProcessExecutionResponse.Create(
+        return ProcessExecutionResponseFactory.Create(
             processResult,
             _registry,
             _routeOptions);
@@ -104,7 +104,7 @@ public class ProcessExecutionService : IProcessExecutionService
         WriteResponseHeaders(
             processResult.ProcessId);
 
-        return StepExecutionResponse<TResponse>.Create(
+        return StepExecutionResponseFactory.Create<TResponse>(
             processResult,
             stepResult,
             _registry,
@@ -138,7 +138,7 @@ public class ProcessExecutionService : IProcessExecutionService
         WriteResponseHeaders(
             processResult.ProcessId);
 
-        return StepExecutionResponse.Create(
+        return StepExecutionResponseFactory.Create(
             processResult,
             stepResult,
             _registry,
@@ -159,13 +159,13 @@ public class ProcessExecutionService : IProcessExecutionService
         var registration =
             _processorRegistry.Registrations.Single();
 
-        headers[KaleidoAspNetCoreHeaders.ProcessId] =
+        headers[KaleidoCorrelationHeaders.ProcessId] =
             processId.ToString();
 
-        headers[KaleidoAspNetCoreHeaders.ProcessorInstanceId] =
+        headers[KaleidoCorrelationHeaders.ProcessorInstanceId] =
             registration.InstanceId.ToString();
 
-        headers[KaleidoAspNetCoreHeaders.SourceProcessor] =
+        headers[KaleidoCorrelationHeaders.SourceProcessor] =
             registration.Name;
     }
 }

@@ -3,34 +3,12 @@ using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.AspNetCore.Contracts;
 
-public sealed record ProcessExecutionResponse
+// Wire shapes (ProcessExecutionResponse, StepExecutionResponse, etc.)
+// are defined in Kaleido.Process.AspNetCore.Abstractions.
+// Factory methods and mapping logic that depend on server-side types live here.
+
+public static class ProcessExecutionResponseFactory
 {
-    public required Guid ProcessId
-    {
-        get;
-        init;
-    }
-
-    public ProcessStepInfo? RequiredStep
-    {
-        get;
-        init;
-    }
-
-    public IReadOnlyCollection<ProcessStepInfo> AvailableSteps
-    {
-        get;
-        init;
-    }
-        = [];
-
-    public IReadOnlyCollection<ProcessExecutionStepResponse> Results
-    {
-        get;
-        init;
-    }
-        = [];
-
     public static ProcessExecutionResponse Create(
         ProcessorProcessResult processResult,
         IProcessStepRegistry registry,
@@ -69,33 +47,14 @@ public sealed record ProcessExecutionResponse
                         x.RuntimeMessages.Count > 0 ||
                         x.BusinessMessages.Count > 0)
                     .Select(x =>
-                        ProcessExecutionStepResponse.Create(x))
+                        ProcessExecutionStepResponseFactory.Create(x))
                     .ToArray()
         };
     }
 }
 
-public sealed record ProcessExecutionStepResponse
+public static class ProcessExecutionStepResponseFactory
 {
-    public required string StepName
-    {
-        get;
-        init;
-    }
-
-    public IReadOnlyCollection<ProcessMessage> Messages
-    {
-        get;
-        init;
-    }
-        = [];
-
-    public required object Response
-    {
-        get;
-        init;
-    }
-
     public static ProcessExecutionStepResponse Create(
         ProcessorStepResult stepResult)
     {
@@ -110,46 +69,8 @@ public sealed record ProcessExecutionStepResponse
     }
 }
 
-public record StepExecutionResponse
+public static class StepExecutionResponseFactory
 {
-    public required Guid ProcessId
-    {
-        get;
-        init;
-    }
-
-    public required string StepName
-    {
-        get;
-        init;
-    }
-
-    public ProcessStepInfo? RequiredStep
-    {
-        get;
-        init;
-    }
-
-    public StepExecutionOutcome? Outcome
-    {
-        get;
-        init;
-    }
-
-    public IReadOnlyCollection<ProcessStepInfo> AvailableSteps
-    {
-        get;
-        init;
-    }
-        = [];
-
-    public IReadOnlyCollection<ProcessMessage> Messages
-    {
-        get;
-        init;
-    }
-        = [];
-
     public static StepExecutionResponse Create(
         ProcessorProcessResult processResult,
         ProcessorStepResult stepResult,
@@ -158,7 +79,7 @@ public record StepExecutionResponse
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        return new()
+        return new StepExecutionResponse
         {
             ProcessId =
                 processResult.ProcessId,
@@ -190,30 +111,21 @@ public record StepExecutionResponse
                     .ToList()
         };
     }
-}
 
-public sealed record StepExecutionResponse<TResponse> : StepExecutionResponse
-{
-    public TResponse? Result
-    {
-        get;
-        init;
-    }
-
-    new public static StepExecutionResponse<TResponse> Create(
+    public static StepExecutionResponse<TResponse> Create<TResponse>(
         ProcessorProcessResult processResult,
         ProcessorStepResult stepResult,
         IProcessStepRegistry registry,
         ProcessRouteOptions options)
     {
         var response =
-            StepExecutionResponse.Create(
+            Create(
                 processResult,
                 stepResult,
                 registry,
                 options);
 
-        return new()
+        return new StepExecutionResponse<TResponse>
         {
             ProcessId =
                 response.ProcessId,
@@ -329,24 +241,3 @@ internal static class ProcessContractMapper
                         }));
     }
 }
-
-//public sealed record ProcessMessage
-//{
-//    public required MessageType Severity
-//    {
-//        get;
-//        init;
-//    }
-
-//    public required string Message
-//    {
-//        get;
-//        init;
-//    }
-
-//    public required StepProcessingMessageCode Code
-//    {
-//        get;
-//        init;
-//    }
-//}

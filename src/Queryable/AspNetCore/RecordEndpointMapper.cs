@@ -143,11 +143,11 @@
 //                });
 //    }
 
-//    private static void MapTypedQueryEndpoint<TRecord>(
+//    private static void MapTypedQueryEndpoint<TView>(
 //        IEndpointRouteBuilder endpoints,
 //        string route,
 //        RecordRegistration record)
-//        where TRecord : class
+//        where TView : class
 //    {
 //        var recordKey =
 //            record.Metadata.Name;
@@ -165,7 +165,7 @@
 //                            record.Metadata);
 
 //                    var result =
-//                        await catalog.QueryAsync<TRecord>(
+//                        await catalog.QueryAsync<TView>(
 //                            recordKey,
 //                            new QueryRequest(
 //                                Query: query),
@@ -184,15 +184,15 @@
 //                $"Executes an ad hoc query against the '{record.Metadata.DisplayName}' record type.")
 //            .Accepts<QueryApiRequest>(
 //                "application/json")
-//            .Produces<QueryResult<TRecord>>();
+//            .Produces<QueryResult<TView>>();
 //    }
 
-//    private static void MapTypedNamedQueryEndpoint<TRecord>(
+//    private static void MapTypedNamedQueryEndpoint<TView>(
 //        IEndpointRouteBuilder endpoints,
 //        string route,
 //        RecordRegistration record,
 //        NamedQueryRegistration namedQuery)
-//        where TRecord : class
+//        where TView : class
 //    {
 //        var queryName =
 //            namedQuery.Metadata.Name;
@@ -213,7 +213,7 @@
 //                            namedQuery.Metadata.Parameters);
 
 //                    var result =
-//                        await catalog.QueryAsync<TRecord>(
+//                        await catalog.QueryAsync<TView>(
 //                            record.Metadata.Name,
 //                            new QueryRequest(
 //                                NamedQuery: new NamedQuery(
@@ -233,7 +233,7 @@
 //            .WithDescription(namedQuery.Metadata.Description)
 //            .Accepts<NamedQueryApiRequest>(
 //                "application/json")
-//            .Produces<QueryResult<TRecord>>();
+//            .Produces<QueryResult<TView>>();
 //    }
 
 //    private static IReadOnlyDictionary<string, object?> GetParameters(

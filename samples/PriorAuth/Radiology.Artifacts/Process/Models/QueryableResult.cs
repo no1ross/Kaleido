@@ -1,6 +1,6 @@
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 
-//public sealed record QueryableResult<TRecord>
+//public sealed record QueryableResult<TView>
 //{
 //    public int TotalCount { get; init; }
 
@@ -8,5 +8,5 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 
 //    public int PageSize { get; init; }
 
-//    public IReadOnlyCollection<TRecord> Records { get; init; } = [];
+//    public IReadOnlyCollection<TView> Results { get; init; } = [];
 //}

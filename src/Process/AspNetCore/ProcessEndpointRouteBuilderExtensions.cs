@@ -78,7 +78,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                             Processors = registry.Registrations
                                 .OrderBy(x => x.Name)
                                 .Select(x =>
-                                    ProcessorCatalogResponse.FromRegistration(
+                                    ProcessorCatalogResponseFactory.FromRegistration(
                                         x,
                                         options))
                                 .ToArray()
@@ -162,7 +162,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                     Results.Ok(
                         registry.Registrations
                             .Select(x =>
-                                ProcessorRegistryResponse.FromRegistration(
+                                ProcessorRegistryResponseFactory.FromRegistration(
                                     x,
                                     options))
                             .OrderBy(x => x.Name)))
@@ -193,7 +193,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                         registry.Registrations
                             .SelectMany(x => x.Steps)
                             .Select(x =>
-                                ProcessStepResponse.ToSummary(
+                                ProcessStepResponseFactory.ToSummary(
                                     new ProcessorStepSummary
                                     {
                                         Name = x.Name,
@@ -255,7 +255,7 @@ public static class ProcessEndpointRouteBuilderExtensions
         endpoints.MapGet(
                 route,
                 () => Results.Ok(
-                    ProcessStepResponse.FromRegistration(
+                    ProcessStepResponseFactory.FromRegistration(
                         registryStep,
                         options)))
             .WithName(
