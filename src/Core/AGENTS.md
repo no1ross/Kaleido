@@ -143,6 +143,10 @@ Review these carefully before making broad changes:
 - changing correlation fields or header names without treating them as shared contracts
 - assuming exception middleware normalizes every failure shape
 - documenting behavior that the code does not actually implement
+- assuming `IKaleidoCorrelationContextAccessor` is registered with `TryAdd` — it is **not**;
+  `AddKaleido()` always appends a new scoped registration, so a pre-existing registration is silently
+  shadowed. Use `services.Replace(...)` after `AddKaleido()` if you need to substitute the accessor
+  (this matters most in test providers — see `tests/AGENTS.md`).
 
 ## Verification
 Run the smallest relevant verification set for the area you changed.
