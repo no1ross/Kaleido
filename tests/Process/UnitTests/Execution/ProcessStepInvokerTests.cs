@@ -616,7 +616,8 @@ public sealed class ProcessStepInvokerTests
             {
                 StepName = "test-step"
             },
-            []);
+            [],
+            new ProcessorRequest());
     }
 
 }

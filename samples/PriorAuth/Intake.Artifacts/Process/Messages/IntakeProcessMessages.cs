@@ -66,4 +66,13 @@ public static class IntakeProcessMessages
             Type = MessageType.Error,
             Message = message
         };
+
+    public static ProcessMessage DownstreamProcessorRequestFailed(
+        string message) =>
+        new()
+        {
+            Code = "DOWNSTREAM_PROCESSOR_REQUEST_FAILED",
+            Type = MessageType.Error,
+            Message = $"The downstream processor returned an unexpected response: {message}"
+        };
 }

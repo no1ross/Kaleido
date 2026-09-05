@@ -34,6 +34,19 @@
 - Use `npm` for the Angular app
 - Preserve existing service ports and compose service names unless the task requires changing them
 
+## Cross-processor handoff convention
+
+When a step handler resolves a downstream processor (e.g. Intake routing to Radiology), it calls the downstream processor's `/processes/execute` endpoint with the full original payload and the same `ProcessId`, then signals the downstream `RequiredStep` back via `ProcessStepHandlerResult.Success(requiredStep)`.
+
+The handler itself returns no typed response — the downstream processor is the source of truth for its own data.
+
+**Consumer pattern**: When `StepExecutionResponse.RequiredStep.ProcessorName` differs from the processor you just called, call `GET /{routePrefix}/processes/{processId}` on the **target processor** before proceeding. That response will contain:
+- `RequiredStep` — the next step to execute, with its execute URL
+- `AvailableSteps` — other steps available at this point
+- `Results` — per-step result payloads already produced (e.g. questionnaire definitions, MRI info)
+
+This pattern applies uniformly for any cross-processor handoff (Intake → Radiology, Intake → Oncology, etc.). The framework populates all fields; the consumer only needs to know which processor to query.
+
 ## Local ports
 - router: `8080`
 - referencedata: `8081`

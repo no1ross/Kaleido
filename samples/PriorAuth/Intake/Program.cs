@@ -125,6 +125,13 @@ builder.Services.AddKaleido()
         o.Name = "Configuration";
         o.BaseUrl = builder.Configuration["Services:Configuration:BaseUrl"]
             ?? "https://localhost:8447";
+    })
+    .AddProcessClient(o =>
+    {
+        o.Name = "radiology";
+        o.BaseUrl = builder.Configuration["Services:Radiology:BaseUrl"]
+            ?? "http://localhost:8088";
+        o.RoutePrefix = "radiology";
     });
 
 var app = builder.Build();

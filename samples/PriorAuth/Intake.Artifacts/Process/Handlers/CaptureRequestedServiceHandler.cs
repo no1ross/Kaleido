@@ -1,14 +1,16 @@
+using Kaleido.Process.AspNetCore.Client;
+using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.Execution;
 using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Samples.PriorAuth.Configuration;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 using Kaleido.Samples.PriorAuth.Intake.Process.Messages;
-using Kaleido.Samples.PriorAuth.Intake.Process.Models;
 using Kaleido.Samples.PriorAuth.Intake.Process.Services;
 using Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using System.Text.Json;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Handlers;
 
@@ -16,10 +18,11 @@ public sealed class CaptureRequestedServiceHandler(
     IntakeDbContext dbContext,
     ProcedureCodeClient procedureCodeClient,
     ProcedureModalityClient procedureModalityClient,
-    IConfiguration configuration)
-    : IProcessStepHandler<CaptureRequestedServiceStep, CaptureRequestedServiceResponse>
+    IConfiguration configuration,
+    IKaleidoProcessClientFactory processClientFactory)
+    : IProcessStepHandler<CaptureRequestedServiceStep>
 {
-    public async Task<ProcessStepHandlerResult<CaptureRequestedServiceResponse>> ExecuteAsync(
+    public async Task<ProcessStepHandlerResult> ExecuteAsync(
         CaptureRequestedServiceStep processStep,
         ProcessStepContext context,
         CancellationToken cancellationToken = default)
@@ -34,8 +37,7 @@ public sealed class CaptureRequestedServiceHandler(
 
             if (procedureCode is null)
             {
-                return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
-                    new CaptureRequestedServiceResponse(),
+                return ProcessStepHandlerResult.Failure(
                     IntakeProcessMessages.ProcedureCodeNotFound(
                         processStep.CodeSystem,
                         processStep.CodeValue));
@@ -52,8 +54,7 @@ public sealed class CaptureRequestedServiceHandler(
 
             if (string.IsNullOrWhiteSpace(processorName))
             {
-                return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
-                    new CaptureRequestedServiceResponse(),
+                return ProcessStepHandlerResult.Failure(
                     IntakeProcessMessages.ProcessorNotFound(modality));
             }
 
@@ -92,19 +93,44 @@ public sealed class CaptureRequestedServiceHandler(
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success(
-                new CaptureRequestedServiceResponse
-                {
-                    ProcessorName = processorName
-                });
+            var downstreamRequest = new ExecuteProcessRequest
+            {
+                ProcessId = context.ProcessId,
+                Steps = context.OriginalRequest.Steps
+                    .Select(kvp => new ProcessStepRequest
+                    {
+                        StepName = kvp.Key,
+                        Request = JsonSerializer.SerializeToElement(kvp.Value)
+                    })
+                    .ToArray()
+            };
+
+            var downstreamResult =
+                await processClientFactory
+                    .GetClient(processorName)
+                    .ExecuteAsync(downstreamRequest, cancellationToken);
+
+            var requiredStep = downstreamResult.RequiredStep is not null
+                ? new ProcessStepReference
+                  {
+                      ProcessorName = downstreamResult.RequiredStep.ProcessorName,
+                      StepName = downstreamResult.RequiredStep.StepName
+                  }
+                : null;
+
+            return ProcessStepHandlerResult.Success(requiredStep);
         }
         catch (KaleidoQueryableClientException ex)
         {
-            return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
-                new CaptureRequestedServiceResponse(),
+            return ProcessStepHandlerResult.Failure(
                 IntakeProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));
+        }
+        catch (KaleidoProcessClientException ex)
+        {
+            return ProcessStepHandlerResult.Failure(
+                IntakeProcessMessages.DownstreamProcessorRequestFailed(ex.Message));
         }
     }
 }

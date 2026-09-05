@@ -95,6 +95,7 @@ internal sealed class ProcessorRuntime
                 await _processor.ExecuteAsync(
                     executionCandidates,
                     context,
+                    request.Processor,
                     cancellationToken);
 
             var result =

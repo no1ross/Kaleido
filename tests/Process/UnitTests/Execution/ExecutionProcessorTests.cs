@@ -1,4 +1,5 @@
 ﻿using Kaleido.Eventing;
+using Kaleido.Process;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Execution;
@@ -116,7 +117,8 @@ public sealed class ExecutionProcessorTests
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
             processor.ExecuteAsync(
                 null!,
-                CreateContext("step-a")));
+                CreateContext("step-a"),
+                new ProcessorRequest()));
     }
 
     [Fact]
@@ -128,7 +130,8 @@ public sealed class ExecutionProcessorTests
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
             processor.ExecuteAsync(
                 [],
-                null!));
+                null!,
+                new ProcessorRequest()));
     }
 
     [Fact]
@@ -171,7 +174,8 @@ public sealed class ExecutionProcessorTests
         var result =
             await processor.ExecuteAsync(
                 [],
-                context);
+                context,
+                new ProcessorRequest());
 
         Assert.Equal(
             context.State,
@@ -289,7 +293,8 @@ public sealed class ExecutionProcessorTests
 
         await processor.ExecuteAsync(
             [candidate],
-            context);
+            context,
+            new ProcessorRequest());
 
         Assert.NotNull(
             capturedContext);
@@ -378,7 +383,8 @@ public sealed class ExecutionProcessorTests
 
         await processor.ExecuteAsync(
             [candidate],
-            context);
+            context,
+            new ProcessorRequest());
 
         invoker.Verify(
             x =>
@@ -467,7 +473,8 @@ public sealed class ExecutionProcessorTests
 
         await processor.ExecuteAsync(
             [candidate],
-            context);
+            context,
+            new ProcessorRequest());
 
         evaluator.Verify(
             x =>
@@ -563,7 +570,8 @@ public sealed class ExecutionProcessorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context);
+                context,
+                new ProcessorRequest());
 
         stateUpdater.Verify(
             x =>
@@ -627,7 +635,8 @@ public sealed class ExecutionProcessorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context);
+                context,
+                new ProcessorRequest());
 
         var outcome =
             Assert.Single(
@@ -777,7 +786,8 @@ public sealed class ExecutionProcessorTests
                     firstCandidate,
                     nextCandidate
                 ],
-                context1);
+                context1,
+                new ProcessorRequest());
 
         Assert.Collection(
             result.Outcomes,
@@ -879,7 +889,8 @@ public sealed class ExecutionProcessorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context);
+                context,
+                new ProcessorRequest());
 
         var outcome =
             Assert.Single(
@@ -967,6 +978,7 @@ public sealed class ExecutionProcessorTests
             await processor.ExecuteAsync(
                 [candidate],
                 context,
+                new ProcessorRequest(),
                 cancellationTokenSource.Token);
 
         var outcome =
@@ -1056,7 +1068,8 @@ public sealed class ExecutionProcessorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context);
+                context,
+                new ProcessorRequest());
 
         var outcome =
             Assert.Single(
@@ -1119,7 +1132,8 @@ public sealed class ExecutionProcessorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context);
+                context,
+                new ProcessorRequest());
 
         var outcome =
             Assert.Single(
@@ -1179,7 +1193,8 @@ public sealed class ExecutionProcessorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context);
+                context,
+                new ProcessorRequest());
 
         var outcome =
             Assert.Single(

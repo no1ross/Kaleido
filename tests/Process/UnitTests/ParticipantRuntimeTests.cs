@@ -1,5 +1,6 @@
 ﻿using Kaleido.Eventing;
 using Kaleido.Observability;
+using Kaleido.Process;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Execution;
@@ -162,8 +163,9 @@ public sealed class ProcessorRuntimeTests
                 x.ExecuteAsync(
                     It.IsAny<IReadOnlyCollection<StepCandidate>>(),
                     It.IsAny<ProcessorContext>(),
+                    It.IsAny<ProcessorRequest>(),
                     It.IsAny<CancellationToken>()))
-            .Returns<IReadOnlyCollection<StepCandidate>, ProcessorContext, CancellationToken>((_, context, _) =>
+            .Returns<IReadOnlyCollection<StepCandidate>, ProcessorContext, ProcessorRequest, CancellationToken>((_, context, _, _) =>
                 Task.FromResult(
                     CreateExecutionResult(
                         context.ProcessId)));
@@ -252,6 +254,7 @@ public sealed class ProcessorRuntimeTests
                 x.ExecuteAsync(
                     It.IsAny<IReadOnlyCollection<StepCandidate>>(),
                     It.IsAny<ProcessorContext>(),
+                    It.IsAny<ProcessorRequest>(),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(
                 CreateExecutionResult(processId));
@@ -338,6 +341,7 @@ public sealed class ProcessorRuntimeTests
                 x.ExecuteAsync(
                     It.IsAny<IReadOnlyCollection<StepCandidate>>(),
                     reconciledContext,
+                    It.IsAny<ProcessorRequest>(),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(
                 CreateExecutionResult(processId));
@@ -443,9 +447,10 @@ public sealed class ProcessorRuntimeTests
                 x.ExecuteAsync(
                     It.IsAny<IReadOnlyCollection<StepCandidate>>(),
                     context,
+                    It.IsAny<ProcessorRequest>(),
                     It.IsAny<CancellationToken>()))
-            .Callback<IReadOnlyCollection<StepCandidate>, ProcessorContext, CancellationToken>(
-                (candidates, _, _) => capturedCandidates = candidates)
+            .Callback<IReadOnlyCollection<StepCandidate>, ProcessorContext, ProcessorRequest, CancellationToken>(
+                (candidates, _, _, _) => capturedCandidates = candidates)
             .ReturnsAsync(
                 CreateExecutionResult(processId));
 
@@ -566,6 +571,7 @@ public sealed class ProcessorRuntimeTests
                 x.ExecuteAsync(
                     It.IsAny<IReadOnlyCollection<StepCandidate>>(),
                     context,
+                    It.IsAny<ProcessorRequest>(),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(executionResult);
 
@@ -664,6 +670,7 @@ public sealed class ProcessorRuntimeTests
                 x.ExecuteAsync(
                     It.IsAny<IReadOnlyCollection<StepCandidate>>(),
                     context,
+                    It.IsAny<ProcessorRequest>(),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(executionResult);
 

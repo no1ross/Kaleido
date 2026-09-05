@@ -8,6 +8,7 @@ namespace Kaleido.Process.Execution
         Task<ProcessExecutionResult> ExecuteAsync(
             IReadOnlyCollection<StepCandidate> candidates,
             ProcessorContext context,
+            ProcessorRequest originalRequest,
             CancellationToken cancellationToken = default);
     }
 }

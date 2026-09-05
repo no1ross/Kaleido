@@ -54,6 +54,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
     public async Task<ProcessExecutionResult> ExecuteAsync(
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context,
+        ProcessorRequest originalRequest,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(candidates);
@@ -134,7 +135,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                     new ProcessStepContext(
                         context.ProcessId,
                         stepContext,
-                        initialAvailableSteps);
+                        initialAvailableSteps,
+                        originalRequest);
 
                 var result =
                     await _invoker.ExecuteAsync(

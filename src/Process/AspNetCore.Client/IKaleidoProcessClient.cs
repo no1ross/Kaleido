@@ -15,6 +15,10 @@ public interface IKaleidoProcessClient
         Guid processId,
         CancellationToken cancellationToken = default);
 
+    Task<ProcessExecutionResponse> ExecuteAsync(
+        ExecuteProcessRequest request,
+        CancellationToken cancellationToken = default);
+
     Task<StepExecutionResponse> ExecuteStepAsync<TStep>(
         TStep step,
         Guid? processId = null,

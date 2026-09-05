@@ -102,6 +102,35 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
             response.StatusCode);
     }
 
+    public async Task<ProcessExecutionResponse> ExecuteAsync(
+        ExecuteProcessRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var url = ProcessContractUrls.Execute(_options);
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = JsonContent.Create(request)
+        };
+
+        StampCorrelationHeaders(httpRequest);
+
+        using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<ProcessExecutionResponse>(
+                       cancellationToken: cancellationToken)
+                   ?? throw new KaleidoProcessClientException(
+                       "Process execute request succeeded but returned no payload.",
+                       response.StatusCode);
+        }
+
+        throw new KaleidoProcessClientException(
+            $"Process execute request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
+            response.StatusCode);
+    }
+
     public async Task<StepExecutionResponse> ExecuteStepAsync<TStep>(
         TStep step,
         Guid? processId = null,
