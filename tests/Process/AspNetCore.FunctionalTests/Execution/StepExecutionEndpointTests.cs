@@ -1,7 +1,6 @@
 using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
-using Kaleido.Process.AspNetCore.Srevices;
 using System.Net;
 using System.Net.Http.Json;
 
@@ -71,7 +70,7 @@ public sealed class StepExecutionEndpointTests
         Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);
 
         var contract =
-            await stateResponse.Content.ReadAsync<ProcessorProcessView>();
+            await stateResponse.Content.ReadAsync<ProcessStateResponse>();
 
         Assert.NotNull(contract);
         Assert.Contains(contract.Steps, x => x.StepName == RuntimeStepNames.Root && x.Status == StepExecutionStatus.Completed);

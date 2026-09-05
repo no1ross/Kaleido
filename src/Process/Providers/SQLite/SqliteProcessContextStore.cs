@@ -35,11 +35,7 @@ internal sealed class SqliteProcessContextStore(
 
         if (entity is null)
         {
-            return new ProcessorContext
-            {
-                ProcessId = processId,
-                ProcessorName = localProcessorName
-            };
+            return null;
         }
 
         return ToProcessorContext(

@@ -8,10 +8,14 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Process\AspNetCore\Kaleido.Process.AspNetCore.csproj" />
+		<ProjectReference Include="..\..\..\src\Process\AspNetCore.Client\Kaleido.Process.AspNetCore.Client.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.AspNetCore.Client" />
+		<Using Include="Kaleido.Process.AspNetCore.Contracts" />
+		<Using Include="System.Net.Http.Json" />
 	</ItemGroup>
 
 </Project>

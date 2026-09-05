@@ -3,9 +3,11 @@ using Kaleido.Queryable.Query;
 using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum FunctionalRecordStatus
 {
     Unknown,

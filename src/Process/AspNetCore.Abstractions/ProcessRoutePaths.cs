@@ -16,7 +16,7 @@ internal static class ProcessRoutePaths
 
     public static string StepMetadata(
         string stepName)
-        => $"steps/{stepName}";
+        => $"steps/{stepName}/metadata";
 
     public static string ExecuteStep(
         string stepName)

@@ -2,7 +2,7 @@
 	<Import Project="../../../build/packages.props" />
 
 	<ItemGroup>
-	  <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+	  <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>

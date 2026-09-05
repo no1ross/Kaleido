@@ -1,8 +1,16 @@
+using Kaleido.Process.Execution;
+
 namespace Kaleido.Process.AspNetCore.Contracts;
 
 public sealed record ProcessStateResponse
 {
     public required Guid ProcessId
+    {
+        get;
+        init;
+    }
+
+    public ProcessExecutionState State
     {
         get;
         init;
@@ -21,15 +29,27 @@ public sealed record ProcessStateResponse
     }
         = [];
 
-    public IReadOnlyCollection<ProcessExecutionHistory> ExecutedSteps
+    public IReadOnlyCollection<ProcessStepHistory> Steps
     {
         get;
         init;
     }
         = [];
+
+    public DateTimeOffset CreatedUtc
+    {
+        get;
+        init;
+    }
+
+    public DateTimeOffset UpdatedUtc
+    {
+        get;
+        init;
+    }
 }
 
-public sealed record ProcessExecutionHistory
+public sealed record ProcessStepHistory
 {
     public required string StepName
     {
@@ -37,13 +57,20 @@ public sealed record ProcessExecutionHistory
         init;
     }
 
+    public string Version
+    {
+        get;
+        init;
+    }
+        = string.Empty;
+
     public required StepExecutionStatus Status
     {
         get;
         init;
     }
 
-    public DateTimeOffset ExecutedAt
+    public DateTimeOffset? LastExecuted
     {
         get;
         init;

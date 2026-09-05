@@ -41,7 +41,7 @@ public sealed class ProcessDiscoveryTests
     public async Task GetStepMetadata_ReturnsDependenciesLinksAndResultMetadata()
     {
         var response =
-            await _client.GetAsync("/kaleido/processes/steps/runtimemerge");
+            await _client.GetAsync("/kaleido/processes/steps/runtimemerge/metadata");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 

@@ -123,12 +123,14 @@
     <Project Path="tests/Core/UnitTests/Kaleido.UnitTests.csproj" Id="d3158058-b54e-4a54-8bb0-5f324d367958" />
   </Folder>
   <Folder Name="/test/Process/">
+    <Project Path="tests/Process/AspNetCore.Client.UnitTests/Kaleido.Process.AspNetCore.Client.UnitTests.csproj" />
     <Project Path="tests/Process/AspNetCore.FunctionalTests/Kaleido.Process.AspNetCore.FunctionalTests.csproj" />
     <Project Path="tests/Process/AspNetCore.UnitTests/Kaleido.Process.AspNetCore.UnitTests.csproj" />
     <Project Path="tests/Process/UnitTests/Kaleido.Process.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Queryable/">
     <Project Path="tests/Queryable/Abstractions.UnitTests/Kaleido.Queryable.Abstractions.UnitTests.csproj" />
+    <Project Path="tests/Queryable/AspNetCore.Client.UnitTests/Kaleido.Queryable.AspNetCore.Client.UnitTests.csproj" />
     <Project Path="tests/Queryable/AspNetCore.FunctionalTests/Kaleido.Queryable.AspNetCore.FunctionalTests.csproj" />
     <Project Path="tests/Queryable/AspNetCore.UnitTests/Kaleido.Queryable.AspNetCore.UnitTests.csproj" />
     <Project Path="tests/Queryable/UnitTests/Kaleido.Queryable.UnitTests.csproj" />
