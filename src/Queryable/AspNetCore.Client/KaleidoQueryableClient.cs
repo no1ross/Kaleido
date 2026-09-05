@@ -10,15 +10,55 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
 {
     private readonly HttpClient _httpClient;
     private readonly IKaleidoCorrelationContextAccessor _correlation;
+    private readonly string _registryUrl;
     private readonly SemaphoreSlim _registryLock = new(1, 1);
     private IReadOnlyList<QueryableRecordResponse>? _registry;
 
     public KaleidoQueryableClient(
         HttpClient httpClient,
-        IKaleidoCorrelationContextAccessor correlation)
+        IKaleidoCorrelationContextAccessor correlation,
+        string routePrefix = "")
     {
         _httpClient = httpClient;
         _correlation = correlation;
+        _registryUrl = QueryableContractUrls.QueryRegistry(new QueryableRouteOptions { RoutePrefix = routePrefix });
+    }
+
+    public async Task<IReadOnlyList<QueryableRecordResponse>> GetRegistryAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await EnsureRegistryAsync(cancellationToken);
+    }
+
+    public async Task<QueryableRecordResponse> GetContextMetadataAsync(
+        string context,
+        CancellationToken cancellationToken = default)
+    {
+        var registry = await EnsureRegistryAsync(cancellationToken);
+
+        var contextRecord = registry.FirstOrDefault(
+            r => string.Equals(r.Name, context, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException(
+                $"Queryable context '{context}' was not found in the remote registry.");
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Get, contextRecord.MetadataUrl);
+
+        StampCorrelationHeaders(httpRequest);
+
+        using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<QueryableRecordResponse>(
+                       cancellationToken: cancellationToken)
+                   ?? throw new KaleidoQueryableClientException(
+                       $"Queryable context metadata request for '{context}' succeeded but returned no payload.",
+                       response.StatusCode);
+        }
+
+        throw new KaleidoQueryableClientException(
+            $"Queryable context metadata request for '{context}' failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
+            response.StatusCode);
     }
 
     public async Task<QueryResult<TView>> QueryViewAsync<TParameters, TView>(
@@ -139,7 +179,7 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
                 return _registry;
 
             var registry = await _httpClient.GetFromJsonAsync<IReadOnlyList<QueryableRecordResponse>>(
-                "/queryable/registry",
+                _registryUrl,
                 cancellationToken)
                 ?? throw new InvalidOperationException(
                     "Queryable registry request succeeded but returned no payload.");

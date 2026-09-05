@@ -8,6 +8,10 @@ internal static class QueryableContractUrls
             ? "/queryable"
             : $"/{options.RoutePrefix.Trim().Trim('/')}/queryable";
 
+    public static string QueryRegistry(
+        QueryableRouteOptions options)
+        => $"{QueryablePrefix(options)}/registry";
+
     public static string QueryContextMetadata(
         QueryableRouteOptions options,
         string contextName)

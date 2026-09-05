@@ -6,15 +6,18 @@ internal sealed class KaleidoQueryableClientFactory : IKaleidoQueryableClientFac
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IKaleidoCorrelationContextAccessor _correlation;
+    private readonly KaleidoQueryableClientRouteOptionsMap _routeOptionsMap;
     private readonly Dictionary<string, IKaleidoQueryableClient> _clients = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
 
     public KaleidoQueryableClientFactory(
         IHttpClientFactory httpClientFactory,
-        IKaleidoCorrelationContextAccessor correlation)
+        IKaleidoCorrelationContextAccessor correlation,
+        KaleidoQueryableClientRouteOptionsMap routeOptionsMap)
     {
         _httpClientFactory = httpClientFactory;
         _correlation = correlation;
+        _routeOptionsMap = routeOptionsMap;
     }
 
     public IKaleidoQueryableClient GetClient(string name)
@@ -27,8 +30,9 @@ internal sealed class KaleidoQueryableClientFactory : IKaleidoQueryableClientFac
             if (_clients.TryGetValue(name, out existing))
                 return existing;
 
+            _routeOptionsMap.Options.TryGetValue(name, out var options);
             var httpClient = _httpClientFactory.CreateClient(name);
-            var client = new KaleidoQueryableClient(httpClient, _correlation);
+            var client = new KaleidoQueryableClient(httpClient, _correlation, options?.RoutePrefix ?? "");
             _clients[name] = client;
             return client;
         }

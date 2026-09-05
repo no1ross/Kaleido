@@ -552,32 +552,50 @@ See [`ProcessStepInfo.cs`](./AspNetCore.Abstractions/Contracts/ProcessStepInfo.c
 The execution service writes the resolved `ProcessId` into the response headers so clients can continue the same process instance in later requests.
 
 ### HTTP client (`AspNetCore.Client`)
-`AspNetCore.Client` provides `IKaleidoProcessClientFactory` for consuming remote process step execution endpoints.
+`AspNetCore.Client` provides `IKaleidoProcessClientFactory` for consuming remote process endpoints.
 
 Register a named client on the Kaleido builder:
 
 ```csharp
 builder.Services.AddKaleido()
-    .AddProcessClient("RemoteProcessor", "https://remote-processor-host");
+    .AddProcessClient("RemoteProcessor", "https://remote-processor-host")
+    .AddProcessClient("Radiology", "https://radiology-host", routePrefix: "radiology");
 ```
+
+The optional `routePrefix` must match the remote server's `ProcessRouteOptions.RoutePrefix`. When omitted, no prefix is used.
 
 Resolve per-request via `IKaleidoProcessClientFactory`:
 
 ```csharp
+// Get the full registry (lazily fetched and cached per client instance)
+var registry = await factory
+    .GetClient("RemoteProcessor")
+    .GetRegistryAsync(cancellationToken);
+
+// Get metadata for a single step
+var metadata = await factory
+    .GetClient("RemoteProcessor")
+    .GetStepMetadataAsync("CaptureMriInfo", cancellationToken);
+
+// Get the current state of an existing process instance (returns null if not found)
+var state = await factory
+    .GetClient("RemoteProcessor")
+    .GetProcessStateAsync(processId, cancellationToken);
+
+// Untyped step execution
 var response = await factory
     .GetClient("RemoteProcessor")
     .ExecuteStepAsync(new MyRemoteStep { ... }, processId: existingId);
-```
 
-For typed results:
-
-```csharp
+// Typed step execution
 var response = await factory
     .GetClient("RemoteProcessor")
     .ExecuteStepAsync<MyRemoteStep, MyRemoteResult>(
         new MyRemoteStep { ... },
         processId: existingId);
 ```
+
+`GetRegistryAsync` returns `IReadOnlyList<ProcessorRegistryResponse>` and uses the same cached fetch that underpins URL resolution for step execution calls. `GetStepMetadataAsync` resolves the step's `MetadataUrl` from the registry and fetches it directly. `GetProcessStateAsync` returns `null` on 404.
 
 `KaleidoProcessClient` forwards Kaleido correlation headers automatically and throws `KaleidoProcessClientException` on non-success responses.
 

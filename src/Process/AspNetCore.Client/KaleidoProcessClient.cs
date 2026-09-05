@@ -8,15 +8,98 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
 {
     private readonly HttpClient _httpClient;
     private readonly IKaleidoCorrelationContextAccessor _correlation;
+    private readonly ProcessRouteOptions _options;
+    private readonly string _registryUrl;
     private readonly SemaphoreSlim _registryLock = new(1, 1);
     private IReadOnlyList<ProcessorRegistryResponse>? _registry;
 
     public KaleidoProcessClient(
         HttpClient httpClient,
-        IKaleidoCorrelationContextAccessor correlation)
+        IKaleidoCorrelationContextAccessor correlation,
+        string routePrefix = "")
     {
         _httpClient = httpClient;
         _correlation = correlation;
+        _options = new ProcessRouteOptions { RoutePrefix = routePrefix };
+        _registryUrl = ProcessContractUrls.Registry(_options);
+    }
+
+    public async Task<IReadOnlyList<ProcessorRegistryResponse>> GetRegistryAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await EnsureRegistryAsync(cancellationToken);
+    }
+
+    public async Task<ProcessStepResponse> GetStepMetadataAsync(
+        string stepName,
+        CancellationToken cancellationToken = default)
+    {
+        var registry = await EnsureRegistryAsync(cancellationToken);
+
+        ProcessStepResponse? match = null;
+
+        foreach (var processor in registry)
+        {
+            match = processor.Steps.FirstOrDefault(
+                s => string.Equals(s.Name, stepName, StringComparison.OrdinalIgnoreCase));
+
+            if (match is not null)
+                break;
+        }
+
+        if (match is null)
+        {
+            throw new InvalidOperationException(
+                $"Process step '{stepName}' was not found in the remote registry.");
+        }
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Get, match.MetadataUrl);
+
+        StampCorrelationHeaders(httpRequest);
+
+        using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<ProcessStepResponse>(
+                       cancellationToken: cancellationToken)
+                   ?? throw new KaleidoProcessClientException(
+                       $"Process step metadata request for '{stepName}' succeeded but returned no payload.",
+                       response.StatusCode);
+        }
+
+        throw new KaleidoProcessClientException(
+            $"Process step metadata request for '{stepName}' failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
+            response.StatusCode);
+    }
+
+    public async Task<ProcessStateResponse?> GetProcessStateAsync(
+        Guid processId,
+        CancellationToken cancellationToken = default)
+    {
+        using var httpRequest = new HttpRequestMessage(
+            HttpMethod.Get,
+            ProcessContractUrls.ProcessState(_options, processId));
+
+        StampCorrelationHeaders(httpRequest);
+
+        using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
+
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<ProcessStateResponse>(
+                       cancellationToken: cancellationToken)
+                   ?? throw new KaleidoProcessClientException(
+                       $"Process state request for '{processId}' succeeded but returned no payload.",
+                       response.StatusCode);
+        }
+
+        throw new KaleidoProcessClientException(
+            $"Process state request for '{processId}' failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
+            response.StatusCode);
     }
 
     public async Task<StepExecutionResponse> ExecuteStepAsync<TStep>(
@@ -147,7 +230,7 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
                 return _registry;
 
             var registry = await _httpClient.GetFromJsonAsync<IReadOnlyList<ProcessorRegistryResponse>>(
-                "/processes/registry",
+                _registryUrl,
                 cancellationToken)
                 ?? throw new InvalidOperationException(
                     "Process registry request succeeded but returned no payload.");

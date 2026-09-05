@@ -11,7 +11,7 @@ See also:
 ## What lives here
 
 This project contains:
-- [`IKaleidoProcessClient`](./IKaleidoProcessClient.cs) — typed client interface for executing individual process steps
+- [`IKaleidoProcessClient`](./IKaleidoProcessClient.cs) — typed client interface for registry, metadata, state, and step execution
 - [`IKaleidoProcessClientFactory`](./IKaleidoProcessClientFactory.cs) — factory interface resolved by registered name
 - [`KaleidoProcessClient`](./KaleidoProcessClient.cs) — concrete HTTP client implementation
 - [`KaleidoProcessClientException`](./KaleidoProcessClientException.cs) — exception type wrapping non-success HTTP responses
@@ -32,14 +32,66 @@ Register a named process client on the Kaleido builder:
 
 ```csharp
 builder.Services.AddKaleido()
-    .AddProcessClient("RemoteProcessor", "https://remote-processor-host");
+    .AddProcessClient("RemoteProcessor", "https://remote-processor-host")
+    .AddProcessClient("Radiology", "https://radiology-service-host", routePrefix: "radiology");
 ```
+
+The optional `routePrefix` parameter must match the `RoutePrefix` configured on the remote server's `ProcessRouteOptions`. When omitted, no prefix is used (equivalent to `RoutePrefix = ""`).
 
 Multiple named clients can be registered for different remote processors.
 
 ## Usage
 
 Inject `IKaleidoProcessClientFactory` and resolve a client by name.
+
+### Get the full registry
+
+Fetches all processor and step metadata from the remote service, including execute and metadata URLs for each step. The registry is lazily fetched and cached for the lifetime of the client instance — subsequent calls return the cached result without a new HTTP request.
+
+```csharp
+var registry = await clientFactory
+    .GetClient("RemoteProcessor")
+    .GetRegistryAsync(cancellationToken);
+
+foreach (var processor in registry)
+{
+    Console.WriteLine($"{processor.Name}: {processor.Steps.Count} steps");
+}
+```
+
+### Get metadata for a single step
+
+Fetches the full metadata record for one named step, including fields, constraints, dependency and availability relationships, and execute/metadata URLs.
+
+```csharp
+var metadata = await clientFactory
+    .GetClient("RemoteProcessor")
+    .GetStepMetadataAsync("CaptureMriInfo", cancellationToken);
+
+foreach (var field in metadata.Fields)
+{
+    Console.WriteLine($"{field.Name} ({field.DataType})");
+}
+```
+
+### Get process state
+
+Fetches the current state of an existing process instance, including executed steps and available next steps. Returns `null` if no process with that ID exists.
+
+```csharp
+var state = await clientFactory
+    .GetClient("RemoteProcessor")
+    .GetProcessStateAsync(processId, cancellationToken);
+
+if (state is null)
+{
+    // process not found
+}
+else
+{
+    Console.WriteLine($"Required next step: {state.RequiredStep?.StepName}");
+}
+```
 
 ### Untyped step execution
 

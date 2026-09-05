@@ -11,7 +11,7 @@ See also:
 ## What lives here
 
 This project contains:
-- [`IKaleidoQueryableClient`](./IKaleidoQueryableClient.cs) — typed client interface for view queries and direct context queries
+- [`IKaleidoQueryableClient`](./IKaleidoQueryableClient.cs) — typed client interface for registry, metadata, view queries, and direct context queries
 - [`IKaleidoQueryableClientFactory`](./IKaleidoQueryableClientFactory.cs) — factory interface resolved by registered name
 - [`KaleidoQueryableClient`](./KaleidoQueryableClient.cs) — concrete HTTP client implementation
 - [`KaleidoQueryableClientException`](./KaleidoQueryableClientException.cs) — exception type wrapping non-success HTTP responses
@@ -33,14 +33,47 @@ Register a named queryable client on the Kaleido builder:
 ```csharp
 builder.Services.AddKaleido()
     .AddQueryableClient("MemberService", "https://member-service-host")
-    .AddQueryableClient("CodeSet", "https://codeset-service-host");
+    .AddQueryableClient("CodeSet", "https://codeset-service-host")
+    .AddQueryableClient("Radiology", "https://radiology-service-host", routePrefix: "radiology");
 ```
+
+The optional `routePrefix` parameter must match the `RoutePrefix` configured on the remote server's `QueryableRouteOptions`. When omitted, no prefix is used (equivalent to `RoutePrefix = ""`).
 
 Multiple named clients can be registered for different remote services.
 
 ## Usage
 
 Inject `IKaleidoQueryableClientFactory` and resolve a client by name.
+
+### Get the full registry
+
+Fetches all context and view metadata from the remote service. The registry is lazily fetched and cached for the lifetime of the client instance — subsequent calls return the cached result without a new HTTP request.
+
+```csharp
+var registry = await clientFactory
+    .GetClient("MemberService")
+    .GetRegistryAsync(cancellationToken);
+
+foreach (var context in registry)
+{
+    Console.WriteLine($"{context.Name}: {context.Views.Count} views");
+}
+```
+
+### Get metadata for a single context
+
+Fetches the full metadata record for one named context, including its fields, views, and query URLs.
+
+```csharp
+var metadata = await clientFactory
+    .GetClient("MemberService")
+    .GetContextMetadataAsync("Members", cancellationToken);
+
+foreach (var view in metadata.Views)
+{
+    Console.WriteLine($"{view.Name}: {view.QueryUrl}");
+}
+```
 
 ### View query with typed parameters
 

@@ -5,6 +5,13 @@ namespace Kaleido.Queryable.AspNetCore.Client;
 
 public interface IKaleidoQueryableClient
 {
+    Task<IReadOnlyList<QueryableRecordResponse>> GetRegistryAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<QueryableRecordResponse> GetContextMetadataAsync(
+        string context,
+        CancellationToken cancellationToken = default);
+
     Task<QueryResult<TView>> QueryViewAsync<TParameters, TView>(
         string context,
         string view,

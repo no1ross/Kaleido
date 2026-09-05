@@ -556,18 +556,31 @@ Implementation: [`QueryableValueNormalizer`](./AspNetCore/QueryableValueNormaliz
 Validation exceptions are converted into `400 Bad Request` responses with [`QueryErrorResponse`](./AspNetCore/Contracts/QueryErrorResponse.cs).
 
 ### HTTP client (`AspNetCore.Client`)
-`AspNetCore.Client` provides `IKaleidoQueryableClientFactory` for consuming remote Queryable query endpoints.
+`AspNetCore.Client` provides `IKaleidoQueryableClientFactory` for consuming remote Queryable endpoints.
 
 Register a named client on the Kaleido builder:
 
 ```csharp
 builder.Services.AddKaleido()
-    .AddQueryableClient("MemberService", "https://member-service-host");
+    .AddQueryableClient("MemberService", "https://member-service-host")
+    .AddQueryableClient("Radiology", "https://radiology-host", routePrefix: "radiology");
 ```
+
+The optional `routePrefix` must match the remote server's `QueryableRouteOptions.RoutePrefix`. When omitted, no prefix is used.
 
 Resolve per-request via `IKaleidoQueryableClientFactory`:
 
 ```csharp
+// Get the full registry (lazily fetched and cached per client instance)
+var registry = await factory
+    .GetClient("MemberService")
+    .GetRegistryAsync(cancellationToken);
+
+// Get metadata for a single context
+var metadata = await factory
+    .GetClient("MemberService")
+    .GetContextMetadataAsync("Members", cancellationToken);
+
 // View query with typed parameters
 var result = await factory
     .GetClient("MemberService")
@@ -581,7 +594,9 @@ var result = await factory
         "ProcedureCodes", request, cancellationToken);
 ```
 
-Both methods return `QueryResult<TView>` with `TotalCount`, `Offset`, `PageSize`, and `Results`.
+`GetRegistryAsync` returns `IReadOnlyList<QueryableRecordResponse>` and uses the same cached fetch that underpins URL resolution for query calls. `GetContextMetadataAsync` resolves the context's `MetadataUrl` from the registry and fetches it directly.
+
+Query methods return `QueryResult<TView>` with `TotalCount`, `Offset`, `PageSize`, and `Results`.
 
 `KaleidoQueryableClient` forwards Kaleido correlation headers automatically and throws `KaleidoQueryableClientException` on non-success responses.
 

@@ -15,4 +15,9 @@ internal static class ProcessContractUrls
         ProcessRouteOptions options,
         string stepName)
         => $"{options.ProcessesRoutePrefix}/steps/{stepName}";
+
+    public static string ProcessState(
+        ProcessRouteOptions options,
+        Guid processId)
+        => $"{options.ProcessesRoutePrefix}/{processId}";
 }
