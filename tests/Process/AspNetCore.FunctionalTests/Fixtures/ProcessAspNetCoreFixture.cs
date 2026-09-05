@@ -16,6 +16,7 @@ public sealed class ProcessAspNetCoreFixture
 
     public HttpClient Client { get; private set; } = null!;
     public IKaleidoProcessClientFactory ClientFactory { get; private set; } = null!;
+    public TestServer TestServer { get; private set; } = null!;
 
     public async Task InitializeAsync()
     {
@@ -61,8 +62,8 @@ public sealed class ProcessAspNetCoreFixture
         Client = _host.GetTestClient();
 
         // Wire the Process client factory against the test server.
-        var testServer = _host.GetTestServer();
-        var testHandler = testServer.CreateHandler();
+        TestServer = _host.GetTestServer();
+        var testHandler = TestServer.CreateHandler();
 
         var clientServices = new ServiceCollection();
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();

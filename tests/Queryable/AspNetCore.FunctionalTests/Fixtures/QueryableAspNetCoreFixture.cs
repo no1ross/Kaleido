@@ -17,6 +17,7 @@ public sealed class QueryableAspNetCoreFixture
 
     public HttpClient Client { get; private set; } = null!;
     public IKaleidoQueryableClientFactory ClientFactory { get; private set; } = null!;
+    public TestServer TestServer { get; private set; } = null!;
 
     public async Task InitializeAsync()
     {
@@ -61,8 +62,8 @@ public sealed class QueryableAspNetCoreFixture
 
         // Wire the Queryable client factory against the test server.
         // The named HttpClient uses the TestServer's handler so requests stay in-process.
-        var testServer = _host.GetTestServer();
-        var testHandler = testServer.CreateHandler();
+        TestServer = _host.GetTestServer();
+        var testHandler = TestServer.CreateHandler();
 
         var clientServices = new ServiceCollection();
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();
