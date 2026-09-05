@@ -242,6 +242,45 @@ services:
     ports:
       - "8085:8080"
 
+  radiology:
+    build:
+      context: ../../..
+      dockerfile: samples/PriorAuth/Radiology/Dockerfile
+    depends_on:
+      memberservice:
+        condition: service_healthy
+      providersearch:
+        condition: service_healthy
+      codeset:
+        condition: service_healthy
+      configuration:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Radiology: Data Source=/app/data/radiology.db
+      ConnectionStrings__RadiologyProcess: Data Source=/app/data/radiology-process.db
+      Services__ReferenceData__BaseUrl: http://referencedata:8080
+      Services__MemberService__BaseUrl: http://memberservice:8080
+      Services__CodeSet__BaseUrl: http://codeset:8080
+      Services__Configuration__BaseUrl: http://configuration:8080
+      Services__ProviderSearch__BaseUrl: http://providersearch:8080
+      Services__EventCollector__BaseUrl: http://eventcollector:8080
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: priorauth-radiology
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=Development,service.version=1.0.0
+    volumes:
+      - ../data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    ports:
+      - "8088:8080"
+
   priorauth-ui:
     build:
       context: ../priorauth-ui
@@ -261,6 +300,8 @@ services:
       memberservice:
         condition: service_healthy
       intake:
+        condition: service_healthy
+      radiology:
         condition: service_healthy
       priorauth-ui:
         condition: service_started

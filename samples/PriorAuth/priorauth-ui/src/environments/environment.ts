@@ -22,6 +22,9 @@ export const environment: PriorAuthUiEnvironment = {
         },
         intake: {
             baseUrl: 'http://localhost:8085'
+        },
+        radiology: {
+            baseUrl: 'http://localhost:8088'
         }
     })
 };

@@ -27,7 +27,7 @@
   - `dotnet run --project samples/PriorAuth/Seeder/Kaleido.Samples.PriorAuth.Seeder.csproj -- --domains=ReferenceData,CodeSet,Configuration,ProviderSearch,MemberService`
 - Shared SQLite files live under `samples/PriorAuth/data/`
 - Compose mounts that host directory into service containers as `/app/data`
-- Runtime-created DBs like `eventcollector.db`, `intake.db`, and `intake-process.db` may appear in `samples/PriorAuth/data/` after services start
+- Runtime-created DBs like `eventcollector.db`, `intake.db`, `intake-process.db`, `radiology.db`, and `radiology-process.db` may appear in `samples/PriorAuth/data/` after services start
 
 ## Environment assumptions
 - Assume `ASPNETCORE_ENVIRONMENT=Development` for local work unless told otherwise
@@ -42,4 +42,6 @@
 - memberservice: `8084`
 - intake: `8085`
 - eventcollector: `8086`
+- configuration: `8087`
+- radiology: `8088`
 - aspire dashboard: `18888`

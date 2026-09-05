@@ -22,6 +22,9 @@ export const environment: PriorAuthUiEnvironment = {
         },
         intake: {
             baseUrl: '/'
+        },
+        radiology: {
+            baseUrl: '/'
         }
     })
 };
