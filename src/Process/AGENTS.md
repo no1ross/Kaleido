@@ -271,20 +271,23 @@ Do not silently normalize references in docs or code reviews without deciding wh
 There is an interface for metadata service behavior, but endpoint mapping currently relies directly on the registry for most metadata publication.
 If you expand metadata services later, keep the layering intentional.
 
-### `RequiredStep` is a `ProcessStepReference`, not a string
-`RequiredStep` and `AvailableSteps` on all execution/state contracts (runtime, HTTP, SQLite) are `ProcessStepReference` values — not plain step name strings.
+### `RequiredStep` is a plain string; cross-processor handoff uses `TargetProcessorName`
 
-`ProcessStepReference` carries both `ProcessorName` and `StepName`.
+`RequiredStep` on all execution/state contracts (runtime, HTTP, SQLite) is a plain `string` — the step name only. `ProcessStepReference` has been deleted.
+
+`AvailableSteps` are always local steps. Internally they are `IReadOnlyCollection<string>` (step names). On HTTP contracts they are `IReadOnlyCollection<ProcessStepSummary>` (with `ExecuteUrl` and `MetadataUrl` resolved from the local registry).
+
+**Cross-processor handoff** is signalled via `TargetProcessorName` (`string?`), not via `RequiredStep`:
+- When a handler hands off to a remote processor, it sets `TargetProcessorName` on the result and leaves `RequiredStep` null
+- The framework propagates `TargetProcessorName` onto `StepExecutionResponse` and `ProcessStateResponse`
+- On the HTTP response, when `TargetProcessorName` is set, `RequiredStep` will be null — the consumer must call `GET /{targetProcessorName}/processes/{processId}` on the target processor to obtain the authoritative `RequiredStep` and `AvailableSteps`
 
 When a handler signals a required next step via `requiredStep:`:
-- always construct a `ProcessStepReference` explicitly
-- for local steps, hardcode the processor name as a constant or literal — the framework does not inject it
-- for cross-processor steps, use the target processor's registered name
-- do not pass a bare string; those overloads no longer exist
+- pass a plain step name string — no wrapper type needed
+- for local steps this is sufficient; the framework resolves the metadata from the local registry
+- for cross-processor handoff, set `targetProcessorName` instead and leave `requiredStep` null
 
-`AvailableSteps` are always local — the framework populates `ProcessorName` automatically from the local registry.
-
-When adding or changing handlers that return a required step, also update any sample or test code that constructs `ProcessStepHandlerResult` with a `requiredStep` argument.
+When adding or changing handlers that return a required step, also update any sample or test code that constructs `ProcessStepHandlerResult` with a `requiredStep` or `targetProcessorName` argument.
 
 ### Public abstractions ripple widely
 Changes in `Abstractions` affect:

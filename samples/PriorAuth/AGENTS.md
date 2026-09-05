@@ -36,16 +36,24 @@
 
 ## Cross-processor handoff convention
 
-When a step handler resolves a downstream processor (e.g. Intake routing to Radiology), it calls the downstream processor's `/processes/execute` endpoint with the full original payload and the same `ProcessId`, then signals the downstream `RequiredStep` back via `ProcessStepHandlerResult.Success(requiredStep)`.
+When a step handler resolves a downstream processor (e.g. Intake routing to Radiology), it:
+1. Calls the downstream processor's `/processes/execute` endpoint with the full original payload and the same `ProcessId`
+2. Returns `ProcessStepHandlerResult.HandOff(targetProcessorName: "radiology")` — leaving `RequiredStep` null
 
-The handler itself returns no typed response — the downstream processor is the source of truth for its own data.
+The handler itself returns no typed response — the downstream processor is the source of truth for its own state.
 
-**Consumer pattern**: When `StepExecutionResponse.RequiredStep.ProcessorName` differs from the processor you just called, call `GET /{routePrefix}/processes/{processId}` on the **target processor** before proceeding. That response will contain:
-- `RequiredStep` — the next step to execute, with its execute URL
-- `AvailableSteps` — other steps available at this point
-- `Results` — per-step result payloads already produced (e.g. questionnaire definitions, MRI info)
+**Backend contract**: When a cross-processor handoff occurs, `StepExecutionResponse` (and `ProcessStateResponse`) will have:
+- `TargetProcessorName` set to the name of the target processor (e.g. `"radiology"`)
+- `RequiredStep` = null — it is intentionally absent; only the target processor knows its own required step
 
-This pattern applies uniformly for any cross-processor handoff (Intake → Radiology, Intake → Oncology, etc.). The framework populates all fields; the consumer only needs to know which processor to query.
+**Consumer pattern**: When `StepExecutionResponse.TargetProcessorName` is set, call `GET /{targetProcessorName}/processes/{processId}` on the **target processor** to obtain authoritative state. That response will contain:
+- `RequiredStep` — the next step to execute on the target processor
+- `AvailableSteps` — other steps currently available on the target processor
+- Per-step results already produced (e.g. questionnaire definitions)
+
+**UI pattern** (priorauth-ui): `ProcessService.executeStep()` handles this automatically. When `targetProcessorName` is present in the response, it fetches the target processor's state, updates `currentProcessorName` in `ProcessState`, and navigates to the required step — all transparently to call sites. Subsequent `executeStep()` calls will automatically route to the new processor.
+
+This pattern applies uniformly for any cross-processor handoff (Intake → Radiology, Intake → Oncology, etc.). See `samples/PriorAuth/HANDOFF.md` for a full walkthrough.
 
 ## Local ports
 - router: `8080`
