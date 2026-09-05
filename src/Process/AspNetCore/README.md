@@ -7,15 +7,18 @@ See also:
 - [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
 - [`../Process/README.md`](../Process/README.md)
 - [`../Abstractions/README.md`](../Abstractions/README.md)
+- [`../AspNetCore.Abstractions/README.md`](../AspNetCore.Abstractions/README.md)
+- [`../AspNetCore.Client/README.md`](../AspNetCore.Client/README.md)
 
 ## What lives here
 
 This project contains:
-- HTTP request contracts such as [`ExecuteProcessRequest`](./Contracts/ExecuteProcessRequest.cs)
-- HTTP metadata and execution response contracts such as [`ProcessStepResponse`](./Contracts/ProcessStepResponse.cs) and [`ProcessExecutionResponse`](./Contracts/ProcessExecutionResponse.cs)
-- route URL/path helpers used by those contracts
+- route URL/path helpers
 - ASP.NET Core registration and endpoint mapping extensions
 - transport services that adapt HTTP contracts into runtime `ProcessRequest` values
+
+HTTP request and response contract types live in:
+- [`../AspNetCore.Abstractions/README.md`](../AspNetCore.Abstractions/README.md)
 
 ## What this project is for
 
@@ -24,7 +27,6 @@ Reference this project when you need to:
 - publish discovery endpoints for process steps
 - execute process steps through ASP.NET Core endpoints
 - expose process state lookup endpoints
-- reuse the shared HTTP contract shapes for Process clients or tooling
 
 ## Main entry points
 
@@ -130,6 +132,7 @@ This project is responsible for:
 
 - [`ProcessAspNetCoreServiceCollectionExtensions`](./ProcessAspNetCoreServiceCollectionExtensions.cs)
 - [`ProcessEndpointRouteBuilderExtensions`](./ProcessEndpointRouteBuilderExtensions.cs)
-- [`ProcessStepResponse`](./Contracts/ProcessStepResponse.cs)
-- [`ProcessExecutionResponse`](./Contracts/ProcessExecutionResponse.cs)
-- [`ProcessStateResponse`](./Contracts/ProcessStateResponse.cs)
+- [`ProcessStepResponse`](../AspNetCore.Abstractions/Contracts/ProcessStepResponse.cs)
+- [`ProcessExecutionResponse`](../AspNetCore.Abstractions/Contracts/ProcessExecutionResponse.cs)
+- [`ProcessStateResponse`](../AspNetCore.Abstractions/Contracts/ProcessStateResponse.cs)
+- [`ProcessStepInfo`](../AspNetCore.Abstractions/Contracts/ProcessStepInfo.cs)

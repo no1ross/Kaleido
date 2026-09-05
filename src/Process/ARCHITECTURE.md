@@ -4,11 +4,13 @@ This document describes the current architecture of the Process subsystem in `sr
 
 Process is Kaleido's metadata-driven framework for exposing business actions as discoverable process steps with durable processor state, validation, dependency rules, and consistent execution contracts.
 
-The code for Process is currently split into three main projects:
+The code for Process is split into five projects:
 
 - [`Abstractions`](./Abstractions)
 - [`Process`](./Process)
 - [`AspNetCore`](./AspNetCore)
+- [`AspNetCore.Abstractions`](./AspNetCore.Abstractions)
+- [`AspNetCore.Client`](./AspNetCore.Client)
 
 ---
 
@@ -52,7 +54,6 @@ Examples:
 
 ### [`AspNetCore`](./AspNetCore)
 Contains:
-- HTTP request/response contracts
 - route generation helpers
 - endpoint mapping
 - execution/state transport services
@@ -61,8 +62,36 @@ Contains:
 Examples:
 - [`ProcessAspNetCoreServiceCollectionExtensions`](./AspNetCore/ProcessAspNetCoreServiceCollectionExtensions.cs)
 - [`ProcessEndpointRouteBuilderExtensions`](./AspNetCore/ProcessEndpointRouteBuilderExtensions.cs)
-- [`ProcessStepResponse`](./AspNetCore/Contracts/ProcessStepResponse.cs)
-- [`ProcessExecutionResponse`](./AspNetCore/Contracts/ProcessExecutionResponse.cs)
+
+### [`AspNetCore.Abstractions`](./AspNetCore.Abstractions)
+Contains the wire contract types shared between the server-side transport and any HTTP clients. These types have no dependency on `Microsoft.AspNetCore.App`.
+
+Contains:
+- HTTP request contracts (`ExecuteProcessRequest`)
+- HTTP execution response contracts (`ProcessExecutionResponse`, `StepExecutionResponse`, `StepExecutionResponse<TResponse>`)
+- HTTP state response contracts (`ProcessStateResponse`)
+- HTTP metadata/discovery response contracts (`ProcessStepResponse`, `ProcessStepSummary`, `ProcessStepInfo`)
+
+Examples:
+- [`ExecuteProcessRequest`](./AspNetCore.Abstractions/Contracts/ExecuteProcessRequest.cs)
+- [`ProcessExecutionResponse`](./AspNetCore.Abstractions/Contracts/ProcessExecutionResponse.cs)
+- [`StepExecutionResponse`](./AspNetCore.Abstractions/Contracts/ProcessExecutionResponse.cs)
+- [`ProcessStepInfo`](./AspNetCore.Abstractions/Contracts/ProcessStepInfo.cs)
+- [`ProcessStepResponse`](./AspNetCore.Abstractions/Contracts/ProcessStepResponse.cs)
+
+### [`AspNetCore.Client`](./AspNetCore.Client)
+Contains an HTTP client for consuming process step execution endpoints published by `AspNetCore`. Registered via `.AddProcessClient(name, baseUrl)` on the Kaleido builder.
+
+Contains:
+- `IKaleidoProcessClient` — typed client for executing individual steps
+- `IKaleidoProcessClientFactory` — factory resolved by name
+- `KaleidoProcessClient` — concrete HTTP client implementation
+- `KaleidoProcessClientException` — exception type wrapping error responses
+- `KaleidoProcessClientServiceCollectionExtensions` — builder extension
+
+Examples:
+- [`IKaleidoProcessClient`](./AspNetCore.Client/IKaleidoProcessClient.cs)
+- [`IKaleidoProcessClientFactory`](./AspNetCore.Client/IKaleidoProcessClientFactory.cs)
 
 ---
 
@@ -492,18 +521,18 @@ It maps:
 - per-step execution endpoints
 
 ### Request contracts
-The transport layer uses request contracts such as:
-- [`ExecuteProcessRequest`](./AspNetCore/Contracts/ExecuteProcessRequest.cs)
+The transport layer uses request contracts defined in `AspNetCore.Abstractions`:
+- [`ExecuteProcessRequest`](./AspNetCore.Abstractions/Contracts/ExecuteProcessRequest.cs)
 - `ExecuteStepRequest<TProcessStep>`
 
 These contracts are adapted into runtime `ProcessRequest` values by [`ProcessExecutionService`](./AspNetCore/Srevices/ProcessExecutionService.cs).
 
 ### Response contracts
-The main response contracts are:
-- [`ProcessExecutionResponse`](./AspNetCore/Contracts/ProcessExecutionResponse.cs)
-- [`StepExecutionResponse`](./AspNetCore/Contracts/ProcessExecutionResponse.cs)
-- [`ProcessStepResponse`](./AspNetCore/Contracts/ProcessStepResponse.cs)
-- [`ProcessStateResponse`](./AspNetCore/Contracts/ProcessStateResponse.cs)
+The main response contracts are defined in `AspNetCore.Abstractions`:
+- [`ProcessExecutionResponse`](./AspNetCore.Abstractions/Contracts/ProcessExecutionResponse.cs)
+- [`StepExecutionResponse`](./AspNetCore.Abstractions/Contracts/ProcessExecutionResponse.cs)
+- [`ProcessStepResponse`](./AspNetCore.Abstractions/Contracts/ProcessStepResponse.cs)
+- [`ProcessStateResponse`](./AspNetCore.Abstractions/Contracts/ProcessStateResponse.cs)
 
 Execution and state responses use `ProcessStepInfo` for `RequiredStep` and `AvailableSteps`.
 
@@ -517,10 +546,40 @@ Consumers can always unambiguously identify which processor owns a required or a
 
 `ProcessStepSummary` (used in registry and catalog responses) is separate from `ProcessStepInfo` and is not affected by this. It always describes a local step.
 
-See [`ProcessStepInfo.cs`](./AspNetCore/Contracts/ProcessStepInfo.cs).
+See [`ProcessStepInfo.cs`](./AspNetCore.Abstractions/Contracts/ProcessStepInfo.cs).
 
 ### Header behavior
 The execution service writes the resolved `ProcessId` into the response headers so clients can continue the same process instance in later requests.
+
+### HTTP client (`AspNetCore.Client`)
+`AspNetCore.Client` provides `IKaleidoProcessClientFactory` for consuming remote process step execution endpoints.
+
+Register a named client on the Kaleido builder:
+
+```csharp
+builder.Services.AddKaleido()
+    .AddProcessClient("RemoteProcessor", "https://remote-processor-host");
+```
+
+Resolve per-request via `IKaleidoProcessClientFactory`:
+
+```csharp
+var response = await factory
+    .GetClient("RemoteProcessor")
+    .ExecuteStepAsync(new MyRemoteStep { ... }, processId: existingId);
+```
+
+For typed results:
+
+```csharp
+var response = await factory
+    .GetClient("RemoteProcessor")
+    .ExecuteStepAsync<MyRemoteStep, MyRemoteResult>(
+        new MyRemoteStep { ... },
+        processId: existingId);
+```
+
+`KaleidoProcessClient` forwards Kaleido correlation headers automatically and throws `KaleidoProcessClientException` on non-success responses.
 
 ---
 

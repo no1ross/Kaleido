@@ -8,11 +8,12 @@ Queryable is a metadata-driven query framework for discoverable record search, f
 2. **Local view**: project a named view from a local `IQueryable` context
 3. **Delegated view**: execute a named view through an async orchestration or service boundary
 
-The code for Queryable is split into three main projects:
+The code for Queryable is split into four projects:
 
 - [`Abstractions`](./Abstractions)
 - [`Queryable`](./Queryable)
 - [`AspNetCore`](./AspNetCore)
+- [`AspNetCore.Client`](./AspNetCore.Client)
 
 ---
 
@@ -57,7 +58,6 @@ Examples:
 
 ### [`AspNetCore`](./AspNetCore)
 Contains:
-- HTTP request/response contracts
 - route generation
 - endpoint publication
 - request normalization
@@ -65,9 +65,21 @@ Contains:
 
 Examples:
 - [`QueryableEndpointRouteBuilderExtensions`](./AspNetCore/QueryableEndpointRouteBuilderExtensions.cs)
-- [`QueryableRecordResponse`](./AspNetCore/Contracts/QueryableRecordResponse.cs)
-- [`QueryApiRequest`](./AspNetCore/Contracts/QueryApiRequest.cs)
 - [`QueryableValueNormalizer`](./AspNetCore/QueryableValueNormalizer.cs)
+
+### [`AspNetCore.Client`](./AspNetCore.Client)
+Contains an HTTP client for consuming Queryable query endpoints published by `AspNetCore`. Registered via `.AddQueryableClient(name, baseUrl)` on the Kaleido builder.
+
+Contains:
+- `IKaleidoQueryableClient` — typed client for view queries and direct context queries
+- `IKaleidoQueryableClientFactory` — factory resolved by name
+- `KaleidoQueryableClient` — concrete HTTP client implementation
+- `KaleidoQueryableClientException` — exception type wrapping error responses
+- `KaleidoQueryableClientServiceCollectionExtensions` — builder extension
+
+Examples:
+- [`IKaleidoQueryableClient`](./AspNetCore.Client/IKaleidoQueryableClient.cs)
+- [`IKaleidoQueryableClientFactory`](./AspNetCore.Client/IKaleidoQueryableClientFactory.cs)
 
 ---
 
@@ -147,14 +159,14 @@ A query result returns:
 - `TotalCount`
 - `Offset`
 - `PageSize`
-- `Records`
+- `Results`
 
 This same result shape is used for:
 - direct context queries
 - local view queries
 - delegated view queries
 
-`Records` are returned as normal `TView` CLR objects. As a result, complex nested output on `TView` can work as a runtime serialization concern even when Queryable metadata does not fully model that nested structure.
+`Results` are returned as normal `TView` CLR objects. As a result, complex nested output on `TView` can work as a runtime serialization concern even when Queryable metadata does not fully model that nested structure.
 
 ### Registry
 Queryable builds runtime registries that represent discovered contexts and views:
@@ -542,6 +554,36 @@ Implementation: [`QueryableValueNormalizer`](./AspNetCore/QueryableValueNormaliz
 
 ### Error behavior
 Validation exceptions are converted into `400 Bad Request` responses with [`QueryErrorResponse`](./AspNetCore/Contracts/QueryErrorResponse.cs).
+
+### HTTP client (`AspNetCore.Client`)
+`AspNetCore.Client` provides `IKaleidoQueryableClientFactory` for consuming remote Queryable query endpoints.
+
+Register a named client on the Kaleido builder:
+
+```csharp
+builder.Services.AddKaleido()
+    .AddQueryableClient("MemberService", "https://member-service-host");
+```
+
+Resolve per-request via `IKaleidoQueryableClientFactory`:
+
+```csharp
+// View query with typed parameters
+var result = await factory
+    .GetClient("MemberService")
+    .QueryViewAsync<MemberDetailsParameters, MemberDetailsView>(
+        "Members", "MemberDetails", request, cancellationToken);
+
+// Direct context query
+var result = await factory
+    .GetClient("CodeSet")
+    .QueryContextAsync<ProcedureCodeView>(
+        "ProcedureCodes", request, cancellationToken);
+```
+
+Both methods return `QueryResult<TView>` with `TotalCount`, `Offset`, `PageSize`, and `Results`.
+
+`KaleidoQueryableClient` forwards Kaleido correlation headers automatically and throws `KaleidoQueryableClientException` on non-success responses.
 
 ---
 
