@@ -1,31 +1,26 @@
 using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Queryable.AspNetCore.Contracts;
-using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
-using Microsoft.Extensions.Configuration;
+using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Parameters;
+using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Views;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 
 public sealed class MemberDetailsClient(
-    IKaleidoQueryableClientFactory queryableClientFactory,
-    IConfiguration configuration)
+    IKaleidoQueryableClientFactory queryableClientFactory)
 {
-    private readonly string memberDetailsView =
-        configuration["Services:MemberService:MemberDetailsView"]
-        ?? "MemberDetails";
-
-    public async Task<MemberDetailsRecord?> GetMemberDetailsAsync(
+    public async Task<MemberDetailsView?> GetMemberDetailsAsync(
         Guid memberId,
         Guid memberEnrollmentId,
         CancellationToken cancellationToken = default)
     {
         var result = await queryableClientFactory
-            .GetClient("MemberService")
-            .QueryViewAsync<MemberDetailsQueryParameters, MemberDetailsRecord>(
-                "Members",
-                memberDetailsView,
-                new QueryApiRequest<MemberDetailsQueryParameters>
+            .GetClient("Member")
+            .QueryViewAsync<MemberDetailsViewParameters, MemberDetailsView>(
+                "members",
+                "member-details",
+                new QueryApiRequest<MemberDetailsViewParameters>
                 {
-                    Parameters = new MemberDetailsQueryParameters
+                    Parameters = new MemberDetailsViewParameters
                     {
                         MemberId = memberId,
                         MemberEnrollmentId = memberEnrollmentId

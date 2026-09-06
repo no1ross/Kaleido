@@ -1,23 +1,19 @@
 using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Query;
+using Kaleido.Samples.PriorAuth.Provider.Queryable.Parameters;
+using Kaleido.Samples.PriorAuth.Provider.Queryable.ViewSources.Views;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 
 public sealed class RequestingProviderSearchClient(
     IKaleidoQueryableClientFactory queryableClientFactory,
-    IConfiguration configuration,
     RadiologyDbContext dbContext)
 {
-    private readonly string requestingProviderSearchView =
-        configuration["Services:ProviderSearch:RequestingProviderSearchView"]
-        ?? "RequestingProviderSearch";
-
-    public async Task<QueryResult<RequestingProviderSearchRecord>> SearchAsync(
+    public async Task<QueryResult<RequestingProviderSearchView>> SearchAsync(
         Guid processId,
         QueryBody? query,
         CancellationToken cancellationToken = default)
@@ -35,23 +31,18 @@ public sealed class RequestingProviderSearchClient(
         }
 
         return await queryableClientFactory
-            .GetClient("ProviderSearch")
-            .QueryViewAsync<ProviderRequestingSearchViewParameters, RequestingProviderSearchRecord>(
-                "RequestingProviders",
-                requestingProviderSearchView,
-                new QueryApiRequest<ProviderRequestingSearchViewParameters>
+            .GetClient("Provider")
+            .QueryViewAsync<RequestingProviderSearchParameters, RequestingProviderSearchView>(
+                "requesting-providers",
+                "requesting-provider-search",
+                new QueryApiRequest<RequestingProviderSearchParameters>
                 {
-                    Parameters = new ProviderRequestingSearchViewParameters
+                    Parameters = new RequestingProviderSearchParameters
                     {
                         PlanId = planId
                     },
                     Query = query
                 },
                 cancellationToken);
-    }
-
-    public sealed class ProviderRequestingSearchViewParameters
-    {
-        public string PlanId { get; init; } = string.Empty;
     }
 }

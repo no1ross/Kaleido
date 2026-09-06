@@ -3,21 +3,15 @@ using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Query;
 using Kaleido.Samples.PriorAuth.CodeSet;
-using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
+using Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
-using Microsoft.Extensions.Configuration;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 
 public sealed class MriProcedureCodeResolverClient(
-    IKaleidoQueryableClientFactory queryableClientFactory,
-    IConfiguration configuration)
+    IKaleidoQueryableClientFactory queryableClientFactory)
 {
-    private readonly string mriProcedureCodeRuleView =
-        configuration["Services:Configuration:MriProcedureCodeRuleView"]
-        ?? "MriProcedureCodeRules";
-
-    public async Task<MriProcedureCodeRuleRecord?> ResolveAsync(
+    public async Task<MriProcedureCodeRuleQueryContext?> ResolveAsync(
         string selectedCodeValue,
         ProcedureCodeSystem selectedCodeSystem,
         CaptureMriInfoStep processStep,
@@ -25,8 +19,8 @@ public sealed class MriProcedureCodeResolverClient(
     {
         var result = await queryableClientFactory
             .GetClient("Configuration")
-            .QueryContextAsync<MriProcedureCodeRuleRecord>(
-                "MriProcedureCodeRules",
+            .QueryContextAsync<MriProcedureCodeRuleQueryContext>(
+                "mri-procedure-code-rules",
                 new QueryApiRequest
                 {
                     Query = new QueryBody(

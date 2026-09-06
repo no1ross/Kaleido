@@ -1,8 +1,8 @@
 import { computed, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
-import { catchError, take } from 'rxjs/operators';
+import { of } from 'rxjs';
+import { catchError, switchMap, take } from 'rxjs/operators';
 
 import { FilterOperator, LogicalOperator } from '../../kaleido/models/enumerations';
 import { QueryErrorResponse } from '../../kaleido/models/query-error-response';
@@ -214,32 +214,25 @@ export class MemberSearch {
                         } satisfies CaptureMemberStep
                     };
 
-                    forkJoin({
-                        details: this.queryableService
-                            .queryView<MemberDetailsResult, MemberDetailsParameters>(
-                                this.detailsViewName,
-                                detailsRequest),
-                        capture: this.processService
-                            .executeStep<CaptureMemberStep, object>('CaptureMember', captureRequest)
-                            .pipe(
-                                catchError(error => {
-                                    if (ProcessErrorResponse.is(error)) {
-                                        return of(null);
-                                    }
-
-                                    throw error;
-                                }))
-                    }).subscribe({
-                        next: result => {
-                            this.selectedMemberDetails.set(result.details.results[0]);
-                            this.isLoadingDetails.set(false);
-                        },
-                        error: error => {
-                            this.selectedMemberDetails.set(undefined);
-                            this.isLoadingDetails.set(false);
-                            this.detailsError.set(this.formatError(error));
-                        }
-                    });
+                    this.processService
+                        .executeStep<CaptureMemberStep, object>('CaptureMember', captureRequest)
+                        .pipe(
+                            switchMap(() =>
+                                this.queryableService
+                                    .queryView<MemberDetailsResult, MemberDetailsParameters>(
+                                        this.detailsViewName,
+                                        detailsRequest)))
+                        .subscribe({
+                            next: result => {
+                                this.selectedMemberDetails.set(result.results[0]);
+                                this.isLoadingDetails.set(false);
+                            },
+                            error: error => {
+                                this.selectedMemberDetails.set(undefined);
+                                this.isLoadingDetails.set(false);
+                                this.detailsError.set(this.formatError(error));
+                            }
+                        });
                 },
                 error: error => {
                     this.isLoadingDetails.set(false);

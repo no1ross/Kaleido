@@ -79,7 +79,7 @@ builder.Services.AddKaleido()
     .AddQueryable()
         .AddQueryableAspNetCore(o =>
         {
-            o.RoutePrefix = "code-set";
+            o.RoutePrefix = "codeset";
         });
 
 var app = builder.Build();

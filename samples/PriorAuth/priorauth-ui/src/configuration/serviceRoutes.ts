@@ -11,9 +11,9 @@ const serviceRouteTemplates = {
         queryableRegistryPath: '/member/queryable/registry'
     },
     referenceData: {
-        key: 'reference-data',
+        key: 'referencedata',
         displayName: 'Reference Data',
-        queryableRegistryPath: '/reference-data/queryable/registry'
+        queryableRegistryPath: '/referencedata/queryable/registry'
     },
     provider: {
         key: 'provider',
@@ -21,9 +21,9 @@ const serviceRouteTemplates = {
         queryableRegistryPath: '/provider/queryable/registry'
     },
     codeSet: {
-        key: 'code-set',
+        key: 'codeset',
         displayName: 'Code Set',
-        queryableRegistryPath: '/code-set/queryable/registry'
+        queryableRegistryPath: '/codeset/queryable/registry'
     },
     configuration: {
         key: 'configuration',
@@ -34,7 +34,8 @@ const serviceRouteTemplates = {
         key: 'intake',
         displayName: 'Intake',
         processRegistryPath: '/intake/processes/registry',
-        queryableRegistryPath: '/intake/queryable/registry'
+        queryableRegistryPath: '/intake/queryable/registry',
+        isEntryProcessor: true
     },
     radiology: {
         key: 'radiology',

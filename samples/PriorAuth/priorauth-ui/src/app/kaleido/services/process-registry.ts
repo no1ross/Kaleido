@@ -41,12 +41,10 @@ export class ProcessRegistry {
                 step);
         }
 
-        // Derive the initial processor from whichever processor advertises
-        // initial steps — that is the entry point into the process graph.
-        // This sets currentProcessorName in state so executeStep() has context
-        // before the first step is submitted, without any hardcoded strings.
-        const entryEntry = steps.find(
-            s => s.processor.initialSteps.length > 0);
+        // Set the initial processor from the service marked isEntryProcessor.
+        // This is explicit config, not inferred from initialSteps, to avoid
+        // ambiguity when multiple processors advertise initial steps.
+        const entryEntry = steps.find(s => s.service.isEntryProcessor);
 
         if (entryEntry) {
             this.processState.setCurrentProcessor(entryEntry.processor.name);

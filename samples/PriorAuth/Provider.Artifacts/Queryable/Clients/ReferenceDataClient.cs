@@ -35,7 +35,7 @@ public sealed class ReferenceDataClient(
         {
             var result =
                 response.Content
-                    .ReadFromJsonAsync<QueryableResult<PlanNetworkRecord>>(
+                    .ReadFromJsonAsync<QueryResult<PlanNetworkRecord>>(
                         cancellationToken: cancellationToken)
                     .GetAwaiter()
                     .GetResult();
@@ -49,7 +49,7 @@ public sealed class ReferenceDataClient(
         var queryableError =
             response.StatusCode == HttpStatusCode.BadRequest
                 ? response.Content
-                    .ReadFromJsonAsync<QueryableErrorResponse>(
+                    .ReadFromJsonAsync<QueryErrorResponse>(
                         cancellationToken: cancellationToken)
                     .GetAwaiter()
                     .GetResult()

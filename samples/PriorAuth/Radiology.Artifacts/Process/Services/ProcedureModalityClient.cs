@@ -3,19 +3,14 @@ using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Query;
 using Kaleido.Samples.PriorAuth.CodeSet;
-using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
-using Microsoft.Extensions.Configuration;
+using Kaleido.Samples.PriorAuth.Configuration;
+using Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 
 public sealed class ProcedureModalityClient(
-    IKaleidoQueryableClientFactory queryableClientFactory,
-    IConfiguration configuration)
+    IKaleidoQueryableClientFactory queryableClientFactory)
 {
-    private readonly string modalityRuleView =
-        configuration["Services:Configuration:ProcedureModalityRuleView"]
-        ?? "ProcedureModalityRules";
-
     public async Task<ProcedureModality> DetermineModalityAsync(
         string codeValue,
         ProcedureCodeSystem codeSystem,
@@ -28,8 +23,8 @@ public sealed class ProcedureModalityClient(
 
         var result = await queryableClientFactory
             .GetClient("Configuration")
-            .QueryContextAsync<ProcedureModalityRuleRecord>(
-                "ProcedureModalityRules",
+            .QueryContextAsync<ProcedureModalityRuleQueryContext>(
+                "procedure-modality-rules",
                 new QueryApiRequest
                 {
                     Query = new QueryBody(

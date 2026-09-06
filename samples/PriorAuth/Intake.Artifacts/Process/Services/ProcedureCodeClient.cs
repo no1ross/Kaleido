@@ -3,28 +3,22 @@ using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Query;
 using Kaleido.Samples.PriorAuth.CodeSet;
-using Kaleido.Samples.PriorAuth.Intake.Process.Models;
-using Microsoft.Extensions.Configuration;
+using Kaleido.Samples.PriorAuth.CodeSet.Queryable.Contexts;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Services;
 
 public sealed class ProcedureCodeClient(
-    IKaleidoQueryableClientFactory queryableClientFactory,
-    IConfiguration configuration)
+    IKaleidoQueryableClientFactory queryableClientFactory)
 {
-    private readonly string procedureCodeView =
-        configuration["Services:CodeSet:ProcedureCodeView"]
-        ?? "ProcedureCodes";
-
-    public async Task<ProcedureCodeRecord?> GetProcedureCodeAsync(
+    public async Task<ProcedureCodeQueryContext?> GetProcedureCodeAsync(
         string codeValue,
         ProcedureCodeSystem codeSystem,
         CancellationToken cancellationToken = default)
     {
         var result = await queryableClientFactory
             .GetClient("CodeSet")
-            .QueryContextAsync<ProcedureCodeRecord>(
-                "ProcedureCodes",
+            .QueryContextAsync<ProcedureCodeQueryContext>(
+                "procedure-codes",
                 new QueryApiRequest
                 {
                     Query = new QueryBody(

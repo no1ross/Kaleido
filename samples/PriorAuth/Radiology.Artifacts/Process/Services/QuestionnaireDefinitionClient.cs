@@ -1,10 +1,10 @@
 using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Samples.PriorAuth.Configuration;
-using Kaleido.Samples.PriorAuth.Configuration.Process.Models;
+using Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Parameters;
+using Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Views;
 using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 
@@ -12,14 +12,9 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 
 public sealed class QuestionnaireDefinitionClient(
     IKaleidoQueryableClientFactory queryableClientFactory,
-    IConfiguration configuration,
     RadiologyDbContext dbContext)
 {
-    private readonly string questionnaireDefinitionView =
-        configuration["Services:Configuration:QuestionnaireDefinitionView"]
-        ?? "QuestionnaireDefinition";
-
-    public async Task<CaptureRequestedServiceResponse?> ResolveAsync(
+    public async Task<QuestionnaireDefinitionView?> ResolveAsync(
         Guid processId,
         string stepName,
         ProcedureModality procedureModality,
@@ -35,12 +30,12 @@ public sealed class QuestionnaireDefinitionClient(
 
         var result = await queryableClientFactory
             .GetClient("Configuration")
-            .QueryViewAsync<QuestionnaireDefinitionParameters, QuestionnaireDefinitionRecord>(
-                "QuestionnaireDefinitions",
-                questionnaireDefinitionView,
-                new QueryApiRequest<QuestionnaireDefinitionParameters>
+            .QueryViewAsync<QuestionnaireDefinitionViewParameters, QuestionnaireDefinitionView>(
+                "questionnaire-definitions",
+                "questionnaire-definition",
+                new QueryApiRequest<QuestionnaireDefinitionViewParameters>
                 {
-                    Parameters = new QuestionnaireDefinitionParameters
+                    Parameters = new QuestionnaireDefinitionViewParameters
                     {
                         StepName = stepName,
                         PlanId = member?.PlanId,
@@ -87,11 +82,6 @@ public sealed class QuestionnaireDefinitionClient(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new CaptureRequestedServiceResponse
-        {
-            QuestionnaireId = questionnaire.QuestionnaireId,
-            QuestionnaireVersion = questionnaire.Version,
-            Questionnaire = questionnaire
-        };
+        return questionnaire;
     }
 }

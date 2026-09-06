@@ -79,7 +79,7 @@ builder.Services.AddKaleido()
     .AddQueryable()
         .AddQueryableAspNetCore(o =>
         {
-            o.RoutePrefix = "reference-data";
+            o.RoutePrefix = "referencedata";
         });
 
 var app = builder.Build();

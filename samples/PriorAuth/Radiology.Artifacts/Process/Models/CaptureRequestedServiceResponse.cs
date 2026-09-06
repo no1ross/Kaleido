@@ -1,4 +1,4 @@
-using Kaleido.Samples.PriorAuth.Configuration.Process.Models;
+using Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Views;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 
@@ -8,5 +8,5 @@ public sealed record CaptureRequestedServiceResponse
 
     public string? QuestionnaireVersion { get; init; }
 
-    public QuestionnaireDefinitionRecord? Questionnaire { get; init; }
+    public QuestionnaireDefinitionView? Questionnaire { get; init; }
 }

@@ -113,27 +113,31 @@ builder.Services.AddKaleido()
         })
     .AddQueryableClient(o =>
     {
-        o.Name = "MemberService";
-        o.BaseUrl = builder.Configuration["Services:MemberService:BaseUrl"]
+        o.Name = "Member";
+        o.BaseUrl = builder.Configuration["Services:Member:BaseUrl"]
             ?? "https://localhost:8444";
+        o.RoutePrefix = "member";
     })
     .AddQueryableClient(o =>
     {
         o.Name = "CodeSet";
         o.BaseUrl = builder.Configuration["Services:CodeSet:BaseUrl"]
             ?? "https://localhost:8442";
+        o.RoutePrefix = "codeset";
     })
     .AddQueryableClient(o =>
     {
         o.Name = "Configuration";
         o.BaseUrl = builder.Configuration["Services:Configuration:BaseUrl"]
             ?? "https://localhost:8447";
+        o.RoutePrefix = "configuration";
     })
     .AddQueryableClient(o =>
     {
-        o.Name = "ProviderSearch";
-        o.BaseUrl = builder.Configuration["Services:ProviderSearch:BaseUrl"]
+        o.Name = "Provider";
+        o.BaseUrl = builder.Configuration["Services:Provider:BaseUrl"]
             ?? "https://localhost:8443";
+        o.RoutePrefix = "provider";
     })
     .AddProcessClient(o =>
     {
