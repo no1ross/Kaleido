@@ -73,6 +73,7 @@ builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.MriProcedureCodeResolverClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.QuestionnaireDefinitionClient>();
 builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.RequestingProviderSearchClient>();
+builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Radiology.Process.Services.HistoryClient>();
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
@@ -133,6 +134,13 @@ builder.Services.AddKaleido()
         o.Name = "ProviderSearch";
         o.BaseUrl = builder.Configuration["Services:ProviderSearch:BaseUrl"]
             ?? "https://localhost:8443";
+    })
+    .AddProcessClient(o =>
+    {
+        o.Name = "History";
+        o.BaseUrl = builder.Configuration["Services:History:BaseUrl"]
+            ?? "http://localhost:8089";
+        o.RoutePrefix = "history";
     });
 
 var app = builder.Build();

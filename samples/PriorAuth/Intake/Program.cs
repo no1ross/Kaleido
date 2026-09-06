@@ -71,6 +71,7 @@ builder.Services.AddHttpClient("ReferenceData", client =>
 builder.Services.AddScoped<MemberDetailsClient>();
 builder.Services.AddScoped<ProcedureCodeClient>();
 builder.Services.AddScoped<ProcedureModalityClient>();
+builder.Services.AddScoped<HistoryClient>();
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
@@ -132,6 +133,13 @@ builder.Services.AddKaleido()
         o.BaseUrl = builder.Configuration["Services:Radiology:BaseUrl"]
             ?? "http://localhost:8088";
         o.RoutePrefix = "radiology";
+    })
+    .AddProcessClient(o =>
+    {
+        o.Name = "History";
+        o.BaseUrl = builder.Configuration["Services:History:BaseUrl"]
+            ?? "http://localhost:8089";
+        o.RoutePrefix = "history";
     });
 
 var app = builder.Build();

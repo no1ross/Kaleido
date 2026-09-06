@@ -2,7 +2,9 @@ using Kaleido.Process.AspNetCore.Client;
 using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.Execution;
 using Kaleido.Queryable.AspNetCore.Client;
+using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.Configuration;
+using Kaleido.Samples.PriorAuth.History.Process.Steps;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 using Kaleido.Samples.PriorAuth.Intake.Process.Messages;
@@ -19,7 +21,8 @@ public sealed class CaptureRequestedServiceHandler(
     ProcedureCodeClient procedureCodeClient,
     ProcedureModalityClient procedureModalityClient,
     IConfiguration configuration,
-    IKaleidoProcessClientFactory processClientFactory)
+    IKaleidoProcessClientFactory processClientFactory,
+    HistoryClient historyClient)
     : IProcessStepHandler<CaptureRequestedServiceStep>
 {
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
@@ -92,6 +95,17 @@ public sealed class CaptureRequestedServiceHandler(
             session.Procedure.ResolvedProcessorName = processorName;
 
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            await historyClient.UpsertAsync(
+                new UpsertPriorAuthRecordStep
+                {
+                    ProcessId = context.ProcessId,
+                    ProcessorName = "intake",
+                    Status = PriorAuthorizationStatus.Draft,
+                    PrimaryProcedureCode = session.Procedure!.CodeValue,
+                    PrimaryProcedureDescription = session.Procedure.ResolvedProcessorName
+                },
+                cancellationToken);
 
             var downstreamRequest = new ExecuteProcessRequest
             {

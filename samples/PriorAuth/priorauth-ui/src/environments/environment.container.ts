@@ -25,6 +25,9 @@ export const environment: PriorAuthUiEnvironment = {
         },
         radiology: {
             baseUrl: '/'
+        },
+        history: {
+            baseUrl: '/'
         }
     })
 };

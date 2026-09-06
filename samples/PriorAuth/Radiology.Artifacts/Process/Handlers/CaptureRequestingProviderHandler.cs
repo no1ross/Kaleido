@@ -3,11 +3,14 @@ using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
+using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
+using Kaleido.Samples.PriorAuth.History.Process.Steps;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 
 public sealed class CaptureRequestingProviderHandler(
-    RadiologyDbContext dbContext)
+    RadiologyDbContext dbContext,
+    HistoryClient historyClient)
     : IProcessStepHandler<CaptureRequestingProviderStep>
 {
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
@@ -37,6 +40,15 @@ public sealed class CaptureRequestingProviderHandler(
         priorAuthorization.RequestingProvider.LocationName = processStep.LocationName;
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        await historyClient.UpsertAsync(
+            new UpsertPriorAuthRecordStep
+            {
+                ProcessId = context.ProcessId,
+                ProcessorName = "radiology",
+                Status = PriorAuthorizationStatus.Draft
+            },
+            cancellationToken);
 
         return ProcessStepHandlerResult.Success(
             requiredStep: nameof(CaptureServicingProviderStep).Replace("Step", string.Empty));

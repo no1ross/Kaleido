@@ -1,5 +1,7 @@
 using Kaleido.Process.Execution;
 using Kaleido.Queryable.AspNetCore.Client;
+using Kaleido.Samples.PriorAuth;
+using Kaleido.Samples.PriorAuth.History.Process.Steps;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 using Kaleido.Samples.PriorAuth.Intake.Process.Messages;
@@ -11,7 +13,8 @@ namespace Kaleido.Samples.PriorAuth.Intake.Process.Handlers;
 
 public sealed class CaptureMemberHandler(
     IntakeDbContext dbContext,
-    MemberDetailsClient memberDetailsClient)
+    MemberDetailsClient memberDetailsClient,
+    HistoryClient historyClient)
     : IProcessStepHandler<CaptureMemberStep>
 {
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
@@ -90,6 +93,18 @@ public sealed class CaptureMemberHandler(
             session.Member.DateOfService = processStep.DateOfService;
 
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            await historyClient.UpsertAsync(
+                new UpsertPriorAuthRecordStep
+                {
+                    ProcessId = context.ProcessId,
+                    ProcessorName = "intake",
+                    Status = PriorAuthorizationStatus.Draft,
+                    MemberNumber = session.Member!.MemberNumber,
+                    MemberDisplayName = session.Member.DisplayName,
+                    DateOfService = session.Member.DateOfService
+                },
+                cancellationToken);
 
             return ProcessStepHandlerResult.Success(
                 requiredStep: nameof(CaptureRequestedServiceStep).Replace("Step", string.Empty));

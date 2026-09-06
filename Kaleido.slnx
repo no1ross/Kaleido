@@ -31,6 +31,10 @@
   <Folder Name="/samples/PriorAuth/EventCollector/">
     <Project Path="samples/PriorAuth/EventCollector/Kaleido.Samples.PriorAuth.EventCollector.csproj" />
   </Folder>
+  <Folder Name="/samples/PriorAuth/History/">
+    <Project Path="samples/PriorAuth/History.Artifacts/Kaleido.Samples.PriorAuth.History.Artifacts.csproj" />
+    <Project Path="samples/PriorAuth/History/Kaleido.Samples.PriorAuth.History.csproj" />
+  </Folder>
   <Folder Name="/samples/PriorAuth/Intake/">
     <Project Path="samples/PriorAuth/Intake.Artifacts/Kaleido.Samples.PriorAuth.Intake.Artifacts.csproj" />
     <Project Path="samples/PriorAuth/Intake/Kaleido.Samples.PriorAuth.Intake.csproj" />

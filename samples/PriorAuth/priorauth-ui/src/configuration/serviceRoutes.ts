@@ -41,6 +41,11 @@ const serviceRouteTemplates = {
         displayName: 'Radiology',
         processRegistryPath: '/radiology/processes/registry',
         queryableRegistryPath: '/radiology/queryable/registry'
+    },
+    history: {
+        key: 'history',
+        displayName: 'History',
+        queryableRegistryPath: '/history/queryable/registry'
     }
 } as const satisfies Record<string, Omit<PriorAuthServiceRouteConfig, 'baseUrl'>>;
 
@@ -53,6 +58,7 @@ export function createServiceRoutes(
         readonly configuration: ServiceRouteOverride;
         readonly intake: ServiceRouteOverride;
         readonly radiology: ServiceRouteOverride;
+        readonly history: ServiceRouteOverride;
     }
 ): readonly PriorAuthServiceRouteConfig[] {
     return [
@@ -83,6 +89,10 @@ export function createServiceRoutes(
         {
             ...serviceRouteTemplates.radiology,
             ...overrides.radiology
+        },
+        {
+            ...serviceRouteTemplates.history,
+            ...overrides.history
         }
     ];
 }

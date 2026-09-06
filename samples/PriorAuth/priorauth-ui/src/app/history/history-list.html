@@ -1,0 +1,76 @@
+<section class="history-page">
+    <div class="history-header">
+        <div class="history-header__content">
+            <div class="history-header__eyebrow">Prior Authorization</div>
+            <h2>Authorization History</h2>
+        </div>
+        <div class="history-header__actions">
+            <button type="button" class="secondary-button" (click)="loadRecords()">Refresh</button>
+            <button type="button" class="primary-button" (click)="goHome()">New Request</button>
+        </div>
+    </div>
+
+    @if (isLoading()) {
+        <div class="history-empty">Loading history...</div>
+    } @else if (errorMessage()) {
+        <div class="history-error">{{ errorMessage() }}</div>
+    } @else if (records().length === 0) {
+        <div class="history-empty">No prior authorization records found. Start a new request to see it here.</div>
+    } @else {
+        <div class="history-table-wrapper">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Member</th>
+                        <th>Member #</th>
+                        <th>Date of Service</th>
+                        <th>Procedure</th>
+                        <th>Status</th>
+                        <th>Processor</th>
+                        <th>Last Updated</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (record of records(); track record.priorAuthRecordId) {
+                        <tr class="history-table__row" (click)="resumeProcess(record)">
+                            <td class="history-table__cell history-table__cell--name">
+                                {{ record.memberDisplayName || '—' }}
+                            </td>
+                            <td class="history-table__cell">
+                                {{ record.memberNumber || '—' }}
+                            </td>
+                            <td class="history-table__cell">
+                                {{ record.dateOfService || '—' }}
+                            </td>
+                            <td class="history-table__cell">
+                                @if (record.primaryProcedureCode) {
+                                    <span class="history-table__code">{{ record.primaryProcedureCode }}</span>
+                                    @if (record.primaryProcedureDescription) {
+                                        <span class="history-table__desc">{{ record.primaryProcedureDescription }}</span>
+                                    }
+                                } @else {
+                                    —
+                                }
+                            </td>
+                            <td class="history-table__cell">
+                                <span class="history-status history-status--{{ record.status | lowercase }}">
+                                    {{ formatStatus(record.status) }}
+                                </span>
+                            </td>
+                            <td class="history-table__cell history-table__cell--processor">
+                                {{ record.processorName }}
+                            </td>
+                            <td class="history-table__cell history-table__cell--date">
+                                {{ formatDate(record.lastUpdatedUtc) }}
+                            </td>
+                            <td class="history-table__cell history-table__cell--action">
+                                <span class="history-table__resume">Resume</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

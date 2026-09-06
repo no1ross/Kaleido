@@ -65,4 +65,5 @@ This pattern applies uniformly for any cross-processor handoff (Intake → Radio
 - eventcollector: `8086`
 - configuration: `8087`
 - radiology: `8088`
+- history: `8089`
 - aspire dashboard: `18888`

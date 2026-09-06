@@ -128,10 +128,10 @@ services:
     ports:
       - "8087:8080"
 
-  providersearch:
+  provider:
     build:
       context: ../../..
-      dockerfile: samples/PriorAuth/ProviderSearch/Dockerfile
+      dockerfile: samples/PriorAuth/Provider/Dockerfile
     depends_on:
       eventcollector:
         condition: service_healthy
@@ -142,16 +142,16 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__ProviderSearch: Data Source=/app/data/providersearch.db
+      ConnectionStrings__Provider: Data Source=/app/data/provider.db
       Services__ReferenceData__BaseUrl: http://referencedata:8080
       Services__EventCollector__BaseUrl: http://eventcollector:8080
       OpenTelemetry__Endpoint: http://aspire-dashboard:18889
       OpenTelemetry__Protocol: grpc
-      OpenTelemetry__ServiceName: priorauth-providersearch
+      OpenTelemetry__ServiceName: priorauth-provider
       OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
-      OTEL_SERVICE_NAME: priorauth-providersearch
+      OTEL_SERVICE_NAME: priorauth-provider
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=Development,service.version=1.0.0
     volumes:
       - ../data:/app/data
@@ -164,10 +164,10 @@ services:
     ports:
       - "8083:8080"
 
-  memberservice:
+  member:
     build:
       context: ../../..
-      dockerfile: samples/PriorAuth/MemberService/Dockerfile
+      dockerfile: samples/PriorAuth/Member/Dockerfile
     depends_on:
       eventcollector:
         condition: service_healthy
@@ -176,15 +176,15 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__MemberService: Data Source=/app/data/memberservice.db
+      ConnectionStrings__Member: Data Source=/app/data/member.db
       Services__EventCollector__BaseUrl: http://eventcollector:8080
       OpenTelemetry__Endpoint: http://aspire-dashboard:18889
       OpenTelemetry__Protocol: grpc
-      OpenTelemetry__ServiceName: priorauth-memberservice
+      OpenTelemetry__ServiceName: priorauth-member
       OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
-      OTEL_SERVICE_NAME: priorauth-memberservice
+      OTEL_SERVICE_NAME: priorauth-member
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=Development,service.version=1.0.0
     volumes:
       - ../data:/app/data
@@ -197,14 +197,40 @@ services:
     ports:
       - "8084:8080"
 
+  history:
+    build:
+      context: ../../..
+      dockerfile: samples/PriorAuth/History/Dockerfile
+    depends_on:
+      eventcollector:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__History: Data Source=/app/data/history.db
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: priorauth-history
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=Development,service.version=1.0.0
+    volumes:
+      - ../data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    ports:
+      - "8089:8080"
+
   intake:
     build:
       context: ../../..
       dockerfile: samples/PriorAuth/Intake/Dockerfile
     depends_on:
-      memberservice:
+      member:
         condition: service_healthy
-      providersearch:
+      provider:
         condition: service_healthy
       referencedata:
         condition: service_healthy
@@ -214,17 +240,20 @@ services:
         condition: service_healthy
       radiology:
         condition: service_healthy
+      history:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Intake: Data Source=/app/data/intake.db
       ConnectionStrings__IntakeProcess: Data Source=/app/data/intake-process.db
       Services__ReferenceData__BaseUrl: http://referencedata:8080
-      Services__MemberService__BaseUrl: http://memberservice:8080
+      Services__Member__BaseUrl: http://member:8080
       Services__CodeSet__BaseUrl: http://codeset:8080
       Services__Configuration__BaseUrl: http://configuration:8080
-      Services__ProviderSearch__BaseUrl: http://providersearch:8080
+      Services__Provider__BaseUrl: http://provider:8080
       Services__Radiology__BaseUrl: http://radiology:8080
+      Services__History__BaseUrl: http://history:8080
       Services__EventCollector__BaseUrl: http://eventcollector:8080
       OpenTelemetry__Endpoint: http://aspire-dashboard:18889
       OpenTelemetry__Protocol: grpc
@@ -250,13 +279,15 @@ services:
       context: ../../..
       dockerfile: samples/PriorAuth/Radiology/Dockerfile
     depends_on:
-      memberservice:
+      member:
         condition: service_healthy
-      providersearch:
+      provider:
         condition: service_healthy
       codeset:
         condition: service_healthy
       configuration:
+        condition: service_healthy
+      history:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -264,10 +295,11 @@ services:
       ConnectionStrings__Radiology: Data Source=/app/data/radiology.db
       ConnectionStrings__RadiologyProcess: Data Source=/app/data/radiology-process.db
       Services__ReferenceData__BaseUrl: http://referencedata:8080
-      Services__MemberService__BaseUrl: http://memberservice:8080
+      Services__Member__BaseUrl: http://member:8080
       Services__CodeSet__BaseUrl: http://codeset:8080
       Services__Configuration__BaseUrl: http://configuration:8080
-      Services__ProviderSearch__BaseUrl: http://providersearch:8080
+      Services__Provider__BaseUrl: http://provider:8080
+      Services__History__BaseUrl: http://history:8080
       Services__EventCollector__BaseUrl: http://eventcollector:8080
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
@@ -298,13 +330,15 @@ services:
         condition: service_healthy
       codeset:
         condition: service_healthy
-      providersearch:
+      provider:
         condition: service_healthy
-      memberservice:
+      member:
         condition: service_healthy
       intake:
         condition: service_healthy
       radiology:
+        condition: service_healthy
+      history:
         condition: service_healthy
       priorauth-ui:
         condition: service_started

@@ -69,4 +69,8 @@ export class PriorAuthHome {
                 ? ['/process', id, 'requested-service']
                 : ['/process', 'new', 'requested-service']);
     }
+
+    goToHistory(): void {
+        void this.router.navigate(['/history']);
+    }
 }

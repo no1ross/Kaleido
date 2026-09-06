@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { PriorAuthHome } from './home/home';
+import { HistoryList } from './history/history-list';
 import { MemberSearch } from './member/member-search/member-search';
 import { Registries } from './registries/registries';
 import { ProcessRegistryViewer } from './registries/process-registry/process-registry';
@@ -17,6 +18,10 @@ export const routes: Routes = [
   {
     path: '',
     component: PriorAuthHome
+  },
+  {
+    path: 'history',
+    component: HistoryList
   },
   {
     path: 'process',
