@@ -164,7 +164,7 @@ export class RegistryCatalog {
             ...this.detectConflicts(
                 'process-step',
                 processSteps,
-                entry => entry.step.name,
+                entry => `${entry.processor.name}:${entry.step.name}`,
                 entry => entry.service.displayName),
             ...this.detectConflicts(
                 'queryable-context',
@@ -194,7 +194,7 @@ export class RegistryCatalog {
                 processSteps,
                 conflicts,
                 'process-step',
-                entry => entry.step.name),
+                entry => `${entry.processor.name}:${entry.step.name}`),
             queryableContexts: this.filterConflictedEntries(
                 queryableContexts,
                 conflicts,

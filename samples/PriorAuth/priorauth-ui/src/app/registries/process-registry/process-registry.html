@@ -71,7 +71,7 @@
                                         @for (step of processor.steps; track step.name) {
                                             <div
                                                 class="step-card"
-                                                [class.step-card--conflict]="getProcessConflicts(state).some(conflict => conflict.name === step.name)"
+                                                [class.step-card--conflict]="getProcessConflicts(state).some(conflict => conflict.name === processor.name + ':' + step.name)"
                                                 [class.selected]="selectedStep?.name === step.name && selectedProcessor?.name === processor.name && selectedService?.service?.key === snapshot.service.key"
                                                 (click)="selectStep(snapshot, processor, step)">
                                                 <div class="step-name">{{ step.name }}</div>
@@ -79,7 +79,7 @@
                                                 <div class="step-meta">
                                                     Fields: {{ step.fields.length }} | Repeatable: {{ step.repeatable }}
                                                 </div>
-                                                @if (getProcessConflicts(state).some(conflict => conflict.name === step.name)) {
+                                                @if (getProcessConflicts(state).some(conflict => conflict.name === processor.name + ':' + step.name)) {
                                                     <div class="conflict-inline">Conflicts with another service step of the same name.</div>
                                                 }
                                             </div>
