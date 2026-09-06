@@ -55,8 +55,8 @@ builder.Services.AddOpenTelemetry()
 
 builder.Services.AddDbContext<MemberDbContext>(
     options => options.UseSqlite(
-        builder.Configuration.GetConnectionString("MemberService")
-        ?? "Data Source=data/memberservice.db"));
+        builder.Configuration.GetConnectionString("Member")
+        ?? "Data Source=data/member.db"));
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
@@ -82,10 +82,10 @@ builder.Services.AddKaleido()
     .AddAssembly(typeof(MemberDbContext).Assembly)
     .AddProcessor(o =>
         {
-            o.Name = "member-service";
-            o.Description = "Member service processor.";
+            o.Name = "member";
+            o.Description = "Member processor.";
             o.Version = "1.0.0";
-            o.DisplayName = "Member Service";
+            o.DisplayName = "Member";
         })
         .AddProcessorAspNetCore(o =>
         {

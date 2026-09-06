@@ -51,8 +51,8 @@ builder.Services.AddOpenTelemetry()
 
 builder.Services.AddDbContext<ProviderSearchDbContext>(
     options => options.UseSqlite(
-        builder.Configuration.GetConnectionString("ProviderSearch")
-        ?? "Data Source=data/providersearch.db"));
+        builder.Configuration.GetConnectionString("Provider")
+        ?? "Data Source=data/provider.db"));
 
 builder.Services.AddHttpClient("ReferenceData", client =>
 {
