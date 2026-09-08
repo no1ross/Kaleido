@@ -32,20 +32,32 @@ Current runtime dispatch order is:
 Do not change that order casually. It is part of the current framework semantics.
 
 ## What to use when
+
 Use [`IQueryContextSource`](./Abstractions/Query/IQueryContextSource.cs) when:
 - the dataset is locally queryable
 - the framework should build the base `IQueryable<TContext>`
+- no async work is required to produce the base query
+
+Use [`IQueryContextSourceAsync`](./Abstractions/Query/IQueryContextSourceAsync.cs) when:
+- the dataset is locally queryable
+- you need to `await` something (e.g. a parameter lookup via another Kaleido service) before you can compose the base `IQueryable<TContext>`
+- the framework should still own search/filter/sort/page and materialization on the returned `IQueryable<TContext>`
 
 Use [`IQueryViewSource`](./Abstractions/Query/IQueryViewSource.cs) when:
 - the view is a local projection/shaping step over `IQueryable<TContext>`
 - the framework should own filtering, sorting, paging, and materialization
-- no async orchestration is required before results exist
+- no async work is required before composing the view
+
+Use [`IQueryViewSourceAsync`](./Abstractions/Query/IQueryViewSourceAsync.cs) when:
+- same as `IQueryViewSource` but you need to `await` something before composing `IQueryable<TView>`
 
 Use [`IDelegateQueryViewSource`](./Abstractions/Query/IDelegateQueryViewSource.cs) when:
-- the view must call another service
+- the view must call another service and return results from it
 - the backend must derive hidden/internal context before searching
 - the UI should not know downstream/internal query details
-- the query must perform async orchestration before returning results
+- the result is not locally queryable — the delegate returns a fully materialized `QueryResult<TView>`
+
+**Key distinction:** async sources and async view sources are still local-lane — the framework still owns search/filter/sort/page/materialization on top of the returned `IQueryable`. Delegated views exit the local pipeline entirely and return a pre-materialized result.
 
 ## Registry rules
 - Normal contexts are registered in [`IQueryContextRegistry`](./Abstractions/Query/IQueryContextRegistry.cs)
@@ -85,12 +97,24 @@ Changes in [`Abstractions/`](./Abstractions) usually ripple into:
 Prefer additive changes over broad refactors when possible.
 
 ## Async guidance
-Keep local query views synchronous.
-[`IQueryViewSource`](./Abstractions/Query/IQueryViewSource.cs) is for `IQueryable` composition, not async orchestration.
 
-The async orchestration boundary is [`IDelegateQueryViewSource`](./Abstractions/Query/IDelegateQueryViewSource.cs).
+### Local lane async (source/view setup)
+Use [`IQueryContextSourceAsync`](./Abstractions/Query/IQueryContextSourceAsync.cs) when building the base `IQueryable<TContext>` requires an `await` — for example, fetching filter parameters from another Kaleido service via `IKaleidoQueryableClientFactory` before composing the query.
 
-Also note: the default local materializer in [`QueryContextExecutor`](./Queryable/Runtime/QueryContextExecutor.cs) is async-shaped but currently sync-backed.
+Use [`IQueryViewSourceAsync`](./Abstractions/Query/IQueryViewSourceAsync.cs) when projecting from `IQueryable<TContext>` to `IQueryable<TView>` requires an `await`.
+
+Both are still local-lane: the framework awaits the setup, then takes the returned `IQueryable` and applies its normal search/filter/sort/page/materialization pipeline. The returned `IQueryable` itself is not awaited or executed by the source — that remains the framework's responsibility.
+
+For each context type, register exactly one of `IQueryContextSource<T>` or `IQueryContextSourceAsync<T>`. Registering both is a startup-time error.
+For each view type, implement exactly one of `IQueryViewSource` or `IQueryViewSourceAsync`. Implementing both is a startup-time error.
+
+### Orchestration async (delegated views)
+Use [`IDelegateQueryViewSource`](./Abstractions/Query/IDelegateQueryViewSource.cs) when the view must call another service and return results originating from it. The delegated source returns a fully materialized `QueryResult<TView>` — it exits the local `IQueryable` pipeline entirely.
+
+Do **not** use `IDelegateQueryViewSource` just to get async — if the data is still local and you only need async setup, use the async source/view interfaces instead.
+
+### Materializer note
+The default local materializer in [`QueryContextExecutor`](./Queryable/Runtime/QueryContextExecutor.cs) is async-shaped but currently sync-backed.
 Do not document local execution as provider-native async unless that implementation changes.
 
 ## Verification
@@ -144,7 +168,10 @@ Testing conventions from the repo test guide:
 ## Common pitfalls
 - forgetting that delegated contexts still have context metadata
 - assuming delegated execution should expose direct context query endpoints
-- treating local query views as the async boundary
+- using `IDelegateQueryViewSource` just to get `await` — use `IQueryContextSourceAsync` or `IQueryViewSourceAsync` instead when the data is still locally queryable
+- registering both a sync and async source for the same context type — this is a startup-time error
+- implementing both `IQueryViewSource` and `IQueryViewSourceAsync` on the same view type — this is a startup-time error
+- using a raw `HttpClient` to call another Kaleido service from inside a source or view — always use `IKaleidoQueryableClientFactory`
 - changing metadata behavior without checking registry output
 - changing pageable behavior without checking default sort requirements
 - changing runtime dispatch without updating both unit tests and ASP.NET Core endpoint tests
@@ -152,5 +179,6 @@ Testing conventions from the repo test guide:
 
 ## Rule of thumb
 - If the data is locally queryable and the result is a projection, use a local context + local view
+- If building the query requires async setup (e.g. a remote parameter fetch), use the async source/view variant
 - If the context itself is the result shape, use a direct context
-- If the backend must orchestrate async work or hide internal service logic from the caller, use a delegated view
+- If the backend must call another service and the result comes from that service, use a delegated view

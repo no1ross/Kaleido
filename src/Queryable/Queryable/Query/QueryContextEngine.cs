@@ -48,8 +48,8 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
             var executionContext = new QueryExecutionContext(metadata, request);
             var compiled = compiler.Compile(request, metadata, viewRegistration.Metadata);
-            var query = CreateQuery(executionContext, compiled, observation);
-            var view = CreateView(viewRegistration, query, executionContext, observation);
+            var query = await CreateQueryAsync(executionContext, compiled, observation, cancellationToken);
+            var view = await CreateViewAsync(viewRegistration, query, executionContext, observation, cancellationToken);
             var result = await MaterializeAsync(
                 view,
                 compiled.Page,
@@ -102,7 +102,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
             var executionContext = new QueryExecutionContext(metadata, request);
             var compiled = compiler.Compile(request, metadata);
-            var query = CreateQuery(executionContext, compiled, observation);
+            var query = await CreateQueryAsync(executionContext, compiled, observation, cancellationToken);
 
             if (query is not IQueryable<TView> typedQuery)
             {
@@ -139,15 +139,18 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         }
     }
 
-    private IQueryable<TQueryContext> CreateQuery(
+    private async Task<IQueryable<TQueryContext>> CreateQueryAsync(
         QueryExecutionContext executionContext,
         CompiledRecordQuery compiled,
-        IQueryExecutionObservation observation)
+        IQueryExecutionObservation observation,
+        CancellationToken cancellationToken)
     {
         using var scope =
             observation.BeginSource();
 
-        var query = source.CreateQuery(executionContext);
+        var query = source is IQueryContextSourceAsync<TQueryContext> asyncSource
+            ? await asyncSource.CreateQueryAsync(executionContext, cancellationToken)
+            : source.CreateQuery(executionContext);
 
         query = applier.ApplySearch(query, compiled.Search);
         query = applier.ApplyFilter(query, compiled.Filter);
@@ -188,11 +191,12 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             items);
     }
 
-    private IQueryable<TView> CreateView(
+    private async Task<IQueryable<TView>> CreateViewAsync(
         QueryViewRegistration viewRegistration,
         IQueryable<TQueryContext> query,
         QueryExecutionContext executionContext,
-        IQueryExecutionObservation observation)
+        IQueryExecutionObservation observation,
+        CancellationToken cancellationToken)
     {
         using var scope =
             observation.BeginView();
@@ -202,55 +206,53 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
                 viewRegistration.QueryViewType);
 
         var typedMethod =
-            CreateViewTypedMethod.MakeGenericMethod(
+            CreateViewAsyncTypedMethod.MakeGenericMethod(
                 viewRegistration.ViewParametersType);
 
-        var result =
-            typedMethod.Invoke(
-                this,
-                new object[]
-                {
-                    queryView,
-                    query,
-                    executionContext,
-                    viewRegistration
-                });
+        var task = (Task<IQueryable<TView>>)typedMethod.Invoke(
+            this,
+            new object[]
+            {
+                queryView,
+                query,
+                executionContext,
+                viewRegistration,
+                cancellationToken
+            })!;
 
-        if (result is IQueryable<TView> typedView)
-        {
-            return typedView;
-        }
-
-        throw new InvalidOperationException(
-            $"Query view '{viewRegistration.QueryViewType.FullName}' did not return " +
-            $"'{typeof(IQueryable<TView>).FullName}'.");
+        return await task;
     }
 
-    private IQueryable<TView> CreateViewTyped<TViewParameters>(
+    private async Task<IQueryable<TView>> CreateViewAsyncTyped<TViewParameters>(
         object queryView,
         IQueryable<TQueryContext> query,
         QueryExecutionContext executionContext,
-        QueryViewRegistration viewRegistration)
+        QueryViewRegistration viewRegistration,
+        CancellationToken cancellationToken)
         where TViewParameters : class
     {
-        if (queryView is not IQueryViewSource<TQueryContext, TView, TViewParameters> typedQueryView)
+        if (queryView is IQueryViewSourceAsync<TQueryContext, TView, TViewParameters> asyncView)
         {
-            throw new InvalidOperationException(
-                $"Query view '{viewRegistration.QueryViewType.FullName}' must implement " +
-                $"'{typeof(IQueryViewSource<TQueryContext, TView, TViewParameters>).FullName}'.");
+            return await asyncView.CreateViewAsync(query, executionContext, cancellationToken);
         }
 
-        return typedQueryView.CreateView(
-            query,
-            executionContext);
+        if (queryView is IQueryViewSource<TQueryContext, TView, TViewParameters> syncView)
+        {
+            return syncView.CreateView(query, executionContext);
+        }
+
+        throw new InvalidOperationException(
+            $"Query view '{viewRegistration.QueryViewType.FullName}' must implement " +
+            $"'{typeof(IQueryViewSource<TQueryContext, TView, TViewParameters>).FullName}' or " +
+            $"'{typeof(IQueryViewSourceAsync<TQueryContext, TView, TViewParameters>).FullName}'.");
     }
 
-    private static readonly MethodInfo CreateViewTypedMethod =
+    private static readonly MethodInfo CreateViewAsyncTypedMethod =
         typeof(QueryContextEngine<TQueryContext, TView>)
             .GetMethod(
-                nameof(CreateViewTyped),
+                nameof(CreateViewAsyncTyped),
                 BindingFlags.Instance |
                 BindingFlags.NonPublic)
         ?? throw new InvalidOperationException(
-            $"Unable to locate method '{nameof(CreateViewTyped)}'.");
+            $"Unable to locate method '{nameof(CreateViewAsyncTyped)}'.");
 }

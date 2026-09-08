@@ -55,22 +55,35 @@ internal sealed class QueryContextRegistrationValidator
     {
         foreach (var queryContextType in queryContextTypes)
         {
-            var localSourceInterface =
+            var syncInterface =
                 typeof(IQueryContextSource<>)
                     .MakeGenericType(queryContextType);
 
-            var localRegistrations =
-                services
-                    .Where(x => x.ServiceType == localSourceInterface)
-                    .ToArray();
+            var asyncInterface =
+                typeof(IQueryContextSourceAsync<>)
+                    .MakeGenericType(queryContextType);
 
-            if (localRegistrations.Length == 0)
+            var syncCount =
+                services.Count(x => x.ServiceType == syncInterface);
+
+            var asyncCount =
+                services.Count(x => x.ServiceType == asyncInterface);
+
+            if (syncCount == 0 && asyncCount == 0)
             {
                 throw new InvalidOperationException(
-                    $"Query context '{queryContextType.Name}' does not have a registered source.");
+                    $"Query context '{queryContextType.Name}' does not have a registered source. " +
+                    $"Register exactly one IQueryContextSource<{queryContextType.Name}> or IQueryContextSourceAsync<{queryContextType.Name}>.");
             }
 
-            if (localRegistrations.Length > 1)
+            if (syncCount > 0 && asyncCount > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Query context '{queryContextType.Name}' has both a sync and async source registered. " +
+                    $"Register exactly one: IQueryContextSource<{queryContextType.Name}> or IQueryContextSourceAsync<{queryContextType.Name}>.");
+            }
+
+            if (syncCount > 1 || asyncCount > 1)
             {
                 throw new InvalidOperationException(
                     $"Query context '{queryContextType.Name}' has multiple registered local sources.");

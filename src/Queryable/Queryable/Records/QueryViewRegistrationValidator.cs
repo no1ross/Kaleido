@@ -67,24 +67,39 @@ internal sealed class QueryViewRegistrationValidator
     {
         foreach (var queryViewType in queryViewTypes)
         {
-            var interfaces =
+            var syncInterfaces =
                 queryViewType
                     .GetInterfaces()
                     .Where(i =>
                         i.IsGenericType &&
                         (
-                            i.GetGenericTypeDefinition() ==
-                            typeof(IQueryViewSource<,>) ||
-
-                            i.GetGenericTypeDefinition() ==
-                            typeof(IQueryViewSource<,,>)
+                            i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,>) ||
+                            i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,,>)
                         ))
                     .ToArray();
 
-            if (interfaces.Length == 0)
+            var asyncInterfaces =
+                queryViewType
+                    .GetInterfaces()
+                    .Where(i =>
+                        i.IsGenericType &&
+                        (
+                            i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,>) ||
+                            i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,,>)
+                        ))
+                    .ToArray();
+
+            if (syncInterfaces.Length == 0 && asyncInterfaces.Length == 0)
             {
                 throw new InvalidOperationException(
-                    $"Query view '{queryViewType.Name}' must implement IQueryViewSource.");
+                    $"Query view '{queryViewType.Name}' must implement IQueryViewSource or IQueryViewSourceAsync.");
+            }
+
+            if (syncInterfaces.Length > 0 && asyncInterfaces.Length > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Query view '{queryViewType.Name}' implements both IQueryViewSource and IQueryViewSourceAsync. " +
+                    $"Implement exactly one.");
             }
         }
     }
@@ -130,11 +145,10 @@ internal sealed class QueryViewRegistrationValidator
             .Where(i =>
                 i.IsGenericType &&
                 (
-                    i.GetGenericTypeDefinition() ==
-                        typeof(IQueryViewSource<,>) ||
-
-                    i.GetGenericTypeDefinition() ==
-                        typeof(IQueryViewSource<,,>)
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,>) ||
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,,>) ||
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,>) ||
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,,>)
                 ))
             .OrderByDescending(
                 i => i.GenericTypeArguments.Length)

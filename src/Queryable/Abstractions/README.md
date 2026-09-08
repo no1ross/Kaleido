@@ -13,9 +13,11 @@ This project contains:
 - metadata contracts such as [`QueryRegistration.cs`](./Metadata/QueryRegistration.cs)
 - request/result types such as [`QueryRequest`](./Query/QueryRequest.cs)
 - source/view interfaces such as:
-  - [`IQueryContextSource`](./Query/IQueryContextSource.cs)
-  - [`IQueryViewSource`](./Query/IQueryViewSource.cs)
-  - [`IDelegateQueryViewSource`](./Query/IDelegateQueryViewSource.cs)
+  - [`IQueryContextSource`](./Query/IQueryContextSource.cs) — sync local context source
+  - [`IQueryContextSourceAsync`](./Query/IQueryContextSourceAsync.cs) — async local context source (for async setup before composing `IQueryable`)
+  - [`IQueryViewSource`](./Query/IQueryViewSource.cs) — sync local view
+  - [`IQueryViewSourceAsync`](./Query/IQueryViewSourceAsync.cs) — async local view (for async setup before composing `IQueryable<TView>`)
+  - [`IDelegateQueryViewSource`](./Query/IDelegateQueryViewSource.cs) — delegated/orchestrated view returning pre-materialized results
 - the public execution entry point [`IQueryableService`](./IQueryableService.cs)
 - shared Queryable options such as [`QueryableRouteOptions`](./QueryableRouteOptions.cs)
 
@@ -27,9 +29,11 @@ You typically use this project to:
 - mark a context with [`QueryContextAttribute`](./Attributes/QueryContextAttribute.cs)
 - mark a view with [`QueryViewAttribute`](./Attributes/QueryViewAttribute.cs)
 - annotate fields with query semantics such as filter/search/sort attributes
-- implement [`IQueryContextSource`](./Query/IQueryContextSource.cs) for local/direct queryable data
-- implement [`IQueryViewSource`](./Query/IQueryViewSource.cs) for local projected views
-- implement [`IDelegateQueryViewSource`](./Query/IDelegateQueryViewSource.cs) for delegated/orchestrated views
+- implement [`IQueryContextSource`](./Query/IQueryContextSource.cs) for local/direct queryable data (sync)
+- implement [`IQueryContextSourceAsync`](./Query/IQueryContextSourceAsync.cs) for local/direct queryable data when building the query requires `await`
+- implement [`IQueryViewSource`](./Query/IQueryViewSource.cs) for local projected views (sync)
+- implement [`IQueryViewSourceAsync`](./Query/IQueryViewSourceAsync.cs) for local projected views when composing the view requires `await`
+- implement [`IDelegateQueryViewSource`](./Query/IDelegateQueryViewSource.cs) for delegated/orchestrated views that call another service and return pre-materialized results
 - issue typed requests through [`IQueryableService`](./IQueryableService.cs)
 
 ## Common consumer workflow
@@ -37,8 +41,8 @@ You typically use this project to:
 Most Queryable feature code uses the abstractions in this order:
 
 1. define a context type with `[QueryContext]`
-2. define a source with `IQueryContextSource<TContext>` if the data is locally queryable
-3. define one or more views with `[QueryView]` and `IQueryViewSource<...>`
+2. define a source with `IQueryContextSource<TContext>` (or `IQueryContextSourceAsync<TContext>` if async setup is needed) if the data is locally queryable
+3. define one or more views with `[QueryView]` and `IQueryViewSource<...>` (or `IQueryViewSourceAsync<...>`)
 4. optionally define typed parameter objects for those views
 5. let the runtime discover everything through `AddQueryable()` assembly scanning
 

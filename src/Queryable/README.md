@@ -128,7 +128,48 @@ internal sealed class RequestingProviderQueryContextSource(
 }
 ```
 
-Real example: <ref_snippet file="C:\Repos\Kaleido\samples\PriorAuth\ProviderSearch.Artifacts\Queryable\ContextSources\RequestingProviderQueryContextSource.cs" lines="11-77" />.
+#### Async context sources
+If building the base `IQueryable<TContext>` requires an `await` — for example, fetching filter parameters from another Kaleido service before composing the query — implement `IQueryContextSourceAsync<TContext>` instead.
+The framework awaits the returned task, then applies its normal search/filter/sort/page/materialization pipeline on the `IQueryable<TContext>`.
+
+```csharp
+internal sealed class RequestingProviderQueryContextSource(
+    ProviderSearchDbContext dbContext,
+    PlanNetworkClient planNetworkClient)
+    : IQueryContextSourceAsync<RequestingProviderQueryContext>
+{
+    public async Task<IQueryable<RequestingProviderQueryContext>> CreateQueryAsync(
+        QueryExecutionContext executionContext,
+        CancellationToken cancellationToken = default)
+    {
+        var parameters =
+            executionContext.TryGetViewParameters<RequestingProviderSearchParameters>()
+            ?? throw new InvalidOperationException("Parameters are required.");
+
+        // async call resolved before IQueryable is built
+        var networkIds =
+            (await planNetworkClient.GetNetworkIdsByPlanIdAsync(
+                parameters.PlanId, cancellationToken))
+            .ToArray();
+
+        return dbContext.ProviderLocations
+            .Where(x => dbContext.ProviderLocationNetworks
+                .Any(n => n.ProviderLocationId == x.ProviderLocationId
+                          && networkIds.Contains(n.NetworkId)))
+            .Select(x => new RequestingProviderQueryContext
+            {
+                ProviderName = x.Provider.ProviderName
+            });
+    }
+}
+```
+
+**Rules:**
+- Register exactly one of `IQueryContextSource<T>` or `IQueryContextSourceAsync<T>` per context type — the framework rejects both or neither.
+- The returned `IQueryable<TContext>` is not yet materialized. The framework applies search/filter/sort/page on top of it.
+- Communicate with other Kaleido services using a client backed by `IKaleidoQueryableClientFactory` (or `IKaleidoProcessClientFactory`), never a raw `HttpClient`.
+
+Real example: <ref_snippet file="C:\Repos\Kaleido\samples\PriorAuth\Provider.Artifacts\Queryable\ContextSources\RequestingProviderQueryContextSource.cs" lines="1-80" />.
 
 ### 4. Define a local query view
 A local view is the normal way to expose a named result shape over a queryable context.
@@ -160,7 +201,29 @@ internal sealed class RequestingProviderSearchViewSource
 }
 ```
 
-Real example: <ref_snippet file="C:\Repos\Kaleido\samples\PriorAuth\ProviderSearch.Artifacts\Queryable\ViewSources\RequestingProviderSearchViewSource.cs" lines="10-44" />.
+Real example: <ref_snippet file="C:\Repos\Kaleido\samples\PriorAuth\Provider.Artifacts\Queryable\ViewSources\RequestingProviderSearchViewSource.cs" lines="1-44" />.
+
+#### Async view sources
+If projecting from `IQueryable<TContext>` to `IQueryable<TView>` requires an `await`, implement `IQueryViewSourceAsync<TContext, TView>` or `IQueryViewSourceAsync<TContext, TView, TParameters>`.
+
+```csharp
+internal sealed class MyViewSource
+    : IQueryViewSourceAsync<MyQueryContext, MyView>
+{
+    public async Task<IQueryable<MyView>> CreateViewAsync(
+        IQueryable<MyQueryContext> query,
+        QueryExecutionContext executionContext,
+        CancellationToken cancellationToken = default)
+    {
+        // async work before composing view...
+        return query.Select(x => new MyView { ... });
+    }
+}
+```
+
+**Rules:**
+- Implement exactly one of `IQueryViewSource` or `IQueryViewSourceAsync` per view type — the framework rejects both.
+- Async view sources remain in the local-lane pipeline; the framework still owns materialization.
 
 ### 5. Define view parameters when needed
 If a view needs typed inputs, add a parameter type and use the three-generic-argument form of `IQueryViewSource<...>`.
@@ -194,18 +257,21 @@ Use a **local view** when:
 - the source data is locally queryable
 - the view is a projection over `IQueryable<TContext>`
 - the framework should own filtering, sorting, paging, and materialization
+- use the `Async` variant (`IQueryContextSourceAsync` / `IQueryViewSourceAsync`) if setup requires `await`
 
 Use a **delegated view** when:
-- the backend must call another service
-- the view needs async orchestration
+- the backend must call another service and return results from it
 - internal downstream query logic should stay hidden from the consumer
+- the result is not locally queryable (pre-materialized results from another service)
 
-### 7. What Queryable registers for you
+Do **not** use a delegated view just to get `await`. If the data is still local, use the async source/view interfaces.
+
+### 8. What Queryable registers for you
 After `AddQueryable()` runs, the framework scans your registered assemblies and automatically discovers:
 - `[QueryContext]` types
 - `[QueryView]` types
-- `IQueryContextSource<TContext>` implementations
-- local and delegated query views
+- `IQueryContextSource<TContext>` and `IQueryContextSourceAsync<TContext>` implementations
+- local and delegated query views (sync and async variants)
 
 You do not manually register each context/view one by one. The assembly scan and registration flow is implemented in <ref_file file="C:\Repos\Kaleido\src\Queryable\Queryable\QueryableServiceCollectionExtensions.cs" />.
 

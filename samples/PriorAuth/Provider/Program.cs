@@ -3,6 +3,7 @@ using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.Provider.Data;
+using Kaleido.Samples.PriorAuth.Provider.Queryable.Clients;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Logs;
@@ -54,14 +55,7 @@ builder.Services.AddDbContext<ProviderSearchDbContext>(
         builder.Configuration.GetConnectionString("Provider")
         ?? "Data Source=data/provider.db"));
 
-builder.Services.AddHttpClient("ReferenceData", client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["Services:ReferenceData:BaseUrl"]
-        ?? "https://localhost:8441");
-});
-
-builder.Services.AddScoped<Kaleido.Samples.PriorAuth.Provider.Queryable.Clients.ReferenceDataClient>();
+builder.Services.AddScoped<PlanNetworkClient>();
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
@@ -89,7 +83,14 @@ builder.Services.AddKaleido()
         .AddQueryableAspNetCore(o =>
         {
             o.RoutePrefix = "provider";
-        });
+        })
+    .AddQueryableClient(o =>
+    {
+        o.Name = "ReferenceData";
+        o.BaseUrl = builder.Configuration["Services:ReferenceData:BaseUrl"]
+            ?? "https://localhost:8441";
+        o.RoutePrefix = "referencedata";
+    });
 
 var app = builder.Build();
 

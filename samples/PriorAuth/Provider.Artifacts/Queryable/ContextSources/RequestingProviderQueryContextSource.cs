@@ -10,11 +10,12 @@ namespace Kaleido.Samples.PriorAuth.Provider.Queryable.ContextSources;
 
 internal sealed class RequestingProviderQueryContextSource(
     ProviderSearchDbContext dbContext,
-    ReferenceDataClient referenceDataClient)
-    : IQueryContextSource<RequestingProviderQueryContext>
+    PlanNetworkClient planNetworkClient)
+    : IQueryContextSourceAsync<RequestingProviderQueryContext>
 {
-    public IQueryable<RequestingProviderQueryContext> CreateQuery(
-        QueryExecutionContext executionContext)
+    public async Task<IQueryable<RequestingProviderQueryContext>> CreateQueryAsync(
+        QueryExecutionContext executionContext,
+        CancellationToken cancellationToken = default)
     {
         var parameters =
             executionContext.TryGetViewParameters<RequestingProviderSearchParameters>()
@@ -26,9 +27,10 @@ internal sealed class RequestingProviderQueryContextSource(
         }
 
         var networkIds =
-            referenceDataClient.GetNetworkIdsByPlanId(
-                parameters.PlanId)
-                .ToArray();
+            (await planNetworkClient.GetNetworkIdsByPlanIdAsync(
+                parameters.PlanId,
+                cancellationToken))
+            .ToArray();
 
         return
             from location in dbContext.ProviderLocations.AsNoTracking()

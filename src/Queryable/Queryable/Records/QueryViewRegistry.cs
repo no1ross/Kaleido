@@ -221,11 +221,10 @@ internal sealed class QueryViewRegistry
             .Where(i =>
                 i.IsGenericType &&
                 (
-                    i.GetGenericTypeDefinition() ==
-                        typeof(IQueryViewSource<,>) ||
-
-                    i.GetGenericTypeDefinition() ==
-                        typeof(IQueryViewSource<,,>)
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,>) ||
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,,>) ||
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,>) ||
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,,>)
                 ))
             .OrderByDescending(
                 i => i.GenericTypeArguments.Length)

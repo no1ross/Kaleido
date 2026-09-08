@@ -62,13 +62,6 @@ builder.Services.AddDbContext<IntakeDbContext>(
     options => options.UseSqlite(
         intakeConnectionString));
 
-builder.Services.AddHttpClient("ReferenceData", client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["Services:ReferenceData:BaseUrl"]
-        ?? "https://localhost:8441");
-});
-
 builder.Services.AddScoped<MemberDetailsClient>();
 builder.Services.AddScoped<ProcedureCodeClient>();
 builder.Services.AddScoped<ProcedureModalityClient>();
@@ -117,6 +110,13 @@ builder.Services.AddKaleido()
             ?? "https://localhost:8444";
         o.RoutePrefix = "member";
     })
+    .AddProcessClient(o =>
+    {
+        o.Name = "Member";
+        o.BaseUrl = builder.Configuration["Services:Member:BaseUrl"]
+            ?? "https://localhost:8444";
+        o.RoutePrefix = "member";
+    })
     .AddQueryableClient(o =>
     {
         o.Name = "CodeSet";
@@ -144,6 +144,20 @@ builder.Services.AddKaleido()
         o.BaseUrl = builder.Configuration["Services:History:BaseUrl"]
             ?? "http://localhost:8089";
         o.RoutePrefix = "history";
+    })
+    .AddQueryableClient(o =>
+    {
+        o.Name = "Provider";
+        o.BaseUrl = builder.Configuration["Services:Provider:BaseUrl"]
+            ?? "https://localhost:8443";
+        o.RoutePrefix = "provider";
+    })
+    .AddQueryableClient(o =>
+    {
+        o.Name = "ReferenceData";
+        o.BaseUrl = builder.Configuration["Services:ReferenceData:BaseUrl"]
+            ?? "https://localhost:8441";
+        o.RoutePrefix = "referencedata";
     });
 
 var app = builder.Build();

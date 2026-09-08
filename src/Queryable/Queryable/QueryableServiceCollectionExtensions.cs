@@ -177,8 +177,10 @@ public static class QueryableServiceCollectionExtensions
         Type contextType,
         IEnumerable<Type> types)
     {
-        var localSources =
-            types
+        var typeList = types as Type[] ?? types.ToArray();
+
+        var syncSources =
+            typeList
                 .Where(x =>
                     x.GetInterfaces()
                         .Any(i =>
@@ -187,22 +189,40 @@ public static class QueryableServiceCollectionExtensions
                             i.GenericTypeArguments[0] == contextType))
                 .ToArray();
 
-        if (localSources.Length > 1)
+        var asyncSources =
+            typeList
+                .Where(x =>
+                    x.GetInterfaces()
+                        .Any(i =>
+                            i.IsGenericType &&
+                            i.GetGenericTypeDefinition() == typeof(IQueryContextSourceAsync<>) &&
+                            i.GenericTypeArguments[0] == contextType))
+                .ToArray();
+
+        if (syncSources.Length > 1 || asyncSources.Length > 1)
         {
+            // Duplicate validation is handled by the validator — skip silently here.
             return;
         }
 
-        if (localSources.Length == 1)
+        if (syncSources.Length == 1 && asyncSources.Length == 1)
         {
-            var sourceInterface =
-                typeof(IQueryContextSource<>)
-                    .MakeGenericType(contextType);
-
-            services.TryAddScoped(
-                sourceInterface,
-                localSources[0]);
+            // Exclusivity violation — handled by the validator.
+            return;
         }
 
+        if (syncSources.Length == 1)
+        {
+            services.TryAddScoped(
+                typeof(IQueryContextSource<>).MakeGenericType(contextType),
+                syncSources[0]);
+        }
+        else if (asyncSources.Length == 1)
+        {
+            services.TryAddScoped(
+                typeof(IQueryContextSourceAsync<>).MakeGenericType(contextType),
+                asyncSources[0]);
+        }
     }
 
     private static void RegisterContextEngines(
@@ -210,16 +230,21 @@ public static class QueryableServiceCollectionExtensions
         Type contextType,
         IEnumerable<Type> types)
     {
+        var typeList = types as Type[] ?? types.ToArray();
+
         var hasLocalSource =
-            types.Any(x =>
+            typeList.Any(x =>
                 x.GetInterfaces()
                     .Any(i =>
                         i.IsGenericType &&
-                        i.GetGenericTypeDefinition() == typeof(IQueryContextSource<>) &&
+                        (
+                            i.GetGenericTypeDefinition() == typeof(IQueryContextSource<>) ||
+                            i.GetGenericTypeDefinition() == typeof(IQueryContextSourceAsync<>)
+                        ) &&
                         i.GenericTypeArguments[0] == contextType));
 
         var localViewTypes =
-            types
+            typeList
                 .Where(x =>
                     x.GetCustomAttribute<QueryViewAttribute>() is not null)
                 .SelectMany(x =>
@@ -228,7 +253,9 @@ public static class QueryableServiceCollectionExtensions
                             i.IsGenericType &&
                             (
                                 i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,>) ||
-                                i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,,>)
+                                i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,,>) ||
+                                i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,>) ||
+                                i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,,>)
                             ) &&
                             i.GenericTypeArguments[0] == contextType)
                         .Select(i => i.GenericTypeArguments[1]))
@@ -315,31 +342,41 @@ public static class QueryableServiceCollectionExtensions
         Type queryViewType,
         IEnumerable<Type> types)
     {
-        var interfaces =
+        var syncInterfaces =
             queryViewType
                 .GetInterfaces()
                 .Where(i =>
                     i.IsGenericType &&
                     (
-                        i.GetGenericTypeDefinition() ==
-                            typeof(IQueryViewSource<,>) ||
-
-                        i.GetGenericTypeDefinition() ==
-                            typeof(IQueryViewSource<,,>)
+                        i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,>) ||
+                        i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,,>)
                     ))
                 .ToArray();
 
-        if (interfaces.Length == 0)
+        var asyncInterfaces =
+            queryViewType
+                .GetInterfaces()
+                .Where(i =>
+                    i.IsGenericType &&
+                    (
+                        i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,>) ||
+                        i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,,>)
+                    ))
+                .ToArray();
+
+        if (syncInterfaces.Length == 0 && asyncInterfaces.Length == 0)
         {
             throw new InvalidOperationException(
-                $"Query view '{queryViewType.FullName}' does not implement IQueryViewSource.");
+                $"Query view '{queryViewType.FullName}' does not implement IQueryViewSource or IQueryViewSourceAsync.");
         }
+
+        // Exclusivity is validated by QueryViewRegistrationValidator; skip registration if both are present.
+        var interfaces = syncInterfaces.Length > 0 ? syncInterfaces : asyncInterfaces;
 
         //
         // Register the actual QueryView implementation
         //
-        services.TryAddScoped(
-            queryViewType);
+        services.TryAddScoped(queryViewType);
 
         //
         // Register all implemented interfaces
@@ -350,20 +387,5 @@ public static class QueryableServiceCollectionExtensions
                 queryViewInterface,
                 sp => sp.GetRequiredService(queryViewType));
         }
-
-        //
-        // Use the most-specific interface for metadata
-        //
-        var registrationInterface =
-            interfaces
-                .OrderByDescending(
-                    x => x.GenericTypeArguments.Length)
-                .First();
-
-        _ =
-            registrationInterface.GenericTypeArguments[0];
-
-        _ =
-            registrationInterface.GenericTypeArguments[1];
     }
 }

@@ -102,24 +102,34 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
         IServiceCollection services,
         Type contextType)
     {
-        var localSourceInterface =
+        var syncInterface =
             typeof(IQueryContextSource<>)
                 .MakeGenericType(contextType);
 
-        var localSources =
+        var asyncInterface =
+            typeof(IQueryContextSourceAsync<>)
+                .MakeGenericType(contextType);
+
+        var syncSources =
             services
-                .Where(x => x.ServiceType == localSourceInterface)
+                .Where(x => x.ServiceType == syncInterface)
                 .ToArray();
 
+        var asyncSources =
+            services
+                .Where(x => x.ServiceType == asyncInterface)
+                .ToArray();
 
-        if (localSources.Length == 1)
+        var allSources = syncSources.Concat(asyncSources).ToArray();
+
+        if (allSources.Length == 1)
         {
-            return localSources[0].ImplementationType
+            return allSources[0].ImplementationType
                 ?? throw new InvalidOperationException(
-                    $"No implementation type registered for source '{localSourceInterface.Name}'.");
+                    $"No implementation type registered for source of query context '{contextType.Name}'.");
         }
 
-        if (localSources.Length > 1)
+        if (allSources.Length > 1)
         {
             throw new InvalidOperationException(
                 $"Query context '{contextType.Name}' has multiple registered local sources.");

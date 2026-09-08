@@ -33,7 +33,9 @@ Examples:
 - [`QueryRequest`](./Abstractions/Query/QueryRequest.cs), `QueryResult`
 - [`QueryContextAttribute`](./Abstractions/Attributes/QueryContextAttribute.cs), [`QueryViewAttribute`](./Abstractions/Attributes/QueryViewAttribute.cs)
 - [`IQueryContextSource`](./Abstractions/Query/IQueryContextSource.cs)
+- [`IQueryContextSourceAsync`](./Abstractions/Query/IQueryContextSourceAsync.cs)
 - [`IQueryViewSource`](./Abstractions/Query/IQueryViewSource.cs)
+- [`IQueryViewSourceAsync`](./Abstractions/Query/IQueryViewSourceAsync.cs)
 - [`IDelegateQueryViewSource`](./Abstractions/Query/IDelegateQueryViewSource.cs)
 
 ### [`Queryable`](./Queryable)
@@ -198,17 +200,37 @@ Implemented by [`QueryableService`](./Queryable/QueryableService.cs).
 ### [`IQueryContextSource<TContext>`](./Abstractions/Query/IQueryContextSource.cs)
 This interface provides the local source `IQueryable<TContext>` for a normal context.
 
-Use this when the data lives in the local query pipeline and can be queried via LINQ.
+Use this when the data lives in the local query pipeline, can be queried via LINQ, and no async work is needed to produce the base query.
+
+### [`IQueryContextSourceAsync<TContext>`](./Abstractions/Query/IQueryContextSourceAsync.cs)
+This interface provides the local source `IQueryable<TContext>` for a normal context when building the base query requires an `await`.
+
+- input: `QueryExecutionContext`, `CancellationToken`
+- output: `Task<IQueryable<TContext>>`
+
+The framework awaits the returned task, then applies its normal search/filter/sort/page/materialization pipeline on the `IQueryable<TContext>`. The source does **not** materialize the query — it only constructs it.
+
+Use this when setup requires async work before the `IQueryable` can be composed — for example, fetching filter criteria from another Kaleido service using `IKaleidoQueryableClientFactory`.
+
+Exactly one of `IQueryContextSource<T>` or `IQueryContextSourceAsync<T>` may be registered per context type.
 
 ### [`IQueryViewSource<TContext, TView, TParameters>`](./Abstractions/Query/IQueryViewSource.cs)
 This interface defines a local view.
 
-It is intentionally synchronous:
-
-- input: `IQueryable<TContext>`
+- input: `IQueryable<TContext>`, `QueryExecutionContext`
 - output: `IQueryable<TView>`
 
 This interface is for query composition, not async orchestration.
+
+### [`IQueryViewSourceAsync<TContext, TView, TParameters>`](./Abstractions/Query/IQueryViewSourceAsync.cs)
+This interface defines a local view when the projection step requires an `await`.
+
+- input: `IQueryable<TContext>`, `QueryExecutionContext`, `CancellationToken`
+- output: `Task<IQueryable<TView>>`
+
+Behaves identically to `IQueryViewSource` at the framework level — the framework awaits the setup, then owns materialization.
+
+Exactly one of `IQueryViewSource` or `IQueryViewSourceAsync` may be implemented per view type.
 
 ### [`IDelegateQueryViewSource<TContext, TView, TParameters>`](./Abstractions/Query/IDelegateQueryViewSource.cs)
 This interface defines a delegated view.
@@ -219,10 +241,12 @@ It is intentionally async:
 - output: `Task<QueryResult<TView>>`
 
 Use this when the view must:
-- call another service
+- call another service and return results from it
 - gather process-scoped/internal data
 - orchestrate multiple steps
 - return fully materialized results
+
+**Key distinction:** delegated views exit the local `IQueryable` pipeline entirely. They return a pre-materialized `QueryResult<TView>`. Do not use `IDelegateQueryViewSource` just to get `await` — if the data is still locally queryable and you only need async setup, use `IQueryContextSourceAsync` or `IQueryViewSourceAsync` instead.
 
 ---
 
@@ -261,10 +285,10 @@ Only local/direct contexts go through normal source registration and normal cont
 ### View partitioning
 Views are separated by implemented interface:
 
-- local views implement [`IQueryViewSource<,>`](./Abstractions/Query/IQueryViewSource.cs) or [`IQueryViewSource<,,>`](./Abstractions/Query/IQueryViewSource.cs)
+- local views implement [`IQueryViewSource<,>`](./Abstractions/Query/IQueryViewSource.cs), [`IQueryViewSource<,,>`](./Abstractions/Query/IQueryViewSource.cs), [`IQueryViewSourceAsync<,>`](./Abstractions/Query/IQueryViewSourceAsync.cs), or [`IQueryViewSourceAsync<,,>`](./Abstractions/Query/IQueryViewSourceAsync.cs)
 - delegated views implement [`IDelegateQueryViewSource<,>`](./Abstractions/Query/IDelegateQueryViewSource.cs) or [`IDelegateQueryViewSource<,,>`](./Abstractions/Query/IDelegateQueryViewSource.cs)
 
-This is an important architectural distinction. Delegated execution is now modeled through delegated views, not through a separate delegated context source path.
+This is an important architectural distinction. Delegated execution is now modeled through delegated views, not through a separate delegated context source path. Async local views (`IQueryViewSourceAsync`) remain in the local-lane pipeline.
 
 ---
 
@@ -341,7 +365,7 @@ Implementation: [`DelegatedQueryViewRegistry`](./Queryable/Records/DelegatedQuer
 ### Context validation
 Normal contexts are validated for:
 - duplicate context names
-- exactly one registered local source
+- exactly one registered local source (either `IQueryContextSource<T>` or `IQueryContextSourceAsync<T>`, not both)
 
 This applies to local/direct contexts, not delegated execution.
 
@@ -350,7 +374,7 @@ Implementation: [`QueryContextRegistrationValidator`](./Queryable/Records/QueryC
 ### Local view validation
 Local views are validated for:
 - duplicate view names
-- implemented [`IQueryViewSource`](./Abstractions/Query/IQueryViewSource.cs)
+- implemented exactly one of [`IQueryViewSource`](./Abstractions/Query/IQueryViewSource.cs) or [`IQueryViewSourceAsync`](./Abstractions/Query/IQueryViewSourceAsync.cs) (not both)
 - referenced context exists
 - contract type is valid
 
@@ -426,9 +450,9 @@ The local [`QueryContextEngine`](./Queryable/Query/QueryContextEngine.cs) does:
 1. validate request
 2. create [`QueryExecutionContext`](./Abstractions/Query/QueryExecutionContext.cs)
 3. compile request into internal query contracts
-4. create the base context query
-5. apply search, filter, and sort
-6. invoke the local view source to create the view `IQueryable<TView>`
+4. create the base context query — awaiting `IQueryContextSourceAsync<T>` if registered, or calling `IQueryContextSource<T>` synchronously
+5. apply search, filter, and sort to the returned `IQueryable<TContext>`
+6. invoke the local view source to create the view `IQueryable<TView>` — awaiting `IQueryViewSourceAsync` if implemented, or calling `IQueryViewSource` synchronously
 7. materialize count and items
 8. return `QueryResult<TView>`
 
@@ -756,23 +780,35 @@ Use a local view when:
 - the result can be expressed as a LINQ projection or shaping step
 - the framework should own filtering, sorting, paging, and materialization
 
-Do **not** use a local view when the view must do async orchestration before it can produce results.
+If building the source or composing the view requires an `await` (for example, a remote parameter lookup via `IKaleidoQueryableClientFactory`), use the async variants:
+- [`IQueryContextSourceAsync`](./Abstractions/Query/IQueryContextSourceAsync.cs) instead of `IQueryContextSource`
+- [`IQueryViewSourceAsync`](./Abstractions/Query/IQueryViewSourceAsync.cs) instead of `IQueryViewSource`
+
+Both stay in the local-lane pipeline. The `IQueryable` returned by the async setup step is not yet materialized — the framework still applies search/filter/sort/page on top of it.
 
 ### When to use a delegated view
 Use a delegated view when:
-- the view must call another service
+- the view must call another service and return results **from** that service
 - the backend must enrich the request with hidden/internal data
-- the view must do async work before results exist
 - the UI should stay unaware of internal backend query details
+- the result is not locally queryable (the delegate returns a pre-materialized `QueryResult<TView>`)
+
+Do **not** use a delegated view just because the setup needs `await`. If the data is still local, use `IQueryContextSourceAsync` or `IQueryViewSourceAsync`.
 
 ### Async guidance
-At the moment, local query views should stay synchronous.
+The framework supports two async tiers:
 
-[`IQueryViewSource`](./Abstractions/Query/IQueryViewSource.cs) is not the async boundary.
+1. **Local setup async** — `IQueryContextSourceAsync` / `IQueryViewSourceAsync`
+   - for local-lane contexts/views that need `await` before composing `IQueryable`
+   - framework still owns search/filter/sort/page/materialization
+   - use when calling another Kaleido service to fetch parameters before building the local query
 
-The async boundary for orchestration is [`IDelegateQueryViewSource`](./Abstractions/Query/IDelegateQueryViewSource.cs).
+2. **Orchestration async** — `IDelegateQueryViewSource`
+   - for views that call another service and return results from it
+   - exits the local `IQueryable` pipeline entirely
+   - returns a pre-materialized `QueryResult<TView>`
 
-This is an important design rule and should not be blurred casually.
+These two tiers are distinct. Do not blur them.
 
 ---
 
@@ -801,7 +837,7 @@ Prefer additive changes where possible.
 Especially for delegated views, the context metadata and view metadata need to stay consistent with the execution path, otherwise discovery and runtime behavior drift apart.
 
 ### 5. Do not overstate async local execution
-The current default materializer is sync-backed.
+The current default materializer is sync-backed. The async source/view interfaces are for async *setup* (before the `IQueryable` is composed), not for async *materialization* of the query.
 
 ---
 
@@ -820,7 +856,7 @@ The runtime/discovery classification of a context:
 A context that can be executed directly without a named view.
 
 ### Local View
-A named view that composes `IQueryable<TView>` from a local context query.
+A named view that composes `IQueryable<TView>` from a local context query. May be synchronous (`IQueryViewSource`) or async-setup (`IQueryViewSourceAsync`); both remain in the local-lane pipeline.
 
 ### Delegated View
 A named view that performs async orchestration and returns a materialized `QueryResult<TView>`.
@@ -861,7 +897,8 @@ These are not necessarily defects, but they deserve explicit explanation or late
 If you are adding new functionality to Queryable, use this rule of thumb:
 
 - if the data is locally queryable and the result is a projection, use a **local context + local view**
+- if building the query requires async setup (e.g. a parameter fetch from another Kaleido service), use the **async source/view variant** — still local-lane
 - if the context itself is the result, use a **direct context**
-- if the backend must orchestrate async work or hide internal service logic from the caller, use a **delegated view**
+- if the backend must call another service and return results from it, or must hide internal query logic entirely, use a **delegated view**
 
 That is the current architectural center of gravity for the subsystem.
