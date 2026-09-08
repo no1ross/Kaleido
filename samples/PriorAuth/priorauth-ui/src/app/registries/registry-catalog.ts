@@ -82,7 +82,12 @@ export class RegistryCatalog {
     }
 
     loadState(): Observable<RegistryCatalogState> {
-        return this.state$;
+        return this.state$.pipe(
+            tap(state => {
+                this.processRegistry.populateRegistry(
+                    state.processSteps,
+                    state.conflicts.filter(conflict => conflict.type === 'process-step'));
+            }));
     }
 
     refresh(): void {
@@ -93,10 +98,13 @@ export class RegistryCatalog {
     private createStateObservable(): Observable<RegistryCatalogState> {
         const requests =
             getServiceRoutes().map(service =>
-                forkJoin({
-                    process: this.loadProcessRegistry(service),
-                    queryable: this.loadQueryableRegistry(service)
-                }).pipe(
+                (service.registryPath
+                    ? this.loadUnifiedRegistry(service)
+                    : forkJoin({
+                        process: this.loadProcessRegistry(service),
+                        queryable: this.loadQueryableRegistry(service)
+                    })
+                ).pipe(
                     map(result => ({
                         service,
                         process: result.process,
@@ -264,6 +272,76 @@ export class RegistryCatalog {
         return entries.filter(entry =>
             !conflictedNames.has(
                 getName(entry)));
+    }
+
+    private loadUnifiedRegistry(
+        service: PriorAuthServiceRouteConfig
+    ): Observable<{ process: RegistryLoadResult<ProcessProcessorRegistryRecord[]>; queryable: RegistryLoadResult<QueryableRecord[]> }> {
+        const url =
+            buildRegistryUrl(
+                service,
+                service.registryPath!);
+
+        console.log(
+            `[Registry:${service.key}] Loading unified registry from ${url}...`);
+
+        const started =
+            performance.now();
+
+        return this.http
+            .get<{ processes: ProcessProcessorRegistryRecord[]; queryables: QueryableRecord[] }>(url)
+            .pipe(
+                map(data => {
+                    const duration =
+                        Math.round(
+                            performance.now() - started);
+
+                    console.group(`[Registry:${service.key}]`);
+                    console.log(`Loaded in ${duration}ms.`);
+                    console.log(`Processes: ${data.processes.length}, Queryables: ${data.queryables.length}`);
+                    console.log('Service', service.displayName);
+                    console.log('Url', url);
+                    console.groupEnd();
+
+                    return {
+                        process: {
+                            configured: true,
+                            ok: true,
+                            url,
+                            data: data.processes
+                        } satisfies RegistryLoadResult<ProcessProcessorRegistryRecord[]>,
+                        queryable: {
+                            configured: true,
+                            ok: true,
+                            url,
+                            data: data.queryables
+                        } satisfies RegistryLoadResult<QueryableRecord[]>
+                    };
+                }),
+                catchError(error => {
+                    const formattedError =
+                        this.formatError(error);
+
+                    console.error(
+                        `[Registry:${service.key}] Failed to load unified registry from ${url}.`,
+                        error);
+
+                    return of({
+                        process: {
+                            configured: true,
+                            ok: false,
+                            url,
+                            error: formattedError
+                        } satisfies RegistryLoadResult<ProcessProcessorRegistryRecord[]>,
+                        queryable: {
+                            configured: true,
+                            ok: false,
+                            url,
+                            error: formattedError
+                        } satisfies RegistryLoadResult<QueryableRecord[]>
+                    });
+                })
+            );
     }
 
     private loadProcessRegistry(

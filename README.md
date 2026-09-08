@@ -275,6 +275,7 @@ Out of the box Kaleido provides:
 
 - Queryable Contracts
 - Process Contracts
+- Aggregated Registry Discovery
 - Metadata Discovery
 - Search
 - Filtering
@@ -283,6 +284,7 @@ Out of the box Kaleido provides:
 - Validation
 - Consumer Guidance
 - Registry Metadata
+- Cross-Processor Handoff
 
 This allows teams to focus on business functionality instead of repeatedly building supporting infrastructure.
 
@@ -319,6 +321,9 @@ This allows teams to focus on business functionality instead of repeatedly build
 - [src/Process/Abstractions/README.md](./src/Process/Abstractions/README.md)
 - [src/Process/Process/README.md](./src/Process/Process/README.md)
 - [src/Process/AspNetCore/README.md](./src/Process/AspNetCore/README.md)
+
+### Registry
+- [src/Registry/README.md](./src/Registry/README.md)
 
 ### Samples
 - [samples/PriorAuth/priorauth-ui/README.md](./samples/PriorAuth/priorauth-ui/README.md)

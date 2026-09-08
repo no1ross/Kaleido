@@ -100,4 +100,22 @@ public record ProcessStepHandlerResult
             Messages = messages
         };
     }
+
+    /// <summary>
+    /// Signals a successful step that hands off to a different processor.
+    /// The framework will propagate <paramref name="targetProcessorName"/> to the
+    /// HTTP response so the consumer can fetch authoritative state from the target.
+    /// </summary>
+    public static ProcessStepHandlerResult HandOff(
+        string targetProcessorName,
+        params ProcessMessage[] messages)
+    {
+        return new()
+        {
+            Succeeded = true,
+            TargetProcessorName = targetProcessorName,
+            RequiredStep = null,
+            Messages = messages
+        };
+    }
 }

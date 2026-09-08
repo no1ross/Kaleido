@@ -118,6 +118,9 @@
     <Project Path="src/Queryable/AspNetCore/Kaleido.Queryable.AspNetCore.csproj" />
     <Project Path="src/Queryable/Queryable/Kaleido.Queryable.csproj" />
   </Folder>
+  <Folder Name="/src/Registry/">
+    <Project Path="src/Registry/Kaleido.Registry.csproj" />
+  </Folder>
   <Folder Name="/test/">
     <File Path="tests/AGENTS.md" />
   </Folder>
@@ -139,4 +142,5 @@
     <Project Path="tests/Queryable/AspNetCore.UnitTests/Kaleido.Queryable.AspNetCore.UnitTests.csproj" />
     <Project Path="tests/Queryable/UnitTests/Kaleido.Queryable.UnitTests.csproj" />
   </Folder>
+  <Folder Name="/test/Registry/" />
 </Solution>

@@ -5,6 +5,10 @@ export interface PriorAuthServiceRouteConfig {
     readonly key: string;
     readonly displayName: string;
     readonly baseUrl: string;
+    // Unified registry path (GET /{prefix}/registry). When set, a single request
+    // returns both processes and queryables. Takes precedence over the two
+    // individual paths below.
+    readonly registryPath?: string;
     readonly processRegistryPath?: string;
     readonly queryableRegistryPath?: string;
     // Marks the processor that owns the application entry step (e.g. StartIntake).

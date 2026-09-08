@@ -4,11 +4,12 @@ This document describes the current top-level architecture of the Kaleido reposi
 
 Kaleido is a metadata-driven framework for exposing business capabilities through consistent, discoverable contracts.
 
-At the highest level, the repository is organized around three framework areas:
+At the highest level, the repository is organized around four framework areas:
 
 - [`Core`](./src/Core/README.md) — foundational bootstrap, shared abstractions, metadata primitives, eventing, correlation context, and thin ASP.NET Core support
 - [`Queryable`](./src/Queryable/README.md) — discoverable information retrieval, query metadata, and query execution
 - [`Process`](./src/Process/README.md) — discoverable business actions, durable state, step orchestration, and execution guidance
+- [`Registry`](./src/Registry/README.md) — aggregated discovery surface combining process and queryable registrations from a host and all its downstream clients into a single endpoint
 
 See also:
 - [`README.md`](./README.md)
@@ -57,10 +58,24 @@ It is responsible for:
 - durable process state
 - registry metadata for discoverable action surfaces
 - transport adapters for HTTP execution and state endpoints
+- cross-processor handoff signalling via `TargetProcessorName`
 
 See:
 - [`src/Process/README.md`](./src/Process/README.md)
 - [`src/Process/ARCHITECTURE.md`](./src/Process/ARCHITECTURE.md)
+
+### Registry
+Registry provides a single aggregated discovery endpoint for hosts that delegate to downstream processors and queryable services.
+
+It is responsible for:
+- aggregating process registrations from the local processor and all `AddProcessClient()` registrations
+- aggregating queryable registrations from all `AddQueryableClient()` registrations
+- exposing the result at a single configurable `GET /{prefix}/registry` endpoint
+
+Registry does not own execution, routing, or state. It is a pure aggregation concern.
+
+See:
+- [`src/Registry/README.md`](./src/Registry/README.md)
 
 ---
 
@@ -96,6 +111,7 @@ Core, Queryable, and Process should each own their respective responsibilities w
 - [`src/Core`](./src/Core/README.md)
 - [`src/Queryable`](./src/Queryable/README.md)
 - [`src/Process`](./src/Process/README.md)
+- [`src/Registry`](./src/Registry/README.md)
 
 ### Tests
 - [`tests`](./tests)
@@ -163,6 +179,7 @@ When working in this repository:
 - keep Core free of capability-specific behavior unless the concern is truly cross-cutting
 - keep Queryable focused on discoverable information retrieval
 - keep Process focused on discoverable business actions and execution state
+- keep Registry focused on aggregating discovery data — not execution or routing
 - verify that documentation matches the code, not the other way around
 
 For contributor-oriented guidance, see:
@@ -178,4 +195,5 @@ For contributor-oriented guidance, see:
 - Start with [`src/Core/README.md`](./src/Core/README.md) to understand bootstrap and shared primitives
 - Read [`src/Queryable/README.md`](./src/Queryable/README.md) for discoverable information surfaces
 - Read [`src/Process/README.md`](./src/Process/README.md) for discoverable action surfaces
+- Read [`src/Registry/README.md`](./src/Registry/README.md) for aggregated discovery across downstream clients
 - Use the subsystem `ARCHITECTURE.md` files for implementation-level architecture details

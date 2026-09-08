@@ -36,6 +36,25 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
             return ExecutionDecision.BusinessFailure();
         }
 
+        // Cross-processor handoff — check TargetProcessorName before RequiredStep.
+        // A HandOff result has RequiredStep = null and TargetProcessorName set;
+        // falling through to EvaluateAvailableSteps would silently drop the handoff.
+        if (!string.IsNullOrEmpty(result.TargetProcessorName) && result.RequiredStep is null)
+        {
+            var currentProcessorName =
+                _processorRegistry.Registrations
+                    .Single()
+                    .Name;
+
+            if (!string.Equals(
+                    result.TargetProcessorName,
+                    currentProcessorName,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return ExecutionDecision.HandOff(result.TargetProcessorName);
+            }
+        }
+
         if (result.RequiredStep is not null)
         {
             return EvaluateRequiredStep(

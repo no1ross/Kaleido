@@ -67,6 +67,14 @@ public static class IntakeProcessMessages
             Message = message
         };
 
+    public static ProcessMessage MemberNotCaptured() =>
+        new()
+        {
+            Code = "MEMBER_NOT_CAPTURED",
+            Type = MessageType.Error,
+            Message = "Member details have not been captured for this session. Submit CaptureMember before CaptureRequestedService."
+        };
+
     public static ProcessMessage DownstreamProcessorRequestFailed(
         string message) =>
         new()

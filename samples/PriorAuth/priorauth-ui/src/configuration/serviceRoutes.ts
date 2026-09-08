@@ -33,14 +33,12 @@ const serviceRouteTemplates = {
     intake: {
         key: 'intake',
         displayName: 'Intake',
-        processRegistryPath: '/intake/processes/registry',
-        queryableRegistryPath: '/intake/queryable/registry',
+        registryPath: '/intake/kaleido/registry',
         isEntryProcessor: true
     },
     radiology: {
         key: 'radiology',
         displayName: 'Radiology',
-        processRegistryPath: '/radiology/processes/registry',
         queryableRegistryPath: '/radiology/queryable/registry'
     },
     history: {

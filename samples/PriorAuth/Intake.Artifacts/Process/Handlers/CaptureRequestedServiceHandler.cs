@@ -1,6 +1,6 @@
 using Kaleido.Process.AspNetCore.Client;
-using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.Execution;
+using Kaleido.Process;
 using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.Configuration;
@@ -10,9 +10,9 @@ using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 using Kaleido.Samples.PriorAuth.Intake.Process.Messages;
 using Kaleido.Samples.PriorAuth.Intake.Process.Services;
 using Kaleido.Samples.PriorAuth.Intake.Process.Steps;
+using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using System.Text.Json;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Handlers;
 
@@ -23,10 +23,10 @@ public sealed class CaptureRequestedServiceHandler(
     IConfiguration configuration,
     IKaleidoProcessClientFactory processClientFactory,
     HistoryClient historyClient)
-    : IProcessStepHandler<CaptureRequestedServiceStep>
+    : IProcessStepHandler<Intake.Process.Steps.CaptureRequestedServiceStep>
 {
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
-        CaptureRequestedServiceStep processStep,
+        Intake.Process.Steps.CaptureRequestedServiceStep processStep,
         ProcessStepContext context,
         CancellationToken cancellationToken = default)
     {
@@ -63,22 +63,16 @@ public sealed class CaptureRequestedServiceHandler(
 
             var session =
                 await dbContext.IntakeSessions
+                    .Include(x => x.Member)
                     .Include(x => x.Procedure)
                     .SingleOrDefaultAsync(
                         x => x.ProcessId == context.ProcessId,
                         cancellationToken);
 
-            if (session is null)
+            if (session?.Member is null)
             {
-                session =
-                    new IntakeSession
-                    {
-                        IntakeSessionId = Guid.NewGuid(),
-                        ProcessId = context.ProcessId,
-                        CreatedUtc = DateTimeOffset.UtcNow
-                    };
-
-                dbContext.IntakeSessions.Add(session);
+                return ProcessStepHandlerResult.Failure(
+                    IntakeProcessMessages.MemberNotCaptured());
             }
 
             if (session.Procedure is null)
@@ -107,26 +101,28 @@ public sealed class CaptureRequestedServiceHandler(
                 },
                 cancellationToken);
 
-            var downstreamRequest = new ExecuteProcessRequest
-            {
-                ProcessId = context.ProcessId,
-                Steps = context.OriginalRequest.Steps
-                    .Select(kvp => new ProcessStepRequest
-                    {
-                        StepName = kvp.Key,
-                        Request = JsonSerializer.SerializeToElement(kvp.Value)
-                    })
-                    .ToArray()
-            };
-
             var downstreamResult =
                 await processClientFactory
                     .GetClient(processorName)
-                    .ExecuteAsync(downstreamRequest, cancellationToken);
+                    .ExecuteStepAsync<StartRadiologyIntakeStep>(
+                        new StartRadiologyIntakeStep
+                        {
+                            MemberId = session.Member.MemberId,
+                            MemberEnrollmentId = session.Member.MemberEnrollmentId,
+                            DateOfService = session.Member.DateOfService,
+                            CodeValue = procedureCode.CodeValue,
+                            CodeSystem = procedureCode.CodeSystem
+                        },
+                        context.ProcessId,
+                        cancellationToken);
 
-            return ProcessStepHandlerResult.Success(
-                requiredStep: downstreamResult.RequiredStep,
-                targetProcessorName: downstreamResult.TargetProcessorName ?? processorName);
+            if (downstreamResult.Outcome == StepExecutionOutcome.Failed)
+            {
+                return ProcessStepHandlerResult.Failure(
+                    downstreamResult.Messages.ToArray());
+            }
+
+            return ProcessStepHandlerResult.HandOff(processorName);
         }
         catch (KaleidoQueryableClientException ex)
         {

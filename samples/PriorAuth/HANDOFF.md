@@ -49,19 +49,22 @@ The same `targetProcessorName` field is present on `GET /{processor}/processes/{
 2. Determine the modality (MRI, CT, ...) via the modality client
 3. Look up the target processor name from configuration:
       ProcessorMappings:{modality} → e.g. "radiology"
-4. Persist the resolved procedure + target processor to the intake session
-5. Forward the original request payload to the target processor:
-      POST /radiology/processes/execute  (same ProcessId, same Steps)
-6. Return ProcessStepHandlerResult.Success(
-       requiredStep: downstreamResult.RequiredStep,
-       targetProcessorName: downstreamResult.TargetProcessorName ?? processorName)
+4. Load the intake session (including the captured member)
+5. Guard: if session.Member is null, return Failure(MemberNotCaptured)
+6. Persist the resolved procedure + target processor to the intake session
+7. Call the target processor's StartRadiologyIntake step via ExecuteStepAsync<StartRadiologyIntakeStep>:
+      POST /radiology/processes/steps/startRadiologyIntake
+      { memberId, memberEnrollmentId, dateOfService, codeValue, codeSystem }
+      (same ProcessId, typed step — member + procedure data from the intake session)
+8. If downstreamResult.Outcome == Failed → return Failure(downstreamResult.Messages)
+9. Otherwise → return ProcessStepHandlerResult.HandOff(processorName)
 ```
 
 Key points:
 - The `ProcessId` is shared — Radiology receives and operates on the same process instance
-- The original `Steps` from the caller's request are forwarded verbatim via `context.OriginalRequest`
-- Intake returns the downstream processor's `RequiredStep` (which may itself be null if Radiology handed off further) and always sets `targetProcessorName`
-- Intake itself returns no typed result — it is a routing step, not a data-capture step
+- Intake submits a strongly typed `StartRadiologyIntakeStep` carrying member + procedure data resolved during the intake flow; it does not forward the original raw request payload
+- `HandOff()` leaves `RequiredStep` null — Intake does not know Radiology's internal required step; the consumer must fetch it from Radiology's state endpoint
+- Intake returns no typed result — it is a routing step, not a data-capture step
 
 The target processor name comes from `appsettings.json`:
 
@@ -76,21 +79,23 @@ This keeps the routing table out of code and allows new modality → processor m
 
 ---
 
-## How Radiology receives the forwarded request
+## How Radiology receives the handoff
 
-`Radiology.Artifacts/Process/Handlers/CaptureRequestedServiceHandler.cs`
+`Radiology.Artifacts/Process/Handlers/StartRadiologyIntakeHandler.cs`
 
-Radiology's `CaptureRequestedService` handler receives the same step payload Intake received. It:
+Radiology's `StartRadiologyIntake` handler is the dedicated entry point for handoffs from Intake. In a single atomic step it:
 
-1. Validates and resolves the procedure code
-2. Determines the modality
-3. Checks for duplicate or conflicting requested services
-4. Persists the requested service to the Radiology database
-5. Returns a typed `CaptureRequestedServiceResponse` with:
+1. Validates the member against the member service
+2. Resolves the procedure code
+3. Determines the modality
+4. Upserts the `PriorAuthorization` + `PriorAuthorizationMember` rows
+5. Adds the `PriorAuthorizationRequestedService` row
+6. Upserts a history record
+7. Returns a typed `StartRadiologyIntakeResponse` with:
    - A `questionnaire` definition for the appropriate capture step
    - `requiredStep: "CaptureMriInfo"` (or `"ConfirmCtInsteadOfMri"` for CT)
 
-Radiology's response flows back to Intake's handler as `downstreamResult`, and Intake surfaces it back to the original caller via `targetProcessorName`.
+This is equivalent to Radiology's own `CaptureMember` + `CaptureRequestedService` sequence, collapsed into one step for the handoff path so Intake only needs to make one downstream call.
 
 ---
 
@@ -162,14 +167,19 @@ POST /intake/processes/steps/captureRequestedService
 Intake: CaptureRequestedServiceHandler
     ├── resolves procedure code → MRI modality
     ├── looks up ProcessorMappings:Mri → "radiology"
+    ├── loads intake session (member + procedure)
     ├── persists procedure + target to intake session
-    ├── forwards request to:
-    │       POST /radiology/processes/steps/captureRequestedService
+    ├── calls StartRadiologyIntake on Radiology:
+    │       POST /radiology/processes/steps/startRadiologyIntake
+    │       { memberId, memberEnrollmentId, dateOfService, codeValue, codeSystem }
     │           │
     │           ▼
-    │       Radiology: CaptureRequestedServiceHandler
-    │           ├── validates + resolves procedure code
-    │           ├── persists requested service
+    │       Radiology: StartRadiologyIntakeHandler
+    │           ├── validates member
+    │           ├── resolves + validates procedure code
+    │           ├── upserts PriorAuthorization + Member rows
+    │           ├── adds PriorAuthorizationRequestedService row
+    │           ├── upserts history record
     │           └── returns requiredStep: "CaptureMriInfo"
     │                       + questionnaire definition
     │
@@ -184,7 +194,7 @@ UI: ProcessService.executeStep() receives response
     ├── calls GET /radiology/processes/{processId}
     │       → returns requiredStep: "CaptureMriInfo"
     │                  availableSteps: [...]
-    │                  per-step results: { CaptureRequestedService: { questionnaire: ... } }
+    │                  per-step results: { StartRadiologyIntake: { questionnaire: ... } }
     │
     ├── updates ProcessState:
     │       currentProcessorName: "radiology"
@@ -207,10 +217,12 @@ POST /radiology/processes/steps/capturemriinfo
 To add a new modality → processor mapping (e.g. Oncology):
 
 1. Register the Oncology processor and its steps in its own `*.Artifacts` project
-2. Add `"ProcessorMappings:Oncology": "oncology"` to Intake's `appsettings.json`
-3. Add the Oncology service route to `serviceRoutes.ts` in the UI with a `processRegistryPath`
-4. Add route entries for Oncology's steps to `step-route.ts` in the UI
-5. The handoff mechanism in `CaptureRequestedServiceHandler` and `ProcessService` requires no changes
+2. Create a `StartOncologyIntakeStep` and `StartOncologyIntakeHandler` in `Oncology.Artifacts` (same pattern as `StartRadiologyIntakeStep`)
+3. Add `"ProcessorMappings:Oncology": "oncology"` to Intake's `appsettings.json`
+4. Add `AddProcessClient(o => { o.Name = "oncology"; ... })` in Intake's `Program.cs`
+5. Add `Intake.Artifacts` → `Oncology.Artifacts` project reference so `CaptureRequestedServiceHandler` can submit the typed step
+6. Update `CaptureRequestedServiceHandler` to call `ExecuteStepAsync<StartOncologyIntakeStep>` when `processorName == "oncology"`
+7. The Intake → target handoff signal (`HandOff(processorName)`) and `ProcessService` require no changes
 
 ---
 
@@ -218,14 +230,21 @@ To add a new modality → processor mapping (e.g. Oncology):
 
 | File | Role |
 |------|------|
-| `Intake.Artifacts/Process/Handlers/CaptureRequestedServiceHandler.cs` | Detects modality, forwards to target, signals `targetProcessorName` |
+| `Intake.Artifacts/Process/Handlers/CaptureRequestedServiceHandler.cs` | Detects modality, calls `StartRadiologyIntake` on target, signals `HandOff(processorName)` |
 | `Intake/appsettings.json` | `ProcessorMappings` configuration |
-| `Radiology.Artifacts/Process/Handlers/CaptureRequestedServiceHandler.cs` | Receives forwarded request, returns `requiredStep` |
+| `Radiology.Artifacts/Process/Steps/StartRadiologyIntakeStep.cs` | Entry-point step for handoff from Intake |
+| `Radiology.Artifacts/Process/Models/StartRadiologyIntakeResponse.cs` | Response carrying questionnaire data back to Intake |
+| `Radiology.Artifacts/Process/Handlers/StartRadiologyIntakeHandler.cs` | Validates member + procedure, upserts rows, returns `requiredStep` |
+| `src/Process/Abstractions/Execution/ProcessStepResult.cs` | `ProcessStepHandlerResult.HandOff(targetProcessorName)` factory |
+| `src/Process/Abstractions/Execution/ExecutionDecision.cs` | `ExecutionDecision.HandOff(targetProcessorName)` factory |
+| `src/Process/Process/Execution/StepExecutionEvaluator.cs` | Checks `TargetProcessorName` before `RequiredStep` so pure handoffs are not dropped |
 | `src/Process/AspNetCore.Abstractions/Contracts/ProcessExecutionResponse.cs` | `TargetProcessorName` on HTTP step response |
 | `src/Process/AspNetCore.Abstractions/Contracts/ProcessStateResponse.cs` | `TargetProcessorName` on HTTP state response |
+| `src/Registry/RegistryEndpointRouteBuilderExtensions.cs` | `MapRegistry()` — unified discovery endpoint |
 | `priorauth-ui/src/app/kaleido/services/process-registry.ts` | Compound keying; `getAnyEntryForProcessor()` |
 | `priorauth-ui/src/app/kaleido/services/process-service.ts` | Cross-processor state fetch; `currentProcessorName` switching |
 | `priorauth-ui/src/app/process/services/process-state-service.ts` | `currentProcessorName` in `ProcessState`; `setProcessFlow()` |
 | `priorauth-ui/src/app/kaleido/models/process-state-response.ts` | UI model for the target processor's state response |
-| `priorauth-ui/src/configuration/serviceRoutes.ts` | Service registry entries per processor |
+| `priorauth-ui/src/configuration/serviceRoutes.ts` | Service registry entries; intake uses unified `registryPath` |
+| `priorauth-ui/src/app/registries/registry-catalog.ts` | `loadUnifiedRegistry()` for `registryPath`-bearing services |
 | `priorauth-ui/src/app/process/services/step-route.ts` | Step name → Angular route mapping |

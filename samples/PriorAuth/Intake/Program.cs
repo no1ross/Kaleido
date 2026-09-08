@@ -4,6 +4,7 @@ using Kaleido.Process.AspNetCore;
 using Kaleido.Process.Providers.SQLite;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
+using Kaleido.Registry;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Process.Services;
 using Microsoft.EntityFrameworkCore;
@@ -153,6 +154,7 @@ app.MapHealthChecks("/health");
 
 app.MapProcessor();
 app.MapQueryable();
+app.MapRegistry(o => o.RoutePrefix = "intake");
 
 await using (var scope = app.Services.CreateAsyncScope())
 {

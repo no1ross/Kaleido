@@ -2,11 +2,12 @@
 
 Process is Kaleido's metadata-driven framework for exposing business actions as discoverable process steps with durable state, validation, dependency rules, and consistent execution contracts.
 
-It is organized into three main projects:
+It is organized into four main projects:
 
 - [`Abstractions`](./Abstractions/README.md) — public step attributes, processor request/result contracts, handler interfaces, durable state contracts, registry contracts, event contracts, and shared observability constants
 - [`Process`](./Process/README.md) — runtime registration, step registry construction, planning, execution, state mutation, persistence integration, and observability
 - [`AspNetCore`](./AspNetCore/README.md) — HTTP request/response contracts, route publishing, execution/state endpoints, and transport adaptation
+- `AspNetCore.Client` — typed HTTP client for calling a remote processor's registry, execution, and state endpoints; used by hosts that delegate to downstream processors
 
 For the full subsystem model, see:
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md)
@@ -156,33 +157,35 @@ Real example: <ref_snippet file="C:\Repos\Kaleido\samples\PriorAuth\Intake.Artif
 
 #### Signalling a required next step
 
-When a handler needs to direct the process to a specific next step, it returns a `ProcessStepReference` as the `requiredStep` argument.
-
-`ProcessStepReference` carries both `ProcessorName` and `StepName`. For a step in the same processor, supply the local processor's registered name:
+When a handler needs to direct the process to a specific next step on the **same** processor, pass the step name as the `requiredStep` argument:
 
 ```csharp
 return ProcessStepHandlerResult<MyResponse>.Success(
     response,
-    requiredStep: new ProcessStepReference
-    {
-        ProcessorName = "my-processor",
-        StepName = "NextStep"
-    });
+    requiredStep: "CaptureMriInfo");
 ```
 
-For a step in a different processor, supply the target processor's registered name:
+The framework validates that the named step is reachable from the current step. The step name is a plain string — no wrapper type needed.
+
+#### Cross-processor handoff
+
+When a handler determines that the process must continue on a **different** processor, return `HandOff()`:
+
+```csharp
+return ProcessStepHandlerResult.HandOff(targetProcessorName: "radiology");
+```
+
+The framework propagates `TargetProcessorName` onto the HTTP response. `RequiredStep` is intentionally `null` in this case — the target processor is the authority for its own next step. The consumer must call `GET /{targetProcessorName}/processes/{processId}` on the target to obtain authoritative state.
+
+`HandOff()` is also available on the typed form when the step produces a response before handing off:
 
 ```csharp
 return ProcessStepHandlerResult<MyResponse>.Success(
     response,
-    requiredStep: new ProcessStepReference
-    {
-        ProcessorName = "radiology",
-        StepName = "CaptureMriInfo"
-    });
+    targetProcessorName: "radiology");
 ```
 
-The framework does not inject the local processor name into handlers. Use a constant or literal. The framework does not validate cross-processor references at execution time — the consumer is responsible for routing to the target processor.
+See [`samples/PriorAuth/HANDOFF.md`](../../samples/PriorAuth/HANDOFF.md) for a full walkthrough of the Intake → Radiology pattern.
 
 ### 5. Use step relationships intentionally
 Process supports runtime relationship metadata through:
@@ -241,6 +244,42 @@ If you add `AddProcessorAspNetCore(...)` and call `MapProcessor()`, Process publ
 The processor catalog returns processor-level entries with metadata, registry URLs, and initial step summaries. The full registry endpoint returns processor registry records with full step metadata, including input constraints and typed-result output field metadata.
 
 See the endpoint publisher in <ref_file file="C:\Repos\Kaleido\src\Process\AspNetCore\ProcessEndpointRouteBuilderExtensions.cs" />.
+
+### 9. Calling a remote processor with `AddProcessClient()`
+
+When a host processor needs to call another processor's HTTP endpoints (to forward steps, check state, or fetch registry metadata), register a typed client via `AddProcessClient()`:
+
+```csharp
+builder.Services.AddKaleido()
+    ...
+    .AddProcessClient(o =>
+    {
+        o.Name = "radiology";
+        o.BaseUrl = "http://radiology-service";
+        o.RoutePrefix = "radiology";
+    });
+```
+
+This registers an `IKaleidoProcessClientFactory` in DI. Inject it into a handler and retrieve a client by name:
+
+```csharp
+var client = processClientFactory.GetClient("radiology");
+
+var result = await client.ExecuteStepAsync<StartRadiologyIntakeStep>(
+    step,
+    processId: context.ProcessId,
+    cancellationToken);
+```
+
+Available client operations:
+- `GetRegistryAsync()` — fetch the remote processor's registry
+- `GetStepMetadataAsync(stepName)` — fetch metadata for a specific step
+- `GetProcessStateAsync(processId)` — fetch durable state from the remote processor
+- `ExecuteAsync(request)` — submit a multi-step execute request
+- `ExecuteStepAsync<TStep>(step, processId?)` — submit a single typed step
+- `ExecuteStepAsync<TStep, TResponse>(step, processId?)` — submit a typed step and deserialise a typed response
+
+Registry aggregation across all registered process clients is provided by [`src/Registry`](../Registry/README.md).
 
 ## Where to look
 

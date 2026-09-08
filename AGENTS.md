@@ -2,10 +2,11 @@
 
 This is the repository-level contributor guide for Kaleido.
 
-Kaleido is organized into three main framework areas:
+Kaleido is organized into four main framework areas:
 - [`src/Core`](./src/Core/README.md) for foundational bootstrap, shared abstractions, metadata primitives, eventing, correlation context, and thin ASP.NET Core support
 - [`src/Queryable`](./src/Queryable/README.md) for discoverable information retrieval and query metadata/execution
 - [`src/Process`](./src/Process/README.md) for discoverable business actions, durable execution state, and step orchestration
+- [`src/Registry`](./src/Registry/README.md) for aggregating process and queryable registrations from a host and its downstream clients into a single discovery endpoint
 
 Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository model. Then read the subsystem docs for the area you are changing.
 
@@ -30,6 +31,9 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository m
 - [`src/Process/README.md`](./src/Process/README.md)
 - [`src/Process/ARCHITECTURE.md`](./src/Process/ARCHITECTURE.md)
 - [`src/Process/AGENTS.md`](./src/Process/AGENTS.md)
+
+### Registry docs
+- [`src/Registry/README.md`](./src/Registry/README.md)
 
 ## Repo-level boundaries
 
@@ -56,6 +60,14 @@ Process owns discoverable business action concerns:
 - durable process state
 - action metadata publication
 - process-focused ASP.NET Core transport adaptation
+- cross-processor handoff signalling via `TargetProcessorName`
+
+### Registry
+Registry owns aggregated discovery concerns:
+- combining local process and downstream client registrations into one HTTP endpoint
+- combining downstream queryable client registrations into the same endpoint
+- `RegistryRouteOptions` for configuring the endpoint URL prefix
+- no execution, routing, or state — discovery aggregation only
 
 ## General contributor rules
 
@@ -87,3 +99,4 @@ Use tests to understand behavioral expectations and invariants.
 - If the concern is foundational and reused broadly, it may belong in Core.
 - If the concern is about discovering and retrieving information, it likely belongs in Queryable.
 - If the concern is about discoverable actions, stateful execution, or next-step guidance, it likely belongs in Process.
+- If the concern is aggregating registrations from multiple downstream services for a single consumer call, it belongs in Registry.
