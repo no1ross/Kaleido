@@ -11,7 +11,8 @@ When a host processor (e.g. Intake) delegates work to one or more downstream pro
 A consumer calls `GET /{routePrefix}/registry` and receives a single `AggregatedRegistryResponse` containing:
 
 - **`Processes`** — the host processor's own steps, plus the registry records of every downstream processor registered via `AddProcessClient()`
-- **`Queryables`** — the registry records of every downstream queryable client registered via `AddQueryableClient()`
+- **`Queryables`** — the host's own local queryable contexts (when `AddQueryable()` has been called), plus the registry records of every downstream queryable client registered via `AddQueryableClient()`
+- **`ClientErrors`** — any downstream clients that were unreachable or returned errors during aggregation
 
 All step URLs in the response are fully resolved (`executeUrl`, `metadataUrl`) — the consumer can navigate directly without knowing service topology.
 
@@ -70,31 +71,57 @@ Setting `RoutePrefix = ""` produces `/registry`.
     {
       "name": "intake",
       "displayName": "Prior Auth Intake",
-      "steps": [ ... ]
+      "steps": [ "..." ]
     },
     {
       "name": "radiology",
       "displayName": "Prior Auth Radiology",
-      "steps": [ ... ]
+      "steps": [ "..." ]
     }
   ],
   "queryables": [
     {
       "name": "members",
       "displayName": "Members",
-      "views": [ ... ]
+      "views": [ "..." ]
     }
-  ]
+  ],
+  "clientErrors": []
 }
 ```
 
 `Processes` is ordered alphabetically by processor name. `Queryables` is ordered alphabetically by context name. Each entry is the same shape as the individual registry responses returned by `MapProcessor()` and `MapQueryable()` respectively.
 
+When a downstream client fails, `ClientErrors` is non-empty:
+
+```json
+{
+  "processes": [ "..." ],
+  "queryables": [ "..." ],
+  "clientErrors": [
+    {
+      "clientName": "Member",
+      "clientType": "Process",
+      "reason": "Connection refused (127.0.0.1:8084)"
+    },
+    {
+      "clientName": "CodeSet",
+      "clientType": "Queryable",
+      "reason": "Connection refused (127.0.0.1:8082)"
+    }
+  ]
+}
+```
+
 ---
 
-## Fault isolation
+## Fault isolation and partial responses
 
-Each downstream client call is wrapped in a `try/catch`. If a downstream processor or queryable client is unavailable at request time, that service's registrations are omitted from the aggregated response — the endpoint does not fail. Consumers should treat missing entries as transient and can handle them in their own retry or fallback logic.
+The endpoint **always returns HTTP 200**. Each downstream client call is wrapped independently — if a client is unavailable, its registrations are absent from the response and a `RegistryClientError` entry is added to `ClientErrors`.
+
+A non-empty `ClientErrors` collection means the response is **partial**: one or more downstream services were unreachable or misconfigured. Consumers must inspect `ClientErrors` to detect missing registrations rather than assuming a 200 response means everything loaded correctly.
+
+`clientName` matches the `Name` passed to `AddProcessClient()` or `AddQueryableClient()`. `clientType` is either `"Process"` or `"Queryable"`.
 
 ---
 
@@ -102,7 +129,7 @@ Each downstream client call is wrapped in a `try/catch`. If a downstream process
 
 Registry references only the `AspNetCore.Client` projects for both Process and Queryable. It does not reference `Process/AspNetCore` or `Queryable/AspNetCore` (the server projects). The internal client route-option maps (`KaleidoProcessClientRouteOptionsMap`, `KaleidoQueryableClientRouteOptionsMap`) are accessed via `InternalsVisibleTo` granted from those assemblies.
 
-`ProcessorRegistryResponseFactory` lives in `Process/AspNetCore.Abstractions` — not in the server project — so Registry can use it without pulling in the full ASP.NET Core server stack.
+`ProcessorRegistryResponseFactory` lives in `Process/AspNetCore.Abstractions`. `QueryableRecordResponse.FromRegistryItem` and `QueryableRouteOptions` live in `Queryable/AspNetCore.Abstractions` and `Queryable/Abstractions` respectively — both are reachable transitively through `Queryable/AspNetCore.Client`. Registry does not need a direct reference to the full server projects.
 
 ---
 
@@ -113,9 +140,8 @@ Registry is intentionally narrow:
 - it does **not** proxy execution
 - it does **not** own routing or nginx configuration
 - it does **not** merge or deduplicate step names across processors
-- it does **not** include the host's own local queryable registry (that is already served by `MapQueryable()` at its existing endpoint)
 
-Its only job is aggregating registry metadata across clients into one discoverable response.
+Its only job is aggregating registry metadata across local and downstream sources into one discoverable response.
 
 ---
 

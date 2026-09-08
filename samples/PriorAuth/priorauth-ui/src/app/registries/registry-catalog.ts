@@ -22,10 +22,18 @@ import {
 import { ProcessRegistry } from '../kaleido/services/process-registry';
 import { QueryableRegistry } from '../kaleido/services/queryable-registry';
 
+export interface RegistryClientError {
+    readonly clientName: string;
+    readonly clientType: 'Process' | 'Queryable';
+    readonly reason: string;
+}
+
 export interface ServiceRegistrySnapshot {
     readonly service: PriorAuthServiceRouteConfig;
     readonly process: RegistryLoadResult<ProcessProcessorRegistryRecord[]>;
     readonly queryable: RegistryLoadResult<QueryableRecord[]>;
+    /** Client-level errors reported by the server during aggregation. Non-empty means the response is partial. */
+    readonly clientErrors: readonly RegistryClientError[];
 }
 
 export interface RegistryLoadResult<T> {
@@ -103,12 +111,13 @@ export class RegistryCatalog {
                     : forkJoin({
                         process: this.loadProcessRegistry(service),
                         queryable: this.loadQueryableRegistry(service)
-                    })
+                    }).pipe(map(result => ({ ...result, clientErrors: [] as readonly RegistryClientError[] })))
                 ).pipe(
                     map(result => ({
                         service,
                         process: result.process,
-                        queryable: result.queryable
+                        queryable: result.queryable,
+                        clientErrors: result.clientErrors
                     } satisfies ServiceRegistrySnapshot))));
 
         return forkJoin(requests)
@@ -276,7 +285,7 @@ export class RegistryCatalog {
 
     private loadUnifiedRegistry(
         service: PriorAuthServiceRouteConfig
-    ): Observable<{ process: RegistryLoadResult<ProcessProcessorRegistryRecord[]>; queryable: RegistryLoadResult<QueryableRecord[]> }> {
+    ): Observable<{ process: RegistryLoadResult<ProcessProcessorRegistryRecord[]>; queryable: RegistryLoadResult<QueryableRecord[]>; clientErrors: readonly RegistryClientError[] }> {
         const url =
             buildRegistryUrl(
                 service,
@@ -289,18 +298,32 @@ export class RegistryCatalog {
             performance.now();
 
         return this.http
-            .get<{ processes: ProcessProcessorRegistryRecord[]; queryables: QueryableRecord[] }>(url)
+            .get<{ processes: ProcessProcessorRegistryRecord[]; queryables: QueryableRecord[]; clientErrors?: RegistryClientError[] }>(url)
             .pipe(
                 map(data => {
                     const duration =
                         Math.round(
                             performance.now() - started);
 
+                    const clientErrors: readonly RegistryClientError[] =
+                        data.clientErrors ?? [];
+
                     console.group(`[Registry:${service.key}]`);
                     console.log(`Loaded in ${duration}ms.`);
                     console.log(`Processes: ${data.processes.length}, Queryables: ${data.queryables.length}`);
                     console.log('Service', service.displayName);
                     console.log('Url', url);
+
+                    if (clientErrors.length > 0) {
+                        console.warn(
+                            `Partial registry — ${clientErrors.length} downstream client(s) failed:`);
+                        console.table(clientErrors.map(e => ({
+                            Client: e.clientName,
+                            Type: e.clientType,
+                            Reason: e.reason
+                        })));
+                    }
+
                     console.groupEnd();
 
                     return {
@@ -315,7 +338,8 @@ export class RegistryCatalog {
                             ok: true,
                             url,
                             data: data.queryables
-                        } satisfies RegistryLoadResult<QueryableRecord[]>
+                        } satisfies RegistryLoadResult<QueryableRecord[]>,
+                        clientErrors
                     };
                 }),
                 catchError(error => {
@@ -338,7 +362,8 @@ export class RegistryCatalog {
                             ok: false,
                             url,
                             error: formattedError
-                        } satisfies RegistryLoadResult<QueryableRecord[]>
+                        } satisfies RegistryLoadResult<QueryableRecord[]>,
+                        clientErrors: [] as readonly RegistryClientError[]
                     });
                 })
             );
