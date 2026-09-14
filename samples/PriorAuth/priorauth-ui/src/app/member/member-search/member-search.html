@@ -8,8 +8,7 @@
             <div class="member-search-page__layout">
                 <div class="member-search-card">
                     <div class="member-search-card__title">Member Search</div>
-                    <div class="member-search-card__meta">Service: {{ registration.service.displayName }}</div>
-                    <div class="member-search-card__meta">Context: {{ context?.displayName ?? context?.name }}</div>
+                    <div class="member-search-card__meta">Service: {{ context?.source || context?.displayName || context?.name }}</div>
 
                     <div class="member-search-card__form">
                         <div class="member-search-card__field">

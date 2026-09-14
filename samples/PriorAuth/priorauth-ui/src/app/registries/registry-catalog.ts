@@ -104,15 +104,39 @@ export class RegistryCatalog {
     }
 
     private createStateObservable(): Observable<RegistryCatalogState> {
+        const routerService = getServiceRoutes().find(s => s.key === 'router');
+
+        if (routerService?.registryPath) {
+            // In router mode, only call the unified registry endpoint once
+            return this.loadUnifiedRegistry(routerService).pipe(
+                map(result => this.buildStateFromUnifiedRegistry(routerService, {
+                    processes: result.process.ok ? (result.process.data ?? []) : [],
+                    queryables: result.queryable.ok ? (result.queryable.data ?? []) : [],
+                    clientErrors: result.clientErrors
+                })),
+                tap(state => {
+                    this.processRegistry.populateRegistry(
+                        state.processSteps,
+                        state.conflicts.filter(conflict => conflict.type === 'process-step'));
+
+                    this.queryableRegistry.populateRegistry(
+                        state.queryableContexts,
+                        state.queryableViews,
+                        state.conflicts.filter(conflict =>
+                            conflict.type === 'queryable-context' ||
+                            conflict.type === 'queryable-view'));
+                })
+            );
+        }
+
+        // In direct mode, call individual service registries
         const requests =
             getServiceRoutes().map(service =>
-                (service.registryPath
-                    ? this.loadUnifiedRegistry(service)
-                    : forkJoin({
-                        process: this.loadProcessRegistry(service),
-                        queryable: this.loadQueryableRegistry(service)
-                    }).pipe(map(result => ({ ...result, clientErrors: [] as readonly RegistryClientError[] })))
-                ).pipe(
+                forkJoin({
+                    process: this.loadProcessRegistry(service),
+                    queryable: this.loadQueryableRegistry(service)
+                }).pipe(map(result => ({ ...result, clientErrors: [] as readonly RegistryClientError[] })))
+                .pipe(
                     map(result => ({
                         service,
                         process: result.process,
@@ -207,6 +231,82 @@ export class RegistryCatalog {
 
         return {
             snapshots,
+            processSteps: this.filterConflictedEntries(
+                processSteps,
+                conflicts,
+                'process-step',
+                entry => `${entry.processor.name}:${entry.step.name}`),
+            queryableContexts: this.filterConflictedEntries(
+                queryableContexts,
+                conflicts,
+                'queryable-context',
+                entry => entry.context.name),
+            queryableViews: this.filterConflictedEntries(
+                queryableViews,
+                conflicts,
+                'queryable-view',
+                entry => entry.view.name),
+            conflicts
+        };
+    }
+
+    private buildStateFromUnifiedRegistry(
+        routerService: PriorAuthServiceRouteConfig,
+        unifiedResponse: { processes: readonly ProcessProcessorRegistryRecord[]; queryables: readonly QueryableRecord[]; clientErrors: readonly RegistryClientError[] }
+    ): RegistryCatalogState {
+        const processParticipants =
+            unifiedResponse.processes.map((processor: ProcessProcessorRegistryRecord) => ({
+                service: routerService,
+                processor
+            } satisfies ServiceProcessProcessorRegistryRecord));
+
+        const processSteps =
+            processParticipants.flatMap(entry =>
+                entry.processor.steps.map((step: any) => ({
+                    service: entry.service,
+                    processor: entry.processor,
+                    step
+                } satisfies ServiceProcessStepRegistryRecord)));
+
+        const queryableContexts =
+            unifiedResponse.queryables.map((context: QueryableRecord) => ({
+                service: routerService,
+                context
+            } satisfies ServiceQueryableRecord));
+
+        const queryableViews =
+            queryableContexts.flatMap(entry =>
+                entry.context.views.map((view: any) => ({
+                    service: entry.service,
+                    context: entry.context,
+                    view
+                } satisfies ServiceQueryableViewRegistration)));
+
+        const conflicts = [
+            ...this.detectConflicts(
+                'process-step',
+                processSteps,
+                entry => `${entry.processor.name}:${entry.step.name}`,
+                entry => entry.service.displayName),
+            ...this.detectConflicts(
+                'queryable-context',
+                queryableContexts,
+                entry => entry.context.name,
+                entry => entry.service.displayName),
+            ...this.detectConflicts(
+                'queryable-view',
+                queryableViews,
+                entry => entry.view.name,
+                entry => entry.service.displayName)
+        ];
+
+        return {
+            snapshots: [{
+                service: routerService,
+                process: { ok: true, configured: true, data: unifiedResponse.processes as any },
+                queryable: { ok: true, configured: true, data: unifiedResponse.queryables as any },
+                clientErrors: unifiedResponse.clientErrors
+            }],
             processSteps: this.filterConflictedEntries(
                 processSteps,
                 conflicts,

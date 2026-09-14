@@ -41,22 +41,6 @@
                 @for (snapshot of state.snapshots; track snapshot.service.key) {
                     @if (snapshot.process.configured) {
                         <div class="service-group">
-                            <div class="service-group__header">
-                                <div>
-                                    <div class="step-name">{{ snapshot.service.displayName }}</div>
-                                    <div class="step-meta">{{ snapshot.service.key }}</div>
-                                </div>
-                                <span class="status-badge" [class.status-badge--error]="!snapshot.process.ok || getProcessConflicts(state).some(conflict => conflict.services.includes(snapshot.service.displayName))">
-                                    @if (!snapshot.process.ok) {
-                                        Error
-                                    } @else if (getProcessConflicts(state).some(conflict => conflict.services.includes(snapshot.service.displayName))) {
-                                        Conflict
-                                    } @else {
-                                        Ready
-                                    }
-                                </span>
-                            </div>
-
                             @if (snapshot.process.ok) {
                                 @for (processor of getParticipants(snapshot); track processor.name) {
                                     <div class="section">
@@ -101,7 +85,7 @@
                 @if (selectedStep) {
                     <div class="details">
                         <h2>{{ selectedStep.displayName }}</h2>
-                        <div class="step-meta">Service: {{ selectedService?.service?.displayName }}</div>
+                        <div class="step-meta">Service: {{ selectedProcessor?.name }}</div>
                         <div class="step-meta">Processor: {{ selectedProcessor?.displayName }} ({{ selectedProcessor?.name }})</div>
 
                         <div class="section">

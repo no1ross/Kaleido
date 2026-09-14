@@ -42,22 +42,6 @@
                 @for (snapshot of state.snapshots; track snapshot.service.key) {
                     @if (snapshot.queryable.configured) {
                         <div class="service-group">
-                            <div class="service-group__header">
-                                <div>
-                                    <div class="context-name">{{ snapshot.service.displayName }}</div>
-                                    <div class="context-meta">{{ snapshot.service.key }}</div>
-                                </div>
-                                <span class="status-badge" [class.status-badge--error]="!snapshot.queryable.ok || getQueryableConflicts(state).some(conflict => conflict.services.includes(snapshot.service.displayName))">
-                                    @if (!snapshot.queryable.ok) {
-                                        Error
-                                    } @else if (getQueryableConflicts(state).some(conflict => conflict.services.includes(snapshot.service.displayName))) {
-                                        Conflict
-                                    } @else {
-                                        Ready
-                                    }
-                                </span>
-                            </div>
-
                             @if (snapshot.queryable.ok) {
                                 @for (context of snapshot.queryable.data ?? []; track context.name) {
                                     <div

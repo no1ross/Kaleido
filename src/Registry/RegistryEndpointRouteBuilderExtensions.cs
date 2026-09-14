@@ -79,50 +79,60 @@ public static class RegistryEndpointRouteBuilderExtensions
                     IKaleidoQueryableClientFactory queryableClientFactory,
                     CancellationToken cancellationToken) =>
                 {
-                    var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
 
-                    var response = await cache.GetOrBuildAsync(forceRefresh, async ct =>
+                    try
                     {
-                        var localProcesses =
-                            GetLocalProcesses(localProcessorRegistry, localProcessRouteOptions);
+                        var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
 
-                        var localQueryables =
-                            GetLocalQueryables(localQueryableRegistry, localQueryableRouteOptions);
-
-                        var (downstreamProcesses, processErrors) =
-                            await GetDownstreamProcessesAsync(processClientMap, processClientFactory, ct);
-
-                        var (downstreamQueryables, queryableErrors) =
-                            await GetDownstreamQueryablesAsync(queryableClientMap, queryableClientFactory, ct);
-
-                        var allProcesses = localProcesses
-                            .Concat(downstreamProcesses)
-                            .OrderBy(r => r.Name)
-                            .ToArray();
-
-                        var entryProcessors = allProcesses
-                            .Where(p => p.IsEntryProcessor)
-                            .ToArray();
-
-                        if (entryProcessors.Length > 1)
+                        var response = await cache.GetOrBuildAsync(forceRefresh, async ct =>
                         {
-                            throw new InvalidOperationException(
-                                $"Multiple processors are marked as entry processors: {string.Join(", ", entryProcessors.Select(p => p.Name))}. " +
-                                "Only one processor in a distributed system should have IsEntryProcessor set to true.");
-                        }
+                            var localProcesses =
+                                GetLocalProcesses(localProcessorRegistry, localProcessRouteOptions);
 
-                        return new AggregatedRegistryResponse
-                        {
-                            Processes = allProcesses,
-                            Queryables = localQueryables
-                                .Concat(downstreamQueryables)
+                            var localQueryables =
+                                GetLocalQueryables(localQueryableRegistry, localQueryableRouteOptions);
+
+                            var (downstreamProcesses, processErrors) =
+                                await GetDownstreamProcessesAsync(processClientMap, processClientFactory, ct);
+
+                            var (downstreamQueryables, queryableErrors) =
+                                await GetDownstreamQueryablesAsync(queryableClientMap, queryableClientFactory, ct);
+
+                            var allProcesses = localProcesses
+                                .Concat(downstreamProcesses)
                                 .OrderBy(r => r.Name)
-                                .ToArray(),
-                            ClientErrors = [..processErrors, ..queryableErrors]
-                        };
-                    }, cancellationToken);
+                                .ToArray();
 
-                    return Results.Ok(response);
+                            var entryProcessors = allProcesses
+                                .Where(p => p.IsEntryProcessor)
+                                .ToArray();
+
+                            if (entryProcessors.Length > 1)
+                            {
+                                throw new InvalidOperationException(
+                                    $"Multiple processors are marked as entry processors: {string.Join(", ", entryProcessors.Select(p => p.Name))}. " +
+                                    "Only one processor in a distributed system should have IsEntryProcessor set to true.");
+                            }
+
+                            return new AggregatedRegistryResponse
+                            {
+                                Processes = allProcesses,
+                                Queryables = localQueryables
+                                    .Concat(downstreamQueryables)
+                                    .OrderBy(r => r.Name)
+                                    .ToArray(),
+                                ClientErrors = [.. processErrors, .. queryableErrors]
+                            };
+                        }, cancellationToken);
+
+                        return Results.Ok(response);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error in GetAggregatedRegistry: {ex}");
+                        throw;
+                    }
+
                 })
             .WithName("GetAggregatedRegistry")
             .WithTags("Registry")
@@ -172,6 +182,10 @@ public static class RegistryEndpointRouteBuilderExtensions
                     var result = await factory.GetClient(name).GetRegistryAsync(cancellationToken);
                     lock (items) items.AddRange(result);
                 }
+                catch (HttpRequestException ex) when (ex.Message.Contains("404") || ex.Message.Contains("Not Found"))
+                {
+                    // 404 is expected for services that don't expose process - swallow it
+                }
                 catch (Exception ex)
                 {
                     lock (errors) errors.Add(new RegistryClientError
@@ -205,6 +219,10 @@ public static class RegistryEndpointRouteBuilderExtensions
                 {
                     var result = await factory.GetClient(name).GetRegistryAsync(cancellationToken);
                     lock (items) items.AddRange(result);
+                }
+                catch (HttpRequestException ex) when (ex.Message.Contains("404") || ex.Message.Contains("Not Found"))
+                {
+                    // 404 is expected for services that don't expose queryable - swallow it
                 }
                 catch (Exception ex)
                 {

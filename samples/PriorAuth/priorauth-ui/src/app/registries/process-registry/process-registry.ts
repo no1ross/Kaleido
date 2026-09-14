@@ -91,7 +91,7 @@ export class ProcessRegistryViewer {
     getParticipants(
         snapshot: ServiceRegistrySnapshot
     ): readonly ProcessProcessorRegistryRecord[] {
-        return snapshot.process.data ?? [];
+        return (snapshot.process.data ?? []).sort((a, b) => a.name.localeCompare(b.name));
     }
 
     getTotalSteps(
@@ -101,6 +101,12 @@ export class ProcessRegistryViewer {
             (sum, snapshot) =>
                 sum + (snapshot.process.data?.reduce((inner, processor) => inner + processor.steps.length, 0) ?? 0),
             0);
+    }
+
+    getTotalStepsFromState(
+        state: RegistryCatalogState
+    ): number {
+        return state.processSteps.length;
     }
 
     getInitialStepNames(
