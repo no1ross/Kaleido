@@ -119,4 +119,20 @@ export class ProcessRegistry {
     getConflicts(): readonly RegistryConflict[] {
         return this.conflicts;
     }
+
+    getEntryProcessorName(): string | undefined {
+        const entryEntry = Array.from(this.stepsByKey.values())
+            .find(s => s.processor.isEntryProcessor);
+
+        return entryEntry?.processor.name;
+    }
+
+    ensureCurrentProcessorSet(): void {
+        if (!this.processState.state().currentProcessorName) {
+            const entryProcessorName = this.getEntryProcessorName();
+            if (entryProcessorName) {
+                this.processState.setCurrentProcessor(entryProcessorName);
+            }
+        }
+    }
 }

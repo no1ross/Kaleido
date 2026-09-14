@@ -45,6 +45,9 @@ export class ProcessService {
         stepName: string,
         request: ExecuteStepRequest<TProcessStep>
     ): Observable<ProcessExecutionResponse<TResponse>> {
+        // Ensure current processor is set to entry processor if not already set
+        this.processRegistry.ensureCurrentProcessorSet();
+
         const processorName = this.processState.state().currentProcessorName;
 
         if (!processorName) {
