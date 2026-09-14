@@ -97,4 +97,12 @@ public static class RadiologyProcessMessages
             Type = MessageType.Warning,
             Message = $"Requested service '{priorAuthorizationRequestedServiceId}' was not found and may already have been removed."
         };
+
+    public static ProcessMessage MemberInfoNotProvided() =>
+        new()
+        {
+            Code = "MEMBER_INFO_NOT_PROVIDED",
+            Type = MessageType.Information,
+            Message = "Member information was not provided. Member capture will be required before proceeding."
+        };
 }

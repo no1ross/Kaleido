@@ -1,3 +1,4 @@
+using Kaleido.Process;
 using Kaleido.Process.Execution;
 using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
@@ -34,42 +35,45 @@ public sealed class StartRadiologyIntakeHandler(
     {
         try
         {
-            // --- Member validation ---
+            // --- Member validation (if member info provided) ---
 
-            var memberDetails =
-                await memberDetailsClient.GetMemberDetailsAsync(
-                    processStep.MemberId,
-                    processStep.MemberEnrollmentId,
-                    cancellationToken);
-
-            if (memberDetails is null)
+            if (processStep.MemberId.HasValue && processStep.MemberEnrollmentId.HasValue)
             {
-                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
-                    new StartRadiologyIntakeResponse(),
-                    RadiologyProcessMessages.MemberNotFound(
-                        processStep.MemberId,
-                        processStep.MemberEnrollmentId));
-            }
+                var memberDetails =
+                    await memberDetailsClient.GetMemberDetailsAsync(
+                        processStep.MemberId.Value,
+                        processStep.MemberEnrollmentId.Value,
+                        cancellationToken);
 
-            if (processStep.DateOfService < memberDetails.EffectiveDate)
-            {
-                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
-                    new StartRadiologyIntakeResponse(),
-                    RadiologyProcessMessages.CoverageNotYetEffective(
-                        processStep.MemberEnrollmentId,
-                        processStep.DateOfService,
-                        memberDetails.EffectiveDate));
-            }
+                if (memberDetails is null)
+                {
+                    return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
+                        new StartRadiologyIntakeResponse(),
+                        RadiologyProcessMessages.MemberNotFound(
+                            processStep.MemberId.Value,
+                            processStep.MemberEnrollmentId.Value));
+                }
 
-            if (memberDetails.TerminationDate is DateOnly terminationDate
-                && processStep.DateOfService > terminationDate)
-            {
-                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
-                    new StartRadiologyIntakeResponse(),
-                    RadiologyProcessMessages.CoverageTerminated(
-                        processStep.MemberEnrollmentId,
-                        processStep.DateOfService,
-                        terminationDate));
+                if (processStep.DateOfService.HasValue && processStep.DateOfService < memberDetails.EffectiveDate)
+                {
+                    return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
+                        new StartRadiologyIntakeResponse(),
+                        RadiologyProcessMessages.CoverageNotYetEffective(
+                            processStep.MemberEnrollmentId.Value,
+                            processStep.DateOfService.Value,
+                            memberDetails.EffectiveDate));
+                }
+
+                if (memberDetails.TerminationDate is DateOnly terminationDate
+                    && processStep.DateOfService.HasValue && processStep.DateOfService > terminationDate)
+                {
+                    return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
+                        new StartRadiologyIntakeResponse(),
+                        RadiologyProcessMessages.CoverageTerminated(
+                            processStep.MemberEnrollmentId.Value,
+                            processStep.DateOfService.Value,
+                            terminationDate));
+                }
             }
 
             // --- Procedure code resolution ---
@@ -95,7 +99,7 @@ public sealed class StartRadiologyIntakeHandler(
                     procedureCode.CodeSystem,
                     cancellationToken);
 
-            // --- Upsert PriorAuthorization + Member ---
+            // --- Upsert PriorAuthorization + Member (if member info provided) ---
 
             var priorAuthorization =
                 await dbContext.PriorAuthorizations
@@ -118,22 +122,35 @@ public sealed class StartRadiologyIntakeHandler(
                 dbContext.PriorAuthorizations.Add(priorAuthorization);
             }
 
-            if (priorAuthorization.Member is null)
+            if (processStep.MemberId.HasValue && processStep.MemberEnrollmentId.HasValue)
             {
-                priorAuthorization.Member =
-                    new PriorAuthorizationMember
-                    {
-                        PriorAuthorizationId = priorAuthorization.PriorAuthorizationId
-                    };
-            }
+                if (priorAuthorization.Member is null)
+                {
+                    priorAuthorization.Member =
+                        new PriorAuthorizationMember
+                        {
+                            PriorAuthorizationId = priorAuthorization.PriorAuthorizationId
+                        };
+                }
 
-            priorAuthorization.Member.MemberId = memberDetails.MemberId;
-            priorAuthorization.Member.MemberEnrollmentId = memberDetails.MemberEnrollmentId;
-            priorAuthorization.Member.MemberNumber = memberDetails.MemberNumber;
-            priorAuthorization.Member.DisplayName = memberDetails.DisplayName;
-            priorAuthorization.Member.PlanId = memberDetails.PlanId;
-            priorAuthorization.Member.PlanName = memberDetails.PlanName;
-            priorAuthorization.Member.LineOfBusiness = memberDetails.LineOfBusiness;
+                // Re-fetch member details if we have them
+                var memberDetails =
+                    await memberDetailsClient.GetMemberDetailsAsync(
+                        processStep.MemberId.Value,
+                        processStep.MemberEnrollmentId.Value,
+                        cancellationToken);
+
+                if (memberDetails is not null)
+                {
+                    priorAuthorization.Member.MemberId = memberDetails.MemberId;
+                    priorAuthorization.Member.MemberEnrollmentId = memberDetails.MemberEnrollmentId;
+                    priorAuthorization.Member.MemberNumber = memberDetails.MemberNumber;
+                    priorAuthorization.Member.DisplayName = memberDetails.DisplayName;
+                    priorAuthorization.Member.PlanId = memberDetails.PlanId;
+                    priorAuthorization.Member.PlanName = memberDetails.PlanName;
+                    priorAuthorization.Member.LineOfBusiness = memberDetails.LineOfBusiness;
+                }
+            }
 
             // --- Add requested service ---
 
@@ -161,9 +178,9 @@ public sealed class StartRadiologyIntakeHandler(
                     ProcessId = context.ProcessId,
                     ProcessorName = "radiology",
                     Status = PriorAuthorizationStatus.Draft,
-                    MemberNumber = priorAuthorization.Member!.MemberNumber,
-                    MemberDisplayName = priorAuthorization.Member.DisplayName,
-                    DateOfService = processStep.DateOfService,
+                    MemberNumber = priorAuthorization.Member?.MemberNumber,
+                    MemberDisplayName = priorAuthorization.Member?.DisplayName,
+                    DateOfService = processStep.DateOfService ?? DateOnly.FromDateTime(DateTime.UtcNow),
                     PrimaryProcedureCode = procedureCode.CodeValue,
                     PrimaryProcedureDescription = procedureCode.ShortDescription
                 },
@@ -171,26 +188,36 @@ public sealed class StartRadiologyIntakeHandler(
 
             // --- Return result based on modality ---
 
+            var messages = new List<ProcessMessage>();
+            if (!processStep.MemberId.HasValue || !processStep.MemberEnrollmentId.HasValue)
+            {
+                messages.Add(RadiologyProcessMessages.MemberInfoNotProvided());
+            }
+
             return modality switch
             {
                 ProcedureModality.Mri =>
                     await CreateMriResponseAsync(
                         context.ProcessId,
                         procedureCode.CodeValue,
+                        messages,
                         cancellationToken),
                 ProcedureModality.Ct =>
                     await CreateCtResponseAsync(
                         context.ProcessId,
                         procedureCode.CodeValue,
+                        messages,
                         cancellationToken),
                 _ =>
                     ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success(
-                        new StartRadiologyIntakeResponse())
+                        new StartRadiologyIntakeResponse(),
+                        messages: messages.ToArray())
             };
 
             async Task<ProcessStepHandlerResult<StartRadiologyIntakeResponse>> CreateMriResponseAsync(
                 Guid processId,
                 string procedureCodeValue,
+                List<ProcessMessage> messages,
                 CancellationToken ct)
             {
                 var questionnaire =
@@ -208,12 +235,15 @@ public sealed class StartRadiologyIntakeHandler(
                         QuestionnaireVersion = questionnaire?.Version,
                         Questionnaire = questionnaire
                     },
-                    requiredStep: nameof(CaptureMriInfoStep).Replace("Step", string.Empty));
+                    requiredStep: nameof(CaptureMriInfoStep).Replace("Step", string.Empty),
+                    targetProcessorName: null,
+                    messages.ToArray());
             }
 
             async Task<ProcessStepHandlerResult<StartRadiologyIntakeResponse>> CreateCtResponseAsync(
                 Guid processId,
                 string procedureCodeValue,
+                List<ProcessMessage> messages,
                 CancellationToken ct)
             {
                 var questionnaire =
@@ -231,7 +261,9 @@ public sealed class StartRadiologyIntakeHandler(
                         QuestionnaireVersion = questionnaire?.Version,
                         Questionnaire = questionnaire
                     },
-                    requiredStep: nameof(ConfirmCtInsteadOfMriStep).Replace("Step", string.Empty));
+                    requiredStep: nameof(ConfirmCtInsteadOfMriStep).Replace("Step", string.Empty),
+                    targetProcessorName: null,
+                    messages.ToArray());
             }
         }
         catch (KaleidoQueryableClientException ex)

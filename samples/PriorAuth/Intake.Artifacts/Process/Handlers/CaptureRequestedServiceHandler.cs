@@ -97,13 +97,6 @@ public sealed class CaptureRequestedServiceHandler(
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            // If member hasn't been captured yet, store procedure info and require member capture
-            if (session.Member is null)
-            {
-                return ProcessStepHandlerResult.Success(
-                    requiredStep: "CaptureMember");
-            }
-
             await historyClient.UpsertAsync(
                 new UpsertPriorAuthRecordStep
                 {
@@ -115,15 +108,16 @@ public sealed class CaptureRequestedServiceHandler(
                 },
                 cancellationToken);
 
+            // Start the downstream process with whatever member info we have (may be null if member not captured yet)
             var downstreamResult =
                 await processClientFactory
                     .GetClient(processorName)
                     .ExecuteStepAsync<StartRadiologyIntakeStep>(
                         new StartRadiologyIntakeStep
                         {
-                            MemberId = session.Member.MemberId,
-                            MemberEnrollmentId = session.Member.MemberEnrollmentId,
-                            DateOfService = session.Member.DateOfService,
+                            MemberId = session.Member?.MemberId,
+                            MemberEnrollmentId = session.Member?.MemberEnrollmentId,
+                            DateOfService = session.Member?.DateOfService,
                             CodeValue = procedureCode.CodeValue,
                             CodeSystem = procedureCode.CodeSystem
                         },

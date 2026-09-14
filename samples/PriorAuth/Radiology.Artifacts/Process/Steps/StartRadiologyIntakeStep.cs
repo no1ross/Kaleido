@@ -13,14 +13,11 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 [AvailableUntil(typeof(CaptureRequestingProviderStep))]
 public sealed record StartRadiologyIntakeStep
 {
-    [Required]
-    public Guid MemberId { get; init; }
+    public Guid? MemberId { get; init; }
 
-    [Required]
-    public Guid MemberEnrollmentId { get; init; }
+    public Guid? MemberEnrollmentId { get; init; }
 
-    [Required]
-    public DateOnly DateOfService { get; init; }
+    public DateOnly? DateOfService { get; init; }
 
     [Required]
     [StringLength(50)]
