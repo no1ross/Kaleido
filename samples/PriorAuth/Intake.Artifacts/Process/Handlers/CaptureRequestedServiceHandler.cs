@@ -69,10 +69,17 @@ public sealed class CaptureRequestedServiceHandler(
                         x => x.ProcessId == context.ProcessId,
                         cancellationToken);
 
-            if (session?.Member is null)
+            if (session is null)
             {
-                return ProcessStepHandlerResult.Failure(
-                    IntakeProcessMessages.MemberNotCaptured());
+                session =
+                    new IntakeSession
+                    {
+                        IntakeSessionId = Guid.NewGuid(),
+                        ProcessId = context.ProcessId,
+                        CreatedUtc = DateTimeOffset.UtcNow
+                    };
+
+                dbContext.IntakeSessions.Add(session);
             }
 
             if (session.Procedure is null)
@@ -90,13 +97,20 @@ public sealed class CaptureRequestedServiceHandler(
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
+            // If member hasn't been captured yet, store procedure info and require member capture
+            if (session.Member is null)
+            {
+                return ProcessStepHandlerResult.Success(
+                    requiredStep: "CaptureMember");
+            }
+
             await historyClient.UpsertAsync(
                 new UpsertPriorAuthRecordStep
                 {
                     ProcessId = context.ProcessId,
                     ProcessorName = "intake",
                     Status = PriorAuthorizationStatus.Draft,
-                    PrimaryProcedureCode = session.Procedure!.CodeValue,
+                    PrimaryProcedureCode = session.Procedure.CodeValue,
                     PrimaryProcedureDescription = session.Procedure.ResolvedProcessorName
                 },
                 cancellationToken);
