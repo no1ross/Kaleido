@@ -1,4 +1,5 @@
 using Kaleido.Observability;
+using System.Linq;
 
 namespace Kaleido.Process.AspNetCore.Client;
 
@@ -31,7 +32,14 @@ internal sealed class KaleidoProcessClientFactory : IKaleidoProcessClientFactory
                 return existing;
 
             _routeOptionsMap.Options.TryGetValue(name, out var options);
-            var httpClient = _httpClientFactory.CreateClient(name);
+            
+            // Find the exact registered name (case-sensitive) from route options
+            // This handles the case where handlers call GetClient with lowercase
+            // but HttpClients are registered with PascalCase
+            var registeredName = _routeOptionsMap.Options.Keys.FirstOrDefault(k => 
+                string.Equals(k, name, StringComparison.OrdinalIgnoreCase)) ?? name;
+            
+            var httpClient = _httpClientFactory.CreateClient(registeredName);
             var client = new KaleidoProcessClient(httpClient, _correlation, options?.RoutePrefix ?? "");
             _clients[name] = client;
             return client;
