@@ -8,6 +8,7 @@ import {
     ServiceProcessProcessorRegistryRecord,
     ServiceProcessStepRegistryRecord
 } from '../kaleido/models/process-registry';
+import { getApiMode } from '../../configuration/urlConfig';
 import {
     QueryableRecord,
     QueryableView,
@@ -106,7 +107,7 @@ export class RegistryCatalog {
     private createStateObservable(): Observable<RegistryCatalogState> {
         const routerService = getServiceRoutes().find(s => s.key === 'router');
 
-        if (routerService?.registryPath) {
+        if (routerService?.registryPath && getApiMode() === 'router') {
             // In router mode, only call the unified registry endpoint once
             return this.loadUnifiedRegistry(routerService).pipe(
                 map(result => this.buildStateFromUnifiedRegistry(routerService, {
