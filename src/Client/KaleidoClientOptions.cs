@@ -22,7 +22,7 @@ public sealed class KaleidoClientOptions : KaleidoOptions
     /// <see cref="KaleidoClientEntry.BaseUrl"/> falls back to <see cref="BaseUrl"/>
     /// when not explicitly set on the entry.
     /// </summary>
-    public Dictionary<string, KaleidoClientEntry> Clients { get; set; } = new();
+    public Dictionary<string, KaleidoClientEntry> Clients { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Router-only. The cluster names to probe when aggregating the registry.
