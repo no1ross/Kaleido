@@ -4,6 +4,7 @@ using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -33,7 +34,7 @@ public sealed class QueryableAspNetCoreFixture
 
                         services.AddSingleton<FunctionalRecordData>();
 
-                        services.AddKaleido()
+                        services.AddKaleido(new ConfigurationBuilder().Build())
                             .AddAssembly(typeof(FunctionalRecordContext).Assembly)
                             .AddQueryable()
                             .AddQueryableAspNetCore();
@@ -67,7 +68,7 @@ public sealed class QueryableAspNetCoreFixture
 
         var clientServices = new ServiceCollection();
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();
-        clientServices.AddKaleido()
+        clientServices.AddKaleido(new ConfigurationBuilder().Build())
             .AddQueryableClient(o =>
             {
                 o.Name = "test";

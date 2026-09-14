@@ -49,7 +49,8 @@ builder.Services.AddOpenTelemetry()
 
 var historyConnectionString =
     builder.Configuration.GetConnectionString("History")
-    ?? "Data Source=data/history.db";
+    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(
+        "ConnectionStrings:History is required.");
 
 builder.Services.AddDbContext<HistoryDbContext>(
     options => options.UseSqlite(historyConnectionString));
@@ -70,25 +71,13 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<HistoryDbContext>();
 
-builder.Services.AddKaleido()
+builder.Services.AddKaleido(builder.Configuration)
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(HistoryDbContext).Assembly)
-    .AddProcessor(o =>
-        {
-            o.Name = "history";
-            o.Description = "Prior authorization history processor.";
-            o.Version = "1.0.0";
-            o.DisplayName = "Prior Auth History";
-        })
-        .AddProcessorAspNetCore(o =>
-        {
-            o.RoutePrefix = "history";
-        })
+    .AddProcessor()
+        .AddProcessorAspNetCore()
     .AddQueryable()
-        .AddQueryableAspNetCore(o =>
-        {
-            o.RoutePrefix = "history";
-        });
+        .AddQueryableAspNetCore();
 
 var app = builder.Build();
 

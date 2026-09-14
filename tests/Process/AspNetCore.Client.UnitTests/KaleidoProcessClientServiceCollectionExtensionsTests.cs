@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
@@ -222,6 +223,8 @@ public sealed class KaleidoProcessClientServiceCollectionExtensionsTests
 
         public IServiceCollection Services { get; }
         public IReadOnlyCollection<Assembly> Assemblies { get; }
+        public IConfiguration Configuration { get; } =
+            new ConfigurationBuilder().Build();
     }
 
 

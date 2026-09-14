@@ -53,10 +53,13 @@ builder.Services.AddOpenTelemetry()
             .AddOtlpExporter();
     });
 
+var memberConnectionString =
+    builder.Configuration.GetConnectionString("Member")
+    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(
+        "ConnectionStrings:Member is required.");
+
 builder.Services.AddDbContext<MemberDbContext>(
-    options => options.UseSqlite(
-        builder.Configuration.GetConnectionString("Member")
-        ?? "Data Source=data/member.db"));
+    options => options.UseSqlite(memberConnectionString));
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
@@ -77,25 +80,13 @@ builder.Services.AddHealthChecks()
 //builder.Services.AddPriorAuthEventPublishing(
 //    builder.Configuration);
 
-builder.Services.AddKaleido()
+builder.Services.AddKaleido(builder.Configuration)
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MemberDbContext).Assembly)
-    .AddProcessor(o =>
-        {
-            o.Name = "member";
-            o.Description = "Member processor.";
-            o.Version = "1.0.0";
-            o.DisplayName = "Member";
-        })
-        .AddProcessorAspNetCore(o =>
-        {
-            o.RoutePrefix = "member";
-        })
+    .AddProcessor()
+        .AddProcessorAspNetCore()
     .AddQueryable()
-        .AddQueryableAspNetCore(o =>
-        {
-            o.RoutePrefix = "member";
-        });
+        .AddQueryableAspNetCore();
 
 var app = builder.Build();
 

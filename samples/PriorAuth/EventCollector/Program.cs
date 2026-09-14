@@ -43,10 +43,13 @@ builder.Services.AddOpenTelemetry()
             .AddOtlpExporter();
     });
 
+var eventCollectorConnectionString =
+    builder.Configuration.GetConnectionString("EventCollector")
+    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(
+        "ConnectionStrings:EventCollector is required.");
+
 builder.Services.AddDbContext<EventCollectorDbContext>(
-    options => options.UseSqlite(
-        builder.Configuration.GetConnectionString("EventCollector")
-        ?? "Data Source=data/eventcollector.db"));
+    options => options.UseSqlite(eventCollectorConnectionString));
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

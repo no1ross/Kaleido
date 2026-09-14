@@ -28,6 +28,9 @@ export const environment: PriorAuthUiEnvironment = {
         },
         history: {
             baseUrl: 'http://localhost:8089'
+        },
+        router: {
+            baseUrl: 'http://localhost:8080'
         }
     })
 };

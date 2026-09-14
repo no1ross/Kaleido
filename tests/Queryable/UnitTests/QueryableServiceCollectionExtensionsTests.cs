@@ -2,6 +2,7 @@ using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
@@ -137,6 +138,8 @@ public sealed class QueryableServiceCollectionExtensionsTests
 
         public IServiceCollection Services { get; }
         public IReadOnlyCollection<Assembly> Assemblies { get; }
+        public IConfiguration Configuration { get; } =
+            new ConfigurationBuilder().Build();
     }
 
     [QueryContext(

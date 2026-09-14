@@ -28,6 +28,9 @@ export const environment: PriorAuthUiEnvironment = {
         },
         history: {
             baseUrl: '/'
+        },
+        router: {
+            baseUrl: '/'
         }
     })
 };

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
@@ -19,4 +20,7 @@ internal sealed class QueryableBuilder
 
     public IReadOnlyCollection<Assembly> Assemblies
         => _builder.Assemblies;
+
+    public IConfiguration Configuration
+        => _builder.Configuration;
 }

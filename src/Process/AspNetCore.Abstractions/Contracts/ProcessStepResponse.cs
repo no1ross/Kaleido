@@ -17,6 +17,7 @@ public static class ProcessorRegistryResponseFactory
             Description = registration.Description,
             DisplayName = registration.DisplayName,
             Version = registration.Version,
+            IsEntryProcessor = registration.IsEntryProcessor,
             RegistryUrl = ProcessContractUrls.Registry(options),
             InitialSteps = registration.InitialSteps
                 .Select(x => ProcessStepResponseFactory.ToSummary(x, options))
@@ -43,6 +44,7 @@ public static class ProcessorCatalogResponseFactory
             Description = registration.Description,
             DisplayName = registration.DisplayName,
             Version = registration.Version,
+            IsEntryProcessor = registration.IsEntryProcessor,
             RegistryUrl = ProcessContractUrls.Registry(options),
             InitialSteps = registration.InitialSteps
                 .Select(x => ProcessStepResponseFactory.ToSummary(x, options))
@@ -155,6 +157,8 @@ public sealed record ProcessorCatalogResponse
     public string? DisplayName { get; init; }
 
     public string? Version { get; init; }
+
+    public bool IsEntryProcessor { get; init; }
 
     public string RegistryUrl { get; init; }
         = string.Empty;

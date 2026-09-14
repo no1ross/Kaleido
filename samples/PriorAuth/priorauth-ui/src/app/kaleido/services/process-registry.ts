@@ -41,10 +41,10 @@ export class ProcessRegistry {
                 step);
         }
 
-        // Set the initial processor from the service marked isEntryProcessor.
+        // Set the initial processor from the processor marked IsEntryProcessor.
         // This is explicit config, not inferred from initialSteps, to avoid
         // ambiguity when multiple processors advertise initial steps.
-        const entryEntry = steps.find(s => s.service.isEntryProcessor);
+        const entryEntry = steps.find(s => s.processor.isEntryProcessor);
 
         if (entryEntry) {
             this.processState.setCurrentProcessor(entryEntry.processor.name);

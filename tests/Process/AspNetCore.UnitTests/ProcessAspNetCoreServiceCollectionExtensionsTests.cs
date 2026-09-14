@@ -4,6 +4,7 @@ using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.Reflection;
@@ -147,8 +148,9 @@ public sealed class ProcessAspNetCoreServiceCollectionExtensionsTests
         }
 
         public IServiceCollection Services { get; }
-
         public IReadOnlyCollection<Assembly> Assemblies { get; }
+        public IConfiguration Configuration { get; } =
+            new ConfigurationBuilder().Build();
     }
 
     private sealed class FakeProcessorRuntime : IProcessorRuntime

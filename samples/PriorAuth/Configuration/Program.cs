@@ -48,10 +48,13 @@ builder.Services.AddOpenTelemetry()
             .AddOtlpExporter();
     });
 
+var configurationConnectionString =
+    builder.Configuration.GetConnectionString("Configuration")
+    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(
+        "ConnectionStrings:Configuration is required.");
+
 builder.Services.AddDbContext<ConfigurationDbContext>(
-    options => options.UseSqlite(
-        builder.Configuration.GetConnectionString("Configuration")
-        ?? "Data Source=data/configuration.db"));
+    options => options.UseSqlite(configurationConnectionString));
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
@@ -72,14 +75,11 @@ builder.Services.AddHealthChecks()
 builder.Services.AddPriorAuthEventPublishing(
     builder.Configuration);
 
-builder.Services.AddKaleido()
+builder.Services.AddKaleido(builder.Configuration)
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(ConfigurationDbContext).Assembly)
     .AddQueryable()
-        .AddQueryableAspNetCore(o =>
-        {
-            o.RoutePrefix = "configuration";
-        });
+        .AddQueryableAspNetCore();
 
 var app = builder.Build();
 

@@ -2,6 +2,7 @@ using Kaleido.Process.Attributes;
 using Kaleido.Process.Execution;
 using Kaleido.Process;
 using Kaleido.Process.Registry;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Process.UnitTests.Processor;
@@ -14,7 +15,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         var builder =
-            services.AddKaleido()
+            services.AddKaleido(new ConfigurationBuilder().Build())
                 .AddAssembly(typeof(TestStep).Assembly);
 
         var exception =
@@ -36,7 +37,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         var builder =
-            services.AddKaleido()
+            services.AddKaleido(new ConfigurationBuilder().Build())
                 .AddAssembly(typeof(TestStep).Assembly);
 
         var exception =
@@ -58,7 +59,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         var builder =
-            services.AddKaleido()
+            services.AddKaleido(new ConfigurationBuilder().Build())
                 .AddAssembly(typeof(TestStep).Assembly);
 
         var exception =
@@ -80,7 +81,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         var builder =
-            services.AddKaleido()
+            services.AddKaleido(new ConfigurationBuilder().Build())
                 .AddAssembly(typeof(TestStep).Assembly);
 
         builder.AddProcessor(options =>

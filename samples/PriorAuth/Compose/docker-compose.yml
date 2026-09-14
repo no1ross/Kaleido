@@ -16,10 +16,6 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__EventCollector: Data Source=/app/data/eventcollector.db
-      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
-      OpenTelemetry__Protocol: grpc
-      OpenTelemetry__ServiceName: priorauth-eventcollector
-      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-eventcollector
@@ -46,11 +42,6 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__ReferenceData: Data Source=/app/data/referencedata.db
-      Services__EventCollector__BaseUrl: http://eventcollector:8080
-      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
-      OpenTelemetry__Protocol: grpc
-      OpenTelemetry__ServiceName: priorauth-referencedata
-      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-referencedata
@@ -77,11 +68,6 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__CodeSet: Data Source=/app/data/codeset.db
-      Services__EventCollector__BaseUrl: http://eventcollector:8080
-      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
-      OpenTelemetry__Protocol: grpc
-      OpenTelemetry__ServiceName: priorauth-codeset
-      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-codeset
@@ -108,11 +94,6 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Configuration: Data Source=/app/data/configuration.db
-      Services__EventCollector__BaseUrl: http://eventcollector:8080
-      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
-      OpenTelemetry__Protocol: grpc
-      OpenTelemetry__ServiceName: priorauth-configuration
-      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-configuration
@@ -135,20 +116,11 @@ services:
     depends_on:
       eventcollector:
         condition: service_healthy
-      referencedata:
-        condition: service_healthy
-      codeset:
-        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Provider: Data Source=/app/data/provider.db
-      Services__ReferenceData__BaseUrl: http://referencedata:8080
-      Services__EventCollector__BaseUrl: http://eventcollector:8080
-      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
-      OpenTelemetry__Protocol: grpc
-      OpenTelemetry__ServiceName: priorauth-provider
-      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
+      Kaleido__BaseUrl: http://router:8080
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-provider
@@ -171,17 +143,10 @@ services:
     depends_on:
       eventcollector:
         condition: service_healthy
-      referencedata:
-        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Member: Data Source=/app/data/member.db
-      Services__EventCollector__BaseUrl: http://eventcollector:8080
-      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
-      OpenTelemetry__Protocol: grpc
-      OpenTelemetry__ServiceName: priorauth-member
-      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-member
@@ -223,42 +188,50 @@ services:
     ports:
       - "8089:8080"
 
-  intake:
+  router:
     build:
       context: ../../..
-      dockerfile: samples/PriorAuth/Intake/Dockerfile
+      dockerfile: samples/PriorAuth/Router/Dockerfile
     depends_on:
-      member:
-        condition: service_healthy
-      provider:
-        condition: service_healthy
       referencedata:
         condition: service_healthy
       codeset:
         condition: service_healthy
-      configuration:
-        condition: service_healthy
-      radiology:
+      member:
         condition: service_healthy
       history:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: priorauth-router
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=Development,service.version=1.0.0
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    ports:
+      - "8080:8080"
+
+  intake:
+    build:
+      context: ../../..
+      dockerfile: samples/PriorAuth/Intake/Dockerfile
+    depends_on:
+      router:
+        condition: service_healthy
+      radiology:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Intake: Data Source=/app/data/intake.db
       ConnectionStrings__IntakeProcess: Data Source=/app/data/intake-process.db
-      Services__ReferenceData__BaseUrl: http://referencedata:8080
-      Services__Member__BaseUrl: http://member:8080
-      Services__CodeSet__BaseUrl: http://codeset:8080
-      Services__Configuration__BaseUrl: http://configuration:8080
-      Services__Provider__BaseUrl: http://provider:8080
-      Services__Radiology__BaseUrl: http://radiology:8080
-      Services__History__BaseUrl: http://history:8080
-      Services__EventCollector__BaseUrl: http://eventcollector:8080
-      OpenTelemetry__Endpoint: http://aspire-dashboard:18889
-      OpenTelemetry__Protocol: grpc
-      OpenTelemetry__ServiceName: priorauth-intake
-      OpenTelemetry__ResourceAttributes: deployment.environment=Development,service.version=1.0.0
+      Kaleido__BaseUrl: http://router:8080
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-intake
@@ -279,28 +252,14 @@ services:
       context: ../../..
       dockerfile: samples/PriorAuth/Radiology/Dockerfile
     depends_on:
-      member:
-        condition: service_healthy
-      provider:
-        condition: service_healthy
-      codeset:
-        condition: service_healthy
-      configuration:
-        condition: service_healthy
-      history:
+      router:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Radiology: Data Source=/app/data/radiology.db
       ConnectionStrings__RadiologyProcess: Data Source=/app/data/radiology-process.db
-      Services__ReferenceData__BaseUrl: http://referencedata:8080
-      Services__Member__BaseUrl: http://member:8080
-      Services__CodeSet__BaseUrl: http://codeset:8080
-      Services__Configuration__BaseUrl: http://configuration:8080
-      Services__Provider__BaseUrl: http://provider:8080
-      Services__History__BaseUrl: http://history:8080
-      Services__EventCollector__BaseUrl: http://eventcollector:8080
+      Kaleido__BaseUrl: http://router:8080
       OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_SERVICE_NAME: priorauth-radiology
@@ -322,28 +281,3 @@ services:
       dockerfile: Dockerfile
       args:
         BUILD_CONFIGURATION: container
-
-  router:
-    image: nginx:1.29-alpine
-    depends_on:
-      referencedata:
-        condition: service_healthy
-      codeset:
-        condition: service_healthy
-      provider:
-        condition: service_healthy
-      member:
-        condition: service_healthy
-      intake:
-        condition: service_healthy
-      radiology:
-        condition: service_healthy
-      history:
-        condition: service_healthy
-      priorauth-ui:
-        condition: service_started
-    volumes:
-      - ./router.nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    ports:
-      - "8080:8080"
-

@@ -1,8 +1,8 @@
 ﻿namespace Kaleido.Process.AspNetCore;
 
-public sealed class ProcessRouteOptions
+public class ProcessRouteOptions : KaleidoOptions
 {
-    public string RoutePrefix { get; set; } = "/kaleido";
+    public string RoutePrefix { get; set; } = "kaleido";
 
     internal string ProcessesRoutePrefix =>
         string.IsNullOrWhiteSpace(RoutePrefix)

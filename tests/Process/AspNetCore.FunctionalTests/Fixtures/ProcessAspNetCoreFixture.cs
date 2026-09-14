@@ -3,6 +3,7 @@ using Kaleido.Observability;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -30,7 +31,7 @@ public sealed class ProcessAspNetCoreFixture
                     {
                         services.AddRouting();
 
-                        services.AddKaleido()
+                        services.AddKaleido(new ConfigurationBuilder().Build())
                             .AddAssembly(typeof(ProcessAspNetCoreFixture).Assembly)
                             .AddProcessor(o =>
                             {
@@ -67,7 +68,7 @@ public sealed class ProcessAspNetCoreFixture
 
         var clientServices = new ServiceCollection();
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();
-        clientServices.AddKaleido()
+        clientServices.AddKaleido(new ConfigurationBuilder().Build())
             .AddProcessClient(o =>
             {
                 o.Name = "test";

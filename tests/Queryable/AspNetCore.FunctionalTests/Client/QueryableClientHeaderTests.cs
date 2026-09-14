@@ -2,6 +2,7 @@ using Kaleido.Observability;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Client;
@@ -39,7 +40,7 @@ public sealed class QueryableClientHeaderTests : IClassFixture<QueryableAspNetCo
         // AddKaleido() is a no-op and the client factories use our controllable context.
         services.AddSingleton<IKaleidoCorrelationContextAccessor>(_correlationAccessor);
 
-        services.AddKaleido()
+        services.AddKaleido(new ConfigurationBuilder().Build())
             .AddQueryableClient(o =>
             {
                 o.Name = "header-test";

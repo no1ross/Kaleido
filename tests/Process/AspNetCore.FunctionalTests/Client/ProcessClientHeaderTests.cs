@@ -2,6 +2,7 @@ using Kaleido.Observability;
 using Kaleido.Process.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Process.AspNetCore.FunctionalTests.Client;
@@ -44,7 +45,7 @@ public sealed class ProcessClientHeaderTests : IDisposable
         // AddKaleido() is a no-op and the client factories use our controllable context.
         services.AddSingleton<IKaleidoCorrelationContextAccessor>(_correlationAccessor);
 
-        services.AddKaleido()
+        services.AddKaleido(new ConfigurationBuilder().Build())
             .AddProcessClient(o =>
             {
                 o.Name = "header-test";

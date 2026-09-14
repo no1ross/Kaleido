@@ -22,7 +22,7 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v2", new OpenApiInfo { Title = "My API", Version = "v2" });
 });
 
-builder.Services.AddKaleido()
+builder.Services.AddKaleido(builder.Configuration)
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(AddItemToCartStep).Assembly)
     .AddAssembly(typeof(ProductCatalogQueryContext).Assembly)

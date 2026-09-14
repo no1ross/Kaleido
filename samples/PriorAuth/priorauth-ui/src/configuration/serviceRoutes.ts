@@ -1,50 +1,45 @@
 import { PriorAuthServiceRouteConfig } from './urlConfig';
 
 type ServiceRouteOverride =
-    Pick<PriorAuthServiceRouteConfig, 'baseUrl'>;
+    Pick<PriorAuthServiceRouteConfig, 'baseUrl'> & Partial<Pick<PriorAuthServiceRouteConfig, 'registryPath'>>;
 
 const serviceRouteTemplates = {
     member: {
         key: 'member',
-        displayName: 'Member Service',
-        processRegistryPath: '/member/processes/registry',
-        queryableRegistryPath: '/member/queryable/registry'
+        displayName: 'Member Service'
     },
     referenceData: {
         key: 'referencedata',
-        displayName: 'Reference Data',
-        queryableRegistryPath: '/referencedata/queryable/registry'
+        displayName: 'Reference Data'
     },
     provider: {
         key: 'provider',
-        displayName: 'Provider Search',
-        queryableRegistryPath: '/provider/queryable/registry'
+        displayName: 'Provider Search'
     },
     codeSet: {
         key: 'codeset',
-        displayName: 'Code Set',
-        queryableRegistryPath: '/codeset/queryable/registry'
+        displayName: 'Code Set'
     },
     configuration: {
         key: 'configuration',
-        displayName: 'Configuration',
-        queryableRegistryPath: '/configuration/queryable/registry'
+        displayName: 'Configuration'
     },
     intake: {
         key: 'intake',
-        displayName: 'Intake',
-        registryPath: '/intake/kaleido/registry',
-        isEntryProcessor: true
+        displayName: 'Intake'
     },
     radiology: {
         key: 'radiology',
-        displayName: 'Radiology',
-        queryableRegistryPath: '/radiology/queryable/registry'
+        displayName: 'Radiology'
     },
     history: {
         key: 'history',
-        displayName: 'History',
-        queryableRegistryPath: '/history/queryable/registry'
+        displayName: 'History'
+    },
+    router: {
+        key: 'router',
+        displayName: 'Router',
+        registryPath: '/kaleido/registry'
     }
 } as const satisfies Record<string, Omit<PriorAuthServiceRouteConfig, 'baseUrl'>>;
 
@@ -58,6 +53,7 @@ export function createServiceRoutes(
         readonly intake: ServiceRouteOverride;
         readonly radiology: ServiceRouteOverride;
         readonly history: ServiceRouteOverride;
+        readonly router: ServiceRouteOverride
     }
 ): readonly PriorAuthServiceRouteConfig[] {
     return [
@@ -92,6 +88,10 @@ export function createServiceRoutes(
         {
             ...serviceRouteTemplates.history,
             ...overrides.history
+        },
+        {
+            ...serviceRouteTemplates.router,
+            ...overrides.router
         }
     ];
 }

@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Process.Attributes;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
@@ -5,6 +6,7 @@ using Kaleido.Process.Execution;
 using Kaleido.Process.Observability;
 using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
@@ -13,9 +15,27 @@ namespace Kaleido.Process;
 
 public static class ProcessorServiceCollectionExtensions
 {
+    /// <summary>
+    /// Registers the processor reading identity from the <c>Kaleido:Processor</c> configuration
+    /// section supplied to <see cref="KaleidoServiceCollectionExtensions.AddKaleido"/>.
+    /// </summary>
     public static IProcessorBuilder AddProcessor(this IKaleidoBuilder builder)
     {
-        return builder.AddProcessor(_ => { });
+        ArgumentNullException.ThrowIfNull(builder);
+
+        var options = new ProcessorOptions();
+        builder.Configuration
+            .GetSection($"{KaleidoOptions.SectionName}:Processor")
+            .Bind(options);
+
+        return builder.AddProcessor(o =>
+        {
+            o.Name = options.Name;
+            o.Version = options.Version;
+            o.DisplayName = options.DisplayName;
+            o.Description = options.Description;
+            o.IsEntryProcessor = options.IsEntryProcessor;
+        });
     }
 
     public static IProcessorBuilder AddProcessor(

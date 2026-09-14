@@ -20,7 +20,7 @@ internal sealed class MemberServiceSeeder(
     {
         await using var provider =
             projectContextFactory.CreateSqliteDbContextProvider<MemberDbContext>(
-                connectionString: "Data Source=memberservice.db");
+                connectionString: "Data Source=member.db");
 
         await using var scope =
             provider.CreateAsyncScope();

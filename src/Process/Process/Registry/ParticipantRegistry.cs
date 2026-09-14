@@ -65,6 +65,7 @@ internal static class ProcessorRegistryProjection
             Description = options.Description,
             DisplayName = options.DisplayName,
             Version = options.Version,
+            IsEntryProcessor = options.IsEntryProcessor,
             InstanceId = options.InstanceId,
             InitialSteps = initialSteps
                 .OrderBy(x => x.Metadata.Name)

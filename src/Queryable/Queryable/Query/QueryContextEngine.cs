@@ -5,6 +5,7 @@ using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
+using System.Linq;
 using System.Reflection;
 
 namespace Kaleido.Queryable.Query;
@@ -12,7 +13,6 @@ namespace Kaleido.Queryable.Query;
 internal sealed class QueryContextEngine<TQueryContext, TView>(
     IQueryContextValidator validator,
     IQueryContextCompiler compiler,
-    IQueryContextSource<TQueryContext> source,
     ICompiledQueryApplier<TQueryContext> applier,
     IQueryContextExecutor<TView> executor,
     IQueryEventFactory eventFactory,
@@ -148,9 +148,13 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         using var scope =
             observation.BeginSource();
 
-        var query = source is IQueryContextSourceAsync<TQueryContext> asyncSource
+        var syncSource = serviceProvider.GetService<IQueryContextSource<TQueryContext>>();
+        var asyncSource = serviceProvider.GetService<IQueryContextSourceAsync<TQueryContext>>();
+
+        var query = asyncSource is not null
             ? await asyncSource.CreateQueryAsync(executionContext, cancellationToken)
-            : source.CreateQuery(executionContext);
+            : syncSource?.CreateQuery(executionContext)
+            ?? throw new QueryContextSourceNotFoundException(typeof(TQueryContext));
 
         query = applier.ApplySearch(query, compiled.Search);
         query = applier.ApplyFilter(query, compiled.Filter);

@@ -1,10 +1,11 @@
 using Kaleido;
+using Kaleido.Exceptions;
+using Kaleido.Samples.PriorAuth;
 using Kaleido.Process;
 using Kaleido.Process.AspNetCore;
 using Kaleido.Process.Providers.SQLite;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
-using Kaleido.Registry;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Process.Services;
 using Microsoft.EntityFrameworkCore;
@@ -52,15 +53,16 @@ builder.Services.AddOpenTelemetry()
 
 var intakeConnectionString =
     builder.Configuration.GetConnectionString("Intake")
-    ?? "Data Source=data/intake.db";
+    ?? throw new KaleidoConfigurationException(
+        "ConnectionStrings:Intake is required.");
 
 var processConnectionString =
     builder.Configuration.GetConnectionString("IntakeProcess")
-    ?? "Data Source=data/intake-process.db";
+    ?? throw new KaleidoConfigurationException(
+        "ConnectionStrings:IntakeProcess is required.");
 
 builder.Services.AddDbContext<IntakeDbContext>(
-    options => options.UseSqlite(
-        intakeConnectionString));
+    options => options.UseSqlite(intakeConnectionString));
 
 builder.Services.AddScoped<MemberDetailsClient>();
 builder.Services.AddScoped<ProcedureCodeClient>();
@@ -83,82 +85,18 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<IntakeDbContext>();
 
-builder.Services.AddKaleido()
+builder.Services.AddPriorAuthEventPublishing(
+    builder.Configuration);
+
+builder.Services.AddKaleido(builder.Configuration)
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(IntakeDbContext).Assembly)
-    .AddProcessor(o =>
-        {
-            o.Name = "intake";
-            o.Description = "Prior authorization intake processor.";
-            o.Version = "1.0.0";
-            o.DisplayName = "Prior Auth Intake";
-        })
-        .AddProcessorAspNetCore(o =>
-        {
-            o.RoutePrefix = "intake";
-        })
+    .AddProcessor()
+        .AddProcessorAspNetCore()
         .UseSqliteProcessContextStore(processConnectionString)
     .AddQueryable()
-        .AddQueryableAspNetCore(o =>
-        {
-            o.RoutePrefix = "intake";
-        })
-    .AddQueryableClient(o =>
-    {
-        o.Name = "Member";
-        o.BaseUrl = builder.Configuration["Services:Member:BaseUrl"]
-            ?? "https://localhost:8444";
-        o.RoutePrefix = "member";
-    })
-    .AddProcessClient(o =>
-    {
-        o.Name = "Member";
-        o.BaseUrl = builder.Configuration["Services:Member:BaseUrl"]
-            ?? "https://localhost:8444";
-        o.RoutePrefix = "member";
-    })
-    .AddQueryableClient(o =>
-    {
-        o.Name = "CodeSet";
-        o.BaseUrl = builder.Configuration["Services:CodeSet:BaseUrl"]
-            ?? "https://localhost:8442";
-        o.RoutePrefix = "codeset";
-    })
-    .AddQueryableClient(o =>
-    {
-        o.Name = "Configuration";
-        o.BaseUrl = builder.Configuration["Services:Configuration:BaseUrl"]
-            ?? "https://localhost:8447";
-        o.RoutePrefix = "configuration";
-    })
-    .AddProcessClient(o =>
-    {
-        o.Name = "radiology";
-        o.BaseUrl = builder.Configuration["Services:Radiology:BaseUrl"]
-            ?? "http://localhost:8088";
-        o.RoutePrefix = "radiology";
-    })
-    .AddProcessClient(o =>
-    {
-        o.Name = "History";
-        o.BaseUrl = builder.Configuration["Services:History:BaseUrl"]
-            ?? "http://localhost:8089";
-        o.RoutePrefix = "history";
-    })
-    .AddQueryableClient(o =>
-    {
-        o.Name = "Provider";
-        o.BaseUrl = builder.Configuration["Services:Provider:BaseUrl"]
-            ?? "https://localhost:8443";
-        o.RoutePrefix = "provider";
-    })
-    .AddQueryableClient(o =>
-    {
-        o.Name = "ReferenceData";
-        o.BaseUrl = builder.Configuration["Services:ReferenceData:BaseUrl"]
-            ?? "https://localhost:8441";
-        o.RoutePrefix = "referencedata";
-    });
+        .AddQueryableAspNetCore()
+    .AddKaleidoClients("Member", "CodeSet", "Configuration", "Radiology", "History", "Provider");
 
 var app = builder.Build();
 
@@ -168,7 +106,6 @@ app.MapHealthChecks("/health");
 
 app.MapProcessor();
 app.MapQueryable();
-app.MapRegistry(o => o.RoutePrefix = "intake");
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
@@ -176,34 +113,9 @@ await using (var scope = app.Services.CreateAsyncScope())
         scope.ServiceProvider.GetRequiredService<IntakeDbContext>();
     var processDbContext =
         scope.ServiceProvider.GetRequiredService<SqliteProcessContextDbContext>();
-    var httpClientFactory =
-        scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
-    var logger =
-        scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
-            .CreateLogger("Startup");
 
     await dbContext.Database.EnsureCreatedAsync();
     await processDbContext.Database.EnsureCreatedAsync();
-
-    try
-    {
-        using var referenceDataResponse =
-            await httpClientFactory
-                .CreateClient("ReferenceData")
-                .GetAsync("/health");
-
-        referenceDataResponse.EnsureSuccessStatusCode();
-
-        logger.LogInformation(
-            "Verified ReferenceData connectivity at startup with status code {StatusCode}.",
-            (int)referenceDataResponse.StatusCode);
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(
-            ex,
-            "Failed to verify ReferenceData connectivity at startup.");
-    }
 }
 
 if (app.Environment.IsDevelopment())

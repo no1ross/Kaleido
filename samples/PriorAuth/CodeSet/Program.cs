@@ -49,10 +49,13 @@ builder.Services.AddOpenTelemetry()
             .AddOtlpExporter();
     });
 
+var codeSetConnectionString =
+    builder.Configuration.GetConnectionString("CodeSet")
+    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(
+        "ConnectionStrings:CodeSet is required.");
+
 builder.Services.AddDbContext<CodeSetDbContext>(
-    options => options.UseSqlite(
-        builder.Configuration.GetConnectionString("CodeSet")
-        ?? "Data Source=data/codeset.db"));
+    options => options.UseSqlite(codeSetConnectionString));
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
@@ -73,14 +76,11 @@ builder.Services.AddHealthChecks()
 builder.Services.AddPriorAuthEventPublishing(
     builder.Configuration);
 
-builder.Services.AddKaleido()
+builder.Services.AddKaleido(builder.Configuration)
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(CodeSetDbContext).Assembly)
     .AddQueryable()
-        .AddQueryableAspNetCore(o =>
-        {
-            o.RoutePrefix = "codeset";
-        });
+        .AddQueryableAspNetCore();
 
 var app = builder.Build();
 

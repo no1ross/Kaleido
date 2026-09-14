@@ -11,9 +11,6 @@ export interface PriorAuthServiceRouteConfig {
     readonly registryPath?: string;
     readonly processRegistryPath?: string;
     readonly queryableRegistryPath?: string;
-    // Marks the processor that owns the application entry step (e.g. StartIntake).
-    // The UI sets currentProcessorName from this on registry load.
-    readonly isEntryProcessor?: boolean;
 }
 
 export function getApiMode(): PriorAuthApiMode {

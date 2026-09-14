@@ -41,12 +41,12 @@ public sealed class QueryContextEngineTests
 
         var services = new ServiceCollection();
         services.AddScoped(typeof(TestQueryView), _ => new TestQueryView(viewQuery));
+        services.AddScoped<IQueryContextSource<TestContext>>(_ => source.Object);
         using var provider = services.BuildServiceProvider();
 
         var engine = new QueryContextEngine<TestContext, TestViewContract>(
             validator.Object,
             compiler.Object,
-            source.Object,
             applier.Object,
             executor.Object,
             CreateQueryEventFactory().Object,
@@ -88,7 +88,6 @@ public sealed class QueryContextEngineTests
         var engine = new QueryContextEngine<TestContext, TestViewContract>(
             validator.Object,
             compiler.Object,
-            source.Object,
             applier.Object,
             executor.Object,
             CreateQueryEventFactory().Object,

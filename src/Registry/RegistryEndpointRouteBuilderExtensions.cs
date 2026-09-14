@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using System.Linq;
 
 namespace Kaleido.Registry;
 
@@ -52,6 +53,13 @@ public static class RegistryEndpointRouteBuilderExtensions
         var queryableClientMap = endpoints.ServiceProvider
             .GetService<KaleidoQueryableClientRouteOptionsMap>();
 
+        // Optional — only present when the host has called AddProcessorAspNetCore().
+        var localProcessorRegistry = endpoints.ServiceProvider
+            .GetService<IProcessorRegistry>();
+
+        var localProcessRouteOptions = endpoints.ServiceProvider
+            .GetService<ProcessRouteOptions>();
+
         // Optional — only present when the host has called AddQueryable().
         var localQueryableRegistry = endpoints.ServiceProvider
             .GetService<IQueryableRegistry>();
@@ -59,39 +67,62 @@ public static class RegistryEndpointRouteBuilderExtensions
         var localQueryableRouteOptions = endpoints.ServiceProvider
             .GetService<QueryableRouteOptions>();
 
+        // Resolve from DI if pre-registered, otherwise allocate a local instance
+        // captured in the closure — either way it is singleton-scoped to this endpoint.
+        var cache = endpoints.ServiceProvider.GetService<RegistryCache>() ?? new RegistryCache();
+
         endpoints.MapGet(
                 RegistryContractUrls.Registry(options),
                 async (
-                    IProcessorRegistry localRegistry,
-                    ProcessRouteOptions processRouteOptions,
+                    HttpContext httpContext,
                     IKaleidoProcessClientFactory processClientFactory,
                     IKaleidoQueryableClientFactory queryableClientFactory,
                     CancellationToken cancellationToken) =>
                 {
-                    var localProcesses =
-                        GetLocalProcesses(localRegistry, processRouteOptions);
+                    var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
 
-                    var localQueryables =
-                        GetLocalQueryables(localQueryableRegistry, localQueryableRouteOptions);
-
-                    var (downstreamProcesses, processErrors) =
-                        await GetDownstreamProcessesAsync(processClientMap, processClientFactory, cancellationToken);
-
-                    var (downstreamQueryables, queryableErrors) =
-                        await GetDownstreamQueryablesAsync(queryableClientMap, queryableClientFactory, cancellationToken);
-
-                    return Results.Ok(new AggregatedRegistryResponse
+                    var response = await cache.GetOrBuildAsync(forceRefresh, async ct =>
                     {
-                        Processes = localProcesses
+                        var localProcesses =
+                            GetLocalProcesses(localProcessorRegistry, localProcessRouteOptions);
+
+                        var localQueryables =
+                            GetLocalQueryables(localQueryableRegistry, localQueryableRouteOptions);
+
+                        var (downstreamProcesses, processErrors) =
+                            await GetDownstreamProcessesAsync(processClientMap, processClientFactory, ct);
+
+                        var (downstreamQueryables, queryableErrors) =
+                            await GetDownstreamQueryablesAsync(queryableClientMap, queryableClientFactory, ct);
+
+                        var allProcesses = localProcesses
                             .Concat(downstreamProcesses)
                             .OrderBy(r => r.Name)
-                            .ToArray(),
-                        Queryables = localQueryables
-                            .Concat(downstreamQueryables)
-                            .OrderBy(r => r.Name)
-                            .ToArray(),
-                        ClientErrors = [..processErrors, ..queryableErrors]
-                    });
+                            .ToArray();
+
+                        var entryProcessors = allProcesses
+                            .Where(p => p.IsEntryProcessor)
+                            .ToArray();
+
+                        if (entryProcessors.Length > 1)
+                        {
+                            throw new InvalidOperationException(
+                                $"Multiple processors are marked as entry processors: {string.Join(", ", entryProcessors.Select(p => p.Name))}. " +
+                                "Only one processor in a distributed system should have IsEntryProcessor set to true.");
+                        }
+
+                        return new AggregatedRegistryResponse
+                        {
+                            Processes = allProcesses,
+                            Queryables = localQueryables
+                                .Concat(downstreamQueryables)
+                                .OrderBy(r => r.Name)
+                                .ToArray(),
+                            ClientErrors = [..processErrors, ..queryableErrors]
+                        };
+                    }, cancellationToken);
+
+                    return Results.Ok(response);
                 })
             .WithName("GetAggregatedRegistry")
             .WithTags("Registry")
@@ -108,21 +139,18 @@ public static class RegistryEndpointRouteBuilderExtensions
     }
 
     private static IEnumerable<ProcessorRegistryResponse> GetLocalProcesses(
-        IProcessorRegistry registry,
-        ProcessRouteOptions options)
-        => registry.Registrations
-            .Select(r => ProcessorRegistryResponseFactory.FromRegistration(r, options));
+        IProcessorRegistry? registry,
+        ProcessRouteOptions? options)
+        => registry is not null && options is not null
+            ? registry.Registrations.Select(r => ProcessorRegistryResponseFactory.FromRegistration(r, options))
+            : Enumerable.Empty<ProcessorRegistryResponse>();
 
     private static IEnumerable<QueryableRecordResponse> GetLocalQueryables(
         IQueryableRegistry? registry,
         QueryableRouteOptions? options)
-    {
-        if (registry is null || options is null)
-            return [];
-
-        return registry.Registrations
-            .Select(r => QueryableRecordResponse.FromRegistryItem(r, options));
-    }
+        => registry is not null && options is not null
+            ? registry.Registrations.Select(r => QueryableRecordResponse.FromRegistryItem(r, options))
+            : [];
 
     private static async Task<(IReadOnlyCollection<ProcessorRegistryResponse> Items, IReadOnlyCollection<RegistryClientError> Errors)>
         GetDownstreamProcessesAsync(

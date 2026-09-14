@@ -1,11 +1,11 @@
 using Kaleido;
+using Kaleido.Exceptions;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.Provider.Data;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Clients;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -50,10 +50,13 @@ builder.Services.AddOpenTelemetry()
             .AddOtlpExporter();
     });
 
+var providerConnectionString =
+    builder.Configuration.GetConnectionString("Provider")
+    ?? throw new KaleidoConfigurationException(
+        "ConnectionStrings:Provider is required.");
+
 builder.Services.AddDbContext<ProviderSearchDbContext>(
-    options => options.UseSqlite(
-        builder.Configuration.GetConnectionString("Provider")
-        ?? "Data Source=data/provider.db"));
+    options => options.UseSqlite(providerConnectionString));
 
 builder.Services.AddScoped<PlanNetworkClient>();
 
@@ -76,21 +79,12 @@ builder.Services.AddHealthChecks()
 builder.Services.AddPriorAuthEventPublishing(
     builder.Configuration);
 
-builder.Services.AddKaleido()
+builder.Services.AddKaleido(builder.Configuration)
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(ProviderSearchDbContext).Assembly)
     .AddQueryable()
-        .AddQueryableAspNetCore(o =>
-        {
-            o.RoutePrefix = "provider";
-        })
-    .AddQueryableClient(o =>
-    {
-        o.Name = "ReferenceData";
-        o.BaseUrl = builder.Configuration["Services:ReferenceData:BaseUrl"]
-            ?? "https://localhost:8441";
-        o.RoutePrefix = "referencedata";
-    });
+        .AddQueryableAspNetCore()
+    .AddKaleidoClients("ReferenceData");
 
 var app = builder.Build();
 

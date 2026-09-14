@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using Xunit;
 
@@ -6,6 +7,9 @@ namespace Kaleido.UnitTests;
 
 public sealed class KaleidoBuilderTests
 {
+    private static IConfiguration EmptyConfig() =>
+        new ConfigurationBuilder().Build();
+
     [Fact]
     public void Constructor_Should_Store_ServiceCollection()
     {
@@ -13,7 +17,7 @@ public sealed class KaleidoBuilderTests
         var services = new ServiceCollection();
 
         // Act
-        var builder = new KaleidoBuilder(services);
+        var builder = new KaleidoBuilder(services, EmptyConfig());
 
         // Assert
         Assert.Same(
@@ -28,7 +32,7 @@ public sealed class KaleidoBuilderTests
         var services = new ServiceCollection();
 
         // Act
-        var builder = new KaleidoBuilder(services);
+        var builder = new KaleidoBuilder(services, EmptyConfig());
 
         // Assert
         Assert.Empty(
@@ -40,7 +44,7 @@ public sealed class KaleidoBuilderTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new KaleidoBuilder(services);
+        var builder = new KaleidoBuilder(services, EmptyConfig());
 
         var assembly = typeof(KaleidoBuilderTests)
             .Assembly;
@@ -64,7 +68,7 @@ public sealed class KaleidoBuilderTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new KaleidoBuilder(services);
+        var builder = new KaleidoBuilder(services, EmptyConfig());
 
         var assembly = typeof(KaleidoBuilderTests)
             .Assembly;
@@ -86,7 +90,7 @@ public sealed class KaleidoBuilderTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new KaleidoBuilder(services);
+        var builder = new KaleidoBuilder(services, EmptyConfig());
 
         var assembly1 = typeof(KaleidoBuilderTests)
             .Assembly;
@@ -117,7 +121,7 @@ public sealed class KaleidoBuilderTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new KaleidoBuilder(services);
+        var builder = new KaleidoBuilder(services, EmptyConfig());
 
         var assembly = typeof(KaleidoBuilderTests)
             .Assembly;
@@ -139,7 +143,7 @@ public sealed class KaleidoBuilderTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new KaleidoBuilder(services);
+        var builder = new KaleidoBuilder(services, EmptyConfig());
 
         var assemblies =
             AppDomain.CurrentDomain.GetAssemblies()
@@ -163,7 +167,7 @@ public sealed class KaleidoBuilderTests
     {
         // Arrange
         var services = new ServiceCollection();
-        var builder = new KaleidoBuilder(services);
+        var builder = new KaleidoBuilder(services, EmptyConfig());
 
         var assembly = typeof(KaleidoBuilderTests).Assembly;
 

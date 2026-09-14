@@ -152,6 +152,9 @@ public static class QueryErrorCodes
 
     public const string InvalidParameterValue =
         "INVALID_PARAMETER_VALUE";
+
+    public const string QueryContextSourceNotFound =
+        "QUERY_CONTEXT_SOURCE_NOT_FOUND";
 }
 
 
@@ -403,6 +406,18 @@ public sealed class InvalidParameterValueException
         : base(
             QueryErrorCodes.InvalidParameterValue,
             $"Value '{value}' is not valid for parameter '{parameter}'. Expected a value of type '{expectedType.Name}'.")
+    {
+    }
+}
+
+public sealed class QueryContextSourceNotFoundException
+    : QueryableValidationException
+{
+    public QueryContextSourceNotFoundException(
+        Type contextType)
+        : base(
+            QueryErrorCodes.QueryContextSourceNotFound,
+            $"No IQueryContextSource<{contextType.Name}> or IQueryContextSourceAsync<{contextType.Name}> registered.")
     {
     }
 }

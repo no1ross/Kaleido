@@ -49,10 +49,13 @@ builder.Services.AddOpenTelemetry()
             .AddOtlpExporter();
     });
 
+var referenceDataConnectionString =
+    builder.Configuration.GetConnectionString("ReferenceData")
+    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(
+        "ConnectionStrings:ReferenceData is required.");
+
 builder.Services.AddDbContext<ReferenceDataDbContext>(
-    options => options.UseSqlite(
-        builder.Configuration.GetConnectionString("ReferenceData")
-        ?? "Data Source=data/referencedata.db"));
+    options => options.UseSqlite(referenceDataConnectionString));
 
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
@@ -73,14 +76,11 @@ builder.Services.AddHealthChecks()
 builder.Services.AddPriorAuthEventPublishing(
     builder.Configuration);
 
-builder.Services.AddKaleido()
+builder.Services.AddKaleido(builder.Configuration)
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(ReferenceDataDbContext).Assembly)
     .AddQueryable()
-        .AddQueryableAspNetCore(o =>
-        {
-            o.RoutePrefix = "referencedata";
-        });
+        .AddQueryableAspNetCore();
 
 var app = builder.Build();
 

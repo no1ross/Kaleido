@@ -51,6 +51,9 @@
     <Project Path="samples/PriorAuth/Radiology.Artifacts/Kaleido.Samples.PriorAuth.Radiology.Artifacts.csproj" />
     <Project Path="samples/PriorAuth/Radiology/Kaleido.Samples.PriorAuth.Radiology.csproj" />
   </Folder>
+  <Folder Name="/samples/PriorAuth/Router/">
+    <Project Path="samples/PriorAuth/Router/Kaleido.Samples.PriorAuth.Router.csproj" />
+  </Folder>
   <Folder Name="/samples/PriorAuth/ReferenceData/">
     <Project Path="samples/PriorAuth/ReferenceData.Artifacts/Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.csproj" />
     <Project Path="samples/PriorAuth/ReferenceData/Kaleido.Samples.PriorAuth.ReferenceData.csproj" />
@@ -117,6 +120,9 @@
     <Project Path="src/Queryable/AspNetCore.Client/Kaleido.Queryable.AspNetCore.Client.csproj" />
     <Project Path="src/Queryable/AspNetCore/Kaleido.Queryable.AspNetCore.csproj" />
     <Project Path="src/Queryable/Queryable/Kaleido.Queryable.csproj" />
+  </Folder>
+  <Folder Name="/src/Client/">
+    <Project Path="src/Client/Kaleido.Client.csproj" />
   </Folder>
   <Folder Name="/src/Registry/">
     <Project Path="src/Registry/Kaleido.Registry.csproj" />

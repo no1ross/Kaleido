@@ -5,6 +5,7 @@ export interface ProcessProcessorRegistryRecord {
     version: string;
     displayName: string;
     description: string | null;
+    isEntryProcessor: boolean;
     registryUrl: string;
     initialSteps: ProcessStepSummary[];
     steps: ProcessStepRegistryRecord[];
