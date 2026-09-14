@@ -56,17 +56,18 @@ public static class KaleidoClientServiceCollectionExtensions
                 continue;
 
             var prefix = entry?.RoutePrefix ?? name.ToLowerInvariant();
+            var normalizedName = name.ToLowerInvariant();
 
             builder.AddProcessClient(o =>
             {
-                o.Name = name;
+                o.Name = normalizedName;
                 o.BaseUrl = baseUrl;
                 o.RoutePrefix = prefix;
             });
 
             builder.AddQueryableClient(o =>
             {
-                o.Name = name;
+                o.Name = normalizedName;
                 o.BaseUrl = baseUrl;
                 o.RoutePrefix = prefix;
             });
