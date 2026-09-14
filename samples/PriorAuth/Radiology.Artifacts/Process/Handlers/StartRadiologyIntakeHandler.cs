@@ -178,8 +178,8 @@ public sealed class StartRadiologyIntakeHandler(
                     ProcessId = context.ProcessId,
                     ProcessorName = "radiology",
                     Status = PriorAuthorizationStatus.Draft,
-                    MemberNumber = priorAuthorization.Member?.MemberNumber,
-                    MemberDisplayName = priorAuthorization.Member?.DisplayName,
+                    MemberNumber = priorAuthorization.Member?.MemberNumber ?? string.Empty,
+                    MemberDisplayName = priorAuthorization.Member?.DisplayName ?? string.Empty,
                     DateOfService = processStep.DateOfService ?? DateOnly.FromDateTime(DateTime.UtcNow),
                     PrimaryProcedureCode = procedureCode.CodeValue,
                     PrimaryProcedureDescription = procedureCode.ShortDescription
