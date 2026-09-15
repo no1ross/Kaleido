@@ -2,6 +2,7 @@ import { computed, Component, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
+import { QueryErrorResponse } from '../kaleido/models/query-error-response';
 import { ProcessService, ProcessErrorResponse } from '../kaleido/services/process-service';
 import {
     QuestionnaireAnswerOption,
@@ -234,6 +235,21 @@ export class CaptureMriInfo {
                 .join(' ');
         }
 
+        if (this.isQueryErrorResponse(error)) {
+            return error.errors
+                .map(e => e.message)
+                .join(' ');
+        }
+
         return 'Unable to capture MRI information.';
+    }
+
+    private isQueryErrorResponse(
+        error: unknown
+    ): error is QueryErrorResponse {
+        return typeof error === 'object'
+            && error !== null
+            && 'errors' in error
+            && Array.isArray((error as QueryErrorResponse).errors);
     }
 }

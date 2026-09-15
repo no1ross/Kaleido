@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, catchError, map, switchMap, throwError } from 'rxjs';
@@ -133,6 +133,17 @@ export class ProcessService {
                 catchError(error => {
                     if (ProcessErrorResponse.is(error)) {
                         this.processState.setProcessMessages(error.messages);
+                    } else if (error instanceof HttpErrorResponse && error.error?.errors) {
+                        // KaleidoFrameworkException (500) and other structured error
+                        // responses share the same { errors: [{ code, message }] } shape.
+                        // Surface them as a QueryErrorResponse so component error handlers
+                        // can display the server's message rather than a generic fallback.
+                        console.error(
+                            error.status >= 500
+                                ? 'Process server error'
+                                : 'Process request error',
+                            error.error);
+                        return throwError(() => error.error);
                     } else {
                         console.error('Unexpected process error', error);
                     }

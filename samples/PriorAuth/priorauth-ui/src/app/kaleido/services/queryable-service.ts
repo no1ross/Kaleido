@@ -127,9 +127,13 @@ export class QueryableService {
                     return result;
                 }),
                 catchError((error: HttpErrorResponse) => {
-                    if (error.status === 400 && error.error?.errors) {
+                    if (error.error?.errors) {
                         const response = error.error as QueryErrorResponse;
-                        console.error('Queryable validation error', response);
+                        console.error(
+                            error.status >= 500
+                                ? 'Queryable server error'
+                                : 'Queryable validation error',
+                            response);
                         return throwError(() => response);
                     }
                     return throwError(() => error);
