@@ -131,7 +131,10 @@ Both methods return `QueryResult<TView>`, which contains:
 
 ## Error handling
 
-Non-success HTTP responses throw `KaleidoQueryableClientException`. Inspect its properties for the HTTP status and any error body returned by the remote endpoint.
+`KaleidoQueryableClientException` is thrown in two situations:
+
+- **Non-success HTTP response** — the remote endpoint returned an error status. Inspect `StatusCode` and `Errors` for details.
+- **Registry lookup failure** — the requested context or view name was not found in the cached remote registry, or the registry response returned no payload. These also carry an appropriate `StatusCode` (e.g. `NotFound` or `InternalServerError`) so callers can handle them uniformly.
 
 ## What this project does not do
 

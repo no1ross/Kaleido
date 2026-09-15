@@ -108,12 +108,14 @@ Its job is to provide shared HTTP-layer concerns such as:
 It should not absorb capability-specific endpoint publication or request/response choreography.
 
 Also note that the current middleware behavior is intentionally limited:
-- `ExceptionMiddleware` catches `ArgumentException`
-- `ExceptionMiddleware` catches `InvalidOperationException`
-- it returns HTTP 400 with `KaleidoErrorResponse` (from `Kaleido.Abstractions`)
+- `ExceptionMiddleware` catches `KaleidoFrameworkException` → HTTP 500 with error code `framework_error`
+- `ExceptionMiddleware` catches `ArgumentException` → HTTP 400 with error code `argument_error`
+- `ExceptionMiddleware` catches `InvalidOperationException` → HTTP 400 with error code `invalid_operation`
 
-The `InvalidOperationException` catch is a band-aid over framework paths that have not yet been
-migrated to typed exceptions. A follow-up PR will audit those throw sites and remove this catch.
+`KaleidoFrameworkException` is thrown by runtime paths that detect internal integrity violations
+(e.g. broken DI wiring, unexpected type mismatches in the engine dispatch). It is distinct from
+user-input errors, which are expressed as `QueryableValidationException` subtypes and handled at
+the endpoint level in Queryable.
 
 Do not document it as a universal exception pipeline unless the implementation actually changes.
 

@@ -32,14 +32,21 @@ app.UseKaleidoExceptionHandling();
 
 ## Exception behavior
 
-`ExceptionMiddleware` currently catches:
-- `ArgumentException`
-- `InvalidOperationException`
+`ExceptionMiddleware` catches the following exception types:
 
-For those failures it:
-- logs a warning
-- returns HTTP 400
-- writes [`ApiErrorContract`](./Contracts/ApiErrorContract.cs)
+| Exception | HTTP status | Error code | Log level |
+|-----------|------------|------------|-----------|
+| `KaleidoFrameworkException` | 500 | `framework_error` | Error |
+| `ArgumentException` | 400 | `argument_error` | Warning |
+| `InvalidOperationException` | 400 | `invalid_operation` | Warning |
+
+For each it writes a `KaleidoErrorResponse` body.
+
+`KaleidoFrameworkException` is thrown by internal runtime paths that detect integrity violations
+(broken DI wiring, unexpected type mismatches in engine dispatch). It is not a user-facing error.
+
+`QueryableValidationException` subtypes (user query-input errors) are handled directly at the
+Queryable endpoint level and do not reach this middleware.
 
 Important distinction:
 - this is targeted exception normalization

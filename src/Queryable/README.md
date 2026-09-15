@@ -141,7 +141,7 @@ internal sealed class RequestingProviderQueryContextSource(
     {
         var parameters =
             executionContext.TryGetViewParameters<RequestingProviderSearchParameters>()
-            ?? throw new InvalidOperationException("Parameters are required.");
+            ?? throw new ArgumentException("Parameters are required.");
 
         // async call resolved before IQueryable is built
         var networkIds =

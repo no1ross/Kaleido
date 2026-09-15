@@ -223,14 +223,19 @@ Core's ASP.NET Core layer is intentionally thin.
 ### Exception handling
 `UseKaleidoExceptionHandling()` adds `ExceptionMiddleware`.
 
-That middleware currently catches:
-- `ArgumentException`
-- `InvalidOperationException`
+That middleware catches:
 
-For those exceptions, it:
-- logs a warning
-- returns HTTP 400
-- writes `ApiErrorContract`
+| Exception | HTTP status | Meaning |
+|-----------|------------|---------|
+| `KaleidoFrameworkException` | 500 | Internal framework integrity violation |
+| `ArgumentException` | 400 | Invalid argument in request |
+| `InvalidOperationException` | 400 | Invalid operation in request |
+
+`KaleidoFrameworkException` (in `Kaleido.Exceptions`) is thrown by runtime paths that detect
+broken DI wiring or unexpected internal type mismatches — not user-input errors.
+
+`QueryableValidationException` subtypes are caught at the Queryable endpoint level (not here)
+and return HTTP 400 with structured error codes.
 
 Important distinction:
 - this is targeted exception normalization
