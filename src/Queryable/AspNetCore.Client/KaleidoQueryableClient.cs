@@ -132,7 +132,7 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
 
         var errorResponse =
             response.StatusCode == HttpStatusCode.BadRequest
-                ? await response.Content.ReadFromJsonAsync<QueryErrorResponse>(
+                ? await response.Content.ReadFromJsonAsync<KaleidoErrorResponse>(
                     cancellationToken: cancellationToken)
                 : null;
 

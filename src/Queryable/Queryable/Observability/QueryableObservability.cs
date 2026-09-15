@@ -1,3 +1,4 @@
+using Kaleido;
 using Kaleido.Observability;
 using Kaleido.Queryable.Exceptions;
 using Microsoft.Extensions.Logging;
@@ -36,7 +37,7 @@ internal interface IQueryExecutionObservation
         Exception exception);
 }
 
-public enum QueryExecutionMode
+internal enum QueryExecutionMode
 {
     LocalView = 0,
     DirectContext = 1,
@@ -60,31 +61,31 @@ internal sealed class QueryableObservability
 
     private static readonly Counter<long> QueryExecutionsCounter =
         Meter.CreateCounter<long>(
-            "kaleido.queryable.executions");
+            QueryableTelemetry.ExecutionsCounterName);
 
     private static readonly Counter<long> QueryValidationFailuresCounter =
         Meter.CreateCounter<long>(
-            "kaleido.queryable.validation_failures");
+            QueryableTelemetry.ValidationFailuresCounterName);
 
     private static readonly Counter<long> QueryExecutionFailuresCounter =
         Meter.CreateCounter<long>(
-            "kaleido.queryable.execution_failures");
+            QueryableTelemetry.ExecutionFailuresCounterName);
 
     private static readonly Histogram<long> QueryTotalCountHistogram =
         Meter.CreateHistogram<long>(
-            "kaleido.queryable.total_count");
+            QueryableTelemetry.TotalCountHistogramName);
 
     private static readonly Histogram<long> QueryReturnedCountHistogram =
         Meter.CreateHistogram<long>(
-            "kaleido.queryable.returned_count");
+            QueryableTelemetry.ReturnedCountHistogramName);
 
     private static readonly Histogram<long> QueryPageSizeHistogram =
         Meter.CreateHistogram<long>(
-            "kaleido.queryable.page_size");
+            QueryableTelemetry.PageSizeHistogramName);
 
     private static readonly Histogram<long> QueryPageOffsetHistogram =
         Meter.CreateHistogram<long>(
-            "kaleido.queryable.page_offset");
+            QueryableTelemetry.PageOffsetHistogramName);
 
     private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
     private readonly ILogger<QueryableObservability> _logger;
@@ -368,18 +369,7 @@ internal sealed class QueryableObservability
                     name,
                     ActivityKind.Internal);
 
-            return (IDisposable?)activity ?? NullScope.Instance;
-        }
-    }
-
-    private sealed class NullScope
-        : IDisposable
-    {
-        public static readonly NullScope Instance =
-            new();
-
-        public void Dispose()
-        {
+            return (IDisposable?)activity ?? NullDisposable.Instance;
         }
     }
 }

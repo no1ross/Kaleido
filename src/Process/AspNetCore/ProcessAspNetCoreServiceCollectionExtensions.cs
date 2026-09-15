@@ -1,4 +1,4 @@
-using Kaleido.Process.AspNetCore.Srevices;
+using Kaleido.Process.AspNetCore.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 

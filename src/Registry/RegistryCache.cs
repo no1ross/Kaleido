@@ -8,7 +8,7 @@ namespace Kaleido.Registry;
 /// </summary>
 internal sealed class RegistryCache
 {
-    private AggregatedRegistryResponse? _cached;
+    private volatile AggregatedRegistryResponse? _cached;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     /// <summary>The last fully-clean cached response, or <c>null</c> if none exists yet.</summary>

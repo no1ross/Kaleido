@@ -34,6 +34,10 @@ public static class KaleidoServiceCollectionExtensions
         return new KaleidoBuilder(services, configuration, serviceOptions);
     }
 
+    /// <summary>
+    /// Registers an assembly for scanning by Process and Queryable subsystem builders.
+    /// Call once per assembly before calling <c>AddProcessor()</c> or <c>AddQueryable()</c>.
+    /// </summary>
     public static IKaleidoBuilder AddAssembly(this IKaleidoBuilder builder, Assembly assembly)
     {
         ArgumentNullException.ThrowIfNull(builder);

@@ -189,17 +189,7 @@ public static class DataTypeMapper
             Nullable.GetUnderlyingType(type)
             ?? type;
 
-        if (TypeMappings.ContainsKey(actualType))
-        {
-            return true;
-        }
-
-        if (actualType.IsEnum)
-        {
-            return true;
-        }
-
-        return false;
+        return TypeMappings.ContainsKey(actualType) || actualType.IsEnum;
     }
 
     public static DataTypeConversionResult TryConvertValue(

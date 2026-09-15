@@ -1,5 +1,5 @@
 ﻿using Kaleido.Process.AspNetCore.Contracts;
-using Kaleido.Process.AspNetCore.Srevices;
+using Kaleido.Process.AspNetCore.Services;
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;

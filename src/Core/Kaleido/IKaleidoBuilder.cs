@@ -6,8 +6,15 @@ namespace Kaleido;
 
 public interface IKaleidoBuilder
 {
+    /// <summary>
+    /// The application DI service collection. Used by subsystem builders to register their services.
+    /// </summary>
     IServiceCollection Services { get; }
 
+    /// <summary>
+    /// The set of assemblies registered via <c>AddAssembly()</c>.
+    /// Consumed by Process and Queryable subsystem builders for step/context type scanning.
+    /// </summary>
     IReadOnlyCollection<Assembly> Assemblies { get; }
 
     /// <summary>

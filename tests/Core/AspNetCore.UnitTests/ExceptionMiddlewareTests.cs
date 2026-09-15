@@ -45,7 +45,9 @@ public sealed class ExceptionMiddlewareTests
 
         Assert.Equal(StatusCodes.Status400BadRequest, context.Response.StatusCode);
         Assert.Equal("application/json; charset=utf-8", context.Response.ContentType);
-        Assert.Equal("{\"message\":\"bad argument\"}", ReadBody(context));
+        Assert.Equal(
+            "{\"errors\":[{\"code\":\"argument_error\",\"message\":\"bad argument\",\"field\":null}]}",
+            ReadBody(context));
     }
 
     [Fact]
@@ -62,7 +64,9 @@ public sealed class ExceptionMiddlewareTests
 
         Assert.Equal(StatusCodes.Status400BadRequest, context.Response.StatusCode);
         Assert.Equal("application/json; charset=utf-8", context.Response.ContentType);
-        Assert.Equal("{\"message\":\"bad operation\"}", ReadBody(context));
+        Assert.Equal(
+            "{\"errors\":[{\"code\":\"invalid_operation\",\"message\":\"bad operation\",\"field\":null}]}",
+            ReadBody(context));
     }
 
     private static DefaultHttpContext CreateContext()

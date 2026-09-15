@@ -8,8 +8,6 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Kaleido.Queryable.AspNetCore;
 
@@ -317,9 +315,9 @@ public static class QueryableEndpointRouteBuilderExtensions
                     catch (QueryableValidationException ex)
                     {
                         return Results.BadRequest(
-                            new QueryErrorResponse(
+                            new KaleidoErrorResponse(
                             [
-                                new QueryError(
+                                new KaleidoError(
                                 ex.Code,
                                 ex.Message)
                             ]));
@@ -338,7 +336,7 @@ public static class QueryableEndpointRouteBuilderExtensions
             .Accepts<QueryApiRequest>(
                 "application/json")
             .Produces<QueryResult<TView>>()
-            .Produces<QueryErrorResponse>(400);
+            .Produces<KaleidoErrorResponse>(400);
     }
 
     private static void MapTypedDelegatedQueryEndpoint<TQueryView, TView, TViewParameters>(
@@ -375,9 +373,9 @@ public static class QueryableEndpointRouteBuilderExtensions
                     catch (QueryableValidationException ex)
                     {
                         return Results.BadRequest(
-                            new QueryErrorResponse(
+                            new KaleidoErrorResponse(
                             [
-                                new QueryError(
+                                new KaleidoError(
                                 ex.Code,
                                 ex.Message)
                             ]));
@@ -396,7 +394,7 @@ public static class QueryableEndpointRouteBuilderExtensions
             .Accepts<QueryApiRequest>(
                 "application/json")
             .Produces<QueryResult<TView>>()
-            .Produces<QueryErrorResponse>(400);
+            .Produces<KaleidoErrorResponse>(400);
     }
 
     private static void MapTypedDirectQueryEndpoint<TQueryContext>(
@@ -431,9 +429,9 @@ public static class QueryableEndpointRouteBuilderExtensions
                     catch (QueryableValidationException ex)
                     {
                         return Results.BadRequest(
-                            new QueryErrorResponse(
+                            new KaleidoErrorResponse(
                             [
-                                new QueryError(
+                                new KaleidoError(
                                     ex.Code,
                                     ex.Message)
                             ]));
@@ -451,6 +449,6 @@ public static class QueryableEndpointRouteBuilderExtensions
             .Accepts<QueryApiRequest>(
                 "application/json")
             .Produces<QueryResult<TQueryContext>>()
-            .Produces<QueryErrorResponse>(400);
+            .Produces<KaleidoErrorResponse>(400);
     }
 }

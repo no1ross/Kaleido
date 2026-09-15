@@ -2,7 +2,7 @@
 
 namespace Kaleido.Process.Planning;
 
-internal class StepCandidateValidator : IStepCandidateValidator
+internal sealed class StepCandidateValidator : IStepCandidateValidator
 {
     public void Validate(IReadOnlyCollection<StepCandidate> candidates)
     {

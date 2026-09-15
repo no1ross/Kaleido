@@ -4,7 +4,7 @@ using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.Planning;
 
-internal class StepCandidateConsistencyChecker : IStepCandidateConsistencyChecker
+internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistencyChecker
 {
     public StepCandidateConsistencyChecker()
     {

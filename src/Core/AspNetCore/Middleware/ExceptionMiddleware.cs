@@ -1,10 +1,9 @@
-﻿using Kaleido.AspNetCore.Contracts;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.AspNetCore.Middleware
 {
-    public sealed class ExceptionMiddleware
+    internal sealed class ExceptionMiddleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<ExceptionMiddleware> _logger;
@@ -28,27 +27,31 @@ namespace Kaleido.AspNetCore.Middleware
             {
                 _logger.LogWarning(
                     exception,
-                    "Invalid query request.");
+                    "Invalid argument in request.");
 
                 context.Response.StatusCode =
                     StatusCodes.Status400BadRequest;
 
                 await context.Response.WriteAsJsonAsync(
-                    new ApiErrorContract(
-                        exception.Message));
+                    new KaleidoErrorResponse(
+                    [
+                        new KaleidoError("argument_error", exception.Message)
+                    ]));
             }
             catch (InvalidOperationException exception)
             {
                 _logger.LogWarning(
                     exception,
-                    "Invalid query request.");
+                    "Invalid operation in request.");
 
                 context.Response.StatusCode =
                     StatusCodes.Status400BadRequest;
 
                 await context.Response.WriteAsJsonAsync(
-                    new ApiErrorContract(
-                        exception.Message));
+                    new KaleidoErrorResponse(
+                    [
+                        new KaleidoError("invalid_operation", exception.Message)
+                    ]));
             }
         }
     }

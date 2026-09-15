@@ -93,13 +93,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         var currentCandidate =
             remainingCandidates.FirstOrDefault();
 
-        while (true)
+        while (currentCandidate is not null)
         {
-            if (currentCandidate is null)
-            {
-                break;
-            }
-
             var candidate =
                 currentCandidate;
 
@@ -393,32 +388,4 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         };
     }
 
-    private static StepProcessingMessage ToStepProcessingMessage(
-        ProcessMessage message)
-    {
-        ArgumentNullException.ThrowIfNull(message);
-
-        return message.Type switch
-        {
-            MessageType.Information =>
-                StepProcessingMessage.Information(
-                    StepProcessingMessageCode.ProcessMessage,
-                    message.Message),
-
-            MessageType.Warning =>
-                StepProcessingMessage.Warning(
-                    StepProcessingMessageCode.ProcessMessage,
-                    message.Message),
-
-            MessageType.Error =>
-                StepProcessingMessage.Error(
-                    StepProcessingMessageCode.ProcessMessage,
-                    message.Message),
-
-            _ =>
-                StepProcessingMessage.Information(
-                    StepProcessingMessageCode.ProcessMessage,
-                    message.Message)
-        };
-    }
 }

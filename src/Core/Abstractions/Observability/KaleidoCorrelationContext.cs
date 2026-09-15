@@ -26,6 +26,10 @@ public sealed record KaleidoCorrelationContext
         init;
     }
 
+    /// <summary>
+    /// Returns <c>true</c> when all correlation fields are null or empty —
+    /// indicating no correlation context has been established for the current request.
+    /// </summary>
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(RequestId)
         && ProcessId is null

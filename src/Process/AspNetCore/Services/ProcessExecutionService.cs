@@ -3,9 +3,9 @@ using Kaleido.Process.AspNetCore.Contracts;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 
-namespace Kaleido.Process.AspNetCore.Srevices;
+namespace Kaleido.Process.AspNetCore.Services;
 
-public interface IProcessExecutionService
+internal interface IProcessExecutionService
 {
     Task<ProcessExecutionResponse> ExecuteAsync(
         ExecuteProcessRequest request,
@@ -20,7 +20,7 @@ public interface IProcessExecutionService
         CancellationToken cancellationToken);
 }
 
-public class ProcessExecutionService : IProcessExecutionService
+internal sealed class ProcessExecutionService : IProcessExecutionService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IProcessStepRegistry _registry;

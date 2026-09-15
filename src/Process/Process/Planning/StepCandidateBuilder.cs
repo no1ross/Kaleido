@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace Kaleido.Process.Planning;
 
-internal class StepCandidateBuilder : IStepCandidateBuilder
+internal sealed class StepCandidateBuilder : IStepCandidateBuilder
 {
     private readonly IProcessStepRegistry _registry;
 

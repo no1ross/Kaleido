@@ -1,6 +1,6 @@
 ﻿using Kaleido.Process.AspNetCore.Contracts;
 
-namespace Kaleido.Process.AspNetCore.Srevices;
+namespace Kaleido.Process.AspNetCore.Services;
 
 public interface IProcessMetadataService
 {

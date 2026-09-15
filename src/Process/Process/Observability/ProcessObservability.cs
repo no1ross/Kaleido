@@ -76,51 +76,51 @@ internal sealed class ProcessObservability
 
     private static readonly Counter<long> ProcessExecutionsCounter =
         Meter.CreateCounter<long>(
-            "kaleido.process.executions");
+            ProcessTelemetry.ExecutionsCounterName);
 
     private static readonly Counter<long> ProcessExecutionFailuresCounter =
         Meter.CreateCounter<long>(
-            "kaleido.process.execution_failures");
+            ProcessTelemetry.ExecutionFailuresCounterName);
 
     private static readonly Counter<long> ProcessContextsInitializedCounter =
         Meter.CreateCounter<long>(
-            "kaleido.process.contexts_initialized");
+            ProcessTelemetry.ContextsInitializedCounterName);
 
     private static readonly Counter<long> ProcessContextsLoadedCounter =
         Meter.CreateCounter<long>(
-            "kaleido.process.contexts_loaded");
+            ProcessTelemetry.ContextsLoadedCounterName);
 
     private static readonly Histogram<long> ProcessSubmittedStepCountHistogram =
         Meter.CreateHistogram<long>(
-            "kaleido.process.submitted_step_count");
+            ProcessTelemetry.SubmittedStepCountHistogramName);
 
     private static readonly Histogram<long> ProcessPlanCandidateCountHistogram =
         Meter.CreateHistogram<long>(
-            "kaleido.process.plan_candidate_count");
+            ProcessTelemetry.PlanCandidateCountHistogramName);
 
     private static readonly Histogram<long> ProcessPlanExecutableCountHistogram =
         Meter.CreateHistogram<long>(
-            "kaleido.process.plan_executable_count");
+            ProcessTelemetry.PlanExecutableCountHistogramName);
 
     private static readonly Counter<long> ProcessStepExecutionsCounter =
         Meter.CreateCounter<long>(
-            "kaleido.process.step_executions");
+            ProcessTelemetry.StepExecutionsCounterName);
 
     private static readonly Counter<long> ProcessStepCancellationsCounter =
         Meter.CreateCounter<long>(
-            "kaleido.process.step_cancellations");
+            ProcessTelemetry.StepCancellationsCounterName);
 
     private static readonly Counter<long> ProcessStepFailuresCounter =
         Meter.CreateCounter<long>(
-            "kaleido.process.step_failures");
+            ProcessTelemetry.StepFailuresCounterName);
 
     private static readonly Counter<long> ProcessHandlerExecutionsCounter =
         Meter.CreateCounter<long>(
-            "kaleido.process.handler_executions");
+            ProcessTelemetry.HandlerExecutionsCounterName);
 
     private static readonly Counter<long> ProcessHandlerFailuresCounter =
         Meter.CreateCounter<long>(
-            "kaleido.process.handler_failures");
+            ProcessTelemetry.HandlerFailuresCounterName);
 
     private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
     private readonly ILogger<ProcessObservability> _logger;
@@ -609,14 +609,4 @@ internal sealed class ProcessObservability
         }
     }
 
-    private sealed class NullScope
-        : IDisposable
-    {
-        public static readonly NullScope Instance =
-            new();
-
-        public void Dispose()
-        {
-        }
-    }
 }

@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 using System.Linq;
 
 namespace Kaleido.Registry;
@@ -56,6 +58,10 @@ public static class RegistryEndpointRouteBuilderExtensions
         // Required — AddKaleido() must be called before MapRegistry().
         var localServiceOptions = endpoints.ServiceProvider
             .GetRequiredService<KaleidoServiceOptions>();
+
+        var logger = endpoints.ServiceProvider
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Kaleido.Registry");
 
         // Optional — only present when the host has called AddQueryable().
         var localQueryableRegistry = endpoints.ServiceProvider
@@ -123,8 +129,16 @@ public static class RegistryEndpointRouteBuilderExtensions
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error in GetAggregatedRegistry: {ex}");
-                        throw;
+                        logger.LogError(
+                            ex,
+                            "Error building aggregated registry response.");
+
+                        return Results.Json(
+                            new KaleidoErrorResponse(
+                            [
+                                new KaleidoError("registry_error", ex.Message)
+                            ]),
+                            statusCode: 500);
                     }
 
                 })
@@ -165,8 +179,8 @@ public static class RegistryEndpointRouteBuilderExtensions
         if (map is null)
             return ([], []);
 
-        var items = new List<ProcessorRegistryResponse>();
-        var errors = new List<RegistryClientError>();
+        var items = new ConcurrentBag<ProcessorRegistryResponse>();
+        var errors = new ConcurrentBag<RegistryClientError>();
 
         await Task.WhenAll(
             map.Options.Keys.Select(async name =>
@@ -174,15 +188,15 @@ public static class RegistryEndpointRouteBuilderExtensions
                 try
                 {
                     var result = await factory.GetClient(name).GetRegistryAsync(cancellationToken);
-                    lock (items) items.AddRange(result);
+                    foreach (var r in result) items.Add(r);
                 }
-                catch (HttpRequestException ex) when (ex.Message.Contains("404") || ex.Message.Contains("Not Found"))
+                catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     // 404 is expected for services that don't expose process - swallow it
                 }
                 catch (Exception ex)
                 {
-                    lock (errors) errors.Add(new RegistryClientError
+                    errors.Add(new RegistryClientError
                     {
                         ClientName = name,
                         ClientType = "Process",
@@ -191,7 +205,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                 }
             }));
 
-        return (items, errors);
+        return (items.ToArray(), errors.ToArray());
     }
 
     private static async Task<(IReadOnlyCollection<QueryableRecordResponse> Items, IReadOnlyCollection<RegistryClientError> Errors)>
@@ -203,8 +217,8 @@ public static class RegistryEndpointRouteBuilderExtensions
         if (map is null)
             return ([], []);
 
-        var items = new List<QueryableRecordResponse>();
-        var errors = new List<RegistryClientError>();
+        var items = new ConcurrentBag<QueryableRecordResponse>();
+        var errors = new ConcurrentBag<RegistryClientError>();
 
         await Task.WhenAll(
             map.Options.Keys.Select(async name =>
@@ -212,15 +226,15 @@ public static class RegistryEndpointRouteBuilderExtensions
                 try
                 {
                     var result = await factory.GetClient(name).GetRegistryAsync(cancellationToken);
-                    lock (items) items.AddRange(result);
+                    foreach (var r in result) items.Add(r);
                 }
-                catch (HttpRequestException ex) when (ex.Message.Contains("404") || ex.Message.Contains("Not Found"))
+                catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     // 404 is expected for services that don't expose queryable - swallow it
                 }
                 catch (Exception ex)
                 {
-                    lock (errors) errors.Add(new RegistryClientError
+                    errors.Add(new RegistryClientError
                     {
                         ClientName = name,
                         ClientType = "Queryable",
@@ -229,6 +243,6 @@ public static class RegistryEndpointRouteBuilderExtensions
                 }
             }));
 
-        return (items, errors);
+        return (items.ToArray(), errors.ToArray());
     }
 }

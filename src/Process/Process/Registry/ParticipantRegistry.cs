@@ -29,7 +29,7 @@ internal sealed class ProcessorRegistry : IProcessorRegistry
 
 internal static class ProcessorRegistryProjection
 {
-    public static ProcessorRegistryItem Project(
+    internal static ProcessorRegistryItem Project(
         ProcessorOptions options,
         IReadOnlyCollection<ProcessStepRegistration> initialSteps,
         IReadOnlyCollection<ProcessStepRegistration> steps)
@@ -52,7 +52,7 @@ internal static class ProcessorRegistryProjection
         };
     }
 
-    public static ProcessorStepRegistryItem Project(
+    internal static ProcessorStepRegistryItem Project(
         ProcessStepRegistration registration)
     {
         ArgumentNullException.ThrowIfNull(registration);
@@ -84,7 +84,7 @@ internal static class ProcessorRegistryProjection
         };
     }
 
-    public static ProcessorStepSummary ProjectSummary(
+    internal static ProcessorStepSummary ProjectSummary(
         ProcessStepRegistration registration)
     {
         ArgumentNullException.ThrowIfNull(registration);
@@ -99,7 +99,7 @@ internal static class ProcessorRegistryProjection
         };
     }
 
-    public static ProcessorInputFieldDescriptor ProjectInput(
+    internal static ProcessorInputFieldDescriptor ProjectInput(
         PropertyInfo property)
     {
         ArgumentNullException.ThrowIfNull(property);
@@ -113,7 +113,7 @@ internal static class ProcessorRegistryProjection
         };
     }
 
-    public static ProcessorStepResultDescriptor? ProjectResult(
+    internal static ProcessorStepResultDescriptor? ProjectResult(
         Type? resultType)
     {
         if (resultType is null)
@@ -129,7 +129,7 @@ internal static class ProcessorRegistryProjection
         };
     }
 
-    public static ProcessorOutputFieldDescriptor ProjectOutput(
+    internal static ProcessorOutputFieldDescriptor ProjectOutput(
         PropertyInfo property)
     {
         ArgumentNullException.ThrowIfNull(property);

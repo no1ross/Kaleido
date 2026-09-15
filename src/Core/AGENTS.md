@@ -110,7 +110,10 @@ It should not absorb capability-specific endpoint publication or request/respons
 Also note that the current middleware behavior is intentionally limited:
 - `ExceptionMiddleware` catches `ArgumentException`
 - `ExceptionMiddleware` catches `InvalidOperationException`
-- it returns HTTP 400 with `ApiErrorContract`
+- it returns HTTP 400 with `KaleidoErrorResponse` (from `Kaleido.Abstractions`)
+
+The `InvalidOperationException` catch is a band-aid over framework paths that have not yet been
+migrated to typed exceptions. A follow-up PR will audit those throw sites and remove this catch.
 
 Do not document it as a universal exception pipeline unless the implementation actually changes.
 
@@ -163,9 +166,7 @@ If a change touches shared abstractions like metadata mapping, eventing, correla
 
 ## Naming and legacy cautions
 A few legacy mismatches are worth knowing before cleanup work:
-- [`IEventPublishier.cs`](./Abstractions/Eventing/IEventPublishier.cs) contains `IEventPublisher`
 - [`AspNetCoreServiceCollectionExtensions`](./AspNetCore/AspNetCoreServiceCollectionExtensions.cs) currently exposes middleware pipeline registration rather than service-collection registration
-- [`KaleidoCorrelationContext`](./Abstractions/Observability/KaleidoCorrelationContext.cs) still includes `OrchestratorId` and `OrchestratorInstanceId`
 
 Understand those mismatches before normalizing names so you do not accidentally broaden the scope of a small change.
 

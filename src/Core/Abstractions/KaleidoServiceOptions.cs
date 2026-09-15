@@ -41,6 +41,15 @@ public class KaleidoServiceOptions
     /// </summary>
     public Guid InstanceId { get; set; } = Guid.NewGuid();
 
+    /// <summary>
+    /// Validates a <see cref="KaleidoServiceOptions"/> instance.
+    /// Throws <see cref="KaleidoConfigurationException"/> if <see cref="ServiceName"/> is null,
+    /// empty, contains whitespace, path separators, or uppercase characters.
+    /// </summary>
+    /// <param name="options">The options instance to validate.</param>
+    /// <exception cref="KaleidoConfigurationException">
+    /// Thrown when <see cref="ServiceName"/> fails any validation rule.
+    /// </exception>
     public static void Validate(KaleidoServiceOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);

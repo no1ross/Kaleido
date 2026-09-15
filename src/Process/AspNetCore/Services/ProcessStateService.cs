@@ -3,16 +3,16 @@ using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;
 
-namespace Kaleido.Process.AspNetCore.Srevices;
+namespace Kaleido.Process.AspNetCore.Services;
 
-public interface IProcessStateService
+internal interface IProcessStateService
 {
     Task<ProcessStateResponse?> GetCurrentState(
         Guid processId,
         CancellationToken cancellationToken);
 }
 
-public class ProcessStateService(
+internal sealed class ProcessStateService(
     IProcessContextStore contextStore,
     IProcessStepRegistry registry,
     KaleidoServiceOptions serviceOptions)

@@ -1,6 +1,6 @@
 ﻿namespace Kaleido.Process.Planning;
 
-internal class StepCandidatePlanner : IStepCandidatePlanner
+internal sealed class StepCandidatePlanner : IStepCandidatePlanner
 {
     public StepCandidatePlanner()
     {
