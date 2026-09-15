@@ -39,9 +39,10 @@ public static class QueryableEndpointRouteBuilderExtensions
             endpoints.ServiceProvider
                 .GetRequiredService<IDelegatedQueryViewRegistry>();
 
-        var options =
+        var serviceName =
             endpoints.ServiceProvider
-                .GetRequiredService<QueryableRouteOptions>();
+                .GetRequiredService<KaleidoServiceOptions>()
+                .ServiceName;
 
         var logger =
             endpoints.ServiceProvider
@@ -50,12 +51,11 @@ public static class QueryableEndpointRouteBuilderExtensions
 
         var group =
             endpoints.MapGroup(
-                QueryableContractUrls.QueryablePrefix(
-                    options));
+                QueryableContractUrls.QueryablePrefix(serviceName));
 
         logger.LogInformation(
             "Queryable mapped at route prefix {RoutePrefix} with {QueryContextCount} query contexts, {QueryViewCount} query views, and {DelegatedQueryViewCount} delegated query views.",
-            QueryableContractUrls.QueryablePrefix(options),
+            QueryableContractUrls.QueryablePrefix(serviceName),
             contextRegistry.Registrations.Count,
             viewRegistry.Registrations.Count,
             delegatedViewRegistry.Registrations.Count);
@@ -67,7 +67,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                         .Select(r =>
                             QueryableRecordResponse.ToSummary(
                                 r,
-                                options))
+                                serviceName))
                         .OrderBy(r => r.Name)))
             .WithName(
                 QueryableEndpointNames.CatalogEndpointName)
@@ -87,7 +87,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                     .Select(r =>
                         QueryableRecordResponse.FromRegistryItem(
                             r,
-                            options))
+                            serviceName))
                     .OrderBy(r => r.Name)))
                 .WithName(
                     QueryableEndpointNames.RegistryEndpointName)
@@ -109,15 +109,14 @@ public static class QueryableEndpointRouteBuilderExtensions
             group.MapMetadataEndpoint(
                 queryableRegistry.GetRegistration(context.Metadata.Name),
                 QueryableRoutePaths.QueryContextMetadata(
-                    options,
                     context.Metadata.Name.ToLowerInvariant()),
-                options);
+                serviceName);
 
             if (context.Metadata.Kind == QueryContextKind.Direct)
             {
                 group.MapDirectQueryContext(
                     context,
-                    options);
+                    serviceName);
             }
         }
 
@@ -129,9 +128,8 @@ public static class QueryableEndpointRouteBuilderExtensions
             group.MapMetadataEndpoint(
                 queryableRegistry.GetRegistration(metadata.Name),
                 QueryableRoutePaths.QueryContextMetadata(
-                    options,
                     metadata.Name.ToLowerInvariant()),
-                options);
+                serviceName);
         }
 
         foreach (var view in viewRegistry.Registrations)
@@ -139,14 +137,14 @@ public static class QueryableEndpointRouteBuilderExtensions
             group.MapQueryView(
                 contextRegistry,
                 view,
-                options);
+                serviceName);
         }
 
         foreach (var view in delegatedViewRegistry.Registrations)
         {
             group.MapDelegatedQueryView(
                 view,
-                options);
+                serviceName);
         }
 
         return endpoints;
@@ -156,7 +154,7 @@ public static class QueryableEndpointRouteBuilderExtensions
       this IEndpointRouteBuilder endpoints,
       IQueryContextRegistry contextRegistry,
       QueryViewRegistration view,
-      QueryableRouteOptions options)
+      string serviceName)
     {
         var context =
             contextRegistry.GetRegistration(
@@ -171,16 +169,13 @@ public static class QueryableEndpointRouteBuilderExtensions
         endpoints.MapQueryEndpoint(
             context,
             view,
-            QueryableRoutePaths.QueryViewQuery(
-                options,
-                contextName,
-                viewName));
+            QueryableRoutePaths.QueryViewQuery(contextName, viewName));
     }
 
     private static void MapDirectQueryContext(
         this IEndpointRouteBuilder endpoints,
         QueryContextRegistration context,
-        QueryableRouteOptions options)
+        string serviceName)
     {
         typeof(QueryableEndpointRouteBuilderExtensions)
             .GetMethod(
@@ -194,7 +189,6 @@ public static class QueryableEndpointRouteBuilderExtensions
                 {
                     endpoints,
                     QueryableRoutePaths.QueryContextQuery(
-                        options,
                         context.Metadata.Name.ToLowerInvariant()),
                     context
                 });
@@ -203,7 +197,7 @@ public static class QueryableEndpointRouteBuilderExtensions
     public static void MapDelegatedQueryView(
       this IEndpointRouteBuilder endpoints,
       DelegatedQueryViewRegistration view,
-      QueryableRouteOptions options)
+      string serviceName)
     {
         var contextName =
             view.QueryMetadata.Name.ToLowerInvariant();
@@ -213,24 +207,21 @@ public static class QueryableEndpointRouteBuilderExtensions
 
         endpoints.MapDelegatedQueryEndpoint(
             view,
-            QueryableRoutePaths.QueryViewQuery(
-                options,
-                contextName,
-                viewName));
+            QueryableRoutePaths.QueryViewQuery(contextName, viewName));
     }
 
     private static void MapMetadataEndpoint(
         this IEndpointRouteBuilder endpoints,
         QueryableContextRegistryItem context,
         string route,
-        QueryableRouteOptions options)
+        string serviceName)
     {
         endpoints.MapGet(
                 route,
                 () => Results.Ok(
                     QueryableRecordResponse.FromRegistryItem(
                         context,
-                        options)))
+                        serviceName)))
             .WithName(
                 QueryableEndpointNames.QueryContextMetadataEndpointName(
                     context.Name.ToLowerInvariant()))

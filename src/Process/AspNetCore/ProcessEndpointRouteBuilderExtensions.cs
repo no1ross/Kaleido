@@ -25,9 +25,11 @@ public static class ProcessEndpointRouteBuilderExtensions
             endpoints.ServiceProvider
                 .GetRequiredService<IProcessorRegistry>();
 
-        var options =
+        var serviceOptions =
             endpoints.ServiceProvider
-                .GetRequiredService<ProcessRouteOptions>();
+                .GetRequiredService<KaleidoServiceOptions>();
+
+        var serviceName = serviceOptions.ServiceName;
 
         var logger =
             endpoints.ServiceProvider
@@ -35,30 +37,31 @@ public static class ProcessEndpointRouteBuilderExtensions
                 .CreateLogger("Kaleido.Process.Startup");
 
         var group =
-            endpoints.MapGroup(options.ProcessesRoutePrefix);
+            endpoints.MapGroup(
+                ProcessContractUrls.ProcessesPrefix(serviceName));
 
         logger.LogInformation(
             "Process endpoints mapped at route prefix {RoutePrefix} with {ProcessStepCount} process steps and {InitialStepCount} initial steps.",
-            options.ProcessesRoutePrefix,
+            ProcessContractUrls.ProcessesPrefix(serviceName),
             registry.Registrations.Count,
             registry.InitialRegistrations.Count);
 
-        group.MapProcessorCatalogEndpoint(processorRegistry, options);
+        group.MapProcessorCatalogEndpoint(processorRegistry, serviceOptions);
 
         group.MapExecuteEndpoint();
 
         group.MapProcessStateEndpoint();
 
-        group.MapStepCatalogEndpoint(processorRegistry, options);
+        group.MapStepCatalogEndpoint(processorRegistry, serviceName);
 
-        group.MapStepRegistryEndpoint(processorRegistry, options);
+        group.MapStepRegistryEndpoint(processorRegistry, serviceOptions);
 
         foreach (var step in registry.Registrations)
         {
             group.MapProcessStep(
                 step,
                 processorRegistry,
-                options);
+                serviceName);
         }
 
         return endpoints;
@@ -67,7 +70,7 @@ public static class ProcessEndpointRouteBuilderExtensions
     private static void MapProcessorCatalogEndpoint(
         this IEndpointRouteBuilder endpoints,
         IProcessorRegistry registry,
-        ProcessRouteOptions options)
+        KaleidoServiceOptions serviceOptions)
     {
         endpoints.MapGet(
                 "",
@@ -76,11 +79,10 @@ public static class ProcessEndpointRouteBuilderExtensions
                         new ProcessCatalogResponse
                         {
                             Processors = registry.Registrations
-                                .OrderBy(x => x.Name)
                                 .Select(x =>
                                     ProcessorCatalogResponseFactory.FromRegistration(
                                         x,
-                                        options))
+                                        serviceOptions))
                                 .ToArray()
                         }))
             .WithName(ProcessEndpointNames.ProcessorCatalogEndpointName)
@@ -151,10 +153,10 @@ public static class ProcessEndpointRouteBuilderExtensions
     private static void MapStepRegistryEndpoint(
         this IEndpointRouteBuilder endpoints,
         IProcessorRegistry registry,
-        ProcessRouteOptions options)
+        KaleidoServiceOptions serviceOptions)
     {
         ArgumentNullException.ThrowIfNull(registry);
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(serviceOptions);
 
         endpoints.MapGet(
                 ProcessRoutePaths.StepRegistry,
@@ -164,8 +166,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                             .Select(x =>
                                 ProcessorRegistryResponseFactory.FromRegistration(
                                     x,
-                                    options))
-                            .OrderBy(x => x.Name)))
+                                    serviceOptions))))
             .WithName(ProcessEndpointNames.StepRegistryEndpointName)
             .WithTags("Processes")
             .Produces<IReadOnlyCollection<ProcessorRegistryResponse>>()
@@ -181,10 +182,9 @@ public static class ProcessEndpointRouteBuilderExtensions
     private static void MapStepCatalogEndpoint(
         this IEndpointRouteBuilder endpoints,
         IProcessorRegistry registry,
-        ProcessRouteOptions options)
+        string serviceName)
     {
         ArgumentNullException.ThrowIfNull(registry);
-        ArgumentNullException.ThrowIfNull(options);
 
         endpoints.MapGet(
                 ProcessRoutePaths.StepCatalog,
@@ -202,7 +202,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                                         Version = x.Version,
                                         Repeatable = x.Repeatable
                                     },
-                                    options))
+                                    serviceName))
                             .OrderBy(x => x.Name)))
             .WithName(ProcessEndpointNames.StepCatalogEndpointName)
             .WithTags("Processes")
@@ -217,11 +217,10 @@ public static class ProcessEndpointRouteBuilderExtensions
         this IEndpointRouteBuilder endpoints,
         ProcessStepRegistration step,
         IProcessorRegistry processorRegistry,
-        ProcessRouteOptions options)
+        string serviceName)
     {
         ArgumentNullException.ThrowIfNull(step);
         ArgumentNullException.ThrowIfNull(processorRegistry);
-        ArgumentNullException.ThrowIfNull(options);
 
         var stepName =
             step.Metadata.Name.ToLowerInvariant();
@@ -238,7 +237,7 @@ public static class ProcessEndpointRouteBuilderExtensions
             step,
             registryStep,
             ProcessRoutePaths.StepMetadata(stepName),
-            options);
+            serviceName);
 
         endpoints.MapStepExecutionEndpoint(
             step,
@@ -250,14 +249,14 @@ public static class ProcessEndpointRouteBuilderExtensions
         ProcessStepRegistration step,
         ProcessorStepRegistryItem registryStep,
         string route,
-        ProcessRouteOptions options)
+        string serviceName)
     {
         endpoints.MapGet(
                 route,
                 () => Results.Ok(
                     ProcessStepResponseFactory.FromRegistration(
                         registryStep,
-                        options)))
+                        serviceName)))
             .WithName(
                 ProcessEndpointNames.StepMetadataEndpointName(
                     step.Metadata.Name.ToLowerInvariant()))

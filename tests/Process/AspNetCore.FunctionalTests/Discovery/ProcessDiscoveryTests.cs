@@ -31,7 +31,7 @@ public sealed class ProcessDiscoveryTests
         var processor =
             Assert.Single(contract.Processors);
 
-        Assert.Equal("test-processor", processor.Name);
+        Assert.Equal(FunctionalProcessorNames.TestProcessor, processor.Name);
         Assert.Contains(processor.InitialSteps, x => x.Name == RuntimeStepNames.Root);
         Assert.Contains(processor.InitialSteps, x => x.Name == RuntimeStepNames.RequiredRoot);
         Assert.Contains(processor.InitialSteps, x => x.Name == RuntimeStepNames.InvalidRequiredRoot);

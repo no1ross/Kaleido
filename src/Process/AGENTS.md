@@ -67,10 +67,8 @@ Do not import Queryable terminology like direct contexts, local views, or delega
 
 These rules are fundamental to startup and runtime correctness:
 
+- `AddKaleido()` must be called before `AddProcessor(...)` and must provide a non-empty, lowercase `ServiceName` — this is the service identity shared by all subsystems.
 - At least one assembly must be registered before `AddProcessor(...)`.
-- Every processor registration must provide a non-empty `Name`.
-- Every processor registration must provide a non-empty `Version`.
-- Every processor registration must provide a non-empty `DisplayName`.
 - At least one process step must be discovered.
 - Every `[ProcessStep]` must have a non-empty `Name`.
 - Every `[ProcessStep]` must have a non-empty `Version`.

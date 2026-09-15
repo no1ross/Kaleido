@@ -6,15 +6,18 @@ namespace Kaleido;
 
 internal sealed class KaleidoBuilder : IKaleidoBuilder
 {
-    public KaleidoBuilder(IServiceCollection services, IConfiguration configuration)
+    public KaleidoBuilder(IServiceCollection services, IConfiguration configuration, KaleidoServiceOptions serviceOptions)
     {
         Services = services;
         Configuration = configuration;
+        ServiceOptions = serviceOptions;
     }
 
     public IServiceCollection Services { get; }
 
     public IConfiguration Configuration { get; }
+
+    public KaleidoServiceOptions ServiceOptions { get; }
 
     public IReadOnlyCollection<Assembly> Assemblies => _assemblies.Values;
 

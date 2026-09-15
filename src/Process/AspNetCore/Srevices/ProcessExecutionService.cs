@@ -1,6 +1,5 @@
 ﻿using Kaleido.Observability;
 using Kaleido.Process.AspNetCore.Contracts;
-using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 
@@ -25,22 +24,19 @@ public class ProcessExecutionService : IProcessExecutionService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IProcessStepRegistry _registry;
-    private readonly IProcessorRegistry _processorRegistry;
     private readonly IProcessorRuntime _runtime;
-    private readonly ProcessRouteOptions _routeOptions;
+    private readonly KaleidoServiceOptions _serviceOptions;
 
     public ProcessExecutionService(
         IHttpContextAccessor httpContextAccessor,
         IProcessStepRegistry registry,
-        IProcessorRegistry processorRegistry,
         IProcessorRuntime runtime,
-        ProcessRouteOptions routeOptions)
+        KaleidoServiceOptions serviceOptions)
     {
         _httpContextAccessor = httpContextAccessor;
         _registry = registry;
-        _processorRegistry = processorRegistry;
         _runtime = runtime;
-        _routeOptions = routeOptions;
+        _serviceOptions = serviceOptions;
     }
     public async Task<ProcessExecutionResponse> ExecuteAsync(
         ExecuteProcessRequest request,
@@ -73,7 +69,7 @@ public class ProcessExecutionService : IProcessExecutionService
         return ProcessExecutionResponseFactory.Create(
             processResult,
             _registry,
-            _routeOptions);
+            _serviceOptions.ServiceName);
     }
     public async Task<StepExecutionResponse<TResponse>> ExecuteAsync<TProcessStep, TResponse>(
         ExecuteStepRequest<TProcessStep> request,
@@ -108,7 +104,7 @@ public class ProcessExecutionService : IProcessExecutionService
             processResult,
             stepResult,
             _registry,
-            _routeOptions);
+            _serviceOptions.ServiceName);
     }
 
     public async Task<StepExecutionResponse> ExecuteAsync<TProcessStep>(ExecuteStepRequest<TProcessStep> request, CancellationToken cancellationToken)
@@ -142,7 +138,7 @@ public class ProcessExecutionService : IProcessExecutionService
             processResult,
             stepResult,
             _registry,
-            _routeOptions);
+            _serviceOptions.ServiceName);
     }
 
     private void WriteResponseHeaders(
@@ -156,16 +152,13 @@ public class ProcessExecutionService : IProcessExecutionService
             return;
         }
 
-        var registration =
-            _processorRegistry.Registrations.Single();
-
         headers[KaleidoCorrelationHeaders.ProcessId] =
             processId.ToString();
 
         headers[KaleidoCorrelationHeaders.ProcessorInstanceId] =
-            registration.InstanceId.ToString();
+            _serviceOptions.InstanceId.ToString();
 
         headers[KaleidoCorrelationHeaders.SourceProcessor] =
-            registration.Name;
+            _serviceOptions.ServiceName;
     }
 }

@@ -11,11 +11,10 @@ public static class ProcessExecutionResponseFactory
     public static ProcessExecutionResponse Create(
         ProcessorProcessResult processResult,
         IProcessStepRegistry registry,
-        ProcessRouteOptions options)
+        string serviceName)
     {
         ArgumentNullException.ThrowIfNull(processResult);
         ArgumentNullException.ThrowIfNull(registry);
-        ArgumentNullException.ThrowIfNull(options);
 
         return new ProcessExecutionResponse
         {
@@ -39,7 +38,7 @@ public static class ProcessExecutionResponseFactory
                             registry.Find(stepName)
                                 ?? throw new InvalidOperationException(
                                     $"Available step '{stepName}' was not found in the local registry."),
-                            options))
+                            serviceName))
                     .ToArray(),
 
             Results =
@@ -77,9 +76,8 @@ public static class StepExecutionResponseFactory
         ProcessorProcessResult processResult,
         ProcessorStepResult stepResult,
         IProcessStepRegistry registry,
-        ProcessRouteOptions options)
+        string serviceName)
     {
-        ArgumentNullException.ThrowIfNull(options);
 
         return new StepExecutionResponse
         {
@@ -108,7 +106,7 @@ public static class StepExecutionResponseFactory
                             registry.Find(stepName)
                                 ?? throw new InvalidOperationException(
                                     $"Available step '{stepName}' was not found in the local registry."),
-                            options))
+                            serviceName))
                     .ToList(),
 
             Messages =
@@ -121,14 +119,14 @@ public static class StepExecutionResponseFactory
         ProcessorProcessResult processResult,
         ProcessorStepResult stepResult,
         IProcessStepRegistry registry,
-        ProcessRouteOptions options)
+        string serviceName)
     {
         var response =
             Create(
                 processResult,
                 stepResult,
                 registry,
-                options);
+                serviceName);
 
         return new StepExecutionResponse<TResponse>
         {
@@ -160,10 +158,9 @@ internal static class ProcessContractMapper
 {
     public static ProcessStepSummary ToSummary(
         ProcessStepRegistration registration,
-        ProcessRouteOptions options)
+        string serviceName)
     {
         ArgumentNullException.ThrowIfNull(registration);
-        ArgumentNullException.ThrowIfNull(options);
 
         var stepName =
             registration.Metadata.Name.ToLowerInvariant();
@@ -175,12 +172,8 @@ internal static class ProcessContractMapper
             DisplayName = registration.Metadata.DisplayName,
             Description = registration.Metadata.Description,
             Repeatable = registration.Repeatable.Enabled,
-            ExecuteUrl = ProcessContractUrls.ExecuteStep(
-                options,
-                stepName),
-            MetadataUrl = ProcessContractUrls.StepMetadata(
-                options,
-                stepName)
+            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName),
+            MetadataUrl = ProcessContractUrls.StepMetadata(serviceName, stepName)
         };
     }
 

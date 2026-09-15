@@ -1,24 +1,19 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, ReplaySubject, catchError, forkJoin, map, of, shareReplay, switchMap, tap } from 'rxjs';
+import { Observable, ReplaySubject, catchError, map, of, shareReplay, switchMap, tap } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 
 import {
     ProcessProcessorRegistryRecord,
-    ProcessStepRegistryRecord,
-    ServiceProcessProcessorRegistryRecord,
-    ServiceProcessStepRegistryRecord
+    ProcessStepRegistryRecord
 } from '../kaleido/models/process-registry';
-import { getApiMode } from '../../configuration/urlConfig';
 import {
     QueryableRecord,
     QueryableView,
-    ServiceQueryableRecord,
-    ServiceQueryableViewRegistration
+    QueryableViewRegistration
 } from '../kaleido/models/queryable-registry';
 import {
     buildRegistryUrl,
-    getServiceRoutes,
-    PriorAuthServiceRouteConfig
+    getServiceRoutes
 } from '../../configuration/urlConfig';
 import { ProcessRegistry } from '../kaleido/services/process-registry';
 import { QueryableRegistry } from '../kaleido/services/queryable-registry';
@@ -29,34 +24,38 @@ export interface RegistryClientError {
     readonly reason: string;
 }
 
-export interface ServiceRegistrySnapshot {
-    readonly service: PriorAuthServiceRouteConfig;
-    readonly process: RegistryLoadResult<ProcessProcessorRegistryRecord[]>;
-    readonly queryable: RegistryLoadResult<QueryableRecord[]>;
-    /** Client-level errors reported by the server during aggregation. Non-empty means the response is partial. */
-    readonly clientErrors: readonly RegistryClientError[];
-}
-
-export interface RegistryLoadResult<T> {
-    readonly configured: boolean;
-    readonly ok: boolean;
-    readonly url?: string;
-    readonly data?: T;
-    readonly error?: string;
-}
-
 export interface RegistryConflict {
     readonly type: 'process-step' | 'queryable-context' | 'queryable-view';
     readonly name: string;
     readonly services: readonly string[];
 }
 
+export interface ProcessorGroup {
+    readonly serviceName: string;
+    readonly processors: readonly ProcessProcessorRegistryRecord[];
+}
+
+export interface QueryableGroup {
+    readonly serviceName: string;
+    readonly contexts: readonly QueryableRecord[];
+}
+
 export interface RegistryCatalogState {
-    readonly snapshots: readonly ServiceRegistrySnapshot[];
-    readonly processSteps: readonly ServiceProcessStepRegistryRecord[];
-    readonly queryableContexts: readonly ServiceQueryableRecord[];
-    readonly queryableViews: readonly ServiceQueryableViewRegistration[];
+    readonly ok: boolean;
+    readonly error?: string;
+    readonly url: string;
+    readonly clientErrors: readonly RegistryClientError[];
+    readonly processorGroups: readonly ProcessorGroup[];
+    readonly queryableGroups: readonly QueryableGroup[];
+    readonly processSteps: readonly ProcessStepEntry[];
+    readonly queryableViews: readonly QueryableViewRegistration[];
     readonly conflicts: readonly RegistryConflict[];
+}
+
+export interface ProcessStepEntry {
+    readonly serviceName: string;
+    readonly processor: ProcessProcessorRegistryRecord;
+    readonly step: ProcessStepRegistryRecord;
 }
 
 @Injectable({
@@ -78,277 +77,185 @@ export class RegistryCatalog {
     private readonly state$ =
         this.refreshTrigger.pipe(
             switchMap(() =>
-                this.createStateObservable()),
+                this.fetchRegistry()),
             shareReplay(1));
 
     constructor() {
         this.refresh();
     }
 
-    loadAll(): Observable<readonly ServiceRegistrySnapshot[]> {
-        return this.state$.pipe(
-            map(state => state.snapshots));
-    }
-
     loadState(): Observable<RegistryCatalogState> {
-        return this.state$.pipe(
-            tap(state => {
-                this.processRegistry.populateRegistry(
-                    state.processSteps,
-                    state.conflicts.filter(conflict => conflict.type === 'process-step'));
-            }));
+        return this.state$;
     }
 
     refresh(): void {
-        console.log('[RegistryCatalog] Refreshing registry catalog...');
+        console.log('[RegistryCatalog] Refreshing...');
         this.refreshTrigger.next();
     }
 
-    private createStateObservable(): Observable<RegistryCatalogState> {
+    private fetchRegistry(): Observable<RegistryCatalogState> {
         const routerService = getServiceRoutes().find(s => s.key === 'router');
 
-        if (routerService?.registryPath && getApiMode() === 'router') {
-            // In router mode, only call the unified registry endpoint once
-            return this.loadUnifiedRegistry(routerService).pipe(
-                map(result => this.buildStateFromUnifiedRegistry(routerService, {
-                    processes: result.process.ok ? (result.process.data ?? []) : [],
-                    queryables: result.queryable.ok ? (result.queryable.data ?? []) : [],
-                    clientErrors: result.clientErrors
-                })),
-                tap(state => {
-                    this.processRegistry.populateRegistry(
-                        state.processSteps,
-                        state.conflicts.filter(conflict => conflict.type === 'process-step'));
-
-                    this.queryableRegistry.populateRegistry(
-                        state.queryableContexts,
-                        state.queryableViews,
-                        state.conflicts.filter(conflict =>
-                            conflict.type === 'queryable-context' ||
-                            conflict.type === 'queryable-view'));
-                })
-            );
+        if (!routerService?.registryPath) {
+            throw new Error('Router service with registryPath is required.');
         }
 
-        // In direct mode, call individual service registries
-        const requests =
-            getServiceRoutes().map(service =>
-                forkJoin({
-                    process: this.loadProcessRegistry(service),
-                    queryable: this.loadQueryableRegistry(service)
-                }).pipe(map(result => ({ ...result, clientErrors: [] as readonly RegistryClientError[] })))
-                .pipe(
-                    map(result => ({
-                        service,
-                        process: result.process,
-                        queryable: result.queryable,
-                        clientErrors: result.clientErrors
-                    } satisfies ServiceRegistrySnapshot))));
+        const url = buildRegistryUrl(routerService.registryPath);
 
-        return forkJoin(requests)
+        console.log(`[RegistryCatalog] Loading from ${url}...`);
+
+        const started = performance.now();
+
+        return this.http
+            .get<{ processes: ProcessProcessorRegistryRecord[]; queryables: QueryableRecord[]; clientErrors?: RegistryClientError[] }>(url)
             .pipe(
-                map(snapshots =>
-                    this.buildState(snapshots)),
+                map(data => {
+                    const duration = Math.round(performance.now() - started);
+                    const clientErrors: readonly RegistryClientError[] = data.clientErrors ?? [];
+
+                    console.group('[RegistryCatalog]');
+                    console.log(`Loaded in ${duration}ms — Processors: ${data.processes.length}, Queryables: ${data.queryables.length}`);
+                    console.log('Url', url);
+                    if (clientErrors.length > 0) {
+                        console.warn(`Partial registry — ${clientErrors.length} downstream client(s) failed:`);
+                        console.table(clientErrors.map(e => ({ Client: e.clientName, Type: e.clientType, Reason: e.reason })));
+                    }
+                    console.groupEnd();
+
+                    return this.buildState(url, data.processes, data.queryables, clientErrors);
+                }),
                 tap(state => {
                     this.processRegistry.populateRegistry(
                         state.processSteps,
-                        state.conflicts.filter(conflict => conflict.type === 'process-step'));
+                        state.conflicts.filter(c => c.type === 'process-step'));
 
                     this.queryableRegistry.populateRegistry(
-                        state.queryableContexts,
+                        state.queryableGroups.flatMap(g => g.contexts.map(ctx => ({ context: ctx }))),
                         state.queryableViews,
-                        state.conflicts.filter(conflict =>
-                            conflict.type === 'queryable-context' ||
-                            conflict.type === 'queryable-view'));
-                }));
+                        state.conflicts.filter(c =>
+                            c.type === 'queryable-context' ||
+                            c.type === 'queryable-view'));
+                }),
+                catchError(error => {
+                    const msg = this.formatError(error);
+                    console.error(`[RegistryCatalog] Failed to load registry from ${url}.`, error);
+                    return of({
+                        ok: false,
+                        error: msg,
+                        url,
+                        clientErrors: [],
+                        processorGroups: [],
+                        queryableGroups: [],
+                        processSteps: [],
+                        queryableViews: [],
+                        conflicts: []
+                    } satisfies RegistryCatalogState);
+                })
+            );
     }
 
     private buildState(
-        snapshots: readonly ServiceRegistrySnapshot[]
+        url: string,
+        processes: readonly ProcessProcessorRegistryRecord[],
+        queryables: readonly QueryableRecord[],
+        clientErrors: readonly RegistryClientError[]
     ): RegistryCatalogState {
-        const processParticipants =
-            snapshots.flatMap(snapshot =>
-                (snapshot.process.ok
-                    ? snapshot.process.data ?? []
-                    : [])
-                    .map(processor => ({
-                        service: snapshot.service,
-                        processor
-                    } satisfies ServiceProcessProcessorRegistryRecord)));
+        // Group processors by serviceName
+        const processorsByService = new Map<string, ProcessProcessorRegistryRecord[]>();
+        for (const processor of processes) {
+            const group = processorsByService.get(processor.serviceName) ?? [];
+            group.push(processor);
+            processorsByService.set(processor.serviceName, group);
+        }
 
-        const processSteps =
-            processParticipants.flatMap(entry =>
-                entry.processor.steps.map(step => ({
-                    service: entry.service,
-                    processor: entry.processor,
+        // Group queryables by service key derived from first path segment of metadataUrl
+        const queryablesByService = new Map<string, QueryableRecord[]>();
+        for (const context of queryables) {
+            const key = this.serviceKeyFromUrl(context.metadataUrl);
+            const group = queryablesByService.get(key) ?? [];
+            group.push(context);
+            queryablesByService.set(key, group);
+        }
+
+        const processSteps: ProcessStepEntry[] =
+            processes.flatMap(processor =>
+                processor.steps.map(step => ({
+                    serviceName: processor.serviceName,
+                    processor,
                     step
-                } satisfies ServiceProcessStepRegistryRecord)));
+                })));
 
-        const queryableContexts =
-            snapshots.flatMap(snapshot =>
-                (snapshot.queryable.ok
-                    ? snapshot.queryable.data ?? []
-                    : [])
-                    .map(context => ({
-                        service: snapshot.service,
-                        context
-                    } satisfies ServiceQueryableRecord)));
-
-        const queryableViews =
-            queryableContexts.flatMap(entry =>
-                entry.context.views.map(view => ({
-                    service: entry.service,
-                    context: entry.context,
-                    view
-                } satisfies ServiceQueryableViewRegistration)));
+        const queryableViews: QueryableViewRegistration[] =
+            queryables.flatMap(context =>
+                context.views.map(view => ({ context, view })));
 
         const conflicts = [
             ...this.detectConflicts(
                 'process-step',
                 processSteps,
-                entry => `${entry.processor.name}:${entry.step.name}`,
-                entry => entry.service.displayName),
+                e => `${e.processor.name}:${e.step.name}`,
+                e => e.serviceName),
             ...this.detectConflicts(
                 'queryable-context',
-                queryableContexts,
-                entry => entry.context.name,
-                entry => entry.service.displayName),
+                queryables.map(ctx => ({ key: this.serviceKeyFromUrl(ctx.metadataUrl), ctx })),
+                e => e.ctx.name,
+                e => e.key),
             ...this.detectConflicts(
                 'queryable-view',
-                queryableViews,
-                entry => entry.view.name,
-                entry => entry.service.displayName)
+                queryableViews.map(qv => ({ key: this.serviceKeyFromUrl(qv.context.metadataUrl), qv })),
+                e => e.qv.view.name,
+                e => e.key)
         ];
 
-        if (conflicts.length > 0) {
-            console.group('[RegistryCatalog] Duplicate registry conflicts detected.');
-            console.table(conflicts.map(conflict => ({
-                Type: conflict.type,
-                Name: conflict.name,
-                Services: conflict.services.join(', ')
-            })));
-            console.groupEnd();
-        }
+        const conflictedStepNames = new Set(
+            conflicts.filter(c => c.type === 'process-step').map(c => c.name));
+
+        const conflictedContextNames = new Set(
+            conflicts.filter(c => c.type === 'queryable-context').map(c => c.name));
+
+        const conflictedViewNames = new Set(
+            conflicts.filter(c => c.type === 'queryable-view').map(c => c.name));
+
+        const processorGroups: ProcessorGroup[] = Array.from(processorsByService.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([serviceName, procs]) => ({ serviceName, processors: procs }));
+
+        const queryableGroups: QueryableGroup[] = Array.from(queryablesByService.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([serviceName, contexts]) => ({ serviceName, contexts }));
 
         return {
-            snapshots,
-            processSteps: this.filterConflictedEntries(
-                processSteps,
-                conflicts,
-                'process-step',
-                entry => `${entry.processor.name}:${entry.step.name}`),
-            queryableContexts: this.filterConflictedEntries(
-                queryableContexts,
-                conflicts,
-                'queryable-context',
-                entry => entry.context.name),
-            queryableViews: this.filterConflictedEntries(
-                queryableViews,
-                conflicts,
-                'queryable-view',
-                entry => entry.view.name),
+            ok: true,
+            url,
+            clientErrors,
+            processorGroups,
+            queryableGroups,
+            processSteps: processSteps.filter(e =>
+                !conflictedStepNames.has(`${e.processor.name}:${e.step.name}`)),
+            queryableViews: queryableViews.filter(qv =>
+                !conflictedContextNames.has(qv.context.name) &&
+                !conflictedViewNames.has(qv.view.name)),
             conflicts
         };
     }
 
-    private buildStateFromUnifiedRegistry(
-        routerService: PriorAuthServiceRouteConfig,
-        unifiedResponse: { processes: readonly ProcessProcessorRegistryRecord[]; queryables: readonly QueryableRecord[]; clientErrors: readonly RegistryClientError[] }
-    ): RegistryCatalogState {
-        const processParticipants =
-            unifiedResponse.processes.map((processor: ProcessProcessorRegistryRecord) => ({
-                service: routerService,
-                processor
-            } satisfies ServiceProcessProcessorRegistryRecord));
-
-        const processSteps =
-            processParticipants.flatMap(entry =>
-                entry.processor.steps.map((step: any) => ({
-                    service: entry.service,
-                    processor: entry.processor,
-                    step
-                } satisfies ServiceProcessStepRegistryRecord)));
-
-        const queryableContexts =
-            unifiedResponse.queryables.map((context: QueryableRecord) => ({
-                service: routerService,
-                context
-            } satisfies ServiceQueryableRecord));
-
-        const queryableViews =
-            queryableContexts.flatMap(entry =>
-                entry.context.views.map((view: any) => ({
-                    service: entry.service,
-                    context: entry.context,
-                    view
-                } satisfies ServiceQueryableViewRegistration)));
-
-        const conflicts = [
-            ...this.detectConflicts(
-                'process-step',
-                processSteps,
-                entry => `${entry.processor.name}:${entry.step.name}`,
-                entry => entry.service.displayName),
-            ...this.detectConflicts(
-                'queryable-context',
-                queryableContexts,
-                entry => entry.context.name,
-                entry => entry.service.displayName),
-            ...this.detectConflicts(
-                'queryable-view',
-                queryableViews,
-                entry => entry.view.name,
-                entry => entry.service.displayName)
-        ];
-
-        return {
-            snapshots: [{
-                service: routerService,
-                process: { ok: true, configured: true, data: unifiedResponse.processes as any },
-                queryable: { ok: true, configured: true, data: unifiedResponse.queryables as any },
-                clientErrors: unifiedResponse.clientErrors
-            }],
-            processSteps: this.filterConflictedEntries(
-                processSteps,
-                conflicts,
-                'process-step',
-                entry => `${entry.processor.name}:${entry.step.name}`),
-            queryableContexts: this.filterConflictedEntries(
-                queryableContexts,
-                conflicts,
-                'queryable-context',
-                entry => entry.context.name),
-            queryableViews: this.filterConflictedEntries(
-                queryableViews,
-                conflicts,
-                'queryable-view',
-                entry => entry.view.name),
-            conflicts
-        };
+    private serviceKeyFromUrl(url: string): string {
+        return url.replace(/^\/+/, '').split('/')[0] ?? '';
     }
 
     private detectConflicts<TEntry>(
         type: RegistryConflict['type'],
         entries: readonly TEntry[],
         getName: (entry: TEntry) => string,
-        getServiceName: (entry: TEntry) => string
+        getServiceKey: (entry: TEntry) => string
     ): RegistryConflict[] {
-        const servicesByName =
-            new Map<string, Set<string>>();
+        const servicesByName = new Map<string, Set<string>>();
 
         for (const entry of entries) {
-            const name =
-                getName(entry);
-
-            const services =
-                servicesByName.get(name) ?? new Set<string>();
-
-            services.add(
-                getServiceName(entry));
-
-            servicesByName.set(
-                name,
-                services);
+            const name = getName(entry);
+            const services = servicesByName.get(name) ?? new Set<string>();
+            services.add(getServiceKey(entry));
+            servicesByName.set(name, services);
         }
 
         return Array.from(servicesByName.entries())
@@ -361,260 +268,19 @@ export class RegistryCatalog {
                 } satisfies RegistryConflict;
 
                 console.error(
-                    `[RegistryCatalog] Duplicate ${type} '${name}' detected across services: ${conflict.services.join(', ')}.`);
+                    `[RegistryCatalog] Conflict: ${type} '${name}' across: ${conflict.services.join(', ')}`);
 
                 return conflict;
             });
     }
 
-    private filterConflictedEntries<TEntry>(
-        entries: readonly TEntry[],
-        conflicts: readonly RegistryConflict[],
-        type: RegistryConflict['type'],
-        getName: (entry: TEntry) => string
-    ): TEntry[] {
-        const conflictedNames =
-            new Set(
-                conflicts
-                    .filter(conflict => conflict.type === type)
-                    .map(conflict => conflict.name));
-
-        return entries.filter(entry =>
-            !conflictedNames.has(
-                getName(entry)));
-    }
-
-    private loadUnifiedRegistry(
-        service: PriorAuthServiceRouteConfig
-    ): Observable<{ process: RegistryLoadResult<ProcessProcessorRegistryRecord[]>; queryable: RegistryLoadResult<QueryableRecord[]>; clientErrors: readonly RegistryClientError[] }> {
-        const url =
-            buildRegistryUrl(
-                service,
-                service.registryPath!);
-
-        console.log(
-            `[Registry:${service.key}] Loading unified registry from ${url}...`);
-
-        const started =
-            performance.now();
-
-        return this.http
-            .get<{ processes: ProcessProcessorRegistryRecord[]; queryables: QueryableRecord[]; clientErrors?: RegistryClientError[] }>(url)
-            .pipe(
-                map(data => {
-                    const duration =
-                        Math.round(
-                            performance.now() - started);
-
-                    const clientErrors: readonly RegistryClientError[] =
-                        data.clientErrors ?? [];
-
-                    console.group(`[Registry:${service.key}]`);
-                    console.log(`Loaded in ${duration}ms.`);
-                    console.log(`Processes: ${data.processes.length}, Queryables: ${data.queryables.length}`);
-                    console.log('Service', service.displayName);
-                    console.log('Url', url);
-
-                    if (clientErrors.length > 0) {
-                        console.warn(
-                            `Partial registry — ${clientErrors.length} downstream client(s) failed:`);
-                        console.table(clientErrors.map(e => ({
-                            Client: e.clientName,
-                            Type: e.clientType,
-                            Reason: e.reason
-                        })));
-                    }
-
-                    console.groupEnd();
-
-                    return {
-                        process: {
-                            configured: true,
-                            ok: true,
-                            url,
-                            data: data.processes
-                        } satisfies RegistryLoadResult<ProcessProcessorRegistryRecord[]>,
-                        queryable: {
-                            configured: true,
-                            ok: true,
-                            url,
-                            data: data.queryables
-                        } satisfies RegistryLoadResult<QueryableRecord[]>,
-                        clientErrors
-                    };
-                }),
-                catchError(error => {
-                    const formattedError =
-                        this.formatError(error);
-
-                    console.error(
-                        `[Registry:${service.key}] Failed to load unified registry from ${url}.`,
-                        error);
-
-                    return of({
-                        process: {
-                            configured: true,
-                            ok: false,
-                            url,
-                            error: formattedError
-                        } satisfies RegistryLoadResult<ProcessProcessorRegistryRecord[]>,
-                        queryable: {
-                            configured: true,
-                            ok: false,
-                            url,
-                            error: formattedError
-                        } satisfies RegistryLoadResult<QueryableRecord[]>,
-                        clientErrors: [] as readonly RegistryClientError[]
-                    });
-                })
-            );
-    }
-
-    private loadProcessRegistry(
-        service: PriorAuthServiceRouteConfig
-    ): Observable<RegistryLoadResult<ProcessProcessorRegistryRecord[]>> {
-        if (!service.processRegistryPath) {
-            return of({
-                configured: false,
-                ok: false,
-                error: 'Not configured.'
-            });
-        }
-
-        const url =
-            buildRegistryUrl(
-                service,
-                service.processRegistryPath);
-
-        console.log(
-            `[ProcessRegistry:${service.key}] Loading process registry from ${url}...`);
-
-        const started =
-            performance.now();
-
-        return this.http
-            .get<ProcessProcessorRegistryRecord[]>(url)
-            .pipe(
-                map(data => ({
-                    configured: true,
-                    ok: true,
-                    url,
-                    data
-                })),
-                tap(result => {
-                    const duration =
-                        Math.round(
-                            performance.now() - started);
-
-                    console.group(`[ProcessRegistry:${service.key}]`);
-                    console.log(`Loaded ${result.data?.length ?? 0} processors in ${duration}ms.`);
-                    console.log('Service', service.displayName);
-                    console.log('Url', url);
-                    console.table(
-                        (result.data ?? []).map(processor => ({
-                            Name: processor.name,
-                            DisplayName: processor.displayName,
-                            InitialSteps: processor.initialSteps.length,
-                            Steps: processor.steps.length
-                        })));
-                    console.groupEnd();
-                }),
-                catchError(error => {
-                    const formattedError =
-                        this.formatError(error);
-
-                    console.error(
-                        `[ProcessRegistry:${service.key}] Failed to load process registry from ${url}.`,
-                        error);
-
-                    return of({
-                        configured: true,
-                        ok: false,
-                        url,
-                        error: formattedError
-                    });
-                })
-            );
-    }
-
-    private loadQueryableRegistry(
-        service: PriorAuthServiceRouteConfig
-    ): Observable<RegistryLoadResult<QueryableRecord[]>> {
-        if (!service.queryableRegistryPath) {
-            return of({
-                configured: false,
-                ok: false,
-                error: 'Not configured.'
-            });
-        }
-
-        const url =
-            buildRegistryUrl(
-                service,
-                service.queryableRegistryPath);
-
-        console.log(
-            `[QueryableRegistry:${service.key}] Loading queryable registry from ${url}...`);
-
-        const started =
-            performance.now();
-
-        return this.http
-            .get<QueryableRecord[]>(url)
-            .pipe(
-                map(data => ({
-                    configured: true,
-                    ok: true,
-                    url,
-                    data
-                })),
-                tap(result => {
-                    const duration =
-                        Math.round(
-                            performance.now() - started);
-
-                    console.group(`[QueryableRegistry:${service.key}]`);
-                    console.log(`Loaded ${result.data?.length ?? 0} contexts in ${duration}ms.`);
-                    console.log('Service', service.displayName);
-                    console.log('Url', url);
-                    console.table(
-                        (result.data ?? []).map(record => ({
-                            Name: record.name,
-                            DisplayName: record.displayName,
-                            Views: record.views.length,
-                            Fields: record.fields.length
-                        })));
-                    console.groupEnd();
-                }),
-                catchError(error => {
-                    const formattedError =
-                        this.formatError(error);
-
-                    console.error(
-                        `[QueryableRegistry:${service.key}] Failed to load queryable registry from ${url}.`,
-                        error);
-
-                    return of({
-                        configured: true,
-                        ok: false,
-                        url,
-                        error: formattedError
-                    });
-                })
-            );
-    }
-
-    private formatError(
-        error: unknown
-    ): string {
+    private formatError(error: unknown): string {
         if (typeof error === 'object' && error !== null && 'message' in error) {
             const message = error.message;
-
             if (typeof message === 'string' && message.length > 0) {
                 return message;
             }
         }
-
         return 'Request failed.';
     }
 }

@@ -41,11 +41,7 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
     public void MapProcessor_UsesExpectedRoutes()
     {
         var endpoints =
-            CreateEndpoints(
-                new ProcessRouteOptions
-                {
-                    RoutePrefix = "/workflows"
-                });
+            CreateEndpoints(serviceName: "workflows");
 
         endpoints.MapProcessor();
 
@@ -119,7 +115,7 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
             .Trim('/');
 
     private static WebApplication CreateEndpoints(
-        ProcessRouteOptions? options = null)
+        string serviceName = "test-processor")
     {
         var builder =
             WebApplication.CreateBuilder();
@@ -129,7 +125,7 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
         builder.Services.AddSingleton<IProcessStepRegistry>(CreateRegistry());
         builder.Services.AddSingleton<IProcessorRegistry>(CreateProcessorRegistry());
-        builder.Services.AddSingleton(options ?? new ProcessRouteOptions());
+        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, DisplayName = "Test Processor" });
 
         return builder.Build();
     }
@@ -179,10 +175,6 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
             [
                 new ProcessorRegistryItem
                 {
-                    Name = "test-processor",
-                    Description = "Test processor",
-                    Version = "1.0.0",
-                    DisplayName = "Test Processor",
                     InitialSteps =
                     [
                         new ProcessorStepSummary

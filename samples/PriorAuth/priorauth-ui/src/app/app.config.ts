@@ -19,7 +19,7 @@ export const appConfig: ApplicationConfig = {
         inject(RegistryCatalog);
 
       await firstValueFrom(
-        registryCatalog.loadAll());
+        registryCatalog.loadState());
     })
   ]
 };

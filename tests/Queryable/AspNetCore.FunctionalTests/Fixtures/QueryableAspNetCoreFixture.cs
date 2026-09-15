@@ -34,7 +34,10 @@ public sealed class QueryableAspNetCoreFixture
 
                         services.AddSingleton<FunctionalRecordData>();
 
-                        services.AddKaleido(new ConfigurationBuilder().Build())
+                        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+                            {
+                                o.ServiceName = "kaleido";
+                            })
                             .AddAssembly(typeof(FunctionalRecordContext).Assembly)
                             .AddQueryable()
                             .AddQueryableAspNetCore();
@@ -68,7 +71,7 @@ public sealed class QueryableAspNetCoreFixture
 
         var clientServices = new ServiceCollection();
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();
-        clientServices.AddKaleido(new ConfigurationBuilder().Build())
+        clientServices.AddKaleido(new ConfigurationBuilder().Build(), o => o.ServiceName = "test-queryable-client")
             .AddQueryableClient(o =>
             {
                 o.Name = "test";

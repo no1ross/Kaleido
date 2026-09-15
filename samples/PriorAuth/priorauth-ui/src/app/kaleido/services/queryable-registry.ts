@@ -3,130 +3,82 @@ import { Injectable } from '@angular/core';
 import {
     QueryableRecord,
     QueryableView,
-    ServiceQueryableRecord,
-    ServiceQueryableViewRegistration
+    QueryableViewRegistration
 } from '../models/queryable-registry';
 import { RegistryConflict } from '../../registries/registry-catalog';
-import { PriorAuthServiceRouteConfig } from '../../../configuration/urlConfig';
 
 @Injectable({
     providedIn: 'root'
 })
 export class QueryableRegistry {
     private readonly contextsByName =
-        new Map<string, ServiceQueryableRecord>();
+        new Map<string, QueryableRecord>();
 
     private readonly viewsByName =
-        new Map<string, ServiceQueryableViewRegistration>();
+        new Map<string, QueryableViewRegistration>();
 
     private conflicts: readonly RegistryConflict[] = [];
 
     populateRegistry(
-        contexts: readonly ServiceQueryableRecord[],
-        views: readonly ServiceQueryableViewRegistration[],
+        contexts: readonly { context: QueryableRecord }[],
+        views: readonly QueryableViewRegistration[],
         conflicts: readonly RegistryConflict[]
     ): void {
         this.contextsByName.clear();
         this.viewsByName.clear();
         this.conflicts = conflicts;
 
-        for (const context of contexts) {
-            this.contextsByName.set(
-                context.context.name,
-                context);
+        for (const { context } of contexts) {
+            this.contextsByName.set(context.name, context);
         }
 
-        for (const view of views) {
-            this.viewsByName.set(
-                view.view.name,
-                view);
+        for (const registration of views) {
+            this.viewsByName.set(registration.view.name, registration);
         }
     }
 
-    getContext(
-        name: string
-    ): QueryableRecord {
-        return this.getServiceContext(name).context;
-    }
-
-    getServiceContext(
-        name: string
-    ): ServiceQueryableRecord {
-        const entry =
-            this.tryGetServiceContext(name);
+    getContext(name: string): QueryableRecord {
+        const entry = this.tryGetContext(name);
 
         if (!entry) {
-            throw new Error(
-                `Queryable context '${name}' is not registered.`);
+            throw new Error(`Queryable context '${name}' is not registered.`);
         }
 
         return entry;
     }
 
-    tryGetContext(
-        name: string
-    ): QueryableRecord | undefined {
-        return this.tryGetServiceContext(name)?.context;
-    }
-
-    tryGetServiceContext(
-        name: string
-    ): ServiceQueryableRecord | undefined {
+    tryGetContext(name: string): QueryableRecord | undefined {
         return this.contextsByName.get(name);
     }
 
-    getView(
-        name: string
-    ): QueryableView {
-        return this.getViewRegistration(name).view;
-    }
-
-    getViewRegistration(
-        name: string
-    ): ServiceQueryableViewRegistration {
-        const entry =
-            this.tryGetViewRegistration(name);
+    getViewRegistration(name: string): QueryableViewRegistration {
+        const entry = this.tryGetViewRegistration(name);
 
         if (!entry) {
-            throw new Error(
-                `Queryable view '${name}' is not registered.`);
+            throw new Error(`Queryable view '${name}' is not registered.`);
         }
 
         return entry;
     }
 
-    tryGetView(
-        name: string
-    ): QueryableView | undefined {
-        return this.tryGetViewRegistration(name)?.view;
-    }
-
-    tryGetViewRegistration(
-        name: string
-    ): ServiceQueryableViewRegistration | undefined {
+    tryGetViewRegistration(name: string): QueryableViewRegistration | undefined {
         return this.viewsByName.get(name);
     }
 
+    getView(name: string): QueryableView {
+        return this.getViewRegistration(name).view;
+    }
+
+    tryGetView(name: string): QueryableView | undefined {
+        return this.tryGetViewRegistration(name)?.view;
+    }
+
     getContexts(): readonly QueryableRecord[] {
-        return Array.from(this.contextsByName.values())
-            .map(entry => entry.context);
+        return Array.from(this.contextsByName.values());
     }
 
     getViews(): readonly QueryableView[] {
-        return Array.from(this.viewsByName.values())
-            .map(entry => entry.view);
-    }
-
-    getServiceForContext(
-        name: string
-    ): PriorAuthServiceRouteConfig {
-        return this.getServiceContext(name).service;
-    }
-
-    getServiceForView(
-        name: string
-    ): PriorAuthServiceRouteConfig {
-        return this.getViewRegistration(name).service;
+        return Array.from(this.viewsByName.values()).map(e => e.view);
     }
 
     getConflicts(): readonly RegistryConflict[] {

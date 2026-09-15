@@ -31,15 +31,14 @@ public sealed class ProcessAspNetCoreFixture
                     {
                         services.AddRouting();
 
-                        services.AddKaleido(new ConfigurationBuilder().Build())
-                            .AddAssembly(typeof(ProcessAspNetCoreFixture).Assembly)
-                            .AddProcessor(o =>
+                        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
                             {
-                                o.Name = "test-processor";
-                                o.Description = "Test processor.";
-                                o.Version = "1.0.0";
+                                o.ServiceName = "kaleido";
                                 o.DisplayName = "Test Processor";
+                                o.Description = "Test processor.";
                             })
+                            .AddAssembly(typeof(ProcessAspNetCoreFixture).Assembly)
+                            .AddProcessor()
                             .AddProcessorAspNetCore();
 
                         services.ConfigureHttpJsonOptions(options =>
@@ -68,7 +67,7 @@ public sealed class ProcessAspNetCoreFixture
 
         var clientServices = new ServiceCollection();
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();
-        clientServices.AddKaleido(new ConfigurationBuilder().Build())
+        clientServices.AddKaleido(new ConfigurationBuilder().Build(), o => o.ServiceName = "test-client")
             .AddProcessClient(o =>
             {
                 o.Name = "test";

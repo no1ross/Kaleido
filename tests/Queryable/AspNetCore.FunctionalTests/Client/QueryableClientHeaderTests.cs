@@ -40,7 +40,7 @@ public sealed class QueryableClientHeaderTests : IClassFixture<QueryableAspNetCo
         // AddKaleido() is a no-op and the client factories use our controllable context.
         services.AddSingleton<IKaleidoCorrelationContextAccessor>(_correlationAccessor);
 
-        services.AddKaleido(new ConfigurationBuilder().Build())
+        services.AddKaleido(new ConfigurationBuilder().Build(), o => o.ServiceName = "header-test-client")
             .AddQueryableClient(o =>
             {
                 o.Name = "header-test";

@@ -1,4 +1,3 @@
-using Kaleido.Process.AspNetCore;
 using Kaleido.Process.AspNetCore.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -31,20 +30,21 @@ public static class KaleidoProcessClientServiceCollectionExtensions
         // Accumulate per-name route options into a shared singleton dictionary.
         // Multiple AddProcessClient calls each add their entry before the factory resolves.
         var routeOptions = GetOrAddRouteOptions(builder.Services);
-        routeOptions[options.Name] = new ProcessRouteOptions { RoutePrefix = options.RoutePrefix };
+        routeOptions[options.Name] = options.RoutePrefix ?? string.Empty;
 
         builder.Services.TryAddScoped<IKaleidoProcessClientFactory, KaleidoProcessClientFactory>();
 
         return builder;
     }
 
-    private static Dictionary<string, ProcessRouteOptions> GetOrAddRouteOptions(IServiceCollection services)
+    private static Dictionary<string, string> GetOrAddRouteOptions(IServiceCollection services)
     {
         var descriptor = services.FirstOrDefault(
             d => d.ServiceType == typeof(KaleidoProcessClientRouteOptionsMap));
 
         if (descriptor?.ImplementationInstance is KaleidoProcessClientRouteOptionsMap existing)
             return existing.Options;
+
 
         var map = new KaleidoProcessClientRouteOptionsMap();
         services.AddSingleton(map);

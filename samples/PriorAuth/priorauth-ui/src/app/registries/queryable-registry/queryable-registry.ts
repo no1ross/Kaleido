@@ -6,7 +6,7 @@ import {
     RegistryCatalog,
     RegistryCatalogState,
     RegistryConflict,
-    ServiceRegistrySnapshot
+    QueryableGroup
 } from '../registry-catalog';
 
 @Component({
@@ -23,121 +23,70 @@ export class QueryableRegistryViewer {
     readonly state$ =
         this.registryCatalog.loadState();
 
-    selectedService?: ServiceRegistrySnapshot;
+    selectedGroup?: QueryableGroup;
     selectedContext?: QueryableRecord;
     selectedView?: QueryableView;
 
     refresh(): void {
-        this.selectedService = undefined;
+        this.selectedGroup = undefined;
         this.selectedContext = undefined;
         this.selectedView = undefined;
         this.registryCatalog.refresh();
     }
 
-    ensureSelection(
-        snapshots: readonly ServiceRegistrySnapshot[]
-    ): void {
-        const queryableSnapshots =
-            snapshots.filter(snapshot => snapshot.queryable.configured);
-
-        if (!this.selectedService) {
-            this.selectedService =
-                queryableSnapshots.find(snapshot => snapshot.queryable.ok && (snapshot.queryable.data?.length ?? 0) > 0)
-                ?? queryableSnapshots.find(snapshot => !snapshot.queryable.ok)
-                ?? queryableSnapshots[0];
+    ensureSelection(state: RegistryCatalogState): void {
+        if (!this.selectedGroup) {
+            this.selectedGroup = state.queryableGroups[0];
         }
-
         if (!this.selectedContext) {
-            this.selectedContext =
-                this.selectedService?.queryable.data?.[0];
+            this.selectedContext = this.selectedGroup?.contexts[0];
         }
-
         if (!this.selectedView) {
-            this.selectedView =
-                this.selectedContext?.views[0];
+            this.selectedView = this.selectedContext?.views[0];
         }
     }
 
-    selectService(
-        snapshot: ServiceRegistrySnapshot
-    ): void {
-        this.selectedService = snapshot;
-        this.selectedContext = snapshot.queryable.data?.[0];
-        this.selectedView = this.selectedContext?.views[0];
-    }
-
-    selectContext(
-        context: QueryableRecord
-    ): void {
+    selectContext(group: QueryableGroup, context: QueryableRecord): void {
+        this.selectedGroup = group;
         this.selectedContext = context;
         this.selectedView = context.views[0];
     }
 
-    selectView(
-        view: QueryableView
-    ): void {
+    selectView(view: QueryableView): void {
         this.selectedView = view;
     }
 
-    getSelectedContexts(
-        snapshots: readonly ServiceRegistrySnapshot[]
-    ): readonly QueryableRecord[] {
-        this.ensureSelection(snapshots);
-
-        return this.selectedService?.queryable.data ?? [];
+    getTotalViews(state: RegistryCatalogState): number {
+        return state.queryableGroups.reduce(
+            (sum, g) => sum + g.contexts.reduce((s, c) => s + c.views.length, 0), 0);
     }
 
-    getTotalViews(
-        snapshots: readonly ServiceRegistrySnapshot[]
-    ): number {
-        return snapshots.reduce(
-            (sum, snapshot) =>
-                sum + (snapshot.queryable.data?.reduce((inner, context) => inner + context.views.length, 0) ?? 0),
-            0);
+    getTotalFields(state: RegistryCatalogState): number {
+        return state.queryableGroups.reduce(
+            (sum, g) => sum + g.contexts.reduce((s, c) => s + c.fields.length, 0), 0);
     }
 
-    getTotalFields(
-        snapshots: readonly ServiceRegistrySnapshot[]
-    ): number {
-        return snapshots.reduce(
-            (sum, snapshot) =>
-                sum + (snapshot.queryable.data?.reduce((inner, context) => inner + context.fields.length, 0) ?? 0),
-            0);
+    getQueryableConflicts(state: RegistryCatalogState): readonly RegistryConflict[] {
+        return state.conflicts.filter(c =>
+            c.type === 'queryable-context' || c.type === 'queryable-view');
     }
 
-    getQueryableConflicts(
-        state: RegistryCatalogState
-    ): readonly RegistryConflict[] {
-        return state.conflicts.filter(
-            conflict =>
-                conflict.type === 'queryable-context' ||
-                conflict.type === 'queryable-view');
-    }
-
-    getOperators(
-        operators: string[]
-    ): string {
+    getOperators(operators: string[]): string {
         return operators.join(', ');
     }
 
-    formatConstraint(
-        constraint: QueryableConstraint
-    ): string {
+    formatConstraint(constraint: QueryableConstraint): string {
         switch (constraint.type) {
             case 'StringLength': {
                 const min = constraint.parameters.find(x => x.name === 'MinimumLength')?.value;
                 const max = constraint.parameters.find(x => x.name === 'MaximumLength')?.value;
-
                 return `String Length (${min}-${max})`;
             }
-
             case 'Range': {
                 const min = constraint.parameters.find(x => x.name === 'Minimum')?.value;
                 const max = constraint.parameters.find(x => x.name === 'Maximum')?.value;
-
                 return `Range (${min}-${max})`;
             }
-
             default:
                 return constraint.type;
         }

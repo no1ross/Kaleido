@@ -1,5 +1,3 @@
-import { PriorAuthServiceRouteConfig } from '../../../configuration/urlConfig';
-
 export interface QueryableRecord {
     name: string;
     description: string;
@@ -12,11 +10,6 @@ export interface QueryableRecord {
     fields: QueryableField[];
 
     views: QueryableView[];
-}
-
-export interface ServiceQueryableRecord {
-    service: PriorAuthServiceRouteConfig;
-    context: QueryableRecord;
 }
 
 export interface QueryableField {
@@ -103,9 +96,4 @@ export interface QueryableViewRegistration {
     view: QueryableView;
 }
 
-export interface ServiceQueryableViewRegistration {
-    service: PriorAuthServiceRouteConfig;
-    context: QueryableRecord;
-    view: QueryableView;
-}
 

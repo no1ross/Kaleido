@@ -2,6 +2,7 @@ using Kaleido.Eventing;
 using Kaleido.Observability;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Eventing;
+using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Runtime;
@@ -96,10 +97,10 @@ public sealed class QueryContextEngineTests
             new TestQueryableObservability(),
             new ServiceCollection().BuildServiceProvider());
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        // No IQueryContextSource<TestContext> registered in the empty ServiceProvider,
+        // so the engine throws QueryContextSourceNotFoundException (typed validation exception).
+        await Assert.ThrowsAsync<QueryContextSourceNotFoundException>(() =>
             engine.ExecuteAsync(request, registration));
-
-        Assert.Contains("requires result type", exception.Message);
     }
 
     private static Mock<IEventPublisher> CreateEventPublisher()

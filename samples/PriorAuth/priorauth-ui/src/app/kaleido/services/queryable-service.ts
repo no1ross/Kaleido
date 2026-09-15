@@ -9,15 +9,15 @@ import {
     QueryableField,
     QueryablePagingMetadata,
     QueryableParameter,
-    ServiceQueryableRecord,
-    ServiceQueryableViewRegistration
+    QueryableRecord,
+    QueryableViewRegistration
 } from '../models/queryable-registry';
 import { QueryableRegistry } from './queryable-registry';
 import {
     QueryableRequestValidationError,
     QueryableRequestValidator
 } from './queryable-request-validator';
-import { buildServiceUrl } from '../../../configuration/urlConfig';
+import { buildServiceUrl, getServiceRoutes, PriorAuthServiceRouteConfig } from '../../../configuration/urlConfig';
 
 @Injectable({
     providedIn: 'root'
@@ -42,7 +42,7 @@ export class QueryableService {
         return this.executeValidatedQuery<TResponse, TParameters>(
             view,
             request,
-            registration,
+            registration.context,
             registration.view.queryUrl,
             registration.view.parameters,
             registration.context.fields,
@@ -53,10 +53,10 @@ export class QueryableService {
         contextName: string,
         request: QueryRequest<TParameters>
     ): Observable<QueryableResult<TResponse>> {
-        const registration =
-            this.queryableRegistry.getServiceContext(contextName);
+        const context =
+            this.queryableRegistry.getContext(contextName);
 
-        if (!registration.context.queryUrl) {
+        if (!context.queryUrl) {
             return throwError(
                 () => new Error(
                     `Queryable context '${contextName}' does not support direct query.`));
@@ -65,17 +65,17 @@ export class QueryableService {
         return this.executeValidatedQuery<TResponse, TParameters>(
             contextName,
             request,
-            registration,
-            registration.context.queryUrl,
+            context,
+            context.queryUrl,
             [],
-            registration.context.fields,
+            context.fields,
             null);
     }
 
     private executeValidatedQuery<TResponse, TParameters>(
         operation: string,
         request: QueryRequest<TParameters>,
-        registration: ServiceQueryableViewRegistration | ServiceQueryableRecord,
+        context: QueryableRecord,
         path: string,
         parameters: readonly QueryableParameter[],
         fields: readonly QueryableField[],
@@ -83,11 +83,7 @@ export class QueryableService {
     ): Observable<QueryableResult<TResponse>> {
         const validationResult =
             this.queryRequestValidator.validate(
-                {
-                    parameters,
-                    fields,
-                    pageable
-                },
+                { parameters, fields, pageable },
                 request);
 
         if (!validationResult.isValid) {
@@ -100,18 +96,22 @@ export class QueryableService {
                     validationResult.messages));
         }
 
-        const url =
-            buildServiceUrl(
-                registration.service,
-                path);
+        const serviceKey = this.serviceKeyFromUrl(path);
+        const service = this.resolveService(serviceKey);
+        const url = buildServiceUrl(service, path);
 
-        this.logRequest(operation, url, request, registration.service.displayName);
+        this.logRequest(operation, url, request, serviceKey);
 
-        return this.executeQuery<TResponse>(
-            operation,
-            url,
-            request,
-            registration.service.displayName);
+        return this.executeQuery<TResponse>(operation, url, request, serviceKey);
+    }
+
+    private serviceKeyFromUrl(url: string): string {
+        return url.replace(/^\/+/, '').split('/')[0] ?? '';
+    }
+
+    private resolveService(serviceKey: string): PriorAuthServiceRouteConfig {
+        return getServiceRoutes().find(s => s.key === serviceKey)
+            ?? { key: serviceKey, baseUrl: '' };
     }
 
     private executeQuery<TResponse>(
@@ -120,39 +120,23 @@ export class QueryableService {
         request: unknown,
         serviceName: string
     ): Observable<QueryableResult<TResponse>> {
-        return this.http.post<QueryableResult<TResponse>>(
-            url,
-            request)
+        return this.http.post<QueryableResult<TResponse>>(url, request)
             .pipe(
                 map(result => {
                     this.logResponse(operation, url, result, serviceName);
                     return result;
                 }),
                 catchError((error: HttpErrorResponse) => {
-                    if (
-                        error.status === 400 &&
-                        error.error?.errors
-                    ) {
-                        const response =
-                            error.error as QueryErrorResponse;
-
-                        console.error(
-                            'Queryable validation error',
-                            response);
-
+                    if (error.status === 400 && error.error?.errors) {
+                        const response = error.error as QueryErrorResponse;
+                        console.error('Queryable validation error', response);
                         return throwError(() => response);
                     }
-
                     return throwError(() => error);
                 }));
     }
 
-    private logRequest(
-        view: string,
-        url: string,
-        request: unknown,
-        serviceName: string
-    ): void {
+    private logRequest(view: string, url: string, request: unknown, serviceName: string): void {
         console.group(`[QUERYABLE] ${view}`);
         console.log('Service', serviceName);
         console.log('Url', url);
@@ -160,12 +144,7 @@ export class QueryableService {
         console.groupEnd();
     }
 
-    private logResponse(
-        view: string,
-        url: string,
-        response: unknown,
-        serviceName: string
-    ): void {
+    private logResponse(view: string, url: string, response: unknown, serviceName: string): void {
         console.group(`[QUERYABLE] ${view}`);
         console.log('Service', serviceName);
         console.log('Url', url);

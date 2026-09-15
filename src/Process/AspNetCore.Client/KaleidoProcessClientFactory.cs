@@ -31,16 +31,16 @@ internal sealed class KaleidoProcessClientFactory : IKaleidoProcessClientFactory
             if (_clients.TryGetValue(name, out existing))
                 return existing;
 
-            _routeOptionsMap.Options.TryGetValue(name, out var options);
-            
-            // Find the exact registered name (case-sensitive) from route options
+            _routeOptionsMap.Options.TryGetValue(name, out var serviceName);
+
+            // Find the exact registered name (case-sensitive) from the map.
             // This handles the case where handlers call GetClient with lowercase
-            // but HttpClients are registered with PascalCase
-            var registeredName = _routeOptionsMap.Options.Keys.FirstOrDefault(k => 
+            // but HttpClients are registered with PascalCase.
+            var registeredName = _routeOptionsMap.Options.Keys.FirstOrDefault(k =>
                 string.Equals(k, name, StringComparison.OrdinalIgnoreCase)) ?? name;
-            
+
             var httpClient = _httpClientFactory.CreateClient(registeredName);
-            var client = new KaleidoProcessClient(httpClient, _correlation, options?.RoutePrefix ?? "");
+            var client = new KaleidoProcessClient(httpClient, _correlation, serviceName ?? "");
             _clients[name] = client;
             return client;
         }

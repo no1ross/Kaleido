@@ -34,10 +34,10 @@ Register a named queryable client on the Kaleido builder:
 builder.Services.AddKaleido()
     .AddQueryableClient("MemberService", "https://member-service-host")
     .AddQueryableClient("CodeSet", "https://codeset-service-host")
-    .AddQueryableClient("Radiology", "https://radiology-service-host", routePrefix: "radiology");
+    .AddQueryableClient("Radiology", "https://radiology-service-host");
 ```
 
-The optional `routePrefix` parameter must match the `RoutePrefix` configured on the remote server's `QueryableRouteOptions`. When omitted, no prefix is used (equivalent to `RoutePrefix = ""`).
+The client name is lowercased to derive the route prefix, matching the remote server's `Kaleido:ServiceName`. Use `AddKaleidoClients()` as a shorthand when registering multiple clients by name.
 
 Multiple named clients can be registered for different remote services.
 

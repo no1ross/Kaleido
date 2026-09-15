@@ -6,7 +6,6 @@ namespace Kaleido.Process.Registry;
 internal sealed class ProcessorRegistry : IProcessorRegistry
 {
     private readonly IReadOnlyCollection<ProcessorRegistryItem> _registrations;
-    private readonly IReadOnlyDictionary<string, ProcessorRegistryItem> _byName;
 
     public ProcessorRegistry(
         ProcessorOptions options,
@@ -22,30 +21,10 @@ internal sealed class ProcessorRegistry : IProcessorRegistry
                 stepRegistry.InitialRegistrations,
                 stepRegistry.Registrations)
         ];
-
-        _byName =
-            _registrations.ToDictionary(
-                x => x.Name,
-                StringComparer.OrdinalIgnoreCase);
     }
 
     public IReadOnlyCollection<ProcessorRegistryItem> Registrations =>
         _registrations;
-
-    public ProcessorRegistryItem? Find(
-        string name)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-
-        _byName.TryGetValue(name, out var registration);
-        return registration;
-    }
-
-    public ProcessorRegistryItem GetRegistration(
-        string name) =>
-        Find(name)
-        ?? throw new KeyNotFoundException(
-            $"Processor registry item '{name}' is not registered.");
 }
 
 internal static class ProcessorRegistryProjection
@@ -61,12 +40,7 @@ internal static class ProcessorRegistryProjection
 
         return new ProcessorRegistryItem
         {
-            Name = options.Name,
-            Description = options.Description,
-            DisplayName = options.DisplayName,
-            Version = options.Version,
             IsEntryProcessor = options.IsEntryProcessor,
-            InstanceId = options.InstanceId,
             InitialSteps = initialSteps
                 .OrderBy(x => x.Metadata.Name)
                 .Select(ProjectSummary)

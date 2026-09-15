@@ -114,8 +114,8 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
             d => d.ServiceType == typeof(KaleidoQueryableClientRouteOptionsMap));
         var map = (KaleidoQueryableClientRouteOptionsMap)descriptor.ImplementationInstance!;
 
-        Assert.True(map.Options.TryGetValue("Radiology", out var opts));
-        Assert.Equal("radiology", opts!.RoutePrefix);
+        Assert.True(map.Options.TryGetValue("Radiology", out var prefix));
+        Assert.Equal("radiology", prefix);
     }
 
     [Fact]
@@ -155,8 +155,8 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
             d => d.ServiceType == typeof(KaleidoQueryableClientRouteOptionsMap));
         var map = (KaleidoQueryableClientRouteOptionsMap)descriptor.ImplementationInstance!;
 
-        Assert.True(map.Options.TryGetValue("MemberService", out var opts));
-        Assert.Equal("", opts!.RoutePrefix);
+        Assert.True(map.Options.TryGetValue("MemberService", out var prefix));
+        Assert.Equal("", prefix);
     }
 
     // ---------------------------------------------------------------------------
@@ -184,7 +184,7 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         var map = (KaleidoQueryableClientRouteOptionsMap)descriptor.ImplementationInstance!;
 
         Assert.True(map.Options.TryGetValue("MemberService", out var stored));
-        Assert.Equal("kaleido", stored!.RoutePrefix);
+        Assert.Equal("kaleido", stored);
     }
 
     [Fact]
@@ -225,6 +225,8 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         public IReadOnlyCollection<Assembly> Assemblies { get; }
         public IConfiguration Configuration { get; } =
             new ConfigurationBuilder().Build();
+        public KaleidoServiceOptions ServiceOptions { get; } =
+            new() { ServiceName = "test" };
     }
 
 

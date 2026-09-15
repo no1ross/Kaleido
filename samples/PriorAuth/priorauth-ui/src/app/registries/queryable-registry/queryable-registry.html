@@ -1,23 +1,42 @@
 @if (state$ | async; as state) {
-    {{ ensureSelection(state.snapshots) }}
+    {{ ensureSelection(state) }}
 
     <div class="registry-page">
         <div class="header">
             <div>
-                <h1>Queryable Registries</h1>
+                <h1>Queryable Registry</h1>
 
                 <div class="summary">
-                    <div class="stat">Services: {{ state.snapshots.filter(x => x.queryable.configured).length }}</div>
-                    <div class="stat">Views: {{ getTotalViews(state.snapshots) }}</div>
-                    <div class="stat">Fields: {{ getTotalFields(state.snapshots) }}</div>
+                    <div class="stat">Services: {{ state.queryableGroups.length }}</div>
+                    <div class="stat">Views: {{ getTotalViews(state) }}</div>
+                    <div class="stat">Fields: {{ getTotalFields(state) }}</div>
                     <div class="stat">Conflicts: {{ getQueryableConflicts(state).length }}</div>
                 </div>
             </div>
 
             <button class="refresh-button" type="button" (click)="refresh()">
-                Refresh Queryable Registries
+                Refresh
             </button>
         </div>
+
+        @if (!state.ok) {
+            <div class="conflict-banner">
+                <h2>Failed to load registry</h2>
+                <div class="conflict-banner__copy">{{ state.error }}</div>
+                <div class="context-meta">{{ state.url }}</div>
+            </div>
+        }
+
+        @if (state.clientErrors.length > 0) {
+            <div class="conflict-banner">
+                <h2>Partial registry — {{ state.clientErrors.length }} service(s) unreachable</h2>
+                <ul class="conflict-list">
+                    @for (err of state.clientErrors; track err.clientName) {
+                        <li><strong>{{ err.clientName }}</strong> ({{ err.clientType }}) — {{ err.reason }}</li>
+                    }
+                </ul>
+            </div>
+        }
 
         @if (getQueryableConflicts(state).length > 0) {
             <div class="conflict-banner">
@@ -39,34 +58,27 @@
 
         <div class="content service-layout">
             <div class="service-list">
-                @for (snapshot of state.snapshots; track snapshot.service.key) {
-                    @if (snapshot.queryable.configured) {
-                        <div class="service-group">
-                            @if (snapshot.queryable.ok) {
-                                @for (context of snapshot.queryable.data ?? []; track context.name) {
-                                    <div
-                                        class="context-card"
-                                        [class.context-card--conflict]="getQueryableConflicts(state).some(conflict => conflict.name === context.name || context.views.some(view => view.name === conflict.name))"
-                                        [class.selected]="selectedContext?.name === context.name && selectedService?.service?.key === snapshot.service.key"
-                                        (click)="selectService(snapshot); selectContext(context)">
-                                        <div class="context-name">{{ context.name }}</div>
-                                        <div class="context-display-name">{{ context.displayName }}</div>
-                                        <div class="context-meta">
-                                            Fields: {{ context.fields.length }} | Views: {{ context.views.length }}
-                                        </div>
-                                        @if (getQueryableConflicts(state).some(conflict => conflict.name === context.name || context.views.some(view => view.name === conflict.name))) {
-                                            <div class="conflict-inline">Contains a context or view name that conflicts with another service.</div>
-                                        }
-                                    </div>
-                                }
-                            } @else {
-                                <div class="service-error">
-                                    <div class="context-meta">{{ snapshot.queryable.url }}</div>
-                                    <div class="service-error__message">{{ snapshot.queryable.error }}</div>
+                @for (group of state.queryableGroups; track group.serviceName) {
+                    <div class="service-group">
+                        <div class="service-group__label">{{ group.serviceName }}</div>
+
+                        @for (context of group.contexts; track context.name) {
+                            <div
+                                class="context-card"
+                                [class.context-card--conflict]="getQueryableConflicts(state).some(c => c.name === context.name || context.views.some(v => v.name === c.name))"
+                                [class.selected]="selectedContext?.name === context.name && selectedGroup?.serviceName === group.serviceName"
+                                (click)="selectContext(group, context)">
+                                <div class="context-name">{{ context.name }}</div>
+                                <div class="context-display-name">{{ context.displayName }}</div>
+                                <div class="context-meta">
+                                    Fields: {{ context.fields.length }} | Views: {{ context.views.length }}
                                 </div>
-                            }
-                        </div>
-                    }
+                                @if (getQueryableConflicts(state).some(c => c.name === context.name || context.views.some(v => v.name === c.name))) {
+                                    <div class="conflict-inline">Contains a context or view name that conflicts with another service.</div>
+                                }
+                            </div>
+                        }
+                    </div>
                 }
             </div>
 
@@ -74,7 +86,7 @@
                 @if (selectedContext) {
                     <div class="details">
                         <h2>{{ selectedContext.displayName }}</h2>
-                        <div class="context-meta">Service: {{ selectedService?.service?.displayName }}</div>
+                        <div class="context-meta">Service: {{ selectedGroup?.serviceName }}</div>
 
                         <div class="section">
                             <h3>Metadata</h3>
@@ -95,7 +107,7 @@
                                 @for (view of selectedContext.views; track view.name) {
                                     <div
                                         class="tag"
-                                        [class.tag--conflict]="getQueryableConflicts(state).some(conflict => conflict.name === view.name)"
+                                        [class.tag--conflict]="getQueryableConflicts(state).some(c => c.name === view.name)"
                                         [class.selected-tag]="selectedView?.name === view.name"
                                         (click)="selectView(view)">
                                         {{ view.displayName ?? view.name }}

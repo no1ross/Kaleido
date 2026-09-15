@@ -12,7 +12,7 @@ internal static class FunctionalRuntimeNamespaces
 
 internal static class FunctionalProcessorNames
 {
-    public const string TestProcessor = "test-processor";
+    public const string TestProcessor = "kaleido";
 }
 
 internal static class RuntimeStepNames

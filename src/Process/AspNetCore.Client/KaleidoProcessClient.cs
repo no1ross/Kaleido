@@ -8,7 +8,7 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
 {
     private readonly HttpClient _httpClient;
     private readonly IKaleidoCorrelationContextAccessor _correlation;
-    private readonly ProcessRouteOptions _options;
+    private readonly string _serviceName;
     private readonly string _registryUrl;
     private readonly SemaphoreSlim _registryLock = new(1, 1);
     private IReadOnlyList<ProcessorRegistryResponse>? _registry;
@@ -16,12 +16,12 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
     public KaleidoProcessClient(
         HttpClient httpClient,
         IKaleidoCorrelationContextAccessor correlation,
-        string routePrefix = "")
+        string serviceName = "")
     {
         _httpClient = httpClient;
         _correlation = correlation;
-        _options = new ProcessRouteOptions { RoutePrefix = routePrefix };
-        _registryUrl = ProcessContractUrls.Registry(_options);
+        _serviceName = serviceName;
+        _registryUrl = ProcessContractUrls.Registry(_serviceName);
     }
 
     public async Task<IReadOnlyList<ProcessorRegistryResponse>> GetRegistryAsync(
@@ -79,7 +79,7 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
     {
         using var httpRequest = new HttpRequestMessage(
             HttpMethod.Get,
-            ProcessContractUrls.ProcessState(_options, processId));
+            ProcessContractUrls.ProcessState(_serviceName, processId));
 
         StampCorrelationHeaders(httpRequest);
 
@@ -106,7 +106,7 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
         ExecuteProcessRequest request,
         CancellationToken cancellationToken = default)
     {
-        var url = ProcessContractUrls.Execute(_options);
+        var url = ProcessContractUrls.Execute(_serviceName);
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
         {

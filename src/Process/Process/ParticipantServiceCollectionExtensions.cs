@@ -25,15 +25,11 @@ public static class ProcessorServiceCollectionExtensions
 
         var options = new ProcessorOptions();
         builder.Configuration
-            .GetSection($"{KaleidoOptions.SectionName}:Processor")
+            .GetSection($"{KaleidoServiceOptions.SectionName}:Processor")
             .Bind(options);
 
         return builder.AddProcessor(o =>
         {
-            o.Name = options.Name;
-            o.Version = options.Version;
-            o.DisplayName = options.DisplayName;
-            o.Description = options.Description;
             o.IsEntryProcessor = options.IsEntryProcessor;
         });
     }
@@ -112,24 +108,6 @@ public static class ProcessorServiceCollectionExtensions
         ProcessorOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-
-        if (string.IsNullOrWhiteSpace(options.Name))
-        {
-            throw new InvalidOperationException(
-                "Processor must specify a non-empty name.");
-        }
-
-        if (string.IsNullOrWhiteSpace(options.Version))
-        {
-            throw new InvalidOperationException(
-                "Processor must specify a non-empty version.");
-        }
-
-        if (string.IsNullOrWhiteSpace(options.DisplayName))
-        {
-            throw new InvalidOperationException(
-                "Processor must specify a non-empty display name.");
-        }
     }
 
     private static bool ShouldIncludeProcessStep(

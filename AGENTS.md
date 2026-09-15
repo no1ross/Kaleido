@@ -66,7 +66,6 @@ Process owns discoverable business action concerns:
 Registry owns aggregated discovery concerns:
 - combining local process and downstream client registrations into one HTTP endpoint
 - combining downstream queryable client registrations into the same endpoint
-- `RegistryRouteOptions` for configuring the endpoint URL prefix
 - no execution, routing, or state — discovery aggregation only
 
 ## General contributor rules

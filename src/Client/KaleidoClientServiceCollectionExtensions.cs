@@ -41,7 +41,7 @@ public static class KaleidoClientServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(builder);
 
         var options = new KaleidoClientOptions();
-        var section = builder.Configuration.GetSection(KaleidoOptions.SectionName);
+        var section = builder.Configuration.GetSection(KaleidoServiceOptions.SectionName);
         section.Bind(options);
 
         foreach (var name in clientNames)

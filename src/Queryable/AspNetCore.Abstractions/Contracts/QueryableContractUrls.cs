@@ -1,44 +1,25 @@
-using Kaleido.Queryable;
-
 internal static class QueryableContractUrls
 {
-    public static string QueryablePrefix(
-        QueryableRouteOptions options)
-        => string.IsNullOrWhiteSpace(options.RoutePrefix)
+    internal static string QueryablePrefix(string serviceName) =>
+        string.IsNullOrWhiteSpace(serviceName)
             ? "/queryable"
-            : $"/{options.RoutePrefix.Trim().Trim('/')}/queryable";
+            : $"/{serviceName.Trim().Trim('/')}/queryable";
 
-    public static string QueryRegistry(
-        QueryableRouteOptions options)
-        => $"{QueryablePrefix(options)}/registry";
+    public static string QueryRegistry(string serviceName)
+        => $"{QueryablePrefix(serviceName)}/registry";
 
-    public static string QueryContextMetadata(
-        QueryableRouteOptions options,
-        string contextName)
-        => $"{QueryablePrefix(options)}/{contextName}/{options.MetadataRoute}";
+    public static string QueryContextMetadata(string serviceName, string contextName)
+        => $"{QueryablePrefix(serviceName)}/{contextName}/metadata";
 
-    public static string QueryContextQuery(
-        QueryableRouteOptions options,
-        string contextName)
-        => $"{QueryablePrefix(options)}/{contextName}/{options.QueryRoute}";
+    public static string QueryContextQuery(string serviceName, string contextName)
+        => $"{QueryablePrefix(serviceName)}/{contextName}/query";
 
-    public static string QueryViewQuery(
-        QueryableRouteOptions options,
-        string contextName,
-        string viewName)
-        => $"{QueryablePrefix(options)}/{contextName}/{viewName}/{options.QueryRoute}";
+    public static string QueryViewQuery(string serviceName, string contextName, string viewName)
+        => $"{QueryablePrefix(serviceName)}/{contextName}/{viewName}/query";
 
-    public static string NamedQuery(
-        QueryableRouteOptions options,
-        string contextName,
-        string viewName,
-        string queryName)
-        => $"{QueryablePrefix(options)}/{contextName}/{viewName}/{queryName}";
+    public static string NamedQuery(string serviceName, string contextName, string viewName, string queryName)
+        => $"{QueryablePrefix(serviceName)}/{contextName}/{viewName}/{queryName}";
 
-    public static string NamedQueryMetadata(
-        QueryableRouteOptions options,
-        string contextName,
-        string viewName,
-        string queryName)
-        => $"{QueryablePrefix(options)}/{contextName}/{viewName}/{queryName}/{options.MetadataRoute}";
+    public static string NamedQueryMetadata(string serviceName, string contextName, string viewName, string queryName)
+        => $"{QueryablePrefix(serviceName)}/{contextName}/{viewName}/{queryName}/metadata";
 }

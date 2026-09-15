@@ -8,7 +8,7 @@ Registry is Kaleido's aggregated discovery surface. It provides a single HTTP en
 
 When a host processor (e.g. Intake) delegates work to one or more downstream processors and queryable services, a consumer would otherwise need to call every individual registry endpoint and merge the results client-side. Registry does that aggregation server-side, behind one call.
 
-A consumer calls `GET /{routePrefix}/registry` and receives a single `AggregatedRegistryResponse` containing:
+A consumer calls `GET /{serviceName}/registry` and receives a single `AggregatedRegistryResponse` containing:
 
 - **`Processes`** — the host processor's own steps, plus the registry records of every downstream processor registered via `AddProcessClient()`
 - **`Queryables`** — the host's own local queryable contexts (when `AddQueryable()` has been called), plus the registry records of every downstream queryable client registered via `AddQueryableClient()`
@@ -31,35 +31,14 @@ All step URLs in the response are fully resolved (`executeUrl`, `metadataUrl`) �
 ```csharp
 app.MapProcessor();
 app.MapQueryable();
-app.MapRegistry();                              // → GET /kaleido/registry (default)
+app.MapRegistry(); // → GET /{Kaleido:ServiceName}/registry
 ```
 
-Or with a custom prefix matching the service's own route prefix:
-
-```csharp
-app.MapRegistry(o => o.RoutePrefix = "intake"); // → GET /intake/kaleido/registry
-```
+The route prefix is derived automatically from `KaleidoServiceOptions.ServiceName`, which is bound from `Kaleido:ServiceName` in configuration. `AddKaleido()` must be called before `MapRegistry()`.
 
 ### 3. No additional DI registration needed
 
 `MapRegistry()` resolves everything it needs from existing DI registrations (`IProcessorRegistry`, `IKaleidoProcessClientFactory`, `IKaleidoQueryableClientFactory`, and the internal client route-option maps). Adding a new downstream client via `AddProcessClient()` or `AddQueryableClient()` makes it appear in the aggregated response automatically.
-
----
-
-## Route options
-
-`RegistryRouteOptions` controls the endpoint URL:
-
-```csharp
-public sealed class RegistryRouteOptions
-{
-    // Defaults to "kaleido", producing /kaleido/registry.
-    // Override to match the host service's own route prefix.
-    public string RoutePrefix { get; set; } = "kaleido";
-}
-```
-
-Setting `RoutePrefix = ""` produces `/registry`.
 
 ---
 

@@ -28,7 +28,7 @@ public sealed class ProcessStateServiceTests
             new ProcessStateService(
                 contextStore.Object,
                 CreateRegistry(),
-                new ProcessRouteOptions());
+                new KaleidoServiceOptions { ServiceName = "test-processor" });
 
         var result =
             await service.GetCurrentState(
@@ -86,7 +86,7 @@ public sealed class ProcessStateServiceTests
             new ProcessStateService(
                 contextStore.Object,
                 CreateRegistry("Step-A"),
-                new ProcessRouteOptions());
+                new KaleidoServiceOptions { ServiceName = "test-processor" });
 
         var result =
             await service.GetCurrentState(

@@ -1,22 +1,41 @@
 @if (state$ | async; as state) {
-    {{ ensureSelection(state.snapshots) }}
+    {{ ensureSelection(state) }}
 
     <div class="registry-page">
         <div class="header">
             <div>
-                <h1>Process Registries</h1>
+                <h1>Process Registry</h1>
 
                 <div class="summary">
-                    <div class="stat">Services: {{ state.snapshots.filter(x => x.process.configured).length }}</div>
-                    <div class="stat">Total Steps: {{ getTotalSteps(state.snapshots) }}</div>
+                    <div class="stat">Services: {{ state.processorGroups.length }}</div>
+                    <div class="stat">Total Steps: {{ getTotalSteps(state) }}</div>
                     <div class="stat">Conflicts: {{ getProcessConflicts(state).length }}</div>
                 </div>
             </div>
 
             <button class="refresh-button" type="button" (click)="refresh()">
-                Refresh Process Registries
+                Refresh
             </button>
         </div>
+
+        @if (!state.ok) {
+            <div class="conflict-banner">
+                <h2>Failed to load registry</h2>
+                <div class="conflict-banner__copy">{{ state.error }}</div>
+                <div class="step-meta">{{ state.url }}</div>
+            </div>
+        }
+
+        @if (state.clientErrors.length > 0) {
+            <div class="conflict-banner">
+                <h2>Partial registry — {{ state.clientErrors.length }} service(s) unreachable</h2>
+                <ul class="conflict-list">
+                    @for (err of state.clientErrors; track err.clientName) {
+                        <li><strong>{{ err.clientName }}</strong> ({{ err.clientType }}) — {{ err.reason }}</li>
+                    }
+                </ul>
+            </div>
+        }
 
         @if (getProcessConflicts(state).length > 0) {
             <div class="conflict-banner">
@@ -38,46 +57,39 @@
 
         <div class="content service-layout">
             <div class="service-list">
-                @for (snapshot of state.snapshots; track snapshot.service.key) {
-                    @if (snapshot.process.configured) {
-                        <div class="service-group">
-                            @if (snapshot.process.ok) {
-                                @for (processor of getParticipants(snapshot); track processor.name) {
-                                    <div class="section">
-                                        <div class="service-group__header">
-                                            <div>
-                                                <div class="step-name">{{ processor.displayName }}</div>
-                                                <div class="step-meta">{{ processor.name }} | v{{ processor.version }}</div>
-                                                <div class="step-meta">Initial Steps: {{ getInitialStepNames(processor) || 'None' }}</div>
-                                            </div>
-                                        </div>
+                @for (group of state.processorGroups; track group.serviceName) {
+                    <div class="service-group">
+                        
 
-                                        @for (step of processor.steps; track step.name) {
-                                            <div
-                                                class="step-card"
-                                                [class.step-card--conflict]="getProcessConflicts(state).some(conflict => conflict.name === processor.name + ':' + step.name)"
-                                                [class.selected]="selectedStep?.name === step.name && selectedProcessor?.name === processor.name && selectedService?.service?.key === snapshot.service.key"
-                                                (click)="selectStep(snapshot, processor, step)">
-                                                <div class="step-name">{{ step.name }}</div>
-                                                <div class="step-display-name">{{ step.displayName }}</div>
-                                                <div class="step-meta">
-                                                    Fields: {{ step.fields.length }} | Repeatable: {{ step.repeatable }}
-                                                </div>
-                                                @if (getProcessConflicts(state).some(conflict => conflict.name === processor.name + ':' + step.name)) {
-                                                    <div class="conflict-inline">Conflicts with another service step of the same name.</div>
-                                                }
-                                            </div>
+                        @for (processor of group.processors; track processor.name) {
+                            <div class="section">
+                                <div class="service-group__header">
+                                    <div>
+                                        <div class="step-name">{{ processor.displayName ?? processor.name }}</div>
+                                        <div class="step-meta">{{ processor.name }}</div>
+                                        <div class="step-meta">Initial Steps: {{ getInitialStepNames(processor) || 'None' }}</div>
+                                    </div>
+                                </div>
+
+                                @for (step of processor.steps; track step.name) {
+                                    <div
+                                        class="step-card"
+                                        [class.step-card--conflict]="getProcessConflicts(state).some(c => c.name === processor.name + ':' + step.name)"
+                                        [class.selected]="selectedStep?.name === step.name && selectedProcessor?.name === processor.name && selectedGroup?.serviceName === group.serviceName"
+                                        (click)="selectStep(group, processor, step)">
+                                        <div class="step-name">{{ step.name }}</div>
+                                        <div class="step-display-name">{{ step.displayName }}</div>
+                                        <div class="step-meta">
+                                            Fields: {{ step.fields.length }} | Repeatable: {{ step.repeatable }}
+                                        </div>
+                                        @if (getProcessConflicts(state).some(c => c.name === processor.name + ':' + step.name)) {
+                                            <div class="conflict-inline">Conflicts with another service step of the same name.</div>
                                         }
                                     </div>
                                 }
-                            } @else {
-                                <div class="service-error">
-                                    <div class="step-meta">{{ snapshot.process.url }}</div>
-                                    <div class="service-error__message">{{ snapshot.process.error }}</div>
-                                </div>
-                            }
-                        </div>
-                    }
+                            </div>
+                        }
+                    </div>
                 }
             </div>
 
@@ -85,8 +97,8 @@
                 @if (selectedStep) {
                     <div class="details">
                         <h2>{{ selectedStep.displayName }}</h2>
-                        <div class="step-meta">Service: {{ selectedProcessor?.name }}</div>
-                        <div class="step-meta">Processor: {{ selectedProcessor?.displayName }} ({{ selectedProcessor?.name }})</div>
+                        <div class="step-meta">Service: {{ selectedGroup?.serviceName }}</div>
+                        <div class="step-meta">Processor: {{ selectedProcessor?.displayName ?? selectedProcessor?.name }} ({{ selectedProcessor?.name }})</div>
 
                         <div class="section">
                             <h3>Metadata</h3>
@@ -105,7 +117,6 @@
                             <table>
                                 <tr><th>Name</th><td>{{ selectedProcessor?.name }}</td></tr>
                                 <tr><th>Display Name</th><td>{{ selectedProcessor?.displayName }}</td></tr>
-                                <tr><th>Version</th><td>{{ selectedProcessor?.version }}</td></tr>
                                 <tr><th>Registry Url</th><td>{{ selectedProcessor?.registryUrl }}</td></tr>
                             </table>
                         </div>
@@ -138,7 +149,6 @@
                                                 @if (field.constraints.length === 0) {
                                                     <span>None</span>
                                                 }
-
                                                 @for (constraint of field.constraints; track constraint.type) {
                                                     <div class="constraint">{{ formatConstraint(constraint) }}</div>
                                                 }

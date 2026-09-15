@@ -39,26 +39,20 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddQueryableAspNetCore_RegistersConfiguredRouteOptions()
+    public void AddQueryableAspNetCore_RegistersRoutingAndNoRouteOptions()
     {
+        // RouteOptions (prefix, query route, metadata route) are no longer configurable —
+        // routes are derived from KaleidoServiceOptions.ServiceName.
         var services = new ServiceCollection();
         services.AddSingleton<IQueryableService, FakeQueryableService>();
         var builder = new TestQueryableBuilder(services, [typeof(QueryableAspNetCoreServiceCollectionExtensionsTests).Assembly]);
 
-        builder.AddQueryableAspNetCore(options =>
-        {
-            options.RoutePrefix = "/custom";
-            options.QueryRoute = "execute";
-            options.MetadataRoute = "schema";
-        });
+        builder.AddQueryableAspNetCore();
 
         using var provider = services.BuildServiceProvider();
 
-        var options = provider.GetRequiredService<QueryableRouteOptions>();
-
-        Assert.Equal("/custom", options.RoutePrefix);
-        Assert.Equal("execute", options.QueryRoute);
-        Assert.Equal("schema", options.MetadataRoute);
+        // Routing infrastructure is registered.
+        Assert.NotNull(provider.GetService<IConfigureOptions<RouteOptions>>());
     }
 
     [Fact]
@@ -87,6 +81,8 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
         public IReadOnlyCollection<Assembly> Assemblies { get; }
         public IConfiguration Configuration { get; } =
             new ConfigurationBuilder().Build();
+        public KaleidoServiceOptions ServiceOptions { get; } =
+            new() { ServiceName = "test" };
     }
 
     private sealed class FakeQueryableService : IQueryableService

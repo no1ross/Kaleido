@@ -35,22 +35,15 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
     [Fact]
     public void MapQueryable_UsesExpectedRoutes()
     {
-        var options = new QueryableRouteOptions
-        {
-            RoutePrefix = "/data",
-            MetadataRoute = "schema",
-            QueryRoute = "execute"
-        };
-
-        var endpoints = CreateEndpoints(options);
+        var endpoints = CreateEndpoints("data");
 
         endpoints.MapQueryable();
 
         Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable"));
         Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/registry"));
-        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/schema"));
-        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/execute"));
-        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/test-view/execute"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/metadata"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/query"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/test-view/query"));
     }
 
     [Fact]
@@ -84,7 +77,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
             app.MapQueryView(
                 contextRegistry.Object,
                 CreateViewRegistration(),
-                new QueryableRouteOptions()));
+                serviceName: "test"));
 
         Assert.Equal("missing", exception.Message);
     }
@@ -106,18 +99,17 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
 
     private static string Normalize(string? route) => (route ?? string.Empty).Trim().Trim('/');
 
-    private static WebApplication CreateEndpoints(QueryableRouteOptions? options = null)
+    private static WebApplication CreateEndpoints(string serviceName = "kaleido")
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
-        var routeOptions = options ?? new QueryableRouteOptions();
 
         builder.Services.AddSingleton(Mock.Of<IQueryableService>());
         builder.Services.AddSingleton<IQueryContextRegistry>(CreateContextRegistry());
         builder.Services.AddSingleton<IQueryViewRegistry>(CreateViewRegistry());
         builder.Services.AddSingleton<IDelegatedQueryViewRegistry>(CreateDelegatedViewRegistry());
         builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry());
-        builder.Services.AddSingleton(routeOptions);
+        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
         return builder.Build();
     }
 

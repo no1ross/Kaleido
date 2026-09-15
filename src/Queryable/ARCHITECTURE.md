@@ -587,10 +587,10 @@ Register a named client on the Kaleido builder:
 ```csharp
 builder.Services.AddKaleido()
     .AddQueryableClient("MemberService", "https://member-service-host")
-    .AddQueryableClient("Radiology", "https://radiology-host", routePrefix: "radiology");
+    .AddQueryableClient("Radiology", "https://radiology-host");
 ```
 
-The optional `routePrefix` must match the remote server's `QueryableRouteOptions.RoutePrefix`. When omitted, no prefix is used.
+The client name is lowercased to derive the route prefix, matching the remote server's `Kaleido:ServiceName`.
 
 Resolve per-request via `IKaleidoQueryableClientFactory`:
 

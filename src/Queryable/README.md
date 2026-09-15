@@ -71,10 +71,7 @@ builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MyDbContext).Assembly)
     .AddQueryable()
-        .AddQueryableAspNetCore(options =>
-        {
-            options.RoutePrefix = "my-service";
-        });
+        .AddQueryableAspNetCore();
 
 var app = builder.Build();
 app.MapQueryable();

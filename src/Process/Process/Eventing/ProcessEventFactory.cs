@@ -1,7 +1,6 @@
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
-using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.Eventing;
 
@@ -30,11 +29,11 @@ internal interface IProcessEventFactory
 }
 
 internal sealed class ProcessEventFactory(
-    IProcessorRegistry processorRegistry)
+    KaleidoServiceOptions serviceOptions)
     : IProcessEventFactory
 {
     private string ProcessorName =>
-        processorRegistry.Registrations.Single().Name;
+        serviceOptions.ServiceName;
 
     public ProcessCreated CreateProcessCreated(
         ProcessorContext context,

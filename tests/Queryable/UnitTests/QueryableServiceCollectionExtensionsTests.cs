@@ -140,6 +140,8 @@ public sealed class QueryableServiceCollectionExtensionsTests
         public IReadOnlyCollection<Assembly> Assemblies { get; }
         public IConfiguration Configuration { get; } =
             new ConfigurationBuilder().Build();
+        public KaleidoServiceOptions ServiceOptions { get; } =
+            new() { ServiceName = "test" };
     }
 
     [QueryContext(

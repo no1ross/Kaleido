@@ -17,7 +17,7 @@ import {
     ProcessRequestValidationError,
     ProcessRequestValidator
 } from './process-request-validator';
-import { buildServiceUrl } from '../../../configuration/urlConfig';
+import { buildServiceUrl, getServiceRoutes, PriorAuthServiceRouteConfig } from '../../../configuration/urlConfig';
 import { ProcessStateService } from '../../process/services/process-state-service';
 import { buildProcessRoute } from '../../process/services/process-navigation';
 import { getRouteForStep } from '../../process/services/step-route';
@@ -58,7 +58,7 @@ export class ProcessService {
         }
 
         const entry =
-            this.processRegistry.getServiceStep(processorName, stepName);
+            this.processRegistry.getRegistration(processorName, stepName);
 
         const validationResult =
             this.processRequestValidator.validate(entry.step, request);
@@ -73,10 +73,10 @@ export class ProcessService {
                     validationResult.messages));
         }
 
-        const url = buildServiceUrl(entry.service, entry.step.executeUrl);
+        const url = buildServiceUrl(this.resolveService(entry.serviceName), entry.step.executeUrl);
 
         console.log(entry.step);
-        this.logRequest(stepName, url, request, entry.service.displayName);
+        this.logRequest(stepName, url, request, entry.serviceName);
 
         return this.http.post<ProcessExecutionResponse<TResponse>>(url, request)
             .pipe(
@@ -154,15 +154,21 @@ export class ProcessService {
                 `No steps from that processor are in the registry.`);
         }
 
+        const targetService = this.resolveService(targetEntry.serviceName);
         const stateUrl = buildServiceUrl(
-            targetEntry.service,
-            `/${targetEntry.service.key}/processes/${processId}`);
+            targetService,
+            `/${targetEntry.serviceName}/processes/${processId}`);
 
         console.log(
             `[ProcessService] Cross-processor handoff → fetching state from '${targetProcessorName}'`,
             stateUrl);
 
         return this.http.get<ProcessStateResponse>(stateUrl);
+    }
+
+    private resolveService(serviceName: string): PriorAuthServiceRouteConfig {
+        return getServiceRoutes().find(s => s.key === serviceName)
+            ?? { key: serviceName, baseUrl: '' };
     }
 
     private captureQuestionnaireState(

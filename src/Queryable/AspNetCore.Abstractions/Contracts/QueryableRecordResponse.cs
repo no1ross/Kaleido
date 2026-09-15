@@ -16,10 +16,9 @@ public sealed record QueryableRecordResponse : QueryableContextRegistryItem
 
     public static QueryableRecordResponse FromRegistryItem(
         QueryableContextRegistryItem item,
-        QueryableRouteOptions options)
+        string serviceName)
     {
         ArgumentNullException.ThrowIfNull(item);
-        ArgumentNullException.ThrowIfNull(options);
 
         var contextName =
             item.Name.ToLowerInvariant();
@@ -33,32 +32,31 @@ public sealed record QueryableRecordResponse : QueryableContextRegistryItem
             Source = item.Source,
             Kind = item.Kind,
             Pageable = item.Pageable,
-            MetadataUrl = QueryableContractUrls.QueryContextMetadata(options, contextName),
+            MetadataUrl = QueryableContractUrls.QueryContextMetadata(serviceName, contextName),
             QueryUrl = item.Kind == QueryContextKind.Direct
-                ? QueryableContractUrls.QueryContextQuery(options, contextName)
+                ? QueryableContractUrls.QueryContextQuery(serviceName, contextName)
                 : null,
             Fields = item.Fields
                 .Select(QueryableFieldMetadata.FromRegistryItem)
                 .ToArray(),
             Views = item.Views
-                .Select(view => QueryableViewResponse.FromRegistryItem(view, contextName, options))
+                .Select(view => QueryableViewResponse.FromRegistryItem(view, contextName, serviceName))
                 .ToArray()
         };
     }
 
     public static QueryableRecordSummary ToSummary(
         QueryableContextRegistryItem item,
-        QueryableRouteOptions options)
+        string serviceName)
     {
         ArgumentNullException.ThrowIfNull(item);
-        ArgumentNullException.ThrowIfNull(options);
 
         return new QueryableRecordSummary
         {
             Name = item.Name,
             Description = item.Description,
             MetadataUrl = QueryableContractUrls.QueryContextMetadata(
-                options,
+                serviceName,
                 item.Name.ToLowerInvariant())
         };
     }
@@ -77,11 +75,10 @@ public sealed record QueryableViewResponse : QueryableViewRegistryItem
     public static QueryableViewResponse FromRegistryItem(
         QueryableViewRegistryItem item,
         string contextName,
-        QueryableRouteOptions options)
+        string serviceName)
     {
         ArgumentNullException.ThrowIfNull(item);
         ArgumentException.ThrowIfNullOrWhiteSpace(contextName);
-        ArgumentNullException.ThrowIfNull(options);
 
         return new QueryableViewResponse
         {
@@ -92,7 +89,7 @@ public sealed record QueryableViewResponse : QueryableViewRegistryItem
             Visibility = item.Visibility,
             Pageable = item.Pageable,
             QueryUrl = QueryableContractUrls.QueryViewQuery(
-                options,
+                serviceName,
                 contextName,
                 item.Name.ToLowerInvariant()),
             Parameters = item.Parameters

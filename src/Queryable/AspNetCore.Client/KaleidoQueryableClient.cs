@@ -17,11 +17,11 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
     public KaleidoQueryableClient(
         HttpClient httpClient,
         IKaleidoCorrelationContextAccessor correlation,
-        string routePrefix = "")
+        string serviceName = "")
     {
         _httpClient = httpClient;
         _correlation = correlation;
-        _registryUrl = QueryableContractUrls.QueryRegistry(new QueryableRouteOptions { RoutePrefix = routePrefix });
+        _registryUrl = QueryableContractUrls.QueryRegistry(serviceName);
     }
 
     public async Task<IReadOnlyList<QueryableRecordResponse>> GetRegistryAsync(

@@ -35,9 +35,8 @@ Use this project when you want to expose Queryable over ASP.NET Core.
 Typical setup:
 
 1. register Queryable with `AddQueryable()`
-2. call `AddQueryableAspNetCore(...)`
-3. optionally configure route options such as `RoutePrefix`
-4. map the endpoints with `app.MapQueryable()`
+2. call `AddQueryableAspNetCore()`
+3. map the endpoints with `app.MapQueryable()`
 
 Example:
 
@@ -46,14 +45,13 @@ builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MyDbContext).Assembly)
     .AddQueryable()
-        .AddQueryableAspNetCore(options =>
-        {
-            options.RoutePrefix = "my-service";
-        });
+        .AddQueryableAspNetCore();
 
 var app = builder.Build();
 app.MapQueryable();
 ```
+
+The route prefix is derived automatically from `KaleidoServiceOptions.ServiceName` (set via `Kaleido:ServiceName` in configuration).
 
 The published HTTP contracts consumed by clients and documentation tooling live in:
 - [`../AspNetCore.Abstractions/README.md`](../AspNetCore.Abstractions/README.md)

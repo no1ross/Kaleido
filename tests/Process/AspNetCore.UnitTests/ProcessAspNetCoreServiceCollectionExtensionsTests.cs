@@ -57,8 +57,10 @@ public sealed class ProcessAspNetCoreServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddProcessorAspNetCore_RegistersConfiguredRouteOptions()
+    public void AddProcessorAspNetCore_RegistersRoutingAndNoRouteOptions()
     {
+        // RoutePrefix is no longer configurable — routes are derived from
+        // KaleidoServiceOptions.ServiceName, which is set by AddKaleido().
         var services =
             CreateServices();
 
@@ -67,20 +69,13 @@ public sealed class ProcessAspNetCoreServiceCollectionExtensionsTests
                 services,
                 [typeof(ProcessAspNetCoreServiceCollectionExtensionsTests).Assembly]);
 
-        builder.AddProcessorAspNetCore(options =>
-        {
-            options.RoutePrefix = "/custom/processes";
-        });
+        builder.AddProcessorAspNetCore();
 
         using var provider =
             services.BuildServiceProvider();
 
-        var options =
-            provider.GetRequiredService<ProcessRouteOptions>();
-
-        Assert.Equal(
-            "/custom/processes",
-            options.RoutePrefix);
+        // Routing infrastructure is registered.
+        Assert.NotNull(provider.GetService<IConfigureOptions<RouteOptions>>());
     }
 
     [Fact]
@@ -151,6 +146,8 @@ public sealed class ProcessAspNetCoreServiceCollectionExtensionsTests
         public IReadOnlyCollection<Assembly> Assemblies { get; }
         public IConfiguration Configuration { get; } =
             new ConfigurationBuilder().Build();
+        public KaleidoServiceOptions ServiceOptions { get; } =
+            new() { ServiceName = "test" };
     }
 
     private sealed class FakeProcessorRuntime : IProcessorRuntime

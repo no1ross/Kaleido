@@ -14,7 +14,7 @@ import {
     QueryableEnumValue,
     QueryableField,
     QueryableRecord,
-    ServiceQueryableViewRegistration
+    QueryableViewRegistration
 } from '../../kaleido/models/queryable-registry';
 import { QueryableRegistry } from '../../kaleido/services/queryable-registry';
 import { QueryableRequestValidationError } from '../../kaleido/services/queryable-request-validator';
@@ -103,7 +103,7 @@ export class MemberSearch {
     readonly viewMode =
         signal<'results' | 'details'>('results');
 
-    get registration(): ServiceQueryableViewRegistration | undefined {
+    get registration(): QueryableViewRegistration | undefined {
         return this.queryableRegistry.tryGetViewRegistration(this.searchViewName);
     }
 

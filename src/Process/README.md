@@ -68,10 +68,7 @@ builder.Services.AddKaleido()
         options.Version = "1.0.0";
         options.DisplayName = "My Processor";
     })
-        .AddProcessorAspNetCore(options =>
-        {
-            options.RoutePrefix = "my-service";
-        });
+        .AddProcessorAspNetCore();
 
 var app = builder.Build();
 app.MapProcessor();
@@ -256,7 +253,6 @@ builder.Services.AddKaleido()
     {
         o.Name = "radiology";
         o.BaseUrl = "http://radiology-service";
-        o.RoutePrefix = "radiology";
     });
 ```
 

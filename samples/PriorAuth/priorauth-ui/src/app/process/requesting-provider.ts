@@ -7,7 +7,7 @@ import { QueryErrorResponse } from '../kaleido/models/query-error-response';
 import { QueryRequest } from '../kaleido/models/queryable-request';
 import {
     QueryableRecord,
-    ServiceQueryableViewRegistration
+    QueryableViewRegistration
 } from '../kaleido/models/queryable-registry';
 import { QueryableResult } from '../kaleido/models/queryable-result';
 import { QueryableRegistry } from '../kaleido/services/queryable-registry';
@@ -108,12 +108,14 @@ export class RequestingProvider {
     readonly viewMode =
         signal<'results' | 'details'>('results');
 
-    get registration(): ServiceQueryableViewRegistration | undefined {
+    get registration(): QueryableViewRegistration | undefined {
         return this.queryableRegistry.tryGetViewRegistration(this.searchViewName);
     }
 
     get registrationServiceName(): string | undefined {
-        return this.registration?.service.displayName;
+        return this.registration
+            ? this.registration.context.metadataUrl.replace(/^\/+/, '').split('/')[0]
+            : undefined;
     }
 
     get context(): QueryableRecord | undefined {

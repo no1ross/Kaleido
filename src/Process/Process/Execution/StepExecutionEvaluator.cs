@@ -1,23 +1,22 @@
 ﻿using Kaleido.Process.Context;
 using Kaleido.Process.Planning;
-using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.Execution;
 
 internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
 {
     private readonly IStepAvailabilityResolver _availabilityResolver;
-    private readonly IProcessorRegistry _processorRegistry;
+    private readonly KaleidoServiceOptions _serviceOptions;
 
     public StepExecutionEvaluator(
         IStepAvailabilityResolver availabilityResolver,
-        IProcessorRegistry processorRegistry)
+        KaleidoServiceOptions serviceOptions)
     {
         ArgumentNullException.ThrowIfNull(availabilityResolver);
-        ArgumentNullException.ThrowIfNull(processorRegistry);
+        ArgumentNullException.ThrowIfNull(serviceOptions);
 
         _availabilityResolver = availabilityResolver;
-        _processorRegistry = processorRegistry;
+        _serviceOptions = serviceOptions;
     }
 
     public ExecutionDecision Evaluate(
@@ -42,9 +41,7 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
         if (!string.IsNullOrEmpty(result.TargetProcessorName) && result.RequiredStep is null)
         {
             var currentProcessorName =
-                _processorRegistry.Registrations
-                    .Single()
-                    .Name;
+                _serviceOptions.ServiceName;
 
             if (!string.Equals(
                     result.TargetProcessorName,
@@ -79,9 +76,7 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
         ProcessorContext context)
     {
         var currentProcessorName =
-            _processorRegistry.Registrations
-                .Single()
-                .Name;
+            _serviceOptions.ServiceName;
 
         // If the required step belongs to an external processor, skip local
         // availability validation — we cannot evaluate it against our own graph.

@@ -559,10 +559,10 @@ Register a named client on the Kaleido builder:
 ```csharp
 builder.Services.AddKaleido()
     .AddProcessClient("RemoteProcessor", "https://remote-processor-host")
-    .AddProcessClient("Radiology", "https://radiology-host", routePrefix: "radiology");
+    .AddProcessClient("Radiology", "https://radiology-host");
 ```
 
-The optional `routePrefix` must match the remote server's `ProcessRouteOptions.RoutePrefix`. When omitted, no prefix is used.
+The client name is lowercased to derive the route prefix, matching the remote server's `Kaleido:ServiceName`.
 
 Resolve per-request via `IKaleidoProcessClientFactory`:
 

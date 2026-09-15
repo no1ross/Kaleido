@@ -16,7 +16,7 @@ public sealed class ProcessObservabilityTests
             Assert.Throws<ArgumentNullException>(() =>
                 new ProcessObservability(
                     null!,
-                    CreateProcessorRegistry(),
+                    new KaleidoServiceOptions { ServiceName = "test-processor" },
                     Mock.Of<ILogger<ProcessObservability>>()));
 
         Assert.Equal(
@@ -25,7 +25,7 @@ public sealed class ProcessObservabilityTests
     }
 
     [Fact]
-    public void Constructor_WhenProcessorRegistryIsNull_Throws()
+    public void Constructor_WhenServiceOptionsIsNull_Throws()
     {
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
@@ -35,7 +35,7 @@ public sealed class ProcessObservabilityTests
                     Mock.Of<ILogger<ProcessObservability>>()));
 
         Assert.Equal(
-            "processorRegistry",
+            "serviceOptions",
             exception.ParamName);
     }
 
@@ -46,7 +46,7 @@ public sealed class ProcessObservabilityTests
             Assert.Throws<ArgumentNullException>(() =>
                 new ProcessObservability(
                     Mock.Of<IKaleidoCorrelationContextAccessor>(),
-                    CreateProcessorRegistry(),
+                    new KaleidoServiceOptions { ServiceName = "test-processor" },
                     null!));
 
         Assert.Equal(
@@ -286,29 +286,7 @@ public sealed class ProcessObservabilityTests
 
         return new ProcessObservability(
             correlationAccessor.Object,
-            CreateProcessorRegistry(),
+            new KaleidoServiceOptions { ServiceName = "test-processor", DisplayName = "Test Processor" },
             Mock.Of<ILogger<ProcessObservability>>());
-    }
-
-    private static IProcessorRegistry CreateProcessorRegistry()
-    {
-        var registry = new Mock<IProcessorRegistry>();
-
-        registry
-            .Setup(x => x.Registrations)
-            .Returns(
-            [
-                new ProcessorRegistryItem
-                {
-                    Name = "test-processor",
-                    Description = "Test processor",
-                    Version = "1.0.0",
-                    DisplayName = "Test Processor",
-                    InitialSteps = [],
-                    Steps = []
-                }
-            ]);
-
-        return registry.Object;
     }
 }

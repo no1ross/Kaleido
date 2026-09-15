@@ -15,7 +15,7 @@ public interface IProcessStateService
 public class ProcessStateService(
     IProcessContextStore contextStore,
     IProcessStepRegistry registry,
-    ProcessRouteOptions routeOptions)
+    KaleidoServiceOptions serviceOptions)
     : IProcessStateService
 {
     public async Task<ProcessStateResponse?> GetCurrentState(Guid processId, CancellationToken cancellationToken)
@@ -46,7 +46,7 @@ public class ProcessStateService(
                             registry.Find(stepName)
                                 ?? throw new InvalidOperationException(
                                     $"Available step '{stepName}' was not found in the local registry."),
-                            routeOptions))
+                            serviceOptions.ServiceName))
                     .ToArray(),
 
             Steps =

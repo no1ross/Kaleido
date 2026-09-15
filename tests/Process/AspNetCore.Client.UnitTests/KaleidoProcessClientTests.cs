@@ -25,10 +25,10 @@ public sealed class KaleidoProcessClientTests
 
     private static readonly ProcessorRegistryResponse FakeProcessor = new()
     {
+        ServiceName = "test-processor",
         Name = "test-processor",
         Description = "Test processor.",
         DisplayName = "Test Processor",
-        Version = "1.0",
         RegistryUrl = "/processes/registry",
         Steps = [FakeStep],
         InitialSteps = []

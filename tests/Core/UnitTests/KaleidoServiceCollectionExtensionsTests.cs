@@ -1,4 +1,4 @@
-﻿using Kaleido.Observability;
+using Kaleido.Observability;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,6 +8,11 @@ public sealed class KaleidoServiceCollectionExtensionsTests
 {
     private static IConfiguration EmptyConfig() =>
         new ConfigurationBuilder().Build();
+
+    // Provides a valid ServiceName so tests not concerned with service identity
+    // still pass the startup validation check.
+    private static Action<KaleidoServiceOptions> DefaultServiceName() =>
+        o => o.ServiceName = "test-service";
 
     [Fact]
     public void AddKaleido_ShouldThrow_WhenServicesIsNull()
@@ -33,7 +38,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         var builder =
-            services.AddKaleido(EmptyConfig());
+            services.AddKaleido(EmptyConfig(), DefaultServiceName());
 
         Assert.NotNull(builder);
 
@@ -60,7 +65,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     {
         var builder =
             new ServiceCollection()
-                .AddKaleido(EmptyConfig());
+                .AddKaleido(EmptyConfig(), DefaultServiceName());
 
         Assert.Throws<ArgumentNullException>(
             () => builder.AddAssembly(null!));
@@ -71,7 +76,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     {
         var builder =
             new ServiceCollection()
-                .AddKaleido(EmptyConfig());
+                .AddKaleido(EmptyConfig(), DefaultServiceName());
 
         var result =
             builder.AddAssembly(
@@ -87,7 +92,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     {
         var builder =
             new ServiceCollection()
-                .AddKaleido(EmptyConfig());
+                .AddKaleido(EmptyConfig(), DefaultServiceName());
 
         var assembly =
             typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
@@ -110,7 +115,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     {
         var builder =
             new ServiceCollection()
-                .AddKaleido(EmptyConfig());
+                .AddKaleido(EmptyConfig(), DefaultServiceName());
 
         var assembly =
             typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
@@ -131,7 +136,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     {
         var builder =
             new ServiceCollection()
-                .AddKaleido(EmptyConfig());
+                .AddKaleido(EmptyConfig(), DefaultServiceName());
 
         builder.AddAssembly(
             typeof(KaleidoServiceCollectionExtensionsTests).Assembly);
@@ -154,7 +159,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var custom = new CustomCorrelationContextAccessor();
         services.AddScoped<IKaleidoCorrelationContextAccessor>(_ => custom);
 
-        services.AddKaleido(EmptyConfig());
+        services.AddKaleido(EmptyConfig(), DefaultServiceName());
 
         using var provider = services.BuildServiceProvider(validateScopes: false);
         using var scope = provider.CreateScope();
@@ -170,7 +175,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var custom = new CustomCorrelationContextInitializer();
         services.AddScoped<IKaleidoCorrelationContextInitializer>(_ => custom);
 
-        services.AddKaleido(EmptyConfig());
+        services.AddKaleido(EmptyConfig(), DefaultServiceName());
 
         using var provider = services.BuildServiceProvider(validateScopes: false);
         using var scope = provider.CreateScope();
@@ -183,7 +188,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     public void AddKaleido_ShouldRegisterDefaultAccessor_WhenNonePreregistered()
     {
         var services = new ServiceCollection();
-        services.AddKaleido(EmptyConfig());
+        services.AddKaleido(EmptyConfig(), DefaultServiceName());
 
         using var provider = services.BuildServiceProvider(validateScopes: false);
         using var scope = provider.CreateScope();
@@ -196,7 +201,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     public void AddKaleido_ShouldRegisterDefaultInitializer_WhenNonePreregistered()
     {
         var services = new ServiceCollection();
-        services.AddKaleido(EmptyConfig());
+        services.AddKaleido(EmptyConfig(), DefaultServiceName());
 
         using var provider = services.BuildServiceProvider(validateScopes: false);
         using var scope = provider.CreateScope();

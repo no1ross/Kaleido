@@ -60,10 +60,7 @@ builder.Services.AddKaleido()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(MyProcessStep).Assembly)
     .AddProcessor()
-        .AddProcessorAspNetCore(options =>
-        {
-            options.RoutePrefix = "my-service";
-        });
+        .AddProcessorAspNetCore();
 
 var app = builder.Build();
 app.MapProcessor();

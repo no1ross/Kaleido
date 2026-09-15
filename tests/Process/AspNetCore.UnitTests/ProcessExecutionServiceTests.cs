@@ -45,9 +45,8 @@ public sealed class ProcessExecutionServiceTests
                     HttpContext = new DefaultHttpContext()
                 },
                 registry,
-                CreateProcessorRegistry(),
                 runtime.Object,
-                new ProcessRouteOptions());
+                new KaleidoServiceOptions { ServiceName = "test-processor" });
 
         var request =
             new ExecuteProcessRequest
@@ -107,9 +106,8 @@ public sealed class ProcessExecutionServiceTests
                     HttpContext = new DefaultHttpContext()
                 },
                 registry,
-                CreateProcessorRegistry(),
                 runtime.Object,
-                new ProcessRouteOptions());
+                new KaleidoServiceOptions { ServiceName = "test-processor" });
 
         var request =
             new ExecuteStepRequest<TestStep>
@@ -156,9 +154,8 @@ public sealed class ProcessExecutionServiceTests
                     HttpContext = new DefaultHttpContext()
                 },
                 registry,
-                CreateProcessorRegistry(),
                 runtime.Object,
-                new ProcessRouteOptions());
+                new KaleidoServiceOptions { ServiceName = "test-processor" });
 
         var request =
             new ExecuteStepRequest<TestStep>
@@ -239,29 +236,6 @@ public sealed class ProcessExecutionServiceTests
                 "Test step",
                 "1.0.0",
                 "Test Step"));
-
-    private static IProcessorRegistry CreateProcessorRegistry()
-    {
-        var registry = new Mock<IProcessorRegistry>();
-
-        registry
-            .Setup(x => x.Registrations)
-            .Returns(
-            [
-                new ProcessorRegistryItem
-                {
-                    Name = "test-processor",
-                    Description = "Test processor",
-                    Version = "1.0.0",
-                    DisplayName = "Test Processor",
-                    InstanceId = Guid.NewGuid(),
-                    InitialSteps = [],
-                    Steps = []
-                }
-            ]);
-
-        return registry.Object;
-    }
 
     public sealed record TestStep;
 

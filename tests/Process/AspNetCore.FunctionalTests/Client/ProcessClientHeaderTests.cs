@@ -45,7 +45,7 @@ public sealed class ProcessClientHeaderTests : IDisposable
         // AddKaleido() is a no-op and the client factories use our controllable context.
         services.AddSingleton<IKaleidoCorrelationContextAccessor>(_correlationAccessor);
 
-        services.AddKaleido(new ConfigurationBuilder().Build())
+        services.AddKaleido(new ConfigurationBuilder().Build(), o => o.ServiceName = "header-test-client")
             .AddProcessClient(o =>
             {
                 o.Name = "header-test";

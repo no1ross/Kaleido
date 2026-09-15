@@ -1,4 +1,3 @@
-using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -31,14 +30,14 @@ public static class KaleidoQueryableClientServiceCollectionExtensions
         // Accumulate per-name route options into a shared singleton dictionary.
         // Multiple AddQueryableClient calls each add their entry before the factory resolves.
         var routeOptions = GetOrAddRouteOptions(builder.Services);
-        routeOptions[options.Name] = new QueryableRouteOptions { RoutePrefix = options.RoutePrefix };
+        routeOptions[options.Name] = options.RoutePrefix ?? string.Empty;
 
         builder.Services.TryAddScoped<IKaleidoQueryableClientFactory, KaleidoQueryableClientFactory>();
 
         return builder;
     }
 
-    private static Dictionary<string, QueryableRouteOptions> GetOrAddRouteOptions(IServiceCollection services)
+    private static Dictionary<string, string> GetOrAddRouteOptions(IServiceCollection services)
     {
         var descriptor = services.FirstOrDefault(
             d => d.ServiceType == typeof(KaleidoQueryableClientRouteOptionsMap));

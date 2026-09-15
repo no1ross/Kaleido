@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Process.Attributes;
 using Kaleido.Process.Execution;
 using Kaleido.Process;
@@ -10,69 +11,45 @@ namespace Kaleido.Process.UnitTests.Processor;
 public sealed class ProcessorServiceCollectionExtensionsTests
 {
     [Fact]
-    public void AddProcessor_WhenNameIsMissing_Throws()
+    public void AddKaleido_WhenServiceNameIsMissing_Throws()
     {
         var services = new ServiceCollection();
 
-        var builder =
-            services.AddKaleido(new ConfigurationBuilder().Build())
-                .AddAssembly(typeof(TestStep).Assembly);
-
         var exception =
-            Assert.Throws<InvalidOperationException>(() =>
-                builder.AddProcessor(options =>
-                {
-                    options.Version = "1.0.0";
-                    options.DisplayName = "Test Processor";
-                }));
+            Assert.Throws<KaleidoConfigurationException>(() =>
+                services.AddKaleido(new ConfigurationBuilder().Build()));
 
-        Assert.Equal(
-            "Processor must specify a non-empty name.",
-            exception.Message);
+        Assert.Contains("ServiceName", exception.Message);
     }
 
     [Fact]
-    public void AddProcessor_WhenVersionIsMissing_Throws()
+    public void AddKaleido_WhenServiceNameHasUppercase_Throws()
     {
         var services = new ServiceCollection();
 
-        var builder =
-            services.AddKaleido(new ConfigurationBuilder().Build())
-                .AddAssembly(typeof(TestStep).Assembly);
-
         var exception =
-            Assert.Throws<InvalidOperationException>(() =>
-                builder.AddProcessor(options =>
+            Assert.Throws<KaleidoConfigurationException>(() =>
+                services.AddKaleido(new ConfigurationBuilder().Build(), o =>
                 {
-                    options.Name = "test-processor";
-                    options.DisplayName = "Test Processor";
+                    o.ServiceName = "Test-Processor";
                 }));
 
-        Assert.Equal(
-            "Processor must specify a non-empty version.",
-            exception.Message);
+        Assert.Contains("lowercase", exception.Message);
     }
 
     [Fact]
-    public void AddProcessor_WhenDisplayNameIsMissing_Throws()
+    public void AddKaleido_WhenServiceNameHasPathSeparator_Throws()
     {
         var services = new ServiceCollection();
 
-        var builder =
-            services.AddKaleido(new ConfigurationBuilder().Build())
-                .AddAssembly(typeof(TestStep).Assembly);
-
         var exception =
-            Assert.Throws<InvalidOperationException>(() =>
-                builder.AddProcessor(options =>
+            Assert.Throws<KaleidoConfigurationException>(() =>
+                services.AddKaleido(new ConfigurationBuilder().Build(), o =>
                 {
-                    options.Name = "test-processor";
-                    options.Version = "1.0.0";
+                    o.ServiceName = "test/processor";
                 }));
 
-        Assert.Equal(
-            "Processor must specify a non-empty display name.",
-            exception.Message);
+        Assert.Contains("path separators", exception.Message);
     }
 
     [Fact]
@@ -80,17 +57,14 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        var builder =
-            services.AddKaleido(new ConfigurationBuilder().Build())
-                .AddAssembly(typeof(TestStep).Assembly);
-
-        builder.AddProcessor(options =>
-        {
-            options.Name = "test-processor";
-            options.Description = "Test processor.";
-            options.Version = "1.0.0";
-            options.DisplayName = "Test Processor";
-        });
+        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+            {
+                o.ServiceName = "test-processor";
+                o.DisplayName = "Test Processor";
+                o.Description = "Test processor.";
+            })
+            .AddAssembly(typeof(TestStep).Assembly)
+            .AddProcessor();
 
         using var provider = services.BuildServiceProvider();
 
@@ -100,10 +74,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         var registration =
             Assert.Single(registry.Registrations);
 
-        Assert.Equal("test-processor", registration.Name);
-        Assert.Equal("Test processor.", registration.Description);
-        Assert.Equal("1.0.0", registration.Version);
-        Assert.Equal("Test Processor", registration.DisplayName);
+        Assert.False(registration.IsEntryProcessor);
 
         var initialStep =
             Assert.Single(registration.InitialSteps);
@@ -116,6 +87,29 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         Assert.Equal("test-step", step.Name);
         Assert.NotNull(step.Result);
         Assert.Single(step.Result!.OutputFields);
+    }
+
+    [Fact]
+    public void AddProcessor_WithIsEntryProcessor_RegistrationReflectsIt()
+    {
+        var services = new ServiceCollection();
+
+        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+            {
+                o.ServiceName = "test-processor";
+            })
+            .AddAssembly(typeof(TestStep).Assembly)
+            .AddProcessor(o => o.IsEntryProcessor = true);
+
+        using var provider = services.BuildServiceProvider();
+
+        var registry =
+            provider.GetRequiredService<IProcessorRegistry>();
+
+        var registration =
+            Assert.Single(registry.Registrations);
+
+        Assert.True(registration.IsEntryProcessor);
     }
 
     [ProcessStep(

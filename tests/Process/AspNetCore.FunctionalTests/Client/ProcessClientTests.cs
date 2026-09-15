@@ -24,7 +24,7 @@ public sealed class ProcessClientTests
     {
         var registry = await _factory.GetClient("test").GetRegistryAsync();
 
-        var processor = Assert.Single(registry, p => p.Name == "test-processor");
+        var processor = Assert.Single(registry, p => p.Name == FunctionalProcessorNames.TestProcessor);
         Assert.NotEmpty(processor.Steps);
         Assert.Contains(processor.Steps, s => s.Name == RuntimeStepNames.Root);
     }

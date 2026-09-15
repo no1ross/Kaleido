@@ -1,20 +1,11 @@
 import { environment } from '../environments/environment';
-import { PriorAuthApiMode } from '../environments/environment.model';
 
 export interface PriorAuthServiceRouteConfig {
     readonly key: string;
-    readonly displayName: string;
     readonly baseUrl: string;
-    // Unified registry path (GET /{prefix}/registry). When set, a single request
-    // returns both processes and queryables. Takes precedence over the two
-    // individual paths below.
+    // Unified registry path (GET /{prefix}/registry). Only meaningful on the
+    // router entry — a single request returns both processes and queryables.
     readonly registryPath?: string;
-    readonly processRegistryPath?: string;
-    readonly queryableRegistryPath?: string;
-}
-
-export function getApiMode(): PriorAuthApiMode {
-    return environment.apiMode;
 }
 
 export function getRouterBaseUrl(): string {
@@ -25,19 +16,8 @@ export function getServiceRoutes(): readonly PriorAuthServiceRouteConfig[] {
     return environment.serviceRoutes;
 }
 
-export function buildRegistryUrl(
-    service: PriorAuthServiceRouteConfig,
-    path: string
-): string {
-    if (environment.apiMode === 'direct') {
-        return buildUrl(
-            service.baseUrl,
-            path);
-    }
-
-    return buildUrl(
-        environment.routerBaseUrl,
-        path);
+export function buildRegistryUrl(path: string): string {
+    return buildUrl(environment.routerBaseUrl, path);
 }
 
 export function buildServiceUrl(

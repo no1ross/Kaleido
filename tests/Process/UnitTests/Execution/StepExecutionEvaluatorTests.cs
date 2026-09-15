@@ -18,7 +18,7 @@ public sealed class StepExecutionEvaluatorTests
             Assert.Throws<ArgumentNullException>(() =>
                 new StepExecutionEvaluator(
                     null!,
-                    CreateProcessorRegistry()));
+                    new KaleidoServiceOptions { ServiceName = LocalProcessorName }));
 
         Assert.Equal(
             "availabilityResolver",
@@ -26,7 +26,7 @@ public sealed class StepExecutionEvaluatorTests
     }
 
     [Fact]
-    public void Constructor_WhenProcessorRegistryIsNull_Throws()
+    public void Constructor_WhenServiceOptionsIsNull_Throws()
     {
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
@@ -35,7 +35,7 @@ public sealed class StepExecutionEvaluatorTests
                     null!));
 
         Assert.Equal(
-            "processorRegistry",
+            "serviceOptions",
             exception.ParamName);
     }
 
@@ -457,25 +457,7 @@ public sealed class StepExecutionEvaluatorTests
 
         return new StepExecutionEvaluator(
             resolver.Object,
-            CreateProcessorRegistry());
-    }
-
-    private static IProcessorRegistry CreateProcessorRegistry()
-    {
-        var item = new ProcessorRegistryItem
-        {
-            Name = LocalProcessorName,
-            Description = "test",
-            DisplayName = "Test Processor",
-            Version = "1.0"
-        };
-
-        var mock = new Mock<IProcessorRegistry>();
-
-        mock.Setup(x => x.Registrations)
-            .Returns([item]);
-
-        return mock.Object;
+            new KaleidoServiceOptions { ServiceName = LocalProcessorName });
     }
 
     private static ProcessorContext CreateContext()

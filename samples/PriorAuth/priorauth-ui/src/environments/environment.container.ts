@@ -30,8 +30,7 @@ export const environment: PriorAuthUiEnvironment = {
             baseUrl: '/'
         },
         router: {
-            baseUrl: '/',
-            registryPath: '/kaleido/registry'
+            baseUrl: '/'
         }
     })
 };

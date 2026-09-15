@@ -1,13 +1,12 @@
 ﻿using Kaleido.Process.Context;
 using Kaleido.Process.Providers.SQLite.Entities;
-using Kaleido.Process.Registry;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Process.Providers.SQLite;
 
 internal sealed class SqliteProcessContextStore(
     SqliteProcessContextDbContext dbContext,
-    IProcessorRegistry processorRegistry)
+    KaleidoServiceOptions serviceOptions)
     : IProcessContextStore
 {
     public async Task<ProcessorContext?> LoadAsync(
@@ -27,11 +26,6 @@ internal sealed class SqliteProcessContextStore(
                          processId,
                     cancellationToken);
 
-        var localProcessorName =
-            processorRegistry.Registrations
-                .Single()
-                .Name;
-
         if (entity is null)
         {
             return null;
@@ -39,7 +33,7 @@ internal sealed class SqliteProcessContextStore(
 
         return ToProcessorContext(
             entity,
-            localProcessorName);
+            serviceOptions.ServiceName);
     }
 
     public async Task SaveAsync(
@@ -166,9 +160,7 @@ internal sealed class SqliteProcessContextStore(
         if (context.RequiredStep is not null)
         {
             var localProcessorName =
-                processorRegistry.Registrations
-                    .Single()
-                    .Name;
+                serviceOptions.ServiceName;
 
             dbContext.ProcessRequiredSteps.Add(
                 new ProcessRequiredStepEntity

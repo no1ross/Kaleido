@@ -5,7 +5,7 @@ namespace Kaleido.Client;
 /// Used by services to register downstream Kaleido clients via
 /// <see cref="KaleidoClientServiceCollectionExtensions.AddKaleidoClients"/>.
 /// </summary>
-public sealed class KaleidoClientOptions : KaleidoOptions
+public sealed class KaleidoClientOptions
 {
     /// <summary>
     /// Default base URL applied to every client entry whose own <c>BaseUrl</c> is unset.

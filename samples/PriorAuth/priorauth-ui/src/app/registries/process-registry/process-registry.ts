@@ -5,7 +5,7 @@ import {
     RegistryCatalog,
     RegistryCatalogState,
     RegistryConflict,
-    ServiceRegistrySnapshot
+    ProcessorGroup
 } from '../registry-catalog';
 import {
     ProcessFieldConstraintMetadata,
@@ -28,120 +28,75 @@ export class ProcessRegistryViewer {
     readonly state$ =
         this.registryCatalog.loadState();
 
-    selectedService?: ServiceRegistrySnapshot;
+    selectedGroup?: ProcessorGroup;
     selectedProcessor?: ProcessProcessorRegistryRecord;
     selectedStep?: ProcessStepRegistryRecord;
 
     refresh(): void {
-        this.selectedService = undefined;
+        this.selectedGroup = undefined;
         this.selectedProcessor = undefined;
         this.selectedStep = undefined;
         this.registryCatalog.refresh();
     }
 
-    selectService(
-        snapshot: ServiceRegistrySnapshot
-    ): void {
-        this.selectedService = snapshot;
-        this.selectedProcessor = snapshot.process.data?.[0];
-        this.selectedStep = this.selectedProcessor?.steps[0];
+    ensureSelection(state: RegistryCatalogState): void {
+        if (!this.selectedGroup) {
+            this.selectedGroup = state.processorGroups[0];
+        }
+        if (!this.selectedProcessor) {
+            this.selectedProcessor = this.selectedGroup?.processors[0];
+        }
+        if (!this.selectedStep) {
+            this.selectedStep = this.selectedProcessor?.steps[0];
+        }
     }
 
     selectProcessor(
+        group: ProcessorGroup,
         processor: ProcessProcessorRegistryRecord
     ): void {
+        this.selectedGroup = group;
         this.selectedProcessor = processor;
         this.selectedStep = processor.steps[0];
     }
 
     selectStep(
-        snapshot: ServiceRegistrySnapshot,
+        group: ProcessorGroup,
         processor: ProcessProcessorRegistryRecord,
         step: ProcessStepRegistryRecord
     ): void {
-        this.selectedService = snapshot;
+        this.selectedGroup = group;
         this.selectedProcessor = processor;
         this.selectedStep = step;
     }
 
-    ensureSelection(
-        snapshots: readonly ServiceRegistrySnapshot[]
-    ): void {
-        const processSnapshots =
-            snapshots.filter(snapshot => snapshot.process.configured);
-
-        if (!this.selectedService) {
-            this.selectedService =
-                processSnapshots.find(snapshot => snapshot.process.ok && (snapshot.process.data?.length ?? 0) > 0)
-                ?? processSnapshots.find(snapshot => !snapshot.process.ok)
-                ?? processSnapshots[0];
-        }
-
-        if (!this.selectedProcessor) {
-            this.selectedProcessor =
-                this.selectedService?.process.data?.[0];
-        }
-
-        if (!this.selectedStep) {
-            this.selectedStep =
-                this.selectedProcessor?.steps[0];
-        }
+    getTotalSteps(state: RegistryCatalogState): number {
+        return state.processorGroups.reduce(
+            (sum, g) => sum + g.processors.reduce((s, p) => s + p.steps.length, 0), 0);
     }
 
-    getParticipants(
-        snapshot: ServiceRegistrySnapshot
-    ): readonly ProcessProcessorRegistryRecord[] {
-        return (snapshot.process.data ?? []).sort((a, b) => a.name.localeCompare(b.name));
+    getProcessConflicts(state: RegistryCatalogState): readonly RegistryConflict[] {
+        return state.conflicts.filter(c => c.type === 'process-step');
     }
 
-    getTotalSteps(
-        snapshots: readonly ServiceRegistrySnapshot[]
-    ): number {
-        return snapshots.reduce(
-            (sum, snapshot) =>
-                sum + (snapshot.process.data?.reduce((inner, processor) => inner + processor.steps.length, 0) ?? 0),
-            0);
-    }
-
-    getTotalStepsFromState(
-        state: RegistryCatalogState
-    ): number {
-        return state.processSteps.length;
-    }
-
-    getInitialStepNames(
-        processor: ProcessProcessorRegistryRecord
-    ): string {
+    getInitialStepNames(processor: ProcessProcessorRegistryRecord): string {
         return processor.initialSteps
             .map((step: ProcessStepSummary) => step.displayName ?? step.name)
             .join(', ');
     }
 
-    getProcessConflicts(
-        state: RegistryCatalogState
-    ): readonly RegistryConflict[] {
-        return state.conflicts.filter(
-            conflict => conflict.type === 'process-step');
-    }
-
-    formatConstraint(
-        constraint: ProcessFieldConstraintMetadata
-    ): string {
+    formatConstraint(constraint: ProcessFieldConstraintMetadata): string {
         switch (constraint.type) {
             case 'StringLength': {
                 const min = constraint.parameters.find(x => x.name === 'MinimumLength')?.value;
                 const max = constraint.parameters.find(x => x.name === 'MaximumLength')?.value;
-
                 return `String Length (${min}-${max})`;
             }
-
             case 'Range': {
                 const min = constraint.parameters.find(x => x.name === 'Minimum')?.value;
                 const max = constraint.parameters.find(x => x.name === 'Maximum')?.value;
-
                 return `Range (${min}-${max})`;
             }
-
             default:
                 return constraint.type;
         }

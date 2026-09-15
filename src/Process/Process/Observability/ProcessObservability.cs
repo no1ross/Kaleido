@@ -1,5 +1,4 @@
 using Kaleido.Observability;
-using Kaleido.Process.Registry;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -129,15 +128,15 @@ internal sealed class ProcessObservability
 
     public ProcessObservability(
         IKaleidoCorrelationContextAccessor correlationAccessor,
-        IProcessorRegistry processorRegistry,
+        KaleidoServiceOptions serviceOptions,
         ILogger<ProcessObservability> logger)
     {
         ArgumentNullException.ThrowIfNull(correlationAccessor);
-        ArgumentNullException.ThrowIfNull(processorRegistry);
+        ArgumentNullException.ThrowIfNull(serviceOptions);
         ArgumentNullException.ThrowIfNull(logger);
 
         _correlationAccessor = correlationAccessor;
-        _processorName = processorRegistry.Registrations.Single().Name;
+        _processorName = serviceOptions.ServiceName;
         _logger = logger;
     }
 

@@ -38,13 +38,9 @@ public static class RegistryEndpointRouteBuilderExtensions
     /// Adding a new downstream client makes it appear automatically.
     /// </summary>
     public static IEndpointRouteBuilder MapRegistry(
-        this IEndpointRouteBuilder endpoints,
-        Action<RegistryRouteOptions>? configure = null)
+        this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
-
-        var options = new RegistryRouteOptions();
-        configure?.Invoke(options);
 
         // Resolved once at map-time — these do not change after startup.
         var processClientMap = endpoints.ServiceProvider
@@ -57,22 +53,20 @@ public static class RegistryEndpointRouteBuilderExtensions
         var localProcessorRegistry = endpoints.ServiceProvider
             .GetService<IProcessorRegistry>();
 
-        var localProcessRouteOptions = endpoints.ServiceProvider
-            .GetService<ProcessRouteOptions>();
+        // Required — AddKaleido() must be called before MapRegistry().
+        var localServiceOptions = endpoints.ServiceProvider
+            .GetRequiredService<KaleidoServiceOptions>();
 
         // Optional — only present when the host has called AddQueryable().
         var localQueryableRegistry = endpoints.ServiceProvider
             .GetService<IQueryableRegistry>();
-
-        var localQueryableRouteOptions = endpoints.ServiceProvider
-            .GetService<QueryableRouteOptions>();
 
         // Resolve from DI if pre-registered, otherwise allocate a local instance
         // captured in the closure — either way it is singleton-scoped to this endpoint.
         var cache = endpoints.ServiceProvider.GetService<RegistryCache>() ?? new RegistryCache();
 
         endpoints.MapGet(
-                RegistryContractUrls.Registry(options),
+                RegistryContractUrls.Registry(localServiceOptions.ServiceName),
                 async (
                     HttpContext httpContext,
                     IKaleidoProcessClientFactory processClientFactory,
@@ -87,10 +81,10 @@ public static class RegistryEndpointRouteBuilderExtensions
                         var response = await cache.GetOrBuildAsync(forceRefresh, async ct =>
                         {
                             var localProcesses =
-                                GetLocalProcesses(localProcessorRegistry, localProcessRouteOptions);
+                                GetLocalProcesses(localProcessorRegistry, localServiceOptions);
 
                             var localQueryables =
-                                GetLocalQueryables(localQueryableRegistry, localQueryableRouteOptions);
+                                GetLocalQueryables(localQueryableRegistry, localServiceOptions);
 
                             var (downstreamProcesses, processErrors) =
                                 await GetDownstreamProcessesAsync(processClientMap, processClientFactory, ct);
@@ -150,16 +144,16 @@ public static class RegistryEndpointRouteBuilderExtensions
 
     private static IEnumerable<ProcessorRegistryResponse> GetLocalProcesses(
         IProcessorRegistry? registry,
-        ProcessRouteOptions? options)
-        => registry is not null && options is not null
-            ? registry.Registrations.Select(r => ProcessorRegistryResponseFactory.FromRegistration(r, options))
+        KaleidoServiceOptions? serviceOptions)
+        => registry is not null && serviceOptions is not null
+            ? registry.Registrations.Select(r => ProcessorRegistryResponseFactory.FromRegistration(r, serviceOptions))
             : Enumerable.Empty<ProcessorRegistryResponse>();
 
     private static IEnumerable<QueryableRecordResponse> GetLocalQueryables(
         IQueryableRegistry? registry,
-        QueryableRouteOptions? options)
-        => registry is not null && options is not null
-            ? registry.Registrations.Select(r => QueryableRecordResponse.FromRegistryItem(r, options))
+        KaleidoServiceOptions? serviceOptions)
+        => registry is not null && serviceOptions is not null
+            ? registry.Registrations.Select(r => QueryableRecordResponse.FromRegistryItem(r, serviceOptions.ServiceName))
             : [];
 
     private static async Task<(IReadOnlyCollection<ProcessorRegistryResponse> Items, IReadOnlyCollection<RegistryClientError> Errors)>

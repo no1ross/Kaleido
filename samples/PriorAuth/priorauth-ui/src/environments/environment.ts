@@ -3,7 +3,7 @@ import { PriorAuthUiEnvironment } from './environment.model';
 
 export const environment: PriorAuthUiEnvironment = {
     apiMode: 'direct',
-    routerBaseUrl: '/',
+    routerBaseUrl: 'http://localhost:8080',
     serviceRoutes: createServiceRoutes({
         member: {
             baseUrl: 'http://localhost:8084'

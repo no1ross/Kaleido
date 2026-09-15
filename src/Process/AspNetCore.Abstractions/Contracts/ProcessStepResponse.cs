@@ -6,24 +6,26 @@ public static class ProcessorRegistryResponseFactory
 {
     public static ProcessorRegistryResponse FromRegistration(
         ProcessorRegistryItem registration,
-        ProcessRouteOptions options)
+        KaleidoServiceOptions serviceOptions)
     {
         ArgumentNullException.ThrowIfNull(registration);
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(serviceOptions);
+
+        var serviceName = serviceOptions.ServiceName;
 
         return new ProcessorRegistryResponse
         {
-            Name = registration.Name,
-            Description = registration.Description,
-            DisplayName = registration.DisplayName,
-            Version = registration.Version,
+            ServiceName = serviceName,
+            Name = serviceName,
+            Description = serviceOptions.Description,
+            DisplayName = serviceOptions.DisplayName,
             IsEntryProcessor = registration.IsEntryProcessor,
-            RegistryUrl = ProcessContractUrls.Registry(options),
+            RegistryUrl = ProcessContractUrls.Registry(serviceName),
             InitialSteps = registration.InitialSteps
-                .Select(x => ProcessStepResponseFactory.ToSummary(x, options))
+                .Select(x => ProcessStepResponseFactory.ToSummary(x, serviceName))
                 .ToArray(),
             Steps = registration.Steps
-                .Select(x => ProcessStepResponseFactory.FromRegistration(x, options))
+                .Select(x => ProcessStepResponseFactory.FromRegistration(x, serviceName))
                 .ToArray()
         };
     }
@@ -33,21 +35,23 @@ public static class ProcessorCatalogResponseFactory
 {
     public static ProcessorCatalogResponse FromRegistration(
         ProcessorRegistryItem registration,
-        ProcessRouteOptions options)
+        KaleidoServiceOptions serviceOptions)
     {
         ArgumentNullException.ThrowIfNull(registration);
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(serviceOptions);
+
+        var serviceName = serviceOptions.ServiceName;
 
         return new ProcessorCatalogResponse
         {
-            Name = registration.Name,
-            Description = registration.Description,
-            DisplayName = registration.DisplayName,
-            Version = registration.Version,
+            ServiceName = serviceName,
+            Name = serviceName,
+            Description = serviceOptions.Description,
+            DisplayName = serviceOptions.DisplayName,
             IsEntryProcessor = registration.IsEntryProcessor,
-            RegistryUrl = ProcessContractUrls.Registry(options),
+            RegistryUrl = ProcessContractUrls.Registry(serviceName),
             InitialSteps = registration.InitialSteps
-                .Select(x => ProcessStepResponseFactory.ToSummary(x, options))
+                .Select(x => ProcessStepResponseFactory.ToSummary(x, serviceName))
                 .ToArray()
         };
     }
@@ -57,10 +61,9 @@ public static class ProcessStepResponseFactory
 {
     public static ProcessStepResponse FromRegistration(
         ProcessorStepRegistryItem registration,
-        ProcessRouteOptions options)
+        string serviceName)
     {
         ArgumentNullException.ThrowIfNull(registration);
-        ArgumentNullException.ThrowIfNull(options);
 
         var stepName =
             registration.Name.ToLowerInvariant();
@@ -77,34 +80,29 @@ public static class ProcessStepResponseFactory
                 .ToArray(),
             Dependencies = registration.Dependencies
                 .OrderBy(x => x.Name)
-                .Select(x => ToSummary(x, options))
+                .Select(x => ToSummary(x, serviceName))
                 .ToArray(),
             AvailableAfter = registration.AvailableAfter
                 .OrderBy(x => x.Name)
-                .Select(x => ToSummary(x, options))
+                .Select(x => ToSummary(x, serviceName))
                 .ToArray(),
             AvailableUntil = registration.AvailableUntil
                 .OrderBy(x => x.Name)
-                .Select(x => ToSummary(x, options))
+                .Select(x => ToSummary(x, serviceName))
                 .ToArray(),
             Result = registration.Result is null
                 ? null
                 : ProcessStepResultMetadata.FromRegistryItem(registration.Result),
-            ExecuteUrl = ProcessContractUrls.ExecuteStep(
-                options,
-                stepName),
-            MetadataUrl = ProcessContractUrls.StepMetadata(
-                options,
-                stepName)
+            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName),
+            MetadataUrl = ProcessContractUrls.StepMetadata(serviceName, stepName)
         };
     }
 
     internal static ProcessStepSummary ToSummary(
         ProcessorStepSummary registration,
-        ProcessRouteOptions options)
+        string serviceName)
     {
         ArgumentNullException.ThrowIfNull(registration);
-        ArgumentNullException.ThrowIfNull(options);
 
         var stepName =
             registration.Name.ToLowerInvariant();
@@ -116,18 +114,26 @@ public static class ProcessStepResponseFactory
             DisplayName = registration.DisplayName,
             Version = registration.Version,
             Repeatable = registration.Repeatable,
-            ExecuteUrl = ProcessContractUrls.ExecuteStep(
-                options,
-                stepName),
-            MetadataUrl = ProcessContractUrls.StepMetadata(
-                options,
-                stepName)
+            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName),
+            MetadataUrl = ProcessContractUrls.StepMetadata(serviceName, stepName)
         };
     }
 }
 
 public sealed record ProcessorRegistryResponse : ProcessorRegistryItem
 {
+    /// <summary>
+    /// The service name — matches <see cref="KaleidoServiceOptions.ServiceName"/>.
+    /// Allows consumers to identify which service this processor belongs to.
+    /// </summary>
+    public string ServiceName { get; init; } = string.Empty;
+
+    public required string Name { get; init; }
+
+    public string? Description { get; init; }
+
+    public string? DisplayName { get; init; }
+
     public string RegistryUrl { get; init; }
         = string.Empty;
 
@@ -150,13 +156,16 @@ public sealed record ProcessCatalogResponse
 
 public sealed record ProcessorCatalogResponse
 {
+    /// <summary>
+    /// The service name — matches <see cref="KaleidoServiceOptions.ServiceName"/>.
+    /// </summary>
+    public string ServiceName { get; init; } = string.Empty;
+
     public required string Name { get; init; }
 
     public string? Description { get; init; }
 
     public string? DisplayName { get; init; }
-
-    public string? Version { get; init; }
 
     public bool IsEntryProcessor { get; init; }
 
@@ -250,4 +259,3 @@ public sealed record ProcessStepResultMetadata : ProcessorStepResultDescriptor
         };
     }
 }
-

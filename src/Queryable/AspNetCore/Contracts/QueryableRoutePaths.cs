@@ -1,20 +1,11 @@
-﻿using Kaleido.Queryable;
-
-public static class QueryableRoutePaths
+﻿public static class QueryableRoutePaths
 {
-    public static string QueryContextMetadata(
-        QueryableRouteOptions options,
-        string contextName)
-        => $"{contextName}/{options.MetadataRoute}";
+    public static string QueryContextMetadata(string contextName)
+        => $"{contextName}/metadata";
 
-    public static string QueryContextQuery(
-        QueryableRouteOptions options,
-        string contextName)
-        => $"{contextName}/{options.QueryRoute}";
+    public static string QueryContextQuery(string contextName)
+        => $"{contextName}/query";
 
-    public static string QueryViewQuery(
-        QueryableRouteOptions options,
-        string contextName,
-        string viewName)
-        => $"{contextName}/{viewName}/{options.QueryRoute}";
+    public static string QueryViewQuery(string contextName, string viewName)
+        => $"{contextName}/{viewName}/query";
 }

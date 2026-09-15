@@ -19,7 +19,7 @@ public static class KaleidoRegistryServiceCollectionExtensions
 
         var options = new KaleidoClientOptions();
         builder.Configuration
-            .GetSection(KaleidoOptions.SectionName)
+            .GetSection(KaleidoServiceOptions.SectionName)
             .Bind(options);
 
         foreach (var clusterName in options.Registry)

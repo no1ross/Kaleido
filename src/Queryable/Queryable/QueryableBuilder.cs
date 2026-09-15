@@ -23,4 +23,7 @@ internal sealed class QueryableBuilder
 
     public IConfiguration Configuration
         => _builder.Configuration;
+
+    public KaleidoServiceOptions ServiceOptions
+        => _builder.ServiceOptions;
 }

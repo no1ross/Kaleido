@@ -11,10 +11,18 @@ public static class KaleidoServiceCollectionExtensions
 {
     public static IKaleidoBuilder AddKaleido(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        Action<KaleidoServiceOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+
+        var serviceOptions = new KaleidoServiceOptions();
+        configuration.GetSection(KaleidoServiceOptions.SectionName).Bind(serviceOptions);
+
+        configure?.Invoke(serviceOptions);
+        KaleidoServiceOptions.Validate(serviceOptions);
+        services.AddSingleton(serviceOptions);
 
         services.AddScoped<KaleidoCorrelationContextAccessor>();
         services.TryAddScoped<IKaleidoCorrelationContextAccessor>(
@@ -23,7 +31,7 @@ public static class KaleidoServiceCollectionExtensions
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
         services.TryAddSingleton<IEventPublisher, NullEventPublisher>();
 
-        return new KaleidoBuilder(services, configuration);
+        return new KaleidoBuilder(services, configuration, serviceOptions);
     }
 
     public static IKaleidoBuilder AddAssembly(this IKaleidoBuilder builder, Assembly assembly)

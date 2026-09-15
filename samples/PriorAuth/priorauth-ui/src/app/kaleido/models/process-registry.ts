@@ -1,9 +1,7 @@
-import { PriorAuthServiceRouteConfig } from '../../../configuration/urlConfig';
-
 export interface ProcessProcessorRegistryRecord {
+    serviceName: string;
     name: string;
-    version: string;
-    displayName: string;
+    displayName: string | null;
     description: string | null;
     isEntryProcessor: boolean;
     registryUrl: string;
@@ -28,17 +26,6 @@ export interface ProcessStepRegistryRecord {
 
     executeUrl: string;
     metadataUrl: string;
-}
-
-export interface ServiceProcessProcessorRegistryRecord {
-    service: PriorAuthServiceRouteConfig;
-    processor: ProcessProcessorRegistryRecord;
-}
-
-export interface ServiceProcessStepRegistryRecord {
-    service: PriorAuthServiceRouteConfig;
-    processor: ProcessProcessorRegistryRecord;
-    step: ProcessStepRegistryRecord;
 }
 
 export interface ProcessStepSummary {
