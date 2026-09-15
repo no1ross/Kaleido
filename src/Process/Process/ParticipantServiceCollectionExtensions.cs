@@ -48,7 +48,7 @@ public static class ProcessorServiceCollectionExtensions
 
         if (!builder.Assemblies.Any())
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 "At least one assembly must be registered before AddProcessor().");
         }
 
@@ -120,7 +120,7 @@ public static class ProcessorServiceCollectionExtensions
         }
         catch (Exception exception)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"The configured TypeFilter failed while evaluating process step '{stepType.FullName ?? stepType.Name}'.",
                 exception);
         }
@@ -131,7 +131,7 @@ public static class ProcessorServiceCollectionExtensions
     {
         if (stepTypes.Count == 0)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 "No process steps were discovered for the processor.");
         }
 
@@ -142,13 +142,13 @@ public static class ProcessorServiceCollectionExtensions
 
             if (string.IsNullOrWhiteSpace(metadata.Name))
             {
-                throw new InvalidOperationException(
+                throw new KaleidoConfigurationException(
                     $"Process step '{stepType.FullName}' must specify a non-empty name.");
             }
 
             if (string.IsNullOrWhiteSpace(metadata.Version))
             {
-                throw new InvalidOperationException(
+                throw new KaleidoConfigurationException(
                     $"Process step '{stepType.FullName}' must specify a non-empty version.");
             }
         }
@@ -184,7 +184,7 @@ public static class ProcessorServiceCollectionExtensions
                     return $"Name '{x.Key}' is used by: {stepTypesForName}";
                 }));
 
-        throw new InvalidOperationException(
+        throw new KaleidoConfigurationException(
             $"Duplicate process step names were found.{Environment.NewLine}{duplicateDetails}");
     }
 
@@ -196,7 +196,7 @@ public static class ProcessorServiceCollectionExtensions
 
         if (metadata is null)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"Type '{stepType.FullName}' is not decorated with ProcessStepAttribute.");
         }
 
@@ -253,7 +253,7 @@ public static class ProcessorServiceCollectionExtensions
 
         if (handlerTypes.Length == 0)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"Process step '{metadata.Name}' ({stepType.FullName}) does not have a registered handler.");
         }
 
@@ -264,7 +264,7 @@ public static class ProcessorServiceCollectionExtensions
                     ", ",
                     handlerTypes.Select(x => x.FullName));
 
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"Process step '{metadata.Name}' ({stepType.FullName}) has multiple handlers: {handlers}.");
         }
 

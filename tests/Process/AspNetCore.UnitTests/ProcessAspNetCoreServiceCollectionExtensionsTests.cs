@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Process.AspNetCore;
 using Kaleido.Process.AspNetCore.Services;
 using Kaleido.Process.Context;
@@ -31,7 +32,7 @@ public sealed class ProcessAspNetCoreServiceCollectionExtensionsTests
                 [typeof(ProcessAspNetCoreServiceCollectionExtensionsTests).Assembly]);
 
         var exception =
-            Assert.Throws<InvalidOperationException>(() =>
+            Assert.Throws<KaleidoConfigurationException>(() =>
                 builder.AddProcessorAspNetCore());
 
         Assert.Equal(

@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Records;
@@ -59,7 +60,7 @@ public sealed class QueryViewRegistryTests
     [Fact]
     public void Constructor_WhenPageableViewMissingDefaultSortField_Throws()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
             new QueryViewRegistry(new Microsoft.Extensions.DependencyInjection.ServiceCollection(), [typeof(MissingSortView)]));
 
         Assert.Contains("must define a DefaultSortField", exception.Message);
@@ -68,7 +69,7 @@ public sealed class QueryViewRegistryTests
     [Fact]
     public void Constructor_WhenDefaultSortFieldIsNotSortable_Throws()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
             new QueryViewRegistry(new Microsoft.Extensions.DependencyInjection.ServiceCollection(), [typeof(NotSortableView)]));
 
         Assert.Contains("not marked as sortable", exception.Message);

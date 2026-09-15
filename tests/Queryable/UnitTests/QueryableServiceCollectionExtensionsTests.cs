@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Records;
@@ -29,7 +30,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
     {
         var builder = new TestKaleidoBuilder(new ServiceCollection(), []);
 
-        Assert.Throws<InvalidOperationException>(() => builder.AddQueryable());
+        Assert.Throws<KaleidoConfigurationException>(() => builder.AddQueryable());
     }
 
     [Fact]

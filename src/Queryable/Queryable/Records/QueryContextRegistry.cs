@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
@@ -125,17 +126,17 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
         if (allSources.Length == 1)
         {
             return allSources[0].ImplementationType
-                ?? throw new InvalidOperationException(
+                ?? throw new KaleidoConfigurationException(
                     $"No implementation type registered for source of query context '{contextType.Name}'.");
         }
 
         if (allSources.Length > 1)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"Query context '{contextType.Name}' has multiple registered local sources.");
         }
 
-        throw new InvalidOperationException(
+        throw new KaleidoConfigurationException(
             $"Query context '{contextType.Name}' does not have a registered source.");
     }
 
@@ -144,7 +145,7 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
     {
         var attribute =
             contextType.GetCustomAttribute<QueryContextAttribute>()
-            ?? throw new InvalidOperationException(
+            ?? throw new KaleidoConfigurationException(
                 $"Query context '{contextType.Name}' is missing QueryContextAttribute.");
 
         var pageable =

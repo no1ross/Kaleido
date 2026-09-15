@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
@@ -29,7 +30,7 @@ public static class QueryableServiceCollectionExtensions
 
         if (!builder.Assemblies.Any())
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 "At least one assembly must be registered before AddQueryable().");
         }
 
@@ -366,7 +367,7 @@ public static class QueryableServiceCollectionExtensions
 
         if (syncInterfaces.Length == 0 && asyncInterfaces.Length == 0)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"Query view '{queryViewType.FullName}' does not implement IQueryViewSource or IQueryViewSourceAsync.");
         }
 

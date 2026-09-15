@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Routing;
+﻿using Kaleido.Exceptions;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -21,7 +22,7 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
     {
         var builder = new TestQueryableBuilder(new ServiceCollection(), [typeof(QueryableAspNetCoreServiceCollectionExtensionsTests).Assembly]);
 
-        var exception = Assert.Throws<InvalidOperationException>(() => builder.AddQueryableAspNetCore());
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.AddQueryableAspNetCore());
 
         Assert.Equal("AddQueryable must be called before AddQueryableAspNetCore.", exception.Message);
     }

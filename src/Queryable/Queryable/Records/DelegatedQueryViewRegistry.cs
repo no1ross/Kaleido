@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
@@ -56,7 +57,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
     {
         var queryViewAttribute =
             queryViewType.GetCustomAttribute<QueryViewAttribute>()
-            ?? throw new InvalidOperationException(
+            ?? throw new KaleidoConfigurationException(
                 $"Query view '{queryViewType.Name}' is missing QueryViewAttribute.");
 
         var queryViewInterface =
@@ -99,7 +100,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
     {
         var attribute =
             contextType.GetCustomAttribute<QueryContextAttribute>()
-            ?? throw new InvalidOperationException(
+            ?? throw new KaleidoConfigurationException(
                 $"Delegated query view context '{contextType.Name}' is missing QueryContextAttribute.");
 
         var pageable =
@@ -163,7 +164,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
 
         if (string.IsNullOrWhiteSpace(attribute.DefaultSortField))
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"Query view '{attribute.Name}' is pageable and must define a DefaultSortField.");
         }
 
@@ -174,13 +175,13 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
 
         if (property is null)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' which does not exist on query context '{contextType.Name}'.");
         }
 
         if (property.GetCustomAttribute<SortableAttribute>() is null)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' but the field is not marked as sortable.");
         }
 

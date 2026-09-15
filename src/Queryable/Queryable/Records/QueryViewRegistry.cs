@@ -1,4 +1,5 @@
 using Kaleido;
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
@@ -80,7 +81,7 @@ internal sealed class QueryViewRegistry
     {
         var queryViewAttribute =
             queryViewType.GetCustomAttribute<QueryViewAttribute>()
-            ?? throw new InvalidOperationException(
+            ?? throw new KaleidoConfigurationException(
                 $"Query view '{queryViewType.Name}' is missing QueryViewAttribute.");
 
         var queryViewInterface =
@@ -188,7 +189,7 @@ internal sealed class QueryViewRegistry
     {
         if (string.IsNullOrWhiteSpace(attribute.DefaultSortField))
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"Query view '{attribute.Name}' is pageable and must define a DefaultSortField.");
         }
 
@@ -201,13 +202,13 @@ internal sealed class QueryViewRegistry
 
         if (property is null)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' which does not exist on query context '{contextType.Name}'.");
         }
 
         if (property.GetCustomAttribute<SortableAttribute>() is null)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' but the field is not marked as sortable.");
         }
     }

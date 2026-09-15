@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Attributes;
+﻿using Kaleido.Exceptions;
+using Kaleido.Process.Attributes;
 using Kaleido.Process.Execution;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
@@ -209,7 +210,7 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
             return handlerInterface.GenericTypeArguments[1];
         }
 
-        throw new InvalidOperationException(
+        throw new KaleidoConfigurationException(
             $"Type '{handlerInterface.FullName}' is not a valid process step handler.");
     }
 
@@ -348,13 +349,13 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
 
         if (handlers.Length == 0)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"No process step handler registered for step '{stepType.FullName}'.");
         }
 
         if (handlers.Length > 1)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"Multiple process step handlers registered for step '{stepType.FullName}'.");
         }
 
@@ -385,7 +386,7 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
     {
         var attribute =
             stepType.GetCustomAttribute<ProcessStepAttribute>()
-            ?? throw new InvalidOperationException(
+            ?? throw new KaleidoConfigurationException(
                 $"Process step '{stepType.Name}' is missing ProcessStepAttribute.");
 
         return new ProcessStepMetadata(

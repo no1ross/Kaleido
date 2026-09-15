@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Process.AspNetCore.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -16,7 +17,7 @@ public static class ProcessAspNetCoreServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(builder);
 
         if (!builder.Services.Any(d => d.ServiceType == typeof(IProcessorRuntime)))
-            throw new InvalidOperationException("AddProcessor must be called before AddProcessorAspNetCore.");
+            throw new KaleidoConfigurationException("AddProcessor must be called before AddProcessorAspNetCore.");
 
         builder.Services.AddRouting();
         builder.Services.AddHttpContextAccessor();

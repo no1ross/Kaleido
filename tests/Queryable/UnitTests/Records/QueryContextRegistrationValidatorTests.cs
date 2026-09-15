@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,7 +43,7 @@ public sealed class QueryContextRegistrationValidatorTests
     {
         var services = new ServiceCollection();
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
             _validator.Validate(
                 [typeof(TestContext), typeof(DuplicateContext)],
                 services));
@@ -55,7 +56,7 @@ public sealed class QueryContextRegistrationValidatorTests
     {
         var services = new ServiceCollection();
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
             _validator.Validate(
                 [typeof(TestContext)],
                 services));
@@ -70,7 +71,7 @@ public sealed class QueryContextRegistrationValidatorTests
         services.AddScoped<IQueryContextSource<TestContext>, TestContextSource>();
         services.AddScoped<IQueryContextSource<TestContext>, DuplicateTestContextSource>();
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
             _validator.Validate(
                 [typeof(TestContext)],
                 services));

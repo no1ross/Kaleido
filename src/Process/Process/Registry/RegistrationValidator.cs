@@ -1,4 +1,6 @@
-﻿namespace Kaleido.Process.Registry;
+﻿using Kaleido.Exceptions;
+
+namespace Kaleido.Process.Registry;
 
 internal static class RegistrationValidator
 {
@@ -20,21 +22,21 @@ internal static class RegistrationValidator
             if (definition.Dependencies.Any(
                     x => x.StepType == definition.StepType))
             {
-                throw new InvalidOperationException(
+                throw new KaleidoConfigurationException(
                     $"Process step '{definition.StepType.FullName}' cannot depend on itself.");
             }
 
             if (definition.AvailableAfter.Any(
                     x => x.StepType == definition.StepType))
             {
-                throw new InvalidOperationException(
+                throw new KaleidoConfigurationException(
                     $"Process step '{definition.StepType.FullName}' cannot reference itself in AvailableAfter.");
             }
 
             if (definition.AvailableUntil.Any(
                     x => x.StepType == definition.StepType))
             {
-                throw new InvalidOperationException(
+                throw new KaleidoConfigurationException(
                     $"Process step '{definition.StepType.FullName}' cannot reference itself in AvailableUntil.");
             }
         }
@@ -66,7 +68,7 @@ internal static class RegistrationValidator
                     .SkipWhile(x => x != definition.StepType)
                     .Select(x => x.Name);
 
-            throw new InvalidOperationException(
+            throw new KaleidoConfigurationException(
                 $"Circular process step dependency detected: {string.Join(" -> ", cycle)}");
         }
 

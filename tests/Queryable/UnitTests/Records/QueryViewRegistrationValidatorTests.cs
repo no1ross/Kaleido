@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,7 +51,7 @@ public sealed class QueryViewRegistrationValidatorTests
     [Fact]
     public void Validate_WhenDuplicateNamesExist_Throws()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
             _validator.Validate(
                 [typeof(TestView), typeof(DuplicateTestView)],
                 [typeof(TestContext)],
@@ -62,7 +63,7 @@ public sealed class QueryViewRegistrationValidatorTests
     [Fact]
     public void Validate_WhenViewDoesNotImplementQueryViewSource_Throws()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
             _validator.Validate(
                 [typeof(InvalidView)],
                 [typeof(TestContext)],
@@ -74,7 +75,7 @@ public sealed class QueryViewRegistrationValidatorTests
     [Fact]
     public void Validate_WhenViewReferencesUnregisteredContext_Throws()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
             _validator.Validate(
                 [typeof(TestView)],
                 Array.Empty<Type>(),

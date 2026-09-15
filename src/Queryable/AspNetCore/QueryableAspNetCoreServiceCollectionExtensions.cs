@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Json;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,7 +16,7 @@ public static class QueryableAspNetCoreServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(builder);
 
         if (!builder.Services.Any(d => d.ServiceType == typeof(IQueryableService)))
-            throw new InvalidOperationException("AddQueryable must be called before AddQueryableAspNetCore.");
+            throw new KaleidoConfigurationException("AddQueryable must be called before AddQueryableAspNetCore.");
 
         builder.Services.AddRouting();
 

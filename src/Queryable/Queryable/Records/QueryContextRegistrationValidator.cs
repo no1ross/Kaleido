@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Query;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,7 +46,7 @@ internal sealed class QueryContextRegistrationValidator
             return;
         }
 
-        throw new InvalidOperationException(
+        throw new KaleidoConfigurationException(
             $"Duplicate query context names detected: {string.Join(", ", duplicates.Select(x => x.Key))}");
     }
 
@@ -71,21 +72,21 @@ internal sealed class QueryContextRegistrationValidator
 
             if (syncCount == 0 && asyncCount == 0)
             {
-                throw new InvalidOperationException(
+                throw new KaleidoConfigurationException(
                     $"Query context '{queryContextType.Name}' does not have a registered source. " +
                     $"Register exactly one IQueryContextSource<{queryContextType.Name}> or IQueryContextSourceAsync<{queryContextType.Name}>.");
             }
 
             if (syncCount > 0 && asyncCount > 0)
             {
-                throw new InvalidOperationException(
+                throw new KaleidoConfigurationException(
                     $"Query context '{queryContextType.Name}' has both a sync and async source registered. " +
                     $"Register exactly one: IQueryContextSource<{queryContextType.Name}> or IQueryContextSourceAsync<{queryContextType.Name}>.");
             }
 
             if (syncCount > 1 || asyncCount > 1)
             {
-                throw new InvalidOperationException(
+                throw new KaleidoConfigurationException(
                     $"Query context '{queryContextType.Name}' has multiple registered local sources.");
             }
         }
