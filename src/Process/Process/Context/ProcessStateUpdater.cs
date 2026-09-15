@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Execution;
+﻿using Kaleido.Exceptions;
+using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
 
@@ -289,7 +290,7 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
     {
         return context.FindStep(
             candidate.StepName)
-            ?? throw new InvalidOperationException(
+            ?? throw new KaleidoFrameworkException(
                 $"Step '{candidate.StepName}' was not found in processor state.");
     }
 
@@ -338,7 +339,7 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
             ExecutionDecisionType.AwaitingStepSelection =>
                 ProcessExecutionState.AwaitingStepSelection,
 
-            _ => throw new InvalidOperationException(
+            _ => throw new KaleidoFrameworkException(
                 $"Unsupported execution decision '{decision.Type}'.")
         };
     }

@@ -1,4 +1,5 @@
 using Kaleido.Observability;
+using Kaleido.Queryable.AspNetCore.Client;
 using Moq.Protected;
 using System.Text.Json;
 
@@ -117,7 +118,7 @@ public sealed class KaleidoQueryableClientTests
         correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext());
         var client = new KaleidoQueryableClient(httpClient, correlation.Object);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<KaleidoQueryableClientException>(
             () => client.GetRegistryAsync());
     }
 
@@ -163,7 +164,7 @@ public sealed class KaleidoQueryableClientTests
     {
         var (client, _) = CreateClient();
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAsync<KaleidoQueryableClientException>(
             () => client.GetContextMetadataAsync("does-not-exist"));
 
         Assert.Contains("does-not-exist", ex.Message);
@@ -230,7 +231,7 @@ public sealed class KaleidoQueryableClientTests
     {
         var (client, _) = CreateClient();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<KaleidoQueryableClientException>(
             () => client.QueryViewAsync<FakeParams, FakeView>(
                 "no-such-context", "grid",
                 new QueryApiRequest<FakeParams>(new FakeParams(), new QueryBody())));
@@ -241,7 +242,7 @@ public sealed class KaleidoQueryableClientTests
     {
         var (client, _) = CreateClient();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<KaleidoQueryableClientException>(
             () => client.QueryViewAsync<FakeParams, FakeView>(
                 "my-context", "no-such-view",
                 new QueryApiRequest<FakeParams>(new FakeParams(), new QueryBody())));
@@ -306,7 +307,7 @@ public sealed class KaleidoQueryableClientTests
         var noQueryContext = FakeContext with { QueryUrl = null };
         var (client, _) = CreateClient(respond: _ => JsonOk(new[] { noQueryContext }));
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAsync<KaleidoQueryableClientException>(
             () => client.QueryContextAsync<FakeView>(
                 "my-context",
                 new QueryApiRequest(new QueryBody())));

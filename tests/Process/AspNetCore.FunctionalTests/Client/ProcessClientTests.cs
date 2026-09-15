@@ -1,3 +1,4 @@
+using Kaleido.Process.AspNetCore.Client;
 using Kaleido.Process.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
 
@@ -58,7 +59,7 @@ public sealed class ProcessClientTests
     [Fact]
     public async Task GetStepMetadataAsync_WhenStepNotFound_Throws()
     {
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<KaleidoProcessClientException>(
             () => _factory.GetClient("test").GetStepMetadataAsync("NoSuchStep"));
     }
 

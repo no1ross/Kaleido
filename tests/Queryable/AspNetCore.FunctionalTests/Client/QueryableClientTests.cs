@@ -1,3 +1,4 @@
+using Kaleido.Queryable.AspNetCore.Client;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
 
@@ -54,7 +55,7 @@ public sealed class QueryableClientTests : IClassFixture<QueryableAspNetCoreFixt
     [Fact]
     public async Task GetContextMetadataAsync_WhenContextNotFound_Throws()
     {
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<KaleidoQueryableClientException>(
             () => _factory.GetClient("test").GetContextMetadataAsync("does-not-exist"));
     }
 

@@ -1,3 +1,4 @@
+using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Runtime;
@@ -367,7 +368,7 @@ public sealed class CompiledQueryApplierTests
     [Fact]
     public void ApplyFilter_ShouldThrow_WhenBetweenHasFewerThanTwoValues()
     {
-        Assert.Throws<InvalidOperationException>(
+        Assert.Throws<InvalidFilterNodeException>(
             () => _applier.ApplyFilter(
                 CreateRecords().AsQueryable(),
                 Filter(
@@ -770,7 +771,7 @@ public sealed class CompiledQueryApplierTests
     [Fact]
     public void ApplyFilter_ShouldThrow_WhenStringValueIsUsedForInt()
     {
-        Assert.Throws<InvalidOperationException>(
+        Assert.Throws<InvalidFilterValueException>(
             () => _applier
                 .ApplyFilter(
                     CreateRecords().AsQueryable(),
@@ -784,7 +785,7 @@ public sealed class CompiledQueryApplierTests
     [Fact]
     public void ApplyFilter_ShouldThrow_WhenStringValueIsUsedForDateOnly()
     {
-        Assert.Throws<InvalidOperationException>(
+        Assert.Throws<InvalidFilterValueException>(
             () => _applier
                 .ApplyFilter(
                     CreateRecords().AsQueryable(),
@@ -801,7 +802,7 @@ public sealed class CompiledQueryApplierTests
         var id =
             CreateRecords()[0].ExternalId;
 
-        Assert.Throws<InvalidOperationException>(
+        Assert.Throws<InvalidFilterValueException>(
             () => _applier
                 .ApplyFilter(
                     CreateRecords().AsQueryable(),

@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Execution;
+﻿using Kaleido.Exceptions;
+using Kaleido.Process.Execution;
 using Kaleido.Process.Observability;
 using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
@@ -247,7 +248,7 @@ public sealed class ProcessStepInvokerTests
             CreateRegistration<MissingExecuteAsyncHandler>();
 
         var exception =
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
                 invoker.ExecuteAsync(
                     registration,
                     new TestStep(),
@@ -272,7 +273,7 @@ public sealed class ProcessStepInvokerTests
             CreateRegistration<NullTaskHandler>();
 
         var exception =
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
                 invoker.ExecuteAsync(
                     registration,
                     new TestStep(),
@@ -297,7 +298,7 @@ public sealed class ProcessStepInvokerTests
             CreateRegistration<NonTaskHandler>();
 
         var exception =
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
                 invoker.ExecuteAsync(
                     registration,
                     new TestStep(),
@@ -322,7 +323,7 @@ public sealed class ProcessStepInvokerTests
             CreateRegistration<NullHandlerResultHandler>();
 
         var exception =
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
                 invoker.ExecuteAsync(
                     registration,
                     new TestStep(),
@@ -347,7 +348,7 @@ public sealed class ProcessStepInvokerTests
             CreateRegistration<InvalidHandlerResultHandler>();
 
         var exception =
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
                 invoker.ExecuteAsync(
                     registration,
                     new TestStep(),

@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Process.AspNetCore;
 using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.AspNetCore.Client;
@@ -109,7 +110,7 @@ public static class RegistryEndpointRouteBuilderExtensions
 
                             if (entryProcessors.Length > 1)
                             {
-                                throw new InvalidOperationException(
+                                throw new KaleidoFrameworkException(
                                     $"Multiple processors are marked as entry processors: {string.Join(", ", entryProcessors.Select(p => p.Name))}. " +
                                     "Only one processor in a distributed system should have IsEntryProcessor set to true.");
                             }

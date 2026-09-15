@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
@@ -110,7 +111,7 @@ public sealed class QueryableServiceTests
             MockViewRegistry(typeof(TestView), viewRegistration),
             Mock.Of<IQueryContextRegistry>());
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
             service.QueryAsync<TestView, TestViewContract>(request));
 
         Assert.Contains("returns", exception.Message);
@@ -128,7 +129,7 @@ public sealed class QueryableServiceTests
             MockViewRegistry(typeof(TestContext), null),
             MockContextRegistry(registration));
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
             service.QueryAsync<TestContext, TestContext>(request));
 
         Assert.Contains("does not allow direct query", exception.Message);

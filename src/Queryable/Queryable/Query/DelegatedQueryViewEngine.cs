@@ -1,4 +1,5 @@
 using Kaleido.Eventing;
+using Kaleido.Exceptions;
 using Kaleido.Observability;
 using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
@@ -40,7 +41,7 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
 
             if (request.ViewParametersType != registration.ViewParametersType)
             {
-                throw new InvalidOperationException(
+                throw new KaleidoFrameworkException(
                     $"Delegated query view '{registration.QueryViewType.FullName}' expected parameters '{registration.ViewParametersType.FullName}', but request used '{request.ViewParametersType.FullName}'.");
             }
 
@@ -55,7 +56,7 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
 
             if (invocation is not Task<QueryResult<TView>> typedTask)
             {
-                throw new InvalidOperationException(
+                throw new KaleidoFrameworkException(
                     $"Delegated query execution for view '{registration.QueryViewType.FullName}' did not return '{typeof(QueryResult<TView>).FullName}'.");
             }
 
@@ -98,13 +99,13 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
     {
         if (source is not IDelegateQueryViewSource<TDelegateContext, TView, TParameters> delegatedSource)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Delegated query view '{registration.QueryViewType.FullName}' must implement '{typeof(IDelegateQueryViewSource<TDelegateContext, TView, TParameters>).FullName}'.");
         }
 
         if (request is not IQueryRequest<TParameters> typedRequest)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Delegated query view '{registration.QueryViewType.FullName}' expected request type '{typeof(IQueryRequest<TParameters>).FullName}'.");
         }
 

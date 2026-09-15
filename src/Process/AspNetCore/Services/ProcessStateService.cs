@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.AspNetCore.Contracts;
+﻿using Kaleido.Exceptions;
+using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;
@@ -44,7 +45,7 @@ internal sealed class ProcessStateService(
                     .Select(stepName =>
                         ProcessContractMapper.ToSummary(
                             registry.Find(stepName)
-                                ?? throw new InvalidOperationException(
+                                ?? throw new KaleidoFrameworkException(
                                     $"Available step '{stepName}' was not found in the local registry."),
                             serviceOptions.ServiceName))
                     .ToArray(),

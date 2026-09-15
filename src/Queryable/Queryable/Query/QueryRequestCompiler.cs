@@ -1,3 +1,4 @@
+using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using System.Xml.Linq;
 
@@ -66,7 +67,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
         if (node.Condition is not null && node.Group is not null)
         {
-            throw new InvalidOperationException(
+            throw new InvalidFilterNodeException(
                 "Filter node cannot specify both Condition and Group.");
         }
 
@@ -84,7 +85,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
                 metadata);
         }
 
-        throw new InvalidOperationException(
+        throw new InvalidFilterNodeException(
             "Filter node must specify either Condition or Group.");
     }
 
@@ -159,7 +160,6 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
                 StringComparison.OrdinalIgnoreCase));
 
         return field
-            ?? throw new InvalidOperationException(
-                $"Field '{fieldName}' is not defined for record '{metadata.Name}'.");
+            ?? throw new InvalidFieldException(fieldName, metadata.Name);
     }
 }

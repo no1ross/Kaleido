@@ -38,8 +38,9 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
 
         var contextRecord = registry.FirstOrDefault(
             r => string.Equals(r.Name, context, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException(
-                $"Queryable context '{context}' was not found in the remote registry.");
+            ?? throw new KaleidoQueryableClientException(
+                $"Queryable context '{context}' was not found in the remote registry.",
+                HttpStatusCode.NotFound);
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Get, contextRecord.MetadataUrl);
 
@@ -73,13 +74,15 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
 
         var contextRecord = registry.FirstOrDefault(
             r => string.Equals(r.Name, context, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException(
-                $"Queryable context '{context}' was not found in the remote registry.");
+            ?? throw new KaleidoQueryableClientException(
+                $"Queryable context '{context}' was not found in the remote registry.",
+                HttpStatusCode.NotFound);
 
         var viewRecord = contextRecord.Views.FirstOrDefault(
             v => string.Equals(v.Name, view, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException(
-                $"View '{view}' was not found on context '{context}' in the remote registry.");
+            ?? throw new KaleidoQueryableClientException(
+                $"View '{view}' was not found on context '{context}' in the remote registry.",
+                HttpStatusCode.NotFound);
 
         return await SendQueryAsync<TView>(viewRecord.QueryUrl, request, cancellationToken);
     }
@@ -94,13 +97,15 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
 
         var contextRecord = registry.FirstOrDefault(
             r => string.Equals(r.Name, context, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException(
-                $"Queryable context '{context}' was not found in the remote registry.");
+            ?? throw new KaleidoQueryableClientException(
+                $"Queryable context '{context}' was not found in the remote registry.",
+                HttpStatusCode.NotFound);
 
         if (string.IsNullOrEmpty(contextRecord.QueryUrl))
         {
-            throw new InvalidOperationException(
-                $"Queryable context '{context}' does not support direct queries (no QueryUrl). Only Direct contexts expose a query URL.");
+            throw new KaleidoQueryableClientException(
+                $"Queryable context '{context}' does not support direct queries (no QueryUrl). Only Direct contexts expose a query URL.",
+                HttpStatusCode.NotFound);
         }
 
         return await SendQueryAsync<TView>(contextRecord.QueryUrl, request, cancellationToken);
@@ -181,8 +186,9 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
             var registry = await _httpClient.GetFromJsonAsync<IReadOnlyList<QueryableRecordResponse>>(
                 _registryUrl,
                 cancellationToken)
-                ?? throw new InvalidOperationException(
-                    "Queryable registry request succeeded but returned no payload.");
+                ?? throw new KaleidoQueryableClientException(
+                    "Queryable registry request succeeded but returned no payload.",
+                    HttpStatusCode.InternalServerError);
 
             _registry = registry;
             return _registry;

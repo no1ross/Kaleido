@@ -1,3 +1,4 @@
+using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.UnitTests.Query;
@@ -122,9 +123,9 @@ public sealed class QueryRequestCompilerTests
     {
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Missing", FilterOperator.Equals, "A")));
 
-        var exception = Assert.Throws<InvalidOperationException>(() => _compiler.Compile(request, CreateContextMetadata()));
+        var exception = Assert.Throws<InvalidFieldException>(() => _compiler.Compile(request, CreateContextMetadata()));
 
-        Assert.Contains("Field 'Missing' is not defined", exception.Message);
+        Assert.Contains("Field 'Missing' does not exist", exception.Message);
     }
 
     private static QueryContextMetadata CreateContextMetadata() =>

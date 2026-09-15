@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Planning;
+﻿using Kaleido.Exceptions;
+using Kaleido.Process.Planning;
 using System.ComponentModel.DataAnnotations;
 using Xunit;
 
@@ -50,7 +51,7 @@ public sealed class StepCandidateValidatorTests
             };
 
         var exception =
-            Assert.Throws<InvalidOperationException>(() =>
+            Assert.Throws<KaleidoFrameworkException>(() =>
                 _validator.Validate([candidate]));
 
         Assert.Equal(

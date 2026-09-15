@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Observability;
+﻿using Kaleido.Exceptions;
+using Kaleido.Process.Observability;
 using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;
@@ -72,7 +73,7 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
         var method =
             handler.GetType().GetMethod(
                 nameof(IProcessStepHandler<object>.ExecuteAsync))
-            ?? throw new InvalidOperationException(
+            ?? throw new KaleidoFrameworkException(
                 $"Handler '{handler.GetType().FullName}' does not expose ExecuteAsync.");
 
         var result =
@@ -83,12 +84,12 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
                 context,
                 cancellationToken
                 ])
-            ?? throw new InvalidOperationException(
+            ?? throw new KaleidoFrameworkException(
                 $"Handler '{handler.GetType().FullName}' returned null.");
 
         if (result is not Task task)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Handler '{handler.GetType().FullName}' returned an invalid result.");
         }
 
@@ -98,12 +99,12 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
             task.GetType()
                 .GetProperty(nameof(Task<object>.Result))
                 ?.GetValue(task)
-            ?? throw new InvalidOperationException(
+            ?? throw new KaleidoFrameworkException(
                 $"Handler '{handler.GetType().FullName}' returned a null result.");
 
         if (taskResult is not IProcessStepHandlerResult handlerResult)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Handler '{handler.GetType().FullName}' returned an invalid handler result.");
         }
 

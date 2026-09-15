@@ -1,4 +1,5 @@
 ﻿using Kaleido.Eventing;
+using Kaleido.Exceptions;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Observability;
@@ -120,7 +121,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 var stepContext =
                     context.FindStep(
                         candidate.StepName)
-                    ?? throw new InvalidOperationException(
+                    ?? throw new KaleidoFrameworkException(
                         $"Step '{candidate.StepName}' was not found in processor state.");
 
                 var initialAvailableSteps =
@@ -139,10 +140,10 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 var result =
                     await _invoker.ExecuteAsync(
                         candidate.Registration
-                        ?? throw new InvalidOperationException(
+                        ?? throw new KaleidoFrameworkException(
                             $"Step '{candidate.StepName}' does not contain registration metadata."),
                         candidate.Step
-                        ?? throw new InvalidOperationException(
+                        ?? throw new KaleidoFrameworkException(
                             $"Step '{candidate.StepName}' does not contain a step instance."),
                         processStepContext,
                         cancellationToken);
@@ -383,7 +384,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 StepExecutionStatus.Completed,
 
             _ =>
-                throw new InvalidOperationException(
+                throw new KaleidoFrameworkException(
                     $"Unsupported execution decision '{decision.Type}'.")
         };
     }

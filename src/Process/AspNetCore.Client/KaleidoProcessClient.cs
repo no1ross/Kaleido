@@ -1,5 +1,6 @@
 using Kaleido.Observability;
 using Kaleido.Process.AspNetCore.Contracts;
+using System.Net;
 using System.Net.Http.Json;
 
 namespace Kaleido.Process.AspNetCore.Client;
@@ -49,8 +50,9 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
 
         if (match is null)
         {
-            throw new InvalidOperationException(
-                $"Process step '{stepName}' was not found in the remote registry.");
+            throw new KaleidoProcessClientException(
+                $"Process step '{stepName}' was not found in the remote registry.",
+                HttpStatusCode.NotFound);
         }
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Get, match.MetadataUrl);
@@ -225,8 +227,9 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
                 return match.ExecuteUrl;
         }
 
-        throw new InvalidOperationException(
-            $"Process step '{stepName}' (from type '{typeName}') was not found in the remote registry.");
+        throw new KaleidoProcessClientException(
+            $"Process step '{stepName}' (from type '{typeName}') was not found in the remote registry.",
+            HttpStatusCode.NotFound);
     }
 
     private void StampCorrelationHeaders(HttpRequestMessage request)
@@ -261,8 +264,9 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
             var registry = await _httpClient.GetFromJsonAsync<IReadOnlyList<ProcessorRegistryResponse>>(
                 _registryUrl,
                 cancellationToken)
-                ?? throw new InvalidOperationException(
-                    "Process registry request succeeded but returned no payload.");
+                ?? throw new KaleidoProcessClientException(
+                    "Process registry request succeeded but returned no payload.",
+                    HttpStatusCode.InternalServerError);
 
             _registry = registry;
             return _registry;

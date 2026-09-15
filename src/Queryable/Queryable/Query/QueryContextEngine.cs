@@ -1,4 +1,5 @@
 using Kaleido.Eventing;
+using Kaleido.Exceptions;
 using Kaleido.Observability;
 using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
@@ -106,7 +107,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
             if (query is not IQueryable<TView> typedQuery)
             {
-                throw new InvalidOperationException(
+                throw new KaleidoFrameworkException(
                     $"Direct query for context '{typeof(TQueryContext).FullName}' requires result type '{typeof(TView).FullName}' to match the query context type.");
             }
 
@@ -245,7 +246,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             return syncView.CreateView(query, executionContext);
         }
 
-        throw new InvalidOperationException(
+        throw new KaleidoFrameworkException(
             $"Query view '{viewRegistration.QueryViewType.FullName}' must implement " +
             $"'{typeof(IQueryViewSource<TQueryContext, TView, TViewParameters>).FullName}' or " +
             $"'{typeof(IQueryViewSourceAsync<TQueryContext, TView, TViewParameters>).FullName}'.");

@@ -1,4 +1,5 @@
-﻿using Kaleido.Queryable.Metadata;
+﻿using Kaleido.Queryable.Exceptions;
+using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Query;
 
@@ -21,8 +22,9 @@ public sealed record QueryExecutionContext
             return parameters;
         }
 
-        throw new InvalidOperationException(
-            $"Query view parameters were provided as '{Request.ViewParameters.GetType().Name}', " +
-            $"but '{typeof(TViewParameters).Name}' was expected.");
+        throw new InvalidParameterTypeException(
+            "ViewParameters",
+            typeof(TViewParameters),
+            Request.ViewParameters.GetType());
     }
 }

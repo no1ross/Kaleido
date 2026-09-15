@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Registry;
+﻿using Kaleido.Exceptions;
+using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.AspNetCore.Contracts;
 
@@ -36,7 +37,7 @@ public static class ProcessExecutionResponseFactory
                     .Select(stepName =>
                         ProcessContractMapper.ToSummary(
                             registry.Find(stepName)
-                                ?? throw new InvalidOperationException(
+                                ?? throw new KaleidoFrameworkException(
                                     $"Available step '{stepName}' was not found in the local registry."),
                             serviceName))
                     .ToArray(),
@@ -104,7 +105,7 @@ public static class StepExecutionResponseFactory
                     .Select(stepName =>
                         ProcessContractMapper.ToSummary(
                             registry.Find(stepName)
-                                ?? throw new InvalidOperationException(
+                                ?? throw new KaleidoFrameworkException(
                                     $"Available step '{stepName}' was not found in the local registry."),
                             serviceName))
                     .ToList(),

@@ -1,4 +1,5 @@
 using Kaleido.Observability;
+using Kaleido.Process.AspNetCore.Client;
 using Kaleido.Process.Registry;
 using Moq.Protected;
 
@@ -128,7 +129,7 @@ public sealed class KaleidoProcessClientTests
         correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext());
         var client = new KaleidoProcessClient(httpClient, correlation.Object);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<KaleidoProcessClientException>(
             () => client.GetRegistryAsync());
     }
 
@@ -161,7 +162,7 @@ public sealed class KaleidoProcessClientTests
     {
         var (client, _) = CreateClient();
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAsync<KaleidoProcessClientException>(
             () => client.GetStepMetadataAsync("NoSuchStep"));
 
         Assert.Contains("NoSuchStep", ex.Message);
@@ -271,7 +272,7 @@ public sealed class KaleidoProcessClientTests
     {
         var (client, _) = CreateClient();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<KaleidoProcessClientException>(
             () => client.ExecuteStepAsync(new UnknownTypeForTest()));
     }
 

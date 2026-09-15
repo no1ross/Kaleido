@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Kaleido.Exceptions;
+using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Process.Planning;
 
@@ -25,7 +26,7 @@ internal sealed class StepCandidateValidator : IStepCandidateValidator
     {
         if (candidate.Step is null)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Candidate '{candidate.StepName}' does not contain a hydrated step.");
         }
 

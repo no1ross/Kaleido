@@ -1,3 +1,4 @@
+using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Query;
 using System.Globalization;
 using System.Linq.Expressions;
@@ -591,7 +592,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
     {
         if (values.Count < 2)
         {
-            throw new InvalidOperationException(
+            throw new InvalidFilterNodeException(
                 "Between and NotBetween require exactly two values.");
         }
 
@@ -673,7 +674,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
     {
         if (condition.Values.Count <= index)
         {
-            throw new InvalidOperationException(
+            throw new InvalidFilterNodeException(
                 $"Filter operator '{condition.Operator}' requires a value at index {index}.");
         }
 
@@ -721,8 +722,10 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         {
             if (!CanBeNull(targetType))
             {
-                throw new InvalidOperationException(
-                    $"Value for non-nullable type '{targetType.Name}' cannot be null.");
+                throw new InvalidFilterValueException(
+                    targetType.Name,
+                    null,
+                    targetType);
             }
 
             return null;
@@ -758,8 +761,10 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 CultureInfo.InvariantCulture);
         }
 
-        throw new InvalidOperationException(
-            $"Value type '{actualType.Name}' is not assignable to expected type '{expectedType.Name}'.");
+        throw new InvalidFilterValueException(
+            expectedType.Name,
+            value,
+            expectedType);
     }
 
     private static Expression ToLower(

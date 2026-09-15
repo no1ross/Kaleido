@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
@@ -152,7 +153,7 @@ internal sealed class QueryableService : IQueryableService
 
         if (result is not Task<QueryResult<TView>> typedTask)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Query execution for view '{viewRegistration.QueryViewType.FullName}' " +
                 $"did not return '{typeof(QueryResult<TView>).FullName}'.");
         }
@@ -185,7 +186,7 @@ internal sealed class QueryableService : IQueryableService
 
         if (result is not Task<QueryResult<TView>> typedTask)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Direct query execution for context '{contextRegistration.ContextType.FullName}' " +
                 $"did not return '{typeof(QueryResult<TView>).FullName}'.");
         }
@@ -274,7 +275,7 @@ internal sealed class QueryableService : IQueryableService
 
         if (result is not Task<QueryResult<TView>> typedTask)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Delegated query execution for view '{viewRegistration.QueryViewType.FullName}' did not return '{typeof(QueryResult<TView>).FullName}'.");
         }
 
@@ -288,7 +289,7 @@ internal sealed class QueryableService : IQueryableService
     {
         if (viewRegistration.QueryViewType != typeof(TQueryView))
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Delegated query view registration mismatch. Requested query view " +
                 $"'{typeof(TQueryView).FullName}', but registration contains " +
                 $"'{viewRegistration.QueryViewType.FullName}'.");
@@ -296,7 +297,7 @@ internal sealed class QueryableService : IQueryableService
 
         if (viewRegistration.ViewType != typeof(TView))
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Delegated query view '{viewRegistration.QueryViewType.FullName}' returns " +
                 $"'{viewRegistration.ViewType.FullName}', but query requested " +
                 $"'{typeof(TView).FullName}'.");
@@ -310,7 +311,7 @@ internal sealed class QueryableService : IQueryableService
     {
         if (viewRegistration.QueryViewType != typeof(TQueryView))
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Query view registration mismatch. Requested query view " +
                 $"'{typeof(TQueryView).FullName}', but registration contains " +
                 $"'{viewRegistration.QueryViewType.FullName}'.");
@@ -318,7 +319,7 @@ internal sealed class QueryableService : IQueryableService
 
         if (viewRegistration.ViewType != typeof(TView))
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Query view '{viewRegistration.QueryViewType.FullName}' returns " +
                 $"'{viewRegistration.ViewType.FullName}', but query requested " +
                 $"'{typeof(TView).FullName}'.");
@@ -326,7 +327,7 @@ internal sealed class QueryableService : IQueryableService
 
         if (viewRegistration.QueryContextType is null)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Query view '{viewRegistration.QueryViewType.FullName}' does not define a query context type.");
         }
     }
@@ -338,13 +339,13 @@ internal sealed class QueryableService : IQueryableService
     {
         if (contextRegistration.Metadata.Kind != QueryContextKind.Direct)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Query context '{contextRegistration.ContextType.FullName}' does not allow direct query.");
         }
 
         if (contextRegistration.ContextType != typeof(TQueryView))
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Query context registration mismatch. Requested query context " +
                 $"'{typeof(TQueryView).FullName}', but registration contains " +
                 $"'{contextRegistration.ContextType.FullName}'.");
@@ -352,7 +353,7 @@ internal sealed class QueryableService : IQueryableService
 
         if (contextRegistration.ContextType != typeof(TView))
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 $"Direct query for context '{contextRegistration.ContextType.FullName}' must return " +
                 $"the same type, but query requested '{typeof(TView).FullName}'.");
         }

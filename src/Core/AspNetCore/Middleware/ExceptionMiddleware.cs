@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Kaleido.Exceptions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.AspNetCore.Middleware
@@ -36,6 +37,21 @@ namespace Kaleido.AspNetCore.Middleware
                     new KaleidoErrorResponse(
                     [
                         new KaleidoError("argument_error", exception.Message)
+                    ]));
+            }
+            catch (KaleidoFrameworkException exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Kaleido framework integrity violation.");
+
+                context.Response.StatusCode =
+                    StatusCodes.Status500InternalServerError;
+
+                await context.Response.WriteAsJsonAsync(
+                    new KaleidoErrorResponse(
+                    [
+                        new KaleidoError("framework_error", exception.Message)
                     ]));
             }
             catch (InvalidOperationException exception)
