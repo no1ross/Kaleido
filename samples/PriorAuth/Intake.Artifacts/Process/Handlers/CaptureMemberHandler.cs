@@ -1,5 +1,5 @@
 using Kaleido.Process.Execution;
-using Kaleido.Queryable.AspNetCore.Client;
+using Kaleido.Queryable.Http.Client;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;
 using Kaleido.Samples.PriorAuth.Intake.Data;

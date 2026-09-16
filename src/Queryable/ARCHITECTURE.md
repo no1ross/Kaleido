@@ -13,7 +13,7 @@ The code for Queryable is split into four projects:
 - [`Abstractions`](./Abstractions)
 - [`Queryable`](./Queryable)
 - [`AspNetCore`](./AspNetCore)
-- [`AspNetCore.Client`](./AspNetCore.Client)
+- [`Http.Client`](./Http.Client)
 
 ---
 
@@ -69,7 +69,7 @@ Examples:
 - [`QueryableEndpointRouteBuilderExtensions`](./AspNetCore/QueryableEndpointRouteBuilderExtensions.cs)
 - [`QueryableValueNormalizer`](./AspNetCore/QueryableValueNormalizer.cs)
 
-### [`AspNetCore.Client`](./AspNetCore.Client)
+### [`Http.Client`](./Http.Client)
 Contains an HTTP client for consuming Queryable query endpoints published by `AspNetCore`. Registered via `.AddQueryableClient(name, baseUrl)` on the Kaleido builder.
 
 Contains:
@@ -80,8 +80,8 @@ Contains:
 - `KaleidoQueryableClientServiceCollectionExtensions` — builder extension
 
 Examples:
-- [`IKaleidoQueryableClient`](./AspNetCore.Client/IKaleidoQueryableClient.cs)
-- [`IKaleidoQueryableClientFactory`](./AspNetCore.Client/IKaleidoQueryableClientFactory.cs)
+- [`IKaleidoQueryableClient`](./Http.Client/IKaleidoQueryableClient.cs)
+- [`IKaleidoQueryableClientFactory`](./Http.Client/IKaleidoQueryableClientFactory.cs)
 
 ---
 
@@ -579,8 +579,8 @@ Implementation: [`QueryableValueNormalizer`](./AspNetCore/QueryableValueNormaliz
 ### Error behavior
 Validation exceptions are converted into `400 Bad Request` responses with [`QueryErrorResponse`](./AspNetCore/Contracts/QueryErrorResponse.cs).
 
-### HTTP client (`AspNetCore.Client`)
-`AspNetCore.Client` provides `IKaleidoQueryableClientFactory` for consuming remote Queryable endpoints.
+### HTTP client (`Http.Client`)
+`Http.Client` provides `IKaleidoQueryableClientFactory` for consuming remote Queryable endpoints.
 
 Register a named client on the Kaleido builder:
 

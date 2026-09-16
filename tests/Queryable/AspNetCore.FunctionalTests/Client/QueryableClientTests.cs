@@ -1,4 +1,4 @@
-using Kaleido.Queryable.AspNetCore.Client;
+using Kaleido.Queryable.Http.Client;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
 

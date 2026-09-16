@@ -96,7 +96,8 @@ builder.Services.AddKaleido(builder.Configuration)
         .UseSqliteProcessContextStore(processConnectionString)
     .AddQueryable()
         .AddQueryableAspNetCore()
-    .AddKaleidoClients("Member", "CodeSet", "Configuration", "Radiology", "History", "Provider");
+    .AddProcessClients("Member", "Radiology", "History")
+    .AddQueryableClients("Member", "CodeSet", "Configuration", "History", "Provider");
 
 var app = builder.Build();
 

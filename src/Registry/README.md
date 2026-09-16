@@ -106,9 +106,9 @@ A non-empty `ClientErrors` collection means the response is **partial**: one or 
 
 ## Dependency model
 
-Registry references only the `AspNetCore.Client` projects for both Process and Queryable. It does not reference `Process/AspNetCore` or `Queryable/AspNetCore` (the server projects). The internal client route-option maps (`KaleidoProcessClientRouteOptionsMap`, `KaleidoQueryableClientRouteOptionsMap`) are accessed via `InternalsVisibleTo` granted from those assemblies.
+Registry references only the `Http.Client` projects for both Process and Queryable. It does not reference `Process/AspNetCore` or `Queryable/AspNetCore` (the server projects). The internal client route-option maps (`KaleidoProcessClientRouteOptionsMap`, `KaleidoQueryableClientRouteOptionsMap`) are accessed via `InternalsVisibleTo` granted from those assemblies.
 
-`ProcessorRegistryResponseFactory` lives in `Process/AspNetCore.Abstractions`. `QueryableRecordResponse.FromRegistryItem` and `QueryableRouteOptions` live in `Queryable/AspNetCore.Abstractions` and `Queryable/Abstractions` respectively — both are reachable transitively through `Queryable/AspNetCore.Client`. Registry does not need a direct reference to the full server projects.
+`ProcessorRegistryResponseFactory` lives in `Process/AspNetCore.Abstractions`. `QueryableRecordResponse.FromRegistryItem` and `QueryableRouteOptions` live in `Queryable/AspNetCore.Abstractions` and `Queryable/Abstractions` respectively — both are reachable transitively through `Queryable/Http.Client`. Registry does not need a direct reference to the full server projects.
 
 ---
 

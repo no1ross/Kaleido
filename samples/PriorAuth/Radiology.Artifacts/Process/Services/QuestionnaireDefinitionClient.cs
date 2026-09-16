@@ -1,4 +1,4 @@
-using Kaleido.Queryable.AspNetCore.Client;
+using Kaleido.Queryable.Http.Client;
 using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Samples.PriorAuth.Configuration;
 using Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Parameters;

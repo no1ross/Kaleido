@@ -6,7 +6,7 @@ See also:
 - [`../README.md`](../README.md)
 - [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
 - [`../AspNetCore/README.md`](../AspNetCore/README.md)
-- [`../AspNetCore.Client/README.md`](../AspNetCore.Client/README.md)
+- [`../Http.Client/README.md`](../Http.Client/README.md)
 
 ## What lives here
 
@@ -30,7 +30,7 @@ Reference this project when you need to:
 
 `Process.AspNetCore` is the server-side project. It references this project and uses these types to shape its endpoint inputs and outputs.
 
-`Process.AspNetCore.Client` is the HTTP client project. It also references this project to deserialize responses from remote process endpoints.
+`Process.Http.Client` is the HTTP client project. It also references this project to deserialize responses from remote process endpoints.
 
 The split exists so client code does not inherit a hard dependency on `Microsoft.AspNetCore.App`.
 

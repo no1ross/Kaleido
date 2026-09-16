@@ -7,7 +7,7 @@ It is organized into four main projects:
 - [`Abstractions`](./Abstractions/README.md) — public step attributes, processor request/result contracts, handler interfaces, durable state contracts, registry contracts, event contracts, and shared observability constants
 - [`Process`](./Process/README.md) — runtime registration, step registry construction, planning, execution, state mutation, persistence integration, and observability
 - [`AspNetCore`](./AspNetCore/README.md) — HTTP request/response contracts, route publishing, execution/state endpoints, and transport adaptation
-- `AspNetCore.Client` — typed HTTP client for calling a remote processor's registry, execution, and state endpoints; used by hosts that delegate to downstream processors
+- [`Http.Client`](./Http.Client/README.md) — typed HTTP client for calling a remote processor's registry, execution, and state endpoints; used by hosts that delegate to downstream processors
 
 For the full subsystem model, see:
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md)

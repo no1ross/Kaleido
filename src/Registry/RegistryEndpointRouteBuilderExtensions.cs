@@ -1,10 +1,10 @@
 using Kaleido.Exceptions;
 using Kaleido.Process.AspNetCore;
 using Kaleido.Process.AspNetCore.Contracts;
-using Kaleido.Process.AspNetCore.Client;
+using Kaleido.Process.Http.Client;
 using Kaleido.Process.Registry;
 using Kaleido.Queryable;
-using Kaleido.Queryable.AspNetCore.Client;
+using Kaleido.Queryable.Http.Client;
 using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Query;
 using Microsoft.AspNetCore.Builder;

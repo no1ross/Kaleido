@@ -10,8 +10,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="../../../src/Process/AspNetCore.Client/Kaleido.Process.AspNetCore.Client.csproj" />
-		<ProjectReference Include="../../../src/Queryable/AspNetCore.Client/Kaleido.Queryable.AspNetCore.Client.csproj" />
+		<ProjectReference Include="../../../src/Process/Http.Client/Kaleido.Process.Http.Client.csproj" />
+		<ProjectReference Include="../../../src/Queryable/Http.Client/Kaleido.Queryable.Http.Client.csproj" />
 		<ProjectReference Include="../Common/Kaleido.Samples.PriorAuth.Common.csproj" />
 	</ItemGroup>
 

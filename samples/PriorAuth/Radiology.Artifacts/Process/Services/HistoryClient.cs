@@ -1,4 +1,4 @@
-using Kaleido.Process.AspNetCore.Client;
+using Kaleido.Process.Http.Client;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;
 using Microsoft.Extensions.Logging;
 

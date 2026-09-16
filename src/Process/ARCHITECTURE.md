@@ -10,7 +10,7 @@ The code for Process is split into five projects:
 - [`Process`](./Process)
 - [`AspNetCore`](./AspNetCore)
 - [`AspNetCore.Abstractions`](./AspNetCore.Abstractions)
-- [`AspNetCore.Client`](./AspNetCore.Client)
+- [`Http.Client`](./Http.Client)
 
 ---
 
@@ -79,7 +79,7 @@ Examples:
 - [`ProcessStepInfo`](./AspNetCore.Abstractions/Contracts/ProcessStepInfo.cs)
 - [`ProcessStepResponse`](./AspNetCore.Abstractions/Contracts/ProcessStepResponse.cs)
 
-### [`AspNetCore.Client`](./AspNetCore.Client)
+### [`Http.Client`](./Http.Client)
 Contains an HTTP client for consuming process step execution endpoints published by `AspNetCore`. Registered via `.AddProcessClient(name, baseUrl)` on the Kaleido builder.
 
 Contains:
@@ -90,8 +90,8 @@ Contains:
 - `KaleidoProcessClientServiceCollectionExtensions` — builder extension
 
 Examples:
-- [`IKaleidoProcessClient`](./AspNetCore.Client/IKaleidoProcessClient.cs)
-- [`IKaleidoProcessClientFactory`](./AspNetCore.Client/IKaleidoProcessClientFactory.cs)
+- [`IKaleidoProcessClient`](./Http.Client/IKaleidoProcessClient.cs)
+- [`IKaleidoProcessClientFactory`](./Http.Client/IKaleidoProcessClientFactory.cs)
 
 ---
 
@@ -551,8 +551,8 @@ See [`ProcessStepInfo.cs`](./AspNetCore.Abstractions/Contracts/ProcessStepInfo.c
 ### Header behavior
 The execution service writes the resolved `ProcessId` into the response headers so clients can continue the same process instance in later requests.
 
-### HTTP client (`AspNetCore.Client`)
-`AspNetCore.Client` provides `IKaleidoProcessClientFactory` for consuming remote process endpoints.
+### HTTP client (`Http.Client`)
+`Http.Client` provides `IKaleidoProcessClientFactory` for consuming remote process endpoints.
 
 Register a named client on the Kaleido builder:
 

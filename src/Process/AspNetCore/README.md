@@ -8,7 +8,7 @@ See also:
 - [`../Process/README.md`](../Process/README.md)
 - [`../Abstractions/README.md`](../Abstractions/README.md)
 - [`../AspNetCore.Abstractions/README.md`](../AspNetCore.Abstractions/README.md)
-- [`../AspNetCore.Client/README.md`](../AspNetCore.Client/README.md)
+- [`../Http.Client/README.md`](../Http.Client/README.md)
 
 ## What lives here
 

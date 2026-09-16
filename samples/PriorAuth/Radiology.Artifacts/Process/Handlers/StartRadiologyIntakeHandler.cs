@@ -1,6 +1,6 @@
 using Kaleido.Process;
 using Kaleido.Process.Execution;
-using Kaleido.Queryable.AspNetCore.Client;
+using Kaleido.Queryable.Http.Client;
 using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Kaleido.Samples.PriorAuth.Radiology;

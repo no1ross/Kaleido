@@ -84,7 +84,7 @@ builder.Services.AddKaleido(builder.Configuration)
     .AddAssembly(typeof(ProviderSearchDbContext).Assembly)
     .AddQueryable()
         .AddQueryableAspNetCore()
-    .AddKaleidoClients("ReferenceData");
+    .AddQueryableClients("ReferenceData");
 
 var app = builder.Build();
 

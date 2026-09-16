@@ -1,7 +1,7 @@
-using Kaleido.Process.AspNetCore.Client;
+using Kaleido.Process.Http.Client;
 using Kaleido.Process.Execution;
 using Kaleido.Process;
-using Kaleido.Queryable.AspNetCore.Client;
+using Kaleido.Queryable.Http.Client;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.Configuration;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;

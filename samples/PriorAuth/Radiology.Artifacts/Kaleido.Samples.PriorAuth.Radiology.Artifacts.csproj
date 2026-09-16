@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<Import Project="../../../build/samples.props" />
 	<PropertyGroup>
 		<RootNamespace>Kaleido.Samples.PriorAuth.Radiology</RootNamespace>
@@ -10,8 +10,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="../../../src/Queryable/AspNetCore.Client/Kaleido.Queryable.AspNetCore.Client.csproj" />
-		<ProjectReference Include="../../../src/Process/AspNetCore.Client/Kaleido.Process.AspNetCore.Client.csproj" />
+		<ProjectReference Include="../../../src/Queryable/Http.Client/Kaleido.Queryable.Http.Client.csproj" />
+		<ProjectReference Include="../../../src/Process/Http.Client/Kaleido.Process.Http.Client.csproj" />
 		<ProjectReference Include="../CodeSet.Artifacts/Kaleido.Samples.PriorAuth.CodeSet.Artifacts.csproj" />
 		<ProjectReference Include="../Configuration.Artifacts/Kaleido.Samples.PriorAuth.Configuration.Artifacts.csproj" />
 		<ProjectReference Include="../History.Artifacts/Kaleido.Samples.PriorAuth.History.Artifacts.csproj" />
