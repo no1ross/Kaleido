@@ -1,6 +1,5 @@
 ﻿using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
-using Kaleido.Queryable.Shared;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.SQLite;

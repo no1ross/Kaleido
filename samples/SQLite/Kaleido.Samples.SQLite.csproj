@@ -9,7 +9,17 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\shared\Kaleido.Queryable.Shared\Kaleido.Queryable.Shared.csproj" />
+		<None Remove="functional-records.csv" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="functional-records.csv">
+			<Link>data\functional-records.csv</Link>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
 	  <ProjectReference Include="..\..\src\Queryable\AspNetCore\Kaleido.Queryable.AspNetCore.csproj" />
 	</ItemGroup>
 
