@@ -1,9 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<Import Project="../../../build/tests.props" />
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.0" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.*" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.*" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.*" />
 	</ItemGroup>
 	
 	<ItemGroup>

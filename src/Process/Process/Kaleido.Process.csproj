@@ -2,7 +2,7 @@
 	<Import Project="../../../build/packages.props" />
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.*" />
 	</ItemGroup>
 
 	<ItemGroup>

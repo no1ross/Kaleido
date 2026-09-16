@@ -2,12 +2,11 @@
 	<Import Project="../../../build/packages.props" />
 
 	<ItemGroup>
-	  <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+	  <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.*" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\Core\Abstractions\Kaleido.Abstractions.csproj" />
-	  <ProjectReference Include="..\..\Core\Kaleido\Kaleido.csproj" />
 	  <ProjectReference Include="..\AspNetCore.Abstractions\Kaleido.Process.AspNetCore.Abstractions.csproj" />
 	</ItemGroup>
 
