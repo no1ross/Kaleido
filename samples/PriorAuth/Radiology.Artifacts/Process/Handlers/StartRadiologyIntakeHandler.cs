@@ -186,14 +186,22 @@ public sealed class StartRadiologyIntakeHandler(
                 },
                 cancellationToken);
 
-            // --- Return result based on modality ---
+            // --- Return result based on member presence and modality ---
 
             var messages = new List<ProcessMessage>();
+
+            // If no member provided, return CaptureMember regardless of modality
             if (!processStep.MemberId.HasValue || !processStep.MemberEnrollmentId.HasValue)
             {
                 messages.Add(RadiologyProcessMessages.MemberInfoNotProvided());
+                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success(
+                    new StartRadiologyIntakeResponse(),
+                    requiredStep: nameof(CaptureMemberStep).Replace("Step", string.Empty),
+                    targetProcessorName: null,
+                    messages: messages.ToArray());
             }
 
+            // Member is present, handle modality-specific routing
             return modality switch
             {
                 ProcedureModality.Mri =>
@@ -209,9 +217,12 @@ public sealed class StartRadiologyIntakeHandler(
                         messages,
                         cancellationToken),
                 _ =>
-                    ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success(
+                    ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
                         new StartRadiologyIntakeResponse(),
-                        messages: messages.ToArray())
+                        RadiologyProcessMessages.ModalityNotSupported(
+                            procedureCode.CodeSystem,
+                            procedureCode.CodeValue,
+                            modality))
             };
 
             async Task<ProcessStepHandlerResult<StartRadiologyIntakeResponse>> CreateMriResponseAsync(

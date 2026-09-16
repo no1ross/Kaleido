@@ -6,6 +6,8 @@ internal sealed class ConfigurationSeedAssets
 {
     public required List<ProcedureModalityRule> ProcedureModalityRules { get; init; }
 
+    public required List<ProductCodeMapping> ProductCodeMappings { get; init; }
+
     public required List<MriProcedureCodeRule> MriProcedureCodeRules { get; init; }
 
     public required List<QuestionnaireDefinition> QuestionnaireDefinitions { get; init; }

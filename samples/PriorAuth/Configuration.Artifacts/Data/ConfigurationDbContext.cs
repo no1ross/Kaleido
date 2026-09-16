@@ -8,6 +8,8 @@ public sealed class ConfigurationDbContext(
 {
     public DbSet<ProcedureModalityRule> ProcedureModalityRules => Set<ProcedureModalityRule>();
 
+    public DbSet<ProductCodeMapping> ProductCodeMappings => Set<ProductCodeMapping>();
+
     public DbSet<MriProcedureCodeRule> MriProcedureCodeRules => Set<MriProcedureCodeRule>();
 
     public DbSet<QuestionnaireDefinition> QuestionnaireDefinitions => Set<QuestionnaireDefinition>();

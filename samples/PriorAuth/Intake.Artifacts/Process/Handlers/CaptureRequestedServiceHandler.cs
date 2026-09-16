@@ -3,7 +3,6 @@ using Kaleido.Process.Execution;
 using Kaleido.Process;
 using Kaleido.Queryable.Http.Client;
 using Kaleido.Samples.PriorAuth;
-using Kaleido.Samples.PriorAuth.Configuration;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
@@ -12,15 +11,13 @@ using Kaleido.Samples.PriorAuth.Intake.Process.Services;
 using Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Handlers;
 
 public sealed class CaptureRequestedServiceHandler(
     IntakeDbContext dbContext,
     ProcedureCodeClient procedureCodeClient,
-    ProcedureModalityClient procedureModalityClient,
-    IConfiguration configuration,
+    ProductCodeMappingClient productCodeMappingClient,
     IKaleidoProcessClientFactory processClientFactory,
     HistoryClient historyClient)
     : IProcessStepHandler<Intake.Process.Steps.CaptureRequestedServiceStep>
@@ -46,19 +43,18 @@ public sealed class CaptureRequestedServiceHandler(
                         processStep.CodeValue));
             }
 
-            var modality =
-                await procedureModalityClient.DetermineModalityAsync(
+            var processorName =
+                await productCodeMappingClient.GetProcessorNameAsync(
                     procedureCode.CodeValue,
                     procedureCode.CodeSystem,
                     cancellationToken);
 
-            var processorName =
-                configuration[$"ProcessorMappings:{modality}"];
-
             if (string.IsNullOrWhiteSpace(processorName))
             {
                 return ProcessStepHandlerResult.Failure(
-                    IntakeProcessMessages.ProcessorNotFound(modality));
+                    IntakeProcessMessages.ProcessorNotFoundForCode(
+                        procedureCode.CodeSystem,
+                        procedureCode.CodeValue));
             }
 
             var session =

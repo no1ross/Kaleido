@@ -1,5 +1,7 @@
 using Kaleido.Process;
 using Kaleido.Samples.PriorAuth.Configuration;
+using Kaleido.Samples.PriorAuth;
+using Kaleido.Samples.PriorAuth.CodeSet;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Messages;
 
@@ -104,5 +106,16 @@ public static class RadiologyProcessMessages
             Code = "MEMBER_INFO_NOT_PROVIDED",
             Type = MessageType.Information,
             Message = "Member information was not provided. Member capture will be required before proceeding."
+        };
+
+    public static ProcessMessage ModalityNotSupported(
+        ProcedureCodeSystem codeSystem,
+        string codeValue,
+        ProcedureModality modality) =>
+        new()
+        {
+            Code = "MODALITY_NOT_SUPPORTED",
+            Type = MessageType.Error,
+            Message = $"Procedure code '{codeSystem}:{codeValue}' has modality '{modality}' which is not supported by the Radiology processor."
         };
 }

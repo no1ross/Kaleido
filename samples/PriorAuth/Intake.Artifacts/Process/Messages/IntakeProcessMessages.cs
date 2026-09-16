@@ -57,6 +57,16 @@ public static class IntakeProcessMessages
             Message = $"No processor is configured for procedure modality '{modality}'. Unable to determine which service should handle this prior authorization request."
         };
 
+    public static ProcessMessage ProcessorNotFoundForCode(
+        ProcedureCodeSystem codeSystem,
+        string codeValue) =>
+        new()
+        {
+            Code = "PROCESSOR_NOT_FOUND_FOR_CODE",
+            Type = MessageType.Error,
+            Message = $"No processor is configured for procedure code '{codeSystem}:{codeValue}'. Unable to determine which service should handle this prior authorization request."
+        };
+
     public static ProcessMessage QueryableRequestFailed(
         string code,
         string message) =>

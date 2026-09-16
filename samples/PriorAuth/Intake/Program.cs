@@ -66,7 +66,7 @@ builder.Services.AddDbContext<IntakeDbContext>(
 
 builder.Services.AddScoped<MemberDetailsClient>();
 builder.Services.AddScoped<ProcedureCodeClient>();
-builder.Services.AddScoped<ProcedureModalityClient>();
+builder.Services.AddScoped<ProductCodeMappingClient>();
 builder.Services.AddScoped<HistoryClient>();
 
 builder.Services.AddControllers();

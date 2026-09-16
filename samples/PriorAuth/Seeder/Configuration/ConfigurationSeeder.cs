@@ -31,6 +31,7 @@ internal sealed class ConfigurationSeeder(
         var assets = LoadAssets();
 
         dbContext.ProcedureModalityRules.AddRange(assets.ProcedureModalityRules);
+        dbContext.ProductCodeMappings.AddRange(assets.ProductCodeMappings);
         dbContext.MriProcedureCodeRules.AddRange(assets.MriProcedureCodeRules);
         dbContext.QuestionnaireDefinitions.AddRange(assets.QuestionnaireDefinitions);
 
@@ -45,6 +46,7 @@ internal sealed class ConfigurationSeeder(
         return new ConfigurationSeedAssets
         {
             ProcedureModalityRules = jsonAssetLoader.Load<List<ProcedureModalityRule>>(Path.Combine(basePath, "procedure-modality-rules.json"), enumOptions),
+            ProductCodeMappings = jsonAssetLoader.Load<List<ProductCodeMapping>>(Path.Combine(basePath, "product-code-mappings.json"), enumOptions),
             MriProcedureCodeRules = jsonAssetLoader.Load<List<MriProcedureCodeRule>>(Path.Combine(basePath, "mri-procedure-code-rules.json"), enumOptions),
             QuestionnaireDefinitions = jsonAssetLoader.Load<List<QuestionnaireDefinition>>(Path.Combine(basePath, "questionnaire-definitions.json"), enumOptions)
         };

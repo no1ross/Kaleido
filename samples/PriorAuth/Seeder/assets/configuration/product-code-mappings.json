@@ -1,0 +1,50 @@
+[
+  {
+    "ProductCodeMappingId": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+    "CodeValue": "70450",
+    "CodeSystem": "Cpt",
+    "ProcessorName": "radiology"
+  },
+  {
+    "ProductCodeMappingId": "b2c3d4e5-f6a7-4b5c-9d0e-1f2a3b4c5d6e",
+    "CodeValue": "70486",
+    "CodeSystem": "Cpt",
+    "ProcessorName": "radiology"
+  },
+  {
+    "ProductCodeMappingId": "c3d4e5f6-a7b8-4c5d-0e1f-2a3b4c5d6e7f",
+    "CodeValue": "72141",
+    "CodeSystem": "Cpt",
+    "ProcessorName": "radiology"
+  },
+  {
+    "ProductCodeMappingId": "d4e5f6a7-b8c9-4d5e-1f2a-3b4c5d6e7f8a",
+    "CodeValue": "72158",
+    "CodeSystem": "Cpt",
+    "ProcessorName": "radiology"
+  },
+  {
+    "ProductCodeMappingId": "e5f6a7b8-c9d0-4e5f-2a3b-4c5d6e7f8a9b",
+    "CodeValue": "73721",
+    "CodeSystem": "Cpt",
+    "ProcessorName": "radiology"
+  },
+  {
+    "ProductCodeMappingId": "f6a7b8c9-d0e1-4f6a-3b4c-5d6e7f8a9b0c",
+    "CodeValue": "73723",
+    "CodeSystem": "Cpt",
+    "ProcessorName": "radiology"
+  },
+  {
+    "ProductCodeMappingId": "a7b8c9d0-e1f2-4a6b-9c0d-1e2f3a4b5c6d",
+    "CodeValue": "70555",
+    "CodeSystem": "Cpt",
+    "ProcessorName": "radiology"
+  },
+  {
+    "ProductCodeMappingId": "b8c9d0e1-f2a3-4b7c-0d1e-2f3a4b5c6d7e",
+    "CodeValue": "70551",
+    "CodeSystem": "Cpt",
+    "ProcessorName": "radiology"
+  }
+]
