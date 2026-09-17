@@ -98,19 +98,13 @@ public sealed record ProcessorStepResult
         init;
     }
 
-    public StepExecutionStatus? ExecutionStatus
+    public StepExecutionStatus ExecutionStatus
     {
         get;
         init;
     }
 
-    public ExecutionDecisionType? Decision
-    {
-        get;
-        init;
-    }
-
-    public StepExecutionOutcome? Outcome
+    public StepExecutionOutcome Outcome
     {
         get;
         init;

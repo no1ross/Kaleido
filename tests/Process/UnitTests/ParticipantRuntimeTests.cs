@@ -600,7 +600,6 @@ public sealed class ProcessorRuntimeTests
         Assert.Equal("step-a", step.StepName);
         Assert.Equal(StepCandidateStatus.Built, step.CandidateStatus);
         Assert.Equal(StepExecutionStatus.Completed, step.ExecutionStatus);
-        Assert.Equal(ExecutionDecisionType.Complete, step.Decision);
 
         Assert.Equal(
             2,

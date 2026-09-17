@@ -103,7 +103,7 @@ public record StepExecutionResponse
         init;
     }
 
-    public StepExecutionOutcome? Outcome
+    public StepExecutionOutcome Outcome
     {
         get;
         init;

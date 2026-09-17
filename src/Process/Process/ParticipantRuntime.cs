@@ -235,13 +235,10 @@ internal sealed class ProcessorRuntime
                             Response = outcome?.Response,
 
                             ExecutionStatus =
-                                outcome?.Status,
+                                outcome?.Status ?? StepExecutionStatus.Pending,
 
-                            Decision =
-                                outcome?.Decision,
-
-                            Outcome = 
-                                outcome?.Outcome,
+                            Outcome =
+                                outcome?.Outcome ?? StepExecutionOutcome.Pending,
 
                             RuntimeMessages =
                                 MergeMessages(

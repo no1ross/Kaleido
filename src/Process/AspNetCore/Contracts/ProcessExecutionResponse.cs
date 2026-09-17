@@ -45,7 +45,7 @@ public static class ProcessExecutionResponseFactory
             Results =
                 processResult.Steps
                     .Where(x =>
-                        x.ExecutionStatus is not null ||
+                        x.ExecutionStatus != StepExecutionStatus.Pending ||
                         x.RuntimeMessages.Count > 0 ||
                         x.BusinessMessages.Count > 0)
                     .Select(x =>
@@ -142,6 +142,9 @@ public static class StepExecutionResponseFactory
 
             TargetProcessorName =
                 response.TargetProcessorName,
+
+            Outcome =
+                response.Outcome,
 
             AvailableSteps =
                 response.AvailableSteps,

@@ -92,7 +92,7 @@ internal sealed class ProcessExecutionService : IProcessExecutionService
                     x.StepName.Equals(
                         stepName,
                         StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(x => x.ExecutionStatus is not null)
+                .OrderByDescending(x => x.ExecutionStatus != StepExecutionStatus.Pending)
                 .ThenByDescending(x => x.RuntimeMessages.Count)
                 .ThenByDescending(x => x.BusinessMessages.Count)
                 .First();
@@ -126,7 +126,7 @@ internal sealed class ProcessExecutionService : IProcessExecutionService
                     x.StepName.Equals(
                         stepName,
                         StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(x => x.ExecutionStatus is not null)
+                .OrderByDescending(x => x.ExecutionStatus != StepExecutionStatus.Pending)
                 .ThenByDescending(x => x.RuntimeMessages.Count)
                 .ThenByDescending(x => x.BusinessMessages.Count)
                 .First();
