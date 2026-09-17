@@ -260,7 +260,7 @@ public sealed class StartRadiologyIntakeHandler(
                 var questionnaire =
                     await questionnaireDefinitionClient.ResolveAsync(
                         processId,
-                        nameof(CaptureMriInfoStep).Replace("Step", string.Empty),
+                        nameof(ConfirmCtInsteadOfMriStep).Replace("Step", string.Empty),
                         ProcedureModality.Mri,
                         procedureCodeValue,
                         ct);
@@ -279,6 +279,7 @@ public sealed class StartRadiologyIntakeHandler(
         }
         catch (KaleidoQueryableClientException ex)
         {
+            Console.WriteLine($"[Radiology StartRadiologyIntake] KaleidoQueryableClientException caught for process {context.ProcessId}: {ex.Message}");
             return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
                 new StartRadiologyIntakeResponse(),
                 RadiologyProcessMessages.QueryableRequestFailed(

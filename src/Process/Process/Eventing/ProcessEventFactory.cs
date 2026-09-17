@@ -20,8 +20,7 @@ internal interface IProcessEventFactory
         ProcessorContext context,
         StepCandidate candidate,
         ProcessExecutionOutcome outcome,
-        ProcessStepInvokerResult result,
-        StepExecutionOutcome executionOutcome);
+        ProcessStepInvokerResult result);
 
     ExecutionCompleted CreateExecutionCompleted(
         ProcessorContext context,
@@ -112,8 +111,7 @@ internal sealed class ProcessEventFactory(
         ProcessorContext context,
         StepCandidate candidate,
         ProcessExecutionOutcome outcome,
-        ProcessStepInvokerResult result,
-        StepExecutionOutcome executionOutcome)
+        ProcessStepInvokerResult result)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(candidate);
@@ -134,7 +132,7 @@ internal sealed class ProcessEventFactory(
             Response = outcome.Response,
             DecisionType = outcome.Decision,
             ExecutionStatus = outcome.Status,
-            Outcome = executionOutcome,
+            Outcome = outcome.Outcome,
             BusinessMessages = outcome.BusinessMessages,
             RuntimeMessages = outcome.RuntimeMessages,
             ProcessState = context.State,

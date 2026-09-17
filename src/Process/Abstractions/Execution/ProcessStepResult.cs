@@ -15,6 +15,8 @@ public interface IProcessStepHandlerResult
 
 public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStepHandlerResult
 {
+    internal ProcessStepHandlerResult() { }
+
     public bool Succeeded { get; init; }
 
     public string? RequiredStep { get; init; }
@@ -55,11 +57,30 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
             Response = response
         };
     }
+
+    /// <summary>
+    /// Signals a successful step that hands off to a different processor.
+    /// The framework will propagate <paramref name="targetProcessorName"/> to the
+    /// HTTP response so the consumer can fetch authoritative state from the target.
+    /// </summary>
+    public static ProcessStepHandlerResult HandOff(
+        string targetProcessorName,
+        params ProcessMessage[] messages)
+    {
+        return new()
+        {
+            Succeeded = true,
+            TargetProcessorName = targetProcessorName,
+            Messages = messages
+        };
+    }
 }
 
 public record ProcessStepHandlerResult
     : IProcessStepHandlerResult
 {
+    internal ProcessStepHandlerResult() { }
+
     public bool Succeeded { get; init; }
 
     public string? RequiredStep { get; init; }
@@ -73,14 +94,12 @@ public record ProcessStepHandlerResult
 
     public static ProcessStepHandlerResult Success(
         string? requiredStep = null,
-        string? targetProcessorName = null,
         params ProcessMessage[] messages)
     {
         return new()
         {
             Succeeded = true,
             RequiredStep = requiredStep,
-            TargetProcessorName = targetProcessorName,
             Messages = messages
         };
     }
@@ -88,7 +107,7 @@ public record ProcessStepHandlerResult
     public static ProcessStepHandlerResult Success(
         params ProcessMessage[] messages)
     {
-        return Success(null, null, messages);
+        return Success(null, messages);
     }
 
     public static ProcessStepHandlerResult Failure(
@@ -114,7 +133,6 @@ public record ProcessStepHandlerResult
         {
             Succeeded = true,
             TargetProcessorName = targetProcessorName,
-            RequiredStep = null,
             Messages = messages
         };
     }

@@ -10,6 +10,7 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
 {
     private readonly HttpClient _httpClient;
     private readonly IKaleidoCorrelationContextAccessor _correlation;
+    private readonly string _callerServiceName;
     private readonly string _registryUrl;
     private readonly SemaphoreSlim _registryLock = new(1, 1);
     private IReadOnlyList<QueryableRecordResponse>? _registry;
@@ -21,6 +22,7 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
     {
         _httpClient = httpClient;
         _correlation = correlation;
+        _callerServiceName = serviceName;
         _registryUrl = QueryableContractUrls.QueryRegistry(serviceName);
     }
 
@@ -39,7 +41,7 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
         var contextRecord = registry.FirstOrDefault(
             r => string.Equals(r.Name, context, StringComparison.OrdinalIgnoreCase))
             ?? throw new KaleidoQueryableClientException(
-                $"Queryable context '{context}' was not found in the remote registry.",
+                $"{_callerServiceName} tried to call context '{context}' on the remote registry, but it was not found.",
                 HttpStatusCode.NotFound);
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Get, contextRecord.MetadataUrl);
@@ -53,12 +55,12 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
             return await response.Content.ReadFromJsonAsync<QueryableRecordResponse>(
                        cancellationToken: cancellationToken)
                    ?? throw new KaleidoQueryableClientException(
-                       $"Queryable context metadata request for '{context}' succeeded but returned no payload.",
+                       $"{_callerServiceName} tried to call context '{context}' metadata, but the request succeeded and returned no payload.",
                        response.StatusCode);
         }
 
         throw new KaleidoQueryableClientException(
-            $"Queryable context metadata request for '{context}' failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
+            $"{_callerServiceName} tried to call context '{context}' metadata, but the request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
             response.StatusCode);
     }
 
@@ -75,16 +77,16 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
         var contextRecord = registry.FirstOrDefault(
             r => string.Equals(r.Name, context, StringComparison.OrdinalIgnoreCase))
             ?? throw new KaleidoQueryableClientException(
-                $"Queryable context '{context}' was not found in the remote registry.",
+                $"{_callerServiceName} tried to call view '{view}' on context '{context}', but the context was not found in the remote registry.",
                 HttpStatusCode.NotFound);
 
         var viewRecord = contextRecord.Views.FirstOrDefault(
             v => string.Equals(v.Name, view, StringComparison.OrdinalIgnoreCase))
             ?? throw new KaleidoQueryableClientException(
-                $"View '{view}' was not found on context '{context}' in the remote registry.",
+                $"{_callerServiceName} tried to call view '{view}' on context '{context}', but the view was not found in the remote registry.",
                 HttpStatusCode.NotFound);
 
-        return await SendQueryAsync<TView>(viewRecord.QueryUrl, request, cancellationToken);
+        return await SendQueryAsync<TView>(viewRecord.QueryUrl, request, cancellationToken, context, view);
     }
 
     public async Task<QueryResult<TView>> QueryContextAsync<TView>(
@@ -98,23 +100,25 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
         var contextRecord = registry.FirstOrDefault(
             r => string.Equals(r.Name, context, StringComparison.OrdinalIgnoreCase))
             ?? throw new KaleidoQueryableClientException(
-                $"Queryable context '{context}' was not found in the remote registry.",
+                $"{_callerServiceName} tried to call context '{context}', but the context was not found in the remote registry.",
                 HttpStatusCode.NotFound);
 
         if (string.IsNullOrEmpty(contextRecord.QueryUrl))
         {
             throw new KaleidoQueryableClientException(
-                $"Queryable context '{context}' does not support direct queries (no QueryUrl). Only Direct contexts expose a query URL.",
+                $"{_callerServiceName} tried to call context '{context}', but the context does not support direct queries (no QueryUrl). Only Direct contexts expose a query URL.",
                 HttpStatusCode.NotFound);
         }
 
-        return await SendQueryAsync<TView>(contextRecord.QueryUrl, request, cancellationToken);
+        return await SendQueryAsync<TView>(contextRecord.QueryUrl, request, cancellationToken, context, null);
     }
 
     private async Task<QueryResult<TView>> SendQueryAsync<TView>(
         string url,
         object request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? context = null,
+        string? view = null)
         where TView : class
     {
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
@@ -131,7 +135,7 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
             return await response.Content.ReadFromJsonAsync<QueryResult<TView>>(
                        cancellationToken: cancellationToken)
                    ?? throw new KaleidoQueryableClientException(
-                       "Queryable request succeeded but returned no payload.",
+                       $"{_callerServiceName} tried to call {FormatTarget(context, view)}, but the request succeeded and returned no payload.",
                        response.StatusCode);
         }
 
@@ -144,14 +148,21 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
         if (errorResponse?.Errors.Count > 0)
         {
             throw new KaleidoQueryableClientException(
-                string.Join(" ", errorResponse.Errors.Select(e => e.Message)),
+                $"{_callerServiceName} tried to call {FormatTarget(context, view)}, but the request failed: {string.Join(" ", errorResponse.Errors.Select(e => e.Message))}",
                 response.StatusCode,
                 errorResponse.Errors);
         }
 
         throw new KaleidoQueryableClientException(
-            $"Queryable request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
+            $"{_callerServiceName} tried to call {FormatTarget(context, view)}, but the request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
             response.StatusCode);
+    }
+
+    private string FormatTarget(string? context, string? view)
+    {
+        if (!string.IsNullOrEmpty(view))
+            return $"view '{view}' on context '{context}'";
+        return $"context '{context}'";
     }
 
     private void StampCorrelationHeaders(HttpRequestMessage request)
@@ -187,7 +198,7 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
                 _registryUrl,
                 cancellationToken)
                 ?? throw new KaleidoQueryableClientException(
-                    "Queryable registry request succeeded but returned no payload.",
+                    $"{_callerServiceName} tried to call the queryable registry, but the request succeeded and returned no payload.",
                     HttpStatusCode.InternalServerError);
 
             _registry = registry;

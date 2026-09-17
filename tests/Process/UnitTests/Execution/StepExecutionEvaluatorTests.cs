@@ -332,10 +332,11 @@ public sealed class StepExecutionEvaluatorTests
     }
 
     [Fact]
-    public void Evaluate_WhenRequiredStepIsExternalProcessor_SkipsLocalValidationAndReturnsAwaitingRequiredStep()
+    public void Evaluate_WhenRequiredStepIsExternalProcessor_ReturnsHandOff()
     {
-        // External processor step — not in local available steps at all.
-        // Should bypass local validation and return AwaitingRequiredStep directly.
+        // RequiredStep + TargetProcessorName pointing to an external processor
+        // means the step succeeded and execution must continue on the target processor.
+        // The evaluator should return HandOff, not AwaitingRequiredStep.
         var evaluator =
             CreateEvaluator(
                 ["step-b"]);
@@ -353,16 +354,12 @@ public sealed class StepExecutionEvaluatorTests
                 CreateContext());
 
         Assert.Equal(
-            ExecutionDecisionType.AwaitingRequiredStep,
+            ExecutionDecisionType.HandOff,
             decision.Type);
 
         Assert.Equal(
             "radiology",
             decision.TargetProcessorName);
-
-        Assert.Equal(
-            "imaging-request",
-            decision.RequiredStep);
     }
 
     [Fact]

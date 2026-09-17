@@ -40,6 +40,12 @@ public enum ExecutionDecisionType
     ProcessViolation,
 
     /// <summary>
+    /// The step executed successfully and is handing off to a
+    /// different processor for continued execution.
+    /// </summary>
+    HandOff,
+
+    /// <summary>
     /// Execution cannot continue until a specific next step
     /// is supplied by the consumer.
     /// </summary>
@@ -62,6 +68,8 @@ public enum ProcessExecutionState
     BusinessFailure,
 
     ProcessViolation,
+
+    HandOff,
 
     AwaitingRequiredStep,
 

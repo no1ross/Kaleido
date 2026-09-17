@@ -165,16 +165,18 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                     context,
                     cancellationToken);
 
+                var executionStatus = MapStatus(candidate, result, decision);
+
                 stepObservation.DecisionRecorded(
                     decision.Type.ToString(),
-                    MapStatus(
-                        decision).ToString());
+                    executionStatus.ToString());
 
                 var outcome =
                     CreateOutcome(
                         candidate,
                         result,
-                        decision);
+                        decision,
+                        executionStatus);
 
                 outcomes.Add(
                     outcome);
@@ -184,8 +186,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                         context,
                         candidate,
                         outcome,
-                        result,
-                        GetStepOutcome(outcome.Status)),
+                        result),
                     cancellationToken);
 
                 currentCandidate =
@@ -213,6 +214,9 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
                         Status =
                             StepExecutionStatus.Canceled,
+
+                        Outcome =
+                            GetStepOutcome(StepExecutionStatus.Canceled),
 
                         Decision =
                             ExecutionDecisionType.ProcessViolation,
@@ -250,6 +254,9 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
                         Status =
                             StepExecutionStatus.Exception,
+
+                        Outcome =
+                            GetStepOutcome(StepExecutionStatus.Exception),
 
                         Decision =
                             ExecutionDecisionType.ProcessViolation,
@@ -331,7 +338,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
     private static ProcessExecutionOutcome CreateOutcome(
         StepCandidate candidate,
         ProcessStepInvokerResult result,
-        ExecutionDecision decision)
+        ExecutionDecision decision,
+        StepExecutionStatus executionStatus)
     {
         ArgumentNullException.ThrowIfNull(candidate);
         ArgumentNullException.ThrowIfNull(result);
@@ -343,8 +351,10 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 candidate.StepName,
 
             Status =
-                MapStatus(
-                    decision),
+                executionStatus,
+
+            Outcome =
+                GetStepOutcome(executionStatus),
 
             Decision =
                 decision.Type,
@@ -359,34 +369,25 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
     }
 
     private static StepExecutionStatus MapStatus(
+        StepCandidate candidate,
+        ProcessStepInvokerResult result,
         ExecutionDecision decision)
     {
-        ArgumentNullException.ThrowIfNull(decision);
+        if (candidate.Status == StepCandidateStatus.Invalid)
+            return StepExecutionStatus.ValidationFailed;
 
-        return decision.Type switch
-        {
-            ExecutionDecisionType.Continue =>
-                StepExecutionStatus.Completed,
+        if (candidate.Status == StepCandidateStatus.Satisfied)
+            return StepExecutionStatus.Skipped;
 
-            ExecutionDecisionType.Complete =>
-                StepExecutionStatus.Completed,
+        if (candidate.Status == StepCandidateStatus.Pending)
+            return StepExecutionStatus.Pending;
 
-            ExecutionDecisionType.BusinessFailure =>
-                StepExecutionStatus.Completed,
+        if (decision.Type == ExecutionDecisionType.ProcessViolation)
+            return StepExecutionStatus.Exception;
 
-            ExecutionDecisionType.ProcessViolation =>
-                StepExecutionStatus.Completed,
-
-            ExecutionDecisionType.AwaitingRequiredStep =>
-                StepExecutionStatus.Completed,
-
-            ExecutionDecisionType.AwaitingStepSelection =>
-                StepExecutionStatus.Completed,
-
-            _ =>
-                throw new KaleidoFrameworkException(
-                    $"Unsupported execution decision '{decision.Type}'.")
-        };
+        return result.Succeeded
+            ? StepExecutionStatus.Completed
+            : StepExecutionStatus.Exception;
     }
 
 }

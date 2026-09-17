@@ -35,34 +35,18 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
             return ExecutionDecision.BusinessFailure();
         }
 
-        // Cross-processor handoff — check TargetProcessorName before RequiredStep.
-        // A HandOff result has RequiredStep = null and TargetProcessorName set;
-        // falling through to EvaluateAvailableSteps would silently drop the handoff.
-        if (!string.IsNullOrEmpty(result.TargetProcessorName) && result.RequiredStep is null)
-        {
-            var currentProcessorName =
-                _serviceOptions.ServiceName;
-
-            if (!string.Equals(
-                    result.TargetProcessorName,
-                    currentProcessorName,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                return ExecutionDecision.HandOff(result.TargetProcessorName);
-            }
-        }
-
-        if (result.RequiredStep is not null)
+        if (result.RequiredStep is not null && 
+            string.IsNullOrEmpty(result.TargetProcessorName))
         {
             return EvaluateRequiredStep(
                 currentCandidate,
                 result.RequiredStep,
-                result.TargetProcessorName,
                 candidates,
                 context);
         }
 
         return EvaluateAvailableSteps(
+            result.TargetProcessorName,
             currentCandidate,
             candidates,
             context);
@@ -71,26 +55,9 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
     private ExecutionDecision EvaluateRequiredStep(
         StepCandidate currentCandidate,
         string requiredStep,
-        string? targetProcessorName,
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context)
     {
-        var currentProcessorName =
-            _serviceOptions.ServiceName;
-
-        // If the required step belongs to an external processor, skip local
-        // availability validation — we cannot evaluate it against our own graph.
-        if (!string.IsNullOrEmpty(targetProcessorName) &&
-            !string.Equals(
-                targetProcessorName,
-                currentProcessorName,
-                StringComparison.OrdinalIgnoreCase))
-        {
-            return ExecutionDecision.AwaitingRequiredStep(
-                requiredStep,
-                targetProcessorName);
-        }
-
         var availableSteps =
             _availabilityResolver.Resolve(
                 currentCandidate,
@@ -127,10 +94,24 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
     }
 
     private ExecutionDecision EvaluateAvailableSteps(
+        string? targetProcessorName,
         StepCandidate currentCandidate,
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context)
     {
+
+        // Cross-processor handoff — check TargetProcessorName before RequiredStep.
+        // A HandOff result has RequiredStep = set; and TargetProcessorName set;
+        // falling through to EvaluateAvailableSteps would silently drop the handoff.
+        if (!string.IsNullOrEmpty(targetProcessorName) &&
+            !string.Equals(
+                targetProcessorName,
+                _serviceOptions.ServiceName,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return ExecutionDecision.HandOff(targetProcessorName); ;
+        }
+
         var availableSteps =
             _availabilityResolver.Resolve(
                 currentCandidate,

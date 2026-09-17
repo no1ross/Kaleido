@@ -1332,9 +1332,8 @@ public sealed class ExecutionProcessorTests
                     It.IsAny<ProcessorContext>(),
                     It.IsAny<StepCandidate>(),
                     It.IsAny<ProcessExecutionOutcome>(),
-                    It.IsAny<ProcessStepInvokerResult>(),
-                    It.IsAny<StepExecutionOutcome>()))
-            .Returns<ProcessorContext, StepCandidate, ProcessExecutionOutcome, ProcessStepInvokerResult, StepExecutionOutcome>((context, candidate, outcome, _, executionOutcome) =>
+                    It.IsAny<ProcessStepInvokerResult>()))
+            .Returns<ProcessorContext, StepCandidate, ProcessExecutionOutcome, ProcessStepInvokerResult>((context, candidate, outcome, _) =>
             {
                 var stepContext =
                     context.FindStep(candidate.StepName);
@@ -1350,7 +1349,7 @@ public sealed class ExecutionProcessorTests
                     Response = outcome.Response,
                     DecisionType = outcome.Decision,
                     ExecutionStatus = outcome.Status,
-                    Outcome = executionOutcome,
+                    Outcome = outcome.Outcome,
                     BusinessMessages = outcome.BusinessMessages,
                     RuntimeMessages = outcome.RuntimeMessages,
                     ProcessState = context.State,
@@ -1423,7 +1422,10 @@ public sealed class ExecutionProcessorTests
                 registration,
 
             Step =
-                step
+                step,
+
+            Status =
+                StepCandidateStatus.Built
         };
     }
 

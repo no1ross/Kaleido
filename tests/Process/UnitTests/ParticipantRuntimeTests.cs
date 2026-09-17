@@ -509,6 +509,7 @@ public sealed class ProcessorRuntimeTests
             {
                 StepName = "step-a",
                 Status = StepExecutionStatus.Completed,
+                Outcome = StepExecutionOutcome.Completed,
                 Decision = ExecutionDecisionType.Complete,
                 Response =
                     new TestResponse(),

@@ -339,6 +339,9 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
             ExecutionDecisionType.AwaitingStepSelection =>
                 ProcessExecutionState.AwaitingStepSelection,
 
+            ExecutionDecisionType.HandOff =>
+                ProcessExecutionState.HandOff,
+
             _ => throw new KaleidoFrameworkException(
                 $"Unsupported execution decision '{decision.Type}'.")
         };

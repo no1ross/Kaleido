@@ -66,12 +66,11 @@ public sealed class GenerateSnapshotHandler(
         dbContext.MemberSnapshots.Add(snapshot);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new ProcessStepHandlerResult<GenerateSnapshotResponse>
-        {
-            Response = new GenerateSnapshotResponse
+        return ProcessStepHandlerResult<GenerateSnapshotResponse>.Success(
+            new GenerateSnapshotResponse
             {
                 MemberSnapshotId = snapshot.MemberSnapshotId
-            }
-        };
+            }); 
+
     }
 }

@@ -88,16 +88,10 @@ internal sealed record ExecutionDecision
             AvailableSteps = availableSteps
         };
 
-    /// <summary>
-    /// Signals that execution must continue on a different processor.
-    /// The consumer must call GET /{targetProcessorName}/processes/{processId}
-    /// to obtain authoritative next-step guidance from the target processor.
-    /// </summary>
     public static ExecutionDecision HandOff(string targetProcessorName)
         => new()
         {
-            Type = ExecutionDecisionType.AwaitingRequiredStep,
-            TargetProcessorName = targetProcessorName,
-            RequiredStep = null
+            Type = ExecutionDecisionType.HandOff,
+            TargetProcessorName = targetProcessorName
         };
 }

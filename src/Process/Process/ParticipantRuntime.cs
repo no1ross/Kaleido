@@ -240,8 +240,8 @@ internal sealed class ProcessorRuntime
                             Decision =
                                 outcome?.Decision,
 
-                            Outcome =
-                                GetStepOutcome(outcome?.Status ?? StepExecutionStatus.Pending),
+                            Outcome = 
+                                outcome?.Outcome,
 
                             RuntimeMessages =
                                 MergeMessages(
@@ -272,34 +272,6 @@ internal sealed class ProcessorRuntime
 
             Steps =
                 steps
-        };
-    }
-
-    private static StepExecutionOutcome GetStepOutcome(
-        StepExecutionStatus status)
-    {
-        return status switch
-        {
-            StepExecutionStatus.Pending =>
-                StepExecutionOutcome.Blocked,
-
-            StepExecutionStatus.Completed =>
-                StepExecutionOutcome.Completed,
-
-            StepExecutionStatus.ValidationFailed =>
-                StepExecutionOutcome.Failed,
-
-            StepExecutionStatus.Exception =>
-                StepExecutionOutcome.Failed,
-
-            StepExecutionStatus.Skipped =>
-                StepExecutionOutcome.Blocked,
-
-            StepExecutionStatus.Canceled =>
-                StepExecutionOutcome.Blocked,
-
-            _ =>
-                StepExecutionOutcome.Pending
         };
     }
 
