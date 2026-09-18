@@ -18,6 +18,7 @@ public sealed class EventCollectorDbContext(
             entity.Property(x => x.EventType).HasMaxLength(256);
             entity.Property(x => x.ProcessId);
             entity.Property(x => x.OccurredOn);
+            entity.Property(x => x.ReceivedOn);
             entity.Property(x => x.PayloadJson);
             entity.HasIndex(x => x.ProcessId);
             entity.HasIndex(x => x.OccurredOn);
@@ -29,8 +30,8 @@ public sealed class CollectedEvent
 {
     public long Id { get; set; }
     public Guid? ProcessId { get; set; }
-    public DateTimeOffset OccurredOn { get; set; }
+    public DateTime OccurredOn { get; set; }
     public string EventType { get; set; } = string.Empty;
     public string PayloadJson { get; set; } = string.Empty;
-    public DateTimeOffset ReceivedOn { get; set; }
+    public DateTime ReceivedOn { get; set; }
 }

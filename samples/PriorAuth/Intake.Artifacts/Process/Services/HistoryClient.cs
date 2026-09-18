@@ -10,19 +10,20 @@ public sealed class HistoryClient(
 {
     public async Task UpsertAsync(
         UpsertPriorAuthRecordStep step,
+        Guid processId,
         CancellationToken cancellationToken = default)
     {
         try
         {
             await processClientFactory
                 .GetClient("History")
-                .ExecuteStepAsync(step, processId: null, cancellationToken);
+                .ExecuteStepAsync(step, processId, cancellationToken);
         }
         catch (KaleidoProcessClientException ex)
         {
             logger.LogWarning(ex,
                 "Failed to update history record for process {ProcessId}. Continuing.",
-                step.ProcessId);
+                processId);
         }
     }
 }

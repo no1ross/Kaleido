@@ -118,12 +118,12 @@ public sealed class CaptureRequestedServiceHandler(
             await historyClient.UpsertAsync(
                 new UpsertPriorAuthRecordStep
                 {
-                    ProcessId = context.ProcessId,
                     ProcessorName = "radiology",
                     Status = PriorAuthorizationStatus.Draft,
                     PrimaryProcedureCode = procedureCode.CodeValue,
                     PrimaryProcedureDescription = procedureCode.ShortDescription
                 },
+                context.ProcessId,
                 cancellationToken);
 
         return modality switch

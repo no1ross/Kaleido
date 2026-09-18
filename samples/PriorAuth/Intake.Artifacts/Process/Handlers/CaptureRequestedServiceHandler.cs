@@ -96,12 +96,12 @@ public sealed class CaptureRequestedServiceHandler(
             await historyClient.UpsertAsync(
                 new UpsertPriorAuthRecordStep
                 {
-                    ProcessId = context.ProcessId,
                     ProcessorName = "intake",
                     Status = PriorAuthorizationStatus.Draft,
                     PrimaryProcedureCode = session.Procedure.CodeValue,
                     PrimaryProcedureDescription = session.Procedure.ResolvedProcessorName
                 },
+                context.ProcessId,
                 cancellationToken);
 
             // Start the downstream process with whatever member info we have (may be null if member not captured yet)

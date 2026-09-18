@@ -5,6 +5,7 @@ using Kaleido.Process.AspNetCore;
 using Kaleido.Process.Providers.SQLite;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
+using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 using Microsoft.EntityFrameworkCore;
@@ -87,6 +88,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<RadiologyDbContext>();
+
+builder.Services.AddPriorAuthEventPublishing(
+    builder.Configuration);
 
 builder.Services.AddKaleido(builder.Configuration)
     .AddAssembly(typeof(Program).Assembly)

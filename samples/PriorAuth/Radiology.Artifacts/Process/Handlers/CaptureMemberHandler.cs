@@ -69,13 +69,13 @@ public sealed class CaptureMemberHandler(
             await historyClient.UpsertAsync(
                 new UpsertPriorAuthRecordStep
                 {
-                    ProcessId = context.ProcessId,
                     ProcessorName = "radiology",
                     Status = PriorAuthorizationStatus.Draft,
                     MemberNumber = priorAuthorization.Member!.MemberNumber,
                     MemberDisplayName = priorAuthorization.Member.DisplayName,
                     DateOfService = processStep.DateOfService
                 },
+                context.ProcessId,
                 cancellationToken);
 
             // Route to the correct next step based on the already-captured requested service

@@ -79,13 +79,13 @@ public sealed class CaptureMemberHandler(
             await historyClient.UpsertAsync(
                 new UpsertPriorAuthRecordStep
                 {
-                    ProcessId = context.ProcessId,
                     ProcessorName = "intake",
                     Status = PriorAuthorizationStatus.Draft,
                     MemberNumber = session.Member!.MemberNumber,
                     MemberDisplayName = session.Member.DisplayName,
                     DateOfService = session.Member.DateOfService
                 },
+                context.ProcessId,
                 cancellationToken);
 
             return ProcessStepHandlerResult.Success(

@@ -31,10 +31,10 @@ public sealed class StartIntakeHandler(
         await historyClient.UpsertAsync(
             new UpsertPriorAuthRecordStep
             {
-                ProcessId = context.ProcessId,
                 ProcessorName = "intake",
                 Status = PriorAuthorizationStatus.Draft
             },
+            context.ProcessId,
             cancellationToken);
 
         return ProcessStepHandlerResult.Success();

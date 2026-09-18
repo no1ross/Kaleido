@@ -11,9 +11,6 @@ namespace Kaleido.Samples.PriorAuth.History.Process.Steps;
 public sealed record UpsertPriorAuthRecordStep
 {
     [Required]
-    public Guid ProcessId { get; init; }
-
-    [Required]
     [StringLength(100)]
     public string ProcessorName { get; init; } = string.Empty;
 

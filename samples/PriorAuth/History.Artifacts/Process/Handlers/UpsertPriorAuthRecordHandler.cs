@@ -18,7 +18,7 @@ public sealed class UpsertPriorAuthRecordHandler(
         var existing =
             await dbContext.PriorAuthRecords
                 .SingleOrDefaultAsync(
-                    x => x.ProcessId == processStep.ProcessId,
+                    x => x.ProcessId == context.ProcessId,
                     cancellationToken);
 
         if (existing is null)
@@ -27,7 +27,7 @@ public sealed class UpsertPriorAuthRecordHandler(
                 new PriorAuthRecord
                 {
                     PriorAuthRecordId = Guid.NewGuid(),
-                    ProcessId = processStep.ProcessId,
+                    ProcessId = context.ProcessId,
                     ProcessorName = processStep.ProcessorName,
                     Status = processStep.Status,
                     MemberNumber = processStep.MemberNumber,

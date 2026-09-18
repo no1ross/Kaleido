@@ -56,7 +56,20 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<EventCollectorDbContext>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
+
 var app = builder.Build();
+
+app.UseCors("AllowAll");
 
 app.MapHealthChecks("/health");
 
@@ -83,10 +96,10 @@ app.MapPost("/events", async (
         new CollectedEvent
         {
             ProcessId = envelope.ProcessId,
-            OccurredOn = envelope.OccurredOn,
+            OccurredOn = envelope.OccurredOn.UtcDateTime,
             EventType = envelope.EventType,
             PayloadJson = envelope.Payload.GetRawText(),
-            ReceivedOn = DateTimeOffset.UtcNow
+            ReceivedOn = DateTime.UtcNow
         });
 
     await dbContext.SaveChangesAsync(cancellationToken);
@@ -141,6 +154,27 @@ app.MapGet("/events", async (
             .ToListAsync(cancellationToken);
 
     return Results.Ok(events);
+});
+
+app.MapGet("/processes", async (
+    EventCollectorDbContext dbContext,
+    CancellationToken cancellationToken) =>
+{
+    var processes =
+        await dbContext.Events
+            .AsNoTracking()
+            .Where(x => x.ProcessId.HasValue)
+            .GroupBy(x => x.ProcessId!.Value)
+            .Select(g => new
+            {
+                ProcessId = g.Key,
+                EventCount = g.Count(),
+                MostRecentOccurredOn = g.Max(x => x.OccurredOn)
+            })
+            .OrderByDescending(x => x.MostRecentOccurredOn)
+            .ToListAsync(cancellationToken);
+
+    return Results.Ok(processes);
 });
 
 app.Run();

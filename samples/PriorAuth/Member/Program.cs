@@ -77,8 +77,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<MemberDbContext>();
 
-//builder.Services.AddPriorAuthEventPublishing(
-//    builder.Configuration);
+builder.Services.AddPriorAuthEventPublishing(
+    builder.Configuration);
 
 builder.Services.AddKaleido(builder.Configuration)
     .AddAssembly(typeof(Program).Assembly)

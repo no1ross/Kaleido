@@ -44,10 +44,10 @@ public sealed class CaptureRequestingProviderHandler(
         await historyClient.UpsertAsync(
             new UpsertPriorAuthRecordStep
             {
-                ProcessId = context.ProcessId,
                 ProcessorName = "radiology",
                 Status = PriorAuthorizationStatus.Draft
             },
+            context.ProcessId,
             cancellationToken);
 
         return ProcessStepHandlerResult.Success(

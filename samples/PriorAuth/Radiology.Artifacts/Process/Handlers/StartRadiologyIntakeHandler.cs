@@ -96,7 +96,6 @@ public sealed class StartRadiologyIntakeHandler(
             await historyClient.UpsertAsync(
                 new UpsertPriorAuthRecordStep
                 {
-                    ProcessId = context.ProcessId,
                     ProcessorName = "radiology",
                     Status = PriorAuthorizationStatus.Draft,
                     MemberNumber = priorAuthorization.Member?.MemberNumber ?? string.Empty,
@@ -105,6 +104,7 @@ public sealed class StartRadiologyIntakeHandler(
                     PrimaryProcedureCode = procedureCode.CodeValue,
                     PrimaryProcedureDescription = procedureCode.ShortDescription
                 },
+                context.ProcessId,
                 cancellationToken);
 
             // --- Route based on member presence ---

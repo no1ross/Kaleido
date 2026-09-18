@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+import { Events } from './events/events';
 import { PriorAuthHome } from './home/home';
 import { HistoryList } from './history/history-list';
 import { MemberSearch } from './member/member-search/member-search';
@@ -23,6 +24,10 @@ export const routes: Routes = [
   {
     path: 'history',
     component: HistoryList
+  },
+  {
+    path: 'events',
+    component: Events
   },
   {
     path: 'process',
