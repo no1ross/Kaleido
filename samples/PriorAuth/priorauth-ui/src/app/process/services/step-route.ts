@@ -10,6 +10,9 @@ export function getRouteForStep(
             return 'requested-services';
         case 'CaptureServicingProvider':
             return 'servicing-provider';
+        case 'ValidateMember':
+        case 'CaptureMember':
+            return 'member-search';
         default:
             return undefined;
     }

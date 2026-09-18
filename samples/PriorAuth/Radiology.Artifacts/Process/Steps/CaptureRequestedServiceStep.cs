@@ -1,4 +1,4 @@
-using Kaleido.Process.Attributes;
+﻿using Kaleido.Process.Attributes;
 using Kaleido.Samples.PriorAuth.CodeSet;
 using System.ComponentModel.DataAnnotations;
 

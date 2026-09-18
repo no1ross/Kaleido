@@ -1,4 +1,4 @@
-using Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Views;
+﻿using Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Views;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 

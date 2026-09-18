@@ -9,7 +9,7 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
     DisplayName = "Radiology - Capture MRI Information",
     Description = "Captures MRI-specific information for the requested service.",
     Version = "1.0.0")]
-[AvailableAfter(typeof(CaptureRequestedServiceStep))]
+[AvailableAfter(typeof(StartRadiologyIntakeStep))]
 [AvailableUntil(typeof(CaptureRequestingProviderStep))]
 [Repeatable]
 public sealed record CaptureMriInfoStep

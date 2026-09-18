@@ -63,6 +63,7 @@ var processConnectionString =
 builder.Services.AddDbContext<RadiologyDbContext>(
     options => options.UseSqlite(radiologyConnectionString));
 
+builder.Services.AddScoped<IMemberEligibilityService, MemberEligibilityService>();
 builder.Services.AddScoped<MemberDetailsClient>();
 builder.Services.AddScoped<ProcedureCodeClient>();
 builder.Services.AddScoped<ProcedureModalityClient>();

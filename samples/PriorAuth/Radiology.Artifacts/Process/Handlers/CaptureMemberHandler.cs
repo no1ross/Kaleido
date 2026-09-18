@@ -1,19 +1,18 @@
 using Kaleido.Process.Execution;
 using Kaleido.Queryable.Http.Client;
-using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
-using Microsoft.EntityFrameworkCore;
-using Kaleido.Samples.PriorAuth.Radiology;
+using Kaleido.Samples.PriorAuth.History.Process.Steps;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
-using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
+using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Messages;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
-using Kaleido.Samples.PriorAuth.History.Process.Steps;
+using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
+using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 
 public sealed class CaptureMemberHandler(
     RadiologyDbContext dbContext,
-    MemberDetailsClient memberDetailsClient,
+    IMemberEligibilityService memberEligibilityService,
     HistoryClient historyClient)
     : IProcessStepHandler<CaptureMemberStep>
 {
@@ -24,59 +23,29 @@ public sealed class CaptureMemberHandler(
     {
         try
         {
-            var memberDetails =
-                await memberDetailsClient.GetMemberDetailsAsync(
+            // Full eligibility validation — also checks PriorAuth exists
+            var eligibility =
+                await memberEligibilityService.ValidateAsync(
                     processStep.MemberId,
                     processStep.MemberEnrollmentId,
+                    processStep.DateOfService,
+                    context.ProcessId,
                     cancellationToken);
 
-            if (memberDetails is null)
+            if (!eligibility.Succeeded)
             {
-                return ProcessStepHandlerResult.Failure(
-                    RadiologyProcessMessages.MemberNotFound(
-                        processStep.MemberId,
-                        processStep.MemberEnrollmentId));
+                return ProcessStepHandlerResult.Failure(eligibility.FailureMessage!);
             }
 
-            if (processStep.DateOfService < memberDetails.EffectiveDate)
-            {
-                return ProcessStepHandlerResult.Failure(
-                    RadiologyProcessMessages.CoverageNotYetEffective(
-                        processStep.MemberEnrollmentId,
-                        processStep.DateOfService,
-                        memberDetails.EffectiveDate));
-            }
+            var memberDetails = eligibility.MemberDetails!;
 
-            if (memberDetails.TerminationDate is DateOnly terminationDate
-                && processStep.DateOfService > terminationDate)
-            {
-                return ProcessStepHandlerResult.Failure(
-                    RadiologyProcessMessages.CoverageTerminated(
-                        processStep.MemberEnrollmentId,
-                        processStep.DateOfService,
-                        terminationDate));
-            }
-
+            // Load the existing PriorAuthorization — must exist (created by StartRadiologyIntake)
             var priorAuthorization =
                 await dbContext.PriorAuthorizations
                     .Include(x => x.Member)
-                    .SingleOrDefaultAsync(
+                    .SingleAsync(
                         x => x.ProcessId == context.ProcessId,
                         cancellationToken);
-
-            if (priorAuthorization is null)
-            {
-                priorAuthorization =
-                    new PriorAuthorization
-                    {
-                        PriorAuthorizationId = Guid.NewGuid(),
-                        ProcessId = context.ProcessId,
-                        Status = PriorAuthorizationStatus.Draft,
-                        CreatedUtc = DateTimeOffset.UtcNow
-                    };
-
-                dbContext.PriorAuthorizations.Add(priorAuthorization);
-            }
 
             if (priorAuthorization.Member is null)
             {
@@ -109,7 +78,19 @@ public sealed class CaptureMemberHandler(
                 },
                 cancellationToken);
 
-            return ProcessStepHandlerResult.Success();
+            // Route to the correct next step based on the already-captured requested service
+            var routing =
+                await memberEligibilityService.RouteByModalityAsync(
+                    context.ProcessId,
+                    memberDetails,
+                    cancellationToken);
+
+            if (!routing.Succeeded)
+            {
+                return ProcessStepHandlerResult.Failure(routing.FailureMessage!);
+            }
+
+            return ProcessStepHandlerResult.Success(requiredStep: routing.RequiredStep);
         }
         catch (KaleidoQueryableClientException ex)
         {

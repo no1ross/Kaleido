@@ -117,8 +117,8 @@
             <div class="member-details-page">
                 <div class="member-details-page__header">
                     <button type="button" class="secondary-button" (click)="backToResults()">Back to results</button>
-                    <button type="button" class="primary-button" (click)="goToRequestedService()" [disabled]="isNavigatingToRequestedService()">
-                        {{ isNavigatingToRequestedService() ? 'Selecting Service/Procedure...' : 'Select Service/Procedure' }}
+                    <button type="button" class="primary-button" (click)="confirmMember()" [disabled]="isNavigatingToRequestedService()">
+                        {{ isNavigatingToRequestedService() ? 'Confirming Member...' : 'Confirm Member' }}
                     </button>
                 </div>
 

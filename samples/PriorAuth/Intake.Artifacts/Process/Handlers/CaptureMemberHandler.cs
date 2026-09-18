@@ -24,6 +24,7 @@ public sealed class CaptureMemberHandler(
     {
         try
         {
+            // Intake can only verify the member exists — eligibility is determined by Radiology
             var memberDetails =
                 await memberDetailsClient.GetMemberDetailsAsync(
                     processStep.MemberId,
@@ -36,25 +37,6 @@ public sealed class CaptureMemberHandler(
                     IntakeProcessMessages.MemberNotFound(
                         processStep.MemberId,
                         processStep.MemberEnrollmentId));
-            }
-
-            if (processStep.DateOfService < memberDetails.EffectiveDate)
-            {
-                return ProcessStepHandlerResult.Failure(
-                    IntakeProcessMessages.CoverageNotYetEffective(
-                        processStep.MemberEnrollmentId,
-                        processStep.DateOfService,
-                        memberDetails.EffectiveDate));
-            }
-
-            if (memberDetails.TerminationDate is DateOnly terminationDate
-                && processStep.DateOfService > terminationDate)
-            {
-                return ProcessStepHandlerResult.Failure(
-                    IntakeProcessMessages.CoverageTerminated(
-                        processStep.MemberEnrollmentId,
-                        processStep.DateOfService,
-                        terminationDate));
             }
 
             var session =

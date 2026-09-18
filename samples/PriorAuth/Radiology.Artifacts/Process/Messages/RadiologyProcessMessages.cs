@@ -108,6 +108,15 @@ public static class RadiologyProcessMessages
             Message = "Member information was not provided. Member capture will be required before proceeding."
         };
 
+    public static ProcessMessage PriorAuthorizationNotFound(
+        Guid processId) =>
+        new()
+        {
+            Code = "PRIOR_AUTHORIZATION_NOT_FOUND",
+            Type = MessageType.Error,
+            Message = $"No prior authorization was found for process '{processId}'. Ensure the radiology intake has been started before capturing member information."
+        };
+
     public static ProcessMessage ModalityNotSupported(
         ProcedureCodeSystem codeSystem,
         string codeValue,

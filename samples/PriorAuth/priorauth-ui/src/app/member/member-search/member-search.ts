@@ -1,6 +1,5 @@
 import { computed, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { catchError, switchMap, take } from 'rxjs/operators';
 
@@ -20,11 +19,11 @@ import { QueryableRegistry } from '../../kaleido/services/queryable-registry';
 import { QueryableRequestValidationError } from '../../kaleido/services/queryable-request-validator';
 import { ProcessErrorResponse, ProcessService } from '../../kaleido/services/process-service';
 import { QueryableService } from '../../kaleido/services/queryable-service';
-import { buildProcessRoute } from '../../process/services/process-navigation';
 import { ProcessStateService } from '../../process/services/process-state-service';
 import { RegistryCatalog } from '../../registries/registry-catalog';
 import { MemberDetailsParameters } from '../models/member-details-parameters';
 import { CaptureMemberStep } from '../models/capture-member-step';
+import { ValidateMemberStep } from '../models/validate-member-step';
 import { MemberDetailsResult } from '../models/member-details-result';
 import { MemberSearchResult } from '../models/member-search-result';
 import { StateOption } from '../models/state-option';
@@ -55,9 +54,6 @@ export class MemberSearch {
 
     private readonly registryCatalog =
         inject(RegistryCatalog);
-
-    private readonly router =
-        inject(Router);
 
     readonly searchViewName =
         'member-search';
@@ -96,6 +92,12 @@ export class MemberSearch {
         signal(false);
     readonly isNavigatingToRequestedService =
         signal(false);
+
+    // True when the process is waiting for the user to confirm a selected member
+    // (requiredStep === 'CaptureMember'). False means we are in search/validate mode.
+    readonly confirmMode =
+        computed(() =>
+            this.processState.state().requiredStep === 'CaptureMember');
     readonly errorMessage =
         signal<string | undefined>(undefined);
     readonly detailsError =
@@ -205,17 +207,17 @@ export class MemberSearch {
                         }
                     };
 
-                    const captureRequest = {
+                    const validateRequest = {
                         processId: this.processState.state().processId,
                         processStep: {
                             memberId: record.memberId,
                             memberEnrollmentId: record.memberEnrollmentId,
                             dateOfService: this.processState.state().dateOfService
-                        } satisfies CaptureMemberStep
+                        } satisfies ValidateMemberStep
                     };
 
                     this.processService
-                        .executeStep<CaptureMemberStep, object>('CaptureMember', captureRequest)
+                        .executeStep<ValidateMemberStep, object>('ValidateMember', validateRequest)
                         .pipe(
                             switchMap(() =>
                                 this.queryableService
@@ -245,20 +247,35 @@ export class MemberSearch {
         this.viewMode.set('results');
     }
 
-    goToRequestedService(): void {
-        if (!this.selectedRecord() || this.isNavigatingToRequestedService()) {
+    confirmMember(): void {
+        const record = this.selectedRecord();
+
+        if (!record || this.isNavigatingToRequestedService()) {
             return;
         }
 
         this.isNavigatingToRequestedService.set(true);
         this.detailsError.set(undefined);
 
-        void this.router.navigate(
-            buildProcessRoute(
-                this.processState.state().processId,
-                'requested-service'))
-            .finally(() => {
-                this.isNavigatingToRequestedService.set(false);
+        const captureRequest = {
+            processId: this.processState.state().processId,
+            processStep: {
+                memberId: record.memberId,
+                memberEnrollmentId: record.memberEnrollmentId,
+                dateOfService: this.processState.state().dateOfService
+            } satisfies CaptureMemberStep
+        };
+
+        this.processService
+            .executeStep<CaptureMemberStep, object>('CaptureMember', captureRequest)
+            .subscribe({
+                next: () => {
+                    this.isNavigatingToRequestedService.set(false);
+                },
+                error: (error: unknown) => {
+                    this.isNavigatingToRequestedService.set(false);
+                    this.detailsError.set(this.formatError(error));
+                }
             });
     }
 

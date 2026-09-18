@@ -10,21 +10,19 @@ using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;
-using Kaleido.Samples.PriorAuth.Configuration;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 
 /// <summary>
 /// Handles the <see cref="StartRadiologyIntakeStep"/> submitted by the Intake processor
-/// during a cross-processor handoff. Combines the member validation and requested service
-/// capture into a single atomic step so the consumer only interacts with Intake.
+/// during a cross-processor handoff. Creates the prior authorization and its first requested
+/// service. If member information is provided it validates eligibility and routes directly
+/// to the appropriate modality step; otherwise routes to <see cref="ValidateMemberStep"/>.
 /// </summary>
 public sealed class StartRadiologyIntakeHandler(
     RadiologyDbContext dbContext,
-    MemberDetailsClient memberDetailsClient,
+    IMemberEligibilityService memberEligibilityService,
     ProcedureCodeClient procedureCodeClient,
-    ProcedureModalityClient procedureModalityClient,
-    QuestionnaireDefinitionClient questionnaireDefinitionClient,
     HistoryClient historyClient)
     : IProcessStepHandler<StartRadiologyIntakeStep, StartRadiologyIntakeResponse>
 {
@@ -35,47 +33,6 @@ public sealed class StartRadiologyIntakeHandler(
     {
         try
         {
-            // --- Member validation (if member info provided) ---
-
-            if (processStep.MemberId.HasValue && processStep.MemberEnrollmentId.HasValue)
-            {
-                var memberDetails =
-                    await memberDetailsClient.GetMemberDetailsAsync(
-                        processStep.MemberId.Value,
-                        processStep.MemberEnrollmentId.Value,
-                        cancellationToken);
-
-                if (memberDetails is null)
-                {
-                    return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
-                        new StartRadiologyIntakeResponse(),
-                        RadiologyProcessMessages.MemberNotFound(
-                            processStep.MemberId.Value,
-                            processStep.MemberEnrollmentId.Value));
-                }
-
-                if (processStep.DateOfService.HasValue && processStep.DateOfService < memberDetails.EffectiveDate)
-                {
-                    return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
-                        new StartRadiologyIntakeResponse(),
-                        RadiologyProcessMessages.CoverageNotYetEffective(
-                            processStep.MemberEnrollmentId.Value,
-                            processStep.DateOfService.Value,
-                            memberDetails.EffectiveDate));
-                }
-
-                if (memberDetails.TerminationDate is DateOnly terminationDate
-                    && processStep.DateOfService.HasValue && processStep.DateOfService > terminationDate)
-                {
-                    return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
-                        new StartRadiologyIntakeResponse(),
-                        RadiologyProcessMessages.CoverageTerminated(
-                            processStep.MemberEnrollmentId.Value,
-                            processStep.DateOfService.Value,
-                            terminationDate));
-                }
-            }
-
             // --- Procedure code resolution ---
 
             var procedureCode =
@@ -93,13 +50,7 @@ public sealed class StartRadiologyIntakeHandler(
                         processStep.CodeValue));
             }
 
-            var modality =
-                await procedureModalityClient.DetermineModalityAsync(
-                    procedureCode.CodeValue,
-                    procedureCode.CodeSystem,
-                    cancellationToken);
-
-            // --- Upsert PriorAuthorization + Member (if member info provided) ---
+            // --- Upsert PriorAuthorization ---
 
             var priorAuthorization =
                 await dbContext.PriorAuthorizations
@@ -120,36 +71,6 @@ public sealed class StartRadiologyIntakeHandler(
                     };
 
                 dbContext.PriorAuthorizations.Add(priorAuthorization);
-            }
-
-            if (processStep.MemberId.HasValue && processStep.MemberEnrollmentId.HasValue)
-            {
-                if (priorAuthorization.Member is null)
-                {
-                    priorAuthorization.Member =
-                        new PriorAuthorizationMember
-                        {
-                            PriorAuthorizationId = priorAuthorization.PriorAuthorizationId
-                        };
-                }
-
-                // Re-fetch member details if we have them
-                var memberDetails =
-                    await memberDetailsClient.GetMemberDetailsAsync(
-                        processStep.MemberId.Value,
-                        processStep.MemberEnrollmentId.Value,
-                        cancellationToken);
-
-                if (memberDetails is not null)
-                {
-                    priorAuthorization.Member.MemberId = memberDetails.MemberId;
-                    priorAuthorization.Member.MemberEnrollmentId = memberDetails.MemberEnrollmentId;
-                    priorAuthorization.Member.MemberNumber = memberDetails.MemberNumber;
-                    priorAuthorization.Member.DisplayName = memberDetails.DisplayName;
-                    priorAuthorization.Member.PlanId = memberDetails.PlanId;
-                    priorAuthorization.Member.PlanName = memberDetails.PlanName;
-                    priorAuthorization.Member.LineOfBusiness = memberDetails.LineOfBusiness;
-                }
             }
 
             // --- Add requested service ---
@@ -186,96 +107,75 @@ public sealed class StartRadiologyIntakeHandler(
                 },
                 cancellationToken);
 
-            // --- Return result based on member presence and modality ---
+            // --- Route based on member presence ---
 
-            var messages = new List<ProcessMessage>();
-
-            // If no member provided, return CaptureMember regardless of modality
             if (!processStep.MemberId.HasValue || !processStep.MemberEnrollmentId.HasValue)
             {
-                messages.Add(RadiologyProcessMessages.MemberInfoNotProvided());
+                // No member provided — require ValidateMember next
                 return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success(
                     new StartRadiologyIntakeResponse(),
-                    requiredStep: nameof(CaptureMemberStep).Replace("Step", string.Empty),
-                    targetProcessorName: null,
-                    messages: messages.ToArray());
+                    requiredStep: nameof(ValidateMemberStep).Replace("Step", string.Empty),
+                    messages: RadiologyProcessMessages.MemberInfoNotProvided());
             }
 
-            // Member is present, handle modality-specific routing
-            return modality switch
-            {
-                ProcedureModality.Mri =>
-                    await CreateMriResponseAsync(
-                        context.ProcessId,
-                        procedureCode.CodeValue,
-                        messages,
-                        cancellationToken),
-                ProcedureModality.Ct =>
-                    await CreateCtResponseAsync(
-                        context.ProcessId,
-                        procedureCode.CodeValue,
-                        messages,
-                        cancellationToken),
-                _ =>
-                    ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
-                        new StartRadiologyIntakeResponse(),
-                        RadiologyProcessMessages.ModalityNotSupported(
-                            procedureCode.CodeSystem,
-                            procedureCode.CodeValue,
-                            modality))
-            };
+            // Member provided — validate eligibility and route by modality
+            var eligibility =
+                await memberEligibilityService.ValidateAsync(
+                    processStep.MemberId.Value,
+                    processStep.MemberEnrollmentId.Value,
+                    processStep.DateOfService ?? DateOnly.FromDateTime(DateTime.UtcNow),
+                    context.ProcessId,
+                    cancellationToken);
 
-            async Task<ProcessStepHandlerResult<StartRadiologyIntakeResponse>> CreateMriResponseAsync(
-                Guid processId,
-                string procedureCodeValue,
-                List<ProcessMessage> messages,
-                CancellationToken ct)
+            if (!eligibility.Succeeded)
             {
-                var questionnaire =
-                    await questionnaireDefinitionClient.ResolveAsync(
-                        processId,
-                        nameof(CaptureMriInfoStep).Replace("Step", string.Empty),
-                        ProcedureModality.Mri,
-                        procedureCodeValue,
-                        ct);
+                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
+                    new StartRadiologyIntakeResponse(),
+                    eligibility.FailureMessage!);
+            }
 
-                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success(
-                    new StartRadiologyIntakeResponse
+            // Persist member onto the PriorAuthorization
+            if (priorAuthorization.Member is null)
+            {
+                priorAuthorization.Member =
+                    new PriorAuthorizationMember
                     {
-                        QuestionnaireId = questionnaire?.QuestionnaireId,
-                        QuestionnaireVersion = questionnaire?.Version,
-                        Questionnaire = questionnaire
-                    },
-                    requiredStep: nameof(CaptureMriInfoStep).Replace("Step", string.Empty),
-                    targetProcessorName: null,
-                    messages.ToArray());
+                        PriorAuthorizationId = priorAuthorization.PriorAuthorizationId
+                    };
             }
 
-            async Task<ProcessStepHandlerResult<StartRadiologyIntakeResponse>> CreateCtResponseAsync(
-                Guid processId,
-                string procedureCodeValue,
-                List<ProcessMessage> messages,
-                CancellationToken ct)
+            var memberDetails = eligibility.MemberDetails!;
+            priorAuthorization.Member.MemberId = memberDetails.MemberId;
+            priorAuthorization.Member.MemberEnrollmentId = memberDetails.MemberEnrollmentId;
+            priorAuthorization.Member.MemberNumber = memberDetails.MemberNumber;
+            priorAuthorization.Member.DisplayName = memberDetails.DisplayName;
+            priorAuthorization.Member.PlanId = memberDetails.PlanId;
+            priorAuthorization.Member.PlanName = memberDetails.PlanName;
+            priorAuthorization.Member.LineOfBusiness = memberDetails.LineOfBusiness;
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var routing =
+                await memberEligibilityService.RouteByModalityAsync(
+                    context.ProcessId,
+                    memberDetails,
+                    cancellationToken);
+
+            if (!routing.Succeeded)
             {
-                var questionnaire =
-                    await questionnaireDefinitionClient.ResolveAsync(
-                        processId,
-                        nameof(ConfirmCtInsteadOfMriStep).Replace("Step", string.Empty),
-                        ProcedureModality.Mri,
-                        procedureCodeValue,
-                        ct);
-
-                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success(
-                    new StartRadiologyIntakeResponse
-                    {
-                        QuestionnaireId = questionnaire?.QuestionnaireId,
-                        QuestionnaireVersion = questionnaire?.Version,
-                        Questionnaire = questionnaire
-                    },
-                    requiredStep: nameof(ConfirmCtInsteadOfMriStep).Replace("Step", string.Empty),
-                    targetProcessorName: null,
-                    messages.ToArray());
+                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
+                    new StartRadiologyIntakeResponse(),
+                    routing.FailureMessage!);
             }
+
+            return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success(
+                new StartRadiologyIntakeResponse
+                {
+                    QuestionnaireId = routing.Questionnaire?.QuestionnaireId,
+                    QuestionnaireVersion = routing.Questionnaire?.Version,
+                    Questionnaire = routing.Questionnaire
+                },
+                requiredStep: routing.RequiredStep);
         }
         catch (KaleidoQueryableClientException ex)
         {
