@@ -1,0 +1,110 @@
+:host {
+    display: block;
+}
+
+.member-details-page {
+    display: grid;
+    gap: 1rem;
+}
+
+.member-search-selection {
+    background: #fff;
+    border: 1px solid #dde5ef;
+    border-radius: 16px;
+    padding: 1rem;
+}
+
+.member-search-selection h3 {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.member-search-selection--empty {
+    color: #5f6c80;
+}
+
+.member-search-selection__grid {
+    margin-top: 0.85rem;
+    display: grid;
+    gap: 0.7rem;
+}
+
+.member-search-selection__field span {
+    display: block;
+    font-size: 0.78rem;
+    color: #6b7788;
+    margin-bottom: 0.2rem;
+}
+
+.member-search-selection__field strong {
+    display: block;
+    color: #172033;
+    overflow-wrap: anywhere;
+}
+
+.member-details-sections {
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.member-details-page__coverage {
+    margin-top: 0.85rem;
+    margin-bottom: 0;
+}
+
+.member-record__status {
+    margin-bottom: 0.65rem;
+    border: 1px solid #d9e2ee;
+    border-radius: 12px;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.member-coverage--active {
+    border-color: #bfd9c2;
+    background: #eef9f0;
+    color: #1f6b2c;
+}
+
+.member-coverage--upcoming {
+    border-color: #f1dd9b;
+    background: #fff9e8;
+    color: #8a6300;
+}
+
+.member-coverage--expired {
+    border-color: #f0b7d1;
+    background: #fff1f7;
+    color: #9b2960;
+}
+
+.member-search-page__error {
+    margin-top: 0.85rem;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid #f3b6b6;
+    border-radius: 12px;
+    background: #fff4f4;
+    color: #9f1d1d;
+}
+
+.primary-button,
+.secondary-button {
+    border-radius: 999px;
+    padding: 0.65rem 1rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.primary-button {
+    border: 1px solid #315efb;
+    background: #315efb;
+    color: #fff;
+}
+
+.secondary-button {
+    border: 1px solid #cfd8e3;
+    background: #f7f9fc;
+    color: #25324a;
+}

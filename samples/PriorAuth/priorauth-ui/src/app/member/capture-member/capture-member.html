@@ -1,0 +1,41 @@
+<section class="member-details-page">
+    <div class="member-details-page__header">
+        <button type="button" class="secondary-button" (click)="backToResults()">Back to results</button>
+        <button type="button" class="primary-button" (click)="confirmMember()" [disabled]="isNavigating()">
+            {{ isNavigating() ? 'Confirming Member...' : 'Confirm Member' }}
+        </button>
+    </div>
+
+    @if (errorMessage()) {
+        <div class="member-search-page__error">{{ errorMessage() }}</div>
+    }
+
+    @if (isLoadingDetails()) {
+        <div class="member-search-selection member-search-selection--empty">Loading member details...</div>
+    } @else if (selectedMemberDetails()) {
+        <div class="member-search-selection">
+            <h3>Coverage for Date of Service</h3>
+            <div class="member-record__status member-details-page__coverage" [class]="'member-record__status member-details-page__coverage ' + getCoverageClass(selectedMemberDetails()!.effectiveDate, selectedMemberDetails()!.terminationDate)">
+                {{ getCoverageMessage(selectedMemberDetails()!.effectiveDate, selectedMemberDetails()!.terminationDate) }}
+            </div>
+        </div>
+
+        <div class="member-details-sections">
+            @for (section of getDetailSections(); track section.title) {
+                <div class="member-search-selection">
+                    <h3>{{ section.title }}</h3>
+                    <div class="member-search-selection__grid">
+                        @for (entry of section.entries; track entry[0]) {
+                            <div class="member-search-selection__field">
+                                <span>{{ entry[0] }}</span>
+                                <strong>{{ entry[1] }}</strong>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    } @else {
+        <div class="member-search-selection member-search-selection--empty">No member details are available for the current selection.</div>
+    }
+</section>

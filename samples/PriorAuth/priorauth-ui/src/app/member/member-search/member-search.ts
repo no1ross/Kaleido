@@ -1,7 +1,7 @@
 import { computed, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { of } from 'rxjs';
-import { catchError, switchMap, take } from 'rxjs/operators';
+import { catchError, take } from 'rxjs/operators';
 
 import { FilterOperator, LogicalOperator } from '../../kaleido/models/enumerations';
 import { QueryErrorResponse } from '../../kaleido/models/query-error-response';
@@ -19,12 +19,10 @@ import { QueryableRegistry } from '../../kaleido/services/queryable-registry';
 import { QueryableRequestValidationError } from '../../kaleido/services/queryable-request-validator';
 import { ProcessErrorResponse, ProcessService } from '../../kaleido/services/process-service';
 import { QueryableService } from '../../kaleido/services/queryable-service';
+import { buildProcessRoute } from '../../process/services/process-navigation';
 import { ProcessStateService } from '../../process/services/process-state-service';
 import { RegistryCatalog } from '../../registries/registry-catalog';
-import { MemberDetailsParameters } from '../models/member-details-parameters';
-import { CaptureMemberStep } from '../models/capture-member-step';
 import { ValidateMemberStep } from '../models/validate-member-step';
-import { MemberDetailsResult } from '../models/member-details-result';
 import { MemberSearchResult } from '../models/member-search-result';
 import { StateOption } from '../models/state-option';
 
@@ -58,9 +56,6 @@ export class MemberSearch {
     readonly searchViewName =
         'member-search';
 
-    readonly detailsViewName =
-        'member-details';
-
     readonly request: QueryRequest = {
         query: {
             searchText: '',
@@ -75,8 +70,6 @@ export class MemberSearch {
         signal<MemberSearchResult[]>([]);
     readonly selectedRecord =
         signal<MemberSearchResult | undefined>(undefined);
-    readonly selectedMemberDetails =
-        signal<MemberDetailsResult | undefined>(undefined);
     dateOfBirth = '';
     issuanceState = '';
     lineOfBusiness = '';
@@ -88,22 +81,10 @@ export class MemberSearch {
         signal(false);
     readonly isLoadingStates =
         signal(false);
-    readonly isLoadingDetails =
+    readonly isNavigating =
         signal(false);
-    readonly isNavigatingToRequestedService =
-        signal(false);
-
-    // True when the process is waiting for the user to confirm a selected member
-    // (requiredStep === 'CaptureMember'). False means we are in search/validate mode.
-    readonly confirmMode =
-        computed(() =>
-            this.processState.state().requiredStep === 'CaptureMember');
     readonly errorMessage =
         signal<string | undefined>(undefined);
-    readonly detailsError =
-        signal<string | undefined>(undefined);
-    readonly viewMode =
-        signal<'results' | 'details'>('results');
 
     get registration(): QueryableViewRegistration | undefined {
         return this.queryableRegistry.tryGetViewRegistration(this.searchViewName);
@@ -126,9 +107,6 @@ export class MemberSearch {
         this.errorMessage.set(undefined);
         this.isLoading.set(true);
         this.selectedRecord.set(undefined);
-        this.selectedMemberDetails.set(undefined);
-        this.detailsError.set(undefined);
-        this.viewMode.set('results');
         this.request.query ??= {};
         this.request.query.filter = this.buildFilter();
         this.request.query.page ??= {
@@ -166,10 +144,7 @@ export class MemberSearch {
         this.lineOfBusiness = '';
         this.results.set([]);
         this.selectedRecord.set(undefined);
-        this.selectedMemberDetails.set(undefined);
         this.errorMessage.set(undefined);
-        this.detailsError.set(undefined);
-        this.viewMode.set('results');
         this.processState.clearSelectedMember();
         this.processState.clearProcessMessages();
     }
@@ -178,10 +153,8 @@ export class MemberSearch {
         record: MemberSearchResult
     ): void {
         this.selectedRecord.set(record);
-        this.selectedMemberDetails.set(undefined);
-        this.detailsError.set(undefined);
-        this.isLoadingDetails.set(true);
-        this.viewMode.set('details');
+        this.isNavigating.set(true);
+        this.errorMessage.set(undefined);
         this.processState.clearProcessMessages();
 
         this.registryCatalog.loadState()
@@ -200,13 +173,6 @@ export class MemberSearch {
                         terminationDate: record.terminationDate
                     });
 
-                    const detailsRequest: QueryRequest<MemberDetailsParameters> = {
-                        parameters: {
-                            MemberId: record.memberId,
-                            MemberEnrollmentId: record.memberEnrollmentId
-                        }
-                    };
-
                     const validateRequest = {
                         processId: this.processState.state().processId,
                         processStep: {
@@ -218,63 +184,19 @@ export class MemberSearch {
 
                     this.processService
                         .executeStep<ValidateMemberStep, object>('ValidateMember', validateRequest)
-                        .pipe(
-                            switchMap(() =>
-                                this.queryableService
-                                    .queryView<MemberDetailsResult, MemberDetailsParameters>(
-                                        this.detailsViewName,
-                                        detailsRequest)))
                         .subscribe({
-                            next: result => {
-                                this.selectedMemberDetails.set(result.results[0]);
-                                this.isLoadingDetails.set(false);
+                            next: () => {
+                                this.isNavigating.set(false);
                             },
                             error: error => {
-                                this.selectedMemberDetails.set(undefined);
-                                this.isLoadingDetails.set(false);
-                                this.detailsError.set(this.formatError(error));
+                                this.isNavigating.set(false);
+                                this.errorMessage.set(this.formatError(error));
                             }
                         });
                 },
                 error: error => {
-                    this.isLoadingDetails.set(false);
-                    this.detailsError.set(this.formatError(error));
-                }
-            });
-    }
-
-    backToResults(): void {
-        this.viewMode.set('results');
-    }
-
-    confirmMember(): void {
-        const record = this.selectedRecord();
-
-        if (!record || this.isNavigatingToRequestedService()) {
-            return;
-        }
-
-        this.isNavigatingToRequestedService.set(true);
-        this.detailsError.set(undefined);
-
-        const captureRequest = {
-            processId: this.processState.state().processId,
-            processStep: {
-                memberId: record.memberId,
-                memberEnrollmentId: record.memberEnrollmentId,
-                dateOfService: this.processState.state().dateOfService
-            } satisfies CaptureMemberStep
-        };
-
-        this.processService
-            .executeStep<CaptureMemberStep, object>('CaptureMember', captureRequest)
-            .subscribe({
-                next: () => {
-                    this.isNavigatingToRequestedService.set(false);
-                },
-                error: (error: unknown) => {
-                    this.isNavigatingToRequestedService.set(false);
-                    this.detailsError.set(this.formatError(error));
+                    this.isNavigating.set(false);
+                    this.errorMessage.set(this.formatError(error));
                 }
             });
     }
@@ -368,61 +290,6 @@ export class MemberSearch {
     ): [string, unknown][] {
         return this.getRecordEntries(record)
             .slice(0, 4);
-    }
-
-    getDetailSections(): Array<{ title: string; entries: [string, unknown][] }> {
-        if (!this.selectedMemberDetails()) {
-            return [];
-        }
-
-        const details = this.selectedMemberDetails()!;
-        const sections: Array<{ title: string; entries: [string, unknown][] }> = [
-            {
-                title: 'Identity',
-                entries: [
-                    ['Name', details.displayName],
-                    ['Member Number', details.memberNumber],
-                    ['Date of Birth', details.dateOfBirth],
-                    ['Gender', details.gender]
-                ]
-            },
-            {
-                title: 'Enrollment',
-                entries: [
-                    ['Plan', details.planName],
-                    ['Line of Business', details.lineOfBusiness],
-                    ['Effective Date', details.effectiveDate],
-                    ['Termination Date', details.terminationDate ?? 'Open-ended'],
-                    ['Relationship', details.relationshipToSubscriber],
-                    ['Issuance State', details.issuanceState]
-                ]
-            },
-            {
-                title: 'Contact',
-                entries: [
-                    ['Email', details.emailAddress],
-                    ['Phone', details.phoneNumber]
-                ]
-            },
-            {
-                title: 'Address',
-                entries: [
-                    ['Address 1', details.addressLine1],
-                    ['Address 2', details.addressLine2],
-                    ['City', details.city],
-                    ['State', details.addressState],
-                    ['Postal Code', details.postalCode]
-                ]
-            }
-        ];
-
-        return sections.map(section => ({
-            ...section,
-            entries: section.entries.filter(([, value]) =>
-                value !== undefined &&
-                value !== null &&
-                `${value}`.length > 0)
-        }));
     }
 
     getCoverageClass(

@@ -11,8 +11,9 @@ export function getRouteForStep(
         case 'CaptureServicingProvider':
             return 'servicing-provider';
         case 'ValidateMember':
-        case 'CaptureMember':
             return 'member-search';
+        case 'CaptureMember':
+            return 'capture-member';
         default:
             return undefined;
     }
