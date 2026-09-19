@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Process\Abstractions\Kaleido.Process.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\Kaleido\Kaleido.csproj" />
     <ProjectReference Include="..\..\..\src\Queryable\AspNetCore.Abstractions\Kaleido.Queryable.AspNetCore.Abstractions.csproj" />
   </ItemGroup>
 

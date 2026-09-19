@@ -4,7 +4,7 @@
 		<RootNamespace>Kaleido.Samples.ECommerce.Data</RootNamespace>
 	</PropertyGroup>
 	<ItemGroup>
-	  <ProjectReference Include="..\..\..\src\Queryable\Abstractions\Kaleido.Queryable.Abstractions.csproj" />
+	  <ProjectReference Include="..\..\..\src\Kaleido\Kaleido.csproj" />
 	  <ProjectReference Include="..\Data\Kaleido.Samples.ECommerce.Data.csproj" />
 	</ItemGroup>
 
