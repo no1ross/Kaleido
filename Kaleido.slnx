@@ -113,24 +113,12 @@
 
   <Folder Name="/test/">
     <File Path="tests/AGENTS.md" />
+    <Project Path="tests/Kaleido.UnitTests/Kaleido.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.AspNetCore.UnitTests/Kaleido.AspNetCore.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.Http.UnitTests/Kaleido.Http.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.Http.FunctionalTests/Kaleido.Http.FunctionalTests.csproj" />
+    <Project Path="tests/Kaleido.Http.Abstractions.UnitTests/Kaleido.Http.Abstractions.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.Http.Client.UnitTests/Kaleido.Http.Client.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.Provider.SQLite.UnitTests/Kaleido.Provider.SQLite.UnitTests.csproj" />
   </Folder>
-  <Folder Name="/test/Core/">
-    <Project Path="tests/Core/Abstractions.UnitTests/Kaleido.Abstractions.UnitTests.csproj" />
-    <Project Path="tests/Core/AspNetCore.UnitTests/Kaleido.AspNetCore.UnitTests.csproj" />
-    <Project Path="tests/Core/UnitTests/Kaleido.UnitTests.csproj" Id="d3158058-b54e-4a54-8bb0-5f324d367958" />
-  </Folder>
-  <Folder Name="/test/Process/">
-    <Project Path="tests/Process/Http.Client.UnitTests/Kaleido.Process.Http.Client.UnitTests.csproj" />
-    <Project Path="tests/Process/AspNetCore.FunctionalTests/Kaleido.Process.AspNetCore.FunctionalTests.csproj" />
-    <Project Path="tests/Process/AspNetCore.UnitTests/Kaleido.Process.AspNetCore.UnitTests.csproj" />
-    <Project Path="tests/Process/UnitTests/Kaleido.Process.UnitTests.csproj" />
-  </Folder>
-  <Folder Name="/test/Queryable/">
-    <Project Path="tests/Queryable/Abstractions.UnitTests/Kaleido.Queryable.Abstractions.UnitTests.csproj" />
-    <Project Path="tests/Queryable/Http.Client.UnitTests/Kaleido.Queryable.Http.Client.UnitTests.csproj" />
-    <Project Path="tests/Queryable/AspNetCore.FunctionalTests/Kaleido.Queryable.AspNetCore.FunctionalTests.csproj" />
-    <Project Path="tests/Queryable/AspNetCore.UnitTests/Kaleido.Queryable.AspNetCore.UnitTests.csproj" />
-    <Project Path="tests/Queryable/UnitTests/Kaleido.Queryable.UnitTests.csproj" />
-  </Folder>
-  <Folder Name="/test/Registry/" />
 </Solution>

@@ -13,7 +13,8 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Kaleido.Queryable.AspNetCore.FunctionalTests")]
 [assembly: InternalsVisibleTo("Kaleido.Queryable.UnitTests")]
 
-// Test projects (future names)
+// Test projects (new names)
+[assembly: InternalsVisibleTo("Kaleido.Http.UnitTests")]
 [assembly: InternalsVisibleTo("Kaleido.Http.FunctionalTests")]
 [assembly: InternalsVisibleTo("Kaleido.UnitTests")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
