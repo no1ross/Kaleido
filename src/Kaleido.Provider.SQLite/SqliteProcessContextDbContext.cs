@@ -1,8 +1,8 @@
-﻿using Kaleido.Process.Providers.SQLite.Configuration;
-using Kaleido.Process.Providers.SQLite.Entities;
+using Kaleido.Provider.SQLite.Configuration;
+using Kaleido.Provider.SQLite.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Kaleido.Process.Providers.SQLite;
+namespace Kaleido.Provider.SQLite;
 
 public sealed class SqliteProcessContextDbContext
     : DbContext

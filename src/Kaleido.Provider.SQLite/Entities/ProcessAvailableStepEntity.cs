@@ -1,4 +1,4 @@
-﻿namespace Kaleido.Process.Providers.SQLite.Entities;
+namespace Kaleido.Provider.SQLite.Entities;
 
 public sealed class ProcessAvailableStepEntity
 {

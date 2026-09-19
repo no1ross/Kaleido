@@ -1,6 +1,7 @@
-﻿using Kaleido.Process.Execution;
+using Kaleido.Process;
+using Kaleido.Process.Execution;
 
-namespace Kaleido.Process.Providers.SQLite.Entities;
+namespace Kaleido.Provider.SQLite.Entities;
 
 public sealed class ProcessStepContextEntity
 {

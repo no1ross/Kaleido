@@ -1,8 +1,8 @@
-using Kaleido.Process.Providers.SQLite.Entities;
+using Kaleido.Provider.SQLite.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Kaleido.Process.Providers.SQLite.Configuration;
+namespace Kaleido.Provider.SQLite.Configuration;
 
 internal sealed class ProcessRequiredStepEntityConfiguration
     : IEntityTypeConfiguration<ProcessRequiredStepEntity>

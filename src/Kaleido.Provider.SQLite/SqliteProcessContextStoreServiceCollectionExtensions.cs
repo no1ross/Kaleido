@@ -1,9 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Kaleido.Process;
 using Kaleido.Process.Context;
 
-namespace Kaleido.Process.Providers.SQLite;
+namespace Kaleido.Provider.SQLite;
 
 public static class SqliteProcessContextStoreServiceCollectionExtensions
 {

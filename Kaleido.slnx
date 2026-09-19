@@ -103,7 +103,7 @@
     <File Path="src/Process/README.md" />
   </Folder>
   <Folder Name="/src/Process/Providers/">
-    <Project Path="src/Process/Providers/SQLite/Kaleido.Process.Providers.SQLite.csproj" Id="59eee9c5-f48c-4b8d-8086-a29f7ea7c195" />
+    <Project Path="src/Kaleido.Provider.SQLite/Kaleido.Provider.SQLite.csproj" />
   </Folder>
   <Folder Name="/src/Queryable/">
     <File Path="src/Queryable/AGENTS.md" />

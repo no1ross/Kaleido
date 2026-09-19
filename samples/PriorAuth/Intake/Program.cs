@@ -3,7 +3,7 @@ using Kaleido.Exceptions;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Process;
 using Kaleido.Process.AspNetCore;
-using Kaleido.Process.Providers.SQLite;
+using Kaleido.Provider.SQLite;
 using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.PriorAuth.Intake.Data;
