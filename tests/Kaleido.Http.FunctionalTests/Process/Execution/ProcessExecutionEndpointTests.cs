@@ -100,7 +100,7 @@ public sealed class ProcessExecutionEndpointTests
         Assert.Contains(
             contract.Results,
             x => x.StepName == "TotallyFakeStep"
-                 && x.Messages.Any(m => m.Code == "step-not-found"));
+                 && x.Messages.Any(m => m.Code == "UnknownStep"));
     }
 
     private Task<HttpResponseMessage> PostWithProcessIdAsync<T>(string url, T body, Guid processId)
