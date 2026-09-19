@@ -5,7 +5,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Process\Http.Client\Kaleido.Process.Http.Client.csproj" />
-		<ProjectReference Include="..\..\..\src\Process\AspNetCore.Abstractions\Kaleido.Process.AspNetCore.Abstractions.csproj" />
+		<ProjectReference Include="..\..\..\src\Kaleido.Http.Abstractions\Kaleido.Http.Abstractions.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<Using Include="Kaleido.Process" />

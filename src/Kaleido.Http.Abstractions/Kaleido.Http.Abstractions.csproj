@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<Import Project="../../build/packages.props" />
+
+	<ItemGroup>
+		<ProjectReference Include="..\Kaleido\Kaleido.csproj" />
+	</ItemGroup>
+
+</Project>
