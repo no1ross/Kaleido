@@ -66,18 +66,9 @@
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
     <File Path="AGENTS.md" />
-    <File Path="architecture.md" />
-    <File Path="build/common.props" />
-    <File Path="build/packages.props" />
-    <File Path="build/samples.props" />
-    <File Path="build/tests.props" />
+    <File Path="ARCHITECTURE.md" />
     <File Path="global.json" />
     <File Path="README.md" />
-  </Folder>
-  <Folder Name="/Solution Items/PriorAuth Compose/">
-    <File Path="samples/PriorAuth/.env" />
-    <File Path="samples/PriorAuth/docker-compose.override.yml" />
-    <File Path="samples/PriorAuth/docker-compose.yml" />
   </Folder>
   <Folder Name="/Solution Items/Build/">
     <File Path="build/common.props" />
@@ -85,30 +76,20 @@
     <File Path="build/samples.props" />
     <File Path="build/tests.props" />
   </Folder>
+  <Folder Name="/Solution Items/PriorAuth Compose/">
+    <File Path="samples/PriorAuth/.env" />
+    <File Path="samples/PriorAuth/docker-compose.override.yml" />
+    <File Path="samples/PriorAuth/docker-compose.yml" />
+  </Folder>
   <Folder Name="/src/">
+    <File Path="src/AGENTS.md" />
+    <File Path="src/ARCHITECTURE.md" />
     <Project Path="src/Kaleido/Kaleido.csproj" />
-    <Project Path="src/Kaleido.Http.Abstractions/Kaleido.Http.Abstractions.csproj" />
     <Project Path="src/Kaleido.AspNetCore/Kaleido.AspNetCore.csproj" />
     <Project Path="src/Kaleido.Http/Kaleido.Http.csproj" />
+    <Project Path="src/Kaleido.Http.Abstractions/Kaleido.Http.Abstractions.csproj" />
     <Project Path="src/Kaleido.Http.Client/Kaleido.Http.Client.csproj" />
-  </Folder>
-  <Folder Name="/src/Core/">
-    <File Path="src/Core/AGENTS.md" />
-    <File Path="src/Core/ARCHITECTURE.md" />
-    <File Path="src/Core/README.md" />
-  </Folder>
-  <Folder Name="/src/Process/">
-    <File Path="src/Process/AGENTS.md" />
-    <File Path="src/Process/ARCHITECTURE.md" />
-    <File Path="src/Process/README.md" />
-  </Folder>
-  <Folder Name="/src/Process/Providers/">
     <Project Path="src/Kaleido.Provider.SQLite/Kaleido.Provider.SQLite.csproj" />
-  </Folder>
-  <Folder Name="/src/Queryable/">
-    <File Path="src/Queryable/AGENTS.md" />
-    <File Path="src/Queryable/ARCHITECTURE.md" />
-    <File Path="src/Queryable/README.md" />
   </Folder>
 
   <Folder Name="/test/">
