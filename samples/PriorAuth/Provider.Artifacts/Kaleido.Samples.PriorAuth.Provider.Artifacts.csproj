@@ -12,7 +12,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Common\Kaleido.Samples.PriorAuth.Common.csproj" />
 		<ProjectReference Include="..\ReferenceData.Artifacts\Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.csproj" />
-		<ProjectReference Include="..\..\..\src\Queryable\Http.Client\Kaleido.Queryable.Http.Client.csproj" />
+		<ProjectReference Include="..\..\..\src\Kaleido.Http.Client\Kaleido.Http.Client.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -90,6 +90,7 @@
     <Project Path="src/Kaleido.Http.Abstractions/Kaleido.Http.Abstractions.csproj" />
     <Project Path="src/Kaleido.AspNetCore/Kaleido.AspNetCore.csproj" />
     <Project Path="src/Kaleido.Http/Kaleido.Http.csproj" />
+    <Project Path="src/Kaleido.Http.Client/Kaleido.Http.Client.csproj" />
   </Folder>
   <Folder Name="/src/Core/">
     <File Path="src/Core/AGENTS.md" />
@@ -100,7 +101,6 @@
     <File Path="src/Process/AGENTS.md" />
     <File Path="src/Process/ARCHITECTURE.md" />
     <File Path="src/Process/README.md" />
-    <Project Path="src/Process/Http.Client/Kaleido.Process.Http.Client.csproj" />
   </Folder>
   <Folder Name="/src/Process/Providers/">
     <Project Path="src/Process/Providers/SQLite/Kaleido.Process.Providers.SQLite.csproj" Id="59eee9c5-f48c-4b8d-8086-a29f7ea7c195" />
@@ -109,7 +109,6 @@
     <File Path="src/Queryable/AGENTS.md" />
     <File Path="src/Queryable/ARCHITECTURE.md" />
     <File Path="src/Queryable/README.md" />
-    <Project Path="src/Queryable/Http.Client/Kaleido.Queryable.Http.Client.csproj" />
   </Folder>
 
   <Folder Name="/src/Registry/">

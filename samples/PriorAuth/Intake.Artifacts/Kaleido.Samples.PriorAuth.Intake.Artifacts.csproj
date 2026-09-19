@@ -11,8 +11,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="../History.Artifacts/Kaleido.Samples.PriorAuth.History.Artifacts.csproj" />
-		<ProjectReference Include="../../../src/Process/Http.Client/Kaleido.Process.Http.Client.csproj" />
-		<ProjectReference Include="../../../src/Queryable/Http.Client/Kaleido.Queryable.Http.Client.csproj" />
+		<ProjectReference Include="../../../src/Kaleido.Http.Client/Kaleido.Http.Client.csproj" />
 		<ProjectReference Include="../CodeSet.Artifacts/Kaleido.Samples.PriorAuth.CodeSet.Artifacts.csproj" />
 		<ProjectReference Include="../Configuration.Artifacts/Kaleido.Samples.PriorAuth.Configuration.Artifacts.csproj" />
 		<ProjectReference Include="../Member.Artifacts/Kaleido.Samples.PriorAuth.Member.Artifacts.csproj" />

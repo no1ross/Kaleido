@@ -9,7 +9,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Kaleido.Http\Kaleido.Http.csproj" />
 		<ProjectReference Include="..\..\..\src\Kaleido.Http.Abstractions\Kaleido.Http.Abstractions.csproj" />
-		<ProjectReference Include="..\..\..\src\Queryable\Http.Client\Kaleido.Queryable.Http.Client.csproj" />
+		<ProjectReference Include="..\..\..\src\Kaleido.Http.Client\Kaleido.Http.Client.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
