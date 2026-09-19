@@ -6,7 +6,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Core\AspNetCore\Kaleido.AspNetCore.csproj" />
+		<ProjectReference Include="..\Kaleido.AspNetCore\Kaleido.AspNetCore.csproj" />
 		<ProjectReference Include="..\Process\Http.Client\Kaleido.Process.Http.Client.csproj" />
 		<ProjectReference Include="..\Queryable\Http.Client\Kaleido.Queryable.Http.Client.csproj" />
 	</ItemGroup>

@@ -6,7 +6,7 @@
 	</ItemGroup>
 	
 	<ItemGroup>
-	  <ProjectReference Include="..\..\Core\AspNetCore\Kaleido.AspNetCore.csproj" />
+	  <ProjectReference Include="..\..\Kaleido.AspNetCore\Kaleido.AspNetCore.csproj" />
 	  <ProjectReference Include="..\..\Kaleido\Kaleido.csproj" />
 	  <ProjectReference Include="..\..\Kaleido.Http.Abstractions\Kaleido.Http.Abstractions.csproj" />
 	</ItemGroup>

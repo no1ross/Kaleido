@@ -4,7 +4,7 @@
 		<PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.*" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\..\..\src\Core\AspNetCore\Kaleido.AspNetCore.csproj" />
+		<ProjectReference Include="..\..\..\src\Kaleido.AspNetCore\Kaleido.AspNetCore.csproj" />
 	</ItemGroup>
 
 </Project>

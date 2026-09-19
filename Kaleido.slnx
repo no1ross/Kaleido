@@ -88,12 +88,12 @@
   <Folder Name="/src/">
     <Project Path="src/Kaleido/Kaleido.csproj" />
     <Project Path="src/Kaleido.Http.Abstractions/Kaleido.Http.Abstractions.csproj" />
+    <Project Path="src/Kaleido.AspNetCore/Kaleido.AspNetCore.csproj" />
   </Folder>
   <Folder Name="/src/Core/">
     <File Path="src/Core/AGENTS.md" />
     <File Path="src/Core/ARCHITECTURE.md" />
     <File Path="src/Core/README.md" />
-    <Project Path="src/Core/AspNetCore/Kaleido.AspNetCore.csproj" Id="3fc482b8-a2d3-4697-b628-4ec0d3cf0e8b" />
   </Folder>
   <Folder Name="/src/Process/">
     <File Path="src/Process/AGENTS.md" />
