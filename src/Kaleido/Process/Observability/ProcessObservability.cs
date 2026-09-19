@@ -1,0 +1,612 @@
+using Kaleido.Observability;
+using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+
+namespace Kaleido.Process.Observability;
+
+internal interface IProcessObservability
+{
+    IProcessExecutionObservation BeginExecution(
+        ProcessExecutionObservationDetails details);
+
+    IProcessStepObservation BeginStep(
+        ProcessStepObservationDetails details);
+
+    IProcessHandlerObservation BeginHandler(
+        ProcessHandlerObservationDetails details);
+}
+
+internal interface IProcessExecutionObservation
+    : IDisposable
+{
+    void ContextInitialized(
+        Guid processId);
+
+    void ContextLoaded(
+        Guid processId);
+
+    void PlanBuilt(
+        int candidateCount,
+        int executableCount);
+
+    void ExecutionFailed(
+        Exception exception);
+}
+
+internal interface IProcessStepObservation
+    : IDisposable
+{
+    void DecisionRecorded(
+        string decisionType,
+        string executionStatus);
+
+    void Canceled();
+
+    void StepFailed(
+        Exception exception);
+}
+
+internal interface IProcessHandlerObservation
+    : IDisposable
+{
+    void HandlerFailed(
+        Exception exception);
+}
+
+internal sealed record ProcessExecutionObservationDetails(
+    int SubmittedStepCount);
+
+internal sealed record ProcessStepObservationDetails(
+    string StepName,
+    string? StepVersion);
+
+internal sealed record ProcessHandlerObservationDetails(
+    string StepName,
+    string? StepVersion);
+
+internal sealed class ProcessObservability
+    : IProcessObservability
+{
+    private static readonly ActivitySource ActivitySource =
+        new(ProcessTelemetry.ActivitySourceName);
+
+    private static readonly Meter Meter =
+        new(ProcessTelemetry.MeterName);
+
+    private static readonly Counter<long> ProcessExecutionsCounter =
+        Meter.CreateCounter<long>(
+            ProcessTelemetry.ExecutionsCounterName);
+
+    private static readonly Counter<long> ProcessExecutionFailuresCounter =
+        Meter.CreateCounter<long>(
+            ProcessTelemetry.ExecutionFailuresCounterName);
+
+    private static readonly Counter<long> ProcessContextsInitializedCounter =
+        Meter.CreateCounter<long>(
+            ProcessTelemetry.ContextsInitializedCounterName);
+
+    private static readonly Counter<long> ProcessContextsLoadedCounter =
+        Meter.CreateCounter<long>(
+            ProcessTelemetry.ContextsLoadedCounterName);
+
+    private static readonly Histogram<long> ProcessSubmittedStepCountHistogram =
+        Meter.CreateHistogram<long>(
+            ProcessTelemetry.SubmittedStepCountHistogramName);
+
+    private static readonly Histogram<long> ProcessPlanCandidateCountHistogram =
+        Meter.CreateHistogram<long>(
+            ProcessTelemetry.PlanCandidateCountHistogramName);
+
+    private static readonly Histogram<long> ProcessPlanExecutableCountHistogram =
+        Meter.CreateHistogram<long>(
+            ProcessTelemetry.PlanExecutableCountHistogramName);
+
+    private static readonly Counter<long> ProcessStepExecutionsCounter =
+        Meter.CreateCounter<long>(
+            ProcessTelemetry.StepExecutionsCounterName);
+
+    private static readonly Counter<long> ProcessStepCancellationsCounter =
+        Meter.CreateCounter<long>(
+            ProcessTelemetry.StepCancellationsCounterName);
+
+    private static readonly Counter<long> ProcessStepFailuresCounter =
+        Meter.CreateCounter<long>(
+            ProcessTelemetry.StepFailuresCounterName);
+
+    private static readonly Counter<long> ProcessHandlerExecutionsCounter =
+        Meter.CreateCounter<long>(
+            ProcessTelemetry.HandlerExecutionsCounterName);
+
+    private static readonly Counter<long> ProcessHandlerFailuresCounter =
+        Meter.CreateCounter<long>(
+            ProcessTelemetry.HandlerFailuresCounterName);
+
+    private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
+    private readonly ILogger<ProcessObservability> _logger;
+    private readonly string _processorName;
+
+    public ProcessObservability(
+        IKaleidoCorrelationContextAccessor correlationAccessor,
+        KaleidoServiceOptions serviceOptions,
+        ILogger<ProcessObservability> logger)
+    {
+        ArgumentNullException.ThrowIfNull(correlationAccessor);
+        ArgumentNullException.ThrowIfNull(serviceOptions);
+        ArgumentNullException.ThrowIfNull(logger);
+
+        _correlationAccessor = correlationAccessor;
+        _processorName = serviceOptions.ServiceName;
+        _logger = logger;
+    }
+
+    public IProcessExecutionObservation BeginExecution(
+        ProcessExecutionObservationDetails details)
+    {
+        ArgumentNullException.ThrowIfNull(details);
+
+        var activity =
+            ActivitySource.StartActivity(
+                "kaleido.process.execute",
+                ActivityKind.Internal);
+
+        var correlation =
+            _correlationAccessor.Current;
+
+        activity?.SetTag(
+            "kaleido.request.id",
+            correlation.RequestId);
+
+        activity?.SetTag(
+            "kaleido.process.id",
+            correlation.ProcessId?.ToString());
+
+        activity?.SetTag(
+            "kaleido.processor.instance_id",
+            correlation.ProcessorInstanceId?.ToString());
+
+        activity?.SetTag(
+            "kaleido.processor.name",
+            _processorName);
+
+        activity?.SetTag(
+            "kaleido.source.processor",
+            correlation.SourceProcessorName);
+
+        activity?.SetTag(
+            "kaleido.process.submitted_step_count",
+            details.SubmittedStepCount);
+
+        var executionTags =
+            CreateExecutionTags(
+                _processorName,
+                correlation.SourceProcessorName);
+
+        ProcessExecutionsCounter.Add(
+            1,
+            executionTags);
+
+        ProcessSubmittedStepCountHistogram.Record(
+            details.SubmittedStepCount,
+            executionTags);
+
+        _logger.LogDebug(
+            "Process execution started for processor {ProcessorName} with submitted step count {SubmittedStepCount}.",
+            _processorName,
+            details.SubmittedStepCount);
+
+        return new ProcessExecutionObservation(
+            activity,
+            _processorName,
+            _logger);
+    }
+
+    public IProcessStepObservation BeginStep(
+        ProcessStepObservationDetails details)
+    {
+        ArgumentNullException.ThrowIfNull(details);
+
+        var activity =
+            ActivitySource.StartActivity(
+                "kaleido.process.step",
+                ActivityKind.Internal);
+
+        activity?.SetTag(
+            "kaleido.process.step_name",
+            details.StepName);
+
+        activity?.SetTag(
+            "kaleido.process.step_version",
+            details.StepVersion);
+
+        ProcessStepExecutionsCounter.Add(
+            1,
+            CreateStepTags(
+                _processorName,
+                details.StepName,
+                details.StepVersion));
+
+        _logger.LogDebug(
+            "Process step execution started for processor {ProcessorName} step {StepName} version {StepVersion}.",
+            _processorName,
+            details.StepName,
+            details.StepVersion);
+
+        return new ProcessStepObservation(
+            activity,
+            _processorName,
+            _logger,
+            details);
+    }
+
+    public IProcessHandlerObservation BeginHandler(
+        ProcessHandlerObservationDetails details)
+    {
+        ArgumentNullException.ThrowIfNull(details);
+
+        var activity =
+            ActivitySource.StartActivity(
+                "kaleido.process.step.handler",
+                ActivityKind.Internal);
+
+        activity?.SetTag(
+            "kaleido.process.step_name",
+            details.StepName);
+
+        activity?.SetTag(
+            "kaleido.process.step_version",
+            details.StepVersion);
+
+        ProcessHandlerExecutionsCounter.Add(
+            1,
+            CreateStepTags(
+                _processorName,
+                details.StepName,
+                details.StepVersion));
+
+        _logger.LogTrace(
+            "Process handler execution started for processor {ProcessorName} step {StepName} version {StepVersion}.",
+            _processorName,
+            details.StepName,
+            details.StepVersion);
+
+        return new ProcessHandlerObservation(
+            activity,
+            _processorName,
+            _logger,
+            details);
+    }
+
+    private static TagList CreateExecutionTags(
+        string processorName,
+        string? sourceProcessorName)
+    {
+        TagList tags =
+        [
+            new("processor.name", processorName)
+        ];
+
+        if (!string.IsNullOrWhiteSpace(sourceProcessorName))
+        {
+            tags.Add(
+                "source.processor",
+                sourceProcessorName);
+        }
+
+        return tags;
+    }
+
+    private static TagList CreateStepTags(
+        string processorName,
+        string stepName,
+        string? stepVersion)
+    {
+        TagList tags =
+        [
+            new("processor.name", processorName),
+            new("step.name", stepName)
+        ];
+
+        if (!string.IsNullOrWhiteSpace(stepVersion))
+        {
+            tags.Add(
+                "step.version",
+                stepVersion);
+        }
+
+        return tags;
+    }
+
+    private sealed class ProcessExecutionObservation
+        : IProcessExecutionObservation
+    {
+        private readonly Activity? _activity;
+        private readonly string _processorName;
+        private readonly ILogger _logger;
+
+        public ProcessExecutionObservation(
+            Activity? activity,
+            string processorName,
+            ILogger logger)
+        {
+            _activity = activity;
+            _processorName = processorName;
+            _logger = logger;
+        }
+
+        public void ContextInitialized(
+            Guid processId)
+        {
+            _activity?.SetTag(
+                "kaleido.process.id",
+                processId.ToString());
+
+            _activity?.AddEvent(
+                new ActivityEvent(
+                    "kaleido.process.context.initialized"));
+
+            ProcessContextsInitializedCounter.Add(
+                1,
+                new TagList
+                {
+                    new("processor.name", _processorName)
+                });
+
+            _logger.LogDebug(
+                "Process context initialized for processor {ProcessorName} process {ProcessId}.",
+                _processorName,
+                processId);
+        }
+
+        public void ContextLoaded(
+            Guid processId)
+        {
+            _activity?.SetTag(
+                "kaleido.process.id",
+                processId.ToString());
+
+            _activity?.AddEvent(
+                new ActivityEvent(
+                    "kaleido.process.context.loaded"));
+
+            ProcessContextsLoadedCounter.Add(
+                1,
+                new TagList
+                {
+                    new("processor.name", _processorName)
+                });
+
+            _logger.LogDebug(
+                "Process context loaded for processor {ProcessorName} process {ProcessId}.",
+                _processorName,
+                processId);
+        }
+
+        public void PlanBuilt(
+            int candidateCount,
+            int executableCount)
+        {
+            _activity?.SetTag(
+                "kaleido.process.plan.candidate_count",
+                candidateCount);
+
+            _activity?.SetTag(
+                "kaleido.process.plan.executable_count",
+                executableCount);
+
+            var tags = new TagList
+            {
+                new("processor.name", _processorName)
+            };
+
+            ProcessPlanCandidateCountHistogram.Record(
+                candidateCount,
+                tags);
+
+            ProcessPlanExecutableCountHistogram.Record(
+                executableCount,
+                tags);
+
+            _logger.LogDebug(
+                "Process plan built for processor {ProcessorName} with {CandidateCount} candidates and {ExecutableCount} executable steps.",
+                _processorName,
+                candidateCount,
+                executableCount);
+        }
+
+        public void ExecutionFailed(
+            Exception exception)
+        {
+            ArgumentNullException.ThrowIfNull(exception);
+
+            _activity?.SetStatus(
+                ActivityStatusCode.Error,
+                exception.Message);
+
+            _activity?.AddEvent(
+                new ActivityEvent(
+                    "kaleido.process.exception"));
+
+            ProcessExecutionFailuresCounter.Add(
+                1,
+                new TagList
+                {
+                    new("processor.name", _processorName)
+                });
+
+            _logger.LogError(
+                exception,
+                "Process execution failed for processor {ProcessorName}.",
+                _processorName);
+        }
+
+        public void Dispose()
+        {
+            _activity?.Dispose();
+        }
+    }
+
+    private sealed class ProcessStepObservation
+        : IProcessStepObservation
+    {
+        private readonly Activity? _activity;
+        private readonly string _processorName;
+        private readonly ProcessStepObservationDetails _details;
+        private readonly ILogger _logger;
+
+        public ProcessStepObservation(
+            Activity? activity,
+            string processorName,
+            ILogger logger,
+            ProcessStepObservationDetails details)
+        {
+            _activity = activity;
+            _processorName = processorName;
+            _logger = logger;
+            _details = details;
+        }
+
+        public void DecisionRecorded(
+            string decisionType,
+            string executionStatus)
+        {
+            _activity?.SetTag(
+                "kaleido.process.decision_type",
+                decisionType);
+
+            _activity?.SetTag(
+                "kaleido.process.execution_status",
+                executionStatus);
+
+            var tags =
+                CreateStepTags(
+                    _processorName,
+                    _details.StepName,
+                    _details.StepVersion);
+
+            tags.Add(
+                "decision.type",
+                decisionType);
+
+            tags.Add(
+                "execution.status",
+                executionStatus);
+
+            _logger.LogDebug(
+                "Process step decision recorded for processor {ProcessorName} step {StepName} version {StepVersion} decision {DecisionType} status {ExecutionStatus}.",
+                _processorName,
+                _details.StepName,
+                _details.StepVersion,
+                decisionType,
+                executionStatus);
+        }
+
+        public void Canceled()
+        {
+            _activity?.AddEvent(
+                new ActivityEvent(
+                    "kaleido.process.step.canceled"));
+
+            ProcessStepCancellationsCounter.Add(
+                1,
+                CreateStepTags(
+                    _processorName,
+                    _details.StepName,
+                    _details.StepVersion));
+
+            _logger.LogWarning(
+                "Process step execution was canceled for processor {ProcessorName} step {StepName} version {StepVersion}.",
+                _processorName,
+                _details.StepName,
+                _details.StepVersion);
+        }
+
+        public void StepFailed(
+            Exception exception)
+        {
+            ArgumentNullException.ThrowIfNull(exception);
+
+            _activity?.SetStatus(
+                ActivityStatusCode.Error,
+                exception.Message);
+
+            _activity?.AddEvent(
+                new ActivityEvent(
+                    "kaleido.process.step.exception"));
+
+            ProcessStepFailuresCounter.Add(
+                1,
+                CreateStepTags(
+                    _processorName,
+                    _details.StepName,
+                    _details.StepVersion));
+
+            _logger.LogError(
+                exception,
+                "Process step execution failed for processor {ProcessorName} step {StepName} version {StepVersion}.",
+                _processorName,
+                _details.StepName,
+                _details.StepVersion);
+        }
+
+        public void Dispose()
+        {
+            _activity?.Dispose();
+        }
+    }
+
+    private sealed class ProcessHandlerObservation
+        : IProcessHandlerObservation
+    {
+        private readonly Activity? _activity;
+        private readonly string _processorName;
+        private readonly ProcessHandlerObservationDetails _details;
+        private readonly ILogger _logger;
+
+        public ProcessHandlerObservation(
+            Activity? activity,
+            string processorName,
+            ILogger logger,
+            ProcessHandlerObservationDetails details)
+        {
+            _activity = activity;
+            _processorName = processorName;
+            _logger = logger;
+            _details = details;
+        }
+
+        public void HandlerFailed(
+            Exception exception)
+        {
+            ArgumentNullException.ThrowIfNull(exception);
+
+            _activity?.SetStatus(
+                ActivityStatusCode.Error,
+                exception.Message);
+
+            _activity?.AddEvent(
+                new ActivityEvent(
+                    "kaleido.process.handler.exception"));
+
+            ProcessHandlerFailuresCounter.Add(
+                1,
+                CreateStepTags(
+                    _processorName,
+                    _details.StepName,
+                    _details.StepVersion));
+
+            _logger.LogError(
+                exception,
+                "Process handler execution failed for processor {ProcessorName} step {StepName} version {StepVersion}.",
+                _processorName,
+                _details.StepName,
+                _details.StepVersion);
+        }
+
+        public void Dispose()
+        {
+            _activity?.Dispose();
+        }
+    }
+
+}

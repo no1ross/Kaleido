@@ -1,0 +1,13 @@
+using System.Runtime.CompilerServices;
+
+// Test projects
+[assembly: InternalsVisibleTo("Kaleido.UnitTests")]
+[assembly: InternalsVisibleTo("Kaleido.AspNetCore.UnitTests")]
+[assembly: InternalsVisibleTo("Kaleido.Http.FunctionalTests")]
+[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
+
+// Framework projects that need access to internals
+[assembly: InternalsVisibleTo("Kaleido.AspNetCore")]
+[assembly: InternalsVisibleTo("Kaleido.Http")]
+[assembly: InternalsVisibleTo("Kaleido.Http.Client")]
+[assembly: InternalsVisibleTo("Kaleido.Provider.SQLite")]
