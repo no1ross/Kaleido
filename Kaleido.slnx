@@ -111,9 +111,6 @@
     <File Path="src/Queryable/README.md" />
   </Folder>
 
-  <Folder Name="/src/Registry/">
-    <Project Path="src/Registry/Kaleido.Registry.csproj" />
-  </Folder>
   <Folder Name="/test/">
     <File Path="tests/AGENTS.md" />
   </Folder>
