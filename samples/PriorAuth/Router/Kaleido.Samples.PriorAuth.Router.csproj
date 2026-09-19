@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Registry\Kaleido.Registry.csproj" />
+    <ProjectReference Include="..\..\..\src\Kaleido.Http\Kaleido.Http.csproj" />
   </ItemGroup>
 
 </Project>

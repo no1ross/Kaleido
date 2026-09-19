@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Queryable\AspNetCore\Kaleido.Queryable.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\..\src\Kaleido.Http\Kaleido.Http.csproj" />
     <ProjectReference Include="..\Provider.Artifacts\Kaleido.Samples.PriorAuth.Provider.Artifacts.csproj" />
     <ProjectReference Include="..\ReferenceData.Artifacts\Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.csproj" />
   </ItemGroup>
