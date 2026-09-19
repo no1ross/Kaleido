@@ -8,11 +8,18 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.*" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.*" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.*">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Kaleido\Kaleido.csproj" />
     <ProjectReference Include="..\..\..\src\Kaleido.Http.Abstractions\Kaleido.Http.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\Kaleido.Http.Client\Kaleido.Http.Client.csproj" />
   </ItemGroup>
 
 </Project>
