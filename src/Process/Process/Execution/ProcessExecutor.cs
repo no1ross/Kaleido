@@ -1,5 +1,6 @@
 ﻿using Kaleido.Eventing;
 using Kaleido.Exceptions;
+using Kaleido.Observability;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Observability;
@@ -19,6 +20,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
     private readonly IProcessEventFactory _eventFactory;
     private readonly IEventPublisher _eventPublisher;
     private readonly IProcessObservability _observability;
+    private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
 
     public ExecutionProcessor(
         IProcessStepInvoker invoker,
@@ -29,7 +31,8 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         IStepAvailabilityResolver availabilityResolver,
         IProcessEventFactory eventFactory,
         IEventPublisher eventPublisher,
-        IProcessObservability observability)
+        IProcessObservability observability,
+        IKaleidoCorrelationContextAccessor correlationAccessor)
     {
         ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(evaluator);
@@ -40,6 +43,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         ArgumentNullException.ThrowIfNull(eventFactory);
         ArgumentNullException.ThrowIfNull(eventPublisher);
         ArgumentNullException.ThrowIfNull(observability);
+        ArgumentNullException.ThrowIfNull(correlationAccessor);
 
         _availabilityResolver = availabilityResolver;
         _invoker = invoker;
@@ -50,6 +54,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
         _eventFactory = eventFactory;
         _eventPublisher = eventPublisher;
         _observability = observability;
+        _correlationAccessor = correlationAccessor;
     }
 
     public async Task<ProcessExecutionResult> ExecuteAsync(
@@ -183,6 +188,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
 
                 await _eventPublisher.PublishAsync(
                     _eventFactory.CreateStepCompleted(
+                        _correlationAccessor.Current,
                         context,
                         candidate,
                         outcome,

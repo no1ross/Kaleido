@@ -1,3 +1,4 @@
+using Kaleido.Eventing;
 using Kaleido.Observability;
 using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Metadata;
@@ -7,7 +8,7 @@ namespace Kaleido.Queryable.Query;
 
 internal interface IQueryEventFactory
 {
-    QueryExecuted CreateQueryExecuted<TView>(
+    KaleidoEventEnvelope<QueryExecuted, QueryableEventContext> CreateQueryExecuted<TView>(
         KaleidoCorrelationContext correlation,
         QueryObservationDetails details,
         IQueryRequest request,
@@ -15,10 +16,11 @@ internal interface IQueryEventFactory
         where TView : class;
 }
 
-internal sealed class QueryEventFactory
+internal sealed class QueryEventFactory(
+    KaleidoServiceOptions serviceOptions)
     : IQueryEventFactory
 {
-    public QueryExecuted CreateQueryExecuted<TView>(
+    public KaleidoEventEnvelope<QueryExecuted, QueryableEventContext> CreateQueryExecuted<TView>(
         KaleidoCorrelationContext correlation,
         QueryObservationDetails details,
         IQueryRequest request,
@@ -30,9 +32,8 @@ internal sealed class QueryEventFactory
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(result);
 
-        return new QueryExecuted
+        var @event = new QueryExecuted
         {
-            ProcessId = correlation.ProcessId,
             OccurredOn = DateTimeOffset.UtcNow,
             QueryContextName = details.QueryContextName,
             QueryViewName = details.QueryViewName,
@@ -48,6 +49,24 @@ internal sealed class QueryEventFactory
             SortCount = request.Query?.Sort?.Count ?? 0,
             FilterProvided = request.Query?.Filter is not null,
             ViewParameters = request.ViewParameters
+        };
+
+        var context = new QueryableEventContext
+        {
+            RequestId = correlation.RequestId,
+            ServiceName = serviceOptions.ServiceName,
+            ProcessId = correlation.ProcessId,
+            StepName = correlation.StepName,
+            QueryContextName = details.QueryContextName,
+            QueryViewName = details.QueryViewName,
+            ProcessorInstanceId = serviceOptions.InstanceId.ToString(),
+            SourceProcessorName = correlation.SourceProcessorName ?? serviceOptions.ServiceName
+        };
+
+        return new KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>
+        {
+            Context = context,
+            Event = @event
         };
     }
 }

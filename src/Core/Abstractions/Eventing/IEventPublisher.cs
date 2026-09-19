@@ -7,9 +7,11 @@
 /// </summary>
 public interface IEventPublisher
 {
-    /// <summary>Publishes a single typed domain event asynchronously.</summary>
-    Task PublishAsync<TEvent>(
-        TEvent processEvent,
+    /// <summary>
+    /// Publishes a domain event wrapped in its correlation and traceability context envelope.
+    /// </summary>
+    Task PublishAsync<TEvent, TContext>(
+        KaleidoEventEnvelope<TEvent, TContext> envelope,
         CancellationToken cancellationToken = default)
         where TEvent : IKaleidoEvent;
 }

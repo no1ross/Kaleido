@@ -117,7 +117,6 @@ public sealed class CaptureRequestedServiceHandler(
                             CodeValue = procedureCode.CodeValue,
                             CodeSystem = procedureCode.CodeSystem
                         },
-                        context.ProcessId,
                         cancellationToken);
 
             if (downstreamResult.Outcome == StepExecutionOutcome.Failed)

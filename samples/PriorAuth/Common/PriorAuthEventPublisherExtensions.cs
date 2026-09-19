@@ -2,81 +2,44 @@ using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
 using Kaleido.Eventing;
-using Kaleido.Process.Eventing;
-using Kaleido.Queryable.Eventing;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Samples.PriorAuth;
 
-public static class PriorAuthEventPublisherExtensions
-{
-    public static IServiceCollection AddPriorAuthEventPublishing(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configuration);
-
-        var baseUrl =
-            configuration["Services:EventCollector:BaseUrl"]
-            ?? "http://localhost:8086";
-
-        services.AddHttpClient("PriorAuthEventCollector", client =>
-        {
-            client.BaseAddress = new Uri(baseUrl);
-        });
-
-        services.AddSingleton<IEventPublisher, HttpEventPublisher>();
-
-        return services;
-    }
-}
-
-internal sealed class HttpEventPublisher(
+/// <summary>
+/// HTTP event publisher that forwards Kaleido event envelopes to the PriorAuth EventCollector service.
+/// Register via: <c>builder.Services.AddKaleido(...).AddEventPublisher&lt;HttpEventPublisher&gt;()</c>
+/// The named HttpClient "PriorAuthEventCollector" must be registered separately in the host Program.cs.
+/// </summary>
+public sealed class HttpEventPublisher(
     IHttpClientFactory httpClientFactory)
     : IEventPublisher
 {
     private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
 
-    public async Task PublishAsync<TEvent>(
-        TEvent eventData,
+    public async Task PublishAsync<TEvent, TContext>(
+        KaleidoEventEnvelope<TEvent, TContext> envelope,
         CancellationToken cancellationToken = default)
         where TEvent : IKaleidoEvent
     {
-        ArgumentNullException.ThrowIfNull(eventData);
+        ArgumentNullException.ThrowIfNull(envelope);
 
         using var response =
             await _httpClientFactory
                 .CreateClient("PriorAuthEventCollector")
                 .PostAsJsonAsync(
                     "/events",
-                    EventEnvelope.Create(eventData),
+                    new
+                    {
+                        EventType = GetEventType(envelope.Event),
+                        Context = (object)envelope.Context!,
+                        Event = JsonSerializer.SerializeToElement(envelope.Event)
+                    },
                     cancellationToken);
 
         response.EnsureSuccessStatusCode();
     }
-}
 
-public sealed record EventEnvelope(
-    string EventType,
-    Guid? ProcessId,
-    DateTimeOffset OccurredOn,
-    JsonElement Payload)
-{
-    public static EventEnvelope Create<TEvent>(
-        TEvent eventData)
-        where TEvent : IKaleidoEvent
-    {
-        return new EventEnvelope(
-            GetEventType(eventData),
-            GetProcessId(eventData),
-            eventData.OccurredOn,
-            JsonSerializer.SerializeToElement(eventData));
-    }
-
-    private static string GetEventType<TEvent>(
-        TEvent eventData)
+    private static string GetEventType<TEvent>(TEvent eventData)
         where TEvent : IKaleidoEvent
     {
         ArgumentNullException.ThrowIfNull(eventData);
@@ -93,17 +56,5 @@ public sealed record EventEnvelope(
         }
 
         return attribute.Type;
-    }
-
-    private static Guid? GetProcessId<TEvent>(
-        TEvent eventData)
-        where TEvent : IKaleidoEvent
-    {
-        return eventData switch
-        {
-            ProcessEventBase processEvent => processEvent.ProcessId,
-            QueryExecuted queryEvent => queryEvent.ProcessId,
-            _ => null
-        };
     }
 }

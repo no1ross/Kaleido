@@ -1,10 +1,11 @@
-using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.EventCollector.Data;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -87,52 +88,52 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// POST /events — accepts the envelope produced by HttpEventPublisher:
+// { EventType, Context: { RequestId, ServiceName, ProcessId?, StepName?, ... }, Event: { ... } }
 app.MapPost("/events", async (
-    EventEnvelope envelope,
+    JsonObject body,
     EventCollectorDbContext dbContext,
     CancellationToken cancellationToken) =>
 {
-    dbContext.Events.Add(
-        new CollectedEvent
-        {
-            ProcessId = envelope.ProcessId,
-            OccurredOn = envelope.OccurredOn.UtcDateTime,
-            EventType = envelope.EventType,
-            PayloadJson = envelope.Payload.GetRawText(),
-            ReceivedOn = DateTime.UtcNow
-        });
+    var eventType = body["eventType"]?.GetValue<string>() ?? string.Empty;
+    var context = body["context"]?.AsObject();
+    var eventNode = body["event"];
+
+    var requestId = context?["requestId"]?.GetValue<string>() ?? string.Empty;
+    var serviceName2 = context?["serviceName"]?.GetValue<string>() ?? string.Empty;
+
+    Guid? processId = null;
+    if (context?["processId"] is JsonNode pidNode &&
+        Guid.TryParse(pidNode.GetValue<string>(), out var pid))
+        processId = pid;
+
+    var stepName = context?["stepName"]?.GetValue<string>();
+
+    // OccurredOn lives on the event payload
+    var occurredOnStr = eventNode?["occurredOn"]?.GetValue<string>();
+    var occurredOn = occurredOnStr is not null
+        ? DateTimeOffset.Parse(occurredOnStr).UtcDateTime
+        : DateTime.UtcNow;
+
+    dbContext.Events.Add(new CollectedEvent
+    {
+        EventType = eventType,
+        RequestId = requestId,
+        ServiceName = serviceName2,
+        ProcessId = processId,
+        StepName = stepName,
+        OccurredOn = occurredOn,
+        ReceivedOn = DateTime.UtcNow,
+        ContextJson = context?.ToJsonString() ?? "{}",
+        EventJson = eventNode?.ToJsonString() ?? "{}"
+    });
 
     await dbContext.SaveChangesAsync(cancellationToken);
 
     return Results.Accepted();
 });
 
-app.MapGet("/process-events/{processId:guid}", async (
-    Guid processId,
-    EventCollectorDbContext dbContext,
-    CancellationToken cancellationToken) =>
-{
-    var events =
-        await dbContext.Events
-            .AsNoTracking()
-            .Where(x => x.ProcessId == processId)
-            .Select(x => new
-            {
-                x.Id,
-                x.ProcessId,
-                x.OccurredOn,
-                x.ReceivedOn,
-                x.EventType,
-                x.PayloadJson
-            })
-            .ToListAsync(cancellationToken);
-
-    return Results.Ok(
-        events
-            .OrderBy(x => x.OccurredOn)
-            .ThenBy(x => x.Id));
-});
-
+// GET /events — recent events, newest first
 app.MapGet("/events", async (
     EventCollectorDbContext dbContext,
     CancellationToken cancellationToken) =>
@@ -141,21 +142,86 @@ app.MapGet("/events", async (
         await dbContext.Events
             .AsNoTracking()
             .OrderByDescending(x => x.Id)
-            .Take(100)
+            .Take(200)
             .Select(x => new
             {
                 x.Id,
+                x.EventType,
+                x.RequestId,
+                x.ServiceName,
                 x.ProcessId,
+                x.StepName,
                 x.OccurredOn,
                 x.ReceivedOn,
-                x.EventType,
-                x.PayloadJson
+                x.ContextJson,
+                x.EventJson
             })
             .ToListAsync(cancellationToken);
 
     return Results.Ok(events);
 });
 
+// GET /events/by-request/{requestId} — all events for a correlation request
+app.MapGet("/events/by-request/{requestId}", async (
+    string requestId,
+    EventCollectorDbContext dbContext,
+    CancellationToken cancellationToken) =>
+{
+    var events =
+        await dbContext.Events
+            .AsNoTracking()
+            .Where(x => x.RequestId == requestId)
+            .OrderBy(x => x.OccurredOn)
+            .ThenBy(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                x.EventType,
+                x.RequestId,
+                x.ServiceName,
+                x.ProcessId,
+                x.StepName,
+                x.OccurredOn,
+                x.ReceivedOn,
+                x.ContextJson,
+                x.EventJson
+            })
+            .ToListAsync(cancellationToken);
+
+    return Results.Ok(events);
+});
+
+// GET /events/by-process/{processId} — all events for a process
+app.MapGet("/events/by-process/{processId:guid}", async (
+    Guid processId,
+    EventCollectorDbContext dbContext,
+    CancellationToken cancellationToken) =>
+{
+    var events =
+        await dbContext.Events
+            .AsNoTracking()
+            .Where(x => x.ProcessId == processId)
+            .OrderBy(x => x.OccurredOn)
+            .ThenBy(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                x.EventType,
+                x.RequestId,
+                x.ServiceName,
+                x.ProcessId,
+                x.StepName,
+                x.OccurredOn,
+                x.ReceivedOn,
+                x.ContextJson,
+                x.EventJson
+            })
+            .ToListAsync(cancellationToken);
+
+    return Results.Ok(events);
+});
+
+// GET /processes — distinct processes with summary info
 app.MapGet("/processes", async (
     EventCollectorDbContext dbContext,
     CancellationToken cancellationToken) =>

@@ -26,18 +26,22 @@ internal sealed class ProcessExecutionService : IProcessExecutionService
     private readonly IProcessStepRegistry _registry;
     private readonly IProcessorRuntime _runtime;
     private readonly KaleidoServiceOptions _serviceOptions;
+    private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
 
     public ProcessExecutionService(
         IHttpContextAccessor httpContextAccessor,
         IProcessStepRegistry registry,
         IProcessorRuntime runtime,
-        KaleidoServiceOptions serviceOptions)
+        KaleidoServiceOptions serviceOptions,
+        IKaleidoCorrelationContextAccessor correlationAccessor)
     {
         _httpContextAccessor = httpContextAccessor;
         _registry = registry;
         _runtime = runtime;
         _serviceOptions = serviceOptions;
+        _correlationAccessor = correlationAccessor;
     }
+
     public async Task<ProcessExecutionResponse> ExecuteAsync(
         ExecuteProcessRequest request,
         CancellationToken cancellationToken)
@@ -47,7 +51,7 @@ internal sealed class ProcessExecutionService : IProcessExecutionService
         var processRequest =
             new ProcessRequest
             {
-                ProcessId = request.ProcessId,
+                ProcessId = _correlationAccessor.Current.ProcessId,
                 Processor =
                     new ProcessorRequest
                     {
@@ -71,6 +75,7 @@ internal sealed class ProcessExecutionService : IProcessExecutionService
             _registry,
             _serviceOptions.ServiceName);
     }
+
     public async Task<StepExecutionResponse<TResponse>> ExecuteAsync<TProcessStep, TResponse>(
         ExecuteStepRequest<TProcessStep> request,
         CancellationToken cancellationToken)
@@ -79,7 +84,8 @@ internal sealed class ProcessExecutionService : IProcessExecutionService
 
         var processRequest =
             request.ToProcessRequest(
-                stepName: stepName);
+                stepName: stepName,
+                processId: _correlationAccessor.Current.ProcessId);
 
         var processResult =
             await _runtime.ExecuteAsync(
@@ -113,7 +119,8 @@ internal sealed class ProcessExecutionService : IProcessExecutionService
 
         var processRequest =
             request.ToProcessRequest(
-                stepName: stepName);
+                stepName: stepName,
+                processId: _correlationAccessor.Current.ProcessId);
 
         var processResult =
             await _runtime.ExecuteAsync(

@@ -1,43 +1,85 @@
 <section class="events-page">
     <div class="events-page__header">
         <h1>Event Timeline</h1>
+        <div class="events-page__mode-toggle">
+            <button
+                type="button"
+                class="mode-btn"
+                [class.mode-btn--active]="groupMode() === 'process'"
+                (click)="setGroupMode('process')">
+                By Process
+            </button>
+            <button
+                type="button"
+                class="mode-btn"
+                [class.mode-btn--active]="groupMode() === 'request'"
+                (click)="setGroupMode('request')">
+                By Request
+            </button>
+        </div>
     </div>
 
     <div class="events-page__layout">
         <div class="events-page__sidebar">
-            <h2>Processes</h2>
+            @if (groupMode() === 'process') {
+                <h2>Processes
+                    <button type="button" class="refresh-btn" (click)="loadProcesses()" title="Refresh">&#8635;</button>
+                </h2>
 
-            @if (isLoadingProcesses()) {
-                <div class="events-page__loading">Loading processes...</div>
-            } @else if (processesError()) {
-                <div class="events-page__error">{{ processesError() }}</div>
-            } @else if (processes().length === 0) {
-                <div class="events-page__empty">No processes found.</div>
+                @if (isLoadingProcesses()) {
+                    <div class="events-page__loading">Loading processes...</div>
+                } @else if (processesError()) {
+                    <div class="events-page__error">{{ processesError() }}</div>
+                } @else if (processes().length === 0) {
+                    <div class="events-page__empty">No processes found.</div>
+                } @else {
+                    <div class="process-list">
+                        @for (process of processes(); track process.processId) {
+                            <button
+                                type="button"
+                                class="process-item"
+                                [class.process-item--selected]="selectedProcessId() === process.processId"
+                                (click)="selectProcess(process.processId)">
+                                <div class="process-item__id" title="{{ process.processId }}">{{ process.processId }}</div>
+                                <div class="process-item__meta">
+                                    <span class="process-item__count">{{ process.eventCount }} events</span>
+                                    <span class="process-item__timestamp">{{ formatTimestamp(process.mostRecentOccurredOn) }}</span>
+                                </div>
+                            </button>
+                        }
+                    </div>
+                }
             } @else {
-                <div class="process-list">
-                    @for (process of processes(); track process.processId) {
-                        <button
-                            type="button"
-                            class="process-item"
-                            [class.process-item--selected]="selectedProcessId() === process.processId"
-                            (click)="selectProcess(process.processId)">
-                            <div class="process-item__id">{{ process.processId }}</div>
-                            <div class="process-item__meta">
-                                <span class="process-item__count">{{ process.eventCount }} events</span>
-                                <span class="process-item__timestamp">{{ formatTimestamp(process.mostRecentOccurredOn) }}</span>
-                            </div>
-                        </button>
-                    }
+                <h2>Look up by Request ID</h2>
+                <div class="request-lookup">
+                    <input
+                        #requestIdInput
+                        type="text"
+                        class="request-lookup__input"
+                        placeholder="Paste Request ID..."
+                        (keydown.enter)="selectRequest(requestIdInput.value.trim())" />
+                    <button
+                        type="button"
+                        class="request-lookup__btn"
+                        (click)="selectRequest(requestIdInput.value.trim())">
+                        Load
+                    </button>
                 </div>
             }
         </div>
 
         <div class="events-page__main">
-            @if (!selectedProcessId()) {
+            @if (groupMode() === 'process' && !selectedProcessId()) {
                 <div class="events-page__empty">Select a process to view its events.</div>
+            } @else if (groupMode() === 'request' && !selectedRequestId()) {
+                <div class="events-page__empty">Enter a Request ID to view correlated events.</div>
             } @else {
                 <div class="events-page__main-header">
-                    <h2>Events for {{ selectedProcessId() }}</h2>
+                    @if (groupMode() === 'process') {
+                        <h2>Process <span class="id-chip">{{ selectedProcessId() }}</span></h2>
+                    } @else {
+                        <h2>Request <span class="id-chip">{{ selectedRequestId() }}</span></h2>
+                    }
                 </div>
 
                 @if (isLoadingEvents()) {
@@ -45,26 +87,46 @@
                 } @else if (eventsError()) {
                     <div class="events-page__error">{{ eventsError() }}</div>
                 } @else if (events().length === 0) {
-                    <div class="events-page__empty">No events found for this process.</div>
+                    <div class="events-page__empty">No events found.</div>
                 } @else {
                     <div class="event-list">
                         @for (event of events(); track event.id) {
                             <div class="event-item">
-                                <div class="event-item__header">
+                                <div class="event-item__header" (click)="toggleEventExpansion(event.id)">
                                     <div class="event-item__type">{{ event.eventType }}</div>
-                                    <div class="event-item__timestamp">{{ formatTimestamp(event.occurredOn) }}</div>
+                                    <div class="event-item__meta">
+                                        <span class="event-item__service">{{ event.serviceName }}</span>
+                                        @if (event.stepName) {
+                                            <span class="event-item__step">{{ event.stepName }}</span>
+                                        }
+                                        <span class="event-item__timestamp">{{ formatTimestamp(event.occurredOn) }}</span>
+                                    </div>
                                 </div>
+
+                                <div class="event-item__correlation">
+                                    <span class="corr-label">Request</span>
+                                    <span class="corr-value">{{ event.requestId }}</span>
+                                    @if (event.processId) {
+                                        <span class="corr-label">Process</span>
+                                        <span class="corr-value">{{ event.processId }}</span>
+                                    }
+                                </div>
+
+                                @if (expandedEventIds().has(event.id)) {
+                                    <div class="event-item__detail">
+                                        <div class="event-item__section-label">Context</div>
+                                        <pre class="event-item__payload">{{ formatJson(event.contextJson) }}</pre>
+                                        <div class="event-item__section-label">Event</div>
+                                        <pre class="event-item__payload">{{ formatJson(event.eventJson) }}</pre>
+                                    </div>
+                                }
 
                                 <button
                                     type="button"
                                     class="event-item__toggle"
                                     (click)="toggleEventExpansion(event.id)">
-                                    {{ expandedEventIds().has(event.id) ? 'Hide payload' : 'Show payload' }}
+                                    {{ expandedEventIds().has(event.id) ? 'Hide detail' : 'Show detail' }}
                                 </button>
-
-                                @if (expandedEventIds().has(event.id)) {
-                                    <pre class="event-item__payload">{{ event.payloadJson }}</pre>
-                                }
                             </div>
                         }
                     </div>

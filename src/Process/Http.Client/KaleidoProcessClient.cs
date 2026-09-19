@@ -135,7 +135,6 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
 
     public async Task<StepExecutionResponse> ExecuteStepAsync<TStep>(
         TStep step,
-        Guid? processId = null,
         CancellationToken cancellationToken = default)
         where TStep : class
     {
@@ -143,7 +142,6 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
 
         var body = new ExecuteStepRequest<TStep>
         {
-            ProcessId = processId,
             ProcessStep = step
         };
 
@@ -172,7 +170,6 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
 
     public async Task<StepExecutionResponse<TResponse>> ExecuteStepAsync<TStep, TResponse>(
         TStep step,
-        Guid? processId = null,
         CancellationToken cancellationToken = default)
         where TStep : class
     {
@@ -180,7 +177,6 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
 
         var body = new ExecuteStepRequest<TStep>
         {
-            ProcessId = processId,
             ProcessStep = step
         };
 
@@ -247,6 +243,9 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
 
         if (ctx.ProcessorInstanceId.HasValue)
             request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessorInstanceId, ctx.ProcessorInstanceId.Value.ToString());
+
+        if (!string.IsNullOrWhiteSpace(ctx.StepName))
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.StepName, ctx.StepName);
     }
 
     private async Task<IReadOnlyList<ProcessorRegistryResponse>> EnsureRegistryAsync(

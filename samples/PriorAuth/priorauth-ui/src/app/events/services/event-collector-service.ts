@@ -19,7 +19,15 @@ export class EventCollectorService {
         return this.http.get<ProcessSummary[]>(`${this.baseUrl}/processes`);
     }
 
-    getProcessEvents(processId: string): Observable<EventDetail[]> {
-        return this.http.get<EventDetail[]>(`${this.baseUrl}/process-events/${processId}`);
+    getEventsByProcess(processId: string): Observable<EventDetail[]> {
+        return this.http.get<EventDetail[]>(`${this.baseUrl}/events/by-process/${processId}`);
+    }
+
+    getEventsByRequest(requestId: string): Observable<EventDetail[]> {
+        return this.http.get<EventDetail[]>(`${this.baseUrl}/events/by-request/${requestId}`);
+    }
+
+    getRecentEvents(): Observable<EventDetail[]> {
+        return this.http.get<EventDetail[]>(`${this.baseUrl}/events`);
     }
 }

@@ -180,6 +180,9 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
 
         if (ctx.ProcessorInstanceId.HasValue)
             request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessorInstanceId, ctx.ProcessorInstanceId.Value.ToString());
+
+        if (!string.IsNullOrWhiteSpace(ctx.StepName))
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.StepName, ctx.StepName);
     }
 
     private async Task<IReadOnlyList<QueryableRecordResponse>> EnsureRegistryAsync(

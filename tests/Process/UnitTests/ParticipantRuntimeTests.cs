@@ -734,26 +734,35 @@ public sealed class ProcessorRuntimeTests
         publisher
             .Setup(x =>
                 x.PublishAsync(
-                    It.IsAny<ProcessCreated>(),
+                    It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>(),
                     It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         publisher
             .Setup(x =>
                 x.PublishAsync(
-                    It.IsAny<PlanBuilt>(),
+                    It.IsAny<KaleidoEventEnvelope<PlanBuilt, ProcessEventContext>>(),
                     It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         publisher
             .Setup(x =>
                 x.PublishAsync(
-                    It.IsAny<ExecutionCompleted>(),
+                    It.IsAny<KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext>>(),
                     It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         return publisher;
     }
+
+    private static ProcessEventContext CreateStubContext(Guid processId) =>
+        new()
+        {
+            RequestId = Guid.NewGuid().ToString(),
+            ServiceName = "test",
+            ProcessId = processId,
+            StepName = string.Empty
+        };
 
     private static Mock<IProcessEventFactory> CreateProcessEventFactory()
     {
@@ -763,69 +772,74 @@ public sealed class ProcessorRuntimeTests
         factory
             .Setup(x =>
                 x.CreateProcessCreated(
+                    It.IsAny<KaleidoCorrelationContext>(),
                     It.IsAny<ProcessorContext>(),
                     It.IsAny<ProcessRequest>()))
-            .Returns<ProcessorContext, ProcessRequest>((context, request) =>
+            .Returns<KaleidoCorrelationContext, ProcessorContext, ProcessRequest>((_, context, request) =>
             {
-                var processor =
-                    request.Processor ?? new ProcessorRequest();
-
-                return new Eventing.ProcessCreated
+                var processor = request.Processor ?? new ProcessorRequest();
+                return new KaleidoEventEnvelope<Eventing.ProcessCreated, ProcessEventContext>
                 {
-                    ProcessId = context.ProcessId,
-                    ProcessorName = context.ProcessorName,
-                    OccurredOn = DateTimeOffset.UtcNow,
-                    State = context.State,
-                    CreatedUtc = context.CreatedUtc,
-                    UpdatedUtc = context.UpdatedUtc,
-                    SubmittedStepNames = processor.Steps.Keys.ToArray(),
-                    SubmittedStepCount = processor.Steps.Count
+                    Context = CreateStubContext(context.ProcessId),
+                    Event = new Eventing.ProcessCreated
+                    {
+                        OccurredOn = DateTimeOffset.UtcNow,
+                        State = context.State,
+                        CreatedUtc = context.CreatedUtc,
+                        UpdatedUtc = context.UpdatedUtc,
+                        SubmittedStepNames = processor.Steps.Keys.ToArray(),
+                        SubmittedStepCount = processor.Steps.Count
+                    }
                 };
             });
 
         factory
             .Setup(x =>
                 x.CreatePlanBuilt(
+                    It.IsAny<KaleidoCorrelationContext>(),
                     It.IsAny<ProcessorContext>(),
                     It.IsAny<ProcessRequest>(),
                     It.IsAny<ExecutionPlanResult>(),
                     It.IsAny<int>()))
-            .Returns<ProcessorContext, ProcessRequest, ExecutionPlanResult, int>((context, request, plan, executableCount) =>
+            .Returns<KaleidoCorrelationContext, ProcessorContext, ProcessRequest, ExecutionPlanResult, int>((_, context, request, plan, executableCount) =>
             {
-                var processor =
-                    request.Processor ?? new ProcessorRequest();
-
-                return new Eventing.PlanBuilt
+                var processor = request.Processor ?? new ProcessorRequest();
+                return new KaleidoEventEnvelope<Eventing.PlanBuilt, ProcessEventContext>
                 {
-                    ProcessId = context.ProcessId,
-                    ProcessorName = context.ProcessorName,
-                    OccurredOn = DateTimeOffset.UtcNow,
-                    State = context.State,
-                    RequiredStep = context.RequiredStep,
-                    AvailableSteps = context.AvailableSteps,
-                    SubmittedStepNames = processor.Steps.Keys.ToArray(),
-                    SubmittedStepCount = processor.Steps.Count,
-                    CandidateCount = plan.Candidates.Count,
-                    ExecutableCount = executableCount,
-                    Candidates = []
+                    Context = CreateStubContext(context.ProcessId),
+                    Event = new Eventing.PlanBuilt
+                    {
+                        OccurredOn = DateTimeOffset.UtcNow,
+                        State = context.State,
+                        RequiredStep = context.RequiredStep,
+                        AvailableSteps = context.AvailableSteps,
+                        SubmittedStepNames = processor.Steps.Keys.ToArray(),
+                        SubmittedStepCount = processor.Steps.Count,
+                        CandidateCount = plan.Candidates.Count,
+                        ExecutableCount = executableCount,
+                        Candidates = []
+                    }
                 };
             });
 
         factory
             .Setup(x =>
                 x.CreateExecutionCompleted(
+                    It.IsAny<KaleidoCorrelationContext>(),
                     It.IsAny<ProcessorContext>(),
                     It.IsAny<ProcessExecutionResult>()))
-            .Returns<ProcessorContext, ProcessExecutionResult>((context, executionResult) =>
-                new Eventing.ExecutionCompleted
+            .Returns<KaleidoCorrelationContext, ProcessorContext, ProcessExecutionResult>((_, context, executionResult) =>
+                new KaleidoEventEnvelope<Eventing.ExecutionCompleted, ProcessEventContext>
                 {
-                    ProcessId = executionResult.ProcessId,
-                    ProcessorName = context.ProcessorName,
-                    OccurredOn = DateTimeOffset.UtcNow,
-                    State = executionResult.State,
-                    RequiredStep = executionResult.RequiredStep,
-                    AvailableSteps = executionResult.AvailableSteps,
-                    ExecutedStepCount = executionResult.Outcomes.Count
+                    Context = CreateStubContext(executionResult.ProcessId),
+                    Event = new Eventing.ExecutionCompleted
+                    {
+                        OccurredOn = DateTimeOffset.UtcNow,
+                        State = executionResult.State,
+                        RequiredStep = executionResult.RequiredStep,
+                        AvailableSteps = executionResult.AvailableSteps,
+                        ExecutedStepCount = executionResult.Outcomes.Count
+                    }
                 });
 
         return factory;

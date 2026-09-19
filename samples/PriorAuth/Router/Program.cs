@@ -1,11 +1,27 @@
 using Kaleido;
+using Kaleido.Observability;
 using Kaleido.Registry;
+using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddReverseProxy()
-    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .AddTransforms(context =>
+    {
+        context.AddRequestTransform(transformContext =>
+        {
+            if (!transformContext.ProxyRequest.Headers.Contains(KaleidoCorrelationHeaders.RequestId))
+            {
+                transformContext.ProxyRequest.Headers.TryAddWithoutValidation(
+                    KaleidoCorrelationHeaders.RequestId,
+                    Guid.NewGuid().ToString());
+            }
+
+            return ValueTask.CompletedTask;
+        });
+    });
 
 builder.Services.AddKaleido(builder.Configuration)
     .AddKaleidoRegistry();

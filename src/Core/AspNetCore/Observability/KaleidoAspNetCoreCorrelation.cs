@@ -14,9 +14,8 @@ internal static class KaleidoAspNetCoreCorrelation
         return new KaleidoCorrelationContext
         {
             RequestId =
-                ReadString(
-                    context,
-                    KaleidoCorrelationHeaders.RequestId),
+                ReadString(context, KaleidoCorrelationHeaders.RequestId)
+                ?? Guid.NewGuid().ToString(),
 
             ProcessId =
                 ReadGuid(
@@ -31,7 +30,12 @@ internal static class KaleidoAspNetCoreCorrelation
             SourceProcessorName =
                 ReadString(
                     context,
-                    KaleidoCorrelationHeaders.SourceProcessor)
+                    KaleidoCorrelationHeaders.SourceProcessor),
+
+            StepName =
+                ReadString(
+                    context,
+                    KaleidoCorrelationHeaders.StepName)
         };
     }
 

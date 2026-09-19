@@ -111,7 +111,7 @@ public sealed class QueryContextEngineTests
         publisher
             .Setup(x =>
                 x.PublishAsync(
-                    It.IsAny<QueryExecuted>(),
+                    It.IsAny<KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>>(),
                     It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -143,23 +143,33 @@ public sealed class QueryContextEngineTests
                     It.IsAny<IQueryRequest>(),
                     It.IsAny<QueryResult<TestViewContract>>()))
             .Returns<KaleidoCorrelationContext, QueryObservationDetails, IQueryRequest, QueryResult<TestViewContract>>((correlation, details, request, result) =>
-                new Eventing.QueryExecuted
+                new KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>
                 {
-                    ProcessId = correlation.ProcessId,
-                    OccurredOn = DateTimeOffset.UtcNow,
-                    QueryContextName = details.QueryContextName,
-                    QueryViewName = details.QueryViewName,
-                    IsDirectQuery = details.IsDirectQuery,
-                    Request = request,
-                    TotalCount = result.TotalCount,
-                    ReturnedCount = result.Results.Count,
-                    PageSize = result.PageSize,
-                    Offset = result.Offset,
-                    Records = result.Results.Cast<object?>().ToArray(),
-                    SearchText = request.Query?.SearchText,
-                    SortCount = request.Query?.Sort?.Count ?? 0,
-                    FilterProvided = request.Query?.Filter is not null,
-                    ViewParameters = request.ViewParameters
+                    Context = new QueryableEventContext
+                    {
+                        RequestId = correlation.RequestId,
+                        ServiceName = "test",
+                        ProcessId = correlation.ProcessId,
+                        QueryContextName = details.QueryContextName,
+                        QueryViewName = details.QueryViewName
+                    },
+                    Event = new QueryExecuted
+                    {
+                        OccurredOn = DateTimeOffset.UtcNow,
+                        QueryContextName = details.QueryContextName,
+                        QueryViewName = details.QueryViewName,
+                        IsDirectQuery = details.IsDirectQuery,
+                        Request = request,
+                        TotalCount = result.TotalCount,
+                        ReturnedCount = result.Results.Count,
+                        PageSize = result.PageSize,
+                        Offset = result.Offset,
+                        Records = result.Results.Cast<object?>().ToArray(),
+                        SearchText = request.Query?.SearchText,
+                        SortCount = request.Query?.Sort?.Count ?? 0,
+                        FilterProvided = request.Query?.Filter is not null,
+                        ViewParameters = request.ViewParameters
+                    }
                 });
 
         return factory;

@@ -4,12 +4,6 @@ namespace Kaleido.Process.AspNetCore.Contracts;
 
 public sealed record ExecuteProcessRequest
 {
-    public Guid? ProcessId
-    {
-        get;
-        init;
-    }
-
     public IReadOnlyCollection<ProcessStepRequest> Steps
     {
         get;
@@ -36,12 +30,6 @@ public sealed record ProcessStepRequest
 
 public sealed record ExecuteStepRequest<TProcessStep>
 {
-    public Guid? ProcessId
-    {
-        get;
-        init;
-    }
-
     public required TProcessStep ProcessStep
     {
         get;
@@ -49,11 +37,12 @@ public sealed record ExecuteStepRequest<TProcessStep>
     }
 
     public ProcessRequest ToProcessRequest(
-        string stepName)
+        string stepName,
+        Guid? processId = null)
     {
         return new ProcessRequest
         {
-            ProcessId = ProcessId,
+            ProcessId = processId,
 
             Processor =
                 new ProcessorRequest

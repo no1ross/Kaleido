@@ -1,3 +1,4 @@
+using Kaleido.Observability;
 using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.AspNetCore.Services;
 using Kaleido.Process.Execution;
@@ -11,64 +12,62 @@ namespace Kaleido.Process.AspNetCore.Tests;
 
 public sealed class ProcessExecutionServiceTests
 {
+    private static ProcessExecutionService CreateService(
+        IProcessStepRegistry registry,
+        IProcessorRuntime runtime,
+        Guid? contextProcessId = null)
+    {
+        var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
+        correlation
+            .Setup(x => x.Current)
+            .Returns(new KaleidoCorrelationContext
+            {
+                RequestId = Guid.NewGuid().ToString(),
+                ProcessId = contextProcessId
+            });
+
+        return new ProcessExecutionService(
+            new HttpContextAccessor { HttpContext = new DefaultHttpContext() },
+            registry,
+            runtime,
+            new KaleidoServiceOptions { ServiceName = "test-processor" },
+            correlation.Object);
+    }
+
     [Fact]
     public async Task ExecuteAsync_ProcessRequest_MapsRequestAndReturnsResponse()
     {
-        var registration =
-            CreateRegistration();
-
-        var registry =
-            CreateRegistry(registration);
+        var registration = CreateRegistration();
+        var registry = CreateRegistry(registration);
 
         ProcessRequest? capturedRequest = null;
-
-        var runtime =
-            new Mock<IProcessorRuntime>();
-
-        var processResult =
-            CreateProcessResult(
-                registration.Metadata.Name,
-                new TestResponse());
+        var runtime = new Mock<IProcessorRuntime>();
+        var processResult = CreateProcessResult(registration.Metadata.Name, new TestResponse());
 
         runtime
-            .Setup(x =>
-                x.ExecuteAsync(
-                    It.IsAny<ProcessRequest>(),
-                    It.IsAny<CancellationToken>()))
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
             .Callback<ProcessRequest, CancellationToken>((request, _) => capturedRequest = request)
             .ReturnsAsync(processResult);
 
-        var service =
-            new ProcessExecutionService(
-                new HttpContextAccessor
+        var contextProcessId = Guid.NewGuid();
+        var service = CreateService(registry, runtime.Object, contextProcessId);
+
+        var request = new ExecuteProcessRequest
+        {
+            Steps =
+            [
+                new ProcessStepRequest
                 {
-                    HttpContext = new DefaultHttpContext()
-                },
-                registry,
-                runtime.Object,
-                new KaleidoServiceOptions { ServiceName = "test-processor" });
+                    StepName = registration.Metadata.Name,
+                    Request = JsonSerializer.SerializeToElement(new { value = "abc" })
+                }
+            ]
+        };
 
-        var request =
-            new ExecuteProcessRequest
-            {
-                ProcessId = Guid.NewGuid(),
-                Steps =
-                [
-                    new ProcessStepRequest
-                    {
-                        StepName = registration.Metadata.Name,
-                        Request = JsonSerializer.SerializeToElement(new { value = "abc" })
-                    }
-                ]
-            };
-
-        var response =
-            await service.ExecuteAsync(
-                request,
-                CancellationToken.None);
+        var response = await service.ExecuteAsync(request, CancellationToken.None);
 
         Assert.NotNull(capturedRequest);
-        Assert.Equal(request.ProcessId, capturedRequest.ProcessId);
+        Assert.Equal(contextProcessId, capturedRequest.ProcessId);
         Assert.True(capturedRequest.Processor.Steps.ContainsKey(registration.Metadata.Name));
 
         Assert.Equal(processResult.ProcessId, response.ProcessId);
@@ -79,47 +78,25 @@ public sealed class ProcessExecutionServiceTests
     [Fact]
     public async Task ExecuteAsync_TypedStep_UsesRegistrationNameAndReturnsTypedResponse()
     {
-        var registration =
-            CreateRegistration();
-
-        var registry =
-            CreateRegistry(registration);
+        var registration = CreateRegistration();
+        var registry = CreateRegistry(registration);
 
         ProcessRequest? capturedRequest = null;
-
-        var runtime =
-            new Mock<IProcessorRuntime>();
+        var runtime = new Mock<IProcessorRuntime>();
 
         runtime
-            .Setup(x =>
-                x.ExecuteAsync(
-                    It.IsAny<ProcessRequest>(),
-                    It.IsAny<CancellationToken>()))
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
             .Callback<ProcessRequest, CancellationToken>((request, _) => capturedRequest = request)
-            .ReturnsAsync(
-                CreateProcessResult(registration.Metadata.Name, new TestResponse()));
+            .ReturnsAsync(CreateProcessResult(registration.Metadata.Name, new TestResponse()));
 
-        var service =
-            new ProcessExecutionService(
-                new HttpContextAccessor
-                {
-                    HttpContext = new DefaultHttpContext()
-                },
-                registry,
-                runtime.Object,
-                new KaleidoServiceOptions { ServiceName = "test-processor" });
+        var service = CreateService(registry, runtime.Object, Guid.NewGuid());
 
-        var request =
-            new ExecuteStepRequest<TestStep>
-            {
-                ProcessId = Guid.NewGuid(),
-                ProcessStep = new TestStep()
-            };
+        var request = new ExecuteStepRequest<TestStep>
+        {
+            ProcessStep = new TestStep()
+        };
 
-        var response =
-            await service.ExecuteAsync<TestStep, TestResponse>(
-                request,
-                CancellationToken.None);
+        var response = await service.ExecuteAsync<TestStep, TestResponse>(request, CancellationToken.None);
 
         Assert.NotNull(capturedRequest);
         Assert.True(capturedRequest.Processor.Steps.ContainsKey(registration.Metadata.Name));
@@ -130,52 +107,29 @@ public sealed class ProcessExecutionServiceTests
     [Fact]
     public async Task ExecuteAsync_UntypedStep_UsesRegistrationNameAndReturnsResponse()
     {
-        var registration =
-            CreateRegistration();
+        var registration = CreateRegistration();
+        var registry = CreateRegistry(registration);
 
-        var registry =
-            CreateRegistry(registration);
-
-        var runtime =
-            new Mock<IProcessorRuntime>();
+        var runtime = new Mock<IProcessorRuntime>();
 
         runtime
-            .Setup(x =>
-                x.ExecuteAsync(
-                    It.IsAny<ProcessRequest>(),
-                    It.IsAny<CancellationToken>()))
-            .ReturnsAsync(
-                CreateProcessResult(registration.Metadata.Name, new TestResponse()));
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateProcessResult(registration.Metadata.Name, new TestResponse()));
 
-        var service =
-            new ProcessExecutionService(
-                new HttpContextAccessor
-                {
-                    HttpContext = new DefaultHttpContext()
-                },
-                registry,
-                runtime.Object,
-                new KaleidoServiceOptions { ServiceName = "test-processor" });
+        var service = CreateService(registry, runtime.Object, Guid.NewGuid());
 
-        var request =
-            new ExecuteStepRequest<TestStep>
-            {
-                ProcessId = Guid.NewGuid(),
-                ProcessStep = new TestStep()
-            };
+        var request = new ExecuteStepRequest<TestStep>
+        {
+            ProcessStep = new TestStep()
+        };
 
-        var response =
-            await service.ExecuteAsync(
-                request,
-                CancellationToken.None);
+        var response = await service.ExecuteAsync(request, CancellationToken.None);
 
         Assert.Equal(registration.Metadata.Name, response.StepName);
         Assert.Equal(StepExecutionOutcome.Completed, response.Outcome);
     }
 
-    private static ProcessorProcessResult CreateProcessResult(
-        string stepName,
-        object response) =>
+    private static ProcessorProcessResult CreateProcessResult(string stepName, object response) =>
         new()
         {
             ProcessId = Guid.NewGuid(),
@@ -197,23 +151,13 @@ public sealed class ProcessExecutionServiceTests
             ]
         };
 
-    private static IProcessStepRegistry CreateRegistry(
-        ProcessStepRegistration registration)
+    private static IProcessStepRegistry CreateRegistry(ProcessStepRegistration registration)
     {
-        var registry =
-            new Mock<IProcessStepRegistry>();
+        var registry = new Mock<IProcessStepRegistry>();
 
-        registry
-            .Setup(x => x.GetRegistration(typeof(TestStep)))
-            .Returns(registration);
-
-        registry
-            .Setup(x => x.GetRegistration(registration.Metadata.Name))
-            .Returns(registration);
-
-        registry
-            .Setup(x => x.Find(registration.Metadata.Name))
-            .Returns(registration);
+        registry.Setup(x => x.GetRegistration(typeof(TestStep))).Returns(registration);
+        registry.Setup(x => x.GetRegistration(registration.Metadata.Name)).Returns(registration);
+        registry.Setup(x => x.Find(registration.Metadata.Name)).Returns(registration);
 
         return registry.Object;
     }
@@ -226,18 +170,10 @@ public sealed class ProcessExecutionServiceTests
             [],
             [],
             [],
-            new RepeatableOptions
-            {
-                Enabled = false
-            },
-            new ProcessStepMetadata(
-                "Test-Step",
-                "Test step",
-                "1.0.0",
-                "Test Step"));
+            new RepeatableOptions { Enabled = false },
+            new ProcessStepMetadata("Test-Step", "Test step", "1.0.0", "Test Step"));
 
     public sealed record TestStep;
-
     public sealed record TestResponse;
 
     public sealed class TestStepHandler : IProcessStepHandler<TestStep, TestResponse>
@@ -245,9 +181,7 @@ public sealed class ProcessExecutionServiceTests
         public Task<ProcessStepHandlerResult<TestResponse>> ExecuteAsync(
             TestStep step,
             ProcessStepContext context,
-            CancellationToken cancellationToken)
-        {
+            CancellationToken cancellationToken) =>
             throw new NotImplementedException();
-        }
     }
 }

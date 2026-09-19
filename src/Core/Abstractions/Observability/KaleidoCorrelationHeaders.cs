@@ -18,4 +18,12 @@ public static class KaleidoCorrelationHeaders
     /// <summary>Carries the service name of the processor that originated the request.</summary>
     public const string SourceProcessor =
         "X-Kaleido-Source-Processor";
+
+    /// <summary>
+    /// Carries the name of the process step that is making an inter-service call.
+    /// Set by a process step handler when calling a Queryable service, enabling traceability
+    /// of which step initiated a queryable operation.
+    /// </summary>
+    public const string StepName =
+        "X-Kaleido-Step-Name";
 }

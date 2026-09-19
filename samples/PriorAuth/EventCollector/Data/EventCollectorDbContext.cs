@@ -16,10 +16,15 @@ public sealed class EventCollectorDbContext(
         {
             entity.HasKey(x => x.Id);
             entity.Property(x => x.EventType).HasMaxLength(256);
+            entity.Property(x => x.RequestId).HasMaxLength(128);
+            entity.Property(x => x.ServiceName).HasMaxLength(256);
             entity.Property(x => x.ProcessId);
+            entity.Property(x => x.StepName).HasMaxLength(256);
             entity.Property(x => x.OccurredOn);
             entity.Property(x => x.ReceivedOn);
-            entity.Property(x => x.PayloadJson);
+            entity.Property(x => x.ContextJson);
+            entity.Property(x => x.EventJson);
+            entity.HasIndex(x => x.RequestId);
             entity.HasIndex(x => x.ProcessId);
             entity.HasIndex(x => x.OccurredOn);
         });
@@ -29,9 +34,13 @@ public sealed class EventCollectorDbContext(
 public sealed class CollectedEvent
 {
     public long Id { get; set; }
-    public Guid? ProcessId { get; set; }
-    public DateTime OccurredOn { get; set; }
     public string EventType { get; set; } = string.Empty;
-    public string PayloadJson { get; set; } = string.Empty;
+    public string RequestId { get; set; } = string.Empty;
+    public string ServiceName { get; set; } = string.Empty;
+    public Guid? ProcessId { get; set; }
+    public string? StepName { get; set; }
+    public DateTime OccurredOn { get; set; }
     public DateTime ReceivedOn { get; set; }
+    public string ContextJson { get; set; } = string.Empty;
+    public string EventJson { get; set; } = string.Empty;
 }

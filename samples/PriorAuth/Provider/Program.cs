@@ -76,10 +76,13 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ProviderSearchDbContext>();
 
-builder.Services.AddPriorAuthEventPublishing(
-    builder.Configuration);
+builder.Services.AddHttpClient("PriorAuthEventCollector", client =>
+    client.BaseAddress = new Uri(
+        builder.Configuration["Services:EventCollector:BaseUrl"]
+        ?? "http://localhost:8086"));
 
 builder.Services.AddKaleido(builder.Configuration)
+    .AddEventPublisher<HttpEventPublisher>()
     .AddAssembly(typeof(Program).Assembly)
     .AddAssembly(typeof(ProviderSearchDbContext).Assembly)
     .AddQueryable()

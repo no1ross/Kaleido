@@ -1,3 +1,4 @@
+using Kaleido.Observability;
 using Kaleido.Process.AspNetCore.Contracts;
 using Kaleido.Process.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
@@ -22,7 +23,6 @@ public sealed class ProcessExecutionEndpointTests
         var request =
             new ExecuteProcessRequest
             {
-                ProcessId = Guid.NewGuid(),
                 Steps =
                 [
                     CreateStep(RuntimeStepNames.Root),
@@ -33,9 +33,7 @@ public sealed class ProcessExecutionEndpointTests
             };
 
         var response =
-            await _client.PostAsJsonAsync(
-                "/kaleido/processes/execute",
-                request);
+            await PostWithProcessIdAsync("/kaleido/processes/execute", request, Guid.NewGuid());
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -55,7 +53,6 @@ public sealed class ProcessExecutionEndpointTests
         var request =
             new ExecuteProcessRequest
             {
-                ProcessId = Guid.NewGuid(),
                 Steps =
                 [
                     CreateStep(RuntimeStepNames.RequiredRoot)
@@ -63,9 +60,7 @@ public sealed class ProcessExecutionEndpointTests
             };
 
         var response =
-            await _client.PostAsJsonAsync(
-                "/kaleido/processes/execute",
-                request);
+            await PostWithProcessIdAsync("/kaleido/processes/execute", request, Guid.NewGuid());
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -86,7 +81,6 @@ public sealed class ProcessExecutionEndpointTests
         var request =
             new ExecuteProcessRequest
             {
-                ProcessId = Guid.NewGuid(),
                 Steps =
                 [
                     CreateStep(RuntimeStepNames.Root),
@@ -95,9 +89,7 @@ public sealed class ProcessExecutionEndpointTests
             };
 
         var response =
-            await _client.PostAsJsonAsync(
-                "/kaleido/processes/execute",
-                request);
+            await PostWithProcessIdAsync("/kaleido/processes/execute", request, Guid.NewGuid());
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -106,15 +98,25 @@ public sealed class ProcessExecutionEndpointTests
 
         Assert.NotNull(contract);
         Assert.Contains(
-            contract.Results.SelectMany(x => x.Messages),
-            x => x.Code == "UnknownStep");
+            contract.Results,
+            x => x.StepName == "TotallyFakeStep"
+                 && x.Messages.Any(m => m.Code == "step-not-found"));
     }
 
-    private static ProcessStepRequest CreateStep(
-        string stepName) =>
+    private Task<HttpResponseMessage> PostWithProcessIdAsync<T>(string url, T body, Guid processId)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = JsonContent.Create(body)
+        };
+        request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, processId.ToString());
+        return _client.SendAsync(request);
+    }
+
+    private static ProcessStepRequest CreateStep(string stepName) =>
         new()
         {
             StepName = stepName,
-            Request = ProcessHttpJson.EmptyObject()
+            Request = System.Text.Json.JsonSerializer.SerializeToElement(new { })
         };
 }

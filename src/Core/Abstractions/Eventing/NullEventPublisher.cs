@@ -7,8 +7,8 @@ namespace Kaleido.Eventing;
 /// </summary>
 public sealed class NullEventPublisher : IEventPublisher
 {
-    public Task PublishAsync<TEvent>(
-        TEvent processEvent,
+    public Task PublishAsync<TEvent, TContext>(
+        KaleidoEventEnvelope<TEvent, TContext> envelope,
         CancellationToken cancellationToken = default)
         where TEvent : IKaleidoEvent
     {

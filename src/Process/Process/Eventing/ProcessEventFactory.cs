@@ -1,3 +1,5 @@
+using Kaleido.Eventing;
+using Kaleido.Observability;
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
@@ -6,23 +8,27 @@ namespace Kaleido.Process.Eventing;
 
 internal interface IProcessEventFactory
 {
-    ProcessCreated CreateProcessCreated(
+    KaleidoEventEnvelope<ProcessCreated, ProcessEventContext> CreateProcessCreated(
+        KaleidoCorrelationContext correlation,
         ProcessorContext context,
         ProcessRequest request);
 
-    PlanBuilt CreatePlanBuilt(
+    KaleidoEventEnvelope<PlanBuilt, ProcessEventContext> CreatePlanBuilt(
+        KaleidoCorrelationContext correlation,
         ProcessorContext context,
         ProcessRequest request,
         ExecutionPlanResult plan,
         int executableCount);
 
-    StepCompleted CreateStepCompleted(
+    KaleidoEventEnvelope<StepCompleted, ProcessEventContext> CreateStepCompleted(
+        KaleidoCorrelationContext correlation,
         ProcessorContext context,
         StepCandidate candidate,
         ProcessExecutionOutcome outcome,
         ProcessStepInvokerResult result);
 
-    ExecutionCompleted CreateExecutionCompleted(
+    KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext> CreateExecutionCompleted(
+        KaleidoCorrelationContext correlation,
         ProcessorContext context,
         ProcessExecutionResult executionResult);
 }
@@ -31,10 +37,19 @@ internal sealed class ProcessEventFactory(
     KaleidoServiceOptions serviceOptions)
     : IProcessEventFactory
 {
-    private string ProcessorName =>
-        serviceOptions.ServiceName;
+    private ProcessEventContext CreateContext(KaleidoCorrelationContext correlation, string stepName, Guid processId) =>
+        new()
+        {
+            RequestId = correlation.RequestId,
+            ServiceName = serviceOptions.ServiceName,
+            ProcessId = processId,
+            StepName = stepName,
+            ProcessorInstanceId = serviceOptions.InstanceId.ToString(),
+            SourceProcessorName = correlation.SourceProcessorName ?? serviceOptions.ServiceName
+        };
 
-    public ProcessCreated CreateProcessCreated(
+    public KaleidoEventEnvelope<ProcessCreated, ProcessEventContext> CreateProcessCreated(
+        KaleidoCorrelationContext correlation,
         ProcessorContext context,
         ProcessRequest request)
     {
@@ -44,10 +59,8 @@ internal sealed class ProcessEventFactory(
         var submittedStepNames =
             request.Processor.Steps.Keys.ToArray();
 
-        return new ProcessCreated
+        var @event = new ProcessCreated
         {
-            ProcessId = context.ProcessId,
-            ProcessorName = ProcessorName,
             OccurredOn = DateTimeOffset.UtcNow,
             State = context.State,
             CreatedUtc = context.CreatedUtc,
@@ -55,9 +68,16 @@ internal sealed class ProcessEventFactory(
             SubmittedStepNames = submittedStepNames,
             SubmittedStepCount = submittedStepNames.Length
         };
+
+        return new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
+        {
+            Context = CreateContext(correlation, submittedStepNames.FirstOrDefault() ?? string.Empty, context.ProcessId),
+            Event = @event
+        };
     }
 
-    public PlanBuilt CreatePlanBuilt(
+    public KaleidoEventEnvelope<PlanBuilt, ProcessEventContext> CreatePlanBuilt(
+        KaleidoCorrelationContext correlation,
         ProcessorContext context,
         ProcessRequest request,
         ExecutionPlanResult plan,
@@ -70,10 +90,8 @@ internal sealed class ProcessEventFactory(
         var submittedStepNames =
             request.Processor.Steps.Keys.ToArray();
 
-        return new PlanBuilt
+        var @event = new PlanBuilt
         {
-            ProcessId = context.ProcessId,
-            ProcessorName = ProcessorName,
             OccurredOn = DateTimeOffset.UtcNow,
             State = context.State,
             RequiredStep = context.RequiredStep,
@@ -105,9 +123,16 @@ internal sealed class ProcessEventFactory(
                         })
                     .ToArray()
         };
+
+        return new KaleidoEventEnvelope<PlanBuilt, ProcessEventContext>
+        {
+            Context = CreateContext(correlation, submittedStepNames.FirstOrDefault() ?? string.Empty, context.ProcessId),
+            Event = @event
+        };
     }
 
-    public StepCompleted CreateStepCompleted(
+    public KaleidoEventEnvelope<StepCompleted, ProcessEventContext> CreateStepCompleted(
+        KaleidoCorrelationContext correlation,
         ProcessorContext context,
         StepCandidate candidate,
         ProcessExecutionOutcome outcome,
@@ -121,10 +146,8 @@ internal sealed class ProcessEventFactory(
         var stepContext =
             context.FindStep(candidate.StepName);
 
-        return new StepCompleted
+        var @event = new StepCompleted
         {
-            ProcessId = context.ProcessId,
-            ProcessorName = ProcessorName,
             OccurredOn = DateTimeOffset.UtcNow,
             StepName = candidate.StepName,
             StepVersion = stepContext?.Version ?? candidate.Registration?.Metadata.Version ?? string.Empty,
@@ -142,25 +165,36 @@ internal sealed class ProcessEventFactory(
             StepLatestRequestId = stepContext?.LatestRequestId,
             StepLastExecuted = stepContext?.LastExecuted
         };
+
+        return new KaleidoEventEnvelope<StepCompleted, ProcessEventContext>
+        {
+            Context = CreateContext(correlation, candidate.StepName, context.ProcessId),
+            Event = @event
+        };
     }
 
-    public ExecutionCompleted CreateExecutionCompleted(
+    public KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext> CreateExecutionCompleted(
+        KaleidoCorrelationContext correlation,
         ProcessorContext context,
         ProcessExecutionResult executionResult)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(executionResult);
 
-        return new ExecutionCompleted
+        var @event = new ExecutionCompleted
         {
-            ProcessId = executionResult.ProcessId,
-            ProcessorName = ProcessorName,
             OccurredOn = DateTimeOffset.UtcNow,
             State = executionResult.State,
             RequiredStep = executionResult.RequiredStep,
             TargetProcessorName = executionResult.TargetProcessorName,
             AvailableSteps = executionResult.AvailableSteps,
             ExecutedStepCount = executionResult.Outcomes.Count
+        };
+
+        return new KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext>
+        {
+            Context = CreateContext(correlation, string.Empty, executionResult.ProcessId),
+            Event = @event
         };
     }
 }

@@ -5,8 +5,6 @@ namespace Kaleido.Queryable.Eventing;
 [KaleidoEvent(Type = "query.executed.v1")]
 public sealed record QueryExecuted : IQueryEvent
 {
-    public Guid? ProcessId { get; init; }
-
     public required DateTimeOffset OccurredOn { get; init; }
 
     public required string QueryContextName { get; init; }

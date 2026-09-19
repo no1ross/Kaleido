@@ -1,4 +1,5 @@
 ﻿using Kaleido.Eventing;
+using Kaleido.Observability;
 using Kaleido.Process;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
@@ -25,7 +26,8 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IStepAvailabilityResolver>(),
                 Mock.Of<IProcessEventFactory>(),
                 CreateEventPublisher().Object,
-                CreateObservability().Object));
+                CreateObservability().Object,
+                Mock.Of<IKaleidoCorrelationContextAccessor>()));
     }
 
     [Fact]
@@ -41,7 +43,8 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IStepAvailabilityResolver>(),
                 Mock.Of<IProcessEventFactory>(),
                 CreateEventPublisher().Object,
-                CreateObservability().Object));
+                CreateObservability().Object,
+                Mock.Of<IKaleidoCorrelationContextAccessor>()));
     }
 
     [Fact]
@@ -57,7 +60,8 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IStepAvailabilityResolver>(),
                 Mock.Of<IProcessEventFactory>(),
                 CreateEventPublisher().Object,
-                CreateObservability().Object));
+                CreateObservability().Object,
+                Mock.Of<IKaleidoCorrelationContextAccessor>()));
     }
 
     [Fact]
@@ -73,7 +77,8 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IStepAvailabilityResolver>(),
                 Mock.Of<IProcessEventFactory>(),
                 CreateEventPublisher().Object,
-                CreateObservability().Object));
+                CreateObservability().Object,
+                Mock.Of<IKaleidoCorrelationContextAccessor>()));
     }
 
     [Fact]
@@ -89,7 +94,8 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IStepAvailabilityResolver>(),
                 Mock.Of<IProcessEventFactory>(),
                 CreateEventPublisher().Object,
-                CreateObservability().Object));
+                CreateObservability().Object,
+                Mock.Of<IKaleidoCorrelationContextAccessor>()));
     }
 
     [Fact]
@@ -105,7 +111,8 @@ public sealed class ExecutionProcessorTests
                 null!,
                 Mock.Of<IProcessEventFactory>(),
                 CreateEventPublisher().Object,
-                CreateObservability().Object));
+                CreateObservability().Object,
+                Mock.Of<IKaleidoCorrelationContextAccessor>()));
     }
 
     [Fact]
@@ -1274,6 +1281,11 @@ public sealed class ExecutionProcessorTests
         Mock<IProcessStepRegistry>? stepRegistry = null,
         Mock<IStepAvailabilityResolver>? availabilityResolver = null)
     {
+        var correlationAccessor = new Mock<IKaleidoCorrelationContextAccessor>();
+        correlationAccessor
+            .SetupGet(x => x.Current)
+            .Returns(new KaleidoCorrelationContext { RequestId = "test-request" });
+
         return new ExecutionProcessor(
             (invoker ?? new Mock<IProcessStepInvoker>()).Object,
             (evaluator ?? new Mock<IStepExecutionEvaluator>()).Object,
@@ -1283,7 +1295,8 @@ public sealed class ExecutionProcessorTests
             (availabilityResolver ?? new Mock<IStepAvailabilityResolver>()).Object,
             CreateProcessEventFactory().Object,
             CreateEventPublisher().Object,
-            CreateObservability().Object);
+            CreateObservability().Object,
+            correlationAccessor.Object);
     }
 
     private static Mock<IProcessObservability> CreateObservability()
@@ -1314,12 +1327,21 @@ public sealed class ExecutionProcessorTests
         publisher
             .Setup(x =>
                 x.PublishAsync(
-                    It.IsAny<StepCompleted>(),
+                    It.IsAny<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>>(),
                     It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         return publisher;
     }
+
+    private static ProcessEventContext CreateStubContext(Guid processId) =>
+        new()
+        {
+            RequestId = Guid.NewGuid().ToString(),
+            ServiceName = "test",
+            ProcessId = processId,
+            StepName = string.Empty
+        };
 
     private static Mock<IProcessEventFactory> CreateProcessEventFactory()
     {
@@ -1329,34 +1351,35 @@ public sealed class ExecutionProcessorTests
         factory
             .Setup(x =>
                 x.CreateStepCompleted(
+                    It.IsAny<KaleidoCorrelationContext>(),
                     It.IsAny<ProcessorContext>(),
                     It.IsAny<StepCandidate>(),
                     It.IsAny<ProcessExecutionOutcome>(),
                     It.IsAny<ProcessStepInvokerResult>()))
-            .Returns<ProcessorContext, StepCandidate, ProcessExecutionOutcome, ProcessStepInvokerResult>((context, candidate, outcome, _) =>
+            .Returns<KaleidoCorrelationContext, ProcessorContext, StepCandidate, ProcessExecutionOutcome, ProcessStepInvokerResult>((_, context, candidate, outcome, _2) =>
             {
-                var stepContext =
-                    context.FindStep(candidate.StepName);
-
-                return new Eventing.StepCompleted
+                var stepContext = context.FindStep(candidate.StepName);
+                return new KaleidoEventEnvelope<Eventing.StepCompleted, ProcessEventContext>
                 {
-                    ProcessId = context.ProcessId,
-                    ProcessorName = context.ProcessorName,
-                    OccurredOn = DateTimeOffset.UtcNow,
-                    StepName = candidate.StepName,
-                    StepVersion = candidate.Registration?.Metadata.Version ?? string.Empty,
-                    Request = candidate.Step,
-                    Response = outcome.Response,
-                    DecisionType = outcome.Decision,
-                    ExecutionStatus = outcome.Status,
-                    Outcome = outcome.Outcome,
-                    BusinessMessages = outcome.BusinessMessages,
-                    RuntimeMessages = outcome.RuntimeMessages,
-                    ProcessState = context.State,
-                    RequiredStep = context.RequiredStep,
-                    AvailableSteps = context.AvailableSteps,
-                    StepLatestRequestId = stepContext?.LatestRequestId,
-                    StepLastExecuted = stepContext?.LastExecuted
+                    Context = CreateStubContext(context.ProcessId),
+                    Event = new Eventing.StepCompleted
+                    {
+                        OccurredOn = DateTimeOffset.UtcNow,
+                        StepName = candidate.StepName,
+                        StepVersion = candidate.Registration?.Metadata.Version ?? string.Empty,
+                        Request = candidate.Step,
+                        Response = outcome.Response,
+                        DecisionType = outcome.Decision,
+                        ExecutionStatus = outcome.Status,
+                        Outcome = outcome.Outcome,
+                        BusinessMessages = outcome.BusinessMessages,
+                        RuntimeMessages = outcome.RuntimeMessages,
+                        ProcessState = context.State,
+                        RequiredStep = context.RequiredStep,
+                        AvailableSteps = context.AvailableSteps,
+                        StepLatestRequestId = stepContext?.LatestRequestId,
+                        StepLastExecuted = stepContext?.LastExecuted
+                    }
                 };
             });
 

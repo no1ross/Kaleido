@@ -17,7 +17,7 @@ public sealed class HistoryClient(
         {
             await processClientFactory
                 .GetClient("History")
-                .ExecuteStepAsync(step, processId, cancellationToken);
+                .ExecuteStepAsync(step, cancellationToken);
         }
         catch (KaleidoProcessClientException ex)
         {

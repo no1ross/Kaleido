@@ -1,10 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
-import { of } from 'rxjs';
-import { catchError, take } from 'rxjs/operators';
+import { take } from 'rxjs/operators';
 
 import { EventCollectorService } from './services/event-collector-service';
 import { ProcessSummary } from './models/event-summary';
 import { EventDetail } from './models/event-detail';
+
+export type GroupMode = 'process' | 'request';
 
 @Component({
     selector: 'priorauth-events',
@@ -16,9 +17,13 @@ export class Events {
     private readonly eventCollectorService =
         inject(EventCollectorService);
 
+    readonly groupMode =
+        signal<GroupMode>('process');
     readonly processes =
         signal<ProcessSummary[]>([]);
     readonly selectedProcessId =
+        signal<string | undefined>(undefined);
+    readonly selectedRequestId =
         signal<string | undefined>(undefined);
     readonly events =
         signal<EventDetail[]>([]);
@@ -58,12 +63,10 @@ export class Events {
 
     selectProcess(processId: string): void {
         this.selectedProcessId.set(processId);
-        this.eventsError.set(undefined);
-        this.isLoadingEvents.set(true);
-        this.events.set([]);
-        this.expandedEventIds.set(new Set());
+        this.selectedRequestId.set(undefined);
+        this.clearEvents();
 
-        this.eventCollectorService.getProcessEvents(processId)
+        this.eventCollectorService.getEventsByProcess(processId)
             .pipe(take(1))
             .subscribe({
                 next: events => {
@@ -76,6 +79,34 @@ export class Events {
                     this.eventsError.set(this.formatError(error));
                 }
             });
+    }
+
+    selectRequest(requestId: string): void {
+        this.selectedRequestId.set(requestId);
+        this.selectedProcessId.set(undefined);
+        this.clearEvents();
+
+        this.eventCollectorService.getEventsByRequest(requestId)
+            .pipe(take(1))
+            .subscribe({
+                next: events => {
+                    this.events.set(events);
+                    this.isLoadingEvents.set(false);
+                },
+                error: error => {
+                    this.events.set([]);
+                    this.isLoadingEvents.set(false);
+                    this.eventsError.set(this.formatError(error));
+                }
+            });
+    }
+
+    setGroupMode(mode: GroupMode): void {
+        this.groupMode.set(mode);
+        this.selectedProcessId.set(undefined);
+        this.selectedRequestId.set(undefined);
+        this.events.set([]);
+        this.expandedEventIds.set(new Set());
     }
 
     toggleEventExpansion(eventId: number): void {
@@ -92,8 +123,22 @@ export class Events {
     }
 
     formatTimestamp(isoString: string): string {
-        const date = new Date(isoString);
-        return date.toLocaleString();
+        return new Date(isoString).toLocaleString();
+    }
+
+    formatJson(json: string): string {
+        try {
+            return JSON.stringify(JSON.parse(json), null, 2);
+        } catch {
+            return json;
+        }
+    }
+
+    private clearEvents(): void {
+        this.eventsError.set(undefined);
+        this.isLoadingEvents.set(true);
+        this.events.set([]);
+        this.expandedEventIds.set(new Set());
     }
 
     private formatError(error: unknown): string {

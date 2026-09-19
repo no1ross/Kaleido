@@ -50,4 +50,25 @@ public static class KaleidoServiceCollectionExtensions
 
         return builder;
     }
+
+    /// <summary>
+    /// Registers a custom <see cref="IEventPublisher"/> implementation, replacing the default no-op publisher.
+    /// <typeparamref name="TPublisher"/> is registered as a singleton.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// builder.Services.AddKaleido(builder.Configuration)
+    ///     .AddEventPublisher&lt;HttpEventPublisher&gt;();
+    /// </code>
+    /// </example>
+    public static IKaleidoBuilder AddEventPublisher<TPublisher>(this IKaleidoBuilder builder)
+        where TPublisher : class, IEventPublisher
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.Services.RemoveAll<IEventPublisher>();
+        builder.Services.AddSingleton<IEventPublisher, TPublisher>();
+
+        return builder;
+    }
 }

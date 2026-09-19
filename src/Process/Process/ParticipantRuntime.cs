@@ -85,6 +85,7 @@ internal sealed class ProcessorRuntime
 
             await _eventPublisher.PublishAsync(
                 _eventFactory.CreatePlanBuilt(
+                    _correlationAccessor.Current,
                     context,
                     request,
                     plan,
@@ -105,6 +106,7 @@ internal sealed class ProcessorRuntime
 
             await _eventPublisher.PublishAsync(
                 _eventFactory.CreateExecutionCompleted(
+                    _correlationAccessor.Current,
                     context,
                     executionResult),
                 cancellationToken);
@@ -141,6 +143,7 @@ internal sealed class ProcessorRuntime
 
             await _eventPublisher.PublishAsync(
                 _eventFactory.CreateProcessCreated(
+                    _correlationAccessor.Current,
                     initializedContext,
                     request),
                 cancellationToken);
@@ -168,6 +171,7 @@ internal sealed class ProcessorRuntime
 
             await _eventPublisher.PublishAsync(
                 _eventFactory.CreateProcessCreated(
+                    _correlationAccessor.Current,
                     initializedContext,
                     request),
                 cancellationToken);
