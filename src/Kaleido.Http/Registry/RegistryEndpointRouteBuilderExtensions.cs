@@ -1,4 +1,3 @@
-using Kaleido.Exceptions;
 using Kaleido.Process.Registry;
 using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;

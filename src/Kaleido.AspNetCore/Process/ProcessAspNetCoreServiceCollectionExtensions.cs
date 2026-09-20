@@ -1,4 +1,3 @@
-using Kaleido.Exceptions;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

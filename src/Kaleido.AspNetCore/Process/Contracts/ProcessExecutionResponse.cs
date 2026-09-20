@@ -1,5 +1,4 @@
-﻿using Kaleido.Exceptions;
-using Kaleido.Http.Abstractions.Process.Contracts;
+﻿using Kaleido.Http.Abstractions.Process.Contracts;
 using Kaleido.Process;
 using Kaleido.Process.Registry;
 

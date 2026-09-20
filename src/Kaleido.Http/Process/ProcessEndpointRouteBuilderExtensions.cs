@@ -1,6 +1,5 @@
 ﻿using Kaleido.AspNetCore.Process.Contracts;
 using Kaleido.AspNetCore.Process.Services;
-using Kaleido.Exceptions;
 using Kaleido.Http.Abstractions.Process.Contracts;
 using Kaleido.Http.Abstractions.Process;
 using Kaleido.Process.Registry;

@@ -1,4 +1,3 @@
-using Kaleido.Exceptions;
 using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
