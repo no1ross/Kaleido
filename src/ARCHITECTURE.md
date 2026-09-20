@@ -73,7 +73,7 @@ The core project is organized into two main namespaces:
 ### Internal structure
 
 **Shared infrastructure**
-- `ExceptionMiddleware` — catches `KaleidoFrameworkException` (500), `ArgumentException` (400), `InvalidOperationException` (400)
+- `ExceptionMiddleware` — catches `KaleidoFrameworkException` (500), `ArgumentException` (400)
 - `KaleidoAspNetCoreCorrelation` / `KaleidoAspNetCoreHeaders` — correlation-header parsing
 - `ApiErrorContract` — shared error response shape
 

@@ -1,5 +1,4 @@
-﻿using Kaleido.AspNetCore.Process.Contracts;
-using Kaleido.Http.Abstractions.Process.Contracts;
+﻿using Kaleido.Http.Abstractions.Process.Contracts;
 using Kaleido.Observability;
 using Kaleido.Process;
 using Kaleido.Process.Registry;
@@ -23,27 +22,14 @@ internal interface IProcessExecutionService
         CancellationToken cancellationToken);
 }
 
-internal sealed class ProcessExecutionService : IProcessExecutionService
+internal sealed class ProcessExecutionService(
+    IHttpContextAccessor httpContextAccessor,
+    IProcessStepRegistry registry,
+    IProcessorRuntime runtime,
+    KaleidoServiceOptions serviceOptions,
+    IKaleidoCorrelationContextAccessor correlationAccessor)
+    : IProcessExecutionService
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IProcessStepRegistry _registry;
-    private readonly IProcessorRuntime _runtime;
-    private readonly KaleidoServiceOptions _serviceOptions;
-    private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
-
-    public ProcessExecutionService(
-        IHttpContextAccessor httpContextAccessor,
-        IProcessStepRegistry registry,
-        IProcessorRuntime runtime,
-        KaleidoServiceOptions serviceOptions,
-        IKaleidoCorrelationContextAccessor correlationAccessor)
-    {
-        _httpContextAccessor = httpContextAccessor;
-        _registry = registry;
-        _runtime = runtime;
-        _serviceOptions = serviceOptions;
-        _correlationAccessor = correlationAccessor;
-    }
 
     public async Task<ProcessExecutionResponse> ExecuteAsync(
         ExecuteProcessRequest request,
@@ -54,7 +40,7 @@ internal sealed class ProcessExecutionService : IProcessExecutionService
         var processRequest =
             new ProcessRequest
             {
-                ProcessId = _correlationAccessor.Current.ProcessId,
+                ProcessId = correlationAccessor.Current.ProcessId,
                 Processor =
                     new ProcessorRequest
                     {
@@ -66,7 +52,7 @@ internal sealed class ProcessExecutionService : IProcessExecutionService
             };
 
         var processResult =
-            await _runtime.ExecuteAsync(
+            await runtime.ExecuteAsync(
                 processRequest,
                 cancellationToken);
 
@@ -75,23 +61,23 @@ internal sealed class ProcessExecutionService : IProcessExecutionService
 
         return ProcessExecutionResponseFactory.Create(
             processResult,
-            _registry,
-            _serviceOptions.ServiceName);
+            registry,
+            serviceOptions.ServiceName);
     }
 
     public async Task<StepExecutionResponse<TResponse>> ExecuteAsync<TProcessStep, TResponse>(
         ExecuteStepRequest<TProcessStep> request,
         CancellationToken cancellationToken)
     {
-        var stepName = _registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
+        var stepName = registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
 
         var processRequest =
             request.ToProcessRequest(
                 stepName: stepName,
-                processId: _correlationAccessor.Current.ProcessId);
+                processId: correlationAccessor.Current.ProcessId);
 
         var processResult =
-            await _runtime.ExecuteAsync(
+            await runtime.ExecuteAsync(
                 processRequest,
                 cancellationToken);
 
@@ -112,21 +98,21 @@ internal sealed class ProcessExecutionService : IProcessExecutionService
         return StepExecutionResponseFactory.Create<TResponse>(
             processResult,
             stepResult,
-            _registry,
-            _serviceOptions.ServiceName);
+            registry,
+            serviceOptions.ServiceName);
     }
 
     public async Task<StepExecutionResponse> ExecuteAsync<TProcessStep>(ExecuteStepRequest<TProcessStep> request, CancellationToken cancellationToken)
     {
-        var stepName = _registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
+        var stepName = registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
 
         var processRequest =
             request.ToProcessRequest(
                 stepName: stepName,
-                processId: _correlationAccessor.Current.ProcessId);
+                processId: correlationAccessor.Current.ProcessId);
 
         var processResult =
-            await _runtime.ExecuteAsync(
+            await runtime.ExecuteAsync(
                 processRequest,
                 cancellationToken);
 
@@ -147,15 +133,15 @@ internal sealed class ProcessExecutionService : IProcessExecutionService
         return StepExecutionResponseFactory.Create(
             processResult,
             stepResult,
-            _registry,
-            _serviceOptions.ServiceName);
+            registry,
+            serviceOptions.ServiceName);
     }
 
     private void WriteResponseHeaders(
         Guid processId)
     {
         var headers =
-            _httpContextAccessor.HttpContext?.Response.Headers;
+            httpContextAccessor.HttpContext?.Response.Headers;
 
         if (headers is null)
         {
@@ -166,9 +152,9 @@ internal sealed class ProcessExecutionService : IProcessExecutionService
             processId.ToString();
 
         headers[KaleidoCorrelationHeaders.ProcessorInstanceId] =
-            _serviceOptions.InstanceId.ToString();
+            serviceOptions.InstanceId.ToString();
 
         headers[KaleidoCorrelationHeaders.SourceProcessor] =
-            _serviceOptions.ServiceName;
+            serviceOptions.ServiceName;
     }
 }

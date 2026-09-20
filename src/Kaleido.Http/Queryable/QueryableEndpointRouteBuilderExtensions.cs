@@ -1,5 +1,5 @@
 using Kaleido.AspNetCore.Queryable;
-using Kaleido.Http.Abstractions.Queryable.Contracts;
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
@@ -29,7 +29,7 @@ public static class QueryableEndpointRouteBuilderExtensions
 
         if (queryableRegistry is null)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 "Cannot map Queryable endpoints: Queryable runtime is not registered. " +
                 "This service has no query contexts. Remove the MapQueryable() call.");
         }
@@ -184,10 +184,14 @@ public static class QueryableEndpointRouteBuilderExtensions
         QueryContextRegistration context,
         string serviceName)
     {
-        typeof(QueryableEndpointRouteBuilderExtensions)
+        var method = typeof(QueryableEndpointRouteBuilderExtensions)
             .GetMethod(
                 nameof(MapTypedDirectQueryEndpoint),
-                BindingFlags.Static | BindingFlags.NonPublic)!
+                BindingFlags.Static | BindingFlags.NonPublic)
+            ?? throw new KaleidoFrameworkException(
+                $"Method '{nameof(MapTypedDirectQueryEndpoint)}' not found.");
+
+        method
             .MakeGenericMethod(
                 context.ContextType)
             .Invoke(
@@ -247,10 +251,14 @@ public static class QueryableEndpointRouteBuilderExtensions
         QueryViewRegistration view,
         string route)
     {
-        typeof(QueryableEndpointRouteBuilderExtensions)
+        var method = typeof(QueryableEndpointRouteBuilderExtensions)
             .GetMethod(
                 nameof(MapTypedQueryEndpoint),
-                BindingFlags.Static | BindingFlags.NonPublic)!
+                BindingFlags.Static | BindingFlags.NonPublic)
+            ?? throw new KaleidoFrameworkException(
+                $"Method '{nameof(MapTypedQueryEndpoint)}' not found.");
+
+        method
             .MakeGenericMethod(
                 view.QueryViewType,
                 view.ViewType,
@@ -271,10 +279,14 @@ public static class QueryableEndpointRouteBuilderExtensions
         DelegatedQueryViewRegistration view,
         string route)
     {
-        typeof(QueryableEndpointRouteBuilderExtensions)
+        var method = typeof(QueryableEndpointRouteBuilderExtensions)
             .GetMethod(
                 nameof(MapTypedDelegatedQueryEndpoint),
-                BindingFlags.Static | BindingFlags.NonPublic)!
+                BindingFlags.Static | BindingFlags.NonPublic)
+            ?? throw new KaleidoFrameworkException(
+                $"Method '{nameof(MapTypedDelegatedQueryEndpoint)}' not found.");
+
+        method
             .MakeGenericMethod(
                 view.QueryViewType,
                 view.ViewType,

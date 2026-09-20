@@ -1,5 +1,4 @@
-﻿using Kaleido.Exceptions;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Process.Planning;
 

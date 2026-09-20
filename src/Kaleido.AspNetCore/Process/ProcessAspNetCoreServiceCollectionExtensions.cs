@@ -1,4 +1,3 @@
-using Kaleido.AspNetCore.Process.Services;
 using Kaleido.Exceptions;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;

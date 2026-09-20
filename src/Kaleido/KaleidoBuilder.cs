@@ -33,11 +33,16 @@ public interface IKaleidoBuilder
 
 internal sealed class KaleidoBuilder : IKaleidoBuilder
 {
+    private readonly IServiceCollection services;
+    private readonly IConfiguration configuration;
+    private readonly KaleidoServiceOptions serviceOptions;
+    private readonly Dictionary<string, Assembly> _assemblies = [];
+
     public KaleidoBuilder(IServiceCollection services, IConfiguration configuration, KaleidoServiceOptions serviceOptions)
     {
-        Services = services;
-        Configuration = configuration;
-        ServiceOptions = serviceOptions;
+        this.services = services;
+        this.configuration = configuration;
+        this.serviceOptions = serviceOptions;
 
         // Set assemblies from options, defaulting to calling and entry assemblies if not specified
         var assemblies = serviceOptions.Assemblies;
@@ -54,15 +59,13 @@ internal sealed class KaleidoBuilder : IKaleidoBuilder
         }
     }
 
-    public IServiceCollection Services { get; }
+    public IServiceCollection Services => services;
 
-    public IConfiguration Configuration { get; }
+    public IConfiguration Configuration => configuration;
 
-    public KaleidoServiceOptions ServiceOptions { get; }
+    public KaleidoServiceOptions ServiceOptions => serviceOptions;
 
     public IReadOnlyCollection<Assembly> Assemblies => _assemblies.Values;
-
-    private readonly Dictionary<string, Assembly> _assemblies = [];
 
     internal bool AddAssembly(Assembly assembly)
     {

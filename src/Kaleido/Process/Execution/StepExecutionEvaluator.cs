@@ -12,21 +12,11 @@ internal interface IStepExecutionEvaluator
         ProcessorContext context);
 }
 
-internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
+internal sealed class StepExecutionEvaluator(
+    IStepAvailabilityResolver availabilityResolver,
+    KaleidoServiceOptions serviceOptions)
+    : IStepExecutionEvaluator
 {
-    private readonly IStepAvailabilityResolver _availabilityResolver;
-    private readonly KaleidoServiceOptions _serviceOptions;
-
-    public StepExecutionEvaluator(
-        IStepAvailabilityResolver availabilityResolver,
-        KaleidoServiceOptions serviceOptions)
-    {
-        ArgumentNullException.ThrowIfNull(availabilityResolver);
-        ArgumentNullException.ThrowIfNull(serviceOptions);
-
-        _availabilityResolver = availabilityResolver;
-        _serviceOptions = serviceOptions;
-    }
 
     public ExecutionDecision Evaluate(
         StepCandidate currentCandidate,
@@ -68,7 +58,7 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
         ProcessorContext context)
     {
         var availableSteps =
-            _availabilityResolver.Resolve(
+            availabilityResolver.Resolve(
                 currentCandidate,
                 candidates,
                 context);
@@ -115,14 +105,14 @@ internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
         if (!string.IsNullOrEmpty(targetProcessorName) &&
             !string.Equals(
                 targetProcessorName,
-                _serviceOptions.ServiceName,
+                serviceOptions.ServiceName,
                 StringComparison.OrdinalIgnoreCase))
         {
             return ExecutionDecision.HandOff(targetProcessorName); ;
         }
 
         var availableSteps =
-            _availabilityResolver.Resolve(
+            availabilityResolver.Resolve(
                 currentCandidate,
                 candidates,
                 context);

@@ -1,6 +1,4 @@
-﻿using System.Reflection.Metadata;
-
-namespace Kaleido.Queryable.Exceptions;
+﻿namespace Kaleido.Queryable.Exceptions;
 
 public abstract class QueryableValidationException
     : Exception

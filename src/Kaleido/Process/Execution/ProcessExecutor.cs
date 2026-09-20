@@ -1,7 +1,4 @@
-﻿using Kaleido.Eventing;
-using Kaleido.Exceptions;
-using Kaleido.Observability;
-using Kaleido.Process.Context;
+﻿using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Observability;
 using Kaleido.Process.Planning;
@@ -18,53 +15,18 @@ public interface IExecutionProcessor
         CancellationToken cancellationToken = default);
 }
 
-internal sealed class ExecutionProcessor : IExecutionProcessor
+internal sealed class ExecutionProcessor(
+    IProcessStepInvoker invoker,
+    IStepExecutionEvaluator evaluator,
+    IProcessStateUpdater stateUpdater,
+    IProcessContextStore stateRepository,
+    IStepAvailabilityResolver availabilityResolver,
+    IProcessEventFactory eventFactory,
+    IEventPublisher eventPublisher,
+    IProcessObservability observability,
+    IKaleidoCorrelationContextAccessor correlationAccessor)
+    : IExecutionProcessor
 {
-    private readonly IProcessStepInvoker _invoker;
-    private readonly IStepExecutionEvaluator _evaluator;
-    private readonly IProcessStateUpdater _stateUpdater;
-    private readonly IProcessContextStore _stateRepository;
-    private readonly IProcessStepRegistry _stepRegistry;
-    private readonly IStepAvailabilityResolver _availabilityResolver;
-    private readonly IProcessEventFactory _eventFactory;
-    private readonly IEventPublisher _eventPublisher;
-    private readonly IProcessObservability _observability;
-    private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
-
-    public ExecutionProcessor(
-        IProcessStepInvoker invoker,
-        IStepExecutionEvaluator evaluator,
-        IProcessStateUpdater stateUpdater,
-        IProcessContextStore stateRepository,
-        IProcessStepRegistry stepRegistry,
-        IStepAvailabilityResolver availabilityResolver,
-        IProcessEventFactory eventFactory,
-        IEventPublisher eventPublisher,
-        IProcessObservability observability,
-        IKaleidoCorrelationContextAccessor correlationAccessor)
-    {
-        ArgumentNullException.ThrowIfNull(invoker);
-        ArgumentNullException.ThrowIfNull(evaluator);
-        ArgumentNullException.ThrowIfNull(stateUpdater);
-        ArgumentNullException.ThrowIfNull(stateRepository);
-        ArgumentNullException.ThrowIfNull(stepRegistry);
-        ArgumentNullException.ThrowIfNull(availabilityResolver);
-        ArgumentNullException.ThrowIfNull(eventFactory);
-        ArgumentNullException.ThrowIfNull(eventPublisher);
-        ArgumentNullException.ThrowIfNull(observability);
-        ArgumentNullException.ThrowIfNull(correlationAccessor);
-
-        _availabilityResolver = availabilityResolver;
-        _invoker = invoker;
-        _evaluator = evaluator;
-        _stateUpdater = stateUpdater;
-        _stateRepository = stateRepository;
-        _stepRegistry = stepRegistry;
-        _eventFactory = eventFactory;
-        _eventPublisher = eventPublisher;
-        _observability = observability;
-        _correlationAccessor = correlationAccessor;
-    }
 
     public async Task<ProcessExecutionResult> ExecuteAsync(
         IReadOnlyCollection<StepCandidate> candidates,
@@ -123,7 +85,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 candidate);
 
             using var stepObservation =
-                _observability.BeginStep(
+                observability.BeginStep(
                     new ProcessStepObservationDetails(
                         candidate.StepName,
                         candidate.Registration?.Metadata.Version));
@@ -139,7 +101,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                         $"Step '{candidate.StepName}' was not found in processor state.");
 
                 var initialAvailableSteps =
-                    _availabilityResolver.Resolve(
+                    availabilityResolver.Resolve(
                         candidate,
                         candidates,
                         context);
@@ -152,7 +114,7 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                         originalRequest);
 
                 var result =
-                    await _invoker.ExecuteAsync(
+                    await invoker.ExecuteAsync(
                         candidate.Registration
                         ?? throw new KaleidoFrameworkException(
                             $"Step '{candidate.StepName}' does not contain registration metadata."),
@@ -163,19 +125,19 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                         cancellationToken);
 
                 var decision =
-                    _evaluator.Evaluate(
+                    evaluator.Evaluate(
                         candidate,
                         result,
                         remainingCandidates,
                         context);
 
                 context =
-                    _stateUpdater.ApplyExecution(
+                    stateUpdater.ApplyExecution(
                         context,
                         candidate,
                         decision);
 
-                await _stateRepository.SaveAsync(
+                await stateRepository.SaveAsync(
                     context,
                     cancellationToken);
 
@@ -195,9 +157,9 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 outcomes.Add(
                     outcome);
 
-                await _eventPublisher.PublishAsync(
-                    _eventFactory.CreateStepCompleted(
-                        _correlationAccessor.Current,
+                await eventPublisher.PublishAsync(
+                    eventFactory.CreateStepCompleted(
+                        correlationAccessor.Current,
                         context,
                         candidate,
                         outcome,
@@ -213,11 +175,11 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 stepObservation.Canceled();
 
                 context =
-                    _stateUpdater.ApplyCancellation(
+                    stateUpdater.ApplyCancellation(
                         context,
                         candidate);
 
-                await _stateRepository.SaveAsync(
+                await stateRepository.SaveAsync(
                     context,
                     CancellationToken.None);
 
@@ -253,11 +215,11 @@ internal sealed class ExecutionProcessor : IExecutionProcessor
                 stepObservation.StepFailed(exception);
 
                 context =
-                    _stateUpdater.ApplyException(
+                    stateUpdater.ApplyException(
                         context,
                         candidate);
 
-                await _stateRepository.SaveAsync(
+                await stateRepository.SaveAsync(
                     context,
                     CancellationToken.None);
 

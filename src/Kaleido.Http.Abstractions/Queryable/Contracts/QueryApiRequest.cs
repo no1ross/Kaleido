@@ -1,5 +1,3 @@
-using Kaleido.Queryable.Query;
-
 namespace Kaleido.Http.Abstractions.Queryable.Contracts;
 
 public record QueryApiRequest(

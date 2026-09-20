@@ -7,32 +7,13 @@ internal interface IExecutionPlanner
     ExecutionPlanResult BuildPlan(ProcessorRequest request, ProcessorContext context);
 }
 
-internal sealed class ExecutionPlanner : IExecutionPlanner
+internal sealed class ExecutionPlanner(
+    IStepCandidateBuilder candidateBuilder,
+    IStepCandidateValidator candidateValidator,
+    IStepCandidateConsistencyChecker candidateConsistencyChecker,
+    IStepCandidatePlanner stepCandidatePlanner)
+    : IExecutionPlanner
 {
-    private readonly IStepCandidateBuilder _candidateBuilder;
-
-    private readonly IStepCandidateValidator _candidateValidator;
-
-    private readonly IStepCandidateConsistencyChecker _candidateConsistencyChecker;
-
-    private readonly IStepCandidatePlanner _stepCandidatePlanner;
-
-    public ExecutionPlanner(
-        IStepCandidateBuilder candidateBuilder,
-        IStepCandidateValidator candidateValidator,
-        IStepCandidateConsistencyChecker candidateConsistencyChecker,
-        IStepCandidatePlanner stepCandidatePlanner)
-    {
-        ArgumentNullException.ThrowIfNull(candidateBuilder);
-        ArgumentNullException.ThrowIfNull(candidateValidator);
-        ArgumentNullException.ThrowIfNull(candidateConsistencyChecker);
-        ArgumentNullException.ThrowIfNull(stepCandidatePlanner);
-
-        _candidateBuilder = candidateBuilder;
-        _candidateValidator = candidateValidator;
-        _candidateConsistencyChecker = candidateConsistencyChecker;
-        _stepCandidatePlanner = stepCandidatePlanner;
-    }
 
     public ExecutionPlanResult BuildPlan(
         ProcessorRequest request,
@@ -42,16 +23,16 @@ internal sealed class ExecutionPlanner : IExecutionPlanner
         ArgumentNullException.ThrowIfNull(context);
 
         var candidates =
-            _candidateBuilder.Build(request);
+            candidateBuilder.Build(request);
 
-        _candidateValidator.Validate(candidates);
+        candidateValidator.Validate(candidates);
 
-        _candidateConsistencyChecker.Validate(
+        candidateConsistencyChecker.Validate(
             candidates,
             context);
 
         var orderedCandidates =
-            _stepCandidatePlanner.Build(candidates);
+            stepCandidatePlanner.Build(candidates);
 
         return new ExecutionPlanResult
         {

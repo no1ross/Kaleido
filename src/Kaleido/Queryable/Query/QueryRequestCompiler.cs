@@ -1,6 +1,5 @@
 using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
-using System.Xml.Linq;
 
 namespace Kaleido.Queryable.Query;
 
@@ -123,11 +122,14 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
         QueryFilterGroup group,
         QueryContextMetadata metadata)
     {
+        var compiledFilters = group.Filters
+            .Select(x => CompileFilter(x, metadata))
+            .OfType<CompiledFilterExpression>()
+            .ToArray();
+
         return new CompiledFilterGroup(
             group.Operator,
-            group.Filters
-                .Select(x => CompileFilter(x, metadata)!)
-                .ToArray());
+            compiledFilters);
     }
 
     private static CompiledSearch? CompileSearch(
@@ -139,17 +141,27 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
             return null;
         }
 
+        var searchableFields = metadata.Fields
+            .Where(x => x.IsSearchable)
+            .OrderBy(x => x.SearchPriority ?? int.MaxValue)
+            .Select(x =>
+            {
+                if (x.MatchMode is null)
+                {
+                    throw new KaleidoFrameworkException(
+                        $"Field '{x.Name}' is marked as searchable but has no MatchMode configured.");
+                }
+
+                return new CompiledSearchField(
+                    x,
+                    x.MatchMode.Value,
+                    x.SearchPriority ?? int.MaxValue);
+            })
+            .ToArray();
+
         return new CompiledSearch(
             searchText,
-            metadata.Fields
-                .Where(x => x.IsSearchable)
-                .OrderBy(x => x.SearchPriority ?? int.MaxValue)
-                .Select(x =>
-                    new CompiledSearchField(
-                        x,
-                        x.MatchMode!.Value,
-                        x.SearchPriority ?? int.MaxValue))
-                .ToArray());
+            searchableFields);
     }
 
     private static IReadOnlyList<CompiledSort> CompileSort(

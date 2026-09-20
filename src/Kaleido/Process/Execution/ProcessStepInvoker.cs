@@ -1,5 +1,4 @@
-﻿using Kaleido.Exceptions;
-using Kaleido.Process.Observability;
+﻿using Kaleido.Process.Observability;
 using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,27 +22,17 @@ public sealed record ProcessStepInvokerResult
 
     public string? TargetProcessorName { get; init; }
 
-    public object Response { get; init; } = null!;
+    public object? Response { get; init; }
 
     public IReadOnlyCollection<ProcessMessage> Messages { get; init; }
         = [];
 }
 
-internal sealed class ProcessStepInvoker : IProcessStepInvoker
+internal sealed class ProcessStepInvoker(
+    IProcessObservability observability,
+    IServiceScopeFactory scopeFactory)
+    : IProcessStepInvoker
 {
-    private readonly IProcessObservability _observability;
-    private readonly IServiceScopeFactory _scopeFactory;
-
-    public ProcessStepInvoker(
-        IProcessObservability observability,
-        IServiceScopeFactory scopeFactory)
-    {
-        ArgumentNullException.ThrowIfNull(observability);
-        ArgumentNullException.ThrowIfNull(scopeFactory);
-
-        _observability = observability;
-        _scopeFactory = scopeFactory;
-    }
 
     public async Task<ProcessStepInvokerResult> ExecuteAsync(
         ProcessStepRegistration registration,
@@ -56,13 +45,13 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
         ArgumentNullException.ThrowIfNull(context);
 
         using var handlerObservation =
-            _observability.BeginHandler(
+            observability.BeginHandler(
                 new ProcessHandlerObservationDetails(
                     registration.Metadata.Name,
                     registration.Metadata.Version));
 
         using var scope =
-            _scopeFactory.CreateScope();
+            scopeFactory.CreateScope();
 
         var handler =
             scope.ServiceProvider.GetRequiredService(
@@ -135,7 +124,7 @@ internal sealed class ProcessStepInvoker : IProcessStepInvoker
             Succeeded = handlerResult.Succeeded,
             RequiredStep = handlerResult.RequiredStep,
             TargetProcessorName = handlerResult.TargetProcessorName,
-            Response = handlerResult.Response!,
+            Response = handlerResult.Response,
             Messages = handlerResult.Messages
         };
     }

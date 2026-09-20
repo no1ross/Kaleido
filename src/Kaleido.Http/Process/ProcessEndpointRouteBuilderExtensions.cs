@@ -1,7 +1,8 @@
 ﻿using Kaleido.AspNetCore.Process.Contracts;
 using Kaleido.AspNetCore.Process.Services;
-using Kaleido.Http.Abstractions.Process;
+using Kaleido.Exceptions;
 using Kaleido.Http.Abstractions.Process.Contracts;
+using Kaleido.Http.Abstractions.Process;
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -25,7 +26,7 @@ public static class ProcessEndpointRouteBuilderExtensions
 
         if (registry is null)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
                 "Cannot map Process endpoints: Process runtime is not registered. " +
                 "This service has no process steps. Remove the MapProcessor() call.");
         }
@@ -287,10 +288,14 @@ public static class ProcessEndpointRouteBuilderExtensions
     {
         if (step.StepResultType is null)
         {
-            typeof(ProcessEndpointRouteBuilderExtensions)
+            var method = typeof(ProcessEndpointRouteBuilderExtensions)
                 .GetMethod(
                     nameof(MapUntypedStepExecutionEndpoint),
-                    BindingFlags.NonPublic | BindingFlags.Static)!
+                    BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new KaleidoFrameworkException(
+                    $"Method '{nameof(MapUntypedStepExecutionEndpoint)}' not found.");
+
+            method
                 .MakeGenericMethod(step.StepType)
                 .Invoke(
                     null,
@@ -298,10 +303,14 @@ public static class ProcessEndpointRouteBuilderExtensions
         }
         else
         {
-            typeof(ProcessEndpointRouteBuilderExtensions)
+            var method = typeof(ProcessEndpointRouteBuilderExtensions)
                 .GetMethod(
                     nameof(MapTypedStepExecutionEndpoint),
-                    BindingFlags.NonPublic | BindingFlags.Static)!
+                    BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new KaleidoFrameworkException(
+                    $"Method '{nameof(MapTypedStepExecutionEndpoint)}' not found.");
+
+            method
                 .MakeGenericMethod(
                     step.StepType,
                     step.StepResultType)

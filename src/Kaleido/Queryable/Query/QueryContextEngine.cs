@@ -1,6 +1,4 @@
-using Kaleido.Eventing;
 using Kaleido.Exceptions;
-using Kaleido.Observability;
 using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
@@ -275,6 +273,6 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
                 nameof(CreateViewAsyncTyped),
                 BindingFlags.Instance |
                 BindingFlags.NonPublic)
-        ?? throw new InvalidOperationException(
+        ?? throw new KaleidoFrameworkException(
             $"Unable to locate method '{nameof(CreateViewAsyncTyped)}'.");
 }

@@ -1,5 +1,4 @@
-﻿using Kaleido.Exceptions;
-using Kaleido.Process.Attributes;
+﻿using Kaleido.Process.Attributes;
 using Kaleido.Process.Execution;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;

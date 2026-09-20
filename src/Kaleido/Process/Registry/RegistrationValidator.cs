@@ -1,6 +1,4 @@
-﻿using Kaleido.Exceptions;
-
-namespace Kaleido.Process.Registry;
+﻿namespace Kaleido.Process.Registry;
 
 internal static class RegistrationValidator
 {

@@ -13,7 +13,12 @@ public interface IQueryableService
         where TView : class;
 }
 
-internal sealed class QueryableService : IQueryableService
+internal sealed class QueryableService(
+    IServiceScopeFactory scopeFactory,
+    IDelegatedQueryViewRegistry delegatedViewRegistry,
+    IQueryViewRegistry viewRegistry,
+    IQueryContextRegistry contextRegistry)
+    : IQueryableService
 {
     private static readonly MethodInfo ExecuteTypedAsyncMethod =
         typeof(QueryableService)
@@ -21,7 +26,7 @@ internal sealed class QueryableService : IQueryableService
                 nameof(ExecuteTypedAsync),
                 BindingFlags.Instance |
                 BindingFlags.NonPublic)
-        ?? throw new InvalidOperationException(
+        ?? throw new KaleidoFrameworkException(
             $"Could not locate method '{nameof(ExecuteTypedAsync)}'.");
 
     private static readonly MethodInfo ExecuteDelegatedTypedAsyncMethod =
@@ -30,7 +35,7 @@ internal sealed class QueryableService : IQueryableService
                 nameof(ExecuteDelegatedTypedAsync),
                 BindingFlags.Instance |
                 BindingFlags.NonPublic)
-        ?? throw new InvalidOperationException(
+        ?? throw new KaleidoFrameworkException(
             $"Could not locate method '{nameof(ExecuteDelegatedTypedAsync)}'.");
 
     private static readonly MethodInfo ExecuteDirectTypedAsyncMethod =
@@ -39,38 +44,11 @@ internal sealed class QueryableService : IQueryableService
                 nameof(ExecuteDirectTypedAsync),
                 BindingFlags.Instance |
                 BindingFlags.NonPublic)
-        ?? throw new InvalidOperationException(
+        ?? throw new KaleidoFrameworkException(
             $"Could not locate method '{nameof(ExecuteDirectTypedAsync)}'.");
 
 
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IDelegatedQueryViewRegistry _delegatedViewRegistry;
-    private readonly IQueryViewRegistry _viewRegistry;
-    private readonly IQueryContextRegistry _contextRegistry;
 
-    public QueryableService(
-        IServiceScopeFactory scopeFactory,
-        IDelegatedQueryViewRegistry delegatedViewRegistry,
-        IQueryViewRegistry viewRegistry,
-        IQueryContextRegistry contextRegistry)
-    {
-        ArgumentNullException.ThrowIfNull(scopeFactory);
-        ArgumentNullException.ThrowIfNull(delegatedViewRegistry);
-        ArgumentNullException.ThrowIfNull(viewRegistry);
-        ArgumentNullException.ThrowIfNull(contextRegistry);
-
-        _scopeFactory =
-            scopeFactory;
-
-        _delegatedViewRegistry =
-            delegatedViewRegistry;
-
-        _viewRegistry =
-            viewRegistry;
-
-        _contextRegistry =
-            contextRegistry;
-    }
 
     public async Task<QueryResult<TView>> QueryAsync<TQueryView, TView>(
         IQueryRequest request,
@@ -81,15 +59,15 @@ internal sealed class QueryableService : IQueryableService
         ArgumentNullException.ThrowIfNull(request);
 
         var delegatedViewRegistration =
-            _delegatedViewRegistry.Find(
+            delegatedViewRegistry.Find(
                 typeof(TQueryView));
 
         var viewRegistration =
-            _viewRegistry.Find(
+            viewRegistry.Find(
                 typeof(TQueryView));
 
         using var scope =
-            _scopeFactory.CreateScope();
+            scopeFactory.CreateScope();
 
         if (delegatedViewRegistration is not null)
         {
@@ -109,7 +87,7 @@ internal sealed class QueryableService : IQueryableService
                 viewRegistration);
 
             var contextRegistration =
-                _contextRegistry.GetRegistration(
+                contextRegistry.GetRegistration(
                     viewRegistration.QueryContextType);
 
             return await ExecuteWithDiscoveredContextAsync<TView>(
@@ -121,7 +99,7 @@ internal sealed class QueryableService : IQueryableService
         }
 
         var directContextRegistration =
-            _contextRegistry.GetRegistration(
+            contextRegistry.GetRegistration(
                 typeof(TQueryView));
 
         ValidateDirectQuery<TQueryView, TView>(

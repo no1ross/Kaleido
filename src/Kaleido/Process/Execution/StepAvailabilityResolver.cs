@@ -12,18 +12,10 @@ internal interface IStepAvailabilityResolver
         ProcessorContext context);
 }
 
-internal sealed class StepAvailabilityResolver
+internal sealed class StepAvailabilityResolver(
+    IProcessStepRegistry registry)
     : IStepAvailabilityResolver
 {
-    private readonly IProcessStepRegistry _registry;
-
-    public StepAvailabilityResolver(
-        IProcessStepRegistry registry)
-    {
-        ArgumentNullException.ThrowIfNull(registry);
-
-        _registry = registry;
-    }
 
     public IReadOnlyCollection<string> Resolve(
         StepCandidate currentCandidate,
@@ -34,7 +26,7 @@ internal sealed class StepAvailabilityResolver
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(context);
 
-        var registrations = _registry.Registrations;
+        var registrations = registry.Registrations;
 
         var completedSteps =
             GetCompletedStepNames(

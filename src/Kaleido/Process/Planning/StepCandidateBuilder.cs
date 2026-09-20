@@ -9,16 +9,10 @@ internal interface IStepCandidateBuilder
     IReadOnlyCollection<StepCandidate> Build(ProcessorRequest request);
 }
 
-internal sealed class StepCandidateBuilder : IStepCandidateBuilder
+internal sealed class StepCandidateBuilder(
+    IProcessStepRegistry registry)
+    : IStepCandidateBuilder
 {
-    private readonly IProcessStepRegistry _registry;
-
-    public StepCandidateBuilder(IProcessStepRegistry registry)
-    {
-        ArgumentNullException.ThrowIfNull(registry);
-
-        _registry = registry;
-    }
 
     public IReadOnlyCollection<StepCandidate> Build(ProcessorRequest request)
     {
@@ -28,7 +22,7 @@ internal sealed class StepCandidateBuilder : IStepCandidateBuilder
 
         foreach (var step in request.Steps)
         {
-            var registration = _registry.Find(step.Key);
+            var registration = registry.Find(step.Key);
 
             if (registration is null)
             {

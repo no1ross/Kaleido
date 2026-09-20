@@ -14,7 +14,7 @@ See also:
 
 ### Shared infrastructure
 - `AspNetCoreServiceCollectionExtensions` — `UseKaleidoExceptionHandling()` pipeline registration
-- `ExceptionMiddleware` — shared exception middleware (catches `KaleidoFrameworkException`, `ArgumentException`, `InvalidOperationException`)
+- `ExceptionMiddleware` — shared exception middleware (catches `KaleidoFrameworkException`, `ArgumentException`)
 - `KaleidoAspNetCoreCorrelation` / `KaleidoAspNetCoreHeaders` — shared correlation-header names and parsing
 - `ApiErrorContract` — shared HTTP error response shape
 
@@ -75,7 +75,6 @@ builder.Services.AddKaleido()
 |-----------|-------------|------------|
 | `KaleidoFrameworkException` | 500 | `framework_error` |
 | `ArgumentException` | 400 | `argument_error` |
-| `InvalidOperationException` | 400 | `invalid_operation` |
 
 `KaleidoFrameworkException` is thrown by internal runtime paths that detect broken DI wiring or unexpected type mismatches. It is not a user-input error.
 

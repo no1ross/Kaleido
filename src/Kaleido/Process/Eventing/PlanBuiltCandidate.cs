@@ -1,5 +1,4 @@
 using Kaleido.Process.Planning;
-using Kaleido.Process;
 
 namespace Kaleido.Process.Eventing;
 

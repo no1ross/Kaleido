@@ -1,4 +1,3 @@
-using Kaleido.Http.Abstractions.Queryable;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

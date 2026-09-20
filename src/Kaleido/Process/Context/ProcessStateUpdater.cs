@@ -1,5 +1,4 @@
-﻿using Kaleido.Exceptions;
-using Kaleido.Process.Execution;
+﻿using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
 
@@ -27,21 +26,11 @@ internal interface IProcessStateUpdater
         StepCandidate candidate);
 }
 
-internal sealed class ProcessStateUpdater : IProcessStateUpdater
+internal sealed class ProcessStateUpdater(
+    IProcessStepRegistry registry,
+    KaleidoServiceOptions serviceOptions)
+    : IProcessStateUpdater
 {
-    private readonly IProcessStepRegistry _registry;
-    private readonly KaleidoServiceOptions _serviceOptions;
-
-    public ProcessStateUpdater(
-        IProcessStepRegistry registry,
-        KaleidoServiceOptions serviceOptions)
-    {
-        ArgumentNullException.ThrowIfNull(registry);
-        ArgumentNullException.ThrowIfNull(serviceOptions);
-
-        _registry = registry;
-        _serviceOptions = serviceOptions;
-    }
 
     public ProcessorContext Initialize(
         Guid processId)
@@ -51,7 +40,7 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
             ProcessId = processId,
 
             ProcessorName =
-                _serviceOptions.ServiceName,
+                serviceOptions.ServiceName,
 
             State = ProcessExecutionState.Active,
 
@@ -60,7 +49,7 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
             UpdatedUtc = DateTime.UtcNow,
 
             Steps =
-                _registry
+                registry
                     .Registrations
                     .Select(
                         registration =>
@@ -88,7 +77,7 @@ internal sealed class ProcessStateUpdater : IProcessStateUpdater
         var steps =
             context.Steps.ToList();
 
-        foreach (var registration in _registry.Registrations)
+        foreach (var registration in registry.Registrations)
         {
             var existing =
                 steps.FirstOrDefault(

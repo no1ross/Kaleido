@@ -51,25 +51,6 @@ public sealed class ExceptionMiddlewareTests
             ReadBody(context));
     }
 
-    [Fact]
-    public async Task InvokeAsync_WhenInvalidOperationExceptionIsThrown_ReturnsBadRequestPayload()
-    {
-        var logger = new Mock<ILogger<ExceptionMiddleware>>();
-        var context = CreateContext();
-        var middleware =
-            new ExceptionMiddleware(
-                _ => throw new InvalidOperationException("bad operation"),
-                logger.Object);
-
-        await middleware.InvokeAsync(context);
-
-        Assert.Equal(StatusCodes.Status400BadRequest, context.Response.StatusCode);
-        Assert.Equal("application/json; charset=utf-8", context.Response.ContentType);
-        Assert.Equal(
-            "{\"errors\":[{\"code\":\"invalid_operation\",\"message\":\"bad operation\",\"field\":null}]}",
-            ReadBody(context));
-    }
-
     private static DefaultHttpContext CreateContext()
     {
         var services = new ServiceCollection();

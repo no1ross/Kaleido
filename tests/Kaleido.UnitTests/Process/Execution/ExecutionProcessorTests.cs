@@ -14,91 +14,6 @@ namespace Kaleido.Process.UnitTests.Processor.Execution;
 public sealed class ExecutionProcessorTests
 {
     [Fact]
-    public void Constructor_WhenInvokerIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            new ExecutionProcessor(
-                null!,
-                Mock.Of<IStepExecutionEvaluator>(),
-                Mock.Of<IProcessStateUpdater>(),
-                Mock.Of<IProcessContextStore>(),
-                Mock.Of<IProcessStepRegistry>(),
-                Mock.Of<IStepAvailabilityResolver>(),
-                Mock.Of<IProcessEventFactory>(),
-                CreateEventPublisher().Object,
-                CreateObservability().Object,
-                Mock.Of<IKaleidoCorrelationContextAccessor>()));
-    }
-
-    [Fact]
-    public void Constructor_WhenEvaluatorIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            new ExecutionProcessor(
-                Mock.Of<IProcessStepInvoker>(),
-                null!,
-                Mock.Of<IProcessStateUpdater>(),
-                Mock.Of<IProcessContextStore>(),
-                Mock.Of<IProcessStepRegistry>(),
-                Mock.Of<IStepAvailabilityResolver>(),
-                Mock.Of<IProcessEventFactory>(),
-                CreateEventPublisher().Object,
-                CreateObservability().Object,
-                Mock.Of<IKaleidoCorrelationContextAccessor>()));
-    }
-
-    [Fact]
-    public void Constructor_WhenStateUpdaterIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            new ExecutionProcessor(
-                Mock.Of<IProcessStepInvoker>(),
-                Mock.Of<IStepExecutionEvaluator>(),
-                null!,
-                Mock.Of<IProcessContextStore>(),
-                Mock.Of<IProcessStepRegistry>(),
-                Mock.Of<IStepAvailabilityResolver>(),
-                Mock.Of<IProcessEventFactory>(),
-                CreateEventPublisher().Object,
-                CreateObservability().Object,
-                Mock.Of<IKaleidoCorrelationContextAccessor>()));
-    }
-
-    [Fact]
-    public void Constructor_WhenStateRepositoryIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            new ExecutionProcessor(
-                Mock.Of<IProcessStepInvoker>(),
-                Mock.Of<IStepExecutionEvaluator>(),
-                Mock.Of<IProcessStateUpdater>(),
-                null!,
-                Mock.Of<IProcessStepRegistry>(),
-                Mock.Of<IStepAvailabilityResolver>(),
-                Mock.Of<IProcessEventFactory>(),
-                CreateEventPublisher().Object,
-                CreateObservability().Object,
-                Mock.Of<IKaleidoCorrelationContextAccessor>()));
-    }
-
-    [Fact]
-    public void Constructor_WhenStepRegistryIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            new ExecutionProcessor(
-                Mock.Of<IProcessStepInvoker>(),
-                Mock.Of<IStepExecutionEvaluator>(),
-                Mock.Of<IProcessStateUpdater>(),
-                Mock.Of<IProcessContextStore>(),
-                null!,
-                Mock.Of<IStepAvailabilityResolver>(),
-                Mock.Of<IProcessEventFactory>(),
-                CreateEventPublisher().Object,
-                CreateObservability().Object,
-                Mock.Of<IKaleidoCorrelationContextAccessor>()));
-    }
-
-    [Fact]
     public void Constructor_WhenAvailabilityResolverIsNull_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
@@ -107,7 +22,6 @@ public sealed class ExecutionProcessorTests
                 Mock.Of<IStepExecutionEvaluator>(),
                 Mock.Of<IProcessStateUpdater>(),
                 Mock.Of<IProcessContextStore>(),
-                Mock.Of<IProcessStepRegistry>(),
                 null!,
                 Mock.Of<IProcessEventFactory>(),
                 CreateEventPublisher().Object,
@@ -1278,7 +1192,6 @@ public sealed class ExecutionProcessorTests
         Mock<IStepExecutionEvaluator>? evaluator = null,
         Mock<IProcessStateUpdater>? stateUpdater = null,
         Mock<IProcessContextStore>? stateRepository = null,
-        Mock<IProcessStepRegistry>? stepRegistry = null,
         Mock<IStepAvailabilityResolver>? availabilityResolver = null)
     {
         var correlationAccessor = new Mock<IKaleidoCorrelationContextAccessor>();
@@ -1291,7 +1204,6 @@ public sealed class ExecutionProcessorTests
             (evaluator ?? new Mock<IStepExecutionEvaluator>()).Object,
             (stateUpdater ?? new Mock<IProcessStateUpdater>()).Object,
             (stateRepository ?? new Mock<IProcessContextStore>()).Object,
-            (stepRegistry ?? new Mock<IProcessStepRegistry>()).Object,
             (availabilityResolver ?? new Mock<IStepAvailabilityResolver>()).Object,
             CreateProcessEventFactory().Object,
             CreateEventPublisher().Object,

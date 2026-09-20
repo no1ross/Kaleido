@@ -1,5 +1,3 @@
-using Kaleido.Process.Registry;
-
 namespace Kaleido.Http.Abstractions.Process.Contracts;
 
 public static class ProcessorRegistryResponseFactory

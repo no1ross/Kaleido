@@ -1,5 +1,3 @@
-using Kaleido.Http.Client.Process;
-using Kaleido.Http.Client.Queryable;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

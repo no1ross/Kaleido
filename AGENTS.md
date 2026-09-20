@@ -85,6 +85,45 @@ Owns the SQLite durable state provider:
 - Match documentation to the actual code and runtime behavior.
 - When you change contracts or metadata semantics, review the downstream docs and tests for the affected area.
 
+## Coding patterns
+
+### Primary constructors
+- Use primary constructor syntax for simple dependency injection: `class MyClass(IService service)`
+- Use parameter names without underscore prefix: `service` not `_service`
+- Convert constructors that only do field assignments OR only have `ArgumentNullException.ThrowIfNull` calls
+- Do NOT convert constructors with complex logic in the body (loops, conditionals beyond null checks)
+- For nested classes in observability types, also convert to primary constructors
+
+### Nullable suppression operators
+- Avoid nullable suppression operators (`!`) where possible
+- Replace `GetMethod(...)!` with explicit null checks: `GetMethod(...) ?? throw new KaleidoFrameworkException(...)`
+- Use `KaleidoFrameworkException` for framework integrity violations (e.g., missing methods via reflection)
+- For properties that can legitimately be null, make them nullable (`object?` instead of `object = null!`)
+- Use `.OfType<T>()` to filter nulls from collections instead of `!` on each element
+
+### Exception handling
+- Always use custom exceptions from `Kaleido.Exceptions` namespace, never `InvalidOperationException`
+- `KaleidoFrameworkException` for framework integrity violations
+- Domain-specific exceptions for domain validation errors
+- Error codes are organized by domain:
+  - `KaleidoErrorCodes` (in `KaleidoErrorResponse.cs`) - framework-level HTTP error codes
+  - `QueryErrorCodes` (in `QueryableValidationException.cs`) - Queryable validation error codes
+
+### Record conversion
+- Convert immutable data containers with init-only properties to records
+- Do NOT convert service classes with behavior to records
+- Do NOT convert exception classes to records (they inherit from Exception)
+
+### Collection expressions
+- Use collection expressions `[]` for property initializers where type is inferred: `public ICollection<T> Items { get; } = [];`
+- For local variables, keep explicit type: `var items = new List<T>();` (collection expressions without explicit type don't compile)
+- For dictionaries with comparers, keep old syntax: `new Dictionary<T, U>(StringComparer.OrdinalIgnoreCase)` - collection expressions don't support custom comparers
+- For dictionary initializers, use old syntax with `[key] = value` - collection expressions use `=>` which is different
+
+### Using statements
+- Use global usings where appropriate to reduce redundant using statements
+- Keep using statements minimal and project-specific
+
 ## Documentation rules
 
 - Root docs should explain how the projects fit together.

@@ -1,5 +1,4 @@
-﻿using Kaleido.Exceptions;
-using Kaleido.Process.Execution;
+﻿using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
 using Kaleido.Process.Context;
 

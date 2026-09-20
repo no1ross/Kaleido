@@ -8,10 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using Kaleido.AspNetCore.Registry;
-using Kaleido.Http.Abstractions.Queryable;
-using Kaleido.Http.Abstractions.Process;
-using Kaleido.Http.Abstractions.Queryable.Contracts;
-using Kaleido.Http.Abstractions.Process.Contracts;
 
 namespace Kaleido.Http.Registry;
 

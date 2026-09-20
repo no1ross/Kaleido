@@ -1,6 +1,3 @@
-using Kaleido.Eventing;
-using Kaleido.Exceptions;
-using Kaleido.Observability;
 using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;

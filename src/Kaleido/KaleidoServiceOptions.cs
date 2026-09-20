@@ -1,4 +1,3 @@
-using Kaleido.Exceptions;
 using System.Reflection;
 
 namespace Kaleido;

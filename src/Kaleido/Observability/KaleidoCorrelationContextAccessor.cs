@@ -1,5 +1,3 @@
-using Kaleido.Observability;
-
 namespace Kaleido.Observability;
 
 internal interface IKaleidoCorrelationContextInitializer

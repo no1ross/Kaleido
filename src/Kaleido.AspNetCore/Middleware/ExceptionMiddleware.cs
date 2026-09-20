@@ -2,73 +2,45 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.AspNetCore.Middleware
+namespace Kaleido.AspNetCore.Middleware;
+
+internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
 {
-    internal sealed class ExceptionMiddleware
+    public async Task InvokeAsync(HttpContext context)
     {
-        private readonly RequestDelegate _next;
-        private readonly ILogger<ExceptionMiddleware> _logger;
-
-        public ExceptionMiddleware(
-            RequestDelegate next,
-            ILogger<ExceptionMiddleware> logger)
+        try
         {
-            _next = next;
-            _logger = logger;
+            await next(context);
         }
-
-        public async Task InvokeAsync(
-            HttpContext context)
+        catch (ArgumentException exception)
         {
-            try
-            {
-                await _next(context);
-            }
-            catch (ArgumentException exception)
-            {
-                _logger.LogWarning(
-                    exception,
-                    "Invalid argument in request.");
+            logger.LogWarning(
+                exception,
+                "Invalid argument in request.");
 
-                context.Response.StatusCode =
-                    StatusCodes.Status400BadRequest;
+            context.Response.StatusCode =
+                StatusCodes.Status400BadRequest;
 
-                await context.Response.WriteAsJsonAsync(
-                    new KaleidoErrorResponse(
-                    [
-                        new KaleidoError("argument_error", exception.Message)
-                    ]));
-            }
-            catch (KaleidoFrameworkException exception)
-            {
-                _logger.LogError(
-                    exception,
-                    "Kaleido framework integrity violation.");
+            await context.Response.WriteAsJsonAsync(
+                new KaleidoErrorResponse(
+                [
+                    new KaleidoError(KaleidoErrorCodes.ArgumentError, exception.Message)
+                ]));
+        }
+        catch (KaleidoFrameworkException exception)
+        {
+            logger.LogError(
+                exception,
+                "Kaleido framework integrity violation.");
 
-                context.Response.StatusCode =
-                    StatusCodes.Status500InternalServerError;
+            context.Response.StatusCode =
+                StatusCodes.Status500InternalServerError;
 
-                await context.Response.WriteAsJsonAsync(
-                    new KaleidoErrorResponse(
-                    [
-                        new KaleidoError("framework_error", exception.Message)
-                    ]));
-            }
-            catch (InvalidOperationException exception)
-            {
-                _logger.LogWarning(
-                    exception,
-                    "Invalid operation in request.");
-
-                context.Response.StatusCode =
-                    StatusCodes.Status400BadRequest;
-
-                await context.Response.WriteAsJsonAsync(
-                    new KaleidoErrorResponse(
-                    [
-                        new KaleidoError("invalid_operation", exception.Message)
-                    ]));
-            }
+            await context.Response.WriteAsJsonAsync(
+                new KaleidoErrorResponse(
+                [
+                    new KaleidoError(KaleidoErrorCodes.FrameworkError, exception.Message)
+                ]));
         }
     }
 }

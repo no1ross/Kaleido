@@ -1,5 +1,3 @@
-using Kaleido.Queryable.Metadata;
-
 namespace Kaleido.Http.Abstractions.Queryable.Contracts;
 
 public sealed record QueryableRecordResponse : QueryableContextRegistryItem

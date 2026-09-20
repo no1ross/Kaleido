@@ -1,5 +1,4 @@
 using Kaleido;
-using Kaleido.Observability;
 using Kaleido.Queryable.Exceptions;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -50,7 +49,9 @@ internal sealed record QueryObservationDetails(
     bool IsDirectQuery,
     QueryExecutionMode ExecutionMode);
 
-internal sealed class QueryableObservability
+internal sealed class QueryableObservability(
+    IKaleidoCorrelationContextAccessor correlationAccessor,
+    ILogger<QueryableObservability> logger)
     : IQueryableObservability
 {
     private static readonly ActivitySource ActivitySource =
@@ -87,19 +88,7 @@ internal sealed class QueryableObservability
         Meter.CreateHistogram<long>(
             QueryableTelemetry.PageOffsetHistogramName);
 
-    private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
-    private readonly ILogger<QueryableObservability> _logger;
 
-    public QueryableObservability(
-        IKaleidoCorrelationContextAccessor correlationAccessor,
-        ILogger<QueryableObservability> logger)
-    {
-        ArgumentNullException.ThrowIfNull(correlationAccessor);
-        ArgumentNullException.ThrowIfNull(logger);
-
-        _correlationAccessor = correlationAccessor;
-        _logger = logger;
-    }
 
     public IQueryExecutionObservation BeginExecution(
         QueryObservationDetails details)
@@ -112,7 +101,7 @@ internal sealed class QueryableObservability
                 ActivityKind.Internal);
 
         var correlation =
-            _correlationAccessor.Current;
+            correlationAccessor.Current;
 
         SetCorrelationTags(
             activity,
@@ -138,7 +127,7 @@ internal sealed class QueryableObservability
             1,
             CreateExecutionTags(details));
 
-        _logger.LogDebug(
+        logger.LogDebug(
             "Queryable execution started for context {QueryContextName} view {QueryViewName} direct {IsDirectQuery} mode {ExecutionMode}.",
             details.QueryContextName,
             details.QueryViewName,
@@ -147,7 +136,7 @@ internal sealed class QueryableObservability
 
         return new QueryExecutionObservation(
             activity,
-            _logger,
+            logger,
             details);
     }
 
@@ -193,22 +182,12 @@ internal sealed class QueryableObservability
 
     }
 
-    private sealed class QueryExecutionObservation
+    private sealed class QueryExecutionObservation(
+        Activity? activity,
+        ILogger logger,
+        QueryObservationDetails details)
         : IQueryExecutionObservation
     {
-        private readonly Activity? _activity;
-        private readonly QueryObservationDetails _details;
-        private readonly ILogger _logger;
-
-        public QueryExecutionObservation(
-            Activity? activity,
-            ILogger logger,
-            QueryObservationDetails details)
-        {
-            _activity = activity;
-            _logger = logger;
-            _details = details;
-        }
 
         public IDisposable BeginSource()
         {
@@ -239,25 +218,25 @@ internal sealed class QueryableObservability
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            _activity?.SetStatus(
+            activity?.SetStatus(
                 ActivityStatusCode.Error,
                 exception.Message);
 
-            _activity?.SetTag(
+            activity?.SetTag(
                 "kaleido.validation.code",
                 exception.Code);
 
             QueryValidationFailuresCounter.Add(
                 1,
                 CreateValidationTags(
-                    _details,
+                    details,
                     exception.Code));
 
-            _logger.LogWarning(
+            logger.LogWarning(
                 exception,
                 "Queryable validation failed for context {QueryContextName} view {QueryViewName} with code {ValidationCode}.",
-                _details.QueryContextName,
-                _details.QueryViewName,
+                details.QueryContextName,
+                details.QueryViewName,
                 exception.Code);
         }
 
@@ -267,24 +246,24 @@ internal sealed class QueryableObservability
             int? pageSize,
             int? pageOffset)
         {
-            _activity?.SetTag(
+            activity?.SetTag(
                 "kaleido.query.total_count",
                 totalCount);
 
-            _activity?.SetTag(
+            activity?.SetTag(
                 "kaleido.query.returned_count",
                 returnedCount);
 
-            _activity?.SetTag(
+            activity?.SetTag(
                 "kaleido.query.page_size",
                 pageSize);
 
-            _activity?.SetTag(
+            activity?.SetTag(
                 "kaleido.query.page_offset",
                 pageOffset);
 
             var tags =
-                CreateExecutionTags(_details);
+                CreateExecutionTags(details);
 
             QueryTotalCountHistogram.Record(
                 totalCount,
@@ -308,10 +287,10 @@ internal sealed class QueryableObservability
                     tags);
             }
 
-            _logger.LogDebug(
+            logger.LogDebug(
                 "Queryable materialization completed for context {QueryContextName} view {QueryViewName} total {TotalCount} returned {ReturnedCount} pageSize {PageSize} pageOffset {PageOffset}.",
-                _details.QueryContextName,
-                _details.QueryViewName,
+                details.QueryContextName,
+                details.QueryViewName,
                 totalCount,
                 returnedCount,
                 pageSize,
@@ -323,28 +302,28 @@ internal sealed class QueryableObservability
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            _activity?.SetStatus(
+            activity?.SetStatus(
                 ActivityStatusCode.Error,
                 exception.Message);
 
-            _activity?.AddEvent(
+            activity?.AddEvent(
                 new ActivityEvent(
                     "kaleido.queryable.exception"));
 
             QueryExecutionFailuresCounter.Add(
                 1,
-                CreateExecutionTags(_details));
+                CreateExecutionTags(details));
 
-            _logger.LogError(
+            logger.LogError(
                 exception,
                 "Queryable execution failed for context {QueryContextName} view {QueryViewName}.",
-                _details.QueryContextName,
-                _details.QueryViewName);
+                details.QueryContextName,
+                details.QueryViewName);
         }
 
         public void Dispose()
         {
-            _activity?.Dispose();
+            activity?.Dispose();
         }
 
         private static TagList CreateValidationTags(

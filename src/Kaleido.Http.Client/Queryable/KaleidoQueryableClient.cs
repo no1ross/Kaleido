@@ -1,6 +1,4 @@
-using Kaleido.Http.Abstractions.Queryable;
 using Kaleido.Http.Abstractions.Queryable.Contracts;
-using Kaleido.Observability;
 using Kaleido.Queryable.Query;
 using System.Net;
 using System.Net.Http.Json;

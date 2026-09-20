@@ -1,5 +1,3 @@
-using Kaleido.Eventing;
-using Kaleido.Observability;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Query;
