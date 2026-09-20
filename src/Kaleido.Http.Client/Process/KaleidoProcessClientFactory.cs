@@ -1,38 +1,21 @@
-
-
 namespace Kaleido.Http.Client.Process;
 
 internal sealed class KaleidoProcessClientFactory(
     IHttpClientFactory httpClientFactory,
     IKaleidoCorrelationContextAccessor correlation,
     KaleidoProcessClientRouteOptionsMap routeOptionsMap)
-    : IKaleidoProcessClientFactory
+    : KaleidoClientFactoryBase<IKaleidoProcessClient, KaleidoProcessClientRouteOptionsMap>,
+      IKaleidoProcessClientFactory
 {
-    private readonly Dictionary<string, IKaleidoProcessClient> _clients = new(StringComparer.OrdinalIgnoreCase);
-    private readonly object _lock = new();
+    protected override IHttpClientFactory HttpClientFactory => httpClientFactory;
+    protected override IKaleidoCorrelationContextAccessor CorrelationAccessor => correlation;
+    protected override KaleidoProcessClientRouteOptionsMap RouteOptionsMap => routeOptionsMap;
 
-    public IKaleidoProcessClient GetClient(string name)
+    protected override IKaleidoProcessClient CreateClient(
+        System.Net.Http.HttpClient httpClient,
+        IKaleidoCorrelationContextAccessor correlationAccessor,
+        string serviceName)
     {
-        if (_clients.TryGetValue(name, out var existing))
-            return existing;
-
-        lock (_lock)
-        {
-            if (_clients.TryGetValue(name, out existing))
-                return existing;
-
-            routeOptionsMap.Options.TryGetValue(name, out var serviceName);
-
-            // Find the exact registered name (case-sensitive) from the map.
-            // This handles the case where handlers call GetClient with lowercase
-            // but HttpClients are registered with PascalCase.
-            var registeredName = routeOptionsMap.Options.Keys.FirstOrDefault(k =>
-                string.Equals(k, name, StringComparison.OrdinalIgnoreCase)) ?? name;
-
-            var httpClient = httpClientFactory.CreateClient(registeredName);
-            var client = new KaleidoProcessClient(httpClient, correlation, serviceName ?? "");
-            _clients[name] = client;
-            return client;
-        }
+        return new KaleidoProcessClient(httpClient, correlationAccessor, serviceName);
     }
 }

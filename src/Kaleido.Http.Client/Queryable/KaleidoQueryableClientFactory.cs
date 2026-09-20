@@ -1,38 +1,21 @@
-
-
 namespace Kaleido.Http.Client.Queryable;
 
 internal sealed class KaleidoQueryableClientFactory(
     IHttpClientFactory httpClientFactory,
     IKaleidoCorrelationContextAccessor correlation,
     KaleidoQueryableClientRouteOptionsMap routeOptionsMap)
-    : IKaleidoQueryableClientFactory
+    : KaleidoClientFactoryBase<IKaleidoQueryableClient, KaleidoQueryableClientRouteOptionsMap>,
+      IKaleidoQueryableClientFactory
 {
-    private readonly Dictionary<string, IKaleidoQueryableClient> _clients = new(StringComparer.OrdinalIgnoreCase);
-    private readonly object _lock = new();
+    protected override IHttpClientFactory HttpClientFactory => httpClientFactory;
+    protected override IKaleidoCorrelationContextAccessor CorrelationAccessor => correlation;
+    protected override KaleidoQueryableClientRouteOptionsMap RouteOptionsMap => routeOptionsMap;
 
-    public IKaleidoQueryableClient GetClient(string name)
+    protected override IKaleidoQueryableClient CreateClient(
+        System.Net.Http.HttpClient httpClient,
+        IKaleidoCorrelationContextAccessor correlationAccessor,
+        string serviceName)
     {
-        if (_clients.TryGetValue(name, out var existing))
-            return existing;
-
-        lock (_lock)
-        {
-            if (_clients.TryGetValue(name, out existing))
-                return existing;
-
-            routeOptionsMap.Options.TryGetValue(name, out var serviceName);
-
-            // Find the exact registered name (case-sensitive) from the map.
-            // This handles the case where handlers call GetClient with lowercase
-            // but HttpClients are registered with PascalCase.
-            var registeredName = routeOptionsMap.Options.Keys.FirstOrDefault(k =>
-                string.Equals(k, name, StringComparison.OrdinalIgnoreCase)) ?? name;
-
-            var httpClient = httpClientFactory.CreateClient(registeredName);
-            var client = new KaleidoQueryableClient(httpClient, correlation, serviceName ?? "");
-            _clients[name] = client;
-            return client;
-        }
+        return new KaleidoQueryableClient(httpClient, correlationAccessor, serviceName);
     }
 }

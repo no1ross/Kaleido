@@ -1,18 +1,18 @@
-namespace Kaleido.Http.Client.Process;
+namespace Kaleido.Http.Client;
 
 /// <summary>
-/// Registration options for a named Kaleido process client.
+/// Registration options for a named Kaleido HTTP client.
 /// </summary>
-public sealed class KaleidoProcessClientOptions
+public sealed class KaleidoHttpClientOptions
 {
     /// <summary>
-    /// The name used to identify this client in the process client factory.
+    /// The name used to identify this client in the client factory.
     /// Also used as the named <see cref="IHttpClientFactory"/> key.
     /// </summary>
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// The base URL of the remote Kaleido process server.
+    /// The base URL of the remote Kaleido server.
     /// </summary>
     public string BaseUrl { get; set; } = string.Empty;
 
