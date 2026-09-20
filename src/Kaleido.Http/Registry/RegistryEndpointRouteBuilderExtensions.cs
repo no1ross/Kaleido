@@ -73,97 +73,79 @@ public static class RegistryEndpointRouteBuilderExtensions
                     IKaleidoQueryableClientFactory queryableClientFactory,
                     CancellationToken cancellationToken) =>
                 {
+                    var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
 
-                    try
+                    if (!forceRefresh && cache.Current is not null)
                     {
-                        var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
+                        logger.LogDebug("Registry cache hit — serving cached response.");
+                    }
+                    else
+                    {
+                        logger.LogDebug(
+                            forceRefresh
+                                ? "Registry cache bypassed (force refresh requested)."
+                                : "Registry cache miss — building fresh response.");
+                    }
 
-                        if (!forceRefresh && cache.Current is not null)
+                    var response = await cache.GetOrBuildAsync(forceRefresh, async ct =>
+                    {
+                        var localProcesses =
+                            GetLocalProcesses(localProcessorRegistry, localServiceOptions);
+
+                        var localQueryables =
+                            GetLocalQueryables(localQueryableRegistry, localServiceOptions);
+
+                        var (downstreamProcesses, processErrors) =
+                            await GetDownstreamProcessesAsync(processClientMap, processClientFactory, logger, ct);
+
+                        var (downstreamQueryables, queryableErrors) =
+                            await GetDownstreamQueryablesAsync(queryableClientMap, queryableClientFactory, logger, ct);
+
+                        var allProcesses = localProcesses
+                            .Concat(downstreamProcesses)
+                            .OrderBy(r => r.Name)
+                            .ToArray();
+
+                        var entryProcessors = allProcesses
+                            .Where(p => p.IsEntryProcessor)
+                            .ToArray();
+
+                        if (entryProcessors.Length > 1)
                         {
-                            logger.LogDebug("Registry cache hit — serving cached response.");
+                            throw new KaleidoFrameworkException(
+                                $"Multiple processors are marked as entry processors: {string.Join(", ", entryProcessors.Select(p => p.Name))}. " +
+                                "Only one processor in a distributed system should have IsEntryProcessor set to true.");
+                        }
+
+                        var result = new AggregatedRegistryResponse
+                        {
+                            Processes = allProcesses,
+                            Queryables = localQueryables
+                                .Concat(downstreamQueryables)
+                                .OrderBy(r => r.Name)
+                                .ToArray(),
+                            ClientErrors = [.. processErrors, .. queryableErrors]
+                        };
+
+                        if (result.ClientErrors.Count > 0)
+                        {
+                            logger.LogWarning(
+                                "Registry response is partial — {ErrorCount} downstream client(s) failed: {ClientNames}.",
+                                result.ClientErrors.Count,
+                                string.Join(", ", result.ClientErrors.Select(e => e.ClientName)));
                         }
                         else
                         {
                             logger.LogDebug(
-                                forceRefresh
-                                    ? "Registry cache bypassed (force refresh requested)."
-                                    : "Registry cache miss — building fresh response.");
+                                "Registry response built: {ProcessCount} process(es), {QueryableCount} queryable(s).",
+                                result.Processes.Count,
+                                result.Queryables.Count);
                         }
 
-                        var response = await cache.GetOrBuildAsync(forceRefresh, async ct =>
-                        {
-                            var localProcesses =
-                                GetLocalProcesses(localProcessorRegistry, localServiceOptions);
+                        return result;
+                    }, cancellationToken);
 
-                            var localQueryables =
-                                GetLocalQueryables(localQueryableRegistry, localServiceOptions);
-
-                            var (downstreamProcesses, processErrors) =
-                                await GetDownstreamProcessesAsync(processClientMap, processClientFactory, logger, ct);
-
-                            var (downstreamQueryables, queryableErrors) =
-                                await GetDownstreamQueryablesAsync(queryableClientMap, queryableClientFactory, logger, ct);
-
-                            var allProcesses = localProcesses
-                                .Concat(downstreamProcesses)
-                                .OrderBy(r => r.Name)
-                                .ToArray();
-
-                            var entryProcessors = allProcesses
-                                .Where(p => p.IsEntryProcessor)
-                                .ToArray();
-
-                            if (entryProcessors.Length > 1)
-                            {
-                                throw new KaleidoFrameworkException(
-                                    $"Multiple processors are marked as entry processors: {string.Join(", ", entryProcessors.Select(p => p.Name))}. " +
-                                    "Only one processor in a distributed system should have IsEntryProcessor set to true.");
-                            }
-
-                            var result = new AggregatedRegistryResponse
-                            {
-                                Processes = allProcesses,
-                                Queryables = localQueryables
-                                    .Concat(downstreamQueryables)
-                                    .OrderBy(r => r.Name)
-                                    .ToArray(),
-                                ClientErrors = [.. processErrors, .. queryableErrors]
-                            };
-
-                            if (result.ClientErrors.Count > 0)
-                            {
-                                logger.LogWarning(
-                                    "Registry response is partial — {ErrorCount} downstream client(s) failed: {ClientNames}.",
-                                    result.ClientErrors.Count,
-                                    string.Join(", ", result.ClientErrors.Select(e => e.ClientName)));
-                            }
-                            else
-                            {
-                                logger.LogDebug(
-                                    "Registry response built: {ProcessCount} process(es), {QueryableCount} queryable(s).",
-                                    result.Processes.Count,
-                                    result.Queryables.Count);
-                            }
-
-                            return result;
-                        }, cancellationToken);
-
-                        return Results.Ok(response);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogError(
-                            ex,
-                            "Error building aggregated registry response.");
-
-                        return Results.Json(
-                            new KaleidoErrorResponse(
-                            [
-                                new KaleidoError("registry_error", ex.Message)
-                            ]),
-                            statusCode: 500);
-                    }
-
+                    return Results.Ok(response);
                 })
             .WithName("GetAggregatedRegistry")
             .WithTags("Registry")

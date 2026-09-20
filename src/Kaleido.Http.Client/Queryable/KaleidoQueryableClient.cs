@@ -169,20 +169,23 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
         var ctx = _correlation.Current;
 
         if (!string.IsNullOrWhiteSpace(ctx.RequestId))
-            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.RequestId, ctx.RequestId);
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.RequestId, SanitizeHeaderValue(ctx.RequestId));
 
         if (ctx.ProcessId.HasValue)
             request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, ctx.ProcessId.Value.ToString());
 
         if (!string.IsNullOrWhiteSpace(ctx.SourceProcessorName))
-            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.SourceProcessor, ctx.SourceProcessorName);
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.SourceProcessor, SanitizeHeaderValue(ctx.SourceProcessorName));
 
         if (ctx.ProcessorInstanceId.HasValue)
             request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessorInstanceId, ctx.ProcessorInstanceId.Value.ToString());
 
         if (!string.IsNullOrWhiteSpace(ctx.StepName))
-            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.StepName, ctx.StepName);
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.StepName, SanitizeHeaderValue(ctx.StepName));
     }
+
+    private static string? SanitizeHeaderValue(string? value) =>
+        value is null ? null : value.ReplaceLineEndings("").Replace("\0", "").Replace("\t", " ").Trim();
 
     private async Task<IReadOnlyList<QueryableRecordResponse>> EnsureRegistryAsync(
         CancellationToken cancellationToken)

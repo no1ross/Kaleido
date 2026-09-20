@@ -242,7 +242,7 @@ internal sealed class ExecutionProcessor(
                         [
                             StepProcessingMessage.Error(
                             StepProcessingMessageCode.FrameworkException,
-                            $"An unexpected exception occurred while executing '{candidate.StepName}'. {exception.Message}")
+                            $"An unexpected error occurred while executing step '{candidate.StepName}'.")
                         ],
 
                         Response = null

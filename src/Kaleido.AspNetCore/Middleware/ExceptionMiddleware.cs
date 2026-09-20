@@ -43,7 +43,7 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             await context.Response.WriteAsJsonAsync(
                 new KaleidoErrorResponse(
                 [
-                    new KaleidoError(KaleidoErrorCodes.FrameworkError, exception.Message)
+                    new KaleidoError(KaleidoErrorCodes.FrameworkError, "An internal framework error occurred.")
                 ]));
         }
     }
