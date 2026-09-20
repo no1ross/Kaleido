@@ -1,12 +1,12 @@
 using Kaleido.Process.Registry;
 using Kaleido.Queryable.Records;
+using Kaleido.Http.Abstractions.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
-using Kaleido.AspNetCore.Registry;
 
 namespace Kaleido.Http.Registry;
 
@@ -45,7 +45,7 @@ public static class RegistryEndpointRouteBuilderExtensions
         var queryableClientMap = endpoints.ServiceProvider
             .GetService<KaleidoQueryableClientRouteOptionsMap>();
 
-        // Optional — only present when the host has called AddProcessorAspNetCore().
+        // Optional — only present when the host has called AddHttp().
         var localProcessorRegistry = endpoints.ServiceProvider
             .GetService<IProcessorRegistry>();
 

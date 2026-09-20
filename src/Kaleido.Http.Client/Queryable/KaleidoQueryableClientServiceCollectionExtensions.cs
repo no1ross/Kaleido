@@ -14,7 +14,7 @@ public static class KaleidoQueryableClientServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);
 
-        builder.Services.AddKaleidoClient<IKaleidoQueryableClient, KaleidoQueryableClientRouteOptionsMap, KaleidoQueryableClientFactory>(
+        builder.Services.AddKaleidoClient<IKaleidoQueryableClient, KaleidoQueryableClientRouteOptionsMap, KaleidoQueryableClientFactory, IKaleidoQueryableClientFactory>(
             configure,
             configureClient);
 

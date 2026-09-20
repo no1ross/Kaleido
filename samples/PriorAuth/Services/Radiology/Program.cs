@@ -1,5 +1,5 @@
 using Kaleido;
-using Kaleido.AspNetCore;
+using Kaleido.Http;
 using Kaleido.Exceptions;
 using Kaleido.Http.Client;
 using Kaleido.Http.Process;
@@ -101,7 +101,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Radiology") ?? false;
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddAspNetCore()
+    .AddHttp()
     .UseSqliteContextStore(processConnectionString)
     .AddHttpClients();
 

@@ -1,11 +1,11 @@
-﻿using Kaleido.Http.Abstractions.Process.Contracts;
+using Kaleido.Http.Abstractions.Process.Contracts;
 using Kaleido.Process;
 using Kaleido.Process.Registry;
 
-namespace Kaleido.AspNetCore.Process.Contracts;
+namespace Kaleido.Http.Process.Contracts;
 
 // Wire shapes (ProcessExecutionResponse, StepExecutionResponse, etc.)
-// are defined in Kaleido.Process.AspNetCore.Abstractions.
+// are defined in Kaleido.Http.Abstractions.
 // Factory methods and mapping logic that depend on server-side types live here.
 
 public static class ProcessExecutionResponseFactory

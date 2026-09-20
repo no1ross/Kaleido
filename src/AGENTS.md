@@ -27,17 +27,22 @@ Does **not** own HTTP endpoints, ASP.NET Core DI, HTTP contracts, remote client 
 Owns ASP.NET Core DI registration and transport services:
 - shared exception middleware and correlation-header parsing
 - `AddQueryableAspNetCore(...)` — Queryable route options and value normalization
-- `AddProcessorAspNetCore(...)` — Process route options, execution service, and state service
+- `AddProcessorAspNetCore(...)` — Process route options (internal, called by `Kaleido.Http`)
 
-Does **not** own HTTP route publication.
+Depends on `Kaleido` only. Does **not** reference `Kaleido.Http.Abstractions`.
+Does **not** own HTTP route publication or HTTP contract types.
 
 ### `src/Kaleido.Http`
-Owns HTTP endpoint route publication:
+Owns HTTP endpoint route publication and HTTP transport services:
 - `MapQueryable()` — all Queryable HTTP endpoints
 - `MapProcessor()` — all Process HTTP endpoints
 - `MapRegistry()` — aggregated discovery endpoint
+- `IProcessExecutionService` / `ProcessExecutionService` — translates HTTP execute requests into runtime calls
+- `IProcessStateService` / `ProcessStateService` — reads durable process state and maps it to HTTP contracts
+- `AddHttp()` — public entry point; registers all HTTP transport services and calls `AddAspNetCore()` internally
 
-Does **not** own runtime logic or DI registration.
+Depends on `Kaleido.AspNetCore` and `Kaleido.Http.Abstractions`.
+Does **not** own runtime logic or core DI registration.
 
 ### `src/Kaleido.Http.Abstractions`
 Owns shared HTTP contract types used across the server-side and client-side projects:

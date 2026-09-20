@@ -6,13 +6,14 @@ namespace Kaleido.Http.Client;
 
 internal static class KaleidoClientExtensions
 {
-    internal static IServiceCollection AddKaleidoClient<TClient, TMap, TFactory>(
+    internal static IServiceCollection AddKaleidoClient<TClient, TMap, TFactory, TFactoryInterface>(
         this IServiceCollection services,
         Action<KaleidoHttpClientOptions> configure,
         Action<IHttpClientBuilder>? configureClient = null)
         where TClient : class
         where TMap : class, new()
-        where TFactory : class
+        where TFactory : class, TFactoryInterface
+        where TFactoryInterface : class
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
@@ -38,7 +39,7 @@ internal static class KaleidoClientExtensions
             optionsDict[options.Name] = options.RoutePrefix;
         }
 
-        services.TryAddScoped(typeof(TFactory));
+        services.TryAddScoped<TFactoryInterface, TFactory>();
 
         return services;
     }

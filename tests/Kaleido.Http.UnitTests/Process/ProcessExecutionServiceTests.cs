@@ -1,4 +1,4 @@
-using Kaleido.AspNetCore.Process.Services;
+using Kaleido.Http.Process.Services;
 using Kaleido.Http.Abstractions.Process.Contracts;
 using Kaleido.Observability;
 using Kaleido.Process.Execution;
@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Moq;
 using System.Text.Json;
 
-namespace Kaleido.Process.AspNetCore.Tests;
+namespace Kaleido.Http.UnitTests.Process;
 
 public sealed class ProcessExecutionServiceTests
 {

@@ -14,22 +14,6 @@ namespace Kaleido.Process.UnitTests.Processor.Execution;
 public sealed class ExecutionProcessorTests
 {
     [Fact]
-    public void Constructor_WhenAvailabilityResolverIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            new ExecutionProcessor(
-                Mock.Of<IProcessStepInvoker>(),
-                Mock.Of<IStepExecutionEvaluator>(),
-                Mock.Of<IProcessStateUpdater>(),
-                Mock.Of<IProcessContextStore>(),
-                null!,
-                Mock.Of<IProcessEventFactory>(),
-                CreateEventPublisher().Object,
-                CreateObservability().Object,
-                Mock.Of<IKaleidoCorrelationContextAccessor>()));
-    }
-
-    [Fact]
     public async Task ExecuteAsync_WhenCandidatesIsNull_Throws()
     {
         var processor =

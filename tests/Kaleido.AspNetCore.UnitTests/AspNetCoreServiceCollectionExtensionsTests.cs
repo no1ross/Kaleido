@@ -14,7 +14,6 @@ public sealed class AspNetCoreServiceCollectionExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
-        builder.Services.AddRouting();
 
         var kaleidoBuilder = builder.Services.AddKaleido(builder.Configuration, o => o.ServiceName = "test-service");
         kaleidoBuilder.AddAspNetCore();
@@ -31,7 +30,6 @@ public sealed class AspNetCoreServiceCollectionExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
-        builder.Services.AddRouting();
 
         var kaleidoBuilder = builder.Services.AddKaleido(builder.Configuration, o => o.ServiceName = "test-service");
         kaleidoBuilder.AddAspNetCore();

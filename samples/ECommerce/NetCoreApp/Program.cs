@@ -1,5 +1,5 @@
 using Kaleido;
-using Kaleido.AspNetCore;
+using Kaleido.Http;
 using Kaleido.Http.Process;
 using Kaleido.Http.Queryable;
 using Kaleido.Provider.SQLite;
@@ -28,7 +28,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.Description = "ECommerce processor workflow.";
         o.Assemblies = new[] { typeof(Program).Assembly, typeof(AddItemToCartStep).Assembly, typeof(ProductCatalogQueryContext).Assembly };
     })
-    .AddAspNetCore()
+    .AddHttp()
     .UseSqliteContextStore("Data Source=kaleido-sample-process.sqlite");
 
 builder.Services.AddDbContext<ECommerceDbContext>(options =>

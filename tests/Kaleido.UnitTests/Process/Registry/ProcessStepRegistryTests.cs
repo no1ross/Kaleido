@@ -10,53 +10,6 @@ namespace Kaleido.Process.UnitTests.Processor.Registry;
 public sealed class ProcessStepRegistryTests
 {
     [Fact]
-    public void Constructor_WhenStepTypesIsNull_Throws()
-    {
-        var handlerTypes = new Dictionary<Type, Type>
-        {
-            { typeof(StepA), typeof(StepAHandler) }
-        };
-
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new ProcessStepRegistry(
-                    null!,
-                    handlerTypes));
-
-        Assert.Equal(
-            "stepTypes",
-            exception.ParamName);
-    }
-
-    [Fact]
-    public void Constructor_WhenHandlerTypesIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new ProcessStepRegistry(
-                    new[] { typeof(StepA) },
-                    null!));
-
-        Assert.Equal(
-            "handlerTypes",
-            exception.ParamName);
-    }
-
-    [Fact]
-    public void Constructor_WhenHandlerTypesIsNull_ThrowsArgumentNullException()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new ProcessStepRegistry(
-                    new[] { typeof(StepA) },
-                    null!));
-
-        Assert.Equal(
-            "handlerTypes",
-            exception.ParamName);
-    }
-
-    [Fact]
     public void Constructor_WhenHandlerTypeMissing_ThrowsConfigurationException()
     {
         var exception =

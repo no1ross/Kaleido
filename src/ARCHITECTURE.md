@@ -12,16 +12,16 @@ For the top-level repository model, see [`../ARCHITECTURE.md`](../ARCHITECTURE.m
 Kaleido.Http.Client ──────────────────────────────────┐
                                                        ↓
 Kaleido.Http ──────────────────────────────────► Kaleido.Http.Abstractions
-                  ↑                                    ↑
-Kaleido.AspNetCore ─────────────────────────────────── │
-                  ↑                                    │
-             Kaleido ◄──────────────────────────────────┘
+     ↑                                                 ↑
+Kaleido.AspNetCore                                     │
+     ↑                                                 │
+Kaleido ◄──────────────────────────────────────────────┘
 
 Kaleido.Provider.SQLite ──► Kaleido
 ```
 
 - `Kaleido` has no Kaleido project dependencies — it is the foundation.
-- `Kaleido.AspNetCore` depends on `Kaleido` and `Kaleido.Http.Abstractions`.
+- `Kaleido.AspNetCore` depends on `Kaleido` only.
 - `Kaleido.Http` depends on `Kaleido.AspNetCore` and `Kaleido.Http.Abstractions`.
 - `Kaleido.Http.Client` depends on `Kaleido` and `Kaleido.Http.Abstractions`.
 - `Kaleido.Provider.SQLite` depends on `Kaleido` only.
@@ -87,6 +87,7 @@ The core project is organized into two main namespaces:
 - `ProcessStateService` — reads durable process state and maps it to the HTTP response contract
 
 ### Key design invariants
+- This project depends on `Kaleido` only. It does not reference `Kaleido.Http.Abstractions`.
 - This project adds DI registrations and transport services. It does not map HTTP routes.
 - `ExceptionMiddleware` is targeted — it does not catch every possible exception type.
 - `QueryableValidationException` subtypes are caught at the Queryable endpoint level in `Kaleido.Http`, not in this middleware.

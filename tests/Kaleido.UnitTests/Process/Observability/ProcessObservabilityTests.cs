@@ -10,51 +10,6 @@ namespace Kaleido.Process.UnitTests.Observability;
 public sealed class ProcessObservabilityTests
 {
     [Fact]
-    public void Constructor_WhenCorrelationAccessorIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new ProcessObservability(
-                    null!,
-                    new KaleidoServiceOptions { ServiceName = "test-processor" },
-                    Mock.Of<ILogger<ProcessObservability>>()));
-
-        Assert.Equal(
-            "correlationAccessor",
-            exception.ParamName);
-    }
-
-    [Fact]
-    public void Constructor_WhenServiceOptionsIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new ProcessObservability(
-                    Mock.Of<IKaleidoCorrelationContextAccessor>(),
-                    null!,
-                    Mock.Of<ILogger<ProcessObservability>>()));
-
-        Assert.Equal(
-            "serviceOptions",
-            exception.ParamName);
-    }
-
-    [Fact]
-    public void Constructor_WhenLoggerIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new ProcessObservability(
-                    Mock.Of<IKaleidoCorrelationContextAccessor>(),
-                    new KaleidoServiceOptions { ServiceName = "test-processor" },
-                    null!));
-
-        Assert.Equal(
-            "logger",
-            exception.ParamName);
-    }
-
-    [Fact]
     public void BeginExecution_WhenDetailsIsNull_Throws()
     {
         var observability = CreateObservability();

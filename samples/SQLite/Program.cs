@@ -1,5 +1,5 @@
 using Kaleido;
-using Kaleido.AspNetCore;
+using Kaleido.Http;
 using Kaleido.Http.Queryable;
 using Kaleido.Samples.SQLite;
 using Microsoft.OpenApi;
@@ -20,7 +20,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     {
         o.Assemblies = [typeof(SampleKaleidoRecord).Assembly, typeof(SampleKaleidoRecordSource).Assembly];
     })
-    .AddAspNetCore();
+    .AddHttp();
 
 //builder.Services.AddDbContext<KaleidoTestDbContext>(options =>
 //{

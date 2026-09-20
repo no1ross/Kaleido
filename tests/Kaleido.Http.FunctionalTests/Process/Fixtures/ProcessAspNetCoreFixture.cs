@@ -1,4 +1,4 @@
-using Kaleido.AspNetCore;
+using Kaleido.Http;
 using Kaleido.Http.Abstractions.Process;
 using Kaleido.Http.Client;
 using Kaleido.Http.Process;
@@ -43,7 +43,7 @@ public sealed class ProcessAspNetCoreFixture
                                 o.Description = "Test processor.";
                                 o.Assemblies = new[] { typeof(ProcessAspNetCoreFixture).Assembly };
                             })
-                            .AddAspNetCore();
+                            .AddHttp();
 
                         services.ConfigureHttpJsonOptions(options =>
                         {

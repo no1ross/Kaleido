@@ -1,4 +1,4 @@
-﻿namespace Kaleido.AspNetCore.Process.Contracts;
+namespace Kaleido.Http.Abstractions.Process.Contracts;
 
 public static class ProcessEndpointNames
 {

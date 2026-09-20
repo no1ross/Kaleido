@@ -3,7 +3,7 @@ using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 
-namespace Kaleido.AspNetCore.Queryable;
+namespace Kaleido.Queryable;
 
 internal static class QueryableValueNormalizer
 {

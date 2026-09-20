@@ -1,4 +1,4 @@
-﻿using Kaleido.AspNetCore;
+﻿using Kaleido.Http;
 using Kaleido.Http.Abstractions.Queryable;
 using Kaleido.Http.Client;
 using Kaleido.Http.Queryable;
@@ -44,7 +44,7 @@ public sealed class QueryableAspNetCoreFixture
                                 o.ServiceName = "kaleido";
                                 o.Assemblies = new[] { typeof(FunctionalRecordContext).Assembly };
                             })
-                            .AddAspNetCore();
+                            .AddHttp();
 
                         services.ConfigureHttpJsonOptions(options =>
                         {

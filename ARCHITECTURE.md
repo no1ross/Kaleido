@@ -44,7 +44,7 @@ The ASP.NET Core project provides DI registration and transport services:
 - `AddQueryableAspNetCore(...)` — Queryable route options and value normalization (internal)
 - `AddProcessorAspNetCore(...)` — Process route options, execution service, and state service (internal)
 
-It depends on `Kaleido` (core) and `Kaleido.Http.Abstractions`.
+It depends on `Kaleido` (core) only. It does not reference `Kaleido.Http.Abstractions`.
 It does not define HTTP routes.
 
 See: [`src/Kaleido.AspNetCore/README.md`](./src/Kaleido.AspNetCore/README.md)

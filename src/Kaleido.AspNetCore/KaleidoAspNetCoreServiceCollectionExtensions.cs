@@ -4,19 +4,19 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.AspNetCore;
 
-public static class KaleidoAspNetCoreServiceCollectionExtensions
+internal static class KaleidoAspNetCoreServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers ASP.NET Core infrastructure for Kaleido Process and Queryable subsystems.
-    /// This includes routing, HttpContextAccessor, ASP.NET Core-specific services,
-    /// and automatic middleware registration for correlation context and exception handling.
+    /// Registers shared ASP.NET Core infrastructure for Kaleido.
+    /// This is an internal implementation detail — consumers should call <c>AddHttp()</c>
+    /// (or a future <c>AddGrpc()</c>) instead of this method directly.
     /// </summary>
-    public static IKaleidoBuilder AddAspNetCore(this IKaleidoBuilder builder)
+    internal static IKaleidoBuilder AddAspNetCore(this IKaleidoBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.AddProcessorAspNetCore();
-        builder.AddQueryableAspNetCore();
+        builder.Services.AddRouting();
+        builder.Services.AddHttpContextAccessor();
 
         // Auto-register middleware via IStartupFilter
         builder.Services.AddSingleton<IStartupFilter, KaleidoStartupFilter>();

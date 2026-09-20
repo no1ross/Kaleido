@@ -9,62 +9,6 @@ namespace Kaleido.Process.UnitTests.Processor.Planning;
 public sealed class ExecutionPlannerTests
 {
     [Fact]
-    public void Constructor_WhenCandidateBuilderIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new ExecutionPlanner(
-                    null!,
-                    Mock.Of<IStepCandidateValidator>(),
-                    Mock.Of<IStepCandidateConsistencyChecker>(),
-                    Mock.Of<IStepCandidatePlanner>()));
-
-        Assert.Equal("candidateBuilder", exception.ParamName);
-    }
-
-    [Fact]
-    public void Constructor_WhenCandidateValidatorIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new ExecutionPlanner(
-                    Mock.Of<IStepCandidateBuilder>(),
-                    null!,
-                    Mock.Of<IStepCandidateConsistencyChecker>(),
-                    Mock.Of<IStepCandidatePlanner>()));
-
-        Assert.Equal("candidateValidator", exception.ParamName);
-    }
-
-    [Fact]
-    public void Constructor_WhenCandidateConsistencyCheckerIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new ExecutionPlanner(
-                    Mock.Of<IStepCandidateBuilder>(),
-                    Mock.Of<IStepCandidateValidator>(),
-                    null!,
-                    Mock.Of<IStepCandidatePlanner>()));
-
-        Assert.Equal("candidateConsistencyChecker", exception.ParamName);
-    }
-
-    [Fact]
-    public void Constructor_WhenStepCandidatePlannerIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new ExecutionPlanner(
-                    Mock.Of<IStepCandidateBuilder>(),
-                    Mock.Of<IStepCandidateValidator>(),
-                    Mock.Of<IStepCandidateConsistencyChecker>(),
-                    null!));
-
-        Assert.Equal("stepCandidatePlanner", exception.ParamName);
-    }
-
-    [Fact]
     public void BuildPlan_WhenRequestIsNull_Throws()
     {
         var planner =

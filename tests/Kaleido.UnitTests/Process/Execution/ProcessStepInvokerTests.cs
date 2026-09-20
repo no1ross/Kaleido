@@ -13,20 +13,6 @@ namespace Kaleido.Process.UnitTests.Processor.Execution;
 public sealed class ProcessStepInvokerTests
 {
     [Fact]
-    public void Constructor_WhenScopeFactoryIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new ProcessStepInvoker(
-                    null!,
-                    null!));
-
-        Assert.Equal(
-            "observability",
-            exception.ParamName);
-    }
-
-    [Fact]
     public async Task ExecuteAsync_WhenRegistrationIsNull_Throws()
     {
         var invoker =

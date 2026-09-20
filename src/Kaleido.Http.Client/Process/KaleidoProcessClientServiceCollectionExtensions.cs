@@ -14,7 +14,7 @@ public static class KaleidoProcessClientServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);
 
-        builder.Services.AddKaleidoClient<IKaleidoProcessClient, KaleidoProcessClientRouteOptionsMap, KaleidoProcessClientFactory>(
+        builder.Services.AddKaleidoClient<IKaleidoProcessClient, KaleidoProcessClientRouteOptionsMap, KaleidoProcessClientFactory, IKaleidoProcessClientFactory>(
             configure,
             configureClient);
 

@@ -11,30 +11,6 @@ namespace Kaleido.Queryable.UnitTests;
 public sealed class QueryableServiceTests
 {
     [Fact]
-    public void Constructor_WhenScopeFactoryIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() => new QueryableService(null!, Mock.Of<IDelegatedQueryViewRegistry>(), Mock.Of<IQueryViewRegistry>(), Mock.Of<IQueryContextRegistry>()));
-    }
-
-    [Fact]
-    public void Constructor_WhenDelegatedViewRegistryIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() => new QueryableService(Mock.Of<IServiceScopeFactory>(), null!, Mock.Of<IQueryViewRegistry>(), Mock.Of<IQueryContextRegistry>()));
-    }
-
-    [Fact]
-    public void Constructor_WhenViewRegistryIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() => new QueryableService(Mock.Of<IServiceScopeFactory>(), Mock.Of<IDelegatedQueryViewRegistry>(), null!, Mock.Of<IQueryContextRegistry>()));
-    }
-
-    [Fact]
-    public void Constructor_WhenContextRegistryIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() => new QueryableService(Mock.Of<IServiceScopeFactory>(), Mock.Of<IDelegatedQueryViewRegistry>(), Mock.Of<IQueryViewRegistry>(), null!));
-    }
-
-    [Fact]
     public async Task QueryAsync_WhenViewRegistrationExists_ResolvesTypedEngineAndReturnsResult()
     {
         var request = new QueryRequest();

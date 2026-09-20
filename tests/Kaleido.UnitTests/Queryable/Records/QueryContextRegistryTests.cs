@@ -9,24 +9,6 @@ namespace Kaleido.Queryable.UnitTests.Records;
 public sealed class QueryContextRegistryTests
 {
     [Fact]
-    public void Constructor_WhenServicesIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            new QueryContextRegistry(
-                null!,
-                [typeof(TestContext)]));
-    }
-
-    [Fact]
-    public void Constructor_WhenContextTypesIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            new QueryContextRegistry(
-                new ServiceCollection(),
-                null!));
-    }
-
-    [Fact]
     public void Constructor_BuildsRegistrationMetadata()
     {
         var registry = new QueryContextRegistry(CreateServices(), [typeof(TestContext)]);

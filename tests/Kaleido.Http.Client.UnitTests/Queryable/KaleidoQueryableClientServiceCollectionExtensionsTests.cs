@@ -77,7 +77,7 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         });
 
         Assert.Contains(services,
-            d => d.ServiceType == typeof(KaleidoQueryableClientFactory));
+            d => d.ServiceType == typeof(IKaleidoQueryableClientFactory));
     }
 
     [Fact]

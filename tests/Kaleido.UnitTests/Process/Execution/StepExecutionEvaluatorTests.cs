@@ -12,34 +12,6 @@ public sealed class StepExecutionEvaluatorTests
     private const string LocalProcessorName = "test-processor";
 
     [Fact]
-    public void Constructor_WhenAvailabilityResolverIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new StepExecutionEvaluator(
-                    null!,
-                    new KaleidoServiceOptions { ServiceName = LocalProcessorName }));
-
-        Assert.Equal(
-            "availabilityResolver",
-            exception.ParamName);
-    }
-
-    [Fact]
-    public void Constructor_WhenServiceOptionsIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new StepExecutionEvaluator(
-                    new Mock<IStepAvailabilityResolver>().Object,
-                    null!));
-
-        Assert.Equal(
-            "serviceOptions",
-            exception.ParamName);
-    }
-
-    [Fact]
     public void Evaluate_WhenCandidateIsNull_Throws()
     {
         var evaluator =

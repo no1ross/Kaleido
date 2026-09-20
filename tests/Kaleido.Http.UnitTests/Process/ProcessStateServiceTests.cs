@@ -1,15 +1,13 @@
-using Kaleido.AspNetCore.Process.Services;
+using Kaleido.Http.Process.Services;
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;
 using Moq;
 
-namespace Kaleido.Process.AspNetCore.Tests;
+namespace Kaleido.Http.UnitTests.Process;
 
 public sealed class ProcessStateServiceTests
 {
-
-
     [Fact]
     public async Task GetCurrentState_WhenContextDoesNotExist_ReturnsNull()
     {

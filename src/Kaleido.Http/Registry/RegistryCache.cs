@@ -1,4 +1,6 @@
-namespace Kaleido.AspNetCore.Registry;
+using Kaleido.Http.Abstractions.Registry;
+
+namespace Kaleido.Http.Registry;
 
 /// <summary>
 /// Singleton cache for the aggregated registry response.

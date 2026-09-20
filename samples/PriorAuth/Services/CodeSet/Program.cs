@@ -1,6 +1,6 @@
 using Kaleido;
-using Kaleido.AspNetCore;
 using Kaleido.AspNetCore.Queryable;
+using Kaleido.Http;
 using Kaleido.Http.Queryable;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.CodeSet.Data;
@@ -85,7 +85,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.CodeSet") ?? false;
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddAspNetCore();
+    .AddHttp();
 
 var app = builder.Build();
 

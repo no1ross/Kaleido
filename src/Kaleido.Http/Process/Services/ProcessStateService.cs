@@ -1,9 +1,9 @@
-﻿using Kaleido.Http.Abstractions.Process.Contracts;
+using Kaleido.Http.Abstractions.Process.Contracts;
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;
 
-namespace Kaleido.AspNetCore.Process.Services;
+namespace Kaleido.Http.Process.Services;
 
 internal interface IProcessStateService
 {

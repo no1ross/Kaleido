@@ -1,7 +1,7 @@
 using Kaleido.Http.Abstractions.Process.Contracts;
 using Kaleido.Http.Abstractions.Queryable.Contracts;
 
-namespace Kaleido.AspNetCore.Registry;
+namespace Kaleido.Http.Abstractions.Registry;
 
 /// <summary>
 /// The response shape for the unified registry endpoint.

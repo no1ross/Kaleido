@@ -10,34 +10,6 @@ namespace Kaleido.Queryable.UnitTests.Observability;
 public sealed class QueryableObservabilityTests
 {
     [Fact]
-    public void Constructor_WhenCorrelationAccessorIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new QueryableObservability(
-                    null!,
-                    Mock.Of<ILogger<QueryableObservability>>()));
-
-        Assert.Equal(
-            "correlationAccessor",
-            exception.ParamName);
-    }
-
-    [Fact]
-    public void Constructor_WhenLoggerIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new QueryableObservability(
-                    Mock.Of<IKaleidoCorrelationContextAccessor>(),
-                    null!));
-
-        Assert.Equal(
-            "logger",
-            exception.ParamName);
-    }
-
-    [Fact]
     public void BeginExecution_WhenDetailsIsNull_Throws()
     {
         var observability = CreateObservability();

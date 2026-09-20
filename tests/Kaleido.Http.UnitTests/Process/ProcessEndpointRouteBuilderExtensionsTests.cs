@@ -5,8 +5,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Kaleido.AspNetCore.Process.Contracts;
-using Kaleido.AspNetCore.Process.Services;
 using Kaleido.Http.Process;
 
 namespace Kaleido.Http.UnitTests.Process;
