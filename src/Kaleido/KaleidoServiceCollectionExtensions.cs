@@ -3,7 +3,6 @@ using Kaleido.Observability;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using System.Reflection;
 
 namespace Kaleido;
 
@@ -31,22 +30,11 @@ public static class KaleidoServiceCollectionExtensions
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
         services.TryAddSingleton<IEventPublisher, NullEventPublisher>();
 
-        return new KaleidoBuilder(services, configuration, serviceOptions);
-    }
+        var builder = new KaleidoBuilder(services, configuration, serviceOptions);
 
-    /// <summary>
-    /// Registers an assembly for scanning by Process and Queryable subsystem builders.
-    /// Call once per assembly before calling <c>AddProcessor()</c> or <c>AddQueryable()</c>.
-    /// </summary>
-    public static IKaleidoBuilder AddAssembly(this IKaleidoBuilder builder, Assembly assembly)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        ArgumentNullException.ThrowIfNull(assembly);
-
-        if (builder is KaleidoBuilder kaleidoBuilder) 
-        { 
-            kaleidoBuilder.AddAssembly(assembly); 
-        }
+        // Automatically register Process and Queryable runtimes
+        Kaleido.Process.ProcessorServiceCollectionExtensions.AddProcessor(builder);
+        Kaleido.Queryable.QueryableServiceCollectionExtensions.AddQueryable(builder);
 
         return builder;
     }

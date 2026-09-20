@@ -1,4 +1,7 @@
-﻿using Kaleido.Exceptions;
+﻿using Kaleido;
+using Kaleido.Exceptions;
+using Kaleido.Queryable.Metadata;
+using Kaleido.Queryable.Query;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,26 +15,16 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
     [Fact]
     public void AddQueryableAspNetCore_WhenBuilderIsNull_Throws()
     {
-        IQueryableBuilder? builder = null;
+        IKaleidoBuilder? builder = null;
 
         Assert.Throws<ArgumentNullException>(() => builder!.AddQueryableAspNetCore());
-    }
-
-    [Fact]
-    public void AddQueryableAspNetCore_WhenQueryableIsNotRegistered_Throws()
-    {
-        var builder = new TestQueryableBuilder(new ServiceCollection(), [typeof(QueryableAspNetCoreServiceCollectionExtensionsTests).Assembly]);
-
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.AddQueryableAspNetCore());
-
-        Assert.Equal("AddQueryable must be called before AddQueryableAspNetCore.", exception.Message);
     }
 
     [Fact]
     public void AddQueryableAspNetCore_ReturnsSameBuilder()
     {
         var services = new ServiceCollection();
-        services.AddSingleton<IQueryableService, FakeQueryableService>();
+        services.AddSingleton<IQueryableRegistry, FakeQueryableRegistry>();
         var builder = new TestQueryableBuilder(services, [typeof(QueryableAspNetCoreServiceCollectionExtensionsTests).Assembly]);
 
         var result = builder.AddQueryableAspNetCore();
@@ -45,7 +38,7 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
         // RouteOptions (prefix, query route, metadata route) are no longer configurable —
         // routes are derived from KaleidoServiceOptions.ServiceName.
         var services = new ServiceCollection();
-        services.AddSingleton<IQueryableService, FakeQueryableService>();
+        services.AddSingleton<IQueryableRegistry, FakeQueryableRegistry>();
         var builder = new TestQueryableBuilder(services, [typeof(QueryableAspNetCoreServiceCollectionExtensionsTests).Assembly]);
 
         builder.AddQueryableAspNetCore();
@@ -60,7 +53,7 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
     public void AddQueryableAspNetCore_RegistersRoutingServices()
     {
         var services = new ServiceCollection();
-        services.AddSingleton<IQueryableService, FakeQueryableService>();
+        services.AddSingleton<IQueryableRegistry, FakeQueryableRegistry>();
         var builder = new TestQueryableBuilder(services, [typeof(QueryableAspNetCoreServiceCollectionExtensionsTests).Assembly]);
 
         builder.AddQueryableAspNetCore();
@@ -70,7 +63,7 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
         Assert.NotNull(provider.GetService<IConfigureOptions<RouteOptions>>());
     }
 
-    private sealed class TestQueryableBuilder : IQueryableBuilder
+    private sealed class TestQueryableBuilder : IKaleidoBuilder
     {
         public TestQueryableBuilder(IServiceCollection services, IReadOnlyCollection<Assembly> assemblies)
         {
@@ -86,11 +79,10 @@ public sealed class QueryableAspNetCoreServiceCollectionExtensionsTests
             new() { ServiceName = "test" };
     }
 
-    private sealed class FakeQueryableService : IQueryableService
+    private sealed class FakeQueryableRegistry : IQueryableRegistry
     {
-        public Task<QueryResult<TView>> QueryAsync<TQueryView, TView>(IQueryRequest request, CancellationToken cancellationToken = default)
-            where TQueryView : class
-            where TView : class =>
-            Task.FromResult(new QueryResult<TView>(0, 0, 0, Array.Empty<TView>()));
+        public IReadOnlyCollection<QueryableContextRegistryItem> Registrations => Array.Empty<QueryableContextRegistryItem>();
+        public QueryableContextRegistryItem? Find(string name) => null;
+        public QueryableContextRegistryItem GetRegistration(string name) => throw new NotImplementedException();
     }
 }

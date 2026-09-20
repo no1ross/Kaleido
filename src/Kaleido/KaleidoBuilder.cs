@@ -11,6 +11,20 @@ internal sealed class KaleidoBuilder : IKaleidoBuilder
         Services = services;
         Configuration = configuration;
         ServiceOptions = serviceOptions;
+
+        // Set assemblies from options, defaulting to calling and entry assemblies if not specified
+        var assemblies = serviceOptions.Assemblies;
+        if (assemblies is null || assemblies.Length == 0)
+        {
+            assemblies = new[] { Assembly.GetCallingAssembly(), Assembly.GetEntryAssembly() }
+                .Where(a => a is not null)
+                .ToArray()!;
+        }
+
+        foreach (var assembly in assemblies)
+        {
+            AddAssembly(assembly);
+        }
     }
 
     public IServiceCollection Services { get; }

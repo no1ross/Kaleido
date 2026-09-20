@@ -1,3 +1,4 @@
+using Kaleido.Queryable.Http.Client;
 using Kaleido.Observability;
 using System.Linq;
 

@@ -12,7 +12,7 @@ public interface IKaleidoBuilder
     IServiceCollection Services { get; }
 
     /// <summary>
-    /// The set of assemblies registered via <c>AddAssembly()</c>.
+    /// The set of assemblies registered via KaleidoServiceOptions.Assemblies.
     /// Consumed by Process and Queryable subsystem builders for step/context type scanning.
     /// </summary>
     IReadOnlyCollection<Assembly> Assemblies { get; }

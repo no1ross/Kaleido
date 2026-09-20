@@ -1,4 +1,5 @@
-﻿using Kaleido.Json;
+﻿using Kaleido;
+using Kaleido.Json;
 using Kaleido.Observability;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
 using Microsoft.AspNetCore.Builder;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Reflection;
 
 namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
 
@@ -37,9 +39,8 @@ public sealed class QueryableAspNetCoreFixture
                         services.AddKaleido(new ConfigurationBuilder().Build(), o =>
                             {
                                 o.ServiceName = "kaleido";
+                                o.Assemblies = new[] { typeof(FunctionalRecordContext).Assembly };
                             })
-                            .AddAssembly(typeof(FunctionalRecordContext).Assembly)
-                            .AddQueryable()
                             .AddQueryableAspNetCore();
 
                         services.ConfigureHttpJsonOptions(options =>
@@ -69,15 +70,18 @@ public sealed class QueryableAspNetCoreFixture
         TestServer = _host.GetTestServer();
         var testHandler = TestServer.CreateHandler();
 
+        var clientConfig = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Kaleido:Clients:test:BaseUrl"] = "http://localhost/",
+                ["Kaleido:Clients:test:RoutePrefix"] = "kaleido",
+            })
+            .Build();
+
         var clientServices = new ServiceCollection();
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();
-        clientServices.AddKaleido(new ConfigurationBuilder().Build(), o => o.ServiceName = "test-queryable-client")
-            .AddQueryableClient(o =>
-            {
-                o.Name = "test";
-                o.BaseUrl = "http://localhost/";
-                o.RoutePrefix = "kaleido";
-            });
+        clientServices.AddKaleido(clientConfig, o => o.ServiceName = "test-queryable-client")
+            .AddHttpClients();
 
         // Override the named HttpClient to use the TestServer handler instead of a real socket
         clientServices.AddHttpClient("test")

@@ -1,5 +1,6 @@
 using Kaleido.Exceptions;
 using Kaleido.Process.AspNetCore.Services;
+using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -12,12 +13,15 @@ public static class ProcessAspNetCoreServiceCollectionExtensions
     /// Routes are derived from <see cref="KaleidoServiceOptions.ServiceName"/>
     /// (e.g. <c>"intake"</c> → <c>/intake/processes/…</c>).
     /// </summary>
-    public static IProcessorBuilder AddProcessorAspNetCore(this IProcessorBuilder builder)
+    internal static IKaleidoBuilder AddProcessorAspNetCore(this IKaleidoBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        if (!builder.Services.Any(d => d.ServiceType == typeof(IProcessorRuntime)))
-            throw new KaleidoConfigurationException("AddProcessor must be called before AddProcessorAspNetCore.");
+        if (!builder.Services.Any(d => d.ServiceType == typeof(IProcessorRegistry)))
+        {
+            // Process runtime not registered (Queryable-only service) - this is valid
+            return builder;
+        }
 
         builder.Services.AddRouting();
         builder.Services.AddHttpContextAccessor();

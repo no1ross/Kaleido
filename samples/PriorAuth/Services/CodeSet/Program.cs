@@ -1,10 +1,9 @@
 using Kaleido;
-using Kaleido.Queryable;
+using Kaleido.AspNetCore;
 using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.CodeSet.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -78,12 +77,14 @@ builder.Services.AddHttpClient("PriorAuthEventCollector", client =>
         builder.Configuration["Services:EventCollector:BaseUrl"]
         ?? "http://localhost:8086"));
 
-builder.Services.AddKaleido(builder.Configuration)
+builder.Services.AddKaleido(builder.Configuration, o =>
+    {
+        o.ServiceName = "codeset";
+        o.Assemblies = new System.Reflection.Assembly[] { typeof(Program).Assembly, typeof(CodeSetDbContext).Assembly };
+        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.CodeSet") ?? false;
+    })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddAssembly(typeof(Program).Assembly)
-    .AddAssembly(typeof(CodeSetDbContext).Assembly)
-    .AddQueryable()
-        .AddQueryableAspNetCore();
+    .AddAspNetCore();
 
 var app = builder.Build();
 

@@ -1,3 +1,4 @@
+using Kaleido;
 using System.ComponentModel;
 using System.Reflection;
 
@@ -8,16 +9,16 @@ internal sealed class ProcessorRegistry : IProcessorRegistry
     private readonly IReadOnlyCollection<ProcessorRegistryItem> _registrations;
 
     public ProcessorRegistry(
-        ProcessorOptions options,
+        KaleidoServiceOptions serviceOptions,
         IProcessStepRegistry stepRegistry)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(serviceOptions);
         ArgumentNullException.ThrowIfNull(stepRegistry);
 
         _registrations =
         [
             ProcessorRegistryProjection.Project(
-                options,
+                serviceOptions,
                 stepRegistry.InitialRegistrations,
                 stepRegistry.Registrations)
         ];
@@ -30,17 +31,17 @@ internal sealed class ProcessorRegistry : IProcessorRegistry
 internal static class ProcessorRegistryProjection
 {
     internal static ProcessorRegistryItem Project(
-        ProcessorOptions options,
+        KaleidoServiceOptions serviceOptions,
         IReadOnlyCollection<ProcessStepRegistration> initialSteps,
         IReadOnlyCollection<ProcessStepRegistration> steps)
     {
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(serviceOptions);
         ArgumentNullException.ThrowIfNull(initialSteps);
         ArgumentNullException.ThrowIfNull(steps);
 
         return new ProcessorRegistryItem
         {
-            IsEntryProcessor = options.IsEntryProcessor,
+            IsEntryProcessor = serviceOptions.IsEntryProcessor,
             InitialSteps = initialSteps
                 .OrderBy(x => x.Metadata.Name)
                 .Select(ProjectSummary)

@@ -1,7 +1,7 @@
 using Kaleido;
-using Kaleido.Samples.SQLite;
-using Kaleido.Queryable;
+using Kaleido.AspNetCore;
 using Kaleido.Queryable.AspNetCore;
+using Kaleido.Samples.SQLite;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,11 +16,11 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v2", new OpenApiInfo { Title = "My API", Version = "v2" });
 });
 
-builder.Services.AddKaleido(builder.Configuration)
-    .AddAssembly(typeof(SampleKaleidoRecord).Assembly)
-    .AddAssembly(typeof(SampleKaleidoRecordSource).Assembly)
-    .AddQueryable()
-    .AddQueryableAspNetCore();
+builder.Services.AddKaleido(builder.Configuration, o =>
+    {
+        o.Assemblies = new System.Reflection.Assembly[] { typeof(SampleKaleidoRecord).Assembly, typeof(SampleKaleidoRecordSource).Assembly };
+    })
+    .AddAspNetCore();
 
 //builder.Services.AddDbContext<KaleidoTestDbContext>(options =>
 //{

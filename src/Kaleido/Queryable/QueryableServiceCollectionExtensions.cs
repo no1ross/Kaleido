@@ -13,20 +13,9 @@ namespace Kaleido.Queryable;
 
 public static class QueryableServiceCollectionExtensions
 {
-    public static IQueryableBuilder AddQueryable(this IKaleidoBuilder builder)
-    {
-        return builder.AddQueryable(_ => { });
-    }
-
-    public static IQueryableBuilder AddQueryable(
-        this IKaleidoBuilder builder,
-        Action<QueryableOptions> configure)
+    internal static IKaleidoBuilder AddQueryable(this IKaleidoBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        ArgumentNullException.ThrowIfNull(configure);
-
-        var options = new QueryableOptions();
-        configure(options);
 
         if (!builder.Assemblies.Any())
         {
@@ -53,7 +42,17 @@ public static class QueryableServiceCollectionExtensions
             types
                 .Where(x =>
                     x.GetCustomAttribute<QueryContextAttribute>() is not null)
+                .Where(x =>
+                    ShouldIncludeQueryableType(
+                        x,
+                        builder.ServiceOptions.TypeFilter))
                 .ToArray();
+
+        if (queryContextTypes.Length == 0)
+        {
+            // No query contexts to register - this is valid for Process-only services
+            return builder;
+        }
 
         var delegatedContextTypes =
             queryContextTypes
@@ -82,6 +81,10 @@ public static class QueryableServiceCollectionExtensions
             types
                 .Where(x =>
                     x.GetCustomAttribute<QueryViewAttribute>() is not null)
+                .Where(x =>
+                    ShouldIncludeQueryableType(
+                        x,
+                        builder.ServiceOptions.TypeFilter))
                 .ToArray();
 
         var delegatedQueryViewTypes =
@@ -152,7 +155,23 @@ public static class QueryableServiceCollectionExtensions
 
         RegisterFrameworkServices(builder.Services);
 
-        return new QueryableBuilder(builder);
+        return builder;
+    }
+
+    private static bool ShouldIncludeQueryableType(
+        Type queryableType,
+        Func<Type, bool>? typeFilter)
+    {
+        try
+        {
+            return typeFilter?.Invoke(queryableType) ?? true;
+        }
+        catch (Exception exception)
+        {
+            throw new KaleidoConfigurationException(
+                $"Type filter failed for type '{queryableType.FullName}'.",
+                exception);
+        }
     }
 
     private static void RegisterFrameworkServices(IServiceCollection services)
@@ -324,7 +343,7 @@ public static class QueryableServiceCollectionExtensions
         {
             services.AddScoped(
                 queryViewInterface,
-                sp => sp.GetRequiredService(queryViewType));
+                queryViewType);
 
             services.TryAddScoped(
                 typeof(IDelegatedQueryViewEngine<,>)
@@ -386,7 +405,7 @@ public static class QueryableServiceCollectionExtensions
         {
             services.AddScoped(
                 queryViewInterface,
-                sp => sp.GetRequiredService(queryViewType));
+                queryViewType);
         }
     }
 }

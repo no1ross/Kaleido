@@ -1,5 +1,8 @@
 using Kaleido.Exceptions;
 using Kaleido.Json;
+using Kaleido.Queryable;
+using Kaleido.Queryable.Metadata;
+using Kaleido.Queryable.Query;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable.AspNetCore;
@@ -11,12 +14,15 @@ public static class QueryableAspNetCoreServiceCollectionExtensions
     /// Routes are derived from <see cref="KaleidoServiceOptions.ServiceName"/>
     /// (e.g. <c>"intake"</c> → <c>/intake/queryable/…</c>).
     /// </summary>
-    public static IQueryableBuilder AddQueryableAspNetCore(this IQueryableBuilder builder)
+    internal static IKaleidoBuilder AddQueryableAspNetCore(this IKaleidoBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        if (!builder.Services.Any(d => d.ServiceType == typeof(IQueryableService)))
-            throw new KaleidoConfigurationException("AddQueryable must be called before AddQueryableAspNetCore.");
+        if (!builder.Services.Any(d => d.ServiceType == typeof(IQueryableRegistry)))
+        {
+            // Queryable runtime not registered (Process-only service) - this is valid
+            return builder;
+        }
 
         builder.Services.AddRouting();
 

@@ -38,6 +38,14 @@ public sealed class ProcessClientHeaderTests : IDisposable
         var captureHandler = new RequestCaptureHandler(_captureState) { InnerHandler = testHandler };
         _httpClient = new HttpClient(captureHandler) { BaseAddress = new Uri("http://localhost/") };
 
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Kaleido:Clients:header-test:BaseUrl"] = "http://localhost/",
+                ["Kaleido:Clients:header-test:RoutePrefix"] = "kaleido",
+            })
+            .Build();
+
         var services = new ServiceCollection();
         services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory("header-test", _httpClient));
 
@@ -45,13 +53,8 @@ public sealed class ProcessClientHeaderTests : IDisposable
         // AddKaleido() is a no-op and the client factories use our controllable context.
         services.AddSingleton<IKaleidoCorrelationContextAccessor>(_correlationAccessor);
 
-        services.AddKaleido(new ConfigurationBuilder().Build(), o => o.ServiceName = "header-test-client")
-            .AddProcessClient(o =>
-            {
-                o.Name = "header-test";
-                o.BaseUrl = "http://localhost/";
-                o.RoutePrefix = "kaleido";
-            });
+        services.AddKaleido(config, o => o.ServiceName = "header-test-client")
+            .AddHttpClients();
 
         _clientProvider = services.BuildServiceProvider();
         _factory = _clientProvider.GetRequiredService<IKaleidoProcessClientFactory>();

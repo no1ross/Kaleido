@@ -23,7 +23,14 @@ public static class QueryableEndpointRouteBuilderExtensions
 
         var queryableRegistry =
             endpoints.ServiceProvider
-                .GetRequiredService<IQueryableRegistry>();
+                .GetService<IQueryableRegistry>();
+
+        if (queryableRegistry is null)
+        {
+            throw new InvalidOperationException(
+                "Cannot map Queryable endpoints: Queryable runtime is not registered. " +
+                "This service has no query contexts. Remove the MapQueryable() call.");
+        }
 
         var contextRegistry =
             endpoints.ServiceProvider

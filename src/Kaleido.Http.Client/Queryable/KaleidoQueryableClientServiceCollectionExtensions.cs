@@ -7,45 +7,7 @@ namespace Kaleido;
 
 public static class KaleidoQueryableClientServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers named Kaleido queryable clients from configuration.
-    /// For each name, reads <c>Kaleido:Clients:&lt;Name&gt;:BaseUrl</c> (or the shared
-    /// <c>Kaleido:BaseUrl</c> fallback) and calls <see cref="AddQueryableClient"/>.
-    /// </summary>
-    public static IKaleidoBuilder AddQueryableClients(
-        this IKaleidoBuilder builder,
-        params string[] clientNames)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-
-        var config = new KaleidoClientOptions();
-        builder.Configuration.GetSection(KaleidoServiceOptions.SectionName).Bind(config);
-
-        foreach (var name in clientNames)
-        {
-            config.Clients.TryGetValue(name, out var entry);
-
-            var baseUrl = !string.IsNullOrWhiteSpace(entry?.BaseUrl)
-                ? entry.BaseUrl
-                : config.BaseUrl;
-
-            if (string.IsNullOrWhiteSpace(baseUrl))
-                continue;
-
-            var prefix = entry?.RoutePrefix ?? name.ToLowerInvariant();
-
-            builder.AddQueryableClient(o =>
-            {
-                o.Name = name;
-                o.BaseUrl = baseUrl;
-                o.RoutePrefix = prefix;
-            });
-        }
-
-        return builder;
-    }
-
-    public static IKaleidoBuilder AddQueryableClient(
+    internal static IKaleidoBuilder AddQueryableClient(
         this IKaleidoBuilder builder,
         Action<KaleidoQueryableClientOptions> configure,
         Action<IHttpClientBuilder>? configureClient = null)

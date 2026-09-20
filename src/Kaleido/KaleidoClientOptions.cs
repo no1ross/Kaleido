@@ -3,7 +3,7 @@ namespace Kaleido;
 /// <summary>
 /// Configuration options for registering downstream Kaleido clients.
 /// Bound from the <c>Kaleido</c> configuration section by
-/// <c>AddProcessClients</c>, <c>AddQueryableClients</c>, and <c>AddKaleidoRegistry</c>.
+/// <c>AddHttpClients</c>.
 /// </summary>
 public sealed class KaleidoClientOptions
 {
@@ -23,13 +23,6 @@ public sealed class KaleidoClientOptions
     /// when not explicitly set on the entry.
     /// </summary>
     public Dictionary<string, KaleidoClientEntry> Clients { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// Router-only. The cluster names to register clients for when aggregating the registry.
-    /// Addresses are resolved from <c>ReverseProxy:Clusters</c> — no URL duplication needed.
-    /// Used by <c>AddKaleidoRegistry</c>.
-    /// </summary>
-    public string[] Registry { get; set; } = [];
 }
 
 /// <summary>

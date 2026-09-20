@@ -1,3 +1,4 @@
+using Kaleido;
 using Kaleido.Exceptions;
 using Kaleido.Process.Attributes;
 using Kaleido.Process.Context;
@@ -15,36 +16,9 @@ namespace Kaleido.Process;
 
 public static class ProcessorServiceCollectionExtensions
 {
-    /// <summary>
-    /// Registers the processor reading identity from the <c>Kaleido:Processor</c> configuration
-    /// section supplied to <see cref="KaleidoServiceCollectionExtensions.AddKaleido"/>.
-    /// </summary>
-    public static IProcessorBuilder AddProcessor(this IKaleidoBuilder builder)
+    internal static IKaleidoBuilder AddProcessor(this IKaleidoBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
-
-        var options = new ProcessorOptions();
-        builder.Configuration
-            .GetSection($"{KaleidoServiceOptions.SectionName}:Processor")
-            .Bind(options);
-
-        return builder.AddProcessor(o =>
-        {
-            o.IsEntryProcessor = options.IsEntryProcessor;
-        });
-    }
-
-    public static IProcessorBuilder AddProcessor(
-        this IKaleidoBuilder builder,
-        Action<ProcessorOptions> configure)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        ArgumentNullException.ThrowIfNull(configure);
-
-        var options = new ProcessorOptions();
-        configure(options);
-
-        ValidateProcessorOptions(options);
 
         if (!builder.Assemblies.Any())
         {
@@ -74,49 +48,57 @@ public static class ProcessorServiceCollectionExtensions
                 .Where(x =>
                     ShouldIncludeProcessStep(
                         x,
-                        options))
+                        builder.ServiceOptions.TypeFilter))
                 .ToArray();
+
+        if (recordTypes.Length == 0)
+        {
+            // No process steps to register - this is valid for Queryable-only services
+            return builder;
+        }
 
         ValidateProcessSteps(recordTypes);
 
+        var handlerTypes = new Dictionary<Type, Type>();
+
         foreach (var recordType in recordTypes)
         {
-            RegisterProcessStep(
+            var handlerType = RegisterProcessStep(
                 builder.Services,
                 recordType,
                 types);
+            
+            handlerTypes[recordType] = handlerType;
         }
-
-        builder.Services.TryAddSingleton(options);
 
         builder.Services.TryAddSingleton<IProcessStepRegistry>(
             sp =>
             {
                 return new ProcessStepRegistry(
-                    builder.Services,
-                    recordTypes);
+                    recordTypes,
+                    handlerTypes);
             });
 
-        builder.Services.TryAddSingleton<IProcessorRegistry, ProcessorRegistry>();
+        builder.Services.TryAddSingleton<IProcessorRegistry>(
+            sp =>
+            {
+                return new ProcessorRegistry(
+                    builder.ServiceOptions,
+                    sp.GetRequiredService<IProcessStepRegistry>());
+            });
 
         RegisterFrameworkServices(builder.Services);
 
-        return new ProcessorBuilder(builder);
-    }
-
-    private static void ValidateProcessorOptions(
-        ProcessorOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(options);
+        return builder;
     }
 
     private static bool ShouldIncludeProcessStep(
         Type stepType,
-        ProcessorOptions options)
+        Func<Type, bool>? typeFilter)
     {
         try
         {
-            return options.TypeFilter?.Invoke(stepType) ?? true;
+            return typeFilter?.Invoke(stepType) ?? true;
         }
         catch (Exception exception)
         {
@@ -131,8 +113,8 @@ public static class ProcessorServiceCollectionExtensions
     {
         if (stepTypes.Count == 0)
         {
-            throw new KaleidoConfigurationException(
-                "No process steps were discovered for the processor.");
+            // No process steps to register - this is valid for Queryable-only services
+            return;
         }
 
         foreach (var stepType in stepTypes)
@@ -225,18 +207,18 @@ public static class ProcessorServiceCollectionExtensions
         services.TryAddScoped<IExecutionProcessor, ExecutionProcessor>();
     }
 
-    private static void RegisterProcessStep(
+    private static Type RegisterProcessStep(
         IServiceCollection services,
         Type stepType,
         IReadOnlyCollection<Type> types)
     {
-        RegisterHandler(
+        return RegisterHandler(
             services,
             stepType,
             types);
     }
 
-    private static void RegisterHandler(
+    private static Type RegisterHandler(
         IServiceCollection services,
         Type stepType,
         IEnumerable<Type> types)
@@ -268,7 +250,9 @@ public static class ProcessorServiceCollectionExtensions
                 $"Process step '{metadata.Name}' ({stepType.FullName}) has multiple handlers: {handlers}.");
         }
 
-        services.AddScoped(handlerTypes[0]);
+        var handlerType = handlerTypes[0];
+        services.AddScoped(handlerType);
+        return handlerType;
     }
 
     private static bool IsProcessStepHandler(

@@ -19,13 +19,6 @@ public sealed class QueryableServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddQueryable_WhenConfigureIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            QueryableServiceCollectionExtensions.AddQueryable(CreateBuilder(), null!));
-    }
-
-    [Fact]
     public void AddQueryable_WhenNoAssembliesAreRegistered_Throws()
     {
         var builder = new TestKaleidoBuilder(new ServiceCollection(), []);

@@ -1,8 +1,7 @@
 using Kaleido;
-using Kaleido.Process;
+using Kaleido.AspNetCore;
 using Kaleido.Process.AspNetCore;
 using Kaleido.Provider.SQLite;
-using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.ECommerce.Data;
 using Kaleido.Samples.ECommerce.Data.QueryContexts;
@@ -27,15 +26,10 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.ServiceName = "ecommerce";
         o.DisplayName = "ECommerce";
         o.Description = "ECommerce processor workflow.";
+        o.Assemblies = new[] { typeof(Program).Assembly, typeof(AddItemToCartStep).Assembly, typeof(ProductCatalogQueryContext).Assembly };
     })
-    .AddAssembly(typeof(Program).Assembly)
-    .AddAssembly(typeof(AddItemToCartStep).Assembly)
-    .AddAssembly(typeof(ProductCatalogQueryContext).Assembly)
-    .AddProcessor()
-        .AddProcessorAspNetCore()
-        .UseSqliteProcessContextStore("Data Source=kaleido-sample-process.sqlite")
-    .AddQueryable()
-        .AddQueryableAspNetCore();
+    .AddAspNetCore()
+    .UseSqliteContextStore("Data Source=kaleido-sample-process.sqlite");
 
 builder.Services.AddDbContext<ECommerceDbContext>(options =>
 {
@@ -71,8 +65,8 @@ app.UseCors("AllowAll");
 //    .InitializeAsync(
 //        app.Services);
 
-app.MapQueryable();
 app.MapProcessor();
+app.MapQueryable();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

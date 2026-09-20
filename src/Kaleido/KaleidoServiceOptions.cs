@@ -1,4 +1,5 @@
 using Kaleido.Exceptions;
+using System.Reflection;
 
 namespace Kaleido;
 
@@ -40,6 +41,26 @@ public class KaleidoServiceOptions
     /// <c>X-Kaleido-Processor-Instance-Id</c> correlation header for auditing and tracing.
     /// </summary>
     public Guid InstanceId { get; set; } = Guid.NewGuid();
+
+    /// <summary>
+    /// The assemblies to scan for Process and Queryable registrations.
+    /// If null or empty, defaults to Assembly.GetCallingAssembly() and Assembly.GetEntryAssembly().
+    /// </summary>
+    public Assembly[]? Assemblies { get; set; }
+
+    /// <summary>
+    /// Marks this processor as the entry point for the application workflow.
+    /// When true, the registry will identify this processor as the one consumers
+    /// should start with. Only one processor in a distributed system should have
+    /// this set to true.
+    /// </summary>
+    public bool IsEntryProcessor { get; set; }
+
+    /// <summary>
+    /// Optional filter to control which process steps are registered.
+    /// Useful when sharing assemblies across multiple services.
+    /// </summary>
+    public Func<Type, bool>? TypeFilter { get; set; }
 
     /// <summary>
     /// Validates a <see cref="KaleidoServiceOptions"/> instance.

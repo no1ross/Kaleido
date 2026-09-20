@@ -37,7 +37,7 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository m
 
 ### Kaleido (core)
 Owns shared substrate concerns and capability runtimes:
-- bootstrap and builder state (`AddKaleido()`, `IKaleidoBuilder`)
+- bootstrap and builder state (`AddKaleido()`, `IKaleidoBuilder`, `KaleidoServiceOptions`)
 - shared metadata primitives (`DataTypeMapper`, `ConstraintMapper`)
 - shared eventing abstractions and correlation context
 - Queryable runtime: context/view registration, validation, dispatch, execution, observability
@@ -47,8 +47,9 @@ Owns shared substrate concerns and capability runtimes:
 ### Kaleido.AspNetCore
 Owns ASP.NET Core DI and transport services:
 - shared exception middleware and correlation-header parsing
-- Queryable ASP.NET Core registration (`AddQueryableAspNetCore`) and value normalization
-- Process ASP.NET Core registration (`AddProcessorAspNetCore`) and execution/state services
+- `AddAspNetCore()` — consolidated ASP.NET Core DI registration for both Process and Queryable
+- Queryable ASP.NET Core registration (`AddQueryableAspNetCore`) and value normalization (internal)
+- Process ASP.NET Core registration (`AddProcessorAspNetCore`) and execution/state services (internal)
 
 ### Kaleido.Http
 Owns HTTP endpoint publication:

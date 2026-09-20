@@ -19,7 +19,14 @@ public static class ProcessEndpointRouteBuilderExtensions
 
         var registry =
             endpoints.ServiceProvider
-                .GetRequiredService<IProcessStepRegistry>();
+                .GetService<IProcessStepRegistry>();
+
+        if (registry is null)
+        {
+            throw new InvalidOperationException(
+                "Cannot map Process endpoints: Process runtime is not registered. " +
+                "This service has no process steps. Remove the MapProcessor() call.");
+        }
 
         var processorRegistry =
             endpoints.ServiceProvider

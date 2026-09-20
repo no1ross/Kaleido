@@ -5,6 +5,7 @@ using Kaleido.Process;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace Kaleido.Process.UnitTests.Processor;
 
@@ -62,9 +63,8 @@ public sealed class ProcessorServiceCollectionExtensionsTests
                 o.ServiceName = "test-processor";
                 o.DisplayName = "Test Processor";
                 o.Description = "Test processor.";
-            })
-            .AddAssembly(typeof(TestStep).Assembly)
-            .AddProcessor();
+                o.Assemblies = new[] { typeof(TestStep).Assembly };
+            });
 
         using var provider = services.BuildServiceProvider();
 
@@ -97,9 +97,9 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         services.AddKaleido(new ConfigurationBuilder().Build(), o =>
             {
                 o.ServiceName = "test-processor";
-            })
-            .AddAssembly(typeof(TestStep).Assembly)
-            .AddProcessor(o => o.IsEntryProcessor = true);
+                o.Assemblies = new[] { typeof(TestStep).Assembly };
+                o.IsEntryProcessor = true;
+            });
 
         using var provider = services.BuildServiceProvider();
 

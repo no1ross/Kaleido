@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Attributes;
+﻿using Kaleido.Exceptions;
+using Kaleido.Process.Attributes;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,34 +10,64 @@ namespace Kaleido.Process.UnitTests.Processor.Registry;
 public sealed class ProcessStepRegistryTests
 {
     [Fact]
-    public void Constructor_WhenServicesIsNull_Throws()
+    public void Constructor_WhenStepTypesIsNull_Throws()
     {
+        var handlerTypes = new Dictionary<Type, Type>
+        {
+            { typeof(StepA), typeof(StepAHandler) }
+        };
+
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
                 new ProcessStepRegistry(
                     null!,
-                    [typeof(StepA)]));
-
-        Assert.Equal(
-            "services",
-            exception.ParamName);
-    }
-
-    [Fact]
-    public void Constructor_WhenStepTypesIsNull_Throws()
-    {
-        var services =
-            CreateServices();
-
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                new ProcessStepRegistry(
-                    services,
-                    null!));
+                    handlerTypes));
 
         Assert.Equal(
             "stepTypes",
             exception.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_WhenHandlerTypesIsNull_Throws()
+    {
+        var exception =
+            Assert.Throws<ArgumentNullException>(() =>
+                new ProcessStepRegistry(
+                    new[] { typeof(StepA) },
+                    null!));
+
+        Assert.Equal(
+            "handlerTypes",
+            exception.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_WhenHandlerTypesIsNull_ThrowsArgumentNullException()
+    {
+        var exception =
+            Assert.Throws<ArgumentNullException>(() =>
+                new ProcessStepRegistry(
+                    new[] { typeof(StepA) },
+                    null!));
+
+        Assert.Equal(
+            "handlerTypes",
+            exception.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_WhenHandlerTypeMissing_ThrowsConfigurationException()
+    {
+        var exception =
+            Assert.Throws<Kaleido.Exceptions.KaleidoConfigurationException>(() =>
+                new ProcessStepRegistry(
+                    new[] { typeof(StepA) },
+                    new Dictionary<Type, Type>()));
+
+        Assert.Contains(
+            "No handler type registered for step",
+            exception.Message);
     }
 
     [Fact]
@@ -275,49 +306,21 @@ public sealed class ProcessStepRegistryTests
     private static ProcessStepRegistry CreateRegistry(
         params Type[] stepTypes)
     {
+        var handlerTypes = new Dictionary<Type, Type>
+        {
+            { typeof(StepA), typeof(StepAHandler) },
+            { typeof(StepB), typeof(StepBHandler) },
+            { typeof(StepC), typeof(StepCHandler) },
+            { typeof(StepD), typeof(StepDHandler) },
+            { typeof(RepeatableStep), typeof(RepeatableStepHandler) },
+            { typeof(StepAfter), typeof(StepAfterHandler) },
+            { typeof(StepUntil), typeof(StepUntilHandler) },
+            { typeof(StepMultiAvailability), typeof(StepMultiAvailabilityHandler) }
+        };
+
         return new ProcessStepRegistry(
-            CreateServices(),
-            stepTypes);
-    }
-
-    private static IServiceCollection CreateServices()
-    {
-        var services =
-            new ServiceCollection();
-
-        services.AddTransient<
-            IProcessStepHandler<StepA, TestResponse>,
-            StepAHandler>();
-
-        services.AddTransient<
-            IProcessStepHandler<StepB, TestResponse>,
-            StepBHandler>();
-
-        services.AddTransient<
-            IProcessStepHandler<StepC, TestResponse>,
-            StepCHandler>();
-
-        services.AddTransient<
-            IProcessStepHandler<StepD, TestResponse>,
-            StepDHandler>();
-
-        services.AddTransient<
-            IProcessStepHandler<RepeatableStep, TestResponse>,
-            RepeatableStepHandler>();
-
-        services.AddTransient<
-            IProcessStepHandler<StepAfter, TestResponse>,
-            StepAfterHandler>();
-
-        services.AddTransient<
-            IProcessStepHandler<StepUntil, TestResponse>,
-            StepUntilHandler>();
-
-        services.AddTransient<
-            IProcessStepHandler<StepMultiAvailability, TestResponse>,
-            StepMultiAvailabilityHandler>();
-
-        return services;
+            stepTypes,
+            handlerTypes);
     }
 
     [ProcessStep(Name = "step-a", Description = "step-a description", Version = "1.0")]

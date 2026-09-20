@@ -1,6 +1,7 @@
 using Kaleido.Observability;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace Kaleido.UnitTests;
 
@@ -51,105 +52,53 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAssembly_ShouldThrow_WhenBuilderIsNull()
+    public void AddKaleido_WithAssembliesInOptions_RegistersAssemblies()
     {
-        IKaleidoBuilder? builder = null;
+        var services = new ServiceCollection();
+        var assembly = typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
 
-        Assert.Throws<ArgumentNullException>(
-            () => builder!.AddAssembly(
-                typeof(KaleidoServiceCollectionExtensionsTests).Assembly));
+        var builder = services.AddKaleido(EmptyConfig(), o =>
+        {
+            o.ServiceName = "test-service";
+            o.Assemblies = new[] { assembly };
+        });
+
+        var concreteBuilder = Assert.IsType<KaleidoBuilder>(builder);
+        Assert.Contains(assembly, concreteBuilder.Assemblies);
     }
 
     [Fact]
-    public void AddAssembly_ShouldThrow_WhenAssemblyIsNull()
+    public void AddKaleido_WithMultipleAssembliesInOptions_RegistersAllAssemblies()
     {
-        var builder =
-            new ServiceCollection()
-                .AddKaleido(EmptyConfig(), DefaultServiceName());
+        var services = new ServiceCollection();
+        var assembly1 = typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
+        var assembly2 = typeof(IServiceCollection).Assembly;
 
-        Assert.Throws<ArgumentNullException>(
-            () => builder.AddAssembly(null!));
+        var builder = services.AddKaleido(EmptyConfig(), o =>
+        {
+            o.ServiceName = "test-service";
+            o.Assemblies = new[] { assembly1, assembly2 };
+        });
+
+        var concreteBuilder = Assert.IsType<KaleidoBuilder>(builder);
+        Assert.Contains(assembly1, concreteBuilder.Assemblies);
+        Assert.Contains(assembly2, concreteBuilder.Assemblies);
     }
 
     [Fact]
-    public void AddAssembly_ShouldReturn_SameBuilder()
+    public void AddKaleido_WithDuplicateAssembliesInOptions_DeduplicatesAssemblies()
     {
-        var builder =
-            new ServiceCollection()
-                .AddKaleido(EmptyConfig(), DefaultServiceName());
+        var services = new ServiceCollection();
+        var assembly = typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
 
-        var result =
-            builder.AddAssembly(
-                typeof(KaleidoServiceCollectionExtensionsTests).Assembly);
+        var builder = services.AddKaleido(EmptyConfig(), o =>
+        {
+            o.ServiceName = "test-service";
+            o.Assemblies = new[] { assembly, assembly };
+        });
 
-        Assert.Same(
-            builder,
-            result);
-    }
-
-    [Fact]
-    public void AddAssembly_ShouldAdd_Assembly()
-    {
-        var builder =
-            new ServiceCollection()
-                .AddKaleido(EmptyConfig(), DefaultServiceName());
-
-        var assembly =
-            typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
-
-        builder.AddAssembly(assembly);
-
-        var concreteBuilder =
-            Assert.IsType<KaleidoBuilder>(builder);
-
-        var registeredAssembly =
-            Assert.Single(concreteBuilder.Assemblies);
-
-        Assert.Same(
-            assembly,
-            registeredAssembly);
-    }
-
-    [Fact]
-    public void AddAssembly_ShouldNotAdd_DuplicateAssembly()
-    {
-        var builder =
-            new ServiceCollection()
-                .AddKaleido(EmptyConfig(), DefaultServiceName());
-
-        var assembly =
-            typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
-
-        builder.AddAssembly(assembly);
-
-        builder.AddAssembly(assembly);
-
-        var concreteBuilder =
-            Assert.IsType<KaleidoBuilder>(builder);
-
-        Assert.Single(
-            concreteBuilder.Assemblies);
-    }
-
-    [Fact]
-    public void AddAssembly_ShouldAdd_MultipleAssemblies()
-    {
-        var builder =
-            new ServiceCollection()
-                .AddKaleido(EmptyConfig(), DefaultServiceName());
-
-        builder.AddAssembly(
-            typeof(KaleidoServiceCollectionExtensionsTests).Assembly);
-
-        builder.AddAssembly(
-            typeof(IServiceCollection).Assembly);
-
-        var concreteBuilder =
-            Assert.IsType<KaleidoBuilder>(builder);
-
-        Assert.Equal(
-            2,
-            concreteBuilder.Assemblies.Count);
+        var concreteBuilder = Assert.IsType<KaleidoBuilder>(builder);
+        Assert.Equal(1, concreteBuilder.Assemblies.Count(a => a == assembly));
     }
 
     [Fact]

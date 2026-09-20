@@ -170,18 +170,55 @@ Metadata is intended to guide consumers rather than generate application behavio
 
 Register Kaleido capabilities during application startup.
 
+### ASP.NET Core Application
+
 ```csharp
 builder.Services
-    .AddKaleido()
-        .AddAssembly(typeof(Program).Assembly)
-        .AddAssembly(typeof(AddItemToCartStep).Assembly)
-        .AddAssembly(typeof(ProductCatalogQueryContext).Assembly)
-        .AddProcessor()
-            .AddProcessorAspNetCore()
-            .UseSqliteProcessContextStore(
-                "Data Source=kaleido-sample-process.sqlite")
-        .AddQueryable()
-            .AddQueryableAspNetCore();
+    .AddKaleido(builder.Configuration, o =>
+    {
+        o.ServiceName = "my-service";
+        o.Assemblies = new[]
+        {
+            typeof(Program).Assembly,
+            typeof(AddItemToCartStep).Assembly,
+            typeof(ProductCatalogQueryContext).Assembly
+        };
+    })
+    .AddEventPublisher<HttpEventPublisher>()
+    .AddAspNetCore()
+    .UseSqliteContextStore("Data Source=kaleido-sample-process.sqlite")
+    .AddHttpClients();
+
+app.MapProcessor();
+app.MapQueryable();
+```
+
+### Router Service (Registry Only)
+
+```csharp
+builder.Services
+    .AddKaleido(builder.Configuration)
+    .AddHttpClients();
+
+app.MapRegistry();
+```
+
+### Console Application
+
+```csharp
+builder.Services
+    .AddKaleido(builder.Configuration, o =>
+    {
+        o.ServiceName = "my-service";
+        o.Assemblies = new[]
+        {
+            typeof(Program).Assembly,
+            typeof(AddItemToCartStep).Assembly,
+            typeof(ProductCatalogQueryContext).Assembly
+        };
+    })
+    .AddEventPublisher<HttpEventPublisher>()
+    .UseSqliteContextStore("Data Source=kaleido-sample-process.sqlite");
 ```
 
 ---

@@ -1,9 +1,11 @@
+using Kaleido;
 using Kaleido.Exceptions;
 using Kaleido.Process.AspNetCore;
 using Kaleido.Process.AspNetCore.Services;
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
+using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,27 +19,10 @@ public sealed class ProcessAspNetCoreServiceCollectionExtensionsTests
     [Fact]
     public void AddProcessorAspNetCore_WhenBuilderIsNull_Throws()
     {
-        IProcessorBuilder? builder = null;
+        IKaleidoBuilder? builder = null;
 
         Assert.Throws<ArgumentNullException>(() =>
             builder!.AddProcessorAspNetCore());
-    }
-
-    [Fact]
-    public void AddProcessorAspNetCore_WhenProcessorIsNotRegistered_Throws()
-    {
-        var builder =
-            new TestProcessorBuilder(
-                new ServiceCollection(),
-                [typeof(ProcessAspNetCoreServiceCollectionExtensionsTests).Assembly]);
-
-        var exception =
-            Assert.Throws<KaleidoConfigurationException>(() =>
-                builder.AddProcessorAspNetCore());
-
-        Assert.Equal(
-            "AddProcessor must be called before AddProcessorAspNetCore.",
-            exception.Message);
     }
 
     [Fact]
@@ -129,11 +114,17 @@ public sealed class ProcessAspNetCoreServiceCollectionExtensionsTests
             new ServiceCollection();
 
         services.AddSingleton<IProcessorRuntime, FakeProcessorRuntime>();
+        services.AddSingleton<IProcessorRegistry, FakeProcessorRegistry>();
 
         return services;
     }
 
-    private sealed class TestProcessorBuilder : IProcessorBuilder
+    private sealed class FakeProcessorRegistry : IProcessorRegistry
+    {
+        public IReadOnlyCollection<ProcessorRegistryItem> Registrations => Array.Empty<ProcessorRegistryItem>();
+    }
+
+    private sealed class TestProcessorBuilder : IKaleidoBuilder
     {
         public TestProcessorBuilder(
             IServiceCollection services,

@@ -1,5 +1,6 @@
 using Kaleido.AspNetCore.Middleware;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Text.Json;
@@ -71,8 +72,12 @@ public sealed class ExceptionMiddlewareTests
 
     private static DefaultHttpContext CreateContext()
     {
+        var services = new ServiceCollection();
+        var serviceProvider = services.BuildServiceProvider();
+
         return new DefaultHttpContext
         {
+            RequestServices = serviceProvider,
             Response =
             {
                 Body = new MemoryStream()

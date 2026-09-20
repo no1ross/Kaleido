@@ -16,11 +16,11 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
     private readonly IReadOnlyCollection<ProcessStepRegistration> _registrations;
 
     public ProcessStepRegistry(
-        IServiceCollection services,
-        IEnumerable<Type> stepTypes)
+        IEnumerable<Type> stepTypes,
+        IReadOnlyDictionary<Type, Type> handlerTypes)
     {
-        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(stepTypes);
+        ArgumentNullException.ThrowIfNull(handlerTypes);
 
         var stepTypeArray =
             stepTypes
@@ -32,7 +32,7 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
             stepTypeArray
                 .Select(stepType =>
                     BuildTypeDefinition(
-                        services,
+                        handlerTypes,
                         stepType))
                 .ToArray();
 
@@ -140,13 +140,14 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
     }
 
     private static ProcessStepTypeDefinition BuildTypeDefinition(
-        IServiceCollection services,
+        IReadOnlyDictionary<Type, Type> handlerTypes,
         Type stepType)
     {
-        var handlerType =
-            GetSingleHandlerType(
-                services,
-                stepType);
+        if (!handlerTypes.TryGetValue(stepType, out var handlerType))
+        {
+            throw new KaleidoConfigurationException(
+                $"No handler type registered for step '{stepType.FullName}'.");
+        }
 
         var handlerInterface =
             handlerType
@@ -332,34 +333,6 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
             definition.AvailableUntil.Add(
                 definitions[availableUntil]);
         }
-    }
-
-    private static Type GetSingleHandlerType(
-        IServiceCollection services,
-        Type stepType)
-    {
-        var handlers =
-            services
-                .Where(x =>
-                    x.ImplementationType is not null
-                    && x.ImplementationType
-                        .GetInterfaces()
-                        .Any(i => IsProcessStepHandler(i, stepType)))
-                .ToArray();
-
-        if (handlers.Length == 0)
-        {
-            throw new KaleidoConfigurationException(
-                $"No process step handler registered for step '{stepType.FullName}'.");
-        }
-
-        if (handlers.Length > 1)
-        {
-            throw new KaleidoConfigurationException(
-                $"Multiple process step handlers registered for step '{stepType.FullName}'.");
-        }
-
-        return handlers[0].ImplementationType!;
     }
 
     private static bool IsProcessStepHandler(

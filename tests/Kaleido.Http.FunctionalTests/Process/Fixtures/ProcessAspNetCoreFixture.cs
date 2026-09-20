@@ -1,3 +1,4 @@
+using Kaleido;
 using Kaleido.Json;
 using Kaleido.Observability;
 using Microsoft.AspNetCore.Builder;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Reflection;
 
 namespace Kaleido.Process.AspNetCore.FunctionalTests.Fixtures;
 
@@ -36,9 +38,8 @@ public sealed class ProcessAspNetCoreFixture
                                 o.ServiceName = "kaleido";
                                 o.DisplayName = "Test Processor";
                                 o.Description = "Test processor.";
+                                o.Assemblies = new[] { typeof(ProcessAspNetCoreFixture).Assembly };
                             })
-                            .AddAssembly(typeof(ProcessAspNetCoreFixture).Assembly)
-                            .AddProcessor()
                             .AddProcessorAspNetCore();
 
                         services.ConfigureHttpJsonOptions(options =>
@@ -65,15 +66,18 @@ public sealed class ProcessAspNetCoreFixture
         TestServer = _host.GetTestServer();
         var testHandler = TestServer.CreateHandler();
 
+        var clientConfig = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Kaleido:Clients:test:BaseUrl"] = "http://localhost/",
+                ["Kaleido:Clients:test:RoutePrefix"] = "kaleido",
+            })
+            .Build();
+
         var clientServices = new ServiceCollection();
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();
-        clientServices.AddKaleido(new ConfigurationBuilder().Build(), o => o.ServiceName = "test-client")
-            .AddProcessClient(o =>
-            {
-                o.Name = "test";
-                o.BaseUrl = "http://localhost/";
-                o.RoutePrefix = "kaleido";
-            });
+        clientServices.AddKaleido(clientConfig, o => o.ServiceName = "test-client")
+            .AddHttpClients();
 
         // Override the named HttpClient to use the TestServer handler instead of a real socket
         clientServices.AddHttpClient("test")

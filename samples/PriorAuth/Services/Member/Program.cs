@@ -1,12 +1,10 @@
 using Kaleido;
-using Kaleido.Queryable;
-using Kaleido.Queryable.AspNetCore;
-using Kaleido.Process;
+using Kaleido.AspNetCore;
 using Kaleido.Process.AspNetCore;
+using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.Member.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -82,22 +80,22 @@ builder.Services.AddHttpClient("PriorAuthEventCollector", client =>
         builder.Configuration["Services:EventCollector:BaseUrl"]
         ?? "http://localhost:8086"));
 
-builder.Services.AddKaleido(builder.Configuration)
+builder.Services.AddKaleido(builder.Configuration, o =>
+    {
+        o.ServiceName = "member";
+        o.Assemblies = new System.Reflection.Assembly[] { typeof(Program).Assembly, typeof(MemberDbContext).Assembly };
+        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Member") ?? false;
+    })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddAssembly(typeof(Program).Assembly)
-    .AddAssembly(typeof(MemberDbContext).Assembly)
-    .AddProcessor()
-        .AddProcessorAspNetCore()
-    .AddQueryable()
-        .AddQueryableAspNetCore();
+    .AddAspNetCore();
 
 var app = builder.Build();
 
 app.UseCors("AllowAll");
 
 app.MapHealthChecks("/health");
-app.MapQueryable();
 app.MapProcessor();
+app.MapQueryable();
 
 if (app.Environment.IsDevelopment())
 {

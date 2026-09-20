@@ -25,7 +25,7 @@ Kaleido separates foundational runtime concerns from transport and persistence c
 
 ### Kaleido (core)
 The core project provides everything needed to bootstrap the framework and run Process and Queryable at the application layer:
-- bootstrap and builder state (`AddKaleido()`, `IKaleidoBuilder`, `AddAssembly(...)`)
+- bootstrap and builder state (`AddKaleido()`, `IKaleidoBuilder`, `KaleidoServiceOptions`)
 - shared metadata/type mapping (`DataTypeMapper`, `ConstraintMapper`)
 - validation metadata
 - eventing abstractions and correlation context
@@ -40,8 +40,9 @@ See: [`src/Kaleido/README.md`](./src/Kaleido/README.md)
 ### Kaleido.AspNetCore
 The ASP.NET Core project provides DI registration and transport services:
 - shared exception middleware (`UseKaleidoExceptionHandling()`) and correlation-header parsing
-- `AddQueryableAspNetCore(...)` — Queryable route options and value normalization
-- `AddProcessorAspNetCore(...)` — Process route options, execution service, and state service
+- `AddAspNetCore()` — consolidated ASP.NET Core DI registration for both Process and Queryable
+- `AddQueryableAspNetCore(...)` — Queryable route options and value normalization (internal)
+- `AddProcessorAspNetCore(...)` — Process route options, execution service, and state service (internal)
 
 It depends on `Kaleido` (core) and `Kaleido.Http.Abstractions`.
 It does not define HTTP routes.
@@ -71,7 +72,8 @@ See: [`src/Kaleido.Http.Abstractions/README.md`](./src/Kaleido.Http.Abstractions
 Typed HTTP clients for downstream service consumption:
 - `IKaleidoProcessClientFactory` / `KaleidoProcessClient` — registry, step metadata, process state, and step execution
 - `IKaleidoQueryableClientFactory` / `KaleidoQueryableClient` — registry, context metadata, view queries, direct context queries
-- `AddProcessClient(...)`, `AddProcessClients(...)`, `AddQueryableClient(...)`, `AddQueryableClients(...)` builder extensions
+- `AddHttpClients()` — registers both Process and Queryable clients from configuration
+- `AddProcessClient(...)`, `AddQueryableClient(...)` — individual client registration (internal)
 
 See: [`src/Kaleido.Http.Client/README.md`](./src/Kaleido.Http.Client/README.md)
 
@@ -139,18 +141,23 @@ Core runtime concerns live in `Kaleido`. Transport services live in `Kaleido.Asp
 The repository follows a layered registration model.
 
 ### Step 1: Core bootstrap
-Applications start with `AddKaleido()`, which establishes shared DI baseline services and returns an `IKaleidoBuilder`.
+Applications start with `AddKaleido(IConfiguration, Action<KaleidoServiceOptions>)`, which:
+- establishes shared DI baseline services
+- validates service identity and options
+- returns an `IKaleidoBuilder` with assemblies configured via `KaleidoServiceOptions.Assemblies`
+- automatically calls `AddProcessor()` and `AddQueryable()` to register runtimes
 
 ### Step 2: Assembly registration
-`AddAssembly(...)` records assemblies on the builder. Those assemblies become shared registration input for the Queryable and Process runtimes.
+Assemblies are passed via `KaleidoServiceOptions.Assemblies` in the `AddKaleido()` configure callback. Those assemblies become shared registration input for the Queryable and Process runtimes.
 
 ### Step 3: Capability registration
-- `AddQueryable()` scans registered assemblies for `[QueryContext]` types, view sources, and context sources. It builds the query registry and registers runtime services.
-- `AddProcessor(...)` scans registered assemblies for `[ProcessStep]` types and handlers. It builds the step registry and registers runtime services.
+- `AddProcessor()` (internal, called automatically) scans registered assemblies for `[ProcessStep]` types and handlers. It builds the step registry and registers runtime services.
+- `AddQueryable()` (internal, called automatically) scans registered assemblies for `[QueryContext]` types, view sources, and context sources. It builds the query registry and registers runtime services.
 
 ### Step 4: Transport registration (optional)
-- `AddQueryableAspNetCore()` and `AddProcessorAspNetCore()` add the HTTP transport layer services.
-- `MapQueryable()`, `MapProcessor()`, and `MapRegistry()` publish the HTTP endpoints.
+- `AddAspNetCore()` adds the HTTP transport layer services for both Process and Queryable.
+- `AddHttpClients()` registers typed HTTP clients for downstream services from configuration.
+- `MapProcessor()`, `MapQueryable()`, and `MapRegistry()` publish the HTTP endpoints (call only the ones you need).
 
 This keeps:
 - bootstrap concerns in `Kaleido`

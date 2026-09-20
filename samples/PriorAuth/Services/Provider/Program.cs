@@ -1,6 +1,6 @@
 using Kaleido;
+using Kaleido.AspNetCore;
 using Kaleido.Exceptions;
-using Kaleido.Queryable;
 using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.Provider.Data;
@@ -81,13 +81,15 @@ builder.Services.AddHttpClient("PriorAuthEventCollector", client =>
         builder.Configuration["Services:EventCollector:BaseUrl"]
         ?? "http://localhost:8086"));
 
-builder.Services.AddKaleido(builder.Configuration)
+builder.Services.AddKaleido(builder.Configuration, o =>
+    {
+        o.ServiceName = "provider";
+        o.Assemblies = new System.Reflection.Assembly[] { typeof(Program).Assembly, typeof(ProviderSearchDbContext).Assembly };
+        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Provider") ?? false;
+    })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddAssembly(typeof(Program).Assembly)
-    .AddAssembly(typeof(ProviderSearchDbContext).Assembly)
-    .AddQueryable()
-        .AddQueryableAspNetCore()
-    .AddQueryableClients("ReferenceData");
+    .AddAspNetCore()
+    .AddHttpClients();
 
 var app = builder.Build();
 

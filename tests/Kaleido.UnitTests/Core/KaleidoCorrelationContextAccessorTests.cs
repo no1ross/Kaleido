@@ -13,7 +13,7 @@ public sealed class KaleidoCorrelationContextAccessorTests
         var current = accessor.Current;
 
         Assert.NotNull(current);
-        Assert.Null(current.RequestId);
+        Assert.Equal(string.Empty, current.RequestId);
         Assert.Null(current.ProcessId);
         Assert.Null(current.SourceProcessorName);
         Assert.Null(current.ProcessorInstanceId);

@@ -43,7 +43,7 @@ public sealed class KaleidoAspNetCoreCorrelationTests
     }
 
     [Fact]
-    public void Create_WhenHeadersAreBlank_ReturnsNullValues()
+    public void Create_WhenHeadersAreBlank_GeneratesRequestIdAndReturnsNullForOthers()
     {
         var context = new DefaultHttpContext();
         context.Request.Headers[KaleidoCorrelationHeaders.RequestId] = " ";
@@ -53,7 +53,8 @@ public sealed class KaleidoAspNetCoreCorrelationTests
 
         var result = KaleidoAspNetCoreCorrelation.Create(context);
 
-        Assert.Null(result.RequestId);
+        Assert.NotNull(result.RequestId);
+        Assert.NotEqual(string.Empty, result.RequestId);
         Assert.Null(result.ProcessId);
         Assert.Null(result.ProcessorInstanceId);
         Assert.Null(result.SourceProcessorName);

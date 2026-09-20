@@ -1,15 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Kaleido.Process;
 using Kaleido.Process.Context;
 
 namespace Kaleido.Provider.SQLite;
 
 public static class SqliteProcessContextStoreServiceCollectionExtensions
 {
-    public static IProcessorBuilder UseSqliteProcessContextStore(
-        this IProcessorBuilder builder,
+    public static IKaleidoBuilder UseSqliteContextStore(
+        this IKaleidoBuilder builder,
         string connectionString)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(

@@ -1,11 +1,9 @@
 using Kaleido;
+using Kaleido.AspNetCore;
 using Kaleido.Exceptions;
-using Kaleido.Samples.PriorAuth;
-using Kaleido.Process;
 using Kaleido.Process.AspNetCore;
 using Kaleido.Provider.SQLite;
-using Kaleido.Queryable;
-using Kaleido.Queryable.AspNetCore;
+using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Process.Services;
 using Microsoft.EntityFrameworkCore;
@@ -90,17 +88,16 @@ builder.Services.AddHttpClient("PriorAuthEventCollector", client =>
         builder.Configuration["Services:EventCollector:BaseUrl"]
         ?? "http://localhost:8086"));
 
-builder.Services.AddKaleido(builder.Configuration)
+builder.Services.AddKaleido(builder.Configuration, o =>
+    {
+        o.ServiceName = "intake";
+        o.Assemblies = new[] { typeof(Program).Assembly, typeof(IntakeDbContext).Assembly };
+        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Intake") ?? false;
+    })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddAssembly(typeof(Program).Assembly)
-    .AddAssembly(typeof(IntakeDbContext).Assembly)
-    .AddProcessor()
-        .AddProcessorAspNetCore()
-        .UseSqliteProcessContextStore(processConnectionString)
-    .AddQueryable()
-        .AddQueryableAspNetCore()
-    .AddProcessClients("Member", "Radiology", "History")
-    .AddQueryableClients("Member", "CodeSet", "Configuration", "History", "Provider");
+    .AddAspNetCore()
+    .UseSqliteContextStore(processConnectionString)
+    .AddHttpClients();
 
 var app = builder.Build();
 
@@ -109,7 +106,6 @@ app.UseCors("AllowAll");
 app.MapHealthChecks("/health");
 
 app.MapProcessor();
-app.MapQueryable();
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
