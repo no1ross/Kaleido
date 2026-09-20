@@ -1,4 +1,5 @@
 using Kaleido;
+using Kaleido.AspNetCore;
 using Kaleido.Json;
 using Kaleido.Observability;
 using Microsoft.AspNetCore.Builder;
@@ -40,7 +41,7 @@ public sealed class ProcessAspNetCoreFixture
                                 o.Description = "Test processor.";
                                 o.Assemblies = new[] { typeof(ProcessAspNetCoreFixture).Assembly };
                             })
-                            .AddProcessorAspNetCore();
+                            .AddAspNetCore();
 
                         services.ConfigureHttpJsonOptions(options =>
                         {
@@ -51,7 +52,6 @@ public sealed class ProcessAspNetCoreFixture
                     webBuilder.Configure(app =>
                     {
                         app.UseRouting();
-                        app.UseKaleidoExceptionHandling();
                         app.UseEndpoints(endpoints =>
                         {
                             endpoints.MapProcessor();

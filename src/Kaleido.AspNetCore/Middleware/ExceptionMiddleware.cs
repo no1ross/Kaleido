@@ -1,8 +1,5 @@
-﻿using Kaleido.AspNetCore.Observability;
-using Kaleido.Exceptions;
-using Kaleido.Observability;
+﻿using Kaleido.Exceptions;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.AspNetCore.Middleware
@@ -23,13 +20,6 @@ namespace Kaleido.AspNetCore.Middleware
         public async Task InvokeAsync(
             HttpContext context)
         {
-            var initializer =
-                context.RequestServices
-                    .GetService<IKaleidoCorrelationContextInitializer>();
-
-            initializer?.Initialize(
-                KaleidoAspNetCoreCorrelation.Create(context));
-
             try
             {
                 await _next(context);

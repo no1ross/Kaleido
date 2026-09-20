@@ -1,4 +1,5 @@
 ﻿using Kaleido;
+using Kaleido.AspNetCore;
 using Kaleido.Json;
 using Kaleido.Observability;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
@@ -41,7 +42,7 @@ public sealed class QueryableAspNetCoreFixture
                                 o.ServiceName = "kaleido";
                                 o.Assemblies = new[] { typeof(FunctionalRecordContext).Assembly };
                             })
-                            .AddQueryableAspNetCore();
+                            .AddAspNetCore();
 
                         services.ConfigureHttpJsonOptions(options =>
                         {
@@ -52,8 +53,6 @@ public sealed class QueryableAspNetCoreFixture
                     webBuilder.Configure(app =>
                     {
                         app.UseRouting();
-
-                        app.UseKaleidoExceptionHandling();
 
                         app.UseEndpoints(endpoints =>
                         {
