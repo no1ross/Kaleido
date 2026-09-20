@@ -3,6 +3,7 @@ using Kaleido.Observability;
 using Kaleido.Process;
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace Kaleido.Http.Process.Services;
@@ -27,7 +28,8 @@ internal sealed class ProcessExecutionService(
     IProcessStepRegistry registry,
     IProcessorRuntime runtime,
     KaleidoServiceOptions serviceOptions,
-    IKaleidoCorrelationContextAccessor correlationAccessor)
+    IKaleidoCorrelationContextAccessor correlationAccessor,
+    ILogger<ProcessExecutionService> logger)
     : IProcessExecutionService
 {
 
@@ -36,6 +38,11 @@ internal sealed class ProcessExecutionService(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        logger.LogDebug(
+            "Executing process for processor {ProcessorName} with {StepCount} submitted step(s).",
+            serviceOptions.ServiceName,
+            request.Steps.Count);
 
         var processRequest =
             new ProcessRequest
@@ -71,6 +78,11 @@ internal sealed class ProcessExecutionService(
     {
         var stepName = registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
 
+        logger.LogDebug(
+            "Executing step {StepName} for processor {ProcessorName}.",
+            stepName,
+            serviceOptions.ServiceName);
+
         var processRequest =
             request.ToProcessRequest(
                 stepName: stepName,
@@ -105,6 +117,11 @@ internal sealed class ProcessExecutionService(
     public async Task<StepExecutionResponse> ExecuteAsync<TProcessStep>(ExecuteStepRequest<TProcessStep> request, CancellationToken cancellationToken)
     {
         var stepName = registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
+
+        logger.LogDebug(
+            "Executing step {StepName} for processor {ProcessorName}.",
+            stepName,
+            serviceOptions.ServiceName);
 
         var processRequest =
             request.ToProcessRequest(

@@ -59,6 +59,15 @@ Owns typed HTTP clients for consuming remote Kaleido services:
 
 Does **not** own server-side runtime logic or endpoint mapping.
 
+### `src/Kaleido.Observability.OpenTelemetry`
+Owns the OpenTelemetry observability provider (opt-in, no OTel dependency in core):
+- `AddOpenTelemetry()` on `IKaleidoBuilder` — one-call OTel setup: logging + tracing + metrics + OTLP export
+- `AddKaleidoInstrumentation()` on `TracerProviderBuilder` — registers Kaleido `ActivitySource`s
+- `AddKaleidoInstrumentation()` on `MeterProviderBuilder` — registers Kaleido `Meter`s with tuned histogram Views
+- Does **not** own core instrumentation — `ActivitySource`/`Meter` definitions stay in `Kaleido`
+
+Future observability providers follow the same pattern: `Kaleido.Observability.<Technology>`.
+
 ### `src/Kaleido.Provider.SQLite`
 Owns the SQLite-backed durable process state store:
 - `UseSqliteProcessContextStore(...)` extension

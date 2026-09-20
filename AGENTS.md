@@ -2,12 +2,13 @@
 
 This is the repository-level contributor guide for Kaleido.
 
-Kaleido is organized into six main framework projects:
+Kaleido is organized into seven main framework projects:
 - [`src/Kaleido`](./src/Kaleido/README.md) — foundational bootstrap, shared abstractions, metadata primitives, eventing, correlation context, and the core runtime for both Process and Queryable
 - [`src/Kaleido.AspNetCore`](./src/Kaleido.AspNetCore/README.md) — shared and capability-specific ASP.NET Core DI registration, middleware, and transport services
 - [`src/Kaleido.Http`](./src/Kaleido.Http/README.md) — HTTP endpoint publication and route mapping for Process and Queryable
 - [`src/Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP request/response contract types used by both server-side and client-side projects
 - [`src/Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) — typed HTTP clients for consuming remote Process and Queryable endpoints
+- [`src/Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) — optional OpenTelemetry provider: `AddOpenTelemetry()` on `IKaleidoBuilder` for full OTel setup (logging + tracing + metrics + OTLP), and `AddKaleidoInstrumentation()` on `TracerProviderBuilder`/`MeterProviderBuilder` for consumers managing their own OTel pipeline
 - [`src/Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) — SQLite-backed durable process state store
 
 Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository model. Then read the project README for the area you are changing.
@@ -27,6 +28,7 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository m
 - [`src/Kaleido.Http/README.md`](./src/Kaleido.Http/README.md)
 - [`src/Kaleido.Http.Abstractions/README.md`](./src/Kaleido.Http.Abstractions/README.md)
 - [`src/Kaleido.Http.Client/README.md`](./src/Kaleido.Http.Client/README.md)
+- [`src/Kaleido.Observability.OpenTelemetry/README.md`](./src/Kaleido.Observability.OpenTelemetry/README.md)
 - [`src/Kaleido.Provider.SQLite/README.md`](./src/Kaleido.Provider.SQLite/README.md)
 
 ### Tests and samples
@@ -68,6 +70,15 @@ Owns typed HTTP clients:
 - `IKaleidoProcessClientFactory` / `KaleidoProcessClient` for consuming remote process endpoints
 - `IKaleidoQueryableClientFactory` / `KaleidoQueryableClient` for consuming remote queryable endpoints
 - `AddProcessClient(...)` and `AddQueryableClient(...)` builder extensions
+
+### Kaleido.Observability.OpenTelemetry
+Owns the OpenTelemetry observability provider (opt-in):
+- `AddOpenTelemetry()` on `IKaleidoBuilder` — one-call setup: logging + tracing + metrics + OTLP export
+- `AddKaleidoInstrumentation()` on `TracerProviderBuilder` — registers Kaleido `ActivitySource`s for consumers managing their own OTel pipeline
+- `AddKaleidoInstrumentation()` on `MeterProviderBuilder` — registers Kaleido `Meter`s with tuned histogram bucket boundaries
+- Does **not** own core telemetry instrumentation — that lives in `Kaleido` (BCL `ActivitySource`/`Meter`)
+
+Kaleido core is observability-provider-agnostic. This project is one of many possible providers (`Kaleido.Observability.<Technology>`).
 
 ### Kaleido.Provider.SQLite
 Owns the SQLite durable state provider:
@@ -146,4 +157,5 @@ Use tests to understand behavioral expectations and invariants.
 - If the concern is HTTP endpoint mapping or route generation, it belongs in `Kaleido.Http`.
 - If the concern is shared HTTP contract types used by both server and client, it belongs in `Kaleido.Http.Abstractions`.
 - If the concern is calling a remote Kaleido service over HTTP, it belongs in `Kaleido.Http.Client`.
+- If the concern is OpenTelemetry provider wiring (exporters, instrumentation, resource config), it belongs in `Kaleido.Observability.OpenTelemetry`.
 - If the concern is durable process state storage via SQLite, it belongs in `Kaleido.Provider.SQLite`.

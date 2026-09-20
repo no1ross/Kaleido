@@ -2,6 +2,7 @@ using Kaleido.Http.Abstractions.Process.Contracts;
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Process.Services;
 
@@ -15,13 +16,34 @@ internal interface IProcessStateService
 internal sealed class ProcessStateService(
     IProcessContextStore contextStore,
     IProcessStepRegistry registry,
-    KaleidoServiceOptions serviceOptions)
+    KaleidoServiceOptions serviceOptions,
+    ILogger<ProcessStateService> logger)
     : IProcessStateService
 {
     public async Task<ProcessStateResponse?> GetCurrentState(Guid processId, CancellationToken cancellationToken)
     {
+        logger.LogDebug(
+            "Loading process state for processor {ProcessorName} process {ProcessId}.",
+            serviceOptions.ServiceName,
+            processId);
+
         var context = await contextStore.LoadAsync(processId, cancellationToken);
-        if (context == null) return null;
+
+        if (context == null)
+        {
+            logger.LogDebug(
+                "Process state not found for processor {ProcessorName} process {ProcessId}.",
+                serviceOptions.ServiceName,
+                processId);
+
+            return null;
+        }
+
+        logger.LogDebug(
+            "Process state loaded for processor {ProcessorName} process {ProcessId} state {State}.",
+            serviceOptions.ServiceName,
+            processId,
+            context.State);
 
         return new ProcessStateResponse
         {

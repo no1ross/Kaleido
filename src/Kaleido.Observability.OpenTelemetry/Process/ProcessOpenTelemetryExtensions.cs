@@ -1,8 +1,6 @@
 using Kaleido.Process.Observability;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Trace;
 
-namespace Kaleido.AspNetCore.Process;
+namespace Kaleido.Observability.OpenTelemetry;
 
 public static class ProcessOpenTelemetryExtensions
 {

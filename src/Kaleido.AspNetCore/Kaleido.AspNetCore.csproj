@@ -9,8 +9,5 @@
 		<ProjectReference Include="..\Kaleido\Kaleido.csproj" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="OpenTelemetry" Version="1.18.*" />
-	</ItemGroup>
 
 </Project>

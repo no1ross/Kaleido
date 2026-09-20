@@ -57,6 +57,7 @@
     <Project Path="src/Kaleido.Http/Kaleido.Http.csproj" />
     <Project Path="src/Kaleido.Http.Abstractions/Kaleido.Http.Abstractions.csproj" />
     <Project Path="src/Kaleido.Http.Client/Kaleido.Http.Client.csproj" />
+    <Project Path="src/Kaleido.Observability.OpenTelemetry/Kaleido.Observability.OpenTelemetry.csproj" />
     <Project Path="src/Kaleido.Provider.SQLite/Kaleido.Provider.SQLite.csproj" />
   </Folder>
 

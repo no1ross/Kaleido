@@ -1,4 +1,4 @@
-using Kaleido.AspNetCore.Queryable;
+using Kaleido.Queryable;
 using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using System.Text.Json;

@@ -11,6 +11,11 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
         {
             await next(context);
         }
+        catch (OperationCanceledException)
+        {
+            // Client disconnected mid-request — not an error, log at Debug to avoid noise.
+            logger.LogDebug("Request was canceled by the client.");
+        }
         catch (ArgumentException exception)
         {
             logger.LogWarning(

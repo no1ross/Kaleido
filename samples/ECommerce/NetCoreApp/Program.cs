@@ -2,6 +2,7 @@ using Kaleido;
 using Kaleido.Http;
 using Kaleido.Http.Process;
 using Kaleido.Http.Queryable;
+using Kaleido.Observability.OpenTelemetry;
 using Kaleido.Provider.SQLite;
 using Kaleido.Samples.ECommerce.Data;
 using Kaleido.Samples.ECommerce.Data.QueryContexts;
@@ -29,7 +30,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.Assemblies = new[] { typeof(Program).Assembly, typeof(AddItemToCartStep).Assembly, typeof(ProductCatalogQueryContext).Assembly };
     })
     .AddHttp()
-    .UseSqliteContextStore("Data Source=kaleido-sample-process.sqlite");
+    .UseSqliteContextStore("Data Source=kaleido-sample-process.sqlite")
+    .AddOpenTelemetry();
 
 builder.Services.AddDbContext<ECommerceDbContext>(options =>
 {

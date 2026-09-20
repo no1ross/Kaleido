@@ -78,6 +78,18 @@ public static class RegistryEndpointRouteBuilderExtensions
                     {
                         var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
 
+                        if (!forceRefresh && cache.Current is not null)
+                        {
+                            logger.LogDebug("Registry cache hit — serving cached response.");
+                        }
+                        else
+                        {
+                            logger.LogDebug(
+                                forceRefresh
+                                    ? "Registry cache bypassed (force refresh requested)."
+                                    : "Registry cache miss — building fresh response.");
+                        }
+
                         var response = await cache.GetOrBuildAsync(forceRefresh, async ct =>
                         {
                             var localProcesses =
@@ -87,10 +99,10 @@ public static class RegistryEndpointRouteBuilderExtensions
                                 GetLocalQueryables(localQueryableRegistry, localServiceOptions);
 
                             var (downstreamProcesses, processErrors) =
-                                await GetDownstreamProcessesAsync(processClientMap, processClientFactory, ct);
+                                await GetDownstreamProcessesAsync(processClientMap, processClientFactory, logger, ct);
 
                             var (downstreamQueryables, queryableErrors) =
-                                await GetDownstreamQueryablesAsync(queryableClientMap, queryableClientFactory, ct);
+                                await GetDownstreamQueryablesAsync(queryableClientMap, queryableClientFactory, logger, ct);
 
                             var allProcesses = localProcesses
                                 .Concat(downstreamProcesses)
@@ -108,7 +120,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                                     "Only one processor in a distributed system should have IsEntryProcessor set to true.");
                             }
 
-                            return new AggregatedRegistryResponse
+                            var result = new AggregatedRegistryResponse
                             {
                                 Processes = allProcesses,
                                 Queryables = localQueryables
@@ -117,6 +129,23 @@ public static class RegistryEndpointRouteBuilderExtensions
                                     .ToArray(),
                                 ClientErrors = [.. processErrors, .. queryableErrors]
                             };
+
+                            if (result.ClientErrors.Count > 0)
+                            {
+                                logger.LogWarning(
+                                    "Registry response is partial — {ErrorCount} downstream client(s) failed: {ClientNames}.",
+                                    result.ClientErrors.Count,
+                                    string.Join(", ", result.ClientErrors.Select(e => e.ClientName)));
+                            }
+                            else
+                            {
+                                logger.LogDebug(
+                                    "Registry response built: {ProcessCount} process(es), {QueryableCount} queryable(s).",
+                                    result.Processes.Count,
+                                    result.Queryables.Count);
+                            }
+
+                            return result;
                         }, cancellationToken);
 
                         return Results.Ok(response);
@@ -168,6 +197,7 @@ public static class RegistryEndpointRouteBuilderExtensions
         GetDownstreamProcessesAsync(
             KaleidoProcessClientRouteOptionsMap? map,
             IKaleidoProcessClientFactory factory,
+            ILogger logger,
             CancellationToken cancellationToken)
     {
         if (map is null)
@@ -190,6 +220,12 @@ public static class RegistryEndpointRouteBuilderExtensions
                 }
                 catch (Exception ex)
                 {
+                    logger.LogWarning(
+                        ex,
+                        "Registry process client {ClientName} failed: {Reason}.",
+                        name,
+                        ex.Message);
+
                     errors.Add(new RegistryClientError
                     {
                         ClientName = name,
@@ -206,6 +242,7 @@ public static class RegistryEndpointRouteBuilderExtensions
         GetDownstreamQueryablesAsync(
             KaleidoQueryableClientRouteOptionsMap? map,
             IKaleidoQueryableClientFactory factory,
+            ILogger logger,
             CancellationToken cancellationToken)
     {
         if (map is null)
@@ -228,6 +265,12 @@ public static class RegistryEndpointRouteBuilderExtensions
                 }
                 catch (Exception ex)
                 {
+                    logger.LogWarning(
+                        ex,
+                        "Registry queryable client {ClientName} failed: {Reason}.",
+                        name,
+                        ex.Message);
+
                     errors.Add(new RegistryClientError
                     {
                         ClientName = name,

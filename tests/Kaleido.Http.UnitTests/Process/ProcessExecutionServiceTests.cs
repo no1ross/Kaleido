@@ -5,6 +5,7 @@ using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using System.Text.Json;
 
@@ -31,7 +32,8 @@ public sealed class ProcessExecutionServiceTests
             registry,
             runtime,
             new KaleidoServiceOptions { ServiceName = "test-processor" },
-            correlation.Object);
+            correlation.Object,
+            NullLogger<ProcessExecutionService>.Instance);
     }
 
     [Fact]

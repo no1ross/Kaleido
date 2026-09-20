@@ -1,53 +1,12 @@
 using Kaleido;
-using Kaleido.AspNetCore.Queryable;
 using Kaleido.Http;
 using Kaleido.Http.Queryable;
+using Kaleido.Observability.OpenTelemetry;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.ReferenceData.Data;
 using Microsoft.EntityFrameworkCore;
-using OpenTelemetry.Logs;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
-
-var serviceName =
-    builder.Configuration["OTEL_SERVICE_NAME"]
-    ?? builder.Environment.ApplicationName;
-
-var resourceBuilder =
-    ResourceBuilder.CreateDefault()
-        .AddService(serviceName: serviceName);
-
-builder.Logging.AddOpenTelemetry(options =>
-{
-    options.IncludeFormattedMessage = true;
-    options.IncludeScopes = true;
-    options.SetResourceBuilder(resourceBuilder);
-    options.AddOtlpExporter();
-});
-
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource =>
-        resource.AddService(serviceName: serviceName))
-    .WithTracing(tracing =>
-    {
-        tracing
-            .AddKaleidoQueryableInstrumentation()
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddOtlpExporter();
-    })
-    .WithMetrics(metrics =>
-    {
-        metrics
-            .AddKaleidoQueryableInstrumentation()
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddRuntimeInstrumentation()
-            .AddOtlpExporter();
-    });
 
 var referenceDataConnectionString =
     builder.Configuration.GetConnectionString("ReferenceData")
@@ -85,7 +44,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.ReferenceData") ?? false;
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp();
+    .AddHttp()
+    .AddOpenTelemetry();
 
 var app = builder.Build();
 

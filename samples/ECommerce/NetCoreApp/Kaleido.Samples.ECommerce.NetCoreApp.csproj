@@ -10,8 +10,8 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\..\src\Kaleido.Http\Kaleido.Http.csproj" />
+	  <ProjectReference Include="..\..\..\src\Kaleido.Observability.OpenTelemetry\Kaleido.Observability.OpenTelemetry.csproj" />
 	  <ProjectReference Include="..\..\..\src\Kaleido.Provider.SQLite\Kaleido.Provider.SQLite.csproj" />
-	  <ProjectReference Include="..\..\..\src\Kaleido.Http\Kaleido.Http.csproj" />
 	  <ProjectReference Include="..\Process\Kaleido.Samples.ECommerce.Process.csproj" />
 	  <ProjectReference Include="..\Queryable\Kaleido.Samples.ECommerce.Queryable.csproj" />
 	</ItemGroup>

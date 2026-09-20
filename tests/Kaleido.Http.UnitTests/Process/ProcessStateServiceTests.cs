@@ -2,6 +2,7 @@ using Kaleido.Http.Process.Services;
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace Kaleido.Http.UnitTests.Process;
@@ -25,7 +26,8 @@ public sealed class ProcessStateServiceTests
             new ProcessStateService(
                 contextStore.Object,
                 CreateRegistry(),
-                new KaleidoServiceOptions { ServiceName = "test-processor" });
+                new KaleidoServiceOptions { ServiceName = "test-processor" },
+                NullLogger<ProcessStateService>.Instance);
 
         var result =
             await service.GetCurrentState(
@@ -83,7 +85,8 @@ public sealed class ProcessStateServiceTests
             new ProcessStateService(
                 contextStore.Object,
                 CreateRegistry("Step-A"),
-                new KaleidoServiceOptions { ServiceName = "test-processor" });
+                new KaleidoServiceOptions { ServiceName = "test-processor" },
+                NullLogger<ProcessStateService>.Instance);
 
         var result =
             await service.GetCurrentState(
