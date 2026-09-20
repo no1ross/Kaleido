@@ -9,6 +9,34 @@ using System.Reflection;
 
 namespace Kaleido.Queryable.Records;
 
+/// <summary>
+/// Maintains the list of registered records available
+/// to the application.
+///
+/// While IRecordMetadataCatalog is responsible for generating
+/// metadata for a specific record type, the registry is responsible
+/// for discovering which records exist within the application.
+///
+/// Think of this component as the directory of available records.
+/// </summary>
+///
+/// <remarks>
+/// MetadataCatalog = describes one record
+/// Registry = knows all records
+/// </remarks>
+public interface IQueryContextRegistry
+{
+    IReadOnlyCollection<QueryContextRegistration> Registrations { get; }
+
+    QueryContextRegistration? Find(string name);
+
+    QueryContextRegistration? Find(Type recordType);
+
+    QueryContextRegistration GetRegistration(string name);
+
+    QueryContextRegistration GetRegistration(Type recordType);
+}
+
 internal sealed class QueryContextRegistry : IQueryContextRegistry
 {
     private readonly IReadOnlyDictionary<string, QueryContextRegistration> _byName;

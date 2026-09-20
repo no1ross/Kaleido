@@ -3,6 +3,15 @@ using Kaleido.Process.Planning;
 
 namespace Kaleido.Process.Execution;
 
+internal interface IStepExecutionEvaluator
+{
+    ExecutionDecision Evaluate(
+        StepCandidate currentCandidate,
+        ProcessStepInvokerResult result,
+        IReadOnlyCollection<StepCandidate> candidates,
+        ProcessorContext context);
+}
+
 internal sealed class StepExecutionEvaluator : IStepExecutionEvaluator
 {
     private readonly IStepAvailabilityResolver _availabilityResolver;

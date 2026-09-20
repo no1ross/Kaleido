@@ -6,6 +6,19 @@ using System.Reflection;
 
 namespace Kaleido.Queryable.Records;
 
+public interface IDelegatedQueryViewRegistry
+{
+    IReadOnlyCollection<DelegatedQueryViewRegistration> Registrations { get; }
+
+    DelegatedQueryViewRegistration? Find(string name);
+
+    DelegatedQueryViewRegistration? Find(Type recordType);
+
+    DelegatedQueryViewRegistration GetRegistration(string name);
+
+    DelegatedQueryViewRegistration GetRegistration(Type recordType);
+}
+
 internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
 {
     private readonly IReadOnlyCollection<DelegatedQueryViewRegistration> _registrations;

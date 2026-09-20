@@ -3,6 +3,15 @@ using Kaleido.Queryable.Query;
 
 namespace Kaleido.Queryable.Records;
 
+public interface IQueryableRegistry
+{
+    IReadOnlyCollection<QueryableContextRegistryItem> Registrations { get; }
+
+    QueryableContextRegistryItem? Find(string name);
+
+    QueryableContextRegistryItem GetRegistration(string name);
+}
+
 internal sealed class QueryableRegistry : IQueryableRegistry
 {
     private readonly IReadOnlyCollection<QueryableContextRegistryItem> _registrations;

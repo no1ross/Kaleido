@@ -9,6 +9,15 @@ using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.Execution;
 
+public interface IExecutionProcessor
+{
+    Task<ProcessExecutionResult> ExecuteAsync(
+        IReadOnlyCollection<StepCandidate> candidates,
+        ProcessorContext context,
+        ProcessorRequest originalRequest,
+        CancellationToken cancellationToken = default);
+}
+
 internal sealed class ExecutionProcessor : IExecutionProcessor
 {
     private readonly IProcessStepInvoker _invoker;

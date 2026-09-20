@@ -4,6 +4,11 @@ using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.Planning;
 
+internal interface IStepCandidateConsistencyChecker
+{
+    void Validate(IReadOnlyCollection<StepCandidate> candidates, ProcessorContext context);
+}
+
 internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistencyChecker
 {
     public StepCandidateConsistencyChecker()

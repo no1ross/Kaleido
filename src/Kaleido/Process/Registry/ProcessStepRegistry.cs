@@ -7,6 +7,21 @@ using System.Reflection;
 
 namespace Kaleido.Process.Registry;
 
+public interface IProcessStepRegistry
+{
+    IReadOnlyCollection<ProcessStepRegistration> Registrations { get; }
+
+    IReadOnlyCollection<ProcessStepRegistration> InitialRegistrations { get; }
+
+    ProcessStepRegistration? Find(string name);
+
+    ProcessStepRegistration? Find(Type stepType);
+
+    ProcessStepRegistration GetRegistration(string name);
+
+    ProcessStepRegistration GetRegistration(Type stepType);
+}
+
 internal sealed class ProcessStepRegistry : IProcessStepRegistry
 {
     private readonly IReadOnlyDictionary<string, ProcessStepRegistration> _byName;

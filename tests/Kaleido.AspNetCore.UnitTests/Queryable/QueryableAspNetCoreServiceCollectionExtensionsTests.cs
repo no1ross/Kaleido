@@ -2,6 +2,7 @@
 using Kaleido.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
+using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,5 +1,10 @@
 ﻿namespace Kaleido.Process.Planning;
 
+internal interface IStepCandidatePlanner
+{
+    IReadOnlyCollection<StepCandidate> Build(IReadOnlyCollection<StepCandidate> candidates);
+}
+
 internal sealed class StepCandidatePlanner : IStepCandidatePlanner
 {
     public StepCandidatePlanner()

@@ -2,8 +2,16 @@ using Kaleido.Exceptions;
 using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
+using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+
+public interface IQueryableService
+{
+    Task<QueryResult<TView>> QueryAsync<TQueryView, TView>(IQueryRequest request, CancellationToken cancellationToken = default) 
+        where TQueryView : class
+        where TView : class;
+}
 
 internal sealed class QueryableService : IQueryableService
 {

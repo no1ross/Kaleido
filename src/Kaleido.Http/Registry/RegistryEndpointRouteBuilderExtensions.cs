@@ -7,6 +7,7 @@ using Kaleido.Queryable;
 using Kaleido.Queryable.Http.Client;
 using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Query;
+using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;

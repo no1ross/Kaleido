@@ -1,5 +1,6 @@
 ﻿using Kaleido.Observability;
 using Kaleido.Process.AspNetCore.Contracts;
+using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 

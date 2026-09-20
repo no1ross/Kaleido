@@ -3,6 +3,7 @@ using Kaleido.Json;
 using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
+using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable.AspNetCore;

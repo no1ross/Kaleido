@@ -4,6 +4,11 @@ using System.Reflection;
 
 namespace Kaleido.Process.Registry;
 
+public interface IProcessorRegistry
+{
+    IReadOnlyCollection<ProcessorRegistryItem> Registrations { get; }
+}
+
 internal sealed class ProcessorRegistry : IProcessorRegistry
 {
     private readonly IReadOnlyCollection<ProcessorRegistryItem> _registrations;

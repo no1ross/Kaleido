@@ -1,7 +1,13 @@
 ﻿using System.Reflection;
 using System.Text.Json;
+using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.Planning;
+
+internal interface IStepCandidateBuilder
+{
+    IReadOnlyCollection<StepCandidate> Build(ProcessorRequest request);
+}
 
 internal sealed class StepCandidateBuilder : IStepCandidateBuilder
 {

@@ -1,6 +1,8 @@
 using Kaleido.Queryable.AspNetCore;
 using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Metadata;
+using Kaleido.Queryable.Query;
+using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
