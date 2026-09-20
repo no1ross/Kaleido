@@ -1,7 +1,7 @@
 using Kaleido;
 using Kaleido.AspNetCore;
-using Kaleido.Process.AspNetCore;
-using Kaleido.Queryable.AspNetCore;
+using Kaleido.Http.Process;
+using Kaleido.Http.Queryable;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.History.Data;
 using Microsoft.EntityFrameworkCore;

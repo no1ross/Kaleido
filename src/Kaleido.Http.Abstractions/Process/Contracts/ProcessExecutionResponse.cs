@@ -1,4 +1,6 @@
-namespace Kaleido.Process.AspNetCore.Contracts;
+using Kaleido.Process;
+
+namespace Kaleido.Http.Abstractions.Process.Contracts;
 
 public sealed record ProcessExecutionResponse
 {

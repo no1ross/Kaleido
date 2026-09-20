@@ -1,7 +1,9 @@
 using Kaleido;
 using Kaleido.AspNetCore;
+using Kaleido.AspNetCore.Queryable;
 using Kaleido.Exceptions;
-using Kaleido.Queryable.AspNetCore;
+using Kaleido.Http.Client;
+using Kaleido.Http.Queryable;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.Provider.Data;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Clients;

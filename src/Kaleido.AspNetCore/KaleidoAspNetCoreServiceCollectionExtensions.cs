@@ -1,6 +1,6 @@
+using Kaleido.AspNetCore.Process;
+using Kaleido.AspNetCore.Queryable;
 using Kaleido.AspNetCore.Startup;
-using Kaleido.Process.AspNetCore;
-using Kaleido.Queryable.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 

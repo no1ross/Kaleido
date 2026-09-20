@@ -1,7 +1,9 @@
 ﻿using Kaleido.Exceptions;
+using Kaleido.Http.Abstractions.Process.Contracts;
+using Kaleido.Process;
 using Kaleido.Process.Registry;
 
-namespace Kaleido.Process.AspNetCore.Contracts;
+namespace Kaleido.AspNetCore.Process.Contracts;
 
 // Wire shapes (ProcessExecutionResponse, StepExecutionResponse, etc.)
 // are defined in Kaleido.Process.AspNetCore.Abstractions.

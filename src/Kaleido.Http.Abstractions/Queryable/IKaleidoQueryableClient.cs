@@ -1,7 +1,7 @@
-using Kaleido.Queryable.AspNetCore.Contracts;
+using Kaleido.Http.Abstractions.Queryable.Contracts;
 using Kaleido.Queryable.Query;
 
-namespace Kaleido.Queryable.Http.Client;
+namespace Kaleido.Http.Abstractions.Queryable;
 
 public interface IKaleidoQueryableClient
 {

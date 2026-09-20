@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
-namespace Kaleido;
+namespace Kaleido.AspNetCore;
 
 internal sealed class KaleidoBuilder : IKaleidoBuilder
 {

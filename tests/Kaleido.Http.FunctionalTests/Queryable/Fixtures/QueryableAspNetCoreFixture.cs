@@ -1,5 +1,7 @@
-﻿using Kaleido;
-using Kaleido.AspNetCore;
+﻿using Kaleido.AspNetCore;
+using Kaleido.Http.Abstractions.Queryable;
+using Kaleido.Http.Client;
+using Kaleido.Http.Queryable;
 using Kaleido.Json;
 using Kaleido.Observability;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;

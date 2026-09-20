@@ -1,6 +1,6 @@
 using Kaleido.Queryable.Metadata;
 
-namespace Kaleido.Queryable.AspNetCore.Contracts;
+namespace Kaleido.Http.Abstractions.Queryable.Contracts;
 
 public sealed record QueryableRecordResponse : QueryableContextRegistryItem
 {

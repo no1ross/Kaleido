@@ -1,5 +1,4 @@
-using Kaleido.Process.AspNetCore.Contracts;
-using Kaleido.Process.AspNetCore.Services;
+using Kaleido.AspNetCore.Process.Services;
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;

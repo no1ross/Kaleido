@@ -1,10 +1,9 @@
-using Kaleido;
-using Kaleido.Process.Http.Client;
-using Kaleido.Queryable.Http.Client;
+using Kaleido.Http.Client.Process;
+using Kaleido.Http.Client.Queryable;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido;
+namespace Kaleido.Http.Client;
 
 public static class KaleidoHttpClientsServiceCollectionExtensions
 {

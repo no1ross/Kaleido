@@ -1,8 +1,8 @@
-using Kaleido.Process.Http.Client;
 using Kaleido.Observability;
 using System.Linq;
+using Kaleido.Http.Abstractions.Process;
 
-namespace Kaleido.Process.Http.Client;
+namespace Kaleido.Http.Client.Process;
 
 internal sealed class KaleidoProcessClientFactory : IKaleidoProcessClientFactory
 {

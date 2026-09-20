@@ -1,4 +1,4 @@
-namespace Kaleido.Process.Http.Client;
+namespace Kaleido.Http.Abstractions.Process;
 
 public interface IKaleidoProcessClientFactory
 {

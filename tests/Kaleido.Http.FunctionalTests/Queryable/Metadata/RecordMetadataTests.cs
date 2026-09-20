@@ -1,4 +1,4 @@
-﻿using Kaleido.Queryable.AspNetCore.Contracts;
+﻿using Kaleido.Http.Abstractions.Queryable.Contracts;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
 using System.Net;
 using System.Net.Http.Json;

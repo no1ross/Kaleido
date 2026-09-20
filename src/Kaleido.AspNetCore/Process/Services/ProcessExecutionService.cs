@@ -1,10 +1,12 @@
-﻿using Kaleido.Observability;
-using Kaleido.Process.AspNetCore.Contracts;
+﻿using Kaleido.AspNetCore.Process.Contracts;
+using Kaleido.Http.Abstractions.Process.Contracts;
+using Kaleido.Observability;
+using Kaleido.Process;
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 
-namespace Kaleido.Process.AspNetCore.Services;
+namespace Kaleido.AspNetCore.Process.Services;
 
 internal interface IProcessExecutionService
 {

@@ -1,8 +1,8 @@
-using Kaleido.Queryable.Http.Client;
 using Kaleido.Observability;
 using System.Linq;
+using Kaleido.Http.Abstractions.Queryable;
 
-namespace Kaleido.Queryable.Http.Client;
+namespace Kaleido.Http.Client.Queryable;
 
 internal sealed class KaleidoQueryableClientFactory : IKaleidoQueryableClientFactory
 {

@@ -1,6 +1,3 @@
-using Kaleido.Process.AspNetCore;
-using Kaleido.Process.AspNetCore.Contracts;
-using Kaleido.Process.AspNetCore.Services;
 using Kaleido.Process.Execution;
 using Kaleido.Process;
 using Kaleido.Process.Registry;
@@ -8,8 +5,11 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Kaleido.AspNetCore.Process.Contracts;
+using Kaleido.AspNetCore.Process.Services;
+using Kaleido.Http.Process;
 
-namespace Kaleido.Process.AspNetCore.Tests;
+namespace Kaleido.Http.UnitTests.Process;
 
 public sealed class ProcessEndpointRouteBuilderExtensionsTests
 {

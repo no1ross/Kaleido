@@ -1,6 +1,6 @@
 using Kaleido.Queryable.Query;
 
-namespace Kaleido.Queryable.AspNetCore.Contracts;
+namespace Kaleido.Http.Abstractions.Queryable.Contracts;
 
 public record QueryApiRequest(
     QueryBody? Query = null);

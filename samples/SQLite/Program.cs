@@ -1,6 +1,6 @@
 using Kaleido;
 using Kaleido.AspNetCore;
-using Kaleido.Queryable.AspNetCore;
+using Kaleido.Http.Queryable;
 using Kaleido.Samples.SQLite;
 using Microsoft.OpenApi;
 

@@ -1,6 +1,6 @@
+using Kaleido.AspNetCore.Process.Services;
+using Kaleido.Http.Abstractions.Process.Contracts;
 using Kaleido.Observability;
-using Kaleido.Process.AspNetCore.Contracts;
-using Kaleido.Process.AspNetCore.Services;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;

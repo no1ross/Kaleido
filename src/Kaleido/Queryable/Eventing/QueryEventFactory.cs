@@ -1,10 +1,10 @@
 using Kaleido.Eventing;
 using Kaleido.Observability;
-using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
+using Kaleido.Queryable.Query;
 
-namespace Kaleido.Queryable.Query;
+namespace Kaleido.Queryable.Eventing;
 
 internal interface IQueryEventFactory
 {

@@ -1,7 +1,5 @@
-using Kaleido.Process.Http.Client;
 using Kaleido.Process.Execution;
 using Kaleido.Process;
-using Kaleido.Queryable.Http.Client;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;
 using Kaleido.Samples.PriorAuth.Intake.Data;
@@ -11,6 +9,9 @@ using Kaleido.Samples.PriorAuth.Intake.Process.Services;
 using Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 using Microsoft.EntityFrameworkCore;
+using Kaleido.Http.Abstractions.Process;
+using Kaleido.Http.Client.Process;
+using Kaleido.Http.Client.Queryable;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Handlers;
 

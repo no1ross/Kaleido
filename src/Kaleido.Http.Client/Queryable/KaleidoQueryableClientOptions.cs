@@ -1,4 +1,4 @@
-namespace Kaleido.Queryable.Http.Client;
+namespace Kaleido.Http.Client.Queryable;
 
 /// <summary>
 /// Registration options for a named Kaleido queryable client.
@@ -7,7 +7,7 @@ public sealed class KaleidoQueryableClientOptions
 {
     /// <summary>
     /// The name used to identify this client in the queryable client factory.
-    /// Also used as the named <see cref="System.Net.Http.IHttpClientFactory"/> key.
+    /// Also used as the named <see cref="IHttpClientFactory"/> key.
     /// </summary>
     public string Name { get; set; } = string.Empty;
 

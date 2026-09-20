@@ -1,10 +1,10 @@
+using Kaleido.AspNetCore.Process.Services;
 using Kaleido.Exceptions;
-using Kaleido.Process.AspNetCore.Services;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace Kaleido.Process.AspNetCore;
+namespace Kaleido.AspNetCore.Process;
 
 public static class ProcessAspNetCoreServiceCollectionExtensions
 {

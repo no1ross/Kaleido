@@ -1,9 +1,9 @@
-using Kaleido.Process.Http.Client;
+using Kaleido.Http.Abstractions.Process;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace Kaleido;
+namespace Kaleido.Http.Client.Process;
 
 public static class KaleidoProcessClientServiceCollectionExtensions
 {

@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace Kaleido.Queryable.Http.Client;
+namespace Kaleido.Http.Client.Queryable;
 
 public sealed class KaleidoQueryableClientException : Exception
 {

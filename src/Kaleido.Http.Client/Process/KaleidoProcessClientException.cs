@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace Kaleido.Process.Http.Client;
+namespace Kaleido.Http.Client.Process;
 
 public sealed class KaleidoProcessClientException : Exception
 {

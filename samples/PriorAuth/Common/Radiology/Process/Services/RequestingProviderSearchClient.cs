@@ -1,11 +1,11 @@
-using Kaleido.Queryable.Http.Client;
-using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Query;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Parameters;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.ViewSources.Views;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 using Microsoft.EntityFrameworkCore;
+using Kaleido.Http.Abstractions.Queryable;
+using Kaleido.Http.Abstractions.Queryable.Contracts;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 

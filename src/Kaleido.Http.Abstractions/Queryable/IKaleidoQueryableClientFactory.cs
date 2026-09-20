@@ -1,4 +1,4 @@
-namespace Kaleido.Queryable.Http.Client;
+namespace Kaleido.Http.Abstractions.Queryable;
 
 public interface IKaleidoQueryableClientFactory
 {

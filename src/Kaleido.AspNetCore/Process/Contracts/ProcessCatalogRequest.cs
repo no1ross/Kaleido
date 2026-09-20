@@ -1,4 +1,6 @@
-﻿namespace Kaleido.Process.AspNetCore.Contracts;
+﻿using Kaleido.Http.Abstractions.Process.Contracts;
+
+namespace Kaleido.AspNetCore.Process.Contracts;
 
 public sealed record ProcessCatalogRequest
 {

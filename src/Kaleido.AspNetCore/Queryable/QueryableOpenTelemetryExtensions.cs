@@ -2,7 +2,7 @@ using Kaleido.Queryable.Observability;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 
-namespace Kaleido.Queryable.AspNetCore;
+namespace Kaleido.AspNetCore.Queryable;
 
 public static class QueryableOpenTelemetryExtensions
 {

@@ -1,9 +1,10 @@
+using Kaleido.Http.Abstractions.Process;
+using Kaleido.Http.Abstractions.Process.Contracts;
 using Kaleido.Observability;
-using Kaleido.Process.AspNetCore.Contracts;
 using System.Net;
 using System.Net.Http.Json;
 
-namespace Kaleido.Process.Http.Client;
+namespace Kaleido.Http.Client.Process;
 
 internal sealed class KaleidoProcessClient : IKaleidoProcessClient
 {

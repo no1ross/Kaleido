@@ -1,8 +1,8 @@
 using Kaleido;
 using Kaleido.AspNetCore;
-using Kaleido.Process.AspNetCore;
+using Kaleido.Http.Process;
+using Kaleido.Http.Queryable;
 using Kaleido.Provider.SQLite;
-using Kaleido.Queryable.AspNetCore;
 using Kaleido.Samples.ECommerce.Data;
 using Kaleido.Samples.ECommerce.Data.QueryContexts;
 using Kaleido.Samples.ECommerce.Process.Steps;

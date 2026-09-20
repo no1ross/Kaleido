@@ -1,4 +1,4 @@
-namespace Kaleido.Process.Http.Client;
+namespace Kaleido.Http.Client.Process;
 
 /// <summary>
 /// Registration options for a named Kaleido process client.
@@ -7,7 +7,7 @@ public sealed class KaleidoProcessClientOptions
 {
     /// <summary>
     /// The name used to identify this client in the process client factory.
-    /// Also used as the named <see cref="System.Net.Http.IHttpClientFactory"/> key.
+    /// Also used as the named <see cref="IHttpClientFactory"/> key.
     /// </summary>
     public string Name { get; set; } = string.Empty;
 

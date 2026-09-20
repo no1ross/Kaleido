@@ -1,6 +1,6 @@
 using Kaleido.Process.Registry;
 
-namespace Kaleido.Process.AspNetCore.Contracts;
+namespace Kaleido.Http.Abstractions.Process.Contracts;
 
 public static class ProcessorRegistryResponseFactory
 {

@@ -12,11 +12,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Using Include="Kaleido.Process" />
-		<Using Include="Kaleido.Process.Http.Client" />
-		<Using Include="Kaleido.Process.AspNetCore.Contracts" />
 		<Using Include="Kaleido.Queryable" />
-		<Using Include="Kaleido.Queryable.Http.Client" />
-		<Using Include="Kaleido.Queryable.AspNetCore.Contracts" />
 		<Using Include="Kaleido.Queryable.Metadata" />
 		<Using Include="Kaleido.Queryable.Query" />
 		<Using Include="Kaleido.Queryable.Attributes" />

@@ -1,4 +1,4 @@
-﻿namespace Kaleido.Process.AspNetCore.Contracts;
+﻿namespace Kaleido.Http.Abstractions.Process.Contracts;
 
 internal static class ProcessContractUrls
 {

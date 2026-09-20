@@ -1,12 +1,5 @@
 using Kaleido.Exceptions;
-using Kaleido.Process.AspNetCore;
-using Kaleido.Process.AspNetCore.Contracts;
-using Kaleido.Process.Http.Client;
 using Kaleido.Process.Registry;
-using Kaleido.Queryable;
-using Kaleido.Queryable.Http.Client;
-using Kaleido.Queryable.AspNetCore.Contracts;
-using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -14,9 +7,13 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
-using System.Linq;
+using Kaleido.AspNetCore.Registry;
+using Kaleido.Http.Abstractions.Queryable;
+using Kaleido.Http.Abstractions.Process;
+using Kaleido.Http.Abstractions.Queryable.Contracts;
+using Kaleido.Http.Abstractions.Process.Contracts;
 
-namespace Kaleido.Registry;
+namespace Kaleido.Http.Registry;
 
 public static class RegistryEndpointRouteBuilderExtensions
 {

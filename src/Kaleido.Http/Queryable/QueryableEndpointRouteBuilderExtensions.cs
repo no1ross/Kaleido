@@ -1,4 +1,5 @@
-using Kaleido.Queryable.AspNetCore.Contracts;
+using Kaleido.AspNetCore.Queryable;
+using Kaleido.Http.Abstractions.Queryable.Contracts;
 using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
@@ -10,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
 
-namespace Kaleido.Queryable.AspNetCore;
+namespace Kaleido.Http.Queryable;
 
 /// <summary>
 /// Provides endpoint registration extensions for Kaleido Queryable.

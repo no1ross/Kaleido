@@ -1,6 +1,6 @@
-using Kaleido.Process.AspNetCore.Contracts;
+using Kaleido.Http.Abstractions.Process.Contracts;
 
-namespace Kaleido.Process.Http.Client;
+namespace Kaleido.Http.Abstractions.Process;
 
 public interface IKaleidoProcessClient
 {

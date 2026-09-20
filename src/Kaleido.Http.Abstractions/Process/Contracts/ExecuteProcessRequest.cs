@@ -1,6 +1,7 @@
+using Kaleido.Process;
 using System.Text.Json;
 
-namespace Kaleido.Process.AspNetCore.Contracts;
+namespace Kaleido.Http.Abstractions.Process.Contracts;
 
 public sealed record ExecuteProcessRequest
 {

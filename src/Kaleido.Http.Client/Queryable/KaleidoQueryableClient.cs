@@ -1,10 +1,11 @@
+using Kaleido.Http.Abstractions.Queryable;
+using Kaleido.Http.Abstractions.Queryable.Contracts;
 using Kaleido.Observability;
-using Kaleido.Queryable.AspNetCore.Contracts;
 using Kaleido.Queryable.Query;
 using System.Net;
 using System.Net.Http.Json;
 
-namespace Kaleido.Queryable.Http.Client;
+namespace Kaleido.Http.Client.Queryable;
 
 internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
 {

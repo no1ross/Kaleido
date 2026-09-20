@@ -1,4 +1,4 @@
-namespace Kaleido.Registry;
+namespace Kaleido.Http.Registry;
 
 internal static class RegistryContractUrls
 {
