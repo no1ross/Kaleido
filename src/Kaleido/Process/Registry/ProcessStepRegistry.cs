@@ -388,6 +388,42 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
     }
 }
 
+internal static class ProcessStepRegistryHelper
+{
+    internal static Func<Task, IProcessStepHandlerResult>? CreateGetResultFromTaskFunc(
+        Type handlerType)
+    {
+        var executeAsyncMethod =
+            handlerType.GetMethod(
+                nameof(IProcessStepHandler<object>.ExecuteAsync),
+                BindingFlags.Public | BindingFlags.Instance);
+
+        if (executeAsyncMethod is null)
+        {
+            throw new KaleidoConfigurationException(
+                $"Handler '{handlerType.FullName}' does not expose ExecuteAsync.");
+        }
+
+        var taskType = executeAsyncMethod.ReturnType;
+        var resultProperty = taskType.GetProperty(nameof(Task<object>.Result))
+            ?? throw new KaleidoConfigurationException(
+                $"Task type '{taskType.FullName}' does not have a Result property.");
+
+        // Create a compiled function that extracts the result using reflection
+        // This is still much faster than the original approach because PropertyInfo is cached
+        return task =>
+        {
+            var result = resultProperty.GetValue(task);
+            if (result is IProcessStepHandlerResult handlerResult)
+            {
+                return handlerResult;
+            }
+            throw new KaleidoFrameworkException(
+                $"Handler returned an invalid handler result of type '{result?.GetType().FullName}'.");
+        };
+    }
+}
+
 
 internal sealed class RegistrationNode
 {
@@ -428,6 +464,9 @@ internal sealed class RegistrationSlot
 
         Node = node;
 
+        var handlerTaskType =
+            ProcessStepRegistryHelper.CreateGetResultFromTaskFunc(node.Definition.HandlerType);
+
         Registration =
             new ProcessStepRegistration(
                 node.Definition.StepType,
@@ -440,7 +479,8 @@ internal sealed class RegistrationSlot
                 new ReadOnlyCollection<ProcessStepRegistration>(
                     AvailableUntil),
                 node.Repeatable,
-                node.Definition.Metadata);
+                node.Definition.Metadata,
+                handlerTaskType);
     }
 
     public RegistrationNode Node

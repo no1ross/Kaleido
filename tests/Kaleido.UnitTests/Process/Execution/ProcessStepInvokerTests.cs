@@ -256,7 +256,7 @@ public sealed class ProcessStepInvokerTests
                     CreateContext()));
 
         Assert.Contains(
-            "returned a null result",
+            "returned an invalid handler result",
             exception.Message);
     }
 
@@ -342,6 +342,62 @@ public sealed class ProcessStepInvokerTests
 
     private static ProcessStepRegistration CreateRegistration<THandler>()
     {
+        var executeAsyncMethod =
+            typeof(THandler).GetMethod(
+                nameof(IProcessStepHandler<object>.ExecuteAsync),
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+        if (executeAsyncMethod is null)
+        {
+            return new ProcessStepRegistration(
+                typeof(TestStep),
+                typeof(TestStepResponse),
+                typeof(THandler),
+                [],
+                [],
+                [],
+                new RepeatableOptions(),
+                new ProcessStepMetadata(
+                    "test-step",
+                    "Test step.",
+                    "1.0",
+                    "displayname"),
+                null);
+        }
+
+        var taskType = executeAsyncMethod.ReturnType;
+        var resultProperty = taskType.GetProperty(nameof(Task<object>.Result));
+
+        if (resultProperty is null)
+        {
+            return new ProcessStepRegistration(
+                typeof(TestStep),
+                typeof(TestStepResponse),
+                typeof(THandler),
+                [],
+                [],
+                [],
+                new RepeatableOptions(),
+                new ProcessStepMetadata(
+                    "test-step",
+                    "Test step.",
+                    "1.0",
+                    "displayname"),
+                null);
+        }
+
+        // Create a simple function for the test - uses cached PropertyInfo
+        Func<Task, IProcessStepHandlerResult> getResultFromTask = task =>
+        {
+            var result = resultProperty.GetValue(task);
+            if (result is IProcessStepHandlerResult handlerResult)
+            {
+                return handlerResult;
+            }
+            throw new KaleidoFrameworkException(
+                $"Handler returned an invalid handler result of type '{result?.GetType().FullName}'.");
+        };
+
         return new ProcessStepRegistration(
             typeof(TestStep),
             typeof(TestStepResponse),
@@ -354,7 +410,8 @@ public sealed class ProcessStepInvokerTests
                 "test-step",
                 "Test step.",
                 "1.0",
-                "displayname"));
+                "displayname"),
+            getResultFromTask);
     }
 
     private sealed class HandlerRecorder

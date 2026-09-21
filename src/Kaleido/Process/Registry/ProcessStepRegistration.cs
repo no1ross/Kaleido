@@ -1,5 +1,8 @@
 ﻿namespace Kaleido.Process.Registry;
 
+using System.Reflection;
+using Kaleido.Process.Execution;
+
 public sealed record ProcessStepRegistration(
     Type StepType,
     Type? StepResultType,
@@ -8,7 +11,8 @@ public sealed record ProcessStepRegistration(
     IReadOnlyCollection<ProcessStepRegistration> AvailableAfter,
     IReadOnlyCollection<ProcessStepRegistration> AvailableUntil,
     RepeatableOptions Repeatable,
-    ProcessStepMetadata Metadata);
+    ProcessStepMetadata Metadata,
+    Func<Task, IProcessStepHandlerResult>? GetResultFromTask = null);
 
 
 public sealed record RepeatableOptions

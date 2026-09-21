@@ -64,6 +64,7 @@ internal sealed class ProcessStepInvoker(
                     handler,
                     processStep,
                     context,
+                    registration.GetResultFromTask,
                     cancellationToken);
 
             return handlerResult;
@@ -79,6 +80,7 @@ internal sealed class ProcessStepInvoker(
         object handler,
         object processStep,
         ProcessStepContext context,
+        Func<Task, IProcessStepHandlerResult>? getResultFromTask,
         CancellationToken cancellationToken)
     {
         var method =
@@ -106,18 +108,13 @@ internal sealed class ProcessStepInvoker(
 
         await task;
 
-        var taskResult =
-            task.GetType()
-                .GetProperty(nameof(Task<object>.Result))
-                ?.GetValue(task)
-            ?? throw new KaleidoFrameworkException(
-                $"Handler '{handler.GetType().FullName}' returned a null result.");
-
-        if (taskResult is not IProcessStepHandlerResult handlerResult)
+        if (getResultFromTask is null)
         {
             throw new KaleidoFrameworkException(
-                $"Handler '{handler.GetType().FullName}' returned an invalid handler result.");
+                $"Handler '{handler.GetType().FullName}' has no cached result extractor.");
         }
+
+        var handlerResult = getResultFromTask(task);
 
         return new ProcessStepInvokerResult
         {
