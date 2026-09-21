@@ -7,10 +7,6 @@ internal interface IStepCandidatePlanner
 
 internal sealed class StepCandidatePlanner : IStepCandidatePlanner
 {
-    public StepCandidatePlanner()
-    {
-    }
-
     public IReadOnlyCollection<StepCandidate> Build(
         IReadOnlyCollection<StepCandidate> candidates)
     {
