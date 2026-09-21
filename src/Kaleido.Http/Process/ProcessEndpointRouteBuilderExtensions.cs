@@ -28,7 +28,7 @@ public static class ProcessEndpointRouteBuilderExtensions
 
         var processorRegistry =
             endpoints.ServiceProvider
-                .GetRequiredService<IProcessorRegistry>();
+                .GetRequiredService<IProcessRegistry>();
 
         var serviceOptions =
             endpoints.ServiceProvider
@@ -74,7 +74,7 @@ public static class ProcessEndpointRouteBuilderExtensions
 
     private static void MapProcessorCatalogEndpoint(
         this IEndpointRouteBuilder endpoints,
-        IProcessorRegistry registry,
+        IProcessRegistry registry,
         KaleidoServiceOptions serviceOptions)
     {
         endpoints.MapGet(
@@ -157,7 +157,7 @@ public static class ProcessEndpointRouteBuilderExtensions
 
     private static void MapStepRegistryEndpoint(
         this IEndpointRouteBuilder endpoints,
-        IProcessorRegistry registry,
+        IProcessRegistry registry,
         KaleidoServiceOptions serviceOptions)
     {
         ArgumentNullException.ThrowIfNull(registry);
@@ -186,7 +186,7 @@ public static class ProcessEndpointRouteBuilderExtensions
 
     private static void MapStepCatalogEndpoint(
         this IEndpointRouteBuilder endpoints,
-        IProcessorRegistry registry,
+        IProcessRegistry registry,
         string serviceName)
     {
         ArgumentNullException.ThrowIfNull(registry);
@@ -221,7 +221,7 @@ public static class ProcessEndpointRouteBuilderExtensions
     private static void MapProcessStep(
         this IEndpointRouteBuilder endpoints,
         ProcessStepRegistration step,
-        IProcessorRegistry processorRegistry,
+        IProcessRegistry processorRegistry,
         string serviceName)
     {
         ArgumentNullException.ThrowIfNull(step);

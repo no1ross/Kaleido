@@ -48,8 +48,8 @@ public sealed class KaleidoHttpServiceCollectionExtensionsTests
     public void AddHttp_WithProcessRuntime_RegistersExecutionAndStateServices()
     {
         var services = new ServiceCollection();
-        services.AddSingleton(Mock.Of<IProcessorRegistry>());
-        services.AddSingleton(Mock.Of<IProcessorRuntime>());
+        services.AddSingleton(Mock.Of<IProcessRegistry>());
+        services.AddSingleton(Mock.Of<IProcessRuntime>());
 
         var builder = services.AddKaleido(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), o => o.ServiceName = "test");
         builder.AddHttp();

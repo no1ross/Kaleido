@@ -1,5 +1,3 @@
-using Kaleido.Http.Abstractions.Registry;
-
 namespace Kaleido.Http.Registry;
 
 /// <summary>

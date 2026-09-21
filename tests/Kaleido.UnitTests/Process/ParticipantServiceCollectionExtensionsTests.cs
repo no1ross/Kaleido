@@ -69,7 +69,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
 
         var registry =
-            provider.GetRequiredService<IProcessorRegistry>();
+            provider.GetRequiredService<IProcessRegistry>();
 
         var registration =
             Assert.Single(registry.Registrations);
@@ -104,7 +104,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
 
         var registry =
-            provider.GetRequiredService<IProcessorRegistry>();
+            provider.GetRequiredService<IProcessRegistry>();
 
         var registration =
             Assert.Single(registry.Registrations);

@@ -1,4 +1,4 @@
-namespace Kaleido.Http.Abstractions.Process;
+namespace Kaleido.Http.Process;
 
 internal static class ProcessRoutePaths
 {

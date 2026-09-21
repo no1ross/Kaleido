@@ -4,9 +4,9 @@ using Kaleido.Process.Context;
 
 namespace Kaleido.Process;
 
-public interface IProcessorRuntime
+public interface IProcessRuntime
 {
-    Task<ProcessorProcessResult> ExecuteAsync(
+    Task<ProcessResult> ExecuteAsync(
         ProcessRequest request,
         CancellationToken cancellationToken = default);
 }
@@ -34,7 +34,7 @@ public sealed record ProcessRequest
     }
 }
 
-public sealed record ProcessorProcessResult
+public sealed record ProcessResult
 {
     public required Guid ProcessId { get; init; }
 
@@ -63,7 +63,7 @@ public sealed record ProcessorProcessResult
     }
         = [];
 
-    public IReadOnlyCollection<ProcessorStepResult> Steps
+    public IReadOnlyCollection<ProcessStepResult> Steps
     {
         get;
         init;
@@ -71,7 +71,7 @@ public sealed record ProcessorProcessResult
         = [];
 }
 
-public sealed record ProcessorStepResult
+public sealed record ProcessStepResult
 {
     public required string StepName
     {

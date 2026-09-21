@@ -4,16 +4,16 @@ using System.Reflection;
 
 namespace Kaleido.Process.Registry;
 
-public interface IProcessorRegistry
+public interface IProcessRegistry
 {
     IReadOnlyCollection<ProcessorRegistryItem> Registrations { get; }
 }
 
-internal sealed class ProcessorRegistry : IProcessorRegistry
+internal sealed class ProcessRegistry : IProcessRegistry
 {
     private readonly IReadOnlyCollection<ProcessorRegistryItem> _registrations;
 
-    public ProcessorRegistry(
+    public ProcessRegistry(
         KaleidoServiceOptions serviceOptions,
         IProcessStepRegistry stepRegistry)
     {
@@ -22,7 +22,7 @@ internal sealed class ProcessorRegistry : IProcessorRegistry
 
         _registrations =
         [
-            ProcessorRegistryProjection.Project(
+            ProcessRegistryProjection.Project(
                 serviceOptions,
                 stepRegistry.InitialRegistrations,
                 stepRegistry.Registrations)
@@ -33,7 +33,7 @@ internal sealed class ProcessorRegistry : IProcessorRegistry
         _registrations;
 }
 
-internal static class ProcessorRegistryProjection
+internal static class ProcessRegistryProjection
 {
     internal static ProcessorRegistryItem Project(
         KaleidoServiceOptions serviceOptions,

@@ -1,4 +1,4 @@
-namespace Kaleido.Http.Abstractions.Queryable;
+namespace Kaleido.Http.Queryable;
 
 /// <summary>
 /// Holds the route prefix (service name) registered for each named queryable client.

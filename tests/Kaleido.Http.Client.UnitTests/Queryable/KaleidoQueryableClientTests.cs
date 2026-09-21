@@ -1,4 +1,4 @@
-using Kaleido.Http.Abstractions.Queryable.Contracts;
+using Kaleido.Http.Queryable.Contracts;
 using Kaleido.Http.Client.Queryable;
 using Kaleido.Observability;
 using Moq.Protected;

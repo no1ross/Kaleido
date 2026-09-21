@@ -1,6 +1,6 @@
-using Kaleido.Http.Abstractions.Queryable.Contracts;
+using Kaleido.Http.Queryable.Contracts;
 
-namespace Kaleido.Http.Abstractions.Queryable;
+namespace Kaleido.Http.Queryable;
 
 public interface IKaleidoQueryableClient
 {

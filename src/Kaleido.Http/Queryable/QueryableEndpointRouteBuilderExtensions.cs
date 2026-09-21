@@ -1,3 +1,4 @@
+using Kaleido.Http.Queryable.Contracts;
 using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;

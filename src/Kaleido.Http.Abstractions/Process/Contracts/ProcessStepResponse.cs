@@ -1,4 +1,4 @@
-namespace Kaleido.Http.Abstractions.Process.Contracts;
+namespace Kaleido.Http.Process.Contracts;
 
 public static class ProcessorRegistryResponseFactory
 {
@@ -20,7 +20,16 @@ public static class ProcessorRegistryResponseFactory
             IsEntryProcessor = registration.IsEntryProcessor,
             RegistryUrl = ProcessContractUrls.Registry(serviceName),
             InitialSteps = registration.InitialSteps
-                .Select(x => ProcessStepResponseFactory.ToSummary(x, serviceName))
+                .Select(x => new ProcessStepSummary
+                {
+                    Name = x.Name,
+                    Description = x.Description,
+                    DisplayName = x.DisplayName,
+                    Version = x.Version,
+                    Repeatable = x.Repeatable,
+                    ExecuteUrl = string.Empty,
+                    MetadataUrl = string.Empty
+                })
                 .ToArray(),
             Steps = registration.Steps
                 .Select(x => ProcessStepResponseFactory.FromRegistration(x, serviceName))
@@ -97,7 +106,7 @@ public static class ProcessStepResponseFactory
     }
 
     internal static ProcessStepSummary ToSummary(
-        ProcessorStepSummary registration,
+        Kaleido.Process.Registry.ProcessorStepSummary registration,
         string serviceName)
     {
         ArgumentNullException.ThrowIfNull(registration);
@@ -197,8 +206,18 @@ public sealed record ProcessStepResponse : ProcessorStepRegistryItem
     public new ProcessStepResultMetadata? Result { get; init; }
 }
 
-public sealed record ProcessStepSummary : ProcessorStepSummary
+public sealed record ProcessStepSummary
 {
+    public required string Name { get; init; }
+
+    public string? Description { get; init; }
+
+    public string? DisplayName { get; init; }
+
+    public string? Version { get; init; }
+
+    public bool Repeatable { get; init; }
+
     public string ExecuteUrl { get; init; }
         = string.Empty;
 

@@ -26,7 +26,7 @@ public static class KaleidoHttpServiceCollectionExtensions
         builder.AddAspNetCore();
 
         // Register HTTP-specific execution services — only when Process runtime is present
-        if (builder.Services.Any(d => d.ServiceType == typeof(IProcessorRegistry)))
+        if (builder.Services.Any(d => d.ServiceType == typeof(IProcessRegistry)))
         {
             builder.Services.TryAddScoped<IProcessExecutionService, ProcessExecutionService>();
             builder.Services.TryAddScoped<IProcessStateService, ProcessStateService>();

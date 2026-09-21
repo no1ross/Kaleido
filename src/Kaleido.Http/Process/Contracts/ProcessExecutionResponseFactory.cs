@@ -1,4 +1,4 @@
-using Kaleido.Http.Abstractions.Process.Contracts;
+using Kaleido;
 using Kaleido.Process;
 using Kaleido.Process.Registry;
 
@@ -11,7 +11,7 @@ namespace Kaleido.Http.Process.Contracts;
 public static class ProcessExecutionResponseFactory
 {
     public static ProcessExecutionResponse Create(
-        ProcessorProcessResult processResult,
+        ProcessResult processResult,
         IProcessStepRegistry registry,
         string serviceName)
     {
@@ -36,11 +36,14 @@ public static class ProcessExecutionResponseFactory
             AvailableSteps =
                 processResult.AvailableSteps
                     .Select(stepName =>
-                        ProcessContractMapper.ToSummary(
-                            registry.Find(stepName)
+                        {
+                            var registration = registry.Find(stepName)
                                 ?? throw new KaleidoFrameworkException(
-                                    $"Available step '{stepName}' was not found in the local registry."),
-                            serviceName))
+                                    $"Available step '{stepName}' was not found in the local registry.");
+                            return ProcessContractMapper.ToSummary(
+                                ProcessRegistryProjection.ProjectSummary(registration),
+                                serviceName);
+                        })
                     .ToArray(),
 
             Results =
@@ -59,7 +62,7 @@ public static class ProcessExecutionResponseFactory
 public static class ProcessExecutionStepResponseFactory
 {
     public static ProcessExecutionStepResponse Create(
-        ProcessorStepResult stepResult)
+        ProcessStepResult stepResult)
     {
         ArgumentNullException.ThrowIfNull(stepResult);
 
@@ -75,8 +78,8 @@ public static class ProcessExecutionStepResponseFactory
 public static class StepExecutionResponseFactory
 {
     public static StepExecutionResponse Create(
-        ProcessorProcessResult processResult,
-        ProcessorStepResult stepResult,
+        ProcessResult processResult,
+        ProcessStepResult stepResult,
         IProcessStepRegistry registry,
         string serviceName)
     {
@@ -104,11 +107,14 @@ public static class StepExecutionResponseFactory
             AvailableSteps =
                 processResult.AvailableSteps
                     .Select(stepName =>
-                        ProcessContractMapper.ToSummary(
-                            registry.Find(stepName)
+                        {
+                            var registration = registry.Find(stepName)
                                 ?? throw new KaleidoFrameworkException(
-                                    $"Available step '{stepName}' was not found in the local registry."),
-                            serviceName))
+                                    $"Available step '{stepName}' was not found in the local registry.");
+                            return ProcessContractMapper.ToSummary(
+                                ProcessRegistryProjection.ProjectSummary(registration),
+                                serviceName);
+                        })
                     .ToList(),
 
             Messages =
@@ -118,8 +124,8 @@ public static class StepExecutionResponseFactory
     }
 
     public static StepExecutionResponse<TResponse> Create<TResponse>(
-        ProcessorProcessResult processResult,
-        ProcessorStepResult stepResult,
+        ProcessResult processResult,
+        ProcessStepResult stepResult,
         IProcessStepRegistry registry,
         string serviceName)
     {
@@ -162,28 +168,28 @@ public static class StepExecutionResponseFactory
 internal static class ProcessContractMapper
 {
     public static ProcessStepSummary ToSummary(
-        ProcessStepRegistration registration,
+        ProcessorStepSummary registration,
         string serviceName)
     {
         ArgumentNullException.ThrowIfNull(registration);
 
         var stepName =
-            registration.Metadata.Name.ToLowerInvariant();
+            registration.Name.ToLowerInvariant();
 
         return new ProcessStepSummary
         {
-            Name = registration.Metadata.Name,
-            Version = registration.Metadata.Version,
-            DisplayName = registration.Metadata.DisplayName,
-            Description = registration.Metadata.Description,
-            Repeatable = registration.Repeatable.Enabled,
+            Name = registration.Name,
+            Version = registration.Version,
+            DisplayName = registration.DisplayName,
+            Description = registration.Description,
+            Repeatable = registration.Repeatable,
             ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName),
             MetadataUrl = ProcessContractUrls.StepMetadata(serviceName, stepName)
         };
     }
 
     public static IEnumerable<ProcessMessage> ToMessages(
-        ProcessorStepResult stepResult)
+        ProcessStepResult stepResult)
     {
         ArgumentNullException.ThrowIfNull(stepResult);
 

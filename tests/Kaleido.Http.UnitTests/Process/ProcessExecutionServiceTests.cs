@@ -1,5 +1,5 @@
 using Kaleido.Http.Process.Services;
-using Kaleido.Http.Abstractions.Process.Contracts;
+using Kaleido.Http.Process.Contracts;
 using Kaleido.Observability;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
@@ -15,7 +15,7 @@ public sealed class ProcessExecutionServiceTests
 {
     private static ProcessExecutionService CreateService(
         IProcessStepRegistry registry,
-        IProcessorRuntime runtime,
+        IProcessRuntime runtime,
         Guid? contextProcessId = null)
     {
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
@@ -43,7 +43,7 @@ public sealed class ProcessExecutionServiceTests
         var registry = CreateRegistry(registration);
 
         ProcessRequest? capturedRequest = null;
-        var runtime = new Mock<IProcessorRuntime>();
+        var runtime = new Mock<IProcessRuntime>();
         var processResult = CreateProcessResult(registration.Metadata.Name, new TestResponse());
 
         runtime
@@ -84,7 +84,7 @@ public sealed class ProcessExecutionServiceTests
         var registry = CreateRegistry(registration);
 
         ProcessRequest? capturedRequest = null;
-        var runtime = new Mock<IProcessorRuntime>();
+        var runtime = new Mock<IProcessRuntime>();
 
         runtime
             .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
@@ -112,7 +112,7 @@ public sealed class ProcessExecutionServiceTests
         var registration = CreateRegistration();
         var registry = CreateRegistry(registration);
 
-        var runtime = new Mock<IProcessorRuntime>();
+        var runtime = new Mock<IProcessRuntime>();
 
         runtime
             .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
@@ -131,7 +131,7 @@ public sealed class ProcessExecutionServiceTests
         Assert.Equal(StepExecutionOutcome.Completed, response.Outcome);
     }
 
-    private static ProcessorProcessResult CreateProcessResult(string stepName, object response) =>
+    private static ProcessResult CreateProcessResult(string stepName, object response) =>
         new()
         {
             ProcessId = Guid.NewGuid(),
@@ -139,7 +139,7 @@ public sealed class ProcessExecutionServiceTests
             AvailableSteps = [stepName],
             Steps =
             [
-                new ProcessorStepResult
+                new ProcessStepResult
                 {
                     StepName = stepName,
                     CandidateStatus = StepCandidateStatus.Built,

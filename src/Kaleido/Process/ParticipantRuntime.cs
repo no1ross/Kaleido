@@ -6,8 +6,8 @@ using Kaleido.Process.Planning;
 
 namespace Kaleido.Process;
 
-internal sealed class ProcessorRuntime
-    : IProcessorRuntime
+internal sealed class ProcessRuntime
+    : IProcessRuntime
 {
     private readonly IProcessContextStore _contextStore;
     private readonly IProcessStateUpdater _stateUpdater;
@@ -18,7 +18,7 @@ internal sealed class ProcessorRuntime
     private readonly IProcessObservability _observability;
     private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
 
-    public ProcessorRuntime(
+    public ProcessRuntime(
         IProcessContextStore contextStore,
         IProcessStateUpdater stateUpdater,
         IExecutionPlanner planner,
@@ -47,7 +47,7 @@ internal sealed class ProcessorRuntime
         _correlationAccessor = correlationAccessor;
     }
 
-    public async Task<ProcessorProcessResult> ExecuteAsync(
+    public async Task<ProcessResult> ExecuteAsync(
         ProcessRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -202,7 +202,7 @@ internal sealed class ProcessorRuntime
             .ToArray();
     }
 
-    private static ProcessorProcessResult CreateResult(
+    private static ProcessResult CreateResult(
         ExecutionPlanResult plan,
         ProcessExecutionResult executionResult)
     {
@@ -222,7 +222,7 @@ internal sealed class ProcessorRuntime
                             candidate.StepName,
                             out var outcome);
 
-                        return new ProcessorStepResult
+                        return new ProcessStepResult
                         {
                             StepName =
                                 candidate.StepName,
@@ -251,7 +251,7 @@ internal sealed class ProcessorRuntime
                     })
                 .ToArray();
 
-        return new ProcessorProcessResult
+        return new ProcessResult
         {
             ProcessId =
                 executionResult.ProcessId,

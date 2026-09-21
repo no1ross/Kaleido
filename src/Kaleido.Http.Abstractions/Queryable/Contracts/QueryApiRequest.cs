@@ -1,4 +1,4 @@
-namespace Kaleido.Http.Abstractions.Queryable.Contracts;
+namespace Kaleido.Http.Queryable.Contracts;
 
 public record QueryApiRequest(
     QueryBody? Query = null);

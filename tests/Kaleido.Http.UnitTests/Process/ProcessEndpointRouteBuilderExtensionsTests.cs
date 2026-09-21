@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Kaleido.Http.Process;
+using Kaleido.Http.Process.Contracts;
 
 namespace Kaleido.Http.UnitTests.Process;
 
@@ -122,7 +123,7 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
         builder.Services.AddSingleton<IProcessStepRegistry>(CreateRegistry());
-        builder.Services.AddSingleton<IProcessorRegistry>(CreateProcessorRegistry());
+        builder.Services.AddSingleton<IProcessRegistry>(CreateProcessorRegistry());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, DisplayName = "Test Processor" });
 
         return builder.Build();
@@ -162,10 +163,10 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
         return registry.Object;
     }
 
-    private static IProcessorRegistry CreateProcessorRegistry()
+    private static IProcessRegistry CreateProcessorRegistry()
     {
         var registry =
-            new Mock<IProcessorRegistry>();
+            new Mock<IProcessRegistry>();
 
         registry
             .Setup(x => x.Registrations)

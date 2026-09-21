@@ -1,5 +1,5 @@
-using Kaleido.Http.Abstractions.Process.Contracts;
 using Kaleido.Http.Client.Process;
+using Kaleido.Http.Process.Contracts;
 using Kaleido.Observability;
 using Kaleido.Process.Registry;
 using Moq.Protected;

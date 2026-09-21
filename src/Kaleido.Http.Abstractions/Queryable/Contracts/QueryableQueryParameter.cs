@@ -1,4 +1,4 @@
-namespace Kaleido.Http.Abstractions.Queryable.Contracts;
+namespace Kaleido.Http.Queryable.Contracts;
 
 public sealed record QueryableQueryParameter : QueryableParameterDescriptor
 {

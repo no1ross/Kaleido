@@ -1,5 +1,4 @@
 ﻿using Kaleido.Http;
-using Kaleido.Http.Abstractions.Queryable;
 using Kaleido.Http.Client;
 using Kaleido.Http.Queryable;
 using Kaleido.Json;

@@ -1,4 +1,5 @@
-using Kaleido.Http.Abstractions.Process.Contracts;
+using Kaleido.Http.Process;
+using Kaleido.Http.Process.Contracts;
 using System.Net;
 using System.Net.Http.Json;
 

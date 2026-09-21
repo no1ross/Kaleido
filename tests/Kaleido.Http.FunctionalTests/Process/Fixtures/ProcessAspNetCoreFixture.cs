@@ -1,5 +1,4 @@
 using Kaleido.Http;
-using Kaleido.Http.Abstractions.Process;
 using Kaleido.Http.Client;
 using Kaleido.Http.Process;
 using Kaleido.Json;

@@ -1,5 +1,5 @@
-using Kaleido.Http.Abstractions.Queryable;
 using Kaleido.Http.Client.Queryable;
+using Kaleido.Http.Queryable;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;

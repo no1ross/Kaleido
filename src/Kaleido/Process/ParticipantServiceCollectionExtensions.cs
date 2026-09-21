@@ -1,3 +1,4 @@
+using Kaleido;
 using Kaleido.Process.Attributes;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
@@ -12,7 +13,7 @@ using System.Reflection;
 
 namespace Kaleido.Process;
 
-public static class ProcessorServiceCollectionExtensions
+public static class ProcessServiceCollectionExtensions
 {
     internal static IKaleidoBuilder AddProcessor(this IKaleidoBuilder builder)
     {
@@ -77,10 +78,10 @@ public static class ProcessorServiceCollectionExtensions
                     handlerTypes);
             });
 
-        builder.Services.TryAddSingleton<IProcessorRegistry>(
+        builder.Services.TryAddSingleton<IProcessRegistry>(
             sp =>
             {
-                return new ProcessorRegistry(
+                return new ProcessRegistry(
                     builder.ServiceOptions,
                     sp.GetRequiredService<IProcessStepRegistry>());
             });
@@ -201,7 +202,7 @@ public static class ProcessorServiceCollectionExtensions
 
         services.TryAddSingleton<IProcessEventFactory, ProcessEventFactory>();
         services.TryAddScoped<IProcessObservability, ProcessObservability>();
-        services.TryAddScoped<IProcessorRuntime, ProcessorRuntime>();
+        services.TryAddScoped<IProcessRuntime, ProcessRuntime>();
         services.TryAddScoped<IExecutionProcessor, ExecutionProcessor>();
     }
 

@@ -1,4 +1,3 @@
-using Kaleido.Http.Abstractions.Process.Contracts;
 using Kaleido.Observability;
 using Kaleido.Process;
 using Kaleido.Process.Registry;
@@ -26,7 +25,7 @@ internal interface IProcessExecutionService
 internal sealed class ProcessExecutionService(
     IHttpContextAccessor httpContextAccessor,
     IProcessStepRegistry registry,
-    IProcessorRuntime runtime,
+    IProcessRuntime runtime,
     KaleidoServiceOptions serviceOptions,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     ILogger<ProcessExecutionService> logger)

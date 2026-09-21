@@ -11,7 +11,7 @@ using Xunit;
 
 namespace Kaleido.Process.UnitTests.Processor;
 
-public sealed class ProcessorRuntimeTests
+public sealed class ProcessRuntimeTests
 {
     [Fact]
     public async Task ExecuteAsync_WhenRequestIsNull_Throws()
@@ -99,7 +99,7 @@ public sealed class ProcessorRuntimeTests
                         context.ProcessId)));
 
         var runtime =
-            new ProcessorRuntime(
+            new ProcessRuntime(
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
@@ -188,7 +188,7 @@ public sealed class ProcessorRuntimeTests
                 CreateExecutionResult(processId));
 
         var runtime =
-            new ProcessorRuntime(
+            new ProcessRuntime(
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
@@ -275,7 +275,7 @@ public sealed class ProcessorRuntimeTests
                 CreateExecutionResult(processId));
 
         var runtime =
-            new ProcessorRuntime(
+            new ProcessRuntime(
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
@@ -383,7 +383,7 @@ public sealed class ProcessorRuntimeTests
                 CreateExecutionResult(processId));
 
         var runtime =
-            new ProcessorRuntime(
+            new ProcessRuntime(
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
@@ -505,7 +505,7 @@ public sealed class ProcessorRuntimeTests
             .ReturnsAsync(executionResult);
 
         var runtime =
-            new ProcessorRuntime(
+            new ProcessRuntime(
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
@@ -603,7 +603,7 @@ public sealed class ProcessorRuntimeTests
             .ReturnsAsync(executionResult);
 
         var runtime =
-            new ProcessorRuntime(
+            new ProcessRuntime(
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
@@ -621,9 +621,9 @@ public sealed class ProcessorRuntimeTests
         processor.VerifyAll();
     }
 
-    private static ProcessorRuntime CreateRuntime()
+    private static ProcessRuntime CreateRuntime()
     {
-        return new ProcessorRuntime(
+        return new ProcessRuntime(
             Mock.Of<IProcessContextStore>(),
             Mock.Of<IProcessStateUpdater>(),
             Mock.Of<IExecutionPlanner>(),

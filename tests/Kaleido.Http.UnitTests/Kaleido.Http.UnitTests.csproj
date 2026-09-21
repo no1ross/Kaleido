@@ -15,6 +15,6 @@
 		<Using Include="Kaleido.Queryable.Query" />
 		<Using Include="Kaleido.Queryable.Attributes" />
 		<Using Include="Kaleido.Http.Process.Services" />
-		<Using Include="Kaleido.Http.Abstractions.Process.Contracts" />
+		<Using Include="Kaleido.Http.Process.Contracts" />
 	</ItemGroup>
 </Project>

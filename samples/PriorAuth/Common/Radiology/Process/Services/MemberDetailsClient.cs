@@ -1,7 +1,7 @@
-using Kaleido.Http.Abstractions.Queryable.Contracts;
+using Kaleido.Http.Queryable.Contracts;
 using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Parameters;
 using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Views;
-using Kaleido.Http.Abstractions.Queryable;
+using Kaleido.Http.Queryable;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 

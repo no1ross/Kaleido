@@ -1,7 +1,7 @@
 using Kaleido.Queryable.Query;
 using Kaleido.Samples.PriorAuth.ReferenceData.Queryable.Contexts;
-using Kaleido.Http.Abstractions.Queryable;
-using Kaleido.Http.Abstractions.Queryable.Contracts;
+using Kaleido.Http.Queryable.Contracts;
+using Kaleido.Http.Queryable;
 
 namespace Kaleido.Samples.PriorAuth.Provider.Queryable.Clients;
 

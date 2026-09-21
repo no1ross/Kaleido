@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<Import Project="../../build/packages.props" />
-
+	<PropertyGroup>
+		<RootNamespace>Kaleido.Http</RootNamespace>
+	</PropertyGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Kaleido\Kaleido.csproj" />
 	</ItemGroup>

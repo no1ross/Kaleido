@@ -31,7 +31,7 @@ public static class KaleidoServiceCollectionExtensions
         var builder = new KaleidoBuilder(services, configuration, serviceOptions);
 
         // Automatically register Process and Queryable runtimes
-        Kaleido.Process.ProcessorServiceCollectionExtensions.AddProcessor(builder);
+        Kaleido.Process.ProcessServiceCollectionExtensions.AddProcessor(builder);
         Kaleido.Queryable.QueryableServiceCollectionExtensions.AddQueryable(builder);
 
         return builder;

@@ -1,4 +1,4 @@
-namespace Kaleido.Http.Abstractions.Process;
+namespace Kaleido.Http.Process;
 
 /// <summary>
 /// Holds the route prefix (service name) registered for each named process client.

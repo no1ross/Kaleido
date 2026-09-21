@@ -1,4 +1,3 @@
-using Kaleido.Http.Abstractions.Process.Contracts;
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;
@@ -64,11 +63,14 @@ internal sealed class ProcessStateService(
             AvailableSteps =
                 context.AvailableSteps
                     .Select(stepName =>
-                        ProcessContractMapper.ToSummary(
-                            registry.Find(stepName)
+                        {
+                            var registration = registry.Find(stepName)
                                 ?? throw new KaleidoFrameworkException(
-                                    $"Available step '{stepName}' was not found in the local registry."),
-                            serviceOptions.ServiceName))
+                                    $"Available step '{stepName}' was not found in the local registry.");
+                            return ProcessContractMapper.ToSummary(
+                                ProcessRegistryProjection.ProjectSummary(registration),
+                                serviceOptions.ServiceName);
+                        })
                     .ToArray(),
 
             Steps =

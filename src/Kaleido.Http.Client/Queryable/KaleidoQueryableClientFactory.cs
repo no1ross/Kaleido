@@ -1,3 +1,5 @@
+using Kaleido.Http.Queryable;
+
 namespace Kaleido.Http.Client.Queryable;
 
 internal sealed class KaleidoQueryableClientFactory(

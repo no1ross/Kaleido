@@ -1,6 +1,6 @@
-using Kaleido.Http.Abstractions.Process.Contracts;
+using Kaleido.Http.Process.Contracts;
 
-namespace Kaleido.Http.Abstractions.Process;
+namespace Kaleido.Http.Process;
 
 public interface IKaleidoProcessClient
 {
