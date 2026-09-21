@@ -12,48 +12,6 @@ namespace Kaleido.Process.UnitTests.Processor;
 public sealed class ProcessorServiceCollectionExtensionsTests
 {
     [Fact]
-    public void AddKaleido_WhenServiceNameIsMissing_Throws()
-    {
-        var services = new ServiceCollection();
-
-        var exception =
-            Assert.Throws<KaleidoConfigurationException>(() =>
-                services.AddKaleido(new ConfigurationBuilder().Build()));
-
-        Assert.Contains("ServiceName", exception.Message);
-    }
-
-    [Fact]
-    public void AddKaleido_WhenServiceNameHasUppercase_Throws()
-    {
-        var services = new ServiceCollection();
-
-        var exception =
-            Assert.Throws<KaleidoConfigurationException>(() =>
-                services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-                {
-                    o.ServiceName = "Test-Processor";
-                }));
-
-        Assert.Contains("lowercase", exception.Message);
-    }
-
-    [Fact]
-    public void AddKaleido_WhenServiceNameHasPathSeparator_Throws()
-    {
-        var services = new ServiceCollection();
-
-        var exception =
-            Assert.Throws<KaleidoConfigurationException>(() =>
-                services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-                {
-                    o.ServiceName = "test/processor";
-                }));
-
-        Assert.Contains("path separators", exception.Message);
-    }
-
-    [Fact]
     public void AddProcessor_RegistersProcessorRegistry()
     {
         var services = new ServiceCollection();

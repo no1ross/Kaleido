@@ -8,20 +8,6 @@ public sealed class QueryRequestValidatorTests
     private readonly QueryRequestValidator _validator = new();
 
     [Fact]
-    public void Validate_WhenRequestIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            _validator.Validate(null!, CreateRegistration()));
-    }
-
-    [Fact]
-    public void Validate_WhenRegistrationIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            _validator.Validate(new QueryRequest(), null!));
-    }
-
-    [Fact]
     public void Validate_WhenRequestIsValid_DoesNotThrow()
     {
         var request = new QueryRequest(

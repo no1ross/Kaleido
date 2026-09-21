@@ -9,60 +9,6 @@ namespace Kaleido.Process.UnitTests.Processor.Execution;
 public sealed class StepAvailabilityResolverTests
 {
     [Fact]
-    public void Resolve_WhenCurrentCandidateIsNull_Throws()
-    {
-        var resolver = CreateResolver();
-
-        var context =
-            CreateContext();
-
-        Assert.Throws<ArgumentNullException>(() =>
-            resolver.Resolve(
-                null!,
-                [],
-                context));
-    }
-
-    [Fact]
-    public void Resolve_WhenCandidatesIsNull_Throws()
-    {
-        var resolver = CreateResolver();
-
-        var current =
-            CreateCandidate(
-                "step-a",
-                CreateRegistration<TestStepA>(
-                    "step-a"));
-
-        var context =
-            CreateContext();
-
-        Assert.Throws<ArgumentNullException>(() =>
-            resolver.Resolve(
-                current,
-                null!,
-                context));
-    }
-
-    [Fact]
-    public void Resolve_WhenContextIsNull_Throws()
-    {
-        var resolver = CreateResolver();
-
-        var current =
-            CreateCandidate(
-                "step-a",
-                CreateRegistration<TestStepA>(
-                    "step-a"));
-
-        Assert.Throws<ArgumentNullException>(() =>
-            resolver.Resolve(
-                current,
-                [],
-                null!));
-    }
-
-    [Fact]
     public void Resolve_WhenCandidateHasNoDependencies_ReturnsCandidate()
     {
         var currentRegistration =

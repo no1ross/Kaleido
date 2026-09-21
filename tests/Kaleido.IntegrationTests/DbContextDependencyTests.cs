@@ -1,4 +1,8 @@
 using Kaleido.IntegrationTests.TestArtifacts;
+using Kaleido.Process;
+using Kaleido.Process.Context;
+using Kaleido.Process.Execution;
+using Kaleido.Provider.SQLite;
 using Kaleido.Queryable;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -36,5 +40,28 @@ public sealed class DbContextDependencyTests
 
         var source = provider.GetService<IQueryContextSource<TestQueryContext>>();
         Assert.NotNull(source);
+    }
+
+    [Fact]
+    public void UseSqliteContextStore_RegistersSqliteStore()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var connectionString = "Data Source=:memory:";
+
+        // Act
+        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+        {
+            o.ServiceName = "test-integration";
+        }).UseSqliteContextStore(connectionString);
+
+        using var provider = services.BuildServiceProvider();
+
+        // Assert
+        var store = provider.GetService<IProcessContextStore>();
+        Assert.NotNull(store);
+        
+        // Verify it's the SQLite implementation
+        Assert.Equal("Kaleido.Provider.SQLite.SqliteProcessContextStore", store.GetType().FullName);
     }
 }

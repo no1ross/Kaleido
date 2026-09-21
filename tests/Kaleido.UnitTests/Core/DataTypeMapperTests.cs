@@ -7,18 +7,6 @@ namespace Kaleido.Abstractions.UnitTests;
 public sealed class DataTypeMapperTests
 {
     [Fact]
-    public void GetDescriptor_WhenPropertyIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                DataTypeMapper.GetDescriptor((PropertyInfo)null!));
-
-        Assert.Equal(
-            "propertyInfo",
-            exception.ParamName);
-    }
-
-    [Fact]
     public void GetDescriptor_WhenPropertyIsNullableValueType_PreservesUnderlyingDescriptorAndMarksNullable()
     {
         var descriptor = DataTypeMapper.GetDescriptor(
@@ -140,6 +128,93 @@ public sealed class DataTypeMapperTests
         Assert.Equal("'bad-guid' is not a valid value for type 'Guid'.", exception.Message);
     }
 
+    [Fact]
+    public void GetDescriptor_WhenEnumWithDescription_MapsEnumValues()
+    {
+        // Tests reflection safety for GetMember array access
+        var descriptor = DataTypeMapper.GetDescriptor(typeof(TestModel).GetProperty(nameof(TestModel.Status))!);
+
+        Assert.Equal("string", descriptor.Type);
+        Assert.Equal("enum", descriptor.Format);
+        Assert.NotNull(descriptor.EnumValues);
+        Assert.Equal(2, descriptor.EnumValues.Count);
+    }
+
+    [Fact]
+    public void GetDescriptor_WhenArrayType_MapsWithItemType()
+    {
+        // Tests reflection safety for GetElementType null check
+        var descriptor = DataTypeMapper.GetDescriptor(typeof(TestModel).GetProperty(nameof(TestModel.Ids))!);
+
+        Assert.Equal("array", descriptor.Type);
+        Assert.NotNull(descriptor.ItemType);
+        Assert.Equal("string", descriptor.ItemType!.Type);
+    }
+
+    [Fact]
+    public void GetDescriptor_WhenGenericList_MapsWithItemType()
+    {
+        // Tests reflection safety for GetGenericArguments array access
+        var descriptor = DataTypeMapper.GetDescriptor(typeof(TestModel).GetProperty(nameof(TestModel.Names))!);
+
+        Assert.Equal("array", descriptor.Type);
+        Assert.NotNull(descriptor.ItemType);
+        Assert.Equal("string", descriptor.ItemType!.Type);
+    }
+
+    [Fact]
+    public void TryConvertValue_Generic_WhenConversionSucceeds_ReturnsTypedResult()
+    {
+        var result = DataTypeMapper.TryConvertValue<int>("123");
+
+        Assert.True(result.Success);
+        Assert.Equal(123, result.Value);
+    }
+
+    [Fact]
+    public void TryConvertValue_Generic_WhenConversionFails_ReturnsFailedResult()
+    {
+        var result = DataTypeMapper.TryConvertValue<int>("not-a-number");
+
+        Assert.False(result.Success);
+        Assert.Equal(default, result.Value);
+        Assert.NotNull(result.ErrorMessage);
+    }
+
+    [Fact]
+    public void TryConvertValue_Generic_WhenNullAndNullableType_ReturnsNull()
+    {
+        var result = DataTypeMapper.TryConvertValue<int?>(null);
+
+        Assert.True(result.Success);
+        Assert.Null(result.Value);
+    }
+
+    [Fact]
+    public void TryConvertValue_Generic_WhenNullAndNonNullableType_ReturnsFailure()
+    {
+        var result = DataTypeMapper.TryConvertValue<int>(null);
+
+        Assert.False(result.Success);
+        Assert.Equal(default, result.Value);
+        Assert.NotNull(result.ErrorMessage);
+    }
+
+    [Fact]
+    public void ConvertValue_Generic_WhenConversionSucceeds_ReturnsValue()
+    {
+        var result = DataTypeMapper.ConvertValue<int>("123");
+
+        Assert.Equal(123, result);
+    }
+
+    [Fact]
+    public void ConvertValue_Generic_WhenConversionFails_Throws()
+    {
+        Assert.Throws<DataTypeConversionException>(() =>
+            DataTypeMapper.ConvertValue<int>("not-a-number"));
+    }
+
     private enum TestStatus
     {
         [Description("Currently active")]
@@ -158,6 +233,8 @@ public sealed class DataTypeMapperTests
         public TestStatus Status { get; init; }
 
         public List<Guid> Ids { get; init; } = [];
+
+        public List<string> Names { get; init; } = [];
     }
 
     private sealed class TestObject

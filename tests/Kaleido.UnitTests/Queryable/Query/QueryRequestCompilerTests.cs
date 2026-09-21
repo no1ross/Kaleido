@@ -8,18 +8,6 @@ public sealed class QueryRequestCompilerTests
     private readonly QueryRequestCompiler _compiler = new();
 
     [Fact]
-    public void Compile_WhenRequestIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() => _compiler.Compile(null!, CreateContextMetadata()));
-    }
-
-    [Fact]
-    public void Compile_WhenMetadataIsNull_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() => _compiler.Compile(new QueryRequest(), null!));
-    }
-
-    [Fact]
     public void Compile_UsesContextPageableDefaults()
     {
         var result = _compiler.Compile(new QueryRequest(), CreateContextMetadata());

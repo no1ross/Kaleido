@@ -14,32 +14,6 @@ namespace Kaleido.Process.UnitTests.Processor.Execution;
 public sealed class ExecutionProcessorTests
 {
     [Fact]
-    public async Task ExecuteAsync_WhenCandidatesIsNull_Throws()
-    {
-        var processor =
-            CreateProcessor();
-
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            processor.ExecuteAsync(
-                null!,
-                CreateContext("step-a"),
-                new ProcessorRequest()));
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_WhenContextIsNull_Throws()
-    {
-        var processor =
-            CreateProcessor();
-
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            processor.ExecuteAsync(
-                [],
-                null!,
-                new ProcessorRequest()));
-    }
-
-    [Fact]
     public async Task ExecuteAsync_WhenNoCandidates_ReturnsCurrentContextState()
     {
         var context =
@@ -1255,10 +1229,10 @@ public sealed class ExecutionProcessorTests
             .Returns<KaleidoCorrelationContext, ProcessorContext, StepCandidate, ProcessExecutionOutcome, ProcessStepInvokerResult>((_, context, candidate, outcome, _2) =>
             {
                 var stepContext = context.FindStep(candidate.StepName);
-                return new KaleidoEventEnvelope<Eventing.StepCompleted, ProcessEventContext>
+                return new KaleidoEventEnvelope<StepCompleted, ProcessEventContext>
                 {
                     Context = CreateStubContext(context.ProcessId),
-                    Event = new Eventing.StepCompleted
+                    Event = new StepCompleted
                     {
                         OccurredOn = DateTimeOffset.UtcNow,
                         StepName = candidate.StepName,

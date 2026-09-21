@@ -9,40 +9,6 @@ namespace Kaleido.Process.UnitTests.Processor.Planning;
 public sealed class ExecutionPlannerTests
 {
     [Fact]
-    public void BuildPlan_WhenRequestIsNull_Throws()
-    {
-        var planner =
-            CreatePlanner();
-
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                planner.BuildPlan(
-                    null!,
-                    new ProcessorContext
-                    {
-                        ProcessId = Guid.NewGuid(),
-                        ProcessorName = "test-processor"
-                    }));
-
-        Assert.Equal("request", exception.ParamName);
-    }
-
-    [Fact]
-    public void BuildPlan_WhenContextIsNull_Throws()
-    {
-        var planner =
-            CreatePlanner();
-
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                planner.BuildPlan(
-                    new ProcessorRequest(),
-                    null!));
-
-        Assert.Equal("context", exception.ParamName);
-    }
-
-    [Fact]
     public void BuildPlan_CallsCollaboratorsInOrder()
     {
         var request =

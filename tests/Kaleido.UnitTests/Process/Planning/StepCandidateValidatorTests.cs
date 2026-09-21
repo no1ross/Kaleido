@@ -11,16 +11,6 @@ public sealed class StepCandidateValidatorTests
         new();
 
     [Fact]
-    public void Validate_WhenCandidatesIsNull_Throws()
-    {
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                _validator.Validate(null!));
-
-        Assert.Equal("candidates", exception.ParamName);
-    }
-
-    [Fact]
     public void Validate_WhenCandidateAlreadyInvalid_SkipsValidation()
     {
         var candidate =

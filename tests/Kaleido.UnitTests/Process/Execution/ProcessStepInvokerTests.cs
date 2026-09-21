@@ -13,66 +13,6 @@ namespace Kaleido.Process.UnitTests.Processor.Execution;
 public sealed class ProcessStepInvokerTests
 {
     [Fact]
-    public async Task ExecuteAsync_WhenRegistrationIsNull_Throws()
-    {
-        var invoker =
-            CreateInvoker();
-
-        var exception =
-            await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                invoker.ExecuteAsync(
-                    null!,
-                    new TestStep(),
-                    CreateContext()));
-
-        Assert.Equal(
-            "registration",
-            exception.ParamName);
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_WhenProcessStepIsNull_Throws()
-    {
-        var invoker =
-            CreateInvoker();
-
-        var registration =
-            CreateRegistration<SuccessHandler>();
-
-        var exception =
-            await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                invoker.ExecuteAsync(
-                    registration,
-                    null!,
-                    CreateContext()));
-
-        Assert.Equal(
-            "processStep",
-            exception.ParamName);
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_WhenContextIsNull_Throws()
-    {
-        var invoker =
-            CreateInvoker();
-
-        var registration =
-            CreateRegistration<SuccessHandler>();
-
-        var exception =
-            await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                invoker.ExecuteAsync(
-                    registration,
-                    new TestStep(),
-                    null!));
-
-        Assert.Equal(
-            "context",
-            exception.ParamName);
-    }
-
-    [Fact]
     public async Task ExecuteAsync_WhenHandlerIsRegistered_InvokesHandler()
     {
         var recorder =

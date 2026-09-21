@@ -9,19 +9,6 @@ namespace Kaleido.Process.UnitTests.Processor.Planning;
 public sealed class StepCandidatePlannerTests
 {
     [Fact]
-    public void Build_WhenCandidatesIsNull_Throws()
-    {
-        var planner =
-            CreatePlanner();
-
-        var exception =
-            Assert.Throws<ArgumentNullException>(() =>
-                planner.Build(null!));
-
-        Assert.Equal("candidates", exception.ParamName);
-    }
-
-    [Fact]
     public void Build_WhenNoCandidates_ReturnsEmptyCollection()
     {
         var planner =

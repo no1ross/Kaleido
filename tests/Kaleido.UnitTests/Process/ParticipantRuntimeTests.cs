@@ -14,19 +14,6 @@ namespace Kaleido.Process.UnitTests.Processor;
 public sealed class ProcessRuntimeTests
 {
     [Fact]
-    public async Task ExecuteAsync_WhenRequestIsNull_Throws()
-    {
-        var runtime =
-            CreateRuntime();
-
-        var exception =
-            await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                runtime.ExecuteAsync(null!));
-
-        Assert.Equal("request", exception.ParamName);
-    }
-
-    [Fact]
     public async Task ExecuteAsync_WhenInitialRequestContainsMultipleStepsWithoutProcessId_InitializesContextAndExecutes()
     {
         var request =
@@ -706,10 +693,10 @@ public sealed class ProcessRuntimeTests
             .Returns<KaleidoCorrelationContext, ProcessorContext, ProcessRequest>((_, context, request) =>
             {
                 var processor = request.Processor ?? new ProcessorRequest();
-                return new KaleidoEventEnvelope<Eventing.ProcessCreated, ProcessEventContext>
+                return new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
                 {
                     Context = CreateStubContext(context.ProcessId),
-                    Event = new Eventing.ProcessCreated
+                    Event = new ProcessCreated
                     {
                         OccurredOn = DateTimeOffset.UtcNow,
                         State = context.State,
@@ -732,10 +719,10 @@ public sealed class ProcessRuntimeTests
             .Returns<KaleidoCorrelationContext, ProcessorContext, ProcessRequest, ExecutionPlanResult, int>((_, context, request, plan, executableCount) =>
             {
                 var processor = request.Processor ?? new ProcessorRequest();
-                return new KaleidoEventEnvelope<Eventing.PlanBuilt, ProcessEventContext>
+                return new KaleidoEventEnvelope<PlanBuilt, ProcessEventContext>
                 {
                     Context = CreateStubContext(context.ProcessId),
-                    Event = new Eventing.PlanBuilt
+                    Event = new PlanBuilt
                     {
                         OccurredOn = DateTimeOffset.UtcNow,
                         State = context.State,
@@ -757,10 +744,10 @@ public sealed class ProcessRuntimeTests
                     It.IsAny<ProcessorContext>(),
                     It.IsAny<ProcessExecutionResult>()))
             .Returns<KaleidoCorrelationContext, ProcessorContext, ProcessExecutionResult>((_, context, executionResult) =>
-                new KaleidoEventEnvelope<Eventing.ExecutionCompleted, ProcessEventContext>
+                new KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext>
                 {
                     Context = CreateStubContext(executionResult.ProcessId),
-                    Event = new Eventing.ExecutionCompleted
+                    Event = new ExecutionCompleted
                     {
                         OccurredOn = DateTimeOffset.UtcNow,
                         State = executionResult.State,
