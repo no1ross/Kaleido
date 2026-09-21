@@ -1,9 +1,10 @@
-using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+
+namespace Kaleido.Queryable;
 
 public interface IQueryableService
 {
