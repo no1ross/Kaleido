@@ -1,0 +1,19 @@
+﻿namespace Kaleido.Process.Execution;
+
+public interface IProcessStepHandler<in TProcessStep, TProcessStepResult>
+{
+    Task<ProcessStepHandlerResult<TProcessStepResult>> ExecuteAsync(
+        TProcessStep processStep,
+        ProcessStepContext context,
+        CancellationToken cancellationToken = default);
+}
+
+public interface IProcessStepHandler<in TProcessStep>
+{
+    Task<ProcessStepHandlerResult> ExecuteAsync(
+        TProcessStep processStep,
+        ProcessStepContext context,
+        CancellationToken cancellationToken = default);
+}
+
+

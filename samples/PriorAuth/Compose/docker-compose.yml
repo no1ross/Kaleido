@@ -34,7 +34,7 @@ services:
   referencedata:
     build:
       context: ../../..
-      dockerfile: samples/PriorAuth/ReferenceData/Dockerfile
+      dockerfile: samples/PriorAuth/Services/ReferenceData/Dockerfile
     depends_on:
       eventcollector:
         condition: service_healthy
@@ -60,7 +60,7 @@ services:
   codeset:
     build:
       context: ../../..
-      dockerfile: samples/PriorAuth/CodeSet/Dockerfile
+      dockerfile: samples/PriorAuth/Services/CodeSet/Dockerfile
     depends_on:
       eventcollector:
         condition: service_healthy
@@ -86,7 +86,7 @@ services:
   configuration:
     build:
       context: ../../..
-      dockerfile: samples/PriorAuth/Configuration/Dockerfile
+      dockerfile: samples/PriorAuth/Services/Configuration/Dockerfile
     depends_on:
       eventcollector:
         condition: service_healthy
@@ -112,7 +112,7 @@ services:
   provider:
     build:
       context: ../../..
-      dockerfile: samples/PriorAuth/Provider/Dockerfile
+      dockerfile: samples/PriorAuth/Services/Provider/Dockerfile
     depends_on:
       eventcollector:
         condition: service_healthy
@@ -139,7 +139,7 @@ services:
   member:
     build:
       context: ../../..
-      dockerfile: samples/PriorAuth/Member/Dockerfile
+      dockerfile: samples/PriorAuth/Services/Member/Dockerfile
     depends_on:
       eventcollector:
         condition: service_healthy
@@ -165,7 +165,7 @@ services:
   history:
     build:
       context: ../../..
-      dockerfile: samples/PriorAuth/History/Dockerfile
+      dockerfile: samples/PriorAuth/Services/History/Dockerfile
     depends_on:
       eventcollector:
         condition: service_healthy
@@ -220,7 +220,7 @@ services:
   intake:
     build:
       context: ../../..
-      dockerfile: samples/PriorAuth/Intake/Dockerfile
+      dockerfile: samples/PriorAuth/Services/Intake/Dockerfile
     depends_on:
       router:
         condition: service_healthy
@@ -250,7 +250,7 @@ services:
   radiology:
     build:
       context: ../../..
-      dockerfile: samples/PriorAuth/Radiology/Dockerfile
+      dockerfile: samples/PriorAuth/Services/Radiology/Dockerfile
     depends_on:
       router:
         condition: service_healthy

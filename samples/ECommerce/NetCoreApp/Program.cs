@@ -1,9 +1,9 @@
 using Kaleido;
-using Kaleido.Process;
-using Kaleido.Process.AspNetCore;
-using Kaleido.Process.Providers.SQLite;
-using Kaleido.Queryable;
-using Kaleido.Queryable.AspNetCore;
+using Kaleido.Http;
+using Kaleido.Http.Process;
+using Kaleido.Http.Queryable;
+using Kaleido.Observability.OpenTelemetry;
+using Kaleido.Provider.SQLite;
 using Kaleido.Samples.ECommerce.Data;
 using Kaleido.Samples.ECommerce.Data.QueryContexts;
 using Kaleido.Samples.ECommerce.Process.Steps;
@@ -27,15 +27,11 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.ServiceName = "ecommerce";
         o.DisplayName = "ECommerce";
         o.Description = "ECommerce processor workflow.";
+        o.Assemblies = new[] { typeof(Program).Assembly, typeof(AddItemToCartStep).Assembly, typeof(ProductCatalogQueryContext).Assembly };
     })
-    .AddAssembly(typeof(Program).Assembly)
-    .AddAssembly(typeof(AddItemToCartStep).Assembly)
-    .AddAssembly(typeof(ProductCatalogQueryContext).Assembly)
-    .AddProcessor()
-        .AddProcessorAspNetCore()
-        .UseSqliteProcessContextStore("Data Source=kaleido-sample-process.sqlite")
-    .AddQueryable()
-        .AddQueryableAspNetCore();
+    .AddHttp()
+    .UseSqliteContextStore("Data Source=kaleido-sample-process.sqlite")
+    .AddOpenTelemetry();
 
 builder.Services.AddDbContext<ECommerceDbContext>(options =>
 {
@@ -71,8 +67,8 @@ app.UseCors("AllowAll");
 //    .InitializeAsync(
 //        app.Services);
 
-app.MapQueryable();
 app.MapProcessor();
+app.MapQueryable();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

@@ -11,73 +11,32 @@
   </Folder>
   <Folder Name="/samples/PriorAuth/">
     <File Path="samples/PriorAuth/AGENTS.md" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/CodeSet/">
-    <Project Path="samples/PriorAuth/CodeSet.Artifacts/Kaleido.Samples.PriorAuth.CodeSet.Artifacts.csproj" />
-    <Project Path="samples/PriorAuth/CodeSet/Kaleido.Samples.PriorAuth.CodeSet.csproj" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/Common/">
     <Project Path="samples/PriorAuth/Common/Kaleido.Samples.PriorAuth.Common.csproj" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/Compose/">
     <Project Path="samples/PriorAuth/Compose/Kaleido.Samples.PriorAuth.Compose.dcproj" Id="dfa3ef7b-d8d9-8b28-30b1-e97146d284f8">
       <Build />
     </Project>
-  </Folder>
-  <Folder Name="/samples/PriorAuth/Configuration/">
-    <Project Path="samples/PriorAuth/Configuration.Artifacts/Kaleido.Samples.PriorAuth.Configuration.Artifacts.csproj" />
-    <Project Path="samples/PriorAuth/Configuration/Kaleido.Samples.PriorAuth.Configuration.csproj" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/EventCollector/">
     <Project Path="samples/PriorAuth/EventCollector/Kaleido.Samples.PriorAuth.EventCollector.csproj" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/History/">
-    <Project Path="samples/PriorAuth/History.Artifacts/Kaleido.Samples.PriorAuth.History.Artifacts.csproj" />
-    <Project Path="samples/PriorAuth/History/Kaleido.Samples.PriorAuth.History.csproj" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/Intake/">
-    <Project Path="samples/PriorAuth/Intake.Artifacts/Kaleido.Samples.PriorAuth.Intake.Artifacts.csproj" />
-    <Project Path="samples/PriorAuth/Intake/Kaleido.Samples.PriorAuth.Intake.csproj" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/Member/">
-    <Project Path="samples/PriorAuth/Member.Artifacts/Kaleido.Samples.PriorAuth.Member.Artifacts.csproj" />
-    <Project Path="samples/PriorAuth/Member/Kaleido.Samples.PriorAuth.Member.csproj" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/Provider/">
-    <Project Path="samples/PriorAuth/Provider.Artifacts/Kaleido.Samples.PriorAuth.Provider.Artifacts.csproj" />
-    <Project Path="samples/PriorAuth/Provider/Kaleido.Samples.PriorAuth.Provider.csproj" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/Radiology/">
-    <Project Path="samples/PriorAuth/Radiology.Artifacts/Kaleido.Samples.PriorAuth.Radiology.Artifacts.csproj" />
-    <Project Path="samples/PriorAuth/Radiology/Kaleido.Samples.PriorAuth.Radiology.csproj" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/Router/">
     <Project Path="samples/PriorAuth/Router/Kaleido.Samples.PriorAuth.Router.csproj" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/ReferenceData/">
-    <Project Path="samples/PriorAuth/ReferenceData.Artifacts/Kaleido.Samples.PriorAuth.ReferenceData.Artifacts.csproj" />
-    <Project Path="samples/PriorAuth/ReferenceData/Kaleido.Samples.PriorAuth.ReferenceData.csproj" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/Seeder/">
     <Project Path="samples/PriorAuth/Seeder/Kaleido.Samples.PriorAuth.Seeder.csproj" />
+  </Folder>
+  <Folder Name="/samples/PriorAuth/Services/">
+    <Project Path="samples/PriorAuth/Services/CodeSet/Kaleido.Samples.PriorAuth.CodeSet.csproj" />
+    <Project Path="samples/PriorAuth/Services/Configuration/Kaleido.Samples.PriorAuth.Configuration.csproj" />
+    <Project Path="samples/PriorAuth/Services/History/Kaleido.Samples.PriorAuth.History.csproj" />
+    <Project Path="samples/PriorAuth/Services/Intake/Kaleido.Samples.PriorAuth.Intake.csproj" />
+    <Project Path="samples/PriorAuth/Services/Member/Kaleido.Samples.PriorAuth.Member.csproj" />
+    <Project Path="samples/PriorAuth/Services/Provider/Kaleido.Samples.PriorAuth.Provider.csproj" />
+    <Project Path="samples/PriorAuth/Services/Radiology/Kaleido.Samples.PriorAuth.Radiology.csproj" />
+    <Project Path="samples/PriorAuth/Services/ReferenceData/Kaleido.Samples.PriorAuth.ReferenceData.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".dockerignore" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
     <File Path="AGENTS.md" />
-    <File Path="architecture.md" />
-    <File Path="build/common.props" />
-    <File Path="build/packages.props" />
-    <File Path="build/samples.props" />
-    <File Path="build/tests.props" />
+    <File Path="ARCHITECTURE.md" />
     <File Path="global.json" />
     <File Path="README.md" />
-  </Folder>
-  <Folder Name="/Solution Items/PriorAuth Compose/">
-    <File Path="samples/PriorAuth/.env" />
-    <File Path="samples/PriorAuth/docker-compose.override.yml" />
-    <File Path="samples/PriorAuth/docker-compose.yml" />
   </Folder>
   <Folder Name="/Solution Items/Build/">
     <File Path="build/common.props" />
@@ -85,62 +44,32 @@
     <File Path="build/samples.props" />
     <File Path="build/tests.props" />
   </Folder>
-  <Folder Name="/src/" />
-  <Folder Name="/src/Core/">
-    <File Path="src/Core/AGENTS.md" />
-    <File Path="src/Core/ARCHITECTURE.md" />
-    <File Path="src/Core/README.md" />
-    <Project Path="src/Core/Abstractions/Kaleido.Abstractions.csproj" />
-    <Project Path="src/Core/AspNetCore/Kaleido.AspNetCore.csproj" Id="3fc482b8-a2d3-4697-b628-4ec0d3cf0e8b" />
-    <Project Path="src/Core/Kaleido/Kaleido.csproj" />
+  <Folder Name="/Solution Items/PriorAuth Compose/">
+    <File Path="samples/PriorAuth/.env" />
+    <File Path="samples/PriorAuth/docker-compose.override.yml" />
+    <File Path="samples/PriorAuth/docker-compose.yml" />
   </Folder>
-  <Folder Name="/src/Process/">
-    <File Path="src/Process/AGENTS.md" />
-    <File Path="src/Process/ARCHITECTURE.md" />
-    <File Path="src/Process/README.md" />
-    <Project Path="src/Process/Abstractions/Kaleido.Process.Abstractions.csproj" />
-    <Project Path="src/Process/AspNetCore.Abstractions/Kaleido.Process.AspNetCore.Abstractions.csproj" />
-    <Project Path="src/Process/Http.Client/Kaleido.Process.Http.Client.csproj" />
-    <Project Path="src/Process/AspNetCore/Kaleido.Process.AspNetCore.csproj" />
-    <Project Path="src/Process/Process/Kaleido.Process.csproj" />
-  </Folder>
-  <Folder Name="/src/Process/Providers/">
-    <Project Path="src/Process/Providers/SQLite/Kaleido.Process.Providers.SQLite.csproj" Id="59eee9c5-f48c-4b8d-8086-a29f7ea7c195" />
-  </Folder>
-  <Folder Name="/src/Queryable/">
-    <File Path="src/Queryable/AGENTS.md" />
-    <File Path="src/Queryable/ARCHITECTURE.md" />
-    <File Path="src/Queryable/README.md" />
-    <Project Path="src/Queryable/Abstractions/Kaleido.Queryable.Abstractions.csproj" />
-    <Project Path="src/Queryable/AspNetCore.Abstractions/Kaleido.Queryable.AspNetCore.Abstractions.csproj" />
-    <Project Path="src/Queryable/Http.Client/Kaleido.Queryable.Http.Client.csproj" />
-    <Project Path="src/Queryable/AspNetCore/Kaleido.Queryable.AspNetCore.csproj" />
-    <Project Path="src/Queryable/Queryable/Kaleido.Queryable.csproj" />
+  <Folder Name="/src/">
+    <File Path="src/AGENTS.md" />
+    <File Path="src/ARCHITECTURE.md" />
+    <Project Path="src/Kaleido/Kaleido.csproj" />
+    <Project Path="src/Kaleido.AspNetCore/Kaleido.AspNetCore.csproj" />
+    <Project Path="src/Kaleido.Http/Kaleido.Http.csproj" />
+    <Project Path="src/Kaleido.Http.Abstractions/Kaleido.Http.Abstractions.csproj" />
+    <Project Path="src/Kaleido.Http.Client/Kaleido.Http.Client.csproj" />
+    <Project Path="src/Kaleido.Observability.OpenTelemetry/Kaleido.Observability.OpenTelemetry.csproj" />
+    <Project Path="src/Kaleido.Provider.SQLite/Kaleido.Provider.SQLite.csproj" />
   </Folder>
 
-  <Folder Name="/src/Registry/">
-    <Project Path="src/Registry/Kaleido.Registry.csproj" />
-  </Folder>
   <Folder Name="/test/">
     <File Path="tests/AGENTS.md" />
+    <Project Path="tests/Kaleido.UnitTests/Kaleido.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.AspNetCore.UnitTests/Kaleido.AspNetCore.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.Http.UnitTests/Kaleido.Http.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.Http.FunctionalTests/Kaleido.Http.FunctionalTests.csproj" />
+    <Project Path="tests/Kaleido.Http.Abstractions.UnitTests/Kaleido.Http.Abstractions.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.Http.Client.UnitTests/Kaleido.Http.Client.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.Provider.SQLite.UnitTests/Kaleido.Provider.SQLite.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.IntegrationTests/Kaleido.IntegrationTests.csproj" />
   </Folder>
-  <Folder Name="/test/Core/">
-    <Project Path="tests/Core/Abstractions.UnitTests/Kaleido.Abstractions.UnitTests.csproj" />
-    <Project Path="tests/Core/AspNetCore.UnitTests/Kaleido.AspNetCore.UnitTests.csproj" />
-    <Project Path="tests/Core/UnitTests/Kaleido.UnitTests.csproj" Id="d3158058-b54e-4a54-8bb0-5f324d367958" />
-  </Folder>
-  <Folder Name="/test/Process/">
-    <Project Path="tests/Process/Http.Client.UnitTests/Kaleido.Process.Http.Client.UnitTests.csproj" />
-    <Project Path="tests/Process/AspNetCore.FunctionalTests/Kaleido.Process.AspNetCore.FunctionalTests.csproj" />
-    <Project Path="tests/Process/AspNetCore.UnitTests/Kaleido.Process.AspNetCore.UnitTests.csproj" />
-    <Project Path="tests/Process/UnitTests/Kaleido.Process.UnitTests.csproj" />
-  </Folder>
-  <Folder Name="/test/Queryable/">
-    <Project Path="tests/Queryable/Abstractions.UnitTests/Kaleido.Queryable.Abstractions.UnitTests.csproj" />
-    <Project Path="tests/Queryable/Http.Client.UnitTests/Kaleido.Queryable.Http.Client.UnitTests.csproj" />
-    <Project Path="tests/Queryable/AspNetCore.FunctionalTests/Kaleido.Queryable.AspNetCore.FunctionalTests.csproj" />
-    <Project Path="tests/Queryable/AspNetCore.UnitTests/Kaleido.Queryable.AspNetCore.UnitTests.csproj" />
-    <Project Path="tests/Queryable/UnitTests/Kaleido.Queryable.UnitTests.csproj" />
-  </Folder>
-  <Folder Name="/test/Registry/" />
 </Solution>
