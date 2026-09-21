@@ -577,8 +577,11 @@ public static class DataTypeMapper
                     .Cast<Enum>()
                     .Select(x =>
                     {
-                        var member =
-                            type.GetMember(x.ToString())[0];
+                        var members = type.GetMember(x.ToString());
+                        var member = members.Length > 0
+                            ? members[0]
+                            : throw new KaleidoFrameworkException(
+                                $"Enum member '{x}' not found in type '{type.FullName}'.");
 
                         var description =
                             member
@@ -600,9 +603,13 @@ public static class DataTypeMapper
 
         if (type.IsArray)
         {
+            var elementType = type.GetElementType()
+                ?? throw new KaleidoFrameworkException(
+                    $"Array type '{type.FullName}' has null element type.");
+
             return new DataTypeDescriptor(
                 "array",
-                ItemType: GetDescriptor(type.GetElementType()!));
+                ItemType: GetDescriptor(elementType));
         }
 
         if (typeof(System.Collections.IEnumerable)
@@ -611,7 +618,10 @@ public static class DataTypeMapper
         {
             var elementType =
                 type.IsGenericType
-                    ? type.GetGenericArguments()[0]
+                    ? type.GetGenericArguments().Length > 0
+                        ? type.GetGenericArguments()[0]
+                        : throw new KaleidoFrameworkException(
+                            $"Generic type '{type.FullName}' has no generic arguments.")
                     : typeof(object);
 
             return new DataTypeDescriptor(

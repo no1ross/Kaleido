@@ -102,7 +102,8 @@ public static class ProcessServiceCollectionExtensions
         catch (Exception exception)
         {
             throw new KaleidoConfigurationException(
-                $"The configured TypeFilter failed while evaluating process step '{stepType.FullName ?? stepType.Name}'.",
+                $"The configured TypeFilter failed while evaluating process step '{stepType.FullName ?? stepType.Name}'. " +
+                $"Error code: {ProcessErrorCodes.TypeFilterFailed}.",
                 exception);
         }
     }
@@ -124,13 +125,15 @@ public static class ProcessServiceCollectionExtensions
             if (string.IsNullOrWhiteSpace(metadata.Name))
             {
                 throw new KaleidoConfigurationException(
-                    $"Process step '{stepType.FullName}' must specify a non-empty name.");
+                    $"Process step '{stepType.FullName}' must specify a non-empty name. " +
+                    $"Error code: {ProcessErrorCodes.InvalidStepName}.");
             }
 
             if (string.IsNullOrWhiteSpace(metadata.Version))
             {
                 throw new KaleidoConfigurationException(
-                    $"Process step '{stepType.FullName}' must specify a non-empty version.");
+                    $"Process step '{stepType.FullName}' must specify a non-empty version. " +
+                    $"Error code: {ProcessErrorCodes.InvalidStepVersion}.");
             }
         }
 
@@ -166,7 +169,8 @@ public static class ProcessServiceCollectionExtensions
                 }));
 
         throw new KaleidoConfigurationException(
-            $"Duplicate process step names were found.{Environment.NewLine}{duplicateDetails}");
+            $"Duplicate process step names were found.{Environment.NewLine}{duplicateDetails} " +
+            $"Error code: {ProcessErrorCodes.DuplicateStepName}.");
     }
 
     private static ProcessStepAttribute GetProcessStepMetadata(
@@ -178,7 +182,8 @@ public static class ProcessServiceCollectionExtensions
         if (metadata is null)
         {
             throw new KaleidoConfigurationException(
-                $"Type '{stepType.FullName}' is not decorated with ProcessStepAttribute.");
+                $"Type '{stepType.FullName}' is not decorated with ProcessStepAttribute. " +
+                $"Error code: {ProcessErrorCodes.MissingStepAttribute}.");
         }
 
         return metadata;
@@ -235,7 +240,8 @@ public static class ProcessServiceCollectionExtensions
         if (handlerTypes.Length == 0)
         {
             throw new KaleidoConfigurationException(
-                $"Process step '{metadata.Name}' ({stepType.FullName}) does not have a registered handler.");
+                $"Process step '{metadata.Name}' ({stepType.FullName}) does not have a registered handler. " +
+                $"Error code: {ProcessErrorCodes.MissingStepHandler}.");
         }
 
         if (handlerTypes.Length > 1)
@@ -246,7 +252,8 @@ public static class ProcessServiceCollectionExtensions
                     handlerTypes.Select(x => x.FullName));
 
             throw new KaleidoConfigurationException(
-                $"Process step '{metadata.Name}' ({stepType.FullName}) has multiple handlers: {handlers}.");
+                $"Process step '{metadata.Name}' ({stepType.FullName}) has multiple handlers: {handlers}. " +
+                $"Error code: {ProcessErrorCodes.MultipleStepHandlers}.");
         }
 
         var handlerType = handlerTypes[0];
@@ -266,10 +273,14 @@ public static class ProcessServiceCollectionExtensions
         var definition =
             interfaceType.GetGenericTypeDefinition();
 
+        var genericArguments = interfaceType.GetGenericArguments();
+
         return
             (definition == typeof(IProcessStepHandler<>) ||
              definition == typeof(IProcessStepHandler<,>))
             &&
-            interfaceType.GetGenericArguments()[0] == stepType;
+            genericArguments.Length > 0
+            &&
+            genericArguments[0] == stepType;
     }
 }

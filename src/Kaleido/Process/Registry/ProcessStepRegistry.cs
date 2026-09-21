@@ -361,11 +361,15 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
         var definition =
             interfaceType.GetGenericTypeDefinition();
 
+        var genericArguments = interfaceType.GetGenericArguments();
+
         return
             (definition == typeof(IProcessStepHandler<>) ||
              definition == typeof(IProcessStepHandler<,>))
             &&
-            interfaceType.GetGenericArguments()[0] == stepType;
+            genericArguments.Length > 0
+            &&
+            genericArguments[0] == stepType;
     }
 
     private static ProcessStepMetadata BuildStepMetadata(
