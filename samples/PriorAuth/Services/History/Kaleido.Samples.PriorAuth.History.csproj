@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+	<Import Project="../../../../build/samples.props" />
+  <PropertyGroup>
+	<UserSecretsId>881f97fb-ace0-4c81-b246-4d08cd688c0f</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerfileContext>..\..\..</DockerfileContext>
+  </PropertyGroup>
+
+  <ItemGroup>
+	  <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.*" />
+	  <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.*" />
+	  <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="8.0.*" />
+	  <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Common\Kaleido.Samples.PriorAuth.Common.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Kaleido.Http\Kaleido.Http.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Kaleido.Observability.OpenTelemetry\Kaleido.Observability.OpenTelemetry.csproj" />
+  </ItemGroup>
+
+</Project>

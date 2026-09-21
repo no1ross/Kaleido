@@ -1,1 +1,0 @@
-﻿namespace Kaleido.AspNetCore.UnitTests;

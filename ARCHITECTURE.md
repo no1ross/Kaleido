@@ -1,15 +1,17 @@
 # Kaleido Architecture
 
-This document describes the current top-level architecture of the Kaleido repository. It is the entry point for understanding how the major framework areas fit together and where responsibility boundaries live.
+This document describes the current top-level architecture of the Kaleido repository. It is the entry point for understanding how the major framework projects fit together and where responsibility boundaries live.
 
 Kaleido is a metadata-driven framework for exposing business capabilities through consistent, discoverable contracts.
 
-At the highest level, the repository is organized around four framework areas:
+At the highest level, the repository is organized around six source projects:
 
-- [`Core`](./src/Core/README.md) — foundational bootstrap, shared abstractions, metadata primitives, eventing, correlation context, and thin ASP.NET Core support
-- [`Queryable`](./src/Queryable/README.md) — discoverable information retrieval, query metadata, and query execution
-- [`Process`](./src/Process/README.md) — discoverable business actions, durable state, step orchestration, and execution guidance
-- [`Registry`](./src/Registry/README.md) — aggregated discovery surface combining process and queryable registrations from a host and all its downstream clients into a single endpoint
+- [`Kaleido`](./src/Kaleido/README.md) — foundational bootstrap, shared abstractions, metadata primitives, eventing, correlation context, and the core runtimes for both Process and Queryable
+- [`Kaleido.AspNetCore`](./src/Kaleido.AspNetCore/README.md) — shared and capability-specific ASP.NET Core DI registration, middleware, and transport services
+- [`Kaleido.Http`](./src/Kaleido.Http/README.md) — HTTP endpoint publication and route mapping for Process, Queryable, and the aggregated Registry
+- [`Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP request/response contract types used across server-side and client-side projects
+- [`Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) — typed HTTP clients for consuming remote Process and Queryable endpoints
+- [`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) — SQLite-backed durable process state store
 
 See also:
 - [`README.md`](./README.md)
@@ -19,84 +21,87 @@ See also:
 
 ## 1. Architectural overview
 
-Kaleido separates foundational infrastructure from business-capability frameworks.
+Kaleido separates foundational runtime concerns from transport and persistence concerns.
 
-### Core
-Core provides the common substrate that other framework layers build on:
-- bootstrap and builder state
-- shared metadata/type mapping
-- validation metadata mapping
-- eventing abstractions
-- correlation context
-- thin ASP.NET Core infrastructure
+### Kaleido (core)
+The core project provides everything needed to bootstrap the framework and run Process and Queryable at the application layer:
+- bootstrap and builder state (`AddKaleido()`, `IKaleidoBuilder`, `KaleidoServiceOptions`)
+- shared metadata/type mapping (`DataTypeMapper`, `ConstraintMapper`)
+- validation metadata
+- eventing abstractions and correlation context
+- Queryable runtime: context/view registration, validation, dispatch (direct, local-view, delegated-view), execution, observability
+- Process runtime: step registration, planning, candidate building/validation, execution, state mutation, persistence integration, observability
+- Default in-memory `IProcessContextStore`
 
-Core does not define business-capability runtimes on its own.
+The core project does not define transport endpoints or ASP.NET Core services.
 
-See:
-- [`src/Core/README.md`](./src/Core/README.md)
-- [`src/Core/ARCHITECTURE.md`](./src/Core/ARCHITECTURE.md)
+See: [`src/Kaleido/README.md`](./src/Kaleido/README.md)
 
-### Queryable
-Queryable exposes business information through metadata-driven query contracts.
+### Kaleido.AspNetCore
+The ASP.NET Core project provides DI registration and transport services:
+- shared exception middleware (`UseKaleidoExceptionHandling()`) and correlation-header parsing
+- `AddAspNetCore()` — consolidated ASP.NET Core DI registration for both Process and Queryable
+- `AddQueryableAspNetCore(...)` — Queryable route options and value normalization (internal)
+- `AddProcessorAspNetCore(...)` — Process route options, execution service, and state service (internal)
 
-It is responsible for:
-- query context and view discovery
-- validation, compilation, and execution of queries
-- registry metadata for discoverable information surfaces
-- transport adapters for HTTP querying and metadata publication
+It depends on `Kaleido` (core) only. It does not reference `Kaleido.Http.Abstractions`.
+It does not define HTTP routes.
 
-See:
-- [`src/Queryable/README.md`](./src/Queryable/README.md)
-- [`src/Queryable/ARCHITECTURE.md`](./src/Queryable/ARCHITECTURE.md)
+See: [`src/Kaleido.AspNetCore/README.md`](./src/Kaleido.AspNetCore/README.md)
 
-### Process
-Process exposes business actions through metadata-driven steps and durable execution state.
+### Kaleido.Http
+The HTTP project publishes all Kaleido endpoint sets:
+- `MapQueryable()` — catalog, registry, per-context metadata, direct query, and view query endpoints
+- `MapProcessor()` — catalog, registry, per-step metadata, execute, step execute, and process state endpoints
+- `MapRegistry()` — aggregated discovery combining the local processor and all downstream clients
 
-It is responsible for:
-- process-step discovery
-- planning and execution
-- durable process state
-- registry metadata for discoverable action surfaces
-- transport adapters for HTTP execution and state endpoints
-- cross-processor handoff signalling via `TargetProcessorName`
+It depends on `Kaleido.AspNetCore` and `Kaleido.Http.Abstractions`.
 
-See:
-- [`src/Process/README.md`](./src/Process/README.md)
-- [`src/Process/ARCHITECTURE.md`](./src/Process/ARCHITECTURE.md)
+See: [`src/Kaleido.Http/README.md`](./src/Kaleido.Http/README.md)
 
-### Registry
-Registry provides a single aggregated discovery endpoint for hosts that delegate to downstream processors and queryable services.
+### Kaleido.Http.Abstractions
+Shared HTTP contract types used by both the server-side projects and the client project:
+- Process contracts: `ExecuteProcessRequest`, `ProcessExecutionResponse`, `ProcessExecutionStepResponse`, `ProcessStepInfo`, `ProcessStateResponse`, `ProcessStepSummary`, `ProcessorRegistryResponse`, etc.
+- Queryable contracts: `QueryApiRequest`, `QueryableRecordResponse`, `QueryableRecordSummary`, `QueryErrorResponse`, etc.
 
-It is responsible for:
-- aggregating process registrations from the local processor and all `AddProcessClient()` registrations
-- aggregating queryable registrations from all `AddQueryableClient()` registrations
-- exposing the result at a single configurable `GET /{prefix}/registry` endpoint
+Changes here ripple into server-side endpoints (`Kaleido.Http`) and client-side consumers (`Kaleido.Http.Client`).
 
-Registry does not own execution, routing, or state. It is a pure aggregation concern.
+See: [`src/Kaleido.Http.Abstractions/README.md`](./src/Kaleido.Http.Abstractions/README.md)
 
-See:
-- [`src/Registry/README.md`](./src/Registry/README.md)
+### Kaleido.Http.Client
+Typed HTTP clients for downstream service consumption:
+- `IKaleidoProcessClientFactory` / `KaleidoProcessClient` — registry, step metadata, process state, and step execution
+- `IKaleidoQueryableClientFactory` / `KaleidoQueryableClient` — registry, context metadata, view queries, direct context queries
+- `AddHttpClients()` — registers both Process and Queryable clients from configuration
+- `AddProcessClient(...)`, `AddQueryableClient(...)` — individual client registration (internal)
+
+See: [`src/Kaleido.Http.Client/README.md`](./src/Kaleido.Http.Client/README.md)
+
+### Kaleido.Provider.SQLite
+SQLite-backed durable process state:
+- Replaces the default in-memory `IProcessContextStore` with a SQLite-backed implementation
+- Registered via `UseSqliteProcessContextStore(connectionString)`
+
+See: [`src/Kaleido.Provider.SQLite/README.md`](./src/Kaleido.Provider.SQLite/README.md)
 
 ---
 
 ## 2. Top-level design principles
 
-The current repository architecture follows these principles:
-
 ### Metadata first
-Capabilities should be described through metadata and registrations rather than ad hoc, hardcoded integration knowledge.
+Capabilities are described through metadata and registrations rather than ad hoc, hardcoded integration knowledge.
 
 ### Explicit registration
-Assemblies and framework components are registered intentionally. Discovery should happen from known registration input rather than hidden global scanning.
+Assemblies and framework components are registered intentionally. Discovery happens from known registration input rather than hidden global scanning.
 
 ### Strongly typed internals
-Runtime components should operate on CLR types and internal contracts rather than transport-specific types.
+Runtime components operate on CLR types and internal contracts rather than transport-specific types.
 
 ### Thin transport layers
-HTTP layers should adapt requests and responses to runtime contracts, not reimplement business semantics.
+`Kaleido.Http` adapts requests and responses to runtime contracts; it does not reimplement business semantics.
 
-### Clear subsystem boundaries
-Core, Queryable, and Process should each own their respective responsibilities without leaking capability-specific concerns into the wrong layer.
+### Clear project boundaries
+Core runtime concerns live in `Kaleido`. Transport services live in `Kaleido.AspNetCore`. HTTP routes live in `Kaleido.Http`. Shared contracts live in `Kaleido.Http.Abstractions`. Remote consumption lives in `Kaleido.Http.Client`. Persistence lives in `Kaleido.Provider.SQLite`.
 
 ---
 
@@ -107,15 +112,23 @@ Core, Queryable, and Process should each own their respective responsibilities w
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — this document
 - [`AGENTS.md`](./AGENTS.md) — repo-level contributor guide
 
-### Source areas
-- [`src/Core`](./src/Core/README.md)
-- [`src/Queryable`](./src/Queryable/README.md)
-- [`src/Process`](./src/Process/README.md)
-- [`src/Registry`](./src/Registry/README.md)
+### Source projects
+- [`src/Kaleido`](./src/Kaleido/README.md) — core runtime
+- [`src/Kaleido.AspNetCore`](./src/Kaleido.AspNetCore/README.md) — ASP.NET Core DI and transport services
+- [`src/Kaleido.Http`](./src/Kaleido.Http/README.md) — HTTP endpoint publication
+- [`src/Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP contracts
+- [`src/Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) — typed HTTP clients
+- [`src/Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) — SQLite process state provider
 
 ### Tests
-- [`tests`](./tests)
 - [`tests/AGENTS.md`](./tests/AGENTS.md)
+- `tests/Kaleido.UnitTests` — core runtime unit tests
+- `tests/Kaleido.AspNetCore.UnitTests` — ASP.NET Core services unit tests
+- `tests/Kaleido.Http.UnitTests` — endpoint route builder unit tests
+- `tests/Kaleido.Http.FunctionalTests` — Process and Queryable HTTP functional tests
+- `tests/Kaleido.Http.Client.UnitTests` — HTTP client unit tests
+- `tests/Kaleido.Http.Abstractions.UnitTests` — placeholder
+- `tests/Kaleido.Provider.SQLite.UnitTests` — placeholder
 
 ### Samples
 - [`samples/PriorAuth`](./samples/PriorAuth)
@@ -128,18 +141,29 @@ Core, Queryable, and Process should each own their respective responsibilities w
 The repository follows a layered registration model.
 
 ### Step 1: Core bootstrap
-Applications start with the Core bootstrap path and root builder.
+Applications start with `AddKaleido(IConfiguration, Action<KaleidoServiceOptions>)`, which:
+- establishes shared DI baseline services
+- validates service identity and options
+- returns an `IKaleidoBuilder` with assemblies configured via `KaleidoServiceOptions.Assemblies`
+- automatically calls `AddProcessor()` and `AddQueryable()` to register runtimes
 
-### Step 2: Shared assembly registration
-Assemblies are recorded on the builder and become shared registration input for higher-level frameworks.
+### Step 2: Assembly registration
+Assemblies are passed via `KaleidoServiceOptions.Assemblies` in the `AddKaleido()` configure callback. Those assemblies become shared registration input for the Queryable and Process runtimes.
 
 ### Step 3: Capability registration
-Queryable and Process consume the shared builder state to scan, validate, construct registries, and register their own runtime services.
+- `AddProcessor()` (internal, called automatically) scans registered assemblies for `[ProcessStep]` types and handlers. It builds the step registry and registers runtime services.
+- `AddQueryable()` (internal, called automatically) scans registered assemblies for `[QueryContext]` types, view sources, and context sources. It builds the query registry and registers runtime services.
+
+### Step 4: Transport registration (optional)
+- `AddAspNetCore()` adds the HTTP transport layer services for both Process and Queryable.
+- `AddHttpClients()` registers typed HTTP clients for downstream services from configuration.
+- `MapProcessor()`, `MapQueryable()`, and `MapRegistry()` publish the HTTP endpoints (call only the ones you need).
 
 This keeps:
-- bootstrap concerns in Core
-- query concerns in Queryable
-- action/orchestration concerns in Process
+- bootstrap concerns in `Kaleido`
+- query concerns in `Kaleido`
+- action/orchestration concerns in `Kaleido`
+- transport concerns in `Kaleido.AspNetCore` and `Kaleido.Http`
 
 ---
 
@@ -148,52 +172,49 @@ This keeps:
 A central repository-level goal is runtime discoverability.
 
 The framework exposes metadata so consumers can understand:
-- what information exists
-- what actions exist
+- what information exists (Queryable contexts, views, fields, constraints)
+- what actions exist (Process steps, input fields, constraints, dependency relationships)
 - what contracts and validation rules apply
 - how to navigate the available capability surface
 
-That metadata is layered:
-- Core supplies shared metadata primitives and correlation/eventing foundations
-- Queryable supplies information-discovery metadata
-- Process supplies action/execution metadata
+Metadata is derived from CLR types using `DataTypeMapper` and `ConstraintMapper` in the core project.
 
 ---
 
 ## 6. Transport model
 
-Transport concerns are layered under the capability frameworks rather than owned centrally by the root architecture.
+Transport concerns are layered separately from the core runtime.
 
-- Core contains shared ASP.NET Core infrastructure and conventions
-- Queryable.AspNetCore adapts query metadata and query execution to HTTP
-- Process.AspNetCore adapts process metadata, execution, and state access to HTTP
+- `Kaleido.AspNetCore` adds DI registrations and transport services (value normalization, execution service, state service)
+- `Kaleido.Http` adds HTTP route publication
+- `Kaleido.Http.Client` allows calling remote Kaleido services over HTTP
+- `Kaleido.Http.Abstractions` defines the shared contract types used at both ends of each HTTP call
 
-This keeps transport-specific code thin and capability-specific while preserving consistent shared conventions.
+This keeps transport-specific code thin and separate from the runtime.
 
 ---
 
 ## 7. Contributor guidance
 
 When working in this repository:
-- start with the parent subsystem docs before changing internals
-- keep Core free of capability-specific behavior unless the concern is truly cross-cutting
-- keep Queryable focused on discoverable information retrieval
-- keep Process focused on discoverable business actions and execution state
-- keep Registry focused on aggregating discovery data — not execution or routing
+- start with the relevant project README before changing internals
+- keep core runtime concerns in `Kaleido`, not in transport projects
+- keep `Kaleido.Http` focused on routing and endpoint adaptation, not business logic
+- keep `Kaleido.Http.Abstractions` stable — changes here ripple to both server and client
 - verify that documentation matches the code, not the other way around
 
 For contributor-oriented guidance, see:
 - [`AGENTS.md`](./AGENTS.md)
-- [`src/Core/AGENTS.md`](./src/Core/AGENTS.md)
-- [`src/Queryable/AGENTS.md`](./src/Queryable/AGENTS.md)
-- [`src/Process/AGENTS.md`](./src/Process/AGENTS.md)
+- [`src/AGENTS.md`](./src/AGENTS.md)
 
 ---
 
 ## 8. Where to look next
 
-- Start with [`src/Core/README.md`](./src/Core/README.md) to understand bootstrap and shared primitives
-- Read [`src/Queryable/README.md`](./src/Queryable/README.md) for discoverable information surfaces
-- Read [`src/Process/README.md`](./src/Process/README.md) for discoverable action surfaces
-- Read [`src/Registry/README.md`](./src/Registry/README.md) for aggregated discovery across downstream clients
-- Use the subsystem `ARCHITECTURE.md` files for implementation-level architecture details
+- Start with [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md) for the source-level architecture details
+- Read [`src/Kaleido/README.md`](./src/Kaleido/README.md) to understand bootstrap, the Process runtime, and the Queryable runtime
+- Read [`src/Kaleido.AspNetCore/README.md`](./src/Kaleido.AspNetCore/README.md) for ASP.NET Core DI and transport services
+- Read [`src/Kaleido.Http/README.md`](./src/Kaleido.Http/README.md) for HTTP endpoint publication
+- Read [`src/Kaleido.Http.Abstractions/README.md`](./src/Kaleido.Http.Abstractions/README.md) for shared HTTP contracts
+- Read [`src/Kaleido.Http.Client/README.md`](./src/Kaleido.Http.Client/README.md) for remote service consumption
+- Read [`src/Kaleido.Provider.SQLite/README.md`](./src/Kaleido.Provider.SQLite/README.md) for durable process state

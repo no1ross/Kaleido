@@ -170,18 +170,55 @@ Metadata is intended to guide consumers rather than generate application behavio
 
 Register Kaleido capabilities during application startup.
 
+### ASP.NET Core Application
+
 ```csharp
 builder.Services
-    .AddKaleido()
-        .AddAssembly(typeof(Program).Assembly)
-        .AddAssembly(typeof(AddItemToCartStep).Assembly)
-        .AddAssembly(typeof(ProductCatalogQueryContext).Assembly)
-        .AddProcessor()
-            .AddProcessorAspNetCore()
-            .UseSqliteProcessContextStore(
-                "Data Source=kaleido-sample-process.sqlite")
-        .AddQueryable()
-            .AddQueryableAspNetCore();
+    .AddKaleido(builder.Configuration, o =>
+    {
+        o.ServiceName = "my-service";
+        o.Assemblies = new[]
+        {
+            typeof(Program).Assembly,
+            typeof(AddItemToCartStep).Assembly,
+            typeof(ProductCatalogQueryContext).Assembly
+        };
+    })
+    .AddEventPublisher<HttpEventPublisher>()
+    .AddAspNetCore()
+    .UseSqliteContextStore("Data Source=kaleido-sample-process.sqlite")
+    .AddHttpClients();
+
+app.MapProcessor();
+app.MapQueryable();
+```
+
+### Router Service (Registry Only)
+
+```csharp
+builder.Services
+    .AddKaleido(builder.Configuration)
+    .AddHttpClients();
+
+app.MapRegistry();
+```
+
+### Console Application
+
+```csharp
+builder.Services
+    .AddKaleido(builder.Configuration, o =>
+    {
+        o.ServiceName = "my-service";
+        o.Assemblies = new[]
+        {
+            typeof(Program).Assembly,
+            typeof(AddItemToCartStep).Assembly,
+            typeof(ProductCatalogQueryContext).Assembly
+        };
+    })
+    .AddEventPublisher<HttpEventPublisher>()
+    .UseSqliteContextStore("Data Source=kaleido-sample-process.sqlite");
 ```
 
 ---
@@ -294,36 +331,18 @@ This allows teams to focus on business functionality instead of repeatedly build
 
 ### Repository-level docs
 - [README.md](./README.md) — framework overview and entry point
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — overall architecture and subsystem boundaries
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — overall architecture and project boundaries
 - [AGENTS.md](./AGENTS.md) — repo-level contributor guidance
 
-### Core
-- [src/Core/README.md](./src/Core/README.md)
-- [src/Core/ARCHITECTURE.md](./src/Core/ARCHITECTURE.md)
-- [src/Core/AGENTS.md](./src/Core/AGENTS.md)
-- [src/Core/Abstractions/README.md](./src/Core/Abstractions/README.md)
-- [src/Core/Kaleido/README.md](./src/Core/Kaleido/README.md)
-- [src/Core/AspNetCore/README.md](./src/Core/AspNetCore/README.md)
-
-### Queryable
-- [src/Queryable/README.md](./src/Queryable/README.md)
-- [src/Queryable/ARCHITECTURE.md](./src/Queryable/ARCHITECTURE.md)
-- [src/Queryable/AGENTS.md](./src/Queryable/AGENTS.md)
-- [src/Queryable/Abstractions/README.md](./src/Queryable/Abstractions/README.md)
-- [src/Queryable/Queryable/README.md](./src/Queryable/Queryable/README.md)
-- [src/Queryable/AspNetCore/README.md](./src/Queryable/AspNetCore/README.md)
-- [src/Queryable/AspNetCore.Abstractions/README.md](./src/Queryable/AspNetCore.Abstractions/README.md)
-
-### Process
-- [src/Process/README.md](./src/Process/README.md)
-- [src/Process/ARCHITECTURE.md](./src/Process/ARCHITECTURE.md)
-- [src/Process/AGENTS.md](./src/Process/AGENTS.md)
-- [src/Process/Abstractions/README.md](./src/Process/Abstractions/README.md)
-- [src/Process/Process/README.md](./src/Process/Process/README.md)
-- [src/Process/AspNetCore/README.md](./src/Process/AspNetCore/README.md)
-
-### Registry
-- [src/Registry/README.md](./src/Registry/README.md)
+### Source projects
+- [src/ARCHITECTURE.md](./src/ARCHITECTURE.md) — source-level architecture details
+- [src/AGENTS.md](./src/AGENTS.md) — source-level contributor guide
+- [src/Kaleido/README.md](./src/Kaleido/README.md) — core runtime (bootstrap, Process, Queryable)
+- [src/Kaleido.AspNetCore/README.md](./src/Kaleido.AspNetCore/README.md) — ASP.NET Core DI and transport services
+- [src/Kaleido.Http/README.md](./src/Kaleido.Http/README.md) — HTTP endpoint publication
+- [src/Kaleido.Http.Abstractions/README.md](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP contracts
+- [src/Kaleido.Http.Client/README.md](./src/Kaleido.Http.Client/README.md) — typed HTTP clients
+- [src/Kaleido.Provider.SQLite/README.md](./src/Kaleido.Provider.SQLite/README.md) — SQLite process state provider
 
 ### Samples
 - [samples/PriorAuth/priorauth-ui/README.md](./samples/PriorAuth/priorauth-ui/README.md)

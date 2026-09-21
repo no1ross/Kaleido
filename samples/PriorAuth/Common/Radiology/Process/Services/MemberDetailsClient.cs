@@ -1,0 +1,33 @@
+using Kaleido.Http.Queryable.Contracts;
+using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Parameters;
+using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Views;
+using Kaleido.Http.Queryable;
+
+namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
+
+public sealed class MemberDetailsClient(
+    IKaleidoQueryableClientFactory queryableClientFactory)
+{
+    public async Task<MemberDetailsView?> GetMemberDetailsAsync(
+        Guid memberId,
+        Guid memberEnrollmentId,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await queryableClientFactory
+            .GetClient("Member")
+            .QueryViewAsync<MemberDetailsViewParameters, MemberDetailsView>(
+                "members",
+                "member-details",
+                new QueryApiRequest<MemberDetailsViewParameters>
+                {
+                    Parameters = new MemberDetailsViewParameters
+                    {
+                        MemberId = memberId,
+                        MemberEnrollmentId = memberEnrollmentId
+                    }
+                },
+                cancellationToken);
+
+        return result.Results.SingleOrDefault();
+    }
+}

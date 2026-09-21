@@ -1,7 +1,8 @@
 using Kaleido;
 using Kaleido.Observability;
-using Kaleido.Registry;
 using Yarp.ReverseProxy.Transforms;
+using Kaleido.Http.Registry;
+using Kaleido.Http.Client;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,7 +25,7 @@ builder.Services
     });
 
 builder.Services.AddKaleido(builder.Configuration)
-    .AddKaleidoRegistry();
+    .AddHttpClients();
 
 builder.Services.AddHealthChecks();
 

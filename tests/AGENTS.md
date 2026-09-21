@@ -1,3 +1,17 @@
+## Test project structure
+
+Tests follow a one-project-per-source-project convention:
+
+| Test project | Tests code in |
+|---|---|
+| `Kaleido.UnitTests` | `src/Kaleido` (core runtime: bootstrap, Process, Queryable) |
+| `Kaleido.AspNetCore.UnitTests` | `src/Kaleido.AspNetCore` |
+| `Kaleido.Http.UnitTests` | `src/Kaleido.Http` (endpoint route builder extensions) |
+| `Kaleido.Http.FunctionalTests` | `src/Kaleido.Http` (full HTTP functional tests via TestServer) |
+| `Kaleido.Http.Client.UnitTests` | `src/Kaleido.Http.Client` |
+| `Kaleido.Http.Abstractions.UnitTests` | `src/Kaleido.Http.Abstractions` (placeholder) |
+| `Kaleido.Provider.SQLite.UnitTests` | `src/Kaleido.Provider.SQLite` (placeholder) |
+
 ## Testing conventions
 - When adding unit tests, scope them to a single class
 - Mock injected dependencies with `Moq`
@@ -12,6 +26,8 @@
 - `Client` — a pre-wired `HttpClient` pointed at the TestServer (use for raw HTTP assertions)
 - `ClientFactory` — the Kaleido client factory wired against the TestServer (use for client-level tests)
 - `TestServer` — the underlying `TestServer` instance (use when a test needs its own `CreateHandler()`)
+
+Both fixtures are in `tests/Kaleido.Http.FunctionalTests`.
 
 ### Writing tests that need their own DI container
 
