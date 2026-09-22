@@ -42,7 +42,7 @@ internal static class QueryableValueNormalizer
                         value,
                         parameter.Type);
             }
-            catch (Exception)
+            catch (Exception exception) when (exception is not OperationCanceledException)
             {
                 throw new InvalidParameterValueException(
                     parameter.Name,
@@ -143,7 +143,7 @@ internal static class QueryableValueNormalizer
                 Values = values
             };
         }
-        catch (Exception)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             throw new InvalidFilterValueException(
                 condition.Field,
