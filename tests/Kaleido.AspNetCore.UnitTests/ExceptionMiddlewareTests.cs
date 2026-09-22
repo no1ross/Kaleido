@@ -47,7 +47,7 @@ public sealed class ExceptionMiddlewareTests
         Assert.Equal(StatusCodes.Status400BadRequest, context.Response.StatusCode);
         Assert.Equal("application/json; charset=utf-8", context.Response.ContentType);
         Assert.Equal(
-            "{\"errors\":[{\"code\":\"argument_error\",\"message\":\"bad argument\",\"field\":null}]}",
+            "{\"errors\":[{\"code\":\"argument_error\",\"message\":\"An invalid argument was provided.\",\"field\":null}]}",
             ReadBody(context));
     }
 

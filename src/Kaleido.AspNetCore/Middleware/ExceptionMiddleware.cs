@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace Kaleido.AspNetCore.Middleware;
 
@@ -18,6 +19,8 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
         }
         catch (ArgumentException exception)
         {
+            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
+
             logger.LogWarning(
                 exception,
                 "Invalid argument in request.");
@@ -28,11 +31,13 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             await context.Response.WriteAsJsonAsync(
                 new KaleidoErrorResponse(
                 [
-                    new KaleidoError(KaleidoErrorCodes.ArgumentError, exception.Message)
+                    new KaleidoError(KaleidoErrorCodes.ArgumentError, "An invalid argument was provided.")
                 ]));
         }
         catch (KaleidoFrameworkException exception)
         {
+            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
+
             logger.LogError(
                 exception,
                 "Kaleido framework integrity violation.");
@@ -45,6 +50,26 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
                 [
                     new KaleidoError(KaleidoErrorCodes.FrameworkError, "An internal framework error occurred.")
                 ]));
+        }
+        catch (Exception exception)
+        {
+            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
+
+            logger.LogError(
+                exception,
+                "Unhandled exception processing request.");
+
+            if (!context.Response.HasStarted)
+            {
+                context.Response.StatusCode =
+                    StatusCodes.Status500InternalServerError;
+
+                await context.Response.WriteAsJsonAsync(
+                    new KaleidoErrorResponse(
+                    [
+                        new KaleidoError(KaleidoErrorCodes.FrameworkError, "An unexpected error occurred.")
+                    ]));
+            }
         }
     }
 }
