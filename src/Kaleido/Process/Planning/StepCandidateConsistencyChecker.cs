@@ -50,11 +50,16 @@ internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistenc
         StepCandidate candidate,
         ProcessorContext context)
     {
+        var registration =
+            candidate.Registration
+            ?? throw new KaleidoFrameworkException(
+                $"StepCandidate '{candidate.StepName}' has no Registration during consistency check.");
+
         var historicalStep =
             context.Steps.FirstOrDefault(
                 x => string.Equals(
                     x.StepName,
-                    candidate.Registration!.Metadata.Name,
+                    registration.Metadata.Name,
                     StringComparison.OrdinalIgnoreCase));
 
         if (historicalStep is null)
@@ -62,7 +67,7 @@ internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistenc
             return;
         }
 
-        if (candidate.Registration!.Repeatable.Enabled)
+        if (registration.Repeatable.Enabled)
         {
             candidate.AddInformation(
                 StepProcessingMessageCode.RepeatableStep,
@@ -89,7 +94,10 @@ internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistenc
         ProcessorContext context)
     {
         var dependencies =
-            candidate.Registration!.Dependencies;
+            (candidate.Registration
+            ?? throw new KaleidoFrameworkException(
+                $"StepCandidate '{candidate.StepName}' has no Registration during dependency consistency check."))
+            .Dependencies;
 
         foreach (var dependency in dependencies)
         {
@@ -141,7 +149,7 @@ internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistenc
     {
         var dependencyCandidate =
             candidates.FirstOrDefault(
-                x => x.Registration!.StepType ==
+                x => x.Registration?.StepType ==
                      dependency.StepType);
 
         if (dependencyCandidate is null)

@@ -44,11 +44,6 @@ public sealed class QueryableAspNetCoreFixture
                                 o.Assemblies = new[] { typeof(FunctionalRecordContext).Assembly };
                             })
                             .AddHttp();
-
-                        services.ConfigureHttpJsonOptions(options =>
-                        {
-                            options.SerializerOptions.Converters.Add(new KaleidoEnumConverterFactory());
-                        });
                     });
 
                     webBuilder.Configure(app =>

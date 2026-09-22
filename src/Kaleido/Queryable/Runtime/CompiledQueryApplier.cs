@@ -445,10 +445,12 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                     typeof(TQueryContext),
                     member.Type);
 
-        return (IQueryable<TQueryContext>)
+        return (IQueryable<TQueryContext>)(
             method.Invoke(
                 null,
-                [query, lambda])!;
+                [query, lambda])
+            ?? throw new KaleidoFrameworkException(
+                $"Sort method '{method.Name}' returned null."));
     }
 
     private static Expression StringCall(
@@ -472,7 +474,9 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         var method =
             typeof(string).GetMethod(
                 methodName,
-                new[] { typeof(string) })!;
+                new[] { typeof(string) })
+            ?? throw new KaleidoFrameworkException(
+                $"Could not locate string method '{methodName}'.");
 
         var notNull =
             Expression.NotEqual(

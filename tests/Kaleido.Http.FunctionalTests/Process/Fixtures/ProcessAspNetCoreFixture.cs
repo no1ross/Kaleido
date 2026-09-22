@@ -43,11 +43,6 @@ public sealed class ProcessAspNetCoreFixture
                                 o.Assemblies = new[] { typeof(ProcessAspNetCoreFixture).Assembly };
                             })
                             .AddHttp();
-
-                        services.ConfigureHttpJsonOptions(options =>
-                        {
-                            options.SerializerOptions.Converters.Add(new KaleidoEnumConverterFactory());
-                        });
                     });
 
                     webBuilder.Configure(app =>

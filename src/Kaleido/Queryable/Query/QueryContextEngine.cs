@@ -237,9 +237,11 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             CreateViewAsyncTypedMethod.MakeGenericMethod(
                 viewRegistration.ViewParametersType);
 
-        var task = (Task<IQueryable<TView>>)typedMethod.Invoke(
+        var task = (Task<IQueryable<TView>>)(typedMethod.Invoke(
             this,
-            [queryView, query, executionContext, viewRegistration, cancellationToken])!;
+            [queryView, query, executionContext, viewRegistration, cancellationToken])
+            ?? throw new KaleidoFrameworkException(
+                $"Method '{nameof(CreateViewAsyncTyped)}' returned null for view '{viewRegistration.QueryViewType.FullName}'."));
 
         return await task;
     }
