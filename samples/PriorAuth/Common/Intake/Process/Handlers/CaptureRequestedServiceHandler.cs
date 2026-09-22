@@ -9,6 +9,7 @@ using Kaleido.Samples.PriorAuth.Intake.Process.Services;
 using Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 using Microsoft.EntityFrameworkCore;
+using Kaleido.Http.Client;
 using Kaleido.Http.Client.Process;
 using Kaleido.Http.Client.Queryable;
 using Kaleido.Http.Process;
@@ -128,17 +129,15 @@ public sealed class CaptureRequestedServiceHandler(
 
             return ProcessStepHandlerResult.HandOff(processorName);
         }
-        catch (KaleidoQueryableClientException ex)
+        catch (KaleidoHttpClientException ex)
         {
-            return ProcessStepHandlerResult.Failure(
-                IntakeProcessMessages.QueryableRequestFailed(
-                    ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
-                    ex.Message));
-        }
-        catch (KaleidoProcessClientException ex)
-        {
-            return ProcessStepHandlerResult.Failure(
-                IntakeProcessMessages.DownstreamProcessorRequestFailed(ex.Message));
+            return ex.Code == HttpClientErrorCodes.ValidationFailed
+                ? ProcessStepHandlerResult.Failure(
+                    IntakeProcessMessages.QueryableRequestFailed(
+                        ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
+                        ex.Message))
+                : ProcessStepHandlerResult.Failure(
+                    IntakeProcessMessages.DownstreamProcessorRequestFailed(ex.Message));
         }
     }
 }

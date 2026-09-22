@@ -83,9 +83,9 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 - [x] All legacy `*Exception` types replaced: consolidated into `KaleidoValidationException`, `KaleidoConfigurationException`, `KaleidoFrameworkException`, `KaleidoHttpClientException` — each carries a `Code` property
 - [x] `QueryableValueNormalizer` — moved to `Kaleido.Http`; wraps `ValueConverter` errors with `innerException` + `OperationCanceledException` filter
 - [x] `ExceptionMiddleware` — catches all four Kaleido exception types, logs `exception.Code`, returns `exception.Message` in error response body
-- [ ] Replace 6× `NotSupportedException` in `CompiledQueryApplier.cs` with appropriate domain exceptions
-- [ ] Update `StepCandidateBuilder.cs:96` `catch (... is NotSupportedException)` in tandem with above
-- [ ] Remove dead `ValidationException.cs` (or wire into actual validation paths) — zero throw/catch sites
+- [x] Replace 6× `NotSupportedException` in `CompiledQueryApplier.cs` with `KaleidoValidationException` + appropriate `ValidationErrorCodes`
+- [x] `StepCandidateBuilder.cs` — `NotSupportedException` catch updated to match new exception types
+- [x] Remove dead `ValidationException.cs` — deleted, zero throw/catch sites confirmed
 
 ### Nullable `!` suppression → `?? throw KaleidoFrameworkException` (AGENTS.md mandate)
 - [ ] `Kaleido/Queryable/Query/DelegatedQueryViewEngine.cs:58` — `GetMethod(...)!`

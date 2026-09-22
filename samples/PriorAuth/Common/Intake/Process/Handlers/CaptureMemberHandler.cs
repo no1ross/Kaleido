@@ -1,3 +1,4 @@
+using Kaleido.Http.Client;
 using Kaleido.Http.Client.Queryable;
 using Kaleido.Process.Execution;
 using Kaleido.Samples.PriorAuth;
@@ -91,7 +92,7 @@ public sealed class CaptureMemberHandler(
             return ProcessStepHandlerResult.Success(
                 requiredStep: nameof(CaptureRequestedServiceStep).Replace("Step", string.Empty));
         }
-        catch (KaleidoQueryableClientException ex)
+        catch (KaleidoHttpClientException ex)
         {
             return ProcessStepHandlerResult.Failure(
                 IntakeProcessMessages.QueryableRequestFailed(
