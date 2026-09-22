@@ -69,7 +69,7 @@ internal sealed class ProcessStepInvoker(
 
             return handlerResult;
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             handlerObservation.HandlerFailed(exception);
             throw;

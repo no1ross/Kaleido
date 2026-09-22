@@ -86,6 +86,11 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             observation.ValidationFailed(exception);
             throw;
         }
+        catch (OperationCanceledException)
+        {
+            observation.Canceled();
+            throw;
+        }
         catch (Exception exception)
         {
             observation.ExecutionFailed(exception);
@@ -144,6 +149,11 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         catch (QueryableValidationException exception)
         {
             observation.ValidationFailed(exception);
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            observation.Canceled();
             throw;
         }
         catch (Exception exception)

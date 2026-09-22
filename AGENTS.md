@@ -120,6 +120,15 @@ Owns the SQLite durable state provider:
   - `KaleidoErrorCodes` (in `KaleidoErrorResponse.cs`) - framework-level HTTP error codes
   - `QueryErrorCodes` (in `QueryableValidationException.cs`) - Queryable validation error codes
 
+### OperationCanceledException and observability
+Never record `OperationCanceledException` as an execution failure — it inflates error metrics and triggers false alerts.
+
+The rule is: **one observability signal per cancellation, at the lowest level that has full context.**
+
+- **Process:** `ProcessExecutor` is the single recording point (`stepObservation.Canceled()`). It has step name, version, and processor name, and is where state is saved on cancellation. All layers above (`ProcessStepInvoker`, `ProcessRuntime`) use `when (exception is not OperationCanceledException)` on their `catch (Exception)` blocks so OCE propagates cleanly without triggering `ExecutionFailed` or `HandlerFailed`.
+- **Queryable:** `QueryContextEngine` and `DelegatedQueryViewEngine` each call `observation.Canceled()` in an explicit `catch (OperationCanceledException)` block placed before `catch (Exception)`. These are mutually exclusive code paths (dispatched by `QueryableService`), so only one signal fires per request.
+- Do **not** add `Canceled()` calls at higher levels (`ProcessRuntime`, `ProcessStepInvoker`) — you will get duplicate signals for the same cancellation event.
+
 ### Record conversion
 - Convert immutable data containers with init-only properties to records
 - Do NOT convert service classes with behavior to records

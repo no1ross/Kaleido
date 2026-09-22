@@ -32,6 +32,8 @@ internal interface IQueryExecutionObservation
         int? pageSize,
         int? pageOffset);
 
+    void Canceled();
+
     void ExecutionFailed(
         Exception exception);
 }
@@ -71,6 +73,10 @@ internal sealed class QueryableObservability(
     private static readonly Counter<long> QueryExecutionFailuresCounter =
         Meter.CreateCounter<long>(
             QueryableTelemetry.ExecutionFailuresCounterName);
+
+    private static readonly Counter<long> QueryExecutionCancellationsCounter =
+        Meter.CreateCounter<long>(
+            QueryableTelemetry.ExecutionCancellationsCounterName);
 
     private static readonly Histogram<long> QueryTotalCountHistogram =
         Meter.CreateHistogram<long>(
@@ -295,6 +301,22 @@ internal sealed class QueryableObservability(
                 returnedCount,
                 pageSize,
                 pageOffset);
+        }
+
+        public void Canceled()
+        {
+            activity?.AddEvent(
+                new ActivityEvent(
+                    "kaleido.queryable.canceled"));
+
+            QueryExecutionCancellationsCounter.Add(
+                1,
+                CreateExecutionTags(details));
+
+            logger.LogWarning(
+                "Queryable execution was canceled for context {QueryContextName} view {QueryViewName}.",
+                details.QueryContextName,
+                details.QueryViewName);
         }
 
         public void ExecutionFailed(

@@ -280,6 +280,10 @@ public sealed class QueryContextEngineTests
         {
         }
 
+        public void Canceled()
+        {
+        }
+
         public void ExecutionFailed(
             Exception exception)
         {

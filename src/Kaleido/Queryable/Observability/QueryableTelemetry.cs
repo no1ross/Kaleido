@@ -17,6 +17,9 @@ public static class QueryableTelemetry
     public const string ExecutionFailuresCounterName =
         "kaleido.queryable.execution_failures";
 
+    public const string ExecutionCancellationsCounterName =
+        "kaleido.queryable.execution_cancellations";
+
     public const string TotalCountHistogramName =
         "kaleido.queryable.total_count";
 

@@ -91,6 +91,11 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
             observation.ValidationFailed(exception);
             throw;
         }
+        catch (OperationCanceledException)
+        {
+            observation.Canceled();
+            throw;
+        }
         catch (Exception exception)
         {
             observation.ExecutionFailed(exception);
