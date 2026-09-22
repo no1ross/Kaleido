@@ -19,15 +19,4 @@
         string viewName)
         => $"{contextName}-{viewName}-query";
 
-    public static string NamedQueryEndpointName(
-        string contextName,
-        string viewName,
-        string queryName)
-        => $"{contextName}-{viewName}-{queryName}";
-
-    public static string NamedQueryMetadataEndpointName(
-        string contextName,
-        string viewName,
-        string queryName)
-        => $"{contextName}-{viewName}-{queryName}-metadata";
 }
