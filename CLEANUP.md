@@ -88,19 +88,12 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 - [x] Remove dead `ValidationException.cs` — deleted, zero throw/catch sites confirmed
 
 ### Nullable `!` suppression → `?? throw KaleidoFrameworkException` (AGENTS.md mandate)
-- [ ] `Kaleido/Queryable/Query/DelegatedQueryViewEngine.cs:58` — `GetMethod(...)!`
-- [ ] `Kaleido/Queryable/Runtime/CompiledQueryApplier.cs:476,784` — `GetMethod(...)!`, `GetProperty(...)!`
-- [ ] `Kaleido/Queryable/Query/QueryContextEngine.cs:231` — `Invoke(...)!` cast
-- [ ] `Kaleido/Queryable/QueryableService.cs` — `Invoke` result suppressions
-- [ ] `Kaleido.Http.Client/KaleidoClientFactoryBase.cs:59` — `(Dictionary<...>)GetValue(map)!`
-- [ ] `Kaleido/Json/KaleidoEnumConverterFactory.cs:24` — `Activator.CreateInstance(converterType)!`
-- [ ] `Kaleido/Json/ValueConverter.cs:33–76` — `value.ToString()!` ×7 → `?? throw` or `Convert.ToString`
-- [ ] `Kaleido/Json/ValueConverter.cs:176,182,188,195` — `element.GetString()!` ×4 → `?? throw`
-- [ ] `Kaleido/Process/Planning/StepCandidatePlanner.cs:51,78,86` — `candidate.Registration!` ×3
-- [ ] `Kaleido/Process/Planning/StepCandidateConsistencyChecker.cs:57,65,92,144` — `candidate.Registration!` ×4
-- [ ] `Kaleido/Queryable/QueryableServiceCollectionExtensions.cs:59` — double `GetCustomAttribute` → single projection with null filter
-- [ ] `Kaleido/Queryable/Records/QueryViewRegistrationValidator.cs:51` — `x.Attribute!.Name`
-- [ ] `Kaleido/Queryable/Records/QueryContextRegistrationValidator.cs:45` — `x.Attribute!.Name`
+- [x] All reflection/registry suppressions — already resolved during exception refactor (`DelegatedQueryViewEngine`, `CompiledQueryApplier`, `QueryContextEngine`, `QueryableService`, `KaleidoClientFactoryBase`, `StepCandidatePlanner`, `StepCandidateConsistencyChecker`, both registration validators)
+- [x] `Kaleido/Json/KaleidoEnumConverterFactory.cs` — file already deleted
+- [x] `Kaleido/Json/ValueConverter.cs` — `ToString()!` ×7 → `?? string.Empty`; `GetString()!` ×4 → `GetJsonString` helper throwing `FormatException`
+- [x] `StepCandidate.GetStep<T>()` — `Step!` → pattern match + `KaleidoFrameworkException(TypeMismatch)`
+- [x] `ProcessStepHandlerResult<T>.Response` and `ExecuteStepRequest<T>.ProcessStep` — suppressions dropped (target types already nullable)
+- [~] ~~`QueryableServiceCollectionExtensions.cs:59` double `GetCustomAttribute`~~ — **KEPT**: separate LINQ chains, restructuring not worth the churn
 
 ### OperationCanceledException handling
 - [ ] `Kaleido/Queryable/Query/QueryContextEngine.cs:90–94,150–154` — add `catch (OperationCanceledException)` before generic catch; call observation.Canceled() if available, then rethrow

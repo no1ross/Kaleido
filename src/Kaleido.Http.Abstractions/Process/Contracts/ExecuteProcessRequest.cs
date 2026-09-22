@@ -51,7 +51,7 @@ public sealed record ExecuteStepRequest<TProcessStep>
                         new Dictionary<string, object?>(
                             StringComparer.OrdinalIgnoreCase)
                         {
-                            [stepName] = ProcessStep!
+                            [stepName] = ProcessStep
                         }
                 }
         };

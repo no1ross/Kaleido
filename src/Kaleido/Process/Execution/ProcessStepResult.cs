@@ -25,7 +25,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
 
     public required TProcessStepResult Response { get; init; }
 
-    object IProcessStepHandlerResult.Response => Response!;
+    object? IProcessStepHandlerResult.Response => Response;
 
     public IReadOnlyCollection<ProcessMessage> Messages { get; init; }
         = [];
