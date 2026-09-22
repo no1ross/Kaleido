@@ -1,5 +1,7 @@
 using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Query;
+using Kaleido;
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -16,6 +18,57 @@ internal interface ICompiledQueryApplier<TQueryContext> where TQueryContext : cl
 internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplier<TQueryContext>
     where TQueryContext : class
 {
+    // Reflection caches — computed once, reused on every query execution.
+    private static readonly MethodInfo StringToLowerMethod =
+        typeof(string).GetMethod(nameof(string.ToLower), Type.EmptyTypes)
+        ?? throw new KaleidoFrameworkException(
+            $"Could not locate method '{nameof(string.ToLower)}' on string.");
+
+    private static readonly MethodInfo StringContainsMethod =
+        typeof(string).GetMethod(nameof(string.Contains), [typeof(string)])
+        ?? throw new KaleidoFrameworkException(
+            $"Could not locate method '{nameof(string.Contains)}' on string.");
+
+    private static readonly MethodInfo StringStartsWithMethod =
+        typeof(string).GetMethod(nameof(string.StartsWith), [typeof(string)])
+        ?? throw new KaleidoFrameworkException(
+            $"Could not locate method '{nameof(string.StartsWith)}' on string.");
+
+    private static readonly MethodInfo StringEndsWithMethod =
+        typeof(string).GetMethod(nameof(string.EndsWith), [typeof(string)])
+        ?? throw new KaleidoFrameworkException(
+            $"Could not locate method '{nameof(string.EndsWith)}' on string.");
+
+    private static readonly MethodInfo EnumerableContainsOpenMethod =
+        typeof(Enumerable)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(m =>
+                m.Name == nameof(Enumerable.Contains) &&
+                m.GetParameters().Length == 2);
+
+    private static readonly MethodInfo QueryableOrderByOpenMethod =
+        typeof(System.Linq.Queryable)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(m => m.Name == nameof(System.Linq.Queryable.OrderBy) && m.GetParameters().Length == 2);
+
+    private static readonly MethodInfo QueryableOrderByDescendingOpenMethod =
+        typeof(System.Linq.Queryable)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(m => m.Name == nameof(System.Linq.Queryable.OrderByDescending) && m.GetParameters().Length == 2);
+
+    private static readonly MethodInfo QueryableThenByOpenMethod =
+        typeof(System.Linq.Queryable)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(m => m.Name == nameof(System.Linq.Queryable.ThenBy) && m.GetParameters().Length == 2);
+
+    private static readonly MethodInfo QueryableThenByDescendingOpenMethod =
+        typeof(System.Linq.Queryable)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(m => m.Name == nameof(System.Linq.Queryable.ThenByDescending) && m.GetParameters().Length == 2);
+
+    // Generic method caches keyed by (contextType, memberType) or memberType
+    private static readonly ConcurrentDictionary<(string Name, Type KeyType, Type ValueType), MethodInfo> SortMethodCache = new();
+    private static readonly ConcurrentDictionary<Type, MethodInfo> EnumerableContainsCache = new();
     public IQueryable<TQueryContext> ApplyFilter(
         IQueryable<TQueryContext> query,
         CompiledFilterExpression? filter)
@@ -105,7 +158,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                         .Select(x => BuildFilter(parameter, x))
                         .ToArray()),
 
-            _ => throw new NotSupportedException(
+            _ => throw new InvalidFilterNodeException(
                 $"Unsupported compiled filter type '{expression.GetType().Name}'.")
         };
     }
@@ -171,8 +224,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                     searchText,
                     negate: false),
 
-            _ => throw new NotSupportedException(
-                $"Match mode '{field.MatchMode}' is not supported by the IQueryable provider.")
+            _ => throw new UnsupportedMatchModeException(field.Field.Name, field.MatchMode)
         };
     }
 
@@ -318,8 +370,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                     member,
                     expected: false),
 
-            _ => throw new NotSupportedException(
-                $"Filter operator '{condition.Operator}' is not supported by the IQueryable provider.")
+            _ => throw new UnsupportedOperatorException(condition.Field.Name, condition.Operator)
         };
     }
 
@@ -417,39 +468,28 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 member,
                 parameter);
 
-        var methodName =
+        var openMethod =
             (thenBy, sort.Direction) switch
             {
-                (false, SortDirection.Ascending) =>
-                    nameof(System.Linq.Queryable.OrderBy),
-
-                (false, SortDirection.Descending) =>
-                    nameof(System.Linq.Queryable.OrderByDescending),
-
-                (true, SortDirection.Ascending) =>
-                    nameof(System.Linq.Queryable.ThenBy),
-
-                (true, SortDirection.Descending) =>
-                    nameof(System.Linq.Queryable.ThenByDescending),
-
-                _ => throw new NotSupportedException(
-                    $"Sort direction '{sort.Direction}' is not supported.")
+                (false, SortDirection.Ascending) => QueryableOrderByOpenMethod,
+                (false, SortDirection.Descending) => QueryableOrderByDescendingOpenMethod,
+                (true, SortDirection.Ascending) => QueryableThenByOpenMethod,
+                (true, SortDirection.Descending) => QueryableThenByDescendingOpenMethod,
+                _ => throw new KaleidoFrameworkException(
+                    $"Sort direction '{sort.Direction}' is not a recognised SortDirection value.")
             };
 
         var method =
-            typeof(System.Linq.Queryable)
-                .GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .Single(m =>
-                    m.Name == methodName &&
-                    m.GetParameters().Length == 2)
-                .MakeGenericMethod(
-                    typeof(TQueryContext),
-                    member.Type);
+            SortMethodCache.GetOrAdd(
+                (openMethod.Name, typeof(TQueryContext), member.Type),
+                _ => openMethod.MakeGenericMethod(typeof(TQueryContext), member.Type));
 
-        return (IQueryable<TQueryContext>)
+        return (IQueryable<TQueryContext>)(
             method.Invoke(
                 null,
-                [query, lambda])!;
+                [query, lambda])
+            ?? throw new KaleidoFrameworkException(
+                $"Sort method '{method.Name}' returned null."));
     }
 
     private static Expression StringCall(
@@ -460,7 +500,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
     {
         if (member.Type != typeof(string))
         {
-            throw new NotSupportedException(
+            throw new InvalidFilterNodeException(
                 $"String operator '{methodName}' can only be applied to string fields. Field expression type was '{member.Type.Name}'.");
         }
 
@@ -471,9 +511,14 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
             ?? string.Empty;
 
         var method =
-            typeof(string).GetMethod(
-                methodName,
-                new[] { typeof(string) })!;
+            methodName switch
+            {
+                nameof(string.Contains) => StringContainsMethod,
+                nameof(string.StartsWith) => StringStartsWithMethod,
+                nameof(string.EndsWith) => StringEndsWithMethod,
+                _ => throw new KaleidoFrameworkException(
+                    $"Unsupported string method '{methodName}'.")
+            };
 
         var notNull =
             Expression.NotEqual(
@@ -535,12 +580,9 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                     .ToArray();
 
             var method =
-                typeof(Enumerable)
-                    .GetMethods(BindingFlags.Public | BindingFlags.Static)
-                    .Single(m =>
-                        m.Name == nameof(Enumerable.Contains) &&
-                        m.GetParameters().Length == 2)
-                    .MakeGenericMethod(typeof(string));
+                EnumerableContainsCache.GetOrAdd(
+                    typeof(string),
+                    t => EnumerableContainsOpenMethod.MakeGenericMethod(t));
 
             var notNull =
                 Expression.NotEqual(
@@ -574,12 +616,9 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 values);
 
         var containsMethod =
-            typeof(Enumerable)
-                .GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .Single(m =>
-                    m.Name == nameof(Enumerable.Contains) &&
-                    m.GetParameters().Length == 2)
-                .MakeGenericMethod(member.Type);
+            EnumerableContainsCache.GetOrAdd(
+                member.Type,
+                t => EnumerableContainsOpenMethod.MakeGenericMethod(t));
 
         var containsCall =
             Expression.Call(
@@ -643,7 +682,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
 
         if (targetType != typeof(bool))
         {
-            throw new NotSupportedException(
+            throw new InvalidFilterNodeException(
                 $"Boolean operator can only be applied to bool fields. Field expression type was '{member.Type.Name}'.");
         }
 
@@ -779,9 +818,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
     {
         return Expression.Call(
             expression,
-            typeof(string).GetMethod(
-                nameof(string.ToLower),
-                Type.EmptyTypes)!);
+            StringToLowerMethod);
     }
 
     private static bool CanBeNull(

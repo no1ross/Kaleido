@@ -1,4 +1,5 @@
 using Kaleido;
+using Kaleido.Http;
 using Kaleido.Observability;
 using Yarp.ReverseProxy.Transforms;
 using Kaleido.Http.Registry;

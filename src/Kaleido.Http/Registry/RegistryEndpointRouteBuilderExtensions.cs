@@ -198,7 +198,9 @@ public static class RegistryEndpointRouteBuilderExtensions
                 }
                 catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    // 404 is expected for services that don't expose process - swallow it
+                    logger.LogDebug(
+                        "Registry process client {ClientName} returned 404 — service does not expose a process registry.",
+                        name);
                 }
                 catch (Exception ex)
                 {
@@ -212,7 +214,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                     {
                         ClientName = name,
                         ClientType = "Process",
-                        Reason = ex.Message
+                        Reason = "Process registry fetch failed. See server logs for details."
                     });
                 }
             }));
@@ -243,7 +245,9 @@ public static class RegistryEndpointRouteBuilderExtensions
                 }
                 catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    // 404 is expected for services that don't expose queryable - swallow it
+                    logger.LogDebug(
+                        "Registry queryable client {ClientName} returned 404 — service does not expose a queryable registry.",
+                        name);
                 }
                 catch (Exception ex)
                 {
@@ -257,7 +261,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                     {
                         ClientName = name,
                         ClientType = "Queryable",
-                        Reason = ex.Message
+                        Reason = "Queryable registry fetch failed. See server logs for details."
                     });
                 }
             }));

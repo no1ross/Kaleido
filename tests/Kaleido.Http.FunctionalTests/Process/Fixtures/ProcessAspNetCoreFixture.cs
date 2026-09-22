@@ -43,11 +43,6 @@ public sealed class ProcessAspNetCoreFixture
                                 o.Assemblies = new[] { typeof(ProcessAspNetCoreFixture).Assembly };
                             })
                             .AddHttp();
-
-                        services.ConfigureHttpJsonOptions(options =>
-                        {
-                            options.SerializerOptions.Converters.Add(new KaleidoEnumConverterFactory());
-                        });
                     });
 
                     webBuilder.Configure(app =>
@@ -84,9 +79,10 @@ public sealed class ProcessAspNetCoreFixture
         clientServices.AddHttpClient("test")
             .ConfigurePrimaryHttpMessageHandler(() => testHandler);
 
-        _clientProvider = clientServices.BuildServiceProvider();
+        _clientProvider = clientServices.BuildServiceProvider(
+            new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 
-        ClientFactory = _clientProvider.GetRequiredService<IKaleidoProcessClientFactory>();
+        ClientFactory = _clientProvider.CreateScope().ServiceProvider.GetRequiredService<IKaleidoProcessClientFactory>();
     }
 
     public async Task DisposeAsync()

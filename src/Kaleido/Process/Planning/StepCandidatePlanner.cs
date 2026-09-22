@@ -44,7 +44,8 @@ internal sealed class StepCandidatePlanner : IStepCandidatePlanner
     {
         var candidatesByType =
             candidates.ToDictionary(
-                x => x.Registration!.StepType);
+                x => (x.Registration ?? throw new KaleidoFrameworkException(
+                    $"StepCandidate '{x.StepName}' has no Registration during dependency ordering.")).StepType);
 
         var ordered =
             new List<StepCandidate>();
@@ -70,16 +71,19 @@ internal sealed class StepCandidatePlanner : IStepCandidatePlanner
         HashSet<Type> visited,
         List<StepCandidate> ordered)
     {
-        var stepType =
-            candidate.Registration!.StepType;
+        var registration =
+            candidate.Registration
+            ?? throw new KaleidoFrameworkException(
+                $"StepCandidate '{candidate.StepName}' has no Registration during dependency ordering.");
+
+        var stepType = registration.StepType;
 
         if (!visited.Add(stepType))
         {
             return;
         }
 
-        var dependencies =
-            candidate.Registration!.Dependencies;
+        var dependencies = registration.Dependencies;
 
         foreach (var dependency in dependencies)
         {

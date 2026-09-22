@@ -23,29 +23,25 @@ Owns the core runtime:
 
 Does **not** own HTTP endpoints, ASP.NET Core DI, HTTP contracts, remote client consumption, or SQLite persistence.
 
-### `src/Kaleido.AspNetCore`
-Owns ASP.NET Core DI registration and transport services:
-- shared exception middleware and correlation-header parsing
-- `AddQueryableAspNetCore(...)` — Queryable route options and value normalization
-- `AddProcessorAspNetCore(...)` — Process route options (internal, called by `Kaleido.Http`)
-
-Depends on `Kaleido` only. Does **not** reference `Kaleido.Http.Abstractions`.
-Does **not** own HTTP route publication or HTTP contract types.
-
 ### `src/Kaleido.Http`
-Owns HTTP endpoint route publication and HTTP transport services:
+Owns the full HTTP transport layer — middleware, correlation propagation, and endpoint publication:
+- `AddHttp()` — public entry point; registers routing, `IHttpContextAccessor`, the middleware pipeline, and HTTP execution services
+- `ExceptionMiddleware` — outermost middleware; maps exceptions to JSON error responses
+- `ObservabilityMiddleware` — reads inbound correlation headers via `HttpCorrelationContextReader`, populates `IKaleidoCorrelationContextAccessor`, tags the `Activity`, and echoes the full correlation context on the response
+- `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers into `KaleidoCorrelationContext`
+- `KaleidoStartupFilter` — registers middlewares via `IStartupFilter` in the correct pipeline order
 - `MapQueryable()` — all Queryable HTTP endpoints
 - `MapProcessor()` — all Process HTTP endpoints
 - `MapRegistry()` — aggregated discovery endpoint
 - `IProcessExecutionService` / `ProcessExecutionService` — translates HTTP execute requests into runtime calls
 - `IProcessStateService` / `ProcessStateService` — reads durable process state and maps it to HTTP contracts
-- `AddHttp()` — public entry point; registers all HTTP transport services and calls `AddAspNetCore()` internally
 
-Depends on `Kaleido.AspNetCore` and `Kaleido.Http.Abstractions`.
-Does **not** own runtime logic or core DI registration.
+Depends on `Kaleido.Http.Abstractions` only. Does **not** own runtime logic or core DI registration.
 
 ### `src/Kaleido.Http.Abstractions`
-Owns shared HTTP contract types used across the server-side and client-side projects:
+Owns shared HTTP contract types and HTTP-specific correlation primitives:
+- `KaleidoCorrelationHeaders` — canonical `X-Kaleido-*` header name constants (namespace `Kaleido.Http`)
+- `HttpHeaderSanitizer` — RFC 7230-compliant sanitization, max 256 chars, printable ASCII only
 - Process HTTP request/response contracts
 - Queryable HTTP request/response contracts
 
@@ -140,15 +136,12 @@ This is a shared contract boundary. Treat it like a public API:
 - when a contract must change, update the matching endpoint, client method, and tests together
 
 ### Kaleido.Http should stay thin
-Endpoint mapping code should adapt contracts and publish routes. It should not reimplement runtime planning or execution logic that belongs in `Kaleido`.
-
-### Kaleido.AspNetCore should stay thin
-DI registration and transport services should wire the runtime into ASP.NET Core. They should not become the place for business-capability scanning or registration logic.
+Middleware and endpoint mapping code should adapt contracts and wire the runtime. It should not reimplement runtime planning or execution logic that belongs in `Kaleido`.
 
 ---
 
 ## Correlation rules
-`KaleidoCorrelationContext` fields and the header names in `KaleidoAspNetCoreHeaders` are shared contracts. Changes to either affect transport handling, observability, event payloads, and higher-level runtime context propagation. Treat them as broad-impact changes.
+`KaleidoCorrelationContext` fields are transport-agnostic — they live in `Kaleido` core. The HTTP wire names (`KaleidoCorrelationHeaders`) live in `Kaleido.Http.Abstractions`. Changes to either affect transport handling, observability, event payloads, and higher-level runtime context propagation. Treat them as broad-impact changes.
 
 ---
 
@@ -172,11 +165,12 @@ DI registration and transport services should wire the runtime into ASP.NET Core
 ---
 
 ## Common pitfalls
-- Moving HTTP or transport concerns into `Kaleido` (core)
-- Moving runtime logic into `Kaleido.Http` (endpoint mapping)
+- Moving HTTP or transport concerns into `Kaleido` (core) — `KaleidoCorrelationContext` is transport-agnostic; `KaleidoCorrelationHeaders` and `HttpHeaderSanitizer` belong in `Kaleido.Http.Abstractions`
+- Moving runtime logic into `Kaleido.Http` (endpoint mapping and middleware only)
 - Treating `AddAssembly(...)` as if it should also scan and register features
 - Changing `Kaleido.Http.Abstractions` types without updating both the server endpoint and client
 - Importing Queryable concepts into Process code or vice versa
+- Adding a future transport (e.g. gRPC) as a dependency of `Kaleido.Http` — each transport is its own project (`Kaleido.Grpc`, etc.) with its own header/metadata constants
 
 ---
 
@@ -185,7 +179,6 @@ DI registration and transport services should wire the runtime into ASP.NET Core
 Build all source projects:
 ```
 dotnet build src/Kaleido/Kaleido.csproj
-dotnet build src/Kaleido.AspNetCore/Kaleido.AspNetCore.csproj
 dotnet build src/Kaleido.Http/Kaleido.Http.csproj
 dotnet build src/Kaleido.Http.Abstractions/Kaleido.Http.Abstractions.csproj
 dotnet build src/Kaleido.Http.Client/Kaleido.Http.Client.csproj

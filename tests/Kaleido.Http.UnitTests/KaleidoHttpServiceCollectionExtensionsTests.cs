@@ -1,4 +1,4 @@
-using Kaleido.AspNetCore.Startup;
+using Kaleido.Http.Startup;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;

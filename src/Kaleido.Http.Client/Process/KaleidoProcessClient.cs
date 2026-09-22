@@ -8,7 +8,7 @@ namespace Kaleido.Http.Client.Process;
 internal sealed class KaleidoProcessClient : IKaleidoProcessClient
 {
     private readonly HttpClient _httpClient;
-    private readonly IKaleidoCorrelationContextAccessor _correlation;
+    private readonly ICorrelationHeaderStamper _headerStamper;
     private readonly string _serviceName;
     private readonly string _registryUrl;
     private readonly SemaphoreSlim _registryLock = new(1, 1);
@@ -16,11 +16,11 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
 
     public KaleidoProcessClient(
         HttpClient httpClient,
-        IKaleidoCorrelationContextAccessor correlation,
+        ICorrelationHeaderStamper headerStamper,
         string serviceName = "")
     {
         _httpClient = httpClient;
-        _correlation = correlation;
+        _headerStamper = headerStamper;
         _serviceName = serviceName;
         _registryUrl = ProcessContractUrls.Registry(_serviceName);
     }
@@ -228,28 +228,8 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
             HttpStatusCode.NotFound);
     }
 
-    private void StampCorrelationHeaders(HttpRequestMessage request)
-    {
-        var ctx = _correlation.Current;
-
-        if (!string.IsNullOrWhiteSpace(ctx.RequestId))
-            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.RequestId, SanitizeHeaderValue(ctx.RequestId));
-
-        if (ctx.ProcessId.HasValue)
-            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, ctx.ProcessId.Value.ToString());
-
-        if (!string.IsNullOrWhiteSpace(ctx.SourceProcessorName))
-            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.SourceProcessor, SanitizeHeaderValue(ctx.SourceProcessorName));
-
-        if (ctx.ProcessorInstanceId.HasValue)
-            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessorInstanceId, ctx.ProcessorInstanceId.Value.ToString());
-
-        if (!string.IsNullOrWhiteSpace(ctx.StepName))
-            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.StepName, SanitizeHeaderValue(ctx.StepName));
-    }
-
-    private static string? SanitizeHeaderValue(string? value) =>
-        value is null ? null : value.ReplaceLineEndings("").Replace("\0", "").Replace("\t", " ").Trim();
+    private void StampCorrelationHeaders(HttpRequestMessage request) =>
+        _headerStamper.Stamp(request);
 
     private async Task<IReadOnlyList<ProcessorRegistryResponse>> EnsureRegistryAsync(
         CancellationToken cancellationToken)
@@ -263,9 +243,12 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
             if (_registry is not null)
                 return _registry;
 
-            var registry = await _httpClient.GetFromJsonAsync<IReadOnlyList<ProcessorRegistryResponse>>(
-                _registryUrl,
-                cancellationToken)
+            using var registryRequest = new HttpRequestMessage(HttpMethod.Get, _registryUrl);
+            StampCorrelationHeaders(registryRequest);
+            using var registryResponse = await _httpClient.SendAsync(registryRequest, cancellationToken);
+
+            var registry = await registryResponse.Content.ReadFromJsonAsync<IReadOnlyList<ProcessorRegistryResponse>>(
+                cancellationToken: cancellationToken)
                 ?? throw new KaleidoProcessClientException(
                     "Process registry request succeeded but returned no payload.",
                     HttpStatusCode.InternalServerError);

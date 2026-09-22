@@ -86,6 +86,11 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             observation.ValidationFailed(exception);
             throw;
         }
+        catch (OperationCanceledException)
+        {
+            observation.Canceled();
+            throw;
+        }
         catch (Exception exception)
         {
             observation.ExecutionFailed(exception);
@@ -144,6 +149,11 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         catch (QueryableValidationException exception)
         {
             observation.ValidationFailed(exception);
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            observation.Canceled();
             throw;
         }
         catch (Exception exception)
@@ -227,9 +237,11 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             CreateViewAsyncTypedMethod.MakeGenericMethod(
                 viewRegistration.ViewParametersType);
 
-        var task = (Task<IQueryable<TView>>)typedMethod.Invoke(
+        var task = (Task<IQueryable<TView>>)(typedMethod.Invoke(
             this,
-            [queryView, query, executionContext, viewRegistration, cancellationToken])!;
+            [queryView, query, executionContext, viewRegistration, cancellationToken])
+            ?? throw new KaleidoFrameworkException(
+                $"Method '{nameof(CreateViewAsyncTyped)}' returned null for view '{viewRegistration.QueryViewType.FullName}'."));
 
         return await task;
     }

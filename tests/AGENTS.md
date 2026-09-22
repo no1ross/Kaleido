@@ -5,11 +5,10 @@ Tests follow a one-project-per-source-project convention:
 | Test project | Tests code in |
 |---|---|
 | `Kaleido.UnitTests` | `src/Kaleido` (core runtime: bootstrap, Process, Queryable) |
-| `Kaleido.AspNetCore.UnitTests` | `src/Kaleido.AspNetCore` |
-| `Kaleido.Http.UnitTests` | `src/Kaleido.Http` (endpoint route builder extensions) |
+| `Kaleido.Http.UnitTests` | `src/Kaleido.Http` (middleware, startup filter, correlation reader, endpoint extensions, queryable value normalizer) |
 | `Kaleido.Http.FunctionalTests` | `src/Kaleido.Http` (full HTTP functional tests via TestServer) |
 | `Kaleido.Http.Client.UnitTests` | `src/Kaleido.Http.Client` |
-| `Kaleido.Http.Abstractions.UnitTests` | `src/Kaleido.Http.Abstractions` (placeholder) |
+| `Kaleido.Http.Abstractions.UnitTests` | `src/Kaleido.Http.Abstractions` (`HttpHeaderSanitizer` and contract types) |
 | `Kaleido.Provider.SQLite.UnitTests` | `src/Kaleido.Provider.SQLite` (placeholder) |
 
 ## Testing conventions
@@ -56,16 +55,29 @@ services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory("my-client"
 The `FixedHttpClientFactory` pattern used in `ProcessClientHeaderTests` and
 `QueryableClientHeaderTests` is the canonical example.
 
-#### Tip 2 — Substituting IKaleidoCorrelationContextAccessor
+#### Pitfall 2 — Always build with ValidateScopes + ValidateOnBuild
 
-`AddKaleido()` uses `TryAddScoped` for `IKaleidoCorrelationContextAccessor` and
-`IKaleidoCorrelationContextInitializer`, so a pre-existing registration is respected and the
-framework default is skipped.
-
-Register a test-controlled accessor **before** `AddKaleido()` and it will be used by the client
-factories:
+Any test that builds its own `ServiceProvider` must use:
 
 ```csharp
-services.AddScoped<IKaleidoCorrelationContextAccessor>(_ => myAccessor);
-services.AddKaleido().AddQueryableClient(...);
+services.BuildServiceProvider(
+    new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+```
+
+This catches captive dependency errors (e.g. a singleton consuming a scoped service) at build time
+rather than silently at runtime. Both fixtures and all header test containers follow this pattern.
+
+#### Tip — Substituting IKaleidoCorrelationContextAccessor
+
+`AddKaleido()` uses `TryAddScoped` for `IKaleidoCorrelationContextAccessor` and
+`IKaleidoCorrelationContextInitializer`, so a pre-existing registration wins and the framework
+default is skipped.
+
+Register a test-controlled accessor **before** `AddKaleido()`. In test containers that are built
+with `ValidateScopes = true`, use `AddSingleton` (not `AddScoped`) for a fixed/stub accessor so it
+is compatible with both root-scope and per-scope resolution:
+
+```csharp
+services.AddSingleton<IKaleidoCorrelationContextAccessor>(_ => myAccessor);
+services.AddKaleido(config, o => ...).AddHttpClients();
 ```

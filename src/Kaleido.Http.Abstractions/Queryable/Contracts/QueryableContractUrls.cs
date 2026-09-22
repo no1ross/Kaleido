@@ -17,9 +17,4 @@ internal static class QueryableContractUrls
     public static string QueryViewQuery(string serviceName, string contextName, string viewName)
         => $"{QueryablePrefix(serviceName)}/{contextName}/{viewName}/query";
 
-    public static string NamedQuery(string serviceName, string contextName, string viewName, string queryName)
-        => $"{QueryablePrefix(serviceName)}/{contextName}/{viewName}/{queryName}";
-
-    public static string NamedQueryMetadata(string serviceName, string contextName, string viewName, string queryName)
-        => $"{QueryablePrefix(serviceName)}/{contextName}/{viewName}/{queryName}/metadata";
 }

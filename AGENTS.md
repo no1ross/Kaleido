@@ -2,11 +2,10 @@
 
 This is the repository-level contributor guide for Kaleido.
 
-Kaleido is organized into seven main framework projects:
-- [`src/Kaleido`](./src/Kaleido/README.md) — foundational bootstrap, shared abstractions, metadata primitives, eventing, correlation context, and the core runtime for both Process and Queryable
-- [`src/Kaleido.AspNetCore`](./src/Kaleido.AspNetCore/README.md) — shared and capability-specific ASP.NET Core DI registration, middleware, and transport services
-- [`src/Kaleido.Http`](./src/Kaleido.Http/README.md) — HTTP endpoint publication and route mapping for Process and Queryable
-- [`src/Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP request/response contract types used by both server-side and client-side projects
+Kaleido is organized into six main framework projects:
+- [`src/Kaleido`](./src/Kaleido/README.md) — foundational bootstrap, shared abstractions, metadata primitives, eventing, transport-agnostic correlation context, and the core runtime for both Process and Queryable
+- [`src/Kaleido.Http`](./src/Kaleido.Http/README.md) — HTTP transport: endpoint publication, middleware pipeline (`ExceptionMiddleware`, `ObservabilityMiddleware`), correlation context reader, startup filter, and execution services
+- [`src/Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP contract types and HTTP-specific correlation primitives (`KaleidoCorrelationHeaders`, `HttpHeaderSanitizer`) used by both server-side and client-side projects
 - [`src/Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) — typed HTTP clients for consuming remote Process and Queryable endpoints
 - [`src/Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) — optional OpenTelemetry provider: `AddOpenTelemetry()` on `IKaleidoBuilder` for full OTel setup (logging + tracing + metrics + OTLP), and `AddKaleidoInstrumentation()` on `TracerProviderBuilder`/`MeterProviderBuilder` for consumers managing their own OTel pipeline
 - [`src/Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) — SQLite-backed durable process state store
@@ -24,7 +23,6 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository m
 - [`src/AGENTS.md`](./src/AGENTS.md) — source-level contributor guide
 - [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md) — source-level architecture details
 - [`src/Kaleido/README.md`](./src/Kaleido/README.md)
-- [`src/Kaleido.AspNetCore/README.md`](./src/Kaleido.AspNetCore/README.md)
 - [`src/Kaleido.Http/README.md`](./src/Kaleido.Http/README.md)
 - [`src/Kaleido.Http.Abstractions/README.md`](./src/Kaleido.Http.Abstractions/README.md)
 - [`src/Kaleido.Http.Client/README.md`](./src/Kaleido.Http.Client/README.md)
@@ -46,21 +44,21 @@ Owns shared substrate concerns and capability runtimes:
 - Process runtime: step registration, planning, execution, state mutation, observability
 - Providers abstraction (`IProcessContextStore`)
 
-### Kaleido.AspNetCore
-Owns ASP.NET Core DI and transport services:
-- shared exception middleware and correlation-header parsing
-- `AddAspNetCore()` — consolidated ASP.NET Core DI registration for both Process and Queryable
-- Queryable ASP.NET Core registration (`AddQueryableAspNetCore`) and value normalization (internal)
-- Process ASP.NET Core registration (`AddProcessorAspNetCore`) and execution/state services (internal)
-
 ### Kaleido.Http
-Owns HTTP endpoint publication:
+Owns the full HTTP transport layer:
+- `AddHttp()` — registers routing, `IHttpContextAccessor`, the middleware pipeline, and HTTP execution services
+- `ExceptionMiddleware` — outermost middleware; maps exceptions to JSON error responses
+- `ObservabilityMiddleware` — reads inbound correlation headers, populates `IKaleidoCorrelationContextAccessor`, tags the Activity, and echoes correlation headers on the response
+- `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers into `KaleidoCorrelationContext`
+- `KaleidoStartupFilter` — registers middlewares in the correct pipeline order via `IStartupFilter`
 - Queryable endpoint mapping (`MapQueryable`) — catalog, registry, query, and metadata endpoints
 - Process endpoint mapping (`MapProcessor`) — catalog, registry, metadata, execute, and state endpoints
 - Registry endpoint mapping (`MapRegistry`) — aggregated discovery combining Process and Queryable
 
 ### Kaleido.Http.Abstractions
-Owns shared HTTP contract types:
+Owns shared HTTP contract types and HTTP-specific correlation primitives:
+- `KaleidoCorrelationHeaders` — canonical `X-Kaleido-*` header name constants
+- `HttpHeaderSanitizer` — RFC 7230-compliant sanitization of HTTP header values
 - Process HTTP request/response contracts (`ExecuteProcessRequest`, `ProcessExecutionResponse`, etc.)
 - Queryable HTTP request/response contracts (`QueryApiRequest`, `QueryableRecordResponse`, etc.)
 - Shared contract types used by both server-side and client-side projects
@@ -120,6 +118,15 @@ Owns the SQLite durable state provider:
   - `KaleidoErrorCodes` (in `KaleidoErrorResponse.cs`) - framework-level HTTP error codes
   - `QueryErrorCodes` (in `QueryableValidationException.cs`) - Queryable validation error codes
 
+### OperationCanceledException and observability
+Never record `OperationCanceledException` as an execution failure — it inflates error metrics and triggers false alerts.
+
+The rule is: **one observability signal per cancellation, at the lowest level that has full context.**
+
+- **Process:** `ProcessExecutor` is the single recording point (`stepObservation.Canceled()`). It has step name, version, and processor name, and is where state is saved on cancellation. All layers above (`ProcessStepInvoker`, `ProcessRuntime`) use `when (exception is not OperationCanceledException)` on their `catch (Exception)` blocks so OCE propagates cleanly without triggering `ExecutionFailed` or `HandlerFailed`.
+- **Queryable:** `QueryContextEngine` and `DelegatedQueryViewEngine` each call `observation.Canceled()` in an explicit `catch (OperationCanceledException)` block placed before `catch (Exception)`. These are mutually exclusive code paths (dispatched by `QueryableService`), so only one signal fires per request.
+- Do **not** add `Canceled()` calls at higher levels (`ProcessRuntime`, `ProcessStepInvoker`) — you will get duplicate signals for the same cancellation event.
+
 ### Record conversion
 - Convert immutable data containers with init-only properties to records
 - Do NOT convert service classes with behavior to records
@@ -153,8 +160,7 @@ Use tests to understand behavioral expectations and invariants.
 ## Rule of thumb
 
 - If the concern is bootstrap, shared metadata, eventing, correlation, or the Queryable/Process runtime, it belongs in `Kaleido`.
-- If the concern is ASP.NET Core DI wiring or request/response transport services, it belongs in `Kaleido.AspNetCore`.
-- If the concern is HTTP endpoint mapping or route generation, it belongs in `Kaleido.Http`.
+- If the concern is HTTP transport wiring, middleware, correlation propagation, or endpoint mapping, it belongs in `Kaleido.Http`.
 - If the concern is shared HTTP contract types used by both server and client, it belongs in `Kaleido.Http.Abstractions`.
 - If the concern is calling a remote Kaleido service over HTTP, it belongs in `Kaleido.Http.Client`.
 - If the concern is OpenTelemetry provider wiring (exporters, instrumentation, resource config), it belongs in `Kaleido.Observability.OpenTelemetry`.

@@ -334,13 +334,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                     }
                     catch (QueryableValidationException ex)
                     {
-                        return Results.BadRequest(
-                            new KaleidoErrorResponse(
-                            [
-                                new KaleidoError(
-                                ex.Code,
-                                ex.Message)
-                            ]));
+                        return ValidationErrorResult(ex);
                     }
                 })
             .WithName(
@@ -392,13 +386,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                     }
                     catch (QueryableValidationException ex)
                     {
-                        return Results.BadRequest(
-                            new KaleidoErrorResponse(
-                            [
-                                new KaleidoError(
-                                ex.Code,
-                                ex.Message)
-                            ]));
+                        return ValidationErrorResult(ex);
                     }
                 })
             .WithName(
@@ -448,13 +436,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                     }
                     catch (QueryableValidationException ex)
                     {
-                        return Results.BadRequest(
-                            new KaleidoErrorResponse(
-                            [
-                                new KaleidoError(
-                                    ex.Code,
-                                    ex.Message)
-                            ]));
+                        return ValidationErrorResult(ex);
                     }
                 })
             .WithName(
@@ -471,4 +453,11 @@ public static class QueryableEndpointRouteBuilderExtensions
             .Produces<QueryResult<TQueryContext>>()
             .Produces<KaleidoErrorResponse>(400);
     }
+
+    private static IResult ValidationErrorResult(QueryableValidationException ex) =>
+        Results.BadRequest(
+            new KaleidoErrorResponse(
+            [
+                new KaleidoError(ex.Code, ex.Message)
+            ]));
 }

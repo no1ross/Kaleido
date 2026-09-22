@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Process.Context;
 
@@ -192,6 +193,15 @@ public sealed record StepContext
 internal sealed class InMemoryProcessContextStore : IProcessContextStore
 {
     private readonly ConcurrentDictionary<Guid, ProcessorContext> _contexts = new();
+
+    public InMemoryProcessContextStore(
+        ILogger<InMemoryProcessContextStore> logger)
+    {
+        logger.LogWarning(
+            "InMemoryProcessContextStore is active. This store has no eviction policy and will grow " +
+            "without bound in long-running processes. Register a durable IProcessContextStore " +
+            "(e.g. UseSqliteProcessContextStore) before deploying to production.");
+    }
 
     public Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default)
     {

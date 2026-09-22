@@ -1,4 +1,4 @@
-namespace Kaleido.Observability;
+namespace Kaleido.Http;
 
 /// <summary>HTTP header names used to propagate Kaleido correlation context between services.</summary>
 public static class KaleidoCorrelationHeaders

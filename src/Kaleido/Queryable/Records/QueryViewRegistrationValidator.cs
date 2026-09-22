@@ -48,7 +48,7 @@ internal sealed class QueryViewRegistrationValidator
                         x.GetCustomAttribute<QueryViewAttribute>()
                 })
                 .GroupBy(
-                    x => x.Attribute!.Name,
+                    x => x.Attribute?.Name ?? string.Empty,
                     StringComparer.OrdinalIgnoreCase)
                 .Where(x => x.Count() > 1)
                 .ToArray();

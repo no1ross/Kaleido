@@ -541,7 +541,7 @@ public sealed class CompiledQueryApplierTests
     [Fact]
     public void ApplyFilter_ShouldThrow_WhenStringOperatorIsAppliedToNonStringField()
     {
-        Assert.Throws<NotSupportedException>(
+        Assert.Throws<InvalidFilterNodeException>(
             () => _applier.ApplyFilter(
                 CreateRecords().AsQueryable(),
                 Filter(
@@ -553,7 +553,7 @@ public sealed class CompiledQueryApplierTests
     [Fact]
     public void ApplyFilter_ShouldThrow_WhenBooleanOperatorIsAppliedToNonBooleanField()
     {
-        Assert.Throws<NotSupportedException>(
+        Assert.Throws<InvalidFilterNodeException>(
             () => _applier.ApplyFilter(
                 CreateRecords().AsQueryable(),
                 Filter(

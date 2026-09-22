@@ -115,14 +115,14 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 - [ ] Set `Activity.Current?.SetStatus(ActivityStatusCode.Error)` on existing `ArgumentException` and `KaleidoFrameworkException` branches too
 
 ### Duplicate code extraction
-- [ ] Extract `StampCorrelationHeaders` + `SanitizeHeaderValue` to `internal static class CorrelationHeaderStamper` in `Kaleido.Http.Client` (currently copy-pasted between `KaleidoProcessClient` and `KaleidoQueryableClient`)
+- [x] Extract `StampCorrelationHeaders` + `SanitizeHeaderValue` to `internal static class CorrelationHeaderStamper` in `Kaleido.Http.Client` (currently copy-pasted between `KaleidoProcessClient` and `KaleidoQueryableClient`)
 - [ ] Extract `GetDownstreamProcessesAsync` / `GetDownstreamQueryablesAsync` to a single generic method `GetDownstreamAsync<TMap,TItem>` in `RegistryEndpointRouteBuilderExtensions.cs`
 - [ ] Extract the three identical `QueryableValidationException → BadRequest` catch blocks in `QueryableEndpointRouteBuilderExtensions.cs` to a shared helper
 - [ ] Extract `ProcessExecutionService.ExecuteAsync` shared core (~40 dup lines) to a private `ExecuteStepCoreAsync` method
 - [ ] Extract assembly type-scan predicate + TypeFilter guard to a shared `AssemblyTypeScanner` helper (used in both `ParticipantServiceCollectionExtensions` and `QueryableServiceCollectionExtensions`)
 - [ ] Extract `IQueryViewSource*` interface detection pattern (repeated ×5) to a `QueryViewInterfaceScanner` helper
 - [ ] Extract duplicate-name GroupBy validation (×3) to a `ValidationHelpers.ThrowOnDuplicateNames<T>` method
-- [ ] Centralize observability tag-name magic strings to a `KaleidoObservabilityTags` constants class
+- [x] Centralize observability tag-name magic strings to a `KaleidoObservabilityTags` constants class
 
 ### Observability correctness
 - [ ] Add correlation headers to registry-fetch HTTP call in `KaleidoProcessClient.cs:266` — build `HttpRequestMessage`, call `StampCorrelationHeaders` before `SendAsync`
@@ -150,15 +150,15 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 - [ ] Fix `ProcessStepHandlerResult<T>.HandOff` return type → `ProcessStepHandlerResult<TProcessStepResult>` (currently returns non-generic, typed handlers cannot use it)
 
 ### Dependency graph fixes
-- [ ] Change `Kaleido.Observability.OpenTelemetry.csproj` project reference from `Kaleido.AspNetCore` → `Kaleido` (only uses core types)
+- [x] Change `Kaleido.Observability.OpenTelemetry.csproj` project reference from `Kaleido.AspNetCore` → `Kaleido` (only uses core types)
 - [ ] Add explicit `<ProjectReference Include="..\Kaleido\Kaleido.csproj" />` to `Kaleido.Http.csproj` (currently relies on transitive)
 - [ ] Add explicit `PackageReference Include="Microsoft.Extensions.Configuration.Abstractions"` to `Kaleido.Http.Client.csproj`
 
 ### Security guardrails
 - [ ] Add max filter depth check (e.g., depth ≤ 10) to `QueryRequestValidator.ValidateFilter` — prevents stack-overflow DoS from deeply nested `QueryFilterGroup`
 - [ ] Sanitize `RegistryClientError.Reason` — replace raw `ex.Message` (which can contain internal hostnames/URLs) with a generic message; keep detail in logs
-- [ ] Add startup warning when `InMemoryProcessContextStore` is the registered store (it has no eviction and grows without bound in production)
-- [ ] Cap correlation header value lengths in `KaleidoAspNetCoreCorrelation.cs`
+- [x] Add startup warning when `InMemoryProcessContextStore` is the registered store (it has no eviction and grows without bound in production)
+- [x] Cap correlation header value lengths in `KaleidoAspNetCoreCorrelation.cs`
 
 ### Build pipeline
 - [ ] Add `Microsoft.SourceLink.GitHub` package reference and `EmbedUntrackedSources` to `build/packages.props`
@@ -228,10 +228,10 @@ Not required, but worth cleaning up if you touch the surrounding code:
 
 - Seal unsealed public `record` types and attributes where inheritance isn't intended
 - `DataTypeMapper.GetDescriptor(Type)` → make public (currently internal while `GetDescriptor(PropertyInfo)` is public)
-- `NullEventPublisher` doc comment fix (says "before AddKaleido" when it's actually after)
+- [x] `NullEventPublisher` doc comment fix + startup warning when no real publisher registered
 - `IProcessStateService.GetCurrentState` missing `Async` suffix
 - `KaleidoEventEnvelope<TEvent,TContext>` — add `IKaleidoEventContext` marker constraint on `TContext`
-- `KaleidoCorrelationContext.IsEmpty` ignores `StepName` — fix to include it
+- [x] `KaleidoCorrelationContext.IsEmpty` ignores `StepName` — fix to include it
 - `AvailableAfterAttribute` / `AvailableUntilAttribute` consolidation
 - `"application/json"` literal → `MediaTypeNames.Application.Json`
 - `RegistryCache` never DI-registered — register via `TryAddSingleton` or simplify

@@ -76,16 +76,6 @@ public sealed class QueryRequestTests
     }
 
     [Fact]
-    public void NamedQueryRequiredException_CreatesWithCorrectMessage()
-    {
-        var exception = new NamedQueryRequiredException("test-query", "test-param");
-
-        Assert.Equal(QueryErrorCodes.NamedQueryNotAllowed, exception.Code);
-        Assert.Contains("test-query", exception.Message);
-        Assert.Contains("test-param", exception.Message);
-    }
-
-    [Fact]
     public void UnsupportedMatchModeException_CreatesWithCorrectProperties()
     {
         var exception = new UnsupportedMatchModeException("test-field", MatchMode.Exact);
@@ -125,15 +115,6 @@ public sealed class QueryRequestTests
         Assert.Contains("String", exception.Message);
     }
 
-    [Fact]
-    public void NamedQueryNotAllowedException_CreatesWithCorrectMessage()
-    {
-        var exception = new NamedQueryNotAllowedException("test-query", "test-record");
-
-        Assert.Equal(QueryErrorCodes.NamedQueryNotAllowed, exception.Code);
-        Assert.Contains("test-query", exception.Message);
-        Assert.Contains("test-record", exception.Message);
-    }
 
     [Fact]
     public void InvalidSearchNodeException_CreatesWithCorrectMessage()

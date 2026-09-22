@@ -68,21 +68,6 @@ public sealed class InvalidPageSizeException
     }
 }
 
-public sealed class NamedQueryRequiredException
-    : QueryableValidationException
-{
-    public NamedQueryRequiredException(
-        string namedQuery,
-        string parameterName)
-        : base(
-             QueryErrorCodes.NamedQueryNotAllowed,
-                        $"Named query '{namedQuery}' requires parameter '{parameterName}'.")
-    {
-    }
-}
-
-
-
 public static class QueryErrorCodes
 {
     public const string InvalidField =
@@ -109,12 +94,6 @@ public static class QueryErrorCodes
     public const string InvalidParameterType =
         "INVALID_PARAMETER_TYPE";
 
-    public const string NamedQueryNotAllowed =
-        "NAMED_QUERY_NOT_ALLOWED";
-
-    public const string NamedQueryRequired =
-        "NAMED_QUERY_REQUIRED";
-
     public const string FieldNotSearchable =
         "FIELD_NOT_SEARCHABLE";
 
@@ -132,6 +111,9 @@ public static class QueryErrorCodes
 
     public const string EmptyFilterGroup =
         "EMPTY_FILTER_GROUP";
+
+    public const string FilterDepthExceeded =
+        "FILTER_DEPTH_EXCEEDED";
 
     public const string EmptySearchGroup =
         "EMPTY_SEARCH_GROUP";
@@ -243,19 +225,6 @@ public sealed class InvalidParameterTypeException
         : base(
             QueryErrorCodes.InvalidParameterType,
             $"Parameter '{parameter}' expects values of type '{expected.Name}' but received '{actual.Name}'.")
-    {
-    }
-}
-
-public sealed class NamedQueryNotAllowedException
-    : QueryableValidationException
-{
-    public NamedQueryNotAllowedException(
-        string query,
-        string record)
-        : base(
-            QueryErrorCodes.NamedQueryNotAllowed,
-            $"Named query '{query}' is not allowed for record '{record}'.")
     {
     }
 }
@@ -416,6 +385,18 @@ public sealed class QueryContextSourceNotFoundException
         : base(
             QueryErrorCodes.QueryContextSourceNotFound,
             $"No IQueryContextSource<{contextType.Name}> or IQueryContextSourceAsync<{contextType.Name}> registered.")
+    {
+    }
+}
+
+public sealed class FilterDepthExceededException
+    : QueryableValidationException
+{
+    public FilterDepthExceededException(
+        int maxDepth)
+        : base(
+            QueryErrorCodes.FilterDepthExceeded,
+            $"Filter expression exceeds the maximum nesting depth of {maxDepth}.")
     {
     }
 }

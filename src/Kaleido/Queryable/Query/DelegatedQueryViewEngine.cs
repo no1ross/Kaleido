@@ -54,8 +54,10 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
             }
 
             var typedMethod =
-                typeof(DelegatedQueryViewEngine<TDelegateContext, TView>)
-                    .GetMethod(nameof(ExecuteTypedAsync), System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                (typeof(DelegatedQueryViewEngine<TDelegateContext, TView>)
+                    .GetMethod(nameof(ExecuteTypedAsync), System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    ?? throw new KaleidoFrameworkException(
+                        $"Could not locate method '{nameof(ExecuteTypedAsync)}' on DelegatedQueryViewEngine."))
                     .MakeGenericMethod(registration.ViewParametersType);
 
             using var scope = observation.BeginDelegate();
@@ -89,6 +91,11 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
         catch (QueryableValidationException exception)
         {
             observation.ValidationFailed(exception);
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            observation.Canceled();
             throw;
         }
         catch (Exception exception)

@@ -1,11 +1,8 @@
-using Kaleido.AspNetCore.Middleware;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Moq;
-using System.Text.Json;
 
-namespace Kaleido.AspNetCore.UnitTests;
+namespace Kaleido.Http.UnitTests;
 
 public sealed class ExceptionMiddlewareTests
 {
@@ -47,7 +44,7 @@ public sealed class ExceptionMiddlewareTests
         Assert.Equal(StatusCodes.Status400BadRequest, context.Response.StatusCode);
         Assert.Equal("application/json; charset=utf-8", context.Response.ContentType);
         Assert.Equal(
-            "{\"errors\":[{\"code\":\"argument_error\",\"message\":\"bad argument\",\"field\":null}]}",
+            "{\"errors\":[{\"code\":\"argument_error\",\"message\":\"An invalid argument was provided.\",\"field\":null}]}",
             ReadBody(context));
     }
 

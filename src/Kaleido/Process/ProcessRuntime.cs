@@ -108,7 +108,7 @@ internal sealed class ProcessRuntime
 
             return result;
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             observation.ExecutionFailed(exception);
             throw;

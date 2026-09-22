@@ -71,16 +71,15 @@ internal sealed class StepCandidateBuilder(
     {
         try
         {
-            var json =
-                JsonSerializer.Serialize(
-                    values,
-                    SerializerOptions);
-
+            // If values is already a JsonElement (e.g. from HTTP deserialization), deserialize
+            // directly to avoid a redundant Serialize → Deserialize round-trip.
             var instance =
-                JsonSerializer.Deserialize(
-                    json,
-                    stepType,
-                    SerializerOptions);
+                values is JsonElement je
+                    ? je.Deserialize(stepType, SerializerOptions)
+                    : JsonSerializer.Deserialize(
+                        JsonSerializer.Serialize(values, SerializerOptions),
+                        stepType,
+                        SerializerOptions);
 
             if (instance is null)
             {

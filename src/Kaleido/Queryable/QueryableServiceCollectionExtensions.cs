@@ -56,7 +56,7 @@ public static class QueryableServiceCollectionExtensions
 
         var delegatedContextTypes =
             queryContextTypes
-                .Where(x => x.GetCustomAttribute<QueryContextAttribute>()!.Kind == QueryContextKind.Delegated)
+                .Where(x => x.GetCustomAttribute<QueryContextAttribute>()?.Kind == QueryContextKind.Delegated)
                 .ToArray();
 
         var localContextTypes =
