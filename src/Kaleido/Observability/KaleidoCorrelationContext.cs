@@ -48,7 +48,8 @@ public sealed record KaleidoCorrelationContext
         string.IsNullOrWhiteSpace(RequestId)
         && ProcessId is null
         && ProcessorInstanceId is null
-        && string.IsNullOrWhiteSpace(SourceProcessorName);
+        && string.IsNullOrWhiteSpace(SourceProcessorName)
+        && string.IsNullOrWhiteSpace(StepName);
 }
 
 public interface IKaleidoCorrelationContextAccessor
