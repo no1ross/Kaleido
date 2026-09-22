@@ -449,7 +449,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         return (IQueryable<TQueryContext>)
             method.Invoke(
                 null,
-                new object[] { query, lambda })!;
+                [query, lambda])!;
     }
 
     private static Expression StringCall(

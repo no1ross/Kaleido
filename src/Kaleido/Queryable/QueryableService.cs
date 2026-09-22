@@ -128,14 +128,7 @@ internal sealed class QueryableService(
         var result =
             typedMethod.Invoke(
                 this,
-                new object[]
-                {
-                    serviceProvider,
-                    request,
-                    contextRegistration,
-                    viewRegistration,
-                    cancellationToken
-                });
+                [serviceProvider, request, contextRegistration, viewRegistration, cancellationToken]);
 
         if (result is not Task<QueryResult<TView>> typedTask)
         {
@@ -162,13 +155,7 @@ internal sealed class QueryableService(
         var result =
             typedMethod.Invoke(
                 this,
-                new object[]
-                {
-                    serviceProvider,
-                    request,
-                    contextRegistration,
-                    cancellationToken
-                });
+                [serviceProvider, request, contextRegistration, cancellationToken]);
 
         if (result is not Task<QueryResult<TView>> typedTask)
         {
@@ -251,13 +238,7 @@ internal sealed class QueryableService(
         var result =
             typedMethod.Invoke(
                 this,
-                new object[]
-                {
-                    serviceProvider,
-                    request,
-                    viewRegistration,
-                    cancellationToken
-                });
+                [serviceProvider, request, viewRegistration, cancellationToken]);
 
         if (result is not Task<QueryResult<TView>> typedTask)
         {

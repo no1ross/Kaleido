@@ -48,9 +48,9 @@ internal sealed class KaleidoBuilder : IKaleidoBuilder
         var assemblies = serviceOptions.Assemblies;
         if (assemblies is null || assemblies.Length == 0)
         {
-            assemblies = new[] { Assembly.GetCallingAssembly(), Assembly.GetEntryAssembly() }
-                .Where(a => a is not null)
-                .ToArray()!;
+            assemblies = new Assembly?[] { Assembly.GetCallingAssembly(), Assembly.GetEntryAssembly() }
+                .OfType<Assembly>()
+                .ToArray();
         }
 
         foreach (var assembly in assemblies)
@@ -69,6 +69,6 @@ internal sealed class KaleidoBuilder : IKaleidoBuilder
 
     internal bool AddAssembly(Assembly assembly)
     {
-        return _assemblies.TryAdd(assembly.FullName ?? assembly.GetName().Name!, assembly);
+        return _assemblies.TryAdd(assembly.FullName ?? assembly.GetName().Name ?? string.Empty, assembly);
     }
 }

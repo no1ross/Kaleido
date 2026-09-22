@@ -230,14 +230,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
         var task = (Task<IQueryable<TView>>)typedMethod.Invoke(
             this,
-            new object[]
-            {
-                queryView,
-                query,
-                executionContext,
-                viewRegistration,
-                cancellationToken
-            })!;
+            [queryView, query, executionContext, viewRegistration, cancellationToken])!;
 
         return await task;
     }
