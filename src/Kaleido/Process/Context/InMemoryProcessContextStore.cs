@@ -191,18 +191,14 @@ public sealed record StepContext
 
 internal sealed class InMemoryProcessContextStore : IProcessContextStore
 {
-    private readonly ConcurrentDictionary<Guid, ProcessorContext> contexts = new();
+    private readonly ConcurrentDictionary<Guid, ProcessorContext> _contexts = new();
 
-    public async Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default)
+    public Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (contexts.TryGetValue(processId, out var context))
-        {
-            return await Task.FromResult(context);
-        }
-
-        return await Task.FromResult<ProcessorContext?>(null);
+        _contexts.TryGetValue(processId, out var context);
+        return Task.FromResult(context);
     }
 
     public Task SaveAsync(ProcessorContext context, CancellationToken cancellationToken = default)
@@ -211,7 +207,7 @@ internal sealed class InMemoryProcessContextStore : IProcessContextStore
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        contexts[context.ProcessId] = context;
+        _contexts[context.ProcessId] = context;
 
         return Task.CompletedTask;
     }
