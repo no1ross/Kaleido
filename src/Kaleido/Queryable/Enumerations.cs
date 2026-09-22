@@ -19,7 +19,7 @@ public enum FilterOperator
     LessThan,
     [Description("Greater Than Or Equal")]
     GreaterThanOrEqual,
-    [Description("Less Than Or Equal")] 
+    [Description("Less Than Or Equal")]
     LessThanOrEqual,
 
     // String

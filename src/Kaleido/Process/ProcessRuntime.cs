@@ -53,8 +53,6 @@ internal sealed class ProcessRuntime
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        ValidateRequest(request);
-
         using var observation =
             _observability.BeginExecution(
                 new ProcessExecutionObservationDetails(
@@ -185,12 +183,6 @@ internal sealed class ProcessRuntime
         {
             LatestRequestId = requestId
         };
-    }
-
-    private static void ValidateRequest(
-        ProcessRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
     }
 
     private static IReadOnlyCollection<StepCandidate> GetExecutionCandidates(

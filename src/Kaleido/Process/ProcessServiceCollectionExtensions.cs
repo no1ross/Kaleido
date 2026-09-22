@@ -6,7 +6,6 @@ using Kaleido.Process.Execution;
 using Kaleido.Process.Observability;
 using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
@@ -62,29 +61,23 @@ public static class ProcessServiceCollectionExtensions
 
         foreach (var recordType in recordTypes)
         {
-            var handlerType = RegisterProcessStep(
+            var handlerType = RegisterHandler(
                 builder.Services,
                 recordType,
                 types);
-            
+
             handlerTypes[recordType] = handlerType;
         }
 
         builder.Services.TryAddSingleton<IProcessStepRegistry>(
-            sp =>
-            {
-                return new ProcessStepRegistry(
-                    recordTypes,
-                    handlerTypes);
-            });
+            _ => new ProcessStepRegistry(
+                recordTypes,
+                handlerTypes));
 
         builder.Services.TryAddSingleton<IProcessRegistry>(
-            sp =>
-            {
-                return new ProcessRegistry(
-                    builder.ServiceOptions,
-                    sp.GetRequiredService<IProcessStepRegistry>());
-            });
+            sp => new ProcessRegistry(
+                builder.ServiceOptions,
+                sp.GetRequiredService<IProcessStepRegistry>()));
 
         RegisterFrameworkServices(builder.Services);
 
@@ -209,17 +202,6 @@ public static class ProcessServiceCollectionExtensions
         services.TryAddScoped<IProcessObservability, ProcessObservability>();
         services.TryAddScoped<IProcessRuntime, ProcessRuntime>();
         services.TryAddScoped<IExecutionProcessor, ExecutionProcessor>();
-    }
-
-    private static Type RegisterProcessStep(
-        IServiceCollection services,
-        Type stepType,
-        IReadOnlyCollection<Type> types)
-    {
-        return RegisterHandler(
-            services,
-            stepType,
-            types);
     }
 
     private static Type RegisterHandler(

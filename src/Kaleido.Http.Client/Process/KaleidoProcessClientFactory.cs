@@ -1,5 +1,3 @@
-using Kaleido.Http.Process;
-
 namespace Kaleido.Http.Client.Process;
 
 internal sealed class KaleidoProcessClientFactory(

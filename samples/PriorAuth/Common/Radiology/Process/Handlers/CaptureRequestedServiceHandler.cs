@@ -126,22 +126,22 @@ public sealed class CaptureRequestedServiceHandler(
                 context.ProcessId,
                 cancellationToken);
 
-        return modality switch
-        {
-            ProcedureModality.Mri =>
-                await CreateMriResponseAsync(
-                    context.ProcessId,
-                    procedureCode.CodeValue,
-                    cancellationToken),
-            ProcedureModality.Ct =>
-                await CreateCtResponseAsync(
-                    context.ProcessId,
-                    procedureCode.CodeValue,
-                    cancellationToken),
-            _ =>
-                ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success(
-                    new CaptureRequestedServiceResponse())
-        };
+            return modality switch
+            {
+                ProcedureModality.Mri =>
+                    await CreateMriResponseAsync(
+                        context.ProcessId,
+                        procedureCode.CodeValue,
+                        cancellationToken),
+                ProcedureModality.Ct =>
+                    await CreateCtResponseAsync(
+                        context.ProcessId,
+                        procedureCode.CodeValue,
+                        cancellationToken),
+                _ =>
+                    ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success(
+                        new CaptureRequestedServiceResponse())
+            };
 
             async Task<ProcessStepHandlerResult<CaptureRequestedServiceResponse>> CreateMriResponseAsync(
                 Guid processId,

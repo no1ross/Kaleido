@@ -75,7 +75,7 @@ internal sealed class ShoppingCartDetailViewSource
                     ShoppingCartId =
                         x.ShoppingCartId,
 
-                    ShoppingCartItemId = 
+                    ShoppingCartItemId =
                         x.ShoppingCartItemId,
 
                     ProductId =

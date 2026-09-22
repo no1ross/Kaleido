@@ -159,7 +159,7 @@ public sealed class ProcessRuntimeTests
                 x.BuildPlan(
                     request.Processor,
                     It.IsAny<ProcessorContext>()))
-            .Returns(new ExecutionPlanResult{ Candidates = [] });
+            .Returns(new ExecutionPlanResult { Candidates = [] });
 
         var processor =
             new Mock<IExecutionProcessor>();

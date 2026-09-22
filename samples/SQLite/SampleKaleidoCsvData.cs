@@ -1,5 +1,3 @@
-using Kaleido.Extensions;
-
 namespace Kaleido.Samples.SQLite;
 
 public sealed class SampleKaleidoCsvData

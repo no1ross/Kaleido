@@ -51,7 +51,7 @@ internal sealed class ShoppingCartContextSource(
                     UnitPrice =
                         item.UnitPrice,
 
-                    IsActive = 
+                    IsActive =
                         item.ShoppingCart.IsActive
                 });
     }

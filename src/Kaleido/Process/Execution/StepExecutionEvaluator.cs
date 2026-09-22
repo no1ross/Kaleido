@@ -34,7 +34,7 @@ internal sealed class StepExecutionEvaluator(
             return ExecutionDecision.BusinessFailure();
         }
 
-        if (result.RequiredStep is not null && 
+        if (result.RequiredStep is not null &&
             string.IsNullOrEmpty(result.TargetProcessorName))
         {
             return EvaluateRequiredStep(

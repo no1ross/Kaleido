@@ -1,13 +1,14 @@
-using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
+namespace Kaleido.Queryable;
+
 public interface IQueryableService
 {
-    Task<QueryResult<TView>> QueryAsync<TQueryView, TView>(IQueryRequest request, CancellationToken cancellationToken = default) 
+    Task<QueryResult<TView>> QueryAsync<TQueryView, TView>(IQueryRequest request, CancellationToken cancellationToken = default)
         where TQueryView : class
         where TView : class;
 }
@@ -127,14 +128,7 @@ internal sealed class QueryableService(
         var result =
             typedMethod.Invoke(
                 this,
-                new object[]
-                {
-                    serviceProvider,
-                    request,
-                    contextRegistration,
-                    viewRegistration,
-                    cancellationToken
-                });
+                [serviceProvider, request, contextRegistration, viewRegistration, cancellationToken]);
 
         if (result is not Task<QueryResult<TView>> typedTask)
         {
@@ -161,13 +155,7 @@ internal sealed class QueryableService(
         var result =
             typedMethod.Invoke(
                 this,
-                new object[]
-                {
-                    serviceProvider,
-                    request,
-                    contextRegistration,
-                    cancellationToken
-                });
+                [serviceProvider, request, contextRegistration, cancellationToken]);
 
         if (result is not Task<QueryResult<TView>> typedTask)
         {
@@ -250,13 +238,7 @@ internal sealed class QueryableService(
         var result =
             typedMethod.Invoke(
                 this,
-                new object[]
-                {
-                    serviceProvider,
-                    request,
-                    viewRegistration,
-                    cancellationToken
-                });
+                [serviceProvider, request, viewRegistration, cancellationToken]);
 
         if (result is not Task<QueryResult<TView>> typedTask)
         {

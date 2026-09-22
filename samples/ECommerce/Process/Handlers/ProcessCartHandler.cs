@@ -109,7 +109,7 @@ internal sealed class ProcessCartHandler(
                     CustomerId =
                         step.CustomerId,
 
-                    ShoppingCartId = 
+                    ShoppingCartId =
                         shoppingCart.ShoppingCartId,
 
                     ProcessId =

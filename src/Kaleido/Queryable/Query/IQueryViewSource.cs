@@ -9,7 +9,7 @@ public interface IQueryViewSource<TQueryView, TView, TViewParameters>
 }
 
 
-public interface IQueryViewSource<TQueryView, TView> : IQueryViewSource<TQueryView, TView, EmptyQueryViewParameters> 
+public interface IQueryViewSource<TQueryView, TView> : IQueryViewSource<TQueryView, TView, EmptyQueryViewParameters>
     where TQueryView : class
     where TView : class
 {

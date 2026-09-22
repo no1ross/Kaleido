@@ -4,7 +4,7 @@ namespace Kaleido.Process.Attributes;
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public class DependsOnStepAttribute : Attribute
 {
-    public DependsOnStepAttribute(Type dependsOnStep) 
+    public DependsOnStepAttribute(Type dependsOnStep)
     {
         DependsOnStep = dependsOnStep;
     }

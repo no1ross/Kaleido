@@ -17,7 +17,7 @@ public sealed class DbContextDependencyTests
     {
         // Arrange
         var services = new ServiceCollection();
-        
+
         // Register DbContext BEFORE AddKaleido - this should work
         services.AddDbContext<TestDbContext>(options =>
             options.UseInMemoryDatabase("TestDb"));
@@ -60,7 +60,7 @@ public sealed class DbContextDependencyTests
         // Assert
         var store = provider.GetService<IProcessContextStore>();
         Assert.NotNull(store);
-        
+
         // Verify it's the SQLite implementation
         Assert.Equal("Kaleido.Provider.SQLite.SqliteProcessContextStore", store.GetType().FullName);
     }

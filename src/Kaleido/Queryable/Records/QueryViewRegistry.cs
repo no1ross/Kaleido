@@ -226,7 +226,7 @@ internal sealed class QueryViewRegistry
             contextType.GetProperty(
                 attribute.DefaultSortField,
                 BindingFlags.Public |
-                BindingFlags.Instance|
+                BindingFlags.Instance |
                 BindingFlags.IgnoreCase);
 
         if (property is null)
