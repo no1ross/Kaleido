@@ -13,67 +13,64 @@ Progress tracker for the architecture cleanup sprint. Items are ordered by tier 
 These are purely mechanical: delete dead files, fix unused usings, trivial syntax modernization. No behavioral change. Should all pass `dotnet build` + `dotnet test` with zero changes to logic.
 
 ### Dead file deletions
-- [ ] Delete `Kaleido.AspNetCore/KaleidoBuilder.cs` — dead duplicate, never instantiated
-- [ ] Delete `Kaleido.Http/Process/Services/ProcessMetadataService.cs` — `IProcessMetadataService` has zero impls and zero callers
-- [ ] Delete `Kaleido.Http/Process/Contracts/ProcessCatalogRequest.cs` — record never referenced anywhere
-- [ ] Delete `Kaleido/Queryable/Query/DelegatedQueryContextEngine.cs` — physically empty (0 bytes)
-- [ ] Delete `Kaleido/Queryable/Query/IDelegatedQueryContextEngine.cs` — physically empty (0 bytes)
-- [ ] Delete `Kaleido/Process/Context/StepProcessingRecord.cs` — `StepProcessingRecord` + `RequestRecord` never referenced
-- [ ] Delete `Kaleido/Extensions/EnumExtensions.cs` — `ToName` = `value.ToString()`, never called
+- [x] Delete `Kaleido.AspNetCore/KaleidoBuilder.cs` — dead duplicate, never instantiated
+- [x] Delete `Kaleido.Http/Process/Services/ProcessMetadataService.cs` — `IProcessMetadataService` has zero impls and zero callers
+- [x] Delete `Kaleido.Http/Process/Contracts/ProcessCatalogRequest.cs` — record never referenced anywhere
+- [x] Delete `Kaleido/Queryable/Query/DelegatedQueryContextEngine.cs` — physically empty (0 bytes)
+- [x] Delete `Kaleido/Queryable/Query/IDelegatedQueryContextEngine.cs` — physically empty (0 bytes)
+- [x] Delete `Kaleido/Process/Context/StepProcessingRecord.cs` — `StepProcessingRecord` + `RequestRecord` never referenced
+- [x] Delete `Kaleido/Extensions/EnumExtensions.cs` — `ToName` = `value.ToString()`, never called
 
 ### Namespace fix
-- [ ] Add `namespace Kaleido.Queryable;` to `Kaleido/Queryable/QueryableService.cs` (currently in global namespace) ⚠️ minor breaking for any direct `IQueryableService` reference without a using
+- [x] Add `namespace Kaleido.Queryable;` to `Kaleido/Queryable/QueryableService.cs` (currently in global namespace) ⚠️ minor breaking for any direct `IQueryableService` reference without a using
 
 ### Code style / dead code removal
-- [ ] Remove empty constructor from `Kaleido/Process/Planning/StepCandidatePlanner.cs`
-- [ ] Remove redundant `ValidateRequest(request)` call in `ParticipantRuntime.cs:56` (duplicates the `ThrowIfNull` on line 54)
-- [ ] Remove dead `RegisterProcessStep` pass-through in `ParticipantServiceCollectionExtensions.cs:214` (inlines to `RegisterHandler`)
-- [ ] Simplify tautological type filter in `ParticipantServiceCollectionExtensions.cs:35–38` → `x.IsClass && !x.IsAbstract`
-- [ ] Fix `InMemoryProcessContextStore.LoadAsync` — drop `async`/`await Task.FromResult`, return `Task.FromResult` directly
-- [ ] Rename `contexts` field → `_contexts` in `InMemoryProcessContextStore.cs` (breaks `_camelCase` convention)
-- [ ] Remove dead lambda parameter `sp` in `IProcessStepRegistry` factory in `ParticipantServiceCollectionExtensions.cs:74`
-- [ ] Remove `StepCandidate.GetStep<T>()` — never called; all consumers access `.Step` directly
-- [ ] Remove `StepCandidate.AddWarning(...)` — never called anywhere
+- [x] Remove empty constructor from `Kaleido/Process/Planning/StepCandidatePlanner.cs`
+- [x] Remove `ValidateRequest()` method from `ProcessRuntime.cs` — body was only a duplicate null check; the method itself removed entirely
+- [x] Remove dead `RegisterProcessStep` pass-through in `ProcessServiceCollectionExtensions.cs` (inlined to `RegisterHandler`)
+- [~] ~~Simplify tautological type filter~~ — **KEPT**: `IsPublic||IsNestedPublic||IsNotPublic||IsNestedAssembly` is intentional; it excludes `private`/`protected` nested types. Not tautological.
+- [x] Fix `InMemoryProcessContextStore.LoadAsync` — drop `async`/`await Task.FromResult`, return `Task.FromResult` directly
+- [x] Rename `contexts` field → `_contexts` in `InMemoryProcessContextStore.cs`
+- [x] Remove unused `sp =>` lambda params in `TryAddSingleton` factories → `_ =>`
+- [~] ~~Remove `StepCandidate.GetStep<T>()`~~ — **KEPT**: part of the complete typed accessor API
+- [~] ~~Remove `StepCandidate.AddWarning(...)`~~ — **KEPT**: completes the `AddInformation/AddWarning/AddError` symmetry
 
 ### Collection expression modernization
-- [ ] `KaleidoBuilder.cs` (core): `new[] { Assembly.GetCallingAssembly(), ... }` → `[...]`
-- [ ] `KaleidoBuilder.cs` (AspNetCore — before deletion): already covered by dead file deletion above
-- [ ] `CompiledQueryApplier.cs:452`: `new object[] { query, lambda }` → `[query, lambda]`
-- [ ] `QueryableService.cs:130,164,253`: `new object[] { ... }` → `[...]`
-- [ ] `QueryContextEngine.cs:233`: `new object[] { ... }` → `[...]`
+- [x] `KaleidoBuilder.cs` (core): `new[] { }.Where().ToArray()!` → `new Assembly?[]{}.OfType<Assembly>().ToArray()`
+- [x] `CompiledQueryApplier.cs:452`: `new object[] { query, lambda }` → `[query, lambda]`
+- [x] `QueryableService.cs`: `new object[] { ... }` → `[...]` at 3 Invoke call sites
+- [x] `QueryContextEngine.cs`: `new object[] { ... }` → `[...]`
 
 ### Null-forgiving operator (`!`) → `.OfType<>()` fixes
-- [ ] `KaleidoBuilder.cs` (core) `ToArray()!` → `.OfType<Assembly>().ToArray()`
-- [ ] `KaleidoBuilder.cs` `GetName().Name!` → `?? string.Empty` or `?? throw`
+- [x] `KaleidoBuilder.cs` (core) `ToArray()!` → `.OfType<Assembly>().ToArray()`
+- [x] `KaleidoBuilder.cs` `GetName().Name!` → `?? string.Empty`
 
-### Unused `using` directives (11 files)
-- [ ] `Kaleido/Process/ParticipantServiceCollectionExtensions.cs` — remove `Microsoft.Extensions.Configuration`
-- [ ] `Kaleido.Http.Client/KaleidoClientExtensions.cs` — remove `Microsoft.Extensions.Configuration`
-- [ ] `Kaleido/Queryable/Query/QueryContextEngine.cs` — remove `System.Linq` (covered by ImplicitUsings)
-- [ ] `Kaleido/Queryable/Records/QueryViewRegistry.cs` — remove `Kaleido`
-- [ ] `Kaleido/Process/IParticipantRuntime.cs` — remove `Kaleido.Process.Context`
-- [ ] `Kaleido.Http/Process/Contracts/ProcessExecutionResponseFactory.cs` — remove `Kaleido`
-- [ ] `Kaleido.Http.Client/Queryable/KaleidoQueryableClientFactory.cs` — remove `Kaleido.Http.Queryable` (already a global using)
-- [ ] `Kaleido.Http.Client/Process/KaleidoProcessClientFactory.cs` — remove `Kaleido.Http.Process` (already a global using)
-- [ ] `Kaleido.Observability.OpenTelemetry/KaleidoObservabilityOpenTelemetryExtensions.cs` — remove `Microsoft.AspNetCore.Builder` (verify at compile)
+### Unused `using` directives
+- [x] `Kaleido/Process/ProcessServiceCollectionExtensions.cs` — removed `Microsoft.Extensions.Configuration`
+- [x] `Kaleido.Http.Client/KaleidoClientExtensions.cs` — removed `Microsoft.Extensions.Configuration`
+- [x] `Kaleido/Queryable/Query/QueryContextEngine.cs` — removed `System.Linq` (covered by ImplicitUsings)
+- [x] `Kaleido.Http.Client/Queryable/KaleidoQueryableClientFactory.cs` — removed `Kaleido.Http.Queryable` (already a global using)
+- [x] `Kaleido.Http.Client/Process/KaleidoProcessClientFactory.cs` — removed `Kaleido.Http.Process` (already a global using)
+- [x] `Kaleido.Observability.OpenTelemetry/KaleidoObservabilityOpenTelemetryExtensions.cs` — removed `Microsoft.AspNetCore.Builder`
+- [~] ~~`Kaleido/Queryable/Records/QueryViewRegistry.cs` — remove `Kaleido`~~ — **KEPT**: `using Kaleido` needed for `KaleidoConfigurationException`
+- [~] ~~`Kaleido/Process/IProcessRuntime.cs` — remove `Kaleido.Process.Context`~~ — **KEPT**: needed for `ProcessExecutionState`
+- [~] ~~`Kaleido.Http/Process/Contracts/ProcessExecutionResponseFactory.cs` — remove `Kaleido`~~ — **KEPT**: needed for `KaleidoFrameworkException`
 
 ### EF nav property `= null!` → `required`
-- [ ] `ProcessStepContextEntity.cs:48` — `Context { get; set; } = null!` → `required`
-- [ ] `ProcessRequiredStepEntity.cs:27` — same pattern
-- [ ] `ProcessAvailableStepEntity.cs:27` — same pattern
+- [~] ~~`ProcessStepContextEntity.cs`, `ProcessRequiredStepEntity.cs`, `ProcessAvailableStepEntity.cs`~~ — **REMOVED FROM SCOPE**: `= null!` on EF Core navigation properties is the correct pattern when Fluent API enforces NOT NULL at DB level. Not a bug.
 
 ### File renames (file name must match primary type)
-- [ ] Rename `Kaleido/Process/ParticipantRuntime.cs` → `ProcessRuntime.cs`
-- [ ] Rename `Kaleido/Process/IParticipantRuntime.cs` → `IProcessRuntime.cs`
-- [ ] Rename `Kaleido/Process/Registry/ParticipantRegistry.cs` → `ProcessRegistry.cs`
-- [ ] Rename `Kaleido/Process/ParticipantServiceCollectionExtensions.cs` → `ProcessServiceCollectionExtensions.cs`
+- [x] Rename `Kaleido/Process/ParticipantRuntime.cs` → `ProcessRuntime.cs`
+- [x] Rename `Kaleido/Process/IParticipantRuntime.cs` → `IProcessRuntime.cs`
+- [x] Rename `Kaleido/Process/Registry/ParticipantRegistry.cs` → `ProcessRegistry.cs`
+- [x] Rename `Kaleido/Process/ParticipantServiceCollectionExtensions.cs` → `ProcessServiceCollectionExtensions.cs`
 
 ### String formatting
-- [ ] `KaleidoServiceOptions.cs:80–82` — multi-line `+` concat in exception message → single interpolated string
+- [~] ~~`KaleidoServiceOptions.cs:80–82`~~ — **FALSE FLAG**: message has no interpolated values; string literal concatenation is correct here.
 
 ### Stale `InternalsVisibleTo` cleanup
-- [ ] `Kaleido.Http.Abstractions/AssemblyInfo.cs` — remove obsolete assembly name entries (`Kaleido.Process.AspNetCore`, `Kaleido.Queryable.AspNetCore`, `Kaleido.Process.Http.Client`, etc.); add missing `Kaleido.Http.Abstractions.UnitTests` entry
-- [ ] `Kaleido.Http/AssemblyInfo.cs` — same audit pass
+- [x] `Kaleido.Http.Abstractions/AssemblyInfo.cs` — removed stale old-project-structure entries; added missing `Kaleido.Http.Abstractions.UnitTests`
+- [x] `Kaleido.Http/AssemblyInfo.cs` — removed stale old-project-structure test entries
 
 ---
 
@@ -265,7 +262,7 @@ fix(tier3): replace KaleidoClientFactoryBase reflection with IRouteOptionsMap in
 
 ## Progress
 
-- [ ] Tier 1 complete
+- [x] Tier 1 complete — branch `cleanup/tier1-zero-risk-cleanup`, 9 commits, 501 tests green
 - [ ] Tier 2 complete
 - [ ] Tier 3 complete
 - [ ] Tier 4 decisions made
