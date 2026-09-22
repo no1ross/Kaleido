@@ -9,11 +9,12 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
 
     protected abstract IHttpClientFactory HttpClientFactory { get; }
     protected abstract IKaleidoCorrelationContextAccessor CorrelationAccessor { get; }
+    protected abstract ICorrelationHeaderStamper HeaderStamper { get; }
     protected abstract TMap RouteOptionsMap { get; }
 
     protected abstract TClient CreateClient(
         System.Net.Http.HttpClient httpClient,
-        IKaleidoCorrelationContextAccessor correlation,
+        ICorrelationHeaderStamper headerStamper,
         string serviceName);
 
     public TClient GetClient(string name)
@@ -34,7 +35,7 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
             var registeredName = GetRegisteredName(name) ?? name;
 
             var httpClient = HttpClientFactory.CreateClient(registeredName);
-            var client = CreateClient(httpClient, CorrelationAccessor, serviceName);
+            var client = CreateClient(httpClient, HeaderStamper, serviceName);
             _clients[name] = client;
             return client;
         }
@@ -56,7 +57,9 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
         if (optionsProperty == null)
             throw new KaleidoFrameworkException("Route options map does not have 'Options' property.");
 
-        return (Dictionary<string, string>)optionsProperty.GetValue(map)!;
+        return (Dictionary<string, string>)(optionsProperty.GetValue(map)
+            ?? throw new KaleidoFrameworkException(
+                "Route options map 'Options' property returned null."));
     }
 
     private string? GetRegisteredName(string name)

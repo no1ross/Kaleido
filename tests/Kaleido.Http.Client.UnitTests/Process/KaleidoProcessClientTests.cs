@@ -1,3 +1,4 @@
+using Kaleido.Http.Client;
 using Kaleido.Http.Client.Process;
 using Kaleido.Http.Process.Contracts;
 using Kaleido.Observability;
@@ -71,10 +72,9 @@ public sealed class KaleidoProcessClientTests
                 respond != null ? respond(req) : JsonOk(new[] { FakeProcessor }));
 
         var httpClient = new HttpClient(mock.Object) { BaseAddress = new Uri("http://localhost") };
-        var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
-        correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext());
+        var stamper = new Mock<ICorrelationHeaderStamper>();
 
-        var client = new KaleidoProcessClient(httpClient, correlation.Object, routePrefix);
+        var client = new KaleidoProcessClient(httpClient, stamper.Object, routePrefix);
         return (client, mock);
     }
 
@@ -126,9 +126,7 @@ public sealed class KaleidoProcessClientTests
             });
 
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
-        var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
-        correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext());
-        var client = new KaleidoProcessClient(httpClient, correlation.Object);
+        var client = new KaleidoProcessClient(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
 
         await Assert.ThrowsAsync<KaleidoProcessClientException>(
             () => client.GetRegistryAsync());
@@ -203,7 +201,7 @@ public sealed class KaleidoProcessClientTests
         };
 
         // First call = GetProcessStateAsync sends one GET (no registry needed for state URL)
-        // The state endpoint does not require registry lookup GÇö just build the URL from options
+        // The state endpoint does not require registry lookup Gï¿½ï¿½ just build the URL from options
         var (client, _) = CreateClient(respond: _ => JsonOk(fakeState));
 
         var result = await client.GetProcessStateAsync(processId);
@@ -258,9 +256,9 @@ public sealed class KaleidoProcessClientTests
             return JsonOk(fakeResult);
         });
 
-        // MyStep type name GÇö "Step" suffix stripped: MyStep GåÆ MyStep (no suffix here, keep as-is)
+        // MyStep type name Gï¿½ï¿½ "Step" suffix stripped: MyStep Gï¿½ï¿½ MyStep (no suffix here, keep as-is)
         // Actually step name lookup uses type name with optional "Step" suffix stripping.
-        // Our type below is named MyClientStep GåÆ strips to MyClient, won't match "MyStep".
+        // Our type below is named MyClientStep Gï¿½ï¿½ strips to MyClient, won't match "MyStep".
         // Use a type whose name without "Step" suffix matches our FakeStep name "MyStep".
         var result = await client.ExecuteStepAsync(new MyStepStep());
 
@@ -383,52 +381,36 @@ public sealed class KaleidoProcessClientTests
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public async Task StampCorrelationHeaders_WhenContextHasValues_AddsHeaders()
+    public async Task GetProcessStateAsync_StampsCorrelationHeadersOnRequest()
     {
-        // GetProcessStateAsync calls StampCorrelationHeaders (unlike GetRegistryAsync which
-        // uses GetFromJsonAsync internally). Capture the request sent for the state URL.
         var fakeState = new ProcessStateResponse
         {
             ProcessId = Guid.NewGuid(),
             AvailableSteps = [],
             Steps = []
         };
-        HttpRequestMessage? capturedRequest = null;
         var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         handler.Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync((HttpRequestMessage req, CancellationToken _) =>
-            {
-                capturedRequest = req;
-                return JsonOk(fakeState);
-            });
+            .ReturnsAsync((HttpRequestMessage _, CancellationToken _) => JsonOk(fakeState));
 
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
-        var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
-        correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext
-        {
-            RequestId = "req-456",
-            ProcessId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc")
-        });
+        var stamper = new Mock<ICorrelationHeaderStamper>();
 
-        var client = new KaleidoProcessClient(httpClient, correlation.Object);
+        var client = new KaleidoProcessClient(httpClient, stamper.Object);
         await client.GetProcessStateAsync(Guid.NewGuid());
 
-        Assert.NotNull(capturedRequest);
-        Assert.True(capturedRequest!.Headers.TryGetValues(KaleidoCorrelationHeaders.RequestId, out var requestIds));
-        Assert.Contains("req-456", requestIds);
-        Assert.True(capturedRequest.Headers.TryGetValues(KaleidoCorrelationHeaders.ProcessId, out var processIds));
-        Assert.Contains("cccccccc-cccc-cccc-cccc-cccccccccccc", processIds);
+        stamper.Verify(x => x.Stamp(It.IsAny<HttpRequestMessage>()), Times.Once);
     }
 
     // ---------------------------------------------------------------------------
     // Fake types
     // ---------------------------------------------------------------------------
 
-    // "MyStepStep" GåÆ strip "Step" suffix GåÆ name is "MyStep", matches FakeStep.Name
+    // "MyStepStep" Gï¿½ï¿½ strip "Step" suffix Gï¿½ï¿½ name is "MyStep", matches FakeStep.Name
     private sealed class MyStepStep { }
 
     private sealed class UnknownTypeForTest { }
