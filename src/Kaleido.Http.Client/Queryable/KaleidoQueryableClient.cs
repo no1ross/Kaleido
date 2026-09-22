@@ -180,9 +180,12 @@ internal sealed class KaleidoQueryableClient : IKaleidoQueryableClient
             if (_registry is not null)
                 return _registry;
 
-            var registry = await _httpClient.GetFromJsonAsync<IReadOnlyList<QueryableRecordResponse>>(
-                _registryUrl,
-                cancellationToken)
+            using var registryRequest = new HttpRequestMessage(HttpMethod.Get, _registryUrl);
+            StampCorrelationHeaders(registryRequest);
+            using var registryResponse = await _httpClient.SendAsync(registryRequest, cancellationToken);
+
+            var registry = await registryResponse.Content.ReadFromJsonAsync<IReadOnlyList<QueryableRecordResponse>>(
+                cancellationToken: cancellationToken)
                 ?? throw new KaleidoQueryableClientException(
                     $"{_callerServiceName} tried to call the queryable registry, but the request succeeded and returned no payload.",
                     HttpStatusCode.InternalServerError);

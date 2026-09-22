@@ -243,9 +243,12 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
             if (_registry is not null)
                 return _registry;
 
-            var registry = await _httpClient.GetFromJsonAsync<IReadOnlyList<ProcessorRegistryResponse>>(
-                _registryUrl,
-                cancellationToken)
+            using var registryRequest = new HttpRequestMessage(HttpMethod.Get, _registryUrl);
+            StampCorrelationHeaders(registryRequest);
+            using var registryResponse = await _httpClient.SendAsync(registryRequest, cancellationToken);
+
+            var registry = await registryResponse.Content.ReadFromJsonAsync<IReadOnlyList<ProcessorRegistryResponse>>(
+                cancellationToken: cancellationToken)
                 ?? throw new KaleidoProcessClientException(
                     "Process registry request succeeded but returned no payload.",
                     HttpStatusCode.InternalServerError);
