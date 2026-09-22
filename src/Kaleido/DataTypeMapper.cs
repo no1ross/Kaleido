@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
@@ -531,6 +532,8 @@ public static class DataTypeMapper
         return result.Value;
     }
 
+    private static readonly ConcurrentDictionary<Type, DataTypeDescriptor> DescriptorCache = new();
+
     private static DataTypeDescriptor Lookup(
         Type type)
     {
@@ -541,6 +544,14 @@ public static class DataTypeMapper
             return descriptor;
         }
 
+        return DescriptorCache.GetOrAdd(
+            type,
+            BuildDescriptor);
+    }
+
+    private static DataTypeDescriptor BuildDescriptor(
+        Type type)
+    {
         if (type.IsEnum)
         {
             var values =

@@ -15,17 +15,19 @@ internal static class QueryableValueNormalizer
             return null;
         }
 
+        var fields = new FieldLookup(metadata);
+
         return query with
         {
             Filter = NormalizeFilter(
                 query.Filter,
-                metadata)
+                fields)
         };
     }
 
     private static QueryFilterNode? NormalizeFilter(
         QueryFilterNode? node,
-        QueryContextMetadata metadata)
+        FieldLookup fields)
     {
         if (node is null)
         {
@@ -38,7 +40,7 @@ internal static class QueryableValueNormalizer
             {
                 Condition = NormalizeCondition(
                     node.Condition,
-                    metadata)
+                    fields)
             };
         }
 
@@ -52,7 +54,7 @@ internal static class QueryableValueNormalizer
                         .Select(x =>
                             NormalizeFilter(
                                 x,
-                                metadata)!)
+                                fields)!)
                         .ToArray())
             };
         }
@@ -62,21 +64,10 @@ internal static class QueryableValueNormalizer
 
     private static QueryFilterCondition NormalizeCondition(
         QueryFilterCondition condition,
-        QueryContextMetadata metadata)
+        FieldLookup fields)
     {
         var field =
-            metadata.Fields.SingleOrDefault(x =>
-                string.Equals(
-                    x.Name,
-                    condition.Field,
-                    StringComparison.OrdinalIgnoreCase));
-
-        if (field is null)
-        {
-            throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidField,
-                $"Field '{condition.Field}' does not exist on record '{metadata.Name}'.");
-        }
+            fields.Get(condition.Field);
 
         try
         {
@@ -102,5 +93,30 @@ internal static class QueryableValueNormalizer
                 $"Value '{condition.Values.FirstOrDefault()}' is not valid for field '{condition.Field}'. Expected a value of type '{field.FieldType.Name}'.",
                 exception);
         }
+    }
+
+    private sealed class FieldLookup
+    {
+        private readonly Dictionary<string, FieldMetadata> _byName;
+
+        public FieldLookup(
+            QueryContextMetadata metadata)
+        {
+            Metadata = metadata;
+            _byName =
+                metadata.Fields.ToDictionary(
+                    x => x.Name,
+                    StringComparer.OrdinalIgnoreCase);
+        }
+
+        public QueryContextMetadata Metadata { get; }
+
+        public FieldMetadata Get(
+            string name) =>
+            _byName.TryGetValue(name, out var field)
+                ? field
+                : throw new KaleidoValidationException(
+                    ValidationErrorCodes.QryInvalidField,
+                    $"Field '{name}' does not exist on record '{Metadata.Name}'.");
     }
 }

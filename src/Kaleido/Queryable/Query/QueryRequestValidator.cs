@@ -61,9 +61,11 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         QueryContextMetadata metadata,
         PageableMetadata? pageable)
     {
+        var fields = new FieldLookup(metadata);
+
         ValidateFilter(
             request.Query?.Filter,
-            metadata);
+            fields);
 
         ValidateSearch(
             request.Query?.SearchText,
@@ -71,7 +73,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
 
         ValidateSort(
             request.Query?.Sort,
-            metadata);
+            fields);
 
         ValidatePage(
             request.Query?.Page,
@@ -138,7 +140,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
 
     private static void ValidateFilter(
         QueryFilterNode? node,
-        QueryContextMetadata metadata,
+        FieldLookup fields,
         int depth = 0)
     {
         if (node is null)
@@ -165,7 +167,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         {
             ValidateFilterCondition(
                 node.Condition,
-                metadata);
+                fields);
 
             return;
         }
@@ -174,7 +176,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         {
             ValidateFilterGroup(
                 node.Group,
-                metadata,
+                fields,
                 depth);
 
             return;
@@ -187,7 +189,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
 
     private static void ValidateFilterGroup(
         QueryFilterGroup group,
-        QueryContextMetadata metadata,
+        FieldLookup fields,
         int depth)
     {
         if (group.Filters.Count == 0)
@@ -201,14 +203,14 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         {
             ValidateFilter(
                 child,
-                metadata,
+                fields,
                 depth + 1);
         }
     }
 
     private static void ValidateFilterCondition(
         QueryFilterCondition condition,
-        QueryContextMetadata metadata)
+        FieldLookup fields)
     {
         if (string.IsNullOrWhiteSpace(condition.Field))
         {
@@ -218,8 +220,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         }
 
         var field =
-            GetField(
-                metadata,
+            fields.Get(
                 condition.Field);
 
         if (!field.IsFilterable)
@@ -260,7 +261,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
 
     private static void ValidateSort(
         IReadOnlyList<QuerySort>? sorts,
-        QueryContextMetadata metadata)
+        FieldLookup fields)
     {
         if (sorts is null)
         {
@@ -286,8 +287,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         foreach (var sort in sorts)
         {
             var field =
-                GetField(
-                    metadata,
+                fields.Get(
                     sort.Field);
 
             if (!field.IsSortable)
@@ -329,17 +329,28 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         }
     }
 
-    private static FieldMetadata GetField(
-        QueryContextMetadata metadata,
-        string name)
+    private sealed class FieldLookup
     {
-        return metadata.Fields.SingleOrDefault(x =>
-                   string.Equals(
-                       x.Name,
-                       name,
-                       StringComparison.OrdinalIgnoreCase))
-               ?? throw new KaleidoValidationException(
-                   ValidationErrorCodes.QryInvalidField,
-                   $"Field '{name}' does not exist on record '{metadata.Name}'.");
+        private readonly Dictionary<string, FieldMetadata> _byName;
+
+        public FieldLookup(
+            QueryContextMetadata metadata)
+        {
+            Metadata = metadata;
+            _byName =
+                metadata.Fields.ToDictionary(
+                    x => x.Name,
+                    StringComparer.OrdinalIgnoreCase);
+        }
+
+        public QueryContextMetadata Metadata { get; }
+
+        public FieldMetadata Get(
+            string name) =>
+            _byName.TryGetValue(name, out var field)
+                ? field
+                : throw new KaleidoValidationException(
+                    ValidationErrorCodes.QryInvalidField,
+                    $"Field '{name}' does not exist on record '{Metadata.Name}'.");
     }
 }

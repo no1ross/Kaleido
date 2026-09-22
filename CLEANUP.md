@@ -127,13 +127,13 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 - [x] Promote key lifecycle log messages — `ExecutionCompleted` event + `LogInformation` on `IProcessExecutionObservation` (once per request); `ProcessRegistry`/`QueryableRegistry` log "built" at `LogInformation` (once per service); context-save logged at `LogDebug` inside `IProcessContextStore` implementations (per AGENTS.md log-level policy — Information stays request-boundary minimal)
 
 ### Performance — safe caching
-- [ ] Cache all `GetMethods()` results in `CompiledQueryApplier.cs` as `static readonly` fields (biggest per-request CPU win)
-- [ ] Fix double JSON round-trip in `StepCandidateBuilder.cs:74–83` — if value `is JsonElement je`, call `je.Deserialize(stepType)` directly
-- [ ] Cache `ProcessStepRegistry.InitialRegistrations` — compute once in constructor instead of `Where`+`ToArray` per property access
-- [ ] Fix `DataTypeMapper.Lookup` to cache enum/array descriptor results in a `ConcurrentDictionary<Type, DataTypeDescriptor>`
-- [ ] Fix O(N²) state mutation in `ProcessStateUpdater` — replace LINQ `ToList`+scan with index-based or dictionary approach
-- [ ] Compute `StepAvailabilityResolver.Resolve` once per step in `ExecutionProcessor`, pass result into `evaluator.Evaluate` instead of recomputing
-- [ ] Build `Dictionary<string,FieldMetadata>` once per request in validator/normalizer/compiler instead of linear scans
+- [x] Cache all `GetMethods()` results in `CompiledQueryApplier.cs` as `static readonly` fields — already in place (+ `ConcurrentDictionary` caches for sort/contains)
+- [x] Fix double JSON round-trip in `StepCandidateBuilder.cs` — `is JsonElement je → je.Deserialize(stepType)` fast-path already in place
+- [x] Cache `ProcessStepRegistry.InitialRegistrations` — `_initialRegistrations` computed once in constructor
+- [x] Fix `DataTypeMapper.Lookup` — `ConcurrentDictionary<Type, DataTypeDescriptor>` + extracted `BuildDescriptor` for enum/array/enumerable paths
+- [x] Fix O(N²) state mutation in `ProcessStateUpdater` — `Reconcile` uses a name→index dictionary; `ReplaceStep` uses a plain index loop
+- [~] ~~Compute `StepAvailabilityResolver.Resolve` once per step in `ExecutionProcessor`~~ — **KEPT**: passing `availableSteps` into `Evaluate` leaks plumbing through the seam; the duplicate `Resolve` is a cheap filtered scan and evaluator owning availability is more readable
+- [x] Build `Dictionary<string,FieldMetadata>` once per request — per-request `FieldLookup` (metadata + name→field dict) threaded through `QueryRequestValidator`, `QueryRequestCompiler`, `QueryableValueNormalizer`
 
 ### Public API correctness
 - [ ] Make `AddProcessClient(...)` and `AddQueryableClient(...)` `public` (currently `internal` but documented as public)
