@@ -30,7 +30,7 @@ public sealed class InMemoryProcessContextStoreTests
         await store.SaveAsync(context, CancellationToken.None);
 
         var loaded = await store.LoadAsync(context.ProcessId, CancellationToken.None);
-        
+
         Assert.NotNull(loaded);
         Assert.Equal(context.ProcessId, loaded.ProcessId);
         Assert.Equal("test-processor", loaded.ProcessorName);
@@ -44,7 +44,7 @@ public sealed class InMemoryProcessContextStoreTests
         var processId = Guid.NewGuid();
 
         var loaded = await store.LoadAsync(processId, CancellationToken.None);
-        
+
         Assert.Null(loaded);
     }
 
@@ -70,7 +70,7 @@ public sealed class InMemoryProcessContextStoreTests
 
         await store.SaveAsync(context, CancellationToken.None);
         var loaded = await store.LoadAsync(context.ProcessId, CancellationToken.None);
-        
+
         Assert.NotNull(loaded);
         Assert.Equal(context.ProcessId, loaded.ProcessId);
         Assert.Single(loaded.Steps);
@@ -82,7 +82,7 @@ public sealed class InMemoryProcessContextStoreTests
     {
         var store = new InMemoryProcessContextStore();
         var processId = Guid.NewGuid();
-        
+
         var context1 = new ProcessorContext
         {
             ProcessId = processId,
@@ -99,9 +99,9 @@ public sealed class InMemoryProcessContextStoreTests
 
         await store.SaveAsync(context1, CancellationToken.None);
         await store.SaveAsync(context2, CancellationToken.None);
-        
+
         var loaded = await store.LoadAsync(processId, CancellationToken.None);
-        
+
         Assert.NotNull(loaded);
         Assert.Equal(ProcessExecutionState.Complete, loaded.State);
     }

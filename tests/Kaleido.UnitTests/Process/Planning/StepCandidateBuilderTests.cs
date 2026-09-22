@@ -27,11 +27,14 @@ public sealed class StepCandidateBuilderTests
     public void Build_WhenStepNotFound_MarksCandidateInvalid()
     {
         _registry.Setup(r => r.Find("unknown-step")).Returns((ProcessStepRegistration?)null);
-        
-        var request = new ProcessorRequest { Steps = new Dictionary<string, object?>
+
+        var request = new ProcessorRequest
         {
-            ["unknown-step"] = new { }
-        }};
+            Steps = new Dictionary<string, object?>
+            {
+                ["unknown-step"] = new { }
+            }
+        };
 
         var candidates = _builder.Build(request);
 
@@ -56,10 +59,13 @@ public sealed class StepCandidateBuilderTests
 
         _registry.Setup(r => r.Find("test-step")).Returns(registration);
 
-        var request = new ProcessorRequest { Steps = new Dictionary<string, object?>
+        var request = new ProcessorRequest
         {
-            ["test-step"] = new { Name = "test" }
-        }};
+            Steps = new Dictionary<string, object?>
+            {
+                ["test-step"] = new { Name = "test" }
+            }
+        };
 
         var candidates = _builder.Build(request);
 
@@ -84,10 +90,13 @@ public sealed class StepCandidateBuilderTests
 
         _registry.Setup(r => r.Find("test-step")).Returns(registration);
 
-        var request = new ProcessorRequest { Steps = new Dictionary<string, object?>
+        var request = new ProcessorRequest
         {
-            ["test-step"] = "invalid-json-data"
-        }};
+            Steps = new Dictionary<string, object?>
+            {
+                ["test-step"] = "invalid-json-data"
+            }
+        };
 
         var candidates = _builder.Build(request);
 
@@ -112,10 +121,13 @@ public sealed class StepCandidateBuilderTests
 
         _registry.Setup(r => r.Find("test-step")).Returns(registration);
 
-        var request = new ProcessorRequest { Steps = new Dictionary<string, object?>
+        var request = new ProcessorRequest
         {
-            ["test-step"] = null
-        }};
+            Steps = new Dictionary<string, object?>
+            {
+                ["test-step"] = null
+            }
+        };
 
         var candidates = _builder.Build(request);
 
@@ -151,11 +163,14 @@ public sealed class StepCandidateBuilderTests
         _registry.Setup(r => r.Find("step-a")).Returns(registrationA);
         _registry.Setup(r => r.Find("step-b")).Returns(registrationB);
 
-        var request = new ProcessorRequest { Steps = new Dictionary<string, object?>
+        var request = new ProcessorRequest
         {
-            ["step-a"] = new { Name = "a" },
-            ["step-b"] = new { Name = "b" }
-        }};
+            Steps = new Dictionary<string, object?>
+            {
+                ["step-a"] = new { Name = "a" },
+                ["step-b"] = new { Name = "b" }
+            }
+        };
 
         var candidates = _builder.Build(request);
 

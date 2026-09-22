@@ -6,7 +6,6 @@ using Kaleido.Process.Execution;
 using Kaleido.Process.Observability;
 using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
@@ -66,7 +65,7 @@ public static class ProcessServiceCollectionExtensions
                 builder.Services,
                 recordType,
                 types);
-            
+
             handlerTypes[recordType] = handlerType;
         }
 

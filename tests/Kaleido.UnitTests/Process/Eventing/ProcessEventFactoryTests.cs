@@ -42,11 +42,11 @@ public sealed class ProcessEventFactoryTests
     public void CreateProcessCreated_CreatesEventWithCorrectContext()
     {
         var correlation = new KaleidoCorrelationContext { RequestId = "test-request" };
-        var context = new ProcessorContext 
-        { 
-            ProcessId = Guid.NewGuid(), 
-            ProcessorName = "test", 
-            State = ProcessExecutionState.Active 
+        var context = new ProcessorContext
+        {
+            ProcessId = Guid.NewGuid(),
+            ProcessorName = "test",
+            State = ProcessExecutionState.Active
         };
         var request = new ProcessRequest { Processor = new ProcessorRequest { Steps = new Dictionary<string, object?>() } };
 
@@ -66,10 +66,10 @@ public sealed class ProcessEventFactoryTests
     {
         var correlation = new KaleidoCorrelationContext();
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
-        var request = new ProcessRequest 
-        { 
-            Processor = new ProcessorRequest 
-            { 
+        var request = new ProcessRequest
+        {
+            Processor = new ProcessorRequest
+            {
                 Steps = new Dictionary<string, object?>
                 {
                     ["step1"] = new { },
@@ -124,7 +124,7 @@ public sealed class ProcessEventFactoryTests
         var correlation = new KaleidoCorrelationContext { RequestId = "test-request" };
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
         var request = new ProcessRequest { Processor = new ProcessorRequest { Steps = new Dictionary<string, object?>() } };
-        
+
         var candidate = new StepCandidate
         {
             StepName = "test-step",
@@ -140,7 +140,7 @@ public sealed class ProcessEventFactoryTests
                 new ProcessStepMetadata("test-step", "desc", "1.0", "display")),
             IncludedInExecutionPlan = true
         };
-        
+
         var plan = new ExecutionPlanResult { Candidates = [candidate] };
 
         var result = _factory.CreatePlanBuilt(correlation, context, request, plan, 1);
@@ -224,9 +224,9 @@ public sealed class ProcessEventFactoryTests
     public void CreateStepCompleted_CreatesEventWithOutcome()
     {
         var correlation = new KaleidoCorrelationContext { RequestId = "test-request" };
-        var context = new ProcessorContext 
-        { 
-            ProcessId = Guid.NewGuid(), 
+        var context = new ProcessorContext
+        {
+            ProcessId = Guid.NewGuid(),
             ProcessorName = "test",
             Steps = [new StepContext { StepName = "test-step", Version = "1.0" }]
         };
@@ -254,8 +254,8 @@ public sealed class ProcessEventFactoryTests
     public void CreateExecutionCompleted_WhenContextIsNull_Throws()
     {
         var correlation = new KaleidoCorrelationContext();
-        var executionResult = new ProcessExecutionResult 
-        { 
+        var executionResult = new ProcessExecutionResult
+        {
             ProcessId = Guid.NewGuid(),
             State = ProcessExecutionState.Complete
         };
@@ -279,8 +279,8 @@ public sealed class ProcessEventFactoryTests
     {
         var correlation = new KaleidoCorrelationContext { RequestId = "test-request" };
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
-        var executionResult = new ProcessExecutionResult 
-        { 
+        var executionResult = new ProcessExecutionResult
+        {
             ProcessId = Guid.NewGuid(),
             State = ProcessExecutionState.Complete
         };

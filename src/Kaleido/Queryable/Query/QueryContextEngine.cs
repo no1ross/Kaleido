@@ -4,7 +4,6 @@ using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
-using System.Linq;
 using System.Reflection;
 
 namespace Kaleido.Queryable.Query;

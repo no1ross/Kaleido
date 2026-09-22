@@ -1,6 +1,5 @@
 using Kaleido.Process.Observability;
 using Kaleido.Queryable.Observability;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Observability.OpenTelemetry;
@@ -101,13 +100,13 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
 
         // Views must be registered before adding the meter to take effect.
         return builder
-            .AddView(ProcessTelemetry.SubmittedStepCountHistogramName,  smallCountBoundaries)
-            .AddView(ProcessTelemetry.PlanCandidateCountHistogramName,   smallCountBoundaries)
-            .AddView(ProcessTelemetry.PlanExecutableCountHistogramName,  smallCountBoundaries)
-            .AddView(QueryableTelemetry.TotalCountHistogramName,         recordCountBoundaries)
-            .AddView(QueryableTelemetry.ReturnedCountHistogramName,      recordCountBoundaries)
-            .AddView(QueryableTelemetry.PageSizeHistogramName,           pageSizeBoundaries)
-            .AddView(QueryableTelemetry.PageOffsetHistogramName,         recordCountBoundaries)
+            .AddView(ProcessTelemetry.SubmittedStepCountHistogramName, smallCountBoundaries)
+            .AddView(ProcessTelemetry.PlanCandidateCountHistogramName, smallCountBoundaries)
+            .AddView(ProcessTelemetry.PlanExecutableCountHistogramName, smallCountBoundaries)
+            .AddView(QueryableTelemetry.TotalCountHistogramName, recordCountBoundaries)
+            .AddView(QueryableTelemetry.ReturnedCountHistogramName, recordCountBoundaries)
+            .AddView(QueryableTelemetry.PageSizeHistogramName, pageSizeBoundaries)
+            .AddView(QueryableTelemetry.PageOffsetHistogramName, recordCountBoundaries)
             .AddKaleidoProcessInstrumentation()
             .AddKaleidoQueryableInstrumentation();
     }

@@ -88,7 +88,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         var context =
             new ProcessorContext
             {
-                ProcessId =  Guid.NewGuid(),
+                ProcessId = Guid.NewGuid(),
                 ProcessorName = "test-processor",
                 Steps =
                 [
@@ -214,7 +214,7 @@ public sealed class StepCandidateConsistencyCheckerTests
                 dependencyCandidate,
                 targetCandidate
             ],
-            new ProcessorContext{ ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" });
+            new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" });
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -245,7 +245,7 @@ public sealed class StepCandidateConsistencyCheckerTests
 
         checker.Validate(
             [candidate],
-            new ProcessorContext{ ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" });
+            new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" });
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -280,7 +280,7 @@ public sealed class StepCandidateConsistencyCheckerTests
 
         checker.Validate(
             [candidate],
-            new ProcessorContext{ ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" });
+            new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" });
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -378,27 +378,27 @@ public sealed class StepCandidateConsistencyCheckerTests
         // Current implementation does NOT detect circular dependencies
         // This test documents the current behavior
         // A depends on B, B depends on A - this should be detected but currently isn't
-        
+
         var checker = CreateChecker();
-        
+
         var stepA = CreateRegistration<StepA>("step-a");
         var stepB = CreateRegistration<StepB>("step-b");
-        
+
         var registrationA = CreateRegistration<StepA>("step-a", [stepB]);
         var registrationB = CreateRegistration<StepB>("step-b", [stepA]);
-        
+
         var candidateA = CreateCandidate(registrationA);
         var candidateB = CreateCandidate(registrationB);
-        
+
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
             ProcessorName = "test-processor"
         };
-        
+
         // This should ideally throw for circular dependency, but currently doesn't
         checker.Validate([candidateA, candidateB], context);
-        
+
         // Both candidates remain valid (current behavior)
         Assert.Equal(StepCandidateStatus.Built, candidateA.Status);
         Assert.Equal(StepCandidateStatus.Built, candidateB.Status);

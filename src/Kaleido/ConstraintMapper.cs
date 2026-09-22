@@ -27,7 +27,7 @@ public static class ConstraintMapper
 {
     public static IReadOnlyCollection<ConstraintContract> Map(
         PropertyInfo property)
-    { 
+    {
         ArgumentNullException.ThrowIfNull(property);
 
         return property

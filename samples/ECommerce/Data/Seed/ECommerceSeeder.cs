@@ -71,17 +71,17 @@ internal sealed class ECommerceSeeder
                     "assets",
                     fileName);
 
-                        var json =
-                            File.ReadAllText(path);
+            var json =
+                File.ReadAllText(path);
 
-                        return JsonSerializer.Deserialize<T>(
-                                   json,
-                                   new JsonSerializerOptions
-                                   {
-                                       PropertyNameCaseInsensitive = true
-                                   })
-                               ?? throw new InvalidOperationException(
-                                   $"Failed to deserialize '{fileName}'.");
+            return JsonSerializer.Deserialize<T>(
+                       json,
+                       new JsonSerializerOptions
+                       {
+                           PropertyNameCaseInsensitive = true
+                       })
+                   ?? throw new InvalidOperationException(
+                       $"Failed to deserialize '{fileName}'.");
         }
         catch (Exception)
         {

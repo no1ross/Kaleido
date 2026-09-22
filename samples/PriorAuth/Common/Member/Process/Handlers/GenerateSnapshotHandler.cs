@@ -70,7 +70,7 @@ public sealed class GenerateSnapshotHandler(
             new GenerateSnapshotResponse
             {
                 MemberSnapshotId = snapshot.MemberSnapshotId
-            }); 
+            });
 
     }
 }

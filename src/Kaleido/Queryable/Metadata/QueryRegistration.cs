@@ -43,10 +43,10 @@ public sealed record FieldMetadata
 
 public sealed record QueryViewRegistration
 (
-    Type QueryViewType, 
-    Type ViewType, 
-    Type ViewParametersType, 
-    Type QueryContextType, 
+    Type QueryViewType,
+    Type ViewType,
+    Type ViewParametersType,
+    Type QueryContextType,
     QueryViewMetadata Metadata
 );
 

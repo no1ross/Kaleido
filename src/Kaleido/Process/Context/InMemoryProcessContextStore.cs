@@ -84,7 +84,7 @@ public sealed record ProcessorContext
         init;
     }
         = [];
-    
+
     /// <summary>
     /// Current state for each registered process step.
     /// </summary>
@@ -106,7 +106,7 @@ public sealed record ProcessorContext
         get;
         init;
     }
-    
+
     public StepContext? FindStep(
         string stepName)
     {

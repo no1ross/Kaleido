@@ -106,7 +106,7 @@ internal sealed class StepCandidateBuilder(
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true,
-        NumberHandling =System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString,
+        NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString,
         Converters =
         {
             new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase)
