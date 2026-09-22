@@ -75,36 +75,8 @@ internal sealed class ProcessExecutionService(
         ExecuteStepRequest<TProcessStep> request,
         CancellationToken cancellationToken)
     {
-        var stepName = registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
-
-        logger.LogDebug(
-            "Executing step {StepName} for processor {ProcessorName}.",
-            stepName,
-            serviceOptions.ServiceName);
-
-        var processRequest =
-            request.ToProcessRequest(
-                stepName: stepName,
-                processId: correlationAccessor.Current.ProcessId);
-
-        var processResult =
-            await runtime.ExecuteAsync(
-                processRequest,
-                cancellationToken);
-
-        var stepResult =
-            processResult.Steps
-                .Where(x =>
-                    x.StepName.Equals(
-                        stepName,
-                        StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(x => x.ExecutionStatus != StepExecutionStatus.Pending)
-                .ThenByDescending(x => x.RuntimeMessages.Count)
-                .ThenByDescending(x => x.BusinessMessages.Count)
-                .First();
-
-        WriteResponseHeaders(
-            processResult.ProcessId);
+        var (processResult, stepResult) =
+            await ExecuteStepCoreAsync(request, cancellationToken);
 
         return StepExecutionResponseFactory.Create<TResponse>(
             processResult,
@@ -114,6 +86,21 @@ internal sealed class ProcessExecutionService(
     }
 
     public async Task<StepExecutionResponse> ExecuteAsync<TProcessStep>(ExecuteStepRequest<TProcessStep> request, CancellationToken cancellationToken)
+    {
+        var (processResult, stepResult) =
+            await ExecuteStepCoreAsync(request, cancellationToken);
+
+        return StepExecutionResponseFactory.Create(
+            processResult,
+            stepResult,
+            registry,
+            serviceOptions.ServiceName);
+    }
+
+    private async Task<(ProcessResult ProcessResult, ProcessStepResult StepResult)>
+        ExecuteStepCoreAsync<TProcessStep>(
+            ExecuteStepRequest<TProcessStep> request,
+            CancellationToken cancellationToken)
     {
         var stepName = registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
 
@@ -146,11 +133,7 @@ internal sealed class ProcessExecutionService(
         WriteResponseHeaders(
             processResult.ProcessId);
 
-        return StepExecutionResponseFactory.Create(
-            processResult,
-            stepResult,
-            registry,
-            serviceOptions.ServiceName);
+        return (processResult, stepResult);
     }
 
     private void WriteResponseHeaders(

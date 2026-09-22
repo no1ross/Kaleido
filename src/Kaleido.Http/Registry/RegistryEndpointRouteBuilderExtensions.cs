@@ -181,77 +181,54 @@ public static class RegistryEndpointRouteBuilderExtensions
             KaleidoProcessClientRouteOptionsMap? map,
             IKaleidoProcessClientFactory factory,
             ILogger logger,
-            CancellationToken cancellationToken)
-    {
-        if (map is null)
-            return ([], []);
-
-        var items = new ConcurrentBag<ProcessorRegistryResponse>();
-        var errors = new ConcurrentBag<RegistryClientError>();
-
-        await Task.WhenAll(
-            map.Options.Keys.Select(async name =>
-            {
-                try
-                {
-                    var result = await factory.GetClient(name).GetRegistryAsync(cancellationToken);
-                    foreach (var r in result) items.Add(r);
-                }
-                catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    logger.LogDebug(
-                        "Registry process client {ClientName} returned 404 — service does not expose a process registry.",
-                        name);
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(
-                        ex,
-                        "Registry process client {ClientName} failed: {Reason}.",
-                        name,
-                        ex.Message);
-
-                    errors.Add(new RegistryClientError
-                    {
-                        ClientName = name,
-                        ClientType = "Process",
-                        Reason = "Process registry fetch failed. See server logs for details."
-                    });
-                }
-            }));
-
-        return (items.ToArray(), errors.ToArray());
-    }
+            CancellationToken cancellationToken) =>
+        await GetDownstreamAsync(
+            map?.Options.Keys.ToArray(),
+            (name, ct) => factory.GetClient(name).GetRegistryAsync(ct),
+            "Process",
+            logger,
+            cancellationToken);
 
     private static async Task<(IReadOnlyCollection<QueryableRecordResponse> Items, IReadOnlyCollection<RegistryClientError> Errors)>
         GetDownstreamQueryablesAsync(
             KaleidoQueryableClientRouteOptionsMap? map,
             IKaleidoQueryableClientFactory factory,
             ILogger logger,
+            CancellationToken cancellationToken) =>
+        await GetDownstreamAsync(
+            map?.Options.Keys.ToArray(),
+            (name, ct) => factory.GetClient(name).GetRegistryAsync(ct),
+            "Queryable",
+            logger,
+            cancellationToken);
+
+    private static async Task<(IReadOnlyCollection<TItem> Items, IReadOnlyCollection<RegistryClientError> Errors)>
+        GetDownstreamAsync<TItem>(
+            IReadOnlyCollection<string>? clientNames,
+            Func<string, CancellationToken, Task<IReadOnlyList<TItem>>> fetch,
+            string clientType,
+            ILogger logger,
             CancellationToken cancellationToken)
     {
-        if (map is null)
+        if (clientNames is null)
             return ([], []);
 
-        var items = new ConcurrentBag<QueryableRecordResponse>();
+        var items = new ConcurrentBag<TItem>();
         var errors = new ConcurrentBag<RegistryClientError>();
 
         await Task.WhenAll(
-            map.Options.Keys.Select(async name =>
+            clientNames.Select(async name =>
             {
                 try
                 {
-                    var result = await factory.GetClient(name).GetRegistryAsync(cancellationToken);
+                    var result = await fetch(name, cancellationToken);
                     foreach (var r in result) items.Add(r);
                 }
                 catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     logger.LogDebug(
-                        "Registry queryable client {ClientName} returned 404 — service does not expose a queryable registry.",
+                        "Registry {ClientType} client {ClientName} returned 404 — service does not expose a registry.",
+                        clientType,
                         name);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -262,15 +239,16 @@ public static class RegistryEndpointRouteBuilderExtensions
                 {
                     logger.LogWarning(
                         ex,
-                        "Registry queryable client {ClientName} failed: {Reason}.",
+                        "Registry {ClientType} client {ClientName} failed: {Reason}.",
+                        clientType,
                         name,
                         ex.Message);
 
                     errors.Add(new RegistryClientError
                     {
                         ClientName = name,
-                        ClientType = "Queryable",
-                        Reason = "Queryable registry fetch failed. See server logs for details."
+                        ClientType = clientType,
+                        Reason = $"{clientType} registry fetch failed. See server logs for details."
                     });
                 }
             }));

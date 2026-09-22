@@ -108,12 +108,12 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 
 ### Duplicate code extraction
 - [x] Extract `StampCorrelationHeaders` + `SanitizeHeaderValue` to `internal static class CorrelationHeaderStamper` in `Kaleido.Http.Client` (currently copy-pasted between `KaleidoProcessClient` and `KaleidoQueryableClient`)
-- [ ] Extract `GetDownstreamProcessesAsync` / `GetDownstreamQueryablesAsync` to a single generic method `GetDownstreamAsync<TMap,TItem>` in `RegistryEndpointRouteBuilderExtensions.cs`
-- [ ] Extract the three identical `QueryableValidationException → BadRequest` catch blocks in `QueryableEndpointRouteBuilderExtensions.cs` to a shared helper
-- [ ] Extract `ProcessExecutionService.ExecuteAsync` shared core (~40 dup lines) to a private `ExecuteStepCoreAsync` method
-- [ ] Extract assembly type-scan predicate + TypeFilter guard to a shared `AssemblyTypeScanner` helper (used in both `ParticipantServiceCollectionExtensions` and `QueryableServiceCollectionExtensions`)
-- [ ] Extract `IQueryViewSource*` interface detection pattern (repeated ×5) to a `QueryViewInterfaceScanner` helper
-- [ ] Extract duplicate-name GroupBy validation (×3) to a `ValidationHelpers.ThrowOnDuplicateNames<T>` method
+- [x] Extract `GetDownstreamProcessesAsync` / `GetDownstreamQueryablesAsync` to a single generic method `GetDownstreamAsync<TItem>` in `RegistryEndpointRouteBuilderExtensions.cs`
+- [x] Extract the three identical `KaleidoValidationException → BadRequest` catch blocks in `QueryableEndpointRouteBuilderExtensions.cs` to a shared `GuardQueryAsync` helper
+- [x] Extract `ProcessExecutionService.ExecuteAsync` shared core (~40 dup lines) to a private `ExecuteStepCoreAsync` method
+- [x] Extract assembly type-scan predicate + TypeFilter guard to shared `AssemblyTypeExtensions` extension methods (`ScanTypes` / `PassesTypeFilter`) — used in both `ProcessServiceCollectionExtensions` and `QueryableServiceCollectionExtensions`
+- [x] Extract `IQueryViewSource*` interface detection pattern (repeated ×5) to `QueryViewTypeExtensions` Type extension methods (`GetViewSourceInterfaces`, `GetDelegateViewSourceInterfaces`, `ImplementsGenericInterfaceFor`, …)
+- [~] ~~Extract duplicate-name GroupBy validation (×3)~~ — **KEPT**: only cleanly covers 2 of 3 sites (Process's dup-check has a richer message listing offending types); marginal dedup value
 - [x] Centralize observability tag-name magic strings to a `KaleidoObservabilityTags` constants class
 
 ### Observability correctness

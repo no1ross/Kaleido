@@ -25,29 +25,17 @@ public static class ProcessServiceCollectionExtensions
                 "At least one assembly must be registered before AddProcessor().");
         }
 
-        var types = builder.Assemblies
-            .Distinct()
-            .SelectMany(x => x.DefinedTypes)
-            .Where(x =>
-                x.IsClass &&
-                !x.IsAbstract &&
-                (
-                    x.IsPublic ||
-                    x.IsNestedPublic ||
-                    x.IsNotPublic ||
-                    x.IsNestedAssembly
-                ))
-            .Select(x => x.AsType())
-            .ToArray();
+        var types = builder.Assemblies.ScanTypes();
 
         var recordTypes =
             types
                 .Where(x =>
                     x.GetCustomAttribute<ProcessStepAttribute>() is not null)
                 .Where(x =>
-                    ShouldIncludeProcessStep(
-                        x,
-                        builder.ServiceOptions.TypeFilter))
+                    x.PassesTypeFilter(
+                        builder.ServiceOptions.TypeFilter,
+                        ConfigurationErrorCodes.ProInvalidRegistration,
+                        "process step"))
                 .ToArray();
 
         if (recordTypes.Length == 0)
@@ -83,23 +71,6 @@ public static class ProcessServiceCollectionExtensions
         RegisterFrameworkServices(builder.Services);
 
         return builder;
-    }
-
-    private static bool ShouldIncludeProcessStep(
-        Type stepType,
-        Func<Type, bool>? typeFilter)
-    {
-        try
-        {
-            return typeFilter?.Invoke(stepType) ?? true;
-        }
-        catch (Exception exception)
-        {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProInvalidRegistration,
-                $"The configured TypeFilter failed while evaluating process step '{stepType.FullName ?? stepType.Name}'.",
-                exception);
-        }
     }
 
     private static void ValidateProcessSteps(

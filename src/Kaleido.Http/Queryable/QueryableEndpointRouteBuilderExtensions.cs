@@ -318,28 +318,15 @@ public static class QueryableEndpointRouteBuilderExtensions
                     QueryApiRequest<TViewParameters> request,
                     IQueryableService queryable,
                     CancellationToken cancellationToken) =>
-                {
-                    try
-                    {
-                        var query =
-                            QueryableValueNormalizer.Normalize(
-                                request.Query,
-                                context.Metadata);
-
-                        var result =
-                            await queryable.QueryAsync<TQueryView, TView>(
-                                new QueryRequest<TViewParameters>(
-                                    Query: query,
-                                    ViewParameters: request.Parameters),
-                                cancellationToken);
-
-                        return Results.Ok(result);
-                    }
-                    catch (KaleidoValidationException ex)
-                    {
-                        return ValidationErrorResult(ex);
-                    }
-                })
+                    await GuardQueryAsync(() =>
+                        queryable.QueryAsync<TQueryView, TView>(
+                            new QueryRequest<TViewParameters>(
+                                Query:
+                                    QueryableValueNormalizer.Normalize(
+                                        request.Query,
+                                        context.Metadata),
+                                ViewParameters: request.Parameters),
+                            cancellationToken)))
             .WithName(
                 QueryableEndpointNames.QueryViewEndpointName(
                     context.Metadata.Name.ToLowerInvariant(),
@@ -370,28 +357,15 @@ public static class QueryableEndpointRouteBuilderExtensions
                     QueryApiRequest<TViewParameters> request,
                     IQueryableService queryable,
                     CancellationToken cancellationToken) =>
-                {
-                    try
-                    {
-                        var query =
-                            QueryableValueNormalizer.Normalize(
-                                request.Query,
-                                view.QueryMetadata);
-
-                        var result =
-                            await queryable.QueryAsync<TQueryView, TView>(
-                                new QueryRequest<TViewParameters>(
-                                    Query: query,
-                                    ViewParameters: request.Parameters),
-                                cancellationToken);
-
-                        return Results.Ok(result);
-                    }
-                    catch (KaleidoValidationException ex)
-                    {
-                        return ValidationErrorResult(ex);
-                    }
-                })
+                    await GuardQueryAsync(() =>
+                        queryable.QueryAsync<TQueryView, TView>(
+                            new QueryRequest<TViewParameters>(
+                                Query:
+                                    QueryableValueNormalizer.Normalize(
+                                        request.Query,
+                                        view.QueryMetadata),
+                                ViewParameters: request.Parameters),
+                            cancellationToken)))
             .WithName(
                 QueryableEndpointNames.QueryViewEndpointName(
                     view.QueryMetadata.Name.ToLowerInvariant(),
@@ -420,28 +394,15 @@ public static class QueryableEndpointRouteBuilderExtensions
                     QueryApiRequest<EmptyQueryViewParameters> request,
                     IQueryableService queryable,
                     CancellationToken cancellationToken) =>
-                {
-                    try
-                    {
-                        var query =
-                            QueryableValueNormalizer.Normalize(
-                                request.Query,
-                                context.Metadata);
-
-                        var result =
-                            await queryable.QueryAsync<TQueryContext, TQueryContext>(
-                                new QueryRequest<EmptyQueryViewParameters>(
-                                    Query: query,
-                                    ViewParameters: request.Parameters),
-                                cancellationToken);
-
-                        return Results.Ok(result);
-                    }
-                    catch (KaleidoValidationException ex)
-                    {
-                        return ValidationErrorResult(ex);
-                    }
-                })
+                    await GuardQueryAsync(() =>
+                        queryable.QueryAsync<TQueryContext, TQueryContext>(
+                            new QueryRequest<EmptyQueryViewParameters>(
+                                Query:
+                                    QueryableValueNormalizer.Normalize(
+                                        request.Query,
+                                        context.Metadata),
+                                ViewParameters: request.Parameters),
+                            cancellationToken)))
             .WithName(
                 QueryableEndpointNames.QueryContextEndpointName(
                     context.Metadata.Name.ToLowerInvariant()))
@@ -455,6 +416,20 @@ public static class QueryableEndpointRouteBuilderExtensions
                 "application/json")
             .Produces<QueryResult<TQueryContext>>()
             .Produces<KaleidoErrorResponse>(400);
+    }
+
+    private static async Task<IResult> GuardQueryAsync<TView>(
+        Func<Task<QueryResult<TView>>> execute)
+        where TView : class
+    {
+        try
+        {
+            return Results.Ok(await execute());
+        }
+        catch (KaleidoValidationException ex)
+        {
+            return ValidationErrorResult(ex);
+        }
     }
 
     private static IResult ValidationErrorResult(KaleidoValidationException ex) =>
