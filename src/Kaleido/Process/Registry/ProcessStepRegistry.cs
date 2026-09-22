@@ -29,6 +29,8 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
 
     private readonly IReadOnlyCollection<ProcessStepRegistration> _registrations;
 
+    private readonly IReadOnlyCollection<ProcessStepRegistration> _initialRegistrations;
+
     public ProcessStepRegistry(
         IEnumerable<Type> stepTypes,
         IReadOnlyDictionary<Type, Type> handlerTypes)
@@ -104,18 +106,20 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
         _byType =
             registrations.ToDictionary(
                 x => x.StepType);
+
+        _initialRegistrations =
+            registrations
+                .Where(x =>
+                    !x.Dependencies.Any() &&
+                    !x.AvailableAfter.Any())
+                .ToArray();
     }
 
     public IReadOnlyCollection<ProcessStepRegistration> Registrations =>
         _registrations;
 
-
     public IReadOnlyCollection<ProcessStepRegistration> InitialRegistrations =>
-        _registrations
-            .Where(x =>
-                !x.Dependencies.Any() &&
-                !x.AvailableAfter.Any())
-            .ToArray();
+        _initialRegistrations;
 
     public ProcessStepRegistration? Find(string name)
     {
