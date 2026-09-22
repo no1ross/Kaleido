@@ -21,6 +21,7 @@ public static class ProcessServiceCollectionExtensions
         if (!builder.Assemblies.Any())
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.MissingAssembly,
                 "At least one assembly must be registered before AddProcessor().");
         }
 
@@ -95,8 +96,8 @@ public static class ProcessServiceCollectionExtensions
         catch (Exception exception)
         {
             throw new KaleidoConfigurationException(
-                $"The configured TypeFilter failed while evaluating process step '{stepType.FullName ?? stepType.Name}'. " +
-                $"Error code: {ProcessErrorCodes.TypeFilterFailed}.",
+                ConfigurationErrorCodes.ProInvalidRegistration,
+                $"The configured TypeFilter failed while evaluating process step '{stepType.FullName ?? stepType.Name}'.",
                 exception);
         }
     }
@@ -118,15 +119,15 @@ public static class ProcessServiceCollectionExtensions
             if (string.IsNullOrWhiteSpace(metadata.Name))
             {
                 throw new KaleidoConfigurationException(
-                    $"Process step '{stepType.FullName}' must specify a non-empty name. " +
-                    $"Error code: {ProcessErrorCodes.InvalidStepName}.");
+                    ConfigurationErrorCodes.ProMissingAttribute,
+                    $"Process step '{stepType.FullName}' must specify a non-empty name.");
             }
 
             if (string.IsNullOrWhiteSpace(metadata.Version))
             {
                 throw new KaleidoConfigurationException(
-                    $"Process step '{stepType.FullName}' must specify a non-empty version. " +
-                    $"Error code: {ProcessErrorCodes.InvalidStepVersion}.");
+                    ConfigurationErrorCodes.ProMissingAttribute,
+                    $"Process step '{stepType.FullName}' must specify a non-empty version.");
             }
         }
 
@@ -162,8 +163,8 @@ public static class ProcessServiceCollectionExtensions
                 }));
 
         throw new KaleidoConfigurationException(
-            $"Duplicate process step names were found.{Environment.NewLine}{duplicateDetails} " +
-            $"Error code: {ProcessErrorCodes.DuplicateStepName}.");
+            ConfigurationErrorCodes.ProDuplicateStep,
+            $"Duplicate process step names were found.{Environment.NewLine}{duplicateDetails}");
     }
 
     private static ProcessStepAttribute GetProcessStepMetadata(
@@ -175,8 +176,8 @@ public static class ProcessServiceCollectionExtensions
         if (metadata is null)
         {
             throw new KaleidoConfigurationException(
-                $"Type '{stepType.FullName}' is not decorated with ProcessStepAttribute. " +
-                $"Error code: {ProcessErrorCodes.MissingStepAttribute}.");
+                ConfigurationErrorCodes.ProMissingAttribute,
+                $"Type '{stepType.FullName}' is not decorated with ProcessStepAttribute.");
         }
 
         return metadata;
@@ -222,8 +223,8 @@ public static class ProcessServiceCollectionExtensions
         if (handlerTypes.Length == 0)
         {
             throw new KaleidoConfigurationException(
-                $"Process step '{metadata.Name}' ({stepType.FullName}) does not have a registered handler. " +
-                $"Error code: {ProcessErrorCodes.MissingStepHandler}.");
+                ConfigurationErrorCodes.ProMissingHandler,
+                $"Process step '{metadata.Name}' ({stepType.FullName}) does not have a registered handler.");
         }
 
         if (handlerTypes.Length > 1)
@@ -234,8 +235,8 @@ public static class ProcessServiceCollectionExtensions
                     handlerTypes.Select(x => x.FullName));
 
             throw new KaleidoConfigurationException(
-                $"Process step '{metadata.Name}' ({stepType.FullName}) has multiple handlers: {handlers}. " +
-                $"Error code: {ProcessErrorCodes.MultipleStepHandlers}.");
+                ConfigurationErrorCodes.ProInvalidHandler,
+                $"Process step '{metadata.Name}' ({stepType.FullName}) has multiple handlers: {handlers}.");
         }
 
         var handlerType = handlerTypes[0];

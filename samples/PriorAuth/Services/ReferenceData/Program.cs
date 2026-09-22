@@ -10,8 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var referenceDataConnectionString =
     builder.Configuration.GetConnectionString("ReferenceData")
-    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(
-        "ConnectionStrings:ReferenceData is required.");
+    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(Kaleido.Exceptions.ConfigurationErrorCodes.InvalidServiceName, "ConnectionStrings:ReferenceData is required.");
 
 builder.Services.AddDbContext<ReferenceDataDbContext>(
     options => options.UseSqlite(referenceDataConnectionString));

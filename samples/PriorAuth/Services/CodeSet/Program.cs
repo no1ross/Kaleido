@@ -10,8 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var codeSetConnectionString =
     builder.Configuration.GetConnectionString("CodeSet")
-    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(
-        "ConnectionStrings:CodeSet is required.");
+    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(Kaleido.Exceptions.ConfigurationErrorCodes.InvalidServiceName, "ConnectionStrings:CodeSet is required.");
 
 builder.Services.AddDbContext<CodeSetDbContext>(
     options => options.UseSqlite(codeSetConnectionString));

@@ -1,4 +1,4 @@
-using Kaleido.Queryable.Exceptions;
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Query;
 using Xunit;
 
@@ -64,117 +64,28 @@ public sealed class QueryRequestTests
     }
 
     [Fact]
-    public void UnsupportedOperatorException_CreatesWithCorrectProperties()
+    public void KaleidoValidationException_CreatesWithCodeAndMessage()
     {
-        var exception = new UnsupportedOperatorException("test-field", FilterOperator.Equals);
+        var exception = new KaleidoValidationException(
+            ValidationErrorCodes.QryInvalidField,
+            "Field 'test-field' does not exist.");
 
-        Assert.Equal(QueryErrorCodes.UnsupportedOperator, exception.Code);
-        Assert.Equal("test-field", exception.Field);
-        Assert.Equal(FilterOperator.Equals, exception.Operator);
-        Assert.Contains("test-field", exception.Message);
-        Assert.Contains("Equals", exception.Message);
+        Assert.Equal(ValidationErrorCodes.QryInvalidField, exception.Code);
+        Assert.Equal("Field 'test-field' does not exist.", exception.Message);
     }
 
     [Fact]
-    public void UnsupportedMatchModeException_CreatesWithCorrectProperties()
+    public void KaleidoValidationException_CreatesWithCodeMessageAndInnerException()
     {
-        var exception = new UnsupportedMatchModeException("test-field", MatchMode.Exact);
+        var inner = new Exception("inner");
+        var exception = new KaleidoValidationException(
+            ValidationErrorCodes.QryInvalidFilterValue,
+            "Bad filter value.",
+            inner);
 
-        Assert.Equal(QueryErrorCodes.UnsupportedMatchMode, exception.Code);
-        Assert.Contains("test-field", exception.Message);
-        Assert.Contains("Exact", exception.Message);
-    }
-
-    [Fact]
-    public void PagingNotSupportedException_CreatesWithCorrectMessage()
-    {
-        var exception = new PagingNotSupportedException("test-record");
-
-        Assert.Equal(QueryErrorCodes.PagingNotSupported, exception.Code);
-        Assert.Contains("test-record", exception.Message);
-    }
-
-    [Fact]
-    public void MissingParameterException_CreatesWithCorrectMessage()
-    {
-        var exception = new MissingParameterException("test-query", "test-param");
-
-        Assert.Equal(QueryErrorCodes.MissingParameter, exception.Code);
-        Assert.Contains("test-query", exception.Message);
-        Assert.Contains("test-param", exception.Message);
-    }
-
-    [Fact]
-    public void InvalidParameterTypeException_CreatesWithCorrectMessage()
-    {
-        var exception = new InvalidParameterTypeException("test-param", typeof(int), typeof(string));
-
-        Assert.Equal(QueryErrorCodes.InvalidParameterType, exception.Code);
-        Assert.Contains("test-param", exception.Message);
-        Assert.Contains("Int32", exception.Message);
-        Assert.Contains("String", exception.Message);
-    }
-
-
-    [Fact]
-    public void InvalidSearchNodeException_CreatesWithCorrectMessage()
-    {
-        var exception = new InvalidSearchNodeException("test error message");
-
-        Assert.Equal(QueryErrorCodes.InvalidSearchNode, exception.Code);
-        Assert.Equal("test error message", exception.Message);
-    }
-
-    [Fact]
-    public void EmptySearchGroupException_CreatesWithCorrectMessage()
-    {
-        var exception = new EmptySearchGroupException();
-
-        Assert.Equal(QueryErrorCodes.EmptySearchGroup, exception.Code);
-        Assert.Contains("at least one expression", exception.Message);
-    }
-
-    [Fact]
-    public void MissingSearchTextException_CreatesWithCorrectMessage()
-    {
-        var exception = new MissingSearchTextException();
-
-        Assert.Equal(QueryErrorCodes.MissingSearchText, exception.Code);
-        Assert.Contains("required", exception.Message);
-    }
-
-    [Fact]
-    public void UnsupportedRuntimeTypeException_CreatesWithCorrectProperties()
-    {
-        var exception = new UnsupportedRuntimeTypeException("test-name", typeof(string));
-
-        Assert.Equal(QueryErrorCodes.UnsupportedRuntimeType, exception.Code);
-        Assert.Equal("test-name", exception.Name);
-        Assert.Equal(typeof(string), exception.ActualType);
-        Assert.Contains("test-name", exception.Message);
-        Assert.Contains("String", exception.Message);
-    }
-
-    [Fact]
-    public void ValueConversionException_CreatesWithCorrectMessage()
-    {
-        var exception = new ValueConversionException("test-param", "test-value", typeof(int));
-
-        Assert.Equal(QueryErrorCodes.InvalidParameterType, exception.Code);
-        Assert.Contains("test-param", exception.Message);
-        Assert.Contains("test-value", exception.Message);
-        Assert.Contains("Int32", exception.Message);
-    }
-
-    [Fact]
-    public void InvalidParameterValueException_CreatesWithCorrectMessage()
-    {
-        var exception = new InvalidParameterValueException("test-param", "test-value", typeof(int));
-
-        Assert.Equal(QueryErrorCodes.InvalidParameterValue, exception.Code);
-        Assert.Contains("test-param", exception.Message);
-        Assert.Contains("test-value", exception.Message);
-        Assert.Contains("Int32", exception.Message);
+        Assert.Equal(ValidationErrorCodes.QryInvalidFilterValue, exception.Code);
+        Assert.Equal("Bad filter value.", exception.Message);
+        Assert.Same(inner, exception.InnerException);
     }
 
     private sealed class TestParameters

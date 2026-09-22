@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;
+using Kaleido.Exceptions;
 
 namespace Kaleido.Abstractions.UnitTests;
 
@@ -110,22 +111,23 @@ public sealed class DataTypeMapperTests
     public void TryConvertValue_WhenTargetTypeIsUnsupported_Throws()
     {
         var exception =
-            Assert.Throws<UnsupportedDataTypeException>(() =>
+            Assert.Throws<KaleidoFrameworkException>(() =>
                 DataTypeMapper.TryConvertValue("{ }", typeof(TestObject)));
 
-        Assert.Equal(typeof(TestObject), exception.DataType);
+        Assert.Equal(FrameworkErrorCodes.UnsupportedDataType, exception.Code);
+        Assert.Contains("TestObject", exception.Message);
     }
 
     [Fact]
-    public void ConvertValue_WhenConversionFails_ThrowsDataTypeConversionException()
+    public void ConvertValue_WhenConversionFails_ThrowsKaleidoFrameworkException()
     {
         var exception =
-            Assert.Throws<DataTypeConversionException>(() =>
+            Assert.Throws<KaleidoFrameworkException>(() =>
                 DataTypeMapper.ConvertValue("bad-guid", typeof(Guid)));
 
-        Assert.Equal("bad-guid", exception.Value);
-        Assert.Equal(typeof(Guid), exception.TargetType);
-        Assert.Equal("'bad-guid' is not a valid value for type 'Guid'.", exception.Message);
+        Assert.Equal(FrameworkErrorCodes.DataConversionError, exception.Code);
+        Assert.Contains("bad-guid", exception.Message);
+        Assert.Contains("Guid", exception.Message);
     }
 
     [Fact]
@@ -211,7 +213,7 @@ public sealed class DataTypeMapperTests
     [Fact]
     public void ConvertValue_Generic_WhenConversionFails_Throws()
     {
-        Assert.Throws<DataTypeConversionException>(() =>
+        Assert.Throws<KaleidoFrameworkException>(() =>
             DataTypeMapper.ConvertValue<int>("not-a-number"));
     }
 

@@ -79,14 +79,13 @@ These are purely mechanical: delete dead files, fix unused usings, trivial synta
 These fix real bugs and behavioral inconsistencies. Each item should be committed with a companion test or test update.
 
 ### Exception hierarchy fixes
-- [ ] `QueryContextSourceNotFoundException` — move out of `QueryableValidationException` hierarchy; make it `KaleidoFrameworkException` (server DI misconfiguration → 500, not 400) ⚠️ changes HTTP status from 400 to 500 for this error
-- [ ] Add `protected QueryableValidationException(string code, string message, Exception innerException)` constructor to base
-- [ ] `NamedQueryRequiredException` — change error code from `QueryErrorCodes.NamedQueryNotAllowed` → `QueryErrorCodes.NamedQueryRequired`
-- [ ] `ValueConversionException` — change error code from `QueryErrorCodes.InvalidParameterType` → `QueryErrorCodes.InvalidParameterValue` (or merge/remove — zero throw sites found)
-- [ ] Replace 6× `NotSupportedException` in `CompiledQueryApplier.cs` with appropriate domain exceptions (`UnsupportedOperatorException`, `UnsupportedMatchModeException`, etc.)
+- [x] `QueryContextSourceNotFoundException` — deleted; replaced by `KaleidoFrameworkException(MissingRegistration)` (500, not 400)
+- [x] All legacy `*Exception` types replaced: consolidated into `KaleidoValidationException`, `KaleidoConfigurationException`, `KaleidoFrameworkException`, `KaleidoHttpClientException` — each carries a `Code` property
+- [x] `QueryableValueNormalizer` — moved to `Kaleido.Http`; wraps `ValueConverter` errors with `innerException` + `OperationCanceledException` filter
+- [x] `ExceptionMiddleware` — catches all four Kaleido exception types, logs `exception.Code`, returns `exception.Message` in error response body
+- [ ] Replace 6× `NotSupportedException` in `CompiledQueryApplier.cs` with appropriate domain exceptions
 - [ ] Update `StepCandidateBuilder.cs:96` `catch (... is NotSupportedException)` in tandem with above
 - [ ] Remove dead `ValidationException.cs` (or wire into actual validation paths) — zero throw/catch sites
-- [ ] `QueryableValueNormalizer.cs:45–51,146–152` — pass caught `exception` as `innerException` when rethrowing domain exceptions; add `when (exception is not OperationCanceledException)` filter
 
 ### Nullable `!` suppression → `?? throw KaleidoFrameworkException` (AGENTS.md mandate)
 - [ ] `Kaleido/Queryable/Query/DelegatedQueryViewEngine.cs:58` — `GetMethod(...)!`
@@ -111,8 +110,9 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 - [ ] `Kaleido.Http/Registry/RegistryEndpointRouteBuilderExtensions.cs:203–217,248–262` — add `catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }` before generic catch in both fan-out methods
 
 ### ExceptionMiddleware hardening
-- [ ] Add terminal `catch (Exception exception)` → `LogError`, `Activity.Current?.SetStatus(ActivityStatusCode.Error)`, return 500 `KaleidoErrorResponse` — check `Response.HasStarted` first
-- [ ] Set `Activity.Current?.SetStatus(ActivityStatusCode.Error)` on existing `ArgumentException` and `KaleidoFrameworkException` branches too
+- [x] Terminal `catch (Exception)` added — `LogError`, `Activity.SetStatus(Error)`, 500 `KaleidoErrorResponse`, `HasStarted` guard
+- [x] `Activity.SetStatus(Error)` set on all exception branches
+- [x] `KaleidoValidationException`, `KaleidoConfigurationException`, `KaleidoFrameworkException` caught with `.Code` logged and `.Message` returned in body
 
 ### Duplicate code extraction
 - [x] Extract `StampCorrelationHeaders` + `SanitizeHeaderValue` to `internal static class CorrelationHeaderStamper` in `Kaleido.Http.Client` (currently copy-pasted between `KaleidoProcessClient` and `KaleidoQueryableClient`)

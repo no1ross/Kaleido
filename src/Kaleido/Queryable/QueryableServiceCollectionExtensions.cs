@@ -20,6 +20,7 @@ public static class QueryableServiceCollectionExtensions
         if (!builder.Assemblies.Any())
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.MissingAssembly,
                 "At least one assembly must be registered before AddQueryable().");
         }
 
@@ -169,6 +170,7 @@ public static class QueryableServiceCollectionExtensions
         catch (Exception exception)
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
                 $"Type filter failed for type '{queryableType.FullName}'.",
                 exception);
         }
@@ -387,6 +389,7 @@ public static class QueryableServiceCollectionExtensions
         if (syncInterfaces.Length == 0 && asyncInterfaces.Length == 0)
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
                 $"Query view '{queryViewType.FullName}' does not implement IQueryViewSource or IQueryViewSourceAsync.");
         }
 

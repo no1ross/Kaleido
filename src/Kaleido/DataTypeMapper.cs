@@ -75,35 +75,6 @@ public sealed record DataTypeConversionResult<TValue>
     }
 }
 
-public sealed class UnsupportedDataTypeException : Exception
-{
-    public UnsupportedDataTypeException(
-        Type dataType)
-        : base(
-            $"Type '{dataType.FullName}' is not supported by DataTypeMapper.")
-    {
-        DataType = dataType;
-    }
-    public Type DataType { get; }
-}
-
-public sealed class DataTypeConversionException : Exception
-{
-    public DataTypeConversionException(
-        object? value,
-        Type targetType,
-        string message)
-        : base(message)
-    {
-        Value = value;
-        TargetType = targetType;
-    }
-
-    public object? Value { get; }
-
-    public Type TargetType { get; }
-}
-
 public static class DataTypeMapper
 {
     private static readonly IReadOnlyDictionary<Type, DataTypeDescriptor>
@@ -215,8 +186,9 @@ public static class DataTypeMapper
 
         if (!IsSupportedType(actualType))
         {
-            throw new UnsupportedDataTypeException(
-                actualType);
+            throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.UnsupportedDataType,
+                $"Type '{actualType.FullName}' is not supported by DataTypeMapper.");
         }
 
         if (actualType.IsInstanceOfType(value))
@@ -500,8 +472,9 @@ public static class DataTypeMapper
                 actualType);
         }
 
-        throw new UnsupportedDataTypeException(
-            actualType);
+        throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.UnsupportedDataType,
+            $"Type '{actualType.FullName}' is not supported by DataTypeMapper.");
     }
 
     public static DataTypeConversionResult<TValue> TryConvertValue<TValue>(
@@ -533,10 +506,9 @@ public static class DataTypeMapper
 
         if (!result.Success)
         {
-            throw new DataTypeConversionException(
-                value,
-                targetType,
-                result.ErrorMessage ?? "Unable to convert value.");
+            throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.DataConversionError,
+                $"Cannot convert value '{value}' to type '{targetType.Name}': {result.ErrorMessage ?? "Unable to convert value."}");
         }
 
         return result.Value;
@@ -551,10 +523,9 @@ public static class DataTypeMapper
 
         if (!result.Success)
         {
-            throw new DataTypeConversionException(
-                value,
-                typeof(TValue),
-                result.ErrorMessage ?? "Unable to convert value.");
+            throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.DataConversionError,
+                $"Cannot convert value '{value}' to type '{typeof(TValue).Name}': {result.ErrorMessage ?? "Unable to convert value."}");
         }
 
         return result.Value;
@@ -581,6 +552,7 @@ public static class DataTypeMapper
                         var member = members.Length > 0
                             ? members[0]
                             : throw new KaleidoFrameworkException(
+                                FrameworkErrorCodes.ReflectionError,
                                 $"Enum member '{x}' not found in type '{type.FullName}'.");
 
                         var description =
@@ -605,6 +577,7 @@ public static class DataTypeMapper
         {
             var elementType = type.GetElementType()
                 ?? throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.ReflectionError,
                     $"Array type '{type.FullName}' has null element type.");
 
             return new DataTypeDescriptor(
@@ -621,6 +594,7 @@ public static class DataTypeMapper
                     ? type.GetGenericArguments().Length > 0
                         ? type.GetGenericArguments()[0]
                         : throw new KaleidoFrameworkException(
+                            FrameworkErrorCodes.ReflectionError,
                             $"Generic type '{type.FullName}' has no generic arguments.")
                     : typeof(object);
 

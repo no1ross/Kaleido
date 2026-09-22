@@ -128,7 +128,7 @@ public sealed class KaleidoProcessClientTests
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
         var client = new KaleidoProcessClient(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
 
-        await Assert.ThrowsAsync<KaleidoProcessClientException>(
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.GetRegistryAsync());
     }
 
@@ -161,7 +161,7 @@ public sealed class KaleidoProcessClientTests
     {
         var (client, _) = CreateClient();
 
-        var ex = await Assert.ThrowsAsync<KaleidoProcessClientException>(
+        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.GetStepMetadataAsync("NoSuchStep"));
 
         Assert.Contains("NoSuchStep", ex.Message);
@@ -179,10 +179,11 @@ public sealed class KaleidoProcessClientTests
             return new HttpResponseMessage(HttpStatusCode.InternalServerError);
         });
 
-        var ex = await Assert.ThrowsAsync<KaleidoProcessClientException>(
+        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.GetStepMetadataAsync("MyStep"));
 
         Assert.Equal(HttpStatusCode.InternalServerError, ex.StatusCode);
+        Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
     }
 
     // ---------------------------------------------------------------------------
@@ -225,10 +226,11 @@ public sealed class KaleidoProcessClientTests
     {
         var (client, _) = CreateClient(respond: _ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
 
-        var ex = await Assert.ThrowsAsync<KaleidoProcessClientException>(
+        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.GetProcessStateAsync(Guid.NewGuid()));
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, ex.StatusCode);
+        Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
     }
 
     // ---------------------------------------------------------------------------
@@ -271,7 +273,7 @@ public sealed class KaleidoProcessClientTests
     {
         var (client, _) = CreateClient();
 
-        await Assert.ThrowsAsync<KaleidoProcessClientException>(
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.ExecuteStepAsync(new UnknownTypeForTest()));
     }
 
@@ -287,10 +289,11 @@ public sealed class KaleidoProcessClientTests
             return new HttpResponseMessage(HttpStatusCode.BadGateway);
         });
 
-        var ex = await Assert.ThrowsAsync<KaleidoProcessClientException>(
+        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.ExecuteStepAsync(new MyStepStep()));
 
         Assert.Equal(HttpStatusCode.BadGateway, ex.StatusCode);
+        Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
     }
 
     // ---------------------------------------------------------------------------

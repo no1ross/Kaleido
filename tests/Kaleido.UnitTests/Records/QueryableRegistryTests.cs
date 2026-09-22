@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Records;
 using Moq;
@@ -259,7 +260,8 @@ public sealed class QueryableRegistryTests
 
         var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
-        Assert.Throws<KeyNotFoundException>(() =>
+        var ex = Assert.Throws<KaleidoFrameworkException>(() =>
             registry.GetRegistration("unknown"));
+        Assert.Equal(FrameworkErrorCodes.MissingRegistration, ex.Code);
     }
 }

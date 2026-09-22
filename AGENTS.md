@@ -112,11 +112,16 @@ Owns the SQLite durable state provider:
 
 ### Exception handling
 - Always use custom exceptions from `Kaleido.Exceptions` namespace, never `InvalidOperationException`
-- `KaleidoFrameworkException` for framework integrity violations
-- Domain-specific exceptions for domain validation errors
+- `KaleidoValidationException` — 400 Bad Request; `Code` and `Message` are returned in the HTTP response body
+- `KaleidoConfigurationException` — 500; startup/DI misconfiguration; `Code` is log-only, `Message` is safe to surface
+- `KaleidoFrameworkException` — 500; internal integrity violation; `Code` is log-only, `Message` is safe to surface
+- `KaleidoHttpClientException` — client-side only, never reaches HTTP; carries `Code`, `StatusCode`, and `Errors`
 - Error codes are organized by domain:
-  - `KaleidoErrorCodes` (in `KaleidoErrorResponse.cs`) - framework-level HTTP error codes
-  - `QueryErrorCodes` (in `QueryableValidationException.cs`) - Queryable validation error codes
+  - `ValidationErrorCodes` (`KaleidoValidationException.cs`) — `qry_*` codes for queryable validation
+  - `ConfigurationErrorCodes` (`KaleidoConfigurationException.cs`) — `pro_*`/`qry_*`/unprefixed for startup errors
+  - `FrameworkErrorCodes` (`KaleidoFrameworkException.cs`) — internal integrity violation codes
+  - `HttpClientErrorCodes` (`KaleidoClientException.cs`) — `httpclient_*` codes for remote call failures
+  - `KaleidoErrorCodes` (`KaleidoErrorResponse.cs`) — shared HTTP error codes (`argument_error`, `framework_error`)
 
 ### OperationCanceledException and observability
 Never record `OperationCanceledException` as an execution failure — it inflates error metrics and triggers false alerts.

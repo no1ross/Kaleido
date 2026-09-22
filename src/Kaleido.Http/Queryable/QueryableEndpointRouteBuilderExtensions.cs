@@ -1,5 +1,4 @@
 using Kaleido.Http.Queryable.Contracts;
-using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
@@ -28,7 +27,8 @@ public static class QueryableEndpointRouteBuilderExtensions
 
         if (queryableRegistry is null)
         {
-            throw new KaleidoFrameworkException(
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
                 "Cannot map Queryable endpoints: Queryable runtime is not registered. " +
                 "This service has no query contexts. Remove the MapQueryable() call.");
         }
@@ -188,6 +188,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 nameof(MapTypedDirectQueryEndpoint),
                 BindingFlags.Static | BindingFlags.NonPublic)
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.ReflectionError,
                 $"Method '{nameof(MapTypedDirectQueryEndpoint)}' not found.");
 
         method
@@ -255,6 +256,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 nameof(MapTypedQueryEndpoint),
                 BindingFlags.Static | BindingFlags.NonPublic)
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.ReflectionError,
                 $"Method '{nameof(MapTypedQueryEndpoint)}' not found.");
 
         method
@@ -283,6 +285,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 nameof(MapTypedDelegatedQueryEndpoint),
                 BindingFlags.Static | BindingFlags.NonPublic)
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.ReflectionError,
                 $"Method '{nameof(MapTypedDelegatedQueryEndpoint)}' not found.");
 
         method
@@ -332,7 +335,7 @@ public static class QueryableEndpointRouteBuilderExtensions
 
                         return Results.Ok(result);
                     }
-                    catch (QueryableValidationException ex)
+                    catch (KaleidoValidationException ex)
                     {
                         return ValidationErrorResult(ex);
                     }
@@ -384,7 +387,7 @@ public static class QueryableEndpointRouteBuilderExtensions
 
                         return Results.Ok(result);
                     }
-                    catch (QueryableValidationException ex)
+                    catch (KaleidoValidationException ex)
                     {
                         return ValidationErrorResult(ex);
                     }
@@ -434,7 +437,7 @@ public static class QueryableEndpointRouteBuilderExtensions
 
                         return Results.Ok(result);
                     }
-                    catch (QueryableValidationException ex)
+                    catch (KaleidoValidationException ex)
                     {
                         return ValidationErrorResult(ex);
                     }
@@ -454,7 +457,7 @@ public static class QueryableEndpointRouteBuilderExtensions
             .Produces<KaleidoErrorResponse>(400);
     }
 
-    private static IResult ValidationErrorResult(QueryableValidationException ex) =>
+    private static IResult ValidationErrorResult(KaleidoValidationException ex) =>
         Results.BadRequest(
             new KaleidoErrorResponse(
             [

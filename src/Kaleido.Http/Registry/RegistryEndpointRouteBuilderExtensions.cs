@@ -112,7 +112,8 @@ public static class RegistryEndpointRouteBuilderExtensions
 
                         if (entryProcessors.Length > 1)
                         {
-                            throw new KaleidoFrameworkException(
+                            throw new KaleidoConfigurationException(
+                                ConfigurationErrorCodes.ProInvalidRegistration,
                                 $"Multiple processors are marked as entry processors: {string.Join(", ", entryProcessors.Select(p => p.Name))}. " +
                                 "Only one processor in a distributed system should have IsEntryProcessor set to true.");
                         }

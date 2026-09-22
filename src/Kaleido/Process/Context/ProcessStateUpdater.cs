@@ -280,6 +280,7 @@ internal sealed class ProcessStateUpdater(
         return context.FindStep(
             candidate.StepName)
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
                 $"Step '{candidate.StepName}' was not found in processor state.");
     }
 
@@ -332,6 +333,7 @@ internal sealed class ProcessStateUpdater(
                 ProcessExecutionState.HandOff,
 
             _ => throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.TypeMismatch,
                 $"Unsupported execution decision '{decision.Type}'.")
         };
     }

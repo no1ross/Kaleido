@@ -1,5 +1,4 @@
-﻿using Kaleido.Queryable.Exceptions;
-using Kaleido.Queryable.Metadata;
+﻿using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Query;
 
@@ -22,9 +21,8 @@ public sealed record QueryExecutionContext
             return parameters;
         }
 
-        throw new InvalidParameterTypeException(
-            "ViewParameters",
-            typeof(TViewParameters),
-            Request.ViewParameters.GetType());
+        throw new KaleidoValidationException(
+            ValidationErrorCodes.QryInvalidParameterValue,
+            $"ViewParameters is of type '{Request.ViewParameters.GetType().Name}' but expected '{typeof(TViewParameters).Name}'.");
     }
 }

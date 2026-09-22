@@ -17,6 +17,25 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             // Client disconnected mid-request — not an error, log at Debug to avoid noise.
             logger.LogDebug("Request was canceled by the client.");
         }
+        catch (KaleidoValidationException exception)
+        {
+            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
+
+            logger.LogWarning(
+                exception,
+                "Validation failed [{Code}]: {Message}",
+                exception.Code,
+                exception.Message);
+
+            context.Response.StatusCode =
+                StatusCodes.Status400BadRequest;
+
+            await context.Response.WriteAsJsonAsync(
+                new KaleidoErrorResponse(
+                [
+                    new KaleidoError(exception.Code, exception.Message)
+                ]));
+        }
         catch (ArgumentException exception)
         {
             Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
@@ -34,13 +53,15 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
                     new KaleidoError(KaleidoErrorCodes.ArgumentError, "An invalid argument was provided.")
                 ]));
         }
-        catch (KaleidoFrameworkException exception)
+        catch (KaleidoConfigurationException exception)
         {
             Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
 
             logger.LogError(
                 exception,
-                "Kaleido framework integrity violation.");
+                "Kaleido configuration error [{Code}]: {Message}",
+                exception.Code,
+                exception.Message);
 
             context.Response.StatusCode =
                 StatusCodes.Status500InternalServerError;
@@ -48,7 +69,26 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             await context.Response.WriteAsJsonAsync(
                 new KaleidoErrorResponse(
                 [
-                    new KaleidoError(KaleidoErrorCodes.FrameworkError, "An internal framework error occurred.")
+                    new KaleidoError(exception.Code, exception.Message)
+                ]));
+        }
+        catch (KaleidoFrameworkException exception)
+        {
+            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
+
+            logger.LogError(
+                exception,
+                "Kaleido framework integrity violation [{Code}]: {Message}",
+                exception.Code,
+                exception.Message);
+
+            context.Response.StatusCode =
+                StatusCodes.Status500InternalServerError;
+
+            await context.Response.WriteAsJsonAsync(
+                new KaleidoErrorResponse(
+                [
+                    new KaleidoError(exception.Code, exception.Message)
                 ]));
         }
         catch (Exception exception)

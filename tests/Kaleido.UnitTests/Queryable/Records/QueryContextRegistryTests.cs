@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Records;
@@ -58,9 +59,10 @@ public sealed class QueryContextRegistryTests
     {
         var registry = new QueryContextRegistry(CreateServices(), [typeof(TestContext)]);
 
-        var exception = Assert.Throws<KeyNotFoundException>(() => registry.GetRegistration("missing"));
+        var exception = Assert.Throws<KaleidoFrameworkException>(() => registry.GetRegistration("missing"));
 
-        Assert.Contains("Query context 'missing' is not registered.", exception.Message);
+        Assert.Equal(FrameworkErrorCodes.MissingRegistration, exception.Code);
+        Assert.Contains("missing", exception.Message);
     }
 
     private static ServiceCollection CreateServices()

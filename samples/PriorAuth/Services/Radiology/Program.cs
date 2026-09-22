@@ -16,11 +16,13 @@ var builder = WebApplication.CreateBuilder(args);
 var radiologyConnectionString =
     builder.Configuration.GetConnectionString("Radiology")
     ?? throw new KaleidoConfigurationException(
+        ConfigurationErrorCodes.InvalidServiceName,
         "ConnectionStrings:Radiology is required.");
 
 var processConnectionString =
     builder.Configuration.GetConnectionString("RadiologyProcess")
     ?? throw new KaleidoConfigurationException(
+        ConfigurationErrorCodes.InvalidServiceName,
         "ConnectionStrings:RadiologyProcess is required.");
 
 builder.Services.AddDbContext<RadiologyDbContext>(

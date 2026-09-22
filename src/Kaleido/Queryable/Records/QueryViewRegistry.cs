@@ -94,14 +94,16 @@ internal sealed class QueryViewRegistry
     public QueryViewRegistration GetRegistration(string name)
     {
         return Find(name)
-            ?? throw new KeyNotFoundException(
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
                 $"Query view '{name}' is not registered.");
     }
 
     public QueryViewRegistration GetRegistration(Type queryViewType)
     {
         return Find(queryViewType)
-            ?? throw new KeyNotFoundException(
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
                 $"Query view '{queryViewType.FullName}' is not registered.");
     }
 
@@ -111,6 +113,7 @@ internal sealed class QueryViewRegistry
         var queryViewAttribute =
             queryViewType.GetCustomAttribute<QueryViewAttribute>()
             ?? throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryMissingAttribute,
                 $"Query view '{queryViewType.Name}' is missing QueryViewAttribute.");
 
         var queryViewInterface =
@@ -219,6 +222,7 @@ internal sealed class QueryViewRegistry
         if (string.IsNullOrWhiteSpace(attribute.DefaultSortField))
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
                 $"Query view '{attribute.Name}' is pageable and must define a DefaultSortField.");
         }
 
@@ -232,12 +236,14 @@ internal sealed class QueryViewRegistry
         if (property is null)
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
                 $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' which does not exist on query context '{contextType.Name}'.");
         }
 
         if (property.GetCustomAttribute<SortableAttribute>() is null)
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
                 $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' but the field is not marked as sortable.");
         }
     }

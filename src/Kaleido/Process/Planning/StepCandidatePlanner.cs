@@ -45,6 +45,7 @@ internal sealed class StepCandidatePlanner : IStepCandidatePlanner
         var candidatesByType =
             candidates.ToDictionary(
                 x => (x.Registration ?? throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.MissingRegistration,
                     $"StepCandidate '{x.StepName}' has no Registration during dependency ordering.")).StepType);
 
         var ordered =
@@ -74,6 +75,7 @@ internal sealed class StepCandidatePlanner : IStepCandidatePlanner
         var registration =
             candidate.Registration
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
                 $"StepCandidate '{candidate.StepName}' has no Registration during dependency ordering.");
 
         var stepType = registration.StepType;

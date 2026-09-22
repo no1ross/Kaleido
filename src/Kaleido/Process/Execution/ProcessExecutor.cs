@@ -98,6 +98,7 @@ internal sealed class ExecutionProcessor(
                     context.FindStep(
                         candidate.StepName)
                     ?? throw new KaleidoFrameworkException(
+                        FrameworkErrorCodes.MissingRegistration,
                         $"Step '{candidate.StepName}' was not found in processor state.");
 
                 var initialAvailableSteps =
@@ -117,9 +118,11 @@ internal sealed class ExecutionProcessor(
                     await invoker.ExecuteAsync(
                         candidate.Registration
                         ?? throw new KaleidoFrameworkException(
+                            FrameworkErrorCodes.MissingRegistration,
                             $"Step '{candidate.StepName}' does not contain registration metadata."),
                         candidate.Step
                         ?? throw new KaleidoFrameworkException(
+                            FrameworkErrorCodes.MissingRegistration,
                             $"Step '{candidate.StepName}' does not contain a step instance."),
                         processStepContext,
                         cancellationToken);

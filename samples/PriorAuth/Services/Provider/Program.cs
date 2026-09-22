@@ -14,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 var providerConnectionString =
     builder.Configuration.GetConnectionString("Provider")
     ?? throw new KaleidoConfigurationException(
+        ConfigurationErrorCodes.InvalidServiceName,
         "ConnectionStrings:Provider is required.");
 
 builder.Services.AddDbContext<ProviderSearchDbContext>(

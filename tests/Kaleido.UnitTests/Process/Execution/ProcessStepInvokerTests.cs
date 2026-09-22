@@ -395,6 +395,7 @@ public sealed class ProcessStepInvokerTests
                 return handlerResult;
             }
             throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.TypeMismatch,
                 $"Handler returned an invalid handler result of type '{result?.GetType().FullName}'.");
         };
 

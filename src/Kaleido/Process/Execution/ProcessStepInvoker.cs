@@ -87,6 +87,7 @@ internal sealed class ProcessStepInvoker(
             handler.GetType().GetMethod(
                 nameof(IProcessStepHandler<object>.ExecuteAsync))
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.ReflectionError,
                 $"Handler '{handler.GetType().FullName}' does not expose ExecuteAsync.");
 
         var result =
@@ -98,11 +99,13 @@ internal sealed class ProcessStepInvoker(
                 cancellationToken
                 ])
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.InvalidHandlerResult,
                 $"Handler '{handler.GetType().FullName}' returned null.");
 
         if (result is not Task task)
         {
             throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.InvalidHandlerResult,
                 $"Handler '{handler.GetType().FullName}' returned an invalid result.");
         }
 
@@ -111,6 +114,7 @@ internal sealed class ProcessStepInvoker(
         if (getResultFromTask is null)
         {
             throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.InvalidHandlerResult,
                 $"Handler '{handler.GetType().FullName}' has no cached result extractor.");
         }
 

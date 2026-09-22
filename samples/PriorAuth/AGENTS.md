@@ -2,6 +2,7 @@
 - Use `podman`, not `docker`
 - When validating compose/container workflows, run `podman compose ...`
 - Do not suggest `docker` commands unless explicitly asked
+- npx @microsoft/aspire-cli dashboard run - to run Aspire for OTel
 
 ## PriorAuth layout
 - `samples/PriorAuth/Compose/` contains local orchestration files

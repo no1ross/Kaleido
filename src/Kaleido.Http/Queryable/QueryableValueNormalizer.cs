@@ -1,59 +1,11 @@
 using Kaleido.Json;
-using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 
-namespace Kaleido.Queryable;
+namespace Kaleido.Http.Queryable;
 
 internal static class QueryableValueNormalizer
 {
-    public static IReadOnlyDictionary<string, object?>? Normalize(
-        IReadOnlyDictionary<string, object?>? values,
-        IReadOnlyCollection<QueryParameterMetadata>? parameters)
-    {
-        if (values is null)
-        {
-            return null;
-        }
-
-        if (parameters is null ||
-            parameters.Count == 0)
-        {
-            return values;
-        }
-
-        var result =
-            new Dictionary<string, object?>(
-                StringComparer.OrdinalIgnoreCase);
-
-        foreach (var parameter in parameters)
-        {
-            if (!values.TryGetValue(
-                    parameter.Name,
-                    out var value))
-            {
-                continue;
-            }
-
-            try
-            {
-                result[parameter.Name] =
-                    ValueConverter.Convert(
-                        value,
-                        parameter.Type);
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                throw new InvalidParameterValueException(
-                    parameter.Name,
-                    value,
-                    parameter.Type);
-            }
-        }
-
-        return result;
-    }
-
     public static QueryBody? Normalize(
         QueryBody? query,
         QueryContextMetadata metadata)
@@ -121,9 +73,9 @@ internal static class QueryableValueNormalizer
 
         if (field is null)
         {
-            throw new InvalidFieldException(
-                condition.Field,
-                metadata.Name);
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidField,
+                $"Field '{condition.Field}' does not exist on record '{metadata.Name}'.");
         }
 
         try
@@ -145,10 +97,10 @@ internal static class QueryableValueNormalizer
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            throw new InvalidFilterValueException(
-                condition.Field,
-                condition.Values.FirstOrDefault(),
-                field.FieldType);
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidFilterValue,
+                $"Value '{condition.Values.FirstOrDefault()}' is not valid for field '{condition.Field}'. Expected a value of type '{field.FieldType.Name}'.",
+                exception);
         }
     }
 }

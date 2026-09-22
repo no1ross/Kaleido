@@ -1,4 +1,3 @@
-using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Query;
@@ -86,7 +85,8 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
         if (node.Condition is not null && node.Group is not null)
         {
-            throw new InvalidFilterNodeException(
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidFilterNode,
                 "Filter node cannot specify both Condition and Group.");
         }
 
@@ -104,7 +104,8 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
                 metadata);
         }
 
-        throw new InvalidFilterNodeException(
+        throw new KaleidoValidationException(
+            ValidationErrorCodes.QryInvalidFilterNode,
             "Filter node must specify either Condition or Group.");
     }
 
@@ -149,6 +150,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
                 if (x.MatchMode is null)
                 {
                     throw new KaleidoFrameworkException(
+                        FrameworkErrorCodes.TypeMismatch,
                         $"Field '{x.Name}' is marked as searchable but has no MatchMode configured.");
                 }
 
@@ -192,6 +194,8 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
                 StringComparison.OrdinalIgnoreCase));
 
         return field
-            ?? throw new InvalidFieldException(fieldName, metadata.Name);
+            ?? throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidField,
+                $"Field '{fieldName}' does not exist on record '{metadata.Name}'.");
     }
 }

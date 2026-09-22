@@ -70,7 +70,8 @@ internal sealed class QueryableRegistry : IQueryableRegistry
     public QueryableContextRegistryItem GetRegistration(
         string name) =>
         Find(name)
-        ?? throw new KeyNotFoundException(
+        ?? throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.MissingRegistration,
             $"Queryable registry item '{name}' is not registered.");
 
     private static QueryableContextRegistryItem Project(

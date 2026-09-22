@@ -53,6 +53,7 @@ internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistenc
         var registration =
             candidate.Registration
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
                 $"StepCandidate '{candidate.StepName}' has no Registration during consistency check.");
 
         var historicalStep =
@@ -96,6 +97,7 @@ internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistenc
         var dependencies =
             (candidate.Registration
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
                 $"StepCandidate '{candidate.StepName}' has no Registration during dependency consistency check."))
             .Dependencies;
 

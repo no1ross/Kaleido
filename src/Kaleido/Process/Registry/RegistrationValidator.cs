@@ -21,6 +21,7 @@ internal static class RegistrationValidator
                     x => x.StepType == definition.StepType))
             {
                 throw new KaleidoConfigurationException(
+                    ConfigurationErrorCodes.ProInvalidRegistration,
                     $"Process step '{definition.StepType.FullName}' cannot depend on itself.");
             }
 
@@ -28,6 +29,7 @@ internal static class RegistrationValidator
                     x => x.StepType == definition.StepType))
             {
                 throw new KaleidoConfigurationException(
+                    ConfigurationErrorCodes.ProInvalidRegistration,
                     $"Process step '{definition.StepType.FullName}' cannot reference itself in AvailableAfter.");
             }
 
@@ -35,6 +37,7 @@ internal static class RegistrationValidator
                     x => x.StepType == definition.StepType))
             {
                 throw new KaleidoConfigurationException(
+                    ConfigurationErrorCodes.ProInvalidRegistration,
                     $"Process step '{definition.StepType.FullName}' cannot reference itself in AvailableUntil.");
             }
         }
@@ -67,6 +70,7 @@ internal static class RegistrationValidator
                     .Select(x => x.Name);
 
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.ProInvalidRegistration,
                 $"Circular process step dependency detected: {string.Join(" -> ", cycle)}");
         }
 

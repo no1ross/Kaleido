@@ -119,7 +119,7 @@ public sealed class KaleidoQueryableClientTests
         correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext());
         var client = new KaleidoQueryableClient(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
 
-        await Assert.ThrowsAsync<KaleidoQueryableClientException>(
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.GetRegistryAsync());
     }
 
@@ -163,7 +163,7 @@ public sealed class KaleidoQueryableClientTests
     {
         var (client, _) = CreateClient();
 
-        var ex = await Assert.ThrowsAsync<KaleidoQueryableClientException>(
+        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.GetContextMetadataAsync("does-not-exist"));
 
         Assert.Contains("does-not-exist", ex.Message);
@@ -186,10 +186,11 @@ public sealed class KaleidoQueryableClientTests
         correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext());
         var client = new KaleidoQueryableClient(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
 
-        var ex = await Assert.ThrowsAsync<KaleidoQueryableClientException>(
+        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.GetContextMetadataAsync("my-context"));
 
         Assert.Equal(HttpStatusCode.InternalServerError, ex.StatusCode);
+        Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
     }
 
     // ---------------------------------------------------------------------------
@@ -230,7 +231,7 @@ public sealed class KaleidoQueryableClientTests
     {
         var (client, _) = CreateClient();
 
-        await Assert.ThrowsAsync<KaleidoQueryableClientException>(
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QueryViewAsync<FakeParams, FakeView>(
                 "no-such-context", "grid",
                 new QueryApiRequest<FakeParams>(new FakeParams(), new QueryBody())));
@@ -241,7 +242,7 @@ public sealed class KaleidoQueryableClientTests
     {
         var (client, _) = CreateClient();
 
-        await Assert.ThrowsAsync<KaleidoQueryableClientException>(
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QueryViewAsync<FakeParams, FakeView>(
                 "my-context", "no-such-view",
                 new QueryApiRequest<FakeParams>(new FakeParams(), new QueryBody())));
@@ -263,7 +264,7 @@ public sealed class KaleidoQueryableClientTests
         correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext());
         var client = new KaleidoQueryableClient(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
 
-        var ex = await Assert.ThrowsAsync<KaleidoQueryableClientException>(
+        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QueryViewAsync<FakeParams, FakeView>(
                 "my-context", "grid",
                 new QueryApiRequest<FakeParams>(new FakeParams(), new QueryBody())));
@@ -306,7 +307,7 @@ public sealed class KaleidoQueryableClientTests
         var noQueryContext = FakeContext with { QueryUrl = null };
         var (client, _) = CreateClient(respond: _ => JsonOk(new[] { noQueryContext }));
 
-        var ex = await Assert.ThrowsAsync<KaleidoQueryableClientException>(
+        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QueryContextAsync<FakeView>(
                 "my-context",
                 new QueryApiRequest(new QueryBody())));

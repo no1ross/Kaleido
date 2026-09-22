@@ -50,7 +50,8 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
 
         if (match is null)
         {
-            throw new KaleidoProcessClientException(
+            throw new KaleidoHttpClientException(
+                HttpClientErrorCodes.NotFound,
                 $"Process step '{stepName}' was not found in the remote registry.",
                 HttpStatusCode.NotFound);
         }
@@ -65,12 +66,14 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
         {
             return await response.Content.ReadFromJsonAsync<ProcessStepResponse>(
                        cancellationToken: cancellationToken)
-                   ?? throw new KaleidoProcessClientException(
+                   ?? throw new KaleidoHttpClientException(
+                       HttpClientErrorCodes.EmptyResponse,
                        $"Process step metadata request for '{stepName}' succeeded but returned no payload.",
                        response.StatusCode);
         }
 
-        throw new KaleidoProcessClientException(
+        throw new KaleidoHttpClientException(
+            HttpClientErrorCodes.RequestFailed,
             $"Process step metadata request for '{stepName}' failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
             response.StatusCode);
     }
@@ -94,12 +97,14 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
         {
             return await response.Content.ReadFromJsonAsync<ProcessStateResponse>(
                        cancellationToken: cancellationToken)
-                   ?? throw new KaleidoProcessClientException(
+                   ?? throw new KaleidoHttpClientException(
+                       HttpClientErrorCodes.EmptyResponse,
                        $"Process state request for '{processId}' succeeded but returned no payload.",
                        response.StatusCode);
         }
 
-        throw new KaleidoProcessClientException(
+        throw new KaleidoHttpClientException(
+            HttpClientErrorCodes.RequestFailed,
             $"Process state request for '{processId}' failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
             response.StatusCode);
     }
@@ -123,12 +128,14 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
         {
             return await response.Content.ReadFromJsonAsync<ProcessExecutionResponse>(
                        cancellationToken: cancellationToken)
-                   ?? throw new KaleidoProcessClientException(
+                   ?? throw new KaleidoHttpClientException(
+                       HttpClientErrorCodes.EmptyResponse,
                        "Process execute request succeeded but returned no payload.",
                        response.StatusCode);
         }
 
-        throw new KaleidoProcessClientException(
+        throw new KaleidoHttpClientException(
+            HttpClientErrorCodes.RequestFailed,
             $"Process execute request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
             response.StatusCode);
     }
@@ -158,12 +165,14 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
         {
             return await response.Content.ReadFromJsonAsync<StepExecutionResponse>(
                        cancellationToken: cancellationToken)
-                   ?? throw new KaleidoProcessClientException(
+                   ?? throw new KaleidoHttpClientException(
+                       HttpClientErrorCodes.EmptyResponse,
                        "Process step request succeeded but returned no payload.",
                        response.StatusCode);
         }
 
-        throw new KaleidoProcessClientException(
+        throw new KaleidoHttpClientException(
+            HttpClientErrorCodes.RequestFailed,
             $"Process step request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
             response.StatusCode);
     }
@@ -193,12 +202,14 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
         {
             return await response.Content.ReadFromJsonAsync<StepExecutionResponse<TResponse>>(
                        cancellationToken: cancellationToken)
-                   ?? throw new KaleidoProcessClientException(
+                   ?? throw new KaleidoHttpClientException(
+                       HttpClientErrorCodes.EmptyResponse,
                        "Process step request succeeded but returned no payload.",
                        response.StatusCode);
         }
 
-        throw new KaleidoProcessClientException(
+        throw new KaleidoHttpClientException(
+            HttpClientErrorCodes.RequestFailed,
             $"Process step request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
             response.StatusCode);
     }
@@ -223,7 +234,8 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
                 return match.ExecuteUrl;
         }
 
-        throw new KaleidoProcessClientException(
+        throw new KaleidoHttpClientException(
+            HttpClientErrorCodes.NotFound,
             $"Process step '{stepName}' (from type '{typeName}') was not found in the remote registry.",
             HttpStatusCode.NotFound);
     }
@@ -249,7 +261,8 @@ internal sealed class KaleidoProcessClient : IKaleidoProcessClient
 
             var registry = await registryResponse.Content.ReadFromJsonAsync<IReadOnlyList<ProcessorRegistryResponse>>(
                 cancellationToken: cancellationToken)
-                ?? throw new KaleidoProcessClientException(
+                ?? throw new KaleidoHttpClientException(
+                    HttpClientErrorCodes.EmptyResponse,
                     "Process registry request succeeded but returned no payload.",
                     HttpStatusCode.InternalServerError);
 
