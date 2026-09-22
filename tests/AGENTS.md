@@ -5,11 +5,10 @@ Tests follow a one-project-per-source-project convention:
 | Test project | Tests code in |
 |---|---|
 | `Kaleido.UnitTests` | `src/Kaleido` (core runtime: bootstrap, Process, Queryable) |
-| `Kaleido.AspNetCore.UnitTests` | `src/Kaleido.AspNetCore` |
-| `Kaleido.Http.UnitTests` | `src/Kaleido.Http` (endpoint route builder extensions) |
+| `Kaleido.Http.UnitTests` | `src/Kaleido.Http` (middleware, startup filter, correlation reader, endpoint extensions, queryable value normalizer) |
 | `Kaleido.Http.FunctionalTests` | `src/Kaleido.Http` (full HTTP functional tests via TestServer) |
 | `Kaleido.Http.Client.UnitTests` | `src/Kaleido.Http.Client` |
-| `Kaleido.Http.Abstractions.UnitTests` | `src/Kaleido.Http.Abstractions` (placeholder) |
+| `Kaleido.Http.Abstractions.UnitTests` | `src/Kaleido.Http.Abstractions` (`HttpHeaderSanitizer` and contract types) |
 | `Kaleido.Provider.SQLite.UnitTests` | `src/Kaleido.Provider.SQLite` (placeholder) |
 
 ## Testing conventions

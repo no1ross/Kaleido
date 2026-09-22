@@ -1,11 +1,8 @@
-using Kaleido.AspNetCore.Middleware;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Moq;
-using System.Text.Json;
 
-namespace Kaleido.AspNetCore.UnitTests;
+namespace Kaleido.Http.UnitTests;
 
 public sealed class ExceptionMiddlewareTests
 {

@@ -214,7 +214,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                     {
                         ClientName = name,
                         ClientType = "Process",
-                        Reason = ex.Message
+                        Reason = "Process registry fetch failed. See server logs for details."
                     });
                 }
             }));
@@ -261,7 +261,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                     {
                         ClientName = name,
                         ClientType = "Queryable",
-                        Reason = ex.Message
+                        Reason = "Queryable registry fetch failed. See server logs for details."
                     });
                 }
             }));

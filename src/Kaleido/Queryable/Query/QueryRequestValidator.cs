@@ -130,13 +130,21 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         throw new InvalidParameterTypeException(parameter.Name, expectedType, actualType);
     }
 
+    private const int MaxFilterDepth = 10;
+
     private static void ValidateFilter(
         QueryFilterNode? node,
-        QueryContextMetadata metadata)
+        QueryContextMetadata metadata,
+        int depth = 0)
     {
         if (node is null)
         {
             return;
+        }
+
+        if (depth > MaxFilterDepth)
+        {
+            throw new FilterDepthExceededException(MaxFilterDepth);
         }
 
         if (node.Condition is not null &&
@@ -159,7 +167,8 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         {
             ValidateFilterGroup(
                 node.Group,
-                metadata);
+                metadata,
+                depth);
 
             return;
         }
@@ -170,7 +179,8 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
 
     private static void ValidateFilterGroup(
         QueryFilterGroup group,
-        QueryContextMetadata metadata)
+        QueryContextMetadata metadata,
+        int depth)
     {
         if (group.Filters.Count == 0)
         {
@@ -181,7 +191,8 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         {
             ValidateFilter(
                 child,
-                metadata);
+                metadata,
+                depth + 1);
         }
     }
 

@@ -1,5 +1,6 @@
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using Xunit;
 
@@ -7,10 +8,13 @@ namespace Kaleido.Process.UnitTests.Context;
 
 public sealed class InMemoryProcessContextStoreTests
 {
+    private static InMemoryProcessContextStore CreateStore() =>
+        new(new Mock<ILogger<InMemoryProcessContextStore>>().Object);
+
     [Fact]
     public async Task SaveAsync_WhenContextIsNull_Throws()
     {
-        var store = new InMemoryProcessContextStore();
+        var store = CreateStore();
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
             store.SaveAsync(null!));
@@ -19,7 +23,7 @@ public sealed class InMemoryProcessContextStoreTests
     [Fact]
     public async Task SaveAsync_WhenContextProvided_SavesContext()
     {
-        var store = new InMemoryProcessContextStore();
+        var store = CreateStore();
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
@@ -40,7 +44,7 @@ public sealed class InMemoryProcessContextStoreTests
     [Fact]
     public async Task LoadAsync_WhenContextNotExists_ReturnsNull()
     {
-        var store = new InMemoryProcessContextStore();
+        var store = CreateStore();
         var processId = Guid.NewGuid();
 
         var loaded = await store.LoadAsync(processId, CancellationToken.None);
@@ -51,7 +55,7 @@ public sealed class InMemoryProcessContextStoreTests
     [Fact]
     public async Task LoadAsync_WhenContextExists_ReturnsContext()
     {
-        var store = new InMemoryProcessContextStore();
+        var store = CreateStore();
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
@@ -80,7 +84,7 @@ public sealed class InMemoryProcessContextStoreTests
     [Fact]
     public async Task SaveAsync_WhenContextAlreadyExists_Overwrites()
     {
-        var store = new InMemoryProcessContextStore();
+        var store = CreateStore();
         var processId = Guid.NewGuid();
 
         var context1 = new ProcessorContext
@@ -109,7 +113,7 @@ public sealed class InMemoryProcessContextStoreTests
     [Fact]
     public async Task SaveAsync_WhenCancelled_ThrowsOperationCanceled()
     {
-        var store = new InMemoryProcessContextStore();
+        var store = CreateStore();
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
@@ -126,7 +130,7 @@ public sealed class InMemoryProcessContextStoreTests
     [Fact]
     public async Task LoadAsync_WhenCancelled_ThrowsOperationCanceled()
     {
-        var store = new InMemoryProcessContextStore();
+        var store = CreateStore();
         var cts = new CancellationTokenSource();
         cts.Cancel();
 

@@ -1,4 +1,6 @@
 using Kaleido;
+using Kaleido.Observability;
+using Kaleido.Process.Observability;
 using Kaleido.Queryable.Exceptions;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -94,8 +96,6 @@ internal sealed class QueryableObservability(
         Meter.CreateHistogram<long>(
             QueryableTelemetry.PageOffsetHistogramName);
 
-
-
     public IQueryExecutionObservation BeginExecution(
         QueryObservationDetails details)
     {
@@ -103,35 +103,24 @@ internal sealed class QueryableObservability(
 
         var activity =
             ActivitySource.StartActivity(
-                "kaleido.queryable.execute",
+                QueryableTelemetry.ExecuteActivityName,
                 ActivityKind.Internal);
 
-        var correlation =
-            correlationAccessor.Current;
+        var correlation = correlationAccessor.Current;
 
-        SetCorrelationTags(
-            activity,
-            correlation);
+        activity?.SetTag(KaleidoTelemetryTags.RequestId, correlation.RequestId);
+        activity?.SetTag(KaleidoTelemetryTags.ProcessorInstanceId, correlation.ProcessorInstanceId?.ToString());
+        activity?.SetTag(KaleidoTelemetryTags.SourceProcessor, correlation.SourceProcessorName);
 
-        activity?.SetTag(
-            "kaleido.query.context",
-            details.QueryContextName);
+        if (correlation.ProcessId.HasValue)
+            activity?.SetTag(ProcessTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
 
-        activity?.SetTag(
-            "kaleido.query.view",
-            details.QueryViewName);
+        activity?.SetTag(QueryableTelemetry.TagQueryContext, details.QueryContextName);
+        activity?.SetTag(QueryableTelemetry.TagQueryView, details.QueryViewName);
+        activity?.SetTag(QueryableTelemetry.TagQueryDirect, details.IsDirectQuery);
+        activity?.SetTag(QueryableTelemetry.TagQueryExecutionMode, details.ExecutionMode.ToString());
 
-        activity?.SetTag(
-            "kaleido.query.direct",
-            details.IsDirectQuery);
-
-        activity?.SetTag(
-            "kaleido.query.execution_mode",
-            details.ExecutionMode.ToString());
-
-        QueryExecutionsCounter.Add(
-            1,
-            CreateExecutionTags(details));
+        QueryExecutionsCounter.Add(1, CreateExecutionTags(details));
 
         logger.LogDebug(
             "Queryable execution started for context {QueryContextName} view {QueryViewName} direct {IsDirectQuery} mode {ExecutionMode}.",
@@ -146,8 +135,7 @@ internal sealed class QueryableObservability(
             details);
     }
 
-    private static TagList CreateExecutionTags(
-        QueryObservationDetails details)
+    private static TagList CreateExecutionTags(QueryObservationDetails details)
     {
         TagList tags =
         [
@@ -157,35 +145,9 @@ internal sealed class QueryableObservability(
         ];
 
         if (!string.IsNullOrWhiteSpace(details.QueryViewName))
-        {
-            tags.Add(
-                "query.view",
-                details.QueryViewName);
-        }
+            tags.Add("query.view", details.QueryViewName);
 
         return tags;
-    }
-
-    private static void SetCorrelationTags(
-        Activity? activity,
-        KaleidoCorrelationContext correlation)
-    {
-        activity?.SetTag(
-            "kaleido.request.id",
-            correlation.RequestId);
-
-        activity?.SetTag(
-            "kaleido.process.id",
-            correlation.ProcessId?.ToString());
-
-        activity?.SetTag(
-            "kaleido.processor.instance_id",
-            correlation.ProcessorInstanceId?.ToString());
-
-        activity?.SetTag(
-            "kaleido.source.processor",
-            correlation.SourceProcessorName);
-
     }
 
     private sealed class QueryExecutionObservation(
@@ -194,49 +156,28 @@ internal sealed class QueryableObservability(
         QueryObservationDetails details)
         : IQueryExecutionObservation
     {
+        public IDisposable BeginSource() =>
+            BeginChild(QueryableTelemetry.SourceActivityName);
 
-        public IDisposable BeginSource()
-        {
-            return BeginChild(
-                "kaleido.queryable.source");
-        }
+        public IDisposable BeginView() =>
+            BeginChild(QueryableTelemetry.ViewActivityName);
 
-        public IDisposable BeginView()
-        {
-            return BeginChild(
-                "kaleido.queryable.view");
-        }
+        public IDisposable BeginMaterialization() =>
+            BeginChild(QueryableTelemetry.MaterializeActivityName);
 
-        public IDisposable BeginMaterialization()
-        {
-            return BeginChild(
-                "kaleido.queryable.materialize");
-        }
+        public IDisposable BeginDelegate() =>
+            BeginChild(QueryableTelemetry.DelegateActivityName);
 
-        public IDisposable BeginDelegate()
-        {
-            return BeginChild(
-                "kaleido.queryable.delegate");
-        }
-
-        public void ValidationFailed(
-            QueryableValidationException exception)
+        public void ValidationFailed(QueryableValidationException exception)
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            activity?.SetStatus(
-                ActivityStatusCode.Error,
-                exception.Message);
-
-            activity?.SetTag(
-                "kaleido.validation.code",
-                exception.Code);
+            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            activity?.SetTag(QueryableTelemetry.TagValidationCode, exception.Code);
 
             QueryValidationFailuresCounter.Add(
                 1,
-                CreateValidationTags(
-                    details,
-                    exception.Code));
+                CreateValidationTags(details, exception.Code));
 
             logger.LogWarning(
                 exception,
@@ -246,52 +187,23 @@ internal sealed class QueryableObservability(
                 exception.Code);
         }
 
-        public void Materialized(
-            int totalCount,
-            int returnedCount,
-            int? pageSize,
-            int? pageOffset)
+        public void Materialized(int totalCount, int returnedCount, int? pageSize, int? pageOffset)
         {
-            activity?.SetTag(
-                "kaleido.query.total_count",
-                totalCount);
+            activity?.SetTag(QueryableTelemetry.TagTotalCount, totalCount);
+            activity?.SetTag(QueryableTelemetry.TagReturnedCount, returnedCount);
+            activity?.SetTag(QueryableTelemetry.TagPageSize, pageSize);
+            activity?.SetTag(QueryableTelemetry.TagPageOffset, pageOffset);
 
-            activity?.SetTag(
-                "kaleido.query.returned_count",
-                returnedCount);
+            var tags = CreateExecutionTags(details);
 
-            activity?.SetTag(
-                "kaleido.query.page_size",
-                pageSize);
-
-            activity?.SetTag(
-                "kaleido.query.page_offset",
-                pageOffset);
-
-            var tags =
-                CreateExecutionTags(details);
-
-            QueryTotalCountHistogram.Record(
-                totalCount,
-                tags);
-
-            QueryReturnedCountHistogram.Record(
-                returnedCount,
-                tags);
+            QueryTotalCountHistogram.Record(totalCount, tags);
+            QueryReturnedCountHistogram.Record(returnedCount, tags);
 
             if (pageSize is not null)
-            {
-                QueryPageSizeHistogram.Record(
-                    pageSize.Value,
-                    tags);
-            }
+                QueryPageSizeHistogram.Record(pageSize.Value, tags);
 
             if (pageOffset is not null)
-            {
-                QueryPageOffsetHistogram.Record(
-                    pageOffset.Value,
-                    tags);
-            }
+                QueryPageOffsetHistogram.Record(pageOffset.Value, tags);
 
             logger.LogDebug(
                 "Queryable materialization completed for context {QueryContextName} view {QueryViewName} total {TotalCount} returned {ReturnedCount} pageSize {PageSize} pageOffset {PageOffset}.",
@@ -305,13 +217,9 @@ internal sealed class QueryableObservability(
 
         public void Canceled()
         {
-            activity?.AddEvent(
-                new ActivityEvent(
-                    "kaleido.queryable.canceled"));
+            activity?.AddEvent(new ActivityEvent(QueryableTelemetry.CanceledEventName));
 
-            QueryExecutionCancellationsCounter.Add(
-                1,
-                CreateExecutionTags(details));
+            QueryExecutionCancellationsCounter.Add(1, CreateExecutionTags(details));
 
             logger.LogWarning(
                 "Queryable execution was canceled for context {QueryContextName} view {QueryViewName}.",
@@ -319,22 +227,14 @@ internal sealed class QueryableObservability(
                 details.QueryViewName);
         }
 
-        public void ExecutionFailed(
-            Exception exception)
+        public void ExecutionFailed(Exception exception)
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            activity?.SetStatus(
-                ActivityStatusCode.Error,
-                exception.Message);
+            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            activity?.AddEvent(new ActivityEvent(QueryableTelemetry.ExceptionEventName));
 
-            activity?.AddEvent(
-                new ActivityEvent(
-                    "kaleido.queryable.exception"));
-
-            QueryExecutionFailuresCounter.Add(
-                1,
-                CreateExecutionTags(details));
+            QueryExecutionFailuresCounter.Add(1, CreateExecutionTags(details));
 
             logger.LogError(
                 exception,
@@ -343,32 +243,19 @@ internal sealed class QueryableObservability(
                 details.QueryViewName);
         }
 
-        public void Dispose()
+        public void Dispose() => activity?.Dispose();
+
+        private static TagList CreateValidationTags(QueryObservationDetails details, string validationCode)
         {
-            activity?.Dispose();
-        }
-
-        private static TagList CreateValidationTags(
-            QueryObservationDetails details,
-            string validationCode)
-        {
-            var tags =
-                CreateExecutionTags(details);
-
-            tags.Add(
-                "validation.code",
-                validationCode);
-
+            var tags = CreateExecutionTags(details);
+            tags.Add("validation.code", validationCode);
             return tags;
         }
 
-        private static IDisposable BeginChild(
-            string name)
+        private static IDisposable BeginChild(string name)
         {
             var activity =
-                ActivitySource.StartActivity(
-                    name,
-                    ActivityKind.Internal);
+                ActivitySource.StartActivity(name, ActivityKind.Internal);
 
             return (IDisposable?)activity ?? NullDisposable.Instance;
         }

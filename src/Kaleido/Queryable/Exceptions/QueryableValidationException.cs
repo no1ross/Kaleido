@@ -112,6 +112,9 @@ public static class QueryErrorCodes
     public const string EmptyFilterGroup =
         "EMPTY_FILTER_GROUP";
 
+    public const string FilterDepthExceeded =
+        "FILTER_DEPTH_EXCEEDED";
+
     public const string EmptySearchGroup =
         "EMPTY_SEARCH_GROUP";
 
@@ -382,6 +385,18 @@ public sealed class QueryContextSourceNotFoundException
         : base(
             QueryErrorCodes.QueryContextSourceNotFound,
             $"No IQueryContextSource<{contextType.Name}> or IQueryContextSourceAsync<{contextType.Name}> registered.")
+    {
+    }
+}
+
+public sealed class FilterDepthExceededException
+    : QueryableValidationException
+{
+    public FilterDepthExceededException(
+        int maxDepth)
+        : base(
+            QueryErrorCodes.FilterDepthExceeded,
+            $"Filter expression exceeds the maximum nesting depth of {maxDepth}.")
     {
     }
 }

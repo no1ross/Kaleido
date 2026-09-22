@@ -1,8 +1,8 @@
-using Kaleido.AspNetCore.Middleware;
+using Kaleido.Http.Middleware;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 
-namespace Kaleido.AspNetCore.Startup;
+namespace Kaleido.Http.Startup;
 
 internal sealed class KaleidoStartupFilter : IStartupFilter
 {
@@ -10,11 +10,11 @@ internal sealed class KaleidoStartupFilter : IStartupFilter
     {
         return app =>
         {
-            // Register Kaleido middleware first in the pipeline
-            app.UseMiddleware<CorrelationMiddleware>();
+            // ExceptionMiddleware must be outermost so it catches exceptions from
+            // all inner middleware (including ObservabilityMiddleware) and the app pipeline.
             app.UseMiddleware<ExceptionMiddleware>();
+            app.UseMiddleware<ObservabilityMiddleware>();
 
-            // Continue with the rest of the application configuration
             next(app);
         };
     }

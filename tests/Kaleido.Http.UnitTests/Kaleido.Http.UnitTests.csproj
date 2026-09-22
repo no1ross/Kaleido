@@ -16,5 +16,8 @@
 		<Using Include="Kaleido.Queryable.Attributes" />
 		<Using Include="Kaleido.Http.Process.Services" />
 		<Using Include="Kaleido.Http.Process.Contracts" />
+		<Using Include="Kaleido.Http.Middleware" />
+		<Using Include="Kaleido.Http.Startup" />
+		<Using Include="Kaleido.Observability" />
 	</ItemGroup>
 </Project>

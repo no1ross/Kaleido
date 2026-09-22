@@ -11,6 +11,7 @@
 		<ProjectReference Include="..\..\src\Kaleido.Http.Abstractions\Kaleido.Http.Abstractions.csproj" />
 	</ItemGroup>
 	<ItemGroup>
+		<Using Include="Kaleido.Http" />
 		<Using Include="Kaleido.Process" />
 		<Using Include="Kaleido.Queryable" />
 		<Using Include="Kaleido.Queryable.Metadata" />

@@ -53,7 +53,6 @@
     <File Path="src/AGENTS.md" />
     <File Path="src/ARCHITECTURE.md" />
     <Project Path="src/Kaleido/Kaleido.csproj" />
-    <Project Path="src/Kaleido.AspNetCore/Kaleido.AspNetCore.csproj" />
     <Project Path="src/Kaleido.Http/Kaleido.Http.csproj" />
     <Project Path="src/Kaleido.Http.Abstractions/Kaleido.Http.Abstractions.csproj" />
     <Project Path="src/Kaleido.Http.Client/Kaleido.Http.Client.csproj" />
@@ -64,7 +63,6 @@
   <Folder Name="/test/">
     <File Path="tests/AGENTS.md" />
     <Project Path="tests/Kaleido.UnitTests/Kaleido.UnitTests.csproj" />
-    <Project Path="tests/Kaleido.AspNetCore.UnitTests/Kaleido.AspNetCore.UnitTests.csproj" />
     <Project Path="tests/Kaleido.Http.UnitTests/Kaleido.Http.UnitTests.csproj" />
     <Project Path="tests/Kaleido.Http.FunctionalTests/Kaleido.Http.FunctionalTests.csproj" />
     <Project Path="tests/Kaleido.Http.Abstractions.UnitTests/Kaleido.Http.Abstractions.UnitTests.csproj" />
