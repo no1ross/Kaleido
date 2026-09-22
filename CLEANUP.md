@@ -117,13 +117,14 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 - [x] Centralize observability tag-name magic strings to a `KaleidoObservabilityTags` constants class
 
 ### Observability correctness
-- [ ] Add correlation headers to registry-fetch HTTP call in `KaleidoProcessClient.cs:266` — build `HttpRequestMessage`, call `StampCorrelationHeaders` before `SendAsync`
-- [ ] Same fix in `KaleidoQueryableClient.cs:203`
-- [ ] Add `logger.LogDebug(...)` in the two 404-swallow branches in `RegistryEndpointRouteBuilderExtensions.cs`
-- [ ] Add `ILogger` injection to `KaleidoProcessClient` and `KaleidoQueryableClient`; log at Debug on send, Warning on non-success before throw
-- [ ] Add `AddEntityFrameworkCoreInstrumentation()` to `AddOpenTelemetry()` in `KaleidoObservabilityOpenTelemetryExtensions.cs`
-- [ ] Add latency `Histogram<double>` instruments to `ProcessTelemetry` and `QueryableTelemetry`; record on execution/step/query completion
-- [ ] Promote key lifecycle log messages to `LogInformation` (process execution complete, context save, registry rebuilt)
+- [x] Add correlation headers to registry-fetch HTTP call in `KaleidoProcessClient.cs` — `HttpRequestMessage` + `headerStamper.Stamp(...)` before send (was already in place; confirmed)
+- [x] Same fix in `KaleidoQueryableClient.cs` — already in place; confirmed
+- [x] Add `logger.LogDebug(...)` in the two 404-swallow branches in `RegistryEndpointRouteBuilderExtensions.cs` — already present in `GetDownstreamAsync`
+- [x] Add `kaleido.http.endpoint_errors` counter in `ExceptionMiddleware` — new `KaleidoHttpTelemetry` (in `Kaleido.Http.Abstractions`), tagged by `error.code` + `http.status_code`, meter wired via `AddKaleidoHttpInstrumentation`
+- [x] Add `ILogger` injection to `KaleidoProcessClient` and `KaleidoQueryableClient` — required `ILogger<T>` via primary ctor, factories pass through; shared `SendAsync` helper logs Debug on send, Warning on non-success
+- [x] ~~Add `AddEntityFrameworkCoreInstrumentation()`~~ — **CHANGED**: not all consumers use EF; instead `AddOpenTelemetry()` gained `configureTracing`/`configureMetrics` hooks for consumer-supplied instrumentation
+- [x] Add latency `Histogram<double>` instruments to `ProcessTelemetry` and `QueryableTelemetry` — `kaleido.process.execution.duration`, `kaleido.process.step.duration`, `kaleido.queryable.execution.duration` (unit `s`); recorded in observation `Dispose` via `Stopwatch.GetTimestamp`
+- [x] Promote key lifecycle log messages — `ExecutionCompleted` event + `LogInformation` on `IProcessExecutionObservation` (once per request); `ProcessRegistry`/`QueryableRegistry` log "built" at `LogInformation` (once per service); context-save logged at `LogDebug` inside `IProcessContextStore` implementations (per AGENTS.md log-level policy — Information stays request-boundary minimal)
 
 ### Performance — safe caching
 - [ ] Cache all `GetMethods()` results in `CompiledQueryApplier.cs` as `static readonly` fields (biggest per-request CPU win)
@@ -189,7 +190,7 @@ These require more careful testing. Commit each as its own focused PR.
 - [ ] Add `EnsureRegistryAsync` generic helper — consolidate semaphore-guarded lazy-load used in both clients
 - [ ] Consolidate the 6+ route/endpoint-name constant classes into a single source-of-truth per capability
 - [ ] Convert `ProcessRuntime` (8-param constructor) to primary constructor syntax (AGENTS.md mandate)
-- [ ] Convert `KaleidoProcessClient` and `KaleidoQueryableClient` constructors to primary constructors
+- [x] Convert `KaleidoProcessClient` and `KaleidoQueryableClient` constructors to primary constructors — done; also inlined `StampCorrelationHeaders` wrapper and `registryUrl` field (single-use)
 - [ ] Convert `SqliteProcessContextDbContext` to primary constructor
 - [ ] Replace `KaleidoEnumConverter<T>` + factory with BCL `JsonStringEnumConverter` (verify error message compatibility first)
 - [ ] Add `SqliteProcessContextStore` activity source + `ILogger` + failure counter instrumentation

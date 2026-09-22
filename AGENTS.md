@@ -110,6 +110,14 @@ Owns the SQLite durable state provider:
 - For properties that can legitimately be null, make them nullable (`object?` instead of `object = null!`)
 - Use `.OfType<T>()` to filter nulls from collections instead of `!` on each element
 
+### Log levels
+Information logs must stay minimal — treat them as the "normal operations" view an operator reads without filtering. Target no more than 2–5 Information logs per request.
+- **Information** — boundary signals only: request-in/response-out equivalents (e.g. `ExecutionCompleted` — once per request) and once-per-service-lifetime events (e.g. registry built at startup). Never per-step or per-item logs.
+- **Debug** — all internals: step started/completed, context saves, source/view/materialization scopes, downstream fetch details, send/receive plumbing. This is what gets enabled when investigating by correlationId / requestId / processId.
+- **Warning** — cancellations, client disconnects, downstream non-success responses, validation failures.
+- **Error** — exceptions and failures only.
+- Do not promote internals to Information "for visibility" — if it fires more than once per request, it belongs at Debug.
+
 ### Exception handling
 - Always use custom exceptions from `Kaleido.Exceptions` namespace, never `InvalidOperationException`
 - `KaleidoValidationException` — 400 Bad Request; `Code` and `Message` are returned in the HTTP response body

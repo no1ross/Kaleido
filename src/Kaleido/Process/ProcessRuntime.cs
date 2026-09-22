@@ -106,6 +106,8 @@ internal sealed class ProcessRuntime
                     executionResult),
                 cancellationToken);
 
+            observation.ExecutionCompleted();
+
             return result;
         }
         catch (OperationCanceledException)

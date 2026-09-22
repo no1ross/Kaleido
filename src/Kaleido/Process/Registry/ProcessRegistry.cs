@@ -1,4 +1,5 @@
 using Kaleido;
+using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 using System.Reflection;
 
@@ -15,10 +16,12 @@ internal sealed class ProcessRegistry : IProcessRegistry
 
     public ProcessRegistry(
         KaleidoServiceOptions serviceOptions,
-        IProcessStepRegistry stepRegistry)
+        IProcessStepRegistry stepRegistry,
+        ILogger<ProcessRegistry> logger)
     {
         ArgumentNullException.ThrowIfNull(serviceOptions);
         ArgumentNullException.ThrowIfNull(stepRegistry);
+        ArgumentNullException.ThrowIfNull(logger);
 
         _registrations =
         [
@@ -27,6 +30,12 @@ internal sealed class ProcessRegistry : IProcessRegistry
                 stepRegistry.InitialRegistrations,
                 stepRegistry.Registrations)
         ];
+
+        logger.LogInformation(
+            "Process registry built for processor {ServiceName} with {StepCount} steps ({InitialCount} initial).",
+            serviceOptions.ServiceName,
+            stepRegistry.Registrations.Count,
+            stepRegistry.InitialRegistrations.Count);
     }
 
     public IReadOnlyCollection<ProcessorRegistryItem> Registrations =>

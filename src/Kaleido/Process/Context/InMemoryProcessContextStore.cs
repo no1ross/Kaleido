@@ -192,11 +192,14 @@ public sealed record StepContext
 
 internal sealed class InMemoryProcessContextStore : IProcessContextStore
 {
+    private readonly ILogger<InMemoryProcessContextStore> _logger;
     private readonly ConcurrentDictionary<Guid, ProcessorContext> _contexts = new();
 
     public InMemoryProcessContextStore(
         ILogger<InMemoryProcessContextStore> logger)
     {
+        _logger = logger;
+
         logger.LogWarning(
             "InMemoryProcessContextStore is active. This store has no eviction policy and will grow " +
             "without bound in long-running processes. Register a durable IProcessContextStore " +
@@ -218,6 +221,11 @@ internal sealed class InMemoryProcessContextStore : IProcessContextStore
         cancellationToken.ThrowIfCancellationRequested();
 
         _contexts[context.ProcessId] = context;
+
+        _logger.LogDebug(
+            "Process context saved for process {ProcessId} ({StepCount} steps).",
+            context.ProcessId,
+            context.Steps.Count);
 
         return Task.CompletedTask;
     }

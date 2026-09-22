@@ -1,11 +1,19 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace Kaleido.Http.Middleware;
 
 internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
 {
+    private static readonly Meter Meter =
+        new(KaleidoHttpTelemetry.MeterName);
+
+    private static readonly Counter<long> EndpointErrorsCounter =
+        Meter.CreateCounter<long>(
+            KaleidoHttpTelemetry.EndpointErrorsCounterName);
+
     public async Task InvokeAsync(HttpContext context)
     {
         try
@@ -30,6 +38,10 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             context.Response.StatusCode =
                 StatusCodes.Status400BadRequest;
 
+            RecordEndpointError(
+                exception.Code,
+                StatusCodes.Status400BadRequest);
+
             await context.Response.WriteAsJsonAsync(
                 new KaleidoErrorResponse(
                 [
@@ -46,6 +58,10 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
 
             context.Response.StatusCode =
                 StatusCodes.Status400BadRequest;
+
+            RecordEndpointError(
+                KaleidoErrorCodes.ArgumentError,
+                StatusCodes.Status400BadRequest);
 
             await context.Response.WriteAsJsonAsync(
                 new KaleidoErrorResponse(
@@ -66,6 +82,10 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             context.Response.StatusCode =
                 StatusCodes.Status500InternalServerError;
 
+            RecordEndpointError(
+                exception.Code,
+                StatusCodes.Status500InternalServerError);
+
             await context.Response.WriteAsJsonAsync(
                 new KaleidoErrorResponse(
                 [
@@ -85,6 +105,10 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             context.Response.StatusCode =
                 StatusCodes.Status500InternalServerError;
 
+            RecordEndpointError(
+                exception.Code,
+                StatusCodes.Status500InternalServerError);
+
             await context.Response.WriteAsJsonAsync(
                 new KaleidoErrorResponse(
                 [
@@ -99,6 +123,10 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
                 exception,
                 "Unhandled exception processing request.");
 
+            RecordEndpointError(
+                KaleidoErrorCodes.FrameworkError,
+                StatusCodes.Status500InternalServerError);
+
             if (!context.Response.HasStarted)
             {
                 context.Response.StatusCode =
@@ -112,4 +140,15 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             }
         }
     }
+
+    private static void RecordEndpointError(
+        string errorCode,
+        int statusCode) =>
+        EndpointErrorsCounter.Add(
+            1,
+            new TagList
+            {
+                { KaleidoHttpTelemetry.TagErrorCode, errorCode },
+                { KaleidoHttpTelemetry.TagHttpStatusCode, statusCode }
+            });
 }

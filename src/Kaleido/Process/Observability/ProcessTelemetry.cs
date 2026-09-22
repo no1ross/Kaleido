@@ -32,6 +32,9 @@ public static class ProcessTelemetry
     public const string ExceptionEventName =
         "kaleido.process.exception";
 
+    public const string ExecutionCompletedEventName =
+        "kaleido.process.execution.completed";
+
     public const string ExecutionCanceledEventName =
         "kaleido.process.execution.canceled";
 
@@ -107,4 +110,10 @@ public static class ProcessTelemetry
 
     public const string HandlerFailuresCounterName =
         "kaleido.process.handler_failures";
+
+    public const string ExecutionDurationHistogramName =
+        "kaleido.process.execution.duration";
+
+    public const string StepDurationHistogramName =
+        "kaleido.process.step.duration";
 }

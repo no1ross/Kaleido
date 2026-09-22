@@ -1,5 +1,6 @@
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Queryable.Records;
 
@@ -20,11 +21,13 @@ internal sealed class QueryableRegistry : IQueryableRegistry
     public QueryableRegistry(
         IQueryContextRegistry contextRegistry,
         IQueryViewRegistry viewRegistry,
-        IDelegatedQueryViewRegistry delegatedViewRegistry)
+        IDelegatedQueryViewRegistry delegatedViewRegistry,
+        ILogger<QueryableRegistry> logger)
     {
         ArgumentNullException.ThrowIfNull(contextRegistry);
         ArgumentNullException.ThrowIfNull(viewRegistry);
         ArgumentNullException.ThrowIfNull(delegatedViewRegistry);
+        ArgumentNullException.ThrowIfNull(logger);
 
         var localRegistrations =
             contextRegistry.Registrations
@@ -53,6 +56,10 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             _registrations.ToDictionary(
                 x => x.Name,
                 StringComparer.OrdinalIgnoreCase);
+
+        logger.LogInformation(
+            "Queryable registry built with {ContextCount} contexts.",
+            _registrations.Count);
     }
 
     public IReadOnlyCollection<QueryableContextRegistryItem> Registrations =>

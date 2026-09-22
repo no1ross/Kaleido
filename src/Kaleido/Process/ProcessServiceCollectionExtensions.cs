@@ -8,6 +8,7 @@ using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using System.Reflection;
 
 namespace Kaleido.Process;
@@ -66,7 +67,8 @@ public static class ProcessServiceCollectionExtensions
         builder.Services.TryAddSingleton<IProcessRegistry>(
             sp => new ProcessRegistry(
                 builder.ServiceOptions,
-                sp.GetRequiredService<IProcessStepRegistry>()));
+                sp.GetRequiredService<IProcessStepRegistry>(),
+                sp.GetRequiredService<ILogger<ProcessRegistry>>()));
 
         RegisterFrameworkServices(builder.Services);
 

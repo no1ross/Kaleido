@@ -3,6 +3,7 @@ using Kaleido.Http.Client.Process;
 using Kaleido.Http.Process.Contracts;
 using Kaleido.Observability;
 using Kaleido.Process.Registry;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq.Protected;
 
 namespace Kaleido.Process.Http.Client.Tests;
@@ -74,7 +75,7 @@ public sealed class KaleidoProcessClientTests
         var httpClient = new HttpClient(mock.Object) { BaseAddress = new Uri("http://localhost") };
         var stamper = new Mock<ICorrelationHeaderStamper>();
 
-        var client = new KaleidoProcessClient(httpClient, stamper.Object, routePrefix);
+        var client = new KaleidoProcessClient(httpClient, stamper.Object, NullLogger<KaleidoProcessClient>.Instance, routePrefix);
         return (client, mock);
     }
 
@@ -126,7 +127,7 @@ public sealed class KaleidoProcessClientTests
             });
 
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
-        var client = new KaleidoProcessClient(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
+        var client = new KaleidoProcessClient(httpClient, new Mock<ICorrelationHeaderStamper>().Object, NullLogger<KaleidoProcessClient>.Instance);
 
         await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.GetRegistryAsync());
@@ -403,7 +404,7 @@ public sealed class KaleidoProcessClientTests
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
         var stamper = new Mock<ICorrelationHeaderStamper>();
 
-        var client = new KaleidoProcessClient(httpClient, stamper.Object);
+        var client = new KaleidoProcessClient(httpClient, stamper.Object, NullLogger<KaleidoProcessClient>.Instance);
         await client.GetProcessStateAsync(Guid.NewGuid());
 
         stamper.Verify(x => x.Stamp(It.IsAny<HttpRequestMessage>()), Times.Once);

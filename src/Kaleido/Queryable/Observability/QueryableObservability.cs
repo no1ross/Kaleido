@@ -95,6 +95,11 @@ internal sealed class QueryableObservability(
         Meter.CreateHistogram<long>(
             QueryableTelemetry.PageOffsetHistogramName);
 
+    private static readonly Histogram<double> QueryExecutionDurationHistogram =
+        Meter.CreateHistogram<double>(
+            QueryableTelemetry.ExecutionDurationHistogramName,
+            unit: "s");
+
     public IQueryExecutionObservation BeginExecution(
         QueryObservationDetails details)
     {
@@ -242,7 +247,16 @@ internal sealed class QueryableObservability(
                 details.QueryViewName);
         }
 
-        public void Dispose() => activity?.Dispose();
+        public void Dispose()
+        {
+            QueryExecutionDurationHistogram.Record(
+                Stopwatch.GetElapsedTime(_startTimestamp).TotalSeconds,
+                CreateExecutionTags(details));
+
+            activity?.Dispose();
+        }
+
+        private readonly long _startTimestamp = Stopwatch.GetTimestamp();
 
         private static TagList CreateValidationTags(QueryObservationDetails details, string validationCode)
         {

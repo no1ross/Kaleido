@@ -89,4 +89,7 @@ public static class QueryableTelemetry
 
     public const string PageOffsetHistogramName =
         "kaleido.queryable.page_offset";
+
+    public const string ExecutionDurationHistogramName =
+        "kaleido.queryable.execution.duration";
 }
