@@ -1,5 +1,6 @@
 using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Query;
+using Kaleido;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -105,7 +106,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                         .Select(x => BuildFilter(parameter, x))
                         .ToArray()),
 
-            _ => throw new NotSupportedException(
+            _ => throw new InvalidFilterNodeException(
                 $"Unsupported compiled filter type '{expression.GetType().Name}'.")
         };
     }
@@ -171,8 +172,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                     searchText,
                     negate: false),
 
-            _ => throw new NotSupportedException(
-                $"Match mode '{field.MatchMode}' is not supported by the IQueryable provider.")
+            _ => throw new UnsupportedMatchModeException(field.Field.Name, field.MatchMode)
         };
     }
 
@@ -318,8 +318,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                     member,
                     expected: false),
 
-            _ => throw new NotSupportedException(
-                $"Filter operator '{condition.Operator}' is not supported by the IQueryable provider.")
+            _ => throw new UnsupportedOperatorException(condition.Field.Name, condition.Operator)
         };
     }
 
@@ -432,8 +431,8 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 (true, SortDirection.Descending) =>
                     nameof(System.Linq.Queryable.ThenByDescending),
 
-                _ => throw new NotSupportedException(
-                    $"Sort direction '{sort.Direction}' is not supported.")
+                _ => throw new KaleidoFrameworkException(
+                    $"Sort direction '{sort.Direction}' is not a recognised SortDirection value.")
             };
 
         var method =
@@ -460,7 +459,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
     {
         if (member.Type != typeof(string))
         {
-            throw new NotSupportedException(
+            throw new InvalidFilterNodeException(
                 $"String operator '{methodName}' can only be applied to string fields. Field expression type was '{member.Type.Name}'.");
         }
 
@@ -643,7 +642,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
 
         if (targetType != typeof(bool))
         {
-            throw new NotSupportedException(
+            throw new InvalidFilterNodeException(
                 $"Boolean operator can only be applied to bool fields. Field expression type was '{member.Type.Name}'.");
         }
 
