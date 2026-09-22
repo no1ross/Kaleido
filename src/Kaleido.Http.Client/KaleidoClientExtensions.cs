@@ -38,7 +38,7 @@ internal static class KaleidoClientExtensions
             optionsDict[options.Name] = options.RoutePrefix;
         }
 
-        services.TryAddSingleton<ICorrelationHeaderStamper, CorrelationHeaderStamper>();
+        services.TryAddScoped<ICorrelationHeaderStamper, CorrelationHeaderStamper>();
         services.TryAddScoped<TFactoryInterface, TFactory>();
 
         return services;

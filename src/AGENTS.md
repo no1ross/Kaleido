@@ -136,9 +136,6 @@ This is a shared contract boundary. Treat it like a public API:
 - when a contract must change, update the matching endpoint, client method, and tests together
 
 ### Kaleido.Http should stay thin
-Endpoint mapping code should adapt contracts and publish routes. It should not reimplement runtime planning or execution logic that belongs in `Kaleido`.
-
-### Kaleido.Http should stay thin
 Middleware and endpoint mapping code should adapt contracts and wire the runtime. It should not reimplement runtime planning or execution logic that belongs in `Kaleido`.
 
 ---
