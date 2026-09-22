@@ -96,11 +96,10 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 - [~] ~~`QueryableServiceCollectionExtensions.cs:59` double `GetCustomAttribute`~~ — **KEPT**: separate LINQ chains, restructuring not worth the churn
 
 ### OperationCanceledException handling
-- [ ] `Kaleido/Queryable/Query/QueryContextEngine.cs:90–94,150–154` — add `catch (OperationCanceledException)` before generic catch; call observation.Canceled() if available, then rethrow
-- [ ] `Kaleido/Queryable/Query/DelegatedQueryViewEngine.cs:94–98` — same fix
-- [ ] `Kaleido/Process/ParticipantRuntime.cs:113–117` — same fix
-- [ ] `Kaleido/Process/Execution/ProcessStepInvoker.cs:72–76` — same fix
-- [ ] `Kaleido.Http/Registry/RegistryEndpointRouteBuilderExtensions.cs:203–217,248–262` — add `catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }` before generic catch in both fan-out methods
+- [x] `QueryContextEngine.cs` ×2 + `DelegatedQueryViewEngine.cs` — `catch (OCE) { observation.Canceled(); throw; }` already in place
+- [x] `ProcessRuntime.cs` — explicit `catch (OCE) { observation.Canceled(); throw; }` added; new `IProcessExecutionObservation.Canceled()` + `ProcessTelemetry.ExecutionCanceledEventName` for parity with Queryable
+- [x] `ProcessStepInvoker.cs` — `when (exception is not OperationCanceledException)` filter; step-level canceled recorded by `ProcessExecutor` via `stepObservation.Canceled()`
+- [x] `RegistryEndpointRouteBuilderExtensions.cs` — `catch (OCE) when (cancellationToken.IsCancellationRequested) { throw; }` added before generic catch in both fan-out methods
 
 ### ExceptionMiddleware hardening
 - [x] Terminal `catch (Exception)` added — `LogError`, `Activity.SetStatus(Error)`, 500 `KaleidoErrorResponse`, `HasStarted` guard

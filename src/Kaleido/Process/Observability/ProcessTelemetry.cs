@@ -32,6 +32,9 @@ public static class ProcessTelemetry
     public const string ExceptionEventName =
         "kaleido.process.exception";
 
+    public const string ExecutionCanceledEventName =
+        "kaleido.process.execution.canceled";
+
     public const string StepCanceledEventName =
         "kaleido.process.step.canceled";
 

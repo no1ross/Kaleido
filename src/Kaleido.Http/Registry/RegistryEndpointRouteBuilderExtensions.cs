@@ -203,6 +203,10 @@ public static class RegistryEndpointRouteBuilderExtensions
                         "Registry process client {ClientName} returned 404 — service does not expose a process registry.",
                         name);
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     logger.LogWarning(
@@ -249,6 +253,10 @@ public static class RegistryEndpointRouteBuilderExtensions
                     logger.LogDebug(
                         "Registry queryable client {ClientName} returned 404 — service does not expose a queryable registry.",
                         name);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
