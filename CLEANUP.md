@@ -150,8 +150,8 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 - [x] Pruned 4 dead `InternalsVisibleTo` entries in `Kaleido.Http.Client/AssemblyInfo.cs` (`Kaleido.Process.Http.Client.UnitTests`, `Kaleido.Queryable.Http.Client.UnitTests`, `Kaleido.Registry`, `Kaleido.Http` — nonexistent assemblies / no consuming project ref)
 
 ### Security guardrails
-- [ ] Add max filter depth check (e.g., depth ≤ 10) to `QueryRequestValidator.ValidateFilter` — prevents stack-overflow DoS from deeply nested `QueryFilterGroup`
-- [ ] Sanitize `RegistryClientError.Reason` — replace raw `ex.Message` (which can contain internal hostnames/URLs) with a generic message; keep detail in logs
+- [x] Add max filter depth check to `QueryRequestValidator.ValidateFilter` — `MaxFilterDepth = 10` guard already in place
+- [x] Sanitize `RegistryClientError.Reason` — returns generic `"{clientType} registry fetch failed. See server logs for details."`; `ex.Message` detail kept in `LogWarning`
 - [x] Add startup warning when `InMemoryProcessContextStore` is the registered store (it has no eviction and grows without bound in production)
 - [x] Cap correlation header value lengths in `KaleidoAspNetCoreCorrelation.cs`
 
