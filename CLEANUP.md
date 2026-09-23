@@ -79,108 +79,103 @@ These are purely mechanical: delete dead files, fix unused usings, trivial synta
 These fix real bugs and behavioral inconsistencies. Each item should be committed with a companion test or test update.
 
 ### Exception hierarchy fixes
-- [ ] `QueryContextSourceNotFoundException` — move out of `QueryableValidationException` hierarchy; make it `KaleidoFrameworkException` (server DI misconfiguration → 500, not 400) ⚠️ changes HTTP status from 400 to 500 for this error
-- [ ] Add `protected QueryableValidationException(string code, string message, Exception innerException)` constructor to base
-- [ ] `NamedQueryRequiredException` — change error code from `QueryErrorCodes.NamedQueryNotAllowed` → `QueryErrorCodes.NamedQueryRequired`
-- [ ] `ValueConversionException` — change error code from `QueryErrorCodes.InvalidParameterType` → `QueryErrorCodes.InvalidParameterValue` (or merge/remove — zero throw sites found)
-- [ ] Replace 6× `NotSupportedException` in `CompiledQueryApplier.cs` with appropriate domain exceptions (`UnsupportedOperatorException`, `UnsupportedMatchModeException`, etc.)
-- [ ] Update `StepCandidateBuilder.cs:96` `catch (... is NotSupportedException)` in tandem with above
-- [ ] Remove dead `ValidationException.cs` (or wire into actual validation paths) — zero throw/catch sites
-- [ ] `QueryableValueNormalizer.cs:45–51,146–152` — pass caught `exception` as `innerException` when rethrowing domain exceptions; add `when (exception is not OperationCanceledException)` filter
+- [x] `QueryContextSourceNotFoundException` — deleted; replaced by `KaleidoFrameworkException(MissingRegistration)` (500, not 400)
+- [x] All legacy `*Exception` types replaced: consolidated into `KaleidoValidationException`, `KaleidoConfigurationException`, `KaleidoFrameworkException`, `KaleidoHttpClientException` — each carries a `Code` property
+- [x] `QueryableValueNormalizer` — moved to `Kaleido.Http`; wraps `ValueConverter` errors with `innerException` + `OperationCanceledException` filter
+- [x] `ExceptionMiddleware` — catches all four Kaleido exception types, logs `exception.Code`, returns `exception.Message` in error response body
+- [x] Replace 6× `NotSupportedException` in `CompiledQueryApplier.cs` with `KaleidoValidationException` + appropriate `ValidationErrorCodes`
+- [x] `StepCandidateBuilder.cs` — `NotSupportedException` catch updated to match new exception types
+- [x] Remove dead `ValidationException.cs` — deleted, zero throw/catch sites confirmed
 
 ### Nullable `!` suppression → `?? throw KaleidoFrameworkException` (AGENTS.md mandate)
-- [ ] `Kaleido/Queryable/Query/DelegatedQueryViewEngine.cs:58` — `GetMethod(...)!`
-- [ ] `Kaleido/Queryable/Runtime/CompiledQueryApplier.cs:476,784` — `GetMethod(...)!`, `GetProperty(...)!`
-- [ ] `Kaleido/Queryable/Query/QueryContextEngine.cs:231` — `Invoke(...)!` cast
-- [ ] `Kaleido/Queryable/QueryableService.cs` — `Invoke` result suppressions
-- [ ] `Kaleido.Http.Client/KaleidoClientFactoryBase.cs:59` — `(Dictionary<...>)GetValue(map)!`
-- [ ] `Kaleido/Json/KaleidoEnumConverterFactory.cs:24` — `Activator.CreateInstance(converterType)!`
-- [ ] `Kaleido/Json/ValueConverter.cs:33–76` — `value.ToString()!` ×7 → `?? throw` or `Convert.ToString`
-- [ ] `Kaleido/Json/ValueConverter.cs:176,182,188,195` — `element.GetString()!` ×4 → `?? throw`
-- [ ] `Kaleido/Process/Planning/StepCandidatePlanner.cs:51,78,86` — `candidate.Registration!` ×3
-- [ ] `Kaleido/Process/Planning/StepCandidateConsistencyChecker.cs:57,65,92,144` — `candidate.Registration!` ×4
-- [ ] `Kaleido/Queryable/QueryableServiceCollectionExtensions.cs:59` — double `GetCustomAttribute` → single projection with null filter
-- [ ] `Kaleido/Queryable/Records/QueryViewRegistrationValidator.cs:51` — `x.Attribute!.Name`
-- [ ] `Kaleido/Queryable/Records/QueryContextRegistrationValidator.cs:45` — `x.Attribute!.Name`
+- [x] All reflection/registry suppressions — already resolved during exception refactor (`DelegatedQueryViewEngine`, `CompiledQueryApplier`, `QueryContextEngine`, `QueryableService`, `KaleidoClientFactoryBase`, `StepCandidatePlanner`, `StepCandidateConsistencyChecker`, both registration validators)
+- [x] `Kaleido/Json/KaleidoEnumConverterFactory.cs` — file already deleted
+- [x] `Kaleido/Json/ValueConverter.cs` — `ToString()!` ×7 → `?? string.Empty`; `GetString()!` ×4 → `GetJsonString` helper throwing `FormatException`
+- [x] `StepCandidate.GetStep<T>()` — `Step!` → pattern match + `KaleidoFrameworkException(TypeMismatch)`
+- [x] `ProcessStepHandlerResult<T>.Response` and `ExecuteStepRequest<T>.ProcessStep` — suppressions dropped (target types already nullable)
+- [~] ~~`QueryableServiceCollectionExtensions.cs:59` double `GetCustomAttribute`~~ — **KEPT**: separate LINQ chains, restructuring not worth the churn
 
 ### OperationCanceledException handling
-- [ ] `Kaleido/Queryable/Query/QueryContextEngine.cs:90–94,150–154` — add `catch (OperationCanceledException)` before generic catch; call observation.Canceled() if available, then rethrow
-- [ ] `Kaleido/Queryable/Query/DelegatedQueryViewEngine.cs:94–98` — same fix
-- [ ] `Kaleido/Process/ParticipantRuntime.cs:113–117` — same fix
-- [ ] `Kaleido/Process/Execution/ProcessStepInvoker.cs:72–76` — same fix
-- [ ] `Kaleido.Http/Registry/RegistryEndpointRouteBuilderExtensions.cs:203–217,248–262` — add `catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }` before generic catch in both fan-out methods
+- [x] `QueryContextEngine.cs` ×2 + `DelegatedQueryViewEngine.cs` — `catch (OCE) { observation.Canceled(); throw; }` already in place
+- [x] `ProcessRuntime.cs` — explicit `catch (OCE) { observation.Canceled(); throw; }` added; new `IProcessExecutionObservation.Canceled()` + `ProcessTelemetry.ExecutionCanceledEventName` for parity with Queryable
+- [x] `ProcessStepInvoker.cs` — `when (exception is not OperationCanceledException)` filter; step-level canceled recorded by `ProcessExecutor` via `stepObservation.Canceled()`
+- [x] `RegistryEndpointRouteBuilderExtensions.cs` — `catch (OCE) when (cancellationToken.IsCancellationRequested) { throw; }` added before generic catch in both fan-out methods
 
 ### ExceptionMiddleware hardening
-- [ ] Add terminal `catch (Exception exception)` → `LogError`, `Activity.Current?.SetStatus(ActivityStatusCode.Error)`, return 500 `KaleidoErrorResponse` — check `Response.HasStarted` first
-- [ ] Set `Activity.Current?.SetStatus(ActivityStatusCode.Error)` on existing `ArgumentException` and `KaleidoFrameworkException` branches too
+- [x] Terminal `catch (Exception)` added — `LogError`, `Activity.SetStatus(Error)`, 500 `KaleidoErrorResponse`, `HasStarted` guard
+- [x] `Activity.SetStatus(Error)` set on all exception branches
+- [x] `KaleidoValidationException`, `KaleidoConfigurationException`, `KaleidoFrameworkException` caught with `.Code` logged and `.Message` returned in body
 
 ### Duplicate code extraction
 - [x] Extract `StampCorrelationHeaders` + `SanitizeHeaderValue` to `internal static class CorrelationHeaderStamper` in `Kaleido.Http.Client` (currently copy-pasted between `KaleidoProcessClient` and `KaleidoQueryableClient`)
-- [ ] Extract `GetDownstreamProcessesAsync` / `GetDownstreamQueryablesAsync` to a single generic method `GetDownstreamAsync<TMap,TItem>` in `RegistryEndpointRouteBuilderExtensions.cs`
-- [ ] Extract the three identical `QueryableValidationException → BadRequest` catch blocks in `QueryableEndpointRouteBuilderExtensions.cs` to a shared helper
-- [ ] Extract `ProcessExecutionService.ExecuteAsync` shared core (~40 dup lines) to a private `ExecuteStepCoreAsync` method
-- [ ] Extract assembly type-scan predicate + TypeFilter guard to a shared `AssemblyTypeScanner` helper (used in both `ParticipantServiceCollectionExtensions` and `QueryableServiceCollectionExtensions`)
-- [ ] Extract `IQueryViewSource*` interface detection pattern (repeated ×5) to a `QueryViewInterfaceScanner` helper
-- [ ] Extract duplicate-name GroupBy validation (×3) to a `ValidationHelpers.ThrowOnDuplicateNames<T>` method
+- [x] Extract `GetDownstreamProcessesAsync` / `GetDownstreamQueryablesAsync` to a single generic method `GetDownstreamAsync<TItem>` in `RegistryEndpointRouteBuilderExtensions.cs`
+- [x] Extract the three identical `KaleidoValidationException → BadRequest` catch blocks in `QueryableEndpointRouteBuilderExtensions.cs` to a shared `GuardQueryAsync` helper
+- [x] Extract `ProcessExecutionService.ExecuteAsync` shared core (~40 dup lines) to a private `ExecuteStepCoreAsync` method
+- [x] Extract assembly type-scan predicate + TypeFilter guard to shared `AssemblyTypeExtensions` extension methods (`ScanTypes` / `PassesTypeFilter`) — used in both `ProcessServiceCollectionExtensions` and `QueryableServiceCollectionExtensions`
+- [x] Extract `IQueryViewSource*` interface detection pattern (repeated ×5) to `QueryViewTypeExtensions` Type extension methods (`GetViewSourceInterfaces`, `GetDelegateViewSourceInterfaces`, `ImplementsGenericInterfaceFor`, …)
+- [~] ~~Extract duplicate-name GroupBy validation (×3)~~ — **KEPT**: only cleanly covers 2 of 3 sites (Process's dup-check has a richer message listing offending types); marginal dedup value
 - [x] Centralize observability tag-name magic strings to a `KaleidoObservabilityTags` constants class
 
 ### Observability correctness
-- [ ] Add correlation headers to registry-fetch HTTP call in `KaleidoProcessClient.cs:266` — build `HttpRequestMessage`, call `StampCorrelationHeaders` before `SendAsync`
-- [ ] Same fix in `KaleidoQueryableClient.cs:203`
-- [ ] Add `logger.LogDebug(...)` in the two 404-swallow branches in `RegistryEndpointRouteBuilderExtensions.cs`
-- [ ] Add `ILogger` injection to `KaleidoProcessClient` and `KaleidoQueryableClient`; log at Debug on send, Warning on non-success before throw
-- [ ] Add `AddEntityFrameworkCoreInstrumentation()` to `AddOpenTelemetry()` in `KaleidoObservabilityOpenTelemetryExtensions.cs`
-- [ ] Add latency `Histogram<double>` instruments to `ProcessTelemetry` and `QueryableTelemetry`; record on execution/step/query completion
-- [ ] Promote key lifecycle log messages to `LogInformation` (process execution complete, context save, registry rebuilt)
+- [x] Add correlation headers to registry-fetch HTTP call in `KaleidoProcessClient.cs` — `HttpRequestMessage` + `headerStamper.Stamp(...)` before send (was already in place; confirmed)
+- [x] Same fix in `KaleidoQueryableClient.cs` — already in place; confirmed
+- [x] Add `logger.LogDebug(...)` in the two 404-swallow branches in `RegistryEndpointRouteBuilderExtensions.cs` — already present in `GetDownstreamAsync`
+- [x] Add `kaleido.http.endpoint_errors` counter in `ExceptionMiddleware` — new `KaleidoHttpTelemetry` (in `Kaleido.Http.Abstractions`), tagged by `error.code` + `http.status_code`, meter wired via `AddKaleidoHttpInstrumentation`
+- [x] Add `ILogger` injection to `KaleidoProcessClient` and `KaleidoQueryableClient` — required `ILogger<T>` via primary ctor, factories pass through; shared `SendAsync` helper logs Debug on send, Warning on non-success
+- [x] ~~Add `AddEntityFrameworkCoreInstrumentation()`~~ — **CHANGED**: not all consumers use EF; instead `AddOpenTelemetry()` gained `configureTracing`/`configureMetrics` hooks for consumer-supplied instrumentation
+- [x] Add latency `Histogram<double>` instruments to `ProcessTelemetry` and `QueryableTelemetry` — `kaleido.process.execution.duration`, `kaleido.process.step.duration`, `kaleido.queryable.execution.duration` (unit `s`); recorded in observation `Dispose` via `Stopwatch.GetTimestamp`
+- [x] Promote key lifecycle log messages — `ExecutionCompleted` event + `LogInformation` on `IProcessExecutionObservation` (once per request); `ProcessRegistry`/`QueryableRegistry` log "built" at `LogInformation` (once per service); context-save logged at `LogDebug` inside `IProcessContextStore` implementations (per AGENTS.md log-level policy — Information stays request-boundary minimal)
 
 ### Performance — safe caching
-- [ ] Cache all `GetMethods()` results in `CompiledQueryApplier.cs` as `static readonly` fields (biggest per-request CPU win)
-- [ ] Fix double JSON round-trip in `StepCandidateBuilder.cs:74–83` — if value `is JsonElement je`, call `je.Deserialize(stepType)` directly
-- [ ] Cache `ProcessStepRegistry.InitialRegistrations` — compute once in constructor instead of `Where`+`ToArray` per property access
-- [ ] Fix `DataTypeMapper.Lookup` to cache enum/array descriptor results in a `ConcurrentDictionary<Type, DataTypeDescriptor>`
-- [ ] Fix O(N²) state mutation in `ProcessStateUpdater` — replace LINQ `ToList`+scan with index-based or dictionary approach
-- [ ] Compute `StepAvailabilityResolver.Resolve` once per step in `ExecutionProcessor`, pass result into `evaluator.Evaluate` instead of recomputing
-- [ ] Build `Dictionary<string,FieldMetadata>` once per request in validator/normalizer/compiler instead of linear scans
+- [x] Cache all `GetMethods()` results in `CompiledQueryApplier.cs` as `static readonly` fields — already in place (+ `ConcurrentDictionary` caches for sort/contains)
+- [x] Fix double JSON round-trip in `StepCandidateBuilder.cs` — `is JsonElement je → je.Deserialize(stepType)` fast-path already in place
+- [x] Cache `ProcessStepRegistry.InitialRegistrations` — `_initialRegistrations` computed once in constructor
+- [x] Fix `DataTypeMapper.Lookup` — `ConcurrentDictionary<Type, DataTypeDescriptor>` + extracted `BuildDescriptor` for enum/array/enumerable paths
+- [x] Fix O(N²) state mutation in `ProcessStateUpdater` — `Reconcile` uses a name→index dictionary; `ReplaceStep` uses a plain index loop
+- [~] ~~Compute `StepAvailabilityResolver.Resolve` once per step in `ExecutionProcessor`~~ — **KEPT**: passing `availableSteps` into `Evaluate` leaks plumbing through the seam; the duplicate `Resolve` is a cheap filtered scan and evaluator owning availability is more readable
+- [x] Build `Dictionary<string,FieldMetadata>` once per request — per-request `FieldLookup` (metadata + name→field dict) threaded through `QueryRequestValidator`, `QueryRequestCompiler`, `QueryableValueNormalizer`
 
 ### Public API correctness
-- [ ] Make `AddProcessClient(...)` and `AddQueryableClient(...)` `public` (currently `internal` but documented as public)
-- [ ] Make `MapQueryView` and `MapDelegatedQueryView` `private` (currently public but leak internal types)
-- [ ] Remove unused `serviceName` parameter from `MapQueryView` and `MapDelegatedQueryView`
-- [ ] Make `ExecuteStepRequest.ToProcessRequest` `internal` (leaks core runtime types through shared contract assembly)
-- [ ] Fix `ProcessStepHandlerResult<T>.HandOff` return type → `ProcessStepHandlerResult<TProcessStepResult>` (currently returns non-generic, typed handlers cannot use it)
+- [x] ~~Make `AddProcessClient`/`AddQueryableClient` `public`~~ — **KEPT internal**: `AddHttpClients()` (config-driven `Kaleido:Clients`) is the consumer-facing seam; stale docs corrected (README, ARCHITECTURE, AGENTS, PriorAuth HANDOFF) — plural `AddProcessClients`/`AddQueryableClients` never existed
+- [~] ~~Make `MapQueryView`/`MapDelegatedQueryView` `private`~~ — **KEPT**: mapping surface intentionally granular; note the "leaks internal types" rationale was stale (registry types are all `public`)
+- [~] ~~Remove unused `serviceName` param from `MapQueryView`/`MapDelegatedQueryView`~~ — **KEPT** with above
+- [x] Make `ExecuteStepRequest.ToProcessRequest` `internal` — sealed the core `ProcessRequest`/`ProcessorRequest` leak through the contract assembly; sole caller covered by `InternalsVisibleTo`
+- [x] Fix `ProcessStepHandlerResult<T>.HandOff` return type → `ProcessStepHandlerResult<TProcessStepResult>` — typed handlers can now `return HandOff(...)`; non-generic overload unchanged
 
 ### Dependency graph fixes
 - [x] Change `Kaleido.Observability.OpenTelemetry.csproj` project reference from `Kaleido.AspNetCore` → `Kaleido` (only uses core types)
-- [ ] Add explicit `<ProjectReference Include="..\Kaleido\Kaleido.csproj" />` to `Kaleido.Http.csproj` (currently relies on transitive)
-- [ ] Add explicit `PackageReference Include="Microsoft.Extensions.Configuration.Abstractions"` to `Kaleido.Http.Client.csproj`
+- [x] Removed `FrameworkReference Microsoft.AspNetCore.App` from `Kaleido.Observability.OpenTelemetry.csproj` (no AspNetCore types used)
+- [~] ~~Add explicit `Kaleido` ProjectReference to `Kaleido.Http.csproj`~~ — **KEPT**: transitive via `Kaleido.Http.Abstractions` accepted (user decision)
+- [x] Added explicit `Microsoft.Extensions.Configuration.Abstractions` + `Microsoft.Extensions.Configuration.Binder` (for `GetSection().Bind()`) to `Kaleido.Http.Client.csproj` — no longer relies on transitive
+- [x] Pruned 4 dead `InternalsVisibleTo` entries in `Kaleido.Http.Client/AssemblyInfo.cs` (`Kaleido.Process.Http.Client.UnitTests`, `Kaleido.Queryable.Http.Client.UnitTests`, `Kaleido.Registry`, `Kaleido.Http` — nonexistent assemblies / no consuming project ref)
 
 ### Security guardrails
-- [ ] Add max filter depth check (e.g., depth ≤ 10) to `QueryRequestValidator.ValidateFilter` — prevents stack-overflow DoS from deeply nested `QueryFilterGroup`
-- [ ] Sanitize `RegistryClientError.Reason` — replace raw `ex.Message` (which can contain internal hostnames/URLs) with a generic message; keep detail in logs
+- [x] Add max filter depth check to `QueryRequestValidator.ValidateFilter` — `MaxFilterDepth = 10` guard already in place
+- [x] Sanitize `RegistryClientError.Reason` — returns generic `"{clientType} registry fetch failed. See server logs for details."`; `ex.Message` detail kept in `LogWarning`
 - [x] Add startup warning when `InMemoryProcessContextStore` is the registered store (it has no eviction and grows without bound in production)
 - [x] Cap correlation header value lengths in `KaleidoAspNetCoreCorrelation.cs`
 
 ### Build pipeline
-- [ ] Add `Microsoft.SourceLink.GitHub` package reference and `EmbedUntrackedSources` to `build/packages.props`
-- [ ] Add `PackageLicenseExpression`, `Description`, `PackageProjectUrl`, `RepositoryType=git` to `build/packages.props`
-- [ ] Add `<None Include="$(MSBuildProjectDirectory)\README.md" Pack="true" PackagePath="\" />` item group to `build/packages.props` (fixes NU5039 broken readme reference)
-- [ ] Add `NuGet.config` at repo root with explicit `nuget.org` source
-- [ ] Fix `Radiology.csproj` — add missing `<Import Project="../../../../build/samples.props" />` and remove duplicated properties
-- [ ] Extend CI (`build.yml`): add `--collect:"XPlat Code Coverage"` to `dotnet test`, add Codecov upload step
-- [ ] Extend CI: add `dotnet pack -c Release --no-build` + `actions/upload-artifact` step
-- [ ] Set `global-json-file` in CI `setup-dotnet` action to respect `global.json` SDK pin
+- [x] Add `Microsoft.SourceLink.GitHub` package reference and `EmbedUntrackedSources` to `build/packages.props`
+- [x] Add `PackageLicenseExpression` (MIT), `Description`, `PackageProjectUrl`, `RepositoryType=git` to `build/packages.props` — also updated stale `RepositoryUrl` to `no1ross/Kaleido` (repo transferred)
+- [x] Add `<None Include="$(MSBuildProjectDirectory)\README.md" Pack="true" PackagePath="\" />` item group to `build/packages.props` (fixes NU5039 broken readme reference)
+- [~] ~~Add `NuGet.config` at repo root with explicit `nuget.org` source~~ — **KEPT** (user decision; all packages resolve from nuget.org anyway)
+- [x] Fix `Radiology.csproj` — added missing `<Import Project="../../../../build/samples.props" />` and removed duplicated properties
+- [x] Extend CI (`build.yml`): added `--collect:"XPlat Code Coverage"` + `--settings coverlet.runsettings` to `dotnet test`; lcov uploaded as workflow artifact (no Codecov — free tier is patch-coverage only)
+- [x] ~~Extend CI: `dotnet pack` + nupkg artifact upload~~ — added then **removed** (user decision: no packing in CI)
+- [x] Set `global-json-file` in CI `setup-dotnet` action to respect `global.json` SDK pin
 
 ### Test fixes (mechanical)
-- [ ] Fix `Assert.Equal("Kaleido.Provider.SQLite.SqliteProcessContextStore", store.GetType().FullName)` → `Assert.IsType<SqliteProcessContextStore>(store)` in `DbContextDependencyTests.cs:65`
-- [ ] Fix `StepCandidateConsistencyCheckerTests.CreateChecker` — remove dead parameter or wire dependencies through candidate registrations so the "dependency satisfied by history/candidate" tests actually exercise the scenario
-- [ ] Fix `StepCandidatePlannerTests.CreatePlanner` — remove dead `dependencies` parameter; give candidate a real missing dependency
-- [ ] Update `StepCandidateConsistencyCheckerTests` circular-dependency test — add `[Trait]`/comment noting this asserts current (known-broken) behavior, so a future fix isn't mistaken for a regression
-- [ ] Add real assertions (or delete) the 4 no-assert observability smoke tests in `ProcessObservabilityTests` and `QueryableObservabilityTests`
-- [ ] Fix `ProcessExecutionEndpointTests.PostExecute_WhenStepFails_ReturnsErrorInResponse` — add a handler that actually fails; assert on error payload
-- [ ] Fix test class name mismatch: `ParticipantRuntimeTests.cs` contains `ProcessRuntimeTests`; `ParticipantServiceCollectionExtensionsTests.cs` contains `ProcessorServiceCollectionExtensionsTests`
-- [ ] Remove dead `HandlerWithSequence` helper from `KaleidoProcessClientTests.cs:45`
-- [ ] Fix corrupted comment characters (`G��`) in `KaleidoProcessClientTests.cs:206,261–264,431`
-- [ ] Fix dead code in `KaleidoQueryableClientTests.cs:131–161` — remove abandoned `client2` and the unasserted `fetchedUrl`
+- [x] `Assert.IsType<SqliteProcessContextStore>(store)` in `DbContextDependencyTests` — added `InternalsVisibleTo` for test assemblies in `Kaleido.Provider.SQLite/AssemblyInfo.cs`
+- [x] `StepCandidateConsistencyCheckerTests.CreateChecker` — removed dead params; wired `[dependency]` into target registrations so history/candidate-satisfaction tests exercise the real scenario
+- [x] `StepCandidatePlannerTests.CreatePlanner` — removed dead params; candidate now carries a real missing dependency
+- [x] Circular-dependency test — KNOWN-BROKEN comment added so a future fix isn't mistaken for a regression
+- [x] Deleted 3 no-assert smoke tests in `ProcessObservabilityTests` (covered by `Observation_EmitsExpectedMetrics`) + empty `QueryableObservabilityTests.cs` placeholder
+- [x] `PostExecute_WhenStepFails` — added `RuntimeFailingStep`/`RuntimeFailingStepHandler` returning `Failure`; asserts `RuntimeFailingFailed` error message in results
+- [x] Renamed `ParticipantRuntimeTests.cs`→`ProcessRuntimeTests.cs`, `ParticipantServiceCollectionExtensionsTests.cs`→`ProcessorServiceCollectionExtensionsTests.cs`
+- [x] Removed dead `HandlerWithSequence` helper from `KaleidoProcessClientTests`
+- [x] Fixed corrupted `G��` mojibake comments (→ em-dashes) in `KaleidoProcessClientTests`
+- [x] `KaleidoQueryableClientTests` — removed abandoned `client2`/`fetchedUrl`; single-client test asserts metadata URL + result
 
 ---
 
@@ -197,7 +192,7 @@ These require more careful testing. Commit each as its own focused PR.
 - [ ] Add `EnsureRegistryAsync` generic helper — consolidate semaphore-guarded lazy-load used in both clients
 - [ ] Consolidate the 6+ route/endpoint-name constant classes into a single source-of-truth per capability
 - [ ] Convert `ProcessRuntime` (8-param constructor) to primary constructor syntax (AGENTS.md mandate)
-- [ ] Convert `KaleidoProcessClient` and `KaleidoQueryableClient` constructors to primary constructors
+- [x] Convert `KaleidoProcessClient` and `KaleidoQueryableClient` constructors to primary constructors — done; also inlined `StampCorrelationHeaders` wrapper and `registryUrl` field (single-use)
 - [ ] Convert `SqliteProcessContextDbContext` to primary constructor
 - [ ] Replace `KaleidoEnumConverter<T>` + factory with BCL `JsonStringEnumConverter` (verify error message compatibility first)
 - [ ] Add `SqliteProcessContextStore` activity source + `ILogger` + failure counter instrumentation
@@ -263,6 +258,6 @@ fix(tier3): replace KaleidoClientFactoryBase reflection with IRouteOptionsMap in
 ## Progress
 
 - [x] Tier 1 complete — branch `cleanup/tier1-zero-risk-cleanup`, 9 commits, 501 tests green
-- [ ] Tier 2 complete
+- [x] Tier 2 complete
 - [ ] Tier 3 complete
 - [ ] Tier 4 decisions made

@@ -77,6 +77,7 @@ public class KaleidoServiceOptions
         if (string.IsNullOrWhiteSpace(options.ServiceName))
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.InvalidServiceName,
                 "KaleidoServiceOptions.ServiceName must be a non-empty string. " +
                 "Set it via AddKaleido(config, o => o.ServiceName = \"my-service\") " +
                 "or via the Kaleido:ServiceName configuration key.");
@@ -85,18 +86,21 @@ public class KaleidoServiceOptions
         if (options.ServiceName.Contains('/') || options.ServiceName.Contains('\\'))
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.InvalidServiceName,
                 $"KaleidoServiceOptions.ServiceName '{options.ServiceName}' must not contain path separators.");
         }
 
         if (options.ServiceName.Any(char.IsWhiteSpace))
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.InvalidServiceName,
                 $"KaleidoServiceOptions.ServiceName '{options.ServiceName}' must not contain whitespace.");
         }
 
         if (options.ServiceName != options.ServiceName.ToLowerInvariant())
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.InvalidServiceName,
                 $"KaleidoServiceOptions.ServiceName '{options.ServiceName}' must be lowercase. " +
                 $"Use '{options.ServiceName.ToLowerInvariant()}' instead.");
         }

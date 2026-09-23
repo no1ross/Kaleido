@@ -31,6 +31,7 @@ internal sealed class StepCandidateValidator : IStepCandidateValidator
         if (candidate.Step is null)
         {
             throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
                 $"Candidate '{candidate.StepName}' does not contain a hydrated step.");
         }
 

@@ -146,14 +146,16 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
     public ProcessStepRegistration GetRegistration(string name)
     {
         return Find(name)
-            ?? throw new KeyNotFoundException(
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
                 $"Process step '{name}' is not registered.");
     }
 
     public ProcessStepRegistration GetRegistration(Type stepType)
     {
         return Find(stepType)
-            ?? throw new KeyNotFoundException(
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
                 $"Process step type '{stepType.FullName}' is not registered.");
     }
 
@@ -164,6 +166,7 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
         if (!handlerTypes.TryGetValue(stepType, out var handlerType))
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.ProMissingHandler,
                 $"No handler type registered for step '{stepType.FullName}'.");
         }
 
@@ -230,6 +233,7 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
         }
 
         throw new KaleidoConfigurationException(
+            ConfigurationErrorCodes.ProInvalidHandler,
             $"Type '{handlerInterface.FullName}' is not a valid process step handler.");
     }
 
@@ -382,6 +386,7 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
         var attribute =
             stepType.GetCustomAttribute<ProcessStepAttribute>()
             ?? throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.ProMissingAttribute,
                 $"Process step '{stepType.Name}' is missing ProcessStepAttribute.");
 
         return new ProcessStepMetadata(
@@ -405,12 +410,14 @@ internal static class ProcessStepRegistryHelper
         if (executeAsyncMethod is null)
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.ProInvalidHandler,
                 $"Handler '{handlerType.FullName}' does not expose ExecuteAsync.");
         }
 
         var taskType = executeAsyncMethod.ReturnType;
         var resultProperty = taskType.GetProperty(nameof(Task<object>.Result))
             ?? throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.ProInvalidHandler,
                 $"Task type '{taskType.FullName}' does not have a Result property.");
 
         // Create a compiled function that extracts the result using reflection
@@ -423,6 +430,7 @@ internal static class ProcessStepRegistryHelper
                 return handlerResult;
             }
             throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.InvalidHandlerResult,
                 $"Handler returned an invalid handler result of type '{result?.GetType().FullName}'.");
         };
     }

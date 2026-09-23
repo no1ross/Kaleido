@@ -8,6 +8,7 @@ using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;
+using Kaleido.Http.Client;
 using Kaleido.Http.Client.Queryable;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
@@ -189,7 +190,7 @@ public sealed class CaptureRequestedServiceHandler(
                     requiredStep: nameof(ConfirmCtInsteadOfMriStep).Replace("Step", string.Empty));
             }
         }
-        catch (KaleidoQueryableClientException ex)
+        catch (KaleidoHttpClientException ex)
         {
             return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
                 new CaptureRequestedServiceResponse(),

@@ -1,5 +1,7 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Records;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -14,7 +16,7 @@ public sealed class QueryableRegistryTests
         var delegatedRegistry = new Mock<IDelegatedQueryViewRegistry>();
 
         Assert.Throws<ArgumentNullException>(() =>
-            new QueryableRegistry(null!, viewRegistry.Object, delegatedRegistry.Object));
+            new QueryableRegistry(null!, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance));
     }
 
     [Fact]
@@ -24,7 +26,7 @@ public sealed class QueryableRegistryTests
         var delegatedRegistry = Mock.Of<IDelegatedQueryViewRegistry>();
 
         Assert.Throws<ArgumentNullException>(() =>
-            new QueryableRegistry(contextRegistry.Object, null!, delegatedRegistry));
+            new QueryableRegistry(contextRegistry.Object, null!, delegatedRegistry, NullLogger<QueryableRegistry>.Instance));
     }
 
     [Fact]
@@ -34,7 +36,7 @@ public sealed class QueryableRegistryTests
         var viewRegistry = Mock.Of<IQueryViewRegistry>();
 
         Assert.Throws<ArgumentNullException>(() =>
-            new QueryableRegistry(contextRegistry.Object, viewRegistry, null!));
+            new QueryableRegistry(contextRegistry.Object, viewRegistry, null!, NullLogger<QueryableRegistry>.Instance));
     }
 
     [Fact]
@@ -53,7 +55,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
 
         Assert.Single(registry.Registrations);
         Assert.Equal("context1", registry.Registrations.First().Name);
@@ -84,7 +86,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([delegatedRegistration]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
 
         Assert.Equal(2, registry.Registrations.Count);
         Assert.Contains(registry.Registrations, r => r.Name == "context1");
@@ -116,7 +118,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([delegatedRegistration]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
 
         Assert.Equal("apple", registry.Registrations.First().Name);
         Assert.Equal("zebra", registry.Registrations.Last().Name);
@@ -133,7 +135,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
 
         Assert.Throws<ArgumentNullException>(() =>
             registry.Find(null!));
@@ -150,7 +152,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
 
         Assert.Throws<ArgumentException>(() =>
             registry.Find("   "));
@@ -172,7 +174,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
 
         var result = registry.Find("context1");
 
@@ -191,7 +193,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
 
         var result = registry.Find("unknown");
 
@@ -214,7 +216,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
 
         var result = registry.Find("CONTEXT1");
 
@@ -238,7 +240,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
 
         var result = registry.GetRegistration("context1");
 
@@ -257,9 +259,10 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
 
-        Assert.Throws<KeyNotFoundException>(() =>
+        var ex = Assert.Throws<KaleidoFrameworkException>(() =>
             registry.GetRegistration("unknown"));
+        Assert.Equal(FrameworkErrorCodes.MissingRegistration, ex.Code);
     }
 }

@@ -26,11 +26,13 @@ public static class ValueConverter
                 actualType);
         }
 
+        var text = value.ToString() ?? string.Empty;
+
         if (actualType.IsEnum)
         {
             return Enum.Parse(
                 actualType,
-                value.ToString()!,
+                text,
                 ignoreCase: true);
         }
 
@@ -38,42 +40,42 @@ public static class ValueConverter
         {
             return value is Guid guid
                 ? guid
-                : Guid.Parse(value.ToString()!);
+                : Guid.Parse(text);
         }
 
         if (actualType == typeof(DateOnly))
         {
             return value is DateOnly dateOnly
                 ? dateOnly
-                : DateOnly.Parse(value.ToString()!);
+                : DateOnly.Parse(text);
         }
 
         if (actualType == typeof(TimeOnly))
         {
             return value is TimeOnly timeOnly
                 ? timeOnly
-                : TimeOnly.Parse(value.ToString()!);
+                : TimeOnly.Parse(text);
         }
 
         if (actualType == typeof(DateTime))
         {
             return value is DateTime dateTime
                 ? dateTime
-                : DateTime.Parse(value.ToString()!);
+                : DateTime.Parse(text);
         }
 
         if (actualType == typeof(DateTimeOffset))
         {
             return value is DateTimeOffset dateTimeOffset
                 ? dateTimeOffset
-                : DateTimeOffset.Parse(value.ToString()!);
+                : DateTimeOffset.Parse(text);
         }
 
         if (actualType == typeof(TimeSpan))
         {
             return value is TimeSpan timeSpan
                 ? timeSpan
-                : TimeSpan.Parse(value.ToString()!);
+                : TimeSpan.Parse(text);
         }
 
         return System.Convert.ChangeType(
@@ -172,27 +174,24 @@ public static class ValueConverter
 
         if (targetType == typeof(DateOnly))
         {
-            return DateOnly.Parse(
-                element.GetString()!);
+            return DateOnly.Parse(GetJsonString(element, targetType));
         }
 
         if (targetType == typeof(TimeOnly))
         {
-            return TimeOnly.Parse(
-                element.GetString()!);
+            return TimeOnly.Parse(GetJsonString(element, targetType));
         }
 
         if (targetType == typeof(TimeSpan))
         {
-            return TimeSpan.Parse(
-                element.GetString()!);
+            return TimeSpan.Parse(GetJsonString(element, targetType));
         }
 
         if (targetType.IsEnum)
         {
             return Enum.Parse(
                 targetType,
-                element.GetString()!,
+                GetJsonString(element, targetType),
                 ignoreCase: true);
         }
 
@@ -200,4 +199,11 @@ public static class ValueConverter
             element.GetRawText(),
             targetType);
     }
+
+    private static string GetJsonString(
+        JsonElement element,
+        Type targetType) =>
+        element.GetString()
+        ?? throw new FormatException(
+            $"Expected a JSON string for type '{targetType.Name}'.");
 }

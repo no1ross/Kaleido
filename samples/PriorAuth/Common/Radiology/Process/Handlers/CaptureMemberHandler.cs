@@ -1,3 +1,4 @@
+using Kaleido.Http.Client;
 using Kaleido.Http.Client.Queryable;
 using Kaleido.Process.Execution;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;
@@ -92,7 +93,7 @@ public sealed class CaptureMemberHandler(
 
             return ProcessStepHandlerResult.Success(requiredStep: routing.RequiredStep);
         }
-        catch (KaleidoQueryableClientException ex)
+        catch (KaleidoHttpClientException ex)
         {
             return ProcessStepHandlerResult.Failure(
                 RadiologyProcessMessages.QueryableRequestFailed(

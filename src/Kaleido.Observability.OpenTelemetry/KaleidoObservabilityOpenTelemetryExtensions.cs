@@ -20,8 +20,20 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
     /// <see cref="AddKaleidoInstrumentation(MeterProviderBuilder)"/> directly.
     /// </para>
     /// </remarks>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <param name="configureTracing">
+    /// Optional hook for additional <see cref="TracerProviderBuilder"/> instrumentation
+    /// (e.g. EntityFrameworkCore, SQL Client, gRPC) — invoked after the built-in
+    /// Kaleido/ASP.NET/HttpClient instrumentations, before the OTLP exporter.
+    /// </param>
+    /// <param name="configureMetrics">
+    /// Optional hook for additional <see cref="MeterProviderBuilder"/> instrumentation —
+    /// invoked after the built-in instrumentations, before the OTLP exporter.
+    /// </param>
     public static IKaleidoBuilder AddOpenTelemetry(
-        this IKaleidoBuilder builder)
+        this IKaleidoBuilder builder,
+        Action<TracerProviderBuilder>? configureTracing = null,
+        Action<MeterProviderBuilder>? configureMetrics = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
@@ -39,17 +51,29 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
                     options.IncludeFormattedMessage = true;
                     options.IncludeScopes = true;
                 })
-            .WithTracing(tracing => tracing
-                .AddKaleidoInstrumentation()
-                .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation()
-                .AddOtlpExporter())
-            .WithMetrics(metrics => metrics
-                .AddKaleidoInstrumentation()
-                .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation()
-                .AddRuntimeInstrumentation()
-                .AddOtlpExporter());
+            .WithTracing(tracing =>
+            {
+                tracing
+                    .AddKaleidoInstrumentation()
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation();
+
+                configureTracing?.Invoke(tracing);
+
+                tracing.AddOtlpExporter();
+            })
+            .WithMetrics(metrics =>
+            {
+                metrics
+                    .AddKaleidoInstrumentation()
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddRuntimeInstrumentation();
+
+                configureMetrics?.Invoke(metrics);
+
+                metrics.AddOtlpExporter();
+            });
 
         return builder;
     }
@@ -108,6 +132,7 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
             .AddView(QueryableTelemetry.PageSizeHistogramName, pageSizeBoundaries)
             .AddView(QueryableTelemetry.PageOffsetHistogramName, recordCountBoundaries)
             .AddKaleidoProcessInstrumentation()
-            .AddKaleidoQueryableInstrumentation();
+            .AddKaleidoQueryableInstrumentation()
+            .AddKaleidoHttpInstrumentation();
     }
 }

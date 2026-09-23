@@ -1,4 +1,3 @@
-using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Query;
@@ -62,9 +61,11 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         QueryContextMetadata metadata,
         PageableMetadata? pageable)
     {
+        var fields = new FieldLookup(metadata);
+
         ValidateFilter(
             request.Query?.Filter,
-            metadata);
+            fields);
 
         ValidateSearch(
             request.Query?.SearchText,
@@ -72,7 +73,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
 
         ValidateSort(
             request.Query?.Sort,
-            metadata);
+            fields);
 
         ValidatePage(
             request.Query?.Page,
@@ -108,7 +109,10 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
             return;
         }
 
-        throw new UnsupportedRuntimeTypeException(name, actualType);
+        throw new KaleidoValidationException(
+            ValidationErrorCodes.QryUnsupportedRuntimeType,
+            $"Value '{name}' contains unsupported runtime type '{actualType.FullName}'. " +
+            "Transport layers must normalize values before invoking Queryable.");
     }
 
     private static void ValidateParameterType(
@@ -127,14 +131,16 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
             return;
         }
 
-        throw new InvalidParameterTypeException(parameter.Name, expectedType, actualType);
+        throw new KaleidoValidationException(
+            ValidationErrorCodes.QryInvalidParameterType,
+            $"Parameter '{parameter.Name}' expects values of type '{expectedType.Name}' but received '{actualType.Name}'.");
     }
 
     private const int MaxFilterDepth = 10;
 
     private static void ValidateFilter(
         QueryFilterNode? node,
-        QueryContextMetadata metadata,
+        FieldLookup fields,
         int depth = 0)
     {
         if (node is null)
@@ -144,13 +150,16 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
 
         if (depth > MaxFilterDepth)
         {
-            throw new FilterDepthExceededException(MaxFilterDepth);
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryFilterDepthExceeded,
+                $"Filter expression exceeds the maximum nesting depth of {MaxFilterDepth}.");
         }
 
         if (node.Condition is not null &&
             node.Group is not null)
         {
-            throw new InvalidFilterNodeException(
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidFilterNode,
                 "Filter node cannot specify both Condition and Group.");
         }
 
@@ -158,7 +167,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         {
             ValidateFilterCondition(
                 node.Condition,
-                metadata);
+                fields);
 
             return;
         }
@@ -167,57 +176,65 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         {
             ValidateFilterGroup(
                 node.Group,
-                metadata,
+                fields,
                 depth);
 
             return;
         }
 
-        throw new InvalidFilterNodeException(
+        throw new KaleidoValidationException(
+            ValidationErrorCodes.QryInvalidFilterNode,
             "Filter node must specify either Condition or Group.");
     }
 
     private static void ValidateFilterGroup(
         QueryFilterGroup group,
-        QueryContextMetadata metadata,
+        FieldLookup fields,
         int depth)
     {
         if (group.Filters.Count == 0)
         {
-            throw new EmptyFilterGroupException();
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryEmptyFilterGroup,
+                "Filter group must contain at least one expression.");
         }
 
         foreach (var child in group.Filters)
         {
             ValidateFilter(
                 child,
-                metadata,
+                fields,
                 depth + 1);
         }
     }
 
     private static void ValidateFilterCondition(
         QueryFilterCondition condition,
-        QueryContextMetadata metadata)
+        FieldLookup fields)
     {
         if (string.IsNullOrWhiteSpace(condition.Field))
         {
-            throw new MissingFilterFieldException();
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryMissingFilterField,
+                "Filter field is required.");
         }
 
         var field =
-            GetField(
-                metadata,
+            fields.Get(
                 condition.Field);
 
         if (!field.IsFilterable)
         {
-            throw new FieldNotFilterableException(condition.Field);
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryFieldNotFilterable,
+                $"Field '{condition.Field}' is not filterable.");
         }
 
         if (!field.FilterOperators.Contains(condition.Operator))
         {
-            throw new UnsupportedOperatorException(condition.Field, condition.Operator);
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryUnsupportedOperator,
+                $"Field '{condition.Field}' does not support operator '{condition.Operator}'.");
         }
 
         ValidateFilterValueTypes(condition);
@@ -236,14 +253,15 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         if (!metadata.Fields.Any(
                 x => x.IsSearchable))
         {
-            throw new FieldNotSearchableException(
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryFieldNotSearchable,
                 "No searchable fields are defined.");
         }
     }
 
     private static void ValidateSort(
         IReadOnlyList<QuerySort>? sorts,
-        QueryContextMetadata metadata)
+        FieldLookup fields)
     {
         if (sorts is null)
         {
@@ -261,19 +279,22 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
 
         if (duplicateFields.Length > 0)
         {
-            throw new DuplicateSortFieldException(duplicateFields);
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryDuplicateSortField,
+                $"Duplicate sort fields are not allowed: {string.Join(", ", duplicateFields)}.");
         }
 
         foreach (var sort in sorts)
         {
             var field =
-                GetField(
-                    metadata,
+                fields.Get(
                     sort.Field);
 
             if (!field.IsSortable)
             {
-                throw new FieldNotSortableException(sort.Field);
+                throw new KaleidoValidationException(
+                    ValidationErrorCodes.QryFieldNotSortable,
+                    $"Field '{sort.Field}' is not sortable.");
             }
         }
     }
@@ -294,25 +315,42 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
 
         if (page.Size is <= 0)
         {
-            throw new InvalidPageSizeException(page.Size.Value, pageable.MaxSize);
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidPageSize,
+                $"Page size '{page.Size.Value}' exceeds maximum page size '{pageable.MaxSize}'.");
         }
 
         if (page.Size.HasValue &&
             page.Size.Value > pageable.MaxSize)
         {
-            throw new InvalidPageSizeException(page.Size.Value, pageable.MaxSize);
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidPageSize,
+                $"Page size '{page.Size.Value}' exceeds maximum page size '{pageable.MaxSize}'.");
         }
     }
 
-    private static FieldMetadata GetField(
-        QueryContextMetadata metadata,
-        string name)
+    private sealed class FieldLookup
     {
-        return metadata.Fields.SingleOrDefault(x =>
-                   string.Equals(
-                       x.Name,
-                       name,
-                       StringComparison.OrdinalIgnoreCase))
-               ?? throw new InvalidFieldException(name, metadata.Name);
+        private readonly Dictionary<string, FieldMetadata> _byName;
+
+        public FieldLookup(
+            QueryContextMetadata metadata)
+        {
+            Metadata = metadata;
+            _byName =
+                metadata.Fields.ToDictionary(
+                    x => x.Name,
+                    StringComparer.OrdinalIgnoreCase);
+        }
+
+        public QueryContextMetadata Metadata { get; }
+
+        public FieldMetadata Get(
+            string name) =>
+            _byName.TryGetValue(name, out var field)
+                ? field
+                : throw new KaleidoValidationException(
+                    ValidationErrorCodes.QryInvalidField,
+                    $"Field '{name}' does not exist on record '{Metadata.Name}'.");
     }
 }

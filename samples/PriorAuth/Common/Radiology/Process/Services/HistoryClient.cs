@@ -1,3 +1,4 @@
+using Kaleido.Http.Client;
 using Kaleido.Http.Client.Process;
 using Kaleido.Http.Process;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;
@@ -20,7 +21,7 @@ public sealed class HistoryClient(
                 .GetClient("History")
                 .ExecuteStepAsync(step, cancellationToken);
         }
-        catch (KaleidoProcessClientException ex)
+        catch (KaleidoHttpClientException ex)
         {
             logger.LogWarning(ex,
                 "Failed to update history record for process {ProcessId}. Continuing.",

@@ -1,3 +1,4 @@
+global using Kaleido.Http.Client;
 global using Kaleido.Http.Client.Process;
 global using Kaleido.Http.Client.Queryable;
 global using Kaleido.Http.Process;

@@ -77,17 +77,24 @@ internal sealed class ProcessStateUpdater(
         var steps =
             context.Steps.ToList();
 
+        var indexByName =
+            new Dictionary<string, int>(
+                steps.Count,
+                StringComparer.OrdinalIgnoreCase);
+
+        for (var i = 0; i < steps.Count; i++)
+        {
+            indexByName[steps[i].StepName] = i;
+        }
+
         foreach (var registration in registry.Registrations)
         {
-            var existing =
-                steps.FirstOrDefault(
-                    x => string.Equals(
-                        x.StepName,
-                        registration.Metadata.Name,
-                        StringComparison.OrdinalIgnoreCase));
-
-            if (existing is null)
+            if (!indexByName.TryGetValue(
+                    registration.Metadata.Name,
+                    out var index))
             {
+                indexByName[registration.Metadata.Name] = steps.Count;
+
                 steps.Add(
                     new StepContext
                     {
@@ -104,16 +111,12 @@ internal sealed class ProcessStateUpdater(
                 continue;
             }
 
-            var updated =
-                existing with
+            steps[index] =
+                steps[index] with
                 {
                     Version =
                         registration.Metadata.Version
                 };
-
-            ReplaceStep(
-                steps,
-                updated);
         }
 
         return context with
@@ -280,6 +283,7 @@ internal sealed class ProcessStateUpdater(
         return context.FindStep(
             candidate.StepName)
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
                 $"Step '{candidate.StepName}' was not found in processor state.");
     }
 
@@ -287,22 +291,21 @@ internal sealed class ProcessStateUpdater(
         IList<StepContext> steps,
         StepContext updated)
     {
-        var index =
-            steps
-                .Select(
-                    (step, index) => new
-                    {
-                        step,
-                        index
-                    })
-                .First(
-                    x => string.Equals(
-                        x.step.StepName,
-                        updated.StepName,
-                        StringComparison.OrdinalIgnoreCase))
-                .index;
+        for (var index = 0; index < steps.Count; index++)
+        {
+            if (string.Equals(
+                    steps[index].StepName,
+                    updated.StepName,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                steps[index] = updated;
+                return;
+            }
+        }
 
-        steps[index] = updated;
+        throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.MissingRegistration,
+            $"Step '{updated.StepName}' was not found in processor state.");
     }
 
     private static ProcessExecutionState MapState(
@@ -332,6 +335,7 @@ internal sealed class ProcessStateUpdater(
                 ProcessExecutionState.HandOff,
 
             _ => throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.TypeMismatch,
                 $"Unsupported execution decision '{decision.Type}'.")
         };
     }

@@ -1,9 +1,12 @@
+using Microsoft.Extensions.Logging;
+
 namespace Kaleido.Http.Client.Process;
 
 internal sealed class KaleidoProcessClientFactory(
     IHttpClientFactory httpClientFactory,
     IKaleidoCorrelationContextAccessor correlation,
     ICorrelationHeaderStamper headerStamper,
+    ILogger<KaleidoProcessClient> logger,
     KaleidoProcessClientRouteOptionsMap routeOptionsMap)
     : KaleidoClientFactoryBase<IKaleidoProcessClient, KaleidoProcessClientRouteOptionsMap>,
       IKaleidoProcessClientFactory
@@ -18,6 +21,6 @@ internal sealed class KaleidoProcessClientFactory(
         ICorrelationHeaderStamper stamper,
         string serviceName)
     {
-        return new KaleidoProcessClient(httpClient, stamper, serviceName);
+        return new KaleidoProcessClient(httpClient, stamper, logger, serviceName);
     }
 }

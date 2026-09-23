@@ -1,6 +1,5 @@
-using Kaleido.Queryable.Exceptions;
-using Kaleido.Queryable.Query;
 using Kaleido;
+using Kaleido.Queryable.Query;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Linq.Expressions;
@@ -22,21 +21,25 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
     private static readonly MethodInfo StringToLowerMethod =
         typeof(string).GetMethod(nameof(string.ToLower), Type.EmptyTypes)
         ?? throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.ReflectionError,
             $"Could not locate method '{nameof(string.ToLower)}' on string.");
 
     private static readonly MethodInfo StringContainsMethod =
         typeof(string).GetMethod(nameof(string.Contains), [typeof(string)])
         ?? throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.ReflectionError,
             $"Could not locate method '{nameof(string.Contains)}' on string.");
 
     private static readonly MethodInfo StringStartsWithMethod =
         typeof(string).GetMethod(nameof(string.StartsWith), [typeof(string)])
         ?? throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.ReflectionError,
             $"Could not locate method '{nameof(string.StartsWith)}' on string.");
 
     private static readonly MethodInfo StringEndsWithMethod =
         typeof(string).GetMethod(nameof(string.EndsWith), [typeof(string)])
         ?? throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.ReflectionError,
             $"Could not locate method '{nameof(string.EndsWith)}' on string.");
 
     private static readonly MethodInfo EnumerableContainsOpenMethod =
@@ -158,7 +161,8 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                         .Select(x => BuildFilter(parameter, x))
                         .ToArray()),
 
-            _ => throw new InvalidFilterNodeException(
+            _ => throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidFilterNode,
                 $"Unsupported compiled filter type '{expression.GetType().Name}'.")
         };
     }
@@ -224,7 +228,9 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                     searchText,
                     negate: false),
 
-            _ => throw new UnsupportedMatchModeException(field.Field.Name, field.MatchMode)
+            _ => throw new KaleidoValidationException(
+                ValidationErrorCodes.QryUnsupportedMatchMode,
+                $"Field '{field.Field.Name}' does not support match mode '{field.MatchMode}'.")
         };
     }
 
@@ -370,7 +376,9 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                     member,
                     expected: false),
 
-            _ => throw new UnsupportedOperatorException(condition.Field.Name, condition.Operator)
+            _ => throw new KaleidoValidationException(
+                ValidationErrorCodes.QryUnsupportedOperator,
+                $"Field '{condition.Field.Name}' does not support operator '{condition.Operator}'.")
         };
     }
 
@@ -476,6 +484,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 (true, SortDirection.Ascending) => QueryableThenByOpenMethod,
                 (true, SortDirection.Descending) => QueryableThenByDescendingOpenMethod,
                 _ => throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.TypeMismatch,
                     $"Sort direction '{sort.Direction}' is not a recognised SortDirection value.")
             };
 
@@ -489,6 +498,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 null,
                 [query, lambda])
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.ReflectionError,
                 $"Sort method '{method.Name}' returned null."));
     }
 
@@ -500,7 +510,8 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
     {
         if (member.Type != typeof(string))
         {
-            throw new InvalidFilterNodeException(
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidFilterNode,
                 $"String operator '{methodName}' can only be applied to string fields. Field expression type was '{member.Type.Name}'.");
         }
 
@@ -517,6 +528,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 nameof(string.StartsWith) => StringStartsWithMethod,
                 nameof(string.EndsWith) => StringEndsWithMethod,
                 _ => throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.TypeMismatch,
                     $"Unsupported string method '{methodName}'.")
             };
 
@@ -638,7 +650,8 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
     {
         if (values.Count < 2)
         {
-            throw new InvalidFilterNodeException(
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidFilterNode,
                 "Between and NotBetween require exactly two values.");
         }
 
@@ -682,7 +695,8 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
 
         if (targetType != typeof(bool))
         {
-            throw new InvalidFilterNodeException(
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidFilterNode,
                 $"Boolean operator can only be applied to bool fields. Field expression type was '{member.Type.Name}'.");
         }
 
@@ -720,7 +734,8 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
     {
         if (condition.Values.Count <= index)
         {
-            throw new InvalidFilterNodeException(
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidFilterNode,
                 $"Filter operator '{condition.Operator}' requires a value at index {index}.");
         }
 
@@ -768,10 +783,9 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         {
             if (!CanBeNull(targetType))
             {
-                throw new InvalidFilterValueException(
-                    targetType.Name,
-                    null,
-                    targetType);
+                throw new KaleidoValidationException(
+                    ValidationErrorCodes.QryInvalidFilterValue,
+                    $"Value 'null' is not valid for field '{targetType.Name}'. Expected a value of type '{targetType.Name}'.");
             }
 
             return null;
@@ -807,10 +821,9 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 CultureInfo.InvariantCulture);
         }
 
-        throw new InvalidFilterValueException(
-            expectedType.Name,
-            value,
-            expectedType);
+        throw new KaleidoValidationException(
+            ValidationErrorCodes.QryInvalidFilterValue,
+            $"Value '{value}' is not valid for field '{expectedType.Name}'. Expected a value of type '{expectedType.Name}'.");
     }
 
     private static Expression ToLower(

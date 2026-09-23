@@ -11,8 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var memberConnectionString =
     builder.Configuration.GetConnectionString("Member")
-    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(
-        "ConnectionStrings:Member is required.");
+    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(Kaleido.Exceptions.ConfigurationErrorCodes.InvalidServiceName, "ConnectionStrings:Member is required.");
 
 builder.Services.AddDbContext<MemberDbContext>(
     options => options.UseSqlite(memberConnectionString));

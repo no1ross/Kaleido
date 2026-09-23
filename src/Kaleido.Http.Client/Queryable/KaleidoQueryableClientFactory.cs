@@ -1,9 +1,12 @@
+using Microsoft.Extensions.Logging;
+
 namespace Kaleido.Http.Client.Queryable;
 
 internal sealed class KaleidoQueryableClientFactory(
     IHttpClientFactory httpClientFactory,
     IKaleidoCorrelationContextAccessor correlation,
     ICorrelationHeaderStamper headerStamper,
+    ILogger<KaleidoQueryableClient> logger,
     KaleidoQueryableClientRouteOptionsMap routeOptionsMap)
     : KaleidoClientFactoryBase<IKaleidoQueryableClient, KaleidoQueryableClientRouteOptionsMap>,
       IKaleidoQueryableClientFactory
@@ -18,6 +21,6 @@ internal sealed class KaleidoQueryableClientFactory(
         ICorrelationHeaderStamper stamper,
         string serviceName)
     {
-        return new KaleidoQueryableClient(httpClient, stamper, serviceName);
+        return new KaleidoQueryableClient(httpClient, stamper, logger, serviceName);
     }
 }

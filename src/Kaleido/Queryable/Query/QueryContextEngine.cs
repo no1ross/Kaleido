@@ -1,5 +1,4 @@
 using Kaleido.Queryable.Eventing;
-using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Runtime;
@@ -81,7 +80,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
             return result;
         }
-        catch (QueryableValidationException exception)
+        catch (KaleidoValidationException exception)
         {
             observation.ValidationFailed(exception);
             throw;
@@ -126,6 +125,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             if (query is not IQueryable<TView> typedQuery)
             {
                 throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.TypeMismatch,
                     $"Direct query for context '{typeof(TQueryContext).FullName}' requires result type '{typeof(TView).FullName}' to match the query context type.");
             }
 
@@ -146,7 +146,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
             return result;
         }
-        catch (QueryableValidationException exception)
+        catch (KaleidoValidationException exception)
         {
             observation.ValidationFailed(exception);
             throw;
@@ -178,7 +178,9 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         var query = asyncSource is not null
             ? await asyncSource.CreateQueryAsync(executionContext, cancellationToken)
             : syncSource?.CreateQuery(executionContext)
-            ?? throw new QueryContextSourceNotFoundException(typeof(TQueryContext));
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
+                $"No IQueryContextSource<{typeof(TQueryContext).Name}> or IQueryContextSourceAsync<{typeof(TQueryContext).Name}> registered.");
 
         query = applier.ApplySearch(query, compiled.Search);
         query = applier.ApplyFilter(query, compiled.Filter);
@@ -241,6 +243,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             this,
             [queryView, query, executionContext, viewRegistration, cancellationToken])
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.ReflectionError,
                 $"Method '{nameof(CreateViewAsyncTyped)}' returned null for view '{viewRegistration.QueryViewType.FullName}'."));
 
         return await task;
@@ -265,6 +268,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         }
 
         throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.TypeMismatch,
             $"Query view '{viewRegistration.QueryViewType.FullName}' must implement " +
             $"'{typeof(IQueryViewSource<TQueryContext, TView, TViewParameters>).FullName}' or " +
             $"'{typeof(IQueryViewSourceAsync<TQueryContext, TView, TViewParameters>).FullName}'.");
@@ -277,5 +281,6 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
                 BindingFlags.Instance |
                 BindingFlags.NonPublic)
         ?? throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.ReflectionError,
             $"Unable to locate method '{nameof(CreateViewAsyncTyped)}'.");
 }

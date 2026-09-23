@@ -1,5 +1,4 @@
 using Kaleido.Http.Queryable.Contracts;
-using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
@@ -28,7 +27,8 @@ public static class QueryableEndpointRouteBuilderExtensions
 
         if (queryableRegistry is null)
         {
-            throw new KaleidoFrameworkException(
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
                 "Cannot map Queryable endpoints: Queryable runtime is not registered. " +
                 "This service has no query contexts. Remove the MapQueryable() call.");
         }
@@ -188,6 +188,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 nameof(MapTypedDirectQueryEndpoint),
                 BindingFlags.Static | BindingFlags.NonPublic)
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.ReflectionError,
                 $"Method '{nameof(MapTypedDirectQueryEndpoint)}' not found.");
 
         method
@@ -255,6 +256,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 nameof(MapTypedQueryEndpoint),
                 BindingFlags.Static | BindingFlags.NonPublic)
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.ReflectionError,
                 $"Method '{nameof(MapTypedQueryEndpoint)}' not found.");
 
         method
@@ -283,6 +285,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 nameof(MapTypedDelegatedQueryEndpoint),
                 BindingFlags.Static | BindingFlags.NonPublic)
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.ReflectionError,
                 $"Method '{nameof(MapTypedDelegatedQueryEndpoint)}' not found.");
 
         method
@@ -315,28 +318,15 @@ public static class QueryableEndpointRouteBuilderExtensions
                     QueryApiRequest<TViewParameters> request,
                     IQueryableService queryable,
                     CancellationToken cancellationToken) =>
-                {
-                    try
-                    {
-                        var query =
-                            QueryableValueNormalizer.Normalize(
-                                request.Query,
-                                context.Metadata);
-
-                        var result =
-                            await queryable.QueryAsync<TQueryView, TView>(
-                                new QueryRequest<TViewParameters>(
-                                    Query: query,
-                                    ViewParameters: request.Parameters),
-                                cancellationToken);
-
-                        return Results.Ok(result);
-                    }
-                    catch (QueryableValidationException ex)
-                    {
-                        return ValidationErrorResult(ex);
-                    }
-                })
+                    await GuardQueryAsync(() =>
+                        queryable.QueryAsync<TQueryView, TView>(
+                            new QueryRequest<TViewParameters>(
+                                Query:
+                                    QueryableValueNormalizer.Normalize(
+                                        request.Query,
+                                        context.Metadata),
+                                ViewParameters: request.Parameters),
+                            cancellationToken)))
             .WithName(
                 QueryableEndpointNames.QueryViewEndpointName(
                     context.Metadata.Name.ToLowerInvariant(),
@@ -367,28 +357,15 @@ public static class QueryableEndpointRouteBuilderExtensions
                     QueryApiRequest<TViewParameters> request,
                     IQueryableService queryable,
                     CancellationToken cancellationToken) =>
-                {
-                    try
-                    {
-                        var query =
-                            QueryableValueNormalizer.Normalize(
-                                request.Query,
-                                view.QueryMetadata);
-
-                        var result =
-                            await queryable.QueryAsync<TQueryView, TView>(
-                                new QueryRequest<TViewParameters>(
-                                    Query: query,
-                                    ViewParameters: request.Parameters),
-                                cancellationToken);
-
-                        return Results.Ok(result);
-                    }
-                    catch (QueryableValidationException ex)
-                    {
-                        return ValidationErrorResult(ex);
-                    }
-                })
+                    await GuardQueryAsync(() =>
+                        queryable.QueryAsync<TQueryView, TView>(
+                            new QueryRequest<TViewParameters>(
+                                Query:
+                                    QueryableValueNormalizer.Normalize(
+                                        request.Query,
+                                        view.QueryMetadata),
+                                ViewParameters: request.Parameters),
+                            cancellationToken)))
             .WithName(
                 QueryableEndpointNames.QueryViewEndpointName(
                     view.QueryMetadata.Name.ToLowerInvariant(),
@@ -417,28 +394,15 @@ public static class QueryableEndpointRouteBuilderExtensions
                     QueryApiRequest<EmptyQueryViewParameters> request,
                     IQueryableService queryable,
                     CancellationToken cancellationToken) =>
-                {
-                    try
-                    {
-                        var query =
-                            QueryableValueNormalizer.Normalize(
-                                request.Query,
-                                context.Metadata);
-
-                        var result =
-                            await queryable.QueryAsync<TQueryContext, TQueryContext>(
-                                new QueryRequest<EmptyQueryViewParameters>(
-                                    Query: query,
-                                    ViewParameters: request.Parameters),
-                                cancellationToken);
-
-                        return Results.Ok(result);
-                    }
-                    catch (QueryableValidationException ex)
-                    {
-                        return ValidationErrorResult(ex);
-                    }
-                })
+                    await GuardQueryAsync(() =>
+                        queryable.QueryAsync<TQueryContext, TQueryContext>(
+                            new QueryRequest<EmptyQueryViewParameters>(
+                                Query:
+                                    QueryableValueNormalizer.Normalize(
+                                        request.Query,
+                                        context.Metadata),
+                                ViewParameters: request.Parameters),
+                            cancellationToken)))
             .WithName(
                 QueryableEndpointNames.QueryContextEndpointName(
                     context.Metadata.Name.ToLowerInvariant()))
@@ -454,7 +418,21 @@ public static class QueryableEndpointRouteBuilderExtensions
             .Produces<KaleidoErrorResponse>(400);
     }
 
-    private static IResult ValidationErrorResult(QueryableValidationException ex) =>
+    private static async Task<IResult> GuardQueryAsync<TView>(
+        Func<Task<QueryResult<TView>>> execute)
+        where TView : class
+    {
+        try
+        {
+            return Results.Ok(await execute());
+        }
+        catch (KaleidoValidationException ex)
+        {
+            return ValidationErrorResult(ex);
+        }
+    }
+
+    private static IResult ValidationErrorResult(KaleidoValidationException ex) =>
         Results.BadRequest(
             new KaleidoErrorResponse(
             [

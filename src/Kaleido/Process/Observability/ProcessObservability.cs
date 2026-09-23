@@ -32,6 +32,10 @@ internal interface IProcessExecutionObservation
 
     void ExecutionFailed(
         Exception exception);
+
+    void ExecutionCompleted();
+
+    void Canceled();
 }
 
 internal interface IProcessStepObservation
@@ -124,6 +128,16 @@ internal sealed class ProcessObservability(
     private static readonly Counter<long> ProcessHandlerFailuresCounter =
         Meter.CreateCounter<long>(
             ProcessTelemetry.HandlerFailuresCounterName);
+
+    private static readonly Histogram<double> ProcessExecutionDurationHistogram =
+        Meter.CreateHistogram<double>(
+            ProcessTelemetry.ExecutionDurationHistogramName,
+            unit: "s");
+
+    private static readonly Histogram<double> ProcessStepDurationHistogram =
+        Meter.CreateHistogram<double>(
+            ProcessTelemetry.StepDurationHistogramName,
+            unit: "s");
 
     private readonly string _processorName = serviceOptions.ServiceName;
 
@@ -330,7 +344,34 @@ internal sealed class ProcessObservability(
                 processorName);
         }
 
-        public void Dispose() => activity?.Dispose();
+        public void ExecutionCompleted()
+        {
+            activity?.AddEvent(new ActivityEvent(ProcessTelemetry.ExecutionCompletedEventName));
+
+            logger.LogInformation(
+                "Process execution completed for processor {ProcessorName}.",
+                processorName);
+        }
+
+        public void Canceled()
+        {
+            activity?.AddEvent(new ActivityEvent(ProcessTelemetry.ExecutionCanceledEventName));
+
+            logger.LogWarning(
+                "Process execution was canceled for processor {ProcessorName}.",
+                processorName);
+        }
+
+        public void Dispose()
+        {
+            ProcessExecutionDurationHistogram.Record(
+                Stopwatch.GetElapsedTime(_startTimestamp).TotalSeconds,
+                new TagList { new("processor.name", processorName) });
+
+            activity?.Dispose();
+        }
+
+        private readonly long _startTimestamp = Stopwatch.GetTimestamp();
     }
 
     private sealed class ProcessStepObservation(
@@ -392,7 +433,16 @@ internal sealed class ProcessObservability(
                 details.StepVersion);
         }
 
-        public void Dispose() => activity?.Dispose();
+        public void Dispose()
+        {
+            ProcessStepDurationHistogram.Record(
+                Stopwatch.GetElapsedTime(_startTimestamp).TotalSeconds,
+                CreateStepTags(processorName, details.StepName, details.StepVersion));
+
+            activity?.Dispose();
+        }
+
+        private readonly long _startTimestamp = Stopwatch.GetTimestamp();
     }
 
     private sealed class ProcessHandlerObservation(

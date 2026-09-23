@@ -21,7 +21,8 @@ public static class ProcessEndpointRouteBuilderExtensions
 
         if (registry is null)
         {
-            throw new KaleidoFrameworkException(
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.ProInvalidRegistration,
                 "Cannot map Process endpoints: Process runtime is not registered. " +
                 "This service has no process steps. Remove the MapProcessor() call.");
         }
@@ -288,6 +289,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                     nameof(MapUntypedStepExecutionEndpoint),
                     BindingFlags.NonPublic | BindingFlags.Static)
                 ?? throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.ReflectionError,
                     $"Method '{nameof(MapUntypedStepExecutionEndpoint)}' not found.");
 
             method
@@ -303,6 +305,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                     nameof(MapTypedStepExecutionEndpoint),
                     BindingFlags.NonPublic | BindingFlags.Static)
                 ?? throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.ReflectionError,
                     $"Method '{nameof(MapTypedStepExecutionEndpoint)}' not found.");
 
             method

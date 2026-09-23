@@ -20,32 +20,21 @@ public static class QueryableServiceCollectionExtensions
         if (!builder.Assemblies.Any())
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.MissingAssembly,
                 "At least one assembly must be registered before AddQueryable().");
         }
 
-        var types = builder.Assemblies
-            .Distinct()
-            .SelectMany(x => x.DefinedTypes)
-            .Where(x =>
-                x.IsClass &&
-                !x.IsAbstract &&
-                (
-                    x.IsPublic ||
-                    x.IsNestedPublic ||
-                    x.IsNotPublic ||
-                    x.IsNestedAssembly
-                ))
-            .Select(x => x.AsType())
-            .ToArray();
+        var types = builder.Assemblies.ScanTypes();
 
         var queryContextTypes =
             types
                 .Where(x =>
                     x.GetCustomAttribute<QueryContextAttribute>() is not null)
                 .Where(x =>
-                    ShouldIncludeQueryableType(
-                        x,
-                        builder.ServiceOptions.TypeFilter))
+                    x.PassesTypeFilter(
+                        builder.ServiceOptions.TypeFilter,
+                        ConfigurationErrorCodes.QryInvalidRegistration,
+                        "queryable type"))
                 .ToArray();
 
         if (queryContextTypes.Length == 0)
@@ -82,9 +71,10 @@ public static class QueryableServiceCollectionExtensions
                 .Where(x =>
                     x.GetCustomAttribute<QueryViewAttribute>() is not null)
                 .Where(x =>
-                    ShouldIncludeQueryableType(
-                        x,
-                        builder.ServiceOptions.TypeFilter))
+                    x.PassesTypeFilter(
+                        builder.ServiceOptions.TypeFilter,
+                        ConfigurationErrorCodes.QryInvalidRegistration,
+                        "queryable type"))
                 .ToArray();
 
         var delegatedQueryViewTypes =
@@ -158,22 +148,6 @@ public static class QueryableServiceCollectionExtensions
         return builder;
     }
 
-    private static bool ShouldIncludeQueryableType(
-        Type queryableType,
-        Func<Type, bool>? typeFilter)
-    {
-        try
-        {
-            return typeFilter?.Invoke(queryableType) ?? true;
-        }
-        catch (Exception exception)
-        {
-            throw new KaleidoConfigurationException(
-                $"Type filter failed for type '{queryableType.FullName}'.",
-                exception);
-        }
-    }
-
     private static void RegisterFrameworkServices(IServiceCollection services)
     {
         services.TryAddSingleton<IQueryContextValidator, QueryRequestValidator>();
@@ -202,21 +176,17 @@ public static class QueryableServiceCollectionExtensions
         var syncSources =
             typeList
                 .Where(x =>
-                    x.GetInterfaces()
-                        .Any(i =>
-                            i.IsGenericType &&
-                            i.GetGenericTypeDefinition() == typeof(IQueryContextSource<>) &&
-                            i.GenericTypeArguments[0] == contextType))
+                    x.ImplementsGenericInterfaceFor(
+                        contextType,
+                        typeof(IQueryContextSource<>)))
                 .ToArray();
 
         var asyncSources =
             typeList
                 .Where(x =>
-                    x.GetInterfaces()
-                        .Any(i =>
-                            i.IsGenericType &&
-                            i.GetGenericTypeDefinition() == typeof(IQueryContextSourceAsync<>) &&
-                            i.GenericTypeArguments[0] == contextType))
+                    x.ImplementsGenericInterfaceFor(
+                        contextType,
+                        typeof(IQueryContextSourceAsync<>)))
                 .ToArray();
 
         if (syncSources.Length > 1 || asyncSources.Length > 1)
@@ -254,30 +224,18 @@ public static class QueryableServiceCollectionExtensions
 
         var hasLocalSource =
             typeList.Any(x =>
-                x.GetInterfaces()
-                    .Any(i =>
-                        i.IsGenericType &&
-                        (
-                            i.GetGenericTypeDefinition() == typeof(IQueryContextSource<>) ||
-                            i.GetGenericTypeDefinition() == typeof(IQueryContextSourceAsync<>)
-                        ) &&
-                        i.GenericTypeArguments[0] == contextType));
+                x.ImplementsGenericInterfaceFor(
+                    contextType,
+                    typeof(IQueryContextSource<>),
+                    typeof(IQueryContextSourceAsync<>)));
 
         var localViewTypes =
             typeList
                 .Where(x =>
                     x.GetCustomAttribute<QueryViewAttribute>() is not null)
                 .SelectMany(x =>
-                    x.GetInterfaces()
-                        .Where(i =>
-                            i.IsGenericType &&
-                            (
-                                i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,>) ||
-                                i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,,>) ||
-                                i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,>) ||
-                                i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,,>)
-                            ) &&
-                            i.GenericTypeArguments[0] == contextType)
+                    x.GetViewSourceInterfaces()
+                        .Where(i => i.GenericTypeArguments[0] == contextType)
                         .Select(i => i.GenericTypeArguments[1]))
                 .Where(x => x != contextType)
                 .Distinct()
@@ -313,14 +271,7 @@ public static class QueryableServiceCollectionExtensions
     }
 
     private static bool IsDelegatedQueryView(Type queryViewType) =>
-        queryViewType
-            .GetInterfaces()
-            .Any(i =>
-                i.IsGenericType &&
-                (
-                    i.GetGenericTypeDefinition() == typeof(IDelegateQueryViewSource<,>) ||
-                    i.GetGenericTypeDefinition() == typeof(IDelegateQueryViewSource<,,>)
-                ));
+        queryViewType.GetDelegateViewSourceInterfaces().Length > 0;
 
     private static void RegisterDelegatedQueryView(
         IServiceCollection services,
@@ -329,15 +280,7 @@ public static class QueryableServiceCollectionExtensions
         services.TryAddScoped(queryViewType);
 
         var interfaces =
-            queryViewType
-                .GetInterfaces()
-                .Where(i =>
-                    i.IsGenericType &&
-                    (
-                        i.GetGenericTypeDefinition() == typeof(IDelegateQueryViewSource<,>) ||
-                        i.GetGenericTypeDefinition() == typeof(IDelegateQueryViewSource<,,>)
-                    ))
-                .ToArray();
+            queryViewType.GetDelegateViewSourceInterfaces();
 
         foreach (var queryViewInterface in interfaces)
         {
@@ -363,30 +306,15 @@ public static class QueryableServiceCollectionExtensions
         IEnumerable<Type> types)
     {
         var syncInterfaces =
-            queryViewType
-                .GetInterfaces()
-                .Where(i =>
-                    i.IsGenericType &&
-                    (
-                        i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,>) ||
-                        i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,,>)
-                    ))
-                .ToArray();
+            queryViewType.GetSyncViewSourceInterfaces();
 
         var asyncInterfaces =
-            queryViewType
-                .GetInterfaces()
-                .Where(i =>
-                    i.IsGenericType &&
-                    (
-                        i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,>) ||
-                        i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,,>)
-                    ))
-                .ToArray();
+            queryViewType.GetAsyncViewSourceInterfaces();
 
         if (syncInterfaces.Length == 0 && asyncInterfaces.Length == 0)
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
                 $"Query view '{queryViewType.FullName}' does not implement IQueryViewSource or IQueryViewSourceAsync.");
         }
 

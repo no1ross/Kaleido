@@ -90,9 +90,7 @@ internal sealed class StepCandidateBuilder(
 
             return instance;
         }
-        catch (Exception exception) when (
-            exception is JsonException ||
-            exception is NotSupportedException)
+        catch (JsonException exception)
         {
             candidate.MarkInvalid(
                 StepProcessingMessageCode.InvalidRequest,

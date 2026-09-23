@@ -1,12 +1,14 @@
 using Kaleido.Process.Context;
 using Kaleido.Provider.SQLite.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Provider.SQLite;
 
 internal sealed class SqliteProcessContextStore(
     SqliteProcessContextDbContext dbContext,
-    KaleidoServiceOptions serviceOptions)
+    KaleidoServiceOptions serviceOptions,
+    ILogger<SqliteProcessContextStore> logger)
     : IProcessContextStore
 {
     public async Task<ProcessorContext?> LoadAsync(
@@ -183,6 +185,11 @@ internal sealed class SqliteProcessContextStore(
 
         await transaction.CommitAsync(
             cancellationToken);
+
+        logger.LogDebug(
+            "Process context saved for process {ProcessId} ({StepCount} steps).",
+            context.ProcessId,
+            context.Steps.Count);
     }
 
     private static ProcessorContext ToProcessorContext(

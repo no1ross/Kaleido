@@ -2,11 +2,8 @@
 	<Import Project="../../build/packages.props" />
 
 	<ItemGroup>
-		<FrameworkReference Include="Microsoft.AspNetCore.App" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<ProjectReference Include="..\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\Kaleido.Http.Abstractions\Kaleido.Http.Abstractions.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

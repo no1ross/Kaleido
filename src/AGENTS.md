@@ -51,7 +51,7 @@ Changes here ripple into `Kaleido.Http` (server) and `Kaleido.Http.Client` (clie
 Owns typed HTTP clients for consuming remote Kaleido services:
 - `IKaleidoProcessClientFactory` / `KaleidoProcessClient`
 - `IKaleidoQueryableClientFactory` / `KaleidoQueryableClient`
-- `AddProcessClient(...)` / `AddQueryableClient(...)` builder extensions
+- `AddHttpClients()` — consumer-facing registration (config-driven `Kaleido:Clients`); `AddProcessClient(...)`/`AddQueryableClient(...)` are internal
 
 Does **not** own server-side runtime logic or endpoint mapping.
 

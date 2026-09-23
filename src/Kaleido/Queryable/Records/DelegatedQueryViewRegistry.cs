@@ -59,17 +59,22 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
 
     public DelegatedQueryViewRegistration GetRegistration(string name) =>
         Find(name)
-        ?? throw new KeyNotFoundException($"Delegated query view '{name}' is not registered.");
+        ?? throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.MissingRegistration,
+            $"Delegated query view '{name}' is not registered.");
 
     public DelegatedQueryViewRegistration GetRegistration(Type recordType) =>
         Find(recordType)
-        ?? throw new KeyNotFoundException($"Delegated query view '{recordType.FullName}' is not registered.");
+        ?? throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.MissingRegistration,
+            $"Delegated query view '{recordType.FullName}' is not registered.");
 
     private static DelegatedQueryViewRegistration BuildRegistration(Type queryViewType)
     {
         var queryViewAttribute =
             queryViewType.GetCustomAttribute<QueryViewAttribute>()
             ?? throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryMissingAttribute,
                 $"Query view '{queryViewType.Name}' is missing QueryViewAttribute.");
 
         var queryViewInterface =
@@ -113,6 +118,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
         var attribute =
             contextType.GetCustomAttribute<QueryContextAttribute>()
             ?? throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryMissingAttribute,
                 $"Delegated query view context '{contextType.Name}' is missing QueryContextAttribute.");
 
         var pageable =
@@ -177,6 +183,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
         if (string.IsNullOrWhiteSpace(attribute.DefaultSortField))
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
                 $"Query view '{attribute.Name}' is pageable and must define a DefaultSortField.");
         }
 
@@ -188,12 +195,14 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
         if (property is null)
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
                 $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' which does not exist on query context '{contextType.Name}'.");
         }
 
         if (property.GetCustomAttribute<SortableAttribute>() is null)
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
                 $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' but the field is not marked as sortable.");
         }
 

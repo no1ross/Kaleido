@@ -62,6 +62,6 @@ public sealed class DbContextDependencyTests
         Assert.NotNull(store);
 
         // Verify it's the SQLite implementation
-        Assert.Equal("Kaleido.Provider.SQLite.SqliteProcessContextStore", store.GetType().FullName);
+        Assert.IsType<SqliteProcessContextStore>(store);
     }
 }

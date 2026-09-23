@@ -111,7 +111,7 @@ public sealed class ProcessExecutionEndpointTests
             {
                 Steps =
                 [
-                    CreateStep(RuntimeStepNames.Root)
+                    CreateStep(RuntimeStepNames.Failing)
                 ]
             };
 
@@ -124,8 +124,16 @@ public sealed class ProcessExecutionEndpointTests
             await response.Content.ReadAsync<ProcessExecutionResponse>();
 
         Assert.NotNull(contract);
-        // Verify that errors are returned in the response
-        // This tests error propagation to HTTP responses
+
+        var result =
+            Assert.Single(
+                contract.Results,
+                x => x.StepName == RuntimeStepNames.Failing);
+
+        Assert.Contains(
+            result.Messages,
+            x => x.Code == "RuntimeFailingFailed"
+                 && x.Type == MessageType.Error);
     }
 
     private Task<HttpResponseMessage> PostWithProcessIdAsync<T>(string url, T body, Guid processId)

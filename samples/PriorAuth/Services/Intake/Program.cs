@@ -15,11 +15,13 @@ var builder = WebApplication.CreateBuilder(args);
 var intakeConnectionString =
     builder.Configuration.GetConnectionString("Intake")
     ?? throw new KaleidoConfigurationException(
+        ConfigurationErrorCodes.InvalidServiceName,
         "ConnectionStrings:Intake is required.");
 
 var processConnectionString =
     builder.Configuration.GetConnectionString("IntakeProcess")
     ?? throw new KaleidoConfigurationException(
+        ConfigurationErrorCodes.InvalidServiceName,
         "ConnectionStrings:IntakeProcess is required.");
 
 builder.Services.AddDbContext<IntakeDbContext>(

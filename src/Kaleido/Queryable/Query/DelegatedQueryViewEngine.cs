@@ -1,5 +1,4 @@
 using Kaleido.Queryable.Eventing;
-using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,6 +49,7 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
             if (request.ViewParametersType != registration.ViewParametersType)
             {
                 throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.TypeMismatch,
                     $"Delegated query view '{registration.QueryViewType.FullName}' expected parameters '{registration.ViewParametersType.FullName}', but request used '{request.ViewParametersType.FullName}'.");
             }
 
@@ -57,6 +57,7 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
                 (typeof(DelegatedQueryViewEngine<TDelegateContext, TView>)
                     .GetMethod(nameof(ExecuteTypedAsync), System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                     ?? throw new KaleidoFrameworkException(
+                        FrameworkErrorCodes.ReflectionError,
                         $"Could not locate method '{nameof(ExecuteTypedAsync)}' on DelegatedQueryViewEngine."))
                     .MakeGenericMethod(registration.ViewParametersType);
 
@@ -67,6 +68,7 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
             if (invocation is not Task<QueryResult<TView>> typedTask)
             {
                 throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.TypeMismatch,
                     $"Delegated query execution for view '{registration.QueryViewType.FullName}' did not return '{typeof(QueryResult<TView>).FullName}'.");
             }
 
@@ -88,7 +90,7 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
 
             return result;
         }
-        catch (QueryableValidationException exception)
+        catch (KaleidoValidationException exception)
         {
             observation.ValidationFailed(exception);
             throw;
@@ -115,12 +117,14 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
         if (source is not IDelegateQueryViewSource<TDelegateContext, TView, TParameters> delegatedSource)
         {
             throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.TypeMismatch,
                 $"Delegated query view '{registration.QueryViewType.FullName}' must implement '{typeof(IDelegateQueryViewSource<TDelegateContext, TView, TParameters>).FullName}'.");
         }
 
         if (request is not IQueryRequest<TParameters> typedRequest)
         {
             throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.TypeMismatch,
                 $"Delegated query view '{registration.QueryViewType.FullName}' expected request type '{typeof(IQueryRequest<TParameters>).FullName}'.");
         }
 

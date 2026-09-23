@@ -47,6 +47,7 @@ builder.Services.AddOpenTelemetry()
 var eventCollectorConnectionString =
     builder.Configuration.GetConnectionString("EventCollector")
     ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(
+        Kaleido.Exceptions.ConfigurationErrorCodes.InvalidServiceName,
         "ConnectionStrings:EventCollector is required.");
 
 builder.Services.AddDbContext<EventCollectorDbContext>(

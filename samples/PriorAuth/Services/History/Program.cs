@@ -1,4 +1,5 @@
 using Kaleido;
+using Kaleido.Exceptions;
 using Kaleido.Http;
 using Kaleido.Http.Process;
 using Kaleido.Http.Queryable;
@@ -11,7 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 var historyConnectionString =
     builder.Configuration.GetConnectionString("History")
-    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(
+    ?? throw new KaleidoConfigurationException(
+        ConfigurationErrorCodes.InvalidServiceName,
         "ConnectionStrings:History is required.");
 
 builder.Services.AddDbContext<HistoryDbContext>(

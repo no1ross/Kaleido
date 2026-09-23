@@ -25,6 +25,7 @@ internal static class RuntimeStepNames
     public const string RequiredStep = "RuntimeRequiredStep";
     public const string InvalidRequiredRoot = "RuntimeInvalidRequiredRoot";
     public const string AllowedStep = "RuntimeAllowedStep";
+    public const string Failing = "RuntimeFailing";
 }
 
 [ProcessStep(Name = RuntimeStepNames.Root, Description = "Runtime root step", Version = "1.0")]
@@ -57,6 +58,9 @@ public sealed record RuntimeInvalidRequiredRootStep;
 [DependsOnStep(typeof(RuntimeInvalidRequiredRootStep))]
 public sealed record RuntimeAllowedStep;
 
+[ProcessStep(Name = RuntimeStepNames.Failing, Description = "Runtime step that always fails", Version = "1.0")]
+public sealed record RuntimeFailingStep;
+
 public sealed record RuntimeRootStepResponse
 {
     public string Value { get; init; } = RuntimeStepNames.Root;
@@ -84,6 +88,8 @@ public sealed record RuntimeRequiredStepResponse;
 public sealed record RuntimeInvalidRequiredRootStepResponse;
 
 public sealed record RuntimeAllowedStepResponse;
+
+public sealed record RuntimeFailingStepResponse;
 
 public sealed class RuntimeRootStepHandler :
     IProcessStepHandler<RuntimeRootStep, RuntimeRootStepResponse>
@@ -196,5 +202,25 @@ public sealed class RuntimeAllowedStepHandler :
         return Task.FromResult(
             ProcessStepHandlerResult<RuntimeAllowedStepResponse>.Success(
                 new RuntimeAllowedStepResponse()));
+    }
+}
+
+public sealed class RuntimeFailingStepHandler :
+    IProcessStepHandler<RuntimeFailingStep, RuntimeFailingStepResponse>
+{
+    public Task<ProcessStepHandlerResult<RuntimeFailingStepResponse>> ExecuteAsync(
+        RuntimeFailingStep step,
+        ProcessStepContext context,
+        CancellationToken cancellationToken)
+    {
+        return Task.FromResult(
+            ProcessStepHandlerResult<RuntimeFailingStepResponse>.Failure(
+                new RuntimeFailingStepResponse(),
+                new ProcessMessage
+                {
+                    Code = "RuntimeFailingFailed",
+                    Type = MessageType.Error,
+                    Message = "Step intentionally failed."
+                }));
     }
 }

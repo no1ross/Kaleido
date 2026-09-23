@@ -55,10 +55,13 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
         var map = RouteOptionsMap;
         var optionsProperty = map.GetType().GetProperty("Options");
         if (optionsProperty == null)
-            throw new KaleidoFrameworkException("Route options map does not have 'Options' property.");
+            throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.ReflectionError,
+                "Route options map does not have 'Options' property.");
 
         return (Dictionary<string, string>)(optionsProperty.GetValue(map)
             ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.ReflectionError,
                 "Route options map 'Options' property returned null."));
     }
 

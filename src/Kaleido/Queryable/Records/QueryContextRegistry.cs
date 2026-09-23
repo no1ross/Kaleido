@@ -96,14 +96,16 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
     public QueryContextRegistration GetRegistration(string name)
     {
         return Find(name)
-            ?? throw new KeyNotFoundException(
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
                 $"Query context '{name}' is not registered.");
     }
 
     public QueryContextRegistration GetRegistration(Type contextType)
     {
         return Find(contextType)
-            ?? throw new KeyNotFoundException(
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
                 $"Query context type '{contextType.FullName}' is not registered.");
     }
 
@@ -154,16 +156,19 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
         {
             return allSources[0].ImplementationType
                 ?? throw new KaleidoConfigurationException(
+                    ConfigurationErrorCodes.QryMissingSource,
                     $"No implementation type registered for source of query context '{contextType.Name}'.");
         }
 
         if (allSources.Length > 1)
         {
             throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryDuplicateSource,
                 $"Query context '{contextType.Name}' has multiple registered local sources.");
         }
 
         throw new KaleidoConfigurationException(
+            ConfigurationErrorCodes.QryMissingSource,
             $"Query context '{contextType.Name}' does not have a registered source.");
     }
 
@@ -173,6 +178,7 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
         var attribute =
             contextType.GetCustomAttribute<QueryContextAttribute>()
             ?? throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryMissingAttribute,
                 $"Query context '{contextType.Name}' is missing QueryContextAttribute.");
 
         var pageable =

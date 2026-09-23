@@ -67,7 +67,7 @@ Owns shared HTTP contract types and HTTP-specific correlation primitives:
 Owns typed HTTP clients:
 - `IKaleidoProcessClientFactory` / `KaleidoProcessClient` for consuming remote process endpoints
 - `IKaleidoQueryableClientFactory` / `KaleidoQueryableClient` for consuming remote queryable endpoints
-- `AddProcessClient(...)` and `AddQueryableClient(...)` builder extensions
+- `AddHttpClients()` — consumer-facing registration (config-driven `Kaleido:Clients`); `AddProcessClient(...)`/`AddQueryableClient(...)` are internal
 
 ### Kaleido.Observability.OpenTelemetry
 Owns the OpenTelemetry observability provider (opt-in):
@@ -110,13 +110,26 @@ Owns the SQLite durable state provider:
 - For properties that can legitimately be null, make them nullable (`object?` instead of `object = null!`)
 - Use `.OfType<T>()` to filter nulls from collections instead of `!` on each element
 
+### Log levels
+Information logs must stay minimal — treat them as the "normal operations" view an operator reads without filtering. Target no more than 2–5 Information logs per request.
+- **Information** — boundary signals only: request-in/response-out equivalents (e.g. `ExecutionCompleted` — once per request) and once-per-service-lifetime events (e.g. registry built at startup). Never per-step or per-item logs.
+- **Debug** — all internals: step started/completed, context saves, source/view/materialization scopes, downstream fetch details, send/receive plumbing. This is what gets enabled when investigating by correlationId / requestId / processId.
+- **Warning** — cancellations, client disconnects, downstream non-success responses, validation failures.
+- **Error** — exceptions and failures only.
+- Do not promote internals to Information "for visibility" — if it fires more than once per request, it belongs at Debug.
+
 ### Exception handling
 - Always use custom exceptions from `Kaleido.Exceptions` namespace, never `InvalidOperationException`
-- `KaleidoFrameworkException` for framework integrity violations
-- Domain-specific exceptions for domain validation errors
+- `KaleidoValidationException` — 400 Bad Request; `Code` and `Message` are returned in the HTTP response body
+- `KaleidoConfigurationException` — 500; startup/DI misconfiguration; `Code` is log-only, `Message` is safe to surface
+- `KaleidoFrameworkException` — 500; internal integrity violation; `Code` is log-only, `Message` is safe to surface
+- `KaleidoHttpClientException` — client-side only, never reaches HTTP; carries `Code`, `StatusCode`, and `Errors`
 - Error codes are organized by domain:
-  - `KaleidoErrorCodes` (in `KaleidoErrorResponse.cs`) - framework-level HTTP error codes
-  - `QueryErrorCodes` (in `QueryableValidationException.cs`) - Queryable validation error codes
+  - `ValidationErrorCodes` (`KaleidoValidationException.cs`) — `qry_*` codes for queryable validation
+  - `ConfigurationErrorCodes` (`KaleidoConfigurationException.cs`) — `pro_*`/`qry_*`/unprefixed for startup errors
+  - `FrameworkErrorCodes` (`KaleidoFrameworkException.cs`) — internal integrity violation codes
+  - `HttpClientErrorCodes` (`KaleidoClientException.cs`) — `httpclient_*` codes for remote call failures
+  - `KaleidoErrorCodes` (`KaleidoErrorResponse.cs`) — shared HTTP error codes (`argument_error`, `framework_error`)
 
 ### OperationCanceledException and observability
 Never record `OperationCanceledException` as an execution failure — it inflates error metrics and triggers false alerts.

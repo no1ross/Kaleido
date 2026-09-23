@@ -1,7 +1,5 @@
 ﻿using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
-using Moq;
-using System.Xml.Linq;
 using Xunit;
 
 namespace Kaleido.Process.UnitTests.Processor.Planning;
@@ -233,12 +231,12 @@ public sealed class StepCandidatePlannerTests
             CreateRegistration<StepA>("step-a");
 
         var planner =
-            CreatePlanner(
-                (typeof(StepB), [dependency]));
+            CreatePlanner();
 
         var stepB =
             CreateCandidate<StepB>(
-                StepCandidateStatus.Built);
+                StepCandidateStatus.Built,
+                [dependency]);
 
         var result =
             planner.Build([stepB]);
@@ -289,12 +287,8 @@ public sealed class StepCandidatePlannerTests
             x => x.Status == StepCandidateStatus.Satisfied);
     }
 
-    private static StepCandidatePlanner CreatePlanner(
-        params (Type StepType, ProcessStepRegistration[] Dependencies)[] dependencies)
+    private static StepCandidatePlanner CreatePlanner()
     {
-        var registry =
-            new Mock<IProcessStepRegistry>();
-
         return new StepCandidatePlanner();
     }
 

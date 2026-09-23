@@ -82,9 +82,9 @@ public sealed class ProcessStepRegistryTests
             CreateRegistry(
                 typeof(StepA));
 
-        Assert.Throws<KeyNotFoundException>(() =>
-            registry.GetRegistration(
-                "missing"));
+        var ex = Assert.Throws<KaleidoFrameworkException>(() =>
+            registry.GetRegistration("missing"));
+        Assert.Equal(FrameworkErrorCodes.MissingRegistration, ex.Code);
     }
 
     [Fact]
@@ -94,9 +94,9 @@ public sealed class ProcessStepRegistryTests
             CreateRegistry(
                 typeof(StepA));
 
-        Assert.Throws<KeyNotFoundException>(() =>
-            registry.GetRegistration(
-                typeof(MissingStep)));
+        var ex = Assert.Throws<KaleidoFrameworkException>(() =>
+            registry.GetRegistration(typeof(MissingStep)));
+        Assert.Equal(FrameworkErrorCodes.MissingRegistration, ex.Code);
     }
 
     [Fact]

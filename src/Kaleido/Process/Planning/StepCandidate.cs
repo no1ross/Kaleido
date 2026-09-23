@@ -1,4 +1,5 @@
-﻿using Kaleido.Process.Registry;
+﻿using Kaleido.Exceptions;
+using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.Planning;
 
@@ -26,7 +27,11 @@ public sealed class StepCandidate
     public TStep GetStep<TStep>()
         where TStep : class
     {
-        return (TStep)Step!;
+        return Step is TStep step
+            ? step
+            : throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.TypeMismatch,
+                $"Step candidate '{StepName}' has no hydrated step of type '{typeof(TStep).Name}'.");
     }
 
     public void AddMessage(

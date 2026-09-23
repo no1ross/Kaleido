@@ -2,7 +2,6 @@
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;
-using Moq;
 using Xunit;
 
 namespace Kaleido.Process.UnitTests.Processor.Planning;
@@ -116,11 +115,10 @@ public sealed class StepCandidateConsistencyCheckerTests
             CreateRegistration<StepA>("step-a");
 
         var target =
-            CreateRegistration<StepB>("step-b");
+            CreateRegistration<StepB>("step-b", [dependency]);
 
         var checker =
-            CreateChecker(
-                (typeof(StepB), [dependency]));
+            CreateChecker();
 
         var candidate =
             CreateCandidate(target);
@@ -154,11 +152,10 @@ public sealed class StepCandidateConsistencyCheckerTests
             CreateRegistration<StepA>("step-a");
 
         var target =
-            CreateRegistration<StepB>("step-b");
+            CreateRegistration<StepB>("step-b", [dependency]);
 
         var checker =
-            CreateChecker(
-                (typeof(StepB), [dependency]));
+            CreateChecker();
 
         var dependencyCandidate =
             CreateCandidate(dependency);
@@ -190,8 +187,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             CreateRegistration<StepB>("step-b", [dependency]);
 
         var checker =
-            CreateChecker(
-                (typeof(StepB), [dependency]));
+            CreateChecker();
 
         var dependencyCandidate =
             new StepCandidate
@@ -272,8 +268,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             CreateRegistration<StepC>("step-c", [stepA, stepB]);
 
         var checker =
-            CreateChecker(
-                (typeof(StepC), [stepA, stepB]));
+            CreateChecker();
 
         var candidate =
             CreateCandidate(stepC);
@@ -396,7 +391,10 @@ public sealed class StepCandidateConsistencyCheckerTests
             ProcessorName = "test-processor"
         };
 
-        // This should ideally throw for circular dependency, but currently doesn't
+        // KNOWN-BROKEN: circular dependency detection is not implemented.
+        // This test asserts current behavior — if a future fix detects the
+        // cycle and marks candidates invalid, update this test accordingly
+        // (it is not a regression).
         checker.Validate([candidateA, candidateB], context);
 
         // Both candidates remain valid (current behavior)
@@ -404,8 +402,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         Assert.Equal(StepCandidateStatus.Built, candidateB.Status);
     }
 
-    private static StepCandidateConsistencyChecker CreateChecker(
-        params (Type StepType, ProcessStepRegistration[] Dependencies)[] registrations)
+    private static StepCandidateConsistencyChecker CreateChecker()
     {
         return new StepCandidateConsistencyChecker();
     }

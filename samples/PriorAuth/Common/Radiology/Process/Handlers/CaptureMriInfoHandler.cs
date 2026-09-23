@@ -1,3 +1,4 @@
+using Kaleido.Http.Client;
 using Kaleido.Http.Client.Queryable;
 using Kaleido.Process.Execution;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
@@ -65,7 +66,7 @@ public sealed class CaptureMriInfoHandler(
                     requestedService.ResolvedCodeSystem,
                     requestedService.ResolvedCodeValue));
         }
-        catch (KaleidoQueryableClientException ex)
+        catch (KaleidoHttpClientException ex)
         {
             return ProcessStepHandlerResult.Failure(
                 RadiologyProcessMessages.QueryableRequestFailed(

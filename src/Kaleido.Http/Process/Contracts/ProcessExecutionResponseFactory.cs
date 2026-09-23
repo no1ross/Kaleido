@@ -39,6 +39,7 @@ public static class ProcessExecutionResponseFactory
                         {
                             var registration = registry.Find(stepName)
                                 ?? throw new KaleidoFrameworkException(
+                                    FrameworkErrorCodes.MissingRegistration,
                                     $"Available step '{stepName}' was not found in the local registry.");
                             return ProcessContractMapper.ToSummary(
                                 ProcessRegistryProjection.ProjectSummary(registration),
@@ -110,6 +111,7 @@ public static class StepExecutionResponseFactory
                         {
                             var registration = registry.Find(stepName)
                                 ?? throw new KaleidoFrameworkException(
+                                    FrameworkErrorCodes.MissingRegistration,
                                     $"Available step '{stepName}' was not found in the local registry.");
                             return ProcessContractMapper.ToSummary(
                                 ProcessRegistryProjection.ProjectSummary(registration),

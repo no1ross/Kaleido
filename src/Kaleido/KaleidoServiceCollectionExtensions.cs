@@ -1,6 +1,9 @@
+using Kaleido.Process;
+using Kaleido.Queryable;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido;
 
@@ -21,6 +24,10 @@ public static class KaleidoServiceCollectionExtensions
         KaleidoServiceOptions.Validate(serviceOptions);
         services.AddSingleton(serviceOptions);
 
+        // TryAdd-based: registers ILoggerFactory/ILogger<T> when the host hasn't —
+        // provider configuration via ILoggingBuilder still applies normally.
+        services.AddLogging();
+
         services.AddScoped<KaleidoCorrelationContextAccessor>();
         services.TryAddScoped<IKaleidoCorrelationContextAccessor>(
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
@@ -31,8 +38,8 @@ public static class KaleidoServiceCollectionExtensions
         var builder = new KaleidoBuilder(services, configuration, serviceOptions);
 
         // Automatically register Process and Queryable runtimes
-        Kaleido.Process.ProcessServiceCollectionExtensions.AddProcessor(builder);
-        Kaleido.Queryable.QueryableServiceCollectionExtensions.AddQueryable(builder);
+        builder.AddProcessor();
+        builder.AddQueryable();
 
         return builder;
     }

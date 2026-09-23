@@ -1,4 +1,3 @@
-using Kaleido.Queryable.Exceptions;
 using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Query;
@@ -68,16 +67,18 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
         var offset = request.Query?.Page?.Offset ?? 0;
 
+        var fields = new FieldLookup(metadata);
+
         return new CompiledRecordQuery(
-            CompileFilter(request.Query?.Filter, metadata),
+            CompileFilter(request.Query?.Filter, fields),
             CompileSearch(request.Query?.SearchText, metadata),
-            CompileSort(request.Query?.Sort, metadata),
+            CompileSort(request.Query?.Sort, fields),
             new CompiledPage(size, offset));
     }
 
     private static CompiledFilterExpression? CompileFilter(
         QueryFilterNode? node,
-        QueryContextMetadata metadata)
+        FieldLookup fields)
     {
         if (node is null)
         {
@@ -86,7 +87,8 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
         if (node.Condition is not null && node.Group is not null)
         {
-            throw new InvalidFilterNodeException(
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidFilterNode,
                 "Filter node cannot specify both Condition and Group.");
         }
 
@@ -94,36 +96,37 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
         {
             return CompileFilterCondition(
                 node.Condition,
-                metadata);
+                fields);
         }
 
         if (node.Group is not null)
         {
             return CompileFilterGroup(
                 node.Group,
-                metadata);
+                fields);
         }
 
-        throw new InvalidFilterNodeException(
+        throw new KaleidoValidationException(
+            ValidationErrorCodes.QryInvalidFilterNode,
             "Filter node must specify either Condition or Group.");
     }
 
     private static CompiledFilterCondition CompileFilterCondition(
         QueryFilterCondition condition,
-        QueryContextMetadata metadata)
+        FieldLookup fields)
     {
         return new CompiledFilterCondition(
-            GetField(metadata, condition.Field),
+            fields.Get(condition.Field),
             condition.Operator,
             condition.Values);
     }
 
     private static CompiledFilterGroup CompileFilterGroup(
         QueryFilterGroup group,
-        QueryContextMetadata metadata)
+        FieldLookup fields)
     {
         var compiledFilters = group.Filters
-            .Select(x => CompileFilter(x, metadata))
+            .Select(x => CompileFilter(x, fields))
             .OfType<CompiledFilterExpression>()
             .ToArray();
 
@@ -149,6 +152,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
                 if (x.MatchMode is null)
                 {
                     throw new KaleidoFrameworkException(
+                        FrameworkErrorCodes.TypeMismatch,
                         $"Field '{x.Name}' is marked as searchable but has no MatchMode configured.");
                 }
 
@@ -166,7 +170,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
     private static IReadOnlyList<CompiledSort> CompileSort(
         IReadOnlyList<QuerySort>? sorts,
-        QueryContextMetadata metadata)
+        FieldLookup fields)
     {
         if (sorts is null || sorts.Count == 0)
         {
@@ -177,21 +181,34 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
             .OrderBy(x => x.Sequence ?? int.MaxValue)
             .Select((x, index) =>
                 new CompiledSort(
-                    GetField(metadata, x.Field),
+                    fields.Get(x.Field),
                     x.Direction,
                     index))
             .ToArray();
     }
 
-    private static FieldMetadata GetField(QueryContextMetadata metadata, string fieldName)
+    private sealed class FieldLookup
     {
-        var field = metadata.Fields.SingleOrDefault(x =>
-            string.Equals(
-                x.Name,
-                fieldName,
-                StringComparison.OrdinalIgnoreCase));
+        private readonly Dictionary<string, FieldMetadata> _byName;
 
-        return field
-            ?? throw new InvalidFieldException(fieldName, metadata.Name);
+        public FieldLookup(
+            QueryContextMetadata metadata)
+        {
+            Metadata = metadata;
+            _byName =
+                metadata.Fields.ToDictionary(
+                    x => x.Name,
+                    StringComparer.OrdinalIgnoreCase);
+        }
+
+        public QueryContextMetadata Metadata { get; }
+
+        public FieldMetadata Get(
+            string name) =>
+            _byName.TryGetValue(name, out var field)
+                ? field
+                : throw new KaleidoValidationException(
+                    ValidationErrorCodes.QryInvalidField,
+                    $"Field '{name}' does not exist on record '{Metadata.Name}'.");
     }
 }

@@ -24,21 +24,6 @@ public sealed class ProcessObservabilityTests
     }
 
     [Fact]
-    public void BeginExecution_ReturnsObservationThatAcceptsExecutionEvents()
-    {
-        var observability = CreateObservability();
-
-        using var observation =
-            observability.BeginExecution(
-                new ProcessExecutionObservationDetails(2));
-
-        observation.ContextInitialized(Guid.NewGuid());
-        observation.ContextLoaded(Guid.NewGuid());
-        observation.PlanBuilt(3, 2);
-        observation.ExecutionFailed(new InvalidOperationException("boom"));
-    }
-
-    [Fact]
     public void Observation_EmitsExpectedMetrics()
     {
         using var listener = new MeterListener();
@@ -118,25 +103,6 @@ public sealed class ProcessObservabilityTests
     }
 
     [Fact]
-    public void BeginStep_ReturnsObservationThatAcceptsStepEvents()
-    {
-        var observability = CreateObservability();
-
-        using var observation =
-            observability.BeginStep(
-                new ProcessStepObservationDetails(
-                    "Step-A",
-                    "1.0.0"));
-
-        observation.DecisionRecorded(
-            "Complete",
-            "Completed");
-
-        observation.Canceled();
-        observation.StepFailed(new InvalidOperationException("boom"));
-    }
-
-    [Fact]
     public void BeginHandler_WhenDetailsIsNull_Throws()
     {
         var observability = CreateObservability();
@@ -148,21 +114,6 @@ public sealed class ProcessObservabilityTests
         Assert.Equal(
             "details",
             exception.ParamName);
-    }
-
-    [Fact]
-    public void BeginHandler_ReturnsObservationThatAcceptsHandlerFailures()
-    {
-        var observability = CreateObservability();
-
-        using var observation =
-            observability.BeginHandler(
-                new ProcessHandlerObservationDetails(
-                    "Step-A",
-                    "1.0.0"));
-
-        observation.HandlerFailed(
-            new InvalidOperationException("boom"));
     }
 
     [Fact]

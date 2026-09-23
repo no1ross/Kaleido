@@ -9,6 +9,7 @@ using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;
+using Kaleido.Http.Client;
 using Kaleido.Http.Client.Queryable;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
@@ -177,9 +178,9 @@ public sealed class StartRadiologyIntakeHandler(
                 },
                 requiredStep: routing.RequiredStep);
         }
-        catch (KaleidoQueryableClientException ex)
+        catch (KaleidoHttpClientException ex)
         {
-            Console.WriteLine($"[Radiology StartRadiologyIntake] KaleidoQueryableClientException caught for process {context.ProcessId}: {ex.Message}");
+            Console.WriteLine($"[Radiology StartRadiologyIntake] KaleidoHttpClientException caught for process {context.ProcessId}: {ex.Message}");
             return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
                 new StartRadiologyIntakeResponse(),
                 RadiologyProcessMessages.QueryableRequestFailed(
