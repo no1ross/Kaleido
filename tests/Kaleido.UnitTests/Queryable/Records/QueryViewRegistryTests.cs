@@ -1,9 +1,7 @@
-using Kaleido.Exceptions;
-using Kaleido.Queryable.Attributes;
-using Kaleido.Queryable.Metadata;
-using Kaleido.Queryable.Records;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Kaleido.Exceptions;
+using Kaleido.Queryable.Records;
 
 namespace Kaleido.Queryable.UnitTests.Records;
 
@@ -12,7 +10,7 @@ public sealed class QueryViewRegistryTests
     [Fact]
     public void Constructor_BuildsRegistrationMetadata()
     {
-        var registry = new QueryViewRegistry(new Microsoft.Extensions.DependencyInjection.ServiceCollection(), [typeof(TestView)]);
+        var registry = new QueryViewRegistry([typeof(TestView)]);
 
         var registration = Assert.Single(registry.Registrations);
 
@@ -29,7 +27,7 @@ public sealed class QueryViewRegistryTests
     [Fact]
     public void Constructor_BuildsParameterMetadata()
     {
-        var registry = new QueryViewRegistry(new Microsoft.Extensions.DependencyInjection.ServiceCollection(), [typeof(TestView)]);
+        var registry = new QueryViewRegistry([typeof(TestView)]);
 
         var parameter = Assert.Single(registry.GetRegistration(typeof(TestView)).Metadata.Parameters!);
 
@@ -48,7 +46,7 @@ public sealed class QueryViewRegistryTests
     [Fact]
     public void Constructor_UsesEmptyParametersForTwoGenericArgumentView()
     {
-        var registry = new QueryViewRegistry(new Microsoft.Extensions.DependencyInjection.ServiceCollection(), [typeof(SimpleView)]);
+        var registry = new QueryViewRegistry([typeof(SimpleView)]);
 
         var registration = registry.GetRegistration(typeof(SimpleView));
 
@@ -61,7 +59,7 @@ public sealed class QueryViewRegistryTests
     public void Constructor_WhenPageableViewMissingDefaultSortField_Throws()
     {
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            new QueryViewRegistry(new Microsoft.Extensions.DependencyInjection.ServiceCollection(), [typeof(MissingSortView)]));
+            new QueryViewRegistry([typeof(MissingSortView)]));
 
         Assert.Contains("must define a DefaultSortField", exception.Message);
     }
@@ -70,7 +68,7 @@ public sealed class QueryViewRegistryTests
     public void Constructor_WhenDefaultSortFieldIsNotSortable_Throws()
     {
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            new QueryViewRegistry(new Microsoft.Extensions.DependencyInjection.ServiceCollection(), [typeof(NotSortableView)]));
+            new QueryViewRegistry([typeof(NotSortableView)]));
 
         Assert.Contains("not marked as sortable", exception.Message);
     }
@@ -78,7 +76,7 @@ public sealed class QueryViewRegistryTests
     [Fact]
     public void FindAndGetRegistration_AreCaseInsensitiveByName()
     {
-        var registry = new QueryViewRegistry(new Microsoft.Extensions.DependencyInjection.ServiceCollection(), [typeof(TestView)]);
+        var registry = new QueryViewRegistry([typeof(TestView)]);
 
         Assert.NotNull(registry.Find("TEST-VIEW"));
         Assert.Equal(typeof(TestView), registry.GetRegistration("test-view").QueryViewType);

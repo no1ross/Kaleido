@@ -3,7 +3,6 @@ using Kaleido.Queryable.Query;
 using Kaleido.Samples.ECommerce.Data.QueryContexts;
 using Kaleido.Samples.ECommerce.Data.QueryViewSources.Parameters;
 using Kaleido.Samples.ECommerce.Data.QueryViewSources.Views;
-using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.ECommerce.Data.QueryViewSources;
 
@@ -26,7 +25,9 @@ internal sealed class ShoppingCartDetailViewSource
             executionContext.TryGetViewParameters<ShoppingCartViewParameters>();
 
         if (parameters is null)
+        {
             parameters = new ShoppingCartViewParameters();
+        }
 
         if (parameters.ProcessId is null &&
             parameters.CustomerId is null)

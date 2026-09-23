@@ -1,5 +1,4 @@
-﻿using Kaleido.Exceptions;
-using Kaleido.Process.Registry;
+﻿using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.Planning;
 
@@ -11,7 +10,7 @@ public sealed class StepCandidate
 
     public ProcessStepRegistration? Registration { get; init; }
 
-    public bool IncludedInExecutionPlan { get; set; } = false;
+    public bool IncludedInExecutionPlan { get; set; }
 
     public object? Step { get; set; }
 

@@ -1,3 +1,4 @@
+using System.Reflection;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Metadata;
@@ -7,7 +8,6 @@ using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using System.Reflection;
 
 namespace Kaleido.Queryable;
 
@@ -91,8 +91,7 @@ public static class QueryableServiceCollectionExtensions
         {
             RegisterQueryView(
                 builder.Services,
-                viewType,
-                types);
+                viewType);
         }
 
         foreach (var viewType in delegatedQueryViewTypes)
@@ -133,7 +132,6 @@ public static class QueryableServiceCollectionExtensions
                     builder.Services);
 
                 return new QueryViewRegistry(
-                    builder.Services,
                     localQueryViewTypes);
             });
 
@@ -241,7 +239,6 @@ public static class QueryableServiceCollectionExtensions
                 .Distinct()
                 .ToArray();
 
-
         if (hasLocalSource)
         {
             services.TryAddScoped(
@@ -302,8 +299,7 @@ public static class QueryableServiceCollectionExtensions
 
     private static void RegisterQueryView(
         IServiceCollection services,
-        Type queryViewType,
-        IEnumerable<Type> types)
+        Type queryViewType)
     {
         var syncInterfaces =
             queryViewType.GetSyncViewSourceInterfaces();

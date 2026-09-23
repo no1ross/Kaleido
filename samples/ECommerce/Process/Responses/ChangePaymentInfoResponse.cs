@@ -1,6 +1,4 @@
-﻿using Kaleido.Samples.ECommerce.Process;
-
-namespace Kaleido.Samples.ECommerce.Process.Responses;
+﻿namespace Kaleido.Samples.ECommerce.Process.Responses;
 
 public sealed record ChangePaymentInfoResponse
 {

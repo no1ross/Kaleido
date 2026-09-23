@@ -1,6 +1,4 @@
-﻿using Kaleido.Samples.ECommerce.Process;
-
-namespace Kaleido.Samples.ECommerce.Process.Responses;
+﻿namespace Kaleido.Samples.ECommerce.Process.Responses;
 
 public sealed record SubmitBillingResponse
 {
@@ -10,5 +8,5 @@ public sealed record SubmitBillingResponse
 
     public required bool Accepted { get; init; }
     public decimal? AuthorizedAmount { get; internal set; }
-    public string[] ValidationWarnings { get; internal set; }
+    public string[] ValidationWarnings { get; internal set; } = [];
 }

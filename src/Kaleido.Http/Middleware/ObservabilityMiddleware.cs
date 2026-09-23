@@ -1,7 +1,7 @@
+using System.Diagnostics;
 using Kaleido.Http.Observability;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using System.Diagnostics;
 
 namespace Kaleido.Http.Middleware;
 
@@ -27,10 +27,14 @@ internal sealed class ObservabilityMiddleware(RequestDelegate next)
             activity.SetTag(KaleidoTelemetryTags.SourceProcessor, correlation.SourceProcessorName);
 
             if (correlation.ProcessId.HasValue)
+            {
                 activity.SetTag(ProcessTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
+            }
 
             if (!string.IsNullOrWhiteSpace(correlation.StepName))
+            {
                 activity.SetTag(ProcessTelemetry.TagStepName, correlation.StepName);
+            }
         }
 
         // Echo the full correlation context on the response so callers can correlate
@@ -43,16 +47,24 @@ internal sealed class ObservabilityMiddleware(RequestDelegate next)
             headers[KaleidoCorrelationHeaders.RequestId] = correlation.RequestId;
 
             if (correlation.ProcessId.HasValue)
+            {
                 headers[KaleidoCorrelationHeaders.ProcessId] = correlation.ProcessId.Value.ToString();
+            }
 
             if (correlation.ProcessorInstanceId.HasValue)
+            {
                 headers[KaleidoCorrelationHeaders.ProcessorInstanceId] = correlation.ProcessorInstanceId.Value.ToString();
+            }
 
             if (!string.IsNullOrWhiteSpace(correlation.SourceProcessorName))
+            {
                 headers[KaleidoCorrelationHeaders.SourceProcessor] = correlation.SourceProcessorName;
+            }
 
             if (!string.IsNullOrWhiteSpace(correlation.StepName))
+            {
                 headers[KaleidoCorrelationHeaders.StepName] = correlation.StepName;
+            }
 
             return Task.CompletedTask;
         });

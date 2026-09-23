@@ -1,4 +1,4 @@
-using Kaleido;
+using System.Reflection;
 using Kaleido.Process.Attributes;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
@@ -9,7 +9,6 @@ using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using System.Reflection;
 
 namespace Kaleido.Process;
 

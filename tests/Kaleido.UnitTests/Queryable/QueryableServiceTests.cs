@@ -1,10 +1,6 @@
 using Kaleido.Exceptions;
-using Kaleido.Queryable.Metadata;
-using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
-using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
-using Moq;
 
 namespace Kaleido.Queryable.UnitTests;
 

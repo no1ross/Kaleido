@@ -1,13 +1,10 @@
-using Kaleido.Http.Queryable.Contracts;
-using Kaleido.Queryable.Metadata;
-using Kaleido.Queryable.Query;
+using System.Reflection;
 using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Reflection;
 
 namespace Kaleido.Http.Queryable;
 
@@ -121,8 +118,7 @@ public static class QueryableEndpointRouteBuilderExtensions
             if (context.Metadata.Kind == QueryContextKind.Direct)
             {
                 group.MapDirectQueryContext(
-                    context,
-                    serviceName);
+                    context);
             }
         }
 
@@ -180,8 +176,7 @@ public static class QueryableEndpointRouteBuilderExtensions
 
     private static void MapDirectQueryContext(
         this IEndpointRouteBuilder endpoints,
-        QueryContextRegistration context,
-        string serviceName)
+        QueryContextRegistration context)
     {
         var method = typeof(QueryableEndpointRouteBuilderExtensions)
             .GetMethod(

@@ -1,7 +1,6 @@
-using Kaleido;
-using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 using System.Reflection;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Process.Registry;
 

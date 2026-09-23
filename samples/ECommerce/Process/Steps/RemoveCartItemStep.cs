@@ -1,6 +1,6 @@
-﻿using Kaleido.Process.Attributes;
+﻿using System.ComponentModel.DataAnnotations;
+using Kaleido.Process.Attributes;
 using Kaleido.Samples.ECommerce.Steps;
-using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.ECommerce.Process.Steps;
 
@@ -20,5 +20,4 @@ public sealed record RemoveCartItemStep
     [Required]
     public required Guid ShoppingCartItemId { get; init; }
 }
-
 

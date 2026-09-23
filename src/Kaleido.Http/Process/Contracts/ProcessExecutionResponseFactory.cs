@@ -1,4 +1,3 @@
-using Kaleido;
 using Kaleido.Process;
 using Kaleido.Process.Registry;
 
@@ -53,8 +52,7 @@ public static class ProcessExecutionResponseFactory
                         x.ExecutionStatus != StepExecutionStatus.Pending ||
                         x.RuntimeMessages.Count > 0 ||
                         x.BusinessMessages.Count > 0)
-                    .Select(x =>
-                        ProcessExecutionStepResponseFactory.Create(x))
+                    .Select(ProcessExecutionStepResponseFactory.Create)
                     .ToArray()
         };
     }

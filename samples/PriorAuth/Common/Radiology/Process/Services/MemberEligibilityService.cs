@@ -1,6 +1,4 @@
 using Kaleido.Process;
-using Kaleido.Http.Client;
-using Kaleido.Samples.PriorAuth.Configuration;
 using Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Views;
 using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Views;
 using Kaleido.Samples.PriorAuth.Radiology.Data;

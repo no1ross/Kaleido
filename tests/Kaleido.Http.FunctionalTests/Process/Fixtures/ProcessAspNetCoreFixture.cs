@@ -1,7 +1,5 @@
-using Kaleido.Http;
 using Kaleido.Http.Client;
 using Kaleido.Http.Process;
-using Kaleido.Json;
 using Kaleido.Observability;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -9,7 +7,6 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.Reflection;
 
 namespace Kaleido.Process.AspNetCore.FunctionalTests.Fixtures;
 

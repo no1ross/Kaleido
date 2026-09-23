@@ -1,14 +1,12 @@
 using Kaleido.Samples.PriorAuth.ReferenceData.Data;
 using Kaleido.Samples.PriorAuth.ReferenceData.Data.Entities;
 using Kaleido.Samples.PriorAuth.Seeder.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Samples.PriorAuth.Seeder.ReferenceData;
 
 internal sealed class ReferenceDataSeeder(
-    ServiceProjectContextFactory projectContextFactory,
-    JsonAssetLoader jsonAssetLoader)
+    ServiceProjectContextFactory projectContextFactory)
     : IDomainSeeder
 {
     public SupportedDomain Domain => SupportedDomain.ReferenceData;
@@ -30,32 +28,32 @@ internal sealed class ReferenceDataSeeder(
         await dbContext.Database.EnsureCreatedAsync(cancellationToken);
 
         var states =
-            jsonAssetLoader.Load<List<State>>(
+            JsonAssetLoader.Load<List<State>>(
                 Path.Combine(
                     "referencedata",
                     "states.json"));
 
         var zipCodes =
-            jsonAssetLoader.Load<List<ZipCode>>(
+            JsonAssetLoader.Load<List<ZipCode>>(
                 Path.Combine(
                     "referencedata",
                     "zipcodes.json"));
 
         var plans =
-            jsonAssetLoader.Load<List<Plan>>(
+            JsonAssetLoader.Load<List<Plan>>(
                 Path.Combine(
                     "referencedata",
                     "plans.json"),
-                jsonAssetLoader.CreateEnumJsonOptions());
+                JsonAssetLoader.CreateEnumJsonOptions());
 
         var networks =
-            jsonAssetLoader.Load<List<Network>>(
+            JsonAssetLoader.Load<List<Network>>(
                 Path.Combine(
                     "referencedata",
                     "networks.json"));
 
         var planNetworks =
-            jsonAssetLoader.Load<List<PlanNetwork>>(
+            JsonAssetLoader.Load<List<PlanNetwork>>(
                 Path.Combine(
                     "referencedata",
                     "plan-networks.json"));

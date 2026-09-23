@@ -1,9 +1,7 @@
-using Kaleido.Observability;
 using Kaleido.Process;
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
 
 namespace Kaleido.Http.Process.Services;
 

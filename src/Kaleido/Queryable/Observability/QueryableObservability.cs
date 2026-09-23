@@ -1,9 +1,7 @@
-using Kaleido;
-using Kaleido.Observability;
-using Kaleido.Process.Observability;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using Kaleido.Process.Observability;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Queryable.Observability;
 
@@ -117,7 +115,9 @@ internal sealed class QueryableObservability(
         activity?.SetTag(KaleidoTelemetryTags.SourceProcessor, correlation.SourceProcessorName);
 
         if (correlation.ProcessId.HasValue)
+        {
             activity?.SetTag(ProcessTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
+        }
 
         activity?.SetTag(QueryableTelemetry.TagQueryContext, details.QueryContextName);
         activity?.SetTag(QueryableTelemetry.TagQueryView, details.QueryViewName);
@@ -149,7 +149,9 @@ internal sealed class QueryableObservability(
         ];
 
         if (!string.IsNullOrWhiteSpace(details.QueryViewName))
+        {
             tags.Add("query.view", details.QueryViewName);
+        }
 
         return tags;
     }
@@ -204,10 +206,14 @@ internal sealed class QueryableObservability(
             QueryReturnedCountHistogram.Record(returnedCount, tags);
 
             if (pageSize is not null)
+            {
                 QueryPageSizeHistogram.Record(pageSize.Value, tags);
+            }
 
             if (pageOffset is not null)
+            {
                 QueryPageOffsetHistogram.Record(pageOffset.Value, tags);
+            }
 
             logger.LogDebug(
                 "Queryable materialization completed for context {QueryContextName} view {QueryViewName} total {TotalCount} returned {ReturnedCount} pageSize {PageSize} pageOffset {PageOffset}.",

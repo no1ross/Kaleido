@@ -1,7 +1,4 @@
 using Kaleido.Process;
-using Kaleido.Samples.PriorAuth.Configuration;
-using Kaleido.Samples.PriorAuth;
-using Kaleido.Samples.PriorAuth.CodeSet;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Messages;
 

@@ -1,6 +1,5 @@
-using Kaleido.Process.Attributes;
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
+using Kaleido.Process.Attributes;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 

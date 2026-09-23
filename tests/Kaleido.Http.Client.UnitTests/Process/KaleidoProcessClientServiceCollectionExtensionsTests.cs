@@ -1,8 +1,8 @@
+using System.Reflection;
 using Kaleido.Http.Client.Process;
 using Kaleido.Http.Process;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
 namespace Kaleido.Process.Http.Client.Tests;
 
@@ -230,6 +230,5 @@ public sealed class KaleidoProcessClientServiceCollectionExtensionsTests
         public KaleidoServiceOptions ServiceOptions { get; } =
             new() { ServiceName = "test" };
     }
-
 
 }

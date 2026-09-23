@@ -1,6 +1,5 @@
-using Kaleido.Process.Attributes;
-using Kaleido.Samples.PriorAuth.Radiology;
 using System.ComponentModel.DataAnnotations;
+using Kaleido.Process.Attributes;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 

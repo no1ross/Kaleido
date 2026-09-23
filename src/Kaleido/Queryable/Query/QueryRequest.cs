@@ -1,5 +1,3 @@
-using Kaleido.Queryable.Metadata;
-
 namespace Kaleido.Queryable.Query;
 
 public interface IQueryRequest<TParameters> : IQueryRequest

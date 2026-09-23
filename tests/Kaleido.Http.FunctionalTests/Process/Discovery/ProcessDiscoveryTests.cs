@@ -1,7 +1,7 @@
+using System.Net;
 using Kaleido.Http.Process.Contracts;
 using Kaleido.Process.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
-using System.Net;
 
 namespace Kaleido.Process.AspNetCore.FunctionalTests.Discovery;
 

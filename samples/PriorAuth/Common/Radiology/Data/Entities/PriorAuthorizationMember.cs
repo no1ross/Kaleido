@@ -1,5 +1,3 @@
-using Kaleido.Samples.PriorAuth.Member;
-
 namespace Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 
 public sealed class PriorAuthorizationMember

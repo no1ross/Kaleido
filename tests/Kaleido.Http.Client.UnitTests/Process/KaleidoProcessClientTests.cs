@@ -1,10 +1,7 @@
 using Kaleido.Http.Client;
 using Kaleido.Http.Client.Process;
 using Kaleido.Http.Process.Contracts;
-using Kaleido.Observability;
-using Kaleido.Process.Registry;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq.Protected;
 
 namespace Kaleido.Process.Http.Client.Tests;
 
@@ -132,7 +129,10 @@ public sealed class KaleidoProcessClientTests
             callUrls.Add(req.RequestUri!.PathAndQuery);
             callCount++;
             if (callCount == 1)
+            {
                 return JsonOk(new[] { FakeProcessor });
+            }
+
             return JsonOk(FakeStep);
         });
 
@@ -161,7 +161,10 @@ public sealed class KaleidoProcessClientTests
         {
             callCount++;
             if (callCount == 1)
+            {
                 return JsonOk(new[] { FakeProcessor });
+            }
+
             return new HttpResponseMessage(HttpStatusCode.InternalServerError);
         });
 
@@ -239,7 +242,10 @@ public sealed class KaleidoProcessClientTests
         {
             callCount++;
             if (callCount == 1)
+            {
                 return JsonOk(new[] { FakeProcessor });
+            }
+
             postedUrl = req.RequestUri!.PathAndQuery;
             return JsonOk(fakeResult);
         });
@@ -271,7 +277,10 @@ public sealed class KaleidoProcessClientTests
         {
             callCount++;
             if (callCount == 1)
+            {
                 return JsonOk(new[] { FakeProcessor });
+            }
+
             return new HttpResponseMessage(HttpStatusCode.BadGateway);
         });
 
@@ -302,7 +311,10 @@ public sealed class KaleidoProcessClientTests
         {
             callCount++;
             if (callCount == 1)
+            {
                 return JsonOk(new[] { FakeProcessor });
+            }
+
             return JsonOk(fakeResult);
         });
 

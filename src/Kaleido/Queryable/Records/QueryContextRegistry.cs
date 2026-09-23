@@ -1,10 +1,9 @@
+using System.ComponentModel;
+using System.Reflection;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 using Microsoft.Extensions.DependencyInjection;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.Reflection;
 
 namespace Kaleido.Queryable.Records;
 

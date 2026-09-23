@@ -1,5 +1,4 @@
 using Kaleido.Exceptions;
-using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.UnitTests.Query;
 

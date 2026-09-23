@@ -1,5 +1,3 @@
-using Kaleido.Samples.PriorAuth;
-
 namespace Kaleido.Samples.PriorAuth.Configuration.Data.Entities;
 
 public sealed class ProductCodeMapping

@@ -1,9 +1,8 @@
-using Kaleido;
-using Kaleido.Queryable.Query;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
+using Kaleido.Queryable.Query;
 
 namespace Kaleido.Queryable.Runtime;
 
@@ -233,7 +232,6 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 $"Field '{field.Field.Name}' does not support match mode '{field.MatchMode}'.")
         };
     }
-
 
     private static Expression BuildGroup(
         LogicalOperator op,

@@ -71,7 +71,7 @@ internal sealed class StepAvailabilityResolver(
             .ToArray();
     }
 
-    private IReadOnlySet<string> GetCompletedStepNames(
+    private static IReadOnlySet<string> GetCompletedStepNames(
         StepCandidate currentCandidate,
         ProcessorContext context)
     {

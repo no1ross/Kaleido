@@ -1,8 +1,5 @@
 ﻿using Kaleido.Process.Context;
 using Kaleido.Process.Planning;
-using Kaleido.Process;
-using Moq;
-using Xunit;
 
 namespace Kaleido.Process.UnitTests.Processor.Planning;
 
@@ -272,14 +269,5 @@ public sealed class ExecutionPlannerTests
             x => x.Build(
                 It.IsAny<IReadOnlyCollection<StepCandidate>>()),
             Times.Never);
-    }
-
-    private static ExecutionPlanner CreatePlanner()
-    {
-        return new ExecutionPlanner(
-            Mock.Of<IStepCandidateBuilder>(),
-            Mock.Of<IStepCandidateValidator>(),
-            Mock.Of<IStepCandidateConsistencyChecker>(),
-            Mock.Of<IStepCandidatePlanner>());
     }
 }

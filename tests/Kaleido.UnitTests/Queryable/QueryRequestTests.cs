@@ -1,6 +1,4 @@
 using Kaleido.Exceptions;
-using Kaleido.Queryable.Query;
-using Xunit;
 
 namespace Kaleido.Queryable.Abstractions.UnitTests;
 
@@ -77,7 +75,7 @@ public sealed class QueryRequestTests
     [Fact]
     public void KaleidoValidationException_CreatesWithCodeMessageAndInnerException()
     {
-        var inner = new Exception("inner");
+        var inner = new InvalidOperationException("inner");
         var exception = new KaleidoValidationException(
             ValidationErrorCodes.QryInvalidFilterValue,
             "Bad filter value.",

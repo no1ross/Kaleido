@@ -1,9 +1,7 @@
+using System.Diagnostics.Metrics;
 using Kaleido.Observability;
 using Kaleido.Process.Observability;
-using Kaleido.Process.Registry;
 using Microsoft.Extensions.Logging;
-using Moq;
-using System.Diagnostics.Metrics;
 
 namespace Kaleido.Process.UnitTests.Observability;
 

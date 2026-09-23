@@ -1,5 +1,2 @@
-﻿using System.Text.Json.Serialization;
-
-namespace Kaleido.Samples.PriorAuth.Member;
-
+﻿namespace Kaleido.Samples.PriorAuth.Member;
 

@@ -1,5 +1,4 @@
 using Kaleido.Exceptions;
-using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -83,7 +82,6 @@ public sealed class QueryViewRegistrationValidatorTests
 
         Assert.Contains("references unregistered query context", exception.Message);
     }
-
 
     [QueryContext(Name = "test-context", Version = "1.0.0")]
     private sealed class TestContext

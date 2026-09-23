@@ -2,8 +2,6 @@
 using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
-using Moq;
-using Xunit;
 
 namespace Kaleido.Process.UnitTests.Processor.Execution;
 

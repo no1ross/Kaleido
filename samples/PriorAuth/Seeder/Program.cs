@@ -25,31 +25,23 @@ var projectContextFactory =
                 AppContext.BaseDirectory,
                 seedSettings.DataRoot)));
 
-var jsonAssetLoader =
-    new JsonAssetLoader();
-
 var runner =
     new SeedRunner(
         [
             new ReferenceDataSeeder(
-                projectContextFactory,
-                jsonAssetLoader),
+                projectContextFactory),
 
             new CodeSetSeeder(
-                projectContextFactory,
-                jsonAssetLoader),
+                projectContextFactory),
 
             new ConfigurationSeeder(
-                projectContextFactory,
-                jsonAssetLoader),
+                projectContextFactory),
 
             new ProviderSearchSeeder(
-                projectContextFactory,
-                jsonAssetLoader),
+                projectContextFactory),
 
             new MemberServiceSeeder(
-                projectContextFactory,
-                jsonAssetLoader)
+                projectContextFactory)
         ]);
 
 await runner.RunAsync(requestedDomains);

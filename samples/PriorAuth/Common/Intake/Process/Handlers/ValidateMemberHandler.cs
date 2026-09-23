@@ -1,5 +1,4 @@
 using Kaleido.Http.Client;
-using Kaleido.Http.Client.Queryable;
 using Kaleido.Process.Execution;
 using Kaleido.Samples.PriorAuth.Intake.Process.Messages;
 using Kaleido.Samples.PriorAuth.Intake.Process.Services;

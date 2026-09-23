@@ -1,15 +1,12 @@
-using Kaleido.Samples.PriorAuth.CodeSet;
 using Kaleido.Samples.PriorAuth.CodeSet.Data;
 using Kaleido.Samples.PriorAuth.CodeSet.Data.Entities;
 using Kaleido.Samples.PriorAuth.Seeder.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Samples.PriorAuth.Seeder.CodeSet;
 
 internal sealed class CodeSetSeeder(
-    ServiceProjectContextFactory projectContextFactory,
-    JsonAssetLoader jsonAssetLoader)
+    ServiceProjectContextFactory projectContextFactory)
     : IDomainSeeder
 {
     public SupportedDomain Domain => SupportedDomain.CodeSet;
@@ -78,19 +75,19 @@ internal sealed class CodeSetSeeder(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private CodeSetSeedAssets LoadAssets()
+    private static CodeSetSeedAssets LoadAssets()
     {
         const string basePath = "codeset";
-        var enumOptions = jsonAssetLoader.CreateEnumJsonOptions();
+        var enumOptions = JsonAssetLoader.CreateEnumJsonOptions();
 
         return new CodeSetSeedAssets
         {
-            ProcedureCodes = jsonAssetLoader.Load<List<ProcedureCode>>(Path.Combine(basePath, "procedure-codes.json"), enumOptions),
-            DiagnosisCodes = jsonAssetLoader.Load<List<DiagnosisCode>>(Path.Combine(basePath, "diagnosis-codes.json"), enumOptions),
-            Specialties = jsonAssetLoader.Load<List<MedicalSpecialty>>(Path.Combine(basePath, "specialties.json")),
-            Groupers = jsonAssetLoader.Load<List<CodeGrouper>>(Path.Combine(basePath, "groupers.json"), enumOptions),
-            ProcedureCodeSpecialtyAssignments = jsonAssetLoader.Load<List<ProcedureCodeSpecialtyAssignmentAsset>>(Path.Combine(basePath, "procedure-code-specialty-assignments.json"), enumOptions),
-            ProcedureCodeGrouperAssignments = jsonAssetLoader.Load<List<ProcedureCodeGrouperAssignmentAsset>>(Path.Combine(basePath, "procedure-code-grouper-assignments.json"), enumOptions)
+            ProcedureCodes = JsonAssetLoader.Load<List<ProcedureCode>>(Path.Combine(basePath, "procedure-codes.json"), enumOptions),
+            DiagnosisCodes = JsonAssetLoader.Load<List<DiagnosisCode>>(Path.Combine(basePath, "diagnosis-codes.json"), enumOptions),
+            Specialties = JsonAssetLoader.Load<List<MedicalSpecialty>>(Path.Combine(basePath, "specialties.json")),
+            Groupers = JsonAssetLoader.Load<List<CodeGrouper>>(Path.Combine(basePath, "groupers.json"), enumOptions),
+            ProcedureCodeSpecialtyAssignments = JsonAssetLoader.Load<List<ProcedureCodeSpecialtyAssignmentAsset>>(Path.Combine(basePath, "procedure-code-specialty-assignments.json"), enumOptions),
+            ProcedureCodeGrouperAssignments = JsonAssetLoader.Load<List<ProcedureCodeGrouperAssignmentAsset>>(Path.Combine(basePath, "procedure-code-grouper-assignments.json"), enumOptions)
         };
     }
 

@@ -1,11 +1,7 @@
 ﻿using Kaleido.Process.Execution;
-using Kaleido.Process;
-
 using Kaleido.Samples.ECommerce.Data;
 using Kaleido.Samples.ECommerce.Data.Entities;
-
 using Kaleido.Samples.ECommerce.Process.Steps;
-
 using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.ECommerce.Process.Handlers;
@@ -184,16 +180,8 @@ internal sealed class ProcessCartHandler(
             dbContext.OrderItems.Add(orderItem);
         }
 
-        try
-        {
-            await dbContext.SaveChangesAsync(
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-
-            throw;
-        }
+        await dbContext.SaveChangesAsync(
+            cancellationToken);
 
         return ProcessStepHandlerResult.Success(
             isNewOrder

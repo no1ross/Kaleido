@@ -1,16 +1,13 @@
-using Kaleido.Process;
+using Kaleido.Http.Client;
 using Kaleido.Process.Execution;
-using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
-using Microsoft.EntityFrameworkCore;
-using Kaleido.Samples.PriorAuth.Radiology;
+using Kaleido.Samples.PriorAuth.History.Process.Steps;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
+using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Messages;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
-using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
-using Kaleido.Samples.PriorAuth.History.Process.Steps;
-using Kaleido.Http.Client;
-using Kaleido.Http.Client.Queryable;
+using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
+using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 

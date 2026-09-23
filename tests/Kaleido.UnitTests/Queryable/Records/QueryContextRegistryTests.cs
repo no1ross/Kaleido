@@ -1,9 +1,7 @@
+using System.ComponentModel;
 using Kaleido.Exceptions;
-using Kaleido.Queryable.Attributes;
-using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
-using System.ComponentModel;
 
 namespace Kaleido.Queryable.UnitTests.Records;
 
