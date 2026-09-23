@@ -1,10 +1,10 @@
+using System.Text.Json;
 using Kaleido.Process.Execution;
 using Kaleido.Samples.PriorAuth.Member.Data;
+using Kaleido.Samples.PriorAuth.Member.Data.Entities;
 using Kaleido.Samples.PriorAuth.Member.Process.Responses;
 using Kaleido.Samples.PriorAuth.Member.Process.Steps;
-using Kaleido.Samples.PriorAuth.Member.Data.Entities;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace Kaleido.Samples.PriorAuth.Member.Process.Handlers;
 

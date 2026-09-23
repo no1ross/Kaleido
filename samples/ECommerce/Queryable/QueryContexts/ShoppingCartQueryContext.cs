@@ -1,5 +1,5 @@
-﻿using Kaleido.Queryable.Attributes;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using Kaleido.Queryable.Attributes;
 
 namespace Kaleido.Samples.ECommerce.Data.QueryContexts;
 
@@ -13,7 +13,7 @@ public sealed class ShoppingCartQueryContext
     [Key]
     public Guid ShoppingCartId { get; init; }
     public Guid ShoppingCartItemId { get; init; }
-    public Guid? CustomerId { get; init; } = null;
+    public Guid? CustomerId { get; init; }
     public Guid? ProcessId { get; set; }
     public Guid ProductId { get; init; }
     public string ProductName { get; set; } = string.Empty;
@@ -21,7 +21,7 @@ public sealed class ShoppingCartQueryContext
     public string FamilyName { get; set; } = string.Empty;
     public string ModelName { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public int Quantity { get; set; } = 0;
-    public decimal UnitPrice { get; set; } = decimal.Zero;
-    public bool IsActive { get; set; } = false;
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public bool IsActive { get; set; }
 }

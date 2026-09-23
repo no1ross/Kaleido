@@ -1,5 +1,3 @@
-using Kaleido.Samples.PriorAuth.Provider;
-
 namespace Kaleido.Samples.PriorAuth.Provider.Data.Entities;
 
 public sealed class ProviderInfo

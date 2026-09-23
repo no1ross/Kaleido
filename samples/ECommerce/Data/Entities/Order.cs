@@ -1,6 +1,4 @@
-﻿using Kaleido.Samples.ECommerce.Data;
-
-namespace Kaleido.Samples.ECommerce.Data.Entities;
+﻿namespace Kaleido.Samples.ECommerce.Data.Entities;
 
 public sealed class Order
 {

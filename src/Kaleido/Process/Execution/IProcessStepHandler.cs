@@ -1,4 +1,4 @@
-﻿namespace Kaleido.Process.Execution;
+namespace Kaleido.Process.Execution;
 
 public interface IProcessStepHandler<in TProcessStep, TProcessStepResult>
 {
@@ -15,5 +15,3 @@ public interface IProcessStepHandler<in TProcessStep>
         ProcessStepContext context,
         CancellationToken cancellationToken = default);
 }
-
-

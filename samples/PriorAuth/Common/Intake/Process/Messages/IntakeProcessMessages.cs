@@ -1,6 +1,4 @@
 using Kaleido.Process;
-using Kaleido.Samples.PriorAuth.CodeSet;
-using Kaleido.Samples.PriorAuth.Configuration;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Messages;
 

@@ -1,5 +1,3 @@
-using Kaleido.Queryable;
-
 namespace Kaleido.Queryable.Attributes;
 
 /// <summary>Declares a property as searchable.</summary>

@@ -17,14 +17,18 @@ public static class HttpHeaderSanitizer
     public static string? Sanitize(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
+        {
             return null;
+        }
 
         var sanitized = new string(
             value.Where(c => c >= 0x20 && c <= 0x7E).ToArray())
             .Trim();
 
         if (string.IsNullOrWhiteSpace(sanitized))
+        {
             return null;
+        }
 
         return sanitized.Length <= MaxLength
             ? sanitized

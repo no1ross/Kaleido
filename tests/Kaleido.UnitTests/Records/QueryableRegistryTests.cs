@@ -1,9 +1,6 @@
 using Kaleido.Exceptions;
-using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Records;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
-using Xunit;
 
 namespace Kaleido.Queryable.UnitTests.Records;
 

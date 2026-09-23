@@ -1,4 +1,3 @@
-using Kaleido.Http.Process.Services;
 using Kaleido.Http.Startup;
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Hosting;

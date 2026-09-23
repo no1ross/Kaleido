@@ -1,7 +1,6 @@
-using Kaleido.Observability;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Process.Observability;
 
@@ -159,7 +158,9 @@ internal sealed class ProcessObservability(
         activity?.SetTag(KaleidoTelemetryTags.SourceProcessor, correlation.SourceProcessorName);
 
         if (correlation.ProcessId.HasValue)
+        {
             activity?.SetTag(ProcessTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
+        }
 
         activity?.SetTag(ProcessTelemetry.TagSubmittedStepCount, details.SubmittedStepCount);
 
@@ -252,7 +253,9 @@ internal sealed class ProcessObservability(
         ];
 
         if (!string.IsNullOrWhiteSpace(sourceProcessorName))
+        {
             tags.Add("source.processor", sourceProcessorName);
+        }
 
         return tags;
     }
@@ -269,7 +272,9 @@ internal sealed class ProcessObservability(
         ];
 
         if (!string.IsNullOrWhiteSpace(stepVersion))
+        {
             tags.Add("step.version", stepVersion);
+        }
 
         return tags;
     }

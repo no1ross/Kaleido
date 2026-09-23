@@ -1,5 +1,4 @@
 using Kaleido.Http.Client;
-using Kaleido.Http.Client.Queryable;
 using Kaleido.Process.Execution;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;

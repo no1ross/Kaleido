@@ -1,11 +1,9 @@
-﻿using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
-using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
-using Kaleido.Queryable.Query;
-using System.Net;
-using System.Net.Http.Json;
+﻿using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
+using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
 
 namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Execution;
 

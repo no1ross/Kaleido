@@ -25,13 +25,17 @@ internal sealed class RegistryCache
         CancellationToken cancellationToken)
     {
         if (!forceRefresh && _cached is not null)
+        {
             return _cached;
+        }
 
         await _lock.WaitAsync(cancellationToken);
         try
         {
             if (!forceRefresh && _cached is not null)
+            {
                 return _cached;
+            }
 
             var result = await build(cancellationToken);
 
@@ -39,7 +43,9 @@ internal sealed class RegistryCache
             // Partial results are returned to the caller so they can see ClientErrors,
             // but the last clean snapshot is preserved for non-refresh callers.
             if (result.ClientErrors.Count == 0)
+            {
                 _cached = result;
+            }
 
             return result;
         }

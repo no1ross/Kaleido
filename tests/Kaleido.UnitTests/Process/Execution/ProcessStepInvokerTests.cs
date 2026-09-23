@@ -1,12 +1,10 @@
-﻿using Kaleido.Exceptions;
+﻿using System.Reflection;
+using Kaleido.Exceptions;
+using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Observability;
-using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
-using System.Xml.Linq;
-using Xunit;
 
 namespace Kaleido.Process.UnitTests.Processor.Execution;
 

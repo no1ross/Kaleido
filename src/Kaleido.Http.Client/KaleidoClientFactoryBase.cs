@@ -20,12 +20,16 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
     public TClient GetClient(string name)
     {
         if (_clients.TryGetValue(name, out var existing))
+        {
             return existing;
+        }
 
         lock (_lock)
         {
             if (_clients.TryGetValue(name, out existing))
+            {
                 return existing;
+            }
 
             var serviceName = GetServiceName(name);
 
@@ -45,7 +49,9 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
     {
         var optionsMap = GetOptionsMap();
         if (optionsMap.TryGetValue(name, out var serviceName))
+        {
             return serviceName;
+        }
 
         return string.Empty;
     }
@@ -55,9 +61,11 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
         var map = RouteOptionsMap;
         var optionsProperty = map.GetType().GetProperty("Options");
         if (optionsProperty == null)
+        {
             throw new KaleidoFrameworkException(
                 FrameworkErrorCodes.ReflectionError,
                 "Route options map does not have 'Options' property.");
+        }
 
         return (Dictionary<string, string>)(optionsProperty.GetValue(map)
             ?? throw new KaleidoFrameworkException(

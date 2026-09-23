@@ -31,7 +31,8 @@ internal sealed class OrderQueryContextSource(
                         orderItem.Order.ProcessId,
 
                     OrderNumber =
-                        orderItem.Order.OrderNumber,
+                        orderItem.Order.OrderNumber ??
+                        string.Empty,
 
                     Status =
                         orderItem.Order.Status,

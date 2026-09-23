@@ -25,7 +25,9 @@ internal sealed class ShoppingCartSummaryQueryViewSource
             executionContext.TryGetViewParameters<ShoppingCartViewParameters>();
 
         if (parameters is null)
+        {
             parameters = new ShoppingCartViewParameters();
+        }
 
         if (parameters.ProcessId is null &&
             parameters.CustomerId is null)

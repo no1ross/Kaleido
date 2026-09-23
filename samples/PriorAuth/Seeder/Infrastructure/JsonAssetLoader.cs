@@ -3,9 +3,9 @@ using System.Text.Json.Serialization;
 
 namespace Kaleido.Samples.PriorAuth.Seeder.Infrastructure;
 
-internal sealed class JsonAssetLoader
+internal static class JsonAssetLoader
 {
-    public T Load<T>(
+    public static T Load<T>(
         string relativeAssetPath,
         JsonSerializerOptions? options = null)
     {
@@ -25,7 +25,7 @@ internal sealed class JsonAssetLoader
                    $"Failed to deserialize '{relativeAssetPath}'.");
     }
 
-    public JsonSerializerOptions CreateDefaultJsonOptions()
+    public static JsonSerializerOptions CreateDefaultJsonOptions()
     {
         return new JsonSerializerOptions
         {
@@ -33,7 +33,7 @@ internal sealed class JsonAssetLoader
         };
     }
 
-    public JsonSerializerOptions CreateEnumJsonOptions()
+    public static JsonSerializerOptions CreateEnumJsonOptions()
     {
         var options = CreateDefaultJsonOptions();
         options.Converters.Add(new JsonStringEnumConverter());

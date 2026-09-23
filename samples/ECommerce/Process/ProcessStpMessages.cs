@@ -292,5 +292,4 @@ public static class ProcessStpMessages
                 $"Order '{orderNumber}' was submitted successfully."
         };
 
-
 }

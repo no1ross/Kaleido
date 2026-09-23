@@ -1,5 +1,4 @@
-﻿using Kaleido.Json;
-using Kaleido.Process.Context;
+﻿using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.Planning;
@@ -89,7 +88,7 @@ internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistenc
         }
     }
 
-    private void ValidateDependencyConsistency(
+    private static void ValidateDependencyConsistency(
         StepCandidate candidate,
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context)

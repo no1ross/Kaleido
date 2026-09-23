@@ -1,6 +1,3 @@
-using Kaleido.Queryable.Query;
-using System.Linq;
-
 namespace Kaleido.IntegrationTests.TestArtifacts;
 
 public sealed class TestQueryContextSource : IQueryContextSource<TestQueryContext>

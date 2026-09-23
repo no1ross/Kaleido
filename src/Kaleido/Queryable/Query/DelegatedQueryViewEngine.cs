@@ -55,7 +55,7 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
 
             var typedMethod =
                 (typeof(DelegatedQueryViewEngine<TDelegateContext, TView>)
-                    .GetMethod(nameof(ExecuteTypedAsync), System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    .GetMethod(nameof(ExecuteTypedAsync), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
                     ?? throw new KaleidoFrameworkException(
                         FrameworkErrorCodes.ReflectionError,
                         $"Could not locate method '{nameof(ExecuteTypedAsync)}' on DelegatedQueryViewEngine."))
@@ -107,7 +107,7 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
         }
     }
 
-    private Task<QueryResult<TView>> ExecuteTypedAsync<TParameters>(
+    private static Task<QueryResult<TView>> ExecuteTypedAsync<TParameters>(
         object source,
         IQueryRequest request,
         DelegatedQueryViewRegistration registration,

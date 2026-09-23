@@ -1,8 +1,8 @@
+using System.Reflection;
 using Kaleido.Http.Client.Queryable;
 using Kaleido.Http.Queryable;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
 namespace Kaleido.Queryable.Http.Client.Tests;
 
@@ -230,6 +230,5 @@ public sealed class KaleidoQueryableClientServiceCollectionExtensionsTests
         public KaleidoServiceOptions ServiceOptions { get; } =
             new() { ServiceName = "test" };
     }
-
 
 }

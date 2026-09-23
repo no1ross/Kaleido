@@ -1,5 +1,3 @@
-using Kaleido.Samples.PriorAuth.CodeSet;
-
 namespace Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 
 public sealed class IntakeSessionProcedure

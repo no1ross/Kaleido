@@ -1,5 +1,4 @@
 ﻿using Kaleido.Process.Observability;
-using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;
 

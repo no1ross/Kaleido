@@ -1,8 +1,7 @@
+using Kaleido.Http.Queryable;
 using Kaleido.Http.Queryable.Contracts;
 using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Parameters;
 using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Views;
-using Microsoft.Extensions.Configuration;
-using Kaleido.Http.Queryable;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Services;
 

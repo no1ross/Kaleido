@@ -1,5 +1,4 @@
 using Kaleido.Samples.PriorAuth.CodeSet.Data.Entities;
-using Kaleido.Samples.PriorAuth.Provider;
 using Kaleido.Samples.PriorAuth.Provider.Data;
 using Kaleido.Samples.PriorAuth.Provider.Data.Entities;
 using Kaleido.Samples.PriorAuth.ReferenceData.Data.Entities;
@@ -10,8 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kaleido.Samples.PriorAuth.Seeder.ProviderSearch;
 
 internal sealed class ProviderSearchSeeder(
-    ServiceProjectContextFactory projectContextFactory,
-    JsonAssetLoader jsonAssetLoader)
+    ServiceProjectContextFactory projectContextFactory)
     : IDomainSeeder
 {
     public SupportedDomain Domain => SupportedDomain.ProviderSearch;
@@ -115,7 +113,7 @@ internal sealed class ProviderSearchSeeder(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private ProviderSearchSeedAssets LoadAssets()
+    private static ProviderSearchSeedAssets LoadAssets()
     {
         const string basePath = "providersearch";
 
@@ -129,25 +127,25 @@ internal sealed class ProviderSearchSeeder(
             StreetNames = LoadRequiredStringList(basePath, "street-names.json"),
             StreetSuffixes = LoadRequiredStringList(basePath, "street-suffixes.json"),
             LocationQualifiers = LoadRequiredStringList(basePath, "location-qualifiers.json"),
-            Settings = jsonAssetLoader.Load<ProviderSearchSeedSettings>(Path.Combine(basePath, "seed-settings.json")),
-            PlanNetworks = jsonAssetLoader.Load<List<PlanNetworkSeedRecord>>(Path.Combine("referencedata", "plan-networks.json")),
-            ZipCodes = jsonAssetLoader.Load<List<ZipCode>>(Path.Combine("referencedata", "zipcodes.json")),
-            Specialties = jsonAssetLoader.Load<List<MedicalSpecialty>>(Path.Combine("codeset", "specialties.json"))
+            Settings = JsonAssetLoader.Load<ProviderSearchSeedSettings>(Path.Combine(basePath, "seed-settings.json")),
+            PlanNetworks = JsonAssetLoader.Load<List<PlanNetworkSeedRecord>>(Path.Combine("referencedata", "plan-networks.json")),
+            ZipCodes = JsonAssetLoader.Load<List<ZipCode>>(Path.Combine("referencedata", "zipcodes.json")),
+            Specialties = JsonAssetLoader.Load<List<MedicalSpecialty>>(Path.Combine("codeset", "specialties.json"))
         };
     }
 
-    private List<Plan> LoadPlans()
+    private static List<Plan> LoadPlans()
     {
-        return jsonAssetLoader.Load<List<Plan>>(
+        return JsonAssetLoader.Load<List<Plan>>(
             Path.Combine("referencedata", "plans.json"),
-            jsonAssetLoader.CreateEnumJsonOptions());
+            JsonAssetLoader.CreateEnumJsonOptions());
     }
 
-    private List<string> LoadRequiredStringList(
+    private static List<string> LoadRequiredStringList(
         string basePath,
         string fileName)
     {
-        var values = jsonAssetLoader.Load<List<string>>(Path.Combine(basePath, fileName));
+        var values = JsonAssetLoader.Load<List<string>>(Path.Combine(basePath, fileName));
 
         if (values.Count == 0)
         {

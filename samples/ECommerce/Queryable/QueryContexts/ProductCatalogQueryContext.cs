@@ -1,6 +1,6 @@
-﻿using Kaleido.Queryable;
+﻿using System.ComponentModel.DataAnnotations;
+using Kaleido.Queryable;
 using Kaleido.Queryable.Attributes;
-using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.ECommerce.Data.QueryContexts;
 
@@ -98,7 +98,6 @@ public sealed class ProductCatalogQueryContext
         FilterOperator.IsFalse)]
     [Sortable]
     public bool IsActive { get; init; }
-
 
     [Filterable(
         FilterOperator.Equals,

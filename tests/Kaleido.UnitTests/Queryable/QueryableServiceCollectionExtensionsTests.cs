@@ -1,11 +1,9 @@
+using System.Reflection;
 using Kaleido.Exceptions;
-using Kaleido.Queryable.Attributes;
-using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
 namespace Kaleido.Queryable.UnitTests;
 
@@ -23,7 +21,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
     {
         var builder = new TestKaleidoBuilder(new ServiceCollection(), []);
 
-        Assert.Throws<KaleidoConfigurationException>(() => builder.AddQueryable());
+        Assert.Throws<KaleidoConfigurationException>(builder.AddQueryable);
     }
 
     [Fact]

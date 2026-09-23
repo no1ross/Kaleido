@@ -1,8 +1,7 @@
-using Kaleido.Http.Process;
-using Kaleido.Http.Process.Contracts;
-using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Http.Json;
+using Kaleido.Http.Process.Contracts;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Client.Process;
 
@@ -36,7 +35,9 @@ internal sealed class KaleidoProcessClient(
                 s => string.Equals(s.Name, stepName, StringComparison.OrdinalIgnoreCase));
 
             if (match is not null)
+            {
                 break;
+            }
         }
 
         if (match is null)
@@ -82,7 +83,9 @@ internal sealed class KaleidoProcessClient(
         using var response = await SendAsync(httpRequest, cancellationToken);
 
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             return null;
+        }
 
         if (response.IsSuccessStatusCode)
         {
@@ -222,7 +225,9 @@ internal sealed class KaleidoProcessClient(
                 s => string.Equals(s.Name, stepName, StringComparison.OrdinalIgnoreCase));
 
             if (match is not null)
+            {
                 return match.ExecuteUrl;
+            }
         }
 
         throw new KaleidoHttpClientException(
@@ -261,13 +266,17 @@ internal sealed class KaleidoProcessClient(
         CancellationToken cancellationToken)
     {
         if (_registry is not null)
+        {
             return _registry;
+        }
 
         await _registryLock.WaitAsync(cancellationToken);
         try
         {
             if (_registry is not null)
+            {
                 return _registry;
+            }
 
             using var registryRequest = new HttpRequestMessage(HttpMethod.Get, ProcessContractUrls.Registry(serviceName));
             headerStamper.Stamp(registryRequest);

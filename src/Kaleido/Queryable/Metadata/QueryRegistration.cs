@@ -168,4 +168,3 @@ public record QueryableParameterDescriptor : QueryablePropertyDescriptor
 
 public record QueryableOutputFieldDescriptor : QueryablePropertyDescriptor;
 
-

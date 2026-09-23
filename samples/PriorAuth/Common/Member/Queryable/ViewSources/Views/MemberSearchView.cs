@@ -1,5 +1,3 @@
-using Kaleido.Samples.PriorAuth.Member;
-
 namespace Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Views;
 
 public sealed record MemberSearchView

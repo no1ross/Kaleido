@@ -1,5 +1,4 @@
 using Kaleido.Queryable.Query;
-using Kaleido.Samples.PriorAuth.Provider;
 using Kaleido.Samples.PriorAuth.Provider.Data;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Contexts;
 using Microsoft.EntityFrameworkCore;

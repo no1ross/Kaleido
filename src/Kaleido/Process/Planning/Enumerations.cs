@@ -1,6 +1,4 @@
-﻿namespace Kaleido.Process.Planning;
-
-
+namespace Kaleido.Process.Planning;
 
 /// <summary>
 /// Represents the state of a step candidate during the planning phase.

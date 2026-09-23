@@ -1,5 +1,2 @@
-﻿using System.Text.Json.Serialization;
-
-namespace Kaleido.Samples.PriorAuth.Radiology;
-
+﻿namespace Kaleido.Samples.PriorAuth.Radiology;
 

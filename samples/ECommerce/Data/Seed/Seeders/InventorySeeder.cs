@@ -1,11 +1,10 @@
-﻿using Kaleido.Samples.ECommerce.Data;
-using Kaleido.Samples.ECommerce.Data.Entities;
+﻿using Kaleido.Samples.ECommerce.Data.Entities;
 
 namespace Kaleido.Samples.ECommerce.Data.Seed.Seeders;
 
 internal sealed class InventorySeeder
 {
-    public void Seed(
+    public static void Seed(
         ECommerceDbContext dbContext)
     {
         ArgumentNullException.ThrowIfNull(

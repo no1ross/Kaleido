@@ -1,4 +1,3 @@
-using Kaleido.Http.Client;
 using Kaleido.Observability;
 
 namespace Kaleido.Http.Client.Tests;

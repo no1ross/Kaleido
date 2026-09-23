@@ -32,6 +32,9 @@ internal sealed class ProductByCategoryQueryViewSource
             executionContext
                 .TryGetViewParameters<ProductByCategoryParameters>();
 
+        ArgumentNullException.ThrowIfNull(
+            parameters);
+
         var categoryPath =
             parameters.CategoryPath;
 

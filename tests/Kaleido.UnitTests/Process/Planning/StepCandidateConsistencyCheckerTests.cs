@@ -1,8 +1,6 @@
-﻿using Kaleido.Process.Planning;
-using Kaleido.Process.Context;
-using Kaleido.Process.Execution;
+﻿using Kaleido.Process.Context;
+using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
-using Xunit;
 
 namespace Kaleido.Process.UnitTests.Processor.Planning;
 

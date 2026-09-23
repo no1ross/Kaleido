@@ -1,14 +1,7 @@
 using Kaleido.Eventing;
-using Kaleido.Exceptions;
-using Kaleido.Queryable.Eventing;
-using Kaleido.Exceptions;
-using Kaleido.Queryable.Metadata;
 using Kaleido.Observability;
+using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Observability;
-using Kaleido.Queryable.Query;
-using Microsoft.Extensions.DependencyInjection;
-using Moq;
-using Xunit;
 
 namespace Kaleido.Queryable.UnitTests.Query;
 

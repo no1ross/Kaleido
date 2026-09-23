@@ -44,10 +44,14 @@ internal static class HttpCorrelationContextReader
         var value = ReadString(context, headerName);
 
         if (value is null)
+        {
             return null;
+        }
 
         if (Guid.TryParse(value, out var guid))
+        {
             return guid;
+        }
 
         throw new BadHttpRequestException(
             $"Header '{headerName}' must be a valid GUID.");

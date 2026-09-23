@@ -27,7 +27,6 @@ public sealed record ProcessStepRequest
     }
 }
 
-
 public sealed record ExecuteStepRequest<TProcessStep>
 {
     public required TProcessStep ProcessStep

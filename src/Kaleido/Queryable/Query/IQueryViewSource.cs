@@ -1,4 +1,4 @@
-﻿namespace Kaleido.Queryable.Query;
+namespace Kaleido.Queryable.Query;
 
 public interface IQueryViewSource<TQueryView, TView, TViewParameters>
         where TQueryView : class
@@ -7,8 +7,6 @@ public interface IQueryViewSource<TQueryView, TView, TViewParameters>
 {
     IQueryable<TView> CreateView(IQueryable<TQueryView> query, QueryExecutionContext executionContext);
 }
-
-
 public interface IQueryViewSource<TQueryView, TView> : IQueryViewSource<TQueryView, TView, EmptyQueryViewParameters>
     where TQueryView : class
     where TView : class

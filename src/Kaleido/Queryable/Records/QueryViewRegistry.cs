@@ -1,11 +1,8 @@
-using Kaleido;
+using System.ComponentModel;
+using System.Reflection;
 using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
-using Microsoft.Extensions.DependencyInjection;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.Reflection;
 
 namespace Kaleido.Queryable.Records;
 
@@ -45,13 +42,11 @@ internal sealed class QueryViewRegistry
     private readonly IReadOnlyCollection<QueryViewRegistration> _registrations;
 
     public QueryViewRegistry(
-        IServiceCollection services,
         IEnumerable<Type> queryViewTypes)
     {
         var registrations =
             queryViewTypes
-                .Select(x =>
-                    BuildRegistration(x))
+                .Select(BuildRegistration)
                 .ToArray();
 
         _registrations =
@@ -247,7 +242,6 @@ internal sealed class QueryViewRegistry
                 $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' but the field is not marked as sortable.");
         }
     }
-
 
     private static Type GetQueryViewInterface(
         Type queryViewType)

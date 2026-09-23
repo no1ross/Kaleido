@@ -1,9 +1,8 @@
-using Kaleido.Http.Queryable;
+using System.Net;
+using System.Net.Http.Json;
 using Kaleido.Http.Queryable.Contracts;
 using Kaleido.Queryable.Query;
 using Microsoft.Extensions.Logging;
-using System.Net;
-using System.Net.Http.Json;
 
 namespace Kaleido.Http.Client.Queryable;
 
@@ -159,10 +158,13 @@ internal sealed class KaleidoQueryableClient(
             response.StatusCode);
     }
 
-    private string FormatTarget(string? context, string? view)
+    private static string FormatTarget(string? context, string? view)
     {
         if (!string.IsNullOrEmpty(view))
+        {
             return $"view '{view}' on context '{context}'";
+        }
+
         return $"context '{context}'";
     }
 
@@ -196,13 +198,17 @@ internal sealed class KaleidoQueryableClient(
         CancellationToken cancellationToken)
     {
         if (_registry is not null)
+        {
             return _registry;
+        }
 
         await _registryLock.WaitAsync(cancellationToken);
         try
         {
             if (_registry is not null)
+            {
                 return _registry;
+            }
 
             using var registryRequest = new HttpRequestMessage(HttpMethod.Get, QueryableContractUrls.QueryRegistry(callerServiceName));
             headerStamper.Stamp(registryRequest);

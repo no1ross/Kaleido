@@ -1,8 +1,8 @@
+using System.Reflection;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
 namespace Kaleido.Queryable;
 
@@ -24,7 +24,7 @@ internal sealed class QueryableService(
         typeof(QueryableService)
             .GetMethod(
                 nameof(ExecuteTypedAsync),
-                BindingFlags.Instance |
+                BindingFlags.Static |
                 BindingFlags.NonPublic)
         ?? throw new KaleidoFrameworkException(
             FrameworkErrorCodes.ReflectionError,
@@ -34,7 +34,7 @@ internal sealed class QueryableService(
         typeof(QueryableService)
             .GetMethod(
                 nameof(ExecuteDelegatedTypedAsync),
-                BindingFlags.Instance |
+                BindingFlags.Static |
                 BindingFlags.NonPublic)
         ?? throw new KaleidoFrameworkException(
             FrameworkErrorCodes.ReflectionError,
@@ -44,14 +44,11 @@ internal sealed class QueryableService(
         typeof(QueryableService)
             .GetMethod(
                 nameof(ExecuteDirectTypedAsync),
-                BindingFlags.Instance |
+                BindingFlags.Static |
                 BindingFlags.NonPublic)
         ?? throw new KaleidoFrameworkException(
             FrameworkErrorCodes.ReflectionError,
             $"Could not locate method '{nameof(ExecuteDirectTypedAsync)}'.");
-
-
-
 
     public async Task<QueryResult<TView>> QueryAsync<TQueryView, TView>(
         IQueryRequest request,
@@ -172,7 +169,7 @@ internal sealed class QueryableService(
         return await typedTask;
     }
 
-    private async Task<QueryResult<TView>> ExecuteTypedAsync<TContext, TView>(
+    private static async Task<QueryResult<TView>> ExecuteTypedAsync<TContext, TView>(
         IServiceProvider serviceProvider,
         IQueryRequest request,
         QueryContextRegistration contextRegistration,
@@ -192,7 +189,7 @@ internal sealed class QueryableService(
             cancellationToken);
     }
 
-    private async Task<QueryResult<TView>> ExecuteDelegatedTypedAsync<TContext, TView>(
+    private static async Task<QueryResult<TView>> ExecuteDelegatedTypedAsync<TContext, TView>(
         IServiceProvider serviceProvider,
         IQueryRequest request,
         DelegatedQueryViewRegistration viewRegistration,
@@ -210,7 +207,7 @@ internal sealed class QueryableService(
             cancellationToken);
     }
 
-    private async Task<QueryResult<TView>> ExecuteDirectTypedAsync<TContext, TView>(
+    private static async Task<QueryResult<TView>> ExecuteDirectTypedAsync<TContext, TView>(
         IServiceProvider serviceProvider,
         IQueryRequest request,
         QueryContextRegistration contextRegistration,
