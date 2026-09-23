@@ -1,16 +1,39 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Reflection;
 using Kaleido.Exceptions;
 using Kaleido.Queryable.Records;
+using Moq;
 
 namespace Kaleido.Queryable.UnitTests.Records;
 
 public sealed class QueryViewRegistryTests
 {
+    private static readonly DataTypeDescriptor TestDataType =
+        new("mock-type");
+
+    private static QueryViewRegistry CreateSut(params Type[] viewTypes)
+    {
+        var dataTypeMapper = new Mock<IDataTypeMapper>();
+        dataTypeMapper
+            .Setup(m => m.GetDescriptor(It.IsAny<PropertyInfo>()))
+            .Returns(TestDataType);
+
+        var constraintMapper = new Mock<IConstraintMapper>();
+        constraintMapper
+            .Setup(m => m.Map(It.IsAny<PropertyInfo>()))
+            .Returns([new ConstraintContract { Type = "Required" }]);
+
+        return new QueryViewRegistry(
+            dataTypeMapper.Object,
+            constraintMapper.Object,
+            viewTypes);
+    }
+
     [Fact]
     public void Constructor_BuildsRegistrationMetadata()
     {
-        var registry = new QueryViewRegistry([typeof(TestView)]);
+        var registry = CreateSut(typeof(TestView));
 
         var registration = Assert.Single(registry.Registrations);
 
@@ -27,26 +50,26 @@ public sealed class QueryViewRegistryTests
     [Fact]
     public void Constructor_BuildsParameterMetadata()
     {
-        var registry = new QueryViewRegistry([typeof(TestView)]);
+        var registry = CreateSut(typeof(TestView));
 
         var parameter = Assert.Single(registry.GetRegistration(typeof(TestView)).Metadata.Parameters!);
 
         Assert.Equal(nameof(TestParameters.Category), parameter.Name);
         Assert.Equal(typeof(string), parameter.Type);
-        Assert.Equal(DataTypeMapper.GetDescriptor(typeof(TestParameters).GetProperty(nameof(TestParameters.Category))!), parameter.DataType);
+        Assert.Equal(TestDataType, parameter.DataType);
         Assert.Equal("Category description", parameter.Description);
         Assert.Single(parameter.Constraints);
         Assert.Equal("Required", parameter.Constraints.Single().Type);
 
         var outputField = Assert.Single(registry.GetRegistration(typeof(TestView)).Metadata.OutputFields!, x => x.Name == nameof(TestContract.Id));
         Assert.Equal(typeof(int), outputField.Type);
-        Assert.Equal(DataTypeMapper.GetDescriptor(typeof(TestContract).GetProperty(nameof(TestContract.Id))!), outputField.DataType);
+        Assert.Equal(TestDataType, outputField.DataType);
     }
 
     [Fact]
     public void Constructor_UsesEmptyParametersForTwoGenericArgumentView()
     {
-        var registry = new QueryViewRegistry([typeof(SimpleView)]);
+        var registry = CreateSut(typeof(SimpleView));
 
         var registration = registry.GetRegistration(typeof(SimpleView));
 
@@ -59,7 +82,7 @@ public sealed class QueryViewRegistryTests
     public void Constructor_WhenPageableViewMissingDefaultSortField_Throws()
     {
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            new QueryViewRegistry([typeof(MissingSortView)]));
+            CreateSut(typeof(MissingSortView)));
 
         Assert.Contains("must define a DefaultSortField", exception.Message);
     }
@@ -68,7 +91,7 @@ public sealed class QueryViewRegistryTests
     public void Constructor_WhenDefaultSortFieldIsNotSortable_Throws()
     {
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            new QueryViewRegistry([typeof(NotSortableView)]));
+            CreateSut(typeof(NotSortableView)));
 
         Assert.Contains("not marked as sortable", exception.Message);
     }
@@ -76,7 +99,7 @@ public sealed class QueryViewRegistryTests
     [Fact]
     public void FindAndGetRegistration_AreCaseInsensitiveByName()
     {
-        var registry = new QueryViewRegistry([typeof(TestView)]);
+        var registry = CreateSut(typeof(TestView));
 
         Assert.NotNull(registry.Find("TEST-VIEW"));
         Assert.Equal(typeof(TestView), registry.GetRegistration("test-view").QueryViewType);

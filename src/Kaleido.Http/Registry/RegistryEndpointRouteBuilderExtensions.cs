@@ -3,6 +3,7 @@ using Kaleido.Process.Registry;
 using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -70,6 +71,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                     HttpContext httpContext,
                     IKaleidoProcessClientFactory processClientFactory,
                     IKaleidoQueryableClientFactory queryableClientFactory,
+                    [FromServices] IProcessResponseFactory responseFactory,
                     CancellationToken cancellationToken) =>
                 {
                     var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
@@ -90,7 +92,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                     var response = await cache.GetOrBuildAsync(forceRefresh, async ct =>
                     {
                         var localProcesses =
-                            GetLocalProcesses(localProcessorRegistry, localServiceOptions);
+                            GetLocalProcesses(localProcessorRegistry, localServiceOptions, responseFactory);
 
                         var localQueryables =
                             GetLocalQueryables(localQueryableRegistry, localServiceOptions);
@@ -164,9 +166,10 @@ public static class RegistryEndpointRouteBuilderExtensions
 
     private static IEnumerable<ProcessorRegistryResponse> GetLocalProcesses(
         IProcessRegistry? registry,
-        KaleidoServiceOptions? serviceOptions)
+        KaleidoServiceOptions? serviceOptions,
+        IProcessResponseFactory responseFactory)
         => registry is not null && serviceOptions is not null
-            ? registry.Registrations.Select(r => ProcessorRegistryResponseFactory.FromRegistration(r, serviceOptions))
+            ? registry.Registrations.Select(r => responseFactory.CreateRegistryResponse(r, serviceOptions))
             : Enumerable.Empty<ProcessorRegistryResponse>();
 
     private static IEnumerable<QueryableRecordResponse> GetLocalQueryables(

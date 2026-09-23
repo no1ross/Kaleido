@@ -1,5 +1,6 @@
 namespace Kaleido.Http.Queryable.Contracts;
 
+#pragma warning disable KAL0001 // Pure URL/name factory — no state, intentional static
 internal static class QueryableContractUrls
 {
     internal static string QueryablePrefix(string serviceName) =>

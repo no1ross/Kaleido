@@ -15,6 +15,7 @@ internal sealed class ProcessStateService(
     IProcessContextStore contextStore,
     IProcessStepRegistry registry,
     KaleidoServiceOptions serviceOptions,
+    IProcessResponseFactory responseFactory,
     ILogger<ProcessStateService> logger)
     : IProcessStateService
 {
@@ -67,7 +68,7 @@ internal sealed class ProcessStateService(
                                 ?? throw new KaleidoFrameworkException(
                                     FrameworkErrorCodes.MissingRegistration,
                                     $"Available step '{stepName}' was not found in the local registry.");
-                            return ProcessContractMapper.ToSummary(
+                            return responseFactory.CreateStepSummary(
                                 registration.ToSummary(),
                                 serviceOptions.ServiceName);
                         })

@@ -20,9 +20,9 @@ public sealed class ProcessRequiredStepEntity
         set;
     } = string.Empty;
 
-    public ProcessContextEntity Context
+    public ProcessContextEntity? Context
     {
         get;
         set;
-    } = null!;
+    }
 }

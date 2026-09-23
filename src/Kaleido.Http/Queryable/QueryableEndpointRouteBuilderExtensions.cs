@@ -2,6 +2,7 @@ using System.Reflection;
 using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -312,7 +313,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 async (
                     QueryApiRequest<TViewParameters> request,
                     IQueryableService queryable,
-                    QueryableValueNormalizer normalizer,
+                    [FromServices] QueryableValueNormalizer normalizer,
                     CancellationToken cancellationToken) =>
                     await GuardQueryAsync(() =>
                         queryable.QueryAsync<TQueryView, TView>(
@@ -352,7 +353,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 async (
                     QueryApiRequest<TViewParameters> request,
                     IQueryableService queryable,
-                    QueryableValueNormalizer normalizer,
+                    [FromServices] QueryableValueNormalizer normalizer,
                     CancellationToken cancellationToken) =>
                     await GuardQueryAsync(() =>
                         queryable.QueryAsync<TQueryView, TView>(
@@ -390,7 +391,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 async (
                     QueryApiRequest<EmptyQueryViewParameters> request,
                     IQueryableService queryable,
-                    QueryableValueNormalizer normalizer,
+                    [FromServices] QueryableValueNormalizer normalizer,
                     CancellationToken cancellationToken) =>
                     await GuardQueryAsync(() =>
                         queryable.QueryAsync<TQueryContext, TQueryContext>(

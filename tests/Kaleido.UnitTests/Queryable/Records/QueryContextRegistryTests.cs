@@ -1,16 +1,37 @@
 using System.ComponentModel;
+using System.Reflection;
 using Kaleido.Exceptions;
 using Kaleido.Queryable.Records;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 
 namespace Kaleido.Queryable.UnitTests.Records;
 
 public sealed class QueryContextRegistryTests
 {
+    private static QueryContextRegistry CreateSut(params Type[] contextTypes)
+    {
+        var dataTypeMapper = new Mock<IDataTypeMapper>();
+        dataTypeMapper
+            .Setup(m => m.GetDescriptor(It.IsAny<PropertyInfo>()))
+            .Returns(new DataTypeDescriptor("mock-type"));
+
+        var constraintMapper = new Mock<IConstraintMapper>();
+        constraintMapper
+            .Setup(m => m.Map(It.IsAny<PropertyInfo>()))
+            .Returns([]);
+
+        return new QueryContextRegistry(
+            dataTypeMapper.Object,
+            constraintMapper.Object,
+            CreateServices(),
+            contextTypes);
+    }
+
     [Fact]
     public void Constructor_BuildsRegistrationMetadata()
     {
-        var registry = new QueryContextRegistry(CreateServices(), [typeof(TestContext)]);
+        var registry = CreateSut(typeof(TestContext));
 
         var registration = Assert.Single(registry.Registrations);
 
@@ -27,7 +48,7 @@ public sealed class QueryContextRegistryTests
     [Fact]
     public void Constructor_BuildsFieldMetadata()
     {
-        var registry = new QueryContextRegistry(CreateServices(), [typeof(TestContext)]);
+        var registry = CreateSut(typeof(TestContext));
 
         var registration = registry.GetRegistration(typeof(TestContext));
         var codeField = Assert.Single(registration.Metadata.Fields, x => x.Name == nameof(TestContext.Code));
@@ -46,7 +67,7 @@ public sealed class QueryContextRegistryTests
     [Fact]
     public void FindAndGetRegistration_AreCaseInsensitiveByName()
     {
-        var registry = new QueryContextRegistry(CreateServices(), [typeof(TestContext)]);
+        var registry = CreateSut(typeof(TestContext));
 
         Assert.NotNull(registry.Find("TEST-CONTEXT"));
         Assert.Equal(typeof(TestContext), registry.GetRegistration("test-context").ContextType);
@@ -55,7 +76,7 @@ public sealed class QueryContextRegistryTests
     [Fact]
     public void GetRegistration_WhenNameIsMissing_Throws()
     {
-        var registry = new QueryContextRegistry(CreateServices(), [typeof(TestContext)]);
+        var registry = CreateSut(typeof(TestContext));
 
         var exception = Assert.Throws<KaleidoFrameworkException>(() => registry.GetRegistration("missing"));
 

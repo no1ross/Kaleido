@@ -9,7 +9,7 @@ namespace Kaleido.Analyzers.Tests;
 public sealed class StaticClassExtensionsAnalyzerTests
 {
     private static readonly DiagnosticResult Expected =
-        new("KAL0001", DiagnosticSeverity.Info);
+        new("KAL0001", DiagnosticSeverity.Warning);
 
     [Fact]
     public async Task StaticClass_WithExtensionMethod_NoDiagnostic()

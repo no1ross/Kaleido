@@ -5,11 +5,11 @@ namespace Kaleido.Http.Observability;
 /// <summary>
 /// Reads Kaleido correlation fields from inbound HTTP request headers and
 /// maps them to a <see cref="Kaleido.Observability.KaleidoCorrelationContext"/>.
-/// String values are sanitized via <see cref="HttpHeaderSanitizer"/> before use.
+/// String values are sanitized via <see cref="HttpHeaderSanitizerExtensions"/> before use.
 /// </summary>
 internal static class HttpCorrelationContextReader
 {
-    public static KaleidoCorrelationContext Read(HttpContext context)
+    public static KaleidoCorrelationContext ReadCorrelationContext(this HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 
@@ -36,7 +36,7 @@ internal static class HttpCorrelationContextReader
     private static string? ReadString(HttpContext context, string headerName)
     {
         var raw = context.Request.Headers[headerName].ToString();
-        return HttpHeaderSanitizer.Sanitize(raw);
+        return raw.Sanitize();
     }
 
     private static Guid? ReadGuid(HttpContext context, string headerName)

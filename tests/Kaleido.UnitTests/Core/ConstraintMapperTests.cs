@@ -4,15 +4,17 @@ namespace Kaleido.Abstractions.UnitTests;
 
 public sealed class ConstraintMapperTests
 {
+    private readonly ConstraintMapper _sut = new();
+
     [Fact]
     public void Map_WhenPropertyIsNull_Throws()
     {
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
-                ConstraintMapper.Map(null!));
+                _sut.Map(null!));
 
         Assert.Equal(
-            "property",
+            "propertyInfo",
             exception.ParamName);
     }
 
@@ -21,7 +23,7 @@ public sealed class ConstraintMapperTests
     {
         var property = typeof(TestModel).GetProperty(nameof(TestModel.Name))!;
 
-        var constraints = ConstraintMapper.Map(property);
+        var constraints = _sut.Map(property);
 
         Assert.Collection(
             constraints,
@@ -60,7 +62,7 @@ public sealed class ConstraintMapperTests
     {
         var property = typeof(TestModel).GetProperty(nameof(TestModel.Code))!;
 
-        var constraint = Assert.Single(ConstraintMapper.Map(property));
+        var constraint = Assert.Single(_sut.Map(property));
 
         Assert.Equal("CustomRule", constraint.Type);
         Assert.Empty(constraint.Parameters);

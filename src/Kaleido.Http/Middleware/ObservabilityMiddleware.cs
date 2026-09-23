@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Kaleido.Http.Observability;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,7 +12,7 @@ internal sealed class ObservabilityMiddleware(RequestDelegate next)
             context.RequestServices
                 .GetService<IKaleidoCorrelationContextInitializer>();
 
-        var correlation = HttpCorrelationContextReader.Read(context);
+        var correlation = context.ReadCorrelationContext();
 
         initializer?.Initialize(correlation);
 

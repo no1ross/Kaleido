@@ -40,9 +40,9 @@ public sealed class ProcessStepContextEntity
         set;
     }
 
-    public ProcessContextEntity Context
+    public ProcessContextEntity? Context
     {
         get;
         set;
-    } = null!;
+    }
 }

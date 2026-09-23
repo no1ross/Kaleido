@@ -1,4 +1,5 @@
 using Kaleido.Http.Queryable;
+using Kaleido.Http.Queryable.Contracts;
 using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Metadata;

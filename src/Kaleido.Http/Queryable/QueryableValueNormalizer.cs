@@ -53,7 +53,8 @@ internal sealed class QueryableValueNormalizer(
                         .Select(x =>
                             NormalizeFilter(
                                 x,
-                                fields)!)
+                                fields))
+                        .OfType<QueryFilterNode>()
                         .ToArray())
             };
         }
@@ -94,21 +95,15 @@ internal sealed class QueryableValueNormalizer(
         }
     }
 
-    private sealed class FieldLookup
+    private sealed class FieldLookup(
+        QueryContextMetadata metadata)
     {
-        private readonly Dictionary<string, FieldMetadata> _byName;
+        private readonly Dictionary<string, FieldMetadata> _byName =
+            metadata.Fields.ToDictionary(
+                x => x.Name,
+                StringComparer.OrdinalIgnoreCase);
 
-        public FieldLookup(
-            QueryContextMetadata metadata)
-        {
-            Metadata = metadata;
-            _byName =
-                metadata.Fields.ToDictionary(
-                    x => x.Name,
-                    StringComparer.OrdinalIgnoreCase);
-        }
-
-        public QueryContextMetadata Metadata { get; }
+        public QueryContextMetadata Metadata { get; } = metadata;
 
         public FieldMetadata Get(
             string name) =>

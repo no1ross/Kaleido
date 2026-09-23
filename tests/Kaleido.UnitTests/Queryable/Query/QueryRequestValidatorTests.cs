@@ -1,10 +1,24 @@
 using Kaleido.Exceptions;
+using Moq;
 
 namespace Kaleido.Queryable.UnitTests.Query;
 
 public sealed class QueryRequestValidatorTests
 {
-    private readonly QueryRequestValidator _validator = new();
+    private static readonly DataTypeDescriptor TestDataType =
+        new("string");
+
+    private readonly QueryRequestValidator _validator = CreateSut();
+
+    private static QueryRequestValidator CreateSut()
+    {
+        var dataTypeMapper = new Mock<IDataTypeMapper>();
+        dataTypeMapper
+            .Setup(m => m.IsSupportedType(It.IsAny<Type>()))
+            .Returns(true);
+
+        return new QueryRequestValidator(dataTypeMapper.Object);
+    }
 
     [Fact]
     public void Validate_WhenRequestIsValid_DoesNotThrow()
@@ -103,8 +117,8 @@ public sealed class QueryRequestValidatorTests
                 QueryContextKind.Direct,
                 new PageableMetadata(25, 100),
                 [
-                    new FieldMetadata("Code", null, typeof(string), DataTypeMapper.GetDescriptor(typeof(TestRecordMetadata).GetProperty(nameof(TestRecordMetadata.Code))!), true, [FilterOperator.Equals], false, null, null, true),
-                    new FieldMetadata("Description", null, typeof(string), DataTypeMapper.GetDescriptor(typeof(TestRecordMetadata).GetProperty(nameof(TestRecordMetadata.Description))!), false, [], true, 1, MatchMode.Contains, false)
+                    new FieldMetadata("Code", null, typeof(string), TestDataType, true, [FilterOperator.Equals], false, null, null, true),
+                    new FieldMetadata("Description", null, typeof(string), TestDataType, false, [], true, 1, MatchMode.Contains, false)
                 ]));
 
     private static QueryContextRegistration CreateRegistrationWithoutSearchableFields() =>
@@ -119,16 +133,9 @@ public sealed class QueryRequestValidatorTests
                 "Unit Test",
                 QueryContextKind.Direct,
                 new PageableMetadata(25, 100),
-                [new FieldMetadata("Code", null, typeof(string), DataTypeMapper.GetDescriptor(typeof(TestRecordMetadata).GetProperty(nameof(TestRecordMetadata.Code))!), true, [FilterOperator.Equals], false, null, null, true)]));
+                [new FieldMetadata("Code", null, typeof(string), TestDataType, true, [FilterOperator.Equals], false, null, null, true)]));
 
     private sealed class TestRecord
     {
-    }
-
-    private sealed class TestRecordMetadata
-    {
-        public string Code { get; init; } = string.Empty;
-
-        public string Description { get; init; } = string.Empty;
     }
 }

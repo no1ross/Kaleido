@@ -31,7 +31,9 @@ public static class KaleidoHttpServiceCollectionExtensions
             builder.Services.TryAddScoped<IProcessStateService, ProcessStateService>();
         }
 
-        builder.Services.TryAddSingleton<Kaleido.Http.Queryable.QueryableValueNormalizer>();
+        builder.Services.TryAddSingleton<QueryableValueNormalizer>();
+        builder.Services.TryAddSingleton<IProcessResponseFactory, ProcessResponseFactory>();
+        builder.Services.TryAddSingleton<IProcessExecutionResponseFactory, ProcessExecutionResponseFactory>();
 
         return builder;
     }
