@@ -7,9 +7,15 @@ namespace Kaleido.Http.Registry;
 /// clean snapshot remains available for subsequent calls.
 /// </summary>
 internal sealed class RegistryCache
+    : IDisposable
 {
     private volatile AggregatedRegistryResponse? _cached;
     private readonly SemaphoreSlim _lock = new(1, 1);
+
+    public void Dispose()
+    {
+        _lock.Dispose();
+    }
 
     /// <summary>The last fully-clean cached response, or <c>null</c> if none exists yet.</summary>
     public AggregatedRegistryResponse? Current => _cached;

@@ -7,5 +7,5 @@ namespace Kaleido.Http.Queryable;
 public sealed class KaleidoQueryableClientRouteOptionsMap
 {
     /// <summary>Key = client name, Value = route prefix for that remote service.</summary>
-    public Dictionary<string, string> Options { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public IDictionary<string, string> Options { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 }

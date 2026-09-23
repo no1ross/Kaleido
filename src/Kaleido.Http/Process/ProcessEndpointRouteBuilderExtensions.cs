@@ -209,7 +209,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                                         Repeatable = x.Repeatable
                                     },
                                     serviceName))
-                            .OrderBy(x => x.Name)))
+                            .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)))
             .WithName(ProcessEndpointNames.StepCatalogEndpointName)
             .WithTags("Processes")
             .Produces<IReadOnlyCollection<ProcessStepSummary>>()

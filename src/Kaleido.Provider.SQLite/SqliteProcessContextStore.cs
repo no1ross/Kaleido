@@ -240,7 +240,7 @@ internal sealed class SqliteProcessContextStore(
 
             Steps =
                 entity.Steps
-                    .OrderBy(x => x.StepName)
+                    .OrderBy(x => x.StepName, StringComparer.OrdinalIgnoreCase)
                     .Select(step =>
                         new StepContext
                         {

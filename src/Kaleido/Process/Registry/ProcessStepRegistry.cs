@@ -109,8 +109,8 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
         _initialRegistrations =
             registrations
                 .Where(x =>
-                    !x.Dependencies.Any() &&
-                    !x.AvailableAfter.Any())
+                    x.Dependencies.Count == 0 &&
+                    x.AvailableAfter.Count == 0)
                 .ToArray();
     }
 

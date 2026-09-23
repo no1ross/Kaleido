@@ -97,7 +97,7 @@ public class KaleidoServiceOptions
                 $"KaleidoServiceOptions.ServiceName '{options.ServiceName}' must not contain whitespace.");
         }
 
-        if (options.ServiceName != options.ServiceName.ToLowerInvariant())
+        if (options.ServiceName.Any(char.IsUpper))
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidServiceName,

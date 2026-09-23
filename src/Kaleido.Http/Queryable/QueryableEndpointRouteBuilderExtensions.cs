@@ -71,7 +71,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                             QueryableRecordResponse.ToSummary(
                                 r,
                                 serviceName))
-                        .OrderBy(r => r.Name)))
+                        .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)))
             .WithName(
                 QueryableEndpointNames.CatalogEndpointName)
             .WithTags("Queryable")
@@ -91,7 +91,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                         QueryableRecordResponse.FromRegistryItem(
                             r,
                             serviceName))
-                    .OrderBy(r => r.Name)))
+                    .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)))
                 .WithName(
                     QueryableEndpointNames.RegistryEndpointName)
                 .WithTags("Queryable")

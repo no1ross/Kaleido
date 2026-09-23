@@ -1,4 +1,6 @@
-﻿public static class QueryableEndpointNames
+﻿namespace Kaleido.Http.Queryable;
+
+public static class QueryableEndpointNames
 {
     public static string CatalogEndpointName =>
         "queryable-catalog";

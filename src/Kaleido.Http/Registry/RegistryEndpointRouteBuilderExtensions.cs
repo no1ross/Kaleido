@@ -78,12 +78,13 @@ public static class RegistryEndpointRouteBuilderExtensions
                     {
                         logger.LogDebug("Registry cache hit — serving cached response.");
                     }
+                    else if (forceRefresh)
+                    {
+                        logger.LogDebug("Registry cache bypassed (force refresh requested).");
+                    }
                     else
                     {
-                        logger.LogDebug(
-                            forceRefresh
-                                ? "Registry cache bypassed (force refresh requested)."
-                                : "Registry cache miss — building fresh response.");
+                        logger.LogDebug("Registry cache miss — building fresh response.");
                     }
 
                     var response = await cache.GetOrBuildAsync(forceRefresh, async ct =>
@@ -102,7 +103,7 @@ public static class RegistryEndpointRouteBuilderExtensions
 
                         var allProcesses = localProcesses
                             .Concat(downstreamProcesses)
-                            .OrderBy(r => r.Name)
+                            .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
                             .ToArray();
 
                         var entryProcessors = allProcesses
@@ -122,7 +123,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                             Processes = allProcesses,
                             Queryables = localQueryables
                                 .Concat(downstreamQueryables)
-                                .OrderBy(r => r.Name)
+                                .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
                                 .ToArray(),
                             ClientErrors = [.. processErrors, .. queryableErrors]
                         };

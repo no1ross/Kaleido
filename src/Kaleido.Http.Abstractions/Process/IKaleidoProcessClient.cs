@@ -20,12 +20,12 @@ public interface IKaleidoProcessClient
         CancellationToken cancellationToken = default);
 
     Task<StepExecutionResponse> ExecuteStepAsync<TStep>(
-        TStep step,
+        TStep processStep,
         CancellationToken cancellationToken = default)
         where TStep : class;
 
     Task<StepExecutionResponse<TResponse>> ExecuteStepAsync<TStep, TResponse>(
-        TStep step,
+        TStep processStep,
         CancellationToken cancellationToken = default)
         where TStep : class;
 }

@@ -1,3 +1,5 @@
+namespace Kaleido.Http.Queryable.Contracts;
+
 internal static class QueryableContractUrls
 {
     internal static string QueryablePrefix(string serviceName) =>

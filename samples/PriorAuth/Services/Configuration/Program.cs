@@ -40,7 +40,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     {
         o.ServiceName = "configuration";
         o.Assemblies = new System.Reflection.Assembly[] { typeof(Program).Assembly, typeof(ConfigurationDbContext).Assembly };
-        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Configuration") ?? false;
+        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Configuration", StringComparison.Ordinal) ?? false;
     })
     .AddEventPublisher<HttpEventPublisher>()
     .AddHttp()
