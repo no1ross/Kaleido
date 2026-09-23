@@ -183,9 +183,9 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 
 These require more careful testing. Commit each as its own focused PR.
 
-- [ ] Add root `.editorconfig` with C# formatting and analyzer severity rules matching AGENTS.md conventions (primary ctors, collection expressions, no `!` operators)
-- [ ] Add `Directory.Build.props` at repo root to replace manual per-project imports; remove per-project `<Import>` lines
-- [ ] Pin all package versions (or adopt Central Package Management `Directory.Packages.props`) — replace `8.0.*` floating versions
+- [x] Add root `.editorconfig` with C# formatting and analyzer severity rules matching AGENTS.md conventions (primary ctors, collection expressions, no `!` operators)
+- [x] Add `Directory.Build.props` at repo root to replace manual per-project imports; remove per-project `<Import>` lines
+- [x] Pin all package versions — adopted layered Central Package Management (`Directory.Packages.props` at root + `tests/` + `samples/`, mirroring `Directory.Build.props`); all `*` floats replaced with currently-resolved versions; OpenTelemetry unified on 1.19
 - [ ] Add Roslyn analyzer configuration (`AnalysisLevel=latest-recommended`) to `build/packages.props`
 - [ ] Replace `KaleidoClientFactoryBase<TClient,TMap>` reflection hack — introduce `IRouteOptionsMap` interface with `Options` property; constrain `TMap`; eliminate `GetProperty("Options")` reflection
 - [ ] Collapse `KaleidoProcessClientRouteOptionsMap` and `KaleidoQueryableClientRouteOptionsMap` into a single `KaleidoClientRouteOptionsMap` base
