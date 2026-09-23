@@ -431,6 +431,9 @@ dotnet_diagnostic.KAL0002.severity = none
 # test naming convention
 dotnet_diagnostic.CA1707.severity = silent
 
+# KAL0003: tests use '!' freely for Assert.NotNull follow-ons and null! arg injection
+dotnet_diagnostic.KAL0003.severity = none
+
 # Unit-test projects only: SUT fixture conventions (one SUT per fixture,
 # named {Sut}Tests, path-mirrored, one fixture per SUT)
 [tests/Kaleido.UnitTests/**/*.cs]

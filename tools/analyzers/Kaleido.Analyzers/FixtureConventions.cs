@@ -43,9 +43,54 @@ internal static class FixtureConventions
             return null;
         }
 
-        return compilation
-            .GetSymbolsWithName(prefix, SymbolFilter.Type, cancellationToken)
-            .OfType<INamedTypeSymbol>()
-            .FirstOrDefault(s => s.TypeKind != TypeKind.Error);
+        var sourceHit =
+            compilation
+                .GetSymbolsWithName(prefix, SymbolFilter.Type, cancellationToken)
+                .OfType<INamedTypeSymbol>()
+                .FirstOrDefault(s => s.TypeKind != TypeKind.Error);
+
+        if (sourceHit is not null)
+        {
+            return sourceHit;
+        }
+
+        foreach (var reference in compilation.References)
+        {
+            if (compilation.GetAssemblyOrModuleSymbol(reference) is not IAssemblySymbol assembly)
+            {
+                continue;
+            }
+
+            var hit = FindType(assembly.GlobalNamespace, prefix);
+
+            if (hit is not null)
+            {
+                return hit;
+            }
+        }
+
+        return null;
+    }
+
+    private static INamedTypeSymbol? FindType(
+        INamespaceSymbol ns,
+        string name)
+    {
+        foreach (var member in ns.GetTypeMembers(name))
+        {
+            return member;
+        }
+
+        foreach (var child in ns.GetNamespaceMembers())
+        {
+            var hit = FindType(child, name);
+
+            if (hit is not null)
+            {
+                return hit;
+            }
+        }
+
+        return null;
     }
 }

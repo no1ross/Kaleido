@@ -2,6 +2,6 @@ using Kaleido.Process.AspNetCore.FunctionalTests.Fixtures;
 
 namespace Kaleido.Process.AspNetCore.FunctionalTests;
 
-[CollectionDefinition(nameof(ProcessAspNetCoreCollection))]
-public sealed class ProcessAspNetCoreCollection
+[CollectionDefinition(nameof(ProcessAspNetCoreSuite))]
+public sealed class ProcessAspNetCoreSuite
     : ICollectionFixture<ProcessAspNetCoreFixture>;

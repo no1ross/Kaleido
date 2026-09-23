@@ -5,7 +5,7 @@ using Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
 
 namespace Kaleido.Process.AspNetCore.FunctionalTests.Discovery;
 
-[Collection(nameof(ProcessAspNetCoreCollection))]
+[Collection(nameof(ProcessAspNetCoreSuite))]
 public sealed class ProcessDiscoveryTests
 {
     private readonly HttpClient _client;

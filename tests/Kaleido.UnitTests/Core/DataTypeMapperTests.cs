@@ -124,7 +124,7 @@ public sealed class DataTypeMapperTests
     {
         var exception =
             Assert.Throws<KaleidoFrameworkException>(() =>
-                _sut.ConvertValue("bad-guid", typeof(Guid)));
+                _sut.ConvertValue<Guid>("bad-guid"));
 
         Assert.Equal(FrameworkErrorCodes.DataConversionError, exception.Code);
         Assert.Contains("bad-guid", exception.Message);

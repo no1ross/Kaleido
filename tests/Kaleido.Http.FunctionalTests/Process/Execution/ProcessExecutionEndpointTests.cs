@@ -5,7 +5,7 @@ using Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
 
 namespace Kaleido.Process.AspNetCore.FunctionalTests.Execution;
 
-[Collection(nameof(ProcessAspNetCoreCollection))]
+[Collection(nameof(ProcessAspNetCoreSuite))]
 public sealed class ProcessExecutionEndpointTests
 {
     private readonly HttpClient _client;
