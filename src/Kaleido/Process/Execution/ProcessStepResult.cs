@@ -23,7 +23,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
 
     public string? TargetProcessorName { get; init; }
 
-    public required TProcessStepResult Response { get; init; }
+    public TProcessStepResult? Response { get; init; }
 
     object? IProcessStepHandlerResult.Response => Response;
 
@@ -63,7 +63,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
     /// The framework will propagate <paramref name="targetProcessorName"/> to the
     /// HTTP response so the consumer can fetch authoritative state from the target.
     /// </summary>
-    public static ProcessStepHandlerResult HandOff(
+    public static ProcessStepHandlerResult<TProcessStepResult> HandOff(
         string targetProcessorName,
         params ProcessMessage[] messages)
     {

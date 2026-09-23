@@ -136,11 +136,11 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 - [x] Build `Dictionary<string,FieldMetadata>` once per request — per-request `FieldLookup` (metadata + name→field dict) threaded through `QueryRequestValidator`, `QueryRequestCompiler`, `QueryableValueNormalizer`
 
 ### Public API correctness
-- [ ] Make `AddProcessClient(...)` and `AddQueryableClient(...)` `public` (currently `internal` but documented as public)
-- [ ] Make `MapQueryView` and `MapDelegatedQueryView` `private` (currently public but leak internal types)
-- [ ] Remove unused `serviceName` parameter from `MapQueryView` and `MapDelegatedQueryView`
-- [ ] Make `ExecuteStepRequest.ToProcessRequest` `internal` (leaks core runtime types through shared contract assembly)
-- [ ] Fix `ProcessStepHandlerResult<T>.HandOff` return type → `ProcessStepHandlerResult<TProcessStepResult>` (currently returns non-generic, typed handlers cannot use it)
+- [x] ~~Make `AddProcessClient`/`AddQueryableClient` `public`~~ — **KEPT internal**: `AddHttpClients()` (config-driven `Kaleido:Clients`) is the consumer-facing seam; stale docs corrected (README, ARCHITECTURE, AGENTS, PriorAuth HANDOFF) — plural `AddProcessClients`/`AddQueryableClients` never existed
+- [~] ~~Make `MapQueryView`/`MapDelegatedQueryView` `private`~~ — **KEPT**: mapping surface intentionally granular; note the "leaks internal types" rationale was stale (registry types are all `public`)
+- [~] ~~Remove unused `serviceName` param from `MapQueryView`/`MapDelegatedQueryView`~~ — **KEPT** with above
+- [x] Make `ExecuteStepRequest.ToProcessRequest` `internal` — sealed the core `ProcessRequest`/`ProcessorRequest` leak through the contract assembly; sole caller covered by `InternalsVisibleTo`
+- [x] Fix `ProcessStepHandlerResult<T>.HandOff` return type → `ProcessStepHandlerResult<TProcessStepResult>` — typed handlers can now `return HandOff(...)`; non-generic overload unchanged
 
 ### Dependency graph fixes
 - [x] Change `Kaleido.Observability.OpenTelemetry.csproj` project reference from `Kaleido.AspNetCore` → `Kaleido` (only uses core types)

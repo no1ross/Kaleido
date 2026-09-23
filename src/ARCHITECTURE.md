@@ -156,18 +156,18 @@ The core project is organized into two main namespaces:
 - `IKaleidoProcessClient` — typed interface: `GetRegistryAsync`, `GetStepMetadataAsync`, `GetProcessStateAsync`, `ExecuteAsync`, `ExecuteStepAsync`, `ExecuteStepAsync<TStep, TResult>`
 - `KaleidoProcessClient` — concrete implementation; lazily fetches and caches the remote registry per client instance
 - `KaleidoProcessClientException` — thrown on non-success responses and on registry lookup failures
-- `KaleidoProcessClientServiceCollectionExtensions` — `AddProcessClient(name, baseUrl)` and `AddProcessClients(names...)`
+- `KaleidoProcessClientServiceCollectionExtensions` — internal `AddProcessClient(...)` registration used by `AddHttpClients`
 
 **Queryable client**
 - `IKaleidoQueryableClient` — typed interface: `GetRegistryAsync`, `GetContextMetadataAsync`, `QueryViewAsync`, `QueryContextAsync`
 - `KaleidoQueryableClient` — concrete implementation; lazily fetches and caches the remote registry per client instance
 - `KaleidoQueryableClientException` — thrown on non-success responses and on registry lookup failures
-- `KaleidoQueryableClientServiceCollectionExtensions` — `AddQueryableClient(name, baseUrl)` and `AddQueryableClients(names...)`
+- `KaleidoQueryableClientServiceCollectionExtensions` — internal `AddQueryableClient(...)` registration used by `AddHttpClients`
 
 ### Key design invariants
 - Both clients lazily fetch and cache the remote registry for the lifetime of the client instance.
 - Both clients automatically forward Kaleido correlation headers on outbound requests.
-- `AddProcessClients` / `AddQueryableClients` reads base URLs from `Kaleido:Clients:<Name>:BaseUrl`, with a `Kaleido:BaseUrl` fallback.
+- `AddHttpClients()` (in `KaleidoHttpClientsServiceCollectionExtensions`) registers both a Process and a Queryable client per entry in `Kaleido:Clients`, reading base URLs from `Kaleido:Clients:<Name>:BaseUrl` with a `Kaleido:BaseUrl` fallback.
 - The client name is lowercased to derive the route prefix, matching the remote server's `Kaleido:ServiceName`.
 
 ---

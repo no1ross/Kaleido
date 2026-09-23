@@ -219,7 +219,7 @@ To add a new modality → processor mapping (e.g. Oncology):
 1. Register the Oncology processor and its steps in its own `*.Artifacts` project
 2. Create a `StartOncologyIntakeStep` and `StartOncologyIntakeHandler` in `Oncology.Artifacts` (same pattern as `StartRadiologyIntakeStep`)
 3. Add `"ProcessorMappings:Oncology": "oncology"` to Intake's `appsettings.json`
-4. Add `AddProcessClient(o => { o.Name = "oncology"; ... })` in Intake's `Program.cs`
+4. Add a `"Kaleido:Clients:Oncology"` entry in Intake's `appsettings.json` (`BaseUrl`/`RoutePrefix` as needed) — `AddHttpClients()` in `Program.cs` registers it automatically
 5. Add `Intake.Artifacts` → `Oncology.Artifacts` project reference so `CaptureRequestedServiceHandler` can submit the typed step
 6. Update `CaptureRequestedServiceHandler` to call `ExecuteStepAsync<StartOncologyIntakeStep>` when `processorName == "oncology"`
 7. The Intake → target handoff signal (`HandOff(processorName)`) and `ProcessService` require no changes

@@ -17,14 +17,14 @@ See also:
 - `IKaleidoProcessClientFactory` — factory resolved by registered client name
 - `KaleidoProcessClient` — concrete HTTP client implementation
 - `KaleidoProcessClientException` — exception wrapping non-success HTTP responses
-- `KaleidoProcessClientServiceCollectionExtensions` — `AddProcessClient(...)` and `AddProcessClients(...)` builder extensions
+- `KaleidoProcessClientServiceCollectionExtensions` — internal `AddProcessClient(...)` builder extension (consumers register via `AddHttpClients`)
 
 ### Queryable client
 - `IKaleidoQueryableClient` — typed interface for registry, context metadata, view queries, and direct context queries
 - `IKaleidoQueryableClientFactory` — factory resolved by registered client name
 - `KaleidoQueryableClient` — concrete HTTP client implementation
 - `KaleidoQueryableClientException` — exception wrapping non-success HTTP responses
-- `KaleidoQueryableClientServiceCollectionExtensions` — `AddQueryableClient(...)` and `AddQueryableClients(...)` builder extensions
+- `KaleidoQueryableClientServiceCollectionExtensions` — internal `AddQueryableClient(...)` builder extension (consumers register via `AddHttpClients`)
 
 ---
 
@@ -46,37 +46,29 @@ Typical scenarios:
 
 ## Registration
 
-### Process clients
+Register all downstream clients from configuration with `AddHttpClients()` — each named client gets **both** a Process client and a Queryable client:
 
 ```csharp
-builder.Services.AddKaleido()
-    .AddProcessClient("RemoteProcessor", "https://remote-processor-host")
-    .AddProcessClient("Radiology", "https://radiology-service-host");
+builder.Services.AddKaleido(builder.Configuration)
+    .AddHttpClients();
 ```
 
-Or register multiple clients from configuration:
+`AddHttpClients` binds the `Kaleido:Clients` section. Each entry is a named downstream service; `BaseUrl` falls back to the shared `Kaleido:BaseUrl`, and `RoutePrefix` defaults to the key lowercased:
 
-```csharp
-builder.Services.AddKaleido()
-    .AddProcessClients("Member", "CodeSet", "Radiology");
+```json
+{
+  "Kaleido": {
+    "BaseUrl": "http://router:8080",
+    "Clients": {
+      "Member":    { },
+      "CodeSet":   { },
+      "Radiology": { "BaseUrl": "https://radiology-service-host", "RoutePrefix": "radiology" }
+    }
+  }
+}
 ```
 
-`AddProcessClients` reads base URLs from `Kaleido:Clients:<Name>:BaseUrl` (or the shared `Kaleido:BaseUrl` fallback).
-
-### Queryable clients
-
-```csharp
-builder.Services.AddKaleido()
-    .AddQueryableClient("MemberService", "https://member-service-host")
-    .AddQueryableClient("CodeSet", "https://codeset-service-host");
-```
-
-Or from configuration:
-
-```csharp
-builder.Services.AddKaleido()
-    .AddQueryableClients("Member", "CodeSet", "Radiology");
-```
+The granular `AddProcessClient`/`AddQueryableClient` builder extensions are internal — `AddHttpClients` is the consumer-facing registration seam.
 
 ---
 
@@ -170,7 +162,8 @@ This project does not contain:
 
 - `Process/IKaleidoProcessClient.cs` — process client interface
 - `Process/KaleidoProcessClient.cs` — process client implementation
-- `Process/KaleidoProcessClientServiceCollectionExtensions.cs` — `AddProcessClient(...)` registration
+- `KaleidoHttpClientsServiceCollectionExtensions.cs` — `AddHttpClients()` consumer registration
+- `Process/KaleidoProcessClientServiceCollectionExtensions.cs` — internal `AddProcessClient(...)` registration
 - `Queryable/IKaleidoQueryableClient.cs` — queryable client interface
 - `Queryable/KaleidoQueryableClient.cs` — queryable client implementation
-- `Queryable/KaleidoQueryableClientServiceCollectionExtensions.cs` — `AddQueryableClient(...)` registration
+- `Queryable/KaleidoQueryableClientServiceCollectionExtensions.cs` — internal `AddQueryableClient(...)` registration

@@ -67,7 +67,7 @@ Owns shared HTTP contract types and HTTP-specific correlation primitives:
 Owns typed HTTP clients:
 - `IKaleidoProcessClientFactory` / `KaleidoProcessClient` for consuming remote process endpoints
 - `IKaleidoQueryableClientFactory` / `KaleidoQueryableClient` for consuming remote queryable endpoints
-- `AddProcessClient(...)` and `AddQueryableClient(...)` builder extensions
+- `AddHttpClients()` — consumer-facing registration (config-driven `Kaleido:Clients`); `AddProcessClient(...)`/`AddQueryableClient(...)` are internal
 
 ### Kaleido.Observability.OpenTelemetry
 Owns the OpenTelemetry observability provider (opt-in):
