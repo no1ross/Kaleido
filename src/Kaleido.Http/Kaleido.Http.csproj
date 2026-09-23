@@ -1,7 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-	<Import Project="../../build/packages.props" />
-
-	<ItemGroup>
+<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
 

@@ -1,7 +1,0 @@
-<Project>
-    <Import Project="common.props" />
-	<PropertyGroup>
-		<IsPackable>false</IsPackable>
-		<NoWarn>$(NoWarn);1591</NoWarn>
-	</PropertyGroup>
-</Project>
