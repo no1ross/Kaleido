@@ -403,6 +403,22 @@ dotnet_diagnostic.KAL0003.severity = warning
 # KAL0004: exception types must not be records
 dotnet_diagnostic.KAL0004.severity = error
 
+# KAL0005–KAL0014: DI enforcement — injectable types not static (0005), no
+# new-ing registered impls (0006), no service locator (0007), inject
+# abstractions (0008), ctor injection only (0009), retain injected deps
+# (0010), no work in DI ctors (0011), no manual infra instantiation (0012),
+# no disposing container-owned deps (0013), no captive scoped→singleton (0014)
+dotnet_diagnostic.KAL0005.severity = error
+dotnet_diagnostic.KAL0006.severity = error
+dotnet_diagnostic.KAL0007.severity = error
+dotnet_diagnostic.KAL0008.severity = error
+dotnet_diagnostic.KAL0009.severity = error
+dotnet_diagnostic.KAL0010.severity = error
+dotnet_diagnostic.KAL0011.severity = error
+dotnet_diagnostic.KAL0012.severity = error
+dotnet_diagnostic.KAL0013.severity = error
+dotnet_diagnostic.KAL0014.severity = error
+
 # KAL1001: test fixtures are named {SutName}Tests — SUT rules apply to unit
 # tests only (functional/integration fixtures are scenario-scoped by design)
 dotnet_diagnostic.KAL1001.severity = none
@@ -433,6 +449,19 @@ dotnet_diagnostic.CA1707.severity = silent
 
 # KAL0003: tests use '!' freely for Assert.NotNull follow-ons and null! arg injection
 dotnet_diagnostic.KAL0003.severity = none
+
+# KAL0005–KAL0014: tests are a separate composition root — SUTs are new'ed,
+# Moq setups resolve services, test providers are manually built
+dotnet_diagnostic.KAL0005.severity = none
+dotnet_diagnostic.KAL0006.severity = none
+dotnet_diagnostic.KAL0007.severity = none
+dotnet_diagnostic.KAL0008.severity = none
+dotnet_diagnostic.KAL0009.severity = none
+dotnet_diagnostic.KAL0010.severity = none
+dotnet_diagnostic.KAL0011.severity = none
+dotnet_diagnostic.KAL0012.severity = none
+dotnet_diagnostic.KAL0013.severity = none
+dotnet_diagnostic.KAL0014.severity = none
 
 # Unit-test projects only: SUT fixture conventions (one SUT per fixture,
 # named {Sut}Tests, path-mirrored, one fixture per SUT)
