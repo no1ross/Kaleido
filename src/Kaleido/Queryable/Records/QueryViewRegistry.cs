@@ -41,9 +41,21 @@ internal sealed class QueryViewRegistry
     private readonly IReadOnlyDictionary<Type, QueryViewRegistration> _byType;
     private readonly IReadOnlyCollection<QueryViewRegistration> _registrations;
 
+    private readonly IDataTypeMapper _dataTypeMapper;
+    private readonly IConstraintMapper _constraintMapper;
+
     public QueryViewRegistry(
+        IDataTypeMapper dataTypeMapper,
+        IConstraintMapper constraintMapper,
         IEnumerable<Type> queryViewTypes)
     {
+        ArgumentNullException.ThrowIfNull(dataTypeMapper);
+        ArgumentNullException.ThrowIfNull(constraintMapper);
+        ArgumentNullException.ThrowIfNull(queryViewTypes);
+
+        _dataTypeMapper = dataTypeMapper;
+        _constraintMapper = constraintMapper;
+
         var registrations =
             queryViewTypes
                 .Select(BuildRegistration)
@@ -102,7 +114,7 @@ internal sealed class QueryViewRegistry
                 $"Query view '{queryViewType.FullName}' is not registered.");
     }
 
-    private static QueryViewRegistration BuildRegistration(
+    private QueryViewRegistration BuildRegistration(
         Type queryViewType)
     {
         var queryViewAttribute =
@@ -150,7 +162,7 @@ internal sealed class QueryViewRegistry
                 BuildOutputFields(sourceType)));
     }
 
-    private static IReadOnlyList<QueryParameterMetadata> BuildParameters(
+    private IReadOnlyList<QueryParameterMetadata> BuildParameters(
         Type parametersType)
     {
         if (parametersType == typeof(EmptyQueryViewParameters))
@@ -166,13 +178,13 @@ internal sealed class QueryViewRegistry
                 new QueryParameterMetadata(
                     property.Name,
                     property.PropertyType,
-                    DataTypeMapper.GetDescriptor(property),
-                    ConstraintMapper.Map(property),
+                    _dataTypeMapper.GetDescriptor(property),
+                    _constraintMapper.Map(property),
                     property.GetCustomAttribute<DescriptionAttribute>()?.Description))
             .ToArray();
     }
 
-    private static IReadOnlyList<QueryOutputFieldMetadata> BuildOutputFields(
+    private IReadOnlyList<QueryOutputFieldMetadata> BuildOutputFields(
         Type viewType)
     {
         return viewType
@@ -184,7 +196,7 @@ internal sealed class QueryViewRegistry
                     property.Name,
                     property.GetCustomAttribute<DescriptionAttribute>()?.Description,
                     property.PropertyType,
-                    DataTypeMapper.GetDescriptor(property)))
+                    _dataTypeMapper.GetDescriptor(property)))
             .ToArray();
     }
 

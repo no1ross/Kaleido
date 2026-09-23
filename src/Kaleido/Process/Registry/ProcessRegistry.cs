@@ -1,5 +1,3 @@
-using System.ComponentModel;
-using System.Reflection;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Process.Registry;
@@ -14,20 +12,35 @@ internal sealed class ProcessRegistry : IProcessRegistry
     private readonly IReadOnlyCollection<ProcessorRegistryItem> _registrations;
 
     public ProcessRegistry(
+        IDataTypeMapper dataTypeMapper,
+        IConstraintMapper constraintMapper,
         KaleidoServiceOptions serviceOptions,
         IProcessStepRegistry stepRegistry,
         ILogger<ProcessRegistry> logger)
     {
+        ArgumentNullException.ThrowIfNull(dataTypeMapper);
+        ArgumentNullException.ThrowIfNull(constraintMapper);
         ArgumentNullException.ThrowIfNull(serviceOptions);
         ArgumentNullException.ThrowIfNull(stepRegistry);
         ArgumentNullException.ThrowIfNull(logger);
 
         _registrations =
         [
-            ProcessRegistryProjection.Project(
-                serviceOptions,
-                stepRegistry.InitialRegistrations,
-                stepRegistry.Registrations)
+            new ProcessorRegistryItem
+            {
+                IsEntryProcessor = serviceOptions.IsEntryProcessor,
+                InitialSteps = stepRegistry.InitialRegistrations
+                    .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(x => x.ToSummary())
+                    .ToArray(),
+                Steps = stepRegistry.Registrations
+                    .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(x =>
+                        x.ToRegistryItem(
+                            dataTypeMapper,
+                            constraintMapper))
+                    .ToArray()
+            }
         ];
 
         logger.LogInformation(
@@ -39,136 +52,4 @@ internal sealed class ProcessRegistry : IProcessRegistry
 
     public IReadOnlyCollection<ProcessorRegistryItem> Registrations =>
         _registrations;
-}
-
-internal static class ProcessRegistryProjection
-{
-    internal static ProcessorRegistryItem Project(
-        KaleidoServiceOptions serviceOptions,
-        IReadOnlyCollection<ProcessStepRegistration> initialSteps,
-        IReadOnlyCollection<ProcessStepRegistration> steps)
-    {
-        ArgumentNullException.ThrowIfNull(serviceOptions);
-        ArgumentNullException.ThrowIfNull(initialSteps);
-        ArgumentNullException.ThrowIfNull(steps);
-
-        return new ProcessorRegistryItem
-        {
-            IsEntryProcessor = serviceOptions.IsEntryProcessor,
-            InitialSteps = initialSteps
-                .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(ProjectSummary)
-                .ToArray(),
-            Steps = steps
-                .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(Project)
-                .ToArray()
-        };
-    }
-
-    internal static ProcessorStepRegistryItem Project(
-        ProcessStepRegistration registration)
-    {
-        ArgumentNullException.ThrowIfNull(registration);
-
-        return new ProcessorStepRegistryItem
-        {
-            Name = registration.Metadata.Name,
-            Description = registration.Metadata.Description,
-            DisplayName = registration.Metadata.DisplayName,
-            Version = registration.Metadata.Version,
-            Repeatable = registration.Repeatable.Enabled,
-            Fields = registration.StepType
-                .GetProperties()
-                .Select(ProjectInput)
-                .ToArray(),
-            Dependencies = registration.Dependencies
-                .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(ProjectSummary)
-                .ToArray(),
-            AvailableAfter = registration.AvailableAfter
-                .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(ProjectSummary)
-                .ToArray(),
-            AvailableUntil = registration.AvailableUntil
-                .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(ProjectSummary)
-                .ToArray(),
-            Result = ProjectResult(registration.StepResultType)
-        };
-    }
-
-    internal static ProcessorStepSummary ProjectSummary(
-        ProcessStepRegistration registration)
-    {
-        ArgumentNullException.ThrowIfNull(registration);
-
-        return new ProcessorStepSummary
-        {
-            Name = registration.Metadata.Name,
-            Description = registration.Metadata.Description,
-            DisplayName = registration.Metadata.DisplayName,
-            Version = registration.Metadata.Version,
-            Repeatable = registration.Repeatable.Enabled
-        };
-    }
-
-    internal static ProcessorInputFieldDescriptor ProjectInput(
-        PropertyInfo property)
-    {
-        ArgumentNullException.ThrowIfNull(property);
-
-        return new ProcessorInputFieldDescriptor
-        {
-            Name = property.Name,
-            Description = property.GetCustomAttribute<DescriptionAttribute>()?.Description,
-            DataType = DataTypeMapper.GetDescriptor(property),
-            Constraints = ConstraintMapper.Map(property)
-        };
-    }
-
-    internal static ProcessorStepResultDescriptor? ProjectResult(
-        Type? resultType)
-    {
-        if (resultType is null)
-        {
-            return null;
-        }
-
-        return new ProcessorStepResultDescriptor
-        {
-            OutputFields = GetResultProperties(resultType)
-                .Select(ProjectOutput)
-                .ToArray()
-        };
-    }
-
-    internal static ProcessorOutputFieldDescriptor ProjectOutput(
-        PropertyInfo property)
-    {
-        ArgumentNullException.ThrowIfNull(property);
-
-        return new ProcessorOutputFieldDescriptor
-        {
-            Name = property.Name,
-            Description = property.GetCustomAttribute<DescriptionAttribute>()?.Description,
-            DataType = DataTypeMapper.GetDescriptor(property)
-        };
-    }
-
-    private static IReadOnlyCollection<PropertyInfo> GetResultProperties(
-        Type resultType)
-    {
-        if (resultType == typeof(string)
-            || resultType.IsPrimitive
-            || resultType.IsEnum)
-        {
-            return [];
-        }
-
-        return resultType
-            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-            .Where(x => x.GetMethod is not null)
-            .ToArray();
-    }
 }

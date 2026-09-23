@@ -2,9 +2,10 @@ using Kaleido.Json;
 
 namespace Kaleido.Http.Queryable;
 
-internal static class QueryableValueNormalizer
+internal sealed class QueryableValueNormalizer(
+    IValueConverter valueConverter)
 {
-    public static QueryBody? Normalize(
+    public QueryBody? Normalize(
         QueryBody? query,
         QueryContextMetadata metadata)
     {
@@ -23,7 +24,7 @@ internal static class QueryableValueNormalizer
         };
     }
 
-    private static QueryFilterNode? NormalizeFilter(
+    private QueryFilterNode? NormalizeFilter(
         QueryFilterNode? node,
         FieldLookup fields)
     {
@@ -60,7 +61,7 @@ internal static class QueryableValueNormalizer
         return node;
     }
 
-    private static QueryFilterCondition NormalizeCondition(
+    private QueryFilterCondition NormalizeCondition(
         QueryFilterCondition condition,
         FieldLookup fields)
     {
@@ -74,7 +75,7 @@ internal static class QueryableValueNormalizer
                     .Select(x =>
                         x is null
                             ? null
-                            : ValueConverter.Convert(
+                            : valueConverter.Convert(
                                 x,
                                 field.FieldType))
                     .ToArray();

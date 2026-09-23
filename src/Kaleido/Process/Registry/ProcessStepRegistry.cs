@@ -20,7 +20,7 @@ public interface IProcessStepRegistry
     ProcessStepRegistration GetRegistration(Type stepType);
 }
 
-internal sealed class ProcessStepRegistry : IProcessStepRegistry
+internal sealed partial class ProcessStepRegistry : IProcessStepRegistry
 {
     private readonly IReadOnlyDictionary<string, ProcessStepRegistration> _byName;
 
@@ -86,7 +86,7 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
         }
 
         // Pass 3
-        RegistrationValidator.Validate(
+        ValidateDefinitions(
             definitions);
 
         // Pass 4
@@ -286,7 +286,8 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
             nodes.ToDictionary(
                 x => x.Key,
                 x => new RegistrationSlot(
-                    x.Value));
+                    x.Value,
+                    CreateGetResultFromTaskFunc(x.Value.Definition.HandlerType)));
 
         //
         // Pass 4d:
@@ -396,45 +397,6 @@ internal sealed class ProcessStepRegistry : IProcessStepRegistry
     }
 }
 
-internal static class ProcessStepRegistryHelper
-{
-    internal static Func<Task, IProcessStepHandlerResult>? CreateGetResultFromTaskFunc(
-        Type handlerType)
-    {
-        var executeAsyncMethod =
-            handlerType.GetMethod(
-                nameof(IProcessStepHandler<object>.ExecuteAsync),
-                BindingFlags.Public | BindingFlags.Instance);
-
-        if (executeAsyncMethod is null)
-        {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProInvalidHandler,
-                $"Handler '{handlerType.FullName}' does not expose ExecuteAsync.");
-        }
-
-        var taskType = executeAsyncMethod.ReturnType;
-        var resultProperty = taskType.GetProperty(nameof(Task<object>.Result))
-            ?? throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProInvalidHandler,
-                $"Task type '{taskType.FullName}' does not have a Result property.");
-
-        // Create a compiled function that extracts the result using reflection
-        // This is still much faster than the original approach because PropertyInfo is cached
-        return task =>
-        {
-            var result = resultProperty.GetValue(task);
-            if (result is IProcessStepHandlerResult handlerResult)
-            {
-                return handlerResult;
-            }
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.InvalidHandlerResult,
-                $"Handler returned an invalid handler result of type '{result?.GetType().FullName}'.");
-        };
-    }
-}
-
 internal sealed class RegistrationNode
 {
     public required ProcessStepDefinition Definition
@@ -468,14 +430,12 @@ internal sealed class RegistrationNode
 internal sealed class RegistrationSlot
 {
     public RegistrationSlot(
-        RegistrationNode node)
+        RegistrationNode node,
+        Func<Task, IProcessStepHandlerResult>? getResultFromTask)
     {
         ArgumentNullException.ThrowIfNull(node);
 
         Node = node;
-
-        var handlerTaskType =
-            ProcessStepRegistryHelper.CreateGetResultFromTaskFunc(node.Definition.HandlerType);
 
         Registration =
             new ProcessStepRegistration(
@@ -490,7 +450,7 @@ internal sealed class RegistrationSlot
                     AvailableUntil),
                 node.Repeatable,
                 node.Definition.Metadata,
-                handlerTaskType);
+                getResultFromTask);
     }
 
     public RegistrationNode Node

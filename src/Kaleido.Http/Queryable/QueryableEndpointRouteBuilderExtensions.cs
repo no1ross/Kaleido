@@ -312,12 +312,13 @@ public static class QueryableEndpointRouteBuilderExtensions
                 async (
                     QueryApiRequest<TViewParameters> request,
                     IQueryableService queryable,
+                    QueryableValueNormalizer normalizer,
                     CancellationToken cancellationToken) =>
                     await GuardQueryAsync(() =>
                         queryable.QueryAsync<TQueryView, TView>(
                             new QueryRequest<TViewParameters>(
                                 Query:
-                                    QueryableValueNormalizer.Normalize(
+                                    normalizer.Normalize(
                                         request.Query,
                                         context.Metadata),
                                 ViewParameters: request.Parameters),
@@ -351,12 +352,13 @@ public static class QueryableEndpointRouteBuilderExtensions
                 async (
                     QueryApiRequest<TViewParameters> request,
                     IQueryableService queryable,
+                    QueryableValueNormalizer normalizer,
                     CancellationToken cancellationToken) =>
                     await GuardQueryAsync(() =>
                         queryable.QueryAsync<TQueryView, TView>(
                             new QueryRequest<TViewParameters>(
                                 Query:
-                                    QueryableValueNormalizer.Normalize(
+                                    normalizer.Normalize(
                                         request.Query,
                                         view.QueryMetadata),
                                 ViewParameters: request.Parameters),
@@ -388,12 +390,13 @@ public static class QueryableEndpointRouteBuilderExtensions
                 async (
                     QueryApiRequest<EmptyQueryViewParameters> request,
                     IQueryableService queryable,
+                    QueryableValueNormalizer normalizer,
                     CancellationToken cancellationToken) =>
                     await GuardQueryAsync(() =>
                         queryable.QueryAsync<TQueryContext, TQueryContext>(
                             new QueryRequest<EmptyQueryViewParameters>(
                                 Query:
-                                    QueryableValueNormalizer.Normalize(
+                                    normalizer.Normalize(
                                         request.Query,
                                         context.Metadata),
                                 ViewParameters: request.Parameters),

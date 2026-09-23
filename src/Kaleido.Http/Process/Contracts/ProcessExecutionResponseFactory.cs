@@ -41,7 +41,7 @@ public static class ProcessExecutionResponseFactory
                                     FrameworkErrorCodes.MissingRegistration,
                                     $"Available step '{stepName}' was not found in the local registry.");
                             return ProcessContractMapper.ToSummary(
-                                ProcessRegistryProjection.ProjectSummary(registration),
+                                registration.ToSummary(),
                                 serviceName);
                         })
                     .ToArray(),
@@ -112,7 +112,7 @@ public static class StepExecutionResponseFactory
                                     FrameworkErrorCodes.MissingRegistration,
                                     $"Available step '{stepName}' was not found in the local registry.");
                             return ProcessContractMapper.ToSummary(
-                                ProcessRegistryProjection.ProjectSummary(registration),
+                                registration.ToSummary(),
                                 serviceName);
                         })
                     .ToList(),

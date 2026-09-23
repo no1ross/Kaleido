@@ -24,9 +24,21 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
     private readonly IReadOnlyDictionary<string, DelegatedQueryViewRegistration> _byName;
     private readonly IReadOnlyDictionary<Type, DelegatedQueryViewRegistration> _byType;
 
+    private readonly IDataTypeMapper _dataTypeMapper;
+    private readonly IConstraintMapper _constraintMapper;
+
     public DelegatedQueryViewRegistry(
+        IDataTypeMapper dataTypeMapper,
+        IConstraintMapper constraintMapper,
         IEnumerable<Type> queryViewTypes)
     {
+        ArgumentNullException.ThrowIfNull(dataTypeMapper);
+        ArgumentNullException.ThrowIfNull(constraintMapper);
+        ArgumentNullException.ThrowIfNull(queryViewTypes);
+
+        _dataTypeMapper = dataTypeMapper;
+        _constraintMapper = constraintMapper;
+
         _registrations =
             queryViewTypes
                 .Select(BuildRegistration)
@@ -69,7 +81,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
             FrameworkErrorCodes.MissingRegistration,
             $"Delegated query view '{recordType.FullName}' is not registered.");
 
-    private static DelegatedQueryViewRegistration BuildRegistration(Type queryViewType)
+    private DelegatedQueryViewRegistration BuildRegistration(Type queryViewType)
     {
         var queryViewAttribute =
             queryViewType.GetCustomAttribute<QueryViewAttribute>()
@@ -113,7 +125,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
                 BuildOutputFields(viewType)));
     }
 
-    private static QueryContextMetadata BuildQueryMetadata(Type contextType)
+    private QueryContextMetadata BuildQueryMetadata(Type contextType)
     {
         var attribute =
             contextType.GetCustomAttribute<QueryContextAttribute>()
@@ -140,7 +152,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
                 .ToArray());
     }
 
-    private static IReadOnlyList<QueryParameterMetadata> BuildParameters(Type parametersType)
+    private IReadOnlyList<QueryParameterMetadata> BuildParameters(Type parametersType)
     {
         if (parametersType == typeof(EmptyQueryViewParameters))
         {
@@ -153,13 +165,13 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
                 new QueryParameterMetadata(
                     property.Name,
                     property.PropertyType,
-                    DataTypeMapper.GetDescriptor(property),
-                    ConstraintMapper.Map(property),
+                    _dataTypeMapper.GetDescriptor(property),
+                    _constraintMapper.Map(property),
                     property.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>()?.Description))
             .ToArray();
     }
 
-    private static IReadOnlyList<QueryOutputFieldMetadata> BuildOutputFields(Type viewType)
+    private IReadOnlyList<QueryOutputFieldMetadata> BuildOutputFields(Type viewType)
     {
         return viewType
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -168,7 +180,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
                     property.Name,
                     property.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>()?.Description,
                     property.PropertyType,
-                    DataTypeMapper.GetDescriptor(property)))
+                    _dataTypeMapper.GetDescriptor(property)))
             .ToArray();
     }
 
@@ -209,7 +221,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
         return new PageableMetadata(pageable.DefaultSize, pageable.MaxSize);
     }
 
-    private static FieldMetadata BuildField(PropertyInfo property)
+    private FieldMetadata BuildField(PropertyInfo property)
     {
         var filterable = property.GetCustomAttribute<FilterableAttribute>();
         var searchable = property.GetCustomAttribute<SearchableAttribute>();
@@ -220,7 +232,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
             property.Name,
             description?.Description,
             property.PropertyType,
-            DataTypeMapper.GetDescriptor(property),
+            _dataTypeMapper.GetDescriptor(property),
             filterable is not null,
             filterable?.Operators ?? Array.Empty<FilterOperator>(),
             searchable is not null,

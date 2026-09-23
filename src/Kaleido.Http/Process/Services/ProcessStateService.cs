@@ -68,7 +68,7 @@ internal sealed class ProcessStateService(
                                     FrameworkErrorCodes.MissingRegistration,
                                     $"Available step '{stepName}' was not found in the local registry.");
                             return ProcessContractMapper.ToSummary(
-                                ProcessRegistryProjection.ProjectSummary(registration),
+                                registration.ToSummary(),
                                 serviceOptions.ServiceName);
                         })
                     .ToArray(),

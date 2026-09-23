@@ -2,12 +2,8 @@
 namespace Kaleido.Process.Attributes;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class AvailableAfterAttribute : Attribute
+public class AvailableAfterAttribute(
+    Type availableAfterStep) : Attribute
 {
-    public AvailableAfterAttribute(Type availableAfterStep)
-    {
-        AvailableAfterStep = availableAfterStep;
-    }
-
-    public Type AvailableAfterStep { get; }
+    public Type AvailableAfterStep { get; } = availableAfterStep;
 }

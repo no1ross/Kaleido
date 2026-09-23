@@ -2,7 +2,7 @@ namespace Kaleido.Process.Registry;
 
 using Kaleido.Process.Execution;
 
-public sealed record ProcessStepRegistration(
+public sealed partial record ProcessStepRegistration(
     Type StepType,
     Type? StepResultType,
     Type HandlerType,

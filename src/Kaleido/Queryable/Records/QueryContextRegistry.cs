@@ -41,12 +41,22 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
     private readonly IReadOnlyDictionary<Type, QueryContextRegistration> _byType;
     private readonly IReadOnlyCollection<QueryContextRegistration> _registrations;
 
+    private readonly IDataTypeMapper _dataTypeMapper;
+    private readonly IConstraintMapper _constraintMapper;
+
     public QueryContextRegistry(
+        IDataTypeMapper dataTypeMapper,
+        IConstraintMapper constraintMapper,
         IServiceCollection services,
         IEnumerable<Type> contextTypes)
     {
+        ArgumentNullException.ThrowIfNull(dataTypeMapper);
+        ArgumentNullException.ThrowIfNull(constraintMapper);
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(contextTypes);
+
+        _dataTypeMapper = dataTypeMapper;
+        _constraintMapper = constraintMapper;
 
         var registrations =
             contextTypes
@@ -108,7 +118,7 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
                 $"Query context type '{contextType.FullName}' is not registered.");
     }
 
-    private static QueryContextRegistration BuildRegistration(
+    private QueryContextRegistration BuildRegistration(
         IServiceCollection services,
         Type contextType)
     {
@@ -171,7 +181,7 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
             $"Query context '{contextType.Name}' does not have a registered source.");
     }
 
-    private static QueryContextMetadata BuildQueryContextMetadata(
+    private QueryContextMetadata BuildQueryContextMetadata(
         Type contextType)
     {
         var attribute =
@@ -215,7 +225,7 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
             pageable.MaxSize);
     }
 
-    private static FieldMetadata BuildField(
+    private FieldMetadata BuildField(
         PropertyInfo property)
     {
         var filterable =
@@ -234,7 +244,7 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
             property.Name,
             description?.Description,
             property.PropertyType,
-            DataTypeMapper.GetDescriptor(property),
+            _dataTypeMapper.GetDescriptor(property),
             filterable is not null,
             filterable?.Operators ?? Array.Empty<FilterOperator>(),
             searchable is not null,

@@ -114,6 +114,8 @@ public static class QueryableServiceCollectionExtensions
                     builder.Services);
 
                 return new QueryContextRegistry(
+                    sp.GetRequiredService<IDataTypeMapper>(),
+                    sp.GetRequiredService<IConstraintMapper>(),
                     builder.Services,
                     localContextTypes);
             });
@@ -132,11 +134,15 @@ public static class QueryableServiceCollectionExtensions
                     builder.Services);
 
                 return new QueryViewRegistry(
+                    sp.GetRequiredService<IDataTypeMapper>(),
+                    sp.GetRequiredService<IConstraintMapper>(),
                     localQueryViewTypes);
             });
 
         builder.Services.TryAddSingleton<IDelegatedQueryViewRegistry>(
-            _ => new DelegatedQueryViewRegistry(
+            sp => new DelegatedQueryViewRegistry(
+                sp.GetRequiredService<IDataTypeMapper>(),
+                sp.GetRequiredService<IConstraintMapper>(),
                 delegatedQueryViewTypes));
 
         builder.Services.TryAddSingleton<IQueryableRegistry, QueryableRegistry>();

@@ -1,15 +1,15 @@
-﻿namespace Kaleido.Process.Registry;
+using System.Reflection;
+using Kaleido.Process.Execution;
 
-internal static class RegistrationValidator
+namespace Kaleido.Process.Registry;
+
+internal sealed partial class ProcessStepRegistry
 {
-    public static void Validate(
+    private static void ValidateDefinitions(
         IReadOnlyCollection<ProcessStepDefinition> definitions)
     {
-        ValidateSelfReferences(
-            definitions);
-
-        ValidateCircularDependencies(
-            definitions);
+        ValidateSelfReferences(definitions);
+        ValidateCircularDependencies(definitions);
     }
 
     private static void ValidateSelfReferences(
@@ -92,5 +92,40 @@ internal static class RegistrationValidator
         }
 
         path.Pop();
+    }
+
+    private static Func<Task, IProcessStepHandlerResult>? CreateGetResultFromTaskFunc(
+        Type handlerType)
+    {
+        var executeAsyncMethod =
+            handlerType.GetMethod(
+                nameof(IProcessStepHandler<object>.ExecuteAsync),
+                BindingFlags.Public | BindingFlags.Instance);
+
+        if (executeAsyncMethod is null)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.ProInvalidHandler,
+                $"Handler '{handlerType.FullName}' does not expose ExecuteAsync.");
+        }
+
+        var taskType = executeAsyncMethod.ReturnType;
+        var resultProperty = taskType.GetProperty(nameof(Task<object>.Result))
+            ?? throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.ProInvalidHandler,
+                $"Task type '{taskType.FullName}' does not have a Result property.");
+
+        return task =>
+        {
+            var result = resultProperty.GetValue(task);
+            if (result is IProcessStepHandlerResult handlerResult)
+            {
+                return handlerResult;
+            }
+
+            throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.InvalidHandlerResult,
+                $"Handler returned an invalid handler result of type '{result?.GetType().FullName}'.");
+        };
     }
 }

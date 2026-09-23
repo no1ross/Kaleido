@@ -26,7 +26,9 @@ internal interface IQueryContextValidator
     void Validate(IQueryRequest request, QueryContextRegistration registration);
 }
 
-internal sealed class QueryRequestValidator : IQueryContextValidator
+internal sealed class QueryRequestValidator(
+    IDataTypeMapper dataTypeMapper)
+    : IQueryContextValidator
 {
     public void Validate(
         IQueryRequest request,
@@ -56,7 +58,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
             registration.Metadata.Pageable);
     }
 
-    private static void ValidateInternal(
+    private void ValidateInternal(
         IQueryRequest request,
         QueryContextMetadata metadata,
         PageableMetadata? pageable)
@@ -80,7 +82,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
             pageable);
     }
 
-    private static void ValidateFilterValueTypes(QueryFilterCondition condition)
+    private void ValidateFilterValueTypes(QueryFilterCondition condition)
     {
         foreach (var value in condition.Values)
         {
@@ -95,7 +97,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         }
     }
 
-    private static void ValidateSupportedRuntimeType(
+    private void ValidateSupportedRuntimeType(
         string name,
         object value)
     {
@@ -104,7 +106,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
                 value.GetType())
             ?? value.GetType();
 
-        if (DataTypeMapper.IsSupportedType(actualType))
+        if (dataTypeMapper.IsSupportedType(actualType))
         {
             return;
         }
@@ -117,7 +119,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
 
     private const int MaxFilterDepth = 10;
 
-    private static void ValidateFilter(
+    private void ValidateFilter(
         QueryFilterNode? node,
         FieldLookup fields,
         int depth = 0)
@@ -166,7 +168,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
             "Filter node must specify either Condition or Group.");
     }
 
-    private static void ValidateFilterGroup(
+    private void ValidateFilterGroup(
         QueryFilterGroup group,
         FieldLookup fields,
         int depth)
@@ -187,7 +189,7 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         }
     }
 
-    private static void ValidateFilterCondition(
+    private void ValidateFilterCondition(
         QueryFilterCondition condition,
         FieldLookup fields)
     {
@@ -308,21 +310,15 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
         }
     }
 
-    private sealed class FieldLookup
+    private sealed class FieldLookup(
+        QueryContextMetadata metadata)
     {
-        private readonly Dictionary<string, FieldMetadata> _byName;
+        private readonly Dictionary<string, FieldMetadata> _byName =
+            metadata.Fields.ToDictionary(
+                x => x.Name,
+                StringComparer.OrdinalIgnoreCase);
 
-        public FieldLookup(
-            QueryContextMetadata metadata)
-        {
-            Metadata = metadata;
-            _byName =
-                metadata.Fields.ToDictionary(
-                    x => x.Name,
-                    StringComparer.OrdinalIgnoreCase);
-        }
-
-        public QueryContextMetadata Metadata { get; }
+        public QueryContextMetadata Metadata { get; } = metadata;
 
         public FieldMetadata Get(
             string name) =>
