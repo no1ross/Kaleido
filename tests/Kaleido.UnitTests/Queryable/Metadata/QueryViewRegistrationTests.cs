@@ -1,4 +1,4 @@
-namespace Kaleido.UnitTests.Queryable;
+namespace Kaleido.UnitTests.Queryable.Metadata;
 
 public sealed class QueryViewRegistrationTests
 {
