@@ -131,29 +131,17 @@ public sealed class KaleidoQueryableClientTests
     [Fact]
     public async Task GetContextMetadataAsync_ResolvesContextAndFetchesMetadataUrl()
     {
-        string? fetchedUrl = null;
+        var callUrls = new List<string>();
 
         var (client, _) = CreateClient(respond: req =>
         {
-            fetchedUrl = req.RequestUri!.PathAndQuery;
-            return JsonOk(new[] { FakeContext });
-        });
-
-        // Prime the registry first so subsequent call hits the metadata URL
-        await client.GetRegistryAsync();
-
-        var callUrls = new List<string>();
-        var handler2 = HandlerThatReturns(req =>
-        {
             callUrls.Add(req.RequestUri!.PathAndQuery);
-            if (req.Method == HttpMethod.Get && req.RequestUri.PathAndQuery.Contains("metadata"))
-                return JsonOk(FakeContext);
-            return JsonOk(new[] { FakeContext });
+            return req.RequestUri!.PathAndQuery.Contains("metadata")
+                ? JsonOk(FakeContext)
+                : JsonOk(new[] { FakeContext });
         });
-        var httpClient2 = new HttpClient(handler2.Object) { BaseAddress = new Uri("http://localhost") };
-        var client2 = new KaleidoQueryableClient(httpClient2, new Mock<ICorrelationHeaderStamper>().Object, NullLogger<KaleidoQueryableClient>.Instance);
 
-        var result = await client2.GetContextMetadataAsync("my-context");
+        var result = await client.GetContextMetadataAsync("my-context");
 
         Assert.Equal("my-context", result.Name);
         Assert.Contains(callUrls, u => u.Contains("metadata"));

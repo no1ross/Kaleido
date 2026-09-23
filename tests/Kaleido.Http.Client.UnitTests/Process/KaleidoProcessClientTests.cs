@@ -44,21 +44,6 @@ public sealed class KaleidoProcessClientTests
             Content = JsonContent.Create(value)
         };
 
-    private static Mock<HttpMessageHandler> HandlerWithSequence(
-        IEnumerable<Func<HttpRequestMessage, HttpResponseMessage>> responses)
-    {
-        var queue = new Queue<Func<HttpRequestMessage, HttpResponseMessage>>(responses);
-        var mock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
-        mock.Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync((HttpRequestMessage req, CancellationToken _) =>
-                queue.Count > 0 ? queue.Dequeue()(req) : JsonOk(new[] { FakeProcessor }));
-        return mock;
-    }
-
     private static (KaleidoProcessClient client, Mock<HttpMessageHandler> handler) CreateClient(
         string routePrefix = "",
         Func<HttpRequestMessage, HttpResponseMessage>? respond = null)
@@ -203,7 +188,7 @@ public sealed class KaleidoProcessClientTests
         };
 
         // First call = GetProcessStateAsync sends one GET (no registry needed for state URL)
-        // The state endpoint does not require registry lookup G�� just build the URL from options
+        // The state endpoint does not require registry lookup — just build the URL from options
         var (client, _) = CreateClient(respond: _ => JsonOk(fakeState));
 
         var result = await client.GetProcessStateAsync(processId);
@@ -259,9 +244,9 @@ public sealed class KaleidoProcessClientTests
             return JsonOk(fakeResult);
         });
 
-        // MyStep type name G�� "Step" suffix stripped: MyStep G�� MyStep (no suffix here, keep as-is)
+        // MyStep type name — "Step" suffix stripped: MyStep — MyStep (no suffix here, keep as-is)
         // Actually step name lookup uses type name with optional "Step" suffix stripping.
-        // Our type below is named MyClientStep G�� strips to MyClient, won't match "MyStep".
+        // Our type below is named MyClientStep — strips to MyClient, won't match "MyStep".
         // Use a type whose name without "Step" suffix matches our FakeStep name "MyStep".
         var result = await client.ExecuteStepAsync(new MyStepStep());
 
@@ -414,7 +399,7 @@ public sealed class KaleidoProcessClientTests
     // Fake types
     // ---------------------------------------------------------------------------
 
-    // "MyStepStep" G�� strip "Step" suffix G�� name is "MyStep", matches FakeStep.Name
+    // "MyStepStep" — strip "Step" suffix — name is "MyStep", matches FakeStep.Name
     private sealed class MyStepStep { }
 
     private sealed class UnknownTypeForTest { }

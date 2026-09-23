@@ -166,16 +166,16 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 - [x] Set `global-json-file` in CI `setup-dotnet` action to respect `global.json` SDK pin
 
 ### Test fixes (mechanical)
-- [ ] Fix `Assert.Equal("Kaleido.Provider.SQLite.SqliteProcessContextStore", store.GetType().FullName)` → `Assert.IsType<SqliteProcessContextStore>(store)` in `DbContextDependencyTests.cs:65`
-- [ ] Fix `StepCandidateConsistencyCheckerTests.CreateChecker` — remove dead parameter or wire dependencies through candidate registrations so the "dependency satisfied by history/candidate" tests actually exercise the scenario
-- [ ] Fix `StepCandidatePlannerTests.CreatePlanner` — remove dead `dependencies` parameter; give candidate a real missing dependency
-- [ ] Update `StepCandidateConsistencyCheckerTests` circular-dependency test — add `[Trait]`/comment noting this asserts current (known-broken) behavior, so a future fix isn't mistaken for a regression
-- [ ] Add real assertions (or delete) the 4 no-assert observability smoke tests in `ProcessObservabilityTests` and `QueryableObservabilityTests`
-- [ ] Fix `ProcessExecutionEndpointTests.PostExecute_WhenStepFails_ReturnsErrorInResponse` — add a handler that actually fails; assert on error payload
-- [ ] Fix test class name mismatch: `ParticipantRuntimeTests.cs` contains `ProcessRuntimeTests`; `ParticipantServiceCollectionExtensionsTests.cs` contains `ProcessorServiceCollectionExtensionsTests`
-- [ ] Remove dead `HandlerWithSequence` helper from `KaleidoProcessClientTests.cs:45`
-- [ ] Fix corrupted comment characters (`G��`) in `KaleidoProcessClientTests.cs:206,261–264,431`
-- [ ] Fix dead code in `KaleidoQueryableClientTests.cs:131–161` — remove abandoned `client2` and the unasserted `fetchedUrl`
+- [x] `Assert.IsType<SqliteProcessContextStore>(store)` in `DbContextDependencyTests` — added `InternalsVisibleTo` for test assemblies in `Kaleido.Provider.SQLite/AssemblyInfo.cs`
+- [x] `StepCandidateConsistencyCheckerTests.CreateChecker` — removed dead params; wired `[dependency]` into target registrations so history/candidate-satisfaction tests exercise the real scenario
+- [x] `StepCandidatePlannerTests.CreatePlanner` — removed dead params; candidate now carries a real missing dependency
+- [x] Circular-dependency test — KNOWN-BROKEN comment added so a future fix isn't mistaken for a regression
+- [x] Deleted 3 no-assert smoke tests in `ProcessObservabilityTests` (covered by `Observation_EmitsExpectedMetrics`) + empty `QueryableObservabilityTests.cs` placeholder
+- [x] `PostExecute_WhenStepFails` — added `RuntimeFailingStep`/`RuntimeFailingStepHandler` returning `Failure`; asserts `RuntimeFailingFailed` error message in results
+- [x] Renamed `ParticipantRuntimeTests.cs`→`ProcessRuntimeTests.cs`, `ParticipantServiceCollectionExtensionsTests.cs`→`ProcessorServiceCollectionExtensionsTests.cs`
+- [x] Removed dead `HandlerWithSequence` helper from `KaleidoProcessClientTests`
+- [x] Fixed corrupted `G��` mojibake comments (→ em-dashes) in `KaleidoProcessClientTests`
+- [x] `KaleidoQueryableClientTests` — removed abandoned `client2`/`fetchedUrl`; single-client test asserts metadata URL + result
 
 ---
 
