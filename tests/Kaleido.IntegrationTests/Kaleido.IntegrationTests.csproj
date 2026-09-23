@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 <ItemGroup>
-		<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.*" />
-		<PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.*" />
-		<PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.*" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+		<PackageReference Include="Microsoft.Extensions.Configuration" />
+		<PackageReference Include="Microsoft.Data.Sqlite" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido\Kaleido.csproj" />
