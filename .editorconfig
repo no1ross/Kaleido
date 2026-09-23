@@ -427,6 +427,10 @@ dotnet_diagnostic.IDE0060.severity = silent
 # KAL0002: test stubs may throw BCL exceptions (Moq setups, failure injection)
 dotnet_diagnostic.KAL0002.severity = none
 
+# CA1707: underscores in identifiers — Method_Scenario_Expected is the
+# test naming convention
+dotnet_diagnostic.CA1707.severity = silent
+
 # Unit-test projects only: SUT fixture conventions (one SUT per fixture,
 # named {Sut}Tests, path-mirrored, one fixture per SUT)
 [tests/Kaleido.UnitTests/**/*.cs]
