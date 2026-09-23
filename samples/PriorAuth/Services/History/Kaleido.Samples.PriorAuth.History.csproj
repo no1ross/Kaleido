@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-	<Import Project="../../../../build/samples.props" />
-  <PropertyGroup>
+<PropertyGroup>
 	<UserSecretsId>881f97fb-ace0-4c81-b246-4d08cd688c0f</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..\..</DockerfileContext>

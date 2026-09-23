@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/samples/">
+    <File Path="samples/Directory.Build.props" />
     <Project Path="samples/SQLite/Kaleido.Samples.SQLite.csproj" />
   </Folder>
   <Folder Name="/samples/ECommerce/">
@@ -31,27 +32,19 @@
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".dockerignore" />
+    <File Path=".editorconfig" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
     <File Path="AGENTS.md" />
     <File Path="ARCHITECTURE.md" />
+    <File Path="Directory.Build.props" />
     <File Path="global.json" />
     <File Path="README.md" />
-  </Folder>
-  <Folder Name="/Solution Items/Build/">
-    <File Path="build/common.props" />
-    <File Path="build/packages.props" />
-    <File Path="build/samples.props" />
-    <File Path="build/tests.props" />
-  </Folder>
-  <Folder Name="/Solution Items/PriorAuth Compose/">
-    <File Path="samples/PriorAuth/.env" />
-    <File Path="samples/PriorAuth/docker-compose.override.yml" />
-    <File Path="samples/PriorAuth/docker-compose.yml" />
   </Folder>
   <Folder Name="/src/">
     <File Path="src/AGENTS.md" />
     <File Path="src/ARCHITECTURE.md" />
+    <File Path="src/Directory.Build.props" />
     <Project Path="src/Kaleido/Kaleido.csproj" />
     <Project Path="src/Kaleido.Http/Kaleido.Http.csproj" />
     <Project Path="src/Kaleido.Http.Abstractions/Kaleido.Http.Abstractions.csproj" />
@@ -59,9 +52,9 @@
     <Project Path="src/Kaleido.Observability.OpenTelemetry/Kaleido.Observability.OpenTelemetry.csproj" />
     <Project Path="src/Kaleido.Provider.SQLite/Kaleido.Provider.SQLite.csproj" />
   </Folder>
-
   <Folder Name="/test/">
     <File Path="tests/AGENTS.md" />
+    <File Path="tests/Directory.Build.props" />
     <Project Path="tests/Kaleido.UnitTests/Kaleido.UnitTests.csproj" />
     <Project Path="tests/Kaleido.Http.UnitTests/Kaleido.Http.UnitTests.csproj" />
     <Project Path="tests/Kaleido.Http.FunctionalTests/Kaleido.Http.FunctionalTests.csproj" />
