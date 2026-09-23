@@ -338,11 +338,78 @@ dotnet_diagnostic.IDE0200.severity = warning
 dotnet_style_allow_multiple_blank_lines_experimental = false
 dotnet_diagnostic.IDE2000.severity = warning
 
+# --- Analyzer tuning (Meziantou/Roslynator/latest-recommended CA) ---
+
+# MA0048: File name must match type name — Kaleido groups small types per
+# file (records, error-code constants), so keep as suggestion only
+dotnet_diagnostic.MA0048.severity = suggestion
+
+# MA0051: Method is too long — suggestion only; the big query/execution
+# methods are known tech debt, not quick fixes
+dotnet_diagnostic.MA0051.severity = suggestion
+
+# MA0002: Use IEqualityComparer/IComparer overload (OrderBy/GroupBy/Contains)
+dotnet_diagnostic.MA0002.severity = warning
+
+# MA0004: Use StringComparison for string operations — noisy; explicit
+# StringComparer/Equals/CA1862 coverage already handles the real cases
+dotnet_diagnostic.MA0004.severity = none
+
+# MA0006: Use string.Equals instead of == for ordinal string comparisons
+dotnet_diagnostic.MA0006.severity = warning
+
+# MA0016: Prefer collection abstraction (IDictionary/IList) over concrete types
+dotnet_diagnostic.MA0016.severity = warning
+
+# MA0037: Remove empty statements — rare; suggestion only
+dotnet_diagnostic.MA0037.severity = suggestion
+
+# CA1859: Use concrete types for improved performance — micro-optimization
+dotnet_diagnostic.CA1859.severity = suggestion
+
+# CA1848: Use LoggerMessage delegates — high-perf logging; opt-in follow-up work
+dotnet_diagnostic.CA1848.severity = suggestion
+
+# CA1873: Avoid allocations in logging calls guarded by IsEnabled — follow-up
+dotnet_diagnostic.CA1873.severity = suggestion
+
+# CA1000: static factory methods on generic result types are the intended API
+# pattern here (e.g. ProcessStepHandlerResult<T>.Success) — the "fix" would be
+# a breaking non-generic companion class
+dotnet_diagnostic.CA1000.severity = suggestion
+
+# RCS1194: Kaleido exceptions require 'code' by design — the BCL ctor triad
+# would allow Code-less instances, which breaks the hierarchy's invariant
+dotnet_diagnostic.RCS1194.severity = none
+
 # Test projects: test doubles/fakes legitimately don't access instance state
 # and stub signatures must mirror the contract even when params are unused
 [tests/**/*.cs]
+
+# CA1822: test stub handlers must stay instance methods — registration
+# resolves handlers via BindingFlags.Instance
 dotnet_diagnostic.CA1822.severity = silent
+
+# IDE0060: stub signatures must mirror the contract even when params unused
 dotnet_diagnostic.IDE0060.severity = silent
+
+# CA1707: underscores in identifiers — Method_Scenario_Expected is the
+# test naming convention
+dotnet_diagnostic.CA1707.severity = silent
+
+# CA1711: identifiers shouldn't end in Collection — *Collection is the
+# xunit collection-fixture convention
+dotnet_diagnostic.CA1711.severity = silent
+
+# CA2263: tests deliberately exercise non-generic overloads
+# (ConvertValue(object?, Type), Activator.CreateInstance(Type))
+dotnet_diagnostic.CA2263.severity = silent
+
+# MA0002/MA0006/MA0016: keep as suggestions in tests — sorting comparers and
+# collection abstractions matter less in assertions and fakes
+dotnet_diagnostic.MA0002.severity = suggestion
+dotnet_diagnostic.MA0006.severity = suggestion
+dotnet_diagnostic.MA0016.severity = suggestion
 
 # Verify settings
 [*.{received,verified}.{txt,xml,json}]

@@ -44,7 +44,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     {
         o.ServiceName = "history";
         o.Assemblies = new System.Reflection.Assembly[] { typeof(Program).Assembly, typeof(HistoryDbContext).Assembly };
-        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.History") ?? false;
+        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.History", StringComparison.Ordinal) ?? false;
     })
     .AddEventPublisher<HttpEventPublisher>()
     .AddHttp()

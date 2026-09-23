@@ -5,6 +5,12 @@ namespace Kaleido.Samples.ECommerce.Data.Seed;
 
 internal sealed class ECommerceSeeder
 {
+    private static readonly JsonSerializerOptions JsonOptions =
+        new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
     private readonly ECommerceDbContext _dbContext;
 
     public ECommerceSeeder(
@@ -70,10 +76,7 @@ internal sealed class ECommerceSeeder
 
             return JsonSerializer.Deserialize<T>(
                        json,
-                       new JsonSerializerOptions
-                       {
-                           PropertyNameCaseInsensitive = true
-                       })
+                       JsonOptions)
                    ?? throw new InvalidOperationException(
                        $"Failed to deserialize '{fileName}'.");
         }

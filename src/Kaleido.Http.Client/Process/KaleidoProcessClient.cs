@@ -10,10 +10,15 @@ internal sealed class KaleidoProcessClient(
     ICorrelationHeaderStamper headerStamper,
     ILogger<KaleidoProcessClient> logger,
     string serviceName = "")
-    : IKaleidoProcessClient
+    : IKaleidoProcessClient, IDisposable
 {
     private readonly SemaphoreSlim _registryLock = new(1, 1);
     private IReadOnlyList<ProcessorRegistryResponse>? _registry;
+
+    public void Dispose()
+    {
+        _registryLock.Dispose();
+    }
 
     public async Task<IReadOnlyList<ProcessorRegistryResponse>> GetRegistryAsync(
         CancellationToken cancellationToken = default)
@@ -135,7 +140,7 @@ internal sealed class KaleidoProcessClient(
     }
 
     public async Task<StepExecutionResponse> ExecuteStepAsync<TStep>(
-        TStep step,
+        TStep processStep,
         CancellationToken cancellationToken = default)
         where TStep : class
     {
@@ -143,7 +148,7 @@ internal sealed class KaleidoProcessClient(
 
         var body = new ExecuteStepRequest<TStep>
         {
-            ProcessStep = step
+            ProcessStep = processStep
         };
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
@@ -172,7 +177,7 @@ internal sealed class KaleidoProcessClient(
     }
 
     public async Task<StepExecutionResponse<TResponse>> ExecuteStepAsync<TStep, TResponse>(
-        TStep step,
+        TStep processStep,
         CancellationToken cancellationToken = default)
         where TStep : class
     {
@@ -180,7 +185,7 @@ internal sealed class KaleidoProcessClient(
 
         var body = new ExecuteStepRequest<TStep>
         {
-            ProcessStep = step
+            ProcessStep = processStep
         };
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)

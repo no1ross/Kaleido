@@ -40,7 +40,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     {
         o.ServiceName = "referencedata";
         o.Assemblies = new System.Reflection.Assembly[] { typeof(Program).Assembly, typeof(ReferenceDataDbContext).Assembly };
-        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.ReferenceData") ?? false;
+        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.ReferenceData", StringComparison.Ordinal) ?? false;
     })
     .AddEventPublisher<HttpEventPublisher>()
     .AddHttp()

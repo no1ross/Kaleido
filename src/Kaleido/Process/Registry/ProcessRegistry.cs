@@ -56,11 +56,11 @@ internal static class ProcessRegistryProjection
         {
             IsEntryProcessor = serviceOptions.IsEntryProcessor,
             InitialSteps = initialSteps
-                .OrderBy(x => x.Metadata.Name)
+                .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(ProjectSummary)
                 .ToArray(),
             Steps = steps
-                .OrderBy(x => x.Metadata.Name)
+                .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(Project)
                 .ToArray()
         };
@@ -83,15 +83,15 @@ internal static class ProcessRegistryProjection
                 .Select(ProjectInput)
                 .ToArray(),
             Dependencies = registration.Dependencies
-                .OrderBy(x => x.Metadata.Name)
+                .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(ProjectSummary)
                 .ToArray(),
             AvailableAfter = registration.AvailableAfter
-                .OrderBy(x => x.Metadata.Name)
+                .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(ProjectSummary)
                 .ToArray(),
             AvailableUntil = registration.AvailableUntil
-                .OrderBy(x => x.Metadata.Name)
+                .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(ProjectSummary)
                 .ToArray(),
             Result = ProjectResult(registration.StepResultType)

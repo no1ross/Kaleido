@@ -45,28 +45,28 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         typeof(Enumerable)
             .GetMethods(BindingFlags.Public | BindingFlags.Static)
             .Single(m =>
-                m.Name == nameof(Enumerable.Contains) &&
+                string.Equals(m.Name, nameof(Enumerable.Contains), StringComparison.Ordinal) &&
                 m.GetParameters().Length == 2);
 
     private static readonly MethodInfo QueryableOrderByOpenMethod =
         typeof(System.Linq.Queryable)
             .GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Single(m => m.Name == nameof(System.Linq.Queryable.OrderBy) && m.GetParameters().Length == 2);
+            .Single(m => string.Equals(m.Name, nameof(System.Linq.Queryable.OrderBy), StringComparison.Ordinal) && m.GetParameters().Length == 2);
 
     private static readonly MethodInfo QueryableOrderByDescendingOpenMethod =
         typeof(System.Linq.Queryable)
             .GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Single(m => m.Name == nameof(System.Linq.Queryable.OrderByDescending) && m.GetParameters().Length == 2);
+            .Single(m => string.Equals(m.Name, nameof(System.Linq.Queryable.OrderByDescending), StringComparison.Ordinal) && m.GetParameters().Length == 2);
 
     private static readonly MethodInfo QueryableThenByOpenMethod =
         typeof(System.Linq.Queryable)
             .GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Single(m => m.Name == nameof(System.Linq.Queryable.ThenBy) && m.GetParameters().Length == 2);
+            .Single(m => string.Equals(m.Name, nameof(System.Linq.Queryable.ThenBy), StringComparison.Ordinal) && m.GetParameters().Length == 2);
 
     private static readonly MethodInfo QueryableThenByDescendingOpenMethod =
         typeof(System.Linq.Queryable)
             .GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Single(m => m.Name == nameof(System.Linq.Queryable.ThenByDescending) && m.GetParameters().Length == 2);
+            .Single(m => string.Equals(m.Name, nameof(System.Linq.Queryable.ThenByDescending), StringComparison.Ordinal) && m.GetParameters().Length == 2);
 
     // Generic method caches keyed by (contextType, memberType) or memberType
     private static readonly ConcurrentDictionary<(string Name, Type KeyType, Type ValueType), MethodInfo> SortMethodCache = new();

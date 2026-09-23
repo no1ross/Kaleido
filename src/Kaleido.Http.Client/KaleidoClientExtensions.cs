@@ -20,8 +20,8 @@ internal static class KaleidoClientExtensions
         var options = new KaleidoHttpClientOptions();
         configure(options);
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(options.Name);
-        ArgumentException.ThrowIfNullOrWhiteSpace(options.BaseUrl);
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.Name, nameof(configure));
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.BaseUrl, nameof(configure));
 
         var httpClientBuilder = services.AddHttpClient(options.Name, client =>
         {
@@ -33,7 +33,7 @@ internal static class KaleidoClientExtensions
         var routeOptions = GetOrAddRouteOptions<TMap>(services);
         var optionsProperty = typeof(TMap).GetProperty("Options");
 
-        if (optionsProperty != null && optionsProperty.GetValue(routeOptions) is Dictionary<string, string> optionsDict)
+        if (optionsProperty != null && optionsProperty.GetValue(routeOptions) is IDictionary<string, string> optionsDict)
         {
             optionsDict[options.Name] = options.RoutePrefix;
         }

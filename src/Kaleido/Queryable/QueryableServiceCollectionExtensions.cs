@@ -17,7 +17,7 @@ public static class QueryableServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        if (!builder.Assemblies.Any())
+        if (builder.Assemblies.Count == 0)
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.MissingAssembly,

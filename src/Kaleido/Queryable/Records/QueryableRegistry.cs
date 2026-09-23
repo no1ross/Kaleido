@@ -48,7 +48,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
         _registrations =
             localRegistrations
                 .Concat(delegatedRegistrations)
-                .OrderBy(x => x.Name)
+                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
         _byName =
@@ -125,7 +125,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
                 .ToArray(),
             Views = views
                 .Where(x => x.Visibility == QueryViewVisibility.Public)
-                .OrderBy(x => x.Name)
+                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(Project)
                 .ToArray()
         };

@@ -57,7 +57,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     {
         o.ServiceName = "intake";
         o.Assemblies = new[] { typeof(Program).Assembly, typeof(IntakeDbContext).Assembly };
-        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Intake") ?? false;
+        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Intake", StringComparison.Ordinal) ?? false;
     })
     .AddEventPublisher<HttpEventPublisher>()
     .AddHttp()

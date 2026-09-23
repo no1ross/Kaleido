@@ -75,7 +75,7 @@ internal sealed class ProcessStateService(
 
             Steps =
                 context.Steps
-                    .OrderBy(x => x.StepName)
+                    .OrderBy(x => x.StepName, StringComparer.OrdinalIgnoreCase)
                     .Select(x =>
                         new ProcessStepHistory
                         {

@@ -86,15 +86,15 @@ public static class ProcessStepResponseFactory
                 .Select(ProcessFieldMetadata.FromRegistryItem)
                 .ToArray(),
             Dependencies = registration.Dependencies
-                .OrderBy(x => x.Name)
+                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(x => ToSummary(x, serviceName))
                 .ToArray(),
             AvailableAfter = registration.AvailableAfter
-                .OrderBy(x => x.Name)
+                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(x => ToSummary(x, serviceName))
                 .ToArray(),
             AvailableUntil = registration.AvailableUntil
-                .OrderBy(x => x.Name)
+                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(x => ToSummary(x, serviceName))
                 .ToArray(),
             Result = registration.Result is null

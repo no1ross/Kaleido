@@ -11,10 +11,15 @@ internal sealed class KaleidoQueryableClient(
     ICorrelationHeaderStamper headerStamper,
     ILogger<KaleidoQueryableClient> logger,
     string callerServiceName = "")
-    : IKaleidoQueryableClient
+    : IKaleidoQueryableClient, IDisposable
 {
     private readonly SemaphoreSlim _registryLock = new(1, 1);
     private IReadOnlyList<QueryableRecordResponse>? _registry;
+
+    public void Dispose()
+    {
+        _registryLock.Dispose();
+    }
 
     public async Task<IReadOnlyList<QueryableRecordResponse>> GetRegistryAsync(
         CancellationToken cancellationToken = default)

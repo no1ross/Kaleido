@@ -22,7 +22,7 @@ public sealed class KaleidoClientOptions
     /// <see cref="KaleidoClientEntry.BaseUrl"/> falls back to <see cref="BaseUrl"/>
     /// when not explicitly set on the entry.
     /// </summary>
-    public Dictionary<string, KaleidoClientEntry> Clients { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public IDictionary<string, KaleidoClientEntry> Clients { get; set; } = new Dictionary<string, KaleidoClientEntry>(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>

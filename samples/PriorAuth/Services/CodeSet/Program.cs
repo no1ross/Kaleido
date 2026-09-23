@@ -40,7 +40,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     {
         o.ServiceName = "codeset";
         o.Assemblies = new System.Reflection.Assembly[] { typeof(Program).Assembly, typeof(CodeSetDbContext).Assembly };
-        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.CodeSet") ?? false;
+        o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.CodeSet", StringComparison.Ordinal) ?? false;
     })
     .AddEventPublisher<HttpEventPublisher>()
     .AddHttp()

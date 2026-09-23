@@ -1,4 +1,6 @@
-﻿public static class QueryableRoutePaths
+﻿namespace Kaleido.Http.Queryable;
+
+public static class QueryableRoutePaths
 {
     public static string QueryContextMetadata(string contextName)
         => $"{contextName}/metadata";

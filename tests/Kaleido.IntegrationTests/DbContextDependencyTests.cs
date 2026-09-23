@@ -24,7 +24,7 @@ public sealed class DbContextDependencyTests
         {
             o.ServiceName = "test-integration";
             o.Assemblies = new[] { typeof(DbContextDependencyTests).Assembly };
-            o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.IntegrationTests.TestArtifacts") ?? false;
+            o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.IntegrationTests.TestArtifacts", StringComparison.Ordinal) ?? false;
         });
 
         // This should NOT throw - the service provider should be able to construct
