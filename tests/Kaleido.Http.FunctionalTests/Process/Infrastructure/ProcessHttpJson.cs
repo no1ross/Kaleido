@@ -13,7 +13,4 @@ internal static class ProcessHttpJson
         this HttpContent content,
         CancellationToken cancellationToken = default) =>
         content.ReadFromJsonAsync<T>(SerializerOptions, cancellationToken);
-
-    public static JsonElement EmptyObject() =>
-        JsonSerializer.SerializeToElement(new { }, SerializerOptions);
 }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
@@ -76,7 +76,22 @@ public sealed record DataTypeConversionResult<TValue>
     }
 }
 
-public static class DataTypeMapper
+public interface IDataTypeMapper
+{
+    DataTypeDescriptor GetDescriptor(PropertyInfo propertyInfo);
+
+    bool IsSupportedType(Type type);
+
+    DataTypeConversionResult TryConvertValue(object? value, Type targetType);
+
+    DataTypeConversionResult<TValue> TryConvertValue<TValue>(object? value);
+
+    object? ConvertValue(object? value, Type targetType);
+
+    TValue? ConvertValue<TValue>(object? value);
+}
+
+public sealed class DataTypeMapper : IDataTypeMapper
 {
     private static readonly IReadOnlyDictionary<Type, DataTypeDescriptor>
         TypeMappings =
@@ -113,7 +128,7 @@ public static class DataTypeMapper
                 [typeof(TimeSpan)] = new("string", "duration")
             };
 
-    public static DataTypeDescriptor GetDescriptor(
+    public DataTypeDescriptor GetDescriptor(
         PropertyInfo propertyInfo)
     {
         ArgumentNullException.ThrowIfNull(propertyInfo);
@@ -132,7 +147,7 @@ public static class DataTypeMapper
         };
     }
 
-    internal static DataTypeDescriptor GetDescriptor(
+    internal DataTypeDescriptor GetDescriptor(
         Type type)
     {
         ArgumentNullException.ThrowIfNull(type);
@@ -152,7 +167,7 @@ public static class DataTypeMapper
         };
     }
 
-    public static bool IsSupportedType(
+    public bool IsSupportedType(
         Type type)
     {
         ArgumentNullException.ThrowIfNull(type);
@@ -164,7 +179,7 @@ public static class DataTypeMapper
         return TypeMappings.ContainsKey(actualType) || actualType.IsEnum;
     }
 
-    public static DataTypeConversionResult TryConvertValue(
+    public DataTypeConversionResult TryConvertValue(
         object? value,
         Type targetType)
     {
@@ -478,7 +493,7 @@ public static class DataTypeMapper
             $"Type '{actualType.FullName}' is not supported by DataTypeMapper.");
     }
 
-    public static DataTypeConversionResult<TValue> TryConvertValue<TValue>(
+    public DataTypeConversionResult<TValue> TryConvertValue<TValue>(
         object? value)
     {
         var result =
@@ -496,7 +511,7 @@ public static class DataTypeMapper
             (TValue?)result.Value);
     }
 
-    public static object? ConvertValue(
+    public object? ConvertValue(
         object? value,
         Type targetType)
     {
@@ -515,7 +530,7 @@ public static class DataTypeMapper
         return result.Value;
     }
 
-    public static TValue? ConvertValue<TValue>(
+    public TValue? ConvertValue<TValue>(
         object? value)
     {
         var result =
@@ -534,7 +549,7 @@ public static class DataTypeMapper
 
     private static readonly ConcurrentDictionary<Type, DataTypeDescriptor> DescriptorCache = new();
 
-    private static DataTypeDescriptor Lookup(
+    private DataTypeDescriptor Lookup(
         Type type)
     {
         if (TypeMappings.TryGetValue(
@@ -549,7 +564,7 @@ public static class DataTypeMapper
             BuildDescriptor);
     }
 
-    private static DataTypeDescriptor BuildDescriptor(
+    private DataTypeDescriptor BuildDescriptor(
         Type type)
     {
         if (type.IsEnum)

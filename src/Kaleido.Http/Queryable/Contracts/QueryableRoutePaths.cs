@@ -1,5 +1,6 @@
-﻿namespace Kaleido.Http.Queryable;
+﻿namespace Kaleido.Http.Queryable.Contracts;
 
+#pragma warning disable KAL0001 // Pure route factory — no state, intentional static
 public static class QueryableRoutePaths
 {
     public static string QueryContextMetadata(string contextName)

@@ -382,6 +382,37 @@ dotnet_diagnostic.CA1000.severity = suggestion
 # would allow Code-less instances, which breaks the hierarchy's invariant
 dotnet_diagnostic.RCS1194.severity = none
 
+# IDE0130: Namespace must match folder structure
+dotnet_diagnostic.IDE0130.severity = warning
+
+# IDE0290: Use primary constructor — AGENTS.md mandates primary ctor syntax
+# for simple DI (field assignments / ThrowIfNull-only bodies)
+dotnet_diagnostic.IDE0290.severity = warning
+
+# --- Kaleido.Analyzers (custom rules) ---
+# KAL0001: static classes are for extension methods — no static helper/util
+# classes; every public/internal method in a static class must be an extension
+dotnet_diagnostic.KAL0001.severity = warning
+
+# KAL0002: throw Kaleido*Exception types, not general BCL exceptions
+dotnet_diagnostic.KAL0002.severity = warning
+
+# KAL0003: no '!' null-forgiving operator — explicit null checks instead
+dotnet_diagnostic.KAL0003.severity = warning
+
+# KAL0004: exception types must not be records
+dotnet_diagnostic.KAL0004.severity = error
+
+# KAL1001: test fixtures are named {SutName}Tests — SUT rules apply to unit
+# tests only (functional/integration fixtures are scenario-scoped by design)
+dotnet_diagnostic.KAL1001.severity = none
+dotnet_diagnostic.KAL1002.severity = none
+dotnet_diagnostic.KAL1003.severity = none
+dotnet_diagnostic.KAL1004.severity = none
+
+# KAL1005: BuildServiceProvider must pass ValidateScopes + ValidateOnBuild
+dotnet_diagnostic.KAL1005.severity = warning
+
 # Test projects: test doubles/fakes legitimately don't access instance state
 # and stub signatures must mirror the contract even when params are unused
 [tests/**/*.cs]
@@ -392,6 +423,58 @@ dotnet_diagnostic.CA1822.severity = silent
 
 # IDE0060: stub signatures must mirror the contract even when params unused
 dotnet_diagnostic.IDE0060.severity = silent
+
+# KAL0002: test stubs may throw BCL exceptions (Moq setups, failure injection)
+dotnet_diagnostic.KAL0002.severity = none
+
+# CA1707: underscores in identifiers — Method_Scenario_Expected is the
+# test naming convention
+dotnet_diagnostic.CA1707.severity = silent
+
+# KAL0003: tests use '!' freely for Assert.NotNull follow-ons and null! arg injection
+dotnet_diagnostic.KAL0003.severity = none
+
+# Unit-test projects only: SUT fixture conventions (one SUT per fixture,
+# named {Sut}Tests, path-mirrored, one fixture per SUT)
+[tests/Kaleido.UnitTests/**/*.cs]
+dotnet_diagnostic.KAL1001.severity = warning
+dotnet_diagnostic.KAL1002.severity = warning
+dotnet_diagnostic.KAL1003.severity = warning
+dotnet_diagnostic.KAL1004.severity = warning
+
+[tests/Kaleido.Http.UnitTests/**/*.cs]
+dotnet_diagnostic.KAL1001.severity = warning
+dotnet_diagnostic.KAL1002.severity = warning
+dotnet_diagnostic.KAL1003.severity = warning
+dotnet_diagnostic.KAL1004.severity = warning
+
+[tests/Kaleido.Http.Abstractions.UnitTests/**/*.cs]
+dotnet_diagnostic.KAL1001.severity = warning
+dotnet_diagnostic.KAL1002.severity = warning
+dotnet_diagnostic.KAL1003.severity = warning
+dotnet_diagnostic.KAL1004.severity = warning
+
+[tests/Kaleido.Http.Client.UnitTests/**/*.cs]
+dotnet_diagnostic.KAL1001.severity = warning
+dotnet_diagnostic.KAL1002.severity = warning
+dotnet_diagnostic.KAL1003.severity = warning
+dotnet_diagnostic.KAL1004.severity = warning
+
+[tests/Kaleido.Provider.SQLite.UnitTests/**/*.cs]
+dotnet_diagnostic.KAL1001.severity = warning
+dotnet_diagnostic.KAL1002.severity = warning
+dotnet_diagnostic.KAL1003.severity = warning
+dotnet_diagnostic.KAL1004.severity = warning
+
+# Analyzer tests under tools/ — same relaxations as tests/** (Method_Scenario
+# naming, stub signatures)
+[tools/**/*.Tests{,/**}/*.cs]
+dotnet_diagnostic.CA1707.severity = silent
+dotnet_diagnostic.KAL1001.severity = none
+dotnet_diagnostic.KAL1002.severity = none
+dotnet_diagnostic.KAL1003.severity = none
+dotnet_diagnostic.KAL1004.severity = none
+dotnet_diagnostic.KAL1005.severity = none
 
 # CA1707: underscores in identifiers — Method_Scenario_Expected is the
 # test naming convention

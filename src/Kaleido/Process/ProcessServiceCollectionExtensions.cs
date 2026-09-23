@@ -65,6 +65,8 @@ public static class ProcessServiceCollectionExtensions
 
         builder.Services.TryAddSingleton<IProcessRegistry>(
             sp => new ProcessRegistry(
+                sp.GetRequiredService<IDataTypeMapper>(),
+                sp.GetRequiredService<IConstraintMapper>(),
                 builder.ServiceOptions,
                 sp.GetRequiredService<IProcessStepRegistry>(),
                 sp.GetRequiredService<ILogger<ProcessRegistry>>()));

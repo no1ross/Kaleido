@@ -9,7 +9,7 @@ public sealed class HttpCorrelationContextReaderTests
     public void Read_WhenContextIsNull_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            HttpCorrelationContextReader.Read(null!));
+            ((HttpContext)null!).ReadCorrelationContext());
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public sealed class HttpCorrelationContextReaderTests
         context.Request.Headers[KaleidoCorrelationHeaders.SourceProcessor]     = "intake";
         context.Request.Headers[KaleidoCorrelationHeaders.StepName]            = "validate";
 
-        var result = HttpCorrelationContextReader.Read(context);
+        var result = context.ReadCorrelationContext();
 
         Assert.Equal("REQ-001",  result.RequestId);
         Assert.Equal(processId,  result.ProcessId);
@@ -54,7 +54,7 @@ public sealed class HttpCorrelationContextReaderTests
         context.Request.Headers[KaleidoCorrelationHeaders.SourceProcessor]     = " ";
         context.Request.Headers[KaleidoCorrelationHeaders.StepName]            = " ";
 
-        var result = HttpCorrelationContextReader.Read(context);
+        var result = context.ReadCorrelationContext();
 
         Assert.NotNull(result.RequestId);
         Assert.NotEmpty(result.RequestId);
@@ -71,7 +71,7 @@ public sealed class HttpCorrelationContextReaderTests
         context.Request.Headers[KaleidoCorrelationHeaders.ProcessId] = "not-a-guid";
 
         var exception = Assert.Throws<BadHttpRequestException>(() =>
-            HttpCorrelationContextReader.Read(context));
+            context.ReadCorrelationContext());
 
         Assert.Contains(KaleidoCorrelationHeaders.ProcessId, exception.Message);
     }
@@ -81,7 +81,7 @@ public sealed class HttpCorrelationContextReaderTests
     {
         var context = new DefaultHttpContext();
 
-        var result = HttpCorrelationContextReader.Read(context);
+        var result = context.ReadCorrelationContext();
 
         Assert.NotNull(result.RequestId);
         Assert.True(Guid.TryParse(result.RequestId, out _));
@@ -91,11 +91,11 @@ public sealed class HttpCorrelationContextReaderTests
     public void Read_StripsSanitizableCharsFromStringFields()
     {
         var context = new DefaultHttpContext();
-        context.Request.Headers[KaleidoCorrelationHeaders.RequestId]       = "REQ\u0000001";
-        context.Request.Headers[KaleidoCorrelationHeaders.SourceProcessor] = "in\u001ftake";
-        context.Request.Headers[KaleidoCorrelationHeaders.StepName]        = "vali\u007fdate";
+        context.Request.Headers[KaleidoCorrelationHeaders.RequestId]       = "REQ" + (char)0x00 + "001";
+        context.Request.Headers[KaleidoCorrelationHeaders.SourceProcessor] = "in" + (char)0x1f + "take";
+        context.Request.Headers[KaleidoCorrelationHeaders.StepName]        = "vali" + (char)0x7f + "date";
 
-        var result = HttpCorrelationContextReader.Read(context);
+        var result = context.ReadCorrelationContext();
 
         Assert.Equal("REQ001",   result.RequestId);
         Assert.Equal("intake",   result.SourceProcessorName);

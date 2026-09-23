@@ -52,5 +52,5 @@ internal sealed class CorrelationHeaderStamper(
     }
 
     public string? Sanitize(string? value) =>
-        HttpHeaderSanitizer.Sanitize(value);
+        value.Sanitize();
 }

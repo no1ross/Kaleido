@@ -5,12 +5,14 @@ namespace Kaleido.UnitTests;
 
 public sealed class ValueConverterTests
 {
+    private readonly ValueConverter _sut = new();
+
     [Fact]
     public void Convert_WhenTargetTypeIsNull_Throws()
     {
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
-                ValueConverter.Convert(
+                _sut.Convert(
                     "value",
                     null!));
 
@@ -23,7 +25,7 @@ public sealed class ValueConverterTests
     public void Convert_WhenValueIsNull_ReturnsNull()
     {
         var result =
-            ValueConverter.Convert(
+            _sut.Convert(
                 null,
                 typeof(string));
 
@@ -34,7 +36,7 @@ public sealed class ValueConverterTests
     public void Convert_WhenTargetTypeIsEnum_ParsesIgnoringCase()
     {
         var result =
-            ValueConverter.Convert(
+            _sut.Convert(
                 "active",
                 typeof(TestStatus));
 
@@ -49,7 +51,7 @@ public sealed class ValueConverterTests
         using var document = JsonDocument.Parse("123");
 
         var result =
-            ValueConverter.Convert(
+            _sut.Convert(
                 document.RootElement,
                 typeof(int));
 
@@ -62,7 +64,7 @@ public sealed class ValueConverterTests
         using var document = JsonDocument.Parse("{\"Name\":\"Alice\"}");
 
         var result =
-            ValueConverter.Convert(
+            _sut.Convert(
                 document.RootElement,
                 typeof(TestPayload));
 
@@ -77,7 +79,7 @@ public sealed class ValueConverterTests
     public void Convert_WhenTargetTypeIsNullable_UsesUnderlyingType()
     {
         var result =
-            ValueConverter.Convert(
+            _sut.Convert(
                 "42",
                 typeof(int?));
 

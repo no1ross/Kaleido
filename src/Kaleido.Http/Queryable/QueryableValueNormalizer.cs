@@ -2,9 +2,10 @@ using Kaleido.Json;
 
 namespace Kaleido.Http.Queryable;
 
-internal static class QueryableValueNormalizer
+internal sealed class QueryableValueNormalizer(
+    IValueConverter valueConverter)
 {
-    public static QueryBody? Normalize(
+    public QueryBody? Normalize(
         QueryBody? query,
         QueryContextMetadata metadata)
     {
@@ -23,7 +24,7 @@ internal static class QueryableValueNormalizer
         };
     }
 
-    private static QueryFilterNode? NormalizeFilter(
+    private QueryFilterNode? NormalizeFilter(
         QueryFilterNode? node,
         FieldLookup fields)
     {
@@ -52,7 +53,8 @@ internal static class QueryableValueNormalizer
                         .Select(x =>
                             NormalizeFilter(
                                 x,
-                                fields)!)
+                                fields))
+                        .OfType<QueryFilterNode>()
                         .ToArray())
             };
         }
@@ -60,7 +62,7 @@ internal static class QueryableValueNormalizer
         return node;
     }
 
-    private static QueryFilterCondition NormalizeCondition(
+    private QueryFilterCondition NormalizeCondition(
         QueryFilterCondition condition,
         FieldLookup fields)
     {
@@ -74,7 +76,7 @@ internal static class QueryableValueNormalizer
                     .Select(x =>
                         x is null
                             ? null
-                            : ValueConverter.Convert(
+                            : valueConverter.Convert(
                                 x,
                                 field.FieldType))
                     .ToArray();
@@ -93,21 +95,15 @@ internal static class QueryableValueNormalizer
         }
     }
 
-    private sealed class FieldLookup
+    private sealed class FieldLookup(
+        QueryContextMetadata metadata)
     {
-        private readonly Dictionary<string, FieldMetadata> _byName;
+        private readonly Dictionary<string, FieldMetadata> _byName =
+            metadata.Fields.ToDictionary(
+                x => x.Name,
+                StringComparer.OrdinalIgnoreCase);
 
-        public FieldLookup(
-            QueryContextMetadata metadata)
-        {
-            Metadata = metadata;
-            _byName =
-                metadata.Fields.ToDictionary(
-                    x => x.Name,
-                    StringComparer.OrdinalIgnoreCase);
-        }
-
-        public QueryContextMetadata Metadata { get; }
+        public QueryContextMetadata Metadata { get; } = metadata;
 
         public FieldMetadata Get(
             string name) =>

@@ -4,6 +4,9 @@ namespace Kaleido.Queryable.UnitTests.Query;
 
 public sealed class QueryRequestCompilerTests
 {
+    private static readonly DataTypeDescriptor TestDataType =
+        new("string");
+
     private readonly QueryRequestCompiler _compiler = new();
 
     [Fact]
@@ -126,9 +129,9 @@ public sealed class QueryRequestCompilerTests
             QueryContextKind.Direct,
             new PageableMetadata(25, 100),
             [
-                new FieldMetadata(nameof(TestRecord.Code), null, typeof(string), DataTypeMapper.GetDescriptor(typeof(TestRecord).GetProperty(nameof(TestRecord.Code))!), true, [FilterOperator.Equals], false, null, null, true),
-                new FieldMetadata(nameof(TestRecord.Name), null, typeof(string), DataTypeMapper.GetDescriptor(typeof(TestRecord).GetProperty(nameof(TestRecord.Name))!), false, [], true, 1, MatchMode.Contains, false),
-                new FieldMetadata(nameof(TestRecord.Region), null, typeof(string), DataTypeMapper.GetDescriptor(typeof(TestRecord).GetProperty(nameof(TestRecord.Region))!), false, [], true, 2, MatchMode.Contains, true)
+                new FieldMetadata(nameof(TestRecord.Code), null, typeof(string), TestDataType, true, [FilterOperator.Equals], false, null, null, true),
+                new FieldMetadata(nameof(TestRecord.Name), null, typeof(string), TestDataType, false, [], true, 1, MatchMode.Contains, false),
+                new FieldMetadata(nameof(TestRecord.Region), null, typeof(string), TestDataType, false, [], true, 2, MatchMode.Contains, true)
             ]);
 
     private static QueryContextMetadata CreateContextMetadataWithoutPageable() =>

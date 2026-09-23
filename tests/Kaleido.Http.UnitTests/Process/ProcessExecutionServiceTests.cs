@@ -11,6 +11,7 @@ public sealed class ProcessExecutionServiceTests
     private static ProcessExecutionService CreateService(
         IProcessStepRegistry registry,
         IProcessRuntime runtime,
+        IProcessExecutionResponseFactory responseFactory,
         Guid? contextProcessId = null)
     {
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
@@ -28,6 +29,7 @@ public sealed class ProcessExecutionServiceTests
             runtime,
             new KaleidoServiceOptions { ServiceName = "test-processor" },
             correlation.Object,
+            responseFactory,
             NullLogger<ProcessExecutionService>.Instance);
     }
 
@@ -47,7 +49,23 @@ public sealed class ProcessExecutionServiceTests
             .ReturnsAsync(processResult);
 
         var contextProcessId = Guid.NewGuid();
-        var service = CreateService(registry, runtime.Object, contextProcessId);
+
+        var expectedResponse = new ProcessExecutionResponse
+        {
+            ProcessId = processResult.ProcessId,
+            AvailableSteps = [],
+            Results = []
+        };
+
+        var responseFactory = new Mock<IProcessExecutionResponseFactory>();
+        responseFactory
+            .Setup(x => x.CreateExecutionResponse(
+                processResult,
+                registry,
+                "test-processor"))
+            .Returns(expectedResponse);
+
+        var service = CreateService(registry, runtime.Object, responseFactory.Object, contextProcessId);
 
         var request = new ExecuteProcessRequest
         {
@@ -67,9 +85,13 @@ public sealed class ProcessExecutionServiceTests
         Assert.Equal(contextProcessId, capturedRequest.ProcessId);
         Assert.True(capturedRequest.Processor.Steps.ContainsKey(registration.Metadata.Name));
 
-        Assert.Equal(processResult.ProcessId, response.ProcessId);
-        Assert.Equal(registration.Metadata.Name, Assert.Single(response.Results).StepName);
-        Assert.Equal(registration.Metadata.Name, Assert.Single(response.AvailableSteps).Name);
+        Assert.Same(expectedResponse, response);
+        responseFactory.Verify(
+            x => x.CreateExecutionResponse(
+                processResult,
+                registry,
+                "test-processor"),
+            Times.Once);
     }
 
     [Fact]
@@ -86,7 +108,22 @@ public sealed class ProcessExecutionServiceTests
             .Callback<ProcessRequest, CancellationToken>((request, _) => capturedRequest = request)
             .ReturnsAsync(CreateProcessResult(registration.Metadata.Name, new TestResponse()));
 
-        var service = CreateService(registry, runtime.Object, Guid.NewGuid());
+        var expectedResponse = new StepExecutionResponse<TestResponse>
+        {
+            ProcessId = Guid.NewGuid(),
+            StepName = registration.Metadata.Name
+        };
+
+        var responseFactory = new Mock<IProcessExecutionResponseFactory>();
+        responseFactory
+            .Setup(x => x.CreateStepResponse<TestResponse>(
+                It.IsAny<ProcessResult>(),
+                It.IsAny<ProcessStepResult>(),
+                registry,
+                "test-processor"))
+            .Returns(expectedResponse);
+
+        var service = CreateService(registry, runtime.Object, responseFactory.Object, Guid.NewGuid());
 
         var request = new ExecuteStepRequest<TestStep>
         {
@@ -97,8 +134,7 @@ public sealed class ProcessExecutionServiceTests
 
         Assert.NotNull(capturedRequest);
         Assert.True(capturedRequest.Processor.Steps.ContainsKey(registration.Metadata.Name));
-        Assert.Equal(registration.Metadata.Name, response.StepName);
-        Assert.NotNull(response.Result);
+        Assert.Same(expectedResponse, response);
     }
 
     [Fact]
@@ -113,7 +149,22 @@ public sealed class ProcessExecutionServiceTests
             .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateProcessResult(registration.Metadata.Name, new TestResponse()));
 
-        var service = CreateService(registry, runtime.Object, Guid.NewGuid());
+        var expectedResponse = new StepExecutionResponse
+        {
+            ProcessId = Guid.NewGuid(),
+            StepName = registration.Metadata.Name
+        };
+
+        var responseFactory = new Mock<IProcessExecutionResponseFactory>();
+        responseFactory
+            .Setup(x => x.CreateStepResponse(
+                It.IsAny<ProcessResult>(),
+                It.IsAny<ProcessStepResult>(),
+                registry,
+                "test-processor"))
+            .Returns(expectedResponse);
+
+        var service = CreateService(registry, runtime.Object, responseFactory.Object, Guid.NewGuid());
 
         var request = new ExecuteStepRequest<TestStep>
         {
@@ -122,8 +173,7 @@ public sealed class ProcessExecutionServiceTests
 
         var response = await service.ExecuteAsync(request, CancellationToken.None);
 
-        Assert.Equal(registration.Metadata.Name, response.StepName);
-        Assert.Equal(StepExecutionOutcome.Completed, response.Outcome);
+        Assert.Same(expectedResponse, response);
     }
 
     private static ProcessResult CreateProcessResult(string stepName, object response) =>

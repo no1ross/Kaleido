@@ -2,6 +2,7 @@ using System.Reflection;
 using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -312,12 +313,13 @@ public static class QueryableEndpointRouteBuilderExtensions
                 async (
                     QueryApiRequest<TViewParameters> request,
                     IQueryableService queryable,
+                    [FromServices] QueryableValueNormalizer normalizer,
                     CancellationToken cancellationToken) =>
                     await GuardQueryAsync(() =>
                         queryable.QueryAsync<TQueryView, TView>(
                             new QueryRequest<TViewParameters>(
                                 Query:
-                                    QueryableValueNormalizer.Normalize(
+                                    normalizer.Normalize(
                                         request.Query,
                                         context.Metadata),
                                 ViewParameters: request.Parameters),
@@ -351,12 +353,13 @@ public static class QueryableEndpointRouteBuilderExtensions
                 async (
                     QueryApiRequest<TViewParameters> request,
                     IQueryableService queryable,
+                    [FromServices] QueryableValueNormalizer normalizer,
                     CancellationToken cancellationToken) =>
                     await GuardQueryAsync(() =>
                         queryable.QueryAsync<TQueryView, TView>(
                             new QueryRequest<TViewParameters>(
                                 Query:
-                                    QueryableValueNormalizer.Normalize(
+                                    normalizer.Normalize(
                                         request.Query,
                                         view.QueryMetadata),
                                 ViewParameters: request.Parameters),
@@ -388,12 +391,13 @@ public static class QueryableEndpointRouteBuilderExtensions
                 async (
                     QueryApiRequest<EmptyQueryViewParameters> request,
                     IQueryableService queryable,
+                    [FromServices] QueryableValueNormalizer normalizer,
                     CancellationToken cancellationToken) =>
                     await GuardQueryAsync(() =>
                         queryable.QueryAsync<TQueryContext, TQueryContext>(
                             new QueryRequest<EmptyQueryViewParameters>(
                                 Query:
-                                    QueryableValueNormalizer.Normalize(
+                                    normalizer.Normalize(
                                         request.Query,
                                         context.Metadata),
                                 ViewParameters: request.Parameters),

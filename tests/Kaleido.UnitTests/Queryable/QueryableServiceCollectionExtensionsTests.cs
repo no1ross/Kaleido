@@ -4,6 +4,7 @@ using Kaleido.Queryable.Records;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 
 namespace Kaleido.Queryable.UnitTests;
 
@@ -115,10 +116,26 @@ public sealed class QueryableServiceCollectionExtensionsTests
             x.ServiceType == typeof(IQueryContextEngine<,>).MakeGenericType(typeof(DelegatedContext), typeof(DelegatedContext)));
     }
 
-    private static IKaleidoBuilder CreateBuilder(IServiceCollection? services = null) =>
-        new TestKaleidoBuilder(
-            services ?? new ServiceCollection(),
+    private static IKaleidoBuilder CreateBuilder(IServiceCollection? services = null)
+    {
+        services ??= new ServiceCollection();
+
+        var dataTypeMapper = new Mock<IDataTypeMapper>();
+        dataTypeMapper
+            .Setup(m => m.GetDescriptor(It.IsAny<PropertyInfo>()))
+            .Returns(new DataTypeDescriptor("mock-type"));
+        services.AddSingleton(dataTypeMapper.Object);
+
+        var constraintMapper = new Mock<IConstraintMapper>();
+        constraintMapper
+            .Setup(m => m.Map(It.IsAny<PropertyInfo>()))
+            .Returns([]);
+        services.AddSingleton(constraintMapper.Object);
+
+        return new TestKaleidoBuilder(
+            services,
             [typeof(TestContext).Assembly]);
+    }
 
     private sealed class TestKaleidoBuilder : IKaleidoBuilder
     {

@@ -3,9 +3,14 @@ using System.Text.Json;
 
 namespace Kaleido.Json;
 
-public static class ValueConverter
+public interface IValueConverter
 {
-    public static object? Convert(
+    object? Convert(object? value, Type targetType);
+}
+
+public sealed class ValueConverter : IValueConverter
+{
+    public object? Convert(
         object? value,
         Type targetType)
     {

@@ -4,14 +4,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Provider.SQLite;
 
-public sealed class SqliteProcessContextDbContext
-    : DbContext
+public sealed class SqliteProcessContextDbContext(
+    DbContextOptions<SqliteProcessContextDbContext> options)
+    : DbContext(options)
 {
-    public SqliteProcessContextDbContext(
-        DbContextOptions<SqliteProcessContextDbContext> options)
-        : base(options)
-    {
-    }
 
     public DbSet<ProcessContextEntity> ProcessContexts =>
         Set<ProcessContextEntity>();

@@ -22,20 +22,25 @@ public sealed record ConstraintParameterContract
     public object? Value { get; init; }
 }
 
-public static class ConstraintMapper
+public interface IConstraintMapper
 {
-    public static IReadOnlyCollection<ConstraintContract> Map(
-        PropertyInfo property)
-    {
-        ArgumentNullException.ThrowIfNull(property);
+    IReadOnlyCollection<ConstraintContract> Map(PropertyInfo propertyInfo);
+}
 
-        return property
+public sealed class ConstraintMapper : IConstraintMapper
+{
+    public IReadOnlyCollection<ConstraintContract> Map(
+        PropertyInfo propertyInfo)
+    {
+        ArgumentNullException.ThrowIfNull(propertyInfo);
+
+        return propertyInfo
             .GetCustomAttributes<ValidationAttribute>()
             .Select(FromValidationAttribute)
             .ToArray();
     }
 
-    private static ConstraintContract FromValidationAttribute(
+    private ConstraintContract FromValidationAttribute(
         ValidationAttribute attribute)
     {
         return attribute switch

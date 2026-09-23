@@ -376,8 +376,7 @@ public sealed class StepExecutionEvaluatorTests
                 StepCandidateStatus.Built,
 
             Step =
-                Activator.CreateInstance(
-                    typeof(TStep))!
+                Activator.CreateInstance<TStep>()!
         };
     }
 

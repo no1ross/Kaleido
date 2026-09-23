@@ -1,5 +1,6 @@
 namespace Kaleido.Http.Process.Contracts;
 
+#pragma warning disable KAL0001 // Pure URL/name factory — no state, intentional static
 public static class ProcessEndpointNames
 {
     public const string ProcessorCatalogEndpointName =

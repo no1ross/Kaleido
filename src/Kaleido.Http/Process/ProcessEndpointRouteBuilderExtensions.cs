@@ -2,6 +2,7 @@
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -80,13 +81,13 @@ public static class ProcessEndpointRouteBuilderExtensions
     {
         endpoints.MapGet(
                 "",
-                () =>
+                ([FromServices] IProcessResponseFactory factory) =>
                     Results.Ok(
                         new ProcessCatalogResponse
                         {
                             Processors = registry.Registrations
                                 .Select(x =>
-                                    ProcessorCatalogResponseFactory.FromRegistration(
+                                    factory.CreateCatalogResponse(
                                         x,
                                         serviceOptions))
                                 .ToArray()
@@ -166,11 +167,11 @@ public static class ProcessEndpointRouteBuilderExtensions
 
         endpoints.MapGet(
                 ProcessRoutePaths.StepRegistry,
-                () =>
+                ([FromServices] IProcessResponseFactory factory) =>
                     Results.Ok(
                         registry.Registrations
                             .Select(x =>
-                                ProcessorRegistryResponseFactory.FromRegistration(
+                                factory.CreateRegistryResponse(
                                     x,
                                     serviceOptions))))
             .WithName(ProcessEndpointNames.StepRegistryEndpointName)
@@ -194,12 +195,12 @@ public static class ProcessEndpointRouteBuilderExtensions
 
         endpoints.MapGet(
                 ProcessRoutePaths.StepCatalog,
-                () =>
+                ([FromServices] IProcessResponseFactory factory) =>
                     Results.Ok(
                         registry.Registrations
                             .SelectMany(x => x.Steps)
                             .Select(x =>
-                                ProcessStepResponseFactory.ToSummary(
+                                factory.CreateStepSummary(
                                     new ProcessorStepSummary
                                     {
                                         Name = x.Name,
@@ -259,8 +260,8 @@ public static class ProcessEndpointRouteBuilderExtensions
     {
         endpoints.MapGet(
                 route,
-                () => Results.Ok(
-                    ProcessStepResponseFactory.FromRegistration(
+                ([FromServices] IProcessResponseFactory factory) => Results.Ok(
+                    factory.CreateStepResponse(
                         registryStep,
                         serviceName)))
             .WithName(

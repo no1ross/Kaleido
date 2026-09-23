@@ -26,6 +26,7 @@ internal sealed class ProcessExecutionService(
     IProcessRuntime runtime,
     KaleidoServiceOptions serviceOptions,
     IKaleidoCorrelationContextAccessor correlationAccessor,
+    IProcessExecutionResponseFactory responseFactory,
     ILogger<ProcessExecutionService> logger)
     : IProcessExecutionService
 {
@@ -63,7 +64,7 @@ internal sealed class ProcessExecutionService(
         WriteResponseHeaders(
             processResult.ProcessId);
 
-        return ProcessExecutionResponseFactory.Create(
+        return responseFactory.CreateExecutionResponse(
             processResult,
             registry,
             serviceOptions.ServiceName);
@@ -76,7 +77,7 @@ internal sealed class ProcessExecutionService(
         var (processResult, stepResult) =
             await ExecuteStepCoreAsync(request, cancellationToken);
 
-        return StepExecutionResponseFactory.Create<TResponse>(
+        return responseFactory.CreateStepResponse<TResponse>(
             processResult,
             stepResult,
             registry,
@@ -88,7 +89,7 @@ internal sealed class ProcessExecutionService(
         var (processResult, stepResult) =
             await ExecuteStepCoreAsync(request, cancellationToken);
 
-        return StepExecutionResponseFactory.Create(
+        return responseFactory.CreateStepResponse(
             processResult,
             stepResult,
             registry,

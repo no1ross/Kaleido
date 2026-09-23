@@ -24,6 +24,7 @@ public sealed class ProcessStateServiceTests
                 contextStore.Object,
                 CreateRegistry(),
                 new KaleidoServiceOptions { ServiceName = "test-processor" },
+                new Mock<IProcessResponseFactory>().Object,
                 NullLogger<ProcessStateService>.Instance);
 
         var result =
@@ -78,11 +79,24 @@ public sealed class ProcessStateServiceTests
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(context);
 
+        var expectedSummary = new ProcessStepSummary
+        {
+            Name = "Step-A"
+        };
+
+        var responseFactory = new Mock<IProcessResponseFactory>();
+        responseFactory
+            .Setup(x => x.CreateStepSummary(
+                It.IsAny<ProcessorStepSummary>(),
+                "test-processor"))
+            .Returns(expectedSummary);
+
         var service =
             new ProcessStateService(
                 contextStore.Object,
                 CreateRegistry("Step-A"),
                 new KaleidoServiceOptions { ServiceName = "test-processor" },
+                responseFactory.Object,
                 NullLogger<ProcessStateService>.Instance);
 
         var result =

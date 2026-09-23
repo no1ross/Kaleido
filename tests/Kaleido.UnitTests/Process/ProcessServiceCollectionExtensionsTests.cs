@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Process.UnitTests.Processor;
 
-public sealed class ProcessorServiceCollectionExtensionsTests
+public sealed class ProcessServiceCollectionExtensionsTests
 {
     [Fact]
     public void AddProcessor_RegistersProcessorRegistry()
