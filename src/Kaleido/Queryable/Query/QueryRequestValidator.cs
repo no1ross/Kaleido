@@ -115,27 +115,6 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
             "Transport layers must normalize values before invoking Queryable.");
     }
 
-    private static void ValidateParameterType(
-        QueryParameterMetadata parameter,
-        object value)
-    {
-        var expectedType =
-            Nullable.GetUnderlyingType(parameter.Type)
-            ?? parameter.Type;
-
-        var actualType =
-            value.GetType();
-
-        if (expectedType.IsAssignableFrom(actualType))
-        {
-            return;
-        }
-
-        throw new KaleidoValidationException(
-            ValidationErrorCodes.QryInvalidParameterType,
-            $"Parameter '{parameter.Name}' expects values of type '{expectedType.Name}' but received '{actualType.Name}'.");
-    }
-
     private const int MaxFilterDepth = 10;
 
     private static void ValidateFilter(

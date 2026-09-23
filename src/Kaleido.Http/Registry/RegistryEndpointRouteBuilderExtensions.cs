@@ -1,4 +1,4 @@
-using Kaleido.Http.Queryable.Contracts;
+using System.Collections.Concurrent;
 using Kaleido.Process.Registry;
 using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
 
 namespace Kaleido.Http.Registry;
 
@@ -211,7 +210,9 @@ public static class RegistryEndpointRouteBuilderExtensions
             CancellationToken cancellationToken)
     {
         if (clientNames is null)
+        {
             return ([], []);
+        }
 
         var items = new ConcurrentBag<TItem>();
         var errors = new ConcurrentBag<RegistryClientError>();
@@ -222,7 +223,10 @@ public static class RegistryEndpointRouteBuilderExtensions
                 try
                 {
                     var result = await fetch(name, cancellationToken);
-                    foreach (var r in result) items.Add(r);
+                    foreach (var r in result)
+                    {
+                        items.Add(r);
+                    }
                 }
                 catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {

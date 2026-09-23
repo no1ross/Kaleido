@@ -1,16 +1,13 @@
+using Kaleido.Samples.PriorAuth.Member.Data;
+using Kaleido.Samples.PriorAuth.Member.Data.Entities;
+using Kaleido.Samples.PriorAuth.ReferenceData.Data.Entities;
 using Kaleido.Samples.PriorAuth.Seeder.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
-using Kaleido.Samples.PriorAuth.Member.Data.Entities;
-using Kaleido.Samples.PriorAuth.Member;
-using Kaleido.Samples.PriorAuth.Member.Data;
-using Kaleido.Samples.PriorAuth.ReferenceData;
-using Kaleido.Samples.PriorAuth.ReferenceData.Data.Entities;
 
 namespace Kaleido.Samples.PriorAuth.Seeder.MemberService;
 
 internal sealed class MemberServiceSeeder(
-    ServiceProjectContextFactory projectContextFactory,
-    JsonAssetLoader jsonAssetLoader)
+    ServiceProjectContextFactory projectContextFactory)
     : IDomainSeeder
 {
     public SupportedDomain Domain => SupportedDomain.MemberService;
@@ -96,7 +93,7 @@ internal sealed class MemberServiceSeeder(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private MemberSeedAssets LoadAssets()
+    private static MemberSeedAssets LoadAssets()
     {
         var memberServicePath = "memberservice";
 
@@ -107,18 +104,18 @@ internal sealed class MemberServiceSeeder(
             StreetNames = LoadRequiredStringList(memberServicePath, "street-names.json"),
             StreetSuffixes = LoadRequiredStringList(memberServicePath, "street-suffixes.json"),
             AddressLine2Patterns = LoadRequiredStringList(memberServicePath, "address-line2-patterns.json"),
-            Settings = jsonAssetLoader.Load<MemberSeedSettings>(Path.Combine(memberServicePath, "seed-settings.json"))
+            Settings = JsonAssetLoader.Load<MemberSeedSettings>(Path.Combine(memberServicePath, "seed-settings.json"))
         };
 
         ValidateSettings(assets.Settings);
         return assets;
     }
 
-    private List<string> LoadRequiredStringList(
+    private static List<string> LoadRequiredStringList(
         string basePath,
         string fileName)
     {
-        var values = jsonAssetLoader.Load<List<string>>(Path.Combine(basePath, fileName));
+        var values = JsonAssetLoader.Load<List<string>>(Path.Combine(basePath, fileName));
 
         if (values.Count == 0)
         {
@@ -155,11 +152,11 @@ internal sealed class MemberServiceSeeder(
         }
     }
 
-    private Dictionary<string, List<ZipCode>> LoadZipCodesByState(
+    private static Dictionary<string, List<ZipCode>> LoadZipCodesByState(
         IReadOnlyCollection<string> allowedStates)
     {
         var zipCodes =
-            jsonAssetLoader.Load<List<ZipCode>>(
+            JsonAssetLoader.Load<List<ZipCode>>(
                 Path.Combine("referencedata", "zipcodes.json"));
 
         return zipCodes
@@ -168,13 +165,13 @@ internal sealed class MemberServiceSeeder(
             .ToDictionary(x => x.Key, x => x.ToList(), StringComparer.OrdinalIgnoreCase);
     }
 
-    private Dictionary<string, List<Plan>> LoadPlansByState(
+    private static Dictionary<string, List<Plan>> LoadPlansByState(
         IReadOnlyCollection<string> allowedStates)
     {
         var plans =
-            jsonAssetLoader.Load<List<Plan>>(
+            JsonAssetLoader.Load<List<Plan>>(
                 Path.Combine("referencedata", "plans.json"),
-                jsonAssetLoader.CreateEnumJsonOptions());
+                JsonAssetLoader.CreateEnumJsonOptions());
 
         return plans
             .Where(x => allowedStates.Contains(x.StateCode, StringComparer.OrdinalIgnoreCase))
@@ -212,7 +209,7 @@ internal sealed class MemberServiceSeeder(
         };
     }
 
-    private MemberAddress CreateAddress(
+    private static MemberAddress CreateAddress(
         int memberIndex,
         int addressSequence,
         Guid memberId,
@@ -240,7 +237,7 @@ internal sealed class MemberServiceSeeder(
         };
     }
 
-    private MemberEnrollment CreateEnrollment(
+    private static MemberEnrollment CreateEnrollment(
         int memberIndex,
         int enrollmentSequence,
         Guid memberId,

@@ -1,4 +1,3 @@
-using Kaleido.Samples.PriorAuth.CodeSet;
 using Kaleido.Samples.PriorAuth.CodeSet.Data.Entities;
 
 namespace Kaleido.Samples.PriorAuth.Seeder.CodeSet;

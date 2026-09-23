@@ -25,7 +25,6 @@ internal sealed class QueryContextExecutor<TView> : IQueryContextExecutor<TView>
         return Task.FromResult<IReadOnlyList<TView>>(query.ToList());
     }
 
-
     public IQueryable<TView> ApplyPage(
         IQueryable<TView> query,
         CompiledPage page)

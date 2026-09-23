@@ -2,7 +2,6 @@
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Observability;
 using Kaleido.Process.Planning;
-using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.Execution;
 
@@ -354,16 +353,24 @@ internal sealed class ExecutionProcessor(
         ExecutionDecision decision)
     {
         if (candidate.Status == StepCandidateStatus.Invalid)
+        {
             return StepExecutionStatus.ValidationFailed;
+        }
 
         if (candidate.Status == StepCandidateStatus.Satisfied)
+        {
             return StepExecutionStatus.Skipped;
+        }
 
         if (candidate.Status == StepCandidateStatus.Pending)
+        {
             return StepExecutionStatus.Pending;
+        }
 
         if (decision.Type == ExecutionDecisionType.ProcessViolation)
+        {
             return StepExecutionStatus.Exception;
+        }
 
         return result.Succeeded
             ? StepExecutionStatus.Completed

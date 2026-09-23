@@ -1,5 +1,5 @@
-﻿using Kaleido.Samples.ECommerce.Data.Seed.Seeders;
-using System.Text.Json;
+﻿using System.Text.Json;
+using Kaleido.Samples.ECommerce.Data.Seed.Seeders;
 
 namespace Kaleido.Samples.ECommerce.Data.Seed;
 
@@ -31,33 +31,27 @@ internal sealed class ECommerceSeeder
         //    LoadJson<SeedSettings>(
         //        "seedsettings.json");
 
-        new TaxonomySeeder()
-            .Seed(
-                _dbContext,
-                taxonomy);
+        TaxonomySeeder.Seed(
+            _dbContext,
+            taxonomy);
 
-        new SupplierSeeder()
-            .Seed(
-                _dbContext,
-                suppliers);
+        SupplierSeeder.Seed(
+            _dbContext,
+            suppliers);
 
-        new CustomerSeeder()
-            .Seed(
-                _dbContext,
-                customers);
+        CustomerSeeder.Seed(
+            _dbContext,
+            customers);
 
-        new ProductSeeder()
-            .Seed(
-                _dbContext,
-                suppliers);
+        ProductSeeder.Seed(
+            _dbContext,
+            suppliers);
 
-        new ProductCategoryAssignmentSeeder()
-            .Seed(
-                _dbContext);
+        ProductCategoryAssignmentSeeder.Seed(
+            _dbContext);
 
-        new InventorySeeder()
-            .Seed(
-                _dbContext);
+        InventorySeeder.Seed(
+            _dbContext);
     }
 
     private static T LoadJson<T>(

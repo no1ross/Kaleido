@@ -572,7 +572,7 @@ public static class DataTypeMapper
                                 ?.Description;
 
                         return new EnumValueDescriptor(
-                            Value: Convert.ToInt32(x),
+                            Value: Convert.ToInt32(x, CultureInfo.InvariantCulture),
                             Name: x.ToString(),
                             Description: description);
                     })

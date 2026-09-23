@@ -1,5 +1,5 @@
-using Kaleido.Json;
 using System.Text.Json;
+using Kaleido.Json;
 
 namespace Kaleido.UnitTests;
 

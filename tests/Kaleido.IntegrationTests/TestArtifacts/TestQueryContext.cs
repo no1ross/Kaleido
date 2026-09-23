@@ -1,5 +1,3 @@
-using Kaleido.Queryable.Attributes;
-
 namespace Kaleido.IntegrationTests.TestArtifacts;
 
 [QueryContext(

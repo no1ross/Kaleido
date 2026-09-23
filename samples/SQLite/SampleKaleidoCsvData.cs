@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Kaleido.Samples.SQLite;
 
 public sealed class SampleKaleidoCsvData
@@ -15,7 +17,10 @@ internal static class FunctionalCsvLoader
     public static IReadOnlyList<SampleKaleidoRecord> Load(string path)
     {
         var lines = File.ReadAllLines(path);
-        if (lines.Length <= 1) return Array.Empty<SampleKaleidoRecord>();
+        if (lines.Length <= 1)
+        {
+            return Array.Empty<SampleKaleidoRecord>();
+        }
 
         var header = SplitCsvLine(lines[0]);
         var headerIndex = header.Select((name, index) => new { name, index })
@@ -25,33 +30,37 @@ internal static class FunctionalCsvLoader
 
         foreach (var line in lines.Skip(1))
         {
-            if (string.IsNullOrWhiteSpace(line)) continue;
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
             var columns = SplitCsvLine(line);
             string Get(string name) => columns[headerIndex[name]];
             string? GetNullable(string name) => string.IsNullOrWhiteSpace(Get(name)) ? null : Get(name);
 
             records.Add(new SampleKaleidoRecord
             {
-                Id = int.Parse(Get("Id")),
+                Id = int.Parse(Get("Id"), CultureInfo.InvariantCulture),
                 ExternalId = Guid.Parse(Get("ExternalId")),
                 Code = Get("Code"),
                 Name = Get("Name"),
                 Category = Get("Category"),
                 IsActive = bool.Parse(Get("IsActive")),
-                Quantity = int.Parse(Get("Quantity")),
-                Amount = decimal.Parse(Get("Amount")),
-                Rate = double.Parse(Get("Rate")),
-                Score = float.Parse(Get("Score")),
-                EffectiveDate = DateOnly.Parse(Get("EffectiveDate")),
-                CreatedAt = DateTime.Parse(Get("CreatedAt")),
-                ExpirationDate = GetNullable("ExpirationDate") is { } expiration ? DateOnly.Parse(expiration) : null,
+                Quantity = int.Parse(Get("Quantity"), CultureInfo.InvariantCulture),
+                Amount = decimal.Parse(Get("Amount"), CultureInfo.InvariantCulture),
+                Rate = double.Parse(Get("Rate"), CultureInfo.InvariantCulture),
+                Score = float.Parse(Get("Score"), CultureInfo.InvariantCulture),
+                EffectiveDate = DateOnly.Parse(Get("EffectiveDate"), CultureInfo.InvariantCulture),
+                CreatedAt = DateTime.Parse(Get("CreatedAt"), CultureInfo.InvariantCulture),
+                ExpirationDate = GetNullable("ExpirationDate") is { } expiration ? DateOnly.Parse(expiration, CultureInfo.InvariantCulture) : null,
                 Status = Enum.Parse<RecordStatus>(Get("Status"), ignoreCase: true),
-                Priority = int.Parse(Get("Priority")),
+                Priority = int.Parse(Get("Priority"), CultureInfo.InvariantCulture),
                 Region = Get("Region"),
                 GroupName = Get("GroupName"),
-                Version = long.Parse(Get("Version")),
+                Version = long.Parse(Get("Version"), CultureInfo.InvariantCulture),
                 Notes = Get("Notes"),
-                NullableScore = GetNullable("NullableScore") is { } nullableScore ? float.Parse(nullableScore) : null
+                NullableScore = GetNullable("NullableScore") is { } nullableScore ? float.Parse(nullableScore, CultureInfo.InvariantCulture) : null
             });
         }
 
@@ -70,10 +79,16 @@ internal static class PathResolver
     public static string ResolveDataFile(string fileName)
     {
         var output = Path.Combine(AppContext.BaseDirectory, "data", fileName);
-        if (File.Exists(output)) return output;
+        if (File.Exists(output))
+        {
+            return output;
+        }
 
         var source = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "data", fileName));
-        if (File.Exists(source)) return source;
+        if (File.Exists(source))
+        {
+            return source;
+        }
 
         throw new FileNotFoundException($"Could not find data file '{fileName}'. Checked '{output}' and '{source}'.");
     }
@@ -81,10 +96,16 @@ internal static class PathResolver
     public static string ResolveRequestFile(string fileName)
     {
         var output = Path.Combine(AppContext.BaseDirectory, "requests", fileName);
-        if (File.Exists(output)) return output;
+        if (File.Exists(output))
+        {
+            return output;
+        }
 
         var source = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "requests", fileName));
-        if (File.Exists(source)) return source;
+        if (File.Exists(source))
+        {
+            return source;
+        }
 
         throw new FileNotFoundException($"Could not find request file '{fileName}'. Checked '{output}' and '{source}'.");
     }

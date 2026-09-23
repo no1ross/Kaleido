@@ -1,4 +1,2 @@
-﻿using System.Text.Json.Serialization;
-
-namespace Kaleido.Samples.PriorAuth.ReferenceData;
+﻿namespace Kaleido.Samples.PriorAuth.ReferenceData;
 

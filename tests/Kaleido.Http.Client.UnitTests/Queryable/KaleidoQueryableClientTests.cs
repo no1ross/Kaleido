@@ -1,10 +1,8 @@
-using Kaleido.Http.Queryable.Contracts;
 using Kaleido.Http.Client;
 using Kaleido.Http.Client.Queryable;
+using Kaleido.Http.Queryable.Contracts;
 using Kaleido.Observability;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq.Protected;
-using System.Text.Json;
 
 namespace Kaleido.Queryable.Http.Client.Tests;
 
@@ -167,7 +165,10 @@ public sealed class KaleidoQueryableClientTests
             callCount++;
             // First call = registry, second call = metadata
             if (callCount == 1)
+            {
                 return JsonOk(new[] { FakeContext });
+            }
+
             return new HttpResponseMessage(HttpStatusCode.InternalServerError);
         });
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
@@ -197,7 +198,10 @@ public sealed class KaleidoQueryableClientTests
         {
             callCount++;
             if (callCount == 1)
+            {
                 return JsonOk(new[] { FakeContext });
+            }
+
             postedUrl = req.RequestUri!.PathAndQuery;
             return JsonOk(expectedResult);
         });
@@ -245,7 +249,10 @@ public sealed class KaleidoQueryableClientTests
         {
             callCount++;
             if (callCount == 1)
+            {
                 return JsonOk(new[] { FakeContext });
+            }
+
             return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
         });
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
@@ -275,7 +282,10 @@ public sealed class KaleidoQueryableClientTests
         {
             callCount++;
             if (callCount == 1)
+            {
                 return JsonOk(new[] { FakeContext });
+            }
+
             return JsonOk(expectedResult);
         });
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };

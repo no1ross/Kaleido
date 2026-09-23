@@ -1,8 +1,7 @@
-﻿using Kaleido.Process.Attributes;
-using Kaleido.Process.Execution;
-using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
 using System.Reflection;
+using Kaleido.Process.Attributes;
+using Kaleido.Process.Execution;
 
 namespace Kaleido.Process.Registry;
 
@@ -435,7 +434,6 @@ internal static class ProcessStepRegistryHelper
         };
     }
 }
-
 
 internal sealed class RegistrationNode
 {

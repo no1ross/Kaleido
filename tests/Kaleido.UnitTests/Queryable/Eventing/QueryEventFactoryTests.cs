@@ -1,9 +1,6 @@
 using Kaleido.Observability;
 using Kaleido.Queryable.Eventing;
-using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
-using Kaleido.Queryable.Query;
-using Xunit;
 
 namespace Kaleido.Queryable.UnitTests.Eventing;
 

@@ -1,6 +1,5 @@
 ﻿using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
-using Xunit;
 
 namespace Kaleido.Process.UnitTests.Processor.Planning;
 

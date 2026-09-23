@@ -6,8 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kaleido.Samples.PriorAuth.Seeder.Configuration;
 
 internal sealed class ConfigurationSeeder(
-    ServiceProjectContextFactory projectContextFactory,
-    JsonAssetLoader jsonAssetLoader)
+    ServiceProjectContextFactory projectContextFactory)
     : IDomainSeeder
 {
     public SupportedDomain Domain => SupportedDomain.Configuration;
@@ -38,17 +37,17 @@ internal sealed class ConfigurationSeeder(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private ConfigurationSeedAssets LoadAssets()
+    private static ConfigurationSeedAssets LoadAssets()
     {
         const string basePath = "configuration";
-        var enumOptions = jsonAssetLoader.CreateEnumJsonOptions();
+        var enumOptions = JsonAssetLoader.CreateEnumJsonOptions();
 
         return new ConfigurationSeedAssets
         {
-            ProcedureModalityRules = jsonAssetLoader.Load<List<ProcedureModalityRule>>(Path.Combine(basePath, "procedure-modality-rules.json"), enumOptions),
-            ProductCodeMappings = jsonAssetLoader.Load<List<ProductCodeMapping>>(Path.Combine(basePath, "product-code-mappings.json"), enumOptions),
-            MriProcedureCodeRules = jsonAssetLoader.Load<List<MriProcedureCodeRule>>(Path.Combine(basePath, "mri-procedure-code-rules.json"), enumOptions),
-            QuestionnaireDefinitions = jsonAssetLoader.Load<List<QuestionnaireDefinition>>(Path.Combine(basePath, "questionnaire-definitions.json"), enumOptions)
+            ProcedureModalityRules = JsonAssetLoader.Load<List<ProcedureModalityRule>>(Path.Combine(basePath, "procedure-modality-rules.json"), enumOptions),
+            ProductCodeMappings = JsonAssetLoader.Load<List<ProductCodeMapping>>(Path.Combine(basePath, "product-code-mappings.json"), enumOptions),
+            MriProcedureCodeRules = JsonAssetLoader.Load<List<MriProcedureCodeRule>>(Path.Combine(basePath, "mri-procedure-code-rules.json"), enumOptions),
+            QuestionnaireDefinitions = JsonAssetLoader.Load<List<QuestionnaireDefinition>>(Path.Combine(basePath, "questionnaire-definitions.json"), enumOptions)
         };
     }
 }

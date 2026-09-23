@@ -1,9 +1,7 @@
+using System.Net;
 using Kaleido.Http.Process.Contracts;
-using Kaleido.Observability;
 using Kaleido.Process.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
-using System.Net;
-using System.Net.Http.Json;
 
 namespace Kaleido.Process.AspNetCore.FunctionalTests.Execution;
 

@@ -2,8 +2,6 @@
 using Kaleido.Process.Attributes;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;
-using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace Kaleido.Process.UnitTests.Processor.Registry;
 

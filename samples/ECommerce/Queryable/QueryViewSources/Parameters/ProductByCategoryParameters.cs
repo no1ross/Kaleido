@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.ECommerce.Data.QueryViewSources.Parameters;
 

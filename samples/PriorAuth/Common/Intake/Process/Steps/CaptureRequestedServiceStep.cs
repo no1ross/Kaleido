@@ -1,6 +1,5 @@
-using Kaleido.Process.Attributes;
-using Kaleido.Samples.PriorAuth.CodeSet;
 using System.ComponentModel.DataAnnotations;
+using Kaleido.Process.Attributes;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 

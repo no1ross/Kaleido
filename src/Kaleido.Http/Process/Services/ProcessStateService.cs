@@ -1,5 +1,4 @@
 using Kaleido.Process.Context;
-using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.Logging;
 

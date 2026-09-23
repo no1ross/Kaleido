@@ -1,5 +1,3 @@
-using Kaleido.Samples.PriorAuth.Member;
-
 namespace Kaleido.Samples.PriorAuth.Member.Data.Entities;
 
 public sealed class MemberInfo

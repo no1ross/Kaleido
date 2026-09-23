@@ -24,7 +24,9 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
                 : config.BaseUrl;
 
             if (string.IsNullOrWhiteSpace(baseUrl))
+            {
                 continue;
+            }
 
             var prefix = entry?.RoutePrefix ?? name.ToLowerInvariant();
 

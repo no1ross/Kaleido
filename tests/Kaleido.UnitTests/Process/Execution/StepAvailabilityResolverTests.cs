@@ -2,7 +2,6 @@ using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
-using Moq;
 
 namespace Kaleido.Process.UnitTests.Processor.Execution;
 
@@ -737,8 +736,6 @@ public sealed class StepAvailabilityResolverTests
                     .ToArray()
         };
     }
-
-
 
     private static StepAvailabilityResolver CreateResolver(
         params ProcessStepRegistration[] registrations)

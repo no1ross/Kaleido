@@ -1,7 +1,6 @@
-﻿using Kaleido.Http.Queryable.Contracts;
+﻿using System.Net;
+using Kaleido.Http.Queryable.Contracts;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
-using System.Net;
-using System.Net.Http.Json;
 
 namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Discovery;
 

@@ -1,6 +1,4 @@
 ﻿using Kaleido.Queryable.Query;
-using Kaleido.Queryable.Records;
-using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.SQLite;
 
@@ -26,8 +24,6 @@ public sealed class SampleKalediRecordView : IQueryViewSource<SampleKaleidoRecor
         return query;
     }
 }
-
-
 
 //public sealed class KaleidoTestDbContext : DbContext
 //{

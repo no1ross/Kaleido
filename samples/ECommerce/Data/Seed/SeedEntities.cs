@@ -42,11 +42,6 @@ public sealed class ProductFamilyDefinition
     = [];
 }
 
-
-
-
-
-
 public sealed class CustomerDefinition
 {
     public required string FirstName { get; init; }
@@ -72,7 +67,7 @@ public sealed class BrandDefinition
         = [];
 }
 
-internal class SeedSettings
+internal sealed class SeedSettings
 {
     public const int ProductCount = 1500;
 

@@ -1,6 +1,4 @@
-﻿using Kaleido.Process.Planning;
-
-namespace Kaleido.Process;
+﻿namespace Kaleido.Process;
 
 public sealed record StepProcessingMessage
 {

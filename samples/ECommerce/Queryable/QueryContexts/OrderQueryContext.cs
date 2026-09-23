@@ -1,7 +1,5 @@
 ﻿using Kaleido.Queryable.Attributes;
 
-using Kaleido.Samples.ECommerce.Data.Entities;
-
 namespace Kaleido.Samples.ECommerce.Data.QueryContexts;
 
 [QueryContext(

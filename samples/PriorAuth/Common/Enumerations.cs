@@ -40,7 +40,6 @@ public enum LineOfBusiness
     Exchange = 4
 }
 
-
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum PriorAuthorizationStatus
 {
@@ -112,7 +111,6 @@ public enum RelationshipToSubscriber
     OtherDependent = 4
 }
 
-
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ProcedureModality
 {
@@ -120,5 +118,4 @@ public enum ProcedureModality
     Mri = 1,
     Ct = 2
 }
-
 

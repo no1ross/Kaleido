@@ -1,11 +1,11 @@
+using System.Globalization;
+using System.Text.Json.Nodes;
 using Kaleido.Samples.PriorAuth.EventCollector.Data;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -106,14 +106,16 @@ app.MapPost("/events", async (
     Guid? processId = null;
     if (context?["processId"] is JsonNode pidNode &&
         Guid.TryParse(pidNode.GetValue<string>(), out var pid))
+    {
         processId = pid;
+    }
 
     var stepName = context?["stepName"]?.GetValue<string>();
 
     // OccurredOn lives on the event payload
     var occurredOnStr = eventNode?["occurredOn"]?.GetValue<string>();
     var occurredOn = occurredOnStr is not null
-        ? DateTimeOffset.Parse(occurredOnStr).UtcDateTime
+        ? DateTimeOffset.Parse(occurredOnStr, CultureInfo.InvariantCulture).UtcDateTime
         : DateTime.UtcNow;
 
     dbContext.Events.Add(new CollectedEvent

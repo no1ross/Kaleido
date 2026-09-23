@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 namespace Kaleido;
@@ -21,7 +21,6 @@ public sealed record ConstraintParameterContract
 
     public object? Value { get; init; }
 }
-
 
 public static class ConstraintMapper
 {

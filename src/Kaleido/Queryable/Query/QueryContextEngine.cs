@@ -1,9 +1,9 @@
+using System.Reflection;
 using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
 namespace Kaleido.Queryable.Query;
 
@@ -249,7 +249,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         return await task;
     }
 
-    private async Task<IQueryable<TView>> CreateViewAsyncTyped<TViewParameters>(
+    private static async Task<IQueryable<TView>> CreateViewAsyncTyped<TViewParameters>(
         object queryView,
         IQueryable<TQueryContext> query,
         QueryExecutionContext executionContext,
@@ -278,7 +278,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         typeof(QueryContextEngine<TQueryContext, TView>)
             .GetMethod(
                 nameof(CreateViewAsyncTyped),
-                BindingFlags.Instance |
+                BindingFlags.Static |
                 BindingFlags.NonPublic)
         ?? throw new KaleidoFrameworkException(
             FrameworkErrorCodes.ReflectionError,

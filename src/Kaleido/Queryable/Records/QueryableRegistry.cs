@@ -1,5 +1,4 @@
 using Kaleido.Queryable.Metadata;
-using Kaleido.Queryable.Query;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Queryable.Records;

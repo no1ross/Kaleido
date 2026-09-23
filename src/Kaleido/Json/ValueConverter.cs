@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Globalization;
+using System.Text.Json;
 
 namespace Kaleido.Json;
 
@@ -47,40 +48,41 @@ public static class ValueConverter
         {
             return value is DateOnly dateOnly
                 ? dateOnly
-                : DateOnly.Parse(text);
+                : DateOnly.Parse(text, CultureInfo.InvariantCulture);
         }
 
         if (actualType == typeof(TimeOnly))
         {
             return value is TimeOnly timeOnly
                 ? timeOnly
-                : TimeOnly.Parse(text);
+                : TimeOnly.Parse(text, CultureInfo.InvariantCulture);
         }
 
         if (actualType == typeof(DateTime))
         {
             return value is DateTime dateTime
                 ? dateTime
-                : DateTime.Parse(text);
+                : DateTime.Parse(text, CultureInfo.InvariantCulture);
         }
 
         if (actualType == typeof(DateTimeOffset))
         {
             return value is DateTimeOffset dateTimeOffset
                 ? dateTimeOffset
-                : DateTimeOffset.Parse(text);
+                : DateTimeOffset.Parse(text, CultureInfo.InvariantCulture);
         }
 
         if (actualType == typeof(TimeSpan))
         {
             return value is TimeSpan timeSpan
                 ? timeSpan
-                : TimeSpan.Parse(text);
+                : TimeSpan.Parse(text, CultureInfo.InvariantCulture);
         }
 
         return System.Convert.ChangeType(
             value,
-            actualType);
+            actualType,
+            CultureInfo.InvariantCulture);
     }
 
     private static object? ConvertJsonElement(
@@ -174,17 +176,17 @@ public static class ValueConverter
 
         if (targetType == typeof(DateOnly))
         {
-            return DateOnly.Parse(GetJsonString(element, targetType));
+            return DateOnly.Parse(GetJsonString(element, targetType), CultureInfo.InvariantCulture);
         }
 
         if (targetType == typeof(TimeOnly))
         {
-            return TimeOnly.Parse(GetJsonString(element, targetType));
+            return TimeOnly.Parse(GetJsonString(element, targetType), CultureInfo.InvariantCulture);
         }
 
         if (targetType == typeof(TimeSpan))
         {
-            return TimeSpan.Parse(GetJsonString(element, targetType));
+            return TimeSpan.Parse(GetJsonString(element, targetType), CultureInfo.InvariantCulture);
         }
 
         if (targetType.IsEnum)

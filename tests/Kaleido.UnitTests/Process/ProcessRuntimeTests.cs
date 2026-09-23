@@ -1,13 +1,10 @@
 ﻿using Kaleido.Eventing;
 using Kaleido.Observability;
-using Kaleido.Process;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Observability;
 using Kaleido.Process.Planning;
-using Moq;
-using Xunit;
 
 namespace Kaleido.Process.UnitTests.Processor;
 
@@ -606,19 +603,6 @@ public sealed class ProcessRuntimeTests
         stateUpdater.VerifyAll();
         planner.VerifyAll();
         processor.VerifyAll();
-    }
-
-    private static ProcessRuntime CreateRuntime()
-    {
-        return new ProcessRuntime(
-            Mock.Of<IProcessContextStore>(),
-            Mock.Of<IProcessStateUpdater>(),
-            Mock.Of<IExecutionPlanner>(),
-            Mock.Of<IExecutionProcessor>(),
-            CreateProcessEventFactory().Object,
-            CreateEventPublisher().Object,
-            CreateObservability().Object,
-            CreateCorrelationAccessor());
     }
 
     private static Mock<IProcessObservability> CreateObservability()

@@ -1,5 +1,4 @@
 using Kaleido.Process.Attributes;
-using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 
 namespace Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;

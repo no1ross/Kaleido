@@ -1,8 +1,6 @@
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using Xunit;
 
 namespace Kaleido.Process.UnitTests.Context;
 

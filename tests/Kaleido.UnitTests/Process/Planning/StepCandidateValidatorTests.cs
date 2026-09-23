@@ -1,7 +1,6 @@
-﻿using Kaleido.Exceptions;
+﻿using System.ComponentModel.DataAnnotations;
+using Kaleido.Exceptions;
 using Kaleido.Process.Planning;
-using System.ComponentModel.DataAnnotations;
-using Xunit;
 
 namespace Kaleido.Process.UnitTests.Processor.Planning;
 

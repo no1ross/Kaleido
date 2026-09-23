@@ -50,7 +50,9 @@ internal static class KaleidoClientExtensions
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(TMap));
 
         if (descriptor?.ImplementationInstance is TMap existing)
+        {
             return existing;
+        }
 
         var map = new TMap();
         services.AddSingleton(map);
