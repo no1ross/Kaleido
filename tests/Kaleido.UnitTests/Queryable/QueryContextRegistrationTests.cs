@@ -1,4 +1,4 @@
-namespace Kaleido.Queryable.Abstractions.UnitTests;
+namespace Kaleido.UnitTests.Queryable;
 
 public sealed class QueryContextRegistrationTests
 {
