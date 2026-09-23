@@ -156,14 +156,14 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 - [x] Cap correlation header value lengths in `KaleidoAspNetCoreCorrelation.cs`
 
 ### Build pipeline
-- [ ] Add `Microsoft.SourceLink.GitHub` package reference and `EmbedUntrackedSources` to `build/packages.props`
-- [ ] Add `PackageLicenseExpression`, `Description`, `PackageProjectUrl`, `RepositoryType=git` to `build/packages.props`
-- [ ] Add `<None Include="$(MSBuildProjectDirectory)\README.md" Pack="true" PackagePath="\" />` item group to `build/packages.props` (fixes NU5039 broken readme reference)
-- [ ] Add `NuGet.config` at repo root with explicit `nuget.org` source
-- [ ] Fix `Radiology.csproj` — add missing `<Import Project="../../../../build/samples.props" />` and remove duplicated properties
-- [ ] Extend CI (`build.yml`): add `--collect:"XPlat Code Coverage"` to `dotnet test`, add Codecov upload step
-- [ ] Extend CI: add `dotnet pack -c Release --no-build` + `actions/upload-artifact` step
-- [ ] Set `global-json-file` in CI `setup-dotnet` action to respect `global.json` SDK pin
+- [x] Add `Microsoft.SourceLink.GitHub` package reference and `EmbedUntrackedSources` to `build/packages.props`
+- [x] Add `PackageLicenseExpression` (MIT), `Description`, `PackageProjectUrl`, `RepositoryType=git` to `build/packages.props` — also updated stale `RepositoryUrl` to `no1ross/Kaleido` (repo transferred)
+- [x] Add `<None Include="$(MSBuildProjectDirectory)\README.md" Pack="true" PackagePath="\" />` item group to `build/packages.props` (fixes NU5039 broken readme reference)
+- [~] ~~Add `NuGet.config` at repo root with explicit `nuget.org` source~~ — **KEPT** (user decision; all packages resolve from nuget.org anyway)
+- [x] Fix `Radiology.csproj` — added missing `<Import Project="../../../../build/samples.props" />` and removed duplicated properties
+- [x] Extend CI (`build.yml`): added `--collect:"XPlat Code Coverage"` + `--settings coverlet.runsettings` to `dotnet test`; lcov uploaded as workflow artifact (no Codecov — free tier is patch-coverage only)
+- [x] Extend CI: added `dotnet pack -c Release --no-build` + `actions/upload-artifact` for nupkg/snupkg
+- [x] Set `global-json-file` in CI `setup-dotnet` action to respect `global.json` SDK pin
 
 ### Test fixes (mechanical)
 - [ ] Fix `Assert.Equal("Kaleido.Provider.SQLite.SqliteProcessContextStore", store.GetType().FullName)` → `Assert.IsType<SqliteProcessContextStore>(store)` in `DbContextDependencyTests.cs:65`
