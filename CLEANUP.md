@@ -144,8 +144,10 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 
 ### Dependency graph fixes
 - [x] Change `Kaleido.Observability.OpenTelemetry.csproj` project reference from `Kaleido.AspNetCore` → `Kaleido` (only uses core types)
-- [ ] Add explicit `<ProjectReference Include="..\Kaleido\Kaleido.csproj" />` to `Kaleido.Http.csproj` (currently relies on transitive)
-- [ ] Add explicit `PackageReference Include="Microsoft.Extensions.Configuration.Abstractions"` to `Kaleido.Http.Client.csproj`
+- [x] Removed `FrameworkReference Microsoft.AspNetCore.App` from `Kaleido.Observability.OpenTelemetry.csproj` (no AspNetCore types used)
+- [~] ~~Add explicit `Kaleido` ProjectReference to `Kaleido.Http.csproj`~~ — **KEPT**: transitive via `Kaleido.Http.Abstractions` accepted (user decision)
+- [x] Added explicit `Microsoft.Extensions.Configuration.Abstractions` + `Microsoft.Extensions.Configuration.Binder` (for `GetSection().Bind()`) to `Kaleido.Http.Client.csproj` — no longer relies on transitive
+- [x] Pruned 4 dead `InternalsVisibleTo` entries in `Kaleido.Http.Client/AssemblyInfo.cs` (`Kaleido.Process.Http.Client.UnitTests`, `Kaleido.Queryable.Http.Client.UnitTests`, `Kaleido.Registry`, `Kaleido.Http` — nonexistent assemblies / no consuming project ref)
 
 ### Security guardrails
 - [ ] Add max filter depth check (e.g., depth ≤ 10) to `QueryRequestValidator.ValidateFilter` — prevents stack-overflow DoS from deeply nested `QueryFilterGroup`
