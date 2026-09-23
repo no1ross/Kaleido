@@ -162,7 +162,7 @@ These fix real bugs and behavioral inconsistencies. Each item should be committe
 - [~] ~~Add `NuGet.config` at repo root with explicit `nuget.org` source~~ — **KEPT** (user decision; all packages resolve from nuget.org anyway)
 - [x] Fix `Radiology.csproj` — added missing `<Import Project="../../../../build/samples.props" />` and removed duplicated properties
 - [x] Extend CI (`build.yml`): added `--collect:"XPlat Code Coverage"` + `--settings coverlet.runsettings` to `dotnet test`; lcov uploaded as workflow artifact (no Codecov — free tier is patch-coverage only)
-- [x] Extend CI: added `dotnet pack -c Release --no-build` + `actions/upload-artifact` for nupkg/snupkg
+- [x] ~~Extend CI: `dotnet pack` + nupkg artifact upload~~ — added then **removed** (user decision: no packing in CI)
 - [x] Set `global-json-file` in CI `setup-dotnet` action to respect `global.json` SDK pin
 
 ### Test fixes (mechanical)
@@ -258,6 +258,6 @@ fix(tier3): replace KaleidoClientFactoryBase reflection with IRouteOptionsMap in
 ## Progress
 
 - [x] Tier 1 complete — branch `cleanup/tier1-zero-risk-cleanup`, 9 commits, 501 tests green
-- [ ] Tier 2 complete
+- [x] Tier 2 complete
 - [ ] Tier 3 complete
 - [ ] Tier 4 decisions made
