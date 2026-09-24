@@ -17,7 +17,9 @@
     </ItemGroup>
     <PropertyGroup>
         <IsPackable>false</IsPackable>
-        <NoWarn>1591</NoWarn>
+        <!-- xUnit1000: internal test classes are fully discovered at runtime;
+             suppress so fixtures can be internal when testing internal SUTs -->
+        <NoWarn>1591;xUnit1000</NoWarn>
     </PropertyGroup>
     <ItemGroup>
         <Using Include="Xunit" />

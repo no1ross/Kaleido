@@ -7,6 +7,7 @@ namespace Kaleido.UnitTests;
 /// </summary>
 /// <typeparam name="TSut">The class under test.</typeparam>
 public abstract class SutFixture<TSut>
+    : SutFixture
     where TSut : class
 {
     /// <summary>
@@ -17,4 +18,13 @@ public abstract class SutFixture<TSut>
 
     /// <summary>A fresh SUT per access — no shared state between tests.</summary>
     protected TSut Sut => CreateSut();
+}
+
+/// <summary>
+/// Base class for unit-test fixtures whose subject cannot be a generic
+/// type argument — static classes (extension-method suites) and
+/// cross-cutting suites with no single SUT type.
+/// </summary>
+public abstract class SutFixture
+{
 }

@@ -26,3 +26,5 @@ KAL1006 | Kaleido.Tests | Warning | Unit-test fixtures must inherit SutFixture<T
 KAL1007 | Kaleido.Tests | Warning | Fixture name must match its declared SUT
 KAL1008 | Kaleido.Tests | Warning | SUT may only be constructed inside CreateSut()
 KAL1009 | Kaleido.Tests | Warning | Every testable source type must have a {Name}Tests fixture
+KAL0016 | Kaleido.Design | Warning | MapGet/MapPost endpoints in Kaleido.Http must call .WithTags()
+KAL0017 | Kaleido.Design | Warning | Endpoint tags must include "Kaleido"

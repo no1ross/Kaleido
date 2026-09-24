@@ -46,7 +46,14 @@ public sealed class SutConstructionAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var sut = FixtureConventions.GetSutFixtureSut(fixture);
+        var sut =
+            FixtureConventions.GetSutFixtureSut(fixture) ??
+            (FixtureConventions.InheritsSutFixture(fixture)
+                ? FixtureConventions.ResolveSut(
+                    context.Compilation,
+                    fixture.Name,
+                    context.CancellationToken)
+                : null);
 
         if (sut is null ||
             !SymbolEqualityComparer.Default.Equals(

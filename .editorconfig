@@ -455,6 +455,12 @@ dotnet_diagnostic.KAL0013.severity = error
 dotnet_diagnostic.KAL0014.severity = error
 dotnet_diagnostic.KAL0015.severity = error
 
+# KAL0016–KAL0017: HTTP endpoint tag conventions — scoped to Kaleido.Http only
+# so they don't fire on consumers or other src/ projects.
+[src/Kaleido.Http/**/*.cs]
+dotnet_diagnostic.KAL0016.severity = warning
+dotnet_diagnostic.KAL0017.severity = warning
+
 # Test projects: test doubles/fakes legitimately don't access instance state
 # and stub signatures must mirror the contract even when params are unused
 [tests/**/*.cs]
@@ -488,6 +494,10 @@ dotnet_diagnostic.KAL1006.severity = warning
 dotnet_diagnostic.KAL1007.severity = warning
 dotnet_diagnostic.KAL1008.severity = warning
 dotnet_diagnostic.KAL1009.severity = warning
+
+# xUnit1000: internal test classes are discovered at runtime — suppress so
+# internal fixtures can inherit SutFixture<InternalSut> without being public
+dotnet_diagnostic.xUnit1000.severity = none
 
 # Analyzer tests under tools/ — same relaxations as tests/** (Method_Scenario
 # naming, stub signatures)

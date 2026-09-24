@@ -73,6 +73,23 @@ internal static class FixtureConventions
     }
 
     /// <summary>
+    /// True when the type inherits SutFixture or SutFixture&lt;TSut&gt;
+    /// anywhere in its base chain (matched by metadata name, any namespace).
+    /// </summary>
+    public static bool InheritsSutFixture(INamedTypeSymbol type)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            if (current.Name == "SutFixture")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Returns the TSut type argument when the type inherits SutFixture&lt;TSut&gt;
     /// anywhere in its base chain (matched by metadata name, any namespace).
     /// </summary>

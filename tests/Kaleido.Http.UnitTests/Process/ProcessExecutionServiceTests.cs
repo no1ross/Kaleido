@@ -1,14 +1,22 @@
 using System.Text.Json;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Planning;
+using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.UnitTests.Process;
 
-public sealed class ProcessExecutionServiceTests
+internal sealed class ProcessExecutionServiceTests
+    : SutFixture<ProcessExecutionService>
 {
-    private static ProcessExecutionService CreateService(
+    protected override ProcessExecutionService CreateSut() =>
+        CreateSut(
+            Mock.Of<IProcessStepRegistry>(),
+            Mock.Of<IProcessRuntime>(),
+            Mock.Of<IProcessExecutionResponseFactory>());
+
+    private static ProcessExecutionService CreateSut(
         IProcessStepRegistry registry,
         IProcessRuntime runtime,
         IProcessExecutionResponseFactory responseFactory,
@@ -65,7 +73,7 @@ public sealed class ProcessExecutionServiceTests
                 "test-processor"))
             .Returns(expectedResponse);
 
-        var service = CreateService(registry, runtime.Object, responseFactory.Object, contextProcessId);
+        var service = CreateSut(registry, runtime.Object, responseFactory.Object, contextProcessId);
 
         var request = new ExecuteProcessRequest
         {
@@ -123,7 +131,7 @@ public sealed class ProcessExecutionServiceTests
                 "test-processor"))
             .Returns(expectedResponse);
 
-        var service = CreateService(registry, runtime.Object, responseFactory.Object, Guid.NewGuid());
+        var service = CreateSut(registry, runtime.Object, responseFactory.Object, Guid.NewGuid());
 
         var request = new ExecuteStepRequest<TestStep>
         {
@@ -164,7 +172,7 @@ public sealed class ProcessExecutionServiceTests
                 "test-processor"))
             .Returns(expectedResponse);
 
-        var service = CreateService(registry, runtime.Object, responseFactory.Object, Guid.NewGuid());
+        var service = CreateSut(registry, runtime.Object, responseFactory.Object, Guid.NewGuid());
 
         var request = new ExecuteStepRequest<TestStep>
         {

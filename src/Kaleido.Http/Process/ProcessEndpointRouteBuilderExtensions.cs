@@ -93,7 +93,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                                 .ToArray()
                         }))
             .WithName(ProcessEndpointNames.ProcessorCatalogEndpointName)
-            .WithTags("Processes")
+            .WithTags("Processes", "Kaleido")
             .Produces<ProcessCatalogResponse>()
             .WithSummary("Get process entry points.")
             .WithDescription(
@@ -120,7 +120,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                 })
             .WithName(ProcessEndpointNames.ExecuteEndpointName)
             .Accepts<ExecuteProcessRequest>("application/json")
-            .WithTags("Processes")
+            .WithTags("Processes", "Kaleido")
             .Produces<ProcessExecutionResponse>()
             .WithSummary("Execute one or more process steps.")
             .WithDescription(
@@ -148,7 +148,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                         : Results.Ok(process);
                 })
             .WithName(ProcessEndpointNames.ProcessEndpointName)
-            .WithTags("Processes")
+            .WithTags("Processes", "Kaleido")
             .Produces<ProcessStateResponse>()
             .Produces(StatusCodes.Status404NotFound)
             .WithSummary("Get processor process state.")
@@ -175,7 +175,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                                     x,
                                     serviceOptions))))
             .WithName(ProcessEndpointNames.StepRegistryEndpointName)
-            .WithTags("Processes")
+            .WithTags("Processes", "Kaleido")
             .Produces<IReadOnlyCollection<ProcessorRegistryResponse>>()
             .WithSummary("Get process registry metadata.")
             .WithDescription(
@@ -212,7 +212,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                                     serviceName))
                             .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)))
             .WithName(ProcessEndpointNames.StepCatalogEndpointName)
-            .WithTags("Processes")
+            .WithTags("Processes", "Kaleido")
             .Produces<IReadOnlyCollection<ProcessStepSummary>>()
             .WithSummary("Get registered process steps.")
             .WithDescription(
@@ -267,7 +267,7 @@ public static class ProcessEndpointRouteBuilderExtensions
             .WithName(
                 ProcessEndpointNames.StepMetadataEndpointName(
                     step.Metadata.Name.ToLowerInvariant()))
-            .WithTags(step.Metadata.DisplayName)
+            .WithTags(step.Metadata.DisplayName, "Kaleido")
             .Produces<ProcessStepResponse>()
             .WithSummary($"Get metadata for {step.Metadata.DisplayName}.")
             .WithDescription(
@@ -344,7 +344,7 @@ public static class ProcessEndpointRouteBuilderExtensions
             .WithName(
                 ProcessEndpointNames.StepExecutionEndpointName(
                     stepName))
-            .WithTags(step.Metadata.DisplayName)
+            .WithTags(step.Metadata.DisplayName, "Kaleido")
             .WithSummary(
                 $"Execute {step.Metadata.DisplayName}.")
             .WithDescription(
@@ -383,7 +383,7 @@ public static class ProcessEndpointRouteBuilderExtensions
             .WithName(
                 ProcessEndpointNames.StepExecutionEndpointName(
                     stepName))
-            .WithTags(step.Metadata.DisplayName)
+            .WithTags(step.Metadata.DisplayName, "Kaleido")
             .WithSummary(
                 $"Execute {step.Metadata.DisplayName}.")
             .WithDescription(

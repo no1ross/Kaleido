@@ -1,9 +1,11 @@
 using Kaleido.Http.Observability;
+using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 
 namespace Kaleido.Http.UnitTests;
 
 public sealed class HttpCorrelationContextReaderTests
+    : SutFixture
 {
     [Fact]
     public void Read_WhenContextIsNull_Throws()

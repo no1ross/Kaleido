@@ -40,7 +40,7 @@ public sealed class FixtureMustInheritSutFixtureAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (FixtureConventions.GetSutFixtureSut(type) is not null)
+        if (FixtureConventions.InheritsSutFixture(type))
         {
             return;
         }

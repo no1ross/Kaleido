@@ -1,3 +1,4 @@
+using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kaleido.Http.UnitTests;
 
 public sealed class KaleidoHttpServiceCollectionExtensionsTests
+    : SutFixture
 {
     [Fact]
     public void AddHttp_WhenBuilderIsNull_Throws()
