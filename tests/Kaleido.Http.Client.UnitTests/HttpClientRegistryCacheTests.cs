@@ -42,4 +42,29 @@ public sealed class HttpClientRegistryCacheTests
         Assert.Equal(0, fetchCount);
         Assert.Equal("first", result);
     }
+
+    [Fact]
+    public async Task Reset_ClearsCache_SoNextFetchIsInvoked()
+    {
+        using var sut = new HttpClientRegistryCache<string>();
+
+        // Prime the cache.
+        await sut.GetOrFetchAsync(_ => Task.FromResult("first"), CancellationToken.None);
+
+        // Invalidate.
+        sut.Reset();
+
+        // Next call should re-fetch.
+        var fetchCalled = false;
+        var result = await sut.GetOrFetchAsync(
+            _ =>
+            {
+                fetchCalled = true;
+                return Task.FromResult("refreshed");
+            },
+            CancellationToken.None);
+
+        Assert.True(fetchCalled);
+        Assert.Equal("refreshed", result);
+    }
 }

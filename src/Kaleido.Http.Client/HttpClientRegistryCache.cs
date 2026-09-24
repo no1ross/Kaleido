@@ -5,7 +5,7 @@ namespace Kaleido.Http.Client;
 /// Owns the SemaphoreSlim and double-check locking pattern shared by
 /// KaleidoProcessClient and KaleidoQueryableClient. Unlike HttpRegistryCache
 /// (server-side, supports forceRefresh and partial-result passthrough), this
-/// cache fetches once and never refreshes.
+/// cache fetches once and never refreshes unless explicitly reset.
 /// </summary>
 internal sealed class HttpClientRegistryCache<T> : IDisposable
 {
@@ -13,6 +13,23 @@ internal sealed class HttpClientRegistryCache<T> : IDisposable
     private T? _value;
 
     public void Dispose() => _lock.Dispose();
+
+    /// <summary>
+    /// Clears the cached value so the next call to <see cref="GetOrFetchAsync"/>
+    /// re-fetches from the remote endpoint.
+    /// </summary>
+    public void Reset()
+    {
+        _lock.Wait();
+        try
+        {
+            _value = default;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
 
     public async Task<T> GetOrFetchAsync(
         Func<CancellationToken, Task<T>> fetch,
