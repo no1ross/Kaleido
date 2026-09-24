@@ -189,7 +189,7 @@ These require more careful testing. Commit each as its own focused PR.
 - [x] Add Roslyn analyzer configuration (`AnalysisLevel=latest-recommended`) — in `Directory.Build.props` (build/packages.props no longer exists)
 - [x] Replace `KaleidoClientFactoryBase<TClient,TMap>` reflection hack — introduced `IKaleidoClientRouteOptionsMap` interface + `KaleidoClientRouteOptionsMap` abstract base; `TMap` constrained to `: class, IKaleidoClientRouteOptionsMap`; `GetProperty("Options")` reflection eliminated
 - [x] Collapse `KaleidoProcessClientRouteOptionsMap` and `KaleidoQueryableClientRouteOptionsMap` into a single `KaleidoClientRouteOptionsMap` base — both are now internal sealed subclasses; shared implementation in base; distinct DI types preserved to avoid registration collision
-- [ ] Add `EnsureRegistryAsync` generic helper — consolidate semaphore-guarded lazy-load used in both clients
+- [x] Add `EnsureRegistryAsync` generic helper — extracted `HttpClientRegistryCache<T>` (fetch-once, semaphore-guarded double-check) used by both `KaleidoProcessClient` and `KaleidoQueryableClient`; renamed server-side `RegistryCache` → `HttpRegistryCache` for clarity
 - [x] Consolidate the 6+ route/endpoint-name constant classes — already 3 well-placed classes (`ProcessEndpointNames`, `QueryableEndpointNames`, `RegistryEndpointNames`); original "6+" count was stale
 - [ ] Convert `ProcessRuntime` (8-param constructor) to primary constructor syntax (AGENTS.md mandate)
 - [x] Convert `KaleidoProcessClient` and `KaleidoQueryableClient` constructors to primary constructors — done; also inlined `StampCorrelationHeaders` wrapper and `registryUrl` field (single-use)
