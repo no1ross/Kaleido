@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Kaleido.Analyzers;
+namespace Kaleido.Analyzers.DependencyInjection;
 
 /// <summary>
 /// KAL0014 — singleton registrations must not capture scoped services.

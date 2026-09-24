@@ -3,7 +3,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Kaleido.Analyzers;
+namespace Kaleido.Analyzers.Design;
 
 /// <summary>
 /// KAL0001 — static classes are reserved for extension methods (AGENTS.md convention).

@@ -4,7 +4,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Kaleido.Analyzers;
+namespace Kaleido.Analyzers.Fixtures;
 
 /// <summary>
 /// KAL1003 — the fixture's file location mirrors the SUT's location:

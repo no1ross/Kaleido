@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Kaleido.Analyzers;
+namespace Kaleido.Analyzers.DependencyInjection;
 
 /// <summary>
 /// KAL0012 — do not manually instantiate infrastructure dependencies.

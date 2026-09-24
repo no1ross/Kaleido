@@ -3,7 +3,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Kaleido.Analyzers;
+namespace Kaleido.Analyzers.DependencyInjection;
 
 /// <summary>
 /// KAL0005 — service-like types must not be static. A static class named like

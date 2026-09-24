@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Kaleido.Analyzers;
+namespace Kaleido.Analyzers.Fixtures;
 
 /// <summary>
 /// KAL1007 — a fixture inheriting SutFixture&lt;TSut&gt; must be named

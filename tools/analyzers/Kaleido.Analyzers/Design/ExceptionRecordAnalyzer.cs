@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Kaleido.Analyzers;
+namespace Kaleido.Analyzers.Design;
 
 /// <summary>
 /// KAL0004 — exceptions must not be records (AGENTS.md: "Do NOT convert

@@ -13,5 +13,9 @@
         <PackageVersion Include="xunit" Version="2.9.2" />
         <PackageVersion Include="xunit.analyzers" Version="2.0.0" />
         <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+        <!-- Analyzer testing packages (Kaleido.Analyzers.UnitTests) -->
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit" Version="1.1.2" />
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
+        <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.8.0" />
     </ItemGroup>
 </Project>
