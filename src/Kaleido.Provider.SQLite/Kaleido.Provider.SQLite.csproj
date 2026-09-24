@@ -9,4 +9,8 @@
 		<ProjectReference Include="..\Kaleido\Kaleido.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<InternalsVisibleTo Include="Kaleido.Provider.SQLite.UnitTests" />
+	</ItemGroup>
+
 </Project>

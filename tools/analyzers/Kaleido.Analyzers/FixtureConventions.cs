@@ -72,6 +72,43 @@ internal static class FixtureConventions
         return null;
     }
 
+    /// <summary>
+    /// Returns the TSut type argument when the type inherits SutFixture&lt;TSut&gt;
+    /// anywhere in its base chain (matched by metadata name, any namespace).
+    /// </summary>
+    public static INamedTypeSymbol? GetSutFixtureSut(INamedTypeSymbol type)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            if (current.Name == "SutFixture" &&
+                current.TypeArguments.Length == 1 &&
+                current.TypeArguments[0] is INamedTypeSymbol sut)
+            {
+                return sut;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>All named types in a namespace, recursively.</summary>
+    public static System.Collections.Generic.IEnumerable<INamedTypeSymbol> EnumerateTypes(
+        INamespaceSymbol ns)
+    {
+        foreach (var member in ns.GetTypeMembers())
+        {
+            yield return member;
+        }
+
+        foreach (var child in ns.GetNamespaceMembers())
+        {
+            foreach (var member in EnumerateTypes(child))
+            {
+                yield return member;
+            }
+        }
+    }
+
     private static INamedTypeSymbol? FindType(
         INamespaceSymbol ns,
         string name)

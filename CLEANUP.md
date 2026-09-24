@@ -198,6 +198,7 @@ These require more careful testing. Commit each as its own focused PR.
 - [ ] Add `SqliteProcessContextStore` activity source + `ILogger` + failure counter instrumentation
 - [ ] Add `KaleidoCorrelationContextAccessor` — back `_current` with `AsyncLocal<KaleidoCorrelationContext>` so context flows across `CreateScope()` boundaries in step handlers (design discussion required first)
 - [ ] Add `MapHealthChecks` guidance / `SqliteProcessContextStoreHealthCheck` + `AddHealthChecks()` registration
+- [ ] **SutFixture migration** — migrate every `*.UnitTests` fixture to `SutFixture<TSut>` (`protected abstract TSut CreateSut()` in `tests/Kaleido.UnitTests/SutFixture.cs`); move all `new {Sut}(...)` calls inside `CreateSut()`; delete remaining coverage gaps flagged by KAL1009; **then flip KAL1001–KAL1004 and KAL1006–KAL1009 from `warning` to `error`** in `.editorconfig` `[tests/*UnitTests/**/*.cs]` — SUT boundary + coverage enforcement is a hard requirement, not advisory
 
 ---
 

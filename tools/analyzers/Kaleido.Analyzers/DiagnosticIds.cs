@@ -22,4 +22,8 @@ internal static class DiagnosticIds
     public const string FixtureStructureMirror = "KAL1003";
     public const string SingleFixturePerSut = "KAL1004";
     public const string BuildServiceProviderOptions = "KAL1005";
+    public const string FixtureMustInheritSutFixture = "KAL1006";
+    public const string FixtureNameMatchesSut = "KAL1007";
+    public const string SutConstruction = "KAL1008";
+    public const string FixtureCoverage = "KAL1009";
 }

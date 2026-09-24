@@ -38,3 +38,11 @@ Scoped to unit-test projects via `.editorconfig`.
 | KAL1003 | The fixture's file location mirrors the SUT's location: `src/{Project}/{path}/Sut.cs` → `tests/{TestProject}/{path}/SutTests.cs` | `Test fixture '{0}' must live at '{1}' (mirroring SUT path '{2}')` |
 | KAL1004 | One fixture per subject under test | `Test fixture '{0}' duplicates '{1}' — both map to SUT '{2}'` |
 | KAL1005 | Test-built `ServiceProvider`s must validate scopes and validate on build | `BuildServiceProvider() must pass 'new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true }'` |
+| KAL1006 | Unit-test fixtures must inherit `SutFixture<TSut>` — every test declares its SUT | `Test fixture '{0}' must inherit SutFixture<{1}> — every unit test declares its subject under test` |
+| KAL1007 | Fixture name must equal `{TSut.Name}Tests` | `Test fixture '{0}' declares SUT '{1}' — it must be named '{2}'` |
+| KAL1008 | The SUT may only be constructed inside `CreateSut()` | `'{0}' may only be constructed inside CreateSut() — use CreateSut() or the Sut property` |
+| KAL1009 | Every testable type in the matching `Kaleido.*` source assembly must have a `{Name}Tests` fixture | `Type '{0}' in '{1}' has no '{2}' fixture — every testable type must have a unit-test fixture` |
+
+### SutFixture notes (KAL1006–KAL1009)
+
+`SutFixture<TSut>` lives in `Kaleido.UnitTests` (the base test project — other `*.UnitTests` projects reference it). Testable means public or internal class, non-static, non-abstract, with at least one ordinary method; records, exceptions, attributes, DTO-suffix types, and static `*Extensions` classes are exempt. These rules apply to `*.UnitTests` projects only — functional/integration test projects are scenario-scoped.

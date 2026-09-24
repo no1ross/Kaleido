@@ -403,11 +403,44 @@ dotnet_diagnostic.KAL0003.severity = warning
 # KAL0004: exception types must not be records
 dotnet_diagnostic.KAL0004.severity = error
 
-# KAL0005–KAL0014: DI enforcement — injectable types not static (0005), no
-# new-ing registered impls (0006), no service locator (0007), inject
-# abstractions (0008), ctor injection only (0009), retain injected deps
-# (0010), no work in DI ctors (0011), no manual infra instantiation (0012),
-# no disposing container-owned deps (0013), no captive scoped→singleton (0014)
+# KAL0005–KAL0014: DI enforcement — globally off; tests legitimately build
+# their own ServiceCollections and resolve services (KAL1005 requires it).
+# Enabled as errors in [src/**/*.cs] below.
+dotnet_diagnostic.KAL0005.severity = none
+dotnet_diagnostic.KAL0006.severity = none
+dotnet_diagnostic.KAL0007.severity = none
+dotnet_diagnostic.KAL0008.severity = none
+dotnet_diagnostic.KAL0009.severity = none
+dotnet_diagnostic.KAL0010.severity = none
+dotnet_diagnostic.KAL0011.severity = none
+dotnet_diagnostic.KAL0012.severity = none
+dotnet_diagnostic.KAL0013.severity = none
+dotnet_diagnostic.KAL0014.severity = none
+
+# KAL1001–KAL1004 + KAL1006–KAL1009: test/SUT fixture conventions apply to
+# unit tests only (functional/integration fixtures are scenario-scoped) —
+# globally off, opted in per *.UnitTests project below
+dotnet_diagnostic.KAL1001.severity = none
+dotnet_diagnostic.KAL1002.severity = none
+dotnet_diagnostic.KAL1003.severity = none
+dotnet_diagnostic.KAL1004.severity = none
+dotnet_diagnostic.KAL1006.severity = none
+dotnet_diagnostic.KAL1007.severity = none
+dotnet_diagnostic.KAL1008.severity = none
+dotnet_diagnostic.KAL1009.severity = none
+
+# KAL1005: BuildServiceProvider must pass ValidateScopes + ValidateOnBuild
+dotnet_diagnostic.KAL1005.severity = warning
+
+# --- Kaleido.Analyzers: DI enforcement (src/ only — tests and samples are
+# separate composition roots) ---
+[src/**/*.cs]
+
+# KAL0005–KAL0014: injectable types not static (0005), no new-ing registered
+# impls (0006), no service locator (0007), inject abstractions (0008), ctor
+# injection only (0009), retain injected deps (0010), no work in DI ctors
+# (0011), no manual infra instantiation (0012), no disposing container-owned
+# deps (0013), no captive scoped→singleton (0014)
 dotnet_diagnostic.KAL0005.severity = error
 dotnet_diagnostic.KAL0006.severity = error
 dotnet_diagnostic.KAL0007.severity = error
@@ -418,16 +451,6 @@ dotnet_diagnostic.KAL0011.severity = error
 dotnet_diagnostic.KAL0012.severity = error
 dotnet_diagnostic.KAL0013.severity = error
 dotnet_diagnostic.KAL0014.severity = error
-
-# KAL1001: test fixtures are named {SutName}Tests — SUT rules apply to unit
-# tests only (functional/integration fixtures are scenario-scoped by design)
-dotnet_diagnostic.KAL1001.severity = none
-dotnet_diagnostic.KAL1002.severity = none
-dotnet_diagnostic.KAL1003.severity = none
-dotnet_diagnostic.KAL1004.severity = none
-
-# KAL1005: BuildServiceProvider must pass ValidateScopes + ValidateOnBuild
-dotnet_diagnostic.KAL1005.severity = warning
 
 # Test projects: test doubles/fakes legitimately don't access instance state
 # and stub signatures must mirror the contract even when params are unused
@@ -450,50 +473,18 @@ dotnet_diagnostic.CA1707.severity = silent
 # KAL0003: tests use '!' freely for Assert.NotNull follow-ons and null! arg injection
 dotnet_diagnostic.KAL0003.severity = none
 
-# KAL0005–KAL0014: tests are a separate composition root — SUTs are new'ed,
-# Moq setups resolve services, test providers are manually built
-dotnet_diagnostic.KAL0005.severity = none
-dotnet_diagnostic.KAL0006.severity = none
-dotnet_diagnostic.KAL0007.severity = none
-dotnet_diagnostic.KAL0008.severity = none
-dotnet_diagnostic.KAL0009.severity = none
-dotnet_diagnostic.KAL0010.severity = none
-dotnet_diagnostic.KAL0011.severity = none
-dotnet_diagnostic.KAL0012.severity = none
-dotnet_diagnostic.KAL0013.severity = none
-dotnet_diagnostic.KAL0014.severity = none
-
-# Unit-test projects only: SUT fixture conventions (one SUT per fixture,
-# named {Sut}Tests, path-mirrored, one fixture per SUT)
-[tests/Kaleido.UnitTests/**/*.cs]
+# Unit-test projects only (any *UnitTests dir): SUT fixture conventions —
+# one SUT per fixture, named {Sut}Tests, path-mirrored, one fixture per SUT,
+# SutFixture<TSut> required, SUT only constructed in CreateSut(), coverage
+[tests/*UnitTests/**/*.cs]
 dotnet_diagnostic.KAL1001.severity = warning
 dotnet_diagnostic.KAL1002.severity = warning
 dotnet_diagnostic.KAL1003.severity = warning
 dotnet_diagnostic.KAL1004.severity = warning
-
-[tests/Kaleido.Http.UnitTests/**/*.cs]
-dotnet_diagnostic.KAL1001.severity = warning
-dotnet_diagnostic.KAL1002.severity = warning
-dotnet_diagnostic.KAL1003.severity = warning
-dotnet_diagnostic.KAL1004.severity = warning
-
-[tests/Kaleido.Http.Abstractions.UnitTests/**/*.cs]
-dotnet_diagnostic.KAL1001.severity = warning
-dotnet_diagnostic.KAL1002.severity = warning
-dotnet_diagnostic.KAL1003.severity = warning
-dotnet_diagnostic.KAL1004.severity = warning
-
-[tests/Kaleido.Http.Client.UnitTests/**/*.cs]
-dotnet_diagnostic.KAL1001.severity = warning
-dotnet_diagnostic.KAL1002.severity = warning
-dotnet_diagnostic.KAL1003.severity = warning
-dotnet_diagnostic.KAL1004.severity = warning
-
-[tests/Kaleido.Provider.SQLite.UnitTests/**/*.cs]
-dotnet_diagnostic.KAL1001.severity = warning
-dotnet_diagnostic.KAL1002.severity = warning
-dotnet_diagnostic.KAL1003.severity = warning
-dotnet_diagnostic.KAL1004.severity = warning
+dotnet_diagnostic.KAL1006.severity = warning
+dotnet_diagnostic.KAL1007.severity = warning
+dotnet_diagnostic.KAL1008.severity = warning
+dotnet_diagnostic.KAL1009.severity = warning
 
 # Analyzer tests under tools/ — same relaxations as tests/** (Method_Scenario
 # naming, stub signatures)

@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido.Http.Abstractions\Kaleido.Http.Abstractions.csproj" />
+		<ProjectReference Include="..\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
 	</ItemGroup>
 </Project>

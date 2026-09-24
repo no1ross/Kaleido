@@ -6,4 +6,8 @@
 		<ProjectReference Include="..\Kaleido\Kaleido.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<InternalsVisibleTo Include="Kaleido.Http.Abstractions.UnitTests" />
+	</ItemGroup>
+
 </Project>
