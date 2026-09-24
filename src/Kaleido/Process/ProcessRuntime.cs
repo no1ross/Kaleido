@@ -1,4 +1,6 @@
-﻿using Kaleido.Process.Context;
+﻿using System.Reflection;
+using Kaleido.Process.Attributes;
+using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Observability;
@@ -34,6 +36,39 @@ public sealed record ProcessRequest
     {
         get;
         init;
+    }
+
+    /// <summary>
+    /// Creates a <see cref="ProcessRequest"/> for a single step.
+    /// The step name is resolved from <see cref="ProcessStepAttribute.Name"/>;
+    /// if the attribute is absent, <c>typeof(TStep).Name</c> is used as a fallback.
+    /// </summary>
+    /// <typeparam name="TStep">The process step type.</typeparam>
+    /// <param name="step">The step instance containing the input data.</param>
+    /// <param name="processId">
+    /// Optional process correlation identifier. Pass the same value on each submission
+    /// to resume an existing process instance. Omit (or pass <c>null</c>) to start a new one.
+    /// </param>
+    public static ProcessRequest ForStep<TStep>(TStep step, Guid? processId = null)
+        where TStep : class
+    {
+        ArgumentNullException.ThrowIfNull(step);
+
+        var name =
+            typeof(TStep).GetCustomAttribute<ProcessStepAttribute>()?.Name
+            ?? typeof(TStep).Name;
+
+        return new ProcessRequest
+        {
+            ProcessId = processId,
+            Processor = new ProcessorRequest
+            {
+                Steps = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [name] = step
+                }
+            }
+        };
     }
 }
 

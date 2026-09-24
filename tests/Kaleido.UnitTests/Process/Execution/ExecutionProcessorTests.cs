@@ -866,7 +866,7 @@ public sealed class ExecutionProcessorTests
 
         Assert.Contains(
             outcome.RuntimeMessages,
-            x => x.Code == StepProcessingMessageCode.ExecutionCancelled);
+            x => x.Code == StepProcessingMessageCode.ExecutionCanceled);
 
         invoker.Verify(
             x =>

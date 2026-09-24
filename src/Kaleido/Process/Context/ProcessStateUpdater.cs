@@ -264,7 +264,7 @@ internal sealed class ProcessStateUpdater(
         return context with
         {
             State =
-                ProcessExecutionState.Cancelled,
+                ProcessExecutionState.Canceled,
 
             RequiredStep = null,
 

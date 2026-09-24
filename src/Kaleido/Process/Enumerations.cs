@@ -33,7 +33,7 @@ public enum StepExecutionOutcome
     /// <summary>
     /// The step was intentionally stopped and will not continue.
     /// </summary>
-    Cancelled
+    Canceled
 }
 
 /// <summary>
@@ -151,7 +151,7 @@ public enum StepProcessingMessageCode
     ExceptionThrown,
     InvalidRequiredStep,
     RequiredStepNotAllowed,
-    ExecutionCancelled,
+    ExecutionCanceled,
     FrameworkException,
     ProcessMessage,
     RepeatableStep

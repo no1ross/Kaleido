@@ -7,6 +7,12 @@ public interface IKaleidoQueryableClient
     Task<IReadOnlyList<QueryableRecordResponse>> GetRegistryAsync(
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Clears the local registry cache so the next operation re-fetches
+    /// the registry from the remote endpoint.
+    /// </summary>
+    void InvalidateRegistry();
+
     Task<QueryableRecordResponse> GetContextMetadataAsync(
         string context,
         CancellationToken cancellationToken = default);

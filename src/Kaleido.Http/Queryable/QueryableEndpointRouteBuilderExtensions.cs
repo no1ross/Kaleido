@@ -139,8 +139,7 @@ public static class QueryableEndpointRouteBuilderExtensions
         {
             group.MapQueryView(
                 contextRegistry,
-                view,
-                serviceName);
+                view);
         }
 
         foreach (var view in delegatedViewRegistry.Registrations)
@@ -153,11 +152,10 @@ public static class QueryableEndpointRouteBuilderExtensions
         return endpoints;
     }
 
-    public static void MapQueryView(
+    internal static void MapQueryView(
       this IEndpointRouteBuilder endpoints,
       IQueryContextRegistry contextRegistry,
-      QueryViewRegistration view,
-      string serviceName)
+      QueryViewRegistration view)
     {
         var context =
             contextRegistry.GetRegistration(

@@ -23,6 +23,8 @@ internal sealed class KaleidoQueryableClient(
         return await EnsureRegistryAsync(cancellationToken);
     }
 
+    public void InvalidateRegistry() => _registryCache.Reset();
+
     public async Task<QueryableRecordResponse> GetContextMetadataAsync(
         string context,
         CancellationToken cancellationToken = default)

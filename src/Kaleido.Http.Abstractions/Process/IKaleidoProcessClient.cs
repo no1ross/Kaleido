@@ -7,6 +7,12 @@ public interface IKaleidoProcessClient
     Task<IReadOnlyList<ProcessorRegistryResponse>> GetRegistryAsync(
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Clears the local registry cache so the next operation re-fetches
+    /// the registry from the remote endpoint.
+    /// </summary>
+    void InvalidateRegistry();
+
     Task<ProcessStepResponse> GetStepMetadataAsync(
         string stepName,
         CancellationToken cancellationToken = default);

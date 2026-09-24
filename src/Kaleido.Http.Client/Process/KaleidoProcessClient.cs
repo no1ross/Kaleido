@@ -22,6 +22,8 @@ internal sealed class KaleidoProcessClient(
         return await EnsureRegistryAsync(cancellationToken);
     }
 
+    public void InvalidateRegistry() => _registryCache.Reset();
+
     public async Task<ProcessStepResponse> GetStepMetadataAsync(
         string stepName,
         CancellationToken cancellationToken = default)
