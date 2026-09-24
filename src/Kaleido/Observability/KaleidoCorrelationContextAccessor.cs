@@ -1,6 +1,6 @@
 namespace Kaleido.Observability;
 
-public interface IKaleidoCorrelationContextAccessor
+internal interface IKaleidoCorrelationContextAccessor
 {
     KaleidoCorrelationContext Current
     {
