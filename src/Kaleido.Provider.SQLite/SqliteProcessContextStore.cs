@@ -17,25 +17,42 @@ internal sealed class SqliteProcessContextStore(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var entity =
-            await dbContext.ProcessContexts
-                .AsNoTracking()
-                .Include(x => x.Steps)
-                .Include(x => x.AvailableSteps)
-                .Include(x => x.RequiredStep)
-                .FirstOrDefaultAsync(
-                    x => x.ProcessId ==
-                         processId,
-                    cancellationToken);
+        using var activity = SqliteTelemetry.ActivitySource
+            .StartActivity(SqliteTelemetry.LoadActivityName, ActivityKind.Internal);
+        activity?.SetTag(SqliteTelemetry.TagProcessId, processId.ToString());
 
-        if (entity is null)
+        try
         {
-            return null;
-        }
+            var entity =
+                await dbContext.ProcessContexts
+                    .AsNoTracking()
+                    .Include(x => x.Steps)
+                    .Include(x => x.AvailableSteps)
+                    .Include(x => x.RequiredStep)
+                    .FirstOrDefaultAsync(
+                        x => x.ProcessId ==
+                             processId,
+                        cancellationToken);
 
-        return ToProcessorContext(
-            entity,
-            serviceOptions.ServiceName);
+            if (entity is null)
+            {
+                return null;
+            }
+
+            return ToProcessorContext(
+                entity,
+                serviceOptions.ServiceName);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            SqliteTelemetry.LoadFailuresCounter.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            logger.LogError(
+                exception,
+                "Failed to load process context for process {ProcessId}.",
+                processId);
+            throw;
+        }
     }
 
     public async Task SaveAsync(
@@ -47,149 +64,166 @@ internal sealed class SqliteProcessContextStore(
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        await using var transaction =
-            await dbContext.Database.BeginTransactionAsync(
-                cancellationToken);
+        using var activity = SqliteTelemetry.ActivitySource
+            .StartActivity(SqliteTelemetry.SaveActivityName, ActivityKind.Internal);
+        activity?.SetTag(SqliteTelemetry.TagProcessId, context.ProcessId.ToString());
 
-        var entity =
-            await dbContext.ProcessContexts
-                .FirstOrDefaultAsync(
-                    x => x.ProcessId ==
-                         context.ProcessId,
-                    cancellationToken);
-
-        if (entity is null)
+        try
         {
-            entity =
-                new ProcessContextEntity
-                {
-                    ProcessId =
-                        context.ProcessId
-                };
-
-            dbContext.ProcessContexts.Add(
-                entity);
-        }
-        else
-        {
-            await dbContext.ProcessStepContexts
-                .Where(x =>
-                    x.ProcessId ==
-                    context.ProcessId)
-                .ExecuteDeleteAsync(
+            await using var transaction =
+                await dbContext.Database.BeginTransactionAsync(
                     cancellationToken);
 
-            await dbContext.ProcessAvailableSteps
-                .Where(x =>
-                    x.ProcessId ==
-                    context.ProcessId)
-                .ExecuteDeleteAsync(
-                    cancellationToken);
+            var entity =
+                await dbContext.ProcessContexts
+                    .FirstOrDefaultAsync(
+                        x => x.ProcessId ==
+                             context.ProcessId,
+                        cancellationToken);
 
-            await dbContext.ProcessRequiredSteps
-                .Where(x =>
-                    x.ProcessId ==
-                    context.ProcessId)
-                .ExecuteDeleteAsync(
-                    cancellationToken);
-        }
-
-        entity.LatestRequestId =
-            context.LatestRequestId;
-
-        entity.State =
-            context.State;
-
-        entity.CreatedUtc =
-            context.CreatedUtc == default
-                ? DateTime.UtcNow
-                : context.CreatedUtc;
-
-        entity.UpdatedUtc =
-            context.UpdatedUtc == default
-                ? DateTime.UtcNow
-                : context.UpdatedUtc;
-
-        var stepEntities =
-            context.Steps
-                .Select(step =>
-                    new ProcessStepContextEntity
+            if (entity is null)
+            {
+                entity =
+                    new ProcessContextEntity
                     {
                         ProcessId =
-                            context.ProcessId,
+                            context.ProcessId
+                    };
 
-                        StepName =
-                            step.StepName,
+                dbContext.ProcessContexts.Add(
+                    entity);
+            }
+            else
+            {
+                await dbContext.ProcessStepContexts
+                    .Where(x =>
+                        x.ProcessId ==
+                        context.ProcessId)
+                    .ExecuteDeleteAsync(
+                        cancellationToken);
 
-                        Version =
-                            step.Version,
+                await dbContext.ProcessAvailableSteps
+                    .Where(x =>
+                        x.ProcessId ==
+                        context.ProcessId)
+                    .ExecuteDeleteAsync(
+                        cancellationToken);
 
-                        Status =
-                            step.Status,
+                await dbContext.ProcessRequiredSteps
+                    .Where(x =>
+                        x.ProcessId ==
+                        context.ProcessId)
+                    .ExecuteDeleteAsync(
+                        cancellationToken);
+            }
 
-                        LatestRequestId =
-                            step.LatestRequestId,
+            entity.LatestRequestId =
+                context.LatestRequestId;
 
-                        LastExecuted =
-                            step.LastExecuted
-                    })
-                .ToArray();
+            entity.State =
+                context.State;
 
-        // Available steps are always local — store only the step name.
-        var availableStepEntities =
-            context.AvailableSteps
-                .Select(
-                    (stepName, index) =>
-                        new ProcessAvailableStepEntity
+            entity.CreatedUtc =
+                context.CreatedUtc == default
+                    ? DateTime.UtcNow
+                    : context.CreatedUtc;
+
+            entity.UpdatedUtc =
+                context.UpdatedUtc == default
+                    ? DateTime.UtcNow
+                    : context.UpdatedUtc;
+
+            var stepEntities =
+                context.Steps
+                    .Select(step =>
+                        new ProcessStepContextEntity
                         {
                             ProcessId =
                                 context.ProcessId,
 
                             StepName =
-                                stepName,
+                                step.StepName,
 
-                            Sequence =
-                                index
+                            Version =
+                                step.Version,
+
+                            Status =
+                                step.Status,
+
+                            LatestRequestId =
+                                step.LatestRequestId,
+
+                            LastExecuted =
+                                step.LastExecuted
                         })
-                .ToArray();
+                    .ToArray();
 
-        dbContext.ProcessStepContexts.AddRange(
-            stepEntities);
+            // Available steps are always local — store only the step name.
+            var availableStepEntities =
+                context.AvailableSteps
+                    .Select(
+                        (stepName, index) =>
+                            new ProcessAvailableStepEntity
+                            {
+                                ProcessId =
+                                    context.ProcessId,
 
-        dbContext.ProcessAvailableSteps.AddRange(
-            availableStepEntities);
+                                StepName =
+                                    stepName,
 
-        if (context.RequiredStep is not null)
-        {
-            var localProcessorName =
-                serviceOptions.ServiceName;
+                                Sequence =
+                                    index
+                            })
+                    .ToArray();
 
-            dbContext.ProcessRequiredSteps.Add(
-                new ProcessRequiredStepEntity
-                {
-                    ProcessId =
-                        context.ProcessId,
+            dbContext.ProcessStepContexts.AddRange(
+                stepEntities);
 
-                    // Store the target processor name when cross-processor,
-                    // otherwise store the local processor name for backwards compatibility.
-                    ProcessorName =
-                        context.TargetProcessorName ?? localProcessorName,
+            dbContext.ProcessAvailableSteps.AddRange(
+                availableStepEntities);
 
-                    StepName =
-                        context.RequiredStep
-                });
+            if (context.RequiredStep is not null)
+            {
+                var localProcessorName =
+                    serviceOptions.ServiceName;
+
+                dbContext.ProcessRequiredSteps.Add(
+                    new ProcessRequiredStepEntity
+                    {
+                        ProcessId =
+                            context.ProcessId,
+
+                        // Store the target processor name when cross-processor,
+                        // otherwise store the local processor name for backwards compatibility.
+                        ProcessorName =
+                            context.TargetProcessorName ?? localProcessorName,
+
+                        StepName =
+                            context.RequiredStep
+                    });
+            }
+
+            await dbContext.SaveChangesAsync(
+                cancellationToken);
+
+            await transaction.CommitAsync(
+                cancellationToken);
+
+            logger.LogDebug(
+                "Process context saved for process {ProcessId} ({StepCount} steps).",
+                context.ProcessId,
+                context.Steps.Count);
         }
-
-        await dbContext.SaveChangesAsync(
-            cancellationToken);
-
-        await transaction.CommitAsync(
-            cancellationToken);
-
-        logger.LogDebug(
-            "Process context saved for process {ProcessId} ({StepCount} steps).",
-            context.ProcessId,
-            context.Steps.Count);
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            SqliteTelemetry.SaveFailuresCounter.Add(1);
+            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            logger.LogError(
+                exception,
+                "Failed to save process context for process {ProcessId}.",
+                context.ProcessId);
+            throw;
+        }
     }
 
     private static ProcessorContext ToProcessorContext(
