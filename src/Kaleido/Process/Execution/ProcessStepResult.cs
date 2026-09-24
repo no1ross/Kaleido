@@ -13,6 +13,7 @@ public interface IProcessStepHandlerResult
     IReadOnlyCollection<ProcessMessage> Messages { get; }
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStepHandlerResult
 {
     internal ProcessStepHandlerResult() { }
@@ -76,6 +77,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
     }
 }
 
+[ExcludeFromCodeCoverage]
 public record ProcessStepHandlerResult
     : IProcessStepHandlerResult
 {

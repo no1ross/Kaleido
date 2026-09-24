@@ -1,5 +1,6 @@
 ﻿namespace Kaleido.Process;
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessMessage
 {
     public required string Code { get; init; }

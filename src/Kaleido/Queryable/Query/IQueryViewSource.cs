@@ -13,5 +13,6 @@ public interface IQueryViewSource<TQueryView, TView> : IQueryViewSource<TQueryVi
 {
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record EmptyQueryViewParameters;
 

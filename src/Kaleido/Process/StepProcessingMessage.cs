@@ -1,5 +1,6 @@
 ﻿namespace Kaleido.Process;
 
+[ExcludeFromCodeCoverage]
 public sealed record StepProcessingMessage
 {
     public required MessageType Type { get; init; }

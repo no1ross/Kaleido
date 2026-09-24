@@ -13,6 +13,7 @@ public interface IProcessStepInvoker
         CancellationToken cancellationToken = default);
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessStepInvokerResult
 {
     public bool Succeeded { get; init; }

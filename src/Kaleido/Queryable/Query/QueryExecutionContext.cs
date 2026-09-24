@@ -2,6 +2,7 @@
 
 namespace Kaleido.Queryable.Query;
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryExecutionContext
 (
     QueryContextMetadata Metadata,

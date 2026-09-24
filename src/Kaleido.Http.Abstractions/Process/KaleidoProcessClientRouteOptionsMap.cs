@@ -6,6 +6,10 @@ namespace Kaleido.Http.Process;
 /// </summary>
 public sealed class KaleidoProcessClientRouteOptionsMap
 {
-    /// <summary>Key = client name, Value = route prefix for that remote service.</summary>
+    // KAL0018: IDictionary is required — KaleidoClientExtensions resolves this
+    // property via reflection and casts to IDictionary<string, string> to write
+    // client route entries into it during startup registration.
+#pragma warning disable KAL0018
     public IDictionary<string, string> Options { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+#pragma warning restore KAL0018
 }

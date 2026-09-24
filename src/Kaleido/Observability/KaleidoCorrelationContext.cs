@@ -1,5 +1,6 @@
 namespace Kaleido.Observability;
 
+[ExcludeFromCodeCoverage]
 public sealed record KaleidoCorrelationContext
 {
     /// <summary>
@@ -50,12 +51,4 @@ public sealed record KaleidoCorrelationContext
         && ProcessorInstanceId is null
         && string.IsNullOrWhiteSpace(SourceProcessorName)
         && string.IsNullOrWhiteSpace(StepName);
-}
-
-public interface IKaleidoCorrelationContextAccessor
-{
-    KaleidoCorrelationContext Current
-    {
-        get;
-    }
 }

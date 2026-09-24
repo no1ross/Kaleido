@@ -8,6 +8,7 @@ namespace Kaleido.Http.Registry;
 /// Contains process registrations (local + downstream), queryable registrations
 /// (local + downstream), and any client errors that occurred during aggregation.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public sealed record AggregatedRegistryResponse
 {
     /// <summary>
@@ -38,6 +39,7 @@ public sealed record AggregatedRegistryResponse
 /// <summary>
 /// Describes a single downstream client that failed during registry aggregation.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public sealed record RegistryClientError
 {
     /// <summary>

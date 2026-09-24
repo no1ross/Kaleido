@@ -44,12 +44,14 @@ internal enum QueryExecutionMode
     DelegatedContext = 2
 }
 
+[ExcludeFromCodeCoverage]
 internal sealed record QueryObservationDetails(
     string QueryContextName,
     string? QueryViewName,
     bool IsDirectQuery,
     QueryExecutionMode ExecutionMode);
 
+[ExcludeFromCodeCoverage]
 internal sealed class QueryableObservability(
     IKaleidoCorrelationContextAccessor correlationAccessor,
     ILogger<QueryableObservability> logger)

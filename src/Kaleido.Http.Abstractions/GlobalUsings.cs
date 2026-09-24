@@ -1,3 +1,4 @@
+global using System.Diagnostics.CodeAnalysis;
 global using Kaleido.Process;
 global using Kaleido.Process.Execution;
 global using Kaleido.Process.Registry;

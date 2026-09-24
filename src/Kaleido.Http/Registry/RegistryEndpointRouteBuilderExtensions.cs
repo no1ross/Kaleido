@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Kaleido.Http.Registry.Contracts;
 using Kaleido.Process.Registry;
 using Kaleido.Queryable.Records;
 using Microsoft.AspNetCore.Builder;
@@ -38,6 +39,24 @@ public static class RegistryEndpointRouteBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
+        // Guard — MapRegistry() requires AddHttpClients() to have been called so that
+        // IKaleidoProcessClientFactory and IKaleidoQueryableClientFactory are registered.
+        // Even when there are no downstream clients configured, calling AddHttpClients()
+        // is what wires up the endpoint factories that the handler depends on.
+        var processClientFactory = endpoints.ServiceProvider
+            .GetService<IKaleidoProcessClientFactory>();
+
+        var queryableClientFactory = endpoints.ServiceProvider
+            .GetService<IKaleidoQueryableClientFactory>();
+
+        if (processClientFactory is null || queryableClientFactory is null)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.ProInvalidRegistration,
+                "Cannot map Registry endpoint: the client factories are not registered. " +
+                "Call AddHttpClients() on the IKaleidoBuilder before calling MapRegistry().");
+        }
+
         // Resolved once at map-time — these do not change after startup.
         var processClientMap = endpoints.ServiceProvider
             .GetService<KaleidoProcessClientRouteOptionsMap>();
@@ -69,8 +88,6 @@ public static class RegistryEndpointRouteBuilderExtensions
                 RegistryContractUrls.Registry(localServiceOptions.ServiceName),
                 async (
                     HttpContext httpContext,
-                    IKaleidoProcessClientFactory processClientFactory,
-                    IKaleidoQueryableClientFactory queryableClientFactory,
                     [FromServices] IProcessResponseFactory responseFactory,
                     CancellationToken cancellationToken) =>
                 {
@@ -150,8 +167,8 @@ public static class RegistryEndpointRouteBuilderExtensions
 
                     return Results.Ok(response);
                 })
-            .WithName("GetAggregatedRegistry")
-            .WithTags("Registry")
+            .WithName(RegistryEndpointNames.RegistryEndpointName)
+            .WithTags("Registry", "Kaleido")
             .Produces<AggregatedRegistryResponse>()
             .WithSummary("Get unified registry.")
             .WithDescription(

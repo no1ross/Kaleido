@@ -1,5 +1,6 @@
 namespace Kaleido.Http.Queryable.Contracts;
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryableRecordResponse : QueryableContextRegistryItem
 {
     public required string MetadataUrl { get; init; }
@@ -60,6 +61,7 @@ public sealed record QueryableRecordResponse : QueryableContextRegistryItem
     }
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryableViewResponse : QueryableViewRegistryItem
 {
     public required string QueryUrl { get; init; }
@@ -100,6 +102,7 @@ public sealed record QueryableViewResponse : QueryableViewRegistryItem
     }
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryableQueryProperty : QueryableOutputFieldDescriptor
 {
     public static QueryableQueryProperty FromRegistryItem(

@@ -65,10 +65,14 @@
     <Project Path="tests/Kaleido.Http.Client.UnitTests/Kaleido.Http.Client.UnitTests.csproj" />
     <Project Path="tests/Kaleido.Provider.SQLite.UnitTests/Kaleido.Provider.SQLite.UnitTests.csproj" />
     <Project Path="tests/Kaleido.IntegrationTests/Kaleido.IntegrationTests.csproj" />
+    <Project Path="tests/Kaleido.Analyzers.UnitTests/Kaleido.Analyzers.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.Analyzers.Source.UnitTests/Kaleido.Analyzers.Source.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.Analyzers.Testing.UnitTests/Kaleido.Analyzers.Testing.UnitTests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <File Path="tools/Directory.Packages.props" />
     <Project Path="tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj" />
-    <Project Path="tools/analyzers/Kaleido.Analyzers.Tests/Kaleido.Analyzers.Tests.csproj" />
+    <Project Path="tools/analyzers/Kaleido.Analyzers.Source/Kaleido.Analyzers.Source.csproj" />
+    <Project Path="tools/analyzers/Kaleido.Analyzers.Testing/Kaleido.Analyzers.Testing.csproj" />
   </Folder>
 </Solution>

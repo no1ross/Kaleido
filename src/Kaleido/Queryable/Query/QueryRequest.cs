@@ -13,12 +13,14 @@ public interface IQueryRequest
     Type ViewParametersType { get; }
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryRequest(
     QueryBody? Query = null)
     : QueryRequest<EmptyQueryViewParameters>(
         ViewParameters: new EmptyQueryViewParameters(),
         Query: Query);
 
+[ExcludeFromCodeCoverage]
 public record QueryRequest<TParameters>(
     TParameters? ViewParameters,
     QueryBody? Query = null)
@@ -32,6 +34,7 @@ public record QueryRequest<TParameters>(
         typeof(TParameters);
 }
 
+[ExcludeFromCodeCoverage]
 public record QueryBody
 (
     string? SearchText = null,
@@ -42,6 +45,7 @@ public record QueryBody
 
 #region Filters
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryFilterNode
 (
     QueryFilterCondition? Condition,
@@ -73,6 +77,7 @@ public sealed record QueryFilterNode
     }
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryFilterCondition
 (
     string Field,
@@ -80,6 +85,7 @@ public sealed record QueryFilterCondition
     IReadOnlyList<object?> Values
 );
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryFilterGroup
 (
     LogicalOperator Operator,
@@ -90,16 +96,19 @@ public sealed record QueryFilterGroup
 
 #region Sort/Page
 
+[ExcludeFromCodeCoverage]
 public record QuerySort(
     string Field,
     SortDirection Direction,
     int? Sequence = null);
 
+[ExcludeFromCodeCoverage]
 public record QueryPage(
     int? Size,
     int? Offset);
 
 #endregion
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryResult<TView>(int TotalCount, int Offset, int PageSize, IReadOnlyCollection<TView> Results)
     where TView : class;

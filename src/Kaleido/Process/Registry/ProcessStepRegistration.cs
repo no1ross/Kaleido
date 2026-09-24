@@ -2,6 +2,7 @@ namespace Kaleido.Process.Registry;
 
 using Kaleido.Process.Execution;
 
+[ExcludeFromCodeCoverage]
 public sealed partial record ProcessStepRegistration(
     Type StepType,
     Type? StepResultType,
@@ -13,11 +14,13 @@ public sealed partial record ProcessStepRegistration(
     ProcessStepMetadata Metadata,
     Func<Task, IProcessStepHandlerResult>? GetResultFromTask = null);
 
+[ExcludeFromCodeCoverage]
 public sealed record RepeatableOptions
 {
     public bool Enabled { get; init; }
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessStepMetadata(
     string Name,
     string Description,

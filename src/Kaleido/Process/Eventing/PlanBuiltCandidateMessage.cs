@@ -1,5 +1,6 @@
 namespace Kaleido.Process.Eventing;
 
+[ExcludeFromCodeCoverage]
 public sealed record PlanBuiltCandidateMessage
 {
     public required MessageType Type { get; init; }

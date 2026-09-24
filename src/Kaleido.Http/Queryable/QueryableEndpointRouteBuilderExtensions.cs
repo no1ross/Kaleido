@@ -75,7 +75,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                         .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)))
             .WithName(
                 QueryableEndpointNames.CatalogEndpointName)
-            .WithTags("Queryable")
+            .WithTags("Queryable", "Kaleido")
             .WithSummary(
                 "Get registered query contexts.")
             .WithDescription(
@@ -95,7 +95,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                     .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)))
                 .WithName(
                     QueryableEndpointNames.RegistryEndpointName)
-                .WithTags("Queryable")
+                .WithTags("Queryable", "Kaleido")
                 .WithSummary(
                     "Get queryable registry metadata.")
                 .WithDescription(
@@ -233,7 +233,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 QueryableEndpointNames.QueryContextMetadataEndpointName(
                     context.Name.ToLowerInvariant()))
             .WithTags(
-                context.DisplayName ?? context.Name)
+                context.DisplayName ?? context.Name, "Kaleido")
             .WithSummary(
                 $"Get metadata for {context.DisplayName ?? context.Name}.")
             .WithDescription(
@@ -329,7 +329,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                     context.Metadata.Name.ToLowerInvariant(),
                     view.Metadata.Name.ToLowerInvariant()))
             .WithTags(
-                $"{context.Metadata.DisplayName} - {view.Metadata.DisplayName}")
+                $"{context.Metadata.DisplayName} - {view.Metadata.DisplayName}", "Kaleido")
             .WithSummary(
                 $"Query {view.Metadata.DisplayName}.")
             .WithDescription(
@@ -369,7 +369,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                     view.QueryMetadata.Name.ToLowerInvariant(),
                     view.ViewMetadata.Name.ToLowerInvariant()))
             .WithTags(
-                $"{view.QueryMetadata.DisplayName} - {view.ViewMetadata.DisplayName}")
+                $"{view.QueryMetadata.DisplayName} - {view.ViewMetadata.DisplayName}", "Kaleido")
             .WithSummary(
                 $"Query {view.ViewMetadata.DisplayName}.")
             .WithDescription(
@@ -406,7 +406,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 QueryableEndpointNames.QueryContextEndpointName(
                     context.Metadata.Name.ToLowerInvariant()))
             .WithTags(
-                context.Metadata.DisplayName)
+                context.Metadata.DisplayName, "Kaleido")
             .WithSummary(
                 $"Query {context.Metadata.DisplayName}.")
             .WithDescription(

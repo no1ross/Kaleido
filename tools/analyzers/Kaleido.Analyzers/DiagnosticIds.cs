@@ -1,15 +1,11 @@
 namespace Kaleido.Analyzers;
 
+/// <summary>
+/// Diagnostic ID constants for the published Kaleido.Analyzers package.
+/// KAL2xxx range is reserved for framework-usage rules for consumers.
+/// No rules are defined yet.
+/// </summary>
 internal static class DiagnosticIds
 {
-    public const string StaticClassExtensions = "KAL0001";
-    public const string BclExceptionBan = "KAL0002";
-    public const string NullForgivingOperator = "KAL0003";
-    public const string ExceptionRecord = "KAL0004";
-
-    public const string FixtureNameSuffix = "KAL1001";
-    public const string FixtureSutResolution = "KAL1002";
-    public const string FixtureStructureMirror = "KAL1003";
-    public const string SingleFixturePerSut = "KAL1004";
-    public const string BuildServiceProviderOptions = "KAL1005";
+    // Framework-usage rules (KAL2xxx) — reserved for future consumer-facing rules.
 }

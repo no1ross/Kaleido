@@ -1,5 +1,6 @@
 using Kaleido.Http.Client;
 using Kaleido.Http.Process;
+using Kaleido.Http.Registry;
 using Kaleido.Observability;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -32,14 +33,22 @@ public sealed class ProcessAspNetCoreFixture
                     {
                         services.AddRouting();
 
-                        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+                        var serverConfig = new ConfigurationBuilder()
+                            .AddInMemoryCollection(new Dictionary<string, string?>
+                            {
+                                ["Kaleido:Clients:self:BaseUrl"] = "http://localhost/",
+                            })
+                            .Build();
+
+                        services.AddKaleido(serverConfig, o =>
                             {
                                 o.ServiceName = "kaleido";
                                 o.DisplayName = "Test Processor";
                                 o.Description = "Test processor.";
                                 o.Assemblies = new[] { typeof(ProcessAspNetCoreFixture).Assembly };
                             })
-                            .AddHttp();
+                            .AddHttp()
+                            .AddHttpClients();
                     });
 
                     webBuilder.Configure(app =>
@@ -48,6 +57,7 @@ public sealed class ProcessAspNetCoreFixture
                         app.UseEndpoints(endpoints =>
                         {
                             endpoints.MapProcessor();
+                            endpoints.MapRegistry();
                         });
                     });
                 })

@@ -4,6 +4,7 @@ public interface IProcessEvent : IKaleidoEvent
 {
 }
 
+[ExcludeFromCodeCoverage]
 public abstract record ProcessEventBase : IProcessEvent
 {
     public required DateTimeOffset OccurredOn { get; init; }

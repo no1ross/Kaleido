@@ -5,6 +5,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido.Http\Kaleido.Http.csproj" />
+		<ProjectReference Include="..\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<Using Include="Kaleido.Process" />

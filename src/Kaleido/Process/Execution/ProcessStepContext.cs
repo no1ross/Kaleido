@@ -2,6 +2,7 @@
 
 namespace Kaleido.Process.Execution;
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessStepContext
 (
     Guid ProcessId,

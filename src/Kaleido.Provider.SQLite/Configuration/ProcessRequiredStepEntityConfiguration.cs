@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Kaleido.Provider.SQLite.Configuration;
 
+[ExcludeFromCodeCoverage]
 internal sealed class ProcessRequiredStepEntityConfiguration
     : IEntityTypeConfiguration<ProcessRequiredStepEntity>
 {

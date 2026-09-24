@@ -1,6 +1,7 @@
 using Kaleido.Http.Queryable;
 using Kaleido.Http.Queryable.Contracts;
 using Kaleido.Queryable.Records;
+using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kaleido.Http.UnitTests.Queryable;
 
 public sealed class QueryableEndpointRouteBuilderExtensionsTests
+    : SutFixture
 {
     [Fact]
     public void MapQueryable_WhenEndpointsIsNull_Throws()

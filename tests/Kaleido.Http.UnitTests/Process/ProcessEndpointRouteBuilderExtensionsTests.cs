@@ -1,5 +1,6 @@
 using Kaleido.Http.Process;
 using Kaleido.Process.Execution;
+using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kaleido.Http.UnitTests.Process;
 
 public sealed class ProcessEndpointRouteBuilderExtensionsTests
+    : SutFixture
 {
     [Fact]
     public void MapProcessor_WhenEndpointsIsNull_Throws()

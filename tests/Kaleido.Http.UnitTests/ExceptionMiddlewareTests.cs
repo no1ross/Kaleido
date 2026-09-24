@@ -1,27 +1,34 @@
+using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.UnitTests;
 
-public sealed class ExceptionMiddlewareTests
+internal sealed class ExceptionMiddlewareTests
+    : SutFixture<ExceptionMiddleware>
 {
+    private Mock<ILogger<ExceptionMiddleware>> Logger { get; } = new();
+
+    private RequestDelegate Next { get; set; } = _ => Task.CompletedTask;
+
+    protected override ExceptionMiddleware CreateSut() =>
+        new(Next, Logger.Object);
+
     [Fact]
     public async Task InvokeAsync_WhenNextSucceeds_PassesThrough()
     {
-        var logger = new Mock<ILogger<ExceptionMiddleware>>();
         var context = CreateContext();
         var wasCalled = false;
 
-        var middleware =
-            new ExceptionMiddleware(
-                next: httpContext =>
-                {
-                    wasCalled = true;
-                    httpContext.Response.StatusCode = StatusCodes.Status204NoContent;
-                    return Task.CompletedTask;
-                },
-                logger.Object);
+        Next = httpContext =>
+        {
+            wasCalled = true;
+            httpContext.Response.StatusCode = StatusCodes.Status204NoContent;
+            return Task.CompletedTask;
+        };
+
+        var middleware = CreateSut();
 
         await middleware.InvokeAsync(context);
 
@@ -32,12 +39,11 @@ public sealed class ExceptionMiddlewareTests
     [Fact]
     public async Task InvokeAsync_WhenArgumentExceptionIsThrown_ReturnsBadRequestPayload()
     {
-        var logger = new Mock<ILogger<ExceptionMiddleware>>();
         var context = CreateContext();
-        var middleware =
-            new ExceptionMiddleware(
-                _ => throw new ArgumentException("bad argument"),
-                logger.Object);
+
+        Next = _ => throw new ArgumentException("bad argument");
+
+        var middleware = CreateSut();
 
         await middleware.InvokeAsync(context);
 

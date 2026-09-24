@@ -1,11 +1,30 @@
 using Kaleido.Process.Context;
 using Kaleido.Process.Execution;
+using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.UnitTests.Process;
 
-public sealed class ProcessStateServiceTests
+internal sealed class ProcessStateServiceTests
+    : SutFixture<ProcessStateService>
 {
+    protected override ProcessStateService CreateSut() =>
+        CreateSut(
+            Mock.Of<IProcessContextStore>(),
+            CreateRegistry(),
+            Mock.Of<IProcessResponseFactory>());
+
+    private static ProcessStateService CreateSut(
+        IProcessContextStore contextStore,
+        IProcessStepRegistry registry,
+        IProcessResponseFactory responseFactory) =>
+        new(
+            contextStore,
+            registry,
+            new KaleidoServiceOptions { ServiceName = "test-processor" },
+            responseFactory,
+            NullLogger<ProcessStateService>.Instance);
+
     [Fact]
     public async Task GetCurrentState_WhenContextDoesNotExist_ReturnsNull()
     {
@@ -20,12 +39,10 @@ public sealed class ProcessStateServiceTests
             .ReturnsAsync((ProcessorContext?)null);
 
         var service =
-            new ProcessStateService(
+            CreateSut(
                 contextStore.Object,
                 CreateRegistry(),
-                new KaleidoServiceOptions { ServiceName = "test-processor" },
-                new Mock<IProcessResponseFactory>().Object,
-                NullLogger<ProcessStateService>.Instance);
+                new Mock<IProcessResponseFactory>().Object);
 
         var result =
             await service.GetCurrentState(
@@ -92,12 +109,10 @@ public sealed class ProcessStateServiceTests
             .Returns(expectedSummary);
 
         var service =
-            new ProcessStateService(
+            CreateSut(
                 contextStore.Object,
                 CreateRegistry("Step-A"),
-                new KaleidoServiceOptions { ServiceName = "test-processor" },
-                responseFactory.Object,
-                NullLogger<ProcessStateService>.Instance);
+                responseFactory.Object);
 
         var result =
             await service.GetCurrentState(
