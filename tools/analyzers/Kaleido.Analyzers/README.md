@@ -29,7 +29,7 @@ tools/analyzers/
 | KAL0001–KAL0004 | Design | `Design/` |
 | KAL0005–KAL0014 | DependencyInjection | `DependencyInjection/` |
 | KAL0015 | Structure | `Structure/` |
-| KAL0016–KAL0017 | Http | `Http/` |
+| KAL0016–KAL0019 | Http / Design | `Http/`, `Design/` |
 | KAL1001–KAL1009 | Test fixtures | `Fixtures/` |
 
 The split between `KAL0xxx` (source design rules) and `KAL1xxx` (test convention rules) is intentional and must be preserved.

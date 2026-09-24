@@ -25,6 +25,8 @@ Severities are configured in `.editorconfig`. In `src/` warnings are treated as 
 | KAL0015 | Interface must live in the same file as its same-named implementation (`IProcessRuntime` in `ProcessRuntime.cs`); provider contracts exempt | `Interface '{0}' should be declared in '{1}' alongside '{2}' — an interface and its concrete class share a file` |
 | KAL0016 | Every `MapGet`/`MapPost` call must chain `.WithTags(...)` | `MapGet/MapPost call is missing a .WithTags() chain` |
 | KAL0017 | Every `.WithTags(...)` chain must include `"Kaleido"` as one of the tag arguments | `WithTags() call is missing the "Kaleido" tag` |
+| KAL0018 | Public and internal API members must not expose mutable collection types (`List<T>`, `IList<T>`, `Dictionary<K,V>`, `IDictionary<K,V>`, `HashSet<T>`, `ISet<T>`, `ICollection<T>`) | `'{0}' is a mutable collection type — use IReadOnlyCollection<T>, IReadOnlyList<T>, IReadOnlyDictionary<K,V>, or IEnumerable<T> instead` |
+| KAL0019 | Public and internal async methods returning `Task`/`Task<T>` must accept a `CancellationToken` parameter | `Async method '{0}' does not accept a CancellationToken — add 'CancellationToken cancellationToken = default' so callers can propagate cancellation` |
 
 ### DI rule notes (KAL0005–KAL0014)
 
@@ -32,7 +34,11 @@ The registered-service model is harvested from `*ServiceCollectionExtensions` cl
 
 ### HTTP endpoint rules notes (KAL0016–KAL0017)
 
-These rules run against `src/Kaleido.Http` only (configured via `.editorconfig`). Every `MapGet`/`MapPost` call must chain `.WithTags(...)` (KAL0016) and that chain must include `"Kaleido"` as one of the tag arguments (KAL0017). The `"Kaleido"` tag is what KAL1010 uses to identify endpoints that require functional test coverage. Endpoint names must be declared as `const string` fields in a `*EndpointNames` class in `Kaleido.Http.Abstractions` — never as inline literals passed to `WithName()`.
+These rules run against `src/Kaleido.Http` only (configured via `.editorconfig`). Every `MapGet`/`MapPost` call must chain `.WithTags(...)` (KAL0016) and that chain must include `"Kaleido"` as one of the tag arguments (KAL0017). The `"Kaleido"` tag is used for OpenAPI grouping and endpoint discovery. Endpoint names must be declared as `const string` fields in a `*EndpointNames` class in `Kaleido.Http.Abstractions` — never as inline literals passed to `WithName()`.
+
+### API design rules notes (KAL0018–KAL0019)
+
+KAL0018 applies to all `src/` projects (suppressed for `Kaleido.Provider.SQLite` where EF Core entity navigation properties conventionally use `ICollection<T>`). Overrides and explicit interface implementations are exempt — the collection type is fixed at the interface/base. KAL0019 applies to all `src/` projects. Overrides, explicit interface implementations, and the ASP.NET Core middleware `InvokeAsync(HttpContext)` convention are exempt from KAL0019.
 
 ## Test rules — `KAL1xxx`
 

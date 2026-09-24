@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Reflection;
 using Kaleido.Process.Attributes;
 using Kaleido.Process.Execution;
@@ -194,22 +193,19 @@ internal sealed partial class ProcessStepRegistry : IProcessStepRegistry
         foreach (var dependency in
             stepType.GetCustomAttributes<DependsOnStepAttribute>())
         {
-            definition.Dependencies.Add(
-                dependency.DependsOnStep);
+            definition.AddDependency(dependency.DependsOnStep);
         }
 
         foreach (var availableAfter in
             stepType.GetCustomAttributes<AvailableAfterAttribute>())
         {
-            definition.AvailableAfter.Add(
-                availableAfter.AvailableAfterStep);
+            definition.AddAvailableAfter(availableAfter.AvailableAfterStep);
         }
 
         foreach (var availableUntil in
             stepType.GetCustomAttributes<AvailableUntilAttribute>())
         {
-            definition.AvailableUntil.Add(
-                availableUntil.AvailableUntilStep);
+            definition.AddAvailableUntil(availableUntil.AvailableUntilStep);
         }
 
         return definition;
@@ -261,15 +257,15 @@ internal sealed partial class ProcessStepRegistry : IProcessStepRegistry
         //
         foreach (var node in nodes.Values)
         {
-            node.Dependencies.AddRange(
+            node.AddDependencies(
                 node.Definition.Dependencies
                     .Select(x => nodes[x.StepType]));
 
-            node.AvailableAfter.AddRange(
+            node.AddAvailableAfter(
                 node.Definition.AvailableAfter
                     .Select(x => nodes[x.StepType]));
 
-            node.AvailableUntil.AddRange(
+            node.AddAvailableUntil(
                 node.Definition.AvailableUntil
                     .Select(x => nodes[x.StepType]));
         }
@@ -300,17 +296,17 @@ internal sealed partial class ProcessStepRegistry : IProcessStepRegistry
         //
         foreach (var slot in slots.Values)
         {
-            slot.Dependencies.AddRange(
+            slot.AddDependencies(
                 slot.Node.Dependencies
                     .Select(x =>
                         slots[x.Definition.StepType].Registration));
 
-            slot.AvailableAfter.AddRange(
+            slot.AddAvailableAfter(
                 slot.Node.AvailableAfter
                     .Select(x =>
                         slots[x.Definition.StepType].Registration));
 
-            slot.AvailableUntil.AddRange(
+            slot.AddAvailableUntil(
                 slot.Node.AvailableUntil
                     .Select(x =>
                         slots[x.Definition.StepType].Registration));
@@ -340,20 +336,17 @@ internal sealed partial class ProcessStepRegistry : IProcessStepRegistry
     {
         foreach (var dependency in typeDefinition.Dependencies)
         {
-            definition.Dependencies.Add(
-                definitions[dependency]);
+            definition.AddDependency(definitions[dependency]);
         }
 
         foreach (var availableAfter in typeDefinition.AvailableAfter)
         {
-            definition.AvailableAfter.Add(
-                definitions[availableAfter]);
+            definition.AddAvailableAfter(definitions[availableAfter]);
         }
 
         foreach (var availableUntil in typeDefinition.AvailableUntil)
         {
-            definition.AvailableUntil.Add(
-                definitions[availableUntil]);
+            definition.AddAvailableUntil(definitions[availableUntil]);
         }
     }
 
@@ -411,24 +404,25 @@ internal sealed class RegistrationNode
         init;
     }
 
-    public List<RegistrationNode> Dependencies
-    {
-        get;
-    } = [];
+    private readonly List<RegistrationNode> _dependencies = [];
+    private readonly List<RegistrationNode> _availableAfter = [];
+    private readonly List<RegistrationNode> _availableUntil = [];
 
-    public List<RegistrationNode> AvailableAfter
-    {
-        get;
-    } = [];
+    public IReadOnlyCollection<RegistrationNode> Dependencies => _dependencies;
+    public IReadOnlyCollection<RegistrationNode> AvailableAfter => _availableAfter;
+    public IReadOnlyCollection<RegistrationNode> AvailableUntil => _availableUntil;
 
-    public List<RegistrationNode> AvailableUntil
-    {
-        get;
-    } = [];
+    public void AddDependencies(IEnumerable<RegistrationNode> nodes) => _dependencies.AddRange(nodes);
+    public void AddAvailableAfter(IEnumerable<RegistrationNode> nodes) => _availableAfter.AddRange(nodes);
+    public void AddAvailableUntil(IEnumerable<RegistrationNode> nodes) => _availableUntil.AddRange(nodes);
 }
 
 internal sealed class RegistrationSlot
 {
+    private readonly List<ProcessStepRegistration> _dependencies = [];
+    private readonly List<ProcessStepRegistration> _availableAfter = [];
+    private readonly List<ProcessStepRegistration> _availableUntil = [];
+
     public RegistrationSlot(
         RegistrationNode node,
         Func<Task, IProcessStepHandlerResult>? getResultFromTask)
@@ -442,12 +436,9 @@ internal sealed class RegistrationSlot
                 node.Definition.StepType,
                 node.Definition.StepResultType,
                 node.Definition.HandlerType,
-                new ReadOnlyCollection<ProcessStepRegistration>(
-                    Dependencies),
-                new ReadOnlyCollection<ProcessStepRegistration>(
-                    AvailableAfter),
-                new ReadOnlyCollection<ProcessStepRegistration>(
-                    AvailableUntil),
+                _dependencies.AsReadOnly(),
+                _availableAfter.AsReadOnly(),
+                _availableUntil.AsReadOnly(),
                 node.Repeatable,
                 node.Definition.Metadata,
                 getResultFromTask);
@@ -463,18 +454,11 @@ internal sealed class RegistrationSlot
         get;
     }
 
-    public List<ProcessStepRegistration> Dependencies
-    {
-        get;
-    } = [];
+    public IReadOnlyCollection<ProcessStepRegistration> Dependencies => _dependencies;
+    public IReadOnlyCollection<ProcessStepRegistration> AvailableAfter => _availableAfter;
+    public IReadOnlyCollection<ProcessStepRegistration> AvailableUntil => _availableUntil;
 
-    public List<ProcessStepRegistration> AvailableAfter
-    {
-        get;
-    } = [];
-
-    public List<ProcessStepRegistration> AvailableUntil
-    {
-        get;
-    } = [];
+    public void AddDependencies(IEnumerable<ProcessStepRegistration> items) => _dependencies.AddRange(items);
+    public void AddAvailableAfter(IEnumerable<ProcessStepRegistration> items) => _availableAfter.AddRange(items);
+    public void AddAvailableUntil(IEnumerable<ProcessStepRegistration> items) => _availableUntil.AddRange(items);
 }

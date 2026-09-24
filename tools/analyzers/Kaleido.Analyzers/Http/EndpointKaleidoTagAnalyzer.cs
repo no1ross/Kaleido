@@ -19,7 +19,7 @@ public sealed class EndpointKaleidoTagAnalyzer : DiagnosticAnalyzer
         new(
             DiagnosticIds.EndpointKaleidoTag,
             "Endpoint mapping is missing the \"Kaleido\" tag",
-            "Endpoint mapping is missing the \"Kaleido\" tag — add \"Kaleido\" to .WithTags() so functional test coverage can be enforced (KAL1010)",
+            "Endpoint mapping is missing the \"Kaleido\" tag — add \"Kaleido\" to .WithTags() so the endpoint is discoverable in the registry",
             "Kaleido.Design",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true);

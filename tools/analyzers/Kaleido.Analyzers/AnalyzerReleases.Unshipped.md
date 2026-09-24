@@ -28,3 +28,5 @@ KAL1008 | Kaleido.Tests | Warning | SUT may only be constructed inside CreateSut
 KAL1009 | Kaleido.Tests | Warning | Every testable source type must have a {Name}Tests fixture
 KAL0016 | Kaleido.Design | Warning | MapGet/MapPost endpoints in Kaleido.Http must call .WithTags()
 KAL0017 | Kaleido.Design | Warning | Endpoint tags must include "Kaleido"
+KAL0018 | Kaleido.Design | Warning | Public API members must not expose mutable collection types
+KAL0019 | Kaleido.Design | Warning | Async methods must accept a CancellationToken parameter

@@ -55,6 +55,12 @@ internal static class DiagnosticIds
     /// <summary>Every MapGet/MapPost call in Kaleido.Http that has .WithTags() must include "Kaleido" as one of the tag arguments.</summary>
     public const string EndpointKaleidoTag = "KAL0017";
 
+    /// <summary>Public API members must not expose mutable collection types; use IReadOnlyCollection, IReadOnlyList, IReadOnlyDictionary, or IEnumerable instead.</summary>
+    public const string MutableCollectionInPublicApi = "KAL0018";
+
+    /// <summary>Public and internal async methods must accept a CancellationToken parameter so callers can propagate cancellation.</summary>
+    public const string AsyncMissingCancellationToken = "KAL0019";
+
     // Test fixture rules (KAL1xxx) — apply to unit-test projects.
 
     /// <summary>Test fixture class names must end with the 'Tests' suffix.</summary>
