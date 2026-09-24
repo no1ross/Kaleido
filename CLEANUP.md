@@ -206,15 +206,15 @@ These require more careful testing. Commit each as its own focused PR.
 
 These touch wire format, public contracts, or require team alignment before proceeding. Do not implement without explicit decision.
 
-- [ ] ⚠️ **BREAKING** Fix `StepExecutionOutcome.Cancelled` (British) vs `StepExecutionStatus.Canceled` (American) — JSON wire format inconsistency; coordinate with consumers and note in release notes
-- [ ] ⚠️ **BREAKING** Standardize "Process" vs "Processor" terminology throughout the public API (`ProcessorRequest` → `ProcessStepInputs`, etc.)
-- [ ] ⚠️ **BREAKING** `QueryApiRequest`/`QueryApiRequest<T>` — introduce common base/interface to collapse the triplicated endpoint handlers
-- [ ] SQLite per-step delete/re-insert O(N²) — decide durability semantics: save only on completion (breaks per-step crash recovery) vs upsert-only changed row vs keep current behavior
-- [ ] Single-implementation internal interface collapse — audit test mocks first; determine which interfaces are legitimately substitutable (`IEventPublisher`, `IProcessContextStore`) vs never-substituted
-- [ ] Authorization hooks on all HTTP endpoints — design `KaleidoEndpointOptions.ConfigureEndpoint` hook pattern; bind `processId` to authenticated principal
-- [ ] `IProcessStepRegistry` / `IQueryContextRegistry` etc. internalization — split public metadata view from internal engine registration types
-- [ ] Convenience `ProcessRequest` factory API — `ProcessRequest.FromStep<TStep>(name, step, processId?)` on `IProcessRuntime`
-- [ ] `KaleidoProcessClient` registry cache refresh — add `RefreshRegistryAsync()` to `IKaleidoProcessClient`/`IKaleidoQueryableClient`
+- [x] ⚠️ **BREAKING** Fix `StepExecutionOutcome.Cancelled` / `ProcessExecutionState.Cancelled` / `StepProcessingMessageCode.ExecutionCancelled` — standardized to American `Canceled`/`ExecutionCanceled` to match BCL convention
+- [~~NOT DOING~~] ⚠️ **BREAKING** Standardize "Process" vs "Processor" terminology (`ProcessorRequest` → `ProcessStepInputs`) — not worth the consumer churn at this stage
+- [~~NOT DOING~~] ⚠️ **BREAKING** `QueryApiRequest`/`QueryApiRequest<T>` collapse — triplication is in private static methods, invisible to consumers; no meaningful benefit
+- [~~NOT DOING~~] SQLite per-step delete/re-insert O(N²) — step counts are small and bounded; correct crash-recovery semantics outweigh the performance concern
+- [~~NOT DOING~~] Single-implementation internal interface collapse — no specific harmful interface identified; `IEventPublisher` and `IProcessContextStore` are legitimately substitutable
+- [x] Authorization hooks — documented `app.MapGroup("").RequireAuthorization().MapProcessor()` pattern in `Kaleido.Http/README.md`; no bespoke API needed, standard ASP.NET Core `MapGroup` composes correctly
+- [x] `IProcessStepRegistry` / `IQueryContextRegistry` internalization — both made `internal`; `MapQueryView` also made internal and its unused `serviceName` parameter removed
+- [ ] Convenience `ProcessRequest` factory API — `ProcessRequest.ForStep<TStep>(step, processId?)` (in progress)
+- [ ] `KaleidoProcessClient` registry cache refresh — `InvalidateRegistryAsync()` on `IKaleidoProcessClient`/`IKaleidoQueryableClient` (in progress)
 
 ---
 
