@@ -77,8 +77,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
         var exception = Assert.Throws<KeyNotFoundException>(() =>
             app.MapQueryView(
                 contextRegistry.Object,
-                CreateViewRegistration(),
-                serviceName: "test"));
+                CreateViewRegistration()));
 
         Assert.Equal("missing", exception.Message);
     }

@@ -4,7 +4,7 @@ using Kaleido.Process.Execution;
 
 namespace Kaleido.Process.Registry;
 
-public interface IProcessStepRegistry
+internal interface IProcessStepRegistry
 {
     IReadOnlyCollection<ProcessStepRegistration> Registrations { get; }
 

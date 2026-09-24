@@ -22,7 +22,7 @@ namespace Kaleido.Queryable.Records;
 /// MetadataCatalog = describes one record
 /// Registry = knows all records
 /// </remarks>
-public interface IQueryContextRegistry
+internal interface IQueryContextRegistry
 {
     IReadOnlyCollection<QueryContextRegistration> Registrations { get; }
 
