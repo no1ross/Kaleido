@@ -233,7 +233,6 @@ dotnet_diagnostic.KAL0001.severity = warning  ; Static classes only for extensio
 dotnet_diagnostic.KAL0002.severity = warning  ; Throw Kaleido*Exception not BCL exceptions
 dotnet_diagnostic.KAL0003.severity = warning  ; No '!' null-forgiving operator
 dotnet_diagnostic.KAL0004.severity = error    ; Exception types must not be records
-dotnet_diagnostic.KAL1005.severity = warning  ; BuildServiceProvider must pass ValidateScopes + ValidateOnBuild
 
 ; DI rules (KAL0005–KAL0015) — off globally; src/ opts in as errors below
 dotnet_diagnostic.KAL0005.severity = none
@@ -251,17 +250,6 @@ dotnet_diagnostic.KAL0015.severity = none
 ; API design rules (KAL0018–KAL0019) — off globally; src/ opts in below
 dotnet_diagnostic.KAL0018.severity = none
 dotnet_diagnostic.KAL0019.severity = none
-
-; Test fixture / coverage rules (KAL1001–KAL1009) — off globally; *UnitTests opts in below
-dotnet_diagnostic.KAL1001.severity = none
-dotnet_diagnostic.KAL1002.severity = none
-dotnet_diagnostic.KAL1003.severity = none
-dotnet_diagnostic.KAL1004.severity = none
-dotnet_diagnostic.KAL1006.severity = none
-dotnet_diagnostic.KAL1007.severity = none
-dotnet_diagnostic.KAL1008.severity = none
-dotnet_diagnostic.KAL1009.severity = none
-dotnet_diagnostic.KAL1010.severity = none
 
 ; ════════════════════════════════════════════════════════════════════════════
 ; src/ — production source projects
@@ -337,19 +325,4 @@ dotnet_diagnostic.KAL0019.severity = none
 ; assertions and test fakes — keep as suggestions
 dotnet_diagnostic.MA0002.severity = suggestion
 dotnet_diagnostic.MA0016.severity = suggestion
-
-; ── Unit test projects only ───────────────────────────────────────────────────
-; KAL1001–KAL1009: SUT fixture conventions (naming, path mirroring, SutFixture
-; inheritance, one fixture per SUT, coverage); not applied to functional or
-; integration tests, which are scenario-scoped rather than SUT-scoped.
-; Also exempt Kaleido.Analyzers.UnitTests — analyzer tests use a different
-; harness pattern (AnalyzerTest<T>) and don't follow the SutFixture<T> model.
-[tests/*UnitTests/**/*.cs]
-dotnet_diagnostic.KAL1002.severity = warning
-dotnet_diagnostic.KAL1003.severity = warning
-dotnet_diagnostic.KAL1004.severity = warning
-dotnet_diagnostic.KAL1007.severity = warning
-dotnet_diagnostic.KAL1008.severity = warning
-dotnet_diagnostic.KAL1009.severity = warning
-dotnet_diagnostic.KAL1010.severity = warning
 

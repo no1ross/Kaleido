@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\tools\analyzers\Kaleido.Analyzers.Testing\Kaleido.Analyzers.Testing.csproj" />
+		<ProjectReference Include="..\..\src\Kaleido\Kaleido.csproj" />
+	</ItemGroup>
+</Project>

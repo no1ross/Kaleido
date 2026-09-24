@@ -27,7 +27,7 @@
         <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
         <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all" />
         <PackageReference Include="Roslynator.Analyzers" PrivateAssets="all" />
-        <ProjectReference Include="$(MSBuildThisFileDirectory)..\tools\analyzers\Kaleido.Analyzers\Kaleido.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+        <ProjectReference Include="$(MSBuildThisFileDirectory)..\tools\analyzers\Kaleido.Analyzers.Source\Kaleido.Analyzers.Source.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
         <None Include="$(MSBuildProjectDirectory)\README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 </Project>
