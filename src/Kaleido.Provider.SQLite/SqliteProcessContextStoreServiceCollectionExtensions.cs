@@ -27,6 +27,15 @@ public static class SqliteProcessContextStoreServiceCollectionExtensions
             IProcessContextStore,
             SqliteProcessContextStore>();
 
+        // Register a health check for the process context store so consumers
+        // get liveness/readiness coverage automatically. The check verifies
+        // that the underlying SQLite database can be reached. Expose the
+        // endpoint in your app with app.MapHealthChecks("/health").
+        builder.Services
+            .AddHealthChecks()
+            .AddDbContextCheck<SqliteProcessContextDbContext>(
+                name: "kaleido-sqlite-process-context-store");
+
         return builder;
     }
 }
