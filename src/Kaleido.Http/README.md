@@ -78,6 +78,32 @@ app.MapRegistry(); // optional aggregated discovery
 
 ---
 
+## Authorization
+
+`MapProcessor()`, `MapQueryable()`, and `MapRegistry()` return `IEndpointRouteBuilder` (the same value they receive), so you cannot chain `.RequireAuthorization()` directly on them.
+
+Use the standard ASP.NET Core `MapGroup()` pattern instead — wrap first, then map:
+
+```csharp
+// Require authorization on all Process endpoints
+app.MapGroup("").RequireAuthorization().MapProcessor();
+
+// Require authorization on all Queryable endpoints
+app.MapGroup("").RequireAuthorization().MapQueryable();
+
+// Different policies per surface
+app.MapGroup("").RequireAuthorization("ProcessPolicy").MapProcessor();
+app.MapGroup("").RequireAuthorization("QueryPolicy").MapQueryable();
+
+// No auth (default)
+app.MapProcessor();
+app.MapQueryable();
+```
+
+`MapGroup("")` with an empty prefix adds no route prefix of its own — it only attaches the convention. This composes with any existing `IEndpointConventionBuilder` support in the ASP.NET Core pipeline.
+
+---
+
 ## Registry endpoint
 
 `MapRegistry()` resolves:
