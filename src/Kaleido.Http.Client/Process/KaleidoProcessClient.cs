@@ -12,13 +12,9 @@ internal sealed class KaleidoProcessClient(
     string serviceName = "")
     : IKaleidoProcessClient, IDisposable
 {
-    private readonly SemaphoreSlim _registryLock = new(1, 1);
-    private IReadOnlyList<ProcessorRegistryResponse>? _registry;
+    private readonly HttpClientRegistryCache<IReadOnlyList<ProcessorRegistryResponse>> _registryCache = new();
 
-    public void Dispose()
-    {
-        _registryLock.Dispose();
-    }
+    public void Dispose() => _registryCache.Dispose();
 
     public async Task<IReadOnlyList<ProcessorRegistryResponse>> GetRegistryAsync(
         CancellationToken cancellationToken = default)
@@ -267,39 +263,22 @@ internal sealed class KaleidoProcessClient(
         return response;
     }
 
-    private async Task<IReadOnlyList<ProcessorRegistryResponse>> EnsureRegistryAsync(
+    private Task<IReadOnlyList<ProcessorRegistryResponse>> EnsureRegistryAsync(
+        CancellationToken cancellationToken) =>
+        _registryCache.GetOrFetchAsync(FetchRegistryAsync, cancellationToken);
+
+    private async Task<IReadOnlyList<ProcessorRegistryResponse>> FetchRegistryAsync(
         CancellationToken cancellationToken)
     {
-        if (_registry is not null)
-        {
-            return _registry;
-        }
+        using var registryRequest = new HttpRequestMessage(HttpMethod.Get, ProcessContractUrls.Registry(serviceName));
+        headerStamper.Stamp(registryRequest);
+        using var registryResponse = await SendAsync(registryRequest, cancellationToken);
 
-        await _registryLock.WaitAsync(cancellationToken);
-        try
-        {
-            if (_registry is not null)
-            {
-                return _registry;
-            }
-
-            using var registryRequest = new HttpRequestMessage(HttpMethod.Get, ProcessContractUrls.Registry(serviceName));
-            headerStamper.Stamp(registryRequest);
-            using var registryResponse = await SendAsync(registryRequest, cancellationToken);
-
-            var registry = await registryResponse.Content.ReadFromJsonAsync<IReadOnlyList<ProcessorRegistryResponse>>(
-                cancellationToken: cancellationToken)
-                ?? throw new KaleidoHttpClientException(
-                    HttpClientErrorCodes.EmptyResponse,
-                    "Process registry request succeeded but returned no payload.",
-                    HttpStatusCode.InternalServerError);
-
-            _registry = registry;
-            return _registry;
-        }
-        finally
-        {
-            _registryLock.Release();
-        }
+        return await registryResponse.Content.ReadFromJsonAsync<IReadOnlyList<ProcessorRegistryResponse>>(
+            cancellationToken: cancellationToken)
+            ?? throw new KaleidoHttpClientException(
+                HttpClientErrorCodes.EmptyResponse,
+                "Process registry request succeeded but returned no payload.",
+                HttpStatusCode.InternalServerError);
     }
 }

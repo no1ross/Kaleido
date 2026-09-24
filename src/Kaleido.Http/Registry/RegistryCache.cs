@@ -6,7 +6,7 @@ namespace Kaleido.Http.Registry;
 /// Partial results are served to callers but never committed to cache, so the last
 /// clean snapshot remains available for subsequent calls.
 /// </summary>
-internal sealed class RegistryCache
+internal sealed class HttpRegistryCache
     : IDisposable
 {
     private volatile AggregatedRegistryResponse? _cached;

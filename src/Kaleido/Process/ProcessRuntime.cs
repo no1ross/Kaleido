@@ -136,46 +136,17 @@ public sealed record ProcessorRequest
         = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
 }
 
-internal sealed class ProcessRuntime
+internal sealed class ProcessRuntime(
+    IProcessContextStore contextStore,
+    IProcessStateUpdater stateUpdater,
+    IExecutionPlanner planner,
+    IExecutionProcessor processor,
+    IProcessEventFactory eventFactory,
+    IEventPublisher eventPublisher,
+    IProcessObservability observability,
+    IKaleidoCorrelationContextAccessor correlationAccessor)
     : IProcessRuntime
 {
-    private readonly IProcessContextStore _contextStore;
-    private readonly IProcessStateUpdater _stateUpdater;
-    private readonly IExecutionPlanner _planner;
-    private readonly IExecutionProcessor _processor;
-    private readonly IProcessEventFactory _eventFactory;
-    private readonly IEventPublisher _eventPublisher;
-    private readonly IProcessObservability _observability;
-    private readonly IKaleidoCorrelationContextAccessor _correlationAccessor;
-
-    public ProcessRuntime(
-        IProcessContextStore contextStore,
-        IProcessStateUpdater stateUpdater,
-        IExecutionPlanner planner,
-        IExecutionProcessor processor,
-        IProcessEventFactory eventFactory,
-        IEventPublisher eventPublisher,
-        IProcessObservability observability,
-        IKaleidoCorrelationContextAccessor correlationAccessor)
-    {
-        ArgumentNullException.ThrowIfNull(contextStore);
-        ArgumentNullException.ThrowIfNull(stateUpdater);
-        ArgumentNullException.ThrowIfNull(planner);
-        ArgumentNullException.ThrowIfNull(processor);
-        ArgumentNullException.ThrowIfNull(eventFactory);
-        ArgumentNullException.ThrowIfNull(eventPublisher);
-        ArgumentNullException.ThrowIfNull(observability);
-        ArgumentNullException.ThrowIfNull(correlationAccessor);
-
-        _contextStore = contextStore;
-        _stateUpdater = stateUpdater;
-        _planner = planner;
-        _processor = processor;
-        _eventFactory = eventFactory;
-        _eventPublisher = eventPublisher;
-        _observability = observability;
-        _correlationAccessor = correlationAccessor;
-    }
 
     public async Task<ProcessResult> ExecuteAsync(
         ProcessRequest request,
@@ -184,7 +155,7 @@ internal sealed class ProcessRuntime
         ArgumentNullException.ThrowIfNull(request);
 
         using var observation =
-            _observability.BeginExecution(
+            observability.BeginExecution(
                 new ProcessExecutionObservationDetails(
                     request.Processor.Steps.Count));
 
@@ -197,7 +168,7 @@ internal sealed class ProcessRuntime
                     cancellationToken);
 
             var plan =
-                _planner.BuildPlan(
+                planner.BuildPlan(
                     request.Processor,
                     context);
 
@@ -208,9 +179,9 @@ internal sealed class ProcessRuntime
                 plan.Candidates.Count,
                 executionCandidates.Count);
 
-            await _eventPublisher.PublishAsync(
-                _eventFactory.CreatePlanBuilt(
-                    _correlationAccessor.Current,
+            await eventPublisher.PublishAsync(
+                eventFactory.CreatePlanBuilt(
+                    correlationAccessor.Current,
                     context,
                     request,
                     plan,
@@ -218,7 +189,7 @@ internal sealed class ProcessRuntime
                 cancellationToken);
 
             var executionResult =
-                await _processor.ExecuteAsync(
+                await processor.ExecuteAsync(
                     executionCandidates,
                     context,
                     request.Processor,
@@ -229,9 +200,9 @@ internal sealed class ProcessRuntime
                     plan,
                     executionResult);
 
-            await _eventPublisher.PublishAsync(
-                _eventFactory.CreateExecutionCompleted(
-                    _correlationAccessor.Current,
+            await eventPublisher.PublishAsync(
+                eventFactory.CreateExecutionCompleted(
+                    correlationAccessor.Current,
                     context,
                     executionResult),
                 cancellationToken);
@@ -258,12 +229,12 @@ internal sealed class ProcessRuntime
         CancellationToken cancellationToken)
     {
         var requestId =
-            _correlationAccessor.Current.RequestId;
+            correlationAccessor.Current.RequestId;
 
         if (request.ProcessId is null)
         {
             var initializedContext =
-                _stateUpdater.Initialize(
+                stateUpdater.Initialize(
                     Guid.NewGuid())
                     with
                 {
@@ -273,9 +244,9 @@ internal sealed class ProcessRuntime
             observation.ContextInitialized(
                 initializedContext.ProcessId);
 
-            await _eventPublisher.PublishAsync(
-                _eventFactory.CreateProcessCreated(
-                    _correlationAccessor.Current,
+            await eventPublisher.PublishAsync(
+                eventFactory.CreateProcessCreated(
+                    correlationAccessor.Current,
                     initializedContext,
                     request),
                 cancellationToken);
@@ -284,14 +255,14 @@ internal sealed class ProcessRuntime
         }
 
         var context =
-            await _contextStore.LoadAsync(
+            await contextStore.LoadAsync(
                 request.ProcessId.Value,
                 cancellationToken);
 
         if (context is null)
         {
             var initializedContext =
-                _stateUpdater.Initialize(
+                stateUpdater.Initialize(
                     request.ProcessId.Value)
                     with
                 {
@@ -301,9 +272,9 @@ internal sealed class ProcessRuntime
             observation.ContextInitialized(
                 initializedContext.ProcessId);
 
-            await _eventPublisher.PublishAsync(
-                _eventFactory.CreateProcessCreated(
-                    _correlationAccessor.Current,
+            await eventPublisher.PublishAsync(
+                eventFactory.CreateProcessCreated(
+                    correlationAccessor.Current,
                     initializedContext,
                     request),
                 cancellationToken);
@@ -314,7 +285,7 @@ internal sealed class ProcessRuntime
         observation.ContextLoaded(
             context.ProcessId);
 
-        return _stateUpdater.Reconcile(
+        return stateUpdater.Reconcile(
             context)
             with
         {

@@ -13,13 +13,9 @@ internal sealed class KaleidoQueryableClient(
     string callerServiceName = "")
     : IKaleidoQueryableClient, IDisposable
 {
-    private readonly SemaphoreSlim _registryLock = new(1, 1);
-    private IReadOnlyList<QueryableRecordResponse>? _registry;
+    private readonly HttpClientRegistryCache<IReadOnlyList<QueryableRecordResponse>> _registryCache = new();
 
-    public void Dispose()
-    {
-        _registryLock.Dispose();
-    }
+    public void Dispose() => _registryCache.Dispose();
 
     public async Task<IReadOnlyList<QueryableRecordResponse>> GetRegistryAsync(
         CancellationToken cancellationToken = default)
@@ -199,39 +195,22 @@ internal sealed class KaleidoQueryableClient(
         return response;
     }
 
-    private async Task<IReadOnlyList<QueryableRecordResponse>> EnsureRegistryAsync(
+    private Task<IReadOnlyList<QueryableRecordResponse>> EnsureRegistryAsync(
+        CancellationToken cancellationToken) =>
+        _registryCache.GetOrFetchAsync(FetchRegistryAsync, cancellationToken);
+
+    private async Task<IReadOnlyList<QueryableRecordResponse>> FetchRegistryAsync(
         CancellationToken cancellationToken)
     {
-        if (_registry is not null)
-        {
-            return _registry;
-        }
+        using var registryRequest = new HttpRequestMessage(HttpMethod.Get, QueryableContractUrls.QueryRegistry(callerServiceName));
+        headerStamper.Stamp(registryRequest);
+        using var registryResponse = await SendAsync(registryRequest, cancellationToken);
 
-        await _registryLock.WaitAsync(cancellationToken);
-        try
-        {
-            if (_registry is not null)
-            {
-                return _registry;
-            }
-
-            using var registryRequest = new HttpRequestMessage(HttpMethod.Get, QueryableContractUrls.QueryRegistry(callerServiceName));
-            headerStamper.Stamp(registryRequest);
-            using var registryResponse = await SendAsync(registryRequest, cancellationToken);
-
-            var registry = await registryResponse.Content.ReadFromJsonAsync<IReadOnlyList<QueryableRecordResponse>>(
-                cancellationToken: cancellationToken)
-                ?? throw new KaleidoHttpClientException(
-                    HttpClientErrorCodes.EmptyResponse,
-                    $"{callerServiceName} tried to call the queryable registry, but the request succeeded and returned no payload.",
-                    HttpStatusCode.InternalServerError);
-
-            _registry = registry;
-            return _registry;
-        }
-        finally
-        {
-            _registryLock.Release();
-        }
+        return await registryResponse.Content.ReadFromJsonAsync<IReadOnlyList<QueryableRecordResponse>>(
+            cancellationToken: cancellationToken)
+            ?? throw new KaleidoHttpClientException(
+                HttpClientErrorCodes.EmptyResponse,
+                $"{callerServiceName} tried to call the queryable registry, but the request succeeded and returned no payload.",
+                HttpStatusCode.InternalServerError);
     }
 }

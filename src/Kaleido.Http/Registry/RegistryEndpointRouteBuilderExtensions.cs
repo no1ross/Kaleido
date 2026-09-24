@@ -82,7 +82,7 @@ public static class RegistryEndpointRouteBuilderExtensions
 
         // Resolve from DI if pre-registered, otherwise allocate a local instance
         // captured in the closure — either way it is singleton-scoped to this endpoint.
-        var cache = endpoints.ServiceProvider.GetService<RegistryCache>() ?? new RegistryCache();
+        var cache = endpoints.ServiceProvider.GetService<HttpRegistryCache>() ?? new HttpRegistryCache();
 
         endpoints.MapGet(
                 RegistryContractUrls.Registry(localServiceOptions.ServiceName),

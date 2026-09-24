@@ -2,19 +2,19 @@ using Kaleido.Http.Registry;
 
 namespace Kaleido.Http.UnitTests.Registry;
 
-public sealed class RegistryCacheTests
+public sealed class HttpRegistryCacheTests
 {
     [Fact]
     public void Current_WhenNothingCached_ReturnsNull()
     {
-        using var sut = new RegistryCache();
+        using var sut = new HttpRegistryCache();
         Assert.Null(sut.Current);
     }
 
     [Fact]
     public async Task GetOrBuildAsync_WhenNoCachedResult_InvokesBuild()
     {
-        using var sut = new RegistryCache();
+        using var sut = new HttpRegistryCache();
         var built = new AggregatedRegistryResponse();
         var buildCalled = false;
 
@@ -34,7 +34,7 @@ public sealed class RegistryCacheTests
     [Fact]
     public async Task GetOrBuildAsync_WhenCachedAndNoForceRefresh_ReturnsCachedResult()
     {
-        using var sut = new RegistryCache();
+        using var sut = new HttpRegistryCache();
         var first = new AggregatedRegistryResponse();
 
         // Prime the cache with a clean (no client errors) result.

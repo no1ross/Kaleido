@@ -186,19 +186,19 @@ These require more careful testing. Commit each as its own focused PR.
 - [x] Add root `.editorconfig` with C# formatting and analyzer severity rules matching AGENTS.md conventions (primary ctors, collection expressions, no `!` operators)
 - [x] Add `Directory.Build.props` at repo root to replace manual per-project imports; remove per-project `<Import>` lines
 - [x] Pin all package versions — adopted layered Central Package Management (`Directory.Packages.props` at root + `tests/` + `samples/`, mirroring `Directory.Build.props`); all `*` floats replaced with currently-resolved versions; OpenTelemetry unified on 1.19
-- [ ] Add Roslyn analyzer configuration (`AnalysisLevel=latest-recommended`) to `build/packages.props`
-- [ ] Replace `KaleidoClientFactoryBase<TClient,TMap>` reflection hack — introduce `IRouteOptionsMap` interface with `Options` property; constrain `TMap`; eliminate `GetProperty("Options")` reflection
-- [ ] Collapse `KaleidoProcessClientRouteOptionsMap` and `KaleidoQueryableClientRouteOptionsMap` into a single `KaleidoClientRouteOptionsMap` base
-- [ ] Add `EnsureRegistryAsync` generic helper — consolidate semaphore-guarded lazy-load used in both clients
-- [ ] Consolidate the 6+ route/endpoint-name constant classes into a single source-of-truth per capability
-- [ ] Convert `ProcessRuntime` (8-param constructor) to primary constructor syntax (AGENTS.md mandate)
+- [x] Add Roslyn analyzer configuration (`AnalysisLevel=latest-recommended`) — in `Directory.Build.props` (build/packages.props no longer exists)
+- [x] Replace `KaleidoClientFactoryBase<TClient,TMap>` reflection hack — introduced `IKaleidoClientRouteOptionsMap` interface + `KaleidoClientRouteOptionsMap` abstract base; `TMap` constrained to `: class, IKaleidoClientRouteOptionsMap`; `GetProperty("Options")` reflection eliminated
+- [x] Collapse `KaleidoProcessClientRouteOptionsMap` and `KaleidoQueryableClientRouteOptionsMap` into a single `KaleidoClientRouteOptionsMap` base — both are now internal sealed subclasses; shared implementation in base; distinct DI types preserved to avoid registration collision
+- [x] Add `EnsureRegistryAsync` generic helper — extracted `HttpClientRegistryCache<T>` (fetch-once, semaphore-guarded double-check) used by both `KaleidoProcessClient` and `KaleidoQueryableClient`; renamed server-side `RegistryCache` → `HttpRegistryCache` for clarity
+- [x] Consolidate the 6+ route/endpoint-name constant classes — already 3 well-placed classes (`ProcessEndpointNames`, `QueryableEndpointNames`, `RegistryEndpointNames`); original "6+" count was stale
+- [x] Convert `ProcessRuntime` (8-param constructor) to primary constructor syntax
 - [x] Convert `KaleidoProcessClient` and `KaleidoQueryableClient` constructors to primary constructors — done; also inlined `StampCorrelationHeaders` wrapper and `registryUrl` field (single-use)
-- [ ] Convert `SqliteProcessContextDbContext` to primary constructor
-- [ ] Replace `KaleidoEnumConverter<T>` + factory with BCL `JsonStringEnumConverter` (verify error message compatibility first)
-- [ ] Add `SqliteProcessContextStore` activity source + `ILogger` + failure counter instrumentation
-- [ ] Add `KaleidoCorrelationContextAccessor` — back `_current` with `AsyncLocal<KaleidoCorrelationContext>` so context flows across `CreateScope()` boundaries in step handlers (design discussion required first)
-- [ ] Add `MapHealthChecks` guidance / `SqliteProcessContextStoreHealthCheck` + `AddHealthChecks()` registration
-- [ ] **SutFixture migration** — migrate every `*.UnitTests` fixture to `SutFixture<TSut>` (`protected abstract TSut CreateSut()` in `tests/Kaleido.UnitTests/SutFixture.cs`); move all `new {Sut}(...)` calls inside `CreateSut()`; delete remaining coverage gaps flagged by KAL1009; **then flip KAL1001–KAL1004 and KAL1006–KAL1009 from `warning` to `error`** in `.editorconfig` `[tests/*UnitTests/**/*.cs]` — SUT boundary + coverage enforcement is a hard requirement, not advisory
+- [x] Convert `SqliteProcessContextDbContext` to primary constructor — already done (`public sealed class SqliteProcessContextDbContext(`)
+- [x] Replace `KaleidoEnumConverter<T>` + factory with BCL `JsonStringEnumConverter` — no `KaleidoEnumConverter` exists; `JsonStringEnumConverter` used throughout
+- [x] Add `SqliteProcessContextStore` activity source + `ILogger` + failure counter instrumentation — added `SqliteTelemetry` (ActivitySource `Kaleido.Provider.SQLite`, Meter, load/save failure counters); `LoadAsync` and `SaveAsync` instrumented with activity spans and failure counter + `LogError` on non-cancellation exceptions
+- [x] `IKaleidoCorrelationContextAccessor` made `internal` — it is framework plumbing, not consumer API; no handler in samples ever injected it; `AsyncLocal` not needed since the interface being public was the only way the child-scope leak could be triggered by a consumer
+- [x] `UseSqliteContextStore` automatically registers `AddHealthChecks().AddDbContextCheck<SqliteProcessContextDbContext>("kaleido-sqlite-process-context-store")` — consumers get a liveness check for free; expose it with `app.MapHealthChecks("/health")`
+- [~~NOT DOING~~] **SutFixture migration** — not worth the churn; existing test style is clear enough; KAL1001–KAL1009 remain at `warning`
 
 ---
 
