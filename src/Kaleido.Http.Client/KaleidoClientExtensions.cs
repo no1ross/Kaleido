@@ -10,7 +10,7 @@ internal static class KaleidoClientExtensions
         Action<KaleidoHttpClientOptions> configure,
         Action<IHttpClientBuilder>? configureClient = null)
         where TClient : class
-        where TMap : class, new()
+        where TMap : class, IKaleidoClientRouteOptionsMap, new()
         where TFactory : class, TFactoryInterface
         where TFactoryInterface : class
     {
@@ -31,12 +31,7 @@ internal static class KaleidoClientExtensions
         configureClient?.Invoke(httpClientBuilder);
 
         var routeOptions = GetOrAddRouteOptions<TMap>(services);
-        var optionsProperty = typeof(TMap).GetProperty("Options");
-
-        if (optionsProperty != null && optionsProperty.GetValue(routeOptions) is IDictionary<string, string> optionsDict)
-        {
-            optionsDict[options.Name] = options.RoutePrefix;
-        }
+        routeOptions.Options[options.Name] = options.RoutePrefix;
 
         services.TryAddScoped<ICorrelationHeaderStamper, CorrelationHeaderStamper>();
         services.TryAddScoped<TFactoryInterface, TFactory>();
@@ -45,7 +40,7 @@ internal static class KaleidoClientExtensions
     }
 
     private static TMap GetOrAddRouteOptions<TMap>(IServiceCollection services)
-        where TMap : class, new()
+        where TMap : class, IKaleidoClientRouteOptionsMap, new()
     {
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(TMap));
 

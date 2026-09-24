@@ -2,7 +2,7 @@ namespace Kaleido.Http.Client;
 
 internal abstract class KaleidoClientFactoryBase<TClient, TMap>
     where TClient : class
-    where TMap : class
+    where TMap : class, IKaleidoClientRouteOptionsMap
 {
     private readonly Dictionary<string, TClient> _clients = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
@@ -45,38 +45,12 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
         }
     }
 
-    private string GetServiceName(string name)
-    {
-        var optionsMap = GetOptionsMap();
-        if (optionsMap.TryGetValue(name, out var serviceName))
-        {
-            return serviceName;
-        }
+    private string GetServiceName(string name) =>
+        RouteOptionsMap.Options.TryGetValue(name, out var serviceName)
+            ? serviceName
+            : string.Empty;
 
-        return string.Empty;
-    }
-
-    private Dictionary<string, string> GetOptionsMap()
-    {
-        var map = RouteOptionsMap;
-        var optionsProperty = map.GetType().GetProperty("Options");
-        if (optionsProperty == null)
-        {
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.ReflectionError,
-                "Route options map does not have 'Options' property.");
-        }
-
-        return (Dictionary<string, string>)(optionsProperty.GetValue(map)
-            ?? throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.ReflectionError,
-                "Route options map 'Options' property returned null."));
-    }
-
-    private string? GetRegisteredName(string name)
-    {
-        var optionsMap = GetOptionsMap();
-        return optionsMap.Keys.FirstOrDefault(k =>
+    private string? GetRegisteredName(string name) =>
+        RouteOptionsMap.Options.Keys.FirstOrDefault(k =>
             string.Equals(k, name, StringComparison.OrdinalIgnoreCase));
-    }
 }

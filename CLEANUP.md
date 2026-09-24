@@ -186,15 +186,15 @@ These require more careful testing. Commit each as its own focused PR.
 - [x] Add root `.editorconfig` with C# formatting and analyzer severity rules matching AGENTS.md conventions (primary ctors, collection expressions, no `!` operators)
 - [x] Add `Directory.Build.props` at repo root to replace manual per-project imports; remove per-project `<Import>` lines
 - [x] Pin all package versions — adopted layered Central Package Management (`Directory.Packages.props` at root + `tests/` + `samples/`, mirroring `Directory.Build.props`); all `*` floats replaced with currently-resolved versions; OpenTelemetry unified on 1.19
-- [ ] Add Roslyn analyzer configuration (`AnalysisLevel=latest-recommended`) to `build/packages.props`
-- [ ] Replace `KaleidoClientFactoryBase<TClient,TMap>` reflection hack — introduce `IRouteOptionsMap` interface with `Options` property; constrain `TMap`; eliminate `GetProperty("Options")` reflection
-- [ ] Collapse `KaleidoProcessClientRouteOptionsMap` and `KaleidoQueryableClientRouteOptionsMap` into a single `KaleidoClientRouteOptionsMap` base
+- [x] Add Roslyn analyzer configuration (`AnalysisLevel=latest-recommended`) — in `Directory.Build.props` (build/packages.props no longer exists)
+- [x] Replace `KaleidoClientFactoryBase<TClient,TMap>` reflection hack — introduced `IKaleidoClientRouteOptionsMap` interface + `KaleidoClientRouteOptionsMap` abstract base; `TMap` constrained to `: class, IKaleidoClientRouteOptionsMap`; `GetProperty("Options")` reflection eliminated
+- [x] Collapse `KaleidoProcessClientRouteOptionsMap` and `KaleidoQueryableClientRouteOptionsMap` into a single `KaleidoClientRouteOptionsMap` base — both are now internal sealed subclasses; shared implementation in base; distinct DI types preserved to avoid registration collision
 - [ ] Add `EnsureRegistryAsync` generic helper — consolidate semaphore-guarded lazy-load used in both clients
-- [ ] Consolidate the 6+ route/endpoint-name constant classes into a single source-of-truth per capability
+- [x] Consolidate the 6+ route/endpoint-name constant classes — already 3 well-placed classes (`ProcessEndpointNames`, `QueryableEndpointNames`, `RegistryEndpointNames`); original "6+" count was stale
 - [ ] Convert `ProcessRuntime` (8-param constructor) to primary constructor syntax (AGENTS.md mandate)
 - [x] Convert `KaleidoProcessClient` and `KaleidoQueryableClient` constructors to primary constructors — done; also inlined `StampCorrelationHeaders` wrapper and `registryUrl` field (single-use)
-- [ ] Convert `SqliteProcessContextDbContext` to primary constructor
-- [ ] Replace `KaleidoEnumConverter<T>` + factory with BCL `JsonStringEnumConverter` (verify error message compatibility first)
+- [x] Convert `SqliteProcessContextDbContext` to primary constructor — already done (`public sealed class SqliteProcessContextDbContext(`)
+- [x] Replace `KaleidoEnumConverter<T>` + factory with BCL `JsonStringEnumConverter` — no `KaleidoEnumConverter` exists; `JsonStringEnumConverter` used throughout
 - [ ] Add `SqliteProcessContextStore` activity source + `ILogger` + failure counter instrumentation
 - [ ] Add `KaleidoCorrelationContextAccessor` — back `_current` with `AsyncLocal<KaleidoCorrelationContext>` so context flows across `CreateScope()` boundaries in step handlers (design discussion required first)
 - [ ] Add `MapHealthChecks` guidance / `SqliteProcessContextStoreHealthCheck` + `AddHealthChecks()` registration
