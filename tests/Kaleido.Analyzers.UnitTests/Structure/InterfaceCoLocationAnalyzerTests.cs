@@ -2,7 +2,7 @@
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
 using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
-    Kaleido.Analyzers.Structure.InterfaceCoLocationAnalyzer>;
+    Kaleido.Analyzers.Layout.InterfaceCoLocationAnalyzer>;
 
 namespace Kaleido.Analyzers.UnitTests;
 

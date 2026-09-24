@@ -6,6 +6,7 @@ namespace Kaleido.Eventing;
 /// </summary>
 /// <typeparam name="TEvent">The domain event type.</typeparam>
 /// <typeparam name="TContext">The context type — either <see cref="ProcessEventContext"/> or <see cref="QueryableEventContext"/>.</typeparam>
+[ExcludeFromCodeCoverage]
 public sealed record KaleidoEventEnvelope<TEvent, TContext>
     where TEvent : IKaleidoEvent
 {

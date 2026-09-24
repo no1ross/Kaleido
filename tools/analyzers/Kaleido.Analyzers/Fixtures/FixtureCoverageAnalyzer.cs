@@ -26,7 +26,8 @@ public sealed class FixtureCoverageAnalyzer : DiagnosticAnalyzer
             "Type '{0}' in '{1}' has no '{2}' fixture — every testable type must have a unit-test fixture",
             "Kaleido.Tests",
             DiagnosticSeverity.Warning,
-            isEnabledByDefault: true);
+            isEnabledByDefault: true,
+            customTags: [WellKnownDiagnosticTags.CompilationEnd]);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(Rule);
@@ -126,6 +127,17 @@ public sealed class FixtureCoverageAnalyzer : DiagnosticAnalyzer
         }
 
         if (DtoSuffixes.Any(s => type.Name.EndsWith(s, System.StringComparison.Ordinal)))
+        {
+            return false;
+        }
+
+        // [ExcludeFromCodeCoverage] is the explicit opt-out signal — the type is
+        // intentionally untested (e.g. EF configuration, null-object, or infrastructure
+        // glue covered indirectly). Matched by FQN string; the analyzer binary does not
+        // need a reference to the attribute — the symbol comes from the analysed compilation.
+        if (type.GetAttributes().Any(a =>
+                a.AttributeClass?.ToDisplayString() ==
+                "System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute"))
         {
             return false;
         }

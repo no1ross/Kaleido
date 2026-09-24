@@ -1,5 +1,6 @@
 namespace Kaleido.Http.Process.Contracts;
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessExecutionResponse
 {
     public required Guid ProcessId
@@ -45,6 +46,7 @@ public sealed record ProcessExecutionResponse
         = [];
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessExecutionStepResponse
 {
     public required string StepName
@@ -67,6 +69,7 @@ public sealed record ProcessExecutionStepResponse
     }
 }
 
+[ExcludeFromCodeCoverage]
 public record StepExecutionResponse
 {
     public required Guid ProcessId
@@ -124,6 +127,7 @@ public record StepExecutionResponse
         = [];
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record StepExecutionResponse<TResponse> : StepExecutionResponse
 {
     public TResponse? Result

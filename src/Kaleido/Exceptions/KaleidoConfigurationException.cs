@@ -5,6 +5,7 @@ namespace Kaleido.Exceptions;
 /// This indicates a misconfigured DI registration or missing attribute, not a runtime user error.
 /// The <see cref="Code"/> is a stable machine-readable diagnostic code (see <see cref="ConfigurationErrorCodes"/>).
 /// </summary>
+[ExcludeFromCodeCoverage]
 public sealed class KaleidoConfigurationException : Exception
 {
     public KaleidoConfigurationException(string code, string message)

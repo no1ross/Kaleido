@@ -1,5 +1,6 @@
 namespace Kaleido.Http.Queryable.Contracts;
 
+[ExcludeFromCodeCoverage]
 public sealed record PageableContract
 {
     public int DefaultSize { get; init; }

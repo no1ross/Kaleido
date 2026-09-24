@@ -57,13 +57,16 @@ internal interface IProcessHandlerObservation
         Exception exception);
 }
 
+[ExcludeFromCodeCoverage]
 internal sealed record ProcessExecutionObservationDetails(
     int SubmittedStepCount);
 
+[ExcludeFromCodeCoverage]
 internal sealed record ProcessStepObservationDetails(
     string StepName,
     string? StepVersion);
 
+[ExcludeFromCodeCoverage]
 internal sealed record ProcessHandlerObservationDetails(
     string StepName,
     string? StepVersion);

@@ -1,5 +1,6 @@
 ﻿namespace Kaleido.Process.Execution;
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessExecutionResult
 {
     public required Guid ProcessId { get; init; }

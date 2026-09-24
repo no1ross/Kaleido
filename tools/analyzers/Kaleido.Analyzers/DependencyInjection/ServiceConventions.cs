@@ -139,7 +139,8 @@ internal static class ServiceConventions
                                 ServiceRegistrationModel.ServiceLifetime.Scoped,
                                 cancellationToken);
                             break;
-                        case ReturnStatementSyntax returnStatement:
+                        case ReturnStatementSyntax returnStatement
+                            when returnStatement.Expression is not null:
                             HarvestReturnedNew(
                                 returnStatement.Expression, model_, model,
                                 ServiceRegistrationModel.ServiceLifetime.Scoped,

@@ -6,6 +6,7 @@ using System.Text.Json;
 
 namespace Kaleido;
 
+[ExcludeFromCodeCoverage]
 public sealed record DataTypeDescriptor(
     string Type,
     string? Format = null,
@@ -13,11 +14,13 @@ public sealed record DataTypeDescriptor(
     IReadOnlyCollection<EnumValueDescriptor>? EnumValues = null,
     DataTypeDescriptor? ItemType = null);
 
+[ExcludeFromCodeCoverage]
 public sealed record EnumValueDescriptor(
     int Value,
     string Name,
     string? Description);
 
+[ExcludeFromCodeCoverage]
 public sealed record DataTypeConversionResult
 {
     public bool Success { get; init; }
@@ -47,6 +50,7 @@ public sealed record DataTypeConversionResult
     }
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record DataTypeConversionResult<TValue>
 {
     public bool Success { get; init; }

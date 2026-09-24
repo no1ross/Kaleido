@@ -2,6 +2,7 @@
 
 namespace Kaleido.Process.Execution;
 
+[ExcludeFromCodeCoverage]
 internal sealed record ExecutionDecision
 {
     public required ExecutionDecisionType Type

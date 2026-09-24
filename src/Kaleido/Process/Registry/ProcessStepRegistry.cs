@@ -390,6 +390,7 @@ internal sealed partial class ProcessStepRegistry : IProcessStepRegistry
     }
 }
 
+[ExcludeFromCodeCoverage]
 internal sealed class RegistrationNode
 {
     public required ProcessStepDefinition Definition
@@ -417,6 +418,7 @@ internal sealed class RegistrationNode
     public void AddAvailableUntil(IEnumerable<RegistrationNode> nodes) => _availableUntil.AddRange(nodes);
 }
 
+[ExcludeFromCodeCoverage]
 internal sealed class RegistrationSlot
 {
     private readonly List<ProcessStepRegistration> _dependencies = [];

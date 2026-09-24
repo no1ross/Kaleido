@@ -75,7 +75,7 @@ namespace Kaleido.UnitTests
         Assert.DoesNotContain(
             diagnostics,
             d => d.Id == "KAL1009" &&
-                 d.GetMessage().Contains("DataTypeMapperTests"));
+                 d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("DataTypeMapperTests"));
     }
 
     [Fact]
@@ -92,5 +92,31 @@ namespace Whatever
             testAssemblyName: "Something.Else");
 
         Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void TypeWithExcludeFromCodeCoverage_NoDiagnostic()
+    {
+        // [ExcludeFromCodeCoverage] is the explicit opt-out — the rule must not flag
+        // types that carry this attribute even when they are otherwise testable.
+        var diagnostics = RunAnalyzer(@"
+namespace System.Diagnostics.CodeAnalysis
+{
+    public sealed class ExcludeFromCodeCoverageAttribute : System.Attribute { }
+}
+namespace Kaleido.UnitTests
+{
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    public class InfrastructureHelper
+    {
+        public void DoWork() { }
+    }
+}");
+
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.Id == "KAL1009" &&
+                 d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)
+                  .Contains("InfrastructureHelper"));
     }
 }

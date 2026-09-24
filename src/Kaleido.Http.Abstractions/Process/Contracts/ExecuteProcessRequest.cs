@@ -2,6 +2,7 @@ using System.Text.Json;
 
 namespace Kaleido.Http.Process.Contracts;
 
+[ExcludeFromCodeCoverage]
 public sealed record ExecuteProcessRequest
 {
     public IReadOnlyCollection<ProcessStepRequest> Steps
@@ -12,6 +13,7 @@ public sealed record ExecuteProcessRequest
         = [];
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessStepRequest
 {
     public required string StepName
@@ -27,6 +29,7 @@ public sealed record ProcessStepRequest
     }
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ExecuteStepRequest<TProcessStep>
 {
     public required TProcessStep ProcessStep

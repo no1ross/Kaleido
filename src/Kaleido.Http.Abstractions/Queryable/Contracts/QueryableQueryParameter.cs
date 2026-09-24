@@ -1,5 +1,6 @@
 namespace Kaleido.Http.Queryable.Contracts;
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryableQueryParameter : QueryableParameterDescriptor
 {
     public static QueryableQueryParameter FromRegistryItem(

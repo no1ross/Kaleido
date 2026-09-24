@@ -261,6 +261,7 @@ dotnet_diagnostic.KAL1006.severity = none
 dotnet_diagnostic.KAL1007.severity = none
 dotnet_diagnostic.KAL1008.severity = none
 dotnet_diagnostic.KAL1009.severity = none
+dotnet_diagnostic.KAL1010.severity = none
 
 ; ════════════════════════════════════════════════════════════════════════════
 ; src/ — production source projects
@@ -335,7 +336,6 @@ dotnet_diagnostic.KAL0019.severity = none
 ; MA0002/MA0006/MA0016: collection abstractions and comparers matter less in
 ; assertions and test fakes — keep as suggestions
 dotnet_diagnostic.MA0002.severity = suggestion
-dotnet_diagnostic.MA0006.severity = suggestion
 dotnet_diagnostic.MA0016.severity = suggestion
 
 ; ── Unit test projects only ───────────────────────────────────────────────────
@@ -345,35 +345,11 @@ dotnet_diagnostic.MA0016.severity = suggestion
 ; Also exempt Kaleido.Analyzers.UnitTests — analyzer tests use a different
 ; harness pattern (AnalyzerTest<T>) and don't follow the SutFixture<T> model.
 [tests/*UnitTests/**/*.cs]
-dotnet_diagnostic.KAL1001.severity = warning
 dotnet_diagnostic.KAL1002.severity = warning
 dotnet_diagnostic.KAL1003.severity = warning
 dotnet_diagnostic.KAL1004.severity = warning
-dotnet_diagnostic.KAL1006.severity = warning
 dotnet_diagnostic.KAL1007.severity = warning
 dotnet_diagnostic.KAL1008.severity = warning
 dotnet_diagnostic.KAL1009.severity = warning
+dotnet_diagnostic.KAL1010.severity = warning
 
-; xUnit1000: internal test classes are discovered at runtime — suppress so
-; internal fixtures can inherit SutFixture<InternalSut> without being public
-dotnet_diagnostic.xUnit1000.severity = none
-
-; ── Kaleido.Analyzers.UnitTests — exempt from SUT fixture conventions ─────────
-; Analyzer tests use AnalyzerTest<TAnalyzer> harness, not SutFixture<T>.
-; Also exempt KAL0001 — AnalyzerTest<T> is intentionally a static helper class.
-[tests/Kaleido.Analyzers.UnitTests/**/*.cs]
-dotnet_diagnostic.KAL0001.severity = none
-dotnet_diagnostic.KAL1001.severity = none
-dotnet_diagnostic.KAL1002.severity = none
-dotnet_diagnostic.KAL1003.severity = none
-dotnet_diagnostic.KAL1004.severity = none
-dotnet_diagnostic.KAL1006.severity = none
-dotnet_diagnostic.KAL1007.severity = none
-dotnet_diagnostic.KAL1008.severity = none
-dotnet_diagnostic.KAL1009.severity = none
-
-; ════════════════════════════════════════════════════════════════════════════
-; tools/ — analyzer project source only (no test project lives here)
-; ════════════════════════════════════════════════════════════════════════════
-
-; (No per-glob overrides needed — analyzer source follows the same rules as src/)

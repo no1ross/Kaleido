@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.Testing;
 
 namespace Kaleido.Analyzers.UnitTests;
 
+#pragma warning disable KAL0001 // Test-only static factory — not an extension-method host
 internal static class AnalyzerTest<TAnalyzer>
     where TAnalyzer : DiagnosticAnalyzer, new()
 {

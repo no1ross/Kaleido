@@ -2,6 +2,7 @@ using Kaleido.Process.Planning;
 
 namespace Kaleido.Process.Eventing;
 
+[ExcludeFromCodeCoverage]
 public sealed record PlanBuiltCandidate
 {
     public required string StepName { get; init; }

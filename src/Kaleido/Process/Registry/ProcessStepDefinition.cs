@@ -1,5 +1,6 @@
 ﻿namespace Kaleido.Process.Registry;
 
+[ExcludeFromCodeCoverage]
 internal sealed record ProcessStepDefinition
 {
     public required Type StepType { get; init; }
@@ -23,6 +24,7 @@ internal sealed record ProcessStepDefinition
     public void AddAvailableUntil(ProcessStepDefinition definition) => _availableUntil.Add(definition);
 }
 
+[ExcludeFromCodeCoverage]
 internal sealed record ProcessStepTypeDefinition
 {
     public required Type StepType { get; init; }

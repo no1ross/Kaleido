@@ -4,6 +4,7 @@ namespace Kaleido;
 /// Standard error response returned by Kaleido endpoints when a request fails.
 /// Used by the exception middleware, Queryable endpoints, and the Registry endpoint.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public sealed record KaleidoErrorResponse(
     IReadOnlyList<KaleidoError> Errors);
 
@@ -22,6 +23,7 @@ public static class KaleidoErrorCodes
 /// <param name="Code">A stable machine-readable error code (e.g. <c>"argument_error"</c>, <c>"validation_failed"</c>).</param>
 /// <param name="Message">A human-readable description of the error.</param>
 /// <param name="Field">The specific field that caused the error, if applicable.</param>
+[ExcludeFromCodeCoverage]
 public sealed record KaleidoError(
     string Code,
     string Message,

@@ -13,6 +13,7 @@ public interface IProcessRuntime
         CancellationToken cancellationToken = default);
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessRequest
 {
     /// <summary>
@@ -36,6 +37,7 @@ public sealed record ProcessRequest
     }
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessResult
 {
     public required Guid ProcessId { get; init; }
@@ -73,6 +75,7 @@ public sealed record ProcessResult
         = [];
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessStepResult
 {
     public required string StepName
@@ -126,6 +129,7 @@ public sealed record ProcessStepResult
 = [];
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessorRequest
 {
     public IReadOnlyDictionary<string, object?> Steps { get; init; }

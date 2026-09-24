@@ -16,7 +16,7 @@ KAL0011 | Kaleido.Design | Warning | DI constructors must not perform work on in
 KAL0012 | Kaleido.Design | Warning | Do not manually instantiate infrastructure dependencies
 KAL0013 | Kaleido.Design | Warning | Do not dispose container-owned dependencies
 KAL0014 | Kaleido.Design | Warning | Singleton registrations must not capture scoped services
-KAL0015 | Kaleido.Structure | Warning | Interface must live in the same file as its implementation
+KAL0015 | Kaleido.Layout | Warning | Interface must live in the same file as its implementation
 KAL1001 | Kaleido.Tests | Warning | Test fixture names must end with 'Tests'
 KAL1002 | Kaleido.Tests | Warning | Fixture name prefix must resolve to a SUT type
 KAL1003 | Kaleido.Tests | Warning | Fixture location must mirror the SUT path
@@ -30,3 +30,4 @@ KAL0016 | Kaleido.Design | Warning | MapGet/MapPost endpoints in Kaleido.Http mu
 KAL0017 | Kaleido.Design | Warning | Endpoint tags must include "Kaleido"
 KAL0018 | Kaleido.Design | Warning | Public API members must not expose mutable collection types
 KAL0019 | Kaleido.Design | Warning | Async methods must accept a CancellationToken parameter
+KAL1010 | Kaleido.Tests | Warning | Fixture class exists but has no [Fact] or [Theory] test methods

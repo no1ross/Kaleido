@@ -1,5 +1,6 @@
 namespace Kaleido.Http.Process.Contracts;
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessorRegistryResponse
 {
     /// <summary>
@@ -26,6 +27,7 @@ public sealed record ProcessorRegistryResponse
         = [];
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessCatalogResponse
 {
     public IReadOnlyCollection<ProcessorCatalogResponse> Processors
@@ -36,6 +38,7 @@ public sealed record ProcessCatalogResponse
         = [];
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessorCatalogResponse
 {
     /// <summary>
@@ -58,6 +61,7 @@ public sealed record ProcessorCatalogResponse
         = [];
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessStepResponse
 {
     public required string Name { get; init; }
@@ -91,6 +95,7 @@ public sealed record ProcessStepResponse
     public ProcessStepResultMetadata? Result { get; init; }
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessStepSummary
 {
     public required string Name { get; init; }
@@ -110,10 +115,13 @@ public sealed record ProcessStepSummary
         = string.Empty;
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessFieldMetadata : ProcessorInputFieldDescriptor;
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessOutputFieldMetadata : ProcessorOutputFieldDescriptor;
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessStepResultMetadata
 {
     public IReadOnlyCollection<ProcessOutputFieldMetadata> OutputFields { get; init; }

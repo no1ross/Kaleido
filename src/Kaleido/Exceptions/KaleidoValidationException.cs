@@ -5,6 +5,7 @@ namespace Kaleido.Exceptions;
 /// Results in a 400 Bad Request when caught by the endpoint handlers.
 /// The <see cref="Code"/> is forwarded directly into the HTTP response body (see <see cref="ValidationErrorCodes"/>).
 /// </summary>
+[ExcludeFromCodeCoverage]
 public sealed class KaleidoValidationException : Exception
 {
     public KaleidoValidationException(string code, string message)

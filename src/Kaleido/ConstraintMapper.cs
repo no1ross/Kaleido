@@ -3,6 +3,7 @@ using System.Reflection;
 
 namespace Kaleido;
 
+[ExcludeFromCodeCoverage]
 public sealed record ConstraintContract
 {
     public required string Type { get; init; }
@@ -15,6 +16,7 @@ public sealed record ConstraintContract
         = [];
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record ConstraintParameterContract
 {
     public required string Name { get; init; }

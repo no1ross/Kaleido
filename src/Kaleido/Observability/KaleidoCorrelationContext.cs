@@ -1,5 +1,6 @@
 namespace Kaleido.Observability;
 
+[ExcludeFromCodeCoverage]
 public sealed record KaleidoCorrelationContext
 {
     /// <summary>

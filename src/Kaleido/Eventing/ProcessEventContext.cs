@@ -5,6 +5,7 @@ namespace Kaleido.Eventing;
 /// Populated by the framework from the active <see cref="Kaleido.Observability.KaleidoCorrelationContext"/>
 /// and <see cref="KaleidoServiceOptions"/> at event creation time.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public sealed record ProcessEventContext
 {
     /// <summary>

@@ -19,6 +19,7 @@ public interface IProcessContextStore
 /// Historical activity and operational evidence are emitted as
 /// process events and should not be stored here.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public sealed record ProcessorContext
 {
     /// <summary>
@@ -138,6 +139,7 @@ public sealed record ProcessorContext
 /// contain historical information. Operational history is emitted
 /// through process events.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public sealed record StepContext
 {
     /// <summary>

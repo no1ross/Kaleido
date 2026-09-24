@@ -1,5 +1,6 @@
 ﻿namespace Kaleido.Process.Execution;
 
+[ExcludeFromCodeCoverage]
 public sealed record ProcessExecutionOutcome
 {
     public required string StepName { get; init; }

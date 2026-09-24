@@ -10,11 +10,13 @@ public enum QueryContextKind
     Delegated
 }
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryContextRegistration(
     Type ContextType,
     Type SourceType,
     QueryContextMetadata Metadata);
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryContextMetadata
 (
     string Name,
@@ -27,6 +29,7 @@ public sealed record QueryContextMetadata
     IReadOnlyList<FieldMetadata> Fields
 );
 
+[ExcludeFromCodeCoverage]
 public sealed record FieldMetadata
 (
     string Name,
@@ -41,6 +44,7 @@ public sealed record FieldMetadata
     bool IsSortable
 );
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryViewRegistration
 (
     Type QueryViewType,
@@ -50,6 +54,7 @@ public sealed record QueryViewRegistration
     QueryViewMetadata Metadata
 );
 
+[ExcludeFromCodeCoverage]
 public sealed record DelegatedQueryViewRegistration
 (
     Type QueryViewType,
@@ -60,6 +65,7 @@ public sealed record DelegatedQueryViewRegistration
     QueryViewMetadata ViewMetadata
 );
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryViewMetadata
 (
     string Name,
@@ -72,12 +78,14 @@ public sealed record QueryViewMetadata
     IReadOnlyList<QueryOutputFieldMetadata>? OutputFields
 );
 
+[ExcludeFromCodeCoverage]
 public sealed record PageableMetadata
 (
     int DefaultSize,
     int MaxSize
 );
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryParameterMetadata(
     string Name,
     Type Type,
@@ -85,12 +93,14 @@ public sealed record QueryParameterMetadata(
     IReadOnlyCollection<ConstraintContract> Constraints,
     string? Description);
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryOutputFieldMetadata(
     string Name,
     string? Description,
     Type Type,
     DataTypeDescriptor DataType);
 
+[ExcludeFromCodeCoverage]
 public record QueryableContextRegistryItem
 {
     public required string Name { get; init; }
@@ -114,6 +124,7 @@ public record QueryableContextRegistryItem
         = [];
 }
 
+[ExcludeFromCodeCoverage]
 public record QueryableViewRegistryItem
 {
     public required string Name { get; init; }
@@ -135,6 +146,7 @@ public record QueryableViewRegistryItem
         = [];
 }
 
+[ExcludeFromCodeCoverage]
 public record QueryablePropertyDescriptor
 {
     public required string Name { get; init; }
@@ -144,6 +156,7 @@ public record QueryablePropertyDescriptor
     public required DataTypeDescriptor DataType { get; init; }
 }
 
+[ExcludeFromCodeCoverage]
 public record QueryableFieldDescriptor : QueryablePropertyDescriptor
 {
     public bool IsFilterable { get; init; }
@@ -160,11 +173,13 @@ public record QueryableFieldDescriptor : QueryablePropertyDescriptor
     public bool IsSortable { get; init; }
 }
 
+[ExcludeFromCodeCoverage]
 public record QueryableParameterDescriptor : QueryablePropertyDescriptor
 {
     public IReadOnlyCollection<ConstraintContract> Constraints { get; init; }
         = [];
 }
 
+[ExcludeFromCodeCoverage]
 public record QueryableOutputFieldDescriptor : QueryablePropertyDescriptor;
 

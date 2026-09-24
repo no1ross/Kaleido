@@ -1,5 +1,6 @@
 namespace Kaleido.Http.Queryable.Contracts;
 
+[ExcludeFromCodeCoverage]
 public sealed record QueryableFieldMetadata : QueryableFieldDescriptor
 {
     public static QueryableFieldMetadata FromRegistryItem(

@@ -6,6 +6,7 @@ namespace Kaleido.Exceptions;
 /// Results in a 500 Internal Server Error when caught by the exception middleware.
 /// The <see cref="Code"/> is a stable machine-readable diagnostic code (see <see cref="FrameworkErrorCodes"/>).
 /// </summary>
+[ExcludeFromCodeCoverage]
 public sealed class KaleidoFrameworkException : Exception
 {
     public KaleidoFrameworkException(string code, string message)

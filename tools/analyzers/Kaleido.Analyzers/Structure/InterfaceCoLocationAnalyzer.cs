@@ -3,7 +3,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Kaleido.Analyzers.Structure;
+namespace Kaleido.Analyzers.Layout;
 
 /// <summary>
 /// KAL0015 — the interface for a concrete class belongs in the same file as
@@ -20,7 +20,7 @@ public sealed class InterfaceCoLocationAnalyzer : DiagnosticAnalyzer
             DiagnosticIds.InterfaceCoLocation,
             "Interface must live in the same file as its implementation",
             "Interface '{0}' should be declared in '{1}' alongside '{2}' — an interface and its concrete class share a file",
-            "Kaleido.Structure",
+            "Kaleido.Layout",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true);
 

@@ -7,6 +7,7 @@ namespace Kaleido.Http.Client;
 /// The <see cref="Code"/> is a stable machine-readable diagnostic code (see <see cref="HttpClientErrorCodes"/>).
 /// Carries the <see cref="StatusCode"/> of the response and any structured <see cref="Errors"/> from the error body.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public sealed class KaleidoHttpClientException : Exception
 {
     public KaleidoHttpClientException(

@@ -1,5 +1,6 @@
 namespace Kaleido.Process.Registry;
 
+[ExcludeFromCodeCoverage]
 public record ProcessorRegistryItem
 {
     /// <summary>
@@ -16,6 +17,7 @@ public record ProcessorRegistryItem
         = [];
 }
 
+[ExcludeFromCodeCoverage]
 public record ProcessorStepRegistryItem
 {
     public required string Name { get; init; }
@@ -43,6 +45,7 @@ public record ProcessorStepRegistryItem
     public ProcessorStepResultDescriptor? Result { get; init; }
 }
 
+[ExcludeFromCodeCoverage]
 public record ProcessorStepSummary
 {
     public required string Name { get; init; }
@@ -56,6 +59,7 @@ public record ProcessorStepSummary
     public bool Repeatable { get; init; }
 }
 
+[ExcludeFromCodeCoverage]
 public record ProcessorPropertyDescriptor
 {
     public required string Name { get; init; }
@@ -65,14 +69,17 @@ public record ProcessorPropertyDescriptor
     public required DataTypeDescriptor DataType { get; init; }
 }
 
+[ExcludeFromCodeCoverage]
 public record ProcessorInputFieldDescriptor : ProcessorPropertyDescriptor
 {
     public IReadOnlyCollection<ConstraintContract> Constraints { get; init; }
         = [];
 }
 
+[ExcludeFromCodeCoverage]
 public record ProcessorOutputFieldDescriptor : ProcessorPropertyDescriptor;
 
+[ExcludeFromCodeCoverage]
 public record ProcessorStepResultDescriptor
 {
     public IReadOnlyCollection<ProcessorOutputFieldDescriptor> OutputFields { get; init; }

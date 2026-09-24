@@ -90,4 +90,7 @@ internal static class DiagnosticIds
     /// <summary>Every testable source type (public/internal, non-static, non-abstract class with behavior) must have a corresponding {TypeName}Tests fixture in the unit-test project.</summary>
     public const string FixtureCoverage = "KAL1009";
 
+    /// <summary>A fixture class named {Type}Tests exists but contains no [Fact] or [Theory] test methods — it is an empty stub.</summary>
+    public const string FixtureEmpty = "KAL1010";
+
 }
