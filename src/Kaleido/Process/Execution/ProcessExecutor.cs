@@ -203,7 +203,7 @@ internal sealed class ExecutionProcessor(
                         RuntimeMessages =
                         [
                             StepProcessingMessage.Error(
-                            StepProcessingMessageCode.ExecutionCancelled,
+                            StepProcessingMessageCode.ExecutionCanceled,
                             "Step execution was cancelled.")
                         ],
 

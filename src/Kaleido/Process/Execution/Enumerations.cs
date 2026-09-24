@@ -72,5 +72,5 @@ public enum ProcessExecutionState
 
     Exception,
 
-    Cancelled
+    Canceled
 }

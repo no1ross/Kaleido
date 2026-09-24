@@ -445,7 +445,7 @@ public sealed class ProcessStateUpdaterTests
 
         var result = _updater.ApplyCancellation(context, candidate);
 
-        Assert.Equal(ProcessExecutionState.Cancelled, result.State);
+        Assert.Equal(ProcessExecutionState.Canceled, result.State);
     }
 
     [Fact]
