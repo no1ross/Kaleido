@@ -416,6 +416,7 @@ dotnet_diagnostic.KAL0011.severity = none
 dotnet_diagnostic.KAL0012.severity = none
 dotnet_diagnostic.KAL0013.severity = none
 dotnet_diagnostic.KAL0014.severity = none
+dotnet_diagnostic.KAL0015.severity = none
 
 # KAL1001–KAL1004 + KAL1006–KAL1009: test/SUT fixture conventions apply to
 # unit tests only (functional/integration fixtures are scenario-scoped) —
@@ -436,11 +437,12 @@ dotnet_diagnostic.KAL1005.severity = warning
 # separate composition roots) ---
 [src/**/*.cs]
 
-# KAL0005–KAL0014: injectable types not static (0005), no new-ing registered
+# KAL0005–KAL0015: injectable types not static (0005), no new-ing registered
 # impls (0006), no service locator (0007), inject abstractions (0008), ctor
 # injection only (0009), retain injected deps (0010), no work in DI ctors
 # (0011), no manual infra instantiation (0012), no disposing container-owned
-# deps (0013), no captive scoped→singleton (0014)
+# deps (0013), no captive scoped→singleton (0014), interface co-located with
+# impl (0015)
 dotnet_diagnostic.KAL0005.severity = error
 dotnet_diagnostic.KAL0006.severity = error
 dotnet_diagnostic.KAL0007.severity = error
@@ -451,6 +453,7 @@ dotnet_diagnostic.KAL0011.severity = error
 dotnet_diagnostic.KAL0012.severity = error
 dotnet_diagnostic.KAL0013.severity = error
 dotnet_diagnostic.KAL0014.severity = error
+dotnet_diagnostic.KAL0015.severity = error
 
 # Test projects: test doubles/fakes legitimately don't access instance state
 # and stub signatures must mirror the contract even when params are unused

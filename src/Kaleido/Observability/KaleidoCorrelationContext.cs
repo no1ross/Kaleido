@@ -51,11 +51,3 @@ public sealed record KaleidoCorrelationContext
         && string.IsNullOrWhiteSpace(SourceProcessorName)
         && string.IsNullOrWhiteSpace(StepName);
 }
-
-public interface IKaleidoCorrelationContextAccessor
-{
-    KaleidoCorrelationContext Current
-    {
-        get;
-    }
-}

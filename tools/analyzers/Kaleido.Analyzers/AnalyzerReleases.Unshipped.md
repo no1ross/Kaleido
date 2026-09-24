@@ -16,6 +16,7 @@ KAL0011 | Kaleido.Design | Warning | DI constructors must not perform work on in
 KAL0012 | Kaleido.Design | Warning | Do not manually instantiate infrastructure dependencies
 KAL0013 | Kaleido.Design | Warning | Do not dispose container-owned dependencies
 KAL0014 | Kaleido.Design | Warning | Singleton registrations must not capture scoped services
+KAL0015 | Kaleido.Structure | Warning | Interface must live in the same file as its implementation
 KAL1001 | Kaleido.Tests | Warning | Test fixture names must end with 'Tests'
 KAL1002 | Kaleido.Tests | Warning | Fixture name prefix must resolve to a SUT type
 KAL1003 | Kaleido.Tests | Warning | Fixture location must mirror the SUT path

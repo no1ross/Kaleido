@@ -1,5 +1,13 @@
 namespace Kaleido.Observability;
 
+public interface IKaleidoCorrelationContextAccessor
+{
+    KaleidoCorrelationContext Current
+    {
+        get;
+    }
+}
+
 internal interface IKaleidoCorrelationContextInitializer
 {
     void Initialize(KaleidoCorrelationContext context);

@@ -16,6 +16,7 @@ internal static class DiagnosticIds
     public const string InfrastructureInstantiation = "KAL0012";
     public const string InjectedDisposal = "KAL0013";
     public const string CaptiveDependency = "KAL0014";
+    public const string InterfaceCoLocation = "KAL0015";
 
     public const string FixtureNameSuffix = "KAL1001";
     public const string FixtureSutResolution = "KAL1002";
