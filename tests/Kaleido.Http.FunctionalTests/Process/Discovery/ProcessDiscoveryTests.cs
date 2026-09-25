@@ -1,5 +1,5 @@
 using System.Net;
-using Kaleido.Http.Process.Contracts;
+using Kaleido.Http.Process;
 using Kaleido.Process.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
 

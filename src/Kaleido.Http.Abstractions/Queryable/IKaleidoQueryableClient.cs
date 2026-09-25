@@ -1,5 +1,3 @@
-using Kaleido.Http.Queryable.Contracts;
-
 namespace Kaleido.Http.Queryable;
 
 public interface IKaleidoQueryableClient

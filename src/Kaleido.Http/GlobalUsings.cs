@@ -1,10 +1,7 @@
 global using Kaleido.Exceptions;
 global using Kaleido.Http.Observability;
 global using Kaleido.Http.Process;
-global using Kaleido.Http.Process.Contracts;
-global using Kaleido.Http.Process.Services;
 global using Kaleido.Http.Queryable;
-global using Kaleido.Http.Queryable.Contracts;
 global using Kaleido.Observability;
 global using Kaleido.Process.Observability;
 global using Kaleido.Queryable;

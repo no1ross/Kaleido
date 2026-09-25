@@ -21,7 +21,7 @@ internal interface IProcessEventFactory
         ProcessorContext context,
         StepCandidate candidate,
         ProcessExecutionOutcome outcome,
-        ProcessStepInvokerResult result);
+        StepInvocationResult result);
 
     KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext> CreateExecutionCompleted(
         KaleidoCorrelationContext correlation,
@@ -134,7 +134,7 @@ internal sealed class ProcessEventFactory(
         ProcessorContext context,
         StepCandidate candidate,
         ProcessExecutionOutcome outcome,
-        ProcessStepInvokerResult result)
+        StepInvocationResult result)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(candidate);

@@ -1,5 +1,5 @@
 using Kaleido.Http.Queryable;
-using Kaleido.Http.Queryable.Contracts;
+using Kaleido.Http.Queryable;
 using Kaleido.Queryable;
 using Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;

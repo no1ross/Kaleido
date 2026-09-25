@@ -2,7 +2,7 @@ using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Http.Process.Services;
+namespace Kaleido.Http.Process;
 
 internal interface IProcessStateService
 {

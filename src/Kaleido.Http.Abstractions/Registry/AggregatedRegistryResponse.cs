@@ -1,5 +1,5 @@
-using Kaleido.Http.Process.Contracts;
-using Kaleido.Http.Queryable.Contracts;
+using Kaleido.Http.Process;
+using Kaleido.Http.Queryable;
 
 namespace Kaleido.Http.Registry;
 

@@ -1,5 +1,5 @@
 using Kaleido.Http.Queryable;
-using Kaleido.Http.Queryable.Contracts;
+using Kaleido.Http.Queryable;
 using Kaleido.Queryable.Registry;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;

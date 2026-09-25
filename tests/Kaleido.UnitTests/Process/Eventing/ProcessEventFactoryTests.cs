@@ -163,7 +163,7 @@ public sealed class ProcessEventFactoryTests
             Outcome = StepExecutionOutcome.Completed,
             Decision = ExecutionDecisionType.Continue
         };
-        var result = new ProcessStepInvokerResult();
+        var result = new StepInvocationResult();
 
         Assert.Throws<ArgumentNullException>(() =>
             _factory.CreateStepCompleted(correlation, null!, candidate, outcome, result));
@@ -181,7 +181,7 @@ public sealed class ProcessEventFactoryTests
             Outcome = StepExecutionOutcome.Completed,
             Decision = ExecutionDecisionType.Continue
         };
-        var result = new ProcessStepInvokerResult();
+        var result = new StepInvocationResult();
 
         Assert.Throws<ArgumentNullException>(() =>
             _factory.CreateStepCompleted(correlation, context, null!, outcome, result));
@@ -193,7 +193,7 @@ public sealed class ProcessEventFactoryTests
         var correlation = new KaleidoCorrelationContext();
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
         var candidate = new StepCandidate { StepName = "test" };
-        var result = new ProcessStepInvokerResult();
+        var result = new StepInvocationResult();
 
         Assert.Throws<ArgumentNullException>(() =>
             _factory.CreateStepCompleted(correlation, context, candidate, null!, result));
@@ -235,7 +235,7 @@ public sealed class ProcessEventFactoryTests
             Status = StepExecutionStatus.Completed,
             Outcome = StepExecutionOutcome.Completed
         };
-        var result = new ProcessStepInvokerResult();
+        var result = new StepInvocationResult();
 
         var envelope = _factory.CreateStepCompleted(correlation, context, candidate, outcome, result);
 

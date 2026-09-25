@@ -3,7 +3,7 @@ using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Http.Process.Services;
+namespace Kaleido.Http.Process;
 
 internal interface IProcessExecutionService
 {

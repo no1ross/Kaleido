@@ -1,7 +1,7 @@
 using Kaleido.Process;
 using Kaleido.Process.Registry;
 
-namespace Kaleido.Http.Process.Contracts;
+namespace Kaleido.Http.Process;
 
 // Wire shapes (ProcessExecutionResponse, StepExecutionResponse, etc.)
 // are defined in Kaleido.Http.Abstractions.

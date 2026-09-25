@@ -1,6 +1,4 @@
-using Kaleido.Http.Process.Contracts;
-
-namespace Kaleido.Http.Process.Services;
+namespace Kaleido.Http.Process;
 
 /// <summary>
 /// Projects process runtime registry types into HTTP wire contract types.

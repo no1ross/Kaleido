@@ -1,6 +1,7 @@
-namespace Kaleido.Http.Queryable.Contracts;
+﻿namespace Kaleido.Http.Queryable;
 
-#pragma warning disable KAL0001 // Pure URL/name factory — no state, intentional static
+#pragma warning disable KAL0001 // Pure route/endpoint wiring — no state, intentional static
+
 internal static class QueryableContractUrls
 {
     internal static string QueryablePrefix(string serviceName) =>
@@ -19,5 +20,4 @@ internal static class QueryableContractUrls
 
     public static string QueryViewQuery(string serviceName, string contextName, string viewName)
         => $"{QueryablePrefix(serviceName)}/{contextName}/{viewName}/query";
-
 }

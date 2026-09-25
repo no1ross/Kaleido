@@ -16,8 +16,7 @@
 		<Using Include="Kaleido.Queryable.Metadata" />
 		<Using Include="Kaleido.Queryable" />
 		<Using Include="Kaleido.Queryable.Query" />
-		<Using Include="Kaleido.Http.Process.Services" />
-		<Using Include="Kaleido.Http.Process.Contracts" />
+		<Using Include="Kaleido.Http.Process" />
 		<Using Include="Kaleido.Http.Middleware" />
 		<Using Include="Kaleido.Http.Startup" />
 		<Using Include="Kaleido.Observability" />
