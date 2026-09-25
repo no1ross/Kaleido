@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Testing.Fixtures;
 
 /// <summary>
-/// KAL1005 GÇö tests/AGENTS.md: any test-built ServiceProvider must use
+/// KAL1005 Gï¿½ï¿½ tests/AGENTS.md: any test-built ServiceProvider must use
 /// BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true,
 /// ValidateOnBuild = true }) to catch captive dependencies at build time.
 /// </summary>
@@ -21,7 +21,7 @@ public sealed class BuildServiceProviderAnalyzer : DiagnosticAnalyzer
             "Build test service providers with ValidateScopes + ValidateOnBuild",
             "BuildServiceProvider() must pass 'new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true }'",
             "Kaleido.Tests",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

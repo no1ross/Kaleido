@@ -18,7 +18,7 @@ public sealed class FixtureSutResolutionAnalyzer : DiagnosticAnalyzer
             "Test fixture name prefix must resolve to a subject under test",
             "Test fixture '{0}' does not map to a type named '{1}' G�� fixtures are named {{SutName}}Tests",
             "Kaleido.Tests",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

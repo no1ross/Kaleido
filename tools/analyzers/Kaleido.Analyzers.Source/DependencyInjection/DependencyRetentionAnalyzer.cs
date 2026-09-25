@@ -1,17 +1,15 @@
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Kaleido.Analyzers.Source.DependencyInjection;
 
 /// <summary>
-/// KAL0010 — injected dependencies must be retained safely. Flags on
-/// registered service implementations: (a) a mutable (non-readonly) field
-/// typed as a registered service, and (b) a primary-constructor parameter
-/// typed as a registered service that is never referenced by any member —
-/// a dependency that was accepted but ignored.
+/// KAL0010 — injected dependency fields must be readonly. A mutable field
+/// typed as a registered service can be reassigned after construction,
+/// hiding state changes and defeating the immutability contract of DI.
+/// Unused injected parameters are already caught by IDE0060.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DependencyRetentionAnalyzer : DiagnosticAnalyzer
@@ -22,20 +20,11 @@ public sealed class DependencyRetentionAnalyzer : DiagnosticAnalyzer
             "Injected dependency fields must be readonly",
             "Field '{0}' on service '{1}' holds '{2}' — make it readonly",
             "Kaleido.Design",
-            DiagnosticSeverity.Warning,
-            isEnabledByDefault: true);
-
-    private static readonly DiagnosticDescriptor UnusedParameterRule =
-        new(
-            DiagnosticIds.DependencyRetention,
-            "Injected dependency is never used",
-            "Constructor parameter '{0}' on service '{1}' is never used — remove it or use it",
-            "Kaleido.Design",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(MutableFieldRule, UnusedParameterRule);
+        ImmutableArray.Create(MutableFieldRule);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -95,61 +84,5 @@ public sealed class DependencyRetentionAnalyzer : DiagnosticAnalyzer
                     type.Name,
                     field.Type.Name));
         }
-
-        // primary-ctor params that are never referenced
-        foreach (var ctor in type.InstanceConstructors)
-        {
-            if (ctor.IsImplicitlyDeclared || ctor.DeclaringSyntaxReferences.Length == 0)
-            {
-                continue;
-            }
-
-            foreach (var parameter in ctor.Parameters)
-            {
-                if (!isServiceType(parameter.Type) || IsReferenced(parameter, type, context))
-                {
-                    continue;
-                }
-
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        UnusedParameterRule,
-                        parameter.Locations[0],
-                        parameter.Name,
-                        type.Name));
-            }
-        }
-    }
-
-    private static bool IsReferenced(
-        IParameterSymbol parameter,
-        INamedTypeSymbol type,
-        SymbolAnalysisContext context)
-    {
-        foreach (var reference in type.DeclaringSyntaxReferences)
-        {
-            var typeDecl = reference.GetSyntax(context.CancellationToken);
-
-            foreach (var identifier in typeDecl.DescendantNodes()
-                         .OfType<IdentifierNameSyntax>())
-            {
-                if (identifier.Identifier.ValueText != parameter.Name)
-                {
-                    continue;
-                }
-
-                // inside a member body or initializer (not the parameter list)
-                if (identifier.Ancestors().Any(a =>
-                        a is MethodDeclarationSyntax or PropertyDeclarationSyntax or
-                            AccessorDeclarationSyntax or AnonymousFunctionExpressionSyntax or
-                            FieldDeclarationSyntax or EqualsValueClauseSyntax or
-                            ConstructorDeclarationSyntax))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 }

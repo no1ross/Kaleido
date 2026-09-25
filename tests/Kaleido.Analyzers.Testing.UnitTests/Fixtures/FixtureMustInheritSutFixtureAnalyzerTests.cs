@@ -21,7 +21,7 @@ public class Widget { }
 ";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL1006", DiagnosticSeverity.Warning);
+        new("KAL1006", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task FixtureInheritingSutFixture_NoDiagnostic()

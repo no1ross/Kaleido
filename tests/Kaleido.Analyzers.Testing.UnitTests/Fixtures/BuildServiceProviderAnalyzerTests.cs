@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.DependencyInjection
 }";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL1005", DiagnosticSeverity.Warning);
+        new("KAL1005", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task BuildServiceProvider_NoArgs_Reports()

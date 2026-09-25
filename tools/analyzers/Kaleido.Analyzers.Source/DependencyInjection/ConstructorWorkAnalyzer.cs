@@ -22,7 +22,7 @@ public sealed class ConstructorWorkAnalyzer : DiagnosticAnalyzer
             "DI constructors must not perform work",
             "Invocation '{0}' inside '{1}'s constructor does work — assign dependencies and validate arguments only",
             "Kaleido.Design",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

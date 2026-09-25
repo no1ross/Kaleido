@@ -17,7 +17,7 @@ namespace Xunit
     [Fact]
     public async Task FixtureWithoutSourcePath_Skipped()
     {
-        // TestCode files have no real file path — analyzer must not crash
+        // TestCode files have no real file path ï¿½ analyzer must not crash
         // and must skip (no path ? no diagnostic)
         await RunAsync(@"
 public class Widget { }

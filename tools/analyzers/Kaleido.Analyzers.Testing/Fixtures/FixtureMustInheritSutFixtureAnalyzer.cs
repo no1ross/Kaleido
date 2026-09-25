@@ -18,7 +18,7 @@ public sealed class FixtureMustInheritSutFixtureAnalyzer : DiagnosticAnalyzer
             "Unit-test fixtures must inherit SutFixture<TSut>",
             "Test fixture '{0}' must inherit SutFixture<{1}> G�� every unit test declares its subject under test",
             "Kaleido.Tests",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: false);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

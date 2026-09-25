@@ -9,7 +9,7 @@ namespace Kaleido.Analyzers.Source.UnitTests;
 public sealed class InjectableStaticAnalyzerTests
 {
     private static readonly DiagnosticResult Expected =
-        new("KAL0005", DiagnosticSeverity.Warning);
+        new("KAL0005", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task StaticServiceClass_Reports()

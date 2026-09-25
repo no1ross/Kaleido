@@ -4,7 +4,7 @@ using Kaleido.Process.Observability;
 
 namespace Kaleido.Process.Execution;
 
-public interface IExecutionProcessor
+internal interface IExecutionProcessor
 {
     Task<ProcessExecutionResult> ExecuteAsync(
         IReadOnlyCollection<StepCandidate> candidates,

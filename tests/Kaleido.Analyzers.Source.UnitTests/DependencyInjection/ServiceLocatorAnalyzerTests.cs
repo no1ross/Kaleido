@@ -9,7 +9,7 @@ namespace Kaleido.Analyzers.Source.UnitTests;
 public sealed class ServiceLocatorAnalyzerTests
 {
     private static readonly DiagnosticResult Expected =
-        new("KAL0007", DiagnosticSeverity.Warning);
+        new("KAL0007", DiagnosticSeverity.Error);
 
     private const string References = @"
 using Microsoft.Extensions.DependencyInjection;

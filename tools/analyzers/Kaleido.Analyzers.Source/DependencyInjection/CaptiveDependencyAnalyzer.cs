@@ -21,7 +21,7 @@ public sealed class CaptiveDependencyAnalyzer : DiagnosticAnalyzer
             "Singleton registrations must not resolve scoped services",
             "Singleton factory resolves '{0}' which is registered as Scoped — the scoped instance would be captured for the app lifetime",
             "Kaleido.Design",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

@@ -22,7 +22,7 @@ public class Other { }
 ";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL1007", DiagnosticSeverity.Warning);
+        new("KAL1007", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task NameMatchesSut_NoDiagnostic()

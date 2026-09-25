@@ -9,7 +9,7 @@ namespace Kaleido.Analyzers.Source.UnitTests;
 public sealed class DependencyRetentionAnalyzerTests
 {
     private static readonly DiagnosticResult Expected =
-        new("KAL0010", DiagnosticSeverity.Warning);
+        new("KAL0010", DiagnosticSeverity.Error);
 
     private const string Registrations = @"
 public static class AppServiceCollectionExtensions
@@ -41,17 +41,6 @@ public class Impl
     }
 
     [Fact]
-    public async Task UnusedCtorParameter_Reports()
-    {
-        await RunAsync(Registrations + @"
-public class Impl
-{
-    public Impl(IFoo {|#0:foo|}) { }
-}",
-            Expected.WithLocation(0).WithArguments("foo", "Impl"));
-    }
-
-    [Fact]
     public async Task ReadonlyServiceField_NoDiagnostic()
     {
         await RunAsync(Registrations + @"
@@ -62,13 +51,4 @@ public class Impl
 }");
     }
 
-    [Fact]
-    public async Task UsedPrimaryCtorParameter_NoDiagnostic()
-    {
-        await RunAsync(Registrations + @"
-public class Impl(IFoo foo)
-{
-    public void M() => _ = foo;
-}");
-    }
 }

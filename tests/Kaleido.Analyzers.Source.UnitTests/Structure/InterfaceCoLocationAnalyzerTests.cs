@@ -9,7 +9,7 @@ namespace Kaleido.Analyzers.Source.UnitTests;
 public sealed class InterfaceCoLocationAnalyzerTests
 {
     private static readonly DiagnosticResult Expected =
-        new("KAL0015", DiagnosticSeverity.Warning);
+        new("KAL0015", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task InterfaceInSameFileAsImpl_NoDiagnostic()

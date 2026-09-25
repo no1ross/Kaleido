@@ -20,7 +20,7 @@ public sealed class FixtureEmptyAnalyzer : DiagnosticAnalyzer
             "Fixture has no test methods",
             "Fixture '{0}' has no [Fact] or [Theory] test methods — add at least one test or remove the empty stub",
             "Kaleido.Tests",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

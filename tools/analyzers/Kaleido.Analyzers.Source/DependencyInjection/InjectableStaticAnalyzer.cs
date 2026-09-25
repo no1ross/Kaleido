@@ -23,7 +23,7 @@ public sealed class InjectableStaticAnalyzer : DiagnosticAnalyzer
             "Service-like types must not be static",
             "Static class '{0}' looks like an injectable service ('{1}' is not an extension method) — make it injectable or rename it",
             "Kaleido.Design",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

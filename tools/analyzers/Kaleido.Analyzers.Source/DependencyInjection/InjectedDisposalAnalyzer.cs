@@ -22,7 +22,7 @@ public sealed class InjectedDisposalAnalyzer : DiagnosticAnalyzer
             "Do not dispose container-owned dependencies",
             "'{0}' on '{1}' disposes a container-owned dependency ('{2}') — the container manages its lifetime",
             "Kaleido.Design",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

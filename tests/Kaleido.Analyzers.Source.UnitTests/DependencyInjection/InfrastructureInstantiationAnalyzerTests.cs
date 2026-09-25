@@ -9,7 +9,7 @@ namespace Kaleido.Analyzers.Source.UnitTests;
 public sealed class InfrastructureInstantiationAnalyzerTests
 {
     private static readonly DiagnosticResult Expected =
-        new("KAL0012", DiagnosticSeverity.Warning);
+        new("KAL0012", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task NewHttpClient_Reports()

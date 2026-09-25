@@ -17,7 +17,7 @@ namespace Xunit
 ";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL1010", DiagnosticSeverity.Warning);
+        new("KAL1010", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task FixtureWithFact_NoDiagnostic()

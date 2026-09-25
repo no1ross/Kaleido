@@ -1,8 +1,8 @@
-﻿using Kaleido.Process.Registry;
+using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.Planning;
 
-public sealed class StepCandidate
+internal sealed class StepCandidate
 {
     private readonly List<StepProcessingMessage> _messages = [];
 

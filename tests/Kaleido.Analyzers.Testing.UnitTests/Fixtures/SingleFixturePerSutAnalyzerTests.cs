@@ -15,13 +15,13 @@ namespace Xunit
 }";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL1004", DiagnosticSeverity.Warning);
+        new("KAL1004", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task TwoFixturesSameSutPrefix_Reports()
     {
         // Two classes literally named WidgetTests in different namespaces
-        // both map to SUT 'Widget' — second one is flagged
+        // both map to SUT 'Widget' ï¿½ second one is flagged
         await RunAsync(@"
 public class Widget { }
 
