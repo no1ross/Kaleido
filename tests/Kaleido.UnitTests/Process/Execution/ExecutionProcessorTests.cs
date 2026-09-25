@@ -1,4 +1,4 @@
-using Kaleido.Eventing;
+﻿using Kaleido.Eventing;
 using Kaleido.Observability;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
@@ -1082,7 +1082,7 @@ public sealed class ExecutionProcessorTests
         StepCandidate candidate,
         ProcessorContext context,
         ProcessorContext updatedContext,
-        ProcessStepInvokerResult invokerResult,
+        StepInvocationResult invokerResult,
         ExecutionDecision decision)
     {
         var invoker =
@@ -1221,8 +1221,8 @@ public sealed class ExecutionProcessorTests
                     It.IsAny<ProcessorContext>(),
                     It.IsAny<StepCandidate>(),
                     It.IsAny<ProcessExecutionOutcome>(),
-                    It.IsAny<ProcessStepInvokerResult>()))
-            .Returns<KaleidoCorrelationContext, ProcessorContext, StepCandidate, ProcessExecutionOutcome, ProcessStepInvokerResult>((_, context, candidate, outcome, _2) =>
+                    It.IsAny<StepInvocationResult>()))
+            .Returns<KaleidoCorrelationContext, ProcessorContext, StepCandidate, ProcessExecutionOutcome, StepInvocationResult>((_, context, candidate, outcome, _2) =>
             {
                 var stepContext = context.FindStep(candidate.StepName);
                 return new KaleidoEventEnvelope<StepCompleted, ProcessEventContext>
@@ -1273,10 +1273,10 @@ public sealed class ExecutionProcessorTests
         return availabilityResolver;
     }
 
-    private static ProcessStepInvokerResult CreateInvokerResult(
+    private static StepInvocationResult CreateInvokerResult(
         object? response = null)
     {
-        return new ProcessStepInvokerResult
+        return new StepInvocationResult
         {
             Succeeded = true,
             Response =

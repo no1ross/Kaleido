@@ -1,5 +1,5 @@
 ﻿using System.Net;
-using Kaleido.Http.Queryable.Contracts;
+using Kaleido.Http.Queryable;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
 
 namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Discovery;

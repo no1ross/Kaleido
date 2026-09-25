@@ -315,7 +315,7 @@ internal sealed class ExecutionProcessor(
 
     private static ProcessExecutionOutcome CreateOutcome(
         StepCandidate candidate,
-        ProcessStepInvokerResult result,
+        StepInvocationResult result,
         ExecutionDecision decision,
         StepExecutionStatus executionStatus)
     {
@@ -348,7 +348,7 @@ internal sealed class ExecutionProcessor(
 
     private static StepExecutionStatus MapStatus(
         StepCandidate candidate,
-        ProcessStepInvokerResult result,
+        StepInvocationResult result,
         ExecutionDecision decision)
     {
         if (candidate.Status == StepCandidateStatus.Invalid)

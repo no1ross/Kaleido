@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using Kaleido.Http.Process.Contracts;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Client.Process;

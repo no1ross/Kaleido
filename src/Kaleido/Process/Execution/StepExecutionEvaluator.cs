@@ -6,7 +6,7 @@ internal interface IStepExecutionEvaluator
 {
     ExecutionDecision Evaluate(
         StepCandidate currentCandidate,
-        ProcessStepInvokerResult result,
+        StepInvocationResult result,
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context);
 }
@@ -19,7 +19,7 @@ internal sealed class StepExecutionEvaluator(
 
     public ExecutionDecision Evaluate(
         StepCandidate currentCandidate,
-        ProcessStepInvokerResult result,
+        StepInvocationResult result,
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context)
     {

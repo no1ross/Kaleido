@@ -39,6 +39,36 @@ internal static class KaleidoClientExtensions
         return services;
     }
 
+    internal static IKaleidoBuilder AddProcessClient(
+        this IKaleidoBuilder builder,
+        Action<KaleidoHttpClientOptions> configure,
+        Action<IHttpClientBuilder>? configureClient = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        builder.Services.AddKaleidoClient<IKaleidoProcessClient, KaleidoProcessClientRouteOptionsMap, KaleidoProcessClientFactory, IKaleidoProcessClientFactory>(
+            configure,
+            configureClient);
+
+        return builder;
+    }
+
+    internal static IKaleidoBuilder AddQueryableClient(
+        this IKaleidoBuilder builder,
+        Action<KaleidoHttpClientOptions> configure,
+        Action<IHttpClientBuilder>? configureClient = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        builder.Services.AddKaleidoClient<IKaleidoQueryableClient, KaleidoQueryableClientRouteOptionsMap, KaleidoQueryableClientFactory, IKaleidoQueryableClientFactory>(
+            configure,
+            configureClient);
+
+        return builder;
+    }
+
     private static TMap GetOrAddRouteOptions<TMap>(IServiceCollection services)
         where TMap : class, IKaleidoClientRouteOptionsMap, new()
     {

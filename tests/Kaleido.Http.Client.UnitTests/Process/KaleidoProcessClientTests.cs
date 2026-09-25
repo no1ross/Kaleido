@@ -1,6 +1,6 @@
 using Kaleido.Http.Client;
 using Kaleido.Http.Client.Process;
-using Kaleido.Http.Process.Contracts;
+using Kaleido.Http.Process;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Process.Http.Client.Tests;

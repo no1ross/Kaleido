@@ -1,6 +1,6 @@
-using Kaleido.Http.Client;
+﻿using Kaleido.Http.Client;
 using Kaleido.Http.Client.Queryable;
-using Kaleido.Http.Queryable.Contracts;
+using Kaleido.Http.Queryable;
 using Kaleido.Observability;
 using Microsoft.Extensions.Logging.Abstractions;
 

@@ -1,4 +1,4 @@
-using Kaleido.Process.Context;
+﻿using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.UnitTests.Processor.Execution;
@@ -16,7 +16,7 @@ public sealed class StepExecutionEvaluatorTests
         var decision =
             evaluator.Evaluate(
                 CreateCandidate<StepA>("step-a"),
-                new ProcessStepInvokerResult
+                new StepInvocationResult
                 {
                     Succeeded = false
                 },
@@ -38,7 +38,7 @@ public sealed class StepExecutionEvaluatorTests
         var decision =
             evaluator.Evaluate(
                 CreateCandidate<StepA>("step-a"),
-                new ProcessStepInvokerResult
+                new StepInvocationResult
                 {
                     Succeeded = true,
                     RequiredStep = "step-c"
@@ -68,7 +68,7 @@ public sealed class StepExecutionEvaluatorTests
         var decision =
             evaluator.Evaluate(
                 CreateCandidate<StepA>("step-a"),
-                new ProcessStepInvokerResult
+                new StepInvocationResult
                 {
                     Succeeded = true,
                     RequiredStep = "step-b"
@@ -102,7 +102,7 @@ public sealed class StepExecutionEvaluatorTests
         var decision =
             evaluator.Evaluate(
                 CreateCandidate<StepA>("step-a"),
-                new ProcessStepInvokerResult
+                new StepInvocationResult
                 {
                     Succeeded = true,
                     RequiredStep = "step-b"
@@ -133,7 +133,7 @@ public sealed class StepExecutionEvaluatorTests
         var decision =
             evaluator.Evaluate(
                 CreateCandidate<StepA>("step-a"),
-                new ProcessStepInvokerResult
+                new StepInvocationResult
                 {
                     Succeeded = true
                 },
@@ -159,7 +159,7 @@ public sealed class StepExecutionEvaluatorTests
         var decision =
             evaluator.Evaluate(
                 CreateCandidate<StepA>("step-a"),
-                new ProcessStepInvokerResult
+                new StepInvocationResult
                 {
                     Succeeded = true
                 },
@@ -184,7 +184,7 @@ public sealed class StepExecutionEvaluatorTests
         var decision =
             evaluator.Evaluate(
                 CreateCandidate<StepA>("step-a"),
-                new ProcessStepInvokerResult
+                new StepInvocationResult
                 {
                     Succeeded = true
                 },
@@ -210,7 +210,7 @@ public sealed class StepExecutionEvaluatorTests
         var decision =
             evaluator.Evaluate(
                 CreateCandidate<StepA>("step-a"),
-                new ProcessStepInvokerResult
+                new StepInvocationResult
                 {
                     Succeeded = true,
                     RequiredStep = "Step-B"
@@ -236,7 +236,7 @@ public sealed class StepExecutionEvaluatorTests
         var decision =
             evaluator.Evaluate(
                 CreateCandidate<StepA>("step-a"),
-                new ProcessStepInvokerResult
+                new StepInvocationResult
                 {
                     Succeeded = true,
                     RequiredStep = "imaging-request",
@@ -265,7 +265,7 @@ public sealed class StepExecutionEvaluatorTests
         var decision =
             evaluator.Evaluate(
                 CreateCandidate<StepA>("step-a"),
-                new ProcessStepInvokerResult
+                new StepInvocationResult
                 {
                     Succeeded = true,
                     RequiredStep = "imaging-request",

@@ -6,7 +6,7 @@ namespace Kaleido.Process.Execution;
 
 internal interface IProcessStepInvoker
 {
-    Task<ProcessStepInvokerResult> ExecuteAsync(
+    Task<StepInvocationResult> ExecuteAsync(
         ProcessStepRegistration registration,
         object processStep,
         ProcessStepContext context,
@@ -14,7 +14,7 @@ internal interface IProcessStepInvoker
 }
 
 [ExcludeFromCodeCoverage]
-internal sealed record ProcessStepInvokerResult
+internal sealed record StepInvocationResult
 {
     public bool Succeeded { get; init; }
 
@@ -34,7 +34,7 @@ internal sealed class ProcessStepInvoker(
     : IProcessStepInvoker
 {
 
-    public async Task<ProcessStepInvokerResult> ExecuteAsync(
+    public async Task<StepInvocationResult> ExecuteAsync(
         ProcessStepRegistration registration,
         object processStep,
         ProcessStepContext context,
@@ -76,7 +76,7 @@ internal sealed class ProcessStepInvoker(
         }
     }
 
-    private static async Task<ProcessStepInvokerResult> ExecuteHandlerAsync(
+    private static async Task<StepInvocationResult> ExecuteHandlerAsync(
         object handler,
         object processStep,
         ProcessStepContext context,
@@ -120,7 +120,7 @@ internal sealed class ProcessStepInvoker(
 
         var handlerResult = getResultFromTask(task);
 
-        return new ProcessStepInvokerResult
+        return new StepInvocationResult
         {
             Succeeded = handlerResult.Succeeded,
             RequiredStep = handlerResult.RequiredStep,

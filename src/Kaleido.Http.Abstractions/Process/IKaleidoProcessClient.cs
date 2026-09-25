@@ -1,5 +1,3 @@
-using Kaleido.Http.Process.Contracts;
-
 namespace Kaleido.Http.Process;
 
 public interface IKaleidoProcessClient

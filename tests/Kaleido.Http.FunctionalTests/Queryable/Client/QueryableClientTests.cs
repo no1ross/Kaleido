@@ -1,6 +1,6 @@
-using Kaleido.Http.Client;
+﻿using Kaleido.Http.Client;
 using Kaleido.Http.Queryable;
-using Kaleido.Http.Queryable.Contracts;
+using Kaleido.Http.Queryable;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
 
