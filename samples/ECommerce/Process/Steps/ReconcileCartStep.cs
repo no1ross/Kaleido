@@ -1,5 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using Kaleido.Process.Attributes;
+using Kaleido.Process;
 using Kaleido.Samples.ECommerce.Steps;
 
 namespace Kaleido.Samples.ECommerce.Process.Steps;

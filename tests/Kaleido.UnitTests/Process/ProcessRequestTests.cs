@@ -1,4 +1,4 @@
-using Kaleido.Process.Attributes;
+using Kaleido.Process;
 
 namespace Kaleido.Process.UnitTests.Processor;
 

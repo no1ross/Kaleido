@@ -1,5 +1,4 @@
 using System.Reflection;
-using Kaleido.Process.Attributes;
 using Kaleido.Process.Execution;
 
 namespace Kaleido.Process.Registry;

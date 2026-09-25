@@ -1,5 +1,4 @@
 using System.Reflection;
-using Kaleido.Process.Attributes;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Execution;
