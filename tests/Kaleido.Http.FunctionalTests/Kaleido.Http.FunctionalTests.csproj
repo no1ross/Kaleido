@@ -12,6 +12,7 @@
 	<ItemGroup>
 		<Using Include="Kaleido.Http" />
 		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Execution" />
 		<Using Include="Kaleido.Queryable" />
 		<Using Include="Kaleido.Queryable.Metadata" />
 		<Using Include="Kaleido.Queryable.Query" />

@@ -1,6 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Kaleido.Exceptions;
-using Kaleido.Process.Planning;
 
 namespace Kaleido.Process.UnitTests.Processor.Planning;
 

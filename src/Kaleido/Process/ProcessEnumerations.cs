@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace Kaleido.Process;
 
@@ -155,4 +155,99 @@ public enum StepProcessingMessageCode
     FrameworkException,
     ProcessMessage,
     RepeatableStep
+}
+
+/// <summary>
+/// Represents the action the execution processor should take
+/// after evaluating the outcome of a step execution.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum ExecutionDecisionType
+{
+    /// <summary>
+    /// Execution can continue immediately using the specified
+    /// next candidate.
+    /// </summary>
+    Continue,
+
+    /// <summary>
+    /// The process has reached a terminal state and no further
+    /// execution is possible or required.
+    /// </summary>
+    Complete,
+
+    /// <summary>
+    /// The step executed successfully, but the business outcome
+    /// indicated failure and execution cannot continue.
+    /// </summary>
+    BusinessFailure,
+
+    /// <summary>
+    /// A process rule or framework invariant was violated.
+    /// Examples include illegal graph transitions or invalid
+    /// required step selections.
+    /// </summary>
+    ProcessViolation,
+
+    /// <summary>
+    /// The step executed successfully and is handing off to a
+    /// different processor for continued execution.
+    /// </summary>
+    HandOff,
+
+    /// <summary>
+    /// Execution cannot continue until a specific next step
+    /// is supplied by the consumer.
+    /// </summary>
+    AwaitingRequiredStep,
+
+    /// <summary>
+    /// Execution cannot continue because no executable candidate
+    /// was supplied. The consumer must select one of the available
+    /// next steps returned by the process.
+    /// </summary>
+    AwaitingStepSelection
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum ProcessExecutionState
+{
+    Active,
+    Complete,
+    BusinessFailure,
+    ProcessViolation,
+    HandOff,
+    AwaitingRequiredStep,
+    AwaitingStepSelection,
+    Exception,
+    Canceled
+}
+
+/// <summary>
+/// Represents the state of a step candidate during the planning phase.
+/// </summary>
+public enum StepCandidateStatus
+{
+    /// <summary>
+    /// Initial state before any planning or validation has occurred.
+    /// </summary>
+    Pending,
+
+    /// <summary>
+    /// The candidate was successfully created from the request
+    /// and is eligible for validation and consistency checks.
+    /// </summary>
+    Built,
+
+    /// <summary>
+    /// The candidate failed validation or consistency checks
+    /// and cannot participate in the execution plan.
+    /// </summary>
+    Invalid,
+
+    /// <summary>
+    /// The step has already been completed for the processor
+    /// and does not need to be included in the execution plan.
+    /// </summary>
+    Satisfied
 }

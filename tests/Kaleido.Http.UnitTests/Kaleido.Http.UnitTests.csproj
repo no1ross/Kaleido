@@ -9,6 +9,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Execution" />
 		<Using Include="Kaleido.Process.Registry" />
 		<Using Include="Kaleido.Queryable" />
 		<Using Include="Kaleido.Queryable.Metadata" />

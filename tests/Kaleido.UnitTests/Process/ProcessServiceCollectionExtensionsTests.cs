@@ -1,5 +1,4 @@
 using Kaleido.Process;
-using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

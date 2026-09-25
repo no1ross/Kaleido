@@ -1,5 +1,4 @@
 using Kaleido.Process.Context;
-using Kaleido.Process.Execution;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging.Abstractions;
 

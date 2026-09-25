@@ -26,7 +26,7 @@ public sealed class NullEventPublisherTests
             Event = new ProcessCreated
             {
                 OccurredOn = DateTimeOffset.UtcNow,
-                State = Kaleido.Process.Execution.ProcessExecutionState.Active,
+                State = ProcessExecutionState.Active,
                 CreatedUtc = DateTimeOffset.UtcNow,
                 UpdatedUtc = DateTimeOffset.UtcNow,
                 SubmittedStepCount = 0

@@ -1,5 +1,4 @@
 using Kaleido.Http.Process;
-using Kaleido.Process.Execution;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Metadata;

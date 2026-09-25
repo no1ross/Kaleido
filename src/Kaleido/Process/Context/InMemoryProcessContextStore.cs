@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using Kaleido.Process.Execution;
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Process.Context;

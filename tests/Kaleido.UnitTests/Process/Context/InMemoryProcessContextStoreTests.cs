@@ -1,5 +1,4 @@
 using Kaleido.Process.Context;
-using Kaleido.Process.Execution;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Process.UnitTests.Context;

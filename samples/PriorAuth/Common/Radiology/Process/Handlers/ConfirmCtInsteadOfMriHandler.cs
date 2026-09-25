@@ -1,4 +1,3 @@
-using Kaleido.Process.Execution;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;

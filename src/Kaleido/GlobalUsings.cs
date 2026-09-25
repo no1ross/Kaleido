@@ -3,4 +3,6 @@ global using Kaleido.Eventing;
 global using Kaleido.Exceptions;
 global using Kaleido.Observability;
 global using Kaleido.Process;
+global using Kaleido.Process.Execution;
+global using Kaleido.Process.Planning;
 global using Kaleido.Queryable;

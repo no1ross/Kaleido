@@ -1,5 +1,4 @@
 using Kaleido.Process;
-using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.UnitTests.Planning;

@@ -16,6 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Using Include="Kaleido.Process" />
+    <Using Include="Kaleido.Process.Execution" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\src\Kaleido\Kaleido.csproj" />
     <ProjectReference Include="..\..\..\src\Kaleido.Http.Abstractions\Kaleido.Http.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\src\Kaleido.Http.Client\Kaleido.Http.Client.csproj" />

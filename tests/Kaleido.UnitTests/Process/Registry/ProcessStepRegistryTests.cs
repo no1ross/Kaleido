@@ -1,6 +1,5 @@
-﻿using Kaleido.Exceptions;
+using Kaleido.Exceptions;
 using Kaleido.Process;
-using Kaleido.Process.Execution;
 using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.UnitTests.Processor.Registry;

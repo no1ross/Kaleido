@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 <ItemGroup>
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Execution" />
+	</ItemGroup>
+	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido.Provider.SQLite\Kaleido.Provider.SQLite.csproj" />
 		<ProjectReference Include="..\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
 	</ItemGroup>

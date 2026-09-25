@@ -10,6 +10,8 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Execution" />
+		<Using Include="Kaleido.Process.Planning" />
 		<Using Include="Kaleido.Queryable" />
 		<Using Include="Kaleido.Queryable.Metadata" />
 		<Using Include="Kaleido.Queryable.Query" />
