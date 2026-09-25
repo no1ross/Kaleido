@@ -69,7 +69,14 @@ internal sealed class ProcessStateService(
                                     FrameworkErrorCodes.MissingRegistration,
                                     $"Available step '{stepName}' was not found in the local registry.");
                             return responseFactory.CreateStepSummary(
-                                registration.ToSummary(),
+                                new ProcessorStepSummary
+                                {
+                                    Name = registration.Metadata.Name,
+                                    Description = registration.Metadata.Description,
+                                    DisplayName = registration.Metadata.DisplayName,
+                                    Version = registration.Metadata.Version,
+                                    Repeatable = registration.Repeatable.Enabled
+                                },
                                 serviceOptions.ServiceName);
                         })
                     .ToArray(),
