@@ -1,6 +1,6 @@
 # Kaleido Code Organization & Discoverability Review
 
-> Findings and recommendations only. No changes have been implemented.
+> Initial findings and recommendations. Implementation status noted inline.
 
 ---
 
@@ -90,55 +90,60 @@ Kaleido's source is well-structured at the project boundary level. The six-proje
 
 ## Part 2 — Top 20 File Organization Improvements
 
-### 1. Consolidate Process attributes into one file
+### 1. Consolidate Process attributes into one file ✅
 **Category:** Record/Attribute Consolidation  
 **Current:** `Process/Attributes/ProcessStepAttribute.cs`, `RepeatableAttribute.cs`, `DependsOnStepAttribute.cs`, `AvailableAfterAttribute.cs`, `AvailableUntilAttribute.cs` — 5 files  
 **Proposed:** `Process/ProcessStepAttributes.cs` — all 5 attributes in one file  
 **Why it matters:** These 5 attributes are always read together. `DependsOnStepAttribute` only ever appears alongside `ProcessStepAttribute`. Splitting them teaches nothing; it just forces 5 file opens.  
 **Expected benefit:** A developer can see the entire step authoring model in one file.  
 **Complexity:** Small  
-**Breaking change:** No
+**Breaking change:** No  
+**Status:** Done. Namespace promoted from `Kaleido.Process.Attributes` → `Kaleido.Process`.
 
 ---
 
-### 2. Consolidate Queryable attributes into one file
+### 2. Consolidate Queryable attributes into one file ✅
 **Category:** Attribute Consolidation  
 **Current:** `Queryable/Attributes/FilterableAttribute.cs`, `PageableAttribute.cs`, `QueryContextAttribute.cs`, `QueryViewAttribute.cs`, `SearchableAttribute.cs`, `SortableAttribute.cs` — 6 files  
 **Proposed:** `Queryable/QueryableAttributes.cs`  
 **Why it matters:** Same reason as #1. These attributes are always used together when authoring a query context.  
 **Complexity:** Small  
-**Breaking change:** No
+**Breaking change:** No  
+**Status:** Done. Namespace promoted from `Kaleido.Queryable.Attributes` → `Kaleido.Queryable`.
 
 ---
 
-### 3. Merge all Process enumerations into one file
+### 3. Merge all Process enumerations into one file ✅
 **Category:** Fragmentation  
 **Current:** `Process/Enumerations.cs` (StepExecutionOutcome, StepExecutionStatus, MessageType, StepProcessingMessageCode), `Process/Execution/Enumerations.cs` (ExecutionDecisionType, ProcessExecutionState), `Process/Planning/Enumerations.cs` (StepCandidateStatus) — 3 files  
 **Proposed:** `Process/ProcessEnumerations.cs` — all process enums in one file  
 **Why it matters:** Three files named `Enumerations.cs` in different folders is a navigation trap. `ProcessExecutionState` and `StepExecutionOutcome` are conceptually adjacent; a developer looking for one will want the other.  
 **Complexity:** Small  
-**Breaking change:** No (namespace changes if `Execution` namespace types move to `Process` namespace — see #4)
+**Breaking change:** No (namespace changes if `Execution` namespace types move to `Process` namespace — see #4)  
+**Status:** Done. All enums consolidated into `Process/ProcessEnumerations.cs` under `Kaleido.Process`.
 
 ---
 
-### 4. Promote `ProcessExecutionState` and `ExecutionDecisionType` to `Kaleido.Process` namespace
+### 4. Promote `ProcessExecutionState` and `ExecutionDecisionType` to `Kaleido.Process` namespace ✅
 **Category:** Namespace Simplification  
 **Current:** `ProcessExecutionState` is in `Kaleido.Process.Execution` namespace despite being a core public-facing concept visible in `ProcessResult`, `ProcessorContext`, HTTP responses, and events.  
 **Proposed:** Move to `Kaleido.Process` namespace alongside `ProcessResult`, `ProcessRequest`.  
 **Why it matters:** A consumer importing `ProcessResult` (namespace `Kaleido.Process`) shouldn't need a separate `using Kaleido.Process.Execution` just to read the state.  
 **Complexity:** Small  
-**Breaking change:** Yes (namespace change for `ProcessExecutionState`, `ExecutionDecisionType`)
+**Breaking change:** Yes (namespace change for `ProcessExecutionState`, `ExecutionDecisionType`)  
+**Status:** Done as part of #3 (ProcessEnumerations consolidation).
 
 ---
 
-### 5. Colocate `ProcessorContext` and `IProcessContextStore` with `InMemoryProcessContextStore`
+### 5. Colocate `ProcessorContext` and `IProcessContextStore` with `InMemoryProcessContextStore` ✅
 **Category:** Interface + Implementation Colocation  
 **Current:** `Process/Context/InMemoryProcessContextStore.cs` contains `IProcessContextStore`, `ProcessorContext`, `StepContext`, and `InMemoryProcessContextStore` — actually already colocated in one file. Good.  
 **Issue:** The file is named after the default implementation (`InMemoryProcessContextStore.cs`), which makes it hard to find `IProcessContextStore` by searching for it conceptually.  
 **Proposed:** Rename to `ProcessContextStore.cs`  
 **Why it matters:** The name should reflect the primary concept, not the default implementation.  
 **Complexity:** Small  
-**Breaking change:** No
+**Breaking change:** No  
+**Status:** Done. Renamed to `ProcessContextStore.cs`, class renamed to `ProcessContextStore`.
 
 ---
 
@@ -155,13 +160,14 @@ Kaleido's source is well-structured at the project boundary level. The six-proje
 
 ---
 
-### 8. Consolidate `ProcessStepResult.cs` and `IProcessStepHandler.cs`
+### 8. Consolidate `ProcessStepResult.cs` and `IProcessStepHandler.cs` ✅
 **Category:** Cohesion  
 **Current:** `Process/Execution/ProcessStepResult.cs` contains `IProcessStepHandlerResult`, `ProcessStepHandlerResult<T>`, and `ProcessStepHandlerResult`. `Process/Execution/IProcessStepHandler.cs` contains the two handler interfaces. These are inseparable — you cannot use `IProcessStepHandler` without `ProcessStepHandlerResult`.  
 **Proposed:** Merge into `Process/Execution/ProcessStepHandler.cs`  
 **Why it matters:** A consumer implementing `IProcessStepHandler<T>` needs to know both the interface and the result type. Today that requires two file opens.  
 **Complexity:** Small  
-**Breaking change:** No
+**Breaking change:** No  
+**Status:** Done.
 
 ---
 
@@ -182,53 +188,58 @@ Kaleido's source is well-structured at the project boundary level. The six-proje
 
 ---
 
-### 11. Consolidate `ProcessStepDefinition.cs` into `ProcessStepRegistry.cs`
+### 11. Consolidate `ProcessStepDefinition.cs` into `ProcessStepRegistry.cs` ✅
 **Category:** Internal Type Colocation  
 **Current:** `Process/Registry/ProcessStepDefinition.cs` contains two internal records (`ProcessStepDefinition`, `ProcessStepTypeDefinition`) used only inside `ProcessStepRegistry.cs`.  
 **Proposed:** Move as nested types or merge into `ProcessStepRegistry.cs`.  
 **Why it matters:** These are implementation details of a four-pass build algorithm inside the registry. They should live next to the algorithm that uses them.  
 **Complexity:** Small  
-**Breaking change:** No (internal types)
+**Breaking change:** No (internal types)  
+**Status:** Done.
 
 ---
 
-### 12. Consolidate `ProcessStepDependencyGraph.cs` into `ProcessStepRegistry.cs`
+### 12. Consolidate `ProcessStepDependencyGraph.cs` into `ProcessStepRegistry.cs` ✅
 **Category:** Internal Type Colocation  
 **Current:** `Process/Registry/ProcessStepDependencyGraph.cs` contains the cycle-detection logic used only during registry construction.  
 **Proposed:** Move into `ProcessStepRegistry.cs` or its partial file.  
 **Why it matters:** Only used in one place.  
 **Complexity:** Small  
-**Breaking change:** No (internal type)
+**Breaking change:** No (internal type)  
+**Status:** Done.
 
 ---
 
-### 13. Consolidate `ParticipantRegistryItem.cs` into `ProcessRegistry.cs`
+### 13. Consolidate `ParticipantRegistryItem.cs` into `ProcessRegistry.cs` ✅
 **Category:** Record Consolidation  
 **Current:** `Process/Registry/ParticipantRegistryItem.cs` contains 7 public records (`ProcessorRegistryItem`, `ProcessorStepRegistryItem`, `ProcessorStepSummary`, `ProcessorPropertyDescriptor`, `ProcessorInputFieldDescriptor`, `ProcessorOutputFieldDescriptor`, `ProcessorStepResultDescriptor`) used as the discovery contract. `ProcessRegistry.cs` contains `IProcessRegistry` and `ProcessRegistry`.  
 **Proposed:** Merge all into one file named `ProcessRegistry.cs` (or `ProcessorDiscovery.cs` if you want to separate the builder from the output shape).  
 **Why it matters:** These records are the output shape of `IProcessRegistry`. They belong next to the registry that produces them.  
 **Complexity:** Small  
-**Breaking change:** No
+**Breaking change:** No  
+**Status:** Done.
 
 ---
 
-### 14. Rename `Queryable/Records/` folder to `Queryable/Registry/`
+### 14. Rename `Queryable/Records/` folder to `Queryable/Registry/` ✅
 **Category:** Naming  
 **Current:** `Queryable/Records/` contains `QueryableRegistry.cs`, `QueryContextRegistry.cs`, `QueryViewRegistry.cs`, `DelegatedQueryViewRegistry.cs`, `QueryContextRegistrationValidator.cs`, `QueryViewRegistrationValidator.cs` — not records at all.  
 **Proposed:** Rename to `Queryable/Registry/`  
 **Why it matters:** `Records/` strongly implies data shapes. The actual content is registry and validation infrastructure. Every new maintainer will look in the wrong place.  
 **Complexity:** Small  
-**Breaking change:** No (internal namespace only)
+**Breaking change:** No (internal namespace only)  
+**Status:** Done. Namespace updated from `Kaleido.Queryable.Records` → `Kaleido.Queryable.Registry`.
 
 ---
 
-### 15. Consolidate Queryable query source interfaces into one file
+### 15. Consolidate Queryable query source interfaces into one file ✅
 **Category:** Interface Consolidation  
 **Current:** `Queryable/Query/IQueryContextSource.cs`, `IQueryContextSourceAsync.cs`, `IQueryViewSource.cs`, `IQueryViewSourceAsync.cs`, `IDelegateQueryViewSource.cs` — 5 separate interface files  
 **Proposed:** `Queryable/Query/QuerySources.cs`  
 **Why it matters:** These 5 interfaces form the authoring contract for Queryable. A developer implementing a query context needs all of them visible at once. No independent value in separating them.  
 **Complexity:** Small  
-**Breaking change:** No
+**Breaking change:** No  
+**Status:** Done. Consolidated into `Queryable/QuerySources.cs` and promoted to `Kaleido.Queryable` namespace (these are the primary consumer extension surface, not internal query machinery).
 
 ---
 
@@ -331,9 +342,10 @@ Kaleido's source is well-structured at the project boundary level. The six-proje
 
 ---
 
-### 9. `ProcessStepRegistration.Projection.cs` — partial file with no obvious purpose
+### 9. `ProcessStepRegistration.Projection.cs` — partial file with no obvious purpose ✅
 **Current:** `Process/Registry/ProcessStepRegistration.Projection.cs` extends `ProcessStepRegistration` with projection helpers.  
-**Recommendation:** Either inline into `ProcessStepRegistration.cs` (if small enough) or rename to `ProcessStepRegistration.RegistryProjection.cs` to make its purpose clear from the name.
+**Recommendation:** Either inline into `ProcessStepRegistration.cs` (if small enough) or rename to `ProcessStepRegistration.RegistryProjection.cs` to make its purpose clear from the name.  
+**Status:** Done. Renamed to `ProcessStepRegistration.Discovery.cs`.
 
 ---
 
@@ -371,9 +383,9 @@ Kaleido's source is well-structured at the project boundary level. The six-proje
 | 5 | `ExecutionDecision` | `ExecutionDecision.cs` | Merge into `ProcessExecutor.cs` | Internal type used only in executor/evaluator |
 | 6 | `ProcessStepInvokerResult` | `ProcessStepInvoker.cs` | Already colocated — good | — |
 | 7 | `QueryContextRegistration`, `QueryContextMetadata`, `FieldMetadata`, `QueryViewRegistration`, `DelegatedQueryViewRegistration`, `QueryViewMetadata`, `PageableMetadata`, `QueryParameterMetadata`, `QueryOutputFieldMetadata`, `QueryableContextRegistryItem`, `QueryableViewRegistryItem`, `QueryablePropertyDescriptor`, `QueryableFieldDescriptor`, `QueryableParameterDescriptor`, `QueryableOutputFieldDescriptor`, `QueryContextKind` | `Queryable/Metadata/QueryRegistration.cs` | Keep together — this is already correct | One 185-line file beats 15 files |
-| 8 | `KaleidoEventEnvelope`, `IKaleidoEvent`, `IEventPublisher`, `NullEventPublisher` | Split across 2 files | `Eventing/EventPublisher.cs` | All eventing abstractions in one file |
-| 9 | `ProcessEventContext`, `QueryableEventContext` | 2 files | `Eventing/EventContexts.cs` | Naturally grouped context types |
-| 10 | `ProcessCreated`, `PlanBuilt`, `PlanBuiltCandidate`, `PlanBuiltCandidateMessage`, `StepCompleted`, `ExecutionCompleted`, `ProcessEventBase` | 6 files in `Process/Eventing/` | `Process/Eventing/ProcessEvents.cs` | All process events belong together |
+| 8 | `KaleidoEventEnvelope`, `IKaleidoEvent`, `IEventPublisher`, `NullEventPublisher` | Split across 2 files | `Eventing/EventPublisher.cs` | All eventing abstractions in one file | ✅ Done (`NullEventPublisher` → `EventPublisher`) |
+| 9 | `ProcessEventContext`, `QueryableEventContext` | 2 files | `Eventing/EventContexts.cs` | Naturally grouped context types | — |
+| 10 | `ProcessCreated`, `PlanBuilt`, `PlanBuiltCandidate`, `PlanBuiltCandidateMessage`, `StepCompleted`, `ExecutionCompleted`, `ProcessEventBase` | 6 files in `Process/Eventing/` | `Process/Eventing/ProcessEvents.cs` | All process events belong together | ✅ Done |
 
 ---
 
@@ -399,8 +411,8 @@ Kaleido's source is well-structured at the project boundary level. The six-proje
 | # | Type | Current File | Proposed Location | Reason |
 |---|---|---|---|---|
 | 1 | `ExecutionDecision` | `ExecutionDecision.cs` | Nest inside `ProcessExecutor.cs` | Only used by executor/evaluator |
-| 2 | `ProcessStepDefinition`, `ProcessStepTypeDefinition` | `ProcessStepDefinition.cs` | Merge into `ProcessStepRegistry.cs` | Build-time types used only in registry |
-| 3 | `KaleidoEventTypes` | `Eventing/KaleidoEventTypes.cs` | Merge into `Eventing/ProcessEventFactory.cs` or `EventPublisher.cs` | Internal constants used only in factories |
+| 2 | `ProcessStepDefinition`, `ProcessStepTypeDefinition` | `ProcessStepDefinition.cs` | Merge into `ProcessStepRegistry.cs` | Build-time types used only in registry | ✅ Done |
+| 3 | `KaleidoEventTypes` | `Eventing/KaleidoEventTypes.cs` | Merge into `Eventing/ProcessEventFactory.cs` or `EventPublisher.cs` | Internal constants used only in factories | ✅ Done (inlined as string literals) |
 | 4 | `QueryContextRegistrationValidator` | `Records/QueryContextRegistrationValidator.cs` | Merge into `QueryContextRegistry.cs` | Validator is only called during registry construction |
 | 5 | `QueryViewRegistrationValidator` | `Records/QueryViewRegistrationValidator.cs` | Merge into `QueryViewRegistry.cs` | Same reason |
 | 6 | `InMemoryProcessContextStore` | `ProcessContext/InMemoryProcessContextStore.cs` | Keep here — already colocated with `IProcessContextStore` | Only rename file |
@@ -455,13 +467,13 @@ Opening any of the three files named `Enumerations.cs` in an IDE (especially wit
 
 | File | Issue | Recommendation |
 |---|---|---|
-| `InMemoryProcessContextStore.cs` | Named after default implementation, not the concept | Rename to `ProcessContextStore.cs` |
-| `ParticipantRegistryItem.cs` | "Participant" is not used anywhere in the public API | Rename to `ProcessRegistryItems.cs` or merge into `ProcessRegistry.cs` |
-| `NullEventPublisher.cs` | Contains `IEventPublisher`, `IKaleidoEvent`, and `NullEventPublisher` — three distinct concepts | Rename to `EventPublisher.cs` |
-| `Enumerations.cs` (×3) | Identical names in different folders | Rename to `ProcessEnumerations.cs`, `ProcessExecutionEnumerations.cs`, `ProcessPlanningEnumerations.cs` — or merge |
-| `CompiledContracts.cs` | "Compiled" is meaningful only in context | Rename to `QueryCompilationTypes.cs` |
-| `ProcessStepRegistration.Projection.cs` | Partial file — purpose unclear from name | Rename to `ProcessStepRegistration.Discovery.cs` |
-| `QueryableEventContext.cs` | In `Eventing/` root but specific to Queryable | Move to `Queryable/Eventing/` or merge into `EventContexts.cs` |
+| `InMemoryProcessContextStore.cs` | Named after default implementation, not the concept | Rename to `ProcessContextStore.cs` | ✅ Done |
+| `ParticipantRegistryItem.cs` | "Participant" is not used anywhere in the public API | Rename to `ProcessRegistryItems.cs` or merge into `ProcessRegistry.cs` | ✅ Done (merged into `ProcessRegistry.cs`) |
+| `NullEventPublisher.cs` | Contains `IEventPublisher`, `IKaleidoEvent`, and `NullEventPublisher` — three distinct concepts | Rename to `EventPublisher.cs` | ✅ Done |
+| `Enumerations.cs` (×3) | Identical names in different folders | Rename to `ProcessEnumerations.cs`, `ProcessExecutionEnumerations.cs`, `ProcessPlanningEnumerations.cs` — or merge | ✅ Done (merged into `ProcessEnumerations.cs`) |
+| `CompiledContracts.cs` | "Compiled" is meaningful only in context | Rename to `QueryCompilationTypes.cs` | — |
+| `ProcessStepRegistration.Projection.cs` | Partial file — purpose unclear from name | Rename to `ProcessStepRegistration.Discovery.cs` | ✅ Done |
+| `QueryableEventContext.cs` | In `Eventing/` root but specific to Queryable | Move to `Queryable/Eventing/` or merge into `EventContexts.cs` | — |
 
 ---
 
