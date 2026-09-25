@@ -10,6 +10,12 @@ namespace Kaleido.Eventing;
 public sealed record KaleidoEventEnvelope<TEvent, TContext>
     where TEvent : IKaleidoEvent
 {
+    /// <summary>
+    /// The stable string type discriminator for this event (e.g. <c>"process.step-completed.v1"</c>).
+    /// Use this in <see cref="IEventPublisher"/> implementations for routing and serialization.
+    /// </summary>
+    public required string EventType { get; init; }
+
     /// <summary>The correlation and traceability context for this event.</summary>
     public required TContext Context { get; init; }
 

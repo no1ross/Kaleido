@@ -3,7 +3,6 @@ using Kaleido.Process.Execution;
 namespace Kaleido.Process.Eventing;
 
 [ExcludeFromCodeCoverage]
-[KaleidoEvent(Type = "process.plan-built.v1")]
 public sealed record PlanBuilt : ProcessEventBase
 {
     public required ProcessExecutionState State { get; init; }

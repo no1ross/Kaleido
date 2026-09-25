@@ -16,6 +16,7 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
 
         var config = new Kaleido.KaleidoClientOptions();
         builder.Configuration.GetSection(KaleidoServiceOptions.SectionName).Bind(config);
+        builder.Services.AddSingleton(config);
 
         foreach (var (name, entry) in config.Clients)
         {

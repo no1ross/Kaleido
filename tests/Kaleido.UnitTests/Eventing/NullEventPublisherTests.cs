@@ -15,6 +15,7 @@ public sealed class NullEventPublisherTests
         var sut = CreateSut();
         var envelope = new KaleidoEventEnvelope<ProcessCreated, Kaleido.Eventing.ProcessEventContext>
         {
+            EventType = "process.created.v1",
             Context = new Kaleido.Eventing.ProcessEventContext
             {
                 RequestId = "req-1",

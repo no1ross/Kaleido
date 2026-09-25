@@ -3,7 +3,6 @@ using Kaleido.Process.Execution;
 namespace Kaleido.Process.Eventing;
 
 [ExcludeFromCodeCoverage]
-[KaleidoEvent(Type = "process.step-completed.v1")]
 public sealed record StepCompleted : ProcessEventBase
 {
     public required string StepName { get; init; }

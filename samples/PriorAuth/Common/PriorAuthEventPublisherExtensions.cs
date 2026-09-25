@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-using System.Reflection;
 using System.Text.Json;
 using Kaleido.Eventing;
 
@@ -30,7 +29,7 @@ public sealed class HttpEventPublisher(
                     "/events",
                     new
                     {
-                        EventType = GetEventType(envelope.Event),
+                        EventType = envelope.EventType,
                         Context = (object)envelope.Context!,
                         Event = JsonSerializer.SerializeToElement(envelope.Event)
                     },
@@ -39,22 +38,4 @@ public sealed class HttpEventPublisher(
         response.EnsureSuccessStatusCode();
     }
 
-    private static string GetEventType<TEvent>(TEvent eventData)
-        where TEvent : IKaleidoEvent
-    {
-        ArgumentNullException.ThrowIfNull(eventData);
-
-        var attribute =
-            eventData
-                .GetType()
-                .GetCustomAttribute<KaleidoEventAttribute>();
-
-        if (attribute?.Type is null)
-        {
-            throw new InvalidOperationException(
-                $"No KaleidoEventAttribute type metadata exists for '{eventData.GetType().FullName}'.");
-        }
-
-        return attribute.Type;
-    }
 }

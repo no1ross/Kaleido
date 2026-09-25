@@ -5,7 +5,6 @@ public interface IQueryEvent : IKaleidoEvent
 }
 
 [ExcludeFromCodeCoverage]
-[KaleidoEvent(Type = "query.executed.v1")]
 public sealed record QueryExecuted : IQueryEvent
 {
     public required DateTimeOffset OccurredOn { get; init; }

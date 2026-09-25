@@ -39,17 +39,10 @@ public static class RegistryEndpointRouteBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
-        // Guard — MapRegistry() requires AddHttpClients() to have been called so that
-        // IKaleidoProcessClientFactory and IKaleidoQueryableClientFactory are registered.
-        // Even when there are no downstream clients configured, calling AddHttpClients()
-        // is what wires up the endpoint factories that the handler depends on.
-        var processClientFactory = endpoints.ServiceProvider
-            .GetService<IKaleidoProcessClientFactory>();
-
-        var queryableClientFactory = endpoints.ServiceProvider
-            .GetService<IKaleidoQueryableClientFactory>();
-
-        if (processClientFactory is null || queryableClientFactory is null)
+        // Guard — MapRegistry() requires AddHttpClients() to have been called.
+        // KaleidoClientOptions is registered as a singleton by AddHttpClients() and
+        // serves as the marker that the client infrastructure is wired up.
+        if (endpoints.ServiceProvider.GetService<KaleidoClientOptions>() is null)
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.ProInvalidRegistration,
@@ -88,6 +81,8 @@ public static class RegistryEndpointRouteBuilderExtensions
                 RegistryContractUrls.Registry(localServiceOptions.ServiceName),
                 async (
                     HttpContext httpContext,
+                    IKaleidoProcessClientFactory processClientFactory,
+                    IKaleidoQueryableClientFactory queryableClientFactory,
                     [FromServices] IProcessResponseFactory responseFactory,
                     CancellationToken cancellationToken) =>
                 {

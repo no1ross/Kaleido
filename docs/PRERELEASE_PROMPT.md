@@ -6,6 +6,18 @@ Review Constraints
 
 DO NOT IMPLEMENT CHANGES DURING THIS REVIEW.
 
+Breaking changes are acceptable during this pre-release review.
+
+Breaking changes are permitted, but unnecessary churn is not.
+
+Do not preserve an API, abstraction, implementation, file structure, naming convention, or behavior solely to avoid a breaking change.
+
+If a breaking change would materially improve simplicity, maintainability, consistency, discoverability, developer experience, architectural integrity, or long-term supportability, recommend the breaking change.
+
+Evaluate the best long-term design for Kaleido 1.0 rather than preserving compatibility with the current pre-release design.
+
+However, do not recommend breaking changes merely for stylistic preference or theoretical purity. Every proposed breaking change must provide a clear and meaningful improvement.
+
 Your first deliverable is cleanup.md only.
 
 Produce findings, recommendations, priorities, and proposed solutions.
@@ -105,15 +117,17 @@ Finding Format
 
 For every finding include:
 
-Severity (Critical / High / Medium / Low)
-Category
-Description
-Why It Matters
-Recommended Fix
-Estimated Complexity (Small / Medium / Large)
-Breaking Change Risk (None / Low / Medium / High)
-Can Be Automated (Yes / No)
-Review Phases
+- Severity (Critical / High / Medium / Low)
+- Category
+- Description
+- Why It Matters
+- Recommended Fix
+- Estimated Complexity (Small / Medium / Large)
+- Breaking Change (Yes / No)
+- Breaking Change Scope (None / Internal / Public API / Behavioral / Configuration / Package)
+- Migration Impact (None / Low / Medium / High)
+- Long-Term Benefit
+- Can Be Automated (Yes / No)
 
 For every phase below, generate a checklist of findings and recommendations.
 
@@ -460,3 +474,72 @@ Documentation Score (1-10)
 Release Readiness Score (1-10)
 
 Explain every score in detail.
+
+
+Analyzer Opportunity Review
+
+Identify opportunities for new Kaleido-specific analyzers.
+
+Recommend analyzers only when they enforce meaningful architectural standards, framework usage patterns, testing conventions, dependency injection requirements, API design principles, or developer guidance that cannot be effectively enforced through existing Roslyn analyzers, EditorConfig settings, StyleCop, or Meziantou Analyzer rules.
+
+For each proposed analyzer include:
+
+- Analyzer ID Proposal
+- Purpose
+- Problem Being Solved
+- Example Violation
+- Severity Recommendation
+- Estimated Implementation Complexity
+- Expected Long-Term Value
+
+Breaking Change Review
+
+Provide a consolidated list of all recommended breaking changes.
+
+For every recommended breaking change include:
+
+- Current API, behavior, or structure
+- Proposed replacement
+- Why the current design should not be preserved
+- Long-term benefit
+- Affected projects, namespaces, types, or consumers
+- Migration impact
+- Whether documentation, analyzers, tests, or examples must also change
+- Whether the change should be completed before 1.0
+
+
+
+Pre-1.0 Breaking Change Policy
+
+Kaleido has not yet reached its public 1.0 release. Breaking changes are acceptable when they materially improve the framework.
+
+Do not preserve an API, abstraction, implementation, file structure, naming convention, configuration model, or behavior solely for backward compatibility.
+
+Recommend breaking changes when they materially improve:
+
+- Simplicity
+- Maintainability
+- Consistency
+- Discoverability
+- Developer experience
+- Testability
+- Observability
+- Performance
+- Security
+- Architectural integrity
+- Long-term supportability
+
+Evaluate the best long-term design for Kaleido 1.0 rather than preserving compatibility with the current pre-release design.
+
+Breaking changes are permitted, but unnecessary churn is not.
+
+Do not recommend a breaking change solely because another design is newer, more fashionable, personally preferred, or theoretically purer.
+
+Every proposed breaking change must identify:
+
+- The concrete problem being solved
+- Why a non-breaking alternative is insufficient
+- The affected public or internal surface
+- The expected long-term benefit
+- The migration impact
+- Any required changes to tests, documentation, analyzers, and examples

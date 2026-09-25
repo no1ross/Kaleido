@@ -1229,6 +1229,7 @@ public sealed class ExecutionProcessorTests
                 var stepContext = context.FindStep(candidate.StepName);
                 return new KaleidoEventEnvelope<StepCompleted, ProcessEventContext>
                 {
+                    EventType = "process.step-completed.v1",
                     Context = CreateStubContext(context.ProcessId),
                     Event = new StepCompleted
                     {
