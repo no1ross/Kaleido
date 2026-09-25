@@ -224,67 +224,6 @@ dotnet_diagnostic.MA0051.severity = suggestion ; Method is too long (known tech 
 ; ctor triad would allow Code-less instances, breaking the hierarchy's invariant
 dotnet_diagnostic.RCS1194.severity = none
 
-; ── Kaleido custom rules — global defaults ───────────────────────────────────
-; Rules that apply everywhere are set to warning/error here.
-; Rules scoped to specific project types default to none and are opted in below.
-
-; Design rules (always on)
-dotnet_diagnostic.KAL0001.severity = warning  ; Static classes only for extension methods
-dotnet_diagnostic.KAL0002.severity = warning  ; Throw Kaleido*Exception not BCL exceptions
-dotnet_diagnostic.KAL0003.severity = warning  ; No '!' null-forgiving operator
-dotnet_diagnostic.KAL0004.severity = error    ; Exception types must not be records
-
-; DI rules (KAL0005–KAL0015) — off globally; src/ opts in as errors below
-dotnet_diagnostic.KAL0005.severity = none
-dotnet_diagnostic.KAL0006.severity = none
-dotnet_diagnostic.KAL0007.severity = none
-dotnet_diagnostic.KAL0008.severity = none
-dotnet_diagnostic.KAL0009.severity = none
-dotnet_diagnostic.KAL0010.severity = none
-dotnet_diagnostic.KAL0011.severity = none
-dotnet_diagnostic.KAL0012.severity = none
-dotnet_diagnostic.KAL0013.severity = none
-dotnet_diagnostic.KAL0014.severity = none
-dotnet_diagnostic.KAL0015.severity = none
-
-; API design rules (KAL0018–KAL0019) — off globally; src/ opts in below
-dotnet_diagnostic.KAL0018.severity = none
-dotnet_diagnostic.KAL0019.severity = none
-
-; ════════════════════════════════════════════════════════════════════════════
-; src/ — production source projects
-; ════════════════════════════════════════════════════════════════════════════
-
-[src/**/*.cs]
-
-; KAL0005–KAL0015: full DI enforcement as errors
-; injectable types not static (0005), no new-ing registered impls (0006),
-; no service locator (0007), inject abstractions (0008), ctor injection only
-; (0009), retain injected deps (0010), no work in DI ctors (0011), no manual
-; infra instantiation (0012), no disposing container-owned deps (0013), no
-; captive scoped→singleton (0014), interface co-located with impl (0015)
-dotnet_diagnostic.KAL0005.severity = error
-dotnet_diagnostic.KAL0006.severity = error
-dotnet_diagnostic.KAL0007.severity = error
-dotnet_diagnostic.KAL0008.severity = error
-dotnet_diagnostic.KAL0009.severity = error
-dotnet_diagnostic.KAL0010.severity = error
-dotnet_diagnostic.KAL0011.severity = error
-dotnet_diagnostic.KAL0012.severity = error
-dotnet_diagnostic.KAL0013.severity = error
-dotnet_diagnostic.KAL0014.severity = error
-dotnet_diagnostic.KAL0015.severity = error
-
-; KAL0018: public APIs must not expose mutable collections
-; KAL0019: async methods must accept CancellationToken
-dotnet_diagnostic.KAL0018.severity = warning
-dotnet_diagnostic.KAL0019.severity = warning
-
-; KAL0016–KAL0017: HTTP endpoint tag conventions — Kaleido.Http only
-[src/Kaleido.Http/**/*.cs]
-dotnet_diagnostic.KAL0016.severity = warning  ; MapGet/MapPost must chain .WithTags()
-dotnet_diagnostic.KAL0017.severity = warning  ; .WithTags() must include "Kaleido"
-
 ; EF Core entity navigation properties use ICollection<T> by convention
 [src/Kaleido.Provider.SQLite/**/*.cs]
 dotnet_diagnostic.KAL0018.severity = none
@@ -312,13 +251,20 @@ dotnet_diagnostic.CA2263.severity = silent
 ; IDE0060: stub signatures must mirror the contract even when params are unused
 dotnet_diagnostic.IDE0060.severity = silent
 
-; KAL0002: test stubs may throw BCL exceptions (Moq setups, failure injection)
+; KAL0002: test stubs legitimately throw BCL exceptions (Moq setups, failure injection)
 dotnet_diagnostic.KAL0002.severity = none
 
-; KAL0003: tests use '!' for Assert.NotNull follow-ons and null! arg injection
+; KAL0003: test code uses '!' for Assert.NotNull follow-ons and null! arg injection
 dotnet_diagnostic.KAL0003.severity = none
 
-; KAL0019: xUnit [Fact]/[Theory] async test methods do not take CancellationToken
+; KAL0007: tests resolve services from IServiceProvider to verify DI registrations
+dotnet_diagnostic.KAL0007.severity = none
+
+; KAL0012: tests legitimately use new ServiceCollection() and new HttpClient() to build
+;          test containers — this is the test composition root, not production DI
+dotnet_diagnostic.KAL0012.severity = none
+
+; KAL0019: xUnit async test methods do not take CancellationToken — that is the xUnit contract
 dotnet_diagnostic.KAL0019.severity = none
 
 ; MA0002/MA0006/MA0016: collection abstractions and comparers matter less in

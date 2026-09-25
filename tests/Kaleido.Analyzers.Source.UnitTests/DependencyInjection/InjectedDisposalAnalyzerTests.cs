@@ -9,7 +9,7 @@ namespace Kaleido.Analyzers.Source.UnitTests;
 public sealed class InjectedDisposalAnalyzerTests
 {
     private static readonly DiagnosticResult Expected =
-        new("KAL0013", DiagnosticSeverity.Warning);
+        new("KAL0013", DiagnosticSeverity.Error);
 
     private const string Registrations = @"
 public static class AppServiceCollectionExtensions

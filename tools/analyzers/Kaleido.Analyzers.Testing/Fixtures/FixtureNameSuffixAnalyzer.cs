@@ -17,7 +17,7 @@ public sealed class FixtureNameSuffixAnalyzer : DiagnosticAnalyzer
             "Test fixture names must end with 'Tests'",
             "Test fixture '{0}' must be named after its subject under test ('{1}Tests')",
             "Kaleido.Tests",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

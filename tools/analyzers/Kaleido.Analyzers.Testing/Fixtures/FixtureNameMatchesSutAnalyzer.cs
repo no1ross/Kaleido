@@ -18,7 +18,7 @@ public sealed class FixtureNameMatchesSutAnalyzer : DiagnosticAnalyzer
             "Fixture name must match its declared SUT",
             "Test fixture '{0}' declares SUT '{1}' — it must be named '{2}'",
             "Kaleido.Tests",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

@@ -23,7 +23,7 @@ public sealed class ServiceLocatorAnalyzer : DiagnosticAnalyzer
             "Resolve dependencies through constructor injection, not IServiceProvider",
             "'{0}' on IServiceProvider is a service locator call — inject the dependency through the constructor instead",
             "Kaleido.Design",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

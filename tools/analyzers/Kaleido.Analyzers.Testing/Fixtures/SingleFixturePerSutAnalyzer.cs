@@ -20,7 +20,7 @@ public sealed class SingleFixturePerSutAnalyzer : DiagnosticAnalyzer
             "Only one test fixture per subject under test",
             "Test fixture '{0}' duplicates '{1}' — both map to SUT '{2}'",
             "Kaleido.Tests",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             customTags: WellKnownDiagnosticTags.CompilationEnd);
 

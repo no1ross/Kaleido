@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 
-// Framework projects
-[assembly: InternalsVisibleTo("Kaleido.AspNetCore")]
+// Framework siblings — share internal route/map infrastructure
 [assembly: InternalsVisibleTo("Kaleido.Http")]
 [assembly: InternalsVisibleTo("Kaleido.Http.Client")]
 

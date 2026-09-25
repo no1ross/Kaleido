@@ -21,7 +21,7 @@ public sealed class InterfaceCoLocationAnalyzer : DiagnosticAnalyzer
             "Interface must live in the same file as its implementation",
             "Interface '{0}' should be declared in '{1}' alongside '{2}' — an interface and its concrete class share a file",
             "Kaleido.Layout",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

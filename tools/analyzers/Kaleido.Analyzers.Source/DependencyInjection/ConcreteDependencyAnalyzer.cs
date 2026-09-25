@@ -21,7 +21,7 @@ public sealed class ConcreteDependencyAnalyzer : DiagnosticAnalyzer
             "Inject the service abstraction, not the concrete implementation",
             "Parameter '{0}' is typed as concrete '{1}' — inject '{2}' instead",
             "Kaleido.Design",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

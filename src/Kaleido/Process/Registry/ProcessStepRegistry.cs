@@ -2,18 +2,58 @@ using System.Reflection;
 
 namespace Kaleido.Process.Registry;
 
-internal interface IProcessStepRegistry
+/// <summary>
+/// Read-only view of all process steps registered for this service.
+/// </summary>
+/// <remarks>
+/// Populated at startup by <c>AddProcessor()</c> via assembly scanning for types
+/// decorated with <c>[ProcessStep]</c>. The registry is immutable after the DI
+/// container is built.
+/// Inject this interface to inspect available steps, resolve step metadata by name
+/// or CLR type, or drive dynamic process execution logic.
+/// </remarks>
+public interface IProcessStepRegistry
 {
+    /// <summary>
+    /// All registered process steps, in an unspecified order.
+    /// </summary>
     IReadOnlyCollection<ProcessStepRegistration> Registrations { get; }
 
+    /// <summary>
+    /// The subset of registered steps that have no <c>DependsOn</c> or
+    /// <c>AvailableAfter</c> constraints — i.e., the steps that are valid
+    /// entry points for a new process execution.
+    /// </summary>
     IReadOnlyCollection<ProcessStepRegistration> InitialRegistrations { get; }
 
+    /// <summary>
+    /// Returns the registration for the step with the given name, or
+    /// <see langword="null"/> if no step with that name is registered.
+    /// Name comparison is case-insensitive.
+    /// </summary>
     ProcessStepRegistration? Find(string name);
 
+    /// <summary>
+    /// Returns the registration for the step whose CLR type matches
+    /// <paramref name="stepType"/>, or <see langword="null"/> if not found.
+    /// </summary>
     ProcessStepRegistration? Find(Type stepType);
 
+    /// <summary>
+    /// Returns the registration for the step with the given name.
+    /// </summary>
+    /// <exception cref="KaleidoFrameworkException">
+    /// Thrown when no step with <paramref name="name"/> is registered.
+    /// </exception>
     ProcessStepRegistration GetRegistration(string name);
 
+    /// <summary>
+    /// Returns the registration for the step whose CLR type matches
+    /// <paramref name="stepType"/>.
+    /// </summary>
+    /// <exception cref="KaleidoFrameworkException">
+    /// Thrown when no step matching <paramref name="stepType"/> is registered.
+    /// </exception>
     ProcessStepRegistration GetRegistration(Type stepType);
 }
 

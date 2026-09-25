@@ -19,7 +19,7 @@ public sealed class PropertyInjectionAnalyzer : DiagnosticAnalyzer
             "Services must use constructor injection",
             "'{0}' on service '{1}' injects '{2}' outside the constructor — use constructor injection",
             "Kaleido.Design",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

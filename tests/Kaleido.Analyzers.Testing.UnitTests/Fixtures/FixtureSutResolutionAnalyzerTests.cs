@@ -15,7 +15,7 @@ namespace Xunit
 }";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL1002", DiagnosticSeverity.Warning);
+        new("KAL1002", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task PrefixResolves_NoDiagnostic()

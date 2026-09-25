@@ -25,7 +25,7 @@ public class Dependency { }
 ";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL1008", DiagnosticSeverity.Warning);
+        new("KAL1008", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task NewInCreateSut_NoDiagnostic()

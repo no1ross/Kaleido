@@ -22,7 +22,7 @@ public sealed class InfrastructureInstantiationAnalyzer : DiagnosticAnalyzer
             "Do not manually instantiate infrastructure dependencies",
             "'new {0}()' bypasses the container-managed factory — inject the corresponding abstraction instead",
             "Kaleido.Design",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

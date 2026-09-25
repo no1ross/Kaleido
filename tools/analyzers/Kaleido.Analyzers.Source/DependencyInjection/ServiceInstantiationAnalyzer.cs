@@ -22,7 +22,7 @@ public sealed class ServiceInstantiationAnalyzer : DiagnosticAnalyzer
             "Resolve service types from DI instead of newing them up",
             "Type '{0}' is a DI-registered service implementation — resolve it from DI instead of newing it up",
             "Kaleido.Design",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

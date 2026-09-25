@@ -63,7 +63,7 @@ internal sealed class ProcessExecutionResponseFactory(
                                     FrameworkErrorCodes.MissingRegistration,
                                     $"Available step '{stepName}' was not found in the local registry.");
                             return responseFactory.CreateStepSummary(
-                                registration.ToSummary(),
+                                ToSummary(registration),
                                 serviceName);
                         })
                     .ToArray(),
@@ -114,7 +114,7 @@ internal sealed class ProcessExecutionResponseFactory(
                                     FrameworkErrorCodes.MissingRegistration,
                                     $"Available step '{stepName}' was not found in the local registry.");
                             return responseFactory.CreateStepSummary(
-                                registration.ToSummary(),
+                                ToSummary(registration),
                                 serviceName);
                         })
                     .ToList(),
@@ -176,6 +176,16 @@ internal sealed class ProcessExecutionResponseFactory(
             Messages = ToMessages(stepResult).ToArray()
         };
     }
+
+    private static ProcessorStepSummary ToSummary(ProcessStepRegistration registration) =>
+        new()
+        {
+            Name = registration.Metadata.Name,
+            Description = registration.Metadata.Description,
+            DisplayName = registration.Metadata.DisplayName,
+            Version = registration.Metadata.Version,
+            Repeatable = registration.Repeatable.Enabled
+        };
 
     private static IEnumerable<ProcessMessage> ToMessages(
         ProcessStepResult stepResult)

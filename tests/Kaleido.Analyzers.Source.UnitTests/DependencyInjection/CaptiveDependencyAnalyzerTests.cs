@@ -9,7 +9,7 @@ namespace Kaleido.Analyzers.Source.UnitTests;
 public sealed class CaptiveDependencyAnalyzerTests
 {
     private static readonly DiagnosticResult Expected =
-        new("KAL0014", DiagnosticSeverity.Warning);
+        new("KAL0014", DiagnosticSeverity.Error);
 
     private const string Registrations = @"
 public interface IScoped { }

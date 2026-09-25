@@ -31,7 +31,7 @@ internal static class DiagnosticIds
     /// <summary>Services must use constructor injection; settable service-typed properties or Set* methods that inject dependencies hide mutable state.</summary>
     public const string PropertyInjection = "KAL0009";
 
-    /// <summary>Injected dependency fields must be readonly, and primary-constructor service parameters must be referenced by at least one member.</summary>
+    /// <summary>Injected dependency fields must be readonly; a mutable field typed as a registered service can be reassigned after construction. Unused injected parameters are covered by IDE0060.</summary>
     public const string DependencyRetention = "KAL0010";
 
     /// <summary>DI constructors must not invoke behavior on injected dependencies, perform I/O, start background work, or call service resolution.</summary>

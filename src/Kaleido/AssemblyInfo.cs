@@ -6,8 +6,3 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Kaleido.Http.FunctionalTests")]
 [assembly: InternalsVisibleTo("Kaleido.Http.Client.UnitTests")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
-
-// Framework projects that need access to internals
-[assembly: InternalsVisibleTo("Kaleido.Http")]
-[assembly: InternalsVisibleTo("Kaleido.Http.Client")]
-[assembly: InternalsVisibleTo("Kaleido.Provider.SQLite")]

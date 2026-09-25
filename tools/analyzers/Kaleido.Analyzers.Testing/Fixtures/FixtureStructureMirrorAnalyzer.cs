@@ -20,7 +20,7 @@ public sealed class FixtureStructureMirrorAnalyzer : DiagnosticAnalyzer
             "Test fixture location must mirror the subject under test",
             "Test fixture '{0}' must live at '{1}' (mirroring SUT path '{2}')",
             "Kaleido.Tests",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

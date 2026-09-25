@@ -1,10 +1,10 @@
-﻿using Kaleido.Process.Observability;
+using Kaleido.Process.Observability;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Process.Execution;
 
-public interface IProcessStepInvoker
+internal interface IProcessStepInvoker
 {
     Task<ProcessStepInvokerResult> ExecuteAsync(
         ProcessStepRegistration registration,
@@ -14,7 +14,7 @@ public interface IProcessStepInvoker
 }
 
 [ExcludeFromCodeCoverage]
-public sealed record ProcessStepInvokerResult
+internal sealed record ProcessStepInvokerResult
 {
     public bool Succeeded { get; init; }
 

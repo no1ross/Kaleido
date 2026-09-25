@@ -1,4 +1,10 @@
 <Solution>
+  <Folder Name="/docs/">
+    <File Path="docs/ANALYZERS.md" />
+    <File Path="docs/code-organization.md" />
+    <File Path="docs/ERROR_CODES.md" />
+    <File Path="docs/PRERELEASE_PROMPT.md" />
+  </Folder>
   <Folder Name="/samples/">
     <File Path="samples/Directory.Build.props" />
     <File Path="samples/Directory.Packages.props" />

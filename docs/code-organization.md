@@ -505,3 +505,33 @@ Naming is consistent and the project boundaries are correct. The primary maintai
 
 **Estimated file reduction: ~45 files (196 → ~151)**  
 **Estimated cognitive load reduction: High** — most concepts drop from 5–10 file opens to 1–3.
+
+---
+
+## Status Summary
+
+| # | Item | Category | Status |
+|---|------|----------|--------|
+| P2.1 | Consolidate Process attributes → `ProcessStepAttributes.cs` | Attribute Consolidation | ✅ Done |
+| P2.2 | Consolidate Queryable attributes → `QueryableAttributes.cs` | Attribute Consolidation | ✅ Done |
+| P2.3 | Merge three `Enumerations.cs` → `ProcessEnumerations.cs` | Fragmentation | ✅ Done |
+| P2.4 | Promote `ProcessExecutionState` / `ExecutionDecisionType` to `Kaleido.Process` | Namespace Simplification | ✅ Done |
+| P2.5 | Rename `InMemoryProcessContextStore.cs` → `ProcessContextStore.cs` | Naming | ✅ Done |
+| P2.6 | Colocate `IProcessStateUpdater` with implementation | Interface Colocation | ✅ Already correct |
+| P2.7 | Colocate `IStepExecutionEvaluator` with implementation | Interface Colocation | ✅ Already correct |
+| P2.8 | Consolidate `ProcessStepResult.cs` + `IProcessStepHandler.cs` → `ProcessStepHandler.cs` | Cohesion | ✅ Done |
+| P2.9 | `ProcessStepInvoker` — naming clarity | Naming | Not started |
+| P2.10 | Consolidate `ExecutionDecision.cs` into `ProcessExecutor.cs` | Internal Type Colocation | Not started |
+| P2.11 | Merge `ProcessStepDefinition.cs` into `ProcessStepRegistry.cs` | Internal Type Colocation | ✅ Done |
+| P2.12 | Merge `ProcessStepDependencyGraph.cs` into `ProcessStepRegistry.cs` | Internal Type Colocation | ✅ Done |
+| P2.13 | Merge `ParticipantRegistryItem.cs` into `ProcessRegistry.cs` | Record Consolidation | ✅ Done |
+| P2.14 | Rename `Queryable/Records/` → `Queryable/Registry/` | Naming | ✅ Done |
+| P2.15 | Consolidate Queryable query source interfaces → `QuerySources.cs` | Interface Consolidation | ✅ Done |
+| P2.16 | Consolidate `Kaleido.Http.Abstractions` Process contracts | Contract Consolidation | Not started |
+| P2.17 | Consolidate `Kaleido.Http.Abstractions` Queryable contracts | Contract Consolidation | Not started |
+| P2.18 | Consolidate Process client interfaces in `Kaleido.Http.Abstractions` | Interface + Type Consolidation | Not started |
+| P2.19 | Merge `KaleidoProcessClientServiceCollectionExtensions` into `KaleidoClientExtensions.cs` | Fragmentation | Not started |
+| P2.20 | Consolidate `QueryContextExecutor` + `CompiledQueryApplier` → `QueryRuntime.cs` | Internal Consolidation | Not started |
+| P5.8 | Merge `NullEventPublisher` → `EventPublisher.cs` | Record/Event Consolidation | ✅ Done |
+| P5.10 | Consolidate process event records → `ProcessEvents.cs` | Event Consolidation | ✅ Done |
+| P9.D3 | Rename `ProcessStepRegistration.Projection.cs` → `ProcessStepRegistration.Discovery.cs` | Naming | ✅ Done |

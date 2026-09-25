@@ -38,7 +38,7 @@ public sealed record ExecuteStepRequest<TProcessStep>
         init;
     }
 
-    internal ProcessRequest ToProcessRequest(
+    public ProcessRequest ToProcessRequest(
         string stepName,
         Guid? processId = null)
     {
