@@ -1,4 +1,3 @@
-using Kaleido.Process.Execution;
 using Kaleido.Samples.PriorAuth.History.Data;
 using Kaleido.Samples.PriorAuth.History.Data.Entities;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;

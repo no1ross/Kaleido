@@ -7,6 +7,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Execution" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\Kaleido\Kaleido.csproj" />
 	</ItemGroup>
 

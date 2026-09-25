@@ -1,7 +1,5 @@
 namespace Kaleido.Process.Registry;
 
-using Kaleido.Process.Execution;
-
 [ExcludeFromCodeCoverage]
 public sealed partial record ProcessStepRegistration(
     Type StepType,

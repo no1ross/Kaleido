@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
-using Kaleido.Queryable.Query;
 
 namespace Kaleido.Queryable.Runtime;
 

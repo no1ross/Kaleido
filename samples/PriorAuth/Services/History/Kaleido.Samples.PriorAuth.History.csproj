@@ -18,4 +18,8 @@
     <ProjectReference Include="..\..\..\..\src\Kaleido.Observability.OpenTelemetry\Kaleido.Observability.OpenTelemetry.csproj" />
   </ItemGroup>
 
+	<ItemGroup>
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Query" />
+	</ItemGroup>
 </Project>

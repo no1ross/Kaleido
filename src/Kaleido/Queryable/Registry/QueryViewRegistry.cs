@@ -1,0 +1,274 @@
+using System.ComponentModel;
+using System.Reflection;
+using Kaleido.Queryable.Metadata;
+
+namespace Kaleido.Queryable.Registry;
+
+/// <summary>
+/// Maintains the list of registered records available
+/// to the application.
+///
+/// While IRecordMetadataCatalog is responsible for generating
+/// metadata for a specific record type, the registry is responsible
+/// for discovering which records exist within the application.
+///
+/// Think of this component as the directory of available records.
+/// </summary>
+///
+/// <remarks>
+/// MetadataCatalog = describes one record
+/// Registry = knows all records
+/// </remarks>
+public interface IQueryViewRegistry
+{
+    IReadOnlyCollection<QueryViewRegistration> Registrations { get; }
+
+    QueryViewRegistration? Find(string name);
+
+    QueryViewRegistration? Find(Type recordType);
+
+    QueryViewRegistration GetRegistration(string name);
+
+    QueryViewRegistration GetRegistration(Type recordType);
+}
+
+internal sealed class QueryViewRegistry
+    : IQueryViewRegistry
+{
+    private readonly IReadOnlyDictionary<string, QueryViewRegistration> _byName;
+    private readonly IReadOnlyDictionary<Type, QueryViewRegistration> _byType;
+    private readonly IReadOnlyCollection<QueryViewRegistration> _registrations;
+
+    private readonly IDataTypeMapper _dataTypeMapper;
+    private readonly IConstraintMapper _constraintMapper;
+
+    public QueryViewRegistry(
+        IDataTypeMapper dataTypeMapper,
+        IConstraintMapper constraintMapper,
+        IEnumerable<Type> queryViewTypes)
+    {
+        ArgumentNullException.ThrowIfNull(dataTypeMapper);
+        ArgumentNullException.ThrowIfNull(constraintMapper);
+        ArgumentNullException.ThrowIfNull(queryViewTypes);
+
+        _dataTypeMapper = dataTypeMapper;
+        _constraintMapper = constraintMapper;
+
+        var registrations =
+            queryViewTypes
+                .Select(BuildRegistration)
+                .ToArray();
+
+        _registrations =
+            registrations;
+
+        _byName =
+            registrations.ToDictionary(
+                x => x.Metadata.Name,
+                StringComparer.OrdinalIgnoreCase);
+
+        _byType =
+            registrations.ToDictionary(
+                x => x.QueryViewType);
+    }
+
+    public IReadOnlyCollection<QueryViewRegistration> Registrations =>
+        _registrations;
+
+    public IReadOnlyCollection<QueryViewRegistration> GetAll() =>
+        _registrations;
+
+    public QueryViewRegistration? Find(string name)
+    {
+        _byName.TryGetValue(
+            name,
+            out var registration);
+
+        return registration;
+    }
+
+    public QueryViewRegistration? Find(Type queryViewType)
+    {
+        _byType.TryGetValue(
+            queryViewType,
+            out var registration);
+
+        return registration;
+    }
+
+    public QueryViewRegistration GetRegistration(string name)
+    {
+        return Find(name)
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
+                $"Query view '{name}' is not registered.");
+    }
+
+    public QueryViewRegistration GetRegistration(Type queryViewType)
+    {
+        return Find(queryViewType)
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
+                $"Query view '{queryViewType.FullName}' is not registered.");
+    }
+
+    private QueryViewRegistration BuildRegistration(
+        Type queryViewType)
+    {
+        var queryViewAttribute =
+            queryViewType.GetCustomAttribute<QueryViewAttribute>()
+            ?? throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryMissingAttribute,
+                $"Query view '{queryViewType.Name}' is missing QueryViewAttribute.");
+
+        var queryViewInterface =
+            GetQueryViewInterface(
+                queryViewType);
+
+        var contextType =
+            queryViewInterface.GenericTypeArguments[0];
+
+        var sourceType =
+            queryViewInterface.GenericTypeArguments[1];
+
+        var parametersType =
+            queryViewInterface.GenericTypeArguments.Length == 3
+                ? queryViewInterface.GenericTypeArguments[2]
+                : typeof(EmptyQueryViewParameters);
+
+        var pageable =
+            BuildPageable(
+                queryViewType,
+                contextType,
+                queryViewAttribute);
+
+        return new QueryViewRegistration(
+            queryViewType,
+            sourceType,
+            parametersType,
+            contextType,
+            new QueryViewMetadata(
+                queryViewAttribute.Name,
+                queryViewAttribute.Version,
+                queryViewAttribute.DisplayName ?? queryViewAttribute.Name,
+                queryViewAttribute.Description
+                    ?? queryViewAttribute.DisplayName
+                    ?? queryViewAttribute.Name,
+                queryViewAttribute.Visibility,
+                pageable,
+                BuildParameters(parametersType),
+                BuildOutputFields(sourceType)));
+    }
+
+    private IReadOnlyList<QueryParameterMetadata> BuildParameters(
+        Type parametersType)
+    {
+        if (parametersType == typeof(EmptyQueryViewParameters))
+        {
+            return Array.Empty<QueryParameterMetadata>();
+        }
+
+        return parametersType
+            .GetProperties(
+                BindingFlags.Public |
+                BindingFlags.Instance)
+            .Select(property =>
+                new QueryParameterMetadata(
+                    property.Name,
+                    property.PropertyType,
+                    _dataTypeMapper.GetDescriptor(property),
+                    _constraintMapper.Map(property),
+                    property.GetCustomAttribute<DescriptionAttribute>()?.Description))
+            .ToArray();
+    }
+
+    private IReadOnlyList<QueryOutputFieldMetadata> BuildOutputFields(
+        Type viewType)
+    {
+        return viewType
+            .GetProperties(
+                BindingFlags.Public |
+                BindingFlags.Instance)
+            .Select(property =>
+                new QueryOutputFieldMetadata(
+                    property.Name,
+                    property.GetCustomAttribute<DescriptionAttribute>()?.Description,
+                    property.PropertyType,
+                    _dataTypeMapper.GetDescriptor(property)))
+            .ToArray();
+    }
+
+    private static PageableMetadata? BuildPageable(
+        Type queryViewType,
+        Type contextType,
+        QueryViewAttribute attribute)
+    {
+        var pageable =
+            queryViewType.GetCustomAttribute<PageableAttribute>();
+
+        if (pageable is null)
+        {
+            return null;
+        }
+
+        ValidateDefaultSort(
+            contextType,
+            attribute);
+
+        return new PageableMetadata(
+            pageable.DefaultSize,
+            pageable.MaxSize);
+    }
+
+    private static void ValidateDefaultSort(
+        Type contextType,
+        QueryViewAttribute attribute)
+    {
+        if (string.IsNullOrWhiteSpace(attribute.DefaultSortField))
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
+                $"Query view '{attribute.Name}' is pageable and must define a DefaultSortField.");
+        }
+
+        var property =
+            contextType.GetProperty(
+                attribute.DefaultSortField,
+                BindingFlags.Public |
+                BindingFlags.Instance |
+                BindingFlags.IgnoreCase);
+
+        if (property is null)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
+                $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' which does not exist on query context '{contextType.Name}'.");
+        }
+
+        if (property.GetCustomAttribute<SortableAttribute>() is null)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.QryInvalidRegistration,
+                $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' but the field is not marked as sortable.");
+        }
+    }
+
+    private static Type GetQueryViewInterface(
+        Type queryViewType)
+    {
+        return queryViewType
+            .GetInterfaces()
+            .Where(i =>
+                i.IsGenericType &&
+                (
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,>) ||
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,,>) ||
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,>) ||
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,,>)
+                ))
+            .OrderByDescending(
+                i => i.GenericTypeArguments.Length)
+            .First();
+    }
+
+}

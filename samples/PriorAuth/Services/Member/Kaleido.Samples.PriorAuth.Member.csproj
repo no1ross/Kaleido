@@ -25,4 +25,8 @@
     </Content>
   </ItemGroup>
 
+	<ItemGroup>
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Query" />
+	</ItemGroup>
 </Project>

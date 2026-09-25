@@ -1,5 +1,4 @@
 using Kaleido.Http.Client;
-using Kaleido.Process.Execution;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Messages;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Services;

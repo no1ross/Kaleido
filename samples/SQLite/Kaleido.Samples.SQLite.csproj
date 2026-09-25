@@ -21,4 +21,8 @@
 	  <ProjectReference Include="..\..\src\Kaleido.Http\Kaleido.Http.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Query" />
+	</ItemGroup>
 </Project>

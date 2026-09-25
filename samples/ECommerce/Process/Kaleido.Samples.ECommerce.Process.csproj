@@ -1,5 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 <ItemGroup>
+    <Using Include="Kaleido.Process" />
+    <Using Include="Kaleido.Process.Execution" />
+  		<Using Include="Kaleido.Queryable.Query" />
+</ItemGroup>
+
+<ItemGroup>
 	  <ProjectReference Include="..\..\..\src\Kaleido\Kaleido.csproj" />
 	  <ProjectReference Include="..\Data\Kaleido.Samples.ECommerce.Data.csproj" />
 	</ItemGroup>

@@ -1,5 +1,4 @@
-using Kaleido.Queryable.Attributes;
-using Kaleido.Queryable.Query;
+using Kaleido.Queryable;
 using Kaleido.Samples.PriorAuth.Member.Data;
 using Kaleido.Samples.PriorAuth.Member.Queryable.Contexts;
 using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Parameters;

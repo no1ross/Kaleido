@@ -1,5 +1,4 @@
 using Kaleido.Queryable.Observability;
-using Kaleido.Queryable.Query;
 
 namespace Kaleido.Queryable.Eventing;
 
@@ -62,6 +61,7 @@ internal sealed class QueryEventFactory(
 
         return new KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>
         {
+            EventType = "query.executed.v1",
             Context = context,
             Event = @event
         };

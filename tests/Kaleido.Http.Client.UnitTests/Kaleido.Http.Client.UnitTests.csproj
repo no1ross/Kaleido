@@ -12,9 +12,9 @@
 		<Using Include="Kaleido.Process" />
 		<Using Include="Kaleido.Process.Http.Client" />
 		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Query" />
 		<Using Include="Kaleido.Queryable.Http.Client" />
 		<Using Include="Kaleido.Queryable.Metadata" />
-		<Using Include="Kaleido.Queryable.Query" />
 		<Using Include="Moq.Protected" />
 		<Using Include="System.Net" />
 		<Using Include="System.Net.Http.Json" />

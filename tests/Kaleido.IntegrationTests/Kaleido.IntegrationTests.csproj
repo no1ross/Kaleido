@@ -10,7 +10,8 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Using Include="Kaleido.Queryable" />
-		<Using Include="Kaleido.Queryable.Attributes" />
+		<Using Include="Kaleido.Queryable.Query" />
+		<Using Include="Kaleido.Queryable" />
 		<Using Include="Kaleido.Queryable.Query" />
 	</ItemGroup>
 </Project>

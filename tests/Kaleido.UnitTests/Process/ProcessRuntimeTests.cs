@@ -1,10 +1,8 @@
-﻿using Kaleido.Eventing;
+using Kaleido.Eventing;
 using Kaleido.Observability;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
-using Kaleido.Process.Execution;
 using Kaleido.Process.Observability;
-using Kaleido.Process.Planning;
 
 namespace Kaleido.Process.UnitTests.Processor;
 
@@ -679,6 +677,7 @@ public sealed class ProcessRuntimeTests
                 var processor = request.Processor ?? new ProcessorRequest();
                 return new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
                 {
+                    EventType = "process.created.v1",
                     Context = CreateStubContext(context.ProcessId),
                     Event = new ProcessCreated
                     {
@@ -705,6 +704,7 @@ public sealed class ProcessRuntimeTests
                 var processor = request.Processor ?? new ProcessorRequest();
                 return new KaleidoEventEnvelope<PlanBuilt, ProcessEventContext>
                 {
+                    EventType = "process.plan-built.v1",
                     Context = CreateStubContext(context.ProcessId),
                     Event = new PlanBuilt
                     {
@@ -730,6 +730,7 @@ public sealed class ProcessRuntimeTests
             .Returns<KaleidoCorrelationContext, ProcessorContext, ProcessExecutionResult>((_, context, executionResult) =>
                 new KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext>
                 {
+                    EventType = "process.execution-completed.v1",
                     Context = CreateStubContext(executionResult.ProcessId),
                     Event = new ExecutionCompleted
                     {

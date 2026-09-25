@@ -1,6 +1,4 @@
 using Kaleido.Queryable;
-using Kaleido.Queryable.Attributes;
-using Kaleido.Queryable.Query;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.ViewSources.Views;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Services;

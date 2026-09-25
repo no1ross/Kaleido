@@ -1,6 +1,6 @@
-﻿//using Kaleido.Queryable;
+//using Kaleido.Queryable;
 //using Kaleido.Queryable.Metadata;
-//using Kaleido.Queryable.Records;
+//using Kaleido.Queryable.Registry;
 //using Microsoft.AspNetCore.Mvc;
 
 //namespace Kaleido.Samples.SQLite.Controllers

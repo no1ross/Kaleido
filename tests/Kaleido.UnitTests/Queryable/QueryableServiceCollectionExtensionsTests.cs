@@ -1,6 +1,6 @@
 using System.Reflection;
 using Kaleido.Exceptions;
-using Kaleido.Queryable.Records;
+using Kaleido.Queryable.Registry;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

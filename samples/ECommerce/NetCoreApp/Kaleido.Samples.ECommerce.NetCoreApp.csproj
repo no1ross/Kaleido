@@ -12,4 +12,8 @@
 	  <ProjectReference Include="..\Process\Kaleido.Samples.ECommerce.Process.csproj" />
 	  <ProjectReference Include="..\Queryable\Kaleido.Samples.ECommerce.Queryable.csproj" />
 	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Query" />
+	</ItemGroup>
 </Project>

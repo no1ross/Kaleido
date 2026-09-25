@@ -1,6 +1,4 @@
 using Kaleido.Process.Context;
-using Kaleido.Process.Execution;
-using Kaleido.Process.Planning;
 
 namespace Kaleido.Process.Eventing;
 
@@ -69,6 +67,7 @@ internal sealed class ProcessEventFactory(
 
         return new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
         {
+            EventType = "process.created.v1",
             Context = CreateContext(correlation, submittedStepNames.FirstOrDefault() ?? string.Empty, context.ProcessId),
             Event = @event
         };
@@ -124,6 +123,7 @@ internal sealed class ProcessEventFactory(
 
         return new KaleidoEventEnvelope<PlanBuilt, ProcessEventContext>
         {
+            EventType = "process.plan-built.v1",
             Context = CreateContext(correlation, submittedStepNames.FirstOrDefault() ?? string.Empty, context.ProcessId),
             Event = @event
         };
@@ -166,6 +166,7 @@ internal sealed class ProcessEventFactory(
 
         return new KaleidoEventEnvelope<StepCompleted, ProcessEventContext>
         {
+            EventType = "process.step-completed.v1",
             Context = CreateContext(correlation, candidate.StepName, context.ProcessId),
             Event = @event
         };
@@ -191,6 +192,7 @@ internal sealed class ProcessEventFactory(
 
         return new KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext>
         {
+            EventType = "process.execution-completed.v1",
             Context = CreateContext(correlation, string.Empty, executionResult.ProcessId),
             Event = @event
         };

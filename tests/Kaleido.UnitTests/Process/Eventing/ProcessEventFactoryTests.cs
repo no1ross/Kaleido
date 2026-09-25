@@ -1,8 +1,6 @@
 using Kaleido.Observability;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
-using Kaleido.Process.Execution;
-using Kaleido.Process.Planning;
 using Kaleido.Process.Registry;
 
 namespace Kaleido.Process.UnitTests.Eventing;
