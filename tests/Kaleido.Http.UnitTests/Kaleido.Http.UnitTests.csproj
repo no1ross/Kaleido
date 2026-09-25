@@ -13,7 +13,7 @@
 		<Using Include="Kaleido.Queryable" />
 		<Using Include="Kaleido.Queryable.Metadata" />
 		<Using Include="Kaleido.Queryable.Query" />
-		<Using Include="Kaleido.Queryable.Attributes" />
+		<Using Include="Kaleido.Queryable" />
 		<Using Include="Kaleido.Http.Process.Services" />
 		<Using Include="Kaleido.Http.Process.Contracts" />
 		<Using Include="Kaleido.Http.Middleware" />

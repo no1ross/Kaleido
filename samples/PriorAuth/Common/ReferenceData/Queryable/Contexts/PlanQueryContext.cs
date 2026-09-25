@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Queryable;
-using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Samples.PriorAuth.ReferenceData.Queryable.Contexts;

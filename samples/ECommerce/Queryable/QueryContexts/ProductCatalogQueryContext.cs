@@ -1,6 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Kaleido.Queryable;
-using Kaleido.Queryable.Attributes;
 
 namespace Kaleido.Samples.ECommerce.Data.QueryContexts;
 

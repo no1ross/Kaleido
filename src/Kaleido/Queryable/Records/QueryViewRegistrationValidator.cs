@@ -1,5 +1,4 @@
 using System.Reflection;
-using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Query;
 using Microsoft.Extensions.DependencyInjection;
 

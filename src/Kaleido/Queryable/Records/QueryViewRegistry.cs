@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Reflection;
-using Kaleido.Queryable.Attributes;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 

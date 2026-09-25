@@ -1,4 +1,4 @@
-﻿using Kaleido.Queryable.Attributes;
+using Kaleido.Queryable;
 using Kaleido.Queryable.Query;
 
 using Kaleido.Samples.ECommerce.Data.QueryContexts;
