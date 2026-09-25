@@ -1,4 +1,4 @@
-﻿using Kaleido.Queryable.Query;
+using Kaleido.Queryable;
 
 namespace Kaleido.Samples.SQLite;
 

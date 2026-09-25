@@ -1,5 +1,4 @@
 using Kaleido.Queryable.Observability;
-using Kaleido.Queryable.Query;
 
 namespace Kaleido.Queryable.Eventing;
 

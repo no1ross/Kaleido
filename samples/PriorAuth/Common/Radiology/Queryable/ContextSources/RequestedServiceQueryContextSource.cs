@@ -1,4 +1,4 @@
-using Kaleido.Queryable.Query;
+using Kaleido.Queryable;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Queryable.Contexts;
 using Microsoft.EntityFrameworkCore;

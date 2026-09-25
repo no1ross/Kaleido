@@ -6,3 +6,4 @@ global using Kaleido.Process;
 global using Kaleido.Process.Execution;
 global using Kaleido.Process.Planning;
 global using Kaleido.Queryable;
+global using Kaleido.Queryable.Query;

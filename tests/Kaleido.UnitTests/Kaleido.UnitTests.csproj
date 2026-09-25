@@ -13,8 +13,9 @@
 		<Using Include="Kaleido.Process.Execution" />
 		<Using Include="Kaleido.Process.Planning" />
 		<Using Include="Kaleido.Queryable" />
-		<Using Include="Kaleido.Queryable.Metadata" />
 		<Using Include="Kaleido.Queryable.Query" />
+		<Using Include="Kaleido.Queryable.Metadata" />
 		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Query" />
 	</ItemGroup>
 </Project>

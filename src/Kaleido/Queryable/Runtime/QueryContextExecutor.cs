@@ -1,4 +1,3 @@
-using Kaleido.Queryable.Query;
 
 namespace Kaleido.Queryable.Runtime;
 
