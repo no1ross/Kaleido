@@ -190,18 +190,18 @@ public sealed record StepContext
     }
 }
 
-internal sealed class InMemoryProcessContextStore : IProcessContextStore
+internal sealed class ProcessContextStore : IProcessContextStore
 {
-    private readonly ILogger<InMemoryProcessContextStore> _logger;
+    private readonly ILogger<ProcessContextStore> _logger;
     private readonly ConcurrentDictionary<Guid, ProcessorContext> _contexts = new();
 
-    public InMemoryProcessContextStore(
-        ILogger<InMemoryProcessContextStore> logger)
+    public ProcessContextStore(
+        ILogger<ProcessContextStore> logger)
     {
         _logger = logger;
 
         logger.LogWarning(
-            "InMemoryProcessContextStore is active. This store has no eviction policy and will grow " +
+            "ProcessContextStore is active. This store has no eviction policy and will grow " +
             "without bound in long-running processes. Register a durable IProcessContextStore " +
             "(e.g. UseSqliteProcessContextStore) before deploying to production.");
     }

@@ -4,7 +4,7 @@ namespace Kaleido.Eventing;
 
 /// <summary>
 /// Publishes Kaleido domain events to any registered event infrastructure.
-/// The default implementation is <see cref="NullEventPublisher"/>, which discards all events.
+/// The default implementation is <see cref="EventPublisher"/>, which discards all events.
 /// Replace with a real implementation before calling <c>AddKaleido()</c>.
 /// </summary>
 /// <remarks>
@@ -50,9 +50,9 @@ public interface IKaleidoEvent
 /// Discards all events and logs a warning at startup. Replace with a real
 /// implementation — see <see cref="IEventPublisher"/> remarks.
 /// </summary>
-public sealed class NullEventPublisher : IEventPublisher
+public sealed class EventPublisher : IEventPublisher
 {
-    public NullEventPublisher(ILogger<NullEventPublisher> logger)
+    public EventPublisher(ILogger<EventPublisher> logger)
     {
         logger.LogWarning(
             "No IEventPublisher has been registered. Kaleido events are being silently discarded. " +

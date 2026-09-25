@@ -30,7 +30,7 @@ public static class KaleidoServiceCollectionExtensions
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
         services.TryAddScoped<IKaleidoCorrelationContextInitializer>(
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
-        services.TryAddSingleton<IEventPublisher, NullEventPublisher>();
+        services.TryAddSingleton<IEventPublisher, EventPublisher>();
         services.TryAddSingleton<IDataTypeMapper, DataTypeMapper>();
         services.TryAddSingleton<IConstraintMapper, ConstraintMapper>();
         services.TryAddSingleton<Kaleido.Json.IValueConverter, Kaleido.Json.ValueConverter>();

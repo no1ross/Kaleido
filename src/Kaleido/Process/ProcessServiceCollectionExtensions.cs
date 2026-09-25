@@ -168,7 +168,7 @@ public static class ProcessServiceCollectionExtensions
         services.TryAddSingleton<IStepExecutionEvaluator, StepExecutionEvaluator>();
         services.TryAddSingleton<IProcessStateUpdater, ProcessStateUpdater>();
         services.TryAddSingleton<IStepAvailabilityResolver, StepAvailabilityResolver>();
-        services.TryAddSingleton<IProcessContextStore, InMemoryProcessContextStore>();
+        services.TryAddSingleton<IProcessContextStore, ProcessContextStore>();
 
         services.TryAddSingleton<IProcessEventFactory, ProcessEventFactory>();
         services.TryAddScoped<IProcessObservability, ProcessObservability>();

@@ -3,10 +3,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Process.UnitTests.Context;
 
-public sealed class InMemoryProcessContextStoreTests
+public sealed class ProcessContextStoreTests
 {
-    private static InMemoryProcessContextStore CreateStore() =>
-        new(new Mock<ILogger<InMemoryProcessContextStore>>().Object);
+    private static ProcessContextStore CreateStore() =>
+        new(new Mock<ILogger<ProcessContextStore>>().Object);
 
     [Fact]
     public async Task SaveAsync_WhenContextIsNull_Throws()

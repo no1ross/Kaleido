@@ -4,10 +4,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.UnitTests.Eventing;
 
-public sealed class NullEventPublisherTests
+public sealed class EventPublisherTests
 {
-    private static NullEventPublisher CreateSut() =>
-        new(NullLogger<NullEventPublisher>.Instance);
+    private static EventPublisher CreateSut() =>
+        new(NullLogger<EventPublisher>.Instance);
 
     [Fact]
     public async Task PublishAsync_CompletesWithoutThrowing()
