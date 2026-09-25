@@ -1,5 +1,5 @@
 using System.Reflection;
-using Kaleido.Queryable.Records;
+using Kaleido.Queryable.Registry;
 
 namespace Kaleido.Queryable.UnitTests.Records;
 

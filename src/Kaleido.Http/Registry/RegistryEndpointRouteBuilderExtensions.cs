@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Kaleido.Http.Registry.Contracts;
 using Kaleido.Process.Registry;
-using Kaleido.Queryable.Records;
+using Kaleido.Queryable.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

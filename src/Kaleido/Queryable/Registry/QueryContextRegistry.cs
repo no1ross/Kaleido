@@ -3,7 +3,7 @@ using System.Reflection;
 using Kaleido.Queryable.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Queryable.Records;
+namespace Kaleido.Queryable.Registry;
 
 /// <summary>
 /// Maintains the list of registered records available

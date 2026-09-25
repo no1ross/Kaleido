@@ -1,7 +1,7 @@
 using Kaleido.Queryable.Metadata;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Queryable.Records;
+namespace Kaleido.Queryable.Registry;
 
 public interface IQueryableRegistry
 {

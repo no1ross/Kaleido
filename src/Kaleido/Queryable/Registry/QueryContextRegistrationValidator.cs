@@ -1,7 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Queryable.Records;
+namespace Kaleido.Queryable.Registry;
 
 internal interface IQueryContextRegistrationValidator
 {

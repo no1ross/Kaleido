@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using Kaleido.Exceptions;
-using Kaleido.Queryable.Records;
+using Kaleido.Queryable.Registry;
 using Moq;
 
 namespace Kaleido.Queryable.UnitTests.Records;

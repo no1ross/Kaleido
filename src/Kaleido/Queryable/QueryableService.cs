@@ -1,6 +1,6 @@
 using System.Reflection;
 using Kaleido.Queryable.Metadata;
-using Kaleido.Queryable.Records;
+using Kaleido.Queryable.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable;

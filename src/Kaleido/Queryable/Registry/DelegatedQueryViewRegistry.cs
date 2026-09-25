@@ -1,7 +1,7 @@
 using System.Reflection;
 using Kaleido.Queryable.Metadata;
 
-namespace Kaleido.Queryable.Records;
+namespace Kaleido.Queryable.Registry;
 
 public interface IDelegatedQueryViewRegistry
 {

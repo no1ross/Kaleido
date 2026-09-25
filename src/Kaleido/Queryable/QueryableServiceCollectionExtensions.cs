@@ -2,7 +2,7 @@ using System.Reflection;
 using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
-using Kaleido.Queryable.Records;
+using Kaleido.Queryable.Registry;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

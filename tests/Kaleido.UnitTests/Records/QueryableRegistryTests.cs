@@ -1,5 +1,5 @@
 using Kaleido.Exceptions;
-using Kaleido.Queryable.Records;
+using Kaleido.Queryable.Registry;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Queryable.UnitTests.Records;

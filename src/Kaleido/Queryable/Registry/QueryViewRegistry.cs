@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.Reflection;
 using Kaleido.Queryable.Metadata;
 
-namespace Kaleido.Queryable.Records;
+namespace Kaleido.Queryable.Registry;
 
 /// <summary>
 /// Maintains the list of registered records available
