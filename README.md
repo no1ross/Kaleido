@@ -185,7 +185,7 @@ builder.Services
         };
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddAspNetCore()
+    .AddHttp()
     .UseSqliteContextStore("Data Source=kaleido-sample-process.sqlite")
     .AddHttpClients();
 
@@ -338,10 +338,10 @@ This allows teams to focus on business functionality instead of repeatedly build
 - [src/ARCHITECTURE.md](./src/ARCHITECTURE.md) — source-level architecture details
 - [src/AGENTS.md](./src/AGENTS.md) — source-level contributor guide
 - [src/Kaleido/README.md](./src/Kaleido/README.md) — core runtime (bootstrap, Process, Queryable)
-- [src/Kaleido.AspNetCore/README.md](./src/Kaleido.AspNetCore/README.md) — ASP.NET Core DI and transport services
-- [src/Kaleido.Http/README.md](./src/Kaleido.Http/README.md) — HTTP endpoint publication
+- [src/Kaleido.Http/README.md](./src/Kaleido.Http/README.md) — HTTP transport (DI, middleware, endpoints)
 - [src/Kaleido.Http.Abstractions/README.md](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP contracts
 - [src/Kaleido.Http.Client/README.md](./src/Kaleido.Http.Client/README.md) — typed HTTP clients
+- [src/Kaleido.Observability.OpenTelemetry/README.md](./src/Kaleido.Observability.OpenTelemetry/README.md) — OpenTelemetry provider
 - [src/Kaleido.Provider.SQLite/README.md](./src/Kaleido.Provider.SQLite/README.md) — SQLite process state provider
 
 ### Samples

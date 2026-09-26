@@ -11,7 +11,7 @@ For the full repository model, see:
 ## What lives here
 
 ### Bootstrap
-- `KaleidoServiceCollectionExtensions` — `AddKaleido()` entry point and `AddAssembly(...)` helper
+- `KaleidoServiceCollectionExtensions` — `AddKaleido()` entry point (assemblies supplied via `KaleidoServiceOptions.Assemblies`)
 - `IKaleidoBuilder` / `KaleidoBuilder` — shared builder abstraction carrying `Services` and `Assemblies`
 - `KaleidoCorrelationContextAccessor` — scoped correlation accessor registered by bootstrap
 - `NullEventPublisher` — default no-op event publisher
@@ -26,8 +26,8 @@ For the full repository model, see:
 - `ValueConverter` — shared runtime value conversion helper
 
 ### Queryable runtime
-- `QueryableServiceCollectionExtensions` — `AddQueryable()` entry point
-- `QueryableService` — main dispatch service (direct context → local view → delegated view)
+- `QueryableServiceCollectionExtensions` — `AddQueryable()` (internal, auto-invoked by `AddKaleido()`)
+- `QueryableService` — main dispatch service (delegated view → local view → direct context)
 - `IQueryContextRegistry` / `IQueryViewRegistry` / `IDelegatedQueryViewRegistry` — runtime registries
 - `QueryContextEngine` / `QueryContextExecutor` — query execution pipeline
 - `QueryRequestCompiler` / `QueryRequestValidator` — validation and compilation
@@ -35,7 +35,7 @@ For the full repository model, see:
 - `IQueryContextSource<T>` / `IQueryContextSourceAsync<T>` / `IQueryViewSource` / `IQueryViewSourceAsync` / `IDelegateQueryViewSource` — source/view interfaces
 
 ### Process runtime
-- `ProcessorServiceCollectionExtensions` — `AddProcessor(...)` entry point
+- `ProcessorServiceCollectionExtensions` — `AddProcessor(...)` (internal, auto-invoked by `AddKaleido()`)
 - `ExecutionProcessor` — main step execution loop
 - `StepCandidateBuilder` / `StepCandidateValidator` / `StepCandidateConsistencyChecker` / `StepCandidatePlanner` — planning pipeline
 - `ProcessStepRegistry` / `ProcessorRegistry` — runtime registries
@@ -48,10 +48,8 @@ For the full repository model, see:
 ## What this project is for
 
 Reference this project when you need to:
-- bootstrap Kaleido with `AddKaleido()`
-- register assemblies with `AddAssembly(...)`
-- call `AddQueryable()` to enable the Queryable runtime
-- call `AddProcessor(...)` to enable the Process runtime
+- bootstrap Kaleido with `AddKaleido()` (which auto-registers the Queryable and Process runtimes)
+- register assemblies via `KaleidoServiceOptions.Assemblies` in the `AddKaleido()` configure callback
 - work with shared metadata primitives (`DataTypeMapper`, `ConstraintMapper`)
 - implement a query context source, view source, or step handler
 - work with correlation context or event publishing
@@ -59,8 +57,7 @@ Reference this project when you need to:
 ## What this project is NOT for
 
 This project does not contain:
-- HTTP endpoint publication (see [`Kaleido.Http`](../Kaleido.Http/README.md))
-- ASP.NET Core DI registration or transport services (see [`Kaleido.AspNetCore`](../Kaleido.AspNetCore/README.md))
+- HTTP endpoint publication, DI registration, middleware, or transport services (see [`Kaleido.Http`](../Kaleido.Http/README.md))
 - HTTP contract types (see [`Kaleido.Http.Abstractions`](../Kaleido.Http.Abstractions/README.md))
 - Remote HTTP client consumption (see [`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md))
 - SQLite state persistence (see [`Kaleido.Provider.SQLite`](../Kaleido.Provider.SQLite/README.md))
@@ -72,25 +69,25 @@ This project does not contain:
 A service starts by calling `AddKaleido()`:
 
 ```csharp
-builder.Services.AddKaleido()
-    .AddAssembly(typeof(Program).Assembly)
-    .AddAssembly(typeof(MyDbContext).Assembly)
-    .AddQueryable()
-    .AddProcessor(options =>
+builder.Services.AddKaleido(builder.Configuration, o =>
+{
+    o.ServiceName = "my-service";
+    o.Assemblies = new[]
     {
-        options.Name = "my-processor";
-        options.DisplayName = "My Processor";
-        options.Version = "1.0.0";
-    });
+        typeof(Program).Assembly,
+        typeof(MyDbContext).Assembly
+    };
+});
 ```
 
 `AddKaleido()`:
 - validates the `IServiceCollection`
 - registers the scoped correlation accessor (using `TryAddScoped` so a pre-existing registration wins)
 - registers the default no-op event publisher
+- automatically invokes `AddQueryable()` and `AddProcessor()` to register both runtimes
 - returns an `IKaleidoBuilder`
 
-`AddAssembly(...)` records assemblies on the builder. Those assemblies become the shared scanning input for `AddQueryable()` and `AddProcessor(...)`.
+`KaleidoServiceOptions.Assemblies` records the assemblies that become the shared scanning input for the Queryable and Process runtimes.
 
 ---
 
@@ -111,7 +108,7 @@ Do not change that dispatch order. It is part of the current framework semantics
 Process is step-centric:
 1. declare a step type with `[ProcessStep]`
 2. implement exactly one `IProcessStepHandler<TStep>` (or `<TStep, TResult>`)
-3. register assemblies and call `AddProcessor(...)`
+3. register the assemblies containing steps via `KaleidoServiceOptions.Assemblies`
 4. let the runtime build a registry and manage state
 5. submit one or more steps through `IProcessorRuntime` or the HTTP transport layer
 

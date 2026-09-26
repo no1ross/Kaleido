@@ -1,0 +1,880 @@
+---
+# Kaleido Pre-Release Review: Tracking Configuration
+# Version: 2.1
+# Purpose: Central tracking for all review findings and action items
+# This file can be imported into GitHub Projects, Jira, or other PM tools
+
+metadata:
+  created: 2026-09-25
+  version: 2.1
+  status: DRAFT
+  next_review: 2026-09-28
+  owner: null  # TBD
+  notes: >
+    v2.0 merges a second code-verified analysis pass (docs/PRERELEASE_PROMPT.md).
+    v1 items re-validated; corrections and new findings appended below.
+    See REVIEW_FINDINGS.md "Prior Findings — v1 Validation" for per-item status.
+
+critical_decisions:
+  CR-001:
+    title: HTTP Abstractions Project Layering
+    description: Clarify whether HTTP Abstractions should support multi-transport or remain single-transport
+    decision_required_by: 2026-09-28
+    v2_status: DE-SCOPED
+    v2_note: >
+      src/AGENTS.md already documents the multi-transport rule (one project per transport).
+      Real boundary leaks are small: KaleidoClientOptions in core (HP-011),
+      ProcessResponseFactory in contracts (MP-013), KaleidoHttpTelemetry coupling (LP-010).
+      Fix leaks instead of splitting; Q-001 stays open as product input, non-blocking.
+    options:
+      - name: "Fix boundary leaks only (RECOMMENDED)"
+        description: Move KaleidoClientOptions, ProcessResponseFactory, split KaleidoHttpTelemetry
+        complexity: medium
+        effort_days: 1-2
+        breaking_change: true
+      - name: "Option A: Multi-Transport split"
+        description: Split into Kaleido.Transport.Abstractions and HTTP-specific
+        complexity: large
+        effort_days: 3-5
+        breaking_change: true
+      - name: "Option C: Status Quo + Documentation"
+        complexity: small
+        effort_days: 2
+        breaking_change: false
+    assigned_to: null
+    status: PENDING_DECISION
+
+  CR-002:
+    title: Build Hardening for Release
+    description: Implement lock files, pack step, coverage gate, warnings-as-errors scope
+    decision_required_by: 2026-09-28
+    v2_status: PARTIALLY_INCORRECT
+    v2_note: >
+      Source Link, snupkg, symbols, XML docs, deterministic builds ARE configured
+      (src/Directory.Build.props). Real gaps: no packages.lock.json/locked restore,
+      no dotnet pack/release job, no coverage gate, TreatWarningsAsErrors only in src/.
+      See MP-024 for the corrected checklist.
+    complexity: small
+    effort_days: 2-3
+    breaking_change: false
+    assigned_to: null
+    status: PENDING_DECISION
+
+  CR-003:
+    title: Versioning & Release Strategy
+    description: Document SemVer policy, deprecation windows, breaking change process, release checklist
+    v2_note: >
+      CONFIRMED with evidence: Version/PackageVersion hard-coded 1.0.0 in
+      src/Directory.Build.props:5-6; no GitVersion/NBGV; no CI version input.
+      Recommend NBGV version.json or CI-driven -p:PackageVersion.
+    decision_required_by: 2026-09-28
+    complexity: small
+    effort_days: 1-2
+    breaking_change: false
+    assigned_to: null
+    status: PENDING_DECISION
+
+  CR-004:
+    title: Root docs describe removed Kaleido.AspNetCore; quickstart does not compile
+    description: >
+      Purge Kaleido.AspNetCore from README/ARCHITECTURE/src docs; rewrite bootstrap
+      samples to AddKaleido(config, o => o.Assemblies) + AddHttp() + Map*;
+      delete stale src/Core and src/Kaleido.AspNetCore artifact dirs.
+    severity: CRITICAL
+    effort_days: 1-2
+    breaking_change: false
+    release_blocker: true
+    status: PENDING_IMPLEMENTATION
+
+  CR-005:
+    title: ExceptionMiddleware exception-to-response contract untested
+    description: Theory matrix exception -> status + KaleidoErrorResponse body; functional 500-shape test
+    severity: CRITICAL
+    effort_days: 0.5-1
+    breaking_change: false
+    release_blocker: true
+    status: PENDING_IMPLEMENTATION
+
+  CR-006:
+    title: ObservabilityMiddleware correlation read/populate/echo untested
+    description: Unit tests for context population + response header echo + Activity tagging; functional header assertion
+    severity: CRITICAL
+    effort_days: 1-2
+    breaking_change: false
+    release_blocker: true
+    status: PENDING_IMPLEMENTATION
+
+  CR-007:
+    title: Duplicate cancellation signal in ProcessRuntime + unguarded OCE invariant
+    description: >
+      Remove Canceled() at ProcessRuntime.cs:246-250 (ProcessExecutor is the single
+      recording point per AGENTS.md). Add tests: OCE propagates, Canceled() once,
+      *Failed never — per engine/invoker/runtime.
+    severity: CRITICAL
+    effort_days: 1-2
+    breaking_change: false
+    release_blocker: true
+    status: PENDING_IMPLEMENTATION
+
+high_priority_items:
+  HP-001:
+    title: Extension Points Documentation
+    description: Document real-world use cases for IEventPublisher, sync/async sources, IDelegateQueryViewSource, etc.
+    v2_note: "CONFIRMED+EXPANDED — audit verified most seams are earned; questionable surface narrowed to MP-016/MP-013."
+    effort_days: 2-3
+    priority: HIGH
+    breaking_change: possibly
+    status: PENDING_DESIGN_REVIEW
+    blocking: false
+
+  HP-002:
+    title: Queryable Dispatch Algorithm Documentation
+    description: Document three-lane dispatch, fallback, view selection, performance implications
+    v2_note: "Order now documented as fixed in src/AGENTS.md; precedence still UNTESTED (MP-019)."
+    effort_days: 1-2
+    priority: HIGH
+    breaking_change: false
+    status: PENDING_DESIGN_REVIEW
+    blocking: false
+
+  HP-003:
+    title: Analyzer Rule Rationale Documentation
+    description: Expand docs/ANALYZERS.md with problem statements, examples, exemptions, implementation links
+    v2_note: "CONFIRMED+EXPANDED — KAL1010/KAL1011 undocumented; tools/analyzers has no guide (MP-017, MP-023)."
+    effort_days: 2-3
+    priority: HIGH
+    breaking_change: false
+    status: PENDING_REVIEW
+    blocking: false
+
+  HP-004:
+    title: Centralize HTTP <-> Runtime Mapping
+    v2_status: SUPERSEDED
+    v2_note: "Described deleted Kaleido.AspNetCore. Real issues folded into MP-007, MP-013, MP-020, LP-004."
+    status: SUPERSEDED
+
+  HP-005:
+    title: Rename UseSqliteContextStore -> UseSqliteProcessContextStore
+    description: Docs + runtime warning (ProcessContextStore.cs:206) already use the target name; API is the odd one out.
+    effort_days: 0.5
+    priority: HIGH
+    breaking_change: true
+    release_blocker: true
+    status: PENDING_IMPLEMENTATION
+
+  HP-006:
+    title: Rewrite docs to actual bootstrap model
+    description: Remove AddAssembly/AddQueryable/AddProcessor public-API claims; document AddKaleido options + auto-registered runtimes
+    effort_days: 1
+    priority: HIGH
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  HP-007:
+    title: Malformed correlation GUID header -> 400 (not 500)
+    description: Catch BadHttpRequestException in ExceptionMiddleware or throw KaleidoValidationException in ReadGuid
+    effort_days: 0.5
+    priority: HIGH
+    breaking_change: true
+    release_blocker: true
+    status: PENDING_IMPLEMENTATION
+
+  HP-008:
+    title: Document/decouple ServiceName <-> client-key route-prefix contract
+    description: Silent 404s on misalignment; only documented in contributor docs
+    effort_days: 1-2
+    priority: HIGH
+    breaking_change: possibly
+    status: PENDING_DESIGN_REVIEW
+
+  HP-009:
+    title: Production-unsafe defaults (discarding EventPublisher + unbounded in-memory store)
+    description: Document prominently; fix NullEventPublisher doc references; consider enforce option + health check
+    effort_days: 1-2
+    priority: HIGH
+    breaking_change: possibly
+    release_blocker: true
+    status: PENDING_DESIGN_REVIEW
+
+  HP-010:
+    title: Supply-chain fixes (Moq SponsorLink, redundant SQLitePCLRaw)
+    description: Pin Moq <=4.18.4 or migrate; drop direct SQLitePCLRaw.lib.e_sqlite3
+    effort_days: 0.5-1
+    priority: HIGH
+    breaking_change: false
+    release_blocker: true
+    status: PENDING_IMPLEMENTATION
+
+  HP-011:
+    title: Move KaleidoClientOptions/KaleidoClientEntry out of core
+    description: HTTP client config in transport-agnostic Kaleido; move to Kaleido.Http.Client + explicit registry marker
+    effort_days: 1
+    priority: HIGH
+    breaking_change: true
+    status: PENDING_DESIGN_REVIEW
+
+  HP-012:
+    title: GetCallingAssembly fallback nondeterminism
+    description: NoInlining or require explicit Assemblies; document hazard; consider analyzer
+    effort_days: 0.5-1
+    priority: HIGH
+    breaking_change: possibly
+    status: PENDING_DESIGN_REVIEW
+
+  HP-013:
+    title: Fail-fast AddHttpClients + singleton client factories
+    description: Throw on missing BaseUrl; scoped registration defeats client cache; remove dead base members
+    effort_days: 0.5-1
+    priority: HIGH
+    breaking_change: true
+    status: PENDING_IMPLEMENTATION
+
+  HP-014:
+    title: ValidatePage silent acceptance + wrong message + unvalidated Offset
+    description: Reject Page on non-pageable contexts; fix <=0 message; validate Offset>=0
+    effort_days: 0.5
+    priority: HIGH
+    breaking_change: true
+    status: PENDING_IMPLEMENTATION
+
+  HP-015:
+    title: Fix endpoint-name typo KaleidoProcessStepREgistry
+    description: ProcessRoutes.cs:66; ships permanently if released
+    effort_days: 0.1
+    priority: HIGH
+    breaking_change: true
+    release_blocker: true
+    status: PENDING_IMPLEMENTATION
+
+  HP-016:
+    title: Preserve error taxonomy across step boundary + client error body
+    description: Carry Code into ProcessExecutionOutcome; client deserializes KaleidoErrorResponse into Errors
+    effort_days: 1-2
+    priority: HIGH
+    breaking_change: possibly
+    status: PENDING_DESIGN_REVIEW
+
+  HP-017:
+    title: SQLite store test depth (round-trip fidelity, concurrency, update)
+    description: 2 tests assert only ProcessId; no concurrency/update/multi-instance coverage
+    effort_days: 1-2
+    priority: HIGH
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  HP-018:
+    title: ExecutionProcessorTests over-mocked (1395 lines, strict mocks)
+    description: Extract builder; assert outcomes not call counts
+    effort_days: 2-3
+    priority: HIGH
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+medium_priority_items:
+  MP-001:
+    title: Code Organization (Feature-Based Grouping)
+    effort_days: medium
+    priority: MEDIUM
+    breaking_change: false
+    status: DEFERRED_POST_1_0
+
+  MP-002:
+    title: DataTypeMapper & ConstraintMapper Test Coverage
+    effort_days: 2-3
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  MP-003:
+    title: Correlation Context Flow Documentation
+    effort_days: 1-2
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  MP-004:
+    title: Process Step Dependencies Clarification
+    effort_days: 1-2
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_VERIFICATION
+
+  MP-005:
+    title: MapProcessor throws for query-only services; no runtime opt-out
+    effort_days: 0.5-1
+    priority: MEDIUM
+    breaking_change: true
+    status: PENDING_DESIGN_REVIEW
+
+  MP-006:
+    title: StartupFilter middleware invisibility — document/opt-out
+    effort_days: 1
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_DESIGN_REVIEW
+
+  MP-007:
+    title: Delete GuardQueryAsync (duplicates ExceptionMiddleware, skips telemetry)
+    effort_days: 0.5
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  MP-008:
+    title: MapRegistry unconditionally requires both client factories (+options-as-marker)
+    effort_days: 0.5
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  MP-009:
+    title: Cache hot-path reflection (step invoke, query dispatch, NullabilityInfoContext, step round-trip)
+    effort_days: 1-2
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  MP-010:
+    title: QueryEventFactory copies full result set per query (wasted under no-op publisher)
+    effort_days: 1
+    priority: MEDIUM
+    breaking_change: possibly
+    status: PENDING_DESIGN_REVIEW
+
+  MP-011:
+    title: ExecutionCompleted signal fires on degraded runs — add status dimension
+    effort_days: 1
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_DESIGN_REVIEW
+
+  MP-012:
+    title: Registry cache never invalidates; Reset() sync-blocks thread
+    effort_days: 0.5-1
+    priority: MEDIUM
+    breaking_change: possibly
+    status: PENDING_DESIGN_REVIEW
+
+  MP-013:
+    title: Move ProcessResponseFactory out of Http.Abstractions (internal statics in Kaleido.Http)
+    effort_days: 0.5
+    priority: MEDIUM
+    breaking_change: true
+    status: PENDING_IMPLEMENTATION
+
+  MP-014:
+    title: Validate registry-supplied URLs (SSRF surface in clients)
+    effort_days: 0.5
+    priority: MEDIUM
+    breaking_change: possibly
+    status: PENDING_IMPLEMENTATION
+
+  MP-015:
+    title: Add AddKaleidoSqliteInstrumentation() (provider telemetry never exports)
+    effort_days: 0.5
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  MP-016:
+    title: Public-surface cleanup (implementations, registries, SQLite internals + DbContextOptions hook)
+    effort_days: 1-2
+    priority: MEDIUM
+    breaking_change: true
+    status: PENDING_DESIGN_REVIEW
+
+  MP-017:
+    title: Analyzer suite gaps (KAL1010/1011 docs, KAL1009 demotion, SutFixture decision, pack metadata, stub project)
+    effort_days: 1-2
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_DESIGN_REVIEW
+
+  MP-018:
+    title: Collapse ProcessStepRegistry 4-pass materialization (~250 lines)
+    effort_days: 1-2
+    priority: MEDIUM
+    breaking_change: true
+    status: PENDING_DESIGN_REVIEW
+
+  MP-019:
+    title: Test gaps on published invariants + dead/stub test files + empty sanitizer test
+    description: Dispatch precedence, functional 500/echo/cancellation/durable-store, contract serialization tests, DbContextDependency depth, trivial-constructor tests
+    effort_days: 2-3
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  MP-020:
+    title: Consolidate FieldLookup x3 + QueryMetadataBuilder + scan predicates
+    effort_days: 1
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  MP-021:
+    title: Contract model cleanup (shadowed new members, RepeatableOptions, parallel vocabularies)
+    effort_days: 1-2
+    priority: MEDIUM
+    breaking_change: true
+    status: PENDING_DESIGN_REVIEW
+
+  MP-022:
+    title: Delete stale dirs (src/Core, src/Kaleido.AspNetCore) + root artifacts (kaleido-context.xml, cleanup*.md)
+    effort_days: 0.25
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  MP-023:
+    title: Doc-map coverage (tests/AGENTS.md 4 missing projects, tools/analyzers guide, doc links, stale exception names)
+    effort_days: 0.5-1
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  MP-024:
+    title: Release pipeline gaps (lock files, pack step, coverage gate, warnings-as-errors scope) — corrected CR-002
+    effort_days: 1-2
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  MP-025:
+    title: Make AddProcessClient/AddQueryableClient public (config-only today)
+    effort_days: 0.5
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_DESIGN_REVIEW
+
+  MP-026:
+    title: Registry always-200 contract undocumented; client step-name rule diverges from server attribute
+    effort_days: 0.5-1
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_DESIGN_REVIEW
+
+low_priority_items:
+  LP-001:
+    title: Enum Serialization Strategy Documentation
+    effort_days: 0.5
+    priority: LOW
+    status: DEFERRED_POST_1_0
+  LP-002:
+    title: Pagination Semantics Documentation
+    effort_days: 0.5
+    priority: LOW
+    status: DEFERRED_POST_1_0
+    v2_note: "Partially addressed by HP-014 validation fixes"
+  LP-003:
+    title: Exception Handler Ordering Documentation
+    effort_days: 0.5
+    priority: LOW
+    status: DEFERRED_POST_1_0
+  LP-004:
+    title: Telemetry micro-alignment (OCE log level, AddException, metric tag constants, ExcludeFromCodeCoverage, event-type strings, header echo dup)
+    effort_days: 0.5-1
+    priority: LOW
+  LP-005:
+    title: Dependency nits (Logging vs Logging.Abstractions, redundant ProjectReferences)
+    effort_days: 0.25
+    priority: LOW
+  LP-006:
+    title: SqliteConnectionStringBuilder validation in UseSqliteContextStore
+    effort_days: 0.25
+    priority: LOW
+  LP-007:
+    title: KaleidoHealthCheck for unsafe defaults (ties HP-009)
+    effort_days: 1
+    priority: LOW
+  LP-008:
+    title: HttpHeaderSanitizer allocation fast-path
+    effort_days: 0.5
+    priority: LOW
+  LP-009:
+    title: Code-organization nits (endpoint-name const policy, colocation, commented enum members, unsealed registry items, sort-to-select)
+    effort_days: 0.5-1
+    priority: LOW
+    breaking_change: partial
+  LP-010:
+    title: Move/split KaleidoHttpTelemetry (OTel provider couples to HTTP contracts)
+    effort_days: 0.5
+    priority: LOW
+    breaking_change: true
+  LP-011:
+    title: Per-step execute envelope contract docs / OpenAPI
+    effort_days: 1
+    priority: LOW
+  LP-012:
+    title: Small API consistency (seal results/attributes, IKaleidoEventContext constraint, unconditional AddHttp registration, freeze IKaleidoBuilder)
+    effort_days: 0.5-1
+    priority: LOW
+    breaking_change: true
+  LP-013:
+    title: Test style (adopt Theory, semantic JSON asserts, folder/namespace mapping, accessibility)
+    effort_days: 0.5-1
+    priority: LOW
+  LP-014:
+    title: Document client registry-cache lifetime/staleness
+    effort_days: 0.25
+    priority: LOW
+  LP-015:
+    title: Dead API surface (GetAll(), Stamper.Sanitize, CorrelationAccessor)
+    effort_days: 0.25
+    priority: LOW
+
+external_findings:
+  # Merged from cleanup chatgpt ent.md (KAL-*) and cleanup copilot.md (F-*).
+  # Both reviewed a compressed Repomix export — some claims stale; v2 re-validated.
+  EXT-01:
+    title: IProcessContextStore has no optimistic concurrency or idempotency contract
+    source: KAL-C02
+    severity: CRITICAL
+    effort: large
+    breaking_change: true
+    release_blocker: true
+    status: PENDING_DECISION
+    notes: "Versioned CAS + durable idempotency; two concurrent requests can overwrite each other"
+  EXT-02:
+    title: State save and event publish are not atomic (no outbox)
+    source: KAL-C03
+    severity: CRITICAL
+    effort: large
+    breaking_change: true
+    release_blocker: true
+    status: PENDING_DECISION
+    notes: "Publisher failure after commit leaves state without audit event"
+  EXT-03:
+    title: Queryable async APIs run synchronous provider I/O
+    source: KAL-C04
+    severity: CRITICAL
+    effort: medium
+    breaking_change: possibly
+    release_blocker: true
+    status: PENDING_IMPLEMENTATION
+    notes: "VERIFIED: QueryContextExecutor wraps query.Count()/ToList() in Task.FromResult"
+  EXT-04:
+    title: Default event payloads replicate full business records (privacy)
+    source: KAL-C05
+    severity: CRITICAL
+    effort: large
+    breaking_change: true
+    release_blocker: true
+    status: PENDING_DECISION
+    notes: "Metadata-only default + redaction/payload policy; perf angle = MP-010"
+  EXT-05:
+    title: Kaleido.Analyzers packable but contains zero rules
+    source: KAL-C07
+    severity: HIGH
+    effort: medium
+    breaking_change: package
+    release_blocker: true
+    status: PENDING_DECISION
+    notes: "VERIFIED: only DiagnosticIds.cs + empty Unshipped notes; IsPackable=true"
+  EXT-06:
+    title: AddKaleido implicitly enables both Process and Queryable
+    source: KAL-H01 (merges MP-005)
+    severity: HIGH
+    effort: medium
+    breaking_change: true
+    status: PENDING_DESIGN_REVIEW
+  EXT-07:
+    title: Map* return IEndpointRouteBuilder — authorization cannot compose
+    source: KAL-H09
+    severity: HIGH
+    effort: medium
+    breaking_change: true
+    status: PENDING_DESIGN_REVIEW
+    notes: "Return IEndpointConventionBuilder/RouteGroupBuilder; auth integration tests"
+  EXT-08:
+    title: Queryable surface proliferation (registries x parallel source families)
+    source: KAL-H11, F-04
+    severity: HIGH
+    effort: large
+    breaking_change: true
+    status: PENDING_DESIGN_REVIEW
+  EXT-09:
+    title: Process interface-per-stage decomposition -> cohesive components
+    source: KAL-H12
+    severity: HIGH
+    effort: large
+    breaking_change: internal
+    status: PENDING_DESIGN_REVIEW
+  EXT-10:
+    title: Duplicate conversion systems (IDataTypeMapper vs IValueConverter)
+    source: KAL-H13
+    severity: HIGH
+    effort: medium
+    breaking_change: true
+    status: PENDING_DESIGN_REVIEW
+  EXT-11:
+    title: Mandatory totalCount = two provider ops per query
+    source: KAL-H15
+    severity: HIGH
+    effort: medium
+    breaking_change: true
+    status: PENDING_DESIGN_REVIEW
+  EXT-12:
+    title: Inbound correlation headers trusted as audit identity (spoofable)
+    source: KAL-M01
+    severity: MEDIUM
+    effort: medium
+    breaking_change: possibly
+    status: PENDING_DESIGN_REVIEW
+  EXT-13:
+    title: Registry refresh fan-out unbounded/unauthenticated
+    source: KAL-M02
+    severity: MEDIUM
+    effort: medium
+    breaking_change: possibly
+    status: PENDING_DESIGN_REVIEW
+  EXT-14:
+    title: Case-insensitive filters use culture-sensitive ToLower()
+    source: KAL-M03
+    severity: MEDIUM
+    effort: medium
+    breaking_change: if_semantics_change
+    status: PENDING_DESIGN_REVIEW
+  EXT-15:
+    title: SQLite store rewrites all child rows per save (write amplification)
+    source: KAL-M04
+    severity: MEDIUM
+    effort: medium
+    breaking_change: possibly
+    status: PENDING_IMPLEMENTATION
+  EXT-16:
+    title: Mutable manually-bound options -> ValidateOnStart + immutable snapshots
+    source: KAL-M06, F-18
+    severity: MEDIUM
+    effort: medium
+    breaking_change: possibly
+    status: PENDING_DESIGN_REVIEW
+  EXT-17:
+    title: Offset-only paging; optional keyset/continuation
+    source: KAL-M08
+    severity: MEDIUM
+    effort: large
+    breaking_change: false
+    status: DEFERRED_POST_1_0
+  EXT-18:
+    title: Terminology glossary (Process/Processor, Delegate/Delegated, file/type names)
+    source: KAL-M09, KAL-L02
+    severity: MEDIUM
+    effort: medium
+    breaking_change: true
+    status: PENDING_DESIGN_REVIEW
+  EXT-19:
+    title: XML docs: CS1591 suppressed + stale comments (/queries vs /queryable)
+    source: KAL-M12, F-20
+    severity: MEDIUM
+    effort: medium
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+analyzer_proposals:
+  KAL0020:
+    title: WithName args must reference *EndpointNames consts
+    severity: Warning
+    complexity: small
+    value: high
+    status: PROPOSED
+  KAL0021:
+    title: catch(Exception) touching observability must filter OperationCanceledException
+    severity: Warning
+    complexity: medium
+    value: medium-high
+    status: PROPOSED
+  KAL2001:
+    title: Attribute presence/validity on step/view generic args (consumer package)
+    severity: Error
+    complexity: medium
+    value: high
+    status: PROPOSED
+  KAL2002:
+    title: Consumer step handlers must filter OCE in catch-all (consumer package)
+    severity: Warning
+    complexity: medium
+    value: medium
+    status: PROPOSED
+  KAL2003:
+    title: ServiceName literal validity at compile time (consumer package)
+    severity: Warning
+    complexity: small
+    value: medium
+    status: PROPOSED
+  KAL2004:
+    title: MapRegistry without upstream AddHttpClients (consumer package, heuristic)
+    severity: Info
+    complexity: medium
+    value: medium
+    status: PROPOSED
+
+timeline:
+  week_1:
+    focus: "Design decisions + release-blocker fixes"
+    deliverables:
+      - Design review meeting (CR-001 descope, HP-008/009/011/012/016)
+      - Fix docs (CR-004), rename (HP-005), 500->400 (HP-007), typo (HP-015), Moq (HP-010)
+      - Contract tests (CR-005/006), OCE fix+tests (CR-007)
+      - Answers to Q-001 through Q-005
+    key_dates:
+      - By 2026-09-28: All critical decisions made
+  week_2:
+    focus: "High-priority implementation + documentation"
+    deliverables:
+      - HP-006/008/009 docs, HP-011/012/013/014/016 code changes
+      - HP-017/018 test work, MP-019 contract tests
+      - HP-002/003 docs, MP-003 correlation guide
+  week_3:
+    focus: "Medium-priority cleanup + build hardening"
+    deliverables:
+      - MP-005-016, MP-020-026
+      - CR-003 RELEASE.md + versioning, MP-024 pipeline
+      - Regression: dotnet test Kaleido.slnx clean
+
+team:
+  product_manager:
+    decision_authority: [CR-001, CR-003, HP-001, HP-008, HP-009]
+    review: [all]
+  architect:
+    decision_authority: [CR-001, HP-011, HP-012, MP-016, MP-018, MP-021]
+    review: [CR-002, HP-002, HP-003, MP-001]
+  tech_lead:
+    decision_authority: [HP-002, HP-003, MP-017]
+    implementation_lead: [HP-002, HP-003, MP-003, MP-017]
+  engineering:
+    implementation_lead: [CR-002, CR-004-007, HP-005-016, MP-005-026, LP-004-015]
+    review: [all]
+  qa:
+    responsibility: [CR-005-007, HP-017, HP-018, MP-002, MP-019, testing_all_changes]
+
+open_questions:
+  Q-001:
+    question: "Should Kaleido support non-HTTP transports (gRPC, messaging) in the future?"
+    context: "CR-001 de-scoped to boundary-leak fixes; still informs depth of decoupling"
+    due: 2026-09-28
+    impact: MEDIUM
+  Q-002:
+    question: "Are there real-world use cases for IEventPublisher consumers?"
+    context: "HP-001 + HP-009 enforcement decision"
+    due: 2026-09-28
+    impact: HIGH
+  Q-003:
+    question: "Is MapRegistry always-200-with-ClientErrors contract deliberate?"
+    context: "MP-026 — consider strict mode or Partial flag"
+    due: 2026-09-29
+    impact: MEDIUM
+  Q-004:
+    question: "Should SutFixture be adopted broadly or retired?"
+    context: "MP-017 — analyzers enforce a convention ~2 test classes follow"
+    due: 2026-09-29
+    impact: MEDIUM
+  Q-005:
+    question: "Remove the Assemblies calling-assembly fallback entirely?"
+    context: "HP-012 — determinism vs convenience"
+    due: 2026-09-28
+    impact: HIGH
+
+  Q-006:
+    question: "Analyzer disposition: keep DI-hygiene suite (v2) or prune to correctness-only rules (external reviews)?"
+    context: "MP-017 — external reviews recommend deleting KAL0003/0015/KAL1001-1004/1006-1009; v2 recommends keeping the suite"
+    due: 2026-09-29
+    impact: MEDIUM
+
+  Q-007:
+    question: "Scope of EXT-01/EXT-02 for 1.0: full CAS+outbox implementation or contract-design-now/implement-later?"
+    context: "External merge — the largest architectural decision in the review set"
+    due: 2026-09-28
+    impact: CRITICAL
+
+  Q-008:
+    question: "Ship a consumer analyzer package (KAL2xxx) or keep analyzers repo-only?"
+    context: "EXT-05 — Kaleido.Analyzers is packable but contains zero rules (verified)"
+    due: 2026-09-29
+    impact: MEDIUM
+
+pr_plan:
+  policy: >
+    Docs: catch-up pass in PR-01 to remove wrong content, docs-as-we-go in each
+    code PR, final authoritative sweep in PR-11 after all code PRs merge.
+  PR-01-docs-catchup:
+    gate: none
+    findings: [CR-004, HP-006, MP-023]
+    note: "Strip references to removed Kaleido.AspNetCore + obsolete APIs; minimal corrections only — full rewrite deferred to PR-11"
+  PR-02-breaking-surface:
+    gate: none
+    findings: [HP-005, HP-015, MP-016, MP-025, MP-021]
+    note: "All renames/typos in ONE PR — break once"
+  PR-03-runtime-correctness:
+    gate: none
+    findings: [CR-007, EXT-03, HP-014, MP-009]
+  PR-04-dead-code-dedup:
+    gate: none
+    findings: [MP-007, MP-020, MP-013, MP-018, MP-005, MP-026]
+  PR-05-build-hygiene:
+    gate: none
+    findings: [HP-010, MP-024, MP-022, CR-003]
+  PR-06-contract-tests:
+    gate: none
+    findings: [CR-005, CR-006, HP-002, HP-017, MP-019, MP-002]
+  DECISION-SESSION:
+    gate: "blocks PR-07..PR-10"
+    findings: [Q-001, Q-002, Q-003, Q-004, Q-005, Q-006, Q-007, Q-008]
+  PR-07-http-taxonomy:
+    gate: [EXT-07, HP-016]
+    findings: [HP-007, HP-016, EXT-07, MP-014]
+  PR-08-durability:
+    gate: [Q-007]
+    findings: [EXT-01, EXT-02, EXT-04, HP-009]
+  PR-09-analyzers:
+    gate: [Q-006, Q-008]
+    findings: [EXT-05, HP-003, KAL0020, KAL0021]
+  PR-10-architecture:
+    gate: [Q-001, Q-005]
+    findings: [HP-011, HP-012, HP-013, CR-001]
+  PR-11-docs-final:
+    gate: "after all code PRs merge"
+    findings: [CR-004, HP-001, HP-003, HP-006, HP-008, MP-003, MP-004, MP-023]
+    note: "Authoritative docs rewrite against final public surface"
+  post_1_0:
+    findings: [LP-001, LP-002, LP-003, LP-004, LP-005, LP-006, LP-007, LP-008, LP-009, LP-010, LP-011, LP-012, LP-013, LP-014, LP-015, HP-018]
+
+review_milestones:
+  design_review_meeting:
+    date: null
+    attendees: [architect, product_manager, tech_lead]
+    agenda: [Q-007, CR-001, CR-003, EXT-04, EXT-05, EXT-06, EXT-07, EXT-08, HP-008, HP-009, HP-011, HP-012, HP-016, MP-016, MP-018, MP-021, Q-006]
+    duration_hours: 3
+    outcome: All critical decisions approved
+  documentation_review:
+    date: null
+    attendees: [tech_lead, engineering]
+    agenda: [CR-003, CR-004, HP-002, HP-003, HP-006, MP-003, MP-023]
+    outcome: All docs reviewed and merged
+  implementation_kickoff:
+    date: null
+    attendees: [engineering, qa]
+    deliverables: [tasks assigned, sprint planned]
+  pre_1_0_release_review:
+    date: null
+    criteria:
+      - all_critical_decisions_made: true
+      - all_release_blockers_complete: true
+      - all_hp_items_complete: true
+      - documentation_reviewed: true
+      - contract_tests_in_place: true
+      - tests_passing: true
+      - no_open_questions: true
+
+tracking_status_definitions:
+  PENDING_DECISION: "Awaiting team decision"
+  PENDING_DESIGN_REVIEW: "Designed but needs design review"
+  PENDING_REVIEW: "Ready for review"
+  PENDING_VERIFICATION: "Needs verification of scope/usage"
+  PENDING_IMPLEMENTATION: "Ready for implementation"
+  IN_PROGRESS: "Currently being worked on"
+  IN_REVIEW: "Pull request open for review"
+  COMPLETE: "Finished and merged"
+  DEFERRED_POST_1_0: "Postponed until after 1.0 release"
+  SUPERSEDED: "Replaced by newer finding(s) — see v2_note"
+  CANCELLED: "No longer needed"

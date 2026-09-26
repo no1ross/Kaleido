@@ -13,7 +13,7 @@ See also:
 
 ### `src/Kaleido`
 Owns the core runtime:
-- root bootstrap (`AddKaleido()`, `IKaleidoBuilder`, `AddAssembly(...)`)
+- root bootstrap (`AddKaleido()`, `IKaleidoBuilder`, `KaleidoServiceOptions.Assemblies`)
 - shared metadata primitives (`DataTypeMapper`, `ConstraintMapper`)
 - shared eventing abstractions and correlation context
 - shared JSON/value-conversion helpers
@@ -66,7 +66,7 @@ Future observability providers follow the same pattern: `Kaleido.Observability.<
 
 ### `src/Kaleido.Provider.SQLite`
 Owns the SQLite-backed durable process state store:
-- `UseSqliteProcessContextStore(...)` extension
+- `UseSqliteContextStore(...)` extension
 - SQLite-backed `IProcessContextStore` implementation
 
 ---

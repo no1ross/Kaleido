@@ -12,18 +12,17 @@ For the top-level repository model, see [`../ARCHITECTURE.md`](../ARCHITECTURE.m
 Kaleido.Http.Client ──────────────────────────────────┐
                                                        ↓
 Kaleido.Http ──────────────────────────────────► Kaleido.Http.Abstractions
-     ↑                                                 ↑
-Kaleido.AspNetCore                                     │
-     ↑                                                 │
+                                                       ↑
 Kaleido ◄──────────────────────────────────────────────┘
 
 Kaleido.Provider.SQLite ──► Kaleido
+Kaleido.Observability.OpenTelemetry ──► Kaleido
 ```
 
 - `Kaleido` has no Kaleido project dependencies — it is the foundation.
-- `Kaleido.AspNetCore` depends on `Kaleido` only.
-- `Kaleido.Http` depends on `Kaleido.AspNetCore` and `Kaleido.Http.Abstractions`.
+- `Kaleido.Http` depends on `Kaleido.Http.Abstractions` (which depends on `Kaleido`).
 - `Kaleido.Http.Client` depends on `Kaleido` and `Kaleido.Http.Abstractions`.
+- `Kaleido.Observability.OpenTelemetry` depends on `Kaleido` only.
 - `Kaleido.Provider.SQLite` depends on `Kaleido` only.
 
 ---
@@ -35,7 +34,7 @@ Kaleido.Provider.SQLite ──► Kaleido
 The core project is organized into two main namespaces:
 
 **`Kaleido` (bootstrap and shared)**
-- `KaleidoServiceCollectionExtensions` — `AddKaleido()` / `AddAssembly(...)`
+- `KaleidoServiceCollectionExtensions` — `AddKaleido()` (assemblies via `KaleidoServiceOptions.Assemblies`)
 - `IKaleidoBuilder` / `KaleidoBuilder` — minimal shared builder
 - `KaleidoCorrelationContextAccessor` — scoped accessor for ambient correlation
 - `DataTypeMapper` — CLR type → `DataTypeDescriptor` projection
@@ -61,42 +60,27 @@ The core project is organized into two main namespaces:
 
 ### Key design invariants
 - The core project has no transport dependencies.
-- `AddAssembly(...)` records assemblies; it does not scan them for capabilities. Scanning happens at `AddQueryable()` / `AddProcessor(...)` time.
+- `KaleidoServiceOptions.Assemblies` records assemblies; recording does not scan them for capabilities. Scanning happens during the `AddQueryable()` / `AddProcessor()` calls that `AddKaleido()` invokes internally.
 - `QueryableService` dispatch order (delegated → local → direct) is a published semantic and must not change casually.
 - `ProcessorContext` is current resumable state only, not an audit log.
 - `IKaleidoBuilder` is intentionally minimal.
 
 ---
 
-## 2. Kaleido.AspNetCore
+## 2. Kaleido.Http
 
 ### Internal structure
 
-**Shared infrastructure**
-- `ExceptionMiddleware` — catches `KaleidoFrameworkException` (500), `ArgumentException` (400)
-- `KaleidoAspNetCoreCorrelation` / `KaleidoAspNetCoreHeaders` — correlation-header parsing
-- `ApiErrorContract` — shared error response shape
+**Registration and pipeline**
+- `KaleidoHttpServiceCollectionExtensions` — `AddHttp()` builder extension; registers routing, `IHttpContextAccessor`, the middleware pipeline, and HTTP execution services
+- `KaleidoStartupFilter` — registers middlewares via `IStartupFilter` in the correct pipeline order
+- `ExceptionMiddleware` — outermost middleware; maps exceptions to JSON error responses
+- `ObservabilityMiddleware` — reads inbound correlation headers, populates `IKaleidoCorrelationContextAccessor`, tags the `Activity`, echoes correlation headers on the response
+- `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers into `KaleidoCorrelationContext`
 
-**Queryable transport**
-- `QueryableAspNetCoreServiceCollectionExtensions` — `AddQueryableAspNetCore(...)` builder extension
-- `QueryableValueNormalizer` — normalizes incoming filter values to CLR types before query execution
-
-**Process transport**
-- `ProcessAspNetCoreServiceCollectionExtensions` — `AddProcessorAspNetCore(...)` builder extension
+**Transport services**
 - `ProcessExecutionService` — translates HTTP execute requests into runtime `ProcessRequest` values and writes the resolved `ProcessId` into the response headers
 - `ProcessStateService` — reads durable process state and maps it to the HTTP response contract
-
-### Key design invariants
-- This project depends on `Kaleido` only. It does not reference `Kaleido.Http.Abstractions`.
-- This project adds DI registrations and transport services. It does not map HTTP routes.
-- `ExceptionMiddleware` is targeted — it does not catch every possible exception type.
-- `QueryableValidationException` subtypes are caught at the Queryable endpoint level in `Kaleido.Http`, not in this middleware.
-
----
-
-## 3. Kaleido.Http
-
-### Internal structure
 
 **Queryable endpoints** (`QueryableEndpointRouteBuilderExtensions`)
 - `GET /{prefix}/queryable` — catalog
@@ -129,7 +113,7 @@ The core project is organized into two main namespaces:
 
 ---
 
-## 4. Kaleido.Http.Abstractions
+## 3. Kaleido.Http.Abstractions
 
 ### Internal structure
 
@@ -148,7 +132,7 @@ The core project is organized into two main namespaces:
 
 ---
 
-## 5. Kaleido.Http.Client
+## 4. Kaleido.Http.Client
 
 ### Internal structure
 
@@ -172,14 +156,25 @@ The core project is organized into two main namespaces:
 
 ---
 
+## 5. Kaleido.Observability.OpenTelemetry
+
+### Internal structure
+- `KaleidoObservabilityOpenTelemetryExtensions` — `AddOpenTelemetry()` on `IKaleidoBuilder` (logging + tracing + metrics + OTLP) and `AddKaleidoInstrumentation()` on `TracerProviderBuilder`/`MeterProviderBuilder`
+- Instrumentation itself stays in `Kaleido` (BCL `ActivitySource`/`Meter`); this project only wires the OTel SDK
+
+### Key design invariants
+- Core is observability-provider-agnostic; this is one possible `Kaleido.Observability.<Technology>` provider.
+
+---
+
 ## 6. Kaleido.Provider.SQLite
 
 ### Internal structure
 - `SqliteProcessContextStore` — implements `IProcessContextStore` using SQLite via EF Core
-- `SqliteProcessContextStoreServiceCollectionExtensions` — `UseSqliteProcessContextStore(connectionString)` extension; replaces the default in-memory store
+- `SqliteProcessContextStoreServiceCollectionExtensions` — `UseSqliteContextStore(connectionString)` extension; replaces the default in-memory store
 
 ### Key design invariants
-- Calling `UseSqliteProcessContextStore(...)` replaces the in-memory `IProcessContextStore` registered by `AddProcessor(...)`.
+- Calling `UseSqliteContextStore(...)` replaces the in-memory `IProcessContextStore` registered by `AddProcessor(...)`.
 - The store must correctly implement state reconciliation so that existing saved contexts remain valid when the step registry changes.
 
 ---
@@ -188,7 +183,7 @@ The core project is organized into two main namespaces:
 
 ### Correlation identity
 `KaleidoCorrelationContext` flows through all layers:
-- initialized from HTTP headers by `KaleidoAspNetCoreCorrelation` (in `Kaleido.AspNetCore`)
+- initialized from HTTP headers by `HttpCorrelationContextReader` / `ObservabilityMiddleware` (in `Kaleido.Http`)
 - accessed via the scoped `IKaleidoCorrelationContextAccessor` (registered by `AddKaleido()` in `Kaleido`)
 - forwarded by HTTP clients as outbound headers (in `Kaleido.Http.Client`)
 - included as tags on observability activities (in `Kaleido`)

@@ -7,10 +7,10 @@ Kaleido is a metadata-driven framework for exposing business capabilities throug
 At the highest level, the repository is organized around six source projects:
 
 - [`Kaleido`](./src/Kaleido/README.md) — foundational bootstrap, shared abstractions, metadata primitives, eventing, correlation context, and the core runtimes for both Process and Queryable
-- [`Kaleido.AspNetCore`](./src/Kaleido.AspNetCore/README.md) — shared and capability-specific ASP.NET Core DI registration, middleware, and transport services
-- [`Kaleido.Http`](./src/Kaleido.Http/README.md) — HTTP endpoint publication and route mapping for Process, Queryable, and the aggregated Registry
+- [`Kaleido.Http`](./src/Kaleido.Http/README.md) — HTTP transport: DI registration (`AddHttp()`), middleware pipeline, endpoint publication, and route mapping for Process, Queryable, and the aggregated Registry
 - [`Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP request/response contract types used across server-side and client-side projects
 - [`Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) — typed HTTP clients for consuming remote Process and Queryable endpoints
+- [`Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) — optional OpenTelemetry provider (logging, tracing, metrics, OTLP)
 - [`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) — SQLite-backed durable process state store
 
 See also:
@@ -37,25 +37,18 @@ The core project does not define transport endpoints or ASP.NET Core services.
 
 See: [`src/Kaleido/README.md`](./src/Kaleido/README.md)
 
-### Kaleido.AspNetCore
-The ASP.NET Core project provides DI registration and transport services:
-- shared exception middleware (`UseKaleidoExceptionHandling()`) and correlation-header parsing
-- `AddAspNetCore()` — consolidated ASP.NET Core DI registration for both Process and Queryable
-- `AddQueryableAspNetCore(...)` — Queryable route options and value normalization (internal)
-- `AddProcessorAspNetCore(...)` — Process route options, execution service, and state service (internal)
-
-It depends on `Kaleido` (core) only. It does not reference `Kaleido.Http.Abstractions`.
-It does not define HTTP routes.
-
-See: [`src/Kaleido.AspNetCore/README.md`](./src/Kaleido.AspNetCore/README.md)
-
 ### Kaleido.Http
-The HTTP project publishes all Kaleido endpoint sets:
+The HTTP project provides the full HTTP transport layer:
+- `AddHttp()` — registers routing, `IHttpContextAccessor`, the middleware pipeline, and HTTP execution services
+- `ExceptionMiddleware` — outermost middleware; maps exceptions to JSON error responses
+- `ObservabilityMiddleware` — reads inbound correlation headers, populates the correlation accessor, tags the Activity, and echoes correlation headers on the response
+- `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers
+- `KaleidoStartupFilter` — registers middlewares in the correct pipeline order
 - `MapQueryable()` — catalog, registry, per-context metadata, direct query, and view query endpoints
 - `MapProcessor()` — catalog, registry, per-step metadata, execute, step execute, and process state endpoints
 - `MapRegistry()` — aggregated discovery combining the local processor and all downstream clients
 
-It depends on `Kaleido.AspNetCore` and `Kaleido.Http.Abstractions`.
+It depends on `Kaleido.Http.Abstractions` (which depends on `Kaleido`).
 
 See: [`src/Kaleido.Http/README.md`](./src/Kaleido.Http/README.md)
 
@@ -77,10 +70,17 @@ Typed HTTP clients for downstream service consumption:
 
 See: [`src/Kaleido.Http.Client/README.md`](./src/Kaleido.Http.Client/README.md)
 
+### Kaleido.Observability.OpenTelemetry
+Optional OpenTelemetry provider (opt-in; core emits BCL `ActivitySource`/`Meter` only):
+- `AddOpenTelemetry()` on `IKaleidoBuilder` — one-call setup: logging + tracing + metrics + OTLP export
+- `AddKaleidoInstrumentation()` on `TracerProviderBuilder`/`MeterProviderBuilder` — for consumers managing their own OTel pipeline
+
+See: [`src/Kaleido.Observability.OpenTelemetry/README.md`](./src/Kaleido.Observability.OpenTelemetry/README.md)
+
 ### Kaleido.Provider.SQLite
 SQLite-backed durable process state:
 - Replaces the default in-memory `IProcessContextStore` with a SQLite-backed implementation
-- Registered via `UseSqliteProcessContextStore(connectionString)`
+- Registered via `UseSqliteContextStore(connectionString)`
 
 See: [`src/Kaleido.Provider.SQLite/README.md`](./src/Kaleido.Provider.SQLite/README.md)
 
@@ -101,7 +101,7 @@ Runtime components operate on CLR types and internal contracts rather than trans
 `Kaleido.Http` adapts requests and responses to runtime contracts; it does not reimplement business semantics.
 
 ### Clear project boundaries
-Core runtime concerns live in `Kaleido`. Transport services live in `Kaleido.AspNetCore`. HTTP routes live in `Kaleido.Http`. Shared contracts live in `Kaleido.Http.Abstractions`. Remote consumption lives in `Kaleido.Http.Client`. Persistence lives in `Kaleido.Provider.SQLite`.
+Core runtime concerns live in `Kaleido`. HTTP transport (DI, middleware, routes) lives in `Kaleido.Http`. Shared contracts live in `Kaleido.Http.Abstractions`. Remote consumption lives in `Kaleido.Http.Client`. Observability providers live in `Kaleido.Observability.*`. Persistence lives in `Kaleido.Provider.SQLite`.
 
 ---
 
@@ -114,21 +114,22 @@ Core runtime concerns live in `Kaleido`. Transport services live in `Kaleido.Asp
 
 ### Source projects
 - [`src/Kaleido`](./src/Kaleido/README.md) — core runtime
-- [`src/Kaleido.AspNetCore`](./src/Kaleido.AspNetCore/README.md) — ASP.NET Core DI and transport services
 - [`src/Kaleido.Http`](./src/Kaleido.Http/README.md) — HTTP endpoint publication
 - [`src/Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP contracts
 - [`src/Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) — typed HTTP clients
+- [`src/Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) — OpenTelemetry provider
 - [`src/Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) — SQLite process state provider
 
 ### Tests
 - [`tests/AGENTS.md`](./tests/AGENTS.md)
 - `tests/Kaleido.UnitTests` — core runtime unit tests
-- `tests/Kaleido.AspNetCore.UnitTests` — ASP.NET Core services unit tests
 - `tests/Kaleido.Http.UnitTests` — endpoint route builder unit tests
 - `tests/Kaleido.Http.FunctionalTests` — Process and Queryable HTTP functional tests
 - `tests/Kaleido.Http.Client.UnitTests` — HTTP client unit tests
-- `tests/Kaleido.Http.Abstractions.UnitTests` — placeholder
-- `tests/Kaleido.Provider.SQLite.UnitTests` — placeholder
+- `tests/Kaleido.Http.Abstractions.UnitTests` — shared contract unit tests
+- `tests/Kaleido.Provider.SQLite.UnitTests` — SQLite store unit tests
+- `tests/Kaleido.IntegrationTests` — cross-runtime integration tests
+- `tests/Kaleido.Analyzers.*.UnitTests` — analyzer and source-generator tests
 
 ### Samples
 - [`samples/PriorAuth`](./samples/PriorAuth)
@@ -155,7 +156,7 @@ Assemblies are passed via `KaleidoServiceOptions.Assemblies` in the `AddKaleido(
 - `AddQueryable()` (internal, called automatically) scans registered assemblies for `[QueryContext]` types, view sources, and context sources. It builds the query registry and registers runtime services.
 
 ### Step 4: Transport registration (optional)
-- `AddAspNetCore()` adds the HTTP transport layer services for both Process and Queryable.
+- `AddHttp()` adds the HTTP transport layer services (middleware pipeline, execution services) for both Process and Queryable.
 - `AddHttpClients()` registers typed HTTP clients for downstream services from configuration.
 - `MapProcessor()`, `MapQueryable()`, and `MapRegistry()` publish the HTTP endpoints (call only the ones you need).
 
@@ -163,7 +164,7 @@ This keeps:
 - bootstrap concerns in `Kaleido`
 - query concerns in `Kaleido`
 - action/orchestration concerns in `Kaleido`
-- transport concerns in `Kaleido.AspNetCore` and `Kaleido.Http`
+- transport concerns in `Kaleido.Http` (and `Kaleido.Http.Abstractions` for shared contracts)
 
 ---
 
@@ -185,8 +186,7 @@ Metadata is derived from CLR types using `DataTypeMapper` and `ConstraintMapper`
 
 Transport concerns are layered separately from the core runtime.
 
-- `Kaleido.AspNetCore` adds DI registrations and transport services (value normalization, execution service, state service)
-- `Kaleido.Http` adds HTTP route publication
+- `Kaleido.Http` adds DI registrations, the middleware pipeline, and HTTP route publication
 - `Kaleido.Http.Client` allows calling remote Kaleido services over HTTP
 - `Kaleido.Http.Abstractions` defines the shared contract types used at both ends of each HTTP call
 
@@ -213,7 +213,6 @@ For contributor-oriented guidance, see:
 
 - Start with [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md) for the source-level architecture details
 - Read [`src/Kaleido/README.md`](./src/Kaleido/README.md) to understand bootstrap, the Process runtime, and the Queryable runtime
-- Read [`src/Kaleido.AspNetCore/README.md`](./src/Kaleido.AspNetCore/README.md) for ASP.NET Core DI and transport services
 - Read [`src/Kaleido.Http/README.md`](./src/Kaleido.Http/README.md) for HTTP endpoint publication
 - Read [`src/Kaleido.Http.Abstractions/README.md`](./src/Kaleido.Http.Abstractions/README.md) for shared HTTP contracts
 - Read [`src/Kaleido.Http.Client/README.md`](./src/Kaleido.Http.Client/README.md) for remote service consumption
