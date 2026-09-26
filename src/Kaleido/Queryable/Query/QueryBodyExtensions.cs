@@ -1,12 +1,13 @@
 using Kaleido.Json;
+using Kaleido.Queryable.Metadata;
 
-namespace Kaleido.Http.Queryable;
+namespace Kaleido.Queryable.Query;
 
-internal sealed class QueryableValueNormalizer(
-    IValueConverter valueConverter)
+internal static class QueryBodyExtensions
 {
-    public QueryBody? Normalize(
-        QueryBody? query,
+    public static QueryBody? Normalize(
+        this QueryBody? query,
+        IValueConverter valueConverter,
         QueryContextMetadata metadata)
     {
         if (query is null)
@@ -14,19 +15,19 @@ internal sealed class QueryableValueNormalizer(
             return null;
         }
 
-        var fields = new FieldLookup(metadata);
-
         return query with
         {
             Filter = NormalizeFilter(
                 query.Filter,
-                fields)
+                valueConverter,
+                metadata)
         };
     }
 
-    private QueryFilterNode? NormalizeFilter(
+    private static QueryFilterNode? NormalizeFilter(
         QueryFilterNode? node,
-        FieldLookup fields)
+        IValueConverter valueConverter,
+        QueryContextMetadata metadata)
     {
         if (node is null)
         {
@@ -39,7 +40,8 @@ internal sealed class QueryableValueNormalizer(
             {
                 Condition = NormalizeCondition(
                     node.Condition,
-                    fields)
+                    valueConverter,
+                    metadata)
             };
         }
 
@@ -53,7 +55,8 @@ internal sealed class QueryableValueNormalizer(
                         .Select(x =>
                             NormalizeFilter(
                                 x,
-                                fields))
+                                valueConverter,
+                                metadata))
                         .OfType<QueryFilterNode>()
                         .ToArray())
             };
@@ -62,12 +65,13 @@ internal sealed class QueryableValueNormalizer(
         return node;
     }
 
-    private QueryFilterCondition NormalizeCondition(
+    private static QueryFilterCondition NormalizeCondition(
         QueryFilterCondition condition,
-        FieldLookup fields)
+        IValueConverter valueConverter,
+        QueryContextMetadata metadata)
     {
         var field =
-            fields.Get(condition.Field);
+            metadata.GetField(condition.Field);
 
         try
         {
@@ -93,24 +97,5 @@ internal sealed class QueryableValueNormalizer(
                 $"Value '{condition.Values.FirstOrDefault()}' is not valid for field '{condition.Field}'. Expected a value of type '{field.FieldType.Name}'.",
                 exception);
         }
-    }
-
-    private sealed class FieldLookup(
-        QueryContextMetadata metadata)
-    {
-        private readonly Dictionary<string, FieldMetadata> _byName =
-            metadata.Fields.ToDictionary(
-                x => x.Name,
-                StringComparer.OrdinalIgnoreCase);
-
-        public QueryContextMetadata Metadata { get; } = metadata;
-
-        public FieldMetadata Get(
-            string name) =>
-            _byName.TryGetValue(name, out var field)
-                ? field
-                : throw new KaleidoValidationException(
-                    ValidationErrorCodes.QryInvalidField,
-                    $"Field '{name}' does not exist on record '{Metadata.Name}'.");
     }
 }

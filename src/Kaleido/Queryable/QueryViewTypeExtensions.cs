@@ -69,37 +69,23 @@ internal static class QueryViewTypeExtensions
         type.GetGenericInterfaces(DelegateViewSourceDefinitions);
 
     /// <summary>
-    /// Returns true if this type implements any of the given open generic interface definitions.
+    /// Returns the <see cref="IQueryViewSource{TQueryView,TView}"/> /
+    /// <see cref="IQueryViewSourceAsync{TQueryContext,TView}"/> interface implemented by
+    /// this query view type (preferring the three-parameter overload when both exist).
     /// </summary>
-    internal static bool ImplementsGenericInterface(
-        this Type type,
-        params Type[] genericDefinitions) =>
-        type.GetInterfaces()
-            .Any(i =>
-                i.IsGenericType &&
-                genericDefinitions.Contains(i.GetGenericTypeDefinition()));
-
-    /// <summary>
-    /// Returns true if this type implements any of the given open generic interface definitions
-    /// whose first generic argument equals <paramref name="firstArgumentType"/>
-    /// (e.g. an <see cref="IQueryContextSource{T}"/> for a specific context type).
-    /// </summary>
-    internal static bool ImplementsGenericInterfaceFor(
-        this Type type,
-        Type firstArgumentType,
-        params Type[] genericDefinitions) =>
-        type.GetInterfaces()
-            .Any(i =>
-                i.IsGenericType &&
-                genericDefinitions.Contains(i.GetGenericTypeDefinition()) &&
-                i.GenericTypeArguments[0] == firstArgumentType);
-
-    private static Type[] GetGenericInterfaces(
-        this Type type,
-        Type[] genericDefinitions) =>
-        type.GetInterfaces()
+    internal static Type GetQueryViewInterface(
+        this Type queryViewType) =>
+        queryViewType
+            .GetInterfaces()
             .Where(i =>
                 i.IsGenericType &&
-                genericDefinitions.Contains(i.GetGenericTypeDefinition()))
-            .ToArray();
+                (
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,>) ||
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,,>) ||
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,>) ||
+                    i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,,>)
+                ))
+            .OrderByDescending(
+                i => i.GenericTypeArguments.Length)
+            .First();
 }

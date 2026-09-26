@@ -118,12 +118,12 @@ critical_decisions:
     effort_days: 1-2
     breaking_change: false
     release_blocker: true
-    status: IN_REVIEW
+    status: COMPLETE
     progress_note: >
-      PR-03: ProcessRuntime OCE catch removed + invariant comment; dead
+      PR-03 merged #20: ProcessRuntime OCE catch removed + invariant comment; dead
       IProcessExecutionObservation.Canceled() + ExecutionCanceledEventName removed.
-      Design review confirmed executor loop is the correct recording point
-      (step span covers invoke+evaluate+save+publish). Remaining: dedicated OCE tests.
+      Design review confirmed executor loop is the correct recording point.
+      Dedicated OCE test coverage tracked under TQ findings.
 
 high_priority_items:
   HP-001:
@@ -246,8 +246,8 @@ high_priority_items:
     effort_days: 0.5
     priority: HIGH
     breaking_change: true
-    status: IN_REVIEW
-    progress_note: "PR-03: all three fixed — qry_paging_not_supported on non-pageable, correct <=0 message, new qry_invalid_page_offset + ERROR_CODES.md entry."
+    status: COMPLETE
+    progress_note: "PR-03 merged #20: qry_paging_not_supported on non-pageable, correct <=0 message, new qry_invalid_page_offset + ERROR_CODES.md entry. Verified on master."
 
   HP-015:
     title: Fix endpoint-name typo KaleidoProcessStepREgistry
@@ -331,7 +331,10 @@ medium_priority_items:
     effort_days: 0.5
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETE
+    resolution_note: >
+      GuardQueryAsync deleted (PR-04). ExceptionMiddleware owns all 400s uniformly
+      with correct telemetry; no caller invoked the wrapper.
 
   MP-008:
     title: MapRegistry unconditionally requires both client factories (+options-as-marker)
@@ -346,7 +349,7 @@ medium_priority_items:
     priority: MEDIUM
     breaking_change: false
     status: IN_PROGRESS
-    progress_note: "PR-03: step-invoke now uses expression-compiled InvokeHandlerAsync delegate cached on ProcessStepRegistration (GetMethod+Invoke eliminated). Remaining: query dispatch, NullabilityInfoContext, step round-trip."
+    progress_note: "PR-03 merged #20: step-invoke uses expression-compiled InvokeHandlerAsync cached on registration. Remaining: query dispatch, NullabilityInfoContext, step round-trip."
 
   MP-010:
     title: QueryEventFactory copies full result set per query (wasted under no-op publisher)
@@ -374,7 +377,14 @@ medium_priority_items:
     effort_days: 0.5
     priority: MEDIUM
     breaking_change: true
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETE
+    resolution_note: >
+      Moved IProcessResponseFactory/ProcessResponseFactory from Kaleido.Http.Abstractions
+      into Kaleido.Http/Process — every consumer is server-side (endpoints, execution
+      factory, state service, registry endpoints); the client never uses it.
+      IProcessExecutionResponseFactory stays in Kaleido.Http — it maps core runtime
+      types onto wire contracts, which is transport-adapter work. Abstractions now
+      holds wire contracts only.
 
   MP-014:
     title: Validate registry-supplied URLs (SSRF surface in clients)
@@ -429,7 +439,16 @@ medium_priority_items:
     effort_days: 1
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETE
+    resolution_note: >
+      (PR-04) FieldLookup x3 -> QueryContextMetadata.GetField extension.
+      QueryableValueNormalizer moved out of transport -> QueryBody.Normalize extension,
+      folded into QueryableService dispatch. TypeExtensions shared generic-interface
+      helpers replaced IsProcessStepHandler x2 + private copies. GetQueryViewInterface
+      -> QueryViewTypeExtensions. QueryMetadataExtensions
+      (ToFieldMetadata/ToParameterMetadata/ToOutputFieldMetadata/ToViewMetadata/ToViewPageable)
+      replaced ~200 near-verbatim builder lines across the three queryable registries.
+      Spawned MP-027 (statics-vs-extensions convention, KAL0001) on design agenda.
 
   MP-021:
     title: Contract model cleanup (shadowed new members, RepeatableOptions, parallel vocabularies)
@@ -478,12 +497,38 @@ medium_priority_items:
       AddHttpClients() is the sole consumer seam — docs already describe this.
       Keeps the public surface minimal.
 
+  MP-027:
+    title: "Arch decision: static helpers vs extension methods (KAL0001 interplay)"
+    description: >
+      Surfaced during MP-020 dedup: GetField became an extension on
+      QueryContextMetadata; Normalize became an extension on QueryBody.
+      Many existing statics are candidates for the same treatment
+      (Type predicates IsProcessStepHandler/ImplementsGenericInterfaceFor/GetQueryViewInterface,
+      view-metadata builders, registry compile helpers). Needs a repo-wide convention:
+      X(T) that derives from T -> extension on T; orchestration stays helper/builder.
+      Also settle KAL0001's stance on extension-method holders (static classes).
+    effort_days: 1-2
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_DESIGN_REVIEW
+
   MP-026:
     title: Registry always-200 contract undocumented; client step-name rule diverges from server attribute
     effort_days: 0.5-1
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETE
+    resolution_note: >
+      (PR-04) ExecuteStepAsync now takes explicit string stepName; [ProcessStep].Name
+      on TStep validated when present (new httpclient_invalid_step_name); not-found
+      error lists available steps. Call sites + tests updated.
+      Remaining: document the always-200 registry contract in docs (deferred to docs PR).
+    decision: >
+      DECIDED 2026-09-26 (owner): step-name resolution moves to an explicit
+      string parameter; client validates TStep's [ProcessStep].Name when the
+      attribute is present. Not-found error lists available registry steps.
+      Compile-time literal validation of step-name strings is a consumer
+      analyzer rule -- see consumer_analyzer_candidates.
 
 low_priority_items:
   LP-001:
@@ -582,12 +627,12 @@ external_findings:
     effort: medium
     breaking_change: possibly
     release_blocker: true
-    status: IN_REVIEW
+    status: COMPLETE
     progress_note: >
-      PR-03: IQueryContextExecutor<TView> is now public (the intended EF seam);
+      PR-03 merged #20: IQueryContextExecutor<TView> public (the intended EF seam);
       default impl uses IAsyncEnumerable when supported + sync fallback.
-      Documented in src README/ARCHITECTURE; consumers needing provider-native
-      CountAsync/ToListAsync register their own.
+      Documented in src README/ARCHITECTURE; provider-native impl is a consumer
+      registration. Verified on master.
     status: PENDING_IMPLEMENTATION
     notes: "VERIFIED: QueryContextExecutor wraps query.Count()/ToList() in Task.FromResult"
   EXT-04:
@@ -882,11 +927,22 @@ pr_plan:
   post_1_0:
     findings: [LP-001, LP-002, LP-003, LP-004, LP-005, LP-006, LP-007, LP-008, LP-009, LP-010, LP-011, LP-012, LP-013, LP-014, LP-015, HP-018]
 
+consumer_analyzer_candidates:
+  status: PLANNED
+  trigger: "sample updates + KAL2xxx disposition (Q-008); rules driven by what consumers actually write"
+  rules:
+    - name: "step-name literal validation"
+      detail: "warn when a literal step name passed to client.ExecuteStepAsync matches no [ProcessStep].Name in the compilation's referenced assemblies; include available names in the message"
+    - name: "ProcessStep suffix convention"
+      detail: "warn when a [ProcessStep]-annotated class does not end in 'Step' -- required for the typeName-'Step' derivation convention"
+    - name: "convention-divergent explicit Name"
+      detail: "info when explicit [ProcessStep].Name differs from the derived convention -- consumer mirror types must carry the attribute to resolve it"
+
 review_milestones:
   design_review_meeting:
     date: null
     attendees: [architect, product_manager, tech_lead]
-    agenda: [Q-007, CR-001, CR-003, EXT-04, EXT-05, EXT-06, EXT-07, EXT-08, HP-008, HP-009, HP-011, HP-012, HP-016, MP-016, MP-018, MP-021, Q-006]
+    agenda: [Q-007, CR-001, CR-003, EXT-04, EXT-05, EXT-06, EXT-07, EXT-08, HP-008, HP-009, HP-011, HP-012, HP-016, MP-016, MP-018, MP-021, MP-027, Q-006]
     duration_hours: 3
     outcome: All critical decisions approved
   documentation_review:

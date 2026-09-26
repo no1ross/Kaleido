@@ -23,12 +23,19 @@ public interface IKaleidoProcessClient
         ExecuteProcessRequest request,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Executes a named process step remotely. <paramref name="stepName"/> must match a step
+    /// in the remote registry; when <typeparamref name="TStep"/> carries [ProcessStep], the
+    /// attribute's Name is validated against it before the call.
+    /// </summary>
     Task<StepExecutionResponse> ExecuteStepAsync<TStep>(
+        string stepName,
         TStep processStep,
         CancellationToken cancellationToken = default)
         where TStep : class;
 
     Task<StepExecutionResponse<TResponse>> ExecuteStepAsync<TStep, TResponse>(
+        string stepName,
         TStep processStep,
         CancellationToken cancellationToken = default)
         where TStep : class;

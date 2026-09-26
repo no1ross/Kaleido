@@ -112,15 +112,13 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
             parametersType,
             contextType,
             BuildQueryMetadata(contextType),
-            new QueryViewMetadata(
-                queryViewAttribute.Name,
-                queryViewAttribute.Version,
-                queryViewAttribute.DisplayName ?? queryViewAttribute.Name,
-                queryViewAttribute.Description ?? queryViewAttribute.DisplayName ?? queryViewAttribute.Name,
-                queryViewAttribute.Visibility,
-                BuildPageable(queryViewType, contextType, queryViewAttribute),
-                BuildParameters(parametersType),
-                BuildOutputFields(viewType)));
+            queryViewAttribute.ToViewMetadata(
+                queryViewType,
+                contextType,
+                parametersType,
+                viewType,
+                _dataTypeMapper,
+                _constraintMapper));
     }
 
     private QueryContextMetadata BuildQueryMetadata(Type contextType)
@@ -146,96 +144,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
             pageable,
             contextType
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Select(BuildField)
+                .Select(x => x.ToFieldMetadata(_dataTypeMapper))
                 .ToArray());
-    }
-
-    private IReadOnlyList<QueryParameterMetadata> BuildParameters(Type parametersType)
-    {
-        if (parametersType == typeof(EmptyQueryViewParameters))
-        {
-            return Array.Empty<QueryParameterMetadata>();
-        }
-
-        return parametersType
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Select(property =>
-                new QueryParameterMetadata(
-                    property.Name,
-                    property.PropertyType,
-                    _dataTypeMapper.GetDescriptor(property),
-                    _constraintMapper.Map(property),
-                    property.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>()?.Description))
-            .ToArray();
-    }
-
-    private IReadOnlyList<QueryOutputFieldMetadata> BuildOutputFields(Type viewType)
-    {
-        return viewType
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Select(property =>
-                new QueryOutputFieldMetadata(
-                    property.Name,
-                    property.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>()?.Description,
-                    property.PropertyType,
-                    _dataTypeMapper.GetDescriptor(property)))
-            .ToArray();
-    }
-
-    private static PageableMetadata? BuildPageable(Type queryViewType, Type contextType, QueryViewAttribute attribute)
-    {
-        var pageable = queryViewType.GetCustomAttribute<PageableAttribute>();
-        if (pageable is null)
-        {
-            return null;
-        }
-
-        if (string.IsNullOrWhiteSpace(attribute.DefaultSortField))
-        {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.QryInvalidRegistration,
-                $"Query view '{attribute.Name}' is pageable and must define a DefaultSortField.");
-        }
-
-        var property =
-            contextType.GetProperty(
-                attribute.DefaultSortField,
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-
-        if (property is null)
-        {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.QryInvalidRegistration,
-                $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' which does not exist on query context '{contextType.Name}'.");
-        }
-
-        if (property.GetCustomAttribute<SortableAttribute>() is null)
-        {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.QryInvalidRegistration,
-                $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' but the field is not marked as sortable.");
-        }
-
-        return new PageableMetadata(pageable.DefaultSize, pageable.MaxSize);
-    }
-
-    private FieldMetadata BuildField(PropertyInfo property)
-    {
-        var filterable = property.GetCustomAttribute<FilterableAttribute>();
-        var searchable = property.GetCustomAttribute<SearchableAttribute>();
-        var sortable = property.GetCustomAttribute<SortableAttribute>();
-        var description = property.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>();
-
-        return new FieldMetadata(
-            property.Name,
-            description?.Description,
-            property.PropertyType,
-            _dataTypeMapper.GetDescriptor(property),
-            filterable is not null,
-            filterable?.Operators ?? Array.Empty<FilterOperator>(),
-            searchable is not null,
-            searchable?.Priority,
-            searchable?.MatchMode,
-            sortable is not null);
     }
 }
