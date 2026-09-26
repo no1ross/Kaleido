@@ -102,6 +102,20 @@ Queryable supports three execution lanes, dispatched in this order:
 
 Do not change that dispatch order. It is part of the current framework semantics.
 
+### Selection and fallback
+
+- Dispatch is **first-match-wins by view name**: if a view type is registered in both the delegated and local registries, the delegated lane executes. If a view is registered locally *and* its query context permits direct query, the local lane executes. Direct context is the fallback, not the default.
+- Fallback happens only when `Find(viewType)` returns `null` — not on failures. A failing lane is a defect, not a signal to try the next lane.
+- When no lane matches, the caller's generic type arguments drive a reflective `ExecuteWithDiscoveredContextAsync` fallback across context registrations; a bad view→contract pairing is surfaced as `KaleidoFrameworkException`, not silently re-routed.
+
+### Performance implications
+
+- **Delegated views pay full materialization cost** — the source computes and returns the whole `QueryResult<TView>` (typically a cross-service or cross-source aggregation). Nothing downstream re-queries it.
+- **Local views pay projection cost only** — the framework applies request semantics (filter/sort/page) to an `IQueryable<TContext>` in-process; paging bounds memory.
+- **Direct context is the rawest lane** — request semantics applied directly against the context's queryable. The `Direct` kind opt-in is deliberate: exposing the context shape means no view contract shield exists.
+
+The dispatch order is pinned by `QueryableServiceTests` precedence tests — the suite fails if the lane order regresses.
+
 ---
 
 ## Process execution model
