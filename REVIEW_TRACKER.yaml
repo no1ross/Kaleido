@@ -331,7 +331,10 @@ medium_priority_items:
     effort_days: 0.5
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETE
+    resolution_note: >
+      GuardQueryAsync deleted (PR-04). ExceptionMiddleware owns all 400s uniformly
+      with correct telemetry; no caller invoked the wrapper.
 
   MP-008:
     title: MapRegistry unconditionally requires both client factories (+options-as-marker)
@@ -436,7 +439,16 @@ medium_priority_items:
     effort_days: 1
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETE
+    resolution_note: >
+      (PR-04) FieldLookup x3 -> QueryContextMetadata.GetField extension.
+      QueryableValueNormalizer moved out of transport -> QueryBody.Normalize extension,
+      folded into QueryableService dispatch. TypeExtensions shared generic-interface
+      helpers replaced IsProcessStepHandler x2 + private copies. GetQueryViewInterface
+      -> QueryViewTypeExtensions. QueryMetadataExtensions
+      (ToFieldMetadata/ToParameterMetadata/ToOutputFieldMetadata/ToViewMetadata/ToViewPageable)
+      replaced ~200 near-verbatim builder lines across the three queryable registries.
+      Spawned MP-027 (statics-vs-extensions convention, KAL0001) on design agenda.
 
   MP-021:
     title: Contract model cleanup (shadowed new members, RepeatableOptions, parallel vocabularies)
@@ -505,7 +517,12 @@ medium_priority_items:
     effort_days: 0.5-1
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETE
+    resolution_note: >
+      (PR-04) ExecuteStepAsync now takes explicit string stepName; [ProcessStep].Name
+      on TStep validated when present (new httpclient_invalid_step_name); not-found
+      error lists available steps. Call sites + tests updated.
+      Remaining: document the always-200 registry contract in docs (deferred to docs PR).
     decision: >
       DECIDED 2026-09-26 (owner): step-name resolution moves to an explicit
       string parameter; client validates TStep's [ProcessStep].Name when the
