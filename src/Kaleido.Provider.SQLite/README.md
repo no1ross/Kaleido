@@ -11,7 +11,7 @@ See also:
 ## What lives here
 
 - `SqliteProcessContextStore` — SQLite-backed `IProcessContextStore` implementation
-- `SqliteProcessContextStoreServiceCollectionExtensions` — `UseSqliteContextStore(connectionString)` builder extension
+- `SqliteProcessContextStoreServiceCollectionExtensions` — `UseSqliteProcessContextStore(connectionString)` builder extension
 
 ---
 
@@ -31,7 +31,7 @@ The default in-memory store registered by `AddProcessor(...)` is sufficient for:
 
 ## Registration
 
-Call `UseSqliteContextStore(...)` on the `IKaleidoBuilder` returned by `AddKaleido()`:
+Call `UseSqliteProcessContextStore(...)` on the `IKaleidoBuilder` returned by `AddKaleido()`:
 
 ```csharp
 builder.Services.AddKaleido(builder.Configuration, o =>
@@ -39,7 +39,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     o.ServiceName = "my-service";
     o.Assemblies = new[] { typeof(Program).Assembly };
 })
-    .UseSqliteContextStore("Data Source=my-process.sqlite");
+    .UseSqliteProcessContextStore("Data Source=my-process.sqlite");
 ```
 
 This registers `SqliteProcessContextStore` as the `IProcessContextStore` implementation, replacing the default in-memory store.
@@ -58,4 +58,4 @@ This project does not contain:
 ## Where to look
 
 - `SqliteProcessContextStore.cs` — SQLite implementation of `IProcessContextStore`
-- `SqliteProcessContextStoreServiceCollectionExtensions.cs` — `UseSqliteContextStore(...)` registration
+- `SqliteProcessContextStoreServiceCollectionExtensions.cs` — `UseSqliteProcessContextStore(...)` registration

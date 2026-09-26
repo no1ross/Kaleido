@@ -80,7 +80,7 @@ See: [`src/Kaleido.Observability.OpenTelemetry/README.md`](./src/Kaleido.Observa
 ### Kaleido.Provider.SQLite
 SQLite-backed durable process state:
 - Replaces the default in-memory `IProcessContextStore` with a SQLite-backed implementation
-- Registered via `UseSqliteContextStore(connectionString)`
+- Registered via `UseSqliteProcessContextStore(connectionString)`
 
 See: [`src/Kaleido.Provider.SQLite/README.md`](./src/Kaleido.Provider.SQLite/README.md)
 

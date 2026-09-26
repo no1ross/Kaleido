@@ -66,7 +66,7 @@ Future observability providers follow the same pattern: `Kaleido.Observability.<
 
 ### `src/Kaleido.Provider.SQLite`
 Owns the SQLite-backed durable process state store:
-- `UseSqliteContextStore(...)` extension
+- `UseSqliteProcessContextStore(...)` extension
 - SQLite-backed `IProcessContextStore` implementation
 
 ---

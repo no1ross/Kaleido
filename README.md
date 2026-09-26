@@ -186,7 +186,7 @@ builder.Services
     })
     .AddEventPublisher<HttpEventPublisher>()
     .AddHttp()
-    .UseSqliteContextStore("Data Source=kaleido-sample-process.sqlite")
+    .UseSqliteProcessContextStore("Data Source=kaleido-sample-process.sqlite")
     .AddHttpClients();
 
 app.MapProcessor();
@@ -218,7 +218,7 @@ builder.Services
         };
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .UseSqliteContextStore("Data Source=kaleido-sample-process.sqlite");
+    .UseSqliteProcessContextStore("Data Source=kaleido-sample-process.sqlite");
 ```
 
 ---

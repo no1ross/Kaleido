@@ -84,7 +84,11 @@ critical_decisions:
     effort_days: 1-2
     breaking_change: false
     release_blocker: true
-    status: PENDING_IMPLEMENTATION
+    status: IN_PROGRESS
+    progress_note: >
+      PR-01 (merged #18): Kaleido.AspNetCore purged from all live docs; quickstart
+      now uses AddHttp() and compiles. Remaining: final authoritative sweep PR-11;
+      stale dir deletion is MP-022 (PR-05).
 
   CR-005:
     title: ExceptionMiddleware exception-to-response contract untested
@@ -160,7 +164,8 @@ high_priority_items:
     priority: HIGH
     breaking_change: true
     release_blocker: true
-    status: PENDING_IMPLEMENTATION
+    status: IN_REVIEW
+    progress_note: "PR-02 branch: renamed API + all call sites + docs to UseSqliteProcessContextStore; build 0/0, 603 green."
 
   HP-006:
     title: Rewrite docs to actual bootstrap model
@@ -168,7 +173,8 @@ high_priority_items:
     effort_days: 1
     priority: HIGH
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: IN_PROGRESS
+    progress_note: "PR-01 (merged #18): src/Kaleido README bootstrap sample rewritten to options.Assemblies; internal auto-invocation documented. Final pass in PR-11."
 
   HP-007:
     title: Malformed correlation GUID header -> 400 (not 500)
@@ -244,7 +250,8 @@ high_priority_items:
     priority: HIGH
     breaking_change: true
     release_blocker: true
-    status: PENDING_IMPLEMENTATION
+    status: IN_REVIEW
+    progress_note: "PR-02 branch: fixed to KaleidoProcessStepRegistry; no other endpoint-name typos found."
 
   HP-016:
     title: Preserve error taxonomy across step boundary + client error body
@@ -381,7 +388,12 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: PENDING_IMPLEMENTATION
+    decision: >
+      DECIDED 2026-09-26 (owner): concretes are internal implementation —
+      no consumer may override them. Internalize EventPublisher, ValueConverter,
+      DataTypeMapper, ConstraintMapper, SQLite DbContext/entities/SqliteTelemetry,
+      KaleidoServiceOptions.Validate. Verified: Http/samples only use interfaces.
 
   MP-017:
     title: Analyzer suite gaps (KAL1010/1011 docs, KAL1009 demotion, SutFixture decision, pack metadata, stub project)
@@ -417,7 +429,14 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: PENDING_IMPLEMENTATION
+    decision: >
+      SCOPED 2026-09-26 (owner review): PR-02 does (1) flatten new-shadowed
+      QueryableViewResponse/QueryableRecordResponse to self-contained records and
+      (2) drop ProcessorCatalogResponse — catalog reuses ProcessorRegistryResponse
+      with Steps=null + JsonIgnore. Wire/domain parallel vocabularies are BY DESIGN
+      (documented boundaries). RepeatableOptions/EmptyQueryViewParameters deferred
+      to post-1.0 cosmetics.
 
   MP-022:
     title: Delete stale dirs (src/Core, src/Kaleido.AspNetCore) + root artifacts (kaleido-context.xml, cleanup*.md)
@@ -431,7 +450,8 @@ medium_priority_items:
     effort_days: 0.5-1
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: IN_PROGRESS
+    progress_note: "PR-01 (merged #18): doc map links fixed (AspNetCore removed, OTel added). Remaining: tests/AGENTS table, tools/analyzers guide, stale exception names — PR-11."
 
   MP-024:
     title: Release pipeline gaps (lock files, pack step, coverage gate, warnings-as-errors scope) — corrected CR-002
@@ -445,7 +465,11 @@ medium_priority_items:
     effort_days: 0.5
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_DESIGN_REVIEW
+    status: CANCELLED
+    decision: >
+      DECIDED 2026-09-26 (owner): keep AddProcessClient/AddQueryableClient internal.
+      AddHttpClients() is the sole consumer seam — docs already describe this.
+      Keeps the public surface minimal.
 
   MP-026:
     title: Registry always-200 contract undocumented; client step-name rule diverges from server attribute
@@ -809,7 +833,7 @@ pr_plan:
     note: "Strip references to removed Kaleido.AspNetCore + obsolete APIs; minimal corrections only — full rewrite deferred to PR-11"
   PR-02-breaking-surface:
     gate: none
-    findings: [HP-005, HP-015, MP-016, MP-025, MP-021]
+    findings: [HP-005, HP-015, MP-016, MP-021]
     note: "All renames/typos in ONE PR — break once"
   PR-03-runtime-correctness:
     gate: none

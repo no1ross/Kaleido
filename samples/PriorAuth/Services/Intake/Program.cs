@@ -61,7 +61,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     })
     .AddEventPublisher<HttpEventPublisher>()
     .AddHttp()
-    .UseSqliteContextStore(processConnectionString)
+    .UseSqliteProcessContextStore(processConnectionString)
     .AddHttpClients()
     .AddOpenTelemetry();
 

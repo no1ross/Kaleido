@@ -30,7 +30,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.Assemblies = new[] { typeof(Program).Assembly, typeof(AddItemToCartStep).Assembly, typeof(ProductCatalogQueryContext).Assembly };
     })
     .AddHttp()
-    .UseSqliteContextStore("Data Source=kaleido-sample-process.sqlite")
+    .UseSqliteProcessContextStore("Data Source=kaleido-sample-process.sqlite")
     .AddOpenTelemetry();
 
 builder.Services.AddDbContext<ECommerceDbContext>(options =>

@@ -40,7 +40,7 @@ public sealed class DbContextDependencyTests
     }
 
     [Fact]
-    public void UseSqliteContextStore_RegistersSqliteStore()
+    public void UseSqliteProcessContextStore_RegistersSqliteStore()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -50,7 +50,7 @@ public sealed class DbContextDependencyTests
         services.AddKaleido(new ConfigurationBuilder().Build(), o =>
         {
             o.ServiceName = "test-integration";
-        }).UseSqliteContextStore(connectionString);
+        }).UseSqliteProcessContextStore(connectionString);
 
         using var provider = services.BuildServiceProvider();
 
