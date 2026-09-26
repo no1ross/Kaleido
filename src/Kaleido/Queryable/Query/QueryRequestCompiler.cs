@@ -67,18 +67,16 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
         var offset = request.Query?.Page?.Offset ?? 0;
 
-        var fields = new FieldLookup(metadata);
-
         return new CompiledRecordQuery(
-            CompileFilter(request.Query?.Filter, fields),
+            CompileFilter(request.Query?.Filter, metadata),
             CompileSearch(request.Query?.SearchText, metadata),
-            CompileSort(request.Query?.Sort, fields),
+            CompileSort(request.Query?.Sort, metadata),
             new CompiledPage(size, offset));
     }
 
     private static CompiledFilterExpression? CompileFilter(
         QueryFilterNode? node,
-        FieldLookup fields)
+        QueryContextMetadata metadata)
     {
         if (node is null)
         {
@@ -96,14 +94,14 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
         {
             return CompileFilterCondition(
                 node.Condition,
-                fields);
+                metadata);
         }
 
         if (node.Group is not null)
         {
             return CompileFilterGroup(
                 node.Group,
-                fields);
+                metadata);
         }
 
         throw new KaleidoValidationException(
@@ -113,20 +111,20 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
     private static CompiledFilterCondition CompileFilterCondition(
         QueryFilterCondition condition,
-        FieldLookup fields)
+        QueryContextMetadata metadata)
     {
         return new CompiledFilterCondition(
-            fields.Get(condition.Field),
+            metadata.GetField(condition.Field),
             condition.Operator,
             condition.Values);
     }
 
     private static CompiledFilterGroup CompileFilterGroup(
         QueryFilterGroup group,
-        FieldLookup fields)
+        QueryContextMetadata metadata)
     {
         var compiledFilters = group.Filters
-            .Select(x => CompileFilter(x, fields))
+            .Select(x => CompileFilter(x, metadata))
             .OfType<CompiledFilterExpression>()
             .ToArray();
 
@@ -170,7 +168,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
     private static IReadOnlyList<CompiledSort> CompileSort(
         IReadOnlyList<QuerySort>? sorts,
-        FieldLookup fields)
+        QueryContextMetadata metadata)
     {
         if (sorts is null || sorts.Count == 0)
         {
@@ -181,28 +179,9 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
             .OrderBy(x => x.Sequence ?? int.MaxValue)
             .Select((x, index) =>
                 new CompiledSort(
-                    fields.Get(x.Field),
+                    metadata.GetField(x.Field),
                     x.Direction,
                     index))
             .ToArray();
-    }
-
-    private sealed class FieldLookup(
-        QueryContextMetadata metadata)
-    {
-        private readonly Dictionary<string, FieldMetadata> _byName =
-            metadata.Fields.ToDictionary(
-                x => x.Name,
-                StringComparer.OrdinalIgnoreCase);
-
-        public QueryContextMetadata Metadata { get; } = metadata;
-
-        public FieldMetadata Get(
-            string name) =>
-            _byName.TryGetValue(name, out var field)
-                ? field
-                : throw new KaleidoValidationException(
-                    ValidationErrorCodes.QryInvalidField,
-                    $"Field '{name}' does not exist on record '{Metadata.Name}'.");
     }
 }

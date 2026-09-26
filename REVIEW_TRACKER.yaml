@@ -478,6 +478,21 @@ medium_priority_items:
       AddHttpClients() is the sole consumer seam — docs already describe this.
       Keeps the public surface minimal.
 
+  MP-027:
+    title: "Arch decision: static helpers vs extension methods (KAL0001 interplay)"
+    description: >
+      Surfaced during MP-020 dedup: GetField became an extension on
+      QueryContextMetadata; Normalize became an extension on QueryBody.
+      Many existing statics are candidates for the same treatment
+      (Type predicates IsProcessStepHandler/ImplementsGenericInterfaceFor/GetQueryViewInterface,
+      view-metadata builders, registry compile helpers). Needs a repo-wide convention:
+      X(T) that derives from T -> extension on T; orchestration stays helper/builder.
+      Also settle KAL0001's stance on extension-method holders (static classes).
+    effort_days: 1-2
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_DESIGN_REVIEW
+
   MP-026:
     title: Registry always-200 contract undocumented; client step-name rule diverges from server attribute
     effort_days: 0.5-1
@@ -903,7 +918,7 @@ review_milestones:
   design_review_meeting:
     date: null
     attendees: [architect, product_manager, tech_lead]
-    agenda: [Q-007, CR-001, CR-003, EXT-04, EXT-05, EXT-06, EXT-07, EXT-08, HP-008, HP-009, HP-011, HP-012, HP-016, MP-016, MP-018, MP-021, Q-006]
+    agenda: [Q-007, CR-001, CR-003, EXT-04, EXT-05, EXT-06, EXT-07, EXT-08, HP-008, HP-009, HP-011, HP-012, HP-016, MP-016, MP-018, MP-021, MP-027, Q-006]
     duration_hours: 3
     outcome: All critical decisions approved
   documentation_review:

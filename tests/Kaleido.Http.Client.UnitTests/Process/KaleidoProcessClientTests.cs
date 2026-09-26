@@ -1,9 +1,8 @@
-using Kaleido.Http.Client;
 using Kaleido.Http.Client.Process;
 using Kaleido.Http.Process;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Kaleido.Process.Http.Client.Tests;
+namespace Kaleido.Http.Client.UnitTests.Process;
 
 public sealed class KaleidoProcessClientTests
 {
@@ -250,11 +249,7 @@ public sealed class KaleidoProcessClientTests
             return JsonOk(fakeResult);
         });
 
-        // MyStep type name — "Step" suffix stripped: MyStep — MyStep (no suffix here, keep as-is)
-        // Actually step name lookup uses type name with optional "Step" suffix stripping.
-        // Our type below is named MyClientStep — strips to MyClient, won't match "MyStep".
-        // Use a type whose name without "Step" suffix matches our FakeStep name "MyStep".
-        var result = await client.ExecuteStepAsync(new MyStepStep());
+        var result = await client.ExecuteStepAsync("MyStep", new MyStepStep());
 
         Assert.Equal("MyStep", result.StepName);
         Assert.Contains("/processes/steps/mystep", postedUrl);
@@ -266,7 +261,7 @@ public sealed class KaleidoProcessClientTests
         var (client, _) = CreateClient();
 
         await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.ExecuteStepAsync(new UnknownTypeForTest()));
+            () => client.ExecuteStepAsync("UnknownStep", new UnknownTypeForTest()));
     }
 
     [Fact]
@@ -285,7 +280,7 @@ public sealed class KaleidoProcessClientTests
         });
 
         var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.ExecuteStepAsync(new MyStepStep()));
+            () => client.ExecuteStepAsync("MyStep", new MyStepStep()));
 
         Assert.Equal(HttpStatusCode.BadGateway, ex.StatusCode);
         Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
@@ -318,7 +313,7 @@ public sealed class KaleidoProcessClientTests
             return JsonOk(fakeResult);
         });
 
-        var result = await client.ExecuteStepAsync<MyStepStep, MyStepResponse>(new MyStepStep());
+        var result = await client.ExecuteStepAsync<MyStepStep, MyStepResponse>("MyStep", new MyStepStep());
 
         Assert.Equal("MyStep", result.StepName);
         Assert.NotNull(result.Result);

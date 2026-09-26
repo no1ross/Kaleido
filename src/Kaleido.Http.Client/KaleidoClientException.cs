@@ -61,4 +61,7 @@ public static class HttpClientErrorCodes
 
     /// <summary>A remote queryable request failed with structured validation errors.</summary>
     public const string ValidationFailed     = "httpclient_validation_failed";
+
+    /// <summary>A supplied step name does not match the name declared on the step type's attribute.</summary>
+    public const string InvalidStepName      = "httpclient_invalid_step_name";
 }
