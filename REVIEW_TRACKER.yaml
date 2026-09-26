@@ -374,7 +374,14 @@ medium_priority_items:
     effort_days: 0.5
     priority: MEDIUM
     breaking_change: true
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETE
+    resolution_note: >
+      Moved IProcessResponseFactory/ProcessResponseFactory from Kaleido.Http.Abstractions
+      into Kaleido.Http/Process — every consumer is server-side (endpoints, execution
+      factory, state service, registry endpoints); the client never uses it.
+      IProcessExecutionResponseFactory stays in Kaleido.Http — it maps core runtime
+      types onto wire contracts, which is transport-adapter work. Abstractions now
+      holds wire contracts only.
 
   MP-014:
     title: Validate registry-supplied URLs (SSRF surface in clients)

@@ -1,3 +1,5 @@
+using Kaleido.Process.Registry;
+
 namespace Kaleido.Http.Process;
 
 /// <summary>
