@@ -6,12 +6,18 @@ See also:
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
 - [`../../AGENTS.md`](../../AGENTS.md)
 - [`../Kaleido/README.md`](../Kaleido/README.md)
-- [`../Kaleido.AspNetCore/README.md`](../Kaleido.AspNetCore/README.md)
 - [`../Kaleido.Http.Abstractions/README.md`](../Kaleido.Http.Abstractions/README.md)
 
 ---
 
 ## What lives here
+
+### Registration and middleware
+- `KaleidoHttpServiceCollectionExtensions` — `AddHttp()` entry point; registers routing, `IHttpContextAccessor`, the middleware pipeline, and HTTP execution services
+- `KaleidoStartupFilter` — registers middlewares via `IStartupFilter` in the correct pipeline order
+- `ExceptionMiddleware` — outermost middleware; maps exceptions to JSON error responses
+- `ObservabilityMiddleware` — populates `IKaleidoCorrelationContextAccessor` from inbound headers and echoes correlation headers on the response
+- `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers
 
 ### Queryable endpoint mapping
 - `QueryableEndpointRouteBuilderExtensions` — `MapQueryable()` extension
@@ -53,7 +59,6 @@ Reference this project when you need to:
 
 This project does not contain:
 - runtime business logic — that is [`Kaleido`](../Kaleido/README.md)
-- ASP.NET Core DI registration — that is [`Kaleido.AspNetCore`](../Kaleido.AspNetCore/README.md)
 - HTTP contract types — that is [`Kaleido.Http.Abstractions`](../Kaleido.Http.Abstractions/README.md)
 - remote HTTP client consumption — that is [`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md)
 
@@ -62,19 +67,20 @@ This project does not contain:
 ## Usage
 
 ```csharp
-builder.Services.AddKaleido()
-    .AddAssembly(typeof(Program).Assembly)
-    .AddQueryable()
-        .AddQueryableAspNetCore()
-    .AddProcessor(options => { ... })
-        .AddProcessorAspNetCore();
+builder.Services.AddKaleido(builder.Configuration, o =>
+{
+    o.ServiceName = "my-service";
+    o.Assemblies = new[] { typeof(Program).Assembly };
+})
+    .AddHttp();
 
 var app = builder.Build();
-app.UseKaleidoExceptionHandling();
 app.MapQueryable();
 app.MapProcessor();
 app.MapRegistry(); // optional aggregated discovery
 ```
+
+`AddHttp()` wires the middleware pipeline automatically via `KaleidoStartupFilter` — no manual `Use...()` call is needed.
 
 ---
 
@@ -117,11 +123,9 @@ The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from
 
 ---
 
-## Relationship to Kaleido.AspNetCore
+## Registration requirement
 
-`Kaleido.Http` maps endpoints. `Kaleido.AspNetCore` adds the DI registrations and transport services those endpoints depend on.
-
-`AddQueryableAspNetCore()` and `AddProcessorAspNetCore()` (in `Kaleido.AspNetCore`) must be called before `MapQueryable()` and `MapProcessor()`.
+`AddHttp()` registers the middleware pipeline (`ExceptionMiddleware`, `ObservabilityMiddleware`) and the transport services (`ProcessExecutionService`, `ProcessStateService`) that `MapQueryable()`, `MapProcessor()`, and `MapRegistry()` depend on. Call it on the `IKaleidoBuilder` before mapping endpoints.
 
 ---
 

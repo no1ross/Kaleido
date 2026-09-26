@@ -46,6 +46,6 @@ builder.Services.AddOpenTelemetry()
 
 ## Provider model
 
-Kaleido core (`Kaleido`, `Kaleido.AspNetCore`) has **no dependency on OpenTelemetry packages**. Instrumentation is emitted via `System.Diagnostics.ActivitySource` and `System.Diagnostics.Metrics.Meter` (BCL). This package wires the OTel SDK to those BCL sources.
+Kaleido core (`Kaleido`) has **no dependency on OpenTelemetry packages**. Instrumentation is emitted via `System.Diagnostics.ActivitySource` and `System.Diagnostics.Metrics.Meter` (BCL). This package wires the OTel SDK to those BCL sources.
 
 Future providers follow the same pattern: `Kaleido.Observability.<Technology>`.

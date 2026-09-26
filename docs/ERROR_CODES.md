@@ -52,7 +52,7 @@ Cross-cutting codes have no prefix. `pro_` = Process, `qry_` = Queryable.
 | Constant | Code | Meaning |
 |---|---|---|
 | `InvalidServiceName` | `invalid_service_name` | `ServiceName` is null, empty, or invalid |
-| `MissingAssembly` | `missing_assembly` | No assemblies registered before `AddQueryable()`/`AddProcessor()` |
+| `MissingAssembly` | `missing_assembly` | No assemblies configured via `KaleidoServiceOptions.Assemblies` before runtime registration |
 | `ProMissingAttribute` | `pro_missing_attribute` | Process step type missing `[ProcessStep]` |
 | `ProMissingHandler` | `pro_missing_handler` | Process step has no registered handler |
 | `ProInvalidHandler` | `pro_invalid_handler` | Handler does not implement a valid `IProcessStepHandler` |
