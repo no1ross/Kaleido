@@ -118,12 +118,12 @@ critical_decisions:
     effort_days: 1-2
     breaking_change: false
     release_blocker: true
-    status: IN_REVIEW
+    status: COMPLETE
     progress_note: >
-      PR-03: ProcessRuntime OCE catch removed + invariant comment; dead
+      PR-03 merged #20: ProcessRuntime OCE catch removed + invariant comment; dead
       IProcessExecutionObservation.Canceled() + ExecutionCanceledEventName removed.
-      Design review confirmed executor loop is the correct recording point
-      (step span covers invoke+evaluate+save+publish). Remaining: dedicated OCE tests.
+      Design review confirmed executor loop is the correct recording point.
+      Dedicated OCE test coverage tracked under TQ findings.
 
 high_priority_items:
   HP-001:
@@ -246,8 +246,8 @@ high_priority_items:
     effort_days: 0.5
     priority: HIGH
     breaking_change: true
-    status: IN_REVIEW
-    progress_note: "PR-03: all three fixed — qry_paging_not_supported on non-pageable, correct <=0 message, new qry_invalid_page_offset + ERROR_CODES.md entry."
+    status: COMPLETE
+    progress_note: "PR-03 merged #20: qry_paging_not_supported on non-pageable, correct <=0 message, new qry_invalid_page_offset + ERROR_CODES.md entry. Verified on master."
 
   HP-015:
     title: Fix endpoint-name typo KaleidoProcessStepREgistry
@@ -346,7 +346,7 @@ medium_priority_items:
     priority: MEDIUM
     breaking_change: false
     status: IN_PROGRESS
-    progress_note: "PR-03: step-invoke now uses expression-compiled InvokeHandlerAsync delegate cached on ProcessStepRegistration (GetMethod+Invoke eliminated). Remaining: query dispatch, NullabilityInfoContext, step round-trip."
+    progress_note: "PR-03 merged #20: step-invoke uses expression-compiled InvokeHandlerAsync cached on registration. Remaining: query dispatch, NullabilityInfoContext, step round-trip."
 
   MP-010:
     title: QueryEventFactory copies full result set per query (wasted under no-op publisher)
@@ -582,12 +582,12 @@ external_findings:
     effort: medium
     breaking_change: possibly
     release_blocker: true
-    status: IN_REVIEW
+    status: COMPLETE
     progress_note: >
-      PR-03: IQueryContextExecutor<TView> is now public (the intended EF seam);
+      PR-03 merged #20: IQueryContextExecutor<TView> public (the intended EF seam);
       default impl uses IAsyncEnumerable when supported + sync fallback.
-      Documented in src README/ARCHITECTURE; consumers needing provider-native
-      CountAsync/ToListAsync register their own.
+      Documented in src README/ARCHITECTURE; provider-native impl is a consumer
+      registration. Verified on master.
     status: PENDING_IMPLEMENTATION
     notes: "VERIFIED: QueryContextExecutor wraps query.Count()/ToList() in Task.FromResult"
   EXT-04:
