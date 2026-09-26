@@ -218,6 +218,118 @@ public sealed class DataTypeMapperTests
             _sut.ConvertValue<int>("not-a-number"));
     }
 
+    public static TheoryData<Type, string, string?> ScalarDescriptorCases { get; } =
+        new()
+        {
+            { typeof(string), "string", null },
+            { typeof(bool), "boolean", null },
+            { typeof(byte), "integer", null },
+            { typeof(sbyte), "integer", null },
+            { typeof(short), "integer", null },
+            { typeof(ushort), "integer", null },
+            { typeof(int), "integer", null },
+            { typeof(uint), "integer", null },
+            { typeof(long), "integer", "int64" },
+            { typeof(ulong), "integer", "int64" },
+            { typeof(float), "number", "float" },
+            { typeof(double), "number", "double" },
+            { typeof(decimal), "number", "decimal" },
+            { typeof(Guid), "string", "uuid" },
+            { typeof(DateOnly), "string", "date" },
+            { typeof(TimeOnly), "string", "time" },
+            { typeof(DateTime), "string", "date-time" },
+            { typeof(DateTimeOffset), "string", "date-time-offset" },
+            { typeof(TimeSpan), "string", "duration" }
+        };
+
+    [Theory]
+    [MemberData(nameof(ScalarDescriptorCases))]
+    public void GetDescriptor_WhenScalarType_MapsTypeAndFormat(
+        Type type,
+        string expectedType,
+        string? expectedFormat)
+    {
+        var descriptor = _sut.GetDescriptor(
+            typeof(ScalarModel<>).MakeGenericType(type).GetProperty("Value")!);
+
+        Assert.Equal(expectedType, descriptor.Type);
+        Assert.Equal(expectedFormat, descriptor.Format);
+    }
+
+    public static TheoryData<Type, bool> SupportedTypeCases { get; } =
+        new()
+        {
+            { typeof(int), true },
+            { typeof(int?), true },
+            { typeof(string), true },
+            { typeof(TestStatus), true },
+            { typeof(TestStatus?), true },
+            { typeof(Guid), true },
+            { typeof(List<int>), false },
+            { typeof(TestObject), false }
+        };
+
+    [Theory]
+    [MemberData(nameof(SupportedTypeCases))]
+    public void IsSupportedType_ReturnsExpected(Type type, bool expected)
+    {
+        Assert.Equal(expected, _sut.IsSupportedType(type));
+    }
+
+    [Fact]
+    public void TryConvertValue_WhenValueIsJsonNull_ConvertsToNull()
+    {
+        using var document = JsonDocument.Parse("null");
+
+        var result = _sut.TryConvertValue(document.RootElement, typeof(int?));
+
+        Assert.True(result.Success);
+        Assert.Null(result.Value);
+    }
+
+    [Fact]
+    public void TryConvertValue_WhenJsonStringToStringType_PassesThrough()
+    {
+        using var document = JsonDocument.Parse("\"hello\"");
+
+        var result = _sut.TryConvertValue(document.RootElement, typeof(string));
+
+        Assert.True(result.Success);
+        Assert.Equal("hello", Assert.IsType<string>(result.Value));
+    }
+
+    [Fact]
+    public void TryConvertValue_WhenValueAlreadyTargetType_ShortCircuits()
+    {
+        var expected = Guid.NewGuid();
+
+        var result = _sut.TryConvertValue(expected, typeof(Guid));
+
+        Assert.True(result.Success);
+        Assert.Equal(expected, Assert.IsType<Guid>(result.Value));
+    }
+
+    [Fact]
+    public void TryConvertValue_WhenEnumNumericNotDefined_ReturnsFailure()
+    {
+        var result = _sut.TryConvertValue("99", typeof(TestStatus));
+
+        Assert.False(result.Success);
+    }
+
+    [Fact]
+    public void ConvertValue_WhenConversionSucceeds_ReturnsValue()
+    {
+        var result = _sut.ConvertValue("42", typeof(int));
+
+        Assert.Equal(42, Assert.IsType<int>(result));
+    }
+
+    private sealed class ScalarModel<T>
+    {
+        public T? Value { get; init; }
+    }
+
     private enum TestStatus
     {
         [Description("Currently active")]

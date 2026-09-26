@@ -145,6 +145,85 @@ public sealed class QueryableServiceTests
         engine.Verify(x => x.ExecuteAsync(request, delegatedRegistration, It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task QueryAsync_WhenDelegatedAndLocalViewBothExist_PrefersDelegated()
+    {
+        var request = new QueryRequest<EmptyQueryViewParameters>(new EmptyQueryViewParameters(), null);
+        var expected = new QueryResult<TestViewContract>(1, 0, 25, [new TestViewContract()]);
+        var delegatedRegistration = CreateDelegatedViewRegistration();
+        var viewRegistration = CreateViewRegistration();
+
+        var delegatedEngine = new Mock<IDelegatedQueryViewEngine<TestContext, TestViewContract>>();
+        delegatedEngine.Setup(x => x.ExecuteAsync(request, delegatedRegistration, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
+
+        var localEngine = new Mock<IQueryContextEngine<TestContext, TestViewContract>>();
+
+        var provider = new Mock<IServiceProvider>();
+        provider.Setup(x => x.GetService(typeof(IDelegatedQueryViewEngine<TestContext, TestViewContract>))).Returns(delegatedEngine.Object);
+        provider.Setup(x => x.GetService(typeof(IQueryContextEngine<TestContext, TestViewContract>))).Returns(localEngine.Object);
+
+        var scope = new Mock<IServiceScope>();
+        scope.SetupGet(x => x.ServiceProvider).Returns(provider.Object);
+
+        var scopeFactory = new Mock<IServiceScopeFactory>();
+        scopeFactory.Setup(x => x.CreateScope()).Returns(scope.Object);
+
+        var delegatedViewRegistry = new Mock<IDelegatedQueryViewRegistry>();
+        delegatedViewRegistry.Setup(x => x.Find(typeof(TestView))).Returns(delegatedRegistration);
+
+        var viewRegistry = new Mock<IQueryViewRegistry>();
+        viewRegistry.Setup(x => x.Find(typeof(TestView))).Returns(viewRegistration);
+
+        var service = new QueryableService(scopeFactory.Object, Mock.Of<IValueConverter>(), delegatedViewRegistry.Object, viewRegistry.Object, Mock.Of<IQueryContextRegistry>());
+
+        var result = await service.QueryAsync<TestView, TestViewContract>(request);
+
+        Assert.Same(expected, result);
+        localEngine.Verify(x => x.ExecuteAsync(
+            It.IsAny<IQueryRequest>(),
+            It.IsAny<QueryContextRegistration>(),
+            It.IsAny<QueryViewRegistration>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task QueryAsync_WhenLocalViewAndDirectContextBothExist_PrefersLocalView()
+    {
+        var request = new QueryRequest();
+        var expected = new QueryResult<TestViewContract>(1, 0, 25, [new TestViewContract()]);
+        var viewRegistration = CreateViewRegistration();
+        var contextRegistration = CreateContextRegistration();
+
+        var viewEngine = new Mock<IQueryContextEngine<TestContext, TestViewContract>>();
+        viewEngine.Setup(x => x.ExecuteAsync(request, contextRegistration, viewRegistration, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
+
+        var provider = new Mock<IServiceProvider>();
+        provider.Setup(x => x.GetService(typeof(IQueryContextEngine<TestContext, TestViewContract>))).Returns(viewEngine.Object);
+
+        var scope = new Mock<IServiceScope>();
+        scope.SetupGet(x => x.ServiceProvider).Returns(provider.Object);
+
+        var scopeFactory = new Mock<IServiceScopeFactory>();
+        scopeFactory.Setup(x => x.CreateScope()).Returns(scope.Object);
+
+        var viewRegistry = new Mock<IQueryViewRegistry>();
+        viewRegistry.Setup(x => x.Find(typeof(TestView))).Returns(viewRegistration);
+
+        var contextRegistry = new Mock<IQueryContextRegistry>();
+        contextRegistry.Setup(x => x.GetRegistration(typeof(TestContext))).Returns(contextRegistration);
+
+        var service = new QueryableService(scopeFactory.Object, Mock.Of<IValueConverter>(), EmptyDelegatedViewRegistry(), viewRegistry.Object, contextRegistry.Object);
+
+        var result = await service.QueryAsync<TestView, TestViewContract>(request);
+
+        Assert.Same(expected, result);
+        viewEngine.Verify(x => x.ExecuteAsync(request, contextRegistration, viewRegistration, It.IsAny<CancellationToken>()), Times.Once);
+        viewEngine.Verify(x => x.ExecuteAsync(
+            It.IsAny<IQueryRequest>(),
+            It.IsAny<QueryContextRegistration>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static IDelegatedQueryViewRegistry EmptyDelegatedViewRegistry()
     {
         var registry = new Mock<IDelegatedQueryViewRegistry>();
