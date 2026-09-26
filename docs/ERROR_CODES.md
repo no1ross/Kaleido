@@ -26,6 +26,7 @@ All queryable validation codes are prefixed `qry_`. Process validation codes (`p
 | `QryFieldNotFilterable` | `qry_field_not_filterable` | Filter condition references a field not marked as filterable |
 | `QryFieldNotSortable` | `qry_field_not_sortable` | Sort clause references a field not marked as sortable |
 | `QryInvalidPageSize` | `qry_invalid_page_size` | Requested page size is invalid or exceeds the maximum |
+| `QryInvalidPageOffset` | `qry_invalid_page_offset` | Requested page offset is negative |
 | `QryUnsupportedMatchMode` | `qry_unsupported_match_mode` | Search field uses a match mode not supported by the field |
 | `QryMissingParameter` | `qry_missing_parameter` | Required named query parameter is missing |
 | `QryInvalidParameterType` | `qry_invalid_parameter_type` | Named query parameter value has an incompatible type |

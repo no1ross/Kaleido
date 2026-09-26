@@ -203,7 +203,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
         if (pageable)
         {
-            query = executor.ApplyPage(query, page);
+            query = executor.ApplyPage(query, page.Size, page.Offset);
         }
 
         var items = await executor.ToListAsync(query, cancellationToken);

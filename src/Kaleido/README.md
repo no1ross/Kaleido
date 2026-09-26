@@ -30,6 +30,7 @@ For the full repository model, see:
 - `QueryableService` — main dispatch service (delegated view → local view → direct context)
 - `IQueryContextRegistry` / `IQueryViewRegistry` / `IDelegatedQueryViewRegistry` — runtime registries
 - `QueryContextEngine` / `QueryContextExecutor` — query execution pipeline
+- `IQueryContextExecutor<TView>` — public extension point: register your own implementation to plug in provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`). Default executor uses `IAsyncEnumerable<T>` when supported, sync LINQ otherwise.
 - `QueryRequestCompiler` / `QueryRequestValidator` — validation and compilation
 - `QueryableBuilder` / `QueryableObservability` — builder and observability
 - `IQueryContextSource<T>` / `IQueryContextSourceAsync<T>` / `IQueryViewSource` / `IQueryViewSourceAsync` / `IDelegateQueryViewSource` — source/view interfaces

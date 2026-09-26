@@ -48,6 +48,9 @@ public static class ValidationErrorCodes
     /// <summary>The requested page size is invalid or exceeds the maximum allowed size.</summary>
     public const string QryInvalidPageSize        = "qry_invalid_page_size";
 
+    /// <summary>The requested page offset is negative.</summary>
+    public const string QryInvalidPageOffset      = "qry_invalid_page_offset";
+
     /// <summary>A search field uses a match mode not supported by the field.</summary>
     public const string QryUnsupportedMatchMode   = "qry_unsupported_match_mode";
 

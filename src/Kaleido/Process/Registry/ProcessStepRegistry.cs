@@ -321,7 +321,8 @@ internal sealed partial class ProcessStepRegistry : IProcessStepRegistry
                 x => x.Key,
                 x => new RegistrationSlot(
                     x.Value,
-                    CreateGetResultFromTaskFunc(x.Value.Definition.HandlerType)));
+                    CreateGetResultFromTaskFunc(x.Value.Definition.HandlerType),
+                    CreateInvokeHandlerAsyncFunc(x.Value.Definition.HandlerType)));
 
         //
         // Pass 4d:
@@ -518,7 +519,8 @@ internal sealed class RegistrationSlot
 
     public RegistrationSlot(
         RegistrationNode node,
-        Func<Task, IProcessStepHandlerResult>? getResultFromTask)
+        Func<Task, IProcessStepHandlerResult>? getResultFromTask,
+        Func<object, object, ProcessStepContext, CancellationToken, Task>? invokeHandlerAsync)
     {
         ArgumentNullException.ThrowIfNull(node);
 
@@ -534,7 +536,8 @@ internal sealed class RegistrationSlot
                 _availableUntil.AsReadOnly(),
                 node.Repeatable,
                 node.Definition.Metadata,
-                getResultFromTask);
+                getResultFromTask,
+                invokeHandlerAsync);
     }
 
     public RegistrationNode Node

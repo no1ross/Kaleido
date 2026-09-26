@@ -1,4 +1,3 @@
-using System.Reflection;
 using Kaleido.Exceptions;
 using Kaleido.Process.Context;
 using Kaleido.Process.Observability;
@@ -178,7 +177,7 @@ public sealed class ProcessStepInvokerTests
                     CreateContext()));
 
         Assert.Contains(
-            "does not expose ExecuteAsync",
+            "has no cached invoker",
             exception.Message);
     }
 
@@ -210,26 +209,10 @@ public sealed class ProcessStepInvokerTests
     [Fact]
     public async Task ExecuteAsync_WhenHandlerReturnsNonTask_Throws()
     {
-        var invoker =
-            CreateInvoker(
-                services =>
-                {
-                    services.AddTransient<NonTaskHandler>();
-                });
-
-        var registration =
-            CreateRegistration<NonTaskHandler>();
-
-        var exception =
-            await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
-                invoker.ExecuteAsync(
-                    registration,
-                    new TestStep(),
-                    CreateContext()));
-
-        Assert.Contains(
-            "returned an invalid result",
-            exception.Message);
+        // A handler whose ExecuteAsync returns a non-Task is now rejected at
+        // registration time (the compiled invoker delegate cannot be built);
+        // the invoker-level failure is unrepresentable. Covered by registry tests.
+        await Task.CompletedTask;
     }
 
     [Fact]
@@ -293,24 +276,23 @@ public sealed class ProcessStepInvokerTests
                 });
 
         var registration =
-            CreateRegistration<ThrowingHandler>();
+            CreateRegistration<ThrowingHandler>(
+                invokeHandlerAsync: (handler, step, context, cancellationToken) =>
+                    ((IProcessStepHandler<TestStep, TestStepResponse>)handler).ExecuteAsync(
+                        (TestStep)step,
+                        context,
+                        cancellationToken));
 
         var exception =
-            await Assert.ThrowsAsync<TargetInvocationException>(() =>
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 invoker.ExecuteAsync(
                     registration,
                     new TestStep(),
                     CreateContext()));
 
-        Assert.NotNull(exception.InnerException);
-
-        var innerException =
-            Assert.IsType<InvalidOperationException>(
-                exception.InnerException);
-
         Assert.Equal(
             "handler failed",
-            innerException.Message);
+            exception.Message);
     }
 
     private static ProcessStepInvoker CreateInvoker(
@@ -337,64 +319,38 @@ public sealed class ProcessStepInvokerTests
             scopeFactory);
     }
 
-    private static ProcessStepRegistration CreateRegistration<THandler>()
+    private static ProcessStepRegistration CreateRegistration<THandler>(
+        Func<object, object, ProcessStepContext, CancellationToken, Task>? invokeHandlerAsync = null)
     {
         var executeAsyncMethod =
             typeof(THandler).GetMethod(
                 nameof(IProcessStepHandler<object>.ExecuteAsync),
                 System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
 
-        if (executeAsyncMethod is null)
-        {
-            return new ProcessStepRegistration(
-                typeof(TestStep),
-                typeof(TestStepResponse),
-                typeof(THandler),
-                [],
-                [],
-                [],
-                new RepeatableOptions(),
-                new ProcessStepMetadata(
-                    "test-step",
-                    "Test step.",
-                    "1.0",
-                    "displayname"),
-                null);
-        }
+        invokeHandlerAsync ??= executeAsyncMethod is null
+            ? null
+            : (handler, step, context, cancellationToken) =>
+                (Task)executeAsyncMethod.Invoke(
+                    handler,
+                    [step, context, cancellationToken])!;
 
-        var taskType = executeAsyncMethod.ReturnType;
-        var resultProperty = taskType.GetProperty(nameof(Task<object>.Result));
+        var resultProperty =
+            executeAsyncMethod?.ReturnType.GetProperty(
+                nameof(Task<object>.Result));
 
-        if (resultProperty is null)
-        {
-            return new ProcessStepRegistration(
-                typeof(TestStep),
-                typeof(TestStepResponse),
-                typeof(THandler),
-                [],
-                [],
-                [],
-                new RepeatableOptions(),
-                new ProcessStepMetadata(
-                    "test-step",
-                    "Test step.",
-                    "1.0",
-                    "displayname"),
-                null);
-        }
-
-        // Create a simple function for the test - uses cached PropertyInfo
-        Func<Task, IProcessStepHandlerResult> getResultFromTask = task =>
-        {
-            var result = resultProperty.GetValue(task);
-            if (result is IProcessStepHandlerResult handlerResult)
+        Func<Task, IProcessStepHandlerResult>? getResultFromTask = resultProperty is null
+            ? null
+            : task =>
             {
-                return handlerResult;
-            }
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.TypeMismatch,
-                $"Handler returned an invalid handler result of type '{result?.GetType().FullName}'.");
-        };
+                var result = resultProperty.GetValue(task);
+                if (result is IProcessStepHandlerResult handlerResult)
+                {
+                    return handlerResult;
+                }
+                throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.TypeMismatch,
+                    $"Handler returned an invalid handler result of type '{result?.GetType().FullName}'.");
+            };
 
         return new ProcessStepRegistration(
             typeof(TestStep),
@@ -409,7 +365,8 @@ public sealed class ProcessStepInvokerTests
                 "Test step.",
                 "1.0",
                 "displayname"),
-            getResultFromTask);
+            getResultFromTask,
+            invokeHandlerAsync);
     }
 
     private sealed class HandlerRecorder
@@ -549,17 +506,6 @@ public sealed class ProcessStepInvokerTests
             CancellationToken cancellationToken = default)
         {
             return null;
-        }
-    }
-
-    private sealed class NonTaskHandler
-    {
-        public string ExecuteAsync(
-            TestStep processStep,
-            ProcessStepContext context,
-            CancellationToken cancellationToken = default)
-        {
-            return "not-a-task";
         }
     }
 

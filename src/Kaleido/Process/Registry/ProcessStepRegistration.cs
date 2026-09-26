@@ -10,7 +10,8 @@ public sealed partial record ProcessStepRegistration(
     IReadOnlyCollection<ProcessStepRegistration> AvailableUntil,
     RepeatableOptions Repeatable,
     ProcessStepMetadata Metadata,
-    Func<Task, IProcessStepHandlerResult>? GetResultFromTask = null);
+    Func<Task, IProcessStepHandlerResult>? GetResultFromTask = null,
+    Func<object, object, ProcessStepContext, CancellationToken, Task>? InvokeHandlerAsync = null);
 
 [ExcludeFromCodeCoverage]
 public sealed record RepeatableOptions

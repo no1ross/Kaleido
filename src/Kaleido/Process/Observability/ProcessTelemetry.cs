@@ -35,9 +35,6 @@ public static class ProcessTelemetry
     public const string ExecutionCompletedEventName =
         "kaleido.process.execution.completed";
 
-    public const string ExecutionCanceledEventName =
-        "kaleido.process.execution.canceled";
-
     public const string StepCanceledEventName =
         "kaleido.process.step.canceled";
 

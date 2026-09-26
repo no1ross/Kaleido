@@ -243,11 +243,11 @@ internal sealed class ProcessRuntime(
 
             return result;
         }
-        catch (OperationCanceledException)
-        {
-            observation.Canceled();
-            throw;
-        }
+        // OperationCanceledException intentionally propagates unrecorded here.
+        // Invariant: ONE cancellation signal per event, recorded at the lowest
+        // level with full context — that is ProcessExecutor (stepObservation.Canceled(),
+        // where state is saved). Do NOT add an observation.Canceled() catch block at
+        // this level; it would double-record every cancellation. See AGENTS.md.
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             observation.ExecutionFailed(exception);
