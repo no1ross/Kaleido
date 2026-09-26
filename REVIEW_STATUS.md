@@ -51,6 +51,14 @@ A second, code-verified analysis pass was run per `docs/PRERELEASE_PROMPT.md` (p
 5. Production-unsafe defaults (events discarded, unbounded in-memory state) surface only via one-time warnings
 6. Typos/name drift that ship permanently at 1.0: `KaleidoProcessStepREgistry`, `UseSqliteContextStore` vs `UseSqliteProcessContextStore`
 
+## Baseline (Phase 0 — recorded 2026-09-26, commit `4598dba`)
+
+- `dotnet build Kaleido.slnx` — **succeeded, 0 errors, 0 warnings** (13 pre-baseline `CS0105` duplicate usings removed from `samples/PriorAuth/Common` + 2 test files before recording)
+- `dotnet test Kaleido.slnx --no-build` — **603 passed, 0 failed** across 9 test assemblies
+- `Kaleido.Analyzers.UnitTests.dll` — *"No test is available"*: empty test assembly, corroborates **EXT-05** (analyzer project has zero rules)
+
+Regressions during cleanup should be measured against this baseline.
+
 ## Next Steps
 
 1. Schedule design review (agenda in `REVIEW_TRACKER.yaml` → `review_milestones`)
