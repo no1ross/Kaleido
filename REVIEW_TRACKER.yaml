@@ -118,7 +118,12 @@ critical_decisions:
     effort_days: 1-2
     breaking_change: false
     release_blocker: true
-    status: PENDING_IMPLEMENTATION
+    status: IN_REVIEW
+    progress_note: >
+      PR-03: ProcessRuntime OCE catch removed + invariant comment; dead
+      IProcessExecutionObservation.Canceled() + ExecutionCanceledEventName removed.
+      Design review confirmed executor loop is the correct recording point
+      (step span covers invoke+evaluate+save+publish). Remaining: dedicated OCE tests.
 
 high_priority_items:
   HP-001:
@@ -164,8 +169,8 @@ high_priority_items:
     priority: HIGH
     breaking_change: true
     release_blocker: true
-    status: IN_REVIEW
-    progress_note: "PR-02 branch: renamed API + all call sites + docs to UseSqliteProcessContextStore; build 0/0, 603 green."
+    status: COMPLETE
+    progress_note: "PR-02 merged: renamed API + all call sites + docs to UseSqliteProcessContextStore; verified on master."
 
   HP-006:
     title: Rewrite docs to actual bootstrap model
@@ -241,7 +246,8 @@ high_priority_items:
     effort_days: 0.5
     priority: HIGH
     breaking_change: true
-    status: PENDING_IMPLEMENTATION
+    status: IN_REVIEW
+    progress_note: "PR-03: all three fixed — qry_paging_not_supported on non-pageable, correct <=0 message, new qry_invalid_page_offset + ERROR_CODES.md entry."
 
   HP-015:
     title: Fix endpoint-name typo KaleidoProcessStepREgistry
@@ -250,8 +256,8 @@ high_priority_items:
     priority: HIGH
     breaking_change: true
     release_blocker: true
-    status: IN_REVIEW
-    progress_note: "PR-02 branch: fixed to KaleidoProcessStepRegistry; no other endpoint-name typos found."
+    status: COMPLETE
+    progress_note: "PR-02 merged: fixed to KaleidoProcessStepRegistry; verified on master."
 
   HP-016:
     title: Preserve error taxonomy across step boundary + client error body
@@ -339,7 +345,8 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: IN_PROGRESS
+    progress_note: "PR-03: step-invoke now uses expression-compiled InvokeHandlerAsync delegate cached on ProcessStepRegistration (GetMethod+Invoke eliminated). Remaining: query dispatch, NullabilityInfoContext, step round-trip."
 
   MP-010:
     title: QueryEventFactory copies full result set per query (wasted under no-op publisher)
@@ -575,6 +582,12 @@ external_findings:
     effort: medium
     breaking_change: possibly
     release_blocker: true
+    status: IN_REVIEW
+    progress_note: >
+      PR-03: IQueryContextExecutor<TView> is now public (the intended EF seam);
+      default impl uses IAsyncEnumerable when supported + sync fallback.
+      Documented in src README/ARCHITECTURE; consumers needing provider-native
+      CountAsync/ToListAsync register their own.
     status: PENDING_IMPLEMENTATION
     notes: "VERIFIED: QueryContextExecutor wraps query.Count()/ToList() in Task.FromResult"
   EXT-04:

@@ -64,7 +64,7 @@ internal sealed class ProcessStepInvoker(
                     handler,
                     processStep,
                     context,
-                    registration.GetResultFromTask,
+                    registration,
                     cancellationToken);
 
             return handlerResult;
@@ -80,45 +80,36 @@ internal sealed class ProcessStepInvoker(
         object handler,
         object processStep,
         ProcessStepContext context,
-        Func<Task, IProcessStepHandlerResult>? getResultFromTask,
+        ProcessStepRegistration registration,
         CancellationToken cancellationToken)
     {
-        var method =
-            handler.GetType().GetMethod(
-                nameof(IProcessStepHandler<object>.ExecuteAsync))
-            ?? throw new KaleidoFrameworkException(
+        if (registration.InvokeHandlerAsync is null)
+        {
+            throw new KaleidoFrameworkException(
                 FrameworkErrorCodes.ReflectionError,
-                $"Handler '{handler.GetType().FullName}' does not expose ExecuteAsync.");
+                $"Handler '{handler.GetType().FullName}' has no cached invoker.");
+        }
 
-        var result =
-            method.Invoke(
+        var task =
+            registration.InvokeHandlerAsync(
                 handler,
-                [
-                    processStep,
+                processStep,
                 context,
-                cancellationToken
-                ])
+                cancellationToken)
             ?? throw new KaleidoFrameworkException(
                 FrameworkErrorCodes.InvalidHandlerResult,
                 $"Handler '{handler.GetType().FullName}' returned null.");
 
-        if (result is not Task task)
-        {
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.InvalidHandlerResult,
-                $"Handler '{handler.GetType().FullName}' returned an invalid result.");
-        }
-
         await task;
 
-        if (getResultFromTask is null)
+        if (registration.GetResultFromTask is null)
         {
             throw new KaleidoFrameworkException(
                 FrameworkErrorCodes.InvalidHandlerResult,
                 $"Handler '{handler.GetType().FullName}' has no cached result extractor.");
         }
 
-        var handlerResult = getResultFromTask(task);
+        var handlerResult = registration.GetResultFromTask(task);
 
         return new StepInvocationResult
         {

@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace Kaleido.Process.Registry;
@@ -93,20 +94,68 @@ internal sealed partial class ProcessStepRegistry
         path.Pop();
     }
 
+    private static MethodInfo GetExecuteAsyncMethod(
+        Type handlerType) =>
+        handlerType.GetMethod(
+            nameof(IProcessStepHandler<object>.ExecuteAsync),
+            BindingFlags.Public | BindingFlags.Instance)
+        ?? throw new KaleidoConfigurationException(
+            ConfigurationErrorCodes.ProInvalidHandler,
+            $"Handler '{handlerType.FullName}' does not expose ExecuteAsync.");
+
+    private static Func<object, object, ProcessStepContext, CancellationToken, Task> CreateInvokeHandlerAsyncFunc(
+        Type handlerType)
+    {
+        var executeAsyncMethod =
+            GetExecuteAsyncMethod(
+                handlerType);
+
+        var handlerParameter =
+            Expression.Parameter(
+                typeof(object));
+
+        var stepParameter =
+            Expression.Parameter(
+                typeof(object));
+
+        var contextParameter =
+            Expression.Parameter(
+                typeof(ProcessStepContext));
+
+        var cancellationTokenParameter =
+            Expression.Parameter(
+                typeof(CancellationToken));
+
+        var call =
+            Expression.Call(
+                Expression.Convert(
+                    handlerParameter,
+                    handlerType),
+                executeAsyncMethod,
+                Expression.Convert(
+                    stepParameter,
+                    executeAsyncMethod.GetParameters()[0].ParameterType),
+                contextParameter,
+                cancellationTokenParameter);
+
+        return Expression
+            .Lambda<Func<object, object, ProcessStepContext, CancellationToken, Task>>(
+                Expression.Convert(
+                    call,
+                    typeof(Task)),
+                handlerParameter,
+                stepParameter,
+                contextParameter,
+                cancellationTokenParameter)
+            .Compile();
+    }
+
     private static Func<Task, IProcessStepHandlerResult>? CreateGetResultFromTaskFunc(
         Type handlerType)
     {
         var executeAsyncMethod =
-            handlerType.GetMethod(
-                nameof(IProcessStepHandler<object>.ExecuteAsync),
-                BindingFlags.Public | BindingFlags.Instance);
-
-        if (executeAsyncMethod is null)
-        {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProInvalidHandler,
-                $"Handler '{handlerType.FullName}' does not expose ExecuteAsync.");
-        }
+            GetExecuteAsyncMethod(
+                handlerType);
 
         var taskType = executeAsyncMethod.ReturnType;
         var resultProperty = taskType.GetProperty(nameof(Task<object>.Result))

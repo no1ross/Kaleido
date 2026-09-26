@@ -291,14 +291,16 @@ internal sealed class QueryRequestValidator(
 
         if (pageable is null)
         {
-            return;
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryPagingNotSupported,
+                "Paging is not supported for this record.");
         }
 
         if (page.Size is <= 0)
         {
             throw new KaleidoValidationException(
                 ValidationErrorCodes.QryInvalidPageSize,
-                $"Page size '{page.Size.Value}' exceeds maximum page size '{pageable.MaxSize}'.");
+                $"Page size '{page.Size.Value}' must be greater than zero.");
         }
 
         if (page.Size.HasValue &&
@@ -307,6 +309,13 @@ internal sealed class QueryRequestValidator(
             throw new KaleidoValidationException(
                 ValidationErrorCodes.QryInvalidPageSize,
                 $"Page size '{page.Size.Value}' exceeds maximum page size '{pageable.MaxSize}'.");
+        }
+
+        if (page.Offset is < 0)
+        {
+            throw new KaleidoValidationException(
+                ValidationErrorCodes.QryInvalidPageOffset,
+                $"Page offset '{page.Offset.Value}' must not be negative.");
         }
     }
 

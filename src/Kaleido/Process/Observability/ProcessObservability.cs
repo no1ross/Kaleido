@@ -33,8 +33,6 @@ internal interface IProcessExecutionObservation
         Exception exception);
 
     void ExecutionCompleted();
-
-    void Canceled();
 }
 
 internal interface IProcessStepObservation
@@ -358,15 +356,6 @@ internal sealed class ProcessObservability(
 
             logger.LogInformation(
                 "Process execution completed for processor {ProcessorName}.",
-                processorName);
-        }
-
-        public void Canceled()
-        {
-            activity?.AddEvent(new ActivityEvent(ProcessTelemetry.ExecutionCanceledEventName));
-
-            logger.LogWarning(
-                "Process execution was canceled for processor {ProcessorName}.",
                 processorName);
         }
 

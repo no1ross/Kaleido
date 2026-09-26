@@ -45,7 +45,7 @@ public sealed class QueryContextExecutorTests
     [Fact]
     public void ApplyPage_SkipsAndTakesRequestedRange()
     {
-        var result = _sut.ApplyPage(TestData().AsQueryable(), new CompiledPage(1, 1)).ToArray();
+        var result = _sut.ApplyPage(TestData().AsQueryable(), size: 1, offset: 1).ToArray();
 
         var item = Assert.Single(result);
         Assert.Equal(2, item.Id);
