@@ -164,8 +164,8 @@ high_priority_items:
     priority: HIGH
     breaking_change: true
     release_blocker: true
-    status: IN_REVIEW
-    progress_note: "PR-02 branch: renamed API + all call sites + docs to UseSqliteProcessContextStore; build 0/0, 603 green."
+    status: COMPLETE
+    progress_note: "PR-02 merged: renamed API + all call sites + docs to UseSqliteProcessContextStore; verified on master."
 
   HP-006:
     title: Rewrite docs to actual bootstrap model
@@ -250,8 +250,8 @@ high_priority_items:
     priority: HIGH
     breaking_change: true
     release_blocker: true
-    status: IN_REVIEW
-    progress_note: "PR-02 branch: fixed to KaleidoProcessStepRegistry; no other endpoint-name typos found."
+    status: COMPLETE
+    progress_note: "PR-02 merged: fixed to KaleidoProcessStepRegistry; verified on master."
 
   HP-016:
     title: Preserve error taxonomy across step boundary + client error body
