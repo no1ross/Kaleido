@@ -1,12 +1,12 @@
 ---
 # Kaleido Pre-Release Review: Tracking Configuration
-# Version: 2.0
+# Version: 2.1
 # Purpose: Central tracking for all review findings and action items
 # This file can be imported into GitHub Projects, Jira, or other PM tools
 
 metadata:
   created: 2026-09-25
-  version: 2.0
+  version: 2.1
   status: DRAFT
   next_review: 2026-09-28
   owner: null  # TBD
@@ -793,13 +793,58 @@ open_questions:
     due: 2026-09-29
     impact: MEDIUM
 
+pr_plan:
+  policy: >
+    Docs: catch-up pass in PR-01 to remove wrong content, docs-as-we-go in each
+    code PR, final authoritative sweep in PR-11 after all code PRs merge.
+  PR-01-docs-catchup:
+    gate: none
+    findings: [CR-004, HP-006, MP-023]
+    note: "Strip references to removed Kaleido.AspNetCore + obsolete APIs; minimal corrections only — full rewrite deferred to PR-11"
+  PR-02-breaking-surface:
+    gate: none
+    findings: [HP-005, HP-015, MP-016, MP-025, MP-021]
+    note: "All renames/typos in ONE PR — break once"
+  PR-03-runtime-correctness:
+    gate: none
+    findings: [CR-007, EXT-03, HP-014, MP-009]
+  PR-04-dead-code-dedup:
+    gate: none
+    findings: [MP-007, MP-020, MP-013, MP-018, MP-005, MP-026]
+  PR-05-build-hygiene:
+    gate: none
+    findings: [HP-010, MP-024, MP-022, CR-003]
+  PR-06-contract-tests:
+    gate: none
+    findings: [CR-005, CR-006, HP-002, HP-017, MP-019, MP-002]
+  DECISION-SESSION:
+    gate: "blocks PR-07..PR-10"
+    findings: [Q-001, Q-002, Q-003, Q-004, Q-005, Q-006, Q-007, Q-008]
+  PR-07-http-taxonomy:
+    gate: [EXT-07, HP-016]
+    findings: [HP-007, HP-016, EXT-07, MP-014]
+  PR-08-durability:
+    gate: [Q-007]
+    findings: [EXT-01, EXT-02, EXT-04, HP-009]
+  PR-09-analyzers:
+    gate: [Q-006, Q-008]
+    findings: [EXT-05, HP-003, KAL0020, KAL0021]
+  PR-10-architecture:
+    gate: [Q-001, Q-005]
+    findings: [HP-011, HP-012, HP-013, CR-001]
+  PR-11-docs-final:
+    gate: "after all code PRs merge"
+    findings: [CR-004, HP-001, HP-003, HP-006, HP-008, MP-003, MP-004, MP-023]
+    note: "Authoritative docs rewrite against final public surface"
+  post_1_0:
+    findings: [LP-001, LP-002, LP-003, LP-004, LP-005, LP-006, LP-007, LP-008, LP-009, LP-010, LP-011, LP-012, LP-013, LP-014, LP-015, HP-018]
+
 review_milestones:
   design_review_meeting:
     date: null
     attendees: [architect, product_manager, tech_lead]
     agenda: [Q-007, CR-001, CR-003, EXT-04, EXT-05, EXT-06, EXT-07, EXT-08, HP-008, HP-009, HP-011, HP-012, HP-016, MP-016, MP-018, MP-021, Q-006]
     duration_hours: 3
-    duration_hours: 2
     outcome: All critical decisions approved
   documentation_review:
     date: null
