@@ -34,8 +34,8 @@ jobs:
 
     - name: Coverage gate
       run: |
-        lh=$(grep -rh '^LH:' --include='coverage.info' **/TestResults/ | awk -F: '{s+=$2} END{print s+0}')
-        lf=$(grep -rh '^LF:' --include='coverage.info' **/TestResults/ | awk -F: '{s+=$2} END{print s+0}')
+        lh=$(find . -name coverage.info -path '*TestResults*' -exec grep -h '^LH:' {} + | awk -F: '{s+=$2} END{print s+0}')
+        lf=$(find . -name coverage.info -path '*TestResults*' -exec grep -h '^LF:' {} + | awk -F: '{s+=$2} END{print s+0}')
         rate=$(awk "BEGIN{r=0; if ($lf>0) r=$lh*100.0/$lf; printf \"%.1f\", r}")
         echo "Line coverage: $rate% ($lh/$lf) - floor: $COVERAGE_FLOOR%"
         awk "BEGIN{exit !($rate+0 >= $COVERAGE_FLOOR)}"
