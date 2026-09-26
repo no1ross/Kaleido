@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Reflection;
 using Kaleido.Queryable.Metadata;
 using Microsoft.Extensions.DependencyInjection;
@@ -228,7 +227,7 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
             pageable,
             contextType
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Select(BuildField)
+                .Select(x => x.ToFieldMetadata(_dataTypeMapper))
                 .ToArray());
     }
 
@@ -247,33 +246,4 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
             pageable.DefaultSize,
             pageable.MaxSize);
     }
-
-    private FieldMetadata BuildField(
-        PropertyInfo property)
-    {
-        var filterable =
-            property.GetCustomAttribute<FilterableAttribute>();
-
-        var searchable =
-            property.GetCustomAttribute<SearchableAttribute>();
-
-        var sortable =
-            property.GetCustomAttribute<SortableAttribute>();
-
-        var description =
-            property.GetCustomAttribute<DescriptionAttribute>();
-
-        return new FieldMetadata(
-            property.Name,
-            description?.Description,
-            property.PropertyType,
-            _dataTypeMapper.GetDescriptor(property),
-            filterable is not null,
-            filterable?.Operators ?? Array.Empty<FilterOperator>(),
-            searchable is not null,
-            searchable?.Priority,
-            searchable?.MatchMode,
-            sortable is not null);
-    }
-
 }

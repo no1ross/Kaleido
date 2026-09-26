@@ -187,8 +187,10 @@ public static class ProcessServiceCollectionExtensions
         var handlerTypes =
             types
                 .Where(type =>
-                    type.GetInterfaces()
-                        .Any(i => IsProcessStepHandler(i, stepType)))
+                    type.ImplementsGenericInterfaceFor(
+                        stepType,
+                        typeof(IProcessStepHandler<>),
+                        typeof(IProcessStepHandler<,>)))
                 .ToArray();
 
         if (handlerTypes.Length == 0)
@@ -215,26 +217,4 @@ public static class ProcessServiceCollectionExtensions
         return handlerType;
     }
 
-    private static bool IsProcessStepHandler(
-        Type interfaceType,
-        Type stepType)
-    {
-        if (!interfaceType.IsGenericType)
-        {
-            return false;
-        }
-
-        var definition =
-            interfaceType.GetGenericTypeDefinition();
-
-        var genericArguments = interfaceType.GetGenericArguments();
-
-        return
-            (definition == typeof(IProcessStepHandler<>) ||
-             definition == typeof(IProcessStepHandler<,>))
-            &&
-            genericArguments.Length > 0
-            &&
-            genericArguments[0] == stepType;
-    }
 }
