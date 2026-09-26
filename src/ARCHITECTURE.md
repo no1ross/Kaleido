@@ -171,10 +171,10 @@ The core project is organized into two main namespaces:
 
 ### Internal structure
 - `SqliteProcessContextStore` — implements `IProcessContextStore` using SQLite via EF Core
-- `SqliteProcessContextStoreServiceCollectionExtensions` — `UseSqliteContextStore(connectionString)` extension; replaces the default in-memory store
+- `SqliteProcessContextStoreServiceCollectionExtensions` — `UseSqliteProcessContextStore(connectionString)` extension; replaces the default in-memory store
 
 ### Key design invariants
-- Calling `UseSqliteContextStore(...)` replaces the in-memory `IProcessContextStore` registered by `AddProcessor(...)`.
+- Calling `UseSqliteProcessContextStore(...)` replaces the in-memory `IProcessContextStore` registered by `AddProcessor(...)`.
 - The store must correctly implement state reconciliation so that existing saved contexts remain valid when the step registry changes.
 
 ---

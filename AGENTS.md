@@ -80,7 +80,7 @@ Kaleido core is observability-provider-agnostic. This project is one of many pos
 
 ### Kaleido.Provider.SQLite
 Owns the SQLite durable state provider:
-- `UseSqliteContextStore(...)` extension
+- `UseSqliteProcessContextStore(...)` extension
 - SQLite-backed `IProcessContextStore` implementation
 
 ## General contributor rules

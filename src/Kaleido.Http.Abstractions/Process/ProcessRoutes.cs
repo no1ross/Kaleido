@@ -63,7 +63,7 @@ public static class ProcessEndpointNames
         "KaleidoProcessStepCatalog";
 
     public const string StepRegistryEndpointName =
-        "KaleidoProcessStepREgistry";
+        "KaleidoProcessStepRegistry";
 
     public static string StepMetadataEndpointName(
         string stepName) =>

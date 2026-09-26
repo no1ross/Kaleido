@@ -7,7 +7,7 @@ namespace Kaleido.Provider.SQLite;
 
 public static class SqliteProcessContextStoreServiceCollectionExtensions
 {
-    public static IKaleidoBuilder UseSqliteContextStore(
+    public static IKaleidoBuilder UseSqliteProcessContextStore(
         this IKaleidoBuilder builder,
         string connectionString)
     {
