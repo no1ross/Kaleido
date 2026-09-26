@@ -1,6 +1,12 @@
 # Kaleido.Provider.SQLite
 
-This project provides a SQLite-backed durable process state store. It replaces the default in-memory `IProcessContextStore` with a persistent implementation suitable for multi-request workflows and service restarts.
+> **This project is a reference implementation, not a production provider.**
+>
+> - `IProcessContextStore` is the **contract** your deployment must implement.
+> - `SqliteProcessContextStore` is a **worked example** of that contract — a single-file embedded database that demonstrates correct `ProcessorContext` round-trip fidelity.
+> - **Production deployments are expected to write their own implementation** against their real infrastructure (SQL Server, Postgres, Redis, document store, whatever the process actually needs).
+> - SQLite's single-writer file model is deliberately unsuitable for the multi-node, multi-instance scenarios durable process state is designed for. Shipping it to production is an anti-pattern.
+> - The `Kaleido.Provider.SQLite.UnitTests` suite is the **executable contract specification**: if your implementation passes equivalent round-trip fidelity, update, and multi-instance tests, it satisfies `IProcessContextStore`.
 
 See also:
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
@@ -10,28 +16,41 @@ See also:
 
 ## What lives here
 
-- `SqliteProcessContextStore` — SQLite-backed `IProcessContextStore` implementation
+- `SqliteProcessContextStore` — example SQLite-backed `IProcessContextStore` implementation
 - `SqliteProcessContextStoreServiceCollectionExtensions` — `UseSqliteProcessContextStore(connectionString)` builder extension
 
 ---
 
-## When to use this project
+## Implementing your own store
 
-Use this project when:
-- process state must survive service restarts
-- process state must be shared across multiple application instances
-- a process spans multiple HTTP requests and in-memory storage is not sufficient
+The contract is two methods:
 
-The default in-memory store registered by `AddProcessor(...)` is sufficient for:
-- local development
-- single-request processes
-- unit and functional tests
+```csharp
+public interface IProcessContextStore
+{
+    Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default);
+    Task SaveAsync(ProcessorContext context, CancellationToken cancellationToken = default);
+}
+```
+
+Your implementation must preserve, with full fidelity:
+
+- `ProcessId`, `ProcessorName`, `LatestRequestId`
+- `State` (`ProcessExecutionState` enum — Active, Complete, BusinessFailure, ProcessViolation, HandOff, AwaitingRequiredStep, AwaitingStepSelection, Exception, Canceled)
+- `RequiredStep` and `TargetProcessorName` (mutually exclusive continuation markers)
+- `AvailableSteps` (collection — order not significant)
+- `Steps` — every `StepContext` including `StepName`, `Version`, `Status`, `LatestRequestId`, `LastExecuted`
+- `CreatedUtc` / `UpdatedUtc` timestamps
+
+Save semantics are **upsert**: a second `SaveAsync` for the same `ProcessId` replaces the prior state entirely.
+
+`LoadAsync` returns `null` when no process exists — never throws for a missing instance.
 
 ---
 
-## Registration
+## Using the example implementation
 
-Call `UseSqliteProcessContextStore(...)` on the `IKaleidoBuilder` returned by `AddKaleido()`:
+For samples, demos, and local development:
 
 ```csharp
 builder.Services.AddKaleido(builder.Configuration, o =>
@@ -42,20 +61,23 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     .UseSqliteProcessContextStore("Data Source=my-process.sqlite");
 ```
 
-This registers `SqliteProcessContextStore` as the `IProcessContextStore` implementation, replacing the default in-memory store.
+This registers `SqliteProcessContextStore` as `IProcessContextStore`, replacing the default in-memory store.
+
+The default in-memory store is sufficient for tests and single-request processes; it logs a warning at registration precisely because production without a durable store is a configuration smell.
 
 ---
 
 ## What this project does NOT do
 
-This project does not contain:
+- it is not a production-grade store (see header)
 - the Process runtime itself (see [`Kaleido`](../Kaleido/README.md))
 - HTTP endpoint publication (see [`Kaleido.Http`](../Kaleido.Http/README.md))
-- other persistence providers (EF Core, Redis, etc.)
+- other persistence providers (EF Core, Redis, etc.) — write your own per the contract above
 
 ---
 
 ## Where to look
 
-- `SqliteProcessContextStore.cs` — SQLite implementation of `IProcessContextStore`
+- `SqliteProcessContextStore.cs` — the reference `IProcessContextStore` implementation
 - `SqliteProcessContextStoreServiceCollectionExtensions.cs` — `UseSqliteProcessContextStore(...)` registration
+- `tests/Kaleido.Provider.SQLite.UnitTests` — the executable contract specification to mirror for your own store
