@@ -797,6 +797,12 @@ pr_plan:
   policy: >
     Docs: catch-up pass in PR-01 to remove wrong content, docs-as-we-go in each
     code PR, final authoritative sweep in PR-11 after all code PRs merge.
+  pr_workflow:
+    - "Push the PR branch to origin"
+    - "Post the PR-create link + description notes for the user to open the PR"
+    - "User creates/merges the PR on GitHub"
+    - "Before next PR: checkout master, pull latest, delete merged local branch"
+    - "Verify clean baseline (build 0/0, tests green) before branching next PR"
   PR-01-docs-catchup:
     gate: none
     findings: [CR-004, HP-006, MP-023]
