@@ -24,13 +24,24 @@ jobs:
         global-json-file: global.json
 
     - name: Restore
-      run: dotnet restore
+      run: dotnet restore --locked-mode
 
     - name: Build
       run: dotnet build --configuration Release --no-restore
 
     - name: Test
       run: dotnet test --configuration Release --no-build --collect:"XPlat Code Coverage" --settings coverlet.runsettings
+
+    - name: Coverage gate
+      run: |
+        lh=$(grep -rh '^LH:' --include='coverage.info' **/TestResults/ | awk -F: '{s+=$2} END{print s+0}')
+        lf=$(grep -rh '^LF:' --include='coverage.info' **/TestResults/ | awk -F: '{s+=$2} END{print s+0}')
+        rate=$(awk "BEGIN{r=0; if ($lf>0) r=$lh*100.0/$lf; printf \"%.1f\", r}")
+        echo "Line coverage: $rate% ($lh/$lf) - floor: $COVERAGE_FLOOR%"
+        awk "BEGIN{exit !($rate+0 >= $COVERAGE_FLOOR)}"
+      env:
+        # Ratchet floor - raise as coverage improves; do not lower.
+        COVERAGE_FLOOR: 10
 
     - name: Upload coverage
       uses: actions/upload-artifact@v4
