@@ -1,6 +1,5 @@
 using Kaleido.Http.Client;
 using Kaleido.Http.Process;
-using Kaleido.Process;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
@@ -106,6 +105,7 @@ public sealed class CaptureRequestedServiceHandler(
                 await processClientFactory
                     .GetClient(processorName)
                     .ExecuteStepAsync<StartRadiologyIntakeStep>(
+                        "StartRadiologyIntake",
                         new StartRadiologyIntakeStep
                         {
                             MemberId = session.Member?.MemberId,

@@ -1,17 +1,15 @@
-using Kaleido.Http.Queryable;
 using Kaleido.Json;
+using Kaleido.Queryable.Query;
 
-namespace Kaleido.Http.UnitTests.Queryable;
+namespace Kaleido.Queryable.UnitTests.Query;
 
-public sealed class QueryableValueNormalizerTests
+public sealed class QueryBodyExtensionsTests
 {
-    private static QueryableValueNormalizer CreateSut(IValueConverter? converter = null) =>
-        new(converter ?? Mock.Of<IValueConverter>());
+    private readonly IValueConverter _converter = Mock.Of<IValueConverter>();
 
     [Fact]
     public void Normalize_WhenQueryIsNull_ReturnsNull()
     {
-        var sut = CreateSut();
         var metadata = new QueryContextMetadata(
             Name: "test",
             Description: "desc",
@@ -22,7 +20,7 @@ public sealed class QueryableValueNormalizerTests
             Pageable: null,
             Fields: []);
 
-        var result = sut.Normalize(null, metadata);
+        var result = ((QueryBody?)null).Normalize(_converter, metadata);
 
         Assert.Null(result);
     }

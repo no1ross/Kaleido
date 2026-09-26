@@ -2,7 +2,6 @@ using System.Reflection;
 using Kaleido.Queryable.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -311,15 +310,11 @@ public static class QueryableEndpointRouteBuilderExtensions
                 async (
                     QueryApiRequest<TViewParameters> request,
                     IQueryableService queryable,
-                    [FromServices] QueryableValueNormalizer normalizer,
                     CancellationToken cancellationToken) =>
-                    await GuardQueryAsync(() =>
-                        queryable.QueryAsync<TQueryView, TView>(
+                    Results.Ok(
+                        await queryable.QueryAsync<TQueryView, TView>(
                             new QueryRequest<TViewParameters>(
-                                Query:
-                                    normalizer.Normalize(
-                                        request.Query,
-                                        context.Metadata),
+                                Query: request.Query,
                                 ViewParameters: request.Parameters),
                             cancellationToken)))
             .WithName(
@@ -351,15 +346,11 @@ public static class QueryableEndpointRouteBuilderExtensions
                 async (
                     QueryApiRequest<TViewParameters> request,
                     IQueryableService queryable,
-                    [FromServices] QueryableValueNormalizer normalizer,
                     CancellationToken cancellationToken) =>
-                    await GuardQueryAsync(() =>
-                        queryable.QueryAsync<TQueryView, TView>(
+                    Results.Ok(
+                        await queryable.QueryAsync<TQueryView, TView>(
                             new QueryRequest<TViewParameters>(
-                                Query:
-                                    normalizer.Normalize(
-                                        request.Query,
-                                        view.QueryMetadata),
+                                Query: request.Query,
                                 ViewParameters: request.Parameters),
                             cancellationToken)))
             .WithName(
@@ -389,15 +380,11 @@ public static class QueryableEndpointRouteBuilderExtensions
                 async (
                     QueryApiRequest<EmptyQueryViewParameters> request,
                     IQueryableService queryable,
-                    [FromServices] QueryableValueNormalizer normalizer,
                     CancellationToken cancellationToken) =>
-                    await GuardQueryAsync(() =>
-                        queryable.QueryAsync<TQueryContext, TQueryContext>(
+                    Results.Ok(
+                        await queryable.QueryAsync<TQueryContext, TQueryContext>(
                             new QueryRequest<EmptyQueryViewParameters>(
-                                Query:
-                                    normalizer.Normalize(
-                                        request.Query,
-                                        context.Metadata),
+                                Query: request.Query,
                                 ViewParameters: request.Parameters),
                             cancellationToken)))
             .WithName(
@@ -415,24 +402,4 @@ public static class QueryableEndpointRouteBuilderExtensions
             .Produces<KaleidoErrorResponse>(400);
     }
 
-    private static async Task<IResult> GuardQueryAsync<TView>(
-        Func<Task<QueryResult<TView>>> execute)
-        where TView : class
-    {
-        try
-        {
-            return Results.Ok(await execute());
-        }
-        catch (KaleidoValidationException ex)
-        {
-            return ValidationErrorResult(ex);
-        }
-    }
-
-    private static IResult ValidationErrorResult(KaleidoValidationException ex) =>
-        Results.BadRequest(
-            new KaleidoErrorResponse(
-            [
-                new KaleidoError(ex.Code, ex.Message)
-            ]));
 }
