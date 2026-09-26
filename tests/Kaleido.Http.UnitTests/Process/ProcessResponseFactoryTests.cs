@@ -1,7 +1,7 @@
 using Kaleido.Http.Process;
 using Kaleido.Process.Registry;
 
-namespace Kaleido.Http.Abstractions.UnitTests.Process;
+namespace Kaleido.Http.UnitTests.Process;
 
 public sealed class ProcessResponseFactoryTests
 {
