@@ -115,8 +115,7 @@ internal sealed class QueryViewRegistrationValidator
         foreach (var queryViewType in queryViewTypes)
         {
             var queryViewInterface =
-                GetQueryViewInterface(
-                    queryViewType);
+                queryViewType.GetQueryViewInterface();
 
             var contextType =
                 queryViewInterface.GenericTypeArguments[0];
@@ -140,21 +139,4 @@ internal sealed class QueryViewRegistrationValidator
         }
     }
 
-    private static Type GetQueryViewInterface(
-        Type queryViewType)
-    {
-        return queryViewType
-            .GetInterfaces()
-            .Where(i =>
-                i.IsGenericType &&
-                (
-                    i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,>) ||
-                    i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,,>) ||
-                    i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,>) ||
-                    i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,,>)
-                ))
-            .OrderByDescending(
-                i => i.GenericTypeArguments.Length)
-            .First();
-    }
 }

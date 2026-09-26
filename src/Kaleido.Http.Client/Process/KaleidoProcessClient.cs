@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
+using Kaleido.Process;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Client.Process;
@@ -137,11 +139,12 @@ internal sealed class KaleidoProcessClient(
     }
 
     public async Task<StepExecutionResponse> ExecuteStepAsync<TStep>(
+        string stepName,
         TStep processStep,
         CancellationToken cancellationToken = default)
         where TStep : class
     {
-        var url = await ResolveExecuteUrlAsync<TStep>(cancellationToken);
+        var url = await ResolveExecuteUrlAsync<TStep>(stepName, cancellationToken);
 
         var body = new ExecuteStepRequest<TStep>
         {
@@ -174,11 +177,12 @@ internal sealed class KaleidoProcessClient(
     }
 
     public async Task<StepExecutionResponse<TResponse>> ExecuteStepAsync<TStep, TResponse>(
+        string stepName,
         TStep processStep,
         CancellationToken cancellationToken = default)
         where TStep : class
     {
-        var url = await ResolveExecuteUrlAsync<TStep>(cancellationToken);
+        var url = await ResolveExecuteUrlAsync<TStep>(stepName, cancellationToken);
 
         var body = new ExecuteStepRequest<TStep>
         {
@@ -211,15 +215,24 @@ internal sealed class KaleidoProcessClient(
     }
 
     private async Task<string> ResolveExecuteUrlAsync<TStep>(
+        string stepName,
         CancellationToken cancellationToken)
     {
-        var registry = await EnsureRegistryAsync(cancellationToken);
+        // When the step type carries [ProcessStep], its Name is authoritative —
+        // a mismatched stepName is a caller bug, fail fast before any HTTP call.
+        var declaredName =
+            typeof(TStep).GetCustomAttribute<ProcessStepAttribute>()?.Name;
 
-        // Strip "Step" suffix to get the canonical step name (e.g. CaptureRequestedServiceStep -> CaptureRequestedService)
-        var typeName = typeof(TStep).Name;
-        var stepName = typeName.EndsWith("Step", StringComparison.OrdinalIgnoreCase)
-            ? typeName[..^4]
-            : typeName;
+        if (declaredName is not null &&
+            !string.Equals(declaredName, stepName, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new KaleidoHttpClientException(
+                HttpClientErrorCodes.InvalidStepName,
+                $"Step name '{stepName}' does not match the [ProcessStep] name '{declaredName}' on type '{typeof(TStep).Name}'.",
+                HttpStatusCode.BadRequest);
+        }
+
+        var registry = await EnsureRegistryAsync(cancellationToken);
 
         foreach (var processor in registry)
         {
@@ -232,9 +245,13 @@ internal sealed class KaleidoProcessClient(
             }
         }
 
+        var available = string.Join(
+            ", ",
+            registry.SelectMany(p => p.Steps).Select(s => s.Name));
+
         throw new KaleidoHttpClientException(
             HttpClientErrorCodes.NotFound,
-            $"Process step '{stepName}' (from type '{typeName}') was not found in the remote registry.",
+            $"Process step '{stepName}' was not found in the remote registry. Available steps: {available}.",
             HttpStatusCode.NotFound);
     }
 
