@@ -65,9 +65,9 @@ Owns the OpenTelemetry observability provider (opt-in, no OTel dependency in cor
 Future observability providers follow the same pattern: `Kaleido.Observability.<Technology>`.
 
 ### `src/Kaleido.Provider.SQLite`
-Owns the SQLite-backed durable process state store:
+Owns the reference `IProcessContextStore` implementation (SQLite):
 - `UseSqliteProcessContextStore(...)` extension
-- SQLite-backed `IProcessContextStore` implementation
+- SQLite-backed `IProcessContextStore` — a worked example only; consumers implement `IProcessContextStore` against their own durable infrastructure
 
 ---
 
