@@ -4,15 +4,16 @@ namespace Kaleido.UnitTests.Core;
 
 public sealed class KaleidoErrorResponseTests
 {
+    private static readonly JsonSerializerOptions WebOptions =
+        new(JsonSerializerDefaults.Web);
+
     [Fact]
     public void Serialize_UsesCamelCaseContractShape()
     {
         var response = new KaleidoErrorResponse(
             [new KaleidoError("qry_bad", "Something failed", "fieldX")]);
 
-        var json = JsonSerializer.Serialize(
-            response,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var json = JsonSerializer.Serialize(response, WebOptions);
 
         Assert.Equal(
             "{\"errors\":[{\"code\":\"qry_bad\",\"message\":\"Something failed\",\"field\":\"fieldX\"}]}",
@@ -25,9 +26,7 @@ public sealed class KaleidoErrorResponseTests
         var response = new KaleidoErrorResponse(
             [new KaleidoError("framework_error", "An unexpected error occurred.")]);
 
-        var json = JsonSerializer.Serialize(
-            response,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var json = JsonSerializer.Serialize(response, WebOptions);
 
         Assert.Contains("\"field\":null", json);
     }
@@ -41,9 +40,7 @@ public sealed class KaleidoErrorResponseTests
                 new KaleidoError("second", "2")
             ]);
 
-        var json = JsonSerializer.Serialize(
-            response,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var json = JsonSerializer.Serialize(response, WebOptions);
 
         Assert.True(
             json.IndexOf("\"first\"", StringComparison.Ordinal)

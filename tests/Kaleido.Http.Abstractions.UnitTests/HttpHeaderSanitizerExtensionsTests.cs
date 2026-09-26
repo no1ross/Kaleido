@@ -1,6 +1,6 @@
 namespace Kaleido.Http.Abstractions.UnitTests;
 
-public sealed class HttpHeaderSanitizerTests
+public sealed class HttpHeaderSanitizerExtensionsTests
 {
     [Theory]
     [InlineData(null)]
