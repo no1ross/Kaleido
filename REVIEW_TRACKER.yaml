@@ -484,6 +484,12 @@ medium_priority_items:
     priority: MEDIUM
     breaking_change: false
     status: PENDING_DESIGN_REVIEW
+    decision: >
+      DECIDED 2026-09-26 (owner): step-name resolution moves to an explicit
+      string parameter; client validates TStep's [ProcessStep].Name when the
+      attribute is present. Not-found error lists available registry steps.
+      Compile-time literal validation of step-name strings is a consumer
+      analyzer rule -- see consumer_analyzer_candidates.
 
 low_priority_items:
   LP-001:
@@ -881,6 +887,17 @@ pr_plan:
     note: "Authoritative docs rewrite against final public surface"
   post_1_0:
     findings: [LP-001, LP-002, LP-003, LP-004, LP-005, LP-006, LP-007, LP-008, LP-009, LP-010, LP-011, LP-012, LP-013, LP-014, LP-015, HP-018]
+
+consumer_analyzer_candidates:
+  status: PLANNED
+  trigger: "sample updates + KAL2xxx disposition (Q-008); rules driven by what consumers actually write"
+  rules:
+    - name: "step-name literal validation"
+      detail: "warn when a literal step name passed to client.ExecuteStepAsync matches no [ProcessStep].Name in the compilation's referenced assemblies; include available names in the message"
+    - name: "ProcessStep suffix convention"
+      detail: "warn when a [ProcessStep]-annotated class does not end in 'Step' -- required for the typeName-'Step' derivation convention"
+    - name: "convention-divergent explicit Name"
+      detail: "info when explicit [ProcessStep].Name differs from the derived convention -- consumer mirror types must carry the attribute to resolve it"
 
 review_milestones:
   design_review_meeting:
