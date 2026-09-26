@@ -97,7 +97,8 @@ critical_decisions:
     effort_days: 0.5-1
     breaking_change: false
     release_blocker: true
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETE
+    resolution_note: "(PR-06) ExceptionMiddleware theory matrix: 5 exception->status+body cases, OCE passthrough, HasStarted no-write."
 
   CR-006:
     title: ObservabilityMiddleware correlation read/populate/echo untested
@@ -106,7 +107,8 @@ critical_decisions:
     effort_days: 1-2
     breaking_change: false
     release_blocker: true
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETE
+    resolution_note: "(PR-06) Unit tests: context init, generated RequestId, Activity tags. Functional: real-pipeline header echo + error shape."
 
   CR-007:
     title: Duplicate cancellation signal in ProcessRuntime + unguarded OCE invariant
@@ -143,7 +145,8 @@ high_priority_items:
     effort_days: 1-2
     priority: HIGH
     breaking_change: false
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETE
+    resolution_note: "(PR-06) src/Kaleido README expanded: lane selection, first-match-wins, fallback semantics, perf implications; precedence pinned by tests."
     blocking: false
 
   HP-003:
@@ -277,7 +280,8 @@ high_priority_items:
     effort_days: 1-2
     priority: HIGH
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETE
+    resolution_note: "(PR-06) Round-trip fidelity for all fields + Steps, second-save-wins, multi-instance isolation. SQLite reframed as IProcessContextStore reference impl."
 
   HP-018:
     title: ExecutionProcessorTests over-mocked (1395 lines, strict mocks)
@@ -300,7 +304,8 @@ medium_priority_items:
     effort_days: 2-3
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETE
+    resolution_note: "(PR-06) Scalar descriptor type/format matrix, IsSupportedType, JSON/enum edges; ConstraintMapper attribute sweep."
 
   MP-003:
     title: Correlation Context Flow Documentation
@@ -436,7 +441,8 @@ medium_priority_items:
     effort_days: 2-3
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETE
+    resolution_note: "(PR-06) Dispatch precedence pinned (delegated>local>direct); functional echo+error-shape; contract serialization; stale QueryableValueNormalizer/moved-analyzer stubs deleted; empty sanitizer test filled."
 
   MP-020:
     title: Consolidate FieldLookup x3 + QueryMetadataBuilder + scan predicates
