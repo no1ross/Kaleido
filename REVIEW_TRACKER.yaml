@@ -214,7 +214,11 @@ high_priority_items:
     priority: HIGH
     breaking_change: false
     release_blocker: true
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETE
+    resolution_note: >
+      (PR-05) Moq pinned 4.20.72 -> 4.18.4 (pre-SponsorLink). Direct
+      SQLitePCLRaw.lib.e_sqlite3 refs removed from provider + 2 samples -
+      e_sqlite3 arrives transitively via EF Core Sqlite bundle.
 
   HP-011:
     title: Move KaleidoClientOptions/KaleidoClientEntry out of core
@@ -469,7 +473,10 @@ medium_priority_items:
     effort_days: 0.25
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETE
+    resolution_note: >
+      (PR-05) Deleted untracked stale dirs src/Core + src/Kaleido.AspNetCore
+      (orphaned bin/obj cruft only). Root artifacts already absent.
 
   MP-023:
     title: Doc-map coverage (tests/AGENTS.md 4 missing projects, tools/analyzers guide, doc links, stale exception names)
@@ -484,7 +491,12 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: PARTIAL
+    progress_note: >
+      (PR-05) Done: RestorePackagesWithLockFile + 37 committed packages.lock.json
+      + CI restore --locked-mode; coverage ratchet gate (10% floor, baseline ~14.6%).
+      Not done (no publishing yet): pack step + version strategy - deferred to
+      CR-003 release-pipeline decision.
 
   MP-025:
     title: Make AddProcessClient/AddQueryableClient public (config-only today)
