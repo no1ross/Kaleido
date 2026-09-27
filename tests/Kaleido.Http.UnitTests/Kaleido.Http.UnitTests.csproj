@@ -7,18 +7,4 @@
 		<ProjectReference Include="..\..\src\Kaleido.Http\Kaleido.Http.csproj" />
 		<ProjectReference Include="..\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
 	</ItemGroup>
-	<ItemGroup>
-		<Using Include="Kaleido.Process" />
-		<Using Include="Kaleido.Process.Execution" />
-		<Using Include="Kaleido.Process.Registry" />
-		<Using Include="Kaleido.Queryable" />
-		<Using Include="Kaleido.Queryable.Query" />
-		<Using Include="Kaleido.Queryable.Metadata" />
-		<Using Include="Kaleido.Queryable" />
-		<Using Include="Kaleido.Queryable.Query" />
-		<Using Include="Kaleido.Http.Process" />
-		<Using Include="Kaleido.Http.Middleware" />
-		<Using Include="Kaleido.Http.Startup" />
-		<Using Include="Kaleido.Observability" />
-	</ItemGroup>
 </Project>

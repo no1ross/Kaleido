@@ -1,6 +1,6 @@
 using Kaleido.Observability;
 
-namespace Kaleido.Http.Client.Tests;
+namespace Kaleido.Http.Client.UnitTests;
 
 public sealed class CorrelationHeaderStamperTests
 {

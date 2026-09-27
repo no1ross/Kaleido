@@ -174,17 +174,6 @@
           "Microsoft.Extensions.Options": "8.0.2"
         }
       },
-      "Microsoft.Extensions.Diagnostics.HealthChecks": {
-        "type": "Transitive",
-        "resolved": "8.0.31",
-        "contentHash": "9zVhlLRTka8pNcyrlm0B1al+AlT0gPXuELs1FL9fIry5eWoTOtlyIjVOVqmk/+LYMjIuIuLfOxToZE1acxVxUA==",
-        "dependencies": {
-          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "8.0.31",
-          "Microsoft.Extensions.Hosting.Abstractions": "8.0.1",
-          "Microsoft.Extensions.Logging.Abstractions": "8.0.3",
-          "Microsoft.Extensions.Options": "8.0.2"
-        }
-      },
       "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": {
         "type": "Transitive",
         "resolved": "8.0.31",
@@ -395,6 +384,18 @@
         "requested": "[8.0.2, )",
         "resolved": "8.0.2",
         "contentHash": "3iE7UF7MQkCv1cxzCahz+Y/guQbTqieyxyaWKhrRO91itI9cOKO76OHeQDahqG4MmW5umr3CcCvGmK92lWNlbg=="
+      },
+      "Microsoft.Extensions.Diagnostics.HealthChecks": {
+        "type": "CentralTransitive",
+        "requested": "[8.0.31, )",
+        "resolved": "8.0.31",
+        "contentHash": "9zVhlLRTka8pNcyrlm0B1al+AlT0gPXuELs1FL9fIry5eWoTOtlyIjVOVqmk/+LYMjIuIuLfOxToZE1acxVxUA==",
+        "dependencies": {
+          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "8.0.31",
+          "Microsoft.Extensions.Hosting.Abstractions": "8.0.1",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.3",
+          "Microsoft.Extensions.Options": "8.0.2"
+        }
       },
       "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": {
         "type": "CentralTransitive",

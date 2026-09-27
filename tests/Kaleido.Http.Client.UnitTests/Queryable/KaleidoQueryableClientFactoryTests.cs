@@ -4,7 +4,7 @@ using Kaleido.Http.Queryable;
 using Kaleido.Observability;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Kaleido.Queryable.Http.Client.Tests;
+namespace Kaleido.Http.Client.UnitTests.Queryable;
 
 public sealed class KaleidoQueryableClientFactoryTests
 {

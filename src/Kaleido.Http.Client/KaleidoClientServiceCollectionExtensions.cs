@@ -1,13 +1,16 @@
+using Kaleido.Http.Client.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Kaleido.Http.Client;
 
-internal static class KaleidoClientExtensions
+internal static class KaleidoClientServiceCollectionExtensions
 {
     internal static IServiceCollection AddKaleidoClient<TClient, TMap, TFactory, TFactoryInterface>(
         this IServiceCollection services,
         Action<KaleidoHttpClientOptions> configure,
+        Func<string, string> registryUrlFactory,
         Action<IHttpClientBuilder>? configureClient = null)
         where TClient : class
         where TMap : class, IKaleidoClientRouteOptionsMap, new()
@@ -36,6 +39,34 @@ internal static class KaleidoClientExtensions
         services.TryAddScoped<ICorrelationHeaderStamper, CorrelationHeaderStamper>();
         services.TryAddScoped<TFactoryInterface, TFactory>();
 
+        // Register a health check that probes the remote registry endpoint.
+        // Uses the same named HttpClient so BaseAddress, timeouts, and any
+        // configured delegating handlers apply automatically.
+        // Configure<HealthCheckServiceOptions> runs at resolution time, so the guard inside
+        // safely skips duplicate names even when AddHttpClients() is called multiple times.
+        var clientName = options.Name;
+        var healthCheckName = $"kaleido-{clientName}";
+        var registryPath = registryUrlFactory(options.RoutePrefix);
+
+        services.AddHealthChecks();
+        services.Configure<HealthCheckServiceOptions>(o =>
+        {
+            if (o.Registrations.Any(r => string.Equals(r.Name, healthCheckName, StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
+            o.Registrations.Add(new HealthCheckRegistration(
+                name: healthCheckName,
+                factory: sp => new KaleidoClientHealthCheck(
+                    sp.GetRequiredService<IHttpClientFactory>(),
+                    clientName,
+                    registryPath,
+                    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<KaleidoClientHealthCheck>>()),
+                failureStatus: HealthStatus.Unhealthy,
+                tags: ["kaleido", "remote"]));
+        });
+
         return services;
     }
 
@@ -49,6 +80,7 @@ internal static class KaleidoClientExtensions
 
         builder.Services.AddKaleidoClient<IKaleidoProcessClient, KaleidoProcessClientRouteOptionsMap, KaleidoProcessClientFactory, IKaleidoProcessClientFactory>(
             configure,
+            ProcessContractUrls.Registry,
             configureClient);
 
         return builder;
@@ -64,6 +96,7 @@ internal static class KaleidoClientExtensions
 
         builder.Services.AddKaleidoClient<IKaleidoQueryableClient, KaleidoQueryableClientRouteOptionsMap, KaleidoQueryableClientFactory, IKaleidoQueryableClientFactory>(
             configure,
+            QueryableContractUrls.QueryRegistry,
             configureClient);
 
         return builder;
