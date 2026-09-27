@@ -15,6 +15,12 @@ namespace Kaleido.Eventing;
 /// and every query executed (context, filters, results).
 /// </para>
 /// <para>
+/// <strong>Privacy:</strong> Default event payloads include the full request and response
+/// business objects. If your process steps carry personally identifiable information (PII)
+/// or other sensitive data, implement a custom <see cref="IEventPublisher"/> that redacts or
+/// projects payloads before forwarding to your event infrastructure.
+/// </para>
+/// <para>
 /// The process state stored in the database contains only what is required to resume
 /// execution — it is not a history. Without a real <see cref="IEventPublisher"/>,
 /// you will have no data warehouse feed, no audit trail, no analytics, and no replay capability.

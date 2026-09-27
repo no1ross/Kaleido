@@ -87,7 +87,7 @@ internal sealed class ExceptionMiddlewareTests
             nameof(KaleidoFrameworkException) =>
                 new KaleidoFrameworkException("type_mismatch", "bad type"),
             _ =>
-                new Exception("boom")
+                new InvalidOperationException("boom")
         };
 
         var middleware = CreateSut();
@@ -122,7 +122,7 @@ internal sealed class ExceptionMiddlewareTests
         Next = async httpContext =>
         {
             await httpContext.Response.StartAsync();
-            throw new Exception("boom");
+            throw new InvalidOperationException("boom");
         };
 
         var middleware = CreateSut();
