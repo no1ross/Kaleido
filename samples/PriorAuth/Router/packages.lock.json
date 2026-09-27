@@ -136,6 +136,7 @@
           "Kaleido.Http.Abstractions": "[1.0.0, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[8.0.0, )",
           "Microsoft.Extensions.Configuration.Binder": "[8.0.2, )",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "[8.0.31, )",
           "Microsoft.Extensions.Http": "[8.0.1, )"
         }
       },

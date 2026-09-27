@@ -9,15 +9,4 @@
 		<ProjectReference Include="..\..\src\Kaleido.Http.Client\Kaleido.Http.Client.csproj" />
 		<ProjectReference Include="..\..\src\Kaleido.Http.Abstractions\Kaleido.Http.Abstractions.csproj" />
 	</ItemGroup>
-	<ItemGroup>
-		<Using Include="Kaleido.Http" />
-		<Using Include="Kaleido.Process" />
-		<Using Include="Kaleido.Process.Execution" />
-		<Using Include="Kaleido.Queryable" />
-		<Using Include="Kaleido.Queryable.Query" />
-		<Using Include="Kaleido.Queryable.Metadata" />
-		<Using Include="Kaleido.Queryable" />
-		<Using Include="Kaleido.Queryable.Query" />
-		<Using Include="System.Net.Http.Json" />
-	</ItemGroup>
 </Project>

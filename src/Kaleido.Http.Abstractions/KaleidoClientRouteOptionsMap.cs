@@ -3,13 +3,13 @@ namespace Kaleido.Http;
 /// <summary>
 /// Contract for the DI-singleton that holds the name-to-routePrefix map for
 /// a named Kaleido HTTP client. Used as a type constraint on TMap in
-/// KaleidoClientFactoryBase and KaleidoClientExtensions — eliminates reflection
+/// KaleidoClientFactoryBase and KaleidoClientServiceCollectionExtensions — eliminates reflection
 /// over the Options property. IDictionary is intentional: the registration
 /// extension writes into this map at startup; consumers read from it at request time.
 /// </summary>
 internal interface IKaleidoClientRouteOptionsMap
 {
-    // KAL0018: IDictionary is intentional — KaleidoClientExtensions writes
+    // KAL0018: IDictionary is intentional — KaleidoClientServiceCollectionExtensions writes
     // client name → route prefix entries at startup registration time.
 #pragma warning disable KAL0018
     IDictionary<string, string> Options { get; }

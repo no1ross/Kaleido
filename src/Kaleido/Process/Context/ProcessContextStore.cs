@@ -3,6 +3,23 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Process.Context;
 
+/// <summary>
+/// Provides durable storage for <see cref="ProcessorContext"/> instances.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The default implementation is an unbounded in-memory dictionary, suitable for development
+/// and testing only. It does not survive process restarts and grows without bound in long-running
+/// services. Register a durable implementation before deploying to production (e.g.
+/// <c>UseSqliteProcessContextStore</c> or a custom store).
+/// </para>
+/// <para>
+/// <strong>Concurrency:</strong> This interface provides no optimistic concurrency or idempotency
+/// guarantees. Two concurrent requests for the same process can overwrite each other's state.
+/// Consumer implementations should enforce concurrency control (e.g. row versioning, etags)
+/// appropriate to their storage backend.
+/// </para>
+/// </remarks>
 public interface IProcessContextStore
 {
     Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default);
