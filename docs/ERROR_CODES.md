@@ -2,6 +2,8 @@
 
 Every Kaleido exception carries a stable, machine-readable `Code`. These codes are safe to match on in client code and log aggregators — they will not change between releases.
 
+> **Analyzer codes** — the `Kaleido` NuGet package ships with a set of Roslyn analyzers (KAL2xxx) that surface misconfiguration at compile time rather than at runtime. See [Analyzer rules](#analyzer-rules-kal2xxx) below.
+
 ## Exception types
 
 | Type | Namespace | HTTP result | Code set |
@@ -92,3 +94,50 @@ All client codes are prefixed `httpclient_`.
 | `EmptyResponse` | `httpclient_empty_response` | Remote request succeeded but returned no payload |
 | `RequestFailed` | `httpclient_request_failed` | Remote request failed with a non-success HTTP status |
 | `ValidationFailed` | `httpclient_validation_failed` | Remote request failed with structured validation errors |
+
+---
+
+## Analyzer rules (KAL2xxx)
+
+The `Kaleido` NuGet package bundles `Kaleido.Analyzers` — a Roslyn analyzer that surfaces framework misuse at **compile time** rather than at runtime startup. Errors (KAL2001–KAL2003) prevent compilation; warnings and infos (KAL2004–KAL2009) are advisory.
+
+### Attribute validity (KAL2001–KAL2003)
+
+| Rule | Severity | Trigger |
+|---|---|---|
+| `KAL2001` | Error | `[ProcessStep]` has an empty `Name` or `Version` |
+| `KAL2002` | Error | `[QueryContext]` has an empty `Name` or `Version` |
+| `KAL2003` | Error | `[QueryView]` has an empty `Name` or `Version` |
+
+These are compile-time equivalents of the `ConfigurationErrorCodes.ProMissingAttribute` / `QryMissingAttribute` runtime errors. Catching them at compile time prevents the process from failing at startup.
+
+### Handler and step conventions (KAL2004, KAL2007, KAL2008)
+
+| Rule | Severity | Trigger |
+|---|---|---|
+| `KAL2004` | Warning | `ExecuteAsync` in an `IProcessStepHandler<T>` has a bare `catch (Exception)` without an `OperationCanceledException` filter |
+| `KAL2007` | Warning | `[ProcessStep]` class name does not end in `Step` (e.g. `CaptureRequested` instead of `CaptureRequestedStep`) |
+| `KAL2008` | Warning | `[ProcessStep]` class has no `IProcessStepHandler<TStep>` in the same compilation |
+
+KAL2004 enforces the cancellation-observability rule from `AGENTS.md`: a bare `catch (Exception)` in a step handler swallows `OperationCanceledException`, inflating error metrics. Add `when (ex is not OperationCanceledException)` or a preceding `catch (OperationCanceledException)`.
+
+KAL2008 is the compile-time equivalent of `ConfigurationErrorCodes.ProMissingHandler`. It fires when the handler is missing from the **same** compilation; cross-assembly handlers suppress the warning.
+
+### Bootstrap conventions (KAL2005, KAL2009)
+
+| Rule | Severity | Trigger |
+|---|---|---|
+| `KAL2005` | Warning | `o.ServiceName` is assigned a string literal containing uppercase letters, spaces, hyphens, or underscores |
+| `KAL2009` | Warning | `AddKaleido(config, o => { ... })` lambda never references `o.Assemblies` |
+
+`ServiceName` is used verbatim as the HTTP route prefix — it must be lowercase with no separators (e.g. `"priorauth"` not `"PriorAuth"`).
+
+`Assemblies` must be set explicitly; the `GetCallingAssembly()` fallback is JIT-nondeterministic and must not be relied upon in production.
+
+### Infrastructure wiring (KAL2006)
+
+| Rule | Severity | Trigger |
+|---|---|---|
+| `KAL2006` | Info | `MapRegistry()` is called but `AddHttpClients()` is not found in the same compilation |
+
+This is a heuristic: `MapRegistry()` aggregates remote process and queryable registries and depends on the client factories registered by `AddHttpClients()`. If `AddHttpClients()` is in a different project than `MapRegistry()`, this info diagnostic can be suppressed.
