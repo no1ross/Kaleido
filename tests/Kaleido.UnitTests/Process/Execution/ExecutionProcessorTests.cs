@@ -4,6 +4,7 @@ using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Observability;
 using Kaleido.Process.Registry;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Process.UnitTests.Processor.Execution;
 
@@ -1162,7 +1163,8 @@ public sealed class ExecutionProcessorTests
             CreateProcessEventFactory().Object,
             CreateEventPublisher().Object,
             CreateObservability().Object,
-            correlationAccessor.Object);
+            correlationAccessor.Object,
+            NullLogger<ExecutionProcessor>.Instance);
     }
 
     private static Mock<IProcessObservability> CreateObservability()

@@ -634,10 +634,10 @@ external_findings:
     source: KAL-C03
     severity: CRITICAL
     effort: large
-    breaking_change: true
-    release_blocker: true
-    status: PENDING_DECISION
-    notes: "Publisher failure after commit leaves state without audit event"
+    breaking_change: false
+    release_blocker: false
+    status: COMPLETE
+    resolution_note: "(PR-07) Best-effort delivery for 1.0: all PublishAsync calls in ProcessExecutor and ProcessRuntime wrapped in try/catch(non-OCE); failures logged at Warning with processId + event type. Full transactional outbox is post-1.0."
   EXT-03:
     title: Queryable async APIs run synchronous provider I/O
     source: KAL-C04
@@ -886,6 +886,8 @@ open_questions:
     context: "External merge — the largest architectural decision in the review set"
     due: 2026-09-28
     impact: CRITICAL
+    decision: "Best-effort for 1.0. Outbox is a consumer infrastructure concern. Framework wraps publish in try/catch and logs Warning on failure. Full transactional outbox deferred to post-1.0."
+    status: RESOLVED
 
   Q-008:
     question: "Ship a consumer analyzer package (KAL2xxx) or keep analyzers repo-only?"

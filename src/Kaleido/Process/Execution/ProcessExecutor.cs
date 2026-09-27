@@ -1,6 +1,7 @@
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Observability;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Process.Execution;
 
@@ -22,7 +23,8 @@ internal sealed class ExecutionProcessor(
     IProcessEventFactory eventFactory,
     IEventPublisher eventPublisher,
     IProcessObservability observability,
-    IKaleidoCorrelationContextAccessor correlationAccessor)
+    IKaleidoCorrelationContextAccessor correlationAccessor,
+    ILogger<ExecutionProcessor> logger)
     : IExecutionProcessor
 {
 
@@ -158,14 +160,25 @@ internal sealed class ExecutionProcessor(
                 outcomes.Add(
                     outcome);
 
-                await eventPublisher.PublishAsync(
-                    eventFactory.CreateStepCompleted(
-                        correlationAccessor.Current,
-                        context,
-                        candidate,
-                        outcome,
-                        result),
-                    cancellationToken);
+                try
+                {
+                    await eventPublisher.PublishAsync(
+                        eventFactory.CreateStepCompleted(
+                            correlationAccessor.Current,
+                            context,
+                            candidate,
+                            outcome,
+                            result),
+                        cancellationToken);
+                }
+                catch (Exception publishException) when (publishException is not OperationCanceledException)
+                {
+                    logger.LogWarning(
+                        publishException,
+                        "Event publish failed for step {StepName} on process {ProcessId}. State was saved; event delivery is best-effort.",
+                        candidate.StepName,
+                        context.ProcessId);
+                }
 
                 currentCandidate =
                     GetNextCandidate(
