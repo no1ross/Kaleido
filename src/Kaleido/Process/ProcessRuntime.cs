@@ -2,6 +2,7 @@ using System.Reflection;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Observability;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Process;
 
@@ -176,7 +177,8 @@ internal sealed class ProcessRuntime(
     IProcessEventFactory eventFactory,
     IEventPublisher eventPublisher,
     IProcessObservability observability,
-    IKaleidoCorrelationContextAccessor correlationAccessor)
+    IKaleidoCorrelationContextAccessor correlationAccessor,
+    ILogger<ProcessRuntime> logger)
     : IProcessRuntime
 {
 
@@ -211,14 +213,24 @@ internal sealed class ProcessRuntime(
                 plan.Candidates.Count,
                 executionCandidates.Count);
 
-            await eventPublisher.PublishAsync(
-                eventFactory.CreatePlanBuilt(
-                    correlationAccessor.Current,
-                    context,
-                    request,
-                    plan,
-                    executionCandidates.Count),
-                cancellationToken);
+            try
+            {
+                await eventPublisher.PublishAsync(
+                    eventFactory.CreatePlanBuilt(
+                        correlationAccessor.Current,
+                        context,
+                        request,
+                        plan,
+                        executionCandidates.Count),
+                    cancellationToken);
+            }
+            catch (Exception publishException) when (publishException is not OperationCanceledException)
+            {
+                logger.LogWarning(
+                    publishException,
+                    "Event publish failed for PlanBuilt on process {ProcessId}. Event delivery is best-effort.",
+                    context.ProcessId);
+            }
 
             var executionResult =
                 await processor.ExecuteAsync(
@@ -232,12 +244,22 @@ internal sealed class ProcessRuntime(
                     plan,
                     executionResult);
 
-            await eventPublisher.PublishAsync(
-                eventFactory.CreateExecutionCompleted(
-                    correlationAccessor.Current,
-                    context,
-                    executionResult),
-                cancellationToken);
+            try
+            {
+                await eventPublisher.PublishAsync(
+                    eventFactory.CreateExecutionCompleted(
+                        correlationAccessor.Current,
+                        context,
+                        executionResult),
+                    cancellationToken);
+            }
+            catch (Exception publishException) when (publishException is not OperationCanceledException)
+            {
+                logger.LogWarning(
+                    publishException,
+                    "Event publish failed for ExecutionCompleted on process {ProcessId}. Event delivery is best-effort.",
+                    context.ProcessId);
+            }
 
             observation.ExecutionCompleted();
 
@@ -276,12 +298,22 @@ internal sealed class ProcessRuntime(
             observation.ContextInitialized(
                 initializedContext.ProcessId);
 
-            await eventPublisher.PublishAsync(
-                eventFactory.CreateProcessCreated(
-                    correlationAccessor.Current,
-                    initializedContext,
-                    request),
-                cancellationToken);
+            try
+            {
+                await eventPublisher.PublishAsync(
+                    eventFactory.CreateProcessCreated(
+                        correlationAccessor.Current,
+                        initializedContext,
+                        request),
+                    cancellationToken);
+            }
+            catch (Exception publishException) when (publishException is not OperationCanceledException)
+            {
+                logger.LogWarning(
+                    publishException,
+                    "Event publish failed for ProcessCreated on process {ProcessId}. Event delivery is best-effort.",
+                    initializedContext.ProcessId);
+            }
 
             return initializedContext;
         }
@@ -304,12 +336,22 @@ internal sealed class ProcessRuntime(
             observation.ContextInitialized(
                 initializedContext.ProcessId);
 
-            await eventPublisher.PublishAsync(
-                eventFactory.CreateProcessCreated(
-                    correlationAccessor.Current,
-                    initializedContext,
-                    request),
-                cancellationToken);
+            try
+            {
+                await eventPublisher.PublishAsync(
+                    eventFactory.CreateProcessCreated(
+                        correlationAccessor.Current,
+                        initializedContext,
+                        request),
+                    cancellationToken);
+            }
+            catch (Exception publishException) when (publishException is not OperationCanceledException)
+            {
+                logger.LogWarning(
+                    publishException,
+                    "Event publish failed for ProcessCreated on process {ProcessId}. Event delivery is best-effort.",
+                    initializedContext.ProcessId);
+            }
 
             return initializedContext;
         }

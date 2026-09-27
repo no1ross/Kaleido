@@ -3,6 +3,7 @@ using Kaleido.Observability;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Observability;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Process.UnitTests.Processor;
 
@@ -89,7 +90,8 @@ public sealed class ProcessRuntimeTests
                 CreateProcessEventFactory().Object,
                 CreateEventPublisher().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor("REQ-INITIAL-MULTI"));
+                CreateCorrelationAccessor("REQ-INITIAL-MULTI"),
+                NullLogger<ProcessRuntime>.Instance);
 
         var result =
             await runtime.ExecuteAsync(request);
@@ -178,7 +180,8 @@ public sealed class ProcessRuntimeTests
                 CreateProcessEventFactory().Object,
                 CreateEventPublisher().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor());
+                CreateCorrelationAccessor(),
+                NullLogger<ProcessRuntime>.Instance);
 
         await runtime.ExecuteAsync(request);
 
@@ -265,7 +268,8 @@ public sealed class ProcessRuntimeTests
                 CreateProcessEventFactory().Object,
                 CreateEventPublisher().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor());
+                CreateCorrelationAccessor(),
+                NullLogger<ProcessRuntime>.Instance);
 
         await runtime.ExecuteAsync(request);
 
@@ -373,7 +377,8 @@ public sealed class ProcessRuntimeTests
                 CreateProcessEventFactory().Object,
                 CreateEventPublisher().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor());
+                CreateCorrelationAccessor(),
+                NullLogger<ProcessRuntime>.Instance);
 
         await runtime.ExecuteAsync(request);
 
@@ -495,7 +500,8 @@ public sealed class ProcessRuntimeTests
                 CreateProcessEventFactory().Object,
                 CreateEventPublisher().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor());
+                CreateCorrelationAccessor(),
+                NullLogger<ProcessRuntime>.Instance);
 
         var result =
             await runtime.ExecuteAsync(request);
@@ -593,7 +599,8 @@ public sealed class ProcessRuntimeTests
                 CreateProcessEventFactory().Object,
                 CreateEventPublisher().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor());
+                CreateCorrelationAccessor(),
+                NullLogger<ProcessRuntime>.Instance);
 
         await runtime.ExecuteAsync(request);
 
