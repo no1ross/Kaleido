@@ -1,13 +1,12 @@
 using System.Reflection;
-using Kaleido.Http.Client;
 using Kaleido.Http.Process;
 using Kaleido.Http.Queryable;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Http.Client.Tests;
+namespace Kaleido.Http.Client.UnitTests;
 
-public sealed class KaleidoClientExtensionsTests
+public sealed class KaleidoClientServiceCollectionExtensionsTests
 {
     // ── AddProcessClient — guard clauses ────────────────────────────────────────
 
@@ -393,16 +392,10 @@ public sealed class KaleidoClientExtensionsTests
 
     // ── Test doubles ─────────────────────────────────────────────────────────────
 
-    private sealed class FakeKaleidoBuilder : IKaleidoBuilder
+    private sealed class FakeKaleidoBuilder(IServiceCollection services) : IKaleidoBuilder
     {
-        public FakeKaleidoBuilder(IServiceCollection services)
-        {
-            Services = services;
-            Assemblies = [typeof(FakeKaleidoBuilder).Assembly];
-        }
-
-        public IServiceCollection Services { get; }
-        public IReadOnlyCollection<Assembly> Assemblies { get; }
+        public IServiceCollection Services { get; } = services;
+        public IReadOnlyCollection<Assembly> Assemblies { get; } = [typeof(FakeKaleidoBuilder).Assembly];
         public IConfiguration Configuration { get; } =
             new ConfigurationBuilder().Build();
         public KaleidoServiceOptions ServiceOptions { get; } =

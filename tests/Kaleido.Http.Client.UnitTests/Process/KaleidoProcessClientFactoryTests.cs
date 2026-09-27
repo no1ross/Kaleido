@@ -1,10 +1,8 @@
-using Kaleido.Http.Client;
-using Kaleido.Http.Client.Process;
 using Kaleido.Http.Process;
 using Kaleido.Observability;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Kaleido.Process.Http.Client.Tests;
+namespace Kaleido.Http.Client.UnitTests.Process;
 
 public sealed class KaleidoProcessClientFactoryTests
 {

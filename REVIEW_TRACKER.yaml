@@ -206,9 +206,10 @@ high_priority_items:
     description: Document prominently; fix NullEventPublisher doc references; consider enforce option + health check
     effort_days: 1-2
     priority: HIGH
-    breaking_change: possibly
-    release_blocker: true
-    status: PENDING_DESIGN_REVIEW
+    breaking_change: false
+    release_blocker: false
+    status: COMPLETE
+    resolution_note: "(PR-08) EventPublisher and ProcessContextStore already log Warning at construction (confirmed in code). Per-client health checks added: each AddProcessClient/AddQueryableClient call registers a kaleido-{name} health check via Configure<HealthCheckServiceOptions> that probes the remote registry endpoint. Duplicate-safe via idempotency guard in the configure action."
 
   HP-010:
     title: Supply-chain fixes (Moq SponsorLink, redundant SQLitePCLRaw)
@@ -625,10 +626,10 @@ external_findings:
     source: KAL-C02
     severity: CRITICAL
     effort: large
-    breaking_change: true
-    release_blocker: true
-    status: PENDING_DECISION
-    notes: "Versioned CAS + durable idempotency; two concurrent requests can overwrite each other"
+    breaking_change: false
+    release_blocker: false
+    status: COMPLETE
+    resolution_note: "(PR-08) Decision: document-only for 1.0. IProcessContextStore XML doc and README updated to call out the lack of concurrency guarantees and direct consumers to implement their own store with optimistic concurrency. Full CAS/etag interface change deferred to post-1.0."
   EXT-02:
     title: State save and event publish are not atomic (no outbox)
     source: KAL-C03
@@ -658,10 +659,10 @@ external_findings:
     source: KAL-C05
     severity: CRITICAL
     effort: large
-    breaking_change: true
-    release_blocker: true
-    status: PENDING_DECISION
-    notes: "Metadata-only default + redaction/payload policy; perf angle = MP-010"
+    breaking_change: false
+    release_blocker: false
+    status: COMPLETE
+    resolution_note: "(PR-08) Decision: document-only for 1.0. IEventPublisher and ProcessEventFactory XML docs updated to warn that default payloads include full request/response data. Metadata-only default and redaction policy deferred to post-1.0."
   EXT-05:
     title: Kaleido.Analyzers packable but contains zero rules
     source: KAL-C07

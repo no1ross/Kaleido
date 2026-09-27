@@ -1,22 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 <ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido.Http.Client\Kaleido.Http.Client.csproj" />
 		<ProjectReference Include="..\..\src\Kaleido.Http.Abstractions\Kaleido.Http.Abstractions.csproj" />
 		<ProjectReference Include="..\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
-	</ItemGroup>
-	<ItemGroup>
-		<Using Include="Kaleido.Http" />
-		<Using Include="Kaleido.Process" />
-		<Using Include="Kaleido.Process.Http.Client" />
-		<Using Include="Kaleido.Queryable" />
-		<Using Include="Kaleido.Queryable.Query" />
-		<Using Include="Kaleido.Queryable.Http.Client" />
-		<Using Include="Kaleido.Queryable.Metadata" />
-		<Using Include="Moq.Protected" />
-		<Using Include="System.Net" />
-		<Using Include="System.Net.Http.Json" />
 	</ItemGroup>
 </Project>
