@@ -5,7 +5,8 @@
 		<LangVersion>latest</LangVersion>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>disable</ImplicitUsings>
-		<IsPackable>true</IsPackable>
+		<!-- Not shipped standalone — bundled into the Kaleido package via OutputItemType=Analyzer -->
+		<IsPackable>false</IsPackable>
 		<IsRoslynComponent>true</IsRoslynComponent>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 		<DevelopmentDependency>true</DevelopmentDependency>

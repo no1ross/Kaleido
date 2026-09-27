@@ -11,4 +11,16 @@
 		<InternalsVisibleTo Include="Kaleido.UnitTests" />
 	</ItemGroup>
 
+	<!-- EXT-05: bundle consumer-facing analyzers into the Kaleido NuGet package.
+	     OutputItemType=Analyzer places the DLL under analyzers/dotnet/cs/ in the nupkg.
+	     ReferenceOutputAssembly=false keeps Kaleido.dll free of a runtime reference to
+	     Kaleido.Analyzers.dll — consumers see a development-time tool only. -->
+	<ItemGroup>
+		<ProjectReference
+			Include="..\..\tools\analyzers\Kaleido.Analyzers\Kaleido.Analyzers.csproj"
+			OutputItemType="Analyzer"
+			ReferenceOutputAssembly="false"
+			PrivateAssets="all" />
+	</ItemGroup>
+
 </Project>
