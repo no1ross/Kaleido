@@ -1,4 +1,3 @@
-using Kaleido.Http;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
 
 namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Observability;
@@ -14,7 +13,7 @@ public sealed class CorrelationEchoTests(
         string? sourceProcessor = null,
         string? stepName = null)
     {
-        var client = fixture.Client;
+        var client = fixture.TestServer.CreateClient();
 
         if (requestId is not null)
             client.DefaultRequestHeaders.Add(KaleidoCorrelationHeaders.RequestId, requestId);
@@ -57,7 +56,9 @@ public sealed class CorrelationEchoTests(
     [Fact]
     public async Task Request_WhenNoHeaders_EchoesGeneratedRequestIdOnly()
     {
-        var response = await fixture.Client.GetAsync("/kaleido/queryable");
+        var client = fixture.TestServer.CreateClient();
+
+        var response = await client.GetAsync("/kaleido/queryable");
 
         response.EnsureSuccessStatusCode();
 

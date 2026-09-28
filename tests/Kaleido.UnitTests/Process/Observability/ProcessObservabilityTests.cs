@@ -24,6 +24,11 @@ public sealed class ProcessObservabilityTests
     [Fact]
     public void Observation_EmitsExpectedMetrics()
     {
+        // MeterListener is process-global; isolate this test's measurements by
+        // filtering on a unique processor.name tag so parallel tests don't leak in.
+        var serviceName = $"test-processor-{Guid.NewGuid():N}";
+        var observability = CreateObservability(serviceName);
+
         using var listener = new MeterListener();
         var measurements = new List<(string InstrumentName, long Value)>();
 
@@ -35,14 +40,19 @@ public sealed class ProcessObservabilityTests
             }
         };
 
-        listener.SetMeasurementEventCallback<long>((instrument, measurement, _, _) =>
+        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, _) =>
         {
-            measurements.Add((instrument.Name, measurement));
+            foreach (var tag in tags)
+            {
+                if (tag.Key == "processor.name" &&
+                    tag.Value as string == serviceName)
+                {
+                    measurements.Add((instrument.Name, measurement));
+                }
+            }
         });
 
         listener.Start();
-
-        var observability = CreateObservability();
 
         using var executionObservation =
             observability.BeginExecution(
@@ -172,7 +182,8 @@ public sealed class ProcessObservabilityTests
             exception.ParamName);
     }
 
-    private static ProcessObservability CreateObservability()
+    private static ProcessObservability CreateObservability(
+        string serviceName = "test-processor")
     {
         var correlationAccessor =
             new Mock<IKaleidoCorrelationContextAccessor>();
@@ -190,7 +201,7 @@ public sealed class ProcessObservabilityTests
 
         return new ProcessObservability(
             correlationAccessor.Object,
-            new KaleidoServiceOptions { ServiceName = "test-processor", DisplayName = "Test Processor" },
+            new KaleidoServiceOptions { ServiceName = serviceName, DisplayName = "Test Processor" },
             Mock.Of<ILogger<ProcessObservability>>());
     }
 }
