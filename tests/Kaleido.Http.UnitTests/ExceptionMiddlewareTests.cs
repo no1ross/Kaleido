@@ -51,6 +51,11 @@ internal sealed class ExceptionMiddlewareTests
                 "{\"errors\":[{\"code\":\"argument_error\",\"message\":\"An invalid argument was provided.\",\"field\":null}]}"
             },
             {
+                nameof(BadHttpRequestException),
+                StatusCodes.Status400BadRequest,
+                "{\"errors\":[{\"code\":\"argument_error\",\"message\":\"bad request\",\"field\":null}]}"
+            },
+            {
                 nameof(KaleidoConfigurationException),
                 StatusCodes.Status500InternalServerError,
                 "{\"errors\":[{\"code\":\"pro_missing_handler\",\"message\":\"no handler\",\"field\":null}]}"
@@ -82,6 +87,8 @@ internal sealed class ExceptionMiddlewareTests
                 new KaleidoValidationException("qry_invalid_field", "bad field"),
             nameof(ArgumentException) =>
                 new ArgumentException("bad argument"),
+            nameof(BadHttpRequestException) =>
+                new BadHttpRequestException("bad request"),
             nameof(KaleidoConfigurationException) =>
                 new KaleidoConfigurationException("pro_missing_handler", "no handler"),
             nameof(KaleidoFrameworkException) =>
