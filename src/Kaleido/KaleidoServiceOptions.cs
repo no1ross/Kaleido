@@ -18,7 +18,7 @@ public class KaleidoServiceOptions
     /// <summary>
     /// The unique name identifying this service within the distributed system.
     /// Used as the route prefix for Process and Queryable endpoints (e.g. <c>"intake"</c>
-    /// produces <c>/intake/processes/...</c> and <c>/intake/queries/...</c>).
+    /// produces <c>/intake/processes/...</c> and <c>/intake/queryable/...</c>).
     /// Must be non-empty, lowercase, and contain no whitespace or path separators.
     /// </summary>
     public string ServiceName { get; set; } = string.Empty;
