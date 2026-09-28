@@ -10,6 +10,9 @@ namespace Kaleido.Process.UnitTests.Processor.Execution;
 
 public sealed class ExecutionProcessorTests
 {
+    private static readonly KaleidoServiceOptions ServiceOptions =
+        new() { ServiceName = "test-processor" };
+
     [Fact]
     public async Task ExecuteAsync_WhenNoCandidates_ReturnsCurrentContextState()
     {
@@ -23,25 +26,8 @@ public sealed class ExecutionProcessorTests
         var invoker =
             new Mock<IProcessStepInvoker>();
 
-        var evaluator =
-            new Mock<IStepExecutionEvaluator>();
-
-        var stateUpdater =
-            new Mock<IProcessStateUpdater>();
-
-        var stateRepository =
-            new Mock<IProcessContextStore>();
-
-        var availabilityResolver =
-            new Mock<IStepAvailabilityResolver>();
-
         var processor =
-            CreateProcessor(
-                invoker,
-                evaluator,
-                stateUpdater,
-                stateRepository,
-                availabilityResolver: availabilityResolver);
+            CreateProcessor(invoker);
 
         var result =
             await processor.ExecuteAsync(
@@ -65,33 +51,25 @@ public sealed class ExecutionProcessorTests
             result.Outcomes);
 
         invoker.VerifyNoOtherCalls();
-        evaluator.VerifyNoOtherCalls();
-        stateUpdater.VerifyNoOtherCalls();
-        stateRepository.VerifyNoOtherCalls();
-        availabilityResolver.VerifyNoOtherCalls();
     }
 
     [Fact]
     public async Task ExecuteAsync_PassesAvailableNextStepsToProcessStepContext()
     {
+        var registrationA =
+            CreateRegistration<TestStepA>("step-a");
+
+        var registrationB =
+            CreateRegistration<TestStepB>("step-b");
+
         var candidate =
-            CreateCandidate<TestStepA>(
-                "step-a");
+            CreateCandidate<TestStepA>("step-a", registrationA);
 
         var context =
             CreateContext("step-a");
 
-        var updatedContext =
-            CreateContext("step-a");
-
         ProcessStepContext? capturedContext =
             null;
-
-        var invokerResult =
-            CreateInvokerResult();
-
-        var decision =
-            ExecutionDecision.Complete();
 
         var invoker =
             new Mock<IProcessStepInvoker>();
@@ -106,59 +84,13 @@ public sealed class ExecutionProcessorTests
             .Callback<ProcessStepRegistration, object, ProcessStepContext, CancellationToken>(
                 (_, _, processStepContext, _) =>
                     capturedContext = processStepContext)
-            .ReturnsAsync(invokerResult);
+            .ReturnsAsync(CreateInvokerResult());
 
-        var evaluator =
-            new Mock<IStepExecutionEvaluator>();
-
-        evaluator
-            .Setup(x =>
-                x.Evaluate(
-                    candidate,
-                    invokerResult,
-                    It.IsAny<IReadOnlyCollection<StepCandidate>>(),
-                    context))
-            .Returns(decision);
-
-        var stateUpdater =
-            new Mock<IProcessStateUpdater>();
-
-        stateUpdater
-            .Setup(x =>
-                x.ApplyExecution(
-                    context,
-                    candidate,
-                    decision))
-            .Returns(updatedContext);
-
-        var stateRepository =
-            new Mock<IProcessContextStore>();
-
-        stateRepository
-            .Setup(x =>
-                x.SaveAsync(
-                    updatedContext,
-                    It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        var availabilityResolver =
-            new Mock<IStepAvailabilityResolver>();
-
-        availabilityResolver
-            .Setup(x =>
-                x.Resolve(
-                    candidate,
-                    It.IsAny<IReadOnlyCollection<StepCandidate>>(),
-                    context))
-            .Returns(["step-b"]);
+        var registry =
+            CreateRegistry(registrationA, registrationB);
 
         var processor =
-            CreateProcessor(
-                invoker,
-                evaluator,
-                stateUpdater,
-                stateRepository,
-                availabilityResolver: availabilityResolver);
+            CreateProcessor(invoker, registry);
 
         await processor.ExecuteAsync(
             [candidate],
@@ -176,21 +108,14 @@ public sealed class ExecutionProcessorTests
     [Fact]
     public async Task ExecuteAsync_InvokesCurrentCandidate()
     {
+        var registration =
+            CreateRegistration<TestStepA>("step-a");
+
         var candidate =
-            CreateCandidate<TestStepA>(
-                "step-a");
+            CreateCandidate<TestStepA>("step-a", registration);
 
         var context =
             CreateContext("step-a");
-
-        var updatedContext =
-            CreateContext("step-a");
-
-        var invokerResult =
-            CreateInvokerResult();
-
-        var decision =
-            ExecutionDecision.Complete();
 
         var invoker =
             new Mock<IProcessStepInvoker>();
@@ -202,53 +127,13 @@ public sealed class ExecutionProcessorTests
                     candidate.Step!,
                     It.IsAny<ProcessStepContext>(),
                     It.IsAny<CancellationToken>()))
-            .ReturnsAsync(invokerResult);
+            .ReturnsAsync(CreateInvokerResult());
 
-        var evaluator =
-            new Mock<IStepExecutionEvaluator>();
-
-        evaluator
-            .Setup(x =>
-                x.Evaluate(
-                    candidate,
-                    invokerResult,
-                    It.IsAny<IReadOnlyCollection<StepCandidate>>(),
-                    context))
-            .Returns(decision);
-
-        var stateUpdater =
-            new Mock<IProcessStateUpdater>();
-
-        stateUpdater
-            .Setup(x =>
-                x.ApplyExecution(
-                    context,
-                    candidate,
-                    decision))
-            .Returns(updatedContext);
-
-        var stateRepository =
-            new Mock<IProcessContextStore>();
-
-        stateRepository
-            .Setup(x =>
-                x.SaveAsync(
-                    updatedContext,
-                    It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        var availabilityResolver =
-            CreateAvailabilityResolver(
-                candidate,
-                context);
+        var registry =
+            CreateRegistry(registration);
 
         var processor =
-            CreateProcessor(
-                invoker,
-                evaluator,
-                stateUpdater,
-                stateRepository,
-                availabilityResolver: availabilityResolver);
+            CreateProcessor(invoker, registry);
 
         await processor.ExecuteAsync(
             [candidate],
@@ -268,21 +153,14 @@ public sealed class ExecutionProcessorTests
     [Fact]
     public async Task ExecuteAsync_EvaluatesInvokerResult()
     {
+        var registration =
+            CreateRegistration<TestStepA>("step-a");
+
         var candidate =
-            CreateCandidate<TestStepA>(
-                "step-a");
+            CreateCandidate<TestStepA>("step-a", registration);
 
         var context =
             CreateContext("step-a");
-
-        var updatedContext =
-            CreateContext("step-a");
-
-        var invokerResult =
-            CreateInvokerResult();
-
-        var decision =
-            ExecutionDecision.Complete();
 
         var invoker =
             new Mock<IProcessStepInvoker>();
@@ -294,209 +172,13 @@ public sealed class ExecutionProcessorTests
                     It.IsAny<object>(),
                     It.IsAny<ProcessStepContext>(),
                     It.IsAny<CancellationToken>()))
-            .ReturnsAsync(invokerResult);
+            .ReturnsAsync(CreateInvokerResult());
 
-        var evaluator =
-            new Mock<IStepExecutionEvaluator>();
-
-        evaluator
-            .Setup(x =>
-                x.Evaluate(
-                    candidate,
-                    invokerResult,
-                    It.IsAny<IReadOnlyCollection<StepCandidate>>(),
-                    context))
-            .Returns(decision);
-
-        var stateUpdater =
-            new Mock<IProcessStateUpdater>();
-
-        stateUpdater
-            .Setup(x =>
-                x.ApplyExecution(
-                    context,
-                    candidate,
-                    decision))
-            .Returns(updatedContext);
-
-        var stateRepository =
-            new Mock<IProcessContextStore>();
-
-        stateRepository
-            .Setup(x =>
-                x.SaveAsync(
-                    updatedContext,
-                    It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        var registry =
+            CreateRegistry(registration);
 
         var processor =
-            CreateProcessor(
-                invoker,
-                evaluator,
-                stateUpdater,
-                stateRepository,
-                availabilityResolver:
-                    CreateAvailabilityResolver(
-                        candidate,
-                        context));
-
-        await processor.ExecuteAsync(
-            [candidate],
-            context,
-            new ProcessorRequest());
-
-        evaluator.Verify(
-            x =>
-                x.Evaluate(
-                    candidate,
-                    invokerResult,
-                    It.IsAny<IReadOnlyCollection<StepCandidate>>(),
-                    context),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_AppliesExecutionAndPersistsUpdatedContext()
-    {
-        var candidate =
-            CreateCandidate<TestStepA>(
-                "step-a");
-
-        var context =
-            CreateContext("step-a");
-
-        var updatedContext =
-            CreateContext("step-a") with
-            {
-                AvailableSteps = ["step-b"]
-            };
-
-        var invokerResult =
-            CreateInvokerResult();
-
-        var decision =
-            ExecutionDecision.Complete();
-
-        var invoker =
-            new Mock<IProcessStepInvoker>();
-
-        invoker
-            .Setup(x =>
-                x.ExecuteAsync(
-                    It.IsAny<ProcessStepRegistration>(),
-                    It.IsAny<object>(),
-                    It.IsAny<ProcessStepContext>(),
-                    It.IsAny<CancellationToken>()))
-            .ReturnsAsync(invokerResult);
-
-        var evaluator =
-            new Mock<IStepExecutionEvaluator>();
-
-        evaluator
-            .Setup(x =>
-                x.Evaluate(
-                    candidate,
-                    invokerResult,
-                    It.IsAny<IReadOnlyCollection<StepCandidate>>(),
-                    context))
-            .Returns(decision);
-
-        var stateUpdater =
-            new Mock<IProcessStateUpdater>();
-
-        stateUpdater
-            .Setup(x =>
-                x.ApplyExecution(
-                    context,
-                    candidate,
-                    decision))
-            .Returns(updatedContext);
-
-        var stateRepository =
-            new Mock<IProcessContextStore>();
-
-        stateRepository
-            .Setup(x =>
-                x.SaveAsync(
-                    updatedContext,
-                    It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        var processor =
-            CreateProcessor(
-                invoker,
-                evaluator,
-                stateUpdater,
-                stateRepository,
-                availabilityResolver:
-                    CreateAvailabilityResolver(
-                        candidate,
-                        context));
-
-        var result =
-            await processor.ExecuteAsync(
-                [candidate],
-                context,
-                new ProcessorRequest());
-
-        stateUpdater.Verify(
-            x =>
-                x.ApplyExecution(
-                    context,
-                    candidate,
-                    decision),
-            Times.Once);
-
-        stateRepository.Verify(
-            x =>
-                x.SaveAsync(
-                    updatedContext,
-                    It.IsAny<CancellationToken>()),
-            Times.Once);
-
-        Assert.Equal(
-            updatedContext.State,
-            result.State);
-
-        Assert.Equal(
-            updatedContext.RequiredStep,
-            result.RequiredStep);
-
-        Assert.Equal(
-            updatedContext.AvailableSteps,
-            result.AvailableSteps);
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_WhenDecisionIsComplete_ReturnsSingleCompletedOutcome()
-    {
-        var candidate =
-            CreateCandidate<TestStepA>(
-                "step-a");
-
-        var response =
-            new TestStepResponse();
-
-        var context =
-            CreateContext("step-a");
-
-        var updatedContext =
-            CreateContext("step-a");
-
-        var invokerResult =
-            CreateInvokerResult(
-                response);
-
-        var decision =
-            ExecutionDecision.Complete();
-
-        var processor =
-            CreateProcessorForSuccessfulExecution(
-                candidate,
-                context,
-                updatedContext,
-                invokerResult,
-                decision);
+            CreateProcessor(invoker, registry);
 
         var result =
             await processor.ExecuteAsync(
@@ -505,8 +187,122 @@ public sealed class ExecutionProcessorTests
                 new ProcessorRequest());
 
         var outcome =
-            Assert.Single(
-                result.Outcomes);
+            Assert.Single(result.Outcomes);
+
+        Assert.Equal(
+            ExecutionDecisionType.Complete,
+            outcome.Decision);
+
+        Assert.Equal(
+            StepExecutionStatus.Completed,
+            outcome.Status);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_AppliesExecutionAndPersistsUpdatedContext()
+    {
+        var registration =
+            CreateRegistration<TestStepA>("step-a");
+
+        var candidate =
+            CreateCandidate<TestStepA>("step-a", registration);
+
+        var context =
+            CreateContext("step-a");
+
+        var invoker =
+            new Mock<IProcessStepInvoker>();
+
+        invoker
+            .Setup(x =>
+                x.ExecuteAsync(
+                    It.IsAny<ProcessStepRegistration>(),
+                    It.IsAny<object>(),
+                    It.IsAny<ProcessStepContext>(),
+                    It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateInvokerResult());
+
+        var registry =
+            CreateRegistry(registration);
+
+        var store =
+            CreateStore();
+
+        var processor =
+            CreateProcessor(invoker, registry, store);
+
+        var result =
+            await processor.ExecuteAsync(
+                [candidate],
+                context,
+                new ProcessorRequest());
+
+        var persisted =
+            await store.LoadAsync(context.ProcessId);
+
+        Assert.NotNull(persisted);
+
+        Assert.Equal(
+            ProcessExecutionState.Complete,
+            persisted.State);
+
+        Assert.Equal(
+            result.State,
+            persisted.State);
+
+        Assert.Null(persisted.RequiredStep);
+
+        var step =
+            persisted.FindStep("step-a");
+
+        Assert.NotNull(step);
+
+        Assert.Equal(
+            StepExecutionStatus.Completed,
+            step.Status);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenDecisionIsComplete_ReturnsSingleCompletedOutcome()
+    {
+        var registration =
+            CreateRegistration<TestStepA>("step-a");
+
+        var candidate =
+            CreateCandidate<TestStepA>("step-a", registration);
+
+        var response =
+            new TestStepResponse();
+
+        var context =
+            CreateContext("step-a");
+
+        var invoker =
+            new Mock<IProcessStepInvoker>();
+
+        invoker
+            .Setup(x =>
+                x.ExecuteAsync(
+                    It.IsAny<ProcessStepRegistration>(),
+                    It.IsAny<object>(),
+                    It.IsAny<ProcessStepContext>(),
+                    It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateInvokerResult(response));
+
+        var registry =
+            CreateRegistry(registration);
+
+        var processor =
+            CreateProcessor(invoker, registry);
+
+        var result =
+            await processor.ExecuteAsync(
+                [candidate],
+                context,
+                new ProcessorRequest());
+
+        var outcome =
+            Assert.Single(result.Outcomes);
 
         Assert.Equal(
             "step-a",
@@ -528,41 +324,20 @@ public sealed class ExecutionProcessorTests
     [Fact]
     public async Task ExecuteAsync_WhenDecisionIsContinue_ExecutesNextCandidate()
     {
+        var registrationA =
+            CreateRegistration<TestStepA>("step-a");
+
+        var registrationB =
+            CreateRegistration<TestStepB>("step-b");
+
         var firstCandidate =
-            CreateCandidate<TestStepA>(
-                "step-a");
+            CreateCandidate<TestStepA>("step-a", registrationA);
 
         var nextCandidate =
-            CreateCandidate<TestStepB>(
-                "step-b");
+            CreateCandidate<TestStepB>("step-b", registrationB);
 
-        var context1 =
-            CreateContext(
-                "step-a",
-                "step-b");
-
-        var context2 =
-            CreateContext(
-                "step-a",
-                "step-b");
-
-        var context3 =
-            CreateContext(
-                "step-a",
-                "step-b");
-
-        var firstResult =
-            CreateInvokerResult();
-
-        var secondResult =
-            CreateInvokerResult();
-
-        var continueDecision =
-            ExecutionDecision.Continue(
-                nextCandidate);
-
-        var completeDecision =
-            ExecutionDecision.Complete();
+        var context =
+            CreateContext("step-a", "step-b");
 
         var invoker =
             new Mock<IProcessStepInvoker>();
@@ -574,85 +349,22 @@ public sealed class ExecutionProcessorTests
                     It.IsAny<object>(),
                     It.IsAny<ProcessStepContext>(),
                     It.IsAny<CancellationToken>()))
-            .ReturnsAsync(firstResult)
-            .ReturnsAsync(secondResult);
+            .ReturnsAsync(CreateInvokerResult())
+            .ReturnsAsync(CreateInvokerResult());
 
-        var evaluator =
-            new Mock<IStepExecutionEvaluator>();
+        var registry =
+            CreateRegistry(registrationA, registrationB);
 
-        evaluator
-            .Setup(x =>
-                x.Evaluate(
-                    firstCandidate,
-                    firstResult,
-                    It.IsAny<IReadOnlyCollection<StepCandidate>>(),
-                    context1))
-            .Returns(continueDecision);
-
-        evaluator
-            .Setup(x =>
-                x.Evaluate(
-                    nextCandidate,
-                    secondResult,
-                    It.IsAny<IReadOnlyCollection<StepCandidate>>(),
-                    context2))
-            .Returns(completeDecision);
-
-        var stateUpdater =
-            new Mock<IProcessStateUpdater>();
-
-        stateUpdater
-            .Setup(x =>
-                x.ApplyExecution(
-                    context1,
-                    firstCandidate,
-                    continueDecision))
-            .Returns(context2);
-
-        stateUpdater
-            .Setup(x =>
-                x.ApplyExecution(
-                    context2,
-                    nextCandidate,
-                    completeDecision))
-            .Returns(context3);
-
-        var stateRepository =
-            new Mock<IProcessContextStore>();
-
-        stateRepository
-            .Setup(x =>
-                x.SaveAsync(
-                    It.IsAny<ProcessorContext>(),
-                    It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        var availabilityResolver =
-            new Mock<IStepAvailabilityResolver>();
-
-        availabilityResolver
-            .Setup(x =>
-                x.Resolve(
-                    It.IsAny<StepCandidate>(),
-                    It.IsAny<IReadOnlyCollection<StepCandidate>>(),
-                    It.IsAny<ProcessorContext>()))
-            .Returns([]);
+        var store =
+            CreateStore();
 
         var processor =
-            CreateProcessor(
-                invoker,
-                evaluator,
-                stateUpdater,
-                stateRepository,
-                availabilityResolver: availabilityResolver);
+            CreateProcessor(invoker, registry, store);
 
         var result =
             await processor.ExecuteAsync(
-                [
-                    firstCandidate,
-                    nextCandidate
-                ],
-                context1,
+                [firstCandidate, nextCandidate],
+                context,
                 new ProcessorRequest());
 
         Assert.Collection(
@@ -687,25 +399,26 @@ public sealed class ExecutionProcessorTests
                     It.IsAny<CancellationToken>()),
             Times.Exactly(2));
 
-        stateRepository.Verify(
-            x =>
-                x.SaveAsync(
-                    It.IsAny<ProcessorContext>(),
-                    It.IsAny<CancellationToken>()),
-            Times.Exactly(2));
+        var persisted =
+            await store.LoadAsync(context.ProcessId);
+
+        Assert.NotNull(persisted);
+
+        Assert.Equal(
+            ProcessExecutionState.Complete,
+            persisted.State);
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenInvokerThrows_AppliesExceptionPersistsAndReturnsExceptionOutcome()
     {
+        var registration =
+            CreateRegistration<TestStepA>("step-a");
+
         var candidate =
-            CreateCandidate<TestStepA>(
-                "step-a");
+            CreateCandidate<TestStepA>("step-a", registration);
 
         var context =
-            CreateContext("step-a");
-
-        var updatedContext =
             CreateContext("step-a");
 
         var invoker =
@@ -718,39 +431,16 @@ public sealed class ExecutionProcessorTests
                     It.IsAny<object>(),
                     It.IsAny<ProcessStepContext>(),
                     It.IsAny<CancellationToken>()))
-            .ThrowsAsync(
-                new InvalidOperationException(
-                    "boom"));
+            .ThrowsAsync(new InvalidOperationException("boom"));
 
-        var stateUpdater =
-            new Mock<IProcessStateUpdater>();
+        var registry =
+            CreateRegistry(registration);
 
-        stateUpdater
-            .Setup(x =>
-                x.ApplyException(
-                    context,
-                    candidate))
-            .Returns(updatedContext);
-
-        var stateRepository =
-            new Mock<IProcessContextStore>();
-
-        stateRepository
-            .Setup(x =>
-                x.SaveAsync(
-                    updatedContext,
-                    CancellationToken.None))
-            .Returns(Task.CompletedTask);
+        var store =
+            CreateStore();
 
         var processor =
-            CreateProcessor(
-                invoker,
-                stateUpdater: stateUpdater,
-                stateRepository: stateRepository,
-                availabilityResolver:
-                    CreateAvailabilityResolver(
-                        candidate,
-                        context));
+            CreateProcessor(invoker, registry, store);
 
         var result =
             await processor.ExecuteAsync(
@@ -759,8 +449,7 @@ public sealed class ExecutionProcessorTests
                 new ProcessorRequest());
 
         var outcome =
-            Assert.Single(
-                result.Outcomes);
+            Assert.Single(result.Outcomes);
 
         Assert.Equal(
             "step-a",
@@ -778,32 +467,35 @@ public sealed class ExecutionProcessorTests
             outcome.RuntimeMessages,
             x => x.Code == StepProcessingMessageCode.FrameworkException);
 
-        stateUpdater.Verify(
-            x =>
-                x.ApplyException(
-                    context,
-                    candidate),
-            Times.Once);
+        var persisted =
+            await store.LoadAsync(context.ProcessId);
 
-        stateRepository.Verify(
-            x =>
-                x.SaveAsync(
-                    updatedContext,
-                    CancellationToken.None),
-            Times.Once);
+        Assert.NotNull(persisted);
+
+        Assert.Equal(
+            ProcessExecutionState.Exception,
+            persisted.State);
+
+        var step =
+            persisted.FindStep("step-a");
+
+        Assert.NotNull(step);
+
+        Assert.Equal(
+            StepExecutionStatus.Exception,
+            step.Status);
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenCancellationIsRequested_AppliesCancellationPersistsAndReturnsCanceledOutcome()
     {
+        var registration =
+            CreateRegistration<TestStepA>("step-a");
+
         var candidate =
-            CreateCandidate<TestStepA>(
-                "step-a");
+            CreateCandidate<TestStepA>("step-a", registration);
 
         var context =
-            CreateContext("step-a");
-
-        var updatedContext =
             CreateContext("step-a");
 
         using var cancellationTokenSource =
@@ -811,34 +503,17 @@ public sealed class ExecutionProcessorTests
 
         await cancellationTokenSource.CancelAsync();
 
-        var stateUpdater =
-            new Mock<IProcessStateUpdater>();
-
-        stateUpdater
-            .Setup(x =>
-                x.ApplyCancellation(
-                    context,
-                    candidate))
-            .Returns(updatedContext);
-
-        var stateRepository =
-            new Mock<IProcessContextStore>();
-
-        stateRepository
-            .Setup(x =>
-                x.SaveAsync(
-                    updatedContext,
-                    CancellationToken.None))
-            .Returns(Task.CompletedTask);
-
         var invoker =
             new Mock<IProcessStepInvoker>();
 
+        var registry =
+            CreateRegistry(registration);
+
+        var store =
+            CreateStore();
+
         var processor =
-            CreateProcessor(
-                invoker,
-                stateUpdater: stateUpdater,
-                stateRepository: stateRepository);
+            CreateProcessor(invoker, registry, store);
 
         var result =
             await processor.ExecuteAsync(
@@ -848,8 +523,7 @@ public sealed class ExecutionProcessorTests
                 cancellationTokenSource.Token);
 
         var outcome =
-            Assert.Single(
-                result.Outcomes);
+            Assert.Single(result.Outcomes);
 
         Assert.Equal(
             "step-a",
@@ -876,19 +550,23 @@ public sealed class ExecutionProcessorTests
                     It.IsAny<CancellationToken>()),
             Times.Never);
 
-        stateUpdater.Verify(
-            x =>
-                x.ApplyCancellation(
-                    context,
-                    candidate),
-            Times.Once);
+        var persisted =
+            await store.LoadAsync(context.ProcessId);
 
-        stateRepository.Verify(
-            x =>
-                x.SaveAsync(
-                    updatedContext,
-                    CancellationToken.None),
-            Times.Once);
+        Assert.NotNull(persisted);
+
+        Assert.Equal(
+            ProcessExecutionState.Canceled,
+            persisted.State);
+
+        var step =
+            persisted.FindStep("step-a");
+
+        Assert.NotNull(step);
+
+        Assert.Equal(
+            StepExecutionStatus.Canceled,
+            step.Status);
     }
 
     [Fact]
@@ -903,33 +581,14 @@ public sealed class ExecutionProcessorTests
         var context =
             CreateContext("step-a");
 
-        var updatedContext =
-            CreateContext("step-a");
+        var invoker =
+            new Mock<IProcessStepInvoker>();
 
-        var stateUpdater =
-            new Mock<IProcessStateUpdater>();
-
-        stateUpdater
-            .Setup(x =>
-                x.ApplyException(
-                    context,
-                    candidate))
-            .Returns(updatedContext);
-
-        var stateRepository =
-            new Mock<IProcessContextStore>();
-
-        stateRepository
-            .Setup(x =>
-                x.SaveAsync(
-                    updatedContext,
-                    CancellationToken.None))
-            .Returns(Task.CompletedTask);
+        var store =
+            CreateStore();
 
         var processor =
-            CreateProcessor(
-                stateUpdater: stateUpdater,
-                stateRepository: stateRepository);
+            CreateProcessor(invoker, store: store);
 
         var result =
             await processor.ExecuteAsync(
@@ -938,8 +597,7 @@ public sealed class ExecutionProcessorTests
                 new ProcessorRequest());
 
         var outcome =
-            Assert.Single(
-                result.Outcomes);
+            Assert.Single(result.Outcomes);
 
         Assert.Equal(
             StepExecutionStatus.Exception,
@@ -952,6 +610,15 @@ public sealed class ExecutionProcessorTests
         Assert.Contains(
             outcome.RuntimeMessages,
             x => x.Code == StepProcessingMessageCode.FrameworkException);
+
+        var persisted =
+            await store.LoadAsync(context.ProcessId);
+
+        Assert.NotNull(persisted);
+
+        Assert.Equal(
+            ProcessExecutionState.Exception,
+            persisted.State);
     }
 
     [Fact]
@@ -960,40 +627,20 @@ public sealed class ExecutionProcessorTests
         var candidate =
             CreateCandidate(
                 "step-a",
-                CreateRegistration<TestStepA>(
-                    "step-a"),
+                CreateRegistration<TestStepA>("step-a"),
                 step: null);
 
         var context =
             CreateContext("step-a");
 
-        var updatedContext =
-            CreateContext("step-a");
+        var invoker =
+            new Mock<IProcessStepInvoker>();
 
-        var stateUpdater =
-            new Mock<IProcessStateUpdater>();
-
-        stateUpdater
-            .Setup(x =>
-                x.ApplyException(
-                    context,
-                    candidate))
-            .Returns(updatedContext);
-
-        var stateRepository =
-            new Mock<IProcessContextStore>();
-
-        stateRepository
-            .Setup(x =>
-                x.SaveAsync(
-                    updatedContext,
-                    CancellationToken.None))
-            .Returns(Task.CompletedTask);
+        var store =
+            CreateStore();
 
         var processor =
-            CreateProcessor(
-                stateUpdater: stateUpdater,
-                stateRepository: stateRepository);
+            CreateProcessor(invoker, store: store);
 
         var result =
             await processor.ExecuteAsync(
@@ -1002,8 +649,7 @@ public sealed class ExecutionProcessorTests
                 new ProcessorRequest());
 
         var outcome =
-            Assert.Single(
-                result.Outcomes);
+            Assert.Single(result.Outcomes);
 
         Assert.Equal(
             StepExecutionStatus.Exception,
@@ -1016,20 +662,28 @@ public sealed class ExecutionProcessorTests
         Assert.Contains(
             outcome.RuntimeMessages,
             x => x.Code == StepProcessingMessageCode.FrameworkException);
+
+        var persisted =
+            await store.LoadAsync(context.ProcessId);
+
+        Assert.NotNull(persisted);
+
+        Assert.Equal(
+            ProcessExecutionState.Exception,
+            persisted.State);
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenStepContextIsMissing_ReturnsExceptionOutcome()
     {
         var candidate =
-            CreateCandidate<TestStepA>(
-                "step-a");
+            CreateCandidate<TestStepA>("step-a");
 
         var context =
             CreateContext("different-step");
 
-        var updatedContext =
-            CreateContext("different-step");
+        var invoker =
+            new Mock<IProcessStepInvoker>();
 
         var stateUpdater =
             new Mock<IProcessStateUpdater>();
@@ -1039,22 +693,12 @@ public sealed class ExecutionProcessorTests
                 x.ApplyException(
                     context,
                     candidate))
-            .Returns(updatedContext);
-
-        var stateRepository =
-            new Mock<IProcessContextStore>();
-
-        stateRepository
-            .Setup(x =>
-                x.SaveAsync(
-                    updatedContext,
-                    CancellationToken.None))
-            .Returns(Task.CompletedTask);
+            .Returns(context with { State = ProcessExecutionState.Exception });
 
         var processor =
             CreateProcessor(
-                stateUpdater: stateUpdater,
-                stateRepository: stateRepository);
+                invoker,
+                stateUpdater: stateUpdater);
 
         var result =
             await processor.ExecuteAsync(
@@ -1063,8 +707,7 @@ public sealed class ExecutionProcessorTests
                 new ProcessorRequest());
 
         var outcome =
-            Assert.Single(
-                result.Outcomes);
+            Assert.Single(result.Outcomes);
 
         Assert.Equal(
             StepExecutionStatus.Exception,
@@ -1079,200 +722,77 @@ public sealed class ExecutionProcessorTests
             x => x.Code == StepProcessingMessageCode.FrameworkException);
     }
 
-    private static ExecutionProcessor CreateProcessorForSuccessfulExecution(
-        StepCandidate candidate,
-        ProcessorContext context,
-        ProcessorContext updatedContext,
-        StepInvocationResult invokerResult,
-        ExecutionDecision decision)
+    private static ProcessContextStore CreateStore() =>
+        new(NullLogger<ProcessContextStore>.Instance);
+
+    private static Mock<IProcessStepRegistry> CreateRegistry(
+        params ProcessStepRegistration[] registrations)
     {
-        var invoker =
-            new Mock<IProcessStepInvoker>();
+        var registry =
+            new Mock<IProcessStepRegistry>();
 
-        invoker
-            .Setup(x =>
-                x.ExecuteAsync(
-                    It.IsAny<ProcessStepRegistration>(),
-                    It.IsAny<object>(),
-                    It.IsAny<ProcessStepContext>(),
-                    It.IsAny<CancellationToken>()))
-            .ReturnsAsync(invokerResult);
+        registry
+            .SetupGet(x => x.Registrations)
+            .Returns(registrations);
 
-        var evaluator =
-            new Mock<IStepExecutionEvaluator>();
-
-        evaluator
-            .Setup(x =>
-                x.Evaluate(
-                    candidate,
-                    invokerResult,
-                    It.IsAny<IReadOnlyCollection<StepCandidate>>(),
-                    context))
-            .Returns(decision);
-
-        var stateUpdater =
-            new Mock<IProcessStateUpdater>();
-
-        stateUpdater
-            .Setup(x =>
-                x.ApplyExecution(
-                    context,
-                    candidate,
-                    decision))
-            .Returns(updatedContext);
-
-        var stateRepository =
-            new Mock<IProcessContextStore>();
-
-        stateRepository
-            .Setup(x =>
-                x.SaveAsync(
-                    updatedContext,
-                    It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        return CreateProcessor(
-            invoker,
-            evaluator,
-            stateUpdater,
-            stateRepository,
-            availabilityResolver:
-                CreateAvailabilityResolver(
-                    candidate,
-                    context));
+        return registry;
     }
 
     private static ExecutionProcessor CreateProcessor(
-        Mock<IProcessStepInvoker>? invoker = null,
-        Mock<IStepExecutionEvaluator>? evaluator = null,
-        Mock<IProcessStateUpdater>? stateUpdater = null,
-        Mock<IProcessContextStore>? stateRepository = null,
-        Mock<IStepAvailabilityResolver>? availabilityResolver = null)
+        Mock<IProcessStepInvoker> invoker,
+        Mock<IProcessStepRegistry>? registry = null,
+        ProcessContextStore? store = null,
+        Mock<IProcessStateUpdater>? stateUpdater = null)
     {
-        var correlationAccessor = new Mock<IKaleidoCorrelationContextAccessor>();
-        correlationAccessor
-            .SetupGet(x => x.Current)
-            .Returns(new KaleidoCorrelationContext { RequestId = "test-request" });
+        var resolvedRegistry =
+            registry ?? CreateRegistry();
 
-        return new ExecutionProcessor(
-            (invoker ?? new Mock<IProcessStepInvoker>()).Object,
-            (evaluator ?? new Mock<IStepExecutionEvaluator>()).Object,
-            (stateUpdater ?? new Mock<IProcessStateUpdater>()).Object,
-            (stateRepository ?? new Mock<IProcessContextStore>()).Object,
-            (availabilityResolver ?? new Mock<IStepAvailabilityResolver>()).Object,
-            CreateProcessEventFactory().Object,
-            CreateEventPublisher().Object,
-            CreateObservability().Object,
-            correlationAccessor.Object,
-            NullLogger<ExecutionProcessor>.Instance);
-    }
+        var resolver =
+            new StepAvailabilityResolver(resolvedRegistry.Object);
 
-    private static Mock<IProcessObservability> CreateObservability()
-    {
-        var stepObservation =
-            new Mock<IProcessStepObservation>();
+        var evaluator =
+            new StepExecutionEvaluator(resolver, ServiceOptions);
 
-        stepObservation
-            .Setup(x => x.Dispose());
+        var resolvedStateUpdater =
+            stateUpdater is not null
+                ? (IProcessStateUpdater)stateUpdater.Object
+                : new ProcessStateUpdater(resolvedRegistry.Object, ServiceOptions);
 
-        var observability =
-            new Mock<IProcessObservability>();
+        var stateRepository =
+            (IProcessContextStore)(store ?? CreateStore());
 
-        observability
-            .Setup(x =>
-                x.BeginStep(
-                    It.IsAny<ProcessStepObservationDetails>()))
-            .Returns(stepObservation.Object);
+        var accessor =
+            new KaleidoCorrelationContextAccessor();
 
-        return observability;
-    }
-
-    private static Mock<IEventPublisher> CreateEventPublisher()
-    {
-        var publisher =
-            new Mock<IEventPublisher>(MockBehavior.Strict);
-
-        publisher
-            .Setup(x =>
-                x.PublishAsync(
-                    It.IsAny<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>>(),
-                    It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        return publisher;
-    }
-
-    private static ProcessEventContext CreateStubContext(Guid processId) =>
-        new()
-        {
-            RequestId = Guid.NewGuid().ToString(),
-            ServiceName = "test",
-            ProcessId = processId,
-            StepName = string.Empty
-        };
-
-    private static Mock<IProcessEventFactory> CreateProcessEventFactory()
-    {
-        var factory =
-            new Mock<IProcessEventFactory>(MockBehavior.Strict);
-
-        factory
-            .Setup(x =>
-                x.CreateStepCompleted(
-                    It.IsAny<KaleidoCorrelationContext>(),
-                    It.IsAny<ProcessorContext>(),
-                    It.IsAny<StepCandidate>(),
-                    It.IsAny<ProcessExecutionOutcome>(),
-                    It.IsAny<StepInvocationResult>()))
-            .Returns<KaleidoCorrelationContext, ProcessorContext, StepCandidate, ProcessExecutionOutcome, StepInvocationResult>((_, context, candidate, outcome, _2) =>
+        accessor.Initialize(
+            new KaleidoCorrelationContext
             {
-                var stepContext = context.FindStep(candidate.StepName);
-                return new KaleidoEventEnvelope<StepCompleted, ProcessEventContext>
-                {
-                    EventType = "process.step-completed.v1",
-                    Context = CreateStubContext(context.ProcessId),
-                    Event = new StepCompleted
-                    {
-                        OccurredOn = DateTimeOffset.UtcNow,
-                        StepName = candidate.StepName,
-                        StepVersion = candidate.Registration?.Metadata.Version ?? string.Empty,
-                        Request = candidate.Step,
-                        Response = outcome.Response,
-                        DecisionType = outcome.Decision,
-                        ExecutionStatus = outcome.Status,
-                        Outcome = outcome.Outcome,
-                        BusinessMessages = outcome.BusinessMessages,
-                        RuntimeMessages = outcome.RuntimeMessages,
-                        ProcessState = context.State,
-                        RequiredStep = context.RequiredStep,
-                        AvailableSteps = context.AvailableSteps,
-                        StepLatestRequestId = stepContext?.LatestRequestId,
-                        StepLastExecuted = stepContext?.LastExecuted
-                    }
-                };
+                RequestId = "test-request"
             });
 
-        return factory;
-    }
+        var observability =
+            new ProcessObservability(
+                accessor,
+                ServiceOptions,
+                NullLogger<ProcessObservability>.Instance);
 
-    private static Mock<IStepAvailabilityResolver> CreateAvailabilityResolver(
-        StepCandidate candidate,
-        ProcessorContext context,
-        IReadOnlyCollection<string>? availableSteps = null)
-    {
-        var availabilityResolver =
-            new Mock<IStepAvailabilityResolver>();
+        var eventFactory =
+            new ProcessEventFactory(ServiceOptions);
 
-        availabilityResolver
-            .Setup(x =>
-                x.Resolve(
-                    candidate,
-                    It.IsAny<IReadOnlyCollection<StepCandidate>>(),
-                    context))
-            .Returns(
-                availableSteps ?? []);
+        var eventPublisher =
+            new EventPublisher(NullLogger<EventPublisher>.Instance);
 
-        return availabilityResolver;
+        return new ExecutionProcessor(
+            invoker.Object,
+            evaluator,
+            resolvedStateUpdater,
+            stateRepository,
+            resolver,
+            eventFactory,
+            eventPublisher,
+            observability,
+            accessor,
+            NullLogger<ExecutionProcessor>.Instance);
     }
 
     private static StepInvocationResult CreateInvokerResult(
@@ -1281,6 +801,7 @@ public sealed class ExecutionProcessorTests
         return new StepInvocationResult
         {
             Succeeded = true,
+
             Response =
                 response ?? new TestStepResponse(),
 
@@ -1295,8 +816,18 @@ public sealed class ExecutionProcessorTests
     {
         return CreateCandidate(
             stepName,
-            CreateRegistration<TStep>(
-                stepName),
+            CreateRegistration<TStep>(stepName),
+            new TStep());
+    }
+
+    private static StepCandidate CreateCandidate<TStep>(
+        string stepName,
+        ProcessStepRegistration registration)
+        where TStep : new()
+    {
+        return CreateCandidate(
+            stepName,
+            registration,
             new TStep());
     }
 

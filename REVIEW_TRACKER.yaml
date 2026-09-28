@@ -290,7 +290,7 @@ high_priority_items:
     effort_days: 2-3
     priority: HIGH
     breaking_change: false
-    status: IN_PROGRESS
+    status: COMPLETED
 
 medium_priority_items:
   MP-001:
