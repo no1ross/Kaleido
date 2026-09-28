@@ -70,7 +70,7 @@ public class KaleidoServiceOptions
     /// <exception cref="KaleidoConfigurationException">
     /// Thrown when <see cref="ServiceName"/> fails any validation rule.
     /// </exception>
-    public static void Validate(KaleidoServiceOptions options)
+    internal static void Validate(KaleidoServiceOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
 

@@ -56,7 +56,7 @@ public interface IKaleidoEvent
 /// Discards all events and logs a warning at startup. Replace with a real
 /// implementation — see <see cref="IEventPublisher"/> remarks.
 /// </summary>
-public sealed class EventPublisher : IEventPublisher
+internal sealed class EventPublisher : IEventPublisher
 {
     public EventPublisher(ILogger<EventPublisher> logger)
     {

@@ -1,6 +1,6 @@
 namespace Kaleido.Provider.SQLite.Entities;
 
-public sealed class ProcessStepContextEntity
+internal sealed class ProcessStepContextEntity
 {
     public Guid ProcessId
     {

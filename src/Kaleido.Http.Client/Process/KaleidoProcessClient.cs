@@ -35,7 +35,7 @@ internal sealed class KaleidoProcessClient(
 
         foreach (var processor in registry)
         {
-            match = processor.Steps.FirstOrDefault(
+            match = processor.Steps?.FirstOrDefault(
                 s => string.Equals(s.Name, stepName, StringComparison.OrdinalIgnoreCase));
 
             if (match is not null)
@@ -238,7 +238,7 @@ internal sealed class KaleidoProcessClient(
 
         foreach (var processor in registry)
         {
-            var match = processor.Steps.FirstOrDefault(
+            var match = processor.Steps?.FirstOrDefault(
                 s => string.Equals(s.Name, stepName, StringComparison.OrdinalIgnoreCase));
 
             if (match is not null)
@@ -249,7 +249,7 @@ internal sealed class KaleidoProcessClient(
 
         var available = string.Join(
             ", ",
-            registry.SelectMany(p => p.Steps).Select(s => s.Name));
+            registry.SelectMany(p => p.Steps ?? []).Select(s => s.Name));
 
         throw new KaleidoHttpClientException(
             HttpClientErrorCodes.NotFound,
