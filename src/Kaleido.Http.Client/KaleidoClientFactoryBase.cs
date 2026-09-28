@@ -4,11 +4,7 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
     where TClient : class
     where TMap : class, IKaleidoClientRouteOptionsMap
 {
-    private readonly Dictionary<string, TClient> _clients = new(StringComparer.OrdinalIgnoreCase);
-    private readonly object _lock = new();
-
     protected abstract IHttpClientFactory HttpClientFactory { get; }
-    protected abstract IKaleidoCorrelationContextAccessor CorrelationAccessor { get; }
     protected abstract ICorrelationHeaderStamper HeaderStamper { get; }
     protected abstract TMap RouteOptionsMap { get; }
 
@@ -19,30 +15,15 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
 
     public TClient GetClient(string name)
     {
-        if (_clients.TryGetValue(name, out var existing))
-        {
-            return existing;
-        }
+        var serviceName = GetServiceName(name);
 
-        lock (_lock)
-        {
-            if (_clients.TryGetValue(name, out existing))
-            {
-                return existing;
-            }
+        // Find the exact registered name (case-sensitive) from the map.
+        // This handles the case where handlers call GetClient with lowercase
+        // but HttpClients are registered with PascalCase.
+        var registeredName = GetRegisteredName(name) ?? name;
 
-            var serviceName = GetServiceName(name);
-
-            // Find the exact registered name (case-sensitive) from the map.
-            // This handles the case where handlers call GetClient with lowercase
-            // but HttpClients are registered with PascalCase.
-            var registeredName = GetRegisteredName(name) ?? name;
-
-            var httpClient = HttpClientFactory.CreateClient(registeredName);
-            var client = CreateClient(httpClient, HeaderStamper, serviceName);
-            _clients[name] = client;
-            return client;
-        }
+        var httpClient = HttpClientFactory.CreateClient(registeredName);
+        return CreateClient(httpClient, HeaderStamper, serviceName);
     }
 
     private string GetServiceName(string name) =>

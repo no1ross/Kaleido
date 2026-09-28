@@ -21,7 +21,6 @@ public sealed class KaleidoQueryableClientFactoryTests
 
         var factory = new KaleidoQueryableClientFactory(
             httpClientFactory.Object,
-            Mock.Of<IKaleidoCorrelationContextAccessor>(),
             Mock.Of<ICorrelationHeaderStamper>(),
             NullLogger<KaleidoQueryableClient>.Instance,
             routeMap);

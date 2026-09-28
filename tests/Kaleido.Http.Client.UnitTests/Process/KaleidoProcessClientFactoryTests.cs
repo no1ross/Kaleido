@@ -19,7 +19,6 @@ public sealed class KaleidoProcessClientFactoryTests
 
         var factory = new KaleidoProcessClientFactory(
             httpClientFactory.Object,
-            Mock.Of<IKaleidoCorrelationContextAccessor>(),
             Mock.Of<ICorrelationHeaderStamper>(),
             NullLogger<KaleidoProcessClient>.Instance,
             routeMap);
