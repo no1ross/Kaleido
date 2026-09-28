@@ -7,12 +7,6 @@ namespace Kaleido.Http.UnitTests.Process;
 public sealed class ProcessStateServiceTests
     : SutFixture
 {
-    private ProcessStateService CreateSut() =>
-        CreateSut(
-            Mock.Of<IProcessContextStore>(),
-            CreateRegistry(),
-            Mock.Of<IProcessResponseFactory>());
-
     private static ProcessStateService CreateSut(
         IProcessContextStore contextStore,
         IProcessStepRegistry registry,

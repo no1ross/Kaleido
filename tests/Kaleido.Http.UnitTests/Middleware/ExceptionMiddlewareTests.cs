@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Http.UnitTests;
+namespace Kaleido.Http.UnitTests.Middleware;
 
 public sealed class ExceptionMiddlewareTests
     : SutFixture
