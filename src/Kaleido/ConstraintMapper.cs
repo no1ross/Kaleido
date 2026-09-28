@@ -29,7 +29,7 @@ public interface IConstraintMapper
     IReadOnlyCollection<ConstraintContract> Map(PropertyInfo propertyInfo);
 }
 
-public sealed class ConstraintMapper : IConstraintMapper
+internal sealed class ConstraintMapper : IConstraintMapper
 {
     public IReadOnlyCollection<ConstraintContract> Map(
         PropertyInfo propertyInfo)

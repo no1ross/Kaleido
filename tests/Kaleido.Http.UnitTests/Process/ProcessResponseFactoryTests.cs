@@ -17,7 +17,7 @@ public sealed class ProcessResponseFactoryTests
         var result = sut.CreateRegistryResponse(registration, options);
 
         Assert.Equal("test-svc", result.ServiceName);
-        Assert.Empty(result.Steps);
+        Assert.Empty(result.Steps ?? []);
     }
 
     [Fact]
@@ -30,5 +30,6 @@ public sealed class ProcessResponseFactoryTests
         var result = sut.CreateCatalogResponse(registration, options);
 
         Assert.Equal("test-svc", result.ServiceName);
+        Assert.Null(result.Steps);
     }
 }

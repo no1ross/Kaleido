@@ -101,14 +101,26 @@ public sealed record QueryableQueryProperty : QueryableOutputFieldDescriptor
 }
 
 [ExcludeFromCodeCoverage]
-public sealed record QueryableViewResponse : QueryableViewRegistryItem
+public sealed record QueryableViewResponse
 {
+    public required string Name { get; init; }
+
+    public string? Description { get; init; }
+
+    public string? DisplayName { get; init; }
+
+    public string? Version { get; init; }
+
+    public required QueryViewVisibility Visibility { get; init; }
+
+    public PageableMetadata? Pageable { get; init; }
+
     public required string QueryUrl { get; init; }
 
-    public new IReadOnlyCollection<QueryableQueryParameter> Parameters { get; init; }
+    public IReadOnlyCollection<QueryableQueryParameter> Parameters { get; init; }
         = [];
 
-    public new IReadOnlyCollection<QueryableQueryProperty> OutputFields { get; init; }
+    public IReadOnlyCollection<QueryableQueryProperty> OutputFields { get; init; }
         = [];
 
     public static QueryableViewResponse FromRegistryItem(
@@ -142,16 +154,30 @@ public sealed record QueryableViewResponse : QueryableViewRegistryItem
 }
 
 [ExcludeFromCodeCoverage]
-public sealed record QueryableRecordResponse : QueryableContextRegistryItem
+public sealed record QueryableRecordResponse
 {
+    public required string Name { get; init; }
+
+    public string? Description { get; init; }
+
+    public string? DisplayName { get; init; }
+
+    public string? Version { get; init; }
+
+    public string? Source { get; init; }
+
+    public required QueryContextKind Kind { get; init; }
+
+    public PageableMetadata? Pageable { get; init; }
+
     public required string MetadataUrl { get; init; }
 
     public string? QueryUrl { get; init; }
 
-    public new IReadOnlyCollection<QueryableFieldMetadata> Fields { get; init; }
+    public IReadOnlyCollection<QueryableFieldMetadata> Fields { get; init; }
         = [];
 
-    public new IReadOnlyCollection<QueryableViewResponse> Views { get; init; }
+    public IReadOnlyCollection<QueryableViewResponse> Views { get; init; }
         = [];
 
     public static QueryableRecordResponse FromRegistryItem(
