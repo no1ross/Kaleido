@@ -1,6 +1,5 @@
-using Microsoft.CodeAnalysis.CSharp.Testing;
+using Kaleido.Testing;
 using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis.Testing;
 
 namespace Kaleido.Analyzers.Source.UnitTests;
 
@@ -8,15 +7,13 @@ namespace Kaleido.Analyzers.Source.UnitTests;
 internal static class AnalyzerTest<TAnalyzer>
     where TAnalyzer : DiagnosticAnalyzer, new()
 {
-    public static CSharpAnalyzerTest<TAnalyzer, DefaultVerifier> Create(
+    public static Kaleido.Testing.AnalyzerTest<TAnalyzer> Create(
         string source,
         params DiagnosticResult[] expected)
     {
         var test =
-            new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
+            new Kaleido.Testing.AnalyzerTest<TAnalyzer>
             {
-                ReferenceAssemblies =
-                    ReferenceAssemblies.Net.Net80,
                 TestCode = source
             };
 

@@ -1,19 +1,20 @@
 using Kaleido.Exceptions;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.UnitTests;
 
-internal sealed class ExceptionMiddlewareTests
-    : SutFixture<ExceptionMiddleware>
+public sealed class ExceptionMiddlewareTests
+    : SutFixture
 {
     private Mock<ILogger<ExceptionMiddleware>> Logger { get; } = new();
 
     private RequestDelegate Next { get; set; } = _ => Task.CompletedTask;
 
-    protected override ExceptionMiddleware CreateSut() =>
+    private ExceptionMiddleware CreateSut() =>
         new(Next, Logger.Object);
 
     [Fact]
@@ -125,6 +126,7 @@ internal sealed class ExceptionMiddlewareTests
     public async Task InvokeAsync_WhenExceptionAfterResponseStarted_DoesNotWriteBody()
     {
         var context = CreateContext();
+        context.Features.Set<IHttpResponseFeature>(new StartedResponseFeature());
 
         Next = async httpContext =>
         {
@@ -159,5 +161,35 @@ internal sealed class ExceptionMiddlewareTests
         context.Response.Body.Position = 0;
         using var reader = new StreamReader(context.Response.Body);
         return reader.ReadToEnd();
+    }
+
+    private sealed class StartedResponseFeature
+        : IHttpResponseFeature
+    {
+        public int StatusCode { get; set; } =
+            StatusCodes.Status200OK;
+
+        public string? ReasonPhrase { get; set; }
+
+        public IHeaderDictionary Headers { get; set; } =
+            new HeaderDictionary();
+
+        public Stream Body { get; set; } =
+            new MemoryStream();
+
+        public bool HasStarted =>
+            true;
+
+        public void OnStarting(
+            Func<object, Task> callback,
+            object state)
+        {
+        }
+
+        public void OnCompleted(
+            Func<object, Task> callback,
+            object state)
+        {
+        }
     }
 }

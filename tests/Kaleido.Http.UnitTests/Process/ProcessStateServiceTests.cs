@@ -4,10 +4,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.UnitTests.Process;
 
-internal sealed class ProcessStateServiceTests
-    : SutFixture<ProcessStateService>
+public sealed class ProcessStateServiceTests
+    : SutFixture
 {
-    protected override ProcessStateService CreateSut() =>
+    private ProcessStateService CreateSut() =>
         CreateSut(
             Mock.Of<IProcessContextStore>(),
             CreateRegistry(),

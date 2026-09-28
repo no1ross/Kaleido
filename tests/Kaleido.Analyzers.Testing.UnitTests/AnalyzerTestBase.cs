@@ -1,6 +1,5 @@
-using Microsoft.CodeAnalysis.CSharp.Testing;
+using Kaleido.Testing;
 using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis.Testing;
 
 namespace Kaleido.Analyzers.Testing.UnitTests;
 
@@ -8,29 +7,16 @@ namespace Kaleido.Analyzers.Testing.UnitTests;
 internal static class AnalyzerTest<TAnalyzer>
     where TAnalyzer : DiagnosticAnalyzer, new()
 {
-    public static CSharpAnalyzerTest<TAnalyzer, DefaultVerifier> Create(
+    public static Kaleido.Testing.AnalyzerTest<TAnalyzer> Create(
         string source,
         params DiagnosticResult[] expected)
     {
         var test =
-            new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
+            new Kaleido.Testing.AnalyzerTest<TAnalyzer>
             {
-                ReferenceAssemblies =
-                    ReferenceAssemblies.Net.Net80,
                 TestCode = source,
                 // KAL1001/1002/1003/1004 gate on assembly name ending with .UnitTests
-                SolutionTransforms =
-                {
-                    (solution, projectId) =>
-                    {
-                        var project = solution.GetProject(projectId);
-                        return project is null
-                            ? solution
-                            : solution.WithProjectAssemblyName(
-                                projectId,
-                                (project.AssemblyName ?? "TestProject") + ".UnitTests");
-                    }
-                }
+                AssemblyName = "TestProject.UnitTests"
             };
 
         test.ExpectedDiagnostics.AddRange(expected);

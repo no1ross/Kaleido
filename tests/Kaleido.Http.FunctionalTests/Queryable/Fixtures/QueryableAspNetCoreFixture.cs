@@ -21,7 +21,7 @@ public sealed class QueryableAspNetCoreFixture
     public IKaleidoQueryableClientFactory ClientFactory { get; private set; } = null!;
     public TestServer TestServer { get; private set; } = null!;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _host =
             await new HostBuilder()
@@ -72,7 +72,14 @@ public sealed class QueryableAspNetCoreFixture
 
         var clientServices = new ServiceCollection();
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();
-        clientServices.AddKaleido(clientConfig, o => o.ServiceName = "test-queryable-client")
+        // Client container needs no type scanning; under xUnit v3 the entry assembly
+        // is this test project (it was testhost under v2), so the fallback would
+        // register functional test sources without their dependencies.
+        clientServices.AddKaleido(clientConfig, o =>
+            {
+                o.ServiceName = "test-queryable-client";
+                o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
+            })
             .AddHttpClients();
 
         // Override the named HttpClient to use the TestServer handler instead of a real socket
@@ -85,7 +92,7 @@ public sealed class QueryableAspNetCoreFixture
         ClientFactory = _clientProvider.CreateScope().ServiceProvider.GetRequiredService<IKaleidoQueryableClientFactory>();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         Client.Dispose();
         _clientProvider?.Dispose();

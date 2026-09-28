@@ -1,4 +1,5 @@
 using NetArchTest.Rules;
+using TestResult = NetArchTest.Rules.TestResult;
 
 namespace Kaleido.UnitTests.Architecture;
 
