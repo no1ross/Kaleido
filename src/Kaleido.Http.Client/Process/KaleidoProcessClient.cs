@@ -52,7 +52,9 @@ internal sealed class KaleidoProcessClient(
                 HttpStatusCode.NotFound);
         }
 
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Get, match.MetadataUrl);
+        using var httpRequest = new HttpRequestMessage(
+            HttpMethod.Get,
+            match.MetadataUrl.RequireValidRegistryUrl(nameof(match.MetadataUrl), httpClient.BaseAddress));
 
         headerStamper.Stamp(httpRequest);
 
@@ -68,10 +70,10 @@ internal sealed class KaleidoProcessClient(
                        response.StatusCode);
         }
 
-        throw new KaleidoHttpClientException(
-            HttpClientErrorCodes.RequestFailed,
-            $"Process step metadata request for '{stepName}' failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
-            response.StatusCode);
+        throw await CreateFailureAsync(
+            response,
+            $"Process step metadata request for '{stepName}' failed",
+            cancellationToken);
     }
 
     public async Task<ProcessStateResponse?> GetProcessStateAsync(
@@ -101,10 +103,10 @@ internal sealed class KaleidoProcessClient(
                        response.StatusCode);
         }
 
-        throw new KaleidoHttpClientException(
-            HttpClientErrorCodes.RequestFailed,
-            $"Process state request for '{processId}' failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
-            response.StatusCode);
+        throw await CreateFailureAsync(
+            response,
+            $"Process state request for '{processId}' failed",
+            cancellationToken);
     }
 
     public async Task<ProcessExecutionResponse> ExecuteAsync(
@@ -132,10 +134,10 @@ internal sealed class KaleidoProcessClient(
                        response.StatusCode);
         }
 
-        throw new KaleidoHttpClientException(
-            HttpClientErrorCodes.RequestFailed,
-            $"Process execute request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
-            response.StatusCode);
+        throw await CreateFailureAsync(
+            response,
+            "Process execute request failed",
+            cancellationToken);
     }
 
     public async Task<StepExecutionResponse> ExecuteStepAsync<TStep>(
@@ -170,10 +172,10 @@ internal sealed class KaleidoProcessClient(
                        response.StatusCode);
         }
 
-        throw new KaleidoHttpClientException(
-            HttpClientErrorCodes.RequestFailed,
-            $"Process step request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
-            response.StatusCode);
+        throw await CreateFailureAsync(
+            response,
+            "Process step request failed",
+            cancellationToken);
     }
 
     public async Task<StepExecutionResponse<TResponse>> ExecuteStepAsync<TStep, TResponse>(
@@ -208,10 +210,10 @@ internal sealed class KaleidoProcessClient(
                        response.StatusCode);
         }
 
-        throw new KaleidoHttpClientException(
-            HttpClientErrorCodes.RequestFailed,
-            $"Process step request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
-            response.StatusCode);
+        throw await CreateFailureAsync(
+            response,
+            "Process step request failed",
+            cancellationToken);
     }
 
     private async Task<string> ResolveExecuteUrlAsync<TStep>(
@@ -241,7 +243,7 @@ internal sealed class KaleidoProcessClient(
 
             if (match is not null)
             {
-                return match.ExecuteUrl;
+                return match.ExecuteUrl.RequireValidRegistryUrl(nameof(match.ExecuteUrl), httpClient.BaseAddress);
             }
         }
 
@@ -253,6 +255,43 @@ internal sealed class KaleidoProcessClient(
             HttpClientErrorCodes.NotFound,
             $"Process step '{stepName}' was not found in the remote registry. Available steps: {available}.",
             HttpStatusCode.NotFound);
+    }
+
+    // Reads a structured KaleidoErrorResponse on 400 so validation details survive
+    // the step boundary, matching the queryable client's behavior.
+    private static async Task<KaleidoHttpClientException> CreateFailureAsync(
+        HttpResponseMessage response,
+        string description,
+        CancellationToken cancellationToken)
+    {
+        KaleidoErrorResponse? errorResponse = null;
+
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            try
+            {
+                errorResponse = await response.Content
+                    .ReadFromJsonAsync<KaleidoErrorResponse>(cancellationToken: cancellationToken);
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // Non-Kaleido or non-JSON error body — fall through to RequestFailed.
+            }
+        }
+
+        if (errorResponse?.Errors.Count > 0)
+        {
+            return new KaleidoHttpClientException(
+                HttpClientErrorCodes.ValidationFailed,
+                $"{description}: {string.Join(" ", errorResponse.Errors.Select(e => e.Message))}",
+                response.StatusCode,
+                errorResponse.Errors);
+        }
+
+        return new KaleidoHttpClientException(
+            HttpClientErrorCodes.RequestFailed,
+            $"{description} with status code {(int)response.StatusCode} ({response.StatusCode}).",
+            response.StatusCode);
     }
 
     private async Task<HttpResponseMessage> SendAsync(

@@ -4,7 +4,6 @@ namespace Kaleido.Http.Client.Process;
 
 internal sealed class KaleidoProcessClientFactory(
     IHttpClientFactory httpClientFactory,
-    IKaleidoCorrelationContextAccessor correlation,
     ICorrelationHeaderStamper headerStamper,
     ILogger<KaleidoProcessClient> logger,
     KaleidoProcessClientRouteOptionsMap routeOptionsMap)
@@ -12,7 +11,6 @@ internal sealed class KaleidoProcessClientFactory(
       IKaleidoProcessClientFactory
 {
     protected override IHttpClientFactory HttpClientFactory => httpClientFactory;
-    protected override IKaleidoCorrelationContextAccessor CorrelationAccessor => correlation;
     protected override ICorrelationHeaderStamper HeaderStamper => headerStamper;
     protected override KaleidoProcessClientRouteOptionsMap RouteOptionsMap => routeOptionsMap;
 
