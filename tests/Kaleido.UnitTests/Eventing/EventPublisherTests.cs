@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Kaleido.UnitTests.Eventing;
 
 public sealed class EventPublisherTests
+    : SutFixture
 {
     private static EventPublisher CreateSut() =>
         new(NullLogger<EventPublisher>.Instance);

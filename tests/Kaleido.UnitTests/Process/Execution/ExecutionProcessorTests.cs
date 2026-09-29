@@ -1,4 +1,4 @@
-﻿using Kaleido.Eventing;
+using Kaleido.Eventing;
 using Kaleido.Observability;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
@@ -6,9 +6,12 @@ using Kaleido.Process.Observability;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Processor.Execution;
 
 public sealed class ExecutionProcessorTests
+    : SutFixture
 {
     private static readonly KaleidoServiceOptions ServiceOptions =
         new() { ServiceName = "test-processor" };
@@ -27,7 +30,7 @@ public sealed class ExecutionProcessorTests
             new Mock<IProcessStepInvoker>();
 
         var processor =
-            CreateProcessor(invoker);
+            CreateSut(invoker);
 
         var result =
             await processor.ExecuteAsync(
@@ -90,7 +93,7 @@ public sealed class ExecutionProcessorTests
             CreateRegistry(registrationA, registrationB);
 
         var processor =
-            CreateProcessor(invoker, registry);
+            CreateSut(invoker, registry);
 
         await processor.ExecuteAsync(
             [candidate],
@@ -133,7 +136,7 @@ public sealed class ExecutionProcessorTests
             CreateRegistry(registration);
 
         var processor =
-            CreateProcessor(invoker, registry);
+            CreateSut(invoker, registry);
 
         await processor.ExecuteAsync(
             [candidate],
@@ -178,7 +181,7 @@ public sealed class ExecutionProcessorTests
             CreateRegistry(registration);
 
         var processor =
-            CreateProcessor(invoker, registry);
+            CreateSut(invoker, registry);
 
         var result =
             await processor.ExecuteAsync(
@@ -229,7 +232,7 @@ public sealed class ExecutionProcessorTests
             CreateStore();
 
         var processor =
-            CreateProcessor(invoker, registry, store);
+            CreateSut(invoker, registry, store);
 
         var result =
             await processor.ExecuteAsync(
@@ -293,7 +296,7 @@ public sealed class ExecutionProcessorTests
             CreateRegistry(registration);
 
         var processor =
-            CreateProcessor(invoker, registry);
+            CreateSut(invoker, registry);
 
         var result =
             await processor.ExecuteAsync(
@@ -359,7 +362,7 @@ public sealed class ExecutionProcessorTests
             CreateStore();
 
         var processor =
-            CreateProcessor(invoker, registry, store);
+            CreateSut(invoker, registry, store);
 
         var result =
             await processor.ExecuteAsync(
@@ -440,7 +443,7 @@ public sealed class ExecutionProcessorTests
             CreateStore();
 
         var processor =
-            CreateProcessor(invoker, registry, store);
+            CreateSut(invoker, registry, store);
 
         var result =
             await processor.ExecuteAsync(
@@ -513,7 +516,7 @@ public sealed class ExecutionProcessorTests
             CreateStore();
 
         var processor =
-            CreateProcessor(invoker, registry, store);
+            CreateSut(invoker, registry, store);
 
         var result =
             await processor.ExecuteAsync(
@@ -588,7 +591,7 @@ public sealed class ExecutionProcessorTests
             CreateStore();
 
         var processor =
-            CreateProcessor(invoker, store: store);
+            CreateSut(invoker, store: store);
 
         var result =
             await processor.ExecuteAsync(
@@ -640,7 +643,7 @@ public sealed class ExecutionProcessorTests
             CreateStore();
 
         var processor =
-            CreateProcessor(invoker, store: store);
+            CreateSut(invoker, store: store);
 
         var result =
             await processor.ExecuteAsync(
@@ -696,7 +699,7 @@ public sealed class ExecutionProcessorTests
             .Returns(context with { State = ProcessExecutionState.Exception });
 
         var processor =
-            CreateProcessor(
+            CreateSut(
                 invoker,
                 stateUpdater: stateUpdater);
 
@@ -738,7 +741,7 @@ public sealed class ExecutionProcessorTests
         return registry;
     }
 
-    private static ExecutionProcessor CreateProcessor(
+    private static ExecutionProcessor CreateSut(
         Mock<IProcessStepInvoker> invoker,
         Mock<IProcessStepRegistry>? registry = null,
         ProcessContextStore? store = null,

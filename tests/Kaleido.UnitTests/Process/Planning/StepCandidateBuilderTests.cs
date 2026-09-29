@@ -1,23 +1,25 @@
 using Kaleido.Process;
 using Kaleido.Process.Registry;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Planning;
 
 public sealed class StepCandidateBuilderTests
+    : SutFixture
 {
     private readonly Mock<IProcessStepRegistry> _registry = new();
-    private readonly StepCandidateBuilder _builder;
 
-    public StepCandidateBuilderTests()
-    {
-        _builder = new StepCandidateBuilder(_registry.Object);
-    }
+    private StepCandidateBuilder Sut => CreateSut();
+
+    private StepCandidateBuilder CreateSut() =>
+        new(_registry.Object);
 
     [Fact]
     public void Build_WhenRequestIsNull_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            _builder.Build(null!));
+            Sut.Build(null!));
     }
 
     [Fact]
@@ -33,7 +35,7 @@ public sealed class StepCandidateBuilderTests
             }
         };
 
-        var candidates = _builder.Build(request);
+        var candidates = Sut.Build(request);
 
         Assert.Single(candidates);
         Assert.Equal("unknown-step", candidates.First().StepName);
@@ -64,7 +66,7 @@ public sealed class StepCandidateBuilderTests
             }
         };
 
-        var candidates = _builder.Build(request);
+        var candidates = Sut.Build(request);
 
         Assert.Single(candidates);
         Assert.Equal("test-step", candidates.First().StepName);
@@ -95,7 +97,7 @@ public sealed class StepCandidateBuilderTests
             }
         };
 
-        var candidates = _builder.Build(request);
+        var candidates = Sut.Build(request);
 
         Assert.Single(candidates);
         Assert.Equal("test-step", candidates.First().StepName);
@@ -126,7 +128,7 @@ public sealed class StepCandidateBuilderTests
             }
         };
 
-        var candidates = _builder.Build(request);
+        var candidates = Sut.Build(request);
 
         Assert.Single(candidates);
         Assert.Equal("test-step", candidates.First().StepName);
@@ -169,7 +171,7 @@ public sealed class StepCandidateBuilderTests
             }
         };
 
-        var candidates = _builder.Build(request);
+        var candidates = Sut.Build(request);
 
         Assert.Equal(2, candidates.Count);
         Assert.Equal("step-a", candidates.First().StepName);

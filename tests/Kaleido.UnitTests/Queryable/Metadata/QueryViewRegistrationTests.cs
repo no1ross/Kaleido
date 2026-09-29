@@ -1,9 +1,17 @@
 namespace Kaleido.UnitTests.Queryable.Metadata;
 
 public sealed class QueryViewRegistrationTests
+    : SutFixture<QueryViewRegistration>
 {
     private static readonly DataTypeDescriptor TestDataType =
         new("string");
+
+    protected override QueryViewRegistration CreateSut() =>
+        CreateSut(null!);
+
+    private static QueryViewRegistration CreateSut(
+        QueryViewMetadata metadata) =>
+        new(typeof(TestView), typeof(TestContract), typeof(TestParameters), typeof(TestContext), metadata);
 
     [Fact]
     public void QueryViewRegistration_PreservesMetadataShape()
@@ -12,7 +20,7 @@ public sealed class QueryViewRegistrationTests
         var outputField = new QueryOutputFieldMetadata("Code", "Code description", typeof(string), TestDataType);
         var pageable = new PageableMetadata(10, 20);
         var metadata = new QueryViewMetadata("grid", "1.0.0", "Grid", "Grid description", QueryViewVisibility.Public, pageable, [parameter], [outputField]);
-        var registration = new QueryViewRegistration(typeof(TestView), typeof(TestContract), typeof(TestParameters), typeof(TestContext), metadata);
+        var registration = CreateSut(metadata);
 
         Assert.Equal(typeof(TestView), registration.QueryViewType);
         Assert.Equal(typeof(TestContract), registration.ViewType);

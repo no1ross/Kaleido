@@ -2,16 +2,19 @@ using Kaleido.Exceptions;
 using Kaleido.Process;
 using Kaleido.Process.Registry;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Processor.Registry;
 
 public sealed class ProcessStepRegistryTests
+    : SutFixture
 {
     [Fact]
     public void Constructor_WhenHandlerTypeMissing_ThrowsConfigurationException()
     {
         var exception =
             Assert.Throws<Kaleido.Exceptions.KaleidoConfigurationException>(() =>
-                new ProcessStepRegistry(
+                CreateSut(
                     new[] { typeof(StepA) },
                     new Dictionary<Type, Type>()));
 
@@ -24,7 +27,7 @@ public sealed class ProcessStepRegistryTests
     public void Registrations_ReturnsAllRegistrations()
     {
         var registry =
-            CreateRegistry(
+            CreateSut(
                 typeof(StepA),
                 typeof(StepB),
                 typeof(StepC));
@@ -38,7 +41,7 @@ public sealed class ProcessStepRegistryTests
     public void Find_ByName_ReturnsRegistration()
     {
         var registry =
-            CreateRegistry(
+            CreateSut(
                 typeof(StepA));
 
         var registration =
@@ -57,7 +60,7 @@ public sealed class ProcessStepRegistryTests
     public void Find_ByType_ReturnsRegistration()
     {
         var registry =
-            CreateRegistry(
+            CreateSut(
                 typeof(StepA));
 
         var registration =
@@ -76,7 +79,7 @@ public sealed class ProcessStepRegistryTests
     public void GetRegistration_ByName_WhenMissing_Throws()
     {
         var registry =
-            CreateRegistry(
+            CreateSut(
                 typeof(StepA));
 
         var ex = Assert.Throws<KaleidoFrameworkException>(() =>
@@ -88,7 +91,7 @@ public sealed class ProcessStepRegistryTests
     public void GetRegistration_ByType_WhenMissing_Throws()
     {
         var registry =
-            CreateRegistry(
+            CreateSut(
                 typeof(StepA));
 
         var ex = Assert.Throws<KaleidoFrameworkException>(() =>
@@ -100,7 +103,7 @@ public sealed class ProcessStepRegistryTests
     public void Registration_MapsProcessStepMetadata()
     {
         var registry =
-            CreateRegistry(
+            CreateSut(
                 typeof(StepA));
 
         var registration =
@@ -124,7 +127,7 @@ public sealed class ProcessStepRegistryTests
     public void Registration_MapsDependencies()
     {
         var registry =
-            CreateRegistry(
+            CreateSut(
                 typeof(StepA),
                 typeof(StepB));
 
@@ -145,7 +148,7 @@ public sealed class ProcessStepRegistryTests
     public void Registration_MapsAvailableAfter()
     {
         var registry =
-            CreateRegistry(
+            CreateSut(
                 typeof(StepA),
                 typeof(StepAfter));
 
@@ -166,7 +169,7 @@ public sealed class ProcessStepRegistryTests
     public void Registration_MapsAvailableUntil()
     {
         var registry =
-            CreateRegistry(
+            CreateSut(
                 typeof(StepA),
                 typeof(StepUntil));
 
@@ -187,7 +190,7 @@ public sealed class ProcessStepRegistryTests
     public void Registration_MapsMultipleAvailabilityRules()
     {
         var registry =
-            CreateRegistry(
+            CreateSut(
                 typeof(StepA),
                 typeof(StepB),
                 typeof(StepC),
@@ -227,7 +230,7 @@ public sealed class ProcessStepRegistryTests
     public void Registration_MapsRepeatableAttribute()
     {
         var registry =
-            CreateRegistry(
+            CreateSut(
                 typeof(RepeatableStep));
 
         var registration =
@@ -242,7 +245,7 @@ public sealed class ProcessStepRegistryTests
     public void Registration_MapsNonRepeatableStep()
     {
         var registry =
-            CreateRegistry(
+            CreateSut(
                 typeof(StepA));
 
         var registration =
@@ -253,7 +256,12 @@ public sealed class ProcessStepRegistryTests
             registration.Repeatable.Enabled);
     }
 
-    private static ProcessStepRegistry CreateRegistry(
+    private static ProcessStepRegistry CreateSut(
+        IEnumerable<Type> stepTypes,
+        IReadOnlyDictionary<Type, Type> handlerTypes) =>
+        new(stepTypes, handlerTypes);
+
+    private static ProcessStepRegistry CreateSut(
         params Type[] stepTypes)
     {
         var handlerTypes = new Dictionary<Type, Type>

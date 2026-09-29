@@ -8,6 +8,7 @@ using Moq;
 namespace Kaleido.Queryable.UnitTests.Records;
 
 public sealed class QueryViewRegistryTests
+    : Kaleido.UnitTests.SutFixture
 {
     private static readonly DataTypeDescriptor TestDataType =
         new("mock-type");

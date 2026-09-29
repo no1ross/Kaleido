@@ -1,14 +1,17 @@
 using Kaleido.Process.Registry;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Processor.Planning;
 
 public sealed class StepCandidatePlannerTests
+    : SutFixture
 {
     [Fact]
     public void Build_WhenNoCandidates_ReturnsEmptyCollection()
     {
         var planner =
-            CreatePlanner();
+            CreateSut();
 
         var result =
             planner.Build([]);
@@ -20,7 +23,7 @@ public sealed class StepCandidatePlannerTests
     public void Build_WhenCandidateIsBuilt_IncludesInExecutionPlan()
     {
         var planner =
-            CreatePlanner();
+            CreateSut();
 
         var candidate =
             CreateCandidate<StepA>(
@@ -39,7 +42,7 @@ public sealed class StepCandidatePlannerTests
     public void Build_WhenCandidateIsInvalid_DoesNotIncludeInExecutionPlan()
     {
         var planner =
-            CreatePlanner();
+            CreateSut();
 
         var candidate =
             CreateCandidate<StepA>(
@@ -58,7 +61,7 @@ public sealed class StepCandidatePlannerTests
     public void Build_WhenCandidateIsSatisfied_DoesNotIncludeInExecutionPlan()
     {
         var planner =
-            CreatePlanner();
+            CreateSut();
 
         var candidate =
             CreateCandidate<StepA>(
@@ -77,7 +80,7 @@ public sealed class StepCandidatePlannerTests
     public void Build_WhenMultipleBuiltCandidates_AllIncludedInExecutionPlan()
     {
         var planner =
-            CreatePlanner();
+            CreateSut();
 
         var candidateA =
             CreateCandidate<StepA>(
@@ -104,7 +107,7 @@ public sealed class StepCandidatePlannerTests
     public void Build_WhenMixedStatuses_OnlyBuiltCandidatesIncludedInExecutionPlan()
     {
         var planner =
-            CreatePlanner();
+            CreateSut();
 
         var built =
             CreateCandidate<StepA>(
@@ -140,7 +143,7 @@ public sealed class StepCandidatePlannerTests
             CreateRegistration<StepA>("step-a");
 
         var planner =
-            CreatePlanner();
+            CreateSut();
 
         var stepB =
             CreateCandidate<StepB>(
@@ -184,7 +187,7 @@ public sealed class StepCandidatePlannerTests
                 [registrationB]);
 
         var planner =
-            CreatePlanner();
+            CreateSut();
 
         var stepC =
             CreateCandidate(
@@ -229,7 +232,7 @@ public sealed class StepCandidatePlannerTests
             CreateRegistration<StepA>("step-a");
 
         var planner =
-            CreatePlanner();
+            CreateSut();
 
         var stepB =
             CreateCandidate<StepB>(
@@ -250,7 +253,7 @@ public sealed class StepCandidatePlannerTests
     public void Build_WhenNonExecutableCandidatesExist_ReturnsThemAfterPlannedCandidates()
     {
         var planner =
-            CreatePlanner();
+            CreateSut();
 
         var built =
             CreateCandidate<StepA>(
@@ -285,7 +288,7 @@ public sealed class StepCandidatePlannerTests
             x => x.Status == StepCandidateStatus.Satisfied);
     }
 
-    private static StepCandidatePlanner CreatePlanner()
+    private static StepCandidatePlanner CreateSut()
     {
         return new StepCandidatePlanner();
     }

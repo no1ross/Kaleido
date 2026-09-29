@@ -4,6 +4,7 @@ using Kaleido.Queryable.Query;
 namespace Kaleido.Queryable.UnitTests.Query;
 
 public sealed class QueryBodyExtensionsTests
+    : Kaleido.UnitTests.SutFixture
 {
     private readonly IValueConverter _converter = Mock.Of<IValueConverter>();
 

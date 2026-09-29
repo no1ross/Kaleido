@@ -1,9 +1,12 @@
-﻿using Kaleido.Process.Context;
+using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
+
+using Kaleido.UnitTests;
 
 namespace Kaleido.Process.UnitTests.Processor.Execution;
 
 public sealed class StepExecutionEvaluatorTests
+    : SutFixture
 {
     private const string LocalProcessorName = "test-processor";
 
@@ -11,7 +14,7 @@ public sealed class StepExecutionEvaluatorTests
     public void Evaluate_WhenExecutionFails_ReturnsBusinessFailure()
     {
         var evaluator =
-            CreateEvaluator();
+            CreateSut();
 
         var decision =
             evaluator.Evaluate(
@@ -32,7 +35,7 @@ public sealed class StepExecutionEvaluatorTests
     public void Evaluate_WhenRequiredStepIsNotAvailable_ReturnsProcessViolation()
     {
         var evaluator =
-            CreateEvaluator(
+            CreateSut(
                 ["step-b"]);
 
         var decision =
@@ -63,7 +66,7 @@ public sealed class StepExecutionEvaluatorTests
     public void Evaluate_WhenRequiredStepIsAvailableButNotSupplied_ReturnsAwaitingRequiredStep()
     {
         var evaluator =
-            CreateEvaluator(["step-b"]);
+            CreateSut(["step-b"]);
 
         var decision =
             evaluator.Evaluate(
@@ -92,7 +95,7 @@ public sealed class StepExecutionEvaluatorTests
     public void Evaluate_WhenRequiredStepIsAvailableAndCandidateExists_ReturnsContinue()
     {
         var evaluator =
-            CreateEvaluator(
+            CreateSut(
                 ["step-b"]);
 
         var nextCandidate =
@@ -123,7 +126,7 @@ public sealed class StepExecutionEvaluatorTests
     public void Evaluate_WhenAvailableCandidateExists_ReturnsContinue()
     {
         var evaluator =
-            CreateEvaluator(
+            CreateSut(
                 ["step-b"]);
 
         var nextCandidate =
@@ -153,7 +156,7 @@ public sealed class StepExecutionEvaluatorTests
     public void Evaluate_WhenAvailableStepsExistButCandidateDoesNotExist_ReturnsAwaitingStepSelection()
     {
         var evaluator =
-            CreateEvaluator(
+            CreateSut(
                 ["step-b", "step-c"]);
 
         var decision =
@@ -179,7 +182,7 @@ public sealed class StepExecutionEvaluatorTests
     public void Evaluate_WhenNoAvailableStepsExist_ReturnsComplete()
     {
         var evaluator =
-            CreateEvaluator();
+            CreateSut();
 
         var decision =
             evaluator.Evaluate(
@@ -200,7 +203,7 @@ public sealed class StepExecutionEvaluatorTests
     public void Evaluate_WhenRequiredStepUsesDifferentCasing_MatchesCaseInsensitively()
     {
         var evaluator =
-            CreateEvaluator(
+            CreateSut(
                 ["step-b"]);
 
         var nextCandidate =
@@ -230,7 +233,7 @@ public sealed class StepExecutionEvaluatorTests
         // means the step succeeded and execution must continue on the target processor.
         // The evaluator should return HandOff, not AwaitingRequiredStep.
         var evaluator =
-            CreateEvaluator(
+            CreateSut(
                 ["step-b"]);
 
         var decision =
@@ -260,7 +263,7 @@ public sealed class StepExecutionEvaluatorTests
         // Even though the external step is not in local available steps,
         // it must NOT be treated as a process violation.
         var evaluator =
-            CreateEvaluator();
+            CreateSut();
 
         var decision =
             evaluator.Evaluate(
@@ -329,7 +332,7 @@ public sealed class StepExecutionEvaluatorTests
             decision.Messages.Single());
     }
 
-    private static StepExecutionEvaluator CreateEvaluator(
+    private static StepExecutionEvaluator CreateSut(
         IReadOnlyCollection<string>? availableSteps = null)
     {
         var resolver =
