@@ -773,11 +773,14 @@ public sealed class ExecutionProcessorTests
                 RequestId = "test-request"
             });
 
+        // Observability is a collaborator, not the SUT - mock it. A real
+        // ProcessObservability would publish to the process-global Meter and
+        // interfere with ProcessObservabilityTests' MeterListener.
         var observability =
-            new ProcessObservability(
-                accessor,
-                ServiceOptions,
-                NullLogger<ProcessObservability>.Instance);
+            Mock.Of<IProcessObservability>(
+                x =>
+                    x.BeginStep(It.IsAny<ProcessStepObservationDetails>()) ==
+                    Mock.Of<IProcessStepObservation>());
 
         var eventFactory =
             new ProcessEventFactory(ServiceOptions);
