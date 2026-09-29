@@ -79,6 +79,7 @@ Scoped to unit-test projects via `.editorconfig`.
 | KAL1007 | Fixture name must equal `{TSut.Name}Tests` | `Test fixture '{0}' declares SUT '{1}' — it must be named '{2}'` |
 | KAL1008 | The SUT may only be constructed inside `CreateSut()` | `'{0}' may only be constructed inside CreateSut() — use CreateSut() or the Sut property` |
 | KAL1009 | Every testable type in the matching `Kaleido.*` source assembly must have a `{Name}Tests` fixture | `Type '{0}' in '{1}' has no '{2}' fixture — every testable type must have a unit-test fixture` |
+| KAL1010 | A `{Type}Tests` fixture must contain at least one `[Fact]`/`[Theory]` — an empty stub does not satisfy coverage | `Fixture '{0}' has no [Fact] or [Theory] test methods — add at least one test or remove the empty stub` |
 
 ### SutFixture notes (KAL1006–KAL1009)
 
