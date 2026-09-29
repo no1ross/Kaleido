@@ -140,9 +140,14 @@ internal sealed class DataTypeMapper : IDataTypeMapper
         var descriptor =
             GetDescriptor(propertyInfo.PropertyType);
 
-        var nullability =
-            new NullabilityInfoContext()
-                .Create(propertyInfo);
+        NullabilityInfo nullability;
+
+        // NullabilityInfoContext is reusable but NOT thread-safe — serialize
+        // access on the shared instance rather than allocating one per property.
+        lock (NullabilityContext)
+        {
+            nullability = NullabilityContext.Create(propertyInfo);
+        }
 
         return descriptor with
         {
@@ -552,6 +557,10 @@ internal sealed class DataTypeMapper : IDataTypeMapper
     }
 
     private static readonly ConcurrentDictionary<Type, DataTypeDescriptor> DescriptorCache = new();
+
+// Shared context — allocating one per property was pure waste on the
+// metadata-reflection path; NullabilityInfoContext is designed to be reused.
+private static readonly NullabilityInfoContext NullabilityContext = new();
 
     private DataTypeDescriptor Lookup(
         Type type)
