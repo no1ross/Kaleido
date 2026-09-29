@@ -1,6 +1,7 @@
 namespace Kaleido.Http.UnitTests.Startup;
 
 public sealed class KaleidoStartupFilterTests
+    : Kaleido.UnitTests.SutFixture
 {
     private static KaleidoStartupFilter CreateSut() => new();
 

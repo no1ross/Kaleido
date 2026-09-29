@@ -3,18 +3,21 @@ using Kaleido.Http.Registry;
 namespace Kaleido.Http.UnitTests.Registry;
 
 public sealed class HttpRegistryCacheTests
+    : Kaleido.UnitTests.SutFixture
 {
+    private static HttpRegistryCache CreateSut() =>
+        new();
     [Fact]
     public void Current_WhenNothingCached_ReturnsNull()
     {
-        using var sut = new HttpRegistryCache();
+        using var sut = CreateSut();
         Assert.Null(sut.Current);
     }
 
     [Fact]
     public async Task GetOrBuildAsync_WhenNoCachedResult_InvokesBuild()
     {
-        using var sut = new HttpRegistryCache();
+        using var sut = CreateSut();
         var built = new AggregatedRegistryResponse();
         var buildCalled = false;
 
@@ -34,7 +37,7 @@ public sealed class HttpRegistryCacheTests
     [Fact]
     public async Task GetOrBuildAsync_WhenCachedAndNoForceRefresh_ReturnsCachedResult()
     {
-        using var sut = new HttpRegistryCache();
+        using var sut = CreateSut();
         var first = new AggregatedRegistryResponse();
 
         // Prime the cache with a clean (no client errors) result.
