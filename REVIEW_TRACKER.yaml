@@ -378,7 +378,8 @@ medium_priority_items:
     effort_days: 1
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: ExecutionCompleted(finalState) - Information log + execution_status activity tag now report the terminal ProcessExecutionState on degraded/canceled runs."
 
   MP-012:
     title: Registry cache never invalidates; Reset() sync-blocks thread
