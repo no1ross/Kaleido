@@ -1,5 +1,5 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Testing;
+using Kaleido.Testing;
 using Xunit;
 using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Process.StepHandlerOceAnalyzer>;
@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.UnitTests.Process;
 
 public sealed class StepHandlerOceAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Process.StepHandlerOceAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Process.StepHandlerOceAnalyzer CreateSut() =>
+        new();
+
     private const string KaleidoStubs = @"
 namespace Kaleido.Process
 {

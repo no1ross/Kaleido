@@ -5,10 +5,21 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Kaleido.Http.Client.UnitTests.Process;
 
 public sealed class KaleidoProcessClientTests
+    : Kaleido.UnitTests.SutFixture
 {
     // ---------------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------------
+
+    private static KaleidoProcessClient CreateSut(
+        HttpClient httpClient,
+        ICorrelationHeaderStamper headerStamper,
+        string serviceName = "") =>
+        new(
+            httpClient,
+            headerStamper,
+            NullLogger<KaleidoProcessClient>.Instance,
+            serviceName);
 
     private static readonly ProcessStepResponse FakeStep = new()
     {
@@ -56,7 +67,7 @@ public sealed class KaleidoProcessClientTests
         var httpClient = new HttpClient(mock.Object) { BaseAddress = new Uri("http://localhost") };
         var stamper = new Mock<ICorrelationHeaderStamper>();
 
-        var client = new KaleidoProcessClient(httpClient, stamper.Object, NullLogger<KaleidoProcessClient>.Instance, routePrefix);
+        var client = CreateSut(httpClient, stamper.Object, routePrefix);
         return (client, mock);
     }
 
@@ -108,7 +119,7 @@ public sealed class KaleidoProcessClientTests
             });
 
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
-        var client = new KaleidoProcessClient(httpClient, new Mock<ICorrelationHeaderStamper>().Object, NullLogger<KaleidoProcessClient>.Instance);
+        var client = CreateSut(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
 
         await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.GetRegistryAsync());
@@ -396,7 +407,7 @@ public sealed class KaleidoProcessClientTests
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
         var stamper = new Mock<ICorrelationHeaderStamper>();
 
-        var client = new KaleidoProcessClient(httpClient, stamper.Object, NullLogger<KaleidoProcessClient>.Instance);
+        var client = CreateSut(httpClient, stamper.Object);
         await client.GetProcessStateAsync(Guid.NewGuid());
 
         stamper.Verify(x => x.Stamp(It.IsAny<HttpRequestMessage>()), Times.Once);

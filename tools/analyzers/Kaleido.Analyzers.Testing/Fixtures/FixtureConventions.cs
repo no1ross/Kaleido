@@ -116,6 +116,67 @@ internal static class FixtureConventions
         return null;
     }
 
+    /// <summary>
+    /// True when the type is a "testable" framework class: public or internal,
+    /// non-static, non-abstract, with behavior (at least one ordinary method).
+    /// DTOs, records, exceptions, attributes, and [ExcludeFromCodeCoverage]
+    /// types are exempt — new-ing those in a fixture is arrangement, not a
+    /// collaborator violation.
+    /// </summary>
+    public static bool IsTestable(INamedTypeSymbol type)
+    {
+        if (type.TypeKind != TypeKind.Class ||
+            type.IsAbstract ||
+            type.IsStatic ||
+            type.IsImplicitlyDeclared ||
+            type.IsRecord ||
+            type.ContainingType is not null ||
+            type.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal))
+        {
+            return false;
+        }
+
+        if (InheritsFrom(type, "System.Exception") ||
+            InheritsFrom(type, "System.Attribute"))
+        {
+            return false;
+        }
+
+        if (DtoSuffixes.Any(s => type.Name.EndsWith(s, System.StringComparison.Ordinal)))
+        {
+            return false;
+        }
+
+        if (type.GetAttributes().Any(a =>
+                a.AttributeClass?.ToDisplayString() ==
+                "System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute"))
+        {
+            return false;
+        }
+
+        return type.GetMembers()
+            .OfType<IMethodSymbol>()
+            .Any(m =>
+                m.MethodKind == MethodKind.Ordinary &&
+                !m.IsImplicitlyDeclared);
+    }
+
+    private static readonly string[] DtoSuffixes =
+        ["Options", "Settings", "Request", "Response", "Metadata", "Details", "Parameters", "Envelope", "Descriptor", "Summary", "Item", "Message", "Event"];
+
+    private static bool InheritsFrom(INamedTypeSymbol type, string baseTypeName)
+    {
+        for (var current = type.BaseType; current is not null; current = current.BaseType)
+        {
+            if (current.ToDisplayString() == baseTypeName)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>All named types in a namespace, recursively.</summary>
     public static System.Collections.Generic.IEnumerable<INamedTypeSymbol> EnumerateTypes(
         INamespaceSymbol ns)

@@ -3,11 +3,20 @@ using Kaleido.Exceptions;
 namespace Kaleido.Queryable.Abstractions.UnitTests;
 
 public sealed class QueryRequestTests
+    : Kaleido.UnitTests.SutFixture<QueryRequest>
 {
+    protected override QueryRequest CreateSut() =>
+        new();
+
+    private static QueryRequest<TestParameters> CreateSut(
+        TestParameters parameters,
+        QueryBody? query) =>
+        new(parameters, query);
+
     [Fact]
     public void QueryRequest_UsesEmptyQueryViewParametersByDefault()
     {
-        IQueryRequest request = new QueryRequest();
+        IQueryRequest request = CreateSut();
 
         Assert.IsType<EmptyQueryViewParameters>(request.ViewParameters);
         Assert.Equal(typeof(EmptyQueryViewParameters), request.ViewParametersType);
@@ -17,7 +26,7 @@ public sealed class QueryRequestTests
     public void QueryRequestOfT_ExposesTypedAndUntypedParameters()
     {
         var parameters = new TestParameters { Category = "Alpha" };
-        IQueryRequest request = new QueryRequest<TestParameters>(parameters, new QueryBody(SearchText: "alpha"));
+        IQueryRequest request = CreateSut(parameters, new QueryBody(SearchText: "alpha"));
 
         Assert.Same(parameters, ((QueryRequest<TestParameters>)request).ViewParameters);
         Assert.Same(parameters, request.ViewParameters);

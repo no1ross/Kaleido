@@ -81,11 +81,17 @@ public static class RegistryEndpointRouteBuilderExtensions
                 RegistryContractUrls.Registry(localServiceOptions.ServiceName),
                 async (
                     HttpContext httpContext,
-                    IKaleidoProcessClientFactory processClientFactory,
-                    IKaleidoQueryableClientFactory queryableClientFactory,
                     [FromServices] IProcessResponseFactory responseFactory,
                     CancellationToken cancellationToken) =>
                 {
+                    // Optional — resolve inside the handler so a host that only
+                    // registers one client type (or none via AddHttpClients with
+                    // no clients configured) does not fail endpoint activation.
+                    var processClientFactory = httpContext.RequestServices
+                        .GetService<IKaleidoProcessClientFactory>();
+
+                    var queryableClientFactory = httpContext.RequestServices
+                        .GetService<IKaleidoQueryableClientFactory>();
                     var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
 
                     if (!forceRefresh && cache.Current is not null)
@@ -194,28 +200,32 @@ public static class RegistryEndpointRouteBuilderExtensions
     private static async Task<(IReadOnlyCollection<ProcessorRegistryResponse> Items, IReadOnlyCollection<RegistryClientError> Errors)>
         GetDownstreamProcessesAsync(
             KaleidoProcessClientRouteOptionsMap? map,
-            IKaleidoProcessClientFactory factory,
+            IKaleidoProcessClientFactory? factory,
             ILogger logger,
             CancellationToken cancellationToken) =>
-        await GetDownstreamAsync(
-            map?.Options.Keys.ToArray(),
-            (name, ct) => factory.GetClient(name).GetRegistryAsync(ct),
-            "Process",
-            logger,
-            cancellationToken);
+        factory is null
+            ? ([], [])
+            : await GetDownstreamAsync(
+                map?.Options.Keys.ToArray(),
+                (name, ct) => factory.GetClient(name).GetRegistryAsync(ct),
+                "Process",
+                logger,
+                cancellationToken);
 
     private static async Task<(IReadOnlyCollection<QueryableRecordResponse> Items, IReadOnlyCollection<RegistryClientError> Errors)>
         GetDownstreamQueryablesAsync(
             KaleidoQueryableClientRouteOptionsMap? map,
-            IKaleidoQueryableClientFactory factory,
+            IKaleidoQueryableClientFactory? factory,
             ILogger logger,
             CancellationToken cancellationToken) =>
-        await GetDownstreamAsync(
-            map?.Options.Keys.ToArray(),
-            (name, ct) => factory.GetClient(name).GetRegistryAsync(ct),
-            "Queryable",
-            logger,
-            cancellationToken);
+        factory is null
+            ? ([], [])
+            : await GetDownstreamAsync(
+                map?.Options.Keys.ToArray(),
+                (name, ct) => factory.GetClient(name).GetRegistryAsync(ct),
+                "Queryable",
+                logger,
+                cancellationToken);
 
     private static async Task<(IReadOnlyCollection<TItem> Items, IReadOnlyCollection<RegistryClientError> Errors)>
         GetDownstreamAsync<TItem>(

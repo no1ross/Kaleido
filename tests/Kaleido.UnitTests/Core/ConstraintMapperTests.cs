@@ -1,10 +1,15 @@
 using System.ComponentModel.DataAnnotations;
+using Kaleido.UnitTests;
 
 namespace Kaleido.Abstractions.UnitTests;
 
 public sealed class ConstraintMapperTests
+    : SutFixture
 {
-    private readonly ConstraintMapper _sut = new();
+    private static ConstraintMapper CreateSut() =>
+        new();
+
+    private readonly ConstraintMapper _sut = CreateSut();
 
     [Fact]
     public void Map_WhenPropertyIsNull_Throws()

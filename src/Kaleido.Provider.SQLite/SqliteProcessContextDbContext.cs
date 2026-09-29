@@ -10,16 +10,16 @@ public sealed class SqliteProcessContextDbContext(
     : DbContext(options)
 {
 
-    public DbSet<ProcessContextEntity> ProcessContexts =>
+    internal DbSet<ProcessContextEntity> ProcessContexts =>
         Set<ProcessContextEntity>();
 
-    public DbSet<ProcessStepContextEntity> ProcessStepContexts =>
+    internal DbSet<ProcessStepContextEntity> ProcessStepContexts =>
         Set<ProcessStepContextEntity>();
 
-    public DbSet<ProcessAvailableStepEntity> ProcessAvailableSteps =>
+    internal DbSet<ProcessAvailableStepEntity> ProcessAvailableSteps =>
         Set<ProcessAvailableStepEntity>();
 
-    public DbSet<ProcessRequiredStepEntity> ProcessRequiredSteps =>
+    internal DbSet<ProcessRequiredStepEntity> ProcessRequiredSteps =>
         Set<ProcessRequiredStepEntity>();
 
     protected override void OnModelCreating(

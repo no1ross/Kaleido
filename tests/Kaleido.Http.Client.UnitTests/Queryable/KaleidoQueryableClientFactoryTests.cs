@@ -7,7 +7,16 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Kaleido.Http.Client.UnitTests.Queryable;
 
 public sealed class KaleidoQueryableClientFactoryTests
+    : Kaleido.UnitTests.SutFixture
 {
+    private static KaleidoQueryableClientFactory CreateSut(
+        IHttpClientFactory httpClientFactory,
+        KaleidoQueryableClientRouteOptionsMap routeOptionsMap) =>
+        new(
+            httpClientFactory,
+            Mock.Of<ICorrelationHeaderStamper>(),
+            NullLogger<KaleidoQueryableClient>.Instance,
+            routeOptionsMap);
     [Fact]
     public void GetClient_WhenNamedClientIsRegistered_ReturnsClient()
     {
@@ -19,12 +28,7 @@ public sealed class KaleidoQueryableClientFactoryTests
             .Setup(f => f.CreateClient(It.IsAny<string>()))
             .Returns(new System.Net.Http.HttpClient());
 
-        var factory = new KaleidoQueryableClientFactory(
-            httpClientFactory.Object,
-            Mock.Of<IKaleidoCorrelationContextAccessor>(),
-            Mock.Of<ICorrelationHeaderStamper>(),
-            NullLogger<KaleidoQueryableClient>.Instance,
-            routeMap);
+        var factory = CreateSut(httpClientFactory.Object, routeMap);
 
         var client = factory.GetClient("remote-svc");
 

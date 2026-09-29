@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kaleido.UnitTests;
 
 public sealed class KaleidoServiceCollectionExtensionsTests
+    : SutFixture
 {
     private static IConfiguration EmptyConfig() =>
         new ConfigurationBuilder().Build();

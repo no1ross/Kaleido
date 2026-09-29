@@ -5,7 +5,16 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Kaleido.Http.Client.UnitTests.HealthChecks;
 
 public sealed class KaleidoClientHealthCheckTests
+    : Kaleido.UnitTests.SutFixture
 {
+    private static KaleidoClientHealthCheck CreateSut(
+        IHttpClientFactory httpClientFactory) =>
+        new(
+            httpClientFactory,
+            "test-client",
+            "/processes/registry",
+            NullLogger<KaleidoClientHealthCheck>.Instance);
+
     // -------------------------------------------------------------------------
     // Healthy — remote returns 2xx
     // -------------------------------------------------------------------------
@@ -63,11 +72,7 @@ public sealed class KaleidoClientHealthCheckTests
             .Setup(f => f.CreateClient(It.IsAny<string>()))
             .Throws(new HttpRequestException("Connection refused"));
 
-        var check = new KaleidoClientHealthCheck(
-            factory.Object,
-            "test-client",
-            "/processes/registry",
-            NullLogger<KaleidoClientHealthCheck>.Instance);
+        var check = CreateSut(factory.Object);
 
         var result = await check.CheckHealthAsync(CreateContext());
 
@@ -98,11 +103,7 @@ public sealed class KaleidoClientHealthCheckTests
         var factory = new Mock<IHttpClientFactory>();
         factory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(client);
 
-        var check = new KaleidoClientHealthCheck(
-            factory.Object,
-            "test-client",
-            "/processes/registry",
-            NullLogger<KaleidoClientHealthCheck>.Instance);
+        var check = CreateSut(factory.Object);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => check.CheckHealthAsync(CreateContext(), cts.Token));
@@ -127,11 +128,7 @@ public sealed class KaleidoClientHealthCheckTests
         var factory = new Mock<IHttpClientFactory>();
         factory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(client);
 
-        return new KaleidoClientHealthCheck(
-            factory.Object,
-            "test-client",
-            "/processes/registry",
-            NullLogger<KaleidoClientHealthCheck>.Instance);
+        return CreateSut(factory.Object);
     }
 
     private static HealthCheckContext CreateContext() =>

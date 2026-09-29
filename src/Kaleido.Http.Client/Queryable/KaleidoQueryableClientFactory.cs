@@ -4,7 +4,6 @@ namespace Kaleido.Http.Client.Queryable;
 
 internal sealed class KaleidoQueryableClientFactory(
     IHttpClientFactory httpClientFactory,
-    IKaleidoCorrelationContextAccessor correlation,
     ICorrelationHeaderStamper headerStamper,
     ILogger<KaleidoQueryableClient> logger,
     KaleidoQueryableClientRouteOptionsMap routeOptionsMap)
@@ -12,7 +11,6 @@ internal sealed class KaleidoQueryableClientFactory(
       IKaleidoQueryableClientFactory
 {
     protected override IHttpClientFactory HttpClientFactory => httpClientFactory;
-    protected override IKaleidoCorrelationContextAccessor CorrelationAccessor => correlation;
     protected override ICorrelationHeaderStamper HeaderStamper => headerStamper;
     protected override KaleidoQueryableClientRouteOptionsMap RouteOptionsMap => routeOptionsMap;
 

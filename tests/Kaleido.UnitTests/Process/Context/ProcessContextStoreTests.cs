@@ -1,17 +1,20 @@
 using Kaleido.Process.Context;
 using Microsoft.Extensions.Logging;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Context;
 
 public sealed class ProcessContextStoreTests
+    : SutFixture
 {
-    private static ProcessContextStore CreateStore() =>
+    private static ProcessContextStore CreateSut() =>
         new(new Mock<ILogger<ProcessContextStore>>().Object);
 
     [Fact]
     public async Task SaveAsync_WhenContextIsNull_Throws()
     {
-        var store = CreateStore();
+        var store = CreateSut();
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
             store.SaveAsync(null!));
@@ -20,7 +23,7 @@ public sealed class ProcessContextStoreTests
     [Fact]
     public async Task SaveAsync_WhenContextProvided_SavesContext()
     {
-        var store = CreateStore();
+        var store = CreateSut();
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
@@ -41,7 +44,7 @@ public sealed class ProcessContextStoreTests
     [Fact]
     public async Task LoadAsync_WhenContextNotExists_ReturnsNull()
     {
-        var store = CreateStore();
+        var store = CreateSut();
         var processId = Guid.NewGuid();
 
         var loaded = await store.LoadAsync(processId, CancellationToken.None);
@@ -52,7 +55,7 @@ public sealed class ProcessContextStoreTests
     [Fact]
     public async Task LoadAsync_WhenContextExists_ReturnsContext()
     {
-        var store = CreateStore();
+        var store = CreateSut();
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
@@ -81,7 +84,7 @@ public sealed class ProcessContextStoreTests
     [Fact]
     public async Task SaveAsync_WhenContextAlreadyExists_Overwrites()
     {
-        var store = CreateStore();
+        var store = CreateSut();
         var processId = Guid.NewGuid();
 
         var context1 = new ProcessorContext
@@ -110,7 +113,7 @@ public sealed class ProcessContextStoreTests
     [Fact]
     public async Task SaveAsync_WhenCancelled_ThrowsOperationCanceled()
     {
-        var store = CreateStore();
+        var store = CreateSut();
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
@@ -127,7 +130,7 @@ public sealed class ProcessContextStoreTests
     [Fact]
     public async Task LoadAsync_WhenCancelled_ThrowsOperationCanceled()
     {
-        var store = CreateStore();
+        var store = CreateSut();
         var cts = new CancellationTokenSource();
         cts.Cancel();
 

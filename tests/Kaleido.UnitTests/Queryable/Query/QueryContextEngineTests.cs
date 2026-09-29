@@ -1,14 +1,13 @@
 using Kaleido.Eventing;
 using Kaleido.Observability;
 using Kaleido.Queryable.Eventing;
-using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
-using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Runtime;
 
 namespace Kaleido.Queryable.UnitTests.Query;
 
 public sealed class QueryContextEngineTests
+    : Kaleido.UnitTests.SutFixture
 {
     public sealed class FakeContext { }
     public sealed class FakeView { }

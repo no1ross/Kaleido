@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Testing.Fixtures;
 
 /// <summary>
-/// KAL1009 GÇö every testable type in the source assembly must have a
+/// KAL1009 Gï¿½ï¿½ every testable type in the source assembly must have a
 /// {TypeName}Tests fixture in the matching unit-test project. Testable means:
 /// public or internal class, non-static, non-abstract, with behavior (at
 /// least one ordinary method). DTOs, records, exceptions, attributes, and
@@ -16,14 +16,11 @@ namespace Kaleido.Analyzers.Testing.Fixtures;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class FixtureCoverageAnalyzer : DiagnosticAnalyzer
 {
-    private static readonly string[] DtoSuffixes =
-        ["Options", "Settings", "Request", "Response", "Metadata", "Details", "Parameters", "Envelope", "Descriptor", "Summary", "Item", "Message", "Event"];
-
     private static readonly DiagnosticDescriptor Rule =
         new(
             DiagnosticIds.FixtureCoverage,
             "Testable source type has no unit-test fixture",
-            "Type '{0}' in '{1}' has no '{2}' fixture GÇö every testable type must have a unit-test fixture",
+            "Type '{0}' in '{1}' has no '{2}' fixture Gï¿½ï¿½ every testable type must have a unit-test fixture",
             "Kaleido.Tests",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
@@ -75,7 +72,7 @@ public sealed class FixtureCoverageAnalyzer : DiagnosticAnalyzer
         foreach (var type in FixtureConventions.EnumerateTypes(
                      sourceAssembly.GlobalNamespace))
         {
-            if (!IsTestable(type))
+            if (!FixtureConventions.IsTestable(type))
             {
                 continue;
             }
@@ -87,7 +84,7 @@ public sealed class FixtureCoverageAnalyzer : DiagnosticAnalyzer
                     .GetSymbolsWithName(
                         fixtureName, SymbolFilter.Type, context.CancellationToken)
                     .OfType<INamedTypeSymbol>()
-                    .Any(t => FixtureConventions.IsFixture(t));
+                    .Any(FixtureConventions.IsFixture);
 
             if (!fixtureExists)
             {
@@ -107,60 +104,4 @@ public sealed class FixtureCoverageAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static bool IsTestable(INamedTypeSymbol type)
-    {
-        if (type.TypeKind != TypeKind.Class ||
-            type.IsAbstract ||
-            type.IsStatic ||
-            type.IsImplicitlyDeclared ||
-            type.IsRecord ||
-            type.ContainingType is not null ||
-            type.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal))
-        {
-            return false;
-        }
-
-        if (InheritsFrom(type, "System.Exception") ||
-            InheritsFrom(type, "System.Attribute"))
-        {
-            return false;
-        }
-
-        if (DtoSuffixes.Any(s => type.Name.EndsWith(s, System.StringComparison.Ordinal)))
-        {
-            return false;
-        }
-
-        // [ExcludeFromCodeCoverage] is the explicit opt-out signal GÇö the type is
-        // intentionally untested (e.g. EF configuration, null-object, or infrastructure
-        // glue covered indirectly). Matched by FQN string; the analyzer binary does not
-        // need a reference to the attribute GÇö the symbol comes from the analysed compilation.
-        if (type.GetAttributes().Any(a =>
-                a.AttributeClass?.ToDisplayString() ==
-                "System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute"))
-        {
-            return false;
-        }
-
-        // has behavior: at least one ordinary non-implicit method
-        // (registered services always qualify GÇö services have methods)
-        return type.GetMembers()
-            .OfType<IMethodSymbol>()
-            .Any(m =>
-                m.MethodKind == MethodKind.Ordinary &&
-                !m.IsImplicitlyDeclared);
-    }
-
-    private static bool InheritsFrom(INamedTypeSymbol type, string baseTypeName)
-    {
-        for (var current = type.BaseType; current is not null; current = current.BaseType)
-        {
-            if (current.ToDisplayString() == baseTypeName)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

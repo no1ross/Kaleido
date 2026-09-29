@@ -1,25 +1,22 @@
 <Project>
     <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..\'))" />
     <ItemGroup>
-        <PackageReference Include="coverlet.collector">
+        <!-- MTP runner (xunit.v3 + global.json test.runner): VSTest collectors
+             are ignored there; coverage comes from the MTP extension -->
+        <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage">
             <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="Moq" />
-        <PackageReference Include="xunit" />
-        <PackageReference Include="xunit.analyzers" PrivateAssets="all" />
-        <PackageReference Include="xunit.runner.visualstudio">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
+        <PackageReference Include="xunit.v3" />
         <ProjectReference Include="$(MSBuildThisFileDirectory)..\tools\analyzers\Kaleido.Analyzers.Testing\Kaleido.Analyzers.Testing.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
     </ItemGroup>
     <PropertyGroup>
         <IsPackable>false</IsPackable>
-        <!-- xUnit1000: internal test classes are fully discovered at runtime;
-             suppress so fixtures can be internal when testing internal SUTs -->
-        <NoWarn>1591;xUnit1000</NoWarn>
+        <!-- xUnit v3 test projects are self-executing (Microsoft.Testing.Platform) -->
+        <OutputType>Exe</OutputType>
+        <!-- xUnit1000 kept enabled: internal test classes are NOT discovered by
+             the runner — fixtures must stay public even when the SUT is internal -->
+        <NoWarn>1591</NoWarn>
     </PropertyGroup>
     <ItemGroup>
         <Using Include="Xunit" />

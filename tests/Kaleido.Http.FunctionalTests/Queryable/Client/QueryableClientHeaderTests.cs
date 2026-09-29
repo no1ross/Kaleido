@@ -125,7 +125,14 @@ public sealed class QueryableClientHeaderTests : IClassFixture<QueryableAspNetCo
         // Register before AddKaleido so TryAddScoped is skipped and this accessor wins
         services.AddSingleton<IKaleidoCorrelationContextAccessor>(
             new FixedCorrelationContextAccessor(ctx));
-        services.AddKaleido(config, o => o.ServiceName = "test-queryable-client")
+        // Client container needs no type scanning; under xUnit v3 the entry assembly
+        // is this test project (it was testhost under v2), so the fallback would
+        // register functional test sources without their dependencies.
+        services.AddKaleido(config, o =>
+                {
+                    o.ServiceName = "test-queryable-client";
+                    o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
+                })
                 .AddHttpClients();
         return services;
     }

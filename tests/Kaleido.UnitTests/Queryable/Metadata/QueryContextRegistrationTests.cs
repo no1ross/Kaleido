@@ -1,9 +1,17 @@
 namespace Kaleido.UnitTests.Queryable.Metadata;
 
 public sealed class QueryContextRegistrationTests
+    : SutFixture<QueryContextRegistration>
 {
     private static readonly DataTypeDescriptor TestDataType =
         new("string");
+
+    protected override QueryContextRegistration CreateSut() =>
+        CreateSut(null!);
+
+    private static QueryContextRegistration CreateSut(
+        QueryContextMetadata metadata) =>
+        new(typeof(TestContext), typeof(TestSource), metadata);
 
     [Fact]
     public void QueryContextRegistration_PreservesMetadataShape()
@@ -11,7 +19,7 @@ public sealed class QueryContextRegistrationTests
         var field = new FieldMetadata("Code", "Code description", typeof(string), TestDataType, true, [FilterOperator.Equals], true, 1, MatchMode.Contains, true);
         var pageable = new PageableMetadata(25, 100);
         var metadata = new QueryContextMetadata("context", "Context description", "Context", "1.0.0", "Unit Test", QueryContextKind.Direct, pageable, [field]);
-        var registration = new QueryContextRegistration(typeof(TestContext), typeof(TestSource), metadata);
+        var registration = CreateSut(metadata);
 
         Assert.Equal(typeof(TestContext), registration.ContextType);
         Assert.Equal(typeof(TestSource), registration.SourceType);

@@ -1,5 +1,5 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Testing;
+using Kaleido.Testing;
 using Xunit;
 using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Http.MapRegistryWithoutClientsAnalyzer>;
@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.UnitTests.Http;
 
 public sealed class MapRegistryWithoutClientsAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Http.MapRegistryWithoutClientsAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Http.MapRegistryWithoutClientsAnalyzer CreateSut() =>
+        new();
+
     private const string KaleidoStubs = @"
 public static class EndpointExtensions
 {

@@ -90,7 +90,8 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
 
         return builder
             .AddKaleidoProcessInstrumentation()
-            .AddKaleidoQueryableInstrumentation();
+            .AddKaleidoQueryableInstrumentation()
+            .AddKaleidoSqliteInstrumentation();
     }
 
     /// <summary>
@@ -133,6 +134,7 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
             .AddView(QueryableTelemetry.PageOffsetHistogramName, recordCountBoundaries)
             .AddKaleidoProcessInstrumentation()
             .AddKaleidoQueryableInstrumentation()
-            .AddKaleidoHttpInstrumentation();
+            .AddKaleidoHttpInstrumentation()
+            .AddKaleidoSqliteInstrumentation();
     }
 }

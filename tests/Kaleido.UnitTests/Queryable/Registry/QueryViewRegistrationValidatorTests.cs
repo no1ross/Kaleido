@@ -5,14 +5,19 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kaleido.Queryable.UnitTests.Records;
 
 public sealed class QueryViewRegistrationValidatorTests
+    : Kaleido.UnitTests.SutFixture
 {
-    private readonly QueryViewRegistrationValidator _validator = new();
+    private QueryViewRegistrationValidator Sut =>
+        CreateSut();
+
+    private static QueryViewRegistrationValidator CreateSut() =>
+        new();
 
     [Fact]
     public void Validate_WhenViewTypesIsNull_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            _validator.Validate(
+            Sut.Validate(
                 null!,
                 [typeof(TestContext)],
                 new ServiceCollection()));
@@ -22,7 +27,7 @@ public sealed class QueryViewRegistrationValidatorTests
     public void Validate_WhenContextTypesIsNull_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            _validator.Validate(
+            Sut.Validate(
                 [typeof(TestView)],
                 null!,
                 new ServiceCollection()));
@@ -32,7 +37,7 @@ public sealed class QueryViewRegistrationValidatorTests
     public void Validate_WhenServicesIsNull_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            _validator.Validate(
+            Sut.Validate(
                 [typeof(TestView)],
                 [typeof(TestContext)],
                 null!));
@@ -41,7 +46,7 @@ public sealed class QueryViewRegistrationValidatorTests
     [Fact]
     public void Validate_WhenRegistrationsAreValid_DoesNotThrow()
     {
-        _validator.Validate(
+        Sut.Validate(
             [typeof(TestView)],
             [typeof(TestContext)],
             new ServiceCollection());
@@ -51,7 +56,7 @@ public sealed class QueryViewRegistrationValidatorTests
     public void Validate_WhenDuplicateNamesExist_Throws()
     {
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            _validator.Validate(
+            Sut.Validate(
                 [typeof(TestView), typeof(DuplicateTestView)],
                 [typeof(TestContext)],
                 new ServiceCollection()));
@@ -63,7 +68,7 @@ public sealed class QueryViewRegistrationValidatorTests
     public void Validate_WhenViewDoesNotImplementQueryViewSource_Throws()
     {
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            _validator.Validate(
+            Sut.Validate(
                 [typeof(InvalidView)],
                 [typeof(TestContext)],
                 new ServiceCollection()));
@@ -75,7 +80,7 @@ public sealed class QueryViewRegistrationValidatorTests
     public void Validate_WhenViewReferencesUnregisteredContext_Throws()
     {
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            _validator.Validate(
+            Sut.Validate(
                 [typeof(TestView)],
                 Array.Empty<Type>(),
                 new ServiceCollection()));

@@ -1,9 +1,19 @@
 using Kaleido.Process.Context;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Processor.Planning;
 
 public sealed class ExecutionPlannerTests
+    : SutFixture
 {
+    private static ExecutionPlanner CreateSut(
+        IStepCandidateBuilder candidateBuilder,
+        IStepCandidateValidator validator,
+        IStepCandidateConsistencyChecker consistencyChecker,
+        IStepCandidatePlanner candidatePlanner) =>
+        new(candidateBuilder, validator, consistencyChecker, candidatePlanner);
+
     [Fact]
     public void BuildPlan_CallsCollaboratorsInOrder()
     {
@@ -67,7 +77,7 @@ public sealed class ExecutionPlannerTests
             .Returns(orderedCandidates);
 
         var planner =
-            new ExecutionPlanner(
+            CreateSut(
                 candidateBuilder.Object,
                 validator.Object,
                 consistencyChecker.Object,
@@ -130,7 +140,7 @@ public sealed class ExecutionPlannerTests
             .Returns(orderedCandidates);
 
         var planner =
-            new ExecutionPlanner(
+            CreateSut(
                 candidateBuilder.Object,
                 validator.Object,
                 consistencyChecker.Object,
@@ -187,7 +197,7 @@ public sealed class ExecutionPlannerTests
             new Mock<IStepCandidatePlanner>(MockBehavior.Strict);
 
         var planner =
-            new ExecutionPlanner(
+            CreateSut(
                 candidateBuilder.Object,
                 validator.Object,
                 consistencyChecker.Object,
@@ -253,7 +263,7 @@ public sealed class ExecutionPlannerTests
             new Mock<IStepCandidatePlanner>(MockBehavior.Strict);
 
         var planner =
-            new ExecutionPlanner(
+            CreateSut(
                 candidateBuilder.Object,
                 validator.Object,
                 consistencyChecker.Object,

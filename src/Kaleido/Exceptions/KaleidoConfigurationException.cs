@@ -40,6 +40,9 @@ public static class ConfigurationErrorCodes
     /// <summary>At least one assembly must be registered before calling AddQueryable() or AddProcessor().</summary>
     public const string MissingAssembly         = "missing_assembly";
 
+    /// <summary>A configured Kaleido client is missing a BaseUrl (neither client-level nor shared Kaleido:BaseUrl).</summary>
+    public const string MissingBaseUrl          = "missing_base_url";
+
     // Process-specific (pro_ prefix)
 
     /// <summary>A process step type is missing the [ProcessStep] attribute.</summary>

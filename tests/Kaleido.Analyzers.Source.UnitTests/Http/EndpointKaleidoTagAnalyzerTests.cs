@@ -1,5 +1,5 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Testing;
+using Kaleido.Testing;
 using Xunit;
 using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Source.Http.EndpointKaleidoTagAnalyzer>;
@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.Source.UnitTests;
 
 public sealed class EndpointKaleidoTagAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Source.Http.EndpointKaleidoTagAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Source.Http.EndpointKaleidoTagAnalyzer CreateSut() =>
+        new();
+
     private static readonly DiagnosticResult Expected =
         new("KAL0017", DiagnosticSeverity.Warning);
 
@@ -93,7 +97,7 @@ public class Sample
     [Fact]
     public async Task MapGet_WithoutWithTags_NoDiagnosticFromKal0017()
     {
-        // When WithTags is absent entirely, KAL0016 fires — KAL0017 stays silent.
+        // When WithTags is absent entirely, KAL0016 fires ï¿½ KAL0017 stays silent.
         await RunAsync(@"
 public class Sample
 {

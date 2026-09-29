@@ -6,7 +6,21 @@ using Kaleido.Queryable.Observability;
 namespace Kaleido.Queryable.UnitTests.Query;
 
 public sealed class DelegatedQueryViewEngineTests
+    : Kaleido.UnitTests.SutFixture
 {
+    private static DelegatedQueryViewEngine<object, object> CreateSut(
+        IQueryEventFactory eventFactory,
+        IEventPublisher eventPublisher,
+        IKaleidoCorrelationContextAccessor correlationAccessor,
+        IQueryableObservability observability,
+        IServiceProvider serviceProvider) =>
+        new(
+            eventFactory,
+            eventPublisher,
+            correlationAccessor,
+            observability,
+            serviceProvider);
+
     [Fact]
     public void Constructor_CreatesInstance()
     {
@@ -16,7 +30,7 @@ public sealed class DelegatedQueryViewEngineTests
         var observability = new Mock<IQueryableObservability>();
         var serviceProvider = new Mock<IServiceProvider>();
 
-        var engine = new DelegatedQueryViewEngine<object, object>(
+        var engine = CreateSut(
             eventFactory.Object,
             eventPublisher.Object,
             correlationAccessor.Object,

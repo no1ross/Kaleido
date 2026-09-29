@@ -18,6 +18,30 @@ Tests follow a one-project-per-source-project convention:
 - Do not turn unit tests into business workflow, transport, or integration tests
 - Use functional tests to validate transport, real implementations, and broader business behavior
 
+## Unit test fixtures (SutFixture)
+
+Every unit-test fixture must declare its subject under test by inheriting
+`SutFixture` (`tests/Shared/SutFixture.cs`), enforced by analyzers KAL1006–KAL1010
+(see `docs/ANALYZERS.md`):
+
+- **Public SUT** — inherit `SutFixture<TSut>` and override `CreateSut()`; the
+  `Sut` property is available for per-test construction.
+- **Internal SUT** — inherit the non-generic `SutFixture` and add a
+  `private static TSut CreateSut(...)` overload (a public `Sut` property would
+  violate accessibility, CS9338). Parameterize `CreateSut` when tests need
+  custom dependencies.
+- **Static SUT** (e.g. `*Extensions`) — inherit the non-generic `SutFixture`;
+  no `CreateSut` needed.
+
+Rules enforced at build time: fixtures are named `{Sut}Tests` (KAL1007), the
+SUT may only be constructed inside a `CreateSut` method or via `Sut` (KAL1008),
+collaborators must be mocked — never `new` a real Kaleido service
+implementation (KAL1012; domain data the SUT consumes is exempt) — and the
+fixture file must mirror the SUT's source path (KAL1003 — e.g.
+`src/Kaleido/Json/ValueConverter.cs` → `tests/Kaleido.UnitTests/Json/ValueConverterTests.cs`).
+A unit test exercises exactly one SUT; assembled-pipeline behavior belongs in
+functional or integration tests.
+
 ## Functional test fixtures
 
 ### Shared fixture state

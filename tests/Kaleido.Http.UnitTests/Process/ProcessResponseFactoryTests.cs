@@ -4,8 +4,9 @@ using Kaleido.Process.Registry;
 namespace Kaleido.Http.UnitTests.Process;
 
 public sealed class ProcessResponseFactoryTests
+    : Kaleido.UnitTests.SutFixture<ProcessResponseFactory>
 {
-    private static ProcessResponseFactory CreateSut() => new();
+    protected override ProcessResponseFactory CreateSut() => new();
 
     [Fact]
     public void CreateRegistryResponse_WithEmptyRegistration_ReturnsResponse()
@@ -17,7 +18,7 @@ public sealed class ProcessResponseFactoryTests
         var result = sut.CreateRegistryResponse(registration, options);
 
         Assert.Equal("test-svc", result.ServiceName);
-        Assert.Empty(result.Steps);
+        Assert.Empty(result.Steps ?? []);
     }
 
     [Fact]
@@ -30,5 +31,6 @@ public sealed class ProcessResponseFactoryTests
         var result = sut.CreateCatalogResponse(registration, options);
 
         Assert.Equal("test-svc", result.ServiceName);
+        Assert.Null(result.Steps);
     }
 }

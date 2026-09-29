@@ -8,6 +8,7 @@ using Moq;
 namespace Kaleido.Queryable.UnitTests.Records;
 
 public sealed class QueryContextRegistryTests
+    : Kaleido.UnitTests.SutFixture
 {
     private static QueryContextRegistry CreateSut(params Type[] contextTypes)
     {

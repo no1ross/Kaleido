@@ -1,4 +1,5 @@
 using NetArchTest.Rules;
+using TestResult = NetArchTest.Rules.TestResult;
 
 namespace Kaleido.UnitTests.Architecture;
 
@@ -8,6 +9,7 @@ namespace Kaleido.UnitTests.Architecture;
 /// invariants into executable checks instead of prose.
 /// </summary>
 public sealed class ArchitectureTests
+    : SutFixture
 {
     private static readonly System.Reflection.Assembly KaleidoAssembly =
         typeof(IKaleidoBuilder).Assembly;

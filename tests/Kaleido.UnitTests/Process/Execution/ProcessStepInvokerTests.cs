@@ -4,9 +4,12 @@ using Kaleido.Process.Observability;
 using Kaleido.Process.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Processor.Execution;
 
 public sealed class ProcessStepInvokerTests
+    : SutFixture
 {
     [Fact]
     public async Task ExecuteAsync_WhenHandlerIsRegistered_InvokesHandler()
@@ -15,7 +18,7 @@ public sealed class ProcessStepInvokerTests
             new HandlerRecorder();
 
         var invoker =
-            CreateInvoker(
+            CreateSut(
                 services =>
                 {
                     services.AddSingleton(recorder);
@@ -51,7 +54,7 @@ public sealed class ProcessStepInvokerTests
             new HandlerRecorder();
 
         var invoker =
-            CreateInvoker(
+            CreateSut(
                 services =>
                 {
                     services.AddSingleton(recorder);
@@ -82,7 +85,7 @@ public sealed class ProcessStepInvokerTests
             new HandlerRecorder();
 
         var invoker =
-            CreateInvoker(
+            CreateSut(
                 services =>
                 {
                     services.AddSingleton(recorder);
@@ -114,7 +117,7 @@ public sealed class ProcessStepInvokerTests
     public async Task ExecuteAsync_WhenHandlerReturnsFailure_ReturnsFailureResult()
     {
         var invoker =
-            CreateInvoker(
+            CreateSut(
                 services =>
                 {
                     services.AddTransient<FailureHandler>();
@@ -144,7 +147,7 @@ public sealed class ProcessStepInvokerTests
     public async Task ExecuteAsync_WhenHandlerIsNotRegistered_Throws()
     {
         var invoker =
-            CreateInvoker();
+            CreateSut();
 
         var registration =
             CreateRegistration<SuccessHandler>();
@@ -160,7 +163,7 @@ public sealed class ProcessStepInvokerTests
     public async Task ExecuteAsync_WhenHandlerDoesNotExposeExecuteAsync_Throws()
     {
         var invoker =
-            CreateInvoker(
+            CreateSut(
                 services =>
                 {
                     services.AddTransient<MissingExecuteAsyncHandler>();
@@ -185,7 +188,7 @@ public sealed class ProcessStepInvokerTests
     public async Task ExecuteAsync_WhenHandlerReturnsNullTask_Throws()
     {
         var invoker =
-            CreateInvoker(
+            CreateSut(
                 services =>
                 {
                     services.AddTransient<NullTaskHandler>();
@@ -219,7 +222,7 @@ public sealed class ProcessStepInvokerTests
     public async Task ExecuteAsync_WhenHandlerReturnsNullHandlerResult_Throws()
     {
         var invoker =
-            CreateInvoker(
+            CreateSut(
                 services =>
                 {
                     services.AddTransient<NullHandlerResultHandler>();
@@ -244,7 +247,7 @@ public sealed class ProcessStepInvokerTests
     public async Task ExecuteAsync_WhenHandlerReturnsInvalidHandlerResult_Throws()
     {
         var invoker =
-            CreateInvoker(
+            CreateSut(
                 services =>
                 {
                     services.AddTransient<InvalidHandlerResultHandler>();
@@ -269,7 +272,7 @@ public sealed class ProcessStepInvokerTests
     public async Task ExecuteAsync_WhenHandlerThrows_PropagatesException()
     {
         var invoker =
-            CreateInvoker(
+            CreateSut(
                 services =>
                 {
                     services.AddTransient<ThrowingHandler>();
@@ -295,7 +298,7 @@ public sealed class ProcessStepInvokerTests
             exception.Message);
     }
 
-    private static ProcessStepInvoker CreateInvoker(
+    private static ProcessStepInvoker CreateSut(
         Action<IServiceCollection>? configureServices = null)
     {
         var services =

@@ -4,6 +4,7 @@ using Kaleido.Queryable.Registry;
 namespace Kaleido.Queryable.UnitTests.Records;
 
 public sealed class DelegatedQueryViewRegistryTests
+    : Kaleido.UnitTests.SutFixture
 {
     private static DelegatedQueryViewRegistry CreateSut(
         IDataTypeMapper? dataTypeMapper = null,

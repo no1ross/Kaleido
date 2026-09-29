@@ -5,7 +5,18 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Kaleido.Queryable.UnitTests.Records;
 
 public sealed class QueryableRegistryTests
+    : Kaleido.UnitTests.SutFixture
 {
+    private static QueryableRegistry CreateSut(
+        IQueryContextRegistry contextRegistry,
+        IQueryViewRegistry viewRegistry,
+        IDelegatedQueryViewRegistry delegatedRegistry) =>
+        new(
+            contextRegistry,
+            viewRegistry,
+            delegatedRegistry,
+            NullLogger<QueryableRegistry>.Instance);
+
     [Fact]
     public void Constructor_WhenContextRegistryIsNull_Throws()
     {
@@ -13,7 +24,7 @@ public sealed class QueryableRegistryTests
         var delegatedRegistry = new Mock<IDelegatedQueryViewRegistry>();
 
         Assert.Throws<ArgumentNullException>(() =>
-            new QueryableRegistry(null!, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance));
+            CreateSut(null!, viewRegistry.Object, delegatedRegistry.Object));
     }
 
     [Fact]
@@ -23,7 +34,7 @@ public sealed class QueryableRegistryTests
         var delegatedRegistry = Mock.Of<IDelegatedQueryViewRegistry>();
 
         Assert.Throws<ArgumentNullException>(() =>
-            new QueryableRegistry(contextRegistry.Object, null!, delegatedRegistry, NullLogger<QueryableRegistry>.Instance));
+            CreateSut(contextRegistry.Object, null!, delegatedRegistry));
     }
 
     [Fact]
@@ -33,7 +44,7 @@ public sealed class QueryableRegistryTests
         var viewRegistry = Mock.Of<IQueryViewRegistry>();
 
         Assert.Throws<ArgumentNullException>(() =>
-            new QueryableRegistry(contextRegistry.Object, viewRegistry, null!, NullLogger<QueryableRegistry>.Instance));
+            CreateSut(contextRegistry.Object, viewRegistry, null!));
     }
 
     [Fact]
@@ -52,7 +63,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
         Assert.Single(registry.Registrations);
         Assert.Equal("context1", registry.Registrations.First().Name);
@@ -83,7 +94,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([delegatedRegistration]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
         Assert.Equal(2, registry.Registrations.Count);
         Assert.Contains(registry.Registrations, r => r.Name == "context1");
@@ -115,7 +126,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([delegatedRegistration]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
         Assert.Equal("apple", registry.Registrations.First().Name);
         Assert.Equal("zebra", registry.Registrations.Last().Name);
@@ -132,7 +143,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
         Assert.Throws<ArgumentNullException>(() =>
             registry.Find(null!));
@@ -149,7 +160,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
         Assert.Throws<ArgumentException>(() =>
             registry.Find("   "));
@@ -171,7 +182,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
         var result = registry.Find("context1");
 
@@ -190,7 +201,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
         var result = registry.Find("unknown");
 
@@ -213,7 +224,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
         var result = registry.Find("CONTEXT1");
 
@@ -237,7 +248,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
         var result = registry.GetRegistration("context1");
 
@@ -256,7 +267,7 @@ public sealed class QueryableRegistryTests
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
-        var registry = new QueryableRegistry(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object, NullLogger<QueryableRegistry>.Instance);
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
         var ex = Assert.Throws<KaleidoFrameworkException>(() =>
             registry.GetRegistration("unknown"));

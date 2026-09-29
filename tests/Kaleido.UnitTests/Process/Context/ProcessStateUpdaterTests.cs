@@ -2,18 +2,20 @@ using Kaleido.Exceptions;
 using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Context;
 
 public sealed class ProcessStateUpdaterTests
+    : SutFixture
 {
     private readonly Mock<IProcessStepRegistry> _registry = new();
     private readonly KaleidoServiceOptions _options = new() { ServiceName = "test-service" };
-    private readonly ProcessStateUpdater _updater;
 
-    public ProcessStateUpdaterTests()
-    {
-        _updater = new ProcessStateUpdater(_registry.Object, _options);
-    }
+    private ProcessStateUpdater Sut => CreateSut();
+
+    private ProcessStateUpdater CreateSut() =>
+        new(_registry.Object, _options);
 
     [Fact]
     public void Initialize_CreatesContextWithCorrectProperties()
@@ -31,7 +33,7 @@ public sealed class ProcessStateUpdaterTests
 
         _registry.Setup(r => r.Registrations).Returns([registration]);
 
-        var result = _updater.Initialize(processId);
+        var result = Sut.Initialize(processId);
 
         Assert.Equal(processId, result.ProcessId);
         Assert.Equal("test-service", result.ProcessorName);
@@ -49,7 +51,7 @@ public sealed class ProcessStateUpdaterTests
         _registry.Setup(r => r.Registrations).Returns([]);
 
         var before = DateTime.UtcNow;
-        var result = _updater.Initialize(processId);
+        var result = Sut.Initialize(processId);
         var after = DateTime.UtcNow;
 
         Assert.InRange(result.CreatedUtc, before, after);
@@ -60,7 +62,7 @@ public sealed class ProcessStateUpdaterTests
     public void Reconcile_WhenContextIsNull_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            _updater.Reconcile(null!));
+            Sut.Reconcile(null!));
     }
 
     [Fact]
@@ -85,7 +87,7 @@ public sealed class ProcessStateUpdaterTests
 
         _registry.Setup(r => r.Registrations).Returns([newRegistration]);
 
-        var result = _updater.Reconcile(context);
+        var result = Sut.Reconcile(context);
 
         Assert.Single(result.Steps);
         Assert.Equal("new-step", result.Steps.First().StepName);
@@ -117,7 +119,7 @@ public sealed class ProcessStateUpdaterTests
 
         _registry.Setup(r => r.Registrations).Returns([updatedRegistration]);
 
-        var result = _updater.Reconcile(context);
+        var result = Sut.Reconcile(context);
 
         Assert.Single(result.Steps);
         Assert.Equal("2.0", result.Steps.First().Version);
@@ -137,7 +139,7 @@ public sealed class ProcessStateUpdaterTests
         _registry.Setup(r => r.Registrations).Returns([]);
 
         var before = DateTime.UtcNow;
-        var result = _updater.Reconcile(context);
+        var result = Sut.Reconcile(context);
         var after = DateTime.UtcNow;
 
         Assert.InRange(result.UpdatedUtc, before, after);
@@ -150,7 +152,7 @@ public sealed class ProcessStateUpdaterTests
         var decision = new ExecutionDecision { Type = ExecutionDecisionType.Continue };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _updater.ApplyExecution(null!, candidate, decision));
+            Sut.ApplyExecution(null!, candidate, decision));
     }
 
     [Fact]
@@ -160,7 +162,7 @@ public sealed class ProcessStateUpdaterTests
         var decision = new ExecutionDecision { Type = ExecutionDecisionType.Continue };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _updater.ApplyExecution(context, null!, decision));
+            Sut.ApplyExecution(context, null!, decision));
     }
 
     [Fact]
@@ -170,7 +172,7 @@ public sealed class ProcessStateUpdaterTests
         var candidate = new StepCandidate { StepName = "test" };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _updater.ApplyExecution(context, candidate, null!));
+            Sut.ApplyExecution(context, candidate, null!));
     }
 
     [Fact]
@@ -186,7 +188,7 @@ public sealed class ProcessStateUpdaterTests
         var decision = new ExecutionDecision { Type = ExecutionDecisionType.Continue };
 
         Assert.Throws<KaleidoFrameworkException>(() =>
-            _updater.ApplyExecution(context, candidate, decision));
+            Sut.ApplyExecution(context, candidate, decision));
     }
 
     [Fact]
@@ -204,7 +206,7 @@ public sealed class ProcessStateUpdaterTests
         var candidate = new StepCandidate { StepName = "test-step" };
         var decision = new ExecutionDecision { Type = ExecutionDecisionType.Continue };
 
-        var result = _updater.ApplyExecution(context, candidate, decision);
+        var result = Sut.ApplyExecution(context, candidate, decision);
 
         Assert.Equal(StepExecutionStatus.Completed, result.Steps.First().Status);
     }
@@ -224,7 +226,7 @@ public sealed class ProcessStateUpdaterTests
         var candidate = new StepCandidate { StepName = "test-step" };
         var decision = new ExecutionDecision { Type = ExecutionDecisionType.Complete };
 
-        var result = _updater.ApplyExecution(context, candidate, decision);
+        var result = Sut.ApplyExecution(context, candidate, decision);
 
         Assert.Equal(ProcessExecutionState.Complete, result.State);
     }
@@ -250,7 +252,7 @@ public sealed class ProcessStateUpdaterTests
             AvailableSteps = ["step1", "step2"]
         };
 
-        var result = _updater.ApplyExecution(context, candidate, decision);
+        var result = Sut.ApplyExecution(context, candidate, decision);
 
         Assert.Equal("required-step", result.RequiredStep);
         Assert.Equal("target-processor", result.TargetProcessorName);
@@ -274,7 +276,7 @@ public sealed class ProcessStateUpdaterTests
         var decision = new ExecutionDecision { Type = ExecutionDecisionType.Continue };
 
         var before = DateTime.UtcNow;
-        var result = _updater.ApplyExecution(context, candidate, decision);
+        var result = Sut.ApplyExecution(context, candidate, decision);
         var after = DateTime.UtcNow;
 
         Assert.InRange(result.UpdatedUtc, before, after);
@@ -286,7 +288,7 @@ public sealed class ProcessStateUpdaterTests
         var candidate = new StepCandidate { StepName = "test" };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _updater.ApplyException(null!, candidate));
+            Sut.ApplyException(null!, candidate));
     }
 
     [Fact]
@@ -295,7 +297,7 @@ public sealed class ProcessStateUpdaterTests
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _updater.ApplyException(context, null!));
+            Sut.ApplyException(context, null!));
     }
 
     [Fact]
@@ -310,7 +312,7 @@ public sealed class ProcessStateUpdaterTests
         var candidate = new StepCandidate { StepName = "unknown-step" };
 
         Assert.Throws<KaleidoFrameworkException>(() =>
-            _updater.ApplyException(context, candidate));
+            Sut.ApplyException(context, candidate));
     }
 
     [Fact]
@@ -327,7 +329,7 @@ public sealed class ProcessStateUpdaterTests
         };
         var candidate = new StepCandidate { StepName = "test-step" };
 
-        var result = _updater.ApplyException(context, candidate);
+        var result = Sut.ApplyException(context, candidate);
 
         Assert.Equal(StepExecutionStatus.Exception, result.Steps.First().Status);
     }
@@ -346,7 +348,7 @@ public sealed class ProcessStateUpdaterTests
         };
         var candidate = new StepCandidate { StepName = "test-step" };
 
-        var result = _updater.ApplyException(context, candidate);
+        var result = Sut.ApplyException(context, candidate);
 
         Assert.Equal(ProcessExecutionState.Exception, result.State);
     }
@@ -368,7 +370,7 @@ public sealed class ProcessStateUpdaterTests
         };
         var candidate = new StepCandidate { StepName = "test-step" };
 
-        var result = _updater.ApplyException(context, candidate);
+        var result = Sut.ApplyException(context, candidate);
 
         Assert.Null(result.RequiredStep);
         Assert.Null(result.TargetProcessorName);
@@ -381,7 +383,7 @@ public sealed class ProcessStateUpdaterTests
         var candidate = new StepCandidate { StepName = "test" };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _updater.ApplyCancellation(null!, candidate));
+            Sut.ApplyCancellation(null!, candidate));
     }
 
     [Fact]
@@ -390,7 +392,7 @@ public sealed class ProcessStateUpdaterTests
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _updater.ApplyCancellation(context, null!));
+            Sut.ApplyCancellation(context, null!));
     }
 
     [Fact]
@@ -405,7 +407,7 @@ public sealed class ProcessStateUpdaterTests
         var candidate = new StepCandidate { StepName = "unknown-step" };
 
         Assert.Throws<KaleidoFrameworkException>(() =>
-            _updater.ApplyCancellation(context, candidate));
+            Sut.ApplyCancellation(context, candidate));
     }
 
     [Fact]
@@ -422,7 +424,7 @@ public sealed class ProcessStateUpdaterTests
         };
         var candidate = new StepCandidate { StepName = "test-step" };
 
-        var result = _updater.ApplyCancellation(context, candidate);
+        var result = Sut.ApplyCancellation(context, candidate);
 
         Assert.Equal(StepExecutionStatus.Canceled, result.Steps.First().Status);
     }
@@ -441,7 +443,7 @@ public sealed class ProcessStateUpdaterTests
         };
         var candidate = new StepCandidate { StepName = "test-step" };
 
-        var result = _updater.ApplyCancellation(context, candidate);
+        var result = Sut.ApplyCancellation(context, candidate);
 
         Assert.Equal(ProcessExecutionState.Canceled, result.State);
     }
@@ -463,7 +465,7 @@ public sealed class ProcessStateUpdaterTests
         };
         var candidate = new StepCandidate { StepName = "test-step" };
 
-        var result = _updater.ApplyCancellation(context, candidate);
+        var result = Sut.ApplyCancellation(context, candidate);
 
         Assert.Null(result.RequiredStep);
         Assert.Null(result.TargetProcessorName);

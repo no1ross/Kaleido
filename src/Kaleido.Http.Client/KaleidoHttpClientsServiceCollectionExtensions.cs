@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,7 +27,10 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
 
             if (string.IsNullOrWhiteSpace(baseUrl))
             {
-                continue;
+                throw new KaleidoConfigurationException(
+                    ConfigurationErrorCodes.MissingBaseUrl,
+                    $"Kaleido client '{name}' has no BaseUrl configured. " +
+                    $"Set 'Kaleido:Clients:{name}:BaseUrl' or the shared 'Kaleido:BaseUrl' fallback.");
             }
 
             var prefix = entry?.RoutePrefix ?? name.ToLowerInvariant();

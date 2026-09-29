@@ -1,5 +1,5 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Testing;
+using Kaleido.Testing;
 using Xunit;
 using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Source.DependencyInjection.ConstructorWorkAnalyzer>;
@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.Source.UnitTests;
 
 public sealed class ConstructorWorkAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Source.DependencyInjection.ConstructorWorkAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Source.DependencyInjection.ConstructorWorkAnalyzer CreateSut() =>
+        new();
+
     private static readonly DiagnosticResult Expected =
         new("KAL0011", DiagnosticSeverity.Error);
 

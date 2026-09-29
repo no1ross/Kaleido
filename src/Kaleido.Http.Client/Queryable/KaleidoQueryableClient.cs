@@ -36,7 +36,9 @@ internal sealed class KaleidoQueryableClient(
                 $"{callerServiceName} tried to call context '{context}' on the remote registry, but it was not found.",
                 HttpStatusCode.NotFound);
 
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Get, contextRecord.MetadataUrl);
+        using var httpRequest = new HttpRequestMessage(
+            HttpMethod.Get,
+            contextRecord.MetadataUrl.RequireValidRegistryUrl(nameof(contextRecord.MetadataUrl), httpClient.BaseAddress));
 
         headerStamper.Stamp(httpRequest);
 
@@ -119,7 +121,9 @@ internal sealed class KaleidoQueryableClient(
         string? view = null)
         where TView : class
     {
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
+        using var httpRequest = new HttpRequestMessage(
+            HttpMethod.Post,
+            url.RequireValidRegistryUrl(nameof(url), httpClient.BaseAddress))
         {
             Content = JsonContent.Create(request)
         };
