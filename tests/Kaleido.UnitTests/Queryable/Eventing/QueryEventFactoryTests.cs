@@ -1,18 +1,19 @@
 using Kaleido.Observability;
+using Kaleido.UnitTests;
 using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Observability;
 
 namespace Kaleido.Queryable.UnitTests.Eventing;
 
 public sealed class QueryEventFactoryTests
+    : SutFixture
 {
     private readonly KaleidoServiceOptions _options = new() { ServiceName = "test-service" };
-    private readonly QueryEventFactory _factory;
 
-    public QueryEventFactoryTests()
-    {
-        _factory = new QueryEventFactory(_options);
-    }
+    private QueryEventFactory Sut => CreateSut();
+
+    private QueryEventFactory CreateSut() =>
+        new(_options);
 
     [Fact]
     public void CreateQueryExecuted_WhenCorrelationIsNull_Throws()
@@ -22,7 +23,7 @@ public sealed class QueryEventFactoryTests
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreateQueryExecuted(null!, details, request, result));
+            Sut.CreateQueryExecuted(null!, details, request, result));
     }
 
     [Fact]
@@ -33,7 +34,7 @@ public sealed class QueryEventFactoryTests
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreateQueryExecuted(correlation, null!, request, result));
+            Sut.CreateQueryExecuted(correlation, null!, request, result));
     }
 
     [Fact]
@@ -44,7 +45,7 @@ public sealed class QueryEventFactoryTests
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreateQueryExecuted(correlation, details, null!, result));
+            Sut.CreateQueryExecuted(correlation, details, null!, result));
     }
 
     [Fact]
@@ -55,7 +56,7 @@ public sealed class QueryEventFactoryTests
         var request = new QueryRequest();
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreateQueryExecuted<TestView>(correlation, details, request, null!));
+            Sut.CreateQueryExecuted<TestView>(correlation, details, request, null!));
     }
 
     [Fact]
@@ -66,7 +67,7 @@ public sealed class QueryEventFactoryTests
         var request = new QueryRequest();
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
-        var envelope = _factory.CreateQueryExecuted<TestView>(correlation, details, request, result);
+        var envelope = Sut.CreateQueryExecuted<TestView>(correlation, details, request, result);
 
         Assert.NotNull(envelope);
         Assert.NotNull(envelope.Context);
@@ -85,7 +86,7 @@ public sealed class QueryEventFactoryTests
         var results = new[] { new TestView { Id = 1, Name = "test" } };
         var result = new QueryResult<TestView>(1, 0, 10, results);
 
-        var envelope = _factory.CreateQueryExecuted<TestView>(correlation, details, request, result);
+        var envelope = Sut.CreateQueryExecuted<TestView>(correlation, details, request, result);
 
         Assert.NotNull(envelope);
         Assert.NotNull(envelope.Event);
@@ -106,7 +107,7 @@ public sealed class QueryEventFactoryTests
         var request = new QueryRequest();
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
-        var envelope = _factory.CreateQueryExecuted<TestView>(correlation, details, request, result);
+        var envelope = Sut.CreateQueryExecuted<TestView>(correlation, details, request, result);
 
         Assert.True(envelope.Event.IsDirectQuery);
     }
@@ -119,7 +120,7 @@ public sealed class QueryEventFactoryTests
         var request = new QueryRequest { Query = new QueryBody() };
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
-        var envelope = _factory.CreateQueryExecuted<TestView>(correlation, details, request, result);
+        var envelope = Sut.CreateQueryExecuted<TestView>(correlation, details, request, result);
 
         Assert.Null(envelope.Event.SearchText);
     }
@@ -132,7 +133,7 @@ public sealed class QueryEventFactoryTests
         var request = new QueryRequest { Query = new QueryBody() };
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
-        var envelope = _factory.CreateQueryExecuted<TestView>(correlation, details, request, result);
+        var envelope = Sut.CreateQueryExecuted<TestView>(correlation, details, request, result);
 
         Assert.Equal(0, envelope.Event.SortCount);
     }
@@ -145,7 +146,7 @@ public sealed class QueryEventFactoryTests
         var request = new QueryRequest { Query = new QueryBody() };
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
-        var envelope = _factory.CreateQueryExecuted<TestView>(correlation, details, request, result);
+        var envelope = Sut.CreateQueryExecuted<TestView>(correlation, details, request, result);
 
         Assert.False(envelope.Event.FilterProvided);
     }

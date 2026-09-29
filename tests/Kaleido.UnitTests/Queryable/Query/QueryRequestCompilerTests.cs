@@ -3,16 +3,21 @@ using Kaleido.Exceptions;
 namespace Kaleido.Queryable.UnitTests.Query;
 
 public sealed class QueryRequestCompilerTests
+    : Kaleido.UnitTests.SutFixture
 {
     private static readonly DataTypeDescriptor TestDataType =
         new("string");
 
-    private readonly QueryRequestCompiler _compiler = new();
+    private QueryRequestCompiler Sut =>
+        CreateSut();
+
+    private static QueryRequestCompiler CreateSut() =>
+        new();
 
     [Fact]
     public void Compile_UsesContextPageableDefaults()
     {
-        var result = _compiler.Compile(new QueryRequest(), CreateContextMetadata());
+        var result = Sut.Compile(new QueryRequest(), CreateContextMetadata());
 
         Assert.Equal(25, result.Page.Size);
         Assert.Equal(0, result.Page.Offset);
@@ -21,7 +26,7 @@ public sealed class QueryRequestCompilerTests
     [Fact]
     public void Compile_UsesViewPageableDefaults()
     {
-        var result = _compiler.Compile(new QueryRequest(), CreateContextMetadataWithoutPageable(), CreateViewMetadata());
+        var result = Sut.Compile(new QueryRequest(), CreateContextMetadataWithoutPageable(), CreateViewMetadata());
 
         Assert.Equal(10, result.Page.Size);
         Assert.Equal(0, result.Page.Offset);
@@ -30,7 +35,7 @@ public sealed class QueryRequestCompilerTests
     [Fact]
     public void Compile_UsesFallbackPageSizeWhenNoPageableIsDefined()
     {
-        var result = _compiler.Compile(new QueryRequest(), CreateContextMetadataWithoutPageable());
+        var result = Sut.Compile(new QueryRequest(), CreateContextMetadataWithoutPageable());
 
         Assert.Equal(50, result.Page.Size);
         Assert.Equal(0, result.Page.Offset);
@@ -41,7 +46,7 @@ public sealed class QueryRequestCompilerTests
     {
         var request = new QueryRequest(new QueryBody(Page: new QueryPage(500, 3)));
 
-        var result = _compiler.Compile(request, CreateContextMetadata());
+        var result = Sut.Compile(request, CreateContextMetadata());
 
         Assert.Equal(100, result.Page.Size);
         Assert.Equal(3, result.Page.Offset);
@@ -52,7 +57,7 @@ public sealed class QueryRequestCompilerTests
     {
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition(nameof(TestRecord.Code), FilterOperator.Equals, "A")));
 
-        var result = _compiler.Compile(request, CreateContextMetadata());
+        var result = Sut.Compile(request, CreateContextMetadata());
 
         var condition = Assert.IsType<CompiledFilterCondition>(result.Filter);
         Assert.Equal(nameof(TestRecord.Code), condition.Field.Name);
@@ -72,7 +77,7 @@ public sealed class QueryRequestCompilerTests
                         LogicalOperator.Or,
                         QueryFilterNode.CreateCondition(nameof(TestRecord.Name), FilterOperator.Contains, "A")))));
 
-        var result = _compiler.Compile(request, CreateContextMetadata());
+        var result = Sut.Compile(request, CreateContextMetadata());
 
         var group = Assert.IsType<CompiledFilterGroup>(result.Filter);
         Assert.Equal(LogicalOperator.And, group.Operator);
@@ -84,7 +89,7 @@ public sealed class QueryRequestCompilerTests
     {
         var request = new QueryRequest(new QueryBody(SearchText: "abc"));
 
-        var result = _compiler.Compile(request, CreateContextMetadata());
+        var result = Sut.Compile(request, CreateContextMetadata());
 
         var search = Assert.IsType<CompiledSearch>(result.Search);
         Assert.Equal("abc", search.SearchText);
@@ -102,7 +107,7 @@ public sealed class QueryRequestCompilerTests
                     new QuerySort(nameof(TestRecord.Code), SortDirection.Ascending, 1)
                 ]));
 
-        var result = _compiler.Compile(request, CreateContextMetadata());
+        var result = Sut.Compile(request, CreateContextMetadata());
 
         Assert.Equal([nameof(TestRecord.Code), nameof(TestRecord.Region)], result.Sort.Select(x => x.Field.Name));
         Assert.Equal([0, 1], result.Sort.Select(x => x.Sequence));
@@ -113,7 +118,7 @@ public sealed class QueryRequestCompilerTests
     {
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Missing", FilterOperator.Equals, "A")));
 
-        var exception = Assert.Throws<KaleidoValidationException>(() => _compiler.Compile(request, CreateContextMetadata()));
+        var exception = Assert.Throws<KaleidoValidationException>(() => Sut.Compile(request, CreateContextMetadata()));
 
         Assert.Equal(ValidationErrorCodes.QryInvalidField, exception.Code);
         Assert.Contains("Field 'Missing' does not exist", exception.Message);

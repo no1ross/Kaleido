@@ -1,9 +1,13 @@
 using Kaleido.Process;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Processor;
 
 public sealed class ProcessRequestTests
+    : SutFixture
 {
+
     [ProcessStep(Name = "my-step", Version = "1.0")]
     private sealed class StepWithAttribute
     {

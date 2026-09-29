@@ -5,8 +5,12 @@ using Kaleido.Exceptions;
 namespace Kaleido.Abstractions.UnitTests;
 
 public sealed class DataTypeMapperTests
+    : Kaleido.UnitTests.SutFixture
 {
-    private readonly DataTypeMapper _sut = new();
+    private static DataTypeMapper CreateSut() =>
+        new();
+
+    private readonly DataTypeMapper _sut = CreateSut();
 
     [Fact]
     public void GetDescriptor_WhenPropertyIsNullableValueType_PreservesUnderlyingDescriptorAndMarksNullable()

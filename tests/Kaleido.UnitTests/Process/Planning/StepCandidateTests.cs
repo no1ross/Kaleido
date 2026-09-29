@@ -1,7 +1,10 @@
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Planning;
 
 public sealed class StepCandidateTests
+    : SutFixture
 {
     private static StepCandidate CreateSut(string stepName = "test-step") =>
         new() { StepName = stepName };

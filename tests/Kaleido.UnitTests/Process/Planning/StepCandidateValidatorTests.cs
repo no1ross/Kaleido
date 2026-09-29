@@ -1,11 +1,17 @@
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Exceptions;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Processor.Planning;
 
 public sealed class StepCandidateValidatorTests
+    : SutFixture
 {
-    private readonly StepCandidateValidator _validator =
+    private StepCandidateValidator Sut =>
+        CreateSut();
+
+    private static StepCandidateValidator CreateSut() =>
         new();
 
     [Fact]
@@ -19,7 +25,7 @@ public sealed class StepCandidateValidatorTests
 
         candidate.Step = null;
 
-        _validator.Validate([candidate]);
+        Sut.Validate([candidate]);
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -40,7 +46,7 @@ public sealed class StepCandidateValidatorTests
 
         var exception =
             Assert.Throws<KaleidoFrameworkException>(() =>
-                _validator.Validate([candidate]));
+                Sut.Validate([candidate]));
 
         Assert.Equal(
             "Candidate 'test-step' does not contain a hydrated step.",
@@ -63,7 +69,7 @@ public sealed class StepCandidateValidatorTests
                 }
             };
 
-        _validator.Validate([candidate]);
+        Sut.Validate([candidate]);
 
         Assert.Equal(
             StepCandidateStatus.Built,
@@ -88,7 +94,7 @@ public sealed class StepCandidateValidatorTests
                 }
             };
 
-        _validator.Validate([candidate]);
+        Sut.Validate([candidate]);
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -115,7 +121,7 @@ public sealed class StepCandidateValidatorTests
                 Step = new ValidationStep()
             };
 
-        _validator.Validate([candidate]);
+        Sut.Validate([candidate]);
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -149,7 +155,7 @@ public sealed class StepCandidateValidatorTests
                 }
             };
 
-        _validator.Validate([candidate]);
+        Sut.Validate([candidate]);
 
         Assert.Equal(
             StepCandidateStatus.Invalid,
@@ -186,7 +192,7 @@ public sealed class StepCandidateValidatorTests
                 Step = new ValidationStep()
             };
 
-        _validator.Validate(
+        Sut.Validate(
             [
                 validCandidate,
                 invalidCandidate

@@ -1,9 +1,12 @@
 using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Processor.Execution;
 
 public sealed class StepAvailabilityResolverTests
+    : SutFixture
 {
     [Fact]
     public void Resolve_WhenCandidateHasNoDependencies_ReturnsCandidate()
@@ -26,7 +29,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-b",
                 nextRegistration);
 
-        var resolver = CreateResolver(nextRegistration);
+        var resolver = CreateSut(nextRegistration);
 
         var result =
             resolver.Resolve(
@@ -62,7 +65,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-b",
                 dependentRegistration);
 
-        var resolver = CreateResolver(dependentRegistration);
+        var resolver = CreateSut(dependentRegistration);
 
         var result =
             resolver.Resolve(
@@ -102,7 +105,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-c",
                 dependentRegistration);
 
-        var resolver = CreateResolver(completedRegistration, dependentRegistration);
+        var resolver = CreateSut(completedRegistration, dependentRegistration);
 
         var result =
             resolver.Resolve(
@@ -143,7 +146,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-c",
                 dependentRegistration);
 
-        var resolver = CreateResolver();
+        var resolver = CreateSut();
 
         var result =
             resolver.Resolve(
@@ -175,7 +178,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-b",
                 currentRegistration);
 
-        var resolver = CreateResolver(completedRegistration);
+        var resolver = CreateSut(completedRegistration);
 
         var result =
             resolver.Resolve(
@@ -199,7 +202,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-a",
                 currentRegistration);
 
-        var resolver = CreateResolver();
+        var resolver = CreateSut();
 
         var result =
             resolver.Resolve(
@@ -235,7 +238,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-b",
                 availableAfterRegistration);
 
-        var resolver = CreateResolver(availableAfterRegistration);
+        var resolver = CreateSut(availableAfterRegistration);
 
         var result =
             resolver.Resolve(
@@ -275,7 +278,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-c",
                 availableAfterRegistration);
 
-        var resolver = CreateResolver(completedRegistration, availableAfterRegistration);
+        var resolver = CreateSut(completedRegistration, availableAfterRegistration);
 
         var result =
             resolver.Resolve(
@@ -316,7 +319,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-c",
                 availableAfterRegistration);
 
-        var resolver = CreateResolver();
+        var resolver = CreateSut();
 
         var result =
             resolver.Resolve(
@@ -356,7 +359,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-c",
                 availableUntilRegistration);
 
-        var resolver = CreateResolver(availableUntilRegistration);
+        var resolver = CreateSut(availableUntilRegistration);
 
         var result =
             resolver.Resolve(
@@ -396,7 +399,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-c",
                 availableUntilRegistration);
 
-        var resolver = CreateResolver(completedRegistration);
+        var resolver = CreateSut(completedRegistration);
 
         var result =
             resolver.Resolve(
@@ -433,7 +436,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-b",
                 availableUntilRegistration);
 
-        var resolver = CreateResolver();
+        var resolver = CreateSut();
 
         var result =
             resolver.Resolve(
@@ -489,7 +492,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-e",
                 candidateRegistration);
 
-        var resolver = CreateResolver(dependencyRegistration, availableAfterRegistration, candidateRegistration);
+        var resolver = CreateSut(dependencyRegistration, availableAfterRegistration, candidateRegistration);
 
         var result =
             resolver.Resolve(
@@ -539,7 +542,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-d",
                 candidateRegistration);
 
-        var resolver = CreateResolver(dependencyRegistration);
+        var resolver = CreateSut(dependencyRegistration);
 
         var result =
             resolver.Resolve(
@@ -581,7 +584,7 @@ public sealed class StepAvailabilityResolverTests
                 "STEP-B",
                 registration2);
 
-        var resolver = CreateResolver(currentRegistration, registration1, registration2);
+        var resolver = CreateSut(currentRegistration, registration1, registration2);
 
         var result =
             resolver.Resolve(
@@ -606,7 +609,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-a",
                 registration);
 
-        var resolver = CreateResolver(registration);
+        var resolver = CreateSut(registration);
 
         var result =
             resolver.Resolve(
@@ -639,7 +642,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-b",
                 repeatableRegistration);
 
-        var resolver = CreateResolver(closedRegistration, repeatableRegistration);
+        var resolver = CreateSut(closedRegistration, repeatableRegistration);
 
         var result =
             resolver.Resolve(
@@ -668,7 +671,7 @@ public sealed class StepAvailabilityResolverTests
                 "step-a",
                 currentRegistration);
 
-        var resolver = CreateResolver(nextRegistration);
+        var resolver = CreateSut(nextRegistration);
 
         var result =
             resolver.Resolve(
@@ -735,7 +738,7 @@ public sealed class StepAvailabilityResolverTests
         };
     }
 
-    private static StepAvailabilityResolver CreateResolver(
+    private static StepAvailabilityResolver CreateSut(
         params ProcessStepRegistration[] registrations)
     {
         var registry =

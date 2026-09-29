@@ -3,14 +3,17 @@ using Kaleido.Observability;
 using Kaleido.Process.Observability;
 using Microsoft.Extensions.Logging;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Observability;
 
 public sealed class ProcessObservabilityTests
+    : SutFixture
 {
     [Fact]
     public void BeginExecution_WhenDetailsIsNull_Throws()
     {
-        var observability = CreateObservability();
+        var observability = CreateSut();
 
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
@@ -27,7 +30,7 @@ public sealed class ProcessObservabilityTests
         // MeterListener is process-global; isolate this test's measurements by
         // filtering on a unique processor.name tag so parallel tests don't leak in.
         var serviceName = $"test-processor-{Guid.NewGuid():N}";
-        var observability = CreateObservability(serviceName);
+        var observability = CreateSut(serviceName);
 
         using var listener = new MeterListener();
         var measurements = new List<(string InstrumentName, long Value)>();
@@ -99,7 +102,7 @@ public sealed class ProcessObservabilityTests
     [Fact]
     public void BeginStep_WhenDetailsIsNull_Throws()
     {
-        var observability = CreateObservability();
+        var observability = CreateSut();
 
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
@@ -113,7 +116,7 @@ public sealed class ProcessObservabilityTests
     [Fact]
     public void BeginHandler_WhenDetailsIsNull_Throws()
     {
-        var observability = CreateObservability();
+        var observability = CreateSut();
 
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
@@ -127,7 +130,7 @@ public sealed class ProcessObservabilityTests
     [Fact]
     public void ExecutionFailed_WhenExceptionIsNull_Throws()
     {
-        var observability = CreateObservability();
+        var observability = CreateSut();
 
         using var observation =
             observability.BeginExecution(
@@ -145,7 +148,7 @@ public sealed class ProcessObservabilityTests
     [Fact]
     public void StepFailed_WhenExceptionIsNull_Throws()
     {
-        var observability = CreateObservability();
+        var observability = CreateSut();
 
         using var observation =
             observability.BeginStep(
@@ -165,7 +168,7 @@ public sealed class ProcessObservabilityTests
     [Fact]
     public void HandlerFailed_WhenExceptionIsNull_Throws()
     {
-        var observability = CreateObservability();
+        var observability = CreateSut();
 
         using var observation =
             observability.BeginHandler(
@@ -182,7 +185,7 @@ public sealed class ProcessObservabilityTests
             exception.ParamName);
     }
 
-    private static ProcessObservability CreateObservability(
+    private static ProcessObservability CreateSut(
         string serviceName = "test-processor")
     {
         var correlationAccessor =

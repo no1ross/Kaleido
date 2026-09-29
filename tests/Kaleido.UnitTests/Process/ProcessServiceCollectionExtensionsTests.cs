@@ -3,9 +3,12 @@ using Kaleido.Process.Registry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Processor;
 
 public sealed class ProcessServiceCollectionExtensionsTests
+    : SutFixture
 {
     [Fact]
     public void AddProcessor_RegistersProcessorRegistry()
