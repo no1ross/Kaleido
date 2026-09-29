@@ -282,8 +282,13 @@ dotnet_diagnostic.MA0016.severity = suggestion
 ; single SUT — the SutFixture contract is for unit-test fixtures only
 dotnet_diagnostic.KAL1006.severity = none
 
-[tests/Kaleido.IntegrationTests/**/*.cs]
+[tests/Kaleido.IntegrationTests/*.cs]
 
 ; KAL1006: integration tests exercise composed subsystems, not a single SUT
+dotnet_diagnostic.KAL1006.severity = none
+
+[tests/Kaleido.IntegrationTests/**/*.cs]
+
+; (root-level files covered by the section above)
 dotnet_diagnostic.KAL1006.severity = none
 
