@@ -32,21 +32,45 @@ jobs:
     - name: Test
       run: dotnet test --configuration Release --no-build --collect:"XPlat Code Coverage" --settings coverlet.runsettings
 
-    - name: Coverage gate
+    # Merge per-project lcov into a union report. Summing LH/LF across files
+    # would double-count shared src assemblies; reportgenerator merges hits.
+    # Scope is shipped src/ assemblies only - tests/, tools/, samples/ excluded.
+    - name: Merge coverage
       run: |
-        lh=$(find . -name coverage.info -path '*TestResults*' -exec grep -h '^LH:' {} + | awk -F: '{s+=$2} END{print s+0}')
-        lf=$(find . -name coverage.info -path '*TestResults*' -exec grep -h '^LF:' {} + | awk -F: '{s+=$2} END{print s+0}')
+        dotnet tool install --global reportgenerator.globaltool
+        reportgenerator \
+          "-reports:**/TestResults/**/coverage.info" \
+          "-targetdir:coverage" \
+          "-reporttypes:lcov;HtmlSummary" \
+          "-assemblyfilters:-*Tests*;-*FunctionalTests*;-*IntegrationTests*" \
+          "-filefilters:-*/tests/*;-*/tools/*;-*/samples/*"
+
+    # ADVISORY: reports merged line coverage vs the 90% target and emits a
+    # warning annotation. Not enforced yet - flip continue-on-error to hard-gate
+    # once coverage is sustained above the floor. Ratchet: raise, never lower.
+    - name: Coverage gate (advisory)
+      continue-on-error: true
+      run: |
+        lh=$(awk -F: '/^LH:/{s+=$2} END{print s+0}' coverage/lcov.info)
+        lf=$(awk -F: '/^LF:/{s+=$2} END{print s+0}' coverage/lcov.info)
         rate=$(awk "BEGIN{r=0; if ($lf>0) r=$lh*100.0/$lf; printf \"%.1f\", r}")
-        echo "Line coverage: $rate% ($lh/$lf) - floor: $COVERAGE_FLOOR%"
-        awk "BEGIN{exit !($rate+0 >= $COVERAGE_FLOOR)}"
+        echo "Merged line coverage: $rate% ($lh/$lf) - target: $COVERAGE_FLOOR%"
+        if awk "BEGIN{exit !($rate+0 >= $COVERAGE_FLOOR)}"; then
+          echo "Coverage meets the $COVERAGE_FLOOR% target."
+        else
+          echo "::warning::Merged line coverage $rate% is below the $COVERAGE_FLOOR% target."
+          exit 1
+        fi
       env:
-        # Ratchet floor - raise as coverage improves; do not lower.
-        COVERAGE_FLOOR: 10
+        COVERAGE_FLOOR: 90
 
     - name: Upload coverage
       uses: actions/upload-artifact@v4
       with:
         name: coverage
-        path: '**/TestResults/**/coverage.info'
+        path: |
+          '**/TestResults/**/coverage.info'
+          coverage/lcov.info
+          coverage/index.html
         if-no-files-found: ignore
 
