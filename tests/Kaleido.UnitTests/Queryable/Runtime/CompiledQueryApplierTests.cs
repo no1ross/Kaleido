@@ -4,6 +4,7 @@ using Kaleido.Queryable.Runtime;
 namespace Kaleido.Queryable.UnitTests.Runtime;
 
 public sealed class CompiledQueryApplierTests
+    : Kaleido.UnitTests.SutFixture
 {
     private sealed class FakeRecord
     {

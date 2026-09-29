@@ -1,5 +1,5 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Testing;
+using Kaleido.Testing;
 using Xunit;
 using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Source.Design.NullForgivingOperatorAnalyzer>;
@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.Source.UnitTests;
 
 public sealed class NullForgivingOperatorAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Source.Design.NullForgivingOperatorAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Source.Design.NullForgivingOperatorAnalyzer CreateSut() =>
+        new();
+
     [Fact]
     public async Task SuppressionOperator_Reports()
     {

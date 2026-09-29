@@ -3,13 +3,18 @@ using Kaleido.Queryable.Runtime;
 namespace Kaleido.Queryable.UnitTests.Runtime;
 
 public sealed class QueryContextExecutorTests
+    : Kaleido.UnitTests.SutFixture
 {
-    private readonly QueryContextExecutor<TestRecord> _sut = new();
+    private QueryContextExecutor<TestRecord> Sut =>
+        CreateSut();
+
+    private static QueryContextExecutor<TestRecord> CreateSut() =>
+        new();
 
     [Fact]
     public async Task CountAsync_ReturnsCount()
     {
-        var result = await _sut.CountAsync(TestData().AsQueryable());
+        var result = await Sut.CountAsync(TestData().AsQueryable());
 
         Assert.Equal(3, result);
     }
@@ -21,13 +26,13 @@ public sealed class QueryContextExecutorTests
         cts.Cancel();
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            _sut.CountAsync(TestData().AsQueryable(), cts.Token));
+            Sut.CountAsync(TestData().AsQueryable(), cts.Token));
     }
 
     [Fact]
     public async Task ToListAsync_ReturnsItemsInOrder()
     {
-        var result = await _sut.ToListAsync(TestData().OrderByDescending(x => x.Id).AsQueryable());
+        var result = await Sut.ToListAsync(TestData().OrderByDescending(x => x.Id).AsQueryable());
 
         Assert.Equal([3, 2, 1], result.Select(x => x.Id));
     }
@@ -39,13 +44,13 @@ public sealed class QueryContextExecutorTests
         cts.Cancel();
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            _sut.ToListAsync(TestData().AsQueryable(), cts.Token));
+            Sut.ToListAsync(TestData().AsQueryable(), cts.Token));
     }
 
     [Fact]
     public void ApplyPage_SkipsAndTakesRequestedRange()
     {
-        var result = _sut.ApplyPage(TestData().AsQueryable(), size: 1, offset: 1).ToArray();
+        var result = Sut.ApplyPage(TestData().AsQueryable(), size: 1, offset: 1).ToArray();
 
         var item = Assert.Single(result);
         Assert.Equal(2, item.Id);

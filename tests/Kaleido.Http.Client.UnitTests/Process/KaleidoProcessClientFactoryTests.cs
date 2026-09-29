@@ -5,7 +5,16 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Kaleido.Http.Client.UnitTests.Process;
 
 public sealed class KaleidoProcessClientFactoryTests
+    : Kaleido.UnitTests.SutFixture
 {
+    private static KaleidoProcessClientFactory CreateSut(
+        IHttpClientFactory httpClientFactory,
+        KaleidoProcessClientRouteOptionsMap routeOptionsMap) =>
+        new(
+            httpClientFactory,
+            Mock.Of<ICorrelationHeaderStamper>(),
+            NullLogger<KaleidoProcessClient>.Instance,
+            routeOptionsMap);
     [Fact]
     public void GetClient_WhenNamedClientIsRegistered_ReturnsClient()
     {
@@ -17,12 +26,7 @@ public sealed class KaleidoProcessClientFactoryTests
             .Setup(f => f.CreateClient(It.IsAny<string>()))
             .Returns(new System.Net.Http.HttpClient());
 
-        var factory = new KaleidoProcessClientFactory(
-            httpClientFactory.Object,
-            Mock.Of<IKaleidoCorrelationContextAccessor>(),
-            Mock.Of<ICorrelationHeaderStamper>(),
-            NullLogger<KaleidoProcessClient>.Instance,
-            routeMap);
+        var factory = CreateSut(httpClientFactory.Object, routeMap);
 
         var client = factory.GetClient("remote-svc");
 

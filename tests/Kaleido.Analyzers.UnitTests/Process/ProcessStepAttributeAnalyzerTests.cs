@@ -1,5 +1,5 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Testing;
+using Kaleido.Testing;
 using Xunit;
 using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Process.ProcessStepAttributeAnalyzer>;
@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.UnitTests.Process;
 
 public sealed class ProcessStepAttributeAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Process.ProcessStepAttributeAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Process.ProcessStepAttributeAnalyzer CreateSut() =>
+        new();
+
     private const string ProcessStepStub = @"
 namespace Kaleido.Process
 {

@@ -48,6 +48,27 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
                     new KaleidoError(exception.Code, exception.Message)
                 ]));
         }
+        catch (BadHttpRequestException exception)
+        {
+            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
+
+            logger.LogWarning(
+                exception,
+                "Malformed request: {Message}",
+                exception.Message);
+
+            context.Response.StatusCode = exception.StatusCode;
+
+            RecordEndpointError(
+                KaleidoErrorCodes.ArgumentError,
+                exception.StatusCode);
+
+            await context.Response.WriteAsJsonAsync(
+                new KaleidoErrorResponse(
+                [
+                    new KaleidoError(KaleidoErrorCodes.ArgumentError, exception.Message)
+                ]));
+        }
         catch (ArgumentException exception)
         {
             Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);

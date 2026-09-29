@@ -1,11 +1,15 @@
 using System.Text.Json;
 using Kaleido.Json;
 
-namespace Kaleido.UnitTests;
+namespace Kaleido.UnitTests.Json;
 
 public sealed class ValueConverterTests
+    : SutFixture
 {
-    private readonly ValueConverter _sut = new();
+    private static ValueConverter CreateSut() =>
+        new();
+
+    private readonly ValueConverter _sut = CreateSut();
 
     [Fact]
     public void Convert_WhenTargetTypeIsNull_Throws()

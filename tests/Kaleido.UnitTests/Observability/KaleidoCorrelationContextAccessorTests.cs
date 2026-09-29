@@ -1,14 +1,18 @@
 using Kaleido.Observability;
 
-namespace Kaleido.UnitTests;
+namespace Kaleido.UnitTests.Observability;
 
 public sealed class KaleidoCorrelationContextAccessorTests
+    : SutFixture
 {
+    private KaleidoCorrelationContextAccessor CreateSut() =>
+        new();
+
     [Fact]
     public void Current_BeforeInitialization_ReturnsDefaultContext()
     {
         var accessor =
-            new KaleidoCorrelationContextAccessor();
+            CreateSut();
 
         var current = accessor.Current;
 
@@ -24,7 +28,7 @@ public sealed class KaleidoCorrelationContextAccessorTests
     public void Initialize_WhenContextIsNull_Throws()
     {
         var accessor =
-            new KaleidoCorrelationContextAccessor();
+            CreateSut();
 
         Assert.Throws<ArgumentNullException>(() =>
             accessor.Initialize(null!));
@@ -34,7 +38,7 @@ public sealed class KaleidoCorrelationContextAccessorTests
     public void Initialize_UpdatesCurrentContext()
     {
         var accessor =
-            new KaleidoCorrelationContextAccessor();
+            CreateSut();
 
         var context =
             new KaleidoCorrelationContext

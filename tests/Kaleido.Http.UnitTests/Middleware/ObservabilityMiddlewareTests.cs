@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kaleido.Http.UnitTests.Middleware;
 
 public sealed class ObservabilityMiddlewareTests
+    : Kaleido.UnitTests.SutFixture
 {
     private static ObservabilityMiddleware CreateSut(RequestDelegate? next = null) =>
         new(next ?? (_ => Task.CompletedTask));

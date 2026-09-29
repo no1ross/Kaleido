@@ -5,14 +5,19 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kaleido.Queryable.UnitTests.Records;
 
 public sealed class QueryContextRegistrationValidatorTests
+    : Kaleido.UnitTests.SutFixture
 {
-    private readonly QueryContextRegistrationValidator _validator = new();
+    private QueryContextRegistrationValidator Sut =>
+        CreateSut();
+
+    private static QueryContextRegistrationValidator CreateSut() =>
+        new();
 
     [Fact]
     public void Validate_WhenQueryContextTypesIsNull_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            _validator.Validate(
+            Sut.Validate(
                 null!,
                 new ServiceCollection()));
     }
@@ -21,7 +26,7 @@ public sealed class QueryContextRegistrationValidatorTests
     public void Validate_WhenServicesIsNull_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            _validator.Validate(
+            Sut.Validate(
                 [typeof(TestContext)],
                 null!));
     }
@@ -32,7 +37,7 @@ public sealed class QueryContextRegistrationValidatorTests
         var services = new ServiceCollection();
         services.AddScoped<IQueryContextSource<TestContext>, TestContextSource>();
 
-        _validator.Validate(
+        Sut.Validate(
             [typeof(TestContext)],
             services);
     }
@@ -43,7 +48,7 @@ public sealed class QueryContextRegistrationValidatorTests
         var services = new ServiceCollection();
 
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            _validator.Validate(
+            Sut.Validate(
                 [typeof(TestContext), typeof(DuplicateContext)],
                 services));
 
@@ -56,7 +61,7 @@ public sealed class QueryContextRegistrationValidatorTests
         var services = new ServiceCollection();
 
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            _validator.Validate(
+            Sut.Validate(
                 [typeof(TestContext)],
                 services));
 
@@ -71,7 +76,7 @@ public sealed class QueryContextRegistrationValidatorTests
         services.AddScoped<IQueryContextSource<TestContext>, DuplicateTestContextSource>();
 
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            _validator.Validate(
+            Sut.Validate(
                 [typeof(TestContext)],
                 services));
 

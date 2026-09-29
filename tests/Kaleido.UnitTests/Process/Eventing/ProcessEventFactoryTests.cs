@@ -3,17 +3,19 @@ using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
 using Kaleido.Process.Registry;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Eventing;
 
 public sealed class ProcessEventFactoryTests
+    : SutFixture
 {
     private readonly KaleidoServiceOptions _options = new() { ServiceName = "test-service" };
-    private readonly ProcessEventFactory _factory;
 
-    public ProcessEventFactoryTests()
-    {
-        _factory = new ProcessEventFactory(_options);
-    }
+    private ProcessEventFactory Sut => CreateSut();
+
+    private ProcessEventFactory CreateSut() =>
+        new(_options);
 
     [Fact]
     public void CreateProcessCreated_WhenContextIsNull_Throws()
@@ -22,7 +24,7 @@ public sealed class ProcessEventFactoryTests
         var request = new ProcessRequest { Processor = new ProcessorRequest { Steps = new Dictionary<string, object?>() } };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreateProcessCreated(correlation, null!, request));
+            Sut.CreateProcessCreated(correlation, null!, request));
     }
 
     [Fact]
@@ -32,7 +34,7 @@ public sealed class ProcessEventFactoryTests
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreateProcessCreated(correlation, context, null!));
+            Sut.CreateProcessCreated(correlation, context, null!));
     }
 
     [Fact]
@@ -47,7 +49,7 @@ public sealed class ProcessEventFactoryTests
         };
         var request = new ProcessRequest { Processor = new ProcessorRequest { Steps = new Dictionary<string, object?>() } };
 
-        var result = _factory.CreateProcessCreated(correlation, context, request);
+        var result = Sut.CreateProcessCreated(correlation, context, request);
 
         Assert.NotNull(result);
         Assert.NotNull(result.Context);
@@ -75,7 +77,7 @@ public sealed class ProcessEventFactoryTests
             }
         };
 
-        var result = _factory.CreateProcessCreated(correlation, context, request);
+        var result = Sut.CreateProcessCreated(correlation, context, request);
 
         Assert.Equal(2, result.Event.SubmittedStepCount);
         Assert.Contains("step1", result.Event.SubmittedStepNames);
@@ -90,7 +92,7 @@ public sealed class ProcessEventFactoryTests
         var plan = new ExecutionPlanResult { Candidates = [] };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreatePlanBuilt(correlation, null!, request, plan, 0));
+            Sut.CreatePlanBuilt(correlation, null!, request, plan, 0));
     }
 
     [Fact]
@@ -101,7 +103,7 @@ public sealed class ProcessEventFactoryTests
         var plan = new ExecutionPlanResult { Candidates = [] };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreatePlanBuilt(correlation, context, null!, plan, 0));
+            Sut.CreatePlanBuilt(correlation, context, null!, plan, 0));
     }
 
     [Fact]
@@ -112,7 +114,7 @@ public sealed class ProcessEventFactoryTests
         var request = new ProcessRequest { Processor = new ProcessorRequest { Steps = new Dictionary<string, object?>() } };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreatePlanBuilt(correlation, context, request, null!, 0));
+            Sut.CreatePlanBuilt(correlation, context, request, null!, 0));
     }
 
     [Fact]
@@ -140,7 +142,7 @@ public sealed class ProcessEventFactoryTests
 
         var plan = new ExecutionPlanResult { Candidates = [candidate] };
 
-        var result = _factory.CreatePlanBuilt(correlation, context, request, plan, 1);
+        var result = Sut.CreatePlanBuilt(correlation, context, request, plan, 1);
 
         Assert.NotNull(result);
         Assert.NotNull(result.Event);
@@ -166,7 +168,7 @@ public sealed class ProcessEventFactoryTests
         var result = new StepInvocationResult();
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreateStepCompleted(correlation, null!, candidate, outcome, result));
+            Sut.CreateStepCompleted(correlation, null!, candidate, outcome, result));
     }
 
     [Fact]
@@ -184,7 +186,7 @@ public sealed class ProcessEventFactoryTests
         var result = new StepInvocationResult();
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreateStepCompleted(correlation, context, null!, outcome, result));
+            Sut.CreateStepCompleted(correlation, context, null!, outcome, result));
     }
 
     [Fact]
@@ -196,7 +198,7 @@ public sealed class ProcessEventFactoryTests
         var result = new StepInvocationResult();
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreateStepCompleted(correlation, context, candidate, null!, result));
+            Sut.CreateStepCompleted(correlation, context, candidate, null!, result));
     }
 
     [Fact]
@@ -214,7 +216,7 @@ public sealed class ProcessEventFactoryTests
         };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreateStepCompleted(correlation, context, candidate, outcome, null!));
+            Sut.CreateStepCompleted(correlation, context, candidate, outcome, null!));
     }
 
     [Fact]
@@ -237,7 +239,7 @@ public sealed class ProcessEventFactoryTests
         };
         var result = new StepInvocationResult();
 
-        var envelope = _factory.CreateStepCompleted(correlation, context, candidate, outcome, result);
+        var envelope = Sut.CreateStepCompleted(correlation, context, candidate, outcome, result);
 
         Assert.NotNull(envelope);
         Assert.NotNull(envelope.Event);
@@ -258,7 +260,7 @@ public sealed class ProcessEventFactoryTests
         };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreateExecutionCompleted(correlation, null!, executionResult));
+            Sut.CreateExecutionCompleted(correlation, null!, executionResult));
     }
 
     [Fact]
@@ -268,7 +270,7 @@ public sealed class ProcessEventFactoryTests
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
 
         Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreateExecutionCompleted(correlation, context, null!));
+            Sut.CreateExecutionCompleted(correlation, context, null!));
     }
 
     [Fact]
@@ -282,7 +284,7 @@ public sealed class ProcessEventFactoryTests
             State = ProcessExecutionState.Complete
         };
 
-        var envelope = _factory.CreateExecutionCompleted(correlation, context, executionResult);
+        var envelope = Sut.CreateExecutionCompleted(correlation, context, executionResult);
 
         Assert.NotNull(envelope);
         Assert.NotNull(envelope.Event);

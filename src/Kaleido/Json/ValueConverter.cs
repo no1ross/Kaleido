@@ -8,7 +8,7 @@ public interface IValueConverter
     object? Convert(object? value, Type targetType);
 }
 
-public sealed class ValueConverter : IValueConverter
+internal sealed class ValueConverter : IValueConverter
 {
     public object? Convert(
         object? value,

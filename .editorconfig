@@ -267,8 +267,28 @@ dotnet_diagnostic.KAL0012.severity = none
 ; KAL0019: xUnit async test methods do not take CancellationToken — that is the xUnit contract
 dotnet_diagnostic.KAL0019.severity = none
 
+; xUnit1051: test code doesn't thread CancellationToken (same rationale as KAL0019);
+;            ~150 call sites would gain noise, not responsiveness
+dotnet_diagnostic.xUnit1051.severity = none
+
 ; MA0002/MA0006/MA0016: collection abstractions and comparers matter less in
 ; assertions and test fakes — keep as suggestions
 dotnet_diagnostic.MA0002.severity = suggestion
 dotnet_diagnostic.MA0016.severity = suggestion
+
+[tests/Kaleido.Http.FunctionalTests/**/*.cs]
+
+; KAL1006: functional tests exercise endpoints/clients through TestServer, not a
+; single SUT — the SutFixture contract is for unit-test fixtures only
+dotnet_diagnostic.KAL1006.severity = none
+
+[tests/Kaleido.IntegrationTests/*.cs]
+
+; KAL1006: integration tests exercise composed subsystems, not a single SUT
+dotnet_diagnostic.KAL1006.severity = none
+
+[tests/Kaleido.IntegrationTests/**/*.cs]
+
+; (root-level files covered by the section above)
+dotnet_diagnostic.KAL1006.severity = none
 

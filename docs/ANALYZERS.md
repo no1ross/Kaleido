@@ -1,8 +1,32 @@
 # Kaleido analyzer rules
 
-`Kaleido.Analyzers` (in `tools/analyzers`) enforces the codebase's design conventions at compile time. These are build diagnostics, not runtime error codes — runtime codes are documented in [`ERROR_CODES.md`](./ERROR_CODES.md).
+Kaleido ships three analyzer projects (in `tools/analyzers`), each with a distinct audience:
+
+| Project | IDs | Audience |
+|---|---|---|
+| `Kaleido.Analyzers` | `KAL2xxx` | **Consumers** of the `Kaleido` NuGet package — bundled into the package and applied to consumer compilations to catch framework misuse at compile time |
+| `Kaleido.Analyzers.Source` | `KAL0xxx` | **Contributors** to this repository — enforces internal design conventions; never shipped |
+| `Kaleido.Analyzers.Testing` | `KAL1xxx` | **Contributors** writing tests — enforces fixture conventions; never shipped |
+
+These are build diagnostics, not runtime error codes — runtime codes are documented in [`ERROR_CODES.md`](./ERROR_CODES.md).
 
 Severities are configured in `.editorconfig`. In `src/` warnings are treated as errors; in `tests/` several rules are relaxed where the convention genuinely differs (e.g. `!` usage, `KAL0002` stubs).
+
+## Consumer rules — `KAL2xxx`
+
+Shipped inside the `Kaleido` package (`analyzers/dotnet/cs/`). They fire on **consumer code** — anyone referencing the `Kaleido` package gets these checks automatically.
+
+| ID | Severity | Rule |
+|---|---|---|
+| KAL2001 | Error | `[ProcessStep]` must declare a non-empty `Name` and `Version` — compile-time equivalent of startup `pro_missing_attribute` failures |
+| KAL2002 | Error | `[QueryContext]` must declare a non-empty `Name` and `Version` — compile-time equivalent of `qry_missing_attribute` |
+| KAL2003 | Error | `[QueryView]` must declare a non-empty `Name` and `Version` — compile-time equivalent of `qry_missing_attribute` |
+| KAL2004 | Warning | `IProcessStepHandler<T>.ExecuteAsync` must not swallow `OperationCanceledException` in a bare `catch (Exception)` — add `when (ex is not OperationCanceledException)` or a preceding OCE catch. A swallowed cancellation inflates failure metrics and hides client disconnects |
+| KAL2005 | Warning | `ServiceName` string literals must be lowercase with no spaces, hyphens, or underscores — it is used verbatim as the HTTP route prefix |
+| KAL2006 | Info | `MapRegistry()` was found but `AddHttpClients()` was not in the same compilation — the registry endpoint depends on the client factories. Heuristic; suppressible when the calls live in different assemblies |
+| KAL2007 | Warning | `[ProcessStep]` class names must end in `Step` — the framework derives the step name by stripping the suffix |
+| KAL2008 | Warning | `[ProcessStep]` type has no `IProcessStepHandler<TStep>` (or `IProcessStepHandler<TStep, TResult>`) in the same compilation — compile-time equivalent of `pro_missing_handler`. Cross-assembly handlers suppress the warning |
+| KAL2009 | Warning | `AddKaleido(config, o => ...)` lambda never sets `o.Assemblies` — the `GetCallingAssembly()` fallback is JIT-nondeterministic; set assemblies explicitly |
 
 ## Source rules — `KAL0xxx`
 
@@ -55,6 +79,8 @@ Scoped to unit-test projects via `.editorconfig`.
 | KAL1007 | Fixture name must equal `{TSut.Name}Tests` | `Test fixture '{0}' declares SUT '{1}' — it must be named '{2}'` |
 | KAL1008 | The SUT may only be constructed inside `CreateSut()` | `'{0}' may only be constructed inside CreateSut() — use CreateSut() or the Sut property` |
 | KAL1009 | Every testable type in the matching `Kaleido.*` source assembly must have a `{Name}Tests` fixture | `Type '{0}' in '{1}' has no '{2}' fixture — every testable type must have a unit-test fixture` |
+| KAL1010 | A `{Type}Tests` fixture must contain at least one `[Fact]`/`[Theory]` — an empty stub does not satisfy coverage | `Fixture '{0}' has no [Fact] or [Theory] test methods — add at least one test or remove the empty stub` |
+| KAL1012 | Fixtures may not `new` a framework collaborator — a testable Kaleido type implementing a service interface; mock it instead | `'{0}' is a collaborator, not the SUT — mock it instead of new-ing a real instance` |
 
 ### SutFixture notes (KAL1006–KAL1009)
 

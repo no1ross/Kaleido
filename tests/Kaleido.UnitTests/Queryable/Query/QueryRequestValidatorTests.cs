@@ -4,6 +4,7 @@ using Moq;
 namespace Kaleido.Queryable.UnitTests.Query;
 
 public sealed class QueryRequestValidatorTests
+    : Kaleido.UnitTests.SutFixture
 {
     private static readonly DataTypeDescriptor TestDataType =
         new("string");

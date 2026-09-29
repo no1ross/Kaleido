@@ -1,5 +1,5 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Testing;
+using Kaleido.Testing;
 using Xunit;
 using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Source.Design.BclExceptionBanAnalyzer>;
@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.Source.UnitTests;
 
 public sealed class BclExceptionBanAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Source.Design.BclExceptionBanAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Source.Design.BclExceptionBanAnalyzer CreateSut() =>
+        new();
+
     private const string KaleidoStub = @"
 namespace Kaleido.Exceptions
 {

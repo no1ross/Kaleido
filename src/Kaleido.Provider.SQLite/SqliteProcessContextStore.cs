@@ -76,6 +76,9 @@ internal sealed class SqliteProcessContextStore(
 
             var entity =
                 await dbContext.ProcessContexts
+                    .Include(x => x.Steps)
+                    .Include(x => x.AvailableSteps)
+                    .Include(x => x.RequiredStep)
                     .FirstOrDefaultAsync(
                         x => x.ProcessId ==
                              context.ProcessId,
@@ -92,29 +95,6 @@ internal sealed class SqliteProcessContextStore(
 
                 dbContext.ProcessContexts.Add(
                     entity);
-            }
-            else
-            {
-                await dbContext.ProcessStepContexts
-                    .Where(x =>
-                        x.ProcessId ==
-                        context.ProcessId)
-                    .ExecuteDeleteAsync(
-                        cancellationToken);
-
-                await dbContext.ProcessAvailableSteps
-                    .Where(x =>
-                        x.ProcessId ==
-                        context.ProcessId)
-                    .ExecuteDeleteAsync(
-                        cancellationToken);
-
-                await dbContext.ProcessRequiredSteps
-                    .Where(x =>
-                        x.ProcessId ==
-                        context.ProcessId)
-                    .ExecuteDeleteAsync(
-                        cancellationToken);
             }
 
             entity.LatestRequestId =
@@ -133,75 +113,9 @@ internal sealed class SqliteProcessContextStore(
                     ? DateTime.UtcNow
                     : context.UpdatedUtc;
 
-            var stepEntities =
-                context.Steps
-                    .Select(step =>
-                        new ProcessStepContextEntity
-                        {
-                            ProcessId =
-                                context.ProcessId,
-
-                            StepName =
-                                step.StepName,
-
-                            Version =
-                                step.Version,
-
-                            Status =
-                                step.Status,
-
-                            LatestRequestId =
-                                step.LatestRequestId,
-
-                            LastExecuted =
-                                step.LastExecuted
-                        })
-                    .ToArray();
-
-            // Available steps are always local — store only the step name.
-            var availableStepEntities =
-                context.AvailableSteps
-                    .Select(
-                        (stepName, index) =>
-                            new ProcessAvailableStepEntity
-                            {
-                                ProcessId =
-                                    context.ProcessId,
-
-                                StepName =
-                                    stepName,
-
-                                Sequence =
-                                    index
-                            })
-                    .ToArray();
-
-            dbContext.ProcessStepContexts.AddRange(
-                stepEntities);
-
-            dbContext.ProcessAvailableSteps.AddRange(
-                availableStepEntities);
-
-            if (context.RequiredStep is not null)
-            {
-                var localProcessorName =
-                    serviceOptions.ServiceName;
-
-                dbContext.ProcessRequiredSteps.Add(
-                    new ProcessRequiredStepEntity
-                    {
-                        ProcessId =
-                            context.ProcessId,
-
-                        // Store the target processor name when cross-processor,
-                        // otherwise store the local processor name for backwards compatibility.
-                        ProcessorName =
-                            context.TargetProcessorName ?? localProcessorName,
-
-                        StepName =
-                            context.RequiredStep
-                    });
-            }
+            SyncSteps(entity, context);
+            SyncAvailableSteps(entity, context);
+            SyncRequiredStep(entity, context, serviceOptions.ServiceName);
 
             await dbContext.SaveChangesAsync(
                 cancellationToken);
@@ -224,6 +138,130 @@ internal sealed class SqliteProcessContextStore(
                 context.ProcessId);
             throw;
         }
+    }
+
+    // Update children in place so EF generates only the delta — no
+    // delete-all/reinsert-all write amplification per save.
+    private static void SyncSteps(
+        ProcessContextEntity entity,
+        ProcessorContext context)
+    {
+        var incoming = context.Steps
+            .ToDictionary(x => x.StepName, StringComparer.Ordinal);
+
+        foreach (var row in entity.Steps.ToArray())
+        {
+            if (!incoming.TryGetValue(row.StepName, out var step))
+            {
+                entity.Steps.Remove(row);
+                continue;
+            }
+
+            row.Version = step.Version;
+            row.Status = step.Status;
+            row.LatestRequestId = step.LatestRequestId;
+            row.LastExecuted = step.LastExecuted;
+        }
+
+        var existing = entity.Steps
+            .Select(x => x.StepName)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var step in context.Steps)
+        {
+            if (existing.Contains(step.StepName))
+            {
+                continue;
+            }
+
+            entity.Steps.Add(
+                new ProcessStepContextEntity
+                {
+                    ProcessId = context.ProcessId,
+                    StepName = step.StepName,
+                    Version = step.Version,
+                    Status = step.Status,
+                    LatestRequestId = step.LatestRequestId,
+                    LastExecuted = step.LastExecuted
+                });
+        }
+    }
+
+    private static void SyncAvailableSteps(
+        ProcessContextEntity entity,
+        ProcessorContext context)
+    {
+        var incoming = context.AvailableSteps
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var row in entity.AvailableSteps.ToArray())
+        {
+            if (!incoming.Contains(row.StepName))
+            {
+                entity.AvailableSteps.Remove(row);
+            }
+        }
+
+        var existing = entity.AvailableSteps
+            .Select(x => x.StepName)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var (stepName, index) in context.AvailableSteps
+                     .Select((name, i) => (name, i)))
+        {
+            var row = entity.AvailableSteps
+                .FirstOrDefault(x => string.Equals(
+                    x.StepName, stepName, StringComparison.Ordinal));
+
+            if (row is not null)
+            {
+                row.Sequence = index;
+                continue;
+            }
+
+            entity.AvailableSteps.Add(
+                new ProcessAvailableStepEntity
+                {
+                    ProcessId = context.ProcessId,
+                    StepName = stepName,
+                    Sequence = index
+                });
+        }
+    }
+
+    private static void SyncRequiredStep(
+        ProcessContextEntity entity,
+        ProcessorContext context,
+        string localProcessorName)
+    {
+        if (context.RequiredStep is null)
+        {
+            if (entity.RequiredStep is not null)
+            {
+                entity.RequiredStep = null;
+            }
+
+            return;
+        }
+
+        // Store the target processor name when cross-processor,
+        // otherwise store the local processor name for backwards compatibility.
+        var processorName =
+            context.TargetProcessorName ?? localProcessorName;
+
+        if (entity.RequiredStep is not null)
+        {
+            entity.RequiredStep.ProcessorName = processorName;
+            entity.RequiredStep.StepName = context.RequiredStep;
+            return;
+        }
+
+        entity.RequiredStep = new ProcessRequiredStepEntity
+        {
+            ProcessId = context.ProcessId,
+            ProcessorName = processorName,
+            StepName = context.RequiredStep
+        };
     }
 
     private static ProcessorContext ToProcessorContext(

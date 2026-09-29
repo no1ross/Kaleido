@@ -191,7 +191,7 @@ high_priority_items:
     priority: HIGH
     breaking_change: true
     release_blocker: true
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETED
 
   HP-008:
     title: Document/decouple ServiceName <-> client-key route-prefix contract
@@ -246,7 +246,7 @@ high_priority_items:
     effort_days: 0.5-1
     priority: HIGH
     breaking_change: true
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETED
 
   HP-014:
     title: ValidatePage silent acceptance + wrong message + unvalidated Offset
@@ -290,7 +290,7 @@ high_priority_items:
     effort_days: 2-3
     priority: HIGH
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETED
 
 medium_priority_items:
   MP-001:
@@ -313,7 +313,7 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETED
 
   MP-004:
     title: Process Step Dependencies Clarification
@@ -351,7 +351,7 @@ medium_priority_items:
     effort_days: 0.5
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETED
 
   MP-009:
     title: Cache hot-path reflection (step invoke, query dispatch, NullabilityInfoContext, step round-trip)
@@ -401,21 +401,21 @@ medium_priority_items:
     effort_days: 0.5
     priority: MEDIUM
     breaking_change: possibly
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETED
 
   MP-015:
     title: Add AddKaleidoSqliteInstrumentation() (provider telemetry never exports)
     effort_days: 0.5
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETED
 
   MP-016:
     title: Public-surface cleanup (implementations, registries, SQLite internals + DbContextOptions hook)
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: true
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETED
     decision: >
       DECIDED 2026-09-26 (owner): concretes are internal implementation —
       no consumer may override them. Internalize EventPublisher, ValueConverter,
@@ -466,7 +466,7 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: true
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETED
     decision: >
       SCOPED 2026-09-26 (owner review): PR-02 does (1) flatten new-shadowed
       QueryableViewResponse/QueryableRecordResponse to self-contained records and
@@ -742,7 +742,7 @@ external_findings:
     severity: MEDIUM
     effort: medium
     breaking_change: possibly
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETED
   EXT-16:
     title: Mutable manually-bound options -> ValidateOnStart + immutable snapshots
     source: KAL-M06, F-18
@@ -770,7 +770,7 @@ external_findings:
     severity: MEDIUM
     effort: medium
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: COMPLETED
 
 analyzer_proposals:
   KAL0020:

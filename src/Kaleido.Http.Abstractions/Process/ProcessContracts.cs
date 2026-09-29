@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Kaleido.Http.Process;
 
@@ -321,41 +322,23 @@ public sealed record ProcessorRegistryResponse
     public IReadOnlyCollection<ProcessStepSummary> InitialSteps { get; init; }
         = [];
 
-    public IReadOnlyCollection<ProcessStepResponse> Steps { get; init; }
+    /// <summary>
+    /// Full step detail — populated on the registry endpoint only.
+    /// Null on the catalog endpoint, where only entry-point summaries are returned.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyCollection<ProcessStepResponse>? Steps { get; init; }
         = [];
 }
 
 [ExcludeFromCodeCoverage]
 public sealed record ProcessCatalogResponse
 {
-    public IReadOnlyCollection<ProcessorCatalogResponse> Processors
+    public IReadOnlyCollection<ProcessorRegistryResponse> Processors
     {
         get;
         init;
     }
-        = [];
-}
-
-[ExcludeFromCodeCoverage]
-public sealed record ProcessorCatalogResponse
-{
-    /// <summary>
-    /// The service name — matches <see cref="KaleidoServiceOptions.ServiceName"/>.
-    /// </summary>
-    public string ServiceName { get; init; } = string.Empty;
-
-    public required string Name { get; init; }
-
-    public string? Description { get; init; }
-
-    public string? DisplayName { get; init; }
-
-    public bool IsEntryProcessor { get; init; }
-
-    public string RegistryUrl { get; init; }
-        = string.Empty;
-
-    public IReadOnlyCollection<ProcessStepSummary> InitialSteps { get; init; }
         = [];
 }
 

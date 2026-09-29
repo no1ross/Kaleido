@@ -64,4 +64,7 @@ public static class HttpClientErrorCodes
 
     /// <summary>A supplied step name does not match the name declared on the step type's attribute.</summary>
     public const string InvalidStepName      = "httpclient_invalid_step_name";
+
+    /// <summary>A URL returned by a remote registry was not a valid absolute http(s) URL.</summary>
+    public const string InvalidRegistryUrl   = "httpclient_invalid_registry_url";
 }

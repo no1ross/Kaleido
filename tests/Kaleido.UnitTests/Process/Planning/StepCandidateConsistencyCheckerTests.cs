@@ -1,15 +1,18 @@
 using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Processor.Planning;
 
 public sealed class StepCandidateConsistencyCheckerTests
+    : SutFixture
 {
     [Fact]
     public void Validate_WhenCandidateAlreadyInvalid_SkipsValidation()
     {
         var checker =
-            CreateChecker();
+            CreateSut();
 
         var candidate =
             StepCandidate.Invalid(
@@ -36,7 +39,7 @@ public sealed class StepCandidateConsistencyCheckerTests
     public void Validate_WhenStepWasPreviouslyCompleted_MarksCandidateSatisfied()
     {
         var checker =
-            CreateChecker();
+            CreateSut();
 
         var registration =
             CreateRegistration<StepA>("step-a");
@@ -73,7 +76,7 @@ public sealed class StepCandidateConsistencyCheckerTests
     public void Validate_WhenHistoricalStepIsNotCompleted_DoesNotMarkSatisfied()
     {
         var checker =
-            CreateChecker();
+            CreateSut();
 
         var registration =
             CreateRegistration<StepA>("step-a");
@@ -115,7 +118,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             CreateRegistration<StepB>("step-b", [dependency]);
 
         var checker =
-            CreateChecker();
+            CreateSut();
 
         var candidate =
             CreateCandidate(target);
@@ -152,7 +155,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             CreateRegistration<StepB>("step-b", [dependency]);
 
         var checker =
-            CreateChecker();
+            CreateSut();
 
         var dependencyCandidate =
             CreateCandidate(dependency);
@@ -184,7 +187,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             CreateRegistration<StepB>("step-b", [dependency]);
 
         var checker =
-            CreateChecker();
+            CreateSut();
 
         var dependencyCandidate =
             new StepCandidate
@@ -231,7 +234,7 @@ public sealed class StepCandidateConsistencyCheckerTests
                 [dependency]);
 
         var checker =
-            CreateChecker();
+            CreateSut();
 
         var candidate =
             CreateCandidate(target);
@@ -265,7 +268,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             CreateRegistration<StepC>("step-c", [stepA, stepB]);
 
         var checker =
-            CreateChecker();
+            CreateSut();
 
         var candidate =
             CreateCandidate(stepC);
@@ -289,7 +292,7 @@ public sealed class StepCandidateConsistencyCheckerTests
     public void Validate_WhenRepeatableStepPreviouslyCompleted_RemainsBuilt()
     {
         var checker =
-            CreateChecker();
+            CreateSut();
 
         var registration =
             CreateRegistration<StepA>(
@@ -328,7 +331,7 @@ public sealed class StepCandidateConsistencyCheckerTests
     public void Validate_WhenRepeatableStepPreviouslyCompleted_AddsRepeatableMessage()
     {
         var checker =
-            CreateChecker();
+            CreateSut();
 
         var registration =
             CreateRegistration<StepA>(
@@ -371,7 +374,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         // This test documents the current behavior
         // A depends on B, B depends on A - this should be detected but currently isn't
 
-        var checker = CreateChecker();
+        var checker = CreateSut();
 
         var stepA = CreateRegistration<StepA>("step-a");
         var stepB = CreateRegistration<StepB>("step-b");
@@ -399,7 +402,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         Assert.Equal(StepCandidateStatus.Built, candidateB.Status);
     }
 
-    private static StepCandidateConsistencyChecker CreateChecker()
+    private static StepCandidateConsistencyChecker CreateSut()
     {
         return new StepCandidateConsistencyChecker();
     }

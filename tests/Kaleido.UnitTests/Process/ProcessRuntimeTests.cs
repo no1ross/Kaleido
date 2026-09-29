@@ -5,10 +5,27 @@ using Kaleido.Process.Eventing;
 using Kaleido.Process.Observability;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using Kaleido.UnitTests;
+
 namespace Kaleido.Process.UnitTests.Processor;
 
 public sealed class ProcessRuntimeTests
+    : SutFixture
 {
+    private static ProcessRuntime CreateSut(
+        IProcessContextStore contextStore,
+        IProcessStateUpdater stateUpdater,
+        IExecutionPlanner planner,
+        IExecutionProcessor processor,
+        IProcessEventFactory eventFactory,
+        IEventPublisher eventPublisher,
+        IProcessObservability observability,
+        IKaleidoCorrelationContextAccessor correlationAccessor,
+        Microsoft.Extensions.Logging.ILogger<ProcessRuntime> logger) =>
+        new(contextStore, stateUpdater, planner, processor,
+            eventFactory, eventPublisher, observability,
+            correlationAccessor, logger);
+
     [Fact]
     public async Task ExecuteAsync_WhenInitialRequestContainsMultipleStepsWithoutProcessId_InitializesContextAndExecutes()
     {
@@ -82,7 +99,7 @@ public sealed class ProcessRuntimeTests
                         context.ProcessId)));
 
         var runtime =
-            new ProcessRuntime(
+            CreateSut(
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
@@ -172,7 +189,7 @@ public sealed class ProcessRuntimeTests
                 CreateExecutionResult(processId));
 
         var runtime =
-            new ProcessRuntime(
+            CreateSut(
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
@@ -260,7 +277,7 @@ public sealed class ProcessRuntimeTests
                 CreateExecutionResult(processId));
 
         var runtime =
-            new ProcessRuntime(
+            CreateSut(
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
@@ -369,7 +386,7 @@ public sealed class ProcessRuntimeTests
                 CreateExecutionResult(processId));
 
         var runtime =
-            new ProcessRuntime(
+            CreateSut(
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
@@ -492,7 +509,7 @@ public sealed class ProcessRuntimeTests
             .ReturnsAsync(executionResult);
 
         var runtime =
-            new ProcessRuntime(
+            CreateSut(
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,
@@ -591,7 +608,7 @@ public sealed class ProcessRuntimeTests
             .ReturnsAsync(executionResult);
 
         var runtime =
-            new ProcessRuntime(
+            CreateSut(
                 contextStore.Object,
                 stateUpdater.Object,
                 planner.Object,

@@ -1,5 +1,5 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Testing;
+using Kaleido.Testing;
 using Xunit;
 using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Source.Design.ExceptionRecordAnalyzer>;
@@ -7,12 +7,16 @@ using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.Source.UnitTests;
 
 public sealed class ExceptionRecordAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Source.Design.ExceptionRecordAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Source.Design.ExceptionRecordAnalyzer CreateSut() =>
+        new();
+
     [Fact]
     public async Task RecordDerivingFromException_Reports()
     {
         // record : Exception produces a cascade of compiler errors (CS0115,
-        // CS8867) — filter them out and assert KAL0004 still fires
+        // CS8867) ï¿½ filter them out and assert KAL0004 still fires
         var test = Create(@"
 public record {|#0:BadException|} : System.Exception;");
         test.CompilerDiagnostics = CompilerDiagnostics.None;

@@ -1,5 +1,5 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Testing;
+using Kaleido.Testing;
 using Xunit;
 using static Kaleido.Analyzers.Testing.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Testing.Fixtures.FixtureStructureMirrorAnalyzer>;
@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.Testing.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.Testing.UnitTests;
 
 public sealed class FixtureStructureMirrorAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Testing.Fixtures.FixtureStructureMirrorAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Testing.Fixtures.FixtureStructureMirrorAnalyzer CreateSut() =>
+        new();
+
     private const string XunitStub = @"
 namespace Xunit
 {

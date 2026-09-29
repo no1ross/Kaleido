@@ -1,5 +1,5 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Testing;
+using Kaleido.Testing;
 using Xunit;
 using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Bootstrap.ServiceNameAnalyzer>;
@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.UnitTests.Bootstrap;
 
 public sealed class ServiceNameAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Bootstrap.ServiceNameAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Bootstrap.ServiceNameAnalyzer CreateSut() =>
+        new();
+
     private const string KaleidoOptionsStub = @"
 namespace Kaleido
 {

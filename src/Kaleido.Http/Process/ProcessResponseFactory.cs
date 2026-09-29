@@ -12,7 +12,7 @@ public interface IProcessResponseFactory
         ProcessorRegistryItem registration,
         KaleidoServiceOptions serviceOptions);
 
-    ProcessorCatalogResponse CreateCatalogResponse(
+    ProcessorRegistryResponse CreateCatalogResponse(
         ProcessorRegistryItem registration,
         KaleidoServiceOptions serviceOptions);
 
@@ -62,7 +62,7 @@ public sealed class ProcessResponseFactory : IProcessResponseFactory
         };
     }
 
-    public ProcessorCatalogResponse CreateCatalogResponse(
+    public ProcessorRegistryResponse CreateCatalogResponse(
         ProcessorRegistryItem registration,
         KaleidoServiceOptions serviceOptions)
     {
@@ -71,7 +71,7 @@ public sealed class ProcessResponseFactory : IProcessResponseFactory
 
         var serviceName = serviceOptions.ServiceName;
 
-        return new ProcessorCatalogResponse
+        return new ProcessorRegistryResponse
         {
             ServiceName = serviceName,
             Name = serviceName,
@@ -81,7 +81,8 @@ public sealed class ProcessResponseFactory : IProcessResponseFactory
             RegistryUrl = ProcessContractUrls.Registry(serviceName),
             InitialSteps = registration.InitialSteps
                 .Select(x => CreateStepSummary(x, serviceName))
-                .ToArray()
+                .ToArray(),
+            Steps = null
         };
     }
 

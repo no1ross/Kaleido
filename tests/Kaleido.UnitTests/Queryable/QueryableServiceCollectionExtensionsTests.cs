@@ -4,11 +4,11 @@ using Kaleido.Queryable.Registry;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Moq;
 
 namespace Kaleido.Queryable.UnitTests;
 
 public sealed class QueryableServiceCollectionExtensionsTests
+    : Kaleido.UnitTests.SutFixture
 {
     [Fact]
     public void AddQueryable_WhenBuilderIsNull_Throws()

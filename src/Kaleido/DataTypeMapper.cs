@@ -95,7 +95,7 @@ public interface IDataTypeMapper
     TValue? ConvertValue<TValue>(object? value);
 }
 
-public sealed class DataTypeMapper : IDataTypeMapper
+internal sealed class DataTypeMapper : IDataTypeMapper
 {
     private static readonly IReadOnlyDictionary<Type, DataTypeDescriptor>
         TypeMappings =
