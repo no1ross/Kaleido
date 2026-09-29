@@ -19,6 +19,17 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
     }
 
     [Fact]
+    public void MapQueryable_ReturnsRouteGroupBuilder_SoConventionsCompose()
+    {
+        var endpoints = CreateEndpoints();
+
+        var group =
+            endpoints.MapQueryable();
+
+        Assert.IsType<RouteGroupBuilder>(group);
+    }
+
+    [Fact]
     public void MapQueryable_RegistersCatalogRegistryAndContextEndpoints()
     {
         var endpoints = CreateEndpoints();

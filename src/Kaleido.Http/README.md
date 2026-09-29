@@ -86,27 +86,26 @@ app.MapRegistry(); // optional aggregated discovery
 
 ## Authorization
 
-`MapProcessor()`, `MapQueryable()`, and `MapRegistry()` return `IEndpointRouteBuilder` (the same value they receive), so you cannot chain `.RequireAuthorization()` directly on them.
-
-Use the standard ASP.NET Core `MapGroup()` pattern instead — wrap first, then map:
+`MapProcessor()`, `MapQueryable()`, and `MapRegistry()` each return the `RouteGroupBuilder` they mapped, so endpoint conventions compose directly:
 
 ```csharp
 // Require authorization on all Process endpoints
-app.MapGroup("").RequireAuthorization().MapProcessor();
+app.MapProcessor().RequireAuthorization();
 
 // Require authorization on all Queryable endpoints
-app.MapGroup("").RequireAuthorization().MapQueryable();
+app.MapQueryable().RequireAuthorization();
 
 // Different policies per surface
-app.MapGroup("").RequireAuthorization("ProcessPolicy").MapProcessor();
-app.MapGroup("").RequireAuthorization("QueryPolicy").MapQueryable();
+app.MapProcessor().RequireAuthorization("ProcessPolicy");
+app.MapQueryable().RequireAuthorization("QueryPolicy");
+app.MapRegistry().RequireAuthorization("AdminOnly");
 
 // No auth (default)
 app.MapProcessor();
 app.MapQueryable();
 ```
 
-`MapGroup("")` with an empty prefix adds no route prefix of its own — it only attaches the convention. This composes with any existing `IEndpointConventionBuilder` support in the ASP.NET Core pipeline.
+Any `IEndpointConventionBuilder` extension (`RequireAuthorization`, `WithMetadata`, `RequireCors`, rate limiting, etc.) composes this way. To apply conventions to a broader surface, wrap in `MapGroup("")` as usual — an empty prefix adds no route prefix of its own.
 
 ---
 
@@ -120,6 +119,8 @@ app.MapQueryable();
 It always returns HTTP 200. Downstream clients that are unreachable populate the `ClientErrors` array in the response. A non-empty `ClientErrors` collection means the response is partial.
 
 The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from `Kaleido:ServiceName` configuration).
+
+**Route-prefix contract:** every endpoint a Kaleido service publishes lives under `/{ServiceName}/...`. Downstream consumers address a service through a named client whose `RoutePrefix` must equal that service's `ServiceName`. `RoutePrefix` defaults to the client key lowercased — so a client named `"Member"` expects the Member service to have `Kaleido:ServiceName = "member"`. A mismatch produces silent 404s at call time, not startup errors. `ServiceName` must be lowercase with no separators (enforced by KAL2005).
 
 ---
 

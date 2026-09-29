@@ -13,7 +13,11 @@ namespace Kaleido.Http.Queryable;
 /// </summary>
 public static class QueryableEndpointRouteBuilderExtensions
 {
-    public static IEndpointRouteBuilder MapQueryable(
+    /// <summary>
+    /// Maps all Kaleido Queryable endpoints and returns the route group so hosts can
+    /// compose conventions (e.g. <c>.RequireAuthorization()</c>) onto every endpoint.
+    /// </summary>
+    public static RouteGroupBuilder MapQueryable(
         this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
@@ -148,7 +152,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 serviceName);
         }
 
-        return endpoints;
+        return group;
     }
 
     internal static void MapQueryView(

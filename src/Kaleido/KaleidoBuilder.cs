@@ -39,6 +39,11 @@ internal sealed class KaleidoBuilder : IKaleidoBuilder
     private readonly KaleidoServiceOptions serviceOptions;
     private readonly Dictionary<string, Assembly> _assemblies = [];
 
+    // NoInlining is required: Assembly.GetCallingAssembly() resolves the caller's
+    // frame, so this method must never be inlined or it can attribute the wrong
+    // assembly when the JIT decides to inline the constructor call.
+    [System.Runtime.CompilerServices.MethodImpl(
+        System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
     public KaleidoBuilder(IServiceCollection services, IConfiguration configuration, KaleidoServiceOptions serviceOptions)
     {
         this.services = services;

@@ -135,7 +135,8 @@ high_priority_items:
     effort_days: 2-3
     priority: HIGH
     breaking_change: possibly
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: extension-points table added to src/ARCHITECTURE.md (store, publisher, executor, OTel provider, delegated views)."
     blocking: false
 
   HP-002:
@@ -181,8 +182,8 @@ high_priority_items:
     effort_days: 1
     priority: HIGH
     breaking_change: false
-    status: IN_PROGRESS
-    progress_note: "PR-01 (merged #18): src/Kaleido README bootstrap sample rewritten to options.Assemblies; internal auto-invocation documented. Final pass in PR-11."
+    status: COMPLETED
+    progress_note: "PR-01 (merged #18) + PR-11: docs audit confirms current model everywhere; internal auto-invocation documented."
 
   HP-007:
     title: Malformed correlation GUID header -> 400 (not 500)
@@ -199,7 +200,8 @@ high_priority_items:
     effort_days: 1-2
     priority: HIGH
     breaking_change: possibly
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: route-prefix contract documented in Kaleido.Http + Kaleido.Http.Client READMEs (RoutePrefix must equal downstream ServiceName)."
 
   HP-009:
     title: Production-unsafe defaults (discarding EventPublisher + unbounded in-memory store)
@@ -230,7 +232,8 @@ high_priority_items:
     effort_days: 1
     priority: HIGH
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: KaleidoClientOptions/KaleidoClientEntry moved to Kaleido.Http.Client; MapRegistry guard now checks client route-options maps (singletons)."
 
   HP-012:
     title: GetCallingAssembly fallback nondeterminism
@@ -238,7 +241,8 @@ high_priority_items:
     effort_days: 0.5-1
     priority: HIGH
     breaking_change: possibly
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: [MethodImpl(NoInlining)] on KaleidoBuilder ctor guards the GetCallingAssembly fallback; Q-005 (remove fallback entirely) stays open as product call."
 
   HP-013:
     title: Fail-fast AddHttpClients + singleton client factories
@@ -685,7 +689,8 @@ external_findings:
     severity: HIGH
     effort: medium
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: MapProcessor/MapQueryable/MapRegistry return RouteGroupBuilder; RequireAuthorization composes directly; README updated."
     notes: "Return IEndpointConventionBuilder/RouteGroupBuilder; auth integration tests"
   EXT-08:
     title: Queryable surface proliferation (registries x parallel source families)
