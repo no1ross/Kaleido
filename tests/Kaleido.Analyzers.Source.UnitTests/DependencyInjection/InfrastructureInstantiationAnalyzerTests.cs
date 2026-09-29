@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.Source.UnitTests;
 
 public sealed class InfrastructureInstantiationAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Source.DependencyInjection.InfrastructureInstantiationAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Source.DependencyInjection.InfrastructureInstantiationAnalyzer CreateSut() =>
+        new();
+
     private static readonly DiagnosticResult Expected =
         new("KAL0012", DiagnosticSeverity.Error);
 

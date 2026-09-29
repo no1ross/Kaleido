@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.UnitTests.Queryable;
 
 public sealed class QueryViewAttributeAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Queryable.QueryViewAttributeAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Queryable.QueryViewAttributeAnalyzer CreateSut() =>
+        new();
+
     private const string QueryViewStub = @"
 namespace Kaleido.Queryable
 {

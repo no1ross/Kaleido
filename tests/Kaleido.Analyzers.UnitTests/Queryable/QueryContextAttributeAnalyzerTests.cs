@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.UnitTests.Queryable;
 
 public sealed class QueryContextAttributeAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Queryable.QueryContextAttributeAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Queryable.QueryContextAttributeAnalyzer CreateSut() =>
+        new();
+
     private const string QueryContextStub = @"
 namespace Kaleido.Queryable
 {

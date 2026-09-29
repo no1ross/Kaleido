@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.UnitTests.Bootstrap;
 
 public sealed class AddKaleidoAssembliesAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Bootstrap.AddKaleidoAssembliesAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Bootstrap.AddKaleidoAssembliesAnalyzer CreateSut() =>
+        new();
+
     private const string KaleidoStub = @"
 namespace Kaleido
 {

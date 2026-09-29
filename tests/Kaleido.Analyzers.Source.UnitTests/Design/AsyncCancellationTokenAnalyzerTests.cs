@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.Source.UnitTests;
 
 public sealed class AsyncCancellationTokenAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Source.Design.AsyncCancellationTokenAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Source.Design.AsyncCancellationTokenAnalyzer CreateSut() =>
+        new();
+
     private static readonly DiagnosticResult Expected =
         new("KAL0019", DiagnosticSeverity.Warning);
 

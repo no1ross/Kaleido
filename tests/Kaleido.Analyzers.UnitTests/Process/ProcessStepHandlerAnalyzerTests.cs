@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.UnitTests.Process;
 
 public sealed class ProcessStepHandlerAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Process.ProcessStepHandlerAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Process.ProcessStepHandlerAnalyzer CreateSut() =>
+        new();
+
     private const string KaleidoStubs = @"
 namespace Kaleido.Process
 {
