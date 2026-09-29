@@ -642,7 +642,7 @@ external_findings:
     breaking_change: false
     release_blocker: false
     status: COMPLETE
-    resolution_note: "(PR-07) Best-effort delivery for 1.0: all PublishAsync calls in ProcessExecutor and ProcessRuntime wrapped in try/catch(non-OCE); failures logged at Warning with processId + event type. Full transactional outbox is post-1.0."
+    resolution_note: "(PR-07) Best-effort delivery: PublishAsync wrapped in try/catch(non-OCE), failures logged at Warning with processId + event type. DECISION (owner): transactional outbox is NOT framework scope - consumers implement their own outbox pattern (e.g. Debezium/WAL tailing) since topologies vary; framework contract is best-effort publish + warning."
   EXT-03:
     title: Queryable async APIs run synchronous provider I/O
     source: KAL-C04
