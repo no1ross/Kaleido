@@ -3,7 +3,12 @@ using Kaleido.Observability;
 namespace Kaleido.Http.Client.UnitTests;
 
 public sealed class CorrelationHeaderStamperTests
+    : Kaleido.UnitTests.SutFixture
 {
+    private static CorrelationHeaderStamper CreateSut(
+        IKaleidoCorrelationContextAccessor correlation) =>
+        new(correlation);
+
     // ---------------------------------------------------------------------------
     // Sanitize
     // ---------------------------------------------------------------------------
@@ -77,7 +82,7 @@ public sealed class CorrelationHeaderStamperTests
     public void Stamp_RequestIdPresent_AddsHeader()
     {
         var correlation = SetupContext(new KaleidoCorrelationContext { RequestId = "req-123" });
-        var stamper = new CorrelationHeaderStamper(correlation);
+        var stamper = CreateSut(correlation);
         var request = new HttpRequestMessage();
 
         stamper.Stamp(request);
@@ -91,7 +96,7 @@ public sealed class CorrelationHeaderStamperTests
     {
         var id = Guid.NewGuid();
         var correlation = SetupContext(new KaleidoCorrelationContext { ProcessId = id });
-        var stamper = new CorrelationHeaderStamper(correlation);
+        var stamper = CreateSut(correlation);
         var request = new HttpRequestMessage();
 
         stamper.Stamp(request);
@@ -104,7 +109,7 @@ public sealed class CorrelationHeaderStamperTests
     public void Stamp_SourceProcessorNamePresent_AddsHeader()
     {
         var correlation = SetupContext(new KaleidoCorrelationContext { SourceProcessorName = "my-processor" });
-        var stamper = new CorrelationHeaderStamper(correlation);
+        var stamper = CreateSut(correlation);
         var request = new HttpRequestMessage();
 
         stamper.Stamp(request);
@@ -118,7 +123,7 @@ public sealed class CorrelationHeaderStamperTests
     {
         var id = Guid.NewGuid();
         var correlation = SetupContext(new KaleidoCorrelationContext { ProcessorInstanceId = id });
-        var stamper = new CorrelationHeaderStamper(correlation);
+        var stamper = CreateSut(correlation);
         var request = new HttpRequestMessage();
 
         stamper.Stamp(request);
@@ -131,7 +136,7 @@ public sealed class CorrelationHeaderStamperTests
     public void Stamp_StepNamePresent_AddsHeader()
     {
         var correlation = SetupContext(new KaleidoCorrelationContext { StepName = "my-step" });
-        var stamper = new CorrelationHeaderStamper(correlation);
+        var stamper = CreateSut(correlation);
         var request = new HttpRequestMessage();
 
         stamper.Stamp(request);
@@ -144,7 +149,7 @@ public sealed class CorrelationHeaderStamperTests
     public void Stamp_EmptyContext_AddsNoHeaders()
     {
         var correlation = SetupContext(new KaleidoCorrelationContext());
-        var stamper = new CorrelationHeaderStamper(correlation);
+        var stamper = CreateSut(correlation);
         var request = new HttpRequestMessage();
 
         stamper.Stamp(request);
@@ -160,7 +165,7 @@ public sealed class CorrelationHeaderStamperTests
     public void Stamp_RequestIdWithControlChars_SanitizesBeforeAdding()
     {
         var correlation = SetupContext(new KaleidoCorrelationContext { RequestId = "req\r\n123" });
-        var stamper = new CorrelationHeaderStamper(correlation);
+        var stamper = CreateSut(correlation);
         var request = new HttpRequestMessage();
 
         stamper.Stamp(request);
@@ -174,7 +179,7 @@ public sealed class CorrelationHeaderStamperTests
     // ---------------------------------------------------------------------------
 
     private static CorrelationHeaderStamper CreateStamper() =>
-        new(SetupContext(new KaleidoCorrelationContext()));
+        CreateSut(SetupContext(new KaleidoCorrelationContext()));
 
     private static IKaleidoCorrelationContextAccessor SetupContext(KaleidoCorrelationContext ctx)
     {
