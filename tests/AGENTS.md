@@ -35,8 +35,12 @@ Every unit-test fixture must declare its subject under test by inheriting
 
 Rules enforced at build time: fixtures are named `{Sut}Tests` (KAL1007), the
 SUT may only be constructed inside a `CreateSut` method or via `Sut` (KAL1008),
-and the fixture file must mirror the SUT's source path (KAL1003 — e.g.
+collaborators must be mocked — never `new` a real Kaleido service
+implementation (KAL1012; domain data the SUT consumes is exempt) — and the
+fixture file must mirror the SUT's source path (KAL1003 — e.g.
 `src/Kaleido/Json/ValueConverter.cs` → `tests/Kaleido.UnitTests/Json/ValueConverterTests.cs`).
+A unit test exercises exactly one SUT; assembled-pipeline behavior belongs in
+functional or integration tests.
 
 ## Functional test fixtures
 

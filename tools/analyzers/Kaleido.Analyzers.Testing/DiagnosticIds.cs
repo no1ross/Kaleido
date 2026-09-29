@@ -36,4 +36,7 @@ internal static class DiagnosticIds
 
     /// <summary>Exception types must not be declared as records; record value-equality and copy semantics are meaningless and harmful on exception types.</summary>
     public const string ExceptionRecord = "KAL1011";
+
+    /// <summary>Unit-test fixtures must not new up testable framework types other than the declared SUT — collaborators are mocked.</summary>
+    public const string CollaboratorMustBeMocked = "KAL1012";
 }
