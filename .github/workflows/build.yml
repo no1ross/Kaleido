@@ -29,17 +29,20 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore
 
+    # xunit.v3 runs under Microsoft.Testing.Platform (global.json test.runner);
+    # VSTest collectors are ignored there, so coverage uses the MTP extension
+    # (Microsoft.Testing.Extensions.CodeCoverage in tests/Directory.Build.props).
     - name: Test
-      run: dotnet test --configuration Release --no-build --collect:"XPlat Code Coverage" --settings coverlet.runsettings
+      run: dotnet test --configuration Release --no-build -- --coverage --coverage-output-format cobertura
 
-    # Merge per-project lcov into a union report. Summing LH/LF across files
+    # Merge per-project cobertura into a union report. Summing hits across files
     # would double-count shared src assemblies; reportgenerator merges hits.
     # Scope is shipped src/ assemblies only - tests/, tools/, samples/ excluded.
     - name: Merge coverage
       run: |
         dotnet tool install --global reportgenerator.globaltool
         reportgenerator \
-          "-reports:**/TestResults/**/coverage.info" \
+          "-reports:TestResults/*.cobertura.xml" \
           "-targetdir:coverage" \
           "-reporttypes:lcov;HtmlSummary" \
           "-assemblyfilters:-*Tests*;-*FunctionalTests*;-*IntegrationTests*" \
@@ -69,7 +72,7 @@ jobs:
       with:
         name: coverage
         path: |
-          '**/TestResults/**/coverage.info'
+          TestResults/*.cobertura.xml
           coverage/lcov.info
           coverage/index.html
         if-no-files-found: ignore
