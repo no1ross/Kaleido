@@ -40,7 +40,7 @@ jobs:
     # Scope is shipped src/ assemblies only - tests/, tools/, samples/ excluded.
     - name: Merge coverage
       run: |
-        dotnet tool install --global reportgenerator.globaltool
+        dotnet tool install --global dotnet-reportgenerator-globaltool
         reportgenerator \
           "-reports:TestResults/*.cobertura.xml" \
           "-targetdir:coverage" \
