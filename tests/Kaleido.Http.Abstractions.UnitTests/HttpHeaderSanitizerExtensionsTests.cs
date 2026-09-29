@@ -1,6 +1,7 @@
 namespace Kaleido.Http.Abstractions.UnitTests;
 
 public sealed class HttpHeaderSanitizerExtensionsTests
+    : Kaleido.UnitTests.SutFixture
 {
     [Theory]
     [InlineData(null)]

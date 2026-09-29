@@ -3,11 +3,15 @@ using Kaleido.Http.Client;
 namespace Kaleido.Http.Client.UnitTests;
 
 public sealed class HttpClientRegistryCacheTests
+    : Kaleido.UnitTests.SutFixture
 {
+    private static HttpClientRegistryCache<T> CreateSut<T>() =>
+        new();
+
     [Fact]
     public async Task GetOrFetchAsync_WhenNothingCached_InvokesFetch()
     {
-        using var sut = new HttpClientRegistryCache<string>();
+        using var sut = CreateSut<string>();
         var fetchCalled = false;
 
         var result = await sut.GetOrFetchAsync(
@@ -25,7 +29,7 @@ public sealed class HttpClientRegistryCacheTests
     [Fact]
     public async Task GetOrFetchAsync_WhenAlreadyCached_DoesNotInvokeFetchAgain()
     {
-        using var sut = new HttpClientRegistryCache<string>();
+        using var sut = CreateSut<string>();
 
         // Prime the cache.
         await sut.GetOrFetchAsync(_ => Task.FromResult("first"), CancellationToken.None);
@@ -46,7 +50,7 @@ public sealed class HttpClientRegistryCacheTests
     [Fact]
     public async Task Reset_ClearsCache_SoNextFetchIsInvoked()
     {
-        using var sut = new HttpClientRegistryCache<string>();
+        using var sut = CreateSut<string>();
 
         // Prime the cache.
         await sut.GetOrFetchAsync(_ => Task.FromResult("first"), CancellationToken.None);

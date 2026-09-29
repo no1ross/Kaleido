@@ -9,6 +9,7 @@ namespace Kaleido.Provider.SQLite.UnitTests;
 // IProcessContextStore contract spec - a consumer-authored store should
 // satisfy the same shape.
 public sealed class SqliteProcessContextStoreTests
+    : Kaleido.UnitTests.SutFixture
 {
     private static SqliteProcessContextDbContext CreateDbContext()
     {

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kaleido.Http.Client.UnitTests;
 
 public sealed class KaleidoClientServiceCollectionExtensionsTests
+    : Kaleido.UnitTests.SutFixture
 {
     // ── AddProcessClient — guard clauses ────────────────────────────────────────
 
