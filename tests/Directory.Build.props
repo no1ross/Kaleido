@@ -1,9 +1,10 @@
 <Project>
     <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..\'))" />
     <ItemGroup>
-        <PackageReference Include="coverlet.collector">
+        <!-- MTP runner (xunit.v3 + global.json test.runner): VSTest collectors
+             are ignored there; coverage comes from the MTP extension -->
+        <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage">
             <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Moq" />
         <PackageReference Include="xunit.v3" />
