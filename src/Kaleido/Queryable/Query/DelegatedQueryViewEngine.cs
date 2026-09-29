@@ -25,6 +25,20 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
     where TDelegateContext : class
     where TView : class
 {
+    private static readonly System.Reflection.MethodInfo ExecuteTypedAsyncMethod =
+        typeof(DelegatedQueryViewEngine<TDelegateContext, TView>)
+            .GetMethod(
+                nameof(ExecuteTypedAsync),
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
+        ?? throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.ReflectionError,
+            $"Could not locate method '{nameof(ExecuteTypedAsync)}' on DelegatedQueryViewEngine.");
+
+    // Closed-generic cache — MakeGenericMethod allocates per call and this
+    // executes once per delegated query request.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, System.Reflection.MethodInfo> ClosedMethods =
+        new();
+
     public async Task<QueryResult<TView>> ExecuteAsync(
         IQueryRequest request,
         DelegatedQueryViewRegistration registration,
@@ -54,12 +68,9 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
             }
 
             var typedMethod =
-                (typeof(DelegatedQueryViewEngine<TDelegateContext, TView>)
-                    .GetMethod(nameof(ExecuteTypedAsync), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
-                    ?? throw new KaleidoFrameworkException(
-                        FrameworkErrorCodes.ReflectionError,
-                        $"Could not locate method '{nameof(ExecuteTypedAsync)}' on DelegatedQueryViewEngine."))
-                    .MakeGenericMethod(registration.ViewParametersType);
+                ClosedMethods.GetOrAdd(
+                    registration.ViewParametersType,
+                    key => ExecuteTypedAsyncMethod.MakeGenericMethod(key));
 
             using var scope = observation.BeginDelegate();
 
@@ -80,13 +91,16 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
                 result.PageSize,
                 result.Offset);
 
-            await eventPublisher.PublishAsync(
-                eventFactory.CreateQueryExecuted(
-                    correlationAccessor.Current,
-                    details,
-                    request,
-                    result),
-                cancellationToken);
+            if (eventPublisher is not EventPublisher)
+            {
+                await eventPublisher.PublishAsync(
+                    eventFactory.CreateQueryExecuted(
+                        correlationAccessor.Current,
+                        details,
+                        request,
+                        result),
+                    cancellationToken);
+            }
 
             return result;
         }

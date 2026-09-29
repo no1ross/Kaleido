@@ -32,7 +32,8 @@ internal interface IProcessExecutionObservation
     void ExecutionFailed(
         Exception exception);
 
-    void ExecutionCompleted();
+    void ExecutionCompleted(
+        ProcessExecutionState finalState);
 }
 
 internal interface IProcessStepObservation
@@ -350,13 +351,16 @@ internal sealed class ProcessObservability(
                 processorName);
         }
 
-        public void ExecutionCompleted()
+        public void ExecutionCompleted(
+            ProcessExecutionState finalState)
         {
             activity?.AddEvent(new ActivityEvent(ProcessTelemetry.ExecutionCompletedEventName));
+            activity?.SetTag(ProcessTelemetry.TagExecutionStatus, finalState.ToString());
 
             logger.LogInformation(
-                "Process execution completed for processor {ProcessorName}.",
-                processorName);
+                "Process execution completed for processor {ProcessorName} with state {State}.",
+                processorName,
+                finalState);
         }
 
         public void Dispose()

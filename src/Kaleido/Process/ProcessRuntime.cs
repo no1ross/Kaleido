@@ -261,7 +261,8 @@ internal sealed class ProcessRuntime(
                     context.ProcessId);
             }
 
-            observation.ExecutionCompleted();
+            observation.ExecutionCompleted(
+                executionResult.State);
 
             return result;
         }

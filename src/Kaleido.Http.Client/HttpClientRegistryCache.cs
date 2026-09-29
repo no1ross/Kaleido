@@ -8,6 +8,7 @@ namespace Kaleido.Http.Client;
 /// cache fetches once and never refreshes unless explicitly reset.
 /// </summary>
 internal sealed class HttpClientRegistryCache<T> : IDisposable
+    where T : class
 {
     private readonly SemaphoreSlim _lock = new(1, 1);
     private T? _value;
@@ -16,20 +17,12 @@ internal sealed class HttpClientRegistryCache<T> : IDisposable
 
     /// <summary>
     /// Clears the cached value so the next call to <see cref="GetOrFetchAsync"/>
-    /// re-fetches from the remote endpoint.
+    /// re-fetches from the remote endpoint. Non-blocking: an in-flight fetch
+    /// may still store its result after the reset — that is a benign stale write
+    /// (it was a valid fetch when it started), not a correctness hazard.
     /// </summary>
-    public void Reset()
-    {
-        _lock.Wait();
-        try
-        {
-            _value = default;
-        }
-        finally
-        {
-            _lock.Release();
-        }
-    }
+    public void Reset() =>
+        Interlocked.Exchange(ref _value, null);
 
     public async Task<T> GetOrFetchAsync(
         Func<CancellationToken, Task<T>> fetch,

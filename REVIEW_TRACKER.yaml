@@ -362,15 +362,16 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: false
-    status: IN_PROGRESS
-    progress_note: "PR-03 merged #20: step-invoke uses expression-compiled InvokeHandlerAsync cached on registration. Remaining: query dispatch, NullabilityInfoContext, step round-trip."
+    status: COMPLETED
+    progress_note: "PR-03 (step-invoke compiled delegate) + PR-11: closed-generic MethodInfo caches on all query-dispatch sites, shared NullabilityInfoContext (lock - not thread-safe), StepCandidateBuilder typed-object short-circuit."
 
   MP-010:
     title: QueryEventFactory copies full result set per query (wasted under no-op publisher)
     effort_days: 1
     priority: MEDIUM
     breaking_change: possibly
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: engines skip event construction entirely when the publisher is the built-in no-op EventPublisher."
 
   MP-011:
     title: ExecutionCompleted signal fires on degraded runs — add status dimension
@@ -384,7 +385,8 @@ medium_priority_items:
     effort_days: 0.5-1
     priority: MEDIUM
     breaking_change: possibly
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: Reset() is now a non-blocking Interlocked.Exchange (documented benign stale-write). Fetch-once lifetime + explicit InvalidateRegistry() already documented."
 
   MP-013:
     title: Move ProcessResponseFactory out of Http.Abstractions (internal statics in Kaleido.Http)
