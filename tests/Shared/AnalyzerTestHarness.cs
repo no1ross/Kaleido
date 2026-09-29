@@ -36,6 +36,14 @@ internal sealed record DiagnosticResult(
 internal sealed class TestStateCollection
 {
     public List<(string FileName, string Source)> Sources { get; } = new();
+
+    /// <summary>
+    /// Sources compiled into a separate in-memory assembly and added as a
+    /// metadata reference — for analyzers that distinguish types in referenced
+    /// (production) assemblies from types in the test compilation. Grouped by
+    /// assembly name; one compilation is emitted per distinct name.
+    /// </summary>
+    public List<(string AssemblyName, string Source)> ReferenceSources { get; } = new();
 }
 
 /// <summary>
@@ -93,7 +101,34 @@ internal sealed class AnalyzerTest<TAnalyzer>
         // old harness's ReferenceAssemblies.Net.Net80. Using the test process's
         // TPA would pull in real framework deps that collide with in-source stubs.
         var references =
-            Basic.Reference.Assemblies.ReferenceAssemblies.Net80;
+            new List<MetadataReference>(
+                Basic.Reference.Assemblies.ReferenceAssemblies.Net80);
+
+        foreach (var group in TestState.ReferenceSources.GroupBy(x => x.AssemblyName))
+        {
+            var refCompilation =
+                CSharpCompilation.Create(
+                    group.Key,
+                    group.Select((x, i) =>
+                        CSharpSyntaxTree.ParseText(x.Source, path: $"Ref{i}.cs")),
+                    references,
+                    new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+            using var stream = new System.IO.MemoryStream();
+            var emitResult = refCompilation.Emit(stream);
+
+            Assert.True(
+                emitResult.Success,
+                string.Join(
+                    "\n",
+                    emitResult.Diagnostics
+                        .Where(x => x.Severity == DiagnosticSeverity.Error)
+                        .Select(x =>
+                            $"{x.Id}: {x.GetMessage(System.Globalization.CultureInfo.InvariantCulture)}")));
+
+            stream.Position = 0;
+            references.Add(MetadataReference.CreateFromStream(stream));
+        }
 
         // Enable all of the analyzer's descriptors — isEnabledByDefault:false rules
         // (e.g. KAL1006) must still be exercised by their own unit tests.
