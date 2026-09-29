@@ -7,11 +7,15 @@ using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.Source.UnitTests;
 
 public sealed class EndpointTagMissingAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Source.Http.EndpointTagMissingAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Source.Http.EndpointTagMissingAnalyzer CreateSut() =>
+        new();
+
     private static readonly DiagnosticResult Expected =
         new("KAL0016", DiagnosticSeverity.Warning);
 
-    // Minimal stubs — the analyzer is syntax-only so no real ASP.NET Core
+    // Minimal stubs ï¿½ the analyzer is syntax-only so no real ASP.NET Core
     // reference assemblies are required.
     private const string BuilderStub = @"
 public class RouteHandlerBuilder

@@ -13,11 +13,15 @@ namespace Kaleido.Analyzers.Testing.UnitTests;
 /// test harness.
 /// </summary>
 public sealed class FixtureCoverageAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Testing.Fixtures.FixtureCoverageAnalyzer>
 {
     private static readonly string KaleidoAssemblyPath =
         typeof(Kaleido.Exceptions.KaleidoConfigurationException).Assembly.Location;
 
-    private static ImmutableArray<Diagnostic> RunAnalyzer(
+    protected override FixtureCoverageAnalyzer CreateSut() =>
+        new();
+
+    private ImmutableArray<Diagnostic> RunAnalyzer(
         string testSource,
         string testAssemblyName = "Kaleido.UnitTests")
     {
@@ -32,7 +36,7 @@ public sealed class FixtureCoverageAnalyzerTests
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
         return compilation
-            .WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new FixtureCoverageAnalyzer()))
+            .WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(Sut))
             .GetAnalyzerDiagnosticsAsync()
             .GetAwaiter()
             .GetResult();

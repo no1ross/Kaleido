@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.Testing.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.Testing.UnitTests;
 
 public sealed class FixtureNameSuffixAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Testing.Fixtures.FixtureNameSuffixAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Testing.Fixtures.FixtureNameSuffixAnalyzer CreateSut() =>
+        new();
+
     private const string XunitStub = @"
 namespace Xunit
 {

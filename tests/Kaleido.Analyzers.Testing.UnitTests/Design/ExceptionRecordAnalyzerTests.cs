@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.Testing.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.Testing.UnitTests;
 
 public sealed class ExceptionRecordAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Testing.Design.ExceptionRecordAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Testing.Design.ExceptionRecordAnalyzer CreateSut() =>
+        new();
+
     private static readonly DiagnosticResult Expected =
         new("KAL1011", DiagnosticSeverity.Error);
 

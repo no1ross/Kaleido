@@ -3,6 +3,7 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
 		<PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" />
 		<Compile Include="..\Shared\AnalyzerTestHarness.cs" />
+		<Compile Include="..\Shared\SutFixture.cs" />
 		<PackageReference Include="Basic.Reference.Assemblies" />
 		<PackageReference Include="Basic.Reference.Assemblies.Net80" />
 	</ItemGroup>

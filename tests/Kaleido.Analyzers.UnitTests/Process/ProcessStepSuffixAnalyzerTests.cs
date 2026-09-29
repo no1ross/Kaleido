@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.UnitTests.Process;
 
 public sealed class ProcessStepSuffixAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Process.ProcessStepSuffixAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Process.ProcessStepSuffixAnalyzer CreateSut() =>
+        new();
+
     private const string ProcessStepStub = @"
 namespace Kaleido.Process
 {

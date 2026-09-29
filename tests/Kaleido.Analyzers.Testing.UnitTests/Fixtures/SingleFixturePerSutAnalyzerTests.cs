@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.Testing.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.Testing.UnitTests;
 
 public sealed class SingleFixturePerSutAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Testing.Fixtures.SingleFixturePerSutAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Testing.Fixtures.SingleFixturePerSutAnalyzer CreateSut() =>
+        new();
+
     private const string XunitStub = @"
 namespace Xunit
 {

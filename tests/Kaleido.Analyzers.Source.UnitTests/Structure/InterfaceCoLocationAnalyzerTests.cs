@@ -7,7 +7,11 @@ using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
 namespace Kaleido.Analyzers.Source.UnitTests;
 
 public sealed class InterfaceCoLocationAnalyzerTests
+    : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Source.Layout.InterfaceCoLocationAnalyzer>
 {
+    protected override global::Kaleido.Analyzers.Source.Layout.InterfaceCoLocationAnalyzer CreateSut() =>
+        new();
+
     private static readonly DiagnosticResult Expected =
         new("KAL0015", DiagnosticSeverity.Error);
 
