@@ -59,6 +59,18 @@ The core project is organized into two main namespaces:
 - Registries: `ProcessStepRegistry`, `ProcessorRegistry`
 - Observability: `ProcessObservability`
 
+### Extension points
+
+Public seams consumers are expected to implement or replace:
+
+| Seam | Register via | Notes |
+|------|--------------|-------|
+| `IProcessContextStore` | `UseSqliteProcessContextStore(...)` or your own `services.AddScoped` after `AddKaleido()` | Production deployments implement against their own durable store; SQLite provider is a reference impl |
+| `IEventPublisher` | `services.AddSingleton` before `AddKaleido()` | Default is no-op `NullEventPublisher`; replace for real event delivery |
+| `IQueryContextExecutor<TView>` | `services.AddScoped<IQueryContextExecutor<TView>, ...>` | Provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`) instead of sync fallback |
+| Observability provider | `AddOpenTelemetry()` (Kaleido.Observability.OpenTelemetry) or custom `AddKaleidoInstrumentation()` calls | Core stays provider-agnostic on BCL `ActivitySource`/`Meter` |
+| Delegated query views | implement `IDelegateQueryViewSource<TDelegateContext,TView>` on a query view type | Federates view execution to a downstream delegate context |
+
 ### Key design invariants
 - The core project has no transport dependencies.
 - `KaleidoServiceOptions.Assemblies` records assemblies; recording does not scan them for capabilities. Scanning happens during the `AddQueryable()` / `AddProcessor()` calls that `AddKaleido()` invokes internally.
