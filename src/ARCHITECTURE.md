@@ -209,6 +209,8 @@ Both Queryable and Process publish observability through activity sources and me
 ### Event publishing
 `IEventPublisher` is registered by `AddKaleido()` as a no-op `NullEventPublisher` by default. Replace it before calling `AddKaleido()` to install real event infrastructure.
 
+Delivery is best-effort: the runtime persists process state first, then publishes; publish failures are logged at Warning and never roll back state. A transactional outbox is deliberately out of framework scope — consumers needing exactly-once delivery implement their own outbox (e.g. Debezium/WAL tailing against their durable store) since topologies differ per deployment.
+
 ### Discoverability
 Metadata is derived from CLR types at startup:
 - `DataTypeMapper` converts CLR property types to `DataTypeDescriptor` values
