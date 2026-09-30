@@ -224,6 +224,46 @@ internal sealed class ExecutionProcessor(
 
                 break;
             }
+            catch (KaleidoValidationException exception)
+            {
+                stepObservation.StepFailed(exception);
+
+                context =
+                    stateUpdater.ApplyException(
+                        context,
+                        candidate);
+
+                await stateRepository.SaveAsync(
+                    context,
+                    CancellationToken.None);
+
+                outcomes.Add(
+                    new ProcessExecutionOutcome
+                    {
+                        StepName =
+                            candidate.StepName,
+
+                        Status =
+                            StepExecutionStatus.ValidationFailed,
+
+                        Outcome =
+                            GetStepOutcome(StepExecutionStatus.ValidationFailed),
+
+                        Decision =
+                            ExecutionDecisionType.ProcessViolation,
+
+                        RuntimeMessages =
+                        [
+                            StepProcessingMessage.Error(
+                            StepProcessingMessageCode.ValidationFailed,
+                            exception.Message)
+                        ],
+
+                        Response = null
+                    });
+
+                break;
+            }
             catch (Exception exception)
             {
                 stepObservation.StepFailed(exception);
