@@ -133,36 +133,6 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
         return registry.Object;
     }
 
-    private static QueryContextRegistration CreateContextRegistration() =>
-        new(
-            typeof(TestContext),
-            typeof(TestSource),
-            new QueryContextMetadata(
-                "Test-Context",
-                "Test Context",
-                "Test Context",
-                "1.0.0",
-                "Unit Test",
-                QueryContextKind.Direct,
-                null,
-                []));
-
-    private static QueryViewRegistration CreateViewRegistration() =>
-        new(
-            typeof(TestView),
-            typeof(TestViewContract),
-            typeof(EmptyQueryViewParameters),
-            typeof(TestContext),
-            new QueryViewMetadata(
-                "Test-View",
-                "1.0.0",
-                "Test View",
-                "Test View",
-                QueryViewVisibility.Public,
-                null,
-                [],
-                []));
-
     public sealed class TestContext
     {
     }

@@ -1,6 +1,4 @@
-using Kaleido.Http.Process;
 using Kaleido.Http.Queryable;
-using Kaleido.Process.Registry;
 using Kaleido.Queryable.Registry;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;
