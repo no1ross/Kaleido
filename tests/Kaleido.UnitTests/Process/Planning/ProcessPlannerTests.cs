@@ -1,13 +1,14 @@
 using Kaleido.Process.Context;
+using Kaleido.Process.Planning;
 
 using Kaleido.UnitTests;
 
 namespace Kaleido.Process.UnitTests.Processor.Planning;
 
-public sealed class ExecutionPlannerTests
+public sealed class ProcessPlannerTests
     : SutFixture
 {
-    private static ExecutionPlanner CreateSut(
+    private static ProcessPlanner CreateSut(
         IStepCandidateBuilder candidateBuilder,
         IStepCandidateValidator validator,
         IStepCandidateConsistencyChecker consistencyChecker,

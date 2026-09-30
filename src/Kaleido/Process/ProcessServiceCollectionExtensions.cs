@@ -158,7 +158,7 @@ public static class ProcessServiceCollectionExtensions
     {
         services.TryAddSingleton<IProcessStepRegistry, ProcessStepRegistry>();
 
-        services.TryAddSingleton<IExecutionPlanner, ExecutionPlanner>();
+        services.TryAddSingleton<IProcessPlanner, ProcessPlanner>();
         services.TryAddSingleton<IStepCandidateBuilder, StepCandidateBuilder>();
         services.TryAddSingleton<IStepCandidateConsistencyChecker, StepCandidateConsistencyChecker>();
         services.TryAddSingleton<IStepCandidatePlanner, StepCandidatePlanner>();
@@ -173,7 +173,7 @@ public static class ProcessServiceCollectionExtensions
         services.TryAddSingleton<IProcessEventFactory, ProcessEventFactory>();
         services.TryAddScoped<IProcessObservability, ProcessObservability>();
         services.TryAddScoped<IProcessRuntime, ProcessRuntime>();
-        services.TryAddScoped<IExecutionProcessor, ExecutionProcessor>();
+        services.TryAddScoped<IProcessExecutor, ProcessExecutor>();
     }
 
     private static Type RegisterHandler(

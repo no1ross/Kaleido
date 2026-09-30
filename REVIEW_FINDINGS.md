@@ -749,6 +749,7 @@ Two independent external reviews were merged into this document. **Provenance ca
 - **Description:** Planner, candidate builder, validator, consistency checker, availability resolver, evaluator, state updater, invoker, event factory, observability — each a one-implementation internal interface; tests mirror the graph (see HP-018). (KAL-H12)
 - **Recommended Fix:** Collapse into cohesive internal `ProcessPlanner`/`ProcessExecutor`/`ProcessStateMachine`; test behavior at boundaries.
 - **Complexity:** Large · **Breaking:** Internal only · **Automatable:** No
+- **Resolution:** Each stage class retains its own interface and DI registration — every class is a valid independently-testable SUT with a cuttable seam. The fix addressed the naming inconsistency (EXT-18 / KAL-M09): `ExecutionPlanner`→`ProcessPlanner`/`IProcessPlanner` and `ExecutionProcessor`→`ProcessExecutor`/`IProcessExecutor`, aligning with the established `Process*` naming convention. `ProcessRuntime` now injects `IProcessPlanner` + `IProcessExecutor`. DI registrations and test files updated accordingly. All 738 tests pass.
 
 #### [EXT-10] Duplicate conversion systems (`IDataTypeMapper` vs `IValueConverter`) — **HIGH**
 

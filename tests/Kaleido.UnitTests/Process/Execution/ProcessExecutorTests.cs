@@ -10,7 +10,7 @@ using Kaleido.UnitTests;
 
 namespace Kaleido.Process.UnitTests.Processor.Execution;
 
-public sealed class ExecutionProcessorTests
+public sealed class ProcessExecutorTests
     : SutFixture
 {
     [Fact]
@@ -837,7 +837,7 @@ public sealed class ExecutionProcessorTests
         return updater;
     }
 
-    private static ExecutionProcessor CreateSut(
+    private static ProcessExecutor CreateSut(
         Mock<IProcessStepInvoker> invoker,
         Mock<IStepAvailabilityResolver>? availabilityResolver = null,
         Mock<IStepExecutionEvaluator>? evaluator = null,
@@ -857,7 +857,7 @@ public sealed class ExecutionProcessorTests
             correlationAccessor ??
             CreateCorrelationAccessor();
 
-        return new ExecutionProcessor(
+        return new ProcessExecutor(
             invoker.Object,
             (evaluator ?? CreateEvaluator()).Object,
             (stateUpdater ?? CreateStateUpdater()).Object,
@@ -867,7 +867,7 @@ public sealed class ExecutionProcessorTests
             (eventPublisher ?? new Mock<IEventPublisher>()).Object,
             observability,
             accessor.Object,
-            NullLogger<ExecutionProcessor>.Instance);
+            NullLogger<ProcessExecutor>.Instance);
     }
 
     private static Mock<IKaleidoCorrelationContextAccessor> CreateCorrelationAccessor()
