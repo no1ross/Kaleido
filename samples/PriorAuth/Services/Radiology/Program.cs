@@ -2,8 +2,6 @@ using Kaleido;
 using Kaleido.Exceptions;
 using Kaleido.Http;
 using Kaleido.Http.Client;
-using Kaleido.Http.Process;
-using Kaleido.Http.Queryable;
 using Kaleido.Observability.OpenTelemetry;
 using Kaleido.Provider.SQLite;
 using Kaleido.Samples.PriorAuth;
@@ -76,8 +74,7 @@ app.UseCors("AllowAll");
 
 app.MapHealthChecks("/health");
 
-app.MapProcessor();
-app.MapQueryable();
+app.MapKaleido();
 
 await using (var scope = app.Services.CreateAsyncScope())
 {

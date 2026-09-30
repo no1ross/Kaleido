@@ -15,7 +15,7 @@ public static class ProcessEndpointRouteBuilderExtensions
     /// Maps all Kaleido Process endpoints and returns the route group so hosts can
     /// compose conventions (e.g. <c>.RequireAuthorization()</c>) onto every endpoint.
     /// </summary>
-    public static RouteGroupBuilder MapProcessor(
+    internal static RouteGroupBuilder MapProcessor(
         this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
@@ -29,7 +29,7 @@ public static class ProcessEndpointRouteBuilderExtensions
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.ProInvalidRegistration,
                 "Cannot map Process endpoints: Process runtime is not registered. " +
-                "This service has no process steps. Remove the MapProcessor() call.");
+                "Use MapKaleido() to map Kaleido endpoints.");
         }
 
         var processorRegistry =

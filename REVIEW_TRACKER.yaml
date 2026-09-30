@@ -331,7 +331,12 @@ medium_priority_items:
     effort_days: 0.5-1
     priority: MEDIUM
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    notes: >
+      MapKaleido() added as single public entry point. MapProcessor/MapQueryable
+      made internal. Framework auto-detects active runtimes and maps only those.
+      Startup log emitted at Information level. All samples + functional test
+      fixtures migrated. 5 new unit tests.
 
   MP-006:
     title: StartupFilter middleware invisibility — document/opt-out
@@ -685,7 +690,8 @@ external_findings:
     severity: HIGH
     effort: medium
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    notes: "Resolved via MP-005: MapKaleido() replaces Map* pair; auto-detects active runtimes."
   EXT-07:
     title: Map* return IEndpointRouteBuilder — authorization cannot compose
     source: KAL-H09

@@ -17,7 +17,7 @@ public static class QueryableEndpointRouteBuilderExtensions
     /// Maps all Kaleido Queryable endpoints and returns the route group so hosts can
     /// compose conventions (e.g. <c>.RequireAuthorization()</c>) onto every endpoint.
     /// </summary>
-    public static RouteGroupBuilder MapQueryable(
+    internal static RouteGroupBuilder MapQueryable(
         this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
@@ -31,7 +31,7 @@ public static class QueryableEndpointRouteBuilderExtensions
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.QryInvalidRegistration,
                 "Cannot map Queryable endpoints: Queryable runtime is not registered. " +
-                "This service has no query contexts. Remove the MapQueryable() call.");
+                "Use MapKaleido() to map Kaleido endpoints.");
         }
 
         var contextRegistry =
