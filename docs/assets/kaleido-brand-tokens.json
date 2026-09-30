@@ -1,0 +1,49 @@
+{
+  "name": "Kaleido",
+  "tagline": "Typed. Discoverable. Stateful.",
+  "positioning": "A .NET framework for exposing typed queries and stateful business processes as machine-discoverable HTTP capabilities.",
+  "colors": {
+    "midnight": "#080C1B",
+    "navy": "#0C132A",
+    "navy_2": "#152247",
+    "ink": "#111827",
+    "slate": "#677189",
+    "mist": "#EEF2FF",
+    "white": "#FFFFFF",
+    "blue": "#3182F6",
+    "indigo": "#5B5BF7",
+    "violet": "#8B5CF6",
+    "magenta": "#B64FD9",
+    "cyan": "#21B6D7",
+    "teal": "#19C4A7"
+  },
+  "gradients": {
+    "primary": [
+      "#3182F6",
+      "#8B5CF6",
+      "#B64FD9"
+    ],
+    "secondary": [
+      "#3182F6",
+      "#19C4A7"
+    ],
+    "background": [
+      "#080C1B",
+      "#152247"
+    ]
+  },
+  "type": {
+    "sans": [
+      "Inter",
+      "Segoe UI",
+      "Arial",
+      "sans-serif"
+    ],
+    "mono": [
+      "Cascadia Code",
+      "SFMono-Regular",
+      "Consolas",
+      "monospace"
+    ]
+  }
+}

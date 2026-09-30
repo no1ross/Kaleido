@@ -1,0 +1,23 @@
+﻿# Brand Kit Inventory
+
+- `assets/kaleido-brand-tokens.json`
+- `assets/kaleido-brand.css`
+- `assets/kaleido-favicon-32.png`
+- `assets/kaleido-favicon-64.png`
+- `assets/kaleido-github-social-preview.png`
+- `assets/kaleido-landing-page-concept.png`
+- `assets/kaleido-logo-dark-2160.png`
+- `assets/kaleido-logo-dark.png`
+- `assets/kaleido-logo-dark.svg`
+- `assets/kaleido-logo-light-2160.png`
+- `assets/kaleido-logo-light.png`
+- `assets/kaleido-logo-light.svg`
+- `assets/kaleido-mark-1024.png`
+- `assets/kaleido-mark-256.png`
+- `assets/kaleido-mark-512.png`
+- `assets/kaleido-mark-ink.png`
+- `assets/kaleido-mark-white.png`
+- `assets/kaleido-mark.svg`
+- `assets/kaleido-nuget-icon-128.png`
+- `assets/kaleido-readme-banner.png`
+- `assets/kaleido-slide-cover-16x9.png`
