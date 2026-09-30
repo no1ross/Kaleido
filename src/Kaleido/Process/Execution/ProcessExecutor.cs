@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Process.Execution;
 
-internal interface IExecutionProcessor
+internal interface IProcessExecutor
 {
     Task<ProcessExecutionResult> ExecuteAsync(
         IReadOnlyCollection<StepCandidate> candidates,
@@ -14,7 +14,7 @@ internal interface IExecutionProcessor
         CancellationToken cancellationToken = default);
 }
 
-internal sealed class ExecutionProcessor(
+internal sealed class ProcessExecutor(
     IProcessStepInvoker invoker,
     IStepExecutionEvaluator evaluator,
     IProcessStateUpdater stateUpdater,
@@ -24,8 +24,8 @@ internal sealed class ExecutionProcessor(
     IEventPublisher eventPublisher,
     IProcessObservability observability,
     IKaleidoCorrelationContextAccessor correlationAccessor,
-    ILogger<ExecutionProcessor> logger)
-    : IExecutionProcessor
+    ILogger<ProcessExecutor> logger)
+    : IProcessExecutor
 {
 
     public async Task<ProcessExecutionResult> ExecuteAsync(

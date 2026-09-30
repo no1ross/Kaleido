@@ -2,7 +2,9 @@ using Kaleido.Eventing;
 using Kaleido.Observability;
 using Kaleido.Process.Context;
 using Kaleido.Process.Eventing;
+using Kaleido.Process.Execution;
 using Kaleido.Process.Observability;
+using Kaleido.Process.Planning;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Kaleido.UnitTests;
@@ -15,8 +17,8 @@ public sealed class ProcessRuntimeTests
     private static ProcessRuntime CreateSut(
         IProcessContextStore contextStore,
         IProcessStateUpdater stateUpdater,
-        IExecutionPlanner planner,
-        IExecutionProcessor processor,
+        IProcessPlanner planner,
+        IProcessExecutor processor,
         IProcessEventFactory eventFactory,
         IEventPublisher eventPublisher,
         IProcessObservability observability,
@@ -65,7 +67,7 @@ public sealed class ProcessRuntimeTests
                 });
 
         var planner =
-            new Mock<IExecutionPlanner>(MockBehavior.Strict);
+            new Mock<IProcessPlanner>(MockBehavior.Strict);
 
         planner
             .Setup(x =>
@@ -84,7 +86,7 @@ public sealed class ProcessRuntimeTests
             });
 
         var processor =
-            new Mock<IExecutionProcessor>(MockBehavior.Strict);
+            new Mock<IProcessExecutor>(MockBehavior.Strict);
 
         processor
             .Setup(x =>
@@ -166,7 +168,7 @@ public sealed class ProcessRuntimeTests
                 "ignored"));
 
         var planner =
-            new Mock<IExecutionPlanner>();
+            new Mock<IProcessPlanner>();
 
         planner
             .Setup(x =>
@@ -176,7 +178,7 @@ public sealed class ProcessRuntimeTests
             .Returns(new ExecutionPlanResult { Candidates = [] });
 
         var processor =
-            new Mock<IExecutionProcessor>();
+            new Mock<IProcessExecutor>();
 
         processor
             .Setup(x =>
@@ -254,7 +256,7 @@ public sealed class ProcessRuntimeTests
             .Returns(reconciledContext);
 
         var planner =
-            new Mock<IExecutionPlanner>();
+            new Mock<IProcessPlanner>();
 
         planner
             .Setup(x =>
@@ -264,7 +266,7 @@ public sealed class ProcessRuntimeTests
             .Returns(new ExecutionPlanResult { Candidates = [] });
 
         var processor =
-            new Mock<IExecutionProcessor>();
+            new Mock<IProcessExecutor>();
 
         processor
             .Setup(x =>
@@ -353,7 +355,7 @@ public sealed class ProcessRuntimeTests
             .Returns(context);
 
         var planner =
-            new Mock<IExecutionPlanner>();
+            new Mock<IProcessPlanner>();
 
         planner
             .Setup(x =>
@@ -371,7 +373,7 @@ public sealed class ProcessRuntimeTests
                 });
 
         var processor =
-            new Mock<IExecutionProcessor>();
+            new Mock<IProcessExecutor>();
 
         processor
             .Setup(x =>
@@ -483,7 +485,7 @@ public sealed class ProcessRuntimeTests
             .Returns(context);
 
         var planner =
-            new Mock<IExecutionPlanner>();
+            new Mock<IProcessPlanner>();
 
         planner
             .Setup(x =>
@@ -497,7 +499,7 @@ public sealed class ProcessRuntimeTests
                 });
 
         var processor =
-            new Mock<IExecutionProcessor>();
+            new Mock<IProcessExecutor>();
 
         processor
             .Setup(x =>
@@ -584,7 +586,7 @@ public sealed class ProcessRuntimeTests
             .Returns(context);
 
         var planner =
-            new Mock<IExecutionPlanner>(MockBehavior.Strict);
+            new Mock<IProcessPlanner>(MockBehavior.Strict);
 
         planner
             .InSequence(sequence)
@@ -595,7 +597,7 @@ public sealed class ProcessRuntimeTests
             .Returns(plan);
 
         var processor =
-            new Mock<IExecutionProcessor>(MockBehavior.Strict);
+            new Mock<IProcessExecutor>(MockBehavior.Strict);
 
         processor
             .InSequence(sequence)

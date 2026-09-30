@@ -715,7 +715,8 @@ external_findings:
     severity: HIGH
     effort: large
     breaking_change: internal
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "Renamed ExecutionPlanner→ProcessPlanner/IProcessPlanner and ExecutionProcessor→ProcessExecutor/IProcessExecutor for consistency with the Process* naming convention. Each stage class (StepCandidateBuilder, StepCandidateValidator, StepCandidateConsistencyChecker, StepCandidatePlanner, StepAvailabilityResolver, StepExecutionEvaluator, ProcessStateUpdater, ProcessEventFactory, ProcessStepInvoker) retains its own interface and DI registration as each is a valid independently-testable SUT. ProcessRuntime now injects IProcessPlanner + IProcessExecutor. DI registrations updated. Test files renamed to match (ProcessPlannerTests, ProcessExecutorTests). All 738 tests pass."
   EXT-10:
     title: Duplicate conversion systems (IDataTypeMapper vs IValueConverter)
     source: KAL-H13
