@@ -100,8 +100,9 @@ public static class QueryableServiceCollectionExtensions
         }
 
         builder.Services.TryAddSingleton<QueryContextRegistrationValidator>();
+        builder.Services.TryAddSingleton<QueryViewRegistrationValidator>();
 
-        builder.Services.TryAddSingleton<IQueryContextRegistry>(
+        builder.Services.TryAddSingleton<QueryContextRegistry>(
             sp =>
             {
                 var validator =
@@ -118,9 +119,7 @@ public static class QueryableServiceCollectionExtensions
                     localContextTypes);
             });
 
-        builder.Services.TryAddSingleton<QueryViewRegistrationValidator>();
-
-        builder.Services.TryAddSingleton<IQueryViewRegistry>(
+        builder.Services.TryAddSingleton<QueryViewRegistry>(
             sp =>
             {
                 var validator =
@@ -137,11 +136,15 @@ public static class QueryableServiceCollectionExtensions
                     localQueryViewTypes);
             });
 
-        builder.Services.TryAddSingleton<IDelegatedQueryViewRegistry>(
+        builder.Services.TryAddSingleton<DelegatedQueryViewRegistry>(
             sp => new DelegatedQueryViewRegistry(
                 sp.GetRequiredService<IDataTypeMapper>(),
                 sp.GetRequiredService<IConstraintMapper>(),
                 delegatedQueryViewTypes));
+
+        builder.Services.TryAddSingleton<IQueryContextRegistry>(sp => sp.GetRequiredService<QueryContextRegistry>());
+        builder.Services.TryAddSingleton<IQueryViewRegistry>(sp => sp.GetRequiredService<QueryViewRegistry>());
+        builder.Services.TryAddSingleton<IDelegatedQueryViewRegistry>(sp => sp.GetRequiredService<DelegatedQueryViewRegistry>());
 
         builder.Services.TryAddSingleton<IQueryableRegistry, QueryableRegistry>();
 

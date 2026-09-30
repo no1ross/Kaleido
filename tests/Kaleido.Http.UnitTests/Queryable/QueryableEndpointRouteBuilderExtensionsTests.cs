@@ -74,24 +74,6 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
         Assert.Contains("Test Context - Test View", viewTags!.Tags);
     }
 
-    [Fact]
-    public void MapQueryView_ThrowsWhenContextIsMissing()
-    {
-        var builder = WebApplication.CreateBuilder();
-        builder.Services.AddRouting();
-        using var app = builder.Build();
-
-        var contextRegistry = new Mock<IQueryContextRegistry>();
-        contextRegistry.Setup(x => x.GetRegistration(typeof(TestContext))).Throws(new KeyNotFoundException("missing"));
-
-        var exception = Assert.Throws<KeyNotFoundException>(() =>
-            app.MapQueryView(
-                contextRegistry.Object,
-                CreateViewRegistration()));
-
-        Assert.Equal("missing", exception.Message);
-    }
-
     private static RouteEndpoint? FindEndpoint(IEndpointRouteBuilder endpoints, string name) =>
         endpoints.DataSources
             .SelectMany(x => x.Endpoints)
@@ -115,34 +97,9 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
         builder.Services.AddRouting();
 
         builder.Services.AddSingleton(Mock.Of<IQueryableService>());
-        builder.Services.AddSingleton<IQueryContextRegistry>(CreateContextRegistry());
-        builder.Services.AddSingleton<IQueryViewRegistry>(CreateViewRegistry());
-        builder.Services.AddSingleton<IDelegatedQueryViewRegistry>(CreateDelegatedViewRegistry());
         builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
         return builder.Build();
-    }
-
-    private static IQueryContextRegistry CreateContextRegistry()
-    {
-        var registry = new Mock<IQueryContextRegistry>();
-        registry.Setup(x => x.Registrations).Returns([CreateContextRegistration()]);
-        registry.Setup(x => x.GetRegistration(typeof(TestContext))).Returns(CreateContextRegistration());
-        return registry.Object;
-    }
-
-    private static IQueryViewRegistry CreateViewRegistry()
-    {
-        var registry = new Mock<IQueryViewRegistry>();
-        registry.Setup(x => x.Registrations).Returns([CreateViewRegistration()]);
-        return registry.Object;
-    }
-
-    private static IDelegatedQueryViewRegistry CreateDelegatedViewRegistry()
-    {
-        var registry = new Mock<IDelegatedQueryViewRegistry>();
-        registry.Setup(x => x.Registrations).Returns(Array.Empty<DelegatedQueryViewRegistration>());
-        return registry.Object;
     }
 
     private static IQueryableRegistry CreateQueryableRegistry()
@@ -151,6 +108,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
         registry.Setup(x => x.Registrations).Returns([
             new QueryableContextRegistryItem
             {
+                ContextType = typeof(TestContext),
                 Name = "Test-Context",
                 Description = "Test Context",
                 DisplayName = "Test Context",
@@ -160,6 +118,9 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
                 Views = [
                     new QueryableViewRegistryItem
                     {
+                        QueryViewType = typeof(TestView),
+                        ViewType = typeof(TestViewContract),
+                        ViewParametersType = typeof(EmptyQueryViewParameters),
                         Name = "Test-View",
                         Description = "Test View",
                         DisplayName = "Test View",
@@ -169,26 +130,6 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
                 ]
             }
         ]);
-        registry.Setup(x => x.GetRegistration("Test-Context")).Returns(
-            new QueryableContextRegistryItem
-            {
-                Name = "Test-Context",
-                Description = "Test Context",
-                DisplayName = "Test Context",
-                Version = "1.0.0",
-                Source = "Unit Test",
-                Kind = QueryContextKind.Direct,
-                Views = [
-                    new QueryableViewRegistryItem
-                    {
-                        Name = "Test-View",
-                        Description = "Test View",
-                        DisplayName = "Test View",
-                        Version = "1.0.0",
-                        Visibility = QueryViewVisibility.Public
-                    }
-                ]
-            });
         return registry.Object;
     }
 

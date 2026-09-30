@@ -707,7 +707,8 @@ external_findings:
     severity: HIGH
     effort: large
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "IQueryContextRegistry, IQueryViewRegistry, IDelegatedQueryViewRegistry made internal. IQueryableRegistry is now the only public registry interface. QueryableContextRegistryItem carries ContextType; QueryableViewRegistryItem carries QueryViewType/ViewType/ViewParametersType for transport wiring. MapQueryable unified to one loop over IQueryableRegistry.Registrations. All 738 tests pass."
   EXT-09:
     title: Process interface-per-stage decomposition -> cohesive components
     source: KAL-H12

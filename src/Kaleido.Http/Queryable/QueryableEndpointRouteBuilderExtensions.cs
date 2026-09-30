@@ -34,18 +34,6 @@ public static class QueryableEndpointRouteBuilderExtensions
                 "Use MapKaleido() to map Kaleido endpoints.");
         }
 
-        var contextRegistry =
-            endpoints.ServiceProvider
-                .GetRequiredService<IQueryContextRegistry>();
-
-        var viewRegistry =
-            endpoints.ServiceProvider
-                .GetRequiredService<IQueryViewRegistry>();
-
-        var delegatedViewRegistry =
-            endpoints.ServiceProvider
-                .GetRequiredService<IDelegatedQueryViewRegistry>();
-
         var serviceName =
             endpoints.ServiceProvider
                 .GetRequiredService<KaleidoServiceOptions>()
@@ -60,12 +48,13 @@ public static class QueryableEndpointRouteBuilderExtensions
             endpoints.MapGroup(
                 QueryableContractUrls.QueryablePrefix(serviceName));
 
+        var viewCount = queryableRegistry.Registrations.Sum(c => c.Views.Count);
+
         logger.LogInformation(
-            "Queryable mapped at route prefix {RoutePrefix} with {QueryContextCount} query contexts, {QueryViewCount} query views, and {DelegatedQueryViewCount} delegated query views.",
+            "Queryable mapped at route prefix {RoutePrefix} with {QueryContextCount} query contexts and {QueryViewCount} views.",
             QueryableContractUrls.QueryablePrefix(serviceName),
-            contextRegistry.Registrations.Count,
-            viewRegistry.Registrations.Count,
-            delegatedViewRegistry.Registrations.Count);
+            queryableRegistry.Registrations.Count,
+            viewCount);
 
         group.MapGet(
                 "",
@@ -108,67 +97,35 @@ public static class QueryableEndpointRouteBuilderExtensions
                     "and identify supported search, filter, sort, and paging capabilities.")
                 .Produces<IReadOnlyCollection<QueryableRecordResponse>>();
 
-        foreach (var context in contextRegistry.Registrations)
+        foreach (var context in queryableRegistry.Registrations)
         {
-            var views = viewRegistry.Registrations
-                .Where(x => x.QueryContextType == context.ContextType).ToArray();
-
             group.MapMetadataEndpoint(
-                queryableRegistry.GetRegistration(context.Metadata.Name),
+                context,
                 QueryableRoutePaths.QueryContextMetadata(
-                    context.Metadata.Name.ToLowerInvariant()),
+                    context.Name.ToLowerInvariant()),
                 serviceName);
 
-            if (context.Metadata.Kind == QueryContextKind.Direct)
+            if (context.Kind == QueryContextKind.Direct)
             {
-                group.MapDirectQueryContext(
-                    context);
+                group.MapDirectQueryContext(context);
             }
-        }
 
-        foreach (var delegatedContext in delegatedViewRegistry.Registrations
-                     .GroupBy(x => x.QueryMetadata.Name, StringComparer.OrdinalIgnoreCase))
-        {
-            var metadata = delegatedContext.First().QueryMetadata;
-
-            group.MapMetadataEndpoint(
-                queryableRegistry.GetRegistration(metadata.Name),
-                QueryableRoutePaths.QueryContextMetadata(
-                    metadata.Name.ToLowerInvariant()),
-                serviceName);
-        }
-
-        foreach (var view in viewRegistry.Registrations)
-        {
-            group.MapQueryView(
-                contextRegistry,
-                view);
-        }
-
-        foreach (var view in delegatedViewRegistry.Registrations)
-        {
-            group.MapDelegatedQueryView(
-                view,
-                serviceName);
+            foreach (var view in context.Views)
+            {
+                group.MapQueryView(context, view);
+            }
         }
 
         return group;
     }
 
-    internal static void MapQueryView(
-      this IEndpointRouteBuilder endpoints,
-      IQueryContextRegistry contextRegistry,
-      QueryViewRegistration view)
+    private static void MapQueryView(
+        this IEndpointRouteBuilder endpoints,
+        QueryableContextRegistryItem context,
+        QueryableViewRegistryItem view)
     {
-        var context =
-            contextRegistry.GetRegistration(
-                view.QueryContextType);
-
-        var contextName =
-            context.Metadata.Name.ToLowerInvariant();
-
-        var viewName =
-            view.Metadata.Name.ToLowerInvariant();
+        var contextName = context.Name.ToLowerInvariant();
+        var viewName = view.Name.ToLowerInvariant();
 
         endpoints.MapQueryEndpoint(
             context,
@@ -178,7 +135,7 @@ public static class QueryableEndpointRouteBuilderExtensions
 
     private static void MapDirectQueryContext(
         this IEndpointRouteBuilder endpoints,
-        QueryContextRegistration context)
+        QueryableContextRegistryItem context)
     {
         var method = typeof(QueryableEndpointRouteBuilderExtensions)
             .GetMethod(
@@ -189,33 +146,14 @@ public static class QueryableEndpointRouteBuilderExtensions
                 $"Method '{nameof(MapTypedDirectQueryEndpoint)}' not found.");
 
         method
-            .MakeGenericMethod(
-                context.ContextType)
+            .MakeGenericMethod(context.ContextType)
             .Invoke(
                 null,
-                new object[]
-                {
+                [
                     endpoints,
-                    QueryableRoutePaths.QueryContextQuery(
-                        context.Metadata.Name.ToLowerInvariant()),
+                    QueryableRoutePaths.QueryContextQuery(context.Name.ToLowerInvariant()),
                     context
-                });
-    }
-
-    public static void MapDelegatedQueryView(
-      this IEndpointRouteBuilder endpoints,
-      DelegatedQueryViewRegistration view,
-      string serviceName)
-    {
-        var contextName =
-            view.QueryMetadata.Name.ToLowerInvariant();
-
-        var viewName =
-            view.ViewMetadata.Name.ToLowerInvariant();
-
-        endpoints.MapDelegatedQueryEndpoint(
-            view,
-            QueryableRoutePaths.QueryViewQuery(contextName, viewName));
+                ]);
     }
 
     private static void MapMetadataEndpoint(
@@ -244,8 +182,8 @@ public static class QueryableEndpointRouteBuilderExtensions
 
     private static void MapQueryEndpoint(
         this IEndpointRouteBuilder endpoints,
-        QueryContextRegistration context,
-        QueryViewRegistration view,
+        QueryableContextRegistryItem context,
+        QueryableViewRegistryItem view,
         string route)
     {
         var method = typeof(QueryableEndpointRouteBuilderExtensions)
@@ -263,48 +201,14 @@ public static class QueryableEndpointRouteBuilderExtensions
                 view.ViewParametersType)
             .Invoke(
                 null,
-                new object[]
-                {
-                    endpoints,
-                    route,
-                    context,
-                    view
-                });
-    }
-
-    private static void MapDelegatedQueryEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        DelegatedQueryViewRegistration view,
-        string route)
-    {
-        var method = typeof(QueryableEndpointRouteBuilderExtensions)
-            .GetMethod(
-                nameof(MapTypedDelegatedQueryEndpoint),
-                BindingFlags.Static | BindingFlags.NonPublic)
-            ?? throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.ReflectionError,
-                $"Method '{nameof(MapTypedDelegatedQueryEndpoint)}' not found.");
-
-        method
-            .MakeGenericMethod(
-                view.QueryViewType,
-                view.ViewType,
-                view.ViewParametersType)
-            .Invoke(
-                null,
-                new object[]
-                {
-                    endpoints,
-                    route,
-                    view
-                });
+                [endpoints, route, context, view]);
     }
 
     private static void MapTypedQueryEndpoint<TQueryView, TView, TViewParameters>(
         IEndpointRouteBuilder endpoints,
         string route,
-        QueryContextRegistration context,
-        QueryViewRegistration view)
+        QueryableContextRegistryItem context,
+        QueryableViewRegistryItem view)
         where TQueryView : class
         where TView : class
         where TViewParameters : class
@@ -323,50 +227,14 @@ public static class QueryableEndpointRouteBuilderExtensions
                             cancellationToken)))
             .WithName(
                 QueryableEndpointNames.QueryViewEndpointName(
-                    context.Metadata.Name.ToLowerInvariant(),
-                    view.Metadata.Name.ToLowerInvariant()))
+                    context.Name.ToLowerInvariant(),
+                    view.Name.ToLowerInvariant()))
             .WithTags(
-                $"{context.Metadata.DisplayName} - {view.Metadata.DisplayName}", "Kaleido")
+                $"{context.DisplayName} - {view.DisplayName}", "Kaleido")
             .WithSummary(
-                $"Query {view.Metadata.DisplayName}.")
+                $"Query {view.DisplayName}.")
             .WithDescription(
-                $"Executes a query against the '{view.Metadata.DisplayName}' view.")
-            .Accepts<QueryApiRequest>(
-                "application/json")
-            .Produces<QueryResult<TView>>()
-            .Produces<KaleidoErrorResponse>(400);
-    }
-
-    private static void MapTypedDelegatedQueryEndpoint<TQueryView, TView, TViewParameters>(
-        IEndpointRouteBuilder endpoints,
-        string route,
-        DelegatedQueryViewRegistration view)
-        where TQueryView : class
-        where TView : class
-        where TViewParameters : class
-    {
-        endpoints.MapPost(
-                route,
-                async (
-                    QueryApiRequest<TViewParameters> request,
-                    IQueryableService queryable,
-                    CancellationToken cancellationToken) =>
-                    Results.Ok(
-                        await queryable.QueryAsync<TQueryView, TView>(
-                            new QueryRequest<TViewParameters>(
-                                Query: request.Query,
-                                ViewParameters: request.Parameters),
-                            cancellationToken)))
-            .WithName(
-                QueryableEndpointNames.QueryViewEndpointName(
-                    view.QueryMetadata.Name.ToLowerInvariant(),
-                    view.ViewMetadata.Name.ToLowerInvariant()))
-            .WithTags(
-                $"{view.QueryMetadata.DisplayName} - {view.ViewMetadata.DisplayName}", "Kaleido")
-            .WithSummary(
-                $"Query {view.ViewMetadata.DisplayName}.")
-            .WithDescription(
-                $"Executes a query against the '{view.ViewMetadata.DisplayName}' view.")
+                $"Executes a query against the '{view.DisplayName}' view.")
             .Accepts<QueryApiRequest>(
                 "application/json")
             .Produces<QueryResult<TView>>()
@@ -376,7 +244,7 @@ public static class QueryableEndpointRouteBuilderExtensions
     private static void MapTypedDirectQueryEndpoint<TQueryContext>(
         IEndpointRouteBuilder endpoints,
         string route,
-        QueryContextRegistration context)
+        QueryableContextRegistryItem context)
         where TQueryContext : class
     {
         endpoints.MapPost(
@@ -393,13 +261,13 @@ public static class QueryableEndpointRouteBuilderExtensions
                             cancellationToken)))
             .WithName(
                 QueryableEndpointNames.QueryContextEndpointName(
-                    context.Metadata.Name.ToLowerInvariant()))
+                    context.Name.ToLowerInvariant()))
             .WithTags(
-                context.Metadata.DisplayName, "Kaleido")
+                context.DisplayName ?? context.Name, "Kaleido")
             .WithSummary(
-                $"Query {context.Metadata.DisplayName}.")
+                $"Query {context.DisplayName ?? context.Name}.")
             .WithDescription(
-                $"Executes a query directly against the '{context.Metadata.DisplayName}' query context.")
+                $"Executes a query directly against the '{context.DisplayName ?? context.Name}' query context.")
             .Accepts<QueryApiRequest>(
                 "application/json")
             .Produces<QueryResult<TQueryContext>>()
