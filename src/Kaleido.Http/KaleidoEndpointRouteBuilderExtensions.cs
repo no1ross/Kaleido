@@ -27,28 +27,27 @@ public static class KaleidoEndpointRouteBuilderExtensions
             ? endpoints.ServiceProvider.GetRequiredService<IProcessStepRegistry>().Registrations.Count
             : 0;
 
-        var contextCount = hasQueryable
-            ? endpoints.ServiceProvider.GetRequiredService<IQueryContextRegistry>().Registrations.Count
-            : 0;
+        var contextCount = 0;
+        var viewCount = 0;
 
-        var viewCount = hasQueryable
-            ? endpoints.ServiceProvider.GetRequiredService<IQueryViewRegistry>().Registrations.Count
-            : 0;
+        if (hasQueryable)
+        {
+            var registrations = endpoints.ServiceProvider
+                .GetRequiredService<IQueryableRegistry>()
+                .Registrations;
 
-        var delegatedViewCount = hasQueryable
-            ? endpoints.ServiceProvider.GetRequiredService<IDelegatedQueryViewRegistry>().Registrations.Count
-            : 0;
+            contextCount = registrations.Count;
+            viewCount = registrations.Sum(c => c.Views.Count);
+        }
 
         endpoints.ServiceProvider
             .GetRequiredService<ILoggerFactory>()
             .CreateLogger("Kaleido.Startup")
             .LogInformation(
-                "Kaleido started: {StepCount} process step(s), {ContextCount} query context(s), " +
-                "{ViewCount} query view(s), {DelegatedViewCount} delegated query view(s).",
+                "Kaleido started: {StepCount} process step(s), {ContextCount} query context(s), {ViewCount} query view(s).",
                 stepCount,
                 contextCount,
-                viewCount,
-                delegatedViewCount);
+                viewCount);
 
         var builders = new List<IEndpointConventionBuilder>();
 

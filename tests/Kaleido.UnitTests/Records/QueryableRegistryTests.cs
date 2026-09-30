@@ -1,4 +1,3 @@
-using Kaleido.Exceptions;
 using Kaleido.Queryable.Registry;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -133,41 +132,28 @@ public sealed class QueryableRegistryTests
     }
 
     [Fact]
-    public void Find_WhenNameIsNull_Throws()
+    public void Registrations_ProjectsContextType()
     {
         var contextRegistry = new Mock<IQueryContextRegistry>();
         var viewRegistry = new Mock<IQueryViewRegistry>();
         var delegatedRegistry = new Mock<IDelegatedQueryViewRegistry>();
 
-        contextRegistry.Setup(r => r.Registrations).Returns([]);
+        var contextRegistration = new QueryContextRegistration(
+            typeof(string),
+            typeof(object),
+            new QueryContextMetadata("context1", "desc", "display", "1.0", null, QueryContextKind.Local, null, []));
+
+        contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
         viewRegistry.Setup(r => r.Registrations).Returns([]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
         var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
-        Assert.Throws<ArgumentNullException>(() =>
-            registry.Find(null!));
+        Assert.Equal(typeof(string), registry.Registrations.First().ContextType);
     }
 
     [Fact]
-    public void Find_WhenNameIsWhitespace_Throws()
-    {
-        var contextRegistry = new Mock<IQueryContextRegistry>();
-        var viewRegistry = new Mock<IQueryViewRegistry>();
-        var delegatedRegistry = new Mock<IDelegatedQueryViewRegistry>();
-
-        contextRegistry.Setup(r => r.Registrations).Returns([]);
-        viewRegistry.Setup(r => r.Registrations).Returns([]);
-        delegatedRegistry.Setup(r => r.Registrations).Returns([]);
-
-        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
-
-        Assert.Throws<ArgumentException>(() =>
-            registry.Find("   "));
-    }
-
-    [Fact]
-    public void Find_WhenRegistrationExists_ReturnsRegistration()
+    public void Registrations_ProjectsViewCLRTypes()
     {
         var contextRegistry = new Mock<IQueryContextRegistry>();
         var viewRegistry = new Mock<IQueryViewRegistry>();
@@ -178,20 +164,28 @@ public sealed class QueryableRegistryTests
             typeof(object),
             new QueryContextMetadata("context1", "desc", "display", "1.0", null, QueryContextKind.Local, null, []));
 
+        var viewRegistration = new QueryViewRegistration(
+            typeof(string),
+            typeof(int),
+            typeof(long),
+            typeof(object),
+            new QueryViewMetadata("view1", "desc", "display", "1.0", QueryViewVisibility.Public, null, null, null));
+
         contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
-        viewRegistry.Setup(r => r.Registrations).Returns([]);
+        viewRegistry.Setup(r => r.Registrations)
+            .Returns([viewRegistration]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
         var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
-        var result = registry.Find("context1");
-
-        Assert.NotNull(result);
-        Assert.Equal("context1", result.Name);
+        var view = registry.Registrations.First().Views.Single();
+        Assert.Equal(typeof(string), view.QueryViewType);
+        Assert.Equal(typeof(int), view.ViewType);
+        Assert.Equal(typeof(long), view.ViewParametersType);
     }
 
     [Fact]
-    public void Find_WhenRegistrationNotFound_ReturnsNull()
+    public void Registrations_ProjectsDelegatedViewCLRTypes()
     {
         var contextRegistry = new Mock<IQueryContextRegistry>();
         var viewRegistry = new Mock<IQueryViewRegistry>();
@@ -199,17 +193,59 @@ public sealed class QueryableRegistryTests
 
         contextRegistry.Setup(r => r.Registrations).Returns([]);
         viewRegistry.Setup(r => r.Registrations).Returns([]);
+
+        var metadata = new QueryContextMetadata("delegated1", "desc", "display", "1.0", null, QueryContextKind.Local, null, []);
+        var delegatedRegistration = new DelegatedQueryViewRegistration(
+            typeof(string),
+            typeof(int),
+            typeof(long),
+            typeof(object),
+            metadata,
+            new QueryViewMetadata("view1", "desc", "display", "1.0", QueryViewVisibility.Public, null, null, null));
+
+        delegatedRegistry.Setup(r => r.Registrations).Returns([delegatedRegistration]);
+
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+
+        var view = registry.Registrations.First().Views.Single();
+        Assert.Equal(typeof(string), view.QueryViewType);
+        Assert.Equal(typeof(int), view.ViewType);
+        Assert.Equal(typeof(long), view.ViewParametersType);
+    }
+
+    [Fact]
+    public void Registrations_ExcludesNonPublicViews()
+    {
+        var contextRegistry = new Mock<IQueryContextRegistry>();
+        var viewRegistry = new Mock<IQueryViewRegistry>();
+        var delegatedRegistry = new Mock<IDelegatedQueryViewRegistry>();
+
+        var contextRegistration = new QueryContextRegistration(
+            typeof(object),
+            typeof(object),
+            new QueryContextMetadata("context1", "desc", "display", "1.0", null, QueryContextKind.Local, null, []));
+
+        var publicView = new QueryViewRegistration(
+            typeof(object), typeof(object), typeof(object), typeof(object),
+            new QueryViewMetadata("public-view", "1.0", "Public View", "desc", QueryViewVisibility.Public, null, null, null));
+
+        var internalView = new QueryViewRegistration(
+            typeof(object), typeof(object), typeof(object), typeof(object),
+            new QueryViewMetadata("internal-view", "1.0", "Internal View", "desc", QueryViewVisibility.Internal, null, null, null));
+
+        contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
+        viewRegistry.Setup(r => r.Registrations).Returns([publicView, internalView]);
         delegatedRegistry.Setup(r => r.Registrations).Returns([]);
 
         var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
-        var result = registry.Find("unknown");
-
-        Assert.Null(result);
+        var views = registry.Registrations.First().Views;
+        Assert.Single(views);
+        Assert.Equal("public-view", views.First().Name);
     }
 
     [Fact]
-    public void Find_UsesCaseInsensitiveMatching()
+    public void Registrations_FindByName_UsesLinq()
     {
         var contextRegistry = new Mock<IQueryContextRegistry>();
         var viewRegistry = new Mock<IQueryViewRegistry>();
@@ -226,51 +262,11 @@ public sealed class QueryableRegistryTests
 
         var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
-        var result = registry.Find("CONTEXT1");
+        // Lookup is now via Registrations — consumers use LINQ directly
+        var result = registry.Registrations
+            .FirstOrDefault(r => r.Name.Equals("CONTEXT1", StringComparison.OrdinalIgnoreCase));
 
         Assert.NotNull(result);
         Assert.Equal("Context1", result.Name);
-    }
-
-    [Fact]
-    public void GetRegistration_WhenRegistrationExists_ReturnsRegistration()
-    {
-        var contextRegistry = new Mock<IQueryContextRegistry>();
-        var viewRegistry = new Mock<IQueryViewRegistry>();
-        var delegatedRegistry = new Mock<IDelegatedQueryViewRegistry>();
-
-        var contextRegistration = new QueryContextRegistration(
-            typeof(object),
-            typeof(object),
-            new QueryContextMetadata("context1", "desc", "display", "1.0", null, QueryContextKind.Local, null, []));
-
-        contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
-        viewRegistry.Setup(r => r.Registrations).Returns([]);
-        delegatedRegistry.Setup(r => r.Registrations).Returns([]);
-
-        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
-
-        var result = registry.GetRegistration("context1");
-
-        Assert.NotNull(result);
-        Assert.Equal("context1", result.Name);
-    }
-
-    [Fact]
-    public void GetRegistration_WhenRegistrationNotFound_Throws()
-    {
-        var contextRegistry = new Mock<IQueryContextRegistry>();
-        var viewRegistry = new Mock<IQueryViewRegistry>();
-        var delegatedRegistry = new Mock<IDelegatedQueryViewRegistry>();
-
-        contextRegistry.Setup(r => r.Registrations).Returns([]);
-        viewRegistry.Setup(r => r.Registrations).Returns([]);
-        delegatedRegistry.Setup(r => r.Registrations).Returns([]);
-
-        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
-
-        var ex = Assert.Throws<KaleidoFrameworkException>(() =>
-            registry.GetRegistration("unknown"));
-        Assert.Equal(FrameworkErrorCodes.MissingRegistration, ex.Code);
     }
 }

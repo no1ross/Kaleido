@@ -736,11 +736,11 @@ Two independent external reviews were merged into this document. **Provenance ca
 - **Recommended Fix:** Return `IEndpointConventionBuilder`/`RouteGroupBuilder` (or one `MapKaleido()` group); document the unauthenticated default; authorization integration tests (401/403).
 - **Complexity:** Medium · **Breaking:** Yes — Public API · **Migration:** Low–Medium · **Automatable:** Yes
 
-#### [EXT-08] Queryable surface proliferates: registries × parallel source families — **HIGH**
+#### [EXT-08] Queryable surface proliferates: registries × parallel source families — **HIGH** ✅ RESOLVED
 
 - **Severity:** High · **Category:** Bloat / API design
 - **Description:** Separate context/local-view/delegated-view/aggregate registries + eight sync/async/generic `QuerySources.cs` shapes + client interfaces in `Http.Abstractions`. (KAL-H11, F-04, part of KAL-H04)
-- **Recommended Fix:** One async-first source contract (sync via adapters) + one aggregate read-only catalog; lower-level registries internal.
+- **Resolution:** `IQueryContextRegistry`, `IQueryViewRegistry`, and `IDelegatedQueryViewRegistry` are now internal. `IQueryableRegistry` is the only public registry interface. `QueryableContextRegistryItem` now carries `ContextType`; `QueryableViewRegistryItem` carries `QueryViewType`/`ViewType`/`ViewParametersType` for transport wiring. `MapQueryable` is unified into one loop over `IQueryableRegistry.Registrations` — local and delegated views are transparent to all transports. `QueryableService` dispatch order (delegated → local view → direct context) remains unchanged, handled internally by the service.
 - **Complexity:** Large · **Breaking:** Yes — Public API · **Migration:** High · **Automatable:** No
 
 #### [EXT-09] Process execution decomposed into interface-per-stage — **HIGH**

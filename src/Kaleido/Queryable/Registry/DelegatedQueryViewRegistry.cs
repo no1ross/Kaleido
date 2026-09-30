@@ -3,7 +3,7 @@ using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Registry;
 
-public interface IDelegatedQueryViewRegistry
+internal interface IDelegatedQueryViewRegistry
 {
     IReadOnlyCollection<DelegatedQueryViewRegistration> Registrations { get; }
 

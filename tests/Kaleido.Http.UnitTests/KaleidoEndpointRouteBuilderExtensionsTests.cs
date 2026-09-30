@@ -113,9 +113,6 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         builder.Services.AddRouting();
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
         builder.Services.AddSingleton(Mock.Of<IQueryableService>());
-        builder.Services.AddSingleton<IQueryContextRegistry>(CreateQueryContextRegistry());
-        builder.Services.AddSingleton<IQueryViewRegistry>(CreateQueryViewRegistry());
-        builder.Services.AddSingleton<IDelegatedQueryViewRegistry>(CreateDelegatedQueryViewRegistry());
         builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry());
         return builder.Build();
     }
@@ -130,9 +127,6 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton<IProcessStepRegistry>(CreateProcessStepRegistry());
         builder.Services.AddSingleton<IProcessRegistry>(CreateProcessRegistry());
         builder.Services.AddSingleton(Mock.Of<IQueryableService>());
-        builder.Services.AddSingleton<IQueryContextRegistry>(CreateQueryContextRegistry());
-        builder.Services.AddSingleton<IQueryViewRegistry>(CreateQueryViewRegistry());
-        builder.Services.AddSingleton<IDelegatedQueryViewRegistry>(CreateDelegatedQueryViewRegistry());
         builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry());
         return builder.Build();
     }
@@ -193,28 +187,6 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
     // ── Queryable registry helpers ───────────────────────────────────────────
 
-    private static IQueryContextRegistry CreateQueryContextRegistry()
-    {
-        var registry = new Mock<IQueryContextRegistry>();
-        registry.Setup(x => x.Registrations).Returns([CreateContextRegistration()]);
-        registry.Setup(x => x.GetRegistration(typeof(TestContext))).Returns(CreateContextRegistration());
-        return registry.Object;
-    }
-
-    private static IQueryViewRegistry CreateQueryViewRegistry()
-    {
-        var registry = new Mock<IQueryViewRegistry>();
-        registry.Setup(x => x.Registrations).Returns([CreateViewRegistration()]);
-        return registry.Object;
-    }
-
-    private static IDelegatedQueryViewRegistry CreateDelegatedQueryViewRegistry()
-    {
-        var registry = new Mock<IDelegatedQueryViewRegistry>();
-        registry.Setup(x => x.Registrations).Returns([]);
-        return registry.Object;
-    }
-
     private static IQueryableRegistry CreateQueryableRegistry()
     {
         var registry = new Mock<IQueryableRegistry>();
@@ -222,6 +194,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         [
             new QueryableContextRegistryItem
             {
+                ContextType = typeof(TestContext),
                 Name = "Test-Context",
                 Description = "Test Context",
                 DisplayName = "Test Context",
@@ -232,6 +205,9 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
                 [
                     new QueryableViewRegistryItem
                     {
+                        QueryViewType = typeof(TestView),
+                        ViewType = typeof(TestViewContract),
+                        ViewParametersType = typeof(EmptyQueryViewParameters),
                         Name = "Test-View",
                         Description = "Test View",
                         DisplayName = "Test View",
@@ -241,59 +217,8 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
                 ]
             }
         ]);
-        registry.Setup(x => x.GetRegistration("Test-Context")).Returns(
-            new QueryableContextRegistryItem
-            {
-                Name = "Test-Context",
-                Description = "Test Context",
-                DisplayName = "Test Context",
-                Version = "1.0.0",
-                Source = "Unit Test",
-                Kind = QueryContextKind.Direct,
-                Views =
-                [
-                    new QueryableViewRegistryItem
-                    {
-                        Name = "Test-View",
-                        Description = "Test View",
-                        DisplayName = "Test View",
-                        Version = "1.0.0",
-                        Visibility = QueryViewVisibility.Public
-                    }
-                ]
-            });
         return registry.Object;
     }
-
-    private static QueryContextRegistration CreateContextRegistration() =>
-        new(
-            typeof(TestContext),
-            typeof(TestSource),
-            new QueryContextMetadata(
-                "Test-Context",
-                "Test Context",
-                "Test Context",
-                "1.0.0",
-                "Unit Test",
-                QueryContextKind.Direct,
-                null,
-                []));
-
-    private static QueryViewRegistration CreateViewRegistration() =>
-        new(
-            typeof(TestView),
-            typeof(TestViewContract),
-            typeof(EmptyQueryViewParameters),
-            typeof(TestContext),
-            new QueryViewMetadata(
-                "Test-View",
-                "1.0.0",
-                "Test View",
-                "Test View",
-                QueryViewVisibility.Public,
-                null,
-                [],
-                []));
 
     // ── Nested test types ────────────────────────────────────────────────────
 
