@@ -1,4 +1,5 @@
-﻿using Kaleido.Http.Client;
+﻿using Kaleido.Http;
+using Kaleido.Http.Client;
 using Kaleido.Http.Queryable;
 using Kaleido.Observability;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
@@ -49,7 +50,7 @@ public sealed class QueryableAspNetCoreFixture
 
                         app.UseEndpoints(endpoints =>
                         {
-                            endpoints.MapQueryable();
+                            endpoints.MapKaleido();
                         });
                     });
                 })
