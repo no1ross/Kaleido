@@ -1,353 +1,137 @@
-# Kaleido
+<p align="center">
+  <img src="docs/assets/kaleido-readme-banner.png" alt="Kaleido — Typed. Discoverable. Stateful." width="100%" />
+</p>
 
-Kaleido is a framework for exposing business capabilities through consistent, discoverable contracts.
+<p align="center">
+  <strong>Expose typed queries and stateful business processes as machine-discoverable HTTP capabilities.</strong>
+</p>
 
-Rather than building custom APIs, custom validation, custom documentation, and custom consumer experiences for every feature, Kaleido provides standardized models for exposing both business information and business actions.
+<p align="center">
+  <img alt=".NET" src="https://img.shields.io/badge/.NET-framework-512BD4?style=flat-square" />
+  <img alt="Status: preview" src="https://img.shields.io/badge/status-preview-8B5CF6?style=flat-square" />
+  <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-19A974?style=flat-square" />
+  <img alt="Machine discoverable" src="https://img.shields.io/badge/capabilities-machine--discoverable-3182F6?style=flat-square" />
+</p>
 
-Kaleido is built around three principles:
+> [!IMPORTANT]
+> Kaleido is under active pre-1.0 development. APIs and package boundaries may change while the public contract is refined.
 
-- Business capabilities should be discoverable.
-- Contracts should be explicit.
-- Consumers should understand business capabilities rather than implementation details.
+## What is Kaleido?
 
----
+Kaleido is a .NET framework for publishing business capabilities through consistent, typed, discoverable contracts.
+
+It provides two complementary models:
+
+| Model | Purpose | Examples |
+|---|---|---|
+| **Queryable** | Expose business information with search, filtering, sorting, paging, validation, and metadata. | Products, members, orders, reference data |
+| **Process** | Expose stateful business actions with validation, dependencies, availability rules, and next-step guidance. | Start intake, submit order, approve request |
+
+Kaleido publishes metadata describing those capabilities—including their inputs, outputs, constraints, relationships, and URLs—so applications, integrations, developer tools, and AI-assisted clients can understand what is available without reverse-engineering implementation details.
 
 ## Why Kaleido?
 
-Most applications repeatedly solve the same problems:
+- **Discoverable by default** — registries describe available queries, process steps, fields, constraints, and routes.
+- **Strongly typed** — business contracts remain ordinary .NET types with familiar validation attributes.
+- **Stateful when needed** — Process tracks long-running, multi-step work through an explicit process identifier.
+- **Transport-aware, not transport-bound** — the core runtime is separated from HTTP, clients, persistence, and observability providers.
+- **Built for consumers** — the framework standardizes common behavior so clients do not need custom integration rules for every capability.
 
-- Defining request and response contracts
-- Implementing search, filtering, sorting, and paging
-- Validating requests
-- Building documentation
-- Creating consumer integration guidance
-- Exposing metadata for tooling and user experiences
+## Quick start
 
-As applications grow, these implementations often become inconsistent and difficult for consumers to discover.
+Register Kaleido and the HTTP transport in an ASP.NET Core application:
 
-Kaleido provides a common model for exposing business information and business actions while allowing developers to focus on business functionality rather than infrastructure.
+```csharp
+var builder = WebApplication.CreateBuilder(args);
 
----
+builder.Services
+    .AddKaleido(builder.Configuration, options =>
+    {
+        options.ServiceName = "orders";
+        options.DisplayName = "Orders";
+        options.Assemblies = new[]
+        {
+            typeof(Program).Assembly
+        };
+    })
+    .AddHttp();
 
-## Consumer Experience
+var app = builder.Build();
 
-Kaleido metadata allows consumers to discover capabilities at runtime.
+app.MapKaleido();
 
-Consumers can determine:
+app.Run();
+```
 
-- What information is available
-- What actions are available
-- Which fields support filtering
-- Which fields support sorting
-- What validation rules exist
-- What inputs are required
+Kaleido discovers annotated Queryable contexts, views, Process steps, and handlers from the configured assemblies, validates their registrations at startup, and publishes their HTTP surfaces and metadata.
 
-This allows applications, components, and tooling to adapt to business capabilities without relying on hardcoded knowledge.
+For durable Process state, add the SQLite provider:
 
----
+```csharp
+builder.Services
+    .AddKaleido(builder.Configuration, options =>
+    {
+        options.ServiceName = "orders";
+        options.Assemblies = new[] { typeof(Program).Assembly };
+    })
+    .AddHttp()
+    .UseSqliteContextStore("Data Source=kaleido-process.db");
+```
 
-## Core Concepts
-
-Kaleido separates business capabilities into two complementary models.
+## The capability model
 
 ### Queryable
 
-Queryable exposes business information.
+Queryable answers:
 
-Examples:
+> **What information does the business know?**
 
-- Products
-- Customers
-- Orders
-- Prior Authorizations
-
-Queryable provides:
-
-- Search
-- Filtering
-- Sorting
-- Paging
-- Validation
-- Metadata
-- Discoverability
-
-Queryable answers the question:
-
-> What information does the business know?
+A context describes discoverable data. Views describe supported projections and parameters. Metadata communicates searchable, filterable, and sortable fields, paging limits, data types, and validation constraints.
 
 ### Process
 
-Process exposes business actions.
+Process answers:
 
-Examples:
+> **What can the business do?**
 
-- Add Item To Cart
-- Submit Order
-- Approve Prior Authorization
-- Request Additional Information
+A step represents a business action. Attributes describe dependencies, availability, and repeatability; handlers implement behavior; execution responses guide the consumer toward the next valid step.
 
-Process provides:
+### Discovery
 
-- Execution Contracts
-- Validation
-- Step Dependencies
-- Availability Rules
-- Metadata
-- Discoverability
+Kaleido exposes lightweight catalogs, detailed registries, per-capability metadata, and an optional aggregated registry for multi-service environments. Consumers can use the advertised URLs instead of reconstructing route conventions.
 
-Process answers the question:
+## Packages
 
-> What can the business do?
+| Package | Purpose |
+|---|---|
+| [`Kaleido`](src/Kaleido) | Core Process and Queryable runtime |
+| [`Kaleido.Http`](src/Kaleido.Http) | ASP.NET Core middleware and endpoint publication |
+| [`Kaleido.Http.Abstractions`](src/Kaleido.Http.Abstractions) | Shared HTTP contracts |
+| [`Kaleido.Http.Client`](src/Kaleido.Http.Client) | Typed clients for remote Kaleido services |
+| [`Kaleido.Provider.SQLite`](src/Kaleido.Provider.SQLite) | SQLite-backed Process state |
+| [`Kaleido.Observability.OpenTelemetry`](src/Kaleido.Observability.OpenTelemetry) | OpenTelemetry tracing, metrics, logs, and OTLP export |
 
----
+## Documentation
 
-## Why Separate Queryable and Process?
+- [Architecture](ARCHITECTURE.md)
+- [Core runtime](src/Kaleido/README.md)
+- [HTTP transport](src/Kaleido.Http/README.md)
+- [HTTP clients](src/Kaleido.Http.Client/README.md)
+- [SQLite provider](src/Kaleido.Provider.SQLite/README.md)
+- [OpenTelemetry provider](src/Kaleido.Observability.OpenTelemetry/README.md)
+- [Prior authorization sample](samples/PriorAuth)
+- [E-commerce sample](samples/ECommerce)
 
-Business information and business actions solve different problems.
+## Project status
 
-For example:
+Kaleido is being prepared for its first public release. The current focus is simplifying the public API, strengthening production guarantees, validating package composition, and aligning documentation with the implementation.
 
-```text
-Find Orders
-```
+Use preview releases for evaluation and experimentation until a stable compatibility policy is published.
 
-is different from:
+## Contributing
 
-```text
-Submit Order
-```
+Issues, design feedback, and focused pull requests are welcome. Start with [AGENTS.md](AGENTS.md) and [ARCHITECTURE.md](ARCHITECTURE.md) before making structural changes.
 
-Likewise:
+## License
 
-```text
-Find Prior Authorizations
-```
-
-is different from:
-
-```text
-Approve Prior Authorization
-```
-
-Queryable focuses on retrieving information.
-
-Process focuses on performing actions.
-
-Keeping these concerns separate allows each capability to evolve independently while maintaining clear responsibilities.
-
----
-
-## Discoverability Through Metadata
-
-A core objective of Kaleido is reducing tribal knowledge.
-
-Consumers should not need to inspect source code, reverse engineer APIs, or search through documentation to understand how a capability works.
-
-Kaleido exposes metadata describing:
-
-- Available Queryables
-- Available Processes
-- Input Requirements
-- Validation Rules
-- Search Capabilities
-- Filter Capabilities
-- Sort Capabilities
-- Execution Contracts
-
-This metadata can be consumed by:
-
-- Applications
-- UI Components
-- Documentation
-- Tooling
-- Validation Services
-
-Metadata is intended to guide consumers rather than generate application behavior automatically.
-
----
-
-## Getting Started
-
-Register Kaleido capabilities during application startup.
-
-### ASP.NET Core Application
-
-```csharp
-builder.Services
-    .AddKaleido(builder.Configuration, o =>
-    {
-        o.ServiceName = "my-service";
-        o.Assemblies = new[]
-        {
-            typeof(Program).Assembly,
-            typeof(AddItemToCartStep).Assembly,
-            typeof(ProductCatalogQueryContext).Assembly
-        };
-    })
-    .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp()
-    .UseSqliteProcessContextStore("Data Source=kaleido-sample-process.sqlite")
-    .AddHttpClients();
-
-app.MapProcessor();
-app.MapQueryable();
-```
-
-### Router Service (Registry Only)
-
-```csharp
-builder.Services
-    .AddKaleido(builder.Configuration)
-    .AddHttpClients();
-
-app.MapRegistry();
-```
-
-### Console Application
-
-```csharp
-builder.Services
-    .AddKaleido(builder.Configuration, o =>
-    {
-        o.ServiceName = "my-service";
-        o.Assemblies = new[]
-        {
-            typeof(Program).Assembly,
-            typeof(AddItemToCartStep).Assembly,
-            typeof(ProductCatalogQueryContext).Assembly
-        };
-    })
-    .AddEventPublisher<HttpEventPublisher>()
-    .UseSqliteProcessContextStore("Data Source=kaleido-sample-process.sqlite");
-```
-
----
-
-## Creating a Queryable
-
-A Queryable Context describes business information and its capabilities.
-
-```csharp
-[QueryContext(
-    Name = "products",
-    DisplayName = "Products",
-    Version = "1.0.0",
-    Source = "E-Commerce Catalog")]
-public sealed class ProductCatalogQueryContext
-{
-    [Key]
-    public Guid ProductId { get; init; }
-
-    [Filterable(
-        FilterOperator.Equals,
-        FilterOperator.NotEquals,
-        FilterOperator.Contains,
-        FilterOperator.StartsWith)]
-    [Searchable(
-        Priority = 1,
-        MatchMode = MatchMode.Contains)]
-    [Sortable]
-    public string ProductName { get; init; }
-        = string.Empty;
-}
-```
-
-Views expose specific ways of retrieving that information.
-
-```csharp
-[QueryView(
-    Name = "product-list",
-    DisplayName = "Product List",
-    Version = "1.0.0",
-    Description = "Product catalog results.",
-    DefaultSortField =
-        nameof(ProductCatalogQueryContext.ProductName))]
-[Pageable(
-    DefaultSize = 25,
-    MaxSize = 250)]
-internal sealed class ProductListQueryViewSource
-    : IQueryViewSource<
-        ProductCatalogQueryContext,
-        ProductCatalogView>
-{
-}
-```
-
----
-
-## Creating a Process
-
-A Process Step represents a business action.
-
-```csharp
-[ProcessStep(
-    Name = "process-cart",
-    DisplayName = "Shopping Carts - Process Cart",
-    Version = "1.0",
-    Description =
-        "Processes the shopping cart and starts an order.")]
-[AvailableUntil(typeof(SubmitOrderStep))]
-[AvailableAfter(typeof(AddItemToCartStep))]
-[Repeatable]
-public sealed record ProcessCartStep;
-```
-
-Business behavior is implemented through handlers.
-
-```csharp
-internal sealed class ProcessCartHandler(
-    ECommerceDbContext dbContext)
-    : IProcessStepHandler<ProcessCartStep>
-{
-}
-```
-
----
-
-## What Kaleido Provides
-
-Kaleido is designed to help developers expose business capabilities consistently.
-
-Out of the box Kaleido provides:
-
-- Queryable Contracts
-- Process Contracts
-- Aggregated Registry Discovery
-- Metadata Discovery
-- Search
-- Filtering
-- Sorting
-- Paging
-- Validation
-- Consumer Guidance
-- Registry Metadata
-- Cross-Processor Handoff
-
-This allows teams to focus on business functionality instead of repeatedly building supporting infrastructure.
-
----
-
-## Documentation Map
-
-### Repository-level docs
-- [README.md](./README.md) — framework overview and entry point
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — overall architecture and project boundaries
-- [AGENTS.md](./AGENTS.md) — repo-level contributor guidance
-
-### Source projects
-- [src/ARCHITECTURE.md](./src/ARCHITECTURE.md) — source-level architecture details
-- [src/AGENTS.md](./src/AGENTS.md) — source-level contributor guide
-- [src/Kaleido/README.md](./src/Kaleido/README.md) — core runtime (bootstrap, Process, Queryable)
-- [src/Kaleido.Http/README.md](./src/Kaleido.Http/README.md) — HTTP transport (DI, middleware, endpoints)
-- [src/Kaleido.Http.Abstractions/README.md](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP contracts
-- [src/Kaleido.Http.Client/README.md](./src/Kaleido.Http.Client/README.md) — typed HTTP clients
-- [src/Kaleido.Observability.OpenTelemetry/README.md](./src/Kaleido.Observability.OpenTelemetry/README.md) — OpenTelemetry provider
-- [src/Kaleido.Provider.SQLite/README.md](./src/Kaleido.Provider.SQLite/README.md) — SQLite process state provider
-
-### Samples
-- [samples/PriorAuth/priorauth-ui/README.md](./samples/PriorAuth/priorauth-ui/README.md)
-- [samples/kaleido-sample-ecommerce-ui/README.md](./samples/kaleido-sample-ecommerce-ui/README.md)
-
-### Tests and contributor notes
-- [tests/AGENTS.md](./tests/AGENTS.md)
-- [samples/PriorAuth/AGENTS.md](./samples/PriorAuth/AGENTS.md)
+Kaleido is available under the MIT License.

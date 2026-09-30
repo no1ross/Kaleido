@@ -1,0 +1,19 @@
+:root {
+  --kaleido-midnight: #080C1B;
+  --kaleido-navy: #0C132A;
+  --kaleido-navy-2: #152247;
+  --kaleido-ink: #111827;
+  --kaleido-slate: #677189;
+  --kaleido-mist: #EEF2FF;
+  --kaleido-white: #FFFFFF;
+  --kaleido-blue: #3182F6;
+  --kaleido-indigo: #5B5BF7;
+  --kaleido-violet: #8B5CF6;
+  --kaleido-magenta: #B64FD9;
+  --kaleido-cyan: #21B6D7;
+  --kaleido-teal: #19C4A7;
+  --kaleido-gradient-primary: linear-gradient(135deg, var(--kaleido-blue), var(--kaleido-violet) 55%, var(--kaleido-magenta));
+  --kaleido-gradient-secondary: linear-gradient(135deg, var(--kaleido-blue), var(--kaleido-teal));
+  --kaleido-font-sans: Inter, "Segoe UI", Arial, sans-serif;
+  --kaleido-font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
