@@ -1,7 +1,7 @@
 using Kaleido.Queryable.Registry;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Kaleido.Queryable.UnitTests.Records;
+namespace Kaleido.UnitTests.Queryable.Registry;
 
 public sealed class QueryableRegistryTests
     : Kaleido.UnitTests.SutFixture
