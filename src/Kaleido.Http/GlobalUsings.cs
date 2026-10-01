@@ -7,3 +7,4 @@ global using Kaleido.Process.Observability;
 global using Kaleido.Queryable;
 global using Kaleido.Queryable.Metadata;
 global using Kaleido.Queryable.Query;
+global using Kaleido.Registry;

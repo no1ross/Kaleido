@@ -128,6 +128,16 @@ The planning pipeline is layered — keep those responsibilities separated:
 
 ---
 
+### Telemetry conventions
+Instrument names and tag keys live in the `*Telemetry` constants classes
+(`ProcessTelemetry`, `QueryableTelemetry`, `KaleidoHttpTelemetry`) — constants
+only, no `Meter`/`Counter` instances. Each emitting class owns its
+instruments as `private static readonly Meter`/`Counter`/`Histogram` fields
+created with the shared `MeterName`; when two classes emit the same logical
+signal (e.g. `endpoint_errors` from `ExceptionMiddleware` and the
+authorization result handler), each declares its own counter with the same
+instrument name — the meter-name subscription merges them.
+
 ## Transport and HTTP rules
 
 ### Kaleido.Http.Abstractions stability

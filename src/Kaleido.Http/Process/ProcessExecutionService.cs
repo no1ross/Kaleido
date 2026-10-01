@@ -1,3 +1,4 @@
+using Kaleido.Http.Authorization;
 using Kaleido.Process;
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Http;
@@ -27,6 +28,7 @@ internal sealed class ProcessExecutionService(
     KaleidoServiceOptions serviceOptions,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     IProcessExecutionResponseFactory responseFactory,
+    IKaleidoAuthorizer authorizer,
     ILogger<ProcessExecutionService> logger)
     : IProcessExecutionService
 {
@@ -36,6 +38,31 @@ internal sealed class ProcessExecutionService(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        var httpContext =
+            httpContextAccessor.HttpContext
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.ReflectionError,
+                "No active HttpContext for process execution.");
+
+        // Per-step authorization — a multi-step request may submit steps with
+        // different [KaleidoAuthorization] declarations; deny the whole request
+        // if any submitted step is not authorized for the caller. Unknown step
+        // names are left to the runtime's validation, which reports them as
+        // request errors rather than authorization failures.
+        foreach (var step in request.Steps)
+        {
+            var registration = registry.Find(step.StepName);
+
+            if (registration is not null)
+            {
+                await authorizer.AuthorizeAsync(
+                    httpContext,
+                    registration.Metadata.Authorization,
+                    step.StepName,
+                    cancellationToken);
+            }
+        }
 
         logger.LogDebug(
             "Executing process for processor {ProcessorName} with {StepCount} submitted step(s).",

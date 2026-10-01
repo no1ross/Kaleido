@@ -25,6 +25,36 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             // Client disconnected mid-request — not an error, log at Debug to avoid noise.
             logger.LogDebug("Request was canceled by the client.");
         }
+        catch (KaleidoAuthorizationException exception)
+        {
+            var statusCode =
+                exception.CallerIsAuthenticated
+                    ? StatusCodes.Status403Forbidden
+                    : StatusCodes.Status401Unauthorized;
+
+            var errorCode =
+                exception.CallerIsAuthenticated
+                    ? KaleidoErrorCodes.Forbidden
+                    : KaleidoErrorCodes.Unauthorized;
+
+            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
+
+            logger.LogWarning(
+                exception,
+                "Authorization denied [{Code}]: {Message}",
+                errorCode,
+                exception.Message);
+
+            context.Response.StatusCode = statusCode;
+
+            RecordEndpointError(errorCode, statusCode);
+
+            await context.Response.WriteAsJsonAsync(
+                new KaleidoErrorResponse(
+                [
+                    new KaleidoError(errorCode, exception.Message)
+                ]));
+        }
         catch (KaleidoValidationException exception)
         {
             Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);

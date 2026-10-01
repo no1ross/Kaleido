@@ -107,6 +107,30 @@ app.MapQueryable();
 
 Any `IEndpointConventionBuilder` extension (`RequireAuthorization`, `WithMetadata`, `RequireCors`, rate limiting, etc.) composes this way. To apply conventions to a broader surface, wrap in `MapGroup("")` as usual — an empty prefix adds no route prefix of its own.
 
+### Per-capability authorization
+
+Individual capabilities declare requirements with `[KaleidoAuthorization]` in `Kaleido` core:
+
+```csharp
+[ProcessStep(Name = "approve", ...)]
+[KaleidoAuthorization(Roles = "internal")]        // or Policy = "named-policy"
+public sealed record ApproveStep;
+```
+
+Enforcement works on two layers:
+
+**Route-level gate** — `MapProcessor()`/`MapQueryable()` attach `RequireAuthorization` metadata to each capability's execute, query, and metadata endpoint at map time. Declared `Roles` become a role requirement (`RequireRole`), declared `Policy` becomes the named ASP.NET policy; both declared are ANDed. Evaluation is done by the host's `UseAuthorization()` middleware — Kaleido performs no authentication itself, so the host must wire `AddAuthentication()`/`AddAuthorization()` and `app.UseAuthentication(); app.UseAuthorization();` in its pipeline. Without them, `RequireAuthorization` metadata is inert.
+
+**In-handler evaluation** — `IKaleidoAuthorizer` (registered scoped by `AddHttp()`) covers what per-route metadata cannot express:
+- *Multi-step execute* — `POST /processes/execute` submits N steps; `ProcessExecutionService` calls `AuthorizeAsync` per submitted step (unknown step names are left to runtime validation). A denied step fails the request with `KaleidoAuthorizationException` → 401/403.
+- *Filtered discovery* — catalog/registry/metadata endpoints stay open but scope their payloads to the caller: `FilterAsync` drops capabilities whose declared roles/policy the caller doesn't satisfy, including views inside context metadata and steps inside the aggregated `MapRegistry` response (the registry cache holds the unfiltered union; filtering is per-request).
+
+`AddHttp(Action<KaleidoHttpOptions>)` registers `KaleidoHttpOptions` unconditionally; `RequireAuthorization = true` makes *undeclared* capabilities require an authenticated caller (default `false` — undeclared stays open).
+
+Authorization failures are `KaleidoErrorResponse` bodies with codes `unauthorized` (401, unauthenticated) and `forbidden` (403, denied) — via `KaleidoAuthorizationResultHandler` for middleware-level denials and `ExceptionMiddleware` for thrown `KaleidoAuthorizationException`s. Both record the `endpoint_errors` counter.
+
+A capability declaring `Policy` on a host with no `IAuthorizationService` fails closed — filtered out of discovery and denied at execution (with a warning log), rather than erroring the whole response.
+
 ---
 
 ## Registry endpoint

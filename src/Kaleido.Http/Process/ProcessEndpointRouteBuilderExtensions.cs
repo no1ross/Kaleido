@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using Kaleido.Http.Authorization;
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -36,6 +37,10 @@ public static class ProcessEndpointRouteBuilderExtensions
             endpoints.ServiceProvider
                 .GetRequiredService<IProcessRegistry>();
 
+        var httpOptions =
+            endpoints.ServiceProvider
+                .GetRequiredService<KaleidoHttpOptions>();
+
         var serviceOptions =
             endpoints.ServiceProvider
                 .GetRequiredService<KaleidoServiceOptions>();
@@ -60,7 +65,7 @@ public static class ProcessEndpointRouteBuilderExtensions
 
         group.MapProcessorCatalogEndpoint(processorRegistry, serviceOptions);
 
-        group.MapExecuteEndpoint();
+        group.MapExecuteEndpoint(httpOptions);
 
         group.MapProcessStateEndpoint();
 
@@ -73,7 +78,8 @@ public static class ProcessEndpointRouteBuilderExtensions
             group.MapProcessStep(
                 step,
                 processorRegistry,
-                serviceName);
+                serviceName,
+                httpOptions);
         }
 
         return group;
@@ -86,17 +92,38 @@ public static class ProcessEndpointRouteBuilderExtensions
     {
         endpoints.MapGet(
                 "",
-                ([FromServices] IProcessResponseFactory factory) =>
-                    Results.Ok(
+                async (
+                    HttpContext httpContext,
+                    [FromServices] IProcessResponseFactory factory,
+                    [FromServices] IKaleidoAuthorizer authorizer,
+                    CancellationToken cancellationToken) =>
+                {
+                    var processors = new List<ProcessorRegistryResponse>();
+
+                    foreach (var registration in registry.Registrations)
+                    {
+                        var initialSteps =
+                            await authorizer.FilterAsync(
+                                httpContext,
+                                registration.InitialSteps,
+                                x => x.Authorization,
+                                cancellationToken);
+
+                        processors.Add(
+                            factory.CreateCatalogResponse(
+                                registration with
+                                {
+                                    InitialSteps = initialSteps
+                                },
+                                serviceOptions));
+                    }
+
+                    return Results.Ok(
                         new ProcessCatalogResponse
                         {
-                            Processors = registry.Registrations
-                                .Select(x =>
-                                    factory.CreateCatalogResponse(
-                                        x,
-                                        serviceOptions))
-                                .ToArray()
-                        }))
+                            Processors = processors
+                        });
+                })
             .WithName(ProcessEndpointNames.ProcessorCatalogEndpointName)
             .WithTags("Processes", "Kaleido")
             .Produces<ProcessCatalogResponse>()
@@ -107,7 +134,8 @@ public static class ProcessEndpointRouteBuilderExtensions
     }
 
     private static void MapExecuteEndpoint(
-        this IEndpointRouteBuilder endpoints)
+        this IEndpointRouteBuilder endpoints,
+        KaleidoHttpOptions options)
     {
         endpoints.MapPost(
                 ProcessRoutePaths.Execute,
@@ -123,6 +151,10 @@ public static class ProcessEndpointRouteBuilderExtensions
 
                     return Results.Ok(result);
                 })
+            // Multi-step requests authorize each submitted step inside
+            // ProcessExecutionService — endpoint-level auth can't express
+            // per-item requirements.
+            .WithKaleidoAuthorization(null, options)
             .WithName(ProcessEndpointNames.ExecuteEndpointName)
             .Accepts<ExecuteProcessRequest>("application/json")
             .WithTags("Processes", "Kaleido")
@@ -172,13 +204,42 @@ public static class ProcessEndpointRouteBuilderExtensions
 
         endpoints.MapGet(
                 ProcessRoutePaths.StepRegistry,
-                ([FromServices] IProcessResponseFactory factory) =>
-                    Results.Ok(
-                        registry.Registrations
-                            .Select(x =>
-                                factory.CreateRegistryResponse(
-                                    x,
-                                    serviceOptions))))
+                async (
+                    HttpContext httpContext,
+                    [FromServices] IProcessResponseFactory factory,
+                    [FromServices] IKaleidoAuthorizer authorizer,
+                    CancellationToken cancellationToken) =>
+                {
+                    var processors = new List<ProcessorRegistryResponse>();
+
+                    foreach (var registration in registry.Registrations)
+                    {
+                        var steps =
+                            await authorizer.FilterAsync(
+                                httpContext,
+                                registration.Steps,
+                                x => x.Authorization,
+                                cancellationToken);
+
+                        var initialSteps =
+                            await authorizer.FilterAsync(
+                                httpContext,
+                                registration.InitialSteps,
+                                x => x.Authorization,
+                                cancellationToken);
+
+                        processors.Add(
+                            factory.CreateRegistryResponse(
+                                registration with
+                                {
+                                    Steps = steps,
+                                    InitialSteps = initialSteps
+                                },
+                                serviceOptions));
+                    }
+
+                    return Results.Ok(processors);
+                })
             .WithName(ProcessEndpointNames.StepRegistryEndpointName)
             .WithTags("Processes", "Kaleido")
             .Produces<IReadOnlyCollection<ProcessorRegistryResponse>>()
@@ -200,10 +261,17 @@ public static class ProcessEndpointRouteBuilderExtensions
 
         endpoints.MapGet(
                 ProcessRoutePaths.StepCatalog,
-                ([FromServices] IProcessResponseFactory factory) =>
+                async (
+                    HttpContext httpContext,
+                    [FromServices] IProcessResponseFactory factory,
+                    [FromServices] IKaleidoAuthorizer authorizer,
+                    CancellationToken cancellationToken) =>
                     Results.Ok(
-                        registry.Registrations
-                            .SelectMany(x => x.Steps)
+                        (await authorizer.FilterAsync(
+                                httpContext,
+                                registry.Registrations.SelectMany(x => x.Steps),
+                                x => x.Authorization,
+                                cancellationToken))
                             .Select(x =>
                                 factory.CreateStepSummary(
                                     new ProcessorStepSummary
@@ -212,7 +280,8 @@ public static class ProcessEndpointRouteBuilderExtensions
                                         Description = x.Description,
                                         DisplayName = x.DisplayName,
                                         Version = x.Version,
-                                        Repeatable = x.Repeatable
+                                        Repeatable = x.Repeatable,
+                                        Authorization = x.Authorization
                                     },
                                     serviceName))
                             .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)))
@@ -229,7 +298,8 @@ public static class ProcessEndpointRouteBuilderExtensions
         this IEndpointRouteBuilder endpoints,
         ProcessStepRegistration step,
         IProcessRegistry processorRegistry,
-        string serviceName)
+        string serviceName,
+        KaleidoHttpOptions options)
     {
         ArgumentNullException.ThrowIfNull(step);
         ArgumentNullException.ThrowIfNull(processorRegistry);
@@ -249,11 +319,13 @@ public static class ProcessEndpointRouteBuilderExtensions
             step,
             registryStep,
             ProcessRoutePaths.StepMetadata(stepName),
-            serviceName);
+            serviceName,
+            options);
 
         endpoints.MapStepExecutionEndpoint(
             step,
-            ProcessRoutePaths.ExecuteStep(stepName));
+            ProcessRoutePaths.ExecuteStep(stepName),
+            options);
     }
 
     private static void MapStepMetadataEndpoint(
@@ -261,7 +333,8 @@ public static class ProcessEndpointRouteBuilderExtensions
         ProcessStepRegistration step,
         ProcessorStepRegistryItem registryStep,
         string route,
-        string serviceName)
+        string serviceName,
+        KaleidoHttpOptions options)
     {
         endpoints.MapGet(
                 route,
@@ -269,6 +342,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                     factory.CreateStepResponse(
                         registryStep,
                         serviceName)))
+            .WithKaleidoAuthorization(step.Metadata.Authorization, options)
             .WithName(
                 ProcessEndpointNames.StepMetadataEndpointName(
                     step.Metadata.Name.ToLowerInvariant()))
@@ -286,7 +360,8 @@ public static class ProcessEndpointRouteBuilderExtensions
     private static void MapStepExecutionEndpoint(
         this IEndpointRouteBuilder endpoints,
         ProcessStepRegistration step,
-        string route)
+        string route,
+        KaleidoHttpOptions options)
     {
         if (step.StepResultType is null)
         {
@@ -302,7 +377,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                 .MakeGenericMethod(step.StepType)
                 .Invoke(
                     null,
-                    [endpoints, route, step]);
+                    [endpoints, route, step, options]);
         }
         else
         {
@@ -320,14 +395,15 @@ public static class ProcessEndpointRouteBuilderExtensions
                     step.StepResultType)
                 .Invoke(
                     null,
-                    [endpoints, route, step]);
+                    [endpoints, route, step, options]);
         }
     }
 
     private static void MapTypedStepExecutionEndpoint<TProcessStep, TResponse>(
         IEndpointRouteBuilder endpoints,
         string route,
-        ProcessStepRegistration step)
+        ProcessStepRegistration step,
+        KaleidoHttpOptions options)
     {
         var stepName =
             step.Metadata.Name.ToLowerInvariant();
@@ -346,6 +422,7 @@ public static class ProcessEndpointRouteBuilderExtensions
 
                     return Results.Ok(result);
                 })
+            .WithKaleidoAuthorization(step.Metadata.Authorization, options)
             .WithName(
                 ProcessEndpointNames.StepExecutionEndpointName(
                     stepName))
@@ -366,7 +443,8 @@ public static class ProcessEndpointRouteBuilderExtensions
     private static void MapUntypedStepExecutionEndpoint<TProcessStep>(
         IEndpointRouteBuilder endpoints,
         string route,
-        ProcessStepRegistration step)
+        ProcessStepRegistration step,
+        KaleidoHttpOptions options)
     {
         var stepName =
             step.Metadata.Name.ToLowerInvariant();
@@ -385,6 +463,7 @@ public static class ProcessEndpointRouteBuilderExtensions
 
                     return Results.Ok(result);
                 })
+            .WithKaleidoAuthorization(step.Metadata.Authorization, options)
             .WithName(
                 ProcessEndpointNames.StepExecutionEndpointName(
                     stepName))
