@@ -71,7 +71,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
             CompileFilter(request.Query?.Filter, metadata),
             CompileSearch(request.Query?.SearchText, metadata),
             CompileSort(request.Query?.Sort, metadata),
-            new CompiledPage(size, offset));
+            new CompiledPage(size, offset, IsExplicit: request.Query?.Page is not null));
     }
 
     private static CompiledFilterExpression? CompileFilter(

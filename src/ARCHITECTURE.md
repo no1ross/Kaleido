@@ -76,6 +76,7 @@ Public seams consumers are expected to implement or replace:
 - `QueryableService` dispatch order (delegated → local → direct) is a published semantic and must not change casually.
 - `ProcessorContext` is current resumable state only, not an audit log.
 - `IKaleidoBuilder` is intentionally minimal.
+- `CountAsync` runs only when `Page` is explicitly provided AND the returned page is full (`items.Count == page.Size`). When `Page` is absent or the page is partial, `TotalCount = items.Count` — the caller received all results.
 - Core runtime types (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirection`, `LogicalOperator`) are transport-agnostic — they use CLR enums and `object?` values. The HTTP transport converts `QueryApiBody` (string enums, `JsonElement` values) to `QueryBody` via `QueryBodyResolver` before handing to core.
 
 ---
