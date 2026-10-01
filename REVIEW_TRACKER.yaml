@@ -746,19 +746,46 @@ external_findings:
       explicit AND the page is full. TotalCount = items.Count when count skipped.
       CompiledPage gains IsExplicit flag set by QueryRequestCompiler.
   EXT-12:
-    title: Inbound correlation headers trusted as audit identity (spoofable)
-    source: KAL-M01
-    severity: MEDIUM
+    title: "HTTP auth epic: spoofable correlation identity + auth-unaware discovery + unauthenticated fan-out"
+    source: KAL-M01, KAL-M02, ai_findings AI-004
+    severity: HIGH
     effort: medium
-    breaking_change: possibly
+    breaking_change: true
     status: PENDING_DESIGN_REVIEW
+    related: [EXT-07]
+    description: >
+      Three related gaps in the HTTP auth story, merged into one design:
+      (a) Inbound X-Kaleido-* correlation headers are trusted as identity.
+      X-Kaleido-Process-Id directly selects which process instance resumes
+      (ProcessExecutionService); X-Kaleido-Source-Processor/StepName flow into
+      published ProcessEventContext audit fields and Activity tags. Any caller
+      that knows a GUID can resume/mutate it and poison the audit trail.
+      (b) Registry/catalog endpoints expose all registered capabilities to
+      every caller regardless of authorization — capability leakage raises
+      security and prompt-injection surface concerns.
+      (c) Registry fan-out to downstream clients is unbounded/unauthenticated.
+    recommended_fix: >
+      Kaleido performs no auth itself — it provides seams so the consumer's
+      auth posture covers all three surfaces:
+      - ICorrelationContextValidator (or trusted-source option) in Kaleido.Http,
+        invoked by ObservabilityMiddleware before initializing the correlation
+        context; rejection strips or 400s caller-asserted headers.
+      - ICapabilityFilter consulted at discovery time, injectable from
+        HttpContext claims; registry returns only permitted capabilities.
+      - Document that X-Kaleido-Process-Id is a capability URL: consumers must
+        RequireAuthorization on the RouteGroupBuilder (enabled by EXT-07) and
+        own process-level authorization.
+      - Fan-out: document downstream call auth requirements; consider an
+        outbound credential/delegation hook on the client factories.
+    notes: "Merged EXT-13 (fan-out auth) and AI-004 (auth-aware discovery) per owner direction."
   EXT-13:
     title: Registry refresh fan-out unbounded/unauthenticated
     source: KAL-M02
     severity: MEDIUM
     effort: medium
     breaking_change: possibly
-    status: PENDING_DESIGN_REVIEW
+    status: MERGED
+    merged_into: EXT-12
   EXT-14:
     title: Case-insensitive filters use culture-sensitive ToLower()
     source: KAL-M03
@@ -913,7 +940,8 @@ ai_compatibility:
         include/exclude lists per service. Require auth integration tests (401/403).
       effort: medium
       breaking_change: possibly
-      status: PENDING_DESIGN_REVIEW
+      status: MERGED
+      merged_into: EXT-12
       related: [EXT-07]
 
     AI-005:
@@ -972,6 +1000,117 @@ ai_compatibility:
       effort: N/A
       breaking_change: false
       status: GUIDANCE
+
+    # ── Developer-tools / AI code-generation track ────────────────────────────
+    # (originally numbered AI-001..AI-007 in REVIEW_FINDINGS.md "Developer
+    # Tools" section; renumbered here to avoid collision with the agent-safety
+    # findings above)
+
+    AI-008:
+      title: Dispatch order not formalized by tests
+      severity: CRITICAL
+      category: Developer tools / AI code-gen
+      description: >
+        Queryable dispatch order (delegated → local → direct) is documented
+        but not proven by tests. AI copilots cannot verify correct lane
+        selection — silent performance regression or logic errors if order
+        drifts.
+      recommended_fix: >
+        Property/theory tests proving exhaustive deterministic dispatch order.
+        Add "For AI-Assisted Development" callout to src/Kaleido README.
+      effort: small
+      breaking_change: false
+      status: PENDING_DESIGN_REVIEW
+
+    AI-009:
+      title: .editorconfig missing C# 12+ rules
+      severity: HIGH
+      category: Developer tools / AI code-gen
+      description: >
+        .editorconfig is minimal — namespace style, naming conventions,
+        primary constructors, sealed records not enforced. AI generates code
+        violating team style → review friction.
+      recommended_fix: >
+        Expand .editorconfig with namespace style, naming, primary-constructor
+        and record preferences. Ship an .editorconfig.template for consumers.
+      effort: small
+      breaking_change: false
+      status: PENDING_DESIGN_REVIEW
+
+    AI-010:
+      title: XML documentation coverage gaps (60–70%)
+      severity: HIGH
+      category: Developer tools / AI code-gen
+      description: >
+        Public types lack comprehensive XML docs; AI copilots rely on
+        IntelliSense and generate mismatched code without them. EXT-19 fixed
+        stale/incorrect comments — this tracks remaining coverage + CI gate.
+      recommended_fix: >
+        Audit and complete XML docs (Tier 1: core + abstractions first).
+        Add CI gate for ≥90% coverage on public surface. Add "For AI" remarks
+        to key types.
+      effort: medium
+      breaking_change: false
+      status: PENDING_DESIGN_REVIEW
+      related: [EXT-19]
+
+    AI-011:
+      title: IQueryContextSource<T> sync/async confusion
+      severity: MEDIUM
+      category: Developer tools / AI code-gen
+      description: >
+        Both sync and async source interfaces are public. AI generators do not
+        know which to implement → potential deadlock or mismatched semantics.
+      recommended_fix: >
+        Audit real usage; if sync path is rare, internalize it. Add analyzer
+        guidance for misuse (proposed KAL1012 slot — verify ID against
+        docs/ANALYZERS.md before assigning).
+      effort: small
+      breaking_change: possibly
+      status: PENDING_DESIGN_REVIEW
+
+    AI-012:
+      title: Correlation context invariants undocumented
+      severity: MEDIUM
+      category: Developer tools / AI code-gen
+      description: >
+        Invariants (exactly one RequestId per request; echo-or-generate;
+        propagate on outbound hops) are not formally documented. AI generates
+        code that overwrites IDs, forgets propagation, or creates multiples.
+      recommended_fix: >
+        Add "Correlation Context Invariants" section to src/ARCHITECTURE.md.
+        Propose analyzer for overwrite/propagation violations.
+      effort: small
+      breaking_change: false
+      status: PENDING_DESIGN_REVIEW
+
+    AI-013:
+      title: Missing canonical patterns document
+      severity: MEDIUM
+      category: Developer tools / AI code-gen
+      description: >
+        Test suite has patterns but no single source of truth. AI generates
+        plausible-but-wrong code when conventions live only in examples.
+      recommended_fix: >
+        Create docs/PATTERNS.md with canonical examples. Update extension
+        points table. Add "For Code Generators" section to AGENTS.md.
+      effort: medium
+      breaking_change: false
+      status: PENDING_DESIGN_REVIEW
+
+    AI-014:
+      title: Security/constraint analyzer rules undocumented
+      severity: LOW
+      category: Developer tools / AI code-gen
+      description: >
+        Analyzers (KAL0005–KAL0014) enforce DI/constraint rules but AI does not
+        know them → generates code bypassing DI or violating constraints.
+      recommended_fix: >
+        Expand docs/ANALYZERS.md with a "Security-Relevant Analyzers" table.
+        Add quick-fix providers where feasible.
+      effort: small
+      breaking_change: false
+      status: PENDING_DESIGN_REVIEW
 
 analyzer_proposals:
   KAL0020:

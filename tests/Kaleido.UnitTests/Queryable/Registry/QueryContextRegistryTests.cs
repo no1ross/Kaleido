@@ -3,7 +3,6 @@ using System.Reflection;
 using Kaleido.Exceptions;
 using Kaleido.Queryable.Registry;
 using Microsoft.Extensions.DependencyInjection;
-using Moq;
 
 namespace Kaleido.Queryable.UnitTests.Records;
 
