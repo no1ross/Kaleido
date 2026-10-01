@@ -1,3 +1,5 @@
+using Kaleido.Registry;
+
 namespace Kaleido.Queryable.Metadata;
 
 public enum QueryContextKind
@@ -23,7 +25,8 @@ public sealed record QueryContextMetadata
     string? Source,
     QueryContextKind Kind,
     PageableMetadata? Pageable,
-    IReadOnlyList<FieldMetadata> Fields
+    IReadOnlyList<FieldMetadata> Fields,
+    AuthorizationMetadata? Authorization = null
 );
 
 [ExcludeFromCodeCoverage]
@@ -72,7 +75,8 @@ public sealed record QueryViewMetadata
     QueryViewVisibility Visibility,
     PageableMetadata? Pageable,
     IReadOnlyList<QueryParameterMetadata>? Parameters,
-    IReadOnlyList<QueryOutputFieldMetadata>? OutputFields
+    IReadOnlyList<QueryOutputFieldMetadata>? OutputFields,
+    AuthorizationMetadata? Authorization = null
 );
 
 [ExcludeFromCodeCoverage]
@@ -120,6 +124,12 @@ public record QueryableContextRegistryItem
 
     public PageableMetadata? Pageable { get; init; }
 
+    /// <summary>
+    /// Authorization requirement declared via <c>[KaleidoAuthorization]</c>.
+    /// <c>null</c> means open (subject to transport-level defaults).
+    /// </summary>
+    public AuthorizationMetadata? Authorization { get; init; }
+
     public IReadOnlyCollection<QueryableFieldDescriptor> Fields { get; init; }
         = [];
 
@@ -159,6 +169,13 @@ public record QueryableViewRegistryItem
     public required QueryViewVisibility Visibility { get; init; }
 
     public PageableMetadata? Pageable { get; init; }
+
+    /// <summary>
+    /// Effective authorization requirement — the view's own
+    /// <c>[KaleidoAuthorization]</c>, or the owning context's when the view
+    /// declares none. <c>null</c> means open (subject to transport-level defaults).
+    /// </summary>
+    public AuthorizationMetadata? Authorization { get; init; }
 
     public IReadOnlyCollection<QueryableParameterDescriptor> Parameters { get; init; }
         = [];

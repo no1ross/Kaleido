@@ -53,4 +53,32 @@ public sealed class DelegatedQueryViewRegistryTests
         var sut = CreateSut();
         Assert.Null(sut.Find(typeof(object)));
     }
+
+    [Fact]
+    public void BuildRegistration_MapsAuthorizationFromViewAndContext()
+    {
+        var sut = CreateSut(queryViewTypes: [typeof(SecuredDelegatedView)]);
+
+        var registration = sut.GetRegistration(typeof(SecuredDelegatedView));
+
+        Assert.Equal("delegate-policy", registration.QueryMetadata.Authorization?.Policy);
+        Assert.Equal("view-policy", registration.ViewMetadata.Authorization?.Policy);
+    }
+
+    [QueryContext(Name = "delegate-context", Version = "1.0.0")]
+    [KaleidoAuthorization(Policy = "delegate-policy", Roles = "internal")]
+    private sealed class DelegateContext;
+
+    private sealed class DelegateContract;
+
+    [QueryView(Name = "secured-delegated-view", Version = "1.0.0")]
+    [KaleidoAuthorization(Policy = "view-policy")]
+    private sealed class SecuredDelegatedView
+        : IDelegateQueryViewSource<DelegateContext, DelegateContract>
+    {
+        public Task<QueryResult<DelegateContract>> ExecuteAsync(
+            IQueryRequest<EmptyQueryViewParameters> request,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new QueryResult<DelegateContract>(0, 0, 0, []));
+    }
 }

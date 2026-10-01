@@ -242,6 +242,66 @@ public sealed class ProcessStepRegistryTests
     }
 
     [Fact]
+    public void Registration_MapsKaleidoAuthorization()
+    {
+        var registry =
+            CreateSut(
+                typeof(SecuredStep));
+
+        var registration =
+            registry.GetRegistration(
+                typeof(SecuredStep));
+
+        Assert.Equal(
+            "step-policy",
+            registration.Metadata.Authorization?.Policy);
+
+        Assert.Equal(
+            "internal",
+            Assert.Single(registration.Metadata.Authorization!.Roles));
+    }
+
+    [Fact]
+    public void Registration_WithoutKaleidoAuthorization_HasNullAuthorization()
+    {
+        var registry =
+            CreateSut(
+                typeof(StepA));
+
+        var registration =
+            registry.GetRegistration(
+                typeof(StepA));
+
+        Assert.Null(
+            registration.Metadata.Authorization);
+    }
+
+    [Fact]
+    public void ToRegistryItem_CarriesAuthorization()
+    {
+        var registry =
+            CreateSut(
+                typeof(SecuredStep));
+
+        var registration =
+            registry.GetRegistration(
+                typeof(SecuredStep));
+
+        var item =
+            registration.ToRegistryItem(
+                new Mock<ITypeDescriber>().Object,
+                new Mock<IConstraintMapper>().Object);
+
+        Assert.Equal(
+            "step-policy",
+            item.Authorization?.Policy);
+
+        Assert.Equal(
+            "step-policy",
+            registration.ToSummary().Authorization?.Policy);
+    }
+
+    [Fact]
     public void Registration_MapsNonRepeatableStep()
     {
         var registry =
@@ -273,7 +333,8 @@ public sealed class ProcessStepRegistryTests
             { typeof(RepeatableStep), typeof(RepeatableStepHandler) },
             { typeof(StepAfter), typeof(StepAfterHandler) },
             { typeof(StepUntil), typeof(StepUntilHandler) },
-            { typeof(StepMultiAvailability), typeof(StepMultiAvailabilityHandler) }
+            { typeof(StepMultiAvailability), typeof(StepMultiAvailabilityHandler) },
+            { typeof(SecuredStep), typeof(SecuredStepHandler) }
         };
 
         return new ProcessStepRegistry(
@@ -313,6 +374,10 @@ public sealed class ProcessStepRegistryTests
     [AvailableUntil(typeof(StepD))]
     private sealed class StepMultiAvailability;
 
+    [ProcessStep(Name = "secured-step", Description = "secured-step description", Version = "1.0")]
+    [KaleidoAuthorization(Policy = "step-policy", Roles = "internal")]
+    private sealed class SecuredStep;
+
     private sealed class MissingStep;
 
     private sealed record TestResponse;
@@ -340,6 +405,9 @@ public sealed class ProcessStepRegistryTests
 
     private sealed class StepMultiAvailabilityHandler
         : BaseHandler<StepMultiAvailability, TestResponse>;
+
+    private sealed class SecuredStepHandler
+        : BaseHandler<SecuredStep, TestResponse>;
 
     private abstract class BaseHandler<TStep, TResponse>
         : IProcessStepHandler<TStep, TResponse>

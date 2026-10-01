@@ -355,6 +355,11 @@ public sealed record ProcessStepResponse
 
     public bool Repeatable { get; init; }
 
+    /// <summary>
+    /// Authorization requirement for this step. Null means open.
+    /// </summary>
+    public AuthorizationMetadata? Authorization { get; init; }
+
     public string ExecuteUrl { get; init; }
         = string.Empty;
 
@@ -388,6 +393,11 @@ public sealed record ProcessStepSummary
     public string? Version { get; init; }
 
     public bool Repeatable { get; init; }
+
+    /// <summary>
+    /// Authorization requirement for this step. Null means open.
+    /// </summary>
+    public AuthorizationMetadata? Authorization { get; init; }
 
     public string ExecuteUrl { get; init; }
         = string.Empty;

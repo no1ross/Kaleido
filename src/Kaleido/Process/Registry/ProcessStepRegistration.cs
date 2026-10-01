@@ -1,3 +1,5 @@
+using Kaleido.Registry;
+
 namespace Kaleido.Process.Registry;
 
 [ExcludeFromCodeCoverage]
@@ -24,4 +26,5 @@ public sealed record ProcessStepMetadata(
     string Name,
     string Description,
     string Version,
-    string DisplayName);
+    string DisplayName,
+    AuthorizationMetadata? Authorization = null);

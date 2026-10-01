@@ -4,3 +4,4 @@ global using Kaleido.Process.Registry;
 global using Kaleido.Queryable;
 global using Kaleido.Queryable.Query;
 global using Kaleido.Queryable.Metadata;
+global using Kaleido.Registry;

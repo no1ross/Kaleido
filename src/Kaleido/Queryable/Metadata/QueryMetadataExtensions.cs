@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Reflection;
+using Kaleido.Registry;
 
 namespace Kaleido.Queryable.Metadata;
 
@@ -107,7 +108,8 @@ internal static class QueryMetadataExtensions
             attribute.Visibility,
             queryViewType.ToViewPageable(contextType, attribute),
             parametersType.ToParameterMetadata(typeDescriber, constraintMapper),
-            viewType.ToOutputFieldMetadata(typeDescriber));
+            viewType.ToOutputFieldMetadata(typeDescriber),
+            AuthorizationMetadata.ForType(queryViewType));
 
     /// <summary>
     /// Builds pageable metadata for a query view from its <see cref="PageableAttribute"/>,
