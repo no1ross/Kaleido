@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 namespace Kaleido.Http;
 
 /// <summary>
@@ -16,4 +17,19 @@ public sealed class KaleidoHttpOptions
     /// <c>[Authorize]</c>-less endpoint behavior.
     /// </summary>
     public bool RequireAuthorization { get; set; }
+
+    /// <summary>
+    /// Decides whether identity-bearing correlation headers
+    /// (<c>X-Kaleido-Request-Id</c>, <c>X-Kaleido-Source-Processor</c>,
+    /// <c>X-Kaleido-Step-Name</c>, <c>X-Kaleido-Processor-Instance-Id</c>)
+    /// are honored for a request. <c>X-Kaleido-Process-Id</c> is always
+    /// honored — it is a resumable process handle, not an identity claim.
+    /// <para>
+    /// When <c>null</c> (default): trusted when the host has no
+    /// authentication infrastructure registered (nothing to check
+    /// against — preserves pre-auth behavior), otherwise requires an
+    /// authenticated caller.
+    /// </para>
+    /// </summary>
+    public Func<HttpContext, bool>? TrustCorrelationIdentity { get; set; }
 }

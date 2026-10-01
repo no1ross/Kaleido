@@ -41,6 +41,31 @@ HTTP request
   ID downstream. `KaleidoCorrelationContext.IsEmpty` reports whether any meaningful field
   was supplied.
 
+### Header trust
+
+Identity-bearing headers (`RequestId`, `SourceProcessor`, `StepName`,
+`ProcessorInstanceId`) are honored only for trusted callers — untrusted callers get a
+fresh `RequestId` and the remaining identity fields are dropped (the response echo still
+reflects the resolved context, so callers see exactly what was used). `ProcessId` is
+always honored: it is a resumable process handle, not an identity claim.
+
+Trust is governed by `KaleidoHttpOptions.TrustCorrelationIdentity` (`Func<HttpContext, bool>`).
+The default is adaptive:
+
+- **No authentication infrastructure registered** (no `IAuthenticationSchemeProvider`) —
+  headers are trusted; there is nothing to check a caller against. This preserves
+  behavior on hosts that never wire auth.
+- **Authentication registered** — headers are trusted only when
+  `User.Identity.IsAuthenticated`.
+
+Override the predicate to apply a custom policy (e.g. service-account-only trust):
+
+```csharp
+.AddHttp(o =>
+    o.TrustCorrelationIdentity = ctx =>
+        ctx.User.IsInRole("internal-service"));
+```
+
 ## Outbound path (client)
 
 ```
