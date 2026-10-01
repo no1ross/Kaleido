@@ -33,4 +33,4 @@ internal sealed record CompiledSearchField
 [ExcludeFromCodeCoverage]
 internal sealed record CompiledSort(FieldMetadata Field, SortDirection Direction, int Sequence);
 [ExcludeFromCodeCoverage]
-internal sealed record CompiledPage(int Size, int Offset);
+internal sealed record CompiledPage(int Size, int Offset, bool IsExplicit);

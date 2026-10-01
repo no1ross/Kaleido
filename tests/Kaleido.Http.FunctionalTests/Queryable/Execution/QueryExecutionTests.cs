@@ -24,7 +24,9 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
         await AssertStatusCodeAsync(HttpStatusCode.OK, response);
 
         var root = await ReadResponseRootAsync(response);
-        Assert.Equal(6, GetTotalCount(root));
+        // Page not provided — TotalCount is the number of rows returned (DefaultSize cap),
+        // not the full unfiltered count.
+        Assert.Equal(3, GetTotalCount(root));
         Assert.Equal(0, GetOffset(root));
         Assert.Equal(3, GetPageSize(root));
         Assert.Equal(3, GetRecords(root).Length);
@@ -106,7 +108,8 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
         await AssertStatusCodeAsync(HttpStatusCode.OK, response);
 
         var root = await ReadResponseRootAsync(response);
-        Assert.Equal(6, GetTotalCount(root));
+        // Page not provided — TotalCount is the number of rows returned (DefaultSize cap).
+        Assert.Equal(3, GetTotalCount(root));
         Assert.Equal(3, GetRecords(root).Length);
         Assert.Contains(GetRecords(root), x => GetString(x, "Code") == "AL-001");
     }
