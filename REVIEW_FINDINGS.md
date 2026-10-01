@@ -6,6 +6,8 @@
 **Review Scope:** Kaleido pre-1.0 release preparation  
 **Status:** DRAFT — Ready for Team Review  
 
+**v2.2 Note (2026-10-01):** Adds **AI-015 — Information Request as a first-class Process state**, the strategic direction for AI-native positioning (see [Strategic direction: process-guided interaction](#strategic-direction-process-guided-interaction)), and open question **Q-009**.
+
 **v2.0 Note:** This revision merges a second, code-level analysis pass (per `docs/PRERELEASE_PROMPT.md`, phases 0–15) with the original v1 findings. Every v1 finding was re-validated against the actual source; several were corrected or superseded (see [Prior Findings — v1 Validation](#prior-findings-v1-validation)). New findings are numbered continuing the original ID scheme (CR-004+, HP-005+, MP-005+, LP-004+).
 
 ---
@@ -912,18 +914,64 @@ The metadata answers **"What operations exist, and how do I call them?"** It doe
 - **Recommended Fix:** Define a `CapabilityManifest` record (`CapabilityId`, `Kind`, `Name`, `Version`, `Description`, `InputSchema`, `OutputSchema`, policy bag from AI-001, `RegistryRevision`, `GeneratedAt`). Publish a `Kaleido.Adapters.Mcp` or `Kaleido.Adapters.OpenApi` package as a separate opt-in concern. Core runtime stays neutral.
 - **Complexity:** Medium · **Breaking:** No (additive package)
 
+### Strategic direction: process-guided interaction
+
+AI-001..AI-006 make Kaleido *safe to call*. They do not make it *AI-native*. Every agent framework (MCP, A2A, Semantic Kernel, LangGraph, Copilot Studio) is converging on **how does the agent call the tool?** Almost none address **how does the capability tell the agent what to do next?** That is where Kaleido's Process model is differentiated, and it is the direction this review recommends.
+
+**The shift:**
+
+| Traditional API | Process-guided capability |
+|---|---|
+| Request → Response, or Request → Validation Error | Goal → Current State → Needed Information → Next Question |
+| `400 MemberId is required` — the agent must infer what to ask, how to phrase it, what else is missing, in what order, and what happens next | `NeedsInformation` + the exact questions, constraints, valid options, reason, and next action |
+| Intelligence pushed into the agent (prompt engineering, tool descriptions, hallucinated workflows) | Intelligence lives in the business capability; the agent is a participant |
+
+"The process cannot continue until these facts are collected" is **business behavior**, not UI. Which facts, why, what is required, which answers are valid, and what happens after — that is **domain metadata**. A questionnaire is just one presentation of it. The same artifact drives every consumer without custom code: Angular renders a form; a voice bot reads the questions aloud; Teams Copilot asks the user; an MCP agent gathers the answers; another process auto-populates them from a data source.
+
+For enterprise workflows — prior auth, claims, provider onboarding, credentialing, appeals, case management, enrollment — **waiting for information is the most common non-terminal state.** The process is not failing; it is waiting. Modelling that wait as a validation error is the core mismatch.
+
+#### [AI-015] Information Request is not a first-class Process concept — **HIGH (strategic)**
+
+- **Severity:** High (strategic) · **Category:** API design / AI-native capability
+- **Description:** Kaleido already has the *bones* of process-guided interaction, but not the concept itself:
+  - `ExecutionDecisionType.AwaitingRequiredStep` / `AwaitingStepSelection` and `ProcessExecutionState.AwaitingRequiredStep` already model "cannot continue until the consumer supplies something" as a valid, non-error state.
+  - `ProcessExecutionResponse.RequiredStep` + `AvailableSteps` already tell the consumer *which* step comes next, and step metadata (`Fields`, constraints, enums) already describes its input schema.
+  - **Gaps:**
+    1. **No first-class "what information is needed" artifact.** The response names the next step; the consumer must fetch `MetadataUrl` and reverse-engineer what to ask from a CLR-derived schema. Field metadata carries no question phrasing, reason ("member eligibility must be verified"), grouping/title, or collection hints.
+    2. **No dynamic (per-instance) questions.** Step metadata is static. Questions that depend on runtime state — *"I found three active enrollments. Which one is this request for?"* with options `[Commercial PPO, Commercial HMO, Dental]` — have nowhere to live except a domain payload.
+    3. **The PriorAuth sample proves the need by working around it.** `CaptureRequestedServiceHandler` and `StartRadiologyIntakeHandler` return a `QuestionnaireDefinitionView` inside a sample-specific typed response (`CaptureRequestedServiceResponse.Questionnaire`) alongside `requiredStep`. Only the sample's Angular UI knows to read it; an agent, voice bot, or second UI cannot discover it generically.
+    4. **Missing/invalid input is reported as failure, not as a request.** Validation fails as `StepExecutionStatus.ValidationFailed` / `ProcessMessage` errors — correct for malformed input, wrong for "not yet collected".
+    5. **No sibling interaction states.** `NeedsApproval`, `NeedsHumanReview`, `NeedsDocument`, `NeedsDecision` are equally common enterprise waits with the same shape (the process is blocked on an external party, and can describe exactly what it is waiting for).
+- **Recommended direction (design, not yet implementation):**
+  - Core (`src/Kaleido`, transport-agnostic): an `InformationRequest` record — `Title`, `Description`, `Reason`, `Questions` (`Id`, `Prompt`, `Required`, data type + constraints reusing `DataTypeMapper`/`ConstraintMapper`, `Options` for static or runtime-resolved choices, optional `EnableWhen`), `ResponseStep` (the step that accepts the answers), `NextAction`. Handlers return it via a factory, e.g. `ProcessStepHandlerResult.NeedsInformation(request)`, mapping to a new `ExecutionDecisionType`/`ProcessExecutionState` value (`AwaitingInformation`) — a valid workflow state, never an error, never a failure metric.
+  - Static defaults: questions derivable from the required step's field metadata, enriched by additive attributes on step input properties (prompt, reason, group). Dynamic overrides: handler-supplied questions/options per process instance.
+  - Persisted on `ProcessorContext` (current resumable state only — the *open* request, not history) so `GET /processes/{id}` returns it on resume.
+  - HTTP (`Kaleido.Http.Abstractions`): additive `informationRequest` on `ProcessExecutionResponse`, `StepExecutionResponse`, `ProcessStateResponse`. Consumers that ignore it are unaffected.
+  - Treat "questionnaire" as a presentation, not the concept. Name the concept for the process (`InformationRequest`), not the UI.
+  - Adapters (AI-006) project it naturally: an MCP tool result becomes "needs information → ask these questions → call `ResponseStep`" — no prompt engineering.
+  - Sample: migrate PriorAuth's `QuestionnaireDefinitionView`-in-payload to `NeedsInformation`; keep FHIR-style questionnaire storage as the sample's *source* of questions, not the transport contract.
+  - Extend later to `NeedsApproval` / `NeedsHumanReview` / `NeedsDocument` using the same "awaiting + descriptor" pattern; do not build them speculatively before `InformationRequest` is proven.
+- **Dependencies:** AI-001 (behavioral metadata — `NextAction` must carry side-effect/confirmation semantics), AI-002 (agents will retry answer submissions — idempotency matters most here), EXT-12 (questions and options can leak PHI/business data — only authorized callers may see an open request; `Owner`/claim model governs who may answer).
+- **Open design questions:** Q-009.
+- **Complexity:** Large · **Breaking:** Additive (new state value + optional wire fields)
+
 ### Practical AI adoption sequence
 
 1. **First:** expose a small allowlisted set of read-only Queryable operations to a supervised AI client — authenticated, bounded, auditable.
 2. **Second:** add the canonical capability manifest and an AI-tool adapter (AI-006).
 3. **Third:** expose low-risk idempotent Process steps with explicit confirmation.
-4. **Last:** permit consequential Process actions only after AI-002 (durable idempotency), AI-004 (auth-aware discovery), AI-005 (event redaction), and AI-001 (safety metadata) are resolved.
+4. **Fourth:** introduce `InformationRequest` (AI-015) so processes drive the conversation; migrate the PriorAuth sample as the reference.
+5. **Last:** permit consequential Process actions only after AI-002 (durable idempotency), AI-004 (auth-aware discovery), AI-005 (event redaction), and AI-001 (safety metadata) are resolved.
+
+AI-015 design can start in parallel with steps 1–3; only its *exposure to autonomous agents* is gated on step 5.
 
 ### Bottom line
 
 The project is publicly presentable. The concept is legitimate, and its metadata-first design is unusually well suited to AI tool discovery. It should be published as an explicitly pre-1.0 framework, not as a finished stable platform.
 
 For AI specifically, Kaleido currently provides a strong **capability-discovery substrate**. Adding safety semantics (AI-001), schema-standard adapters (AI-006), authorization-aware discovery (AI-004), freshness metadata (AI-003), and reliable retry/idempotency behavior (AI-002) could turn that substrate into a genuinely compelling agent integration layer.
+
+What would justify **"AI-native"** is not MCP support — MCP is just another transport. It is AI-015: business capabilities that tell any consumer, human or agent, *what they need, why, and what happens next*. That is a business-capability feature that happens to be extremely valuable to AI, and it is the differentiator to build toward.
 
 ---
 
@@ -1041,7 +1089,7 @@ AI code generators (LLMs, copilots) are pattern-matchers learning from:
 | AI-013 | Canonical patterns | 🟡 MEDIUM | 1.5d | MEDIUM | PENDING |
 | AI-014 | Security analyzer docs | 🔵 LOW | 1d | LOW | PENDING |
 
-**Total Effort:** ~9–10 days | **Cumulative Impact:** Kaleido becomes **AI-native**
+**Total Effort:** ~9–10 days | **Cumulative Impact:** Kaleido becomes **AI-assisted-development friendly** (code generators produce idiomatic Kaleido code). Note: this does *not* make Kaleido AI-native at runtime — see AI-015.
 
 ---
 
