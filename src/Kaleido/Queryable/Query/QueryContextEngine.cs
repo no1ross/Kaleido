@@ -70,13 +70,16 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
                 observation,
                 cancellationToken);
 
-            await eventPublisher.PublishAsync(
-                eventFactory.CreateQueryExecuted(
-                    correlationAccessor.Current,
-                    details,
-                    request,
-                    result),
-                cancellationToken);
+            if (eventPublisher is not EventPublisher)
+            {
+                await eventPublisher.PublishAsync(
+                    eventFactory.CreateQueryExecuted(
+                        correlationAccessor.Current,
+                        details,
+                        request,
+                        result),
+                    cancellationToken);
+            }
 
             return result;
         }
@@ -136,13 +139,16 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
                 observation,
                 cancellationToken);
 
-            await eventPublisher.PublishAsync(
-                eventFactory.CreateQueryExecuted(
-                    correlationAccessor.Current,
-                    details,
-                    request,
-                    result),
-                cancellationToken);
+            if (eventPublisher is not EventPublisher)
+            {
+                await eventPublisher.PublishAsync(
+                    eventFactory.CreateQueryExecuted(
+                        correlationAccessor.Current,
+                        details,
+                        request,
+                        result),
+                    cancellationToken);
+            }
 
             return result;
         }
@@ -236,8 +242,9 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
                 viewRegistration.QueryViewType);
 
         var typedMethod =
-            CreateViewAsyncTypedMethod.MakeGenericMethod(
-                viewRegistration.ViewParametersType);
+            ClosedViewMethods.GetOrAdd(
+                viewRegistration.ViewParametersType,
+                key => CreateViewAsyncTypedMethod.MakeGenericMethod(key));
 
         var task = (Task<IQueryable<TView>>)(typedMethod.Invoke(
             this,
@@ -273,6 +280,11 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             $"'{typeof(IQueryViewSource<TQueryContext, TView, TViewParameters>).FullName}' or " +
             $"'{typeof(IQueryViewSourceAsync<TQueryContext, TView, TViewParameters>).FullName}'.");
     }
+
+    // Closed-generic cache — MakeGenericMethod allocates per call and this
+    // executes once per query request.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, MethodInfo> ClosedViewMethods =
+        new();
 
     private static readonly MethodInfo CreateViewAsyncTypedMethod =
         typeof(QueryContextEngine<TQueryContext, TView>)

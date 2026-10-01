@@ -172,8 +172,8 @@ public sealed record ProcessorRequest
 internal sealed class ProcessRuntime(
     IProcessContextStore contextStore,
     IProcessStateUpdater stateUpdater,
-    IExecutionPlanner planner,
-    IExecutionProcessor processor,
+    IProcessPlanner planner,
+    IProcessExecutor processor,
     IProcessEventFactory eventFactory,
     IEventPublisher eventPublisher,
     IProcessObservability observability,
@@ -261,7 +261,8 @@ internal sealed class ProcessRuntime(
                     context.ProcessId);
             }
 
-            observation.ExecutionCompleted();
+            observation.ExecutionCompleted(
+                executionResult.State);
 
             return result;
         }

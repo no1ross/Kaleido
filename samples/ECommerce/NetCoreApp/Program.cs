@@ -1,7 +1,5 @@
 using Kaleido;
 using Kaleido.Http;
-using Kaleido.Http.Process;
-using Kaleido.Http.Queryable;
 using Kaleido.Observability.OpenTelemetry;
 using Kaleido.Provider.SQLite;
 using Kaleido.Samples.ECommerce.Data;
@@ -67,8 +65,7 @@ app.UseCors("AllowAll");
 //    .InitializeAsync(
 //        app.Services);
 
-app.MapProcessor();
-app.MapQueryable();
+app.MapKaleido();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

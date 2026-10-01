@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Process.Execution;
 
-internal interface IExecutionProcessor
+internal interface IProcessExecutor
 {
     Task<ProcessExecutionResult> ExecuteAsync(
         IReadOnlyCollection<StepCandidate> candidates,
@@ -14,7 +14,7 @@ internal interface IExecutionProcessor
         CancellationToken cancellationToken = default);
 }
 
-internal sealed class ExecutionProcessor(
+internal sealed class ProcessExecutor(
     IProcessStepInvoker invoker,
     IStepExecutionEvaluator evaluator,
     IProcessStateUpdater stateUpdater,
@@ -24,8 +24,8 @@ internal sealed class ExecutionProcessor(
     IEventPublisher eventPublisher,
     IProcessObservability observability,
     IKaleidoCorrelationContextAccessor correlationAccessor,
-    ILogger<ExecutionProcessor> logger)
-    : IExecutionProcessor
+    ILogger<ProcessExecutor> logger)
+    : IProcessExecutor
 {
 
     public async Task<ProcessExecutionResult> ExecuteAsync(
@@ -217,6 +217,46 @@ internal sealed class ExecutionProcessor(
                             StepProcessingMessage.Error(
                             StepProcessingMessageCode.ExecutionCanceled,
                             "Step execution was cancelled.")
+                        ],
+
+                        Response = null
+                    });
+
+                break;
+            }
+            catch (KaleidoValidationException exception)
+            {
+                stepObservation.StepFailed(exception);
+
+                context =
+                    stateUpdater.ApplyException(
+                        context,
+                        candidate);
+
+                await stateRepository.SaveAsync(
+                    context,
+                    CancellationToken.None);
+
+                outcomes.Add(
+                    new ProcessExecutionOutcome
+                    {
+                        StepName =
+                            candidate.StepName,
+
+                        Status =
+                            StepExecutionStatus.ValidationFailed,
+
+                        Outcome =
+                            GetStepOutcome(StepExecutionStatus.ValidationFailed),
+
+                        Decision =
+                            ExecutionDecisionType.ProcessViolation,
+
+                        RuntimeMessages =
+                        [
+                            StepProcessingMessage.Error(
+                            StepProcessingMessageCode.ValidationFailed,
+                            exception.Message)
                         ],
 
                         Response = null

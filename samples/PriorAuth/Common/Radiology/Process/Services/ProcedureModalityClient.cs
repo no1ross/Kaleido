@@ -1,5 +1,5 @@
+using System.Text.Json;
 using Kaleido.Http.Queryable;
-using Kaleido.Queryable;
 using Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
@@ -23,14 +23,19 @@ public sealed class ProcedureModalityClient(
                 "procedure-modality-rules",
                 new QueryApiRequest
                 {
-                    Query = new QueryBody(
-                        Filter: QueryFilterNode.CreateCondition(
-                            "CodeSystem",
-                            FilterOperator.Equals,
-                            codeSystem.ToString()),
-                        Page: new QueryPage(
-                            Size: 25,
-                            Offset: 0))
+                    Query = new QueryApiBody
+                    {
+                        Filter = new QueryApiFilterNode
+                        {
+                            Condition = new QueryApiFilterCondition
+                            {
+                                Field = "CodeSystem",
+                                Operator = "equals",
+                                Values = [JsonSerializer.SerializeToElement(codeSystem.ToString())]
+                            }
+                        },
+                        Page = new QueryApiPage { Size = 25, Offset = 0 }
+                    }
                 },
                 cancellationToken);
 

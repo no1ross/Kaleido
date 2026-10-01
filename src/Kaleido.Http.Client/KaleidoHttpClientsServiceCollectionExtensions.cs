@@ -15,7 +15,7 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        var config = new Kaleido.KaleidoClientOptions();
+        var config = new KaleidoClientOptions();
         builder.Configuration.GetSection(KaleidoServiceOptions.SectionName).Bind(config);
         builder.Services.AddSingleton(config);
 

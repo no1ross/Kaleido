@@ -1,6 +1,5 @@
 using Kaleido;
 using Kaleido.Http;
-using Kaleido.Http.Queryable;
 using Kaleido.Observability.OpenTelemetry;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.CodeSet.Data;
@@ -51,7 +50,7 @@ var app = builder.Build();
 app.UseCors("AllowAll");
 
 app.MapHealthChecks("/health");
-app.MapQueryable();
+app.MapKaleido();
 
 if (app.Environment.IsDevelopment())
 {

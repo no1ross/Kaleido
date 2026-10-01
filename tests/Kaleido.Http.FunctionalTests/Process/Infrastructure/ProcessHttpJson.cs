@@ -4,13 +4,8 @@ namespace Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
 
 internal static class ProcessHttpJson
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
     public static Task<T?> ReadAsync<T>(
         this HttpContent content,
         CancellationToken cancellationToken = default) =>
-        content.ReadFromJsonAsync<T>(SerializerOptions, cancellationToken);
+        content.ReadFromJsonAsync<T>(KaleidoJsonOptions.Options, cancellationToken);
 }

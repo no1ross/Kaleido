@@ -1,8 +1,5 @@
-using System.Text.Json.Serialization;
-
 namespace Kaleido.Queryable.Metadata;
 
-[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum QueryContextKind
 {
     Local,
@@ -103,6 +100,12 @@ public sealed record QueryOutputFieldMetadata(
 [ExcludeFromCodeCoverage]
 public record QueryableContextRegistryItem
 {
+    /// <summary>
+    /// The CLR type of the query context. For transport endpoint mapping (e.g. MakeGenericMethod).
+    /// Not serialized to the wire.
+    /// </summary>
+    public required Type ContextType { get; init; }
+
     public required string Name { get; init; }
 
     public string? Description { get; init; }
@@ -127,6 +130,24 @@ public record QueryableContextRegistryItem
 [ExcludeFromCodeCoverage]
 public record QueryableViewRegistryItem
 {
+    /// <summary>
+    /// The CLR type of the query view class. For transport endpoint mapping (e.g. MakeGenericMethod).
+    /// Not serialized to the wire.
+    /// </summary>
+    public required Type QueryViewType { get; init; }
+
+    /// <summary>
+    /// The CLR type of the view result. For transport endpoint mapping.
+    /// Not serialized to the wire.
+    /// </summary>
+    public required Type ViewType { get; init; }
+
+    /// <summary>
+    /// The CLR type of the view parameters. For transport endpoint mapping.
+    /// Not serialized to the wire.
+    /// </summary>
+    public required Type ViewParametersType { get; init; }
+
     public required string Name { get; init; }
 
     public string? Description { get; init; }
@@ -152,6 +173,12 @@ public record QueryablePropertyDescriptor
     public required string Name { get; init; }
 
     public string? Description { get; init; }
+
+    /// <summary>
+    /// The CLR type of this property. Transport layers use this for value
+    /// resolution and OpenAPI schema generation. Not serialized to the wire.
+    /// </summary>
+    public required Type FieldType { get; init; }
 
     public required DataTypeDescriptor DataType { get; init; }
 }

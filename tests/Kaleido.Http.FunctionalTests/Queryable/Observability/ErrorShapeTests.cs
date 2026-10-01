@@ -19,11 +19,18 @@ public sealed class ErrorShapeTests(
         {
             Content = JsonContent.Create(
                 new QueryApiRequest(
-                    new QueryBody(
-                        Filter: QueryFilterNode.CreateCondition(
-                            "bogus-field",
-                            FilterOperator.Equals,
-                            "1"))))
+                    new QueryApiBody
+                    {
+                        Filter = new QueryApiFilterNode
+                        {
+                            Condition = new QueryApiFilterCondition
+                            {
+                                Field = "bogus-field",
+                                Operator = "equals",
+                                Values = [System.Text.Json.JsonSerializer.SerializeToElement("1")]
+                            }
+                        }
+                    }))
         };
 
         var response = await fixture.Client.SendAsync(request);

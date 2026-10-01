@@ -1,6 +1,5 @@
 using Kaleido;
 using Kaleido.Http;
-using Kaleido.Http.Queryable;
 using Kaleido.Samples.SQLite;
 using Microsoft.OpenApi;
 
@@ -31,7 +30,7 @@ builder.Services.AddSingleton<SampleKaleidoCsvData>();
 
 var app = builder.Build();
 
-app.MapQueryable();
+app.MapKaleido();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

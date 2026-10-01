@@ -24,7 +24,7 @@ public sealed class QueryableDiscoveryTests : IClassFixture<QueryableAspNetCoreF
     [Fact]
     public async Task GetQueryable_ReturnsFunctionalRecordSummary()
     {
-        var records = await _client.GetFromJsonAsync<QueryableRecordSummary[]>("/kaleido/queryable");
+        var records = await _client.GetFromJsonAsync<QueryableRecordSummary[]>("/kaleido/queryable", KaleidoJsonOptions.Options);
 
         var record = Assert.Single(records!, x => x.Name == "functional-records");
 
@@ -39,7 +39,7 @@ public sealed class QueryableDiscoveryTests : IClassFixture<QueryableAspNetCoreF
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var registry = await response.Content.ReadFromJsonAsync<QueryableRecordResponse[]>();
+        var registry = await response.Content.ReadFromJsonAsync<QueryableRecordResponse[]>(KaleidoJsonOptions.Options);
         var record = Assert.Single(registry!, x => x.Name == "functional-records");
         var view = Assert.Single(record.Views, x => x.Name == "grid");
 

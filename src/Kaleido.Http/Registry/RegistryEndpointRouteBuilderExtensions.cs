@@ -34,21 +34,14 @@ public static class RegistryEndpointRouteBuilderExtensions
     /// </list>
     /// Adding a new downstream client makes it appear automatically.
     /// </summary>
-    public static IEndpointRouteBuilder MapRegistry(
+    /// <summary>
+    /// Maps the aggregated registry endpoint and returns the route group so hosts can
+    /// compose conventions (e.g. <c>.RequireAuthorization()</c>) onto the endpoint.
+    /// </summary>
+    public static RouteGroupBuilder MapRegistry(
         this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
-
-        // Guard — MapRegistry() requires AddHttpClients() to have been called.
-        // KaleidoClientOptions is registered as a singleton by AddHttpClients() and
-        // serves as the marker that the client infrastructure is wired up.
-        if (endpoints.ServiceProvider.GetService<KaleidoClientOptions>() is null)
-        {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProInvalidRegistration,
-                "Cannot map Registry endpoint: the client factories are not registered. " +
-                "Call AddHttpClients() on the IKaleidoBuilder before calling MapRegistry().");
-        }
 
         // Resolved once at map-time — these do not change after startup.
         var processClientMap = endpoints.ServiceProvider
@@ -56,6 +49,17 @@ public static class RegistryEndpointRouteBuilderExtensions
 
         var queryableClientMap = endpoints.ServiceProvider
             .GetService<KaleidoQueryableClientRouteOptionsMap>();
+
+        // Guard — MapRegistry() requires AddHttpClients() with at least one
+        // configured client. The route-options maps are singletons registered
+        // per client; neither present means no client infrastructure exists.
+        if (processClientMap is null && queryableClientMap is null)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.ProInvalidRegistration,
+                "Cannot map Registry endpoint: no Kaleido clients are registered. " +
+                "Call AddHttpClients() on the IKaleidoBuilder before calling MapRegistry().");
+        }
 
         // Optional — only present when the host has called AddHttp().
         var localProcessorRegistry = endpoints.ServiceProvider
@@ -77,7 +81,11 @@ public static class RegistryEndpointRouteBuilderExtensions
         // captured in the closure — either way it is singleton-scoped to this endpoint.
         var cache = endpoints.ServiceProvider.GetService<HttpRegistryCache>() ?? new HttpRegistryCache();
 
-        endpoints.MapGet(
+        var group =
+            endpoints.MapGroup("")
+            .AddEndpointFilter<KaleidoJsonEndpointFilter>();
+
+        group.MapGet(
                 RegistryContractUrls.Registry(localServiceOptions.ServiceName),
                 async (
                     HttpContext httpContext,
@@ -179,7 +187,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                 "Process steps carry fully-resolved ExecuteUrl and MetadataUrl values. " +
                 "Adding a downstream client via AddProcessClient() or AddQueryableClient() makes it appear here automatically.");
 
-        return endpoints;
+        return group;
     }
 
     private static IEnumerable<ProcessorRegistryResponse> GetLocalProcesses(

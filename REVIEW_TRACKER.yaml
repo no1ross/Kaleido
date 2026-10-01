@@ -135,7 +135,8 @@ high_priority_items:
     effort_days: 2-3
     priority: HIGH
     breaking_change: possibly
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: extension-points table added to src/ARCHITECTURE.md (store, publisher, executor, OTel provider, delegated views)."
     blocking: false
 
   HP-002:
@@ -181,8 +182,8 @@ high_priority_items:
     effort_days: 1
     priority: HIGH
     breaking_change: false
-    status: IN_PROGRESS
-    progress_note: "PR-01 (merged #18): src/Kaleido README bootstrap sample rewritten to options.Assemblies; internal auto-invocation documented. Final pass in PR-11."
+    status: COMPLETED
+    progress_note: "PR-01 (merged #18) + PR-11: docs audit confirms current model everywhere; internal auto-invocation documented."
 
   HP-007:
     title: Malformed correlation GUID header -> 400 (not 500)
@@ -199,7 +200,8 @@ high_priority_items:
     effort_days: 1-2
     priority: HIGH
     breaking_change: possibly
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: route-prefix contract documented in Kaleido.Http + Kaleido.Http.Client READMEs (RoutePrefix must equal downstream ServiceName)."
 
   HP-009:
     title: Production-unsafe defaults (discarding EventPublisher + unbounded in-memory store)
@@ -230,7 +232,8 @@ high_priority_items:
     effort_days: 1
     priority: HIGH
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: KaleidoClientOptions/KaleidoClientEntry moved to Kaleido.Http.Client; MapRegistry guard now checks client route-options maps (singletons)."
 
   HP-012:
     title: GetCallingAssembly fallback nondeterminism
@@ -238,7 +241,8 @@ high_priority_items:
     effort_days: 0.5-1
     priority: HIGH
     breaking_change: possibly
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: [MethodImpl(NoInlining)] on KaleidoBuilder ctor guards the GetCallingAssembly fallback; Q-005 (remove fallback entirely) stays open as product call."
 
   HP-013:
     title: Fail-fast AddHttpClients + singleton client factories
@@ -327,7 +331,12 @@ medium_priority_items:
     effort_days: 0.5-1
     priority: MEDIUM
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    notes: >
+      MapKaleido() added as single public entry point. MapProcessor/MapQueryable
+      made internal. Framework auto-detects active runtimes and maps only those.
+      Startup log emitted at Information level. All samples + functional test
+      fixtures migrated. 5 new unit tests.
 
   MP-006:
     title: StartupFilter middleware invisibility — document/opt-out
@@ -358,29 +367,32 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: false
-    status: IN_PROGRESS
-    progress_note: "PR-03 merged #20: step-invoke uses expression-compiled InvokeHandlerAsync cached on registration. Remaining: query dispatch, NullabilityInfoContext, step round-trip."
+    status: COMPLETED
+    progress_note: "PR-03 (step-invoke compiled delegate) + PR-11: closed-generic MethodInfo caches on all query-dispatch sites, shared NullabilityInfoContext (lock - not thread-safe), StepCandidateBuilder typed-object short-circuit."
 
   MP-010:
     title: QueryEventFactory copies full result set per query (wasted under no-op publisher)
     effort_days: 1
     priority: MEDIUM
     breaking_change: possibly
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: engines skip event construction entirely when the publisher is the built-in no-op EventPublisher."
 
   MP-011:
     title: ExecutionCompleted signal fires on degraded runs — add status dimension
     effort_days: 1
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: ExecutionCompleted(finalState) - Information log + execution_status activity tag now report the terminal ProcessExecutionState on degraded/canceled runs."
 
   MP-012:
     title: Registry cache never invalidates; Reset() sync-blocks thread
     effort_days: 0.5-1
     priority: MEDIUM
     breaking_change: possibly
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: Reset() is now a non-blocking Interlocked.Exchange (documented benign stale-write). Fetch-once lifetime + explicit InvalidateRegistry() already documented."
 
   MP-013:
     title: Move ProcessResponseFactory out of Http.Abstractions (internal statics in Kaleido.Http)
@@ -638,7 +650,7 @@ external_findings:
     breaking_change: false
     release_blocker: false
     status: COMPLETE
-    resolution_note: "(PR-07) Best-effort delivery for 1.0: all PublishAsync calls in ProcessExecutor and ProcessRuntime wrapped in try/catch(non-OCE); failures logged at Warning with processId + event type. Full transactional outbox is post-1.0."
+    resolution_note: "(PR-07) Best-effort delivery: PublishAsync wrapped in try/catch(non-OCE), failures logged at Warning with processId + event type. DECISION (owner): transactional outbox is NOT framework scope - consumers implement their own outbox pattern (e.g. Debezium/WAL tailing) since topologies vary; framework contract is best-effort publish + warning."
   EXT-03:
     title: Queryable async APIs run synchronous provider I/O
     source: KAL-C04
@@ -678,14 +690,16 @@ external_findings:
     severity: HIGH
     effort: medium
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    notes: "Resolved via MP-005: MapKaleido() replaces Map* pair; auto-detects active runtimes."
   EXT-07:
     title: Map* return IEndpointRouteBuilder — authorization cannot compose
     source: KAL-H09
     severity: HIGH
     effort: medium
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "PR-11: MapProcessor/MapQueryable/MapRegistry return RouteGroupBuilder; RequireAuthorization composes directly; README updated."
     notes: "Return IEndpointConventionBuilder/RouteGroupBuilder; auth integration tests"
   EXT-08:
     title: Queryable surface proliferation (registries x parallel source families)
@@ -693,21 +707,31 @@ external_findings:
     severity: HIGH
     effort: large
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "IQueryContextRegistry, IQueryViewRegistry, IDelegatedQueryViewRegistry made internal. IQueryableRegistry is now the only public registry interface. QueryableContextRegistryItem carries ContextType; QueryableViewRegistryItem carries QueryViewType/ViewType/ViewParametersType for transport wiring. MapQueryable unified to one loop over IQueryableRegistry.Registrations. All 738 tests pass."
   EXT-09:
     title: Process interface-per-stage decomposition -> cohesive components
     source: KAL-H12
     severity: HIGH
     effort: large
     breaking_change: internal
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "Renamed ExecutionPlanner→ProcessPlanner/IProcessPlanner and ExecutionProcessor→ProcessExecutor/IProcessExecutor for consistency with the Process* naming convention. Each stage class (StepCandidateBuilder, StepCandidateValidator, StepCandidateConsistencyChecker, StepCandidatePlanner, StepAvailabilityResolver, StepExecutionEvaluator, ProcessStateUpdater, ProcessEventFactory, ProcessStepInvoker) retains its own interface and DI registration as each is a valid independently-testable SUT. ProcessRuntime now injects IProcessPlanner + IProcessExecutor. DI registrations updated. Test files renamed to match (ProcessPlannerTests, ProcessExecutorTests). All 738 tests pass."
   EXT-10:
     title: Duplicate conversion systems (IDataTypeMapper vs IValueConverter)
     source: KAL-H13
     severity: HIGH
     effort: medium
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    resolution_note: >
+      IValueConverter/ValueNormalizer removed entirely. IDataTypeMapper renamed
+      to ITypeDescriber; IsSupportedType added. QueryRequestValidator now injects
+      ITypeDescriber. QueryApiBody transport types (string enums, JsonElement
+      values) replace QueryBody on the wire. QueryBodyResolver converts
+      QueryApiBody→QueryBody in Kaleido.Http. KaleidoJsonEndpointFilter handles
+      outbound enum serialization scoped to Kaleido route groups.
+      KaleidoJsonOptions shared JsonSerializerOptions in Kaleido.Http.Abstractions.
   EXT-11:
     title: Mandatory totalCount = two provider ops per query
     source: KAL-H15
@@ -771,6 +795,177 @@ external_findings:
     effort: medium
     breaking_change: false
     status: COMPLETED
+
+# ──────────────────────────────────────────────────────────────────────────────
+# AI Compatibility Findings  (added post-v2.1)
+# Source: owner assessment — "Kaleido as AI capability substrate"
+# ──────────────────────────────────────────────────────────────────────────────
+ai_compatibility:
+  summary: >
+    Kaleido is a credible AI capability-discovery substrate. Its metadata-first
+    design, typed contracts, explicit processId state handle, and machine-readable
+    registries are unusually well suited to AI tool discovery. It is NOT yet
+    suitable for autonomous-agent use without a safety/policy layer. The items
+    below track what is needed before "AI-compatible" positioning is fully honest
+    and before "AI-native" or "safe for autonomous agents" could be claimed.
+
+  release_position:
+    public_source_repo: "YES — clearly labelled experimental/preview"
+    prerelease_nuget: "YES — after build/package validation from a complete checkout"
+    stable_1_0: "NO"
+    ai_compatible_positioning: "YES"
+    ai_native_or_autonomous_agent_safe: "NOT YET"
+
+  strengths:
+    - Unified registry combines local + downstream Process and Queryable registrations
+    - Step metadata exposes name, version, description, input types, constraints, dependencies, availability, output types, and execution URL
+    - Queryable metadata exposes context, view, paging limits, output fields, and query URLs
+    - Explicit processId state handle aligns with MCP/tool-protocol state-handle pattern
+    - Functional tests verify dependency, output metadata, and generated URLs
+
+  ai_findings:
+    AI-001:
+      title: No behavioral safety metadata on capabilities
+      severity: HIGH
+      category: API design / AI safety
+      description: >
+        Step and view metadata expose structural schema (inputs, outputs, constraints)
+        but no behavioral declarations: read-only vs state-changing, destructive,
+        idempotent, requires-confirmation, required-auth-scopes, expected-cost,
+        data-sensitivity-classification, retry policy. An AI system cannot make
+        safe autonomous decisions about whether to call an operation based solely
+        on structural metadata. Note: Repeatable != idempotent — a repeatable step
+        may charge a card, send a message, or create another record.
+      recommended_fix: >
+        Add a CapabilityPolicy / StepBehavior annotation bag to ProcessStepMetadata
+        and QueryViewMetadata. Fields: ReadOnly, HasSideEffects, Destructive,
+        Idempotent, RequiresConfirmation, DataClassification, TimeoutGuidance,
+        RetryGuidance. Emit into registry/metadata endpoints. No model-provider
+        coupling — keep runtime neutral; adapters consume the policy bag.
+      effort: medium
+      breaking_change: additive
+      status: PENDING_DESIGN_REVIEW
+
+    AI-002:
+      title: No optimistic concurrency / durable idempotency on process state
+      severity: CRITICAL
+      category: Correctness / AI safety
+      description: >
+        AI agents and tool hosts commonly retry after timeouts, transport failures,
+        or ambiguous results. The current process-store contract does not provide
+        optimistic concurrency or durable idempotency keys. Two concurrent calls
+        can plan against the same state and overwrite each other; a retried call
+        can repeat a business side effect. This is important for all clients;
+        it is especially dangerous for probabilistic callers that may issue
+        duplicate, concurrent, or recovery calls. Relates to EXT-01/EXT-02.
+      recommended_fix: >
+        Optimistic concurrency token on ProcessorContext. Idempotency-key support
+        on every state-changing endpoint (store key + result, replay on duplicate).
+        IProcessContextStore contract extension. Covered by Q-007 decision scope.
+      effort: large
+      breaking_change: true
+      status: PENDING_DESIGN_REVIEW
+      related: [EXT-01, EXT-02, Q-007]
+
+    AI-003:
+      title: Discovery freshness is ambiguous — no TTL, ETag, or generated-at timestamp
+      severity: MEDIUM
+      category: API design / correctness
+      description: >
+        Server registry has no explicit TTL, ETag, generated-at timestamp, or
+        freshness version. Clients retain registry data until manually invalidated.
+        Partial aggregated responses return HTTP 200 with degradation in the body.
+        An AI system cannot know whether its registry snapshot is current, whether
+        some services are missing from the snapshot, whether the discovered URL
+        belongs to an older deployment, or whether it should refresh before invoking
+        a tool.
+      recommended_fix: >
+        Add RegistryRevision (monotonic or hash) and GeneratedAt to all registry
+        and catalog responses. Add ETag + Cache-Control to registry endpoints.
+        Consider a Freshness-Required header that triggers a re-fetch rather than
+        proceeding on stale data. Partial aggregated responses should include a
+        DegradedServices list.
+      effort: small
+      breaking_change: additive
+      status: PENDING_DESIGN_REVIEW
+
+    AI-004:
+      title: Authorization is possible but not the easy default — registry leaks all capabilities
+      severity: HIGH
+      category: Security / API design
+      description: >
+        Endpoint discovery exposes all registered capabilities regardless of the
+        caller's authorization. Resolved EXT-07 (MapKaleido returns IEndpointConventionBuilder)
+        makes auth application easier, but the registry still returns every operation
+        to every caller. MCP guidance allows discoverable tool sets to vary according
+        to request authorization. An AI client should receive only what it is
+        permitted to invoke — capability leakage raises both security and prompt-
+        injection surface concerns.
+      recommended_fix: >
+        Authorization-aware registry filtering: optional ICapabilityFilter contract
+        consulted at discovery time, injected from HttpContext claims. Allow explicit
+        include/exclude lists per service. Require auth integration tests (401/403).
+      effort: medium
+      breaking_change: possibly
+      status: PENDING_DESIGN_REVIEW
+      related: [EXT-07]
+
+    AI-005:
+      title: Default event payloads too expansive for AI-oriented workloads
+      severity: HIGH
+      category: Privacy / security
+      description: >
+        EXT-04 documents that events carry full process requests/responses and
+        full query result sets with no redaction, field classification, or size cap.
+        This is especially dangerous for AI workloads: if an AI queries personal,
+        medical, financial, or confidential information, duplicating the complete
+        result into audit/event infrastructure materially expands the regulatory
+        data footprint. EXT-04 was closed as document-only for 1.0 — that decision
+        should be revisited before AI-compatible positioning is published.
+      recommended_fix: >
+        Metadata-only event default + explicit opt-in payload policy, redaction
+        hooks, payload size cap. Tests proving sensitive values never appear in
+        default events, logs, or OTel tags. Consider this a blocker for AI positioning.
+      effort: large
+      breaking_change: true
+      status: PENDING_DESIGN_REVIEW
+      related: [EXT-04]
+
+    AI-006:
+      title: No canonical AI-tool adapter layer
+      severity: LOW
+      category: API design / extensibility
+      description: >
+        Kaleido's protocol-neutral metadata is a strength. The recommended
+        architecture is a thin optional adapter: Kaleido runtime → canonical
+        capability manifest → OpenAPI/MCP/other AI-tool adapters. No such adapter
+        or canonical manifest contract currently exists. Queryable contexts/views
+        would become read tools; Process steps would become action tools; processId
+        would be the explicit state handle.
+      recommended_fix: >
+        Define a CapabilityManifest record (CapabilityId, Kind, Name, Version,
+        Description, InputSchema, OutputSchema, + policy bag from AI-001,
+        RegistryRevision, GeneratedAt). Publish a Kaleido.Adapters.OpenApi or
+        Kaleido.Adapters.Mcp package as a separate opt-in concern. Core runtime
+        stays neutral.
+      effort: medium
+      breaking_change: false
+      status: DEFERRED_POST_1_0
+
+    AI-007:
+      title: Practical AI adoption sequence
+      severity: INFO
+      category: Guidance
+      description: >
+        The recommended safe introduction order for AI use:
+        1. Allowlisted read-only Queryable operations, supervised, authenticated, bounded, auditable.
+        2. Add canonical capability manifest + AI-tool adapter (AI-006).
+        3. Expose low-risk idempotent Process steps with confirmation.
+        4. Permit consequential Process actions only after AI-002 (concurrency/idempotency),
+           AI-004 (auth-aware discovery), AI-005 (event redaction), and AI-001 (safety metadata).
+      effort: N/A
+      breaking_change: false
+      status: GUIDANCE
 
 analyzer_proposals:
   KAL0020:

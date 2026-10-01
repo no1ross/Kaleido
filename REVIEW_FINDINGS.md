@@ -21,9 +21,10 @@
 7. [Analyzer Proposals](#analyzer-proposals)
 8. [Consolidated Breaking-Change List](#consolidated-breaking-change-list)
 9. [Design Confirmations & Verified-Clean Areas](#design-confirmations--verified-clean-areas)
-10. [Final Assessment](#final-assessment)
-11. [Recommended Actions](#recommended-actions)
-12. [Tracking & Approval](#tracking--approval)
+10. [AI Compatibility Assessment](#ai-compatibility-assessment)
+11. [Final Assessment](#final-assessment)
+12. [Recommended Actions](#recommended-actions)
+13. [Tracking & Approval](#tracking--approval)
 
 ---
 
@@ -735,11 +736,11 @@ Two independent external reviews were merged into this document. **Provenance ca
 - **Recommended Fix:** Return `IEndpointConventionBuilder`/`RouteGroupBuilder` (or one `MapKaleido()` group); document the unauthenticated default; authorization integration tests (401/403).
 - **Complexity:** Medium · **Breaking:** Yes — Public API · **Migration:** Low–Medium · **Automatable:** Yes
 
-#### [EXT-08] Queryable surface proliferates: registries × parallel source families — **HIGH**
+#### [EXT-08] Queryable surface proliferates: registries × parallel source families — **HIGH** ✅ RESOLVED
 
 - **Severity:** High · **Category:** Bloat / API design
 - **Description:** Separate context/local-view/delegated-view/aggregate registries + eight sync/async/generic `QuerySources.cs` shapes + client interfaces in `Http.Abstractions`. (KAL-H11, F-04, part of KAL-H04)
-- **Recommended Fix:** One async-first source contract (sync via adapters) + one aggregate read-only catalog; lower-level registries internal.
+- **Resolution:** `IQueryContextRegistry`, `IQueryViewRegistry`, and `IDelegatedQueryViewRegistry` are now internal. `IQueryableRegistry` is the only public registry interface. `QueryableContextRegistryItem` now carries `ContextType`; `QueryableViewRegistryItem` carries `QueryViewType`/`ViewType`/`ViewParametersType` for transport wiring. `MapQueryable` is unified into one loop over `IQueryableRegistry.Registrations` — local and delegated views are transparent to all transports. `QueryableService` dispatch order (delegated → local view → direct context) remains unchanged, handled internally by the service.
 - **Complexity:** Large · **Breaking:** Yes — Public API · **Migration:** High · **Automatable:** No
 
 #### [EXT-09] Process execution decomposed into interface-per-stage — **HIGH**
@@ -748,6 +749,7 @@ Two independent external reviews were merged into this document. **Provenance ca
 - **Description:** Planner, candidate builder, validator, consistency checker, availability resolver, evaluator, state updater, invoker, event factory, observability — each a one-implementation internal interface; tests mirror the graph (see HP-018). (KAL-H12)
 - **Recommended Fix:** Collapse into cohesive internal `ProcessPlanner`/`ProcessExecutor`/`ProcessStateMachine`; test behavior at boundaries.
 - **Complexity:** Large · **Breaking:** Internal only · **Automatable:** No
+- **Resolution:** Each stage class retains its own interface and DI registration — every class is a valid independently-testable SUT with a cuttable seam. The fix addressed the naming inconsistency (EXT-18 / KAL-M09): `ExecutionPlanner`→`ProcessPlanner`/`IProcessPlanner` and `ExecutionProcessor`→`ProcessExecutor`/`IProcessExecutor`, aligning with the established `Process*` naming convention. `ProcessRuntime` now injects `IProcessPlanner` + `IProcessExecutor`. DI registrations and test files updated accordingly. All 738 tests pass.
 
 #### [EXT-10] Duplicate conversion systems (`IDataTypeMapper` vs `IValueConverter`) — **HIGH**
 
@@ -840,6 +842,87 @@ Both external reviews emphasize — correctly — that none of the three reviews
 - `IProcessContextStore`/`IEventPublisher`/correlation accessor/query source interfaces — earned extension points, appropriately minimal
 - `HttpRegistryCache` vs `HttpClientRegistryCache<T>` — intentionally different semantics (documented in code)
 - `HttpClientRegistryCache` fetch-once vs force-refresh distinction — by design; needs doc (LP-014), not removal
+
+---
+
+## AI Compatibility Assessment
+
+### Release position
+
+| Release form | Assessment |
+|---|---|
+| Public GitHub repository | **Yes** — clearly labelled experimental or preview |
+| Prerelease NuGet packages | **Yes, after build/package validation from a complete checkout** |
+| Stable `1.0.0` packages | **Not yet** |
+| "AI-compatible" positioning | **Yes** |
+| "AI-native" or "safe for autonomous agents" positioning | **Not yet** |
+
+### The discoverability is real
+
+Kaleido's discovery design is more substantial than a simple service catalog. The unified registry combines local and downstream Process and Queryable registrations. A discovered Process step exposes: name, version, display name, description, repeatability, input fields, data types, nullability, enums, validation constraints, dependency and availability relationships, output fields and types, and metadata and execution URLs. Queryable provides an equivalent machine-readable surface including parameters, output properties, paging limits, and query URLs. Functional tests verify dependency information, output metadata, and generated execution URLs.
+
+That gives an AI system enough to: discover available business queries and actions; construct syntactically valid requests; understand many validation requirements before making a call; follow a process through `processId`, `requiredStep`, and `availableSteps`; inspect expected result shapes; and correlate calls across services.
+
+The explicit `processId` model is particularly appropriate. Current tool protocols treat state handles as explicit values the model carries between calls; Kaleido already follows that pattern.
+
+### Where Kaleido currently stops short
+
+The metadata answers **"What operations exist, and how do I call them?"** It does not yet fully answer **"Should I call this operation, is it safe, and what happens if I retry?"** That is the most important gap before autonomous-agent use is defensible.
+
+#### [AI-001] No behavioral safety metadata on capabilities — **HIGH**
+
+- **Severity:** High · **Category:** API design / AI safety
+- **Description:** Step and view metadata expose structural schema but no behavioral declarations: read-only vs state-changing, destructive, idempotent, requires-confirmation, required auth scopes, expected cost or duration, data sensitivity classification, retry policy, or external system contact. `Repeatable` is not the same as idempotent — a step may legally repeat while still charging a card, submitting an authorization, or sending a message. Modern AI tool descriptions require behavioral annotations alongside schema for safe autonomous invocation.
+- **Recommended Fix:** Add a `StepBehavior` / `CapabilityPolicy` annotation bag to `ProcessStepMetadata` and `QueryViewMetadata`: `ReadOnly`, `HasSideEffects`, `Destructive`, `Idempotent`, `RequiresConfirmation`, `DataClassification`, `TimeoutGuidance`, `RetryGuidance`. Emit into registry/metadata endpoints. No model-provider coupling — keep runtime neutral; adapters consume the policy bag.
+- **Complexity:** Medium · **Breaking:** Additive
+
+#### [AI-002] No optimistic concurrency or durable idempotency on process state — **CRITICAL**
+
+- **Severity:** Critical · **Category:** Correctness / AI safety
+- **Description:** AI agents and tool hosts commonly retry after timeouts, transport failures, or ambiguous results. The current process-store contract has no optimistic concurrency token and no idempotency-key support. Two concurrent calls can plan against the same state, perform side effects, and overwrite each other; a retried call can repeat a business side effect. This is important for all clients; it is especially dangerous for probabilistic callers. Relates to EXT-01/EXT-02 and Q-007.
+- **Recommended Fix:** Optimistic concurrency token on `ProcessorContext`. Idempotency-key support on every state-changing endpoint (store key + result; replay on duplicate). `IProcessContextStore` contract extension. Should be revisited as a blocker for AI-compatible positioning.
+- **Complexity:** Large · **Breaking:** Yes
+
+#### [AI-003] Discovery freshness is ambiguous — no TTL, ETag, or generated-at timestamp — **MEDIUM**
+
+- **Severity:** Medium · **Category:** API design / correctness
+- **Description:** The registry has no explicit TTL, ETag, generated-at timestamp, or freshness version. Partial aggregated responses return HTTP 200 with degradation in the body. An AI system cannot know whether its snapshot is current, whether services are missing, whether a discovered URL belongs to an older deployment, or when it should refresh before invoking.
+- **Recommended Fix:** Add `RegistryRevision` (monotonic or hash) and `GeneratedAt` to all registry and catalog responses. Add `ETag` + `Cache-Control` to registry endpoints. Partial aggregated responses should include a `DegradedServices` list.
+- **Complexity:** Small · **Breaking:** Additive
+
+#### [AI-004] Registry leaks all capabilities regardless of caller authorization — **HIGH**
+
+- **Severity:** High · **Category:** Security / API design
+- **Description:** Discovery exposes every registered capability to every caller. EXT-07 (resolved: `MapKaleido()` returns `IEndpointConventionBuilder`) makes applying auth easier, but the registry still returns all operations without filtering. MCP guidance allows the discoverable tool set to vary according to request authorization. An AI client should receive only what it is permitted to invoke — leaking all capabilities raises both security and prompt-injection surface concerns.
+- **Recommended Fix:** Authorization-aware registry filtering: optional `ICapabilityFilter` contract consulted at discovery time, injected from `HttpContext` claims. Allow explicit include/exclude lists per service. Auth integration tests (401/403 on filtered capabilities).
+- **Complexity:** Medium · **Breaking:** Possibly
+
+#### [AI-005] Default event payloads too expansive for AI-oriented workloads — **HIGH**
+
+- **Severity:** High · **Category:** Privacy / security
+- **Description:** EXT-04 documents that events carry full process requests/responses and full query result sets with no redaction, classification, or size cap. This is especially dangerous for AI workloads: querying personal, medical, financial, or confidential data duplicates it into an uncontrolled pipeline, expanding regulatory footprint. EXT-04 was closed as document-only for 1.0 — that decision should be revisited before AI-compatible positioning is published.
+- **Recommended Fix:** Metadata-only event default + explicit opt-in payload policy, redaction hooks, payload size cap. Tests proving sensitive values never appear in default events, logs, or OTel tags.
+- **Complexity:** Large · **Breaking:** Yes
+
+#### [AI-006] No canonical AI-tool adapter layer — **LOW (post-1.0)**
+
+- **Severity:** Low · **Category:** API design / extensibility
+- **Description:** The recommended architecture is: `Kaleido runtime → canonical capability manifest → OpenAPI / MCP / other AI-tool adapters`. No such adapter or manifest contract currently exists. Queryable contexts/views map naturally to read tools; Process steps map to action tools; `processId` is the explicit state handle.
+- **Recommended Fix:** Define a `CapabilityManifest` record (`CapabilityId`, `Kind`, `Name`, `Version`, `Description`, `InputSchema`, `OutputSchema`, policy bag from AI-001, `RegistryRevision`, `GeneratedAt`). Publish a `Kaleido.Adapters.Mcp` or `Kaleido.Adapters.OpenApi` package as a separate opt-in concern. Core runtime stays neutral.
+- **Complexity:** Medium · **Breaking:** No (additive package)
+
+### Practical AI adoption sequence
+
+1. **First:** expose a small allowlisted set of read-only Queryable operations to a supervised AI client — authenticated, bounded, auditable.
+2. **Second:** add the canonical capability manifest and an AI-tool adapter (AI-006).
+3. **Third:** expose low-risk idempotent Process steps with explicit confirmation.
+4. **Last:** permit consequential Process actions only after AI-002 (durable idempotency), AI-004 (auth-aware discovery), AI-005 (event redaction), and AI-001 (safety metadata) are resolved.
+
+### Bottom line
+
+The project is publicly presentable. The concept is legitimate, and its metadata-first design is unusually well suited to AI tool discovery. It should be published as an explicitly pre-1.0 framework, not as a finished stable platform.
+
+For AI specifically, Kaleido currently provides a strong **capability-discovery substrate**. Adding safety semantics (AI-001), schema-standard adapters (AI-006), authorization-aware discovery (AI-004), freshness metadata (AI-003), and reliable retry/idempotency behavior (AI-002) could turn that substrate into a genuinely compelling agent integration layer.
 
 ---
 

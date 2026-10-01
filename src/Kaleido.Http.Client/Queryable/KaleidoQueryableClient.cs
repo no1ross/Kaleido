@@ -47,7 +47,8 @@ internal sealed class KaleidoQueryableClient(
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<QueryableRecordResponse>(
-                       cancellationToken: cancellationToken)
+                       KaleidoJsonOptions.Options,
+                       cancellationToken)
                    ?? throw new KaleidoHttpClientException(
                        HttpClientErrorCodes.EmptyResponse,
                        $"{callerServiceName} tried to call context '{context}' metadata, but the request succeeded and returned no payload.",
@@ -125,7 +126,7 @@ internal sealed class KaleidoQueryableClient(
             HttpMethod.Post,
             url.RequireValidRegistryUrl(nameof(url), httpClient.BaseAddress))
         {
-            Content = JsonContent.Create(request)
+            Content = JsonContent.Create(request, options: KaleidoJsonOptions.Options)
         };
 
         headerStamper.Stamp(httpRequest);
@@ -135,7 +136,8 @@ internal sealed class KaleidoQueryableClient(
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<QueryResult<TView>>(
-                       cancellationToken: cancellationToken)
+                       KaleidoJsonOptions.Options,
+                       cancellationToken)
                    ?? throw new KaleidoHttpClientException(
                        HttpClientErrorCodes.EmptyResponse,
                        $"{callerServiceName} tried to call {FormatTarget(context, view)}, but the request succeeded and returned no payload.",
@@ -145,7 +147,8 @@ internal sealed class KaleidoQueryableClient(
         var errorResponse =
             response.StatusCode == HttpStatusCode.BadRequest
                 ? await response.Content.ReadFromJsonAsync<KaleidoErrorResponse>(
-                    cancellationToken: cancellationToken)
+                    KaleidoJsonOptions.Options,
+                    cancellationToken)
                 : null;
 
         if (errorResponse?.Errors.Count > 0)
@@ -211,7 +214,8 @@ internal sealed class KaleidoQueryableClient(
         using var registryResponse = await SendAsync(registryRequest, cancellationToken);
 
         return await registryResponse.Content.ReadFromJsonAsync<IReadOnlyList<QueryableRecordResponse>>(
-            cancellationToken: cancellationToken)
+            KaleidoJsonOptions.Options,
+            cancellationToken)
             ?? throw new KaleidoHttpClientException(
                 HttpClientErrorCodes.EmptyResponse,
                 $"{callerServiceName} tried to call the queryable registry, but the request succeeded and returned no payload.",

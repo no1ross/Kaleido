@@ -1,5 +1,4 @@
 using System.Reflection;
-using Kaleido.Json;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Registry;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +14,6 @@ public interface IQueryableService
 
 internal sealed class QueryableService(
     IServiceScopeFactory scopeFactory,
-    IValueConverter valueConverter,
     IDelegatedQueryViewRegistry delegatedViewRegistry,
     IQueryViewRegistry viewRegistry,
     IQueryContextRegistry contextRegistry)
@@ -51,6 +49,16 @@ internal sealed class QueryableService(
             FrameworkErrorCodes.ReflectionError,
             $"Could not locate method '{nameof(ExecuteDirectTypedAsync)}'.");
 
+    // Closed-generic MethodInfo cache — MakeGenericMethod allocates per call,
+    // and these execute once per query request.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(MethodInfo Open, Type A, Type B), MethodInfo> ClosedMethods =
+        new();
+
+    private static MethodInfo Close(MethodInfo open, Type a, Type b) =>
+        ClosedMethods.GetOrAdd(
+            (open, a, b),
+            key => key.Open.MakeGenericMethod(key.A, key.B));
+
     public async Task<QueryResult<TView>> QueryAsync<TQueryView, TView>(
         IQueryRequest request,
         CancellationToken cancellationToken = default)
@@ -77,7 +85,7 @@ internal sealed class QueryableService(
 
             return await ExecuteDelegatedViewAsync<TView>(
                 scope.ServiceProvider,
-                NormalizeRequest(request, valueConverter, delegatedViewRegistration.QueryMetadata),
+                request,
                 delegatedViewRegistration,
                 cancellationToken);
         }
@@ -93,7 +101,7 @@ internal sealed class QueryableService(
 
             return await ExecuteWithDiscoveredContextAsync<TView>(
                 scope.ServiceProvider,
-                NormalizeRequest(request, valueConverter, contextRegistration.Metadata),
+                request,
                 contextRegistration,
                 viewRegistration,
                 cancellationToken);
@@ -108,31 +116,9 @@ internal sealed class QueryableService(
 
         return await ExecuteDirectWithDiscoveredContextAsync<TView>(
             scope.ServiceProvider,
-            NormalizeRequest(request, valueConverter, directContextRegistration.Metadata),
+            request,
             directContextRegistration,
             cancellationToken);
-    }
-
-    private static IQueryRequest NormalizeRequest(
-        IQueryRequest request,
-        IValueConverter valueConverter,
-        QueryContextMetadata metadata) =>
-        request.Query is null
-            ? request
-            : new NormalizedQueryRequest(
-                request,
-                request.Query.Normalize(valueConverter, metadata));
-
-    private sealed record NormalizedQueryRequest(
-        IQueryRequest Inner,
-        QueryBody? Query)
-        : IQueryRequest
-    {
-        public object? ViewParameters =>
-            Inner.ViewParameters;
-
-        public Type ViewParametersType =>
-            Inner.ViewParametersType;
     }
 
     private async Task<QueryResult<TView>> ExecuteWithDiscoveredContextAsync<TView>(
@@ -144,7 +130,8 @@ internal sealed class QueryableService(
         where TView : class
     {
         var typedMethod =
-            ExecuteTypedAsyncMethod.MakeGenericMethod(
+            Close(
+                ExecuteTypedAsyncMethod,
                 viewRegistration.QueryContextType,
                 typeof(TView));
 
@@ -172,7 +159,8 @@ internal sealed class QueryableService(
         where TView : class
     {
         var typedMethod =
-            ExecuteDirectTypedAsyncMethod.MakeGenericMethod(
+            Close(
+                ExecuteDirectTypedAsyncMethod,
                 contextRegistration.ContextType,
                 typeof(TView));
 
@@ -256,7 +244,8 @@ internal sealed class QueryableService(
         where TView : class
     {
         var typedMethod =
-            ExecuteDelegatedTypedAsyncMethod.MakeGenericMethod(
+            Close(
+                ExecuteDelegatedTypedAsyncMethod,
                 viewRegistration.QueryContextType,
                 typeof(TView));
 
