@@ -1,4 +1,5 @@
 using Kaleido.Queryable.Metadata;
+using Kaleido.Registry;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Queryable.Registry;
@@ -71,13 +72,14 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             Source = registration.Metadata.Source,
             Kind = registration.Metadata.Kind,
             Pageable = registration.Metadata.Pageable,
+            Authorization = registration.Metadata.Authorization,
             Fields = registration.Metadata.Fields
                 .Select(Project)
                 .ToArray(),
             Views = views
                 .Where(x => x.Metadata.Visibility == QueryViewVisibility.Public)
                 .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(Project)
+                .Select(view => Project(view, registration.Metadata.Authorization))
                 .ToArray()
         };
     }
@@ -99,13 +101,14 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             Source = metadata.Source,
             Kind = metadata.Kind,
             Pageable = metadata.Pageable,
+            Authorization = metadata.Authorization,
             Fields = metadata.Fields
                 .Select(Project)
                 .ToArray(),
             Views = views
                 .Where(x => x.ViewMetadata.Visibility == QueryViewVisibility.Public)
                 .OrderBy(x => x.ViewMetadata.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(Project)
+                .Select(view => Project(view, metadata.Authorization))
                 .ToArray()
         };
     }
@@ -131,7 +134,8 @@ internal sealed class QueryableRegistry : IQueryableRegistry
     }
 
     private static QueryableViewRegistryItem Project(
-        QueryViewRegistration registration)
+        QueryViewRegistration registration,
+        AuthorizationMetadata? contextAuthorization)
     {
         ArgumentNullException.ThrowIfNull(registration);
 
@@ -141,6 +145,8 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             ViewType = registration.ViewType,
             ViewParametersType = registration.ViewParametersType,
             Name = registration.Metadata.Name,
+            Authorization = registration.Metadata.Authorization
+                ?? contextAuthorization,
             Description = registration.Metadata.Description,
             DisplayName = registration.Metadata.DisplayName,
             Version = registration.Metadata.Version,
@@ -158,7 +164,8 @@ internal sealed class QueryableRegistry : IQueryableRegistry
     }
 
     private static QueryableViewRegistryItem Project(
-        DelegatedQueryViewRegistration registration)
+        DelegatedQueryViewRegistration registration,
+        AuthorizationMetadata? contextAuthorization)
     {
         ArgumentNullException.ThrowIfNull(registration);
 
@@ -168,6 +175,8 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             ViewType = registration.ViewType,
             ViewParametersType = registration.ViewParametersType,
             Name = registration.ViewMetadata.Name,
+            Authorization = registration.ViewMetadata.Authorization
+                ?? contextAuthorization,
             Description = registration.ViewMetadata.Description,
             DisplayName = registration.ViewMetadata.DisplayName,
             Version = registration.ViewMetadata.Version,

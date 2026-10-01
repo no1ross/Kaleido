@@ -1,5 +1,6 @@
 using System.Reflection;
 using Kaleido.Queryable.Metadata;
+using Kaleido.Registry;
 
 namespace Kaleido.Queryable.Registry;
 
@@ -145,6 +146,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
             contextType
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Select(x => x.ToFieldMetadata(_dataTypeMapper))
-                .ToArray());
+                .ToArray(),
+            AuthorizationMetadata.ForType(contextType));
     }
 }

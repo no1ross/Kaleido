@@ -84,10 +84,37 @@ public sealed class QueryContextRegistryTests
         Assert.Contains("missing", exception.Message);
     }
 
+    [Fact]
+    public void Constructor_MapsKaleidoAuthorization()
+    {
+        var registry = CreateSut(typeof(SecuredContext));
+
+        var registration = registry.GetRegistration(typeof(SecuredContext));
+
+        Assert.Equal(
+            "internal",
+            registration.Metadata.Authorization?.Policy);
+
+        Assert.Equal(
+            "svc",
+            Assert.Single(registration.Metadata.Authorization!.Roles));
+    }
+
+    [Fact]
+    public void Constructor_WithoutKaleidoAuthorization_HasNullAuthorization()
+    {
+        var registry = CreateSut(typeof(TestContext));
+
+        var registration = registry.GetRegistration(typeof(TestContext));
+
+        Assert.Null(registration.Metadata.Authorization);
+    }
+
     private static ServiceCollection CreateServices()
     {
         var services = new ServiceCollection();
         services.AddScoped<IQueryContextSource<TestContext>, TestContextSource>();
+        services.AddScoped<IQueryContextSource<SecuredContext>, SecuredContextSource>();
         return services;
     }
 
@@ -114,5 +141,22 @@ public sealed class QueryContextRegistryTests
     {
         public IQueryable<TestContext> CreateQuery(QueryExecutionContext executionContext) =>
             Array.Empty<TestContext>().AsQueryable();
+    }
+
+    [QueryContext(
+        Name = "secured-context",
+        Version = "1.0.0",
+        Kind = QueryContextKind.Direct)]
+    [KaleidoAuthorization(Policy = "internal", Roles = "svc")]
+    private sealed class SecuredContext
+    {
+        [Filterable(FilterOperator.Equals)]
+        public string Code { get; init; } = string.Empty;
+    }
+
+    private sealed class SecuredContextSource : IQueryContextSource<SecuredContext>
+    {
+        public IQueryable<SecuredContext> CreateQuery(QueryExecutionContext executionContext) =>
+            Array.Empty<SecuredContext>().AsQueryable();
     }
 }

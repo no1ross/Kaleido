@@ -1,3 +1,4 @@
+using Kaleido.Registry;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Process.Registry;
@@ -32,6 +33,12 @@ public record ProcessorStepRegistryItem
 
     public bool Repeatable { get; init; }
 
+    /// <summary>
+    /// Authorization requirement declared via <c>[KaleidoAuthorization]</c>.
+    /// <c>null</c> means open (subject to transport-level defaults).
+    /// </summary>
+    public AuthorizationMetadata? Authorization { get; init; }
+
     public IReadOnlyCollection<ProcessorInputFieldDescriptor> Fields { get; init; }
         = [];
 
@@ -59,6 +66,12 @@ public record ProcessorStepSummary
     public string? Version { get; init; }
 
     public bool Repeatable { get; init; }
+
+    /// <summary>
+    /// Authorization requirement declared via <c>[KaleidoAuthorization]</c>.
+    /// <c>null</c> means open (subject to transport-level defaults).
+    /// </summary>
+    public AuthorizationMetadata? Authorization { get; init; }
 }
 
 [ExcludeFromCodeCoverage]

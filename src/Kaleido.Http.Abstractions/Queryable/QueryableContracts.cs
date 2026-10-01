@@ -22,6 +22,11 @@ public sealed record QueryableRecordSummary
     public string? Description { get; init; }
 
     public string? MetadataUrl { get; init; }
+
+    /// <summary>
+    /// Authorization requirement for this context. Null means open.
+    /// </summary>
+    public AuthorizationMetadata? Authorization { get; init; }
 }
 
 [ExcludeFromCodeCoverage]
@@ -149,6 +154,12 @@ public sealed record QueryableViewResponse
 
     public PageableMetadata? Pageable { get; init; }
 
+    /// <summary>
+    /// Effective authorization requirement for this view
+    /// (view-declared or inherited from its context). Null means open.
+    /// </summary>
+    public AuthorizationMetadata? Authorization { get; init; }
+
     public required string QueryUrl { get; init; }
 
     public IReadOnlyCollection<QueryableQueryParameter> Parameters { get; init; }
@@ -173,6 +184,7 @@ public sealed record QueryableViewResponse
             Version = item.Version,
             Visibility = item.Visibility,
             Pageable = item.Pageable,
+            Authorization = item.Authorization,
             QueryUrl = QueryableContractUrls.QueryViewQuery(
                 serviceName,
                 contextName,
@@ -204,6 +216,11 @@ public sealed record QueryableRecordResponse
 
     public PageableMetadata? Pageable { get; init; }
 
+    /// <summary>
+    /// Authorization requirement for this context. Null means open.
+    /// </summary>
+    public AuthorizationMetadata? Authorization { get; init; }
+
     public required string MetadataUrl { get; init; }
 
     public string? QueryUrl { get; init; }
@@ -232,6 +249,7 @@ public sealed record QueryableRecordResponse
             Source = item.Source,
             Kind = item.Kind,
             Pageable = item.Pageable,
+            Authorization = item.Authorization,
             MetadataUrl = QueryableContractUrls.QueryContextMetadata(serviceName, contextName),
             QueryUrl = item.Kind == QueryContextKind.Direct
                 ? QueryableContractUrls.QueryContextQuery(serviceName, contextName)
@@ -255,6 +273,7 @@ public sealed record QueryableRecordResponse
         {
             Name = item.Name,
             Description = item.Description,
+            Authorization = item.Authorization,
             MetadataUrl = QueryableContractUrls.QueryContextMetadata(
                 serviceName,
                 item.Name.ToLowerInvariant())

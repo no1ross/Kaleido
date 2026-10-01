@@ -16,6 +16,7 @@ public sealed partial record ProcessStepRegistration
             DisplayName = Metadata.DisplayName,
             Version = Metadata.Version,
             Repeatable = Repeatable.Enabled,
+            Authorization = Metadata.Authorization,
             Fields = StepType
                 .GetProperties()
                 .Select(property =>
@@ -48,7 +49,8 @@ public sealed partial record ProcessStepRegistration
             Description = Metadata.Description,
             DisplayName = Metadata.DisplayName,
             Version = Metadata.Version,
-            Repeatable = Repeatable.Enabled
+            Repeatable = Repeatable.Enabled,
+            Authorization = Metadata.Authorization
         };
     }
 

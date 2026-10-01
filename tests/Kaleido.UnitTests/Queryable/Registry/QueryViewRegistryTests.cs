@@ -97,6 +97,32 @@ public sealed class QueryViewRegistryTests
     }
 
     [Fact]
+    public void Constructor_MapsKaleidoAuthorization()
+    {
+        var registry = CreateSut(typeof(SecuredView));
+
+        var registration = registry.GetRegistration(typeof(SecuredView));
+
+        Assert.Equal(
+            "clinician-policy",
+            registration.Metadata.Authorization?.Policy);
+
+        Assert.Equal(
+            "clinician",
+            Assert.Single(registration.Metadata.Authorization!.Roles));
+    }
+
+    [Fact]
+    public void Constructor_WithoutKaleidoAuthorization_HasNullAuthorization()
+    {
+        var registry = CreateSut(typeof(TestView));
+
+        var registration = registry.GetRegistration(typeof(TestView));
+
+        Assert.Null(registration.Metadata.Authorization);
+    }
+
+    [Fact]
     public void FindAndGetRegistration_AreCaseInsensitiveByName()
     {
         var registry = CreateSut(typeof(TestView));
@@ -145,6 +171,14 @@ public sealed class QueryViewRegistryTests
     [QueryView(Name = "not-sortable-view", Version = "1.0.0", DefaultSortField = nameof(TestContext.Name))]
     [Pageable(DefaultSize = 25, MaxSize = 100)]
     private sealed class NotSortableView : IQueryViewSource<TestContext, TestContract>
+    {
+        public IQueryable<TestContract> CreateView(IQueryable<TestContext> query, QueryExecutionContext executionContext) =>
+            Array.Empty<TestContract>().AsQueryable();
+    }
+
+    [QueryView(Name = "secured-view", Version = "1.0.0")]
+    [KaleidoAuthorization(Policy = "clinician-policy", Roles = "clinician")]
+    private sealed class SecuredView : IQueryViewSource<TestContext, TestContract>
     {
         public IQueryable<TestContract> CreateView(IQueryable<TestContext> query, QueryExecutionContext executionContext) =>
             Array.Empty<TestContract>().AsQueryable();

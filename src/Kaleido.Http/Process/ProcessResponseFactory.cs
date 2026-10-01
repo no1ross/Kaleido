@@ -52,6 +52,7 @@ public sealed class ProcessResponseFactory : IProcessResponseFactory
                     DisplayName = x.DisplayName,
                     Version = x.Version,
                     Repeatable = x.Repeatable,
+                    Authorization = x.Authorization,
                     ExecuteUrl = string.Empty,
                     MetadataUrl = string.Empty
                 })
@@ -102,6 +103,7 @@ public sealed class ProcessResponseFactory : IProcessResponseFactory
             DisplayName = registration.DisplayName,
             Version = registration.Version,
             Repeatable = registration.Repeatable,
+            Authorization = registration.Authorization,
             Fields = registration.Fields
                 .Select(CreateFieldMetadata)
                 .ToArray(),
@@ -141,6 +143,7 @@ public sealed class ProcessResponseFactory : IProcessResponseFactory
             DisplayName = registration.DisplayName,
             Version = registration.Version,
             Repeatable = registration.Repeatable,
+            Authorization = registration.Authorization,
             ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName),
             MetadataUrl = ProcessContractUrls.StepMetadata(serviceName, stepName)
         };

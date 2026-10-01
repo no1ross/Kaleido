@@ -1,4 +1,5 @@
 using System.Reflection;
+using Kaleido.Registry;
 
 namespace Kaleido.Process.Registry;
 
@@ -405,7 +406,8 @@ internal sealed partial class ProcessStepRegistry : IProcessStepRegistry
             attribute.Name,
             attribute.Description ?? attribute.DisplayName ?? attribute.Name,
             attribute.Version,
-            attribute.DisplayName ?? attribute.Name);
+            attribute.DisplayName ?? attribute.Name,
+            AuthorizationMetadata.ForType(stepType));
     }
 }
 

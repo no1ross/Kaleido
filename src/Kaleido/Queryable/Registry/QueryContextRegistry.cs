@@ -1,5 +1,6 @@
 using System.Reflection;
 using Kaleido.Queryable.Metadata;
+using Kaleido.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable.Registry;
@@ -188,7 +189,8 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
             contextType
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Select(x => x.ToFieldMetadata(_dataTypeMapper))
-                .ToArray());
+                .ToArray(),
+            AuthorizationMetadata.ForType(contextType));
     }
 
     private static PageableMetadata? BuildPageable(
