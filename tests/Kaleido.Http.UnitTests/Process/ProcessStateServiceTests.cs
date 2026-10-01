@@ -1,5 +1,8 @@
+using Kaleido.Http.Authorization;
+using Kaleido.Observability;
 using Kaleido.Process.Context;
 using Kaleido.UnitTests;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.UnitTests.Process;
@@ -10,12 +13,19 @@ public sealed class ProcessStateServiceTests
     private static ProcessStateService CreateSut(
         IProcessContextStore contextStore,
         IProcessStepRegistry registry,
-        IProcessResponseFactory responseFactory) =>
+        IProcessResponseFactory responseFactory,
+        IKaleidoAuthorizer? authorizer = null) =>
         new(
             contextStore,
             registry,
             new KaleidoServiceOptions { ServiceName = "test-processor" },
             responseFactory,
+            new HttpContextAccessor
+            {
+                HttpContext = new DefaultHttpContext()
+            },
+            authorizer ?? Mock.Of<IKaleidoAuthorizer>(),
+            Mock.Of<IKaleidoCorrelationContextAccessor>(),
             NullLogger<ProcessStateService>.Instance);
 
     [Fact]

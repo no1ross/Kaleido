@@ -88,7 +88,11 @@ public sealed class AuthorizationAspNetCoreFixture
                                 o.DisplayName = "Auth Test Processor";
                                 o.Assemblies = new[] { typeof(AuthorizationAspNetCoreFixture).Assembly };
                             })
-                            .AddHttp(o => o.RequireAuthorization = true);
+                            .AddHttp(o =>
+                            {
+                                o.RequireAuthorization = true;
+                                o.RequireProcessOwnership = true;
+                            });
                     });
 
                     webBuilder.Configure(app =>

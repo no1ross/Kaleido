@@ -1,4 +1,5 @@
 using Kaleido.Http.Authorization;
+using Kaleido.Process.Context;
 using Kaleido.Process;
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Http;
@@ -25,7 +26,9 @@ internal sealed class ProcessExecutionService(
     IHttpContextAccessor httpContextAccessor,
     IProcessStepRegistry registry,
     IProcessRuntime runtime,
+    IProcessContextStore contextStore,
     KaleidoServiceOptions serviceOptions,
+    KaleidoHttpOptions httpOptions,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     IProcessExecutionResponseFactory responseFactory,
     IKaleidoAuthorizer authorizer,
@@ -63,6 +66,11 @@ internal sealed class ProcessExecutionService(
                     cancellationToken);
             }
         }
+
+        await AuthorizeProcessAccessAsync(
+            httpContext,
+            correlationAccessor.Current.ProcessId,
+            cancellationToken);
 
         logger.LogDebug(
             "Executing process for processor {ProcessorName} with {StepCount} submitted step(s).",
@@ -130,6 +138,14 @@ internal sealed class ProcessExecutionService(
     {
         var stepName = registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
 
+        await AuthorizeProcessAccessAsync(
+            httpContextAccessor.HttpContext
+                ?? throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.ReflectionError,
+                    "No active HttpContext for process execution."),
+            correlationAccessor.Current.ProcessId,
+            cancellationToken);
+
         logger.LogDebug(
             "Executing step {StepName} for processor {ProcessorName}.",
             stepName,
@@ -160,6 +176,44 @@ internal sealed class ProcessExecutionService(
             processResult.ProcessId);
 
         return (processResult, stepResult);
+    }
+
+    /// <summary>
+    /// Process ownership: resuming an owned process requires the owner or a
+    /// caller sharing an <c>OwnerRoles</c> entry. With
+    /// <see cref="KaleidoHttpOptions.RequireProcessOwnership"/>, creation
+    /// additionally requires an authenticated caller so every process is
+    /// owned.
+    /// </summary>
+    private async Task AuthorizeProcessAccessAsync(
+        HttpContext httpContext,
+        Guid? processId,
+        CancellationToken cancellationToken)
+    {
+        if (processId is not null)
+        {
+            var existing =
+                await contextStore.LoadAsync(
+                    processId.Value,
+                    cancellationToken);
+
+            // Unknown process ids fall through to runtime validation, which
+            // creates a new instance under that id.
+            if (existing is not null)
+            {
+                authorizer.AuthorizeProcess(httpContext, existing);
+            }
+
+            return;
+        }
+
+        if (httpOptions.RequireProcessOwnership
+            && httpContext.User.Identity?.IsAuthenticated != true)
+        {
+            throw new KaleidoAuthorizationException(
+                "process creation",
+                callerIsAuthenticated: false);
+        }
     }
 
     private void WriteResponseHeaders(

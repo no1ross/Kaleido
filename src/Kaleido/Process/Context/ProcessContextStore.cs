@@ -63,6 +63,29 @@ public sealed record ProcessorContext
     }
 
     /// <summary>
+    /// Name of the caller that created this process, captured from
+    /// <see cref="KaleidoCorrelationContext.CallerName"/> at creation.
+    /// <c>null</c> means the process is unowned (created anonymously or on a
+    /// transport without an authenticated caller) — open to any caller.
+    /// </summary>
+    public string? Owner
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// Snapshot of the creator's roles at creation. Callers who share a role
+    /// (teammates) may resume or claim the process alongside the owner.
+    /// </summary>
+    public IReadOnlyCollection<string> OwnerRoles
+    {
+        get;
+        init;
+    }
+        = [];
+
+    /// <summary>
     /// Current process execution state.
     /// </summary>
     public ProcessExecutionState State

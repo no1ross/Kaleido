@@ -55,7 +55,10 @@ public static class ProcessEndpointRouteBuilderExtensions
         var group =
             endpoints.MapGroup(
                 ProcessContractUrls.ProcessesPrefix(serviceName))
-            .AddEndpointFilter<KaleidoJsonEndpointFilter>();
+            .AddEndpointFilter<KaleidoJsonEndpointFilter>()
+            // Post-auth: stamps CallerName/CallerRoles onto the ambient
+            // correlation context for ownership checks inside handlers.
+            .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 
         logger.LogInformation(
             "Process endpoints mapped at route prefix {RoutePrefix} with {ProcessStepCount} process steps and {InitialStepCount} initial steps.",
@@ -68,6 +71,8 @@ public static class ProcessEndpointRouteBuilderExtensions
         group.MapExecuteEndpoint(httpOptions);
 
         group.MapProcessStateEndpoint();
+
+        group.MapProcessTransferEndpoint();
 
         group.MapStepCatalogEndpoint(processorRegistry, serviceName);
 
@@ -192,6 +197,50 @@ public static class ProcessEndpointRouteBuilderExtensions
             .WithDescription(
                 "Returns the current state of a processor process, including executed steps and currently available next steps. " +
                 "This endpoint does not execute any process step.");
+    }
+
+    private static void MapProcessTransferEndpoint(
+        this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapPost(
+                ProcessRoutePaths.ProcessTransfer,
+                async (
+                    Guid processId,
+                    IProcessStateService stateService,
+                    CancellationToken cancellationToken) =>
+                {
+                    var transferred =
+                        await stateService.TransferOwnershipAsync(
+                            processId,
+                            cancellationToken);
+
+                    return transferred is null
+                        ? Results.NotFound()
+                        : Results.Ok(
+                            new ProcessTransferResponse
+                            {
+                                ProcessId = processId,
+                                Owner = transferred.Owner
+                                    ?? throw new KaleidoFrameworkException(
+                                        FrameworkErrorCodes.MissingRegistration,
+                                        "Transferred process context has no owner.")
+                            });
+                })
+            // Ownership transfer always requires an authenticated caller —
+            // the handler additionally enforces owner/role-mate rules.
+            .RequireAuthorization()
+            .WithName(ProcessEndpointNames.ProcessTransferEndpointName)
+            .WithTags("Processes", "Kaleido")
+            .Produces<ProcessTransferResponse>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .WithSummary("Transfer process ownership to the caller.")
+            .WithDescription(
+                "Transfers ownership of a process to the authenticated caller. " +
+                "Unowned processes may be taken by any authenticated caller; " +
+                "owned processes may be taken by the current owner or a caller " +
+                "sharing one of the owner's roles.");
     }
 
     private static void MapStepRegistryEndpoint(

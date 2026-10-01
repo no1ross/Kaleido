@@ -100,6 +100,12 @@ internal sealed class SqliteProcessContextStore(
             entity.LatestRequestId =
                 context.LatestRequestId;
 
+            entity.Owner =
+                context.Owner;
+
+            entity.OwnerRoles =
+                string.Join(",", context.OwnerRoles);
+
             entity.State =
                 context.State;
 
@@ -278,6 +284,17 @@ internal sealed class SqliteProcessContextStore(
 
             LatestRequestId =
                 entity.LatestRequestId,
+
+            Owner =
+                entity.Owner,
+
+            OwnerRoles =
+                string.IsNullOrWhiteSpace(entity.OwnerRoles)
+                    ? []
+                    : entity.OwnerRoles.Split(
+                        ',',
+                        StringSplitOptions.RemoveEmptyEntries |
+                        StringSplitOptions.TrimEntries),
 
             State =
                 entity.State,

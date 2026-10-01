@@ -16,6 +16,9 @@ internal static class ProcessRoutePaths
     public const string Execute =
         "execute";
 
+    public const string ProcessTransfer =
+        "{processId}/transfer";
+
     public static string StepMetadata(
         string stepName)
         => $"steps/{stepName}/metadata";
@@ -44,6 +47,9 @@ internal static class ProcessContractUrls
     public static string Execute(string serviceName)
         => $"{ProcessesPrefix(serviceName)}/execute";
 
+    public static string ProcessTransfer(string serviceName, Guid processId)
+        => $"{ProcessesPrefix(serviceName)}/{processId}/transfer";
+
     public static string ProcessState(string serviceName, Guid processId)
         => $"{ProcessesPrefix(serviceName)}/{processId}";
 }
@@ -61,6 +67,9 @@ public static class ProcessEndpointNames
 
     public const string StepCatalogEndpointName =
         "KaleidoProcessStepCatalog";
+
+    public const string ProcessTransferEndpointName =
+        "KaleidoProcessTransfer";
 
     public const string StepRegistryEndpointName =
         "KaleidoProcessStepRegistry";

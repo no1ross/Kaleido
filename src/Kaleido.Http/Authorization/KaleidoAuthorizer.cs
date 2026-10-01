@@ -1,3 +1,4 @@
+using Kaleido.Process.Context;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,6 +47,16 @@ internal interface IKaleidoAuthorizer
         IEnumerable<T> items,
         Func<T, AuthorizationMetadata?> authorization,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Enforces process ownership on a loaded <see cref="ProcessorContext"/>.
+    /// Unowned processes pass; owned processes require the owner or a caller
+    /// sharing an <c>OwnerRoles</c> entry. Throws
+    /// <see cref="KaleidoAuthorizationException"/> when denied.
+    /// </summary>
+    void AuthorizeProcess(
+        HttpContext context,
+        ProcessorContext processContext);
 }
 
 internal sealed class KaleidoAuthorizer(
@@ -148,5 +159,45 @@ internal sealed class KaleidoAuthorizer(
         }
 
         return allowed;
+    }
+
+    public void AuthorizeProcess(
+        HttpContext context,
+        ProcessorContext processContext)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(processContext);
+
+        if (processContext.Owner is null)
+        {
+            return;
+        }
+
+        var user = context.User;
+        var callerName =
+            user.Identity?.IsAuthenticated == true
+                ? user.Identity.Name
+                : null;
+        var authenticated = callerName is not null;
+
+        if (callerName is not null
+            && string.Equals(
+                callerName,
+                processContext.Owner,
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (authenticated
+            && processContext.OwnerRoles.Count > 0
+            && processContext.OwnerRoles.Any(user.IsInRole))
+        {
+            return;
+        }
+
+        throw new KaleidoAuthorizationException(
+            $"process '{processContext.ProcessId}'",
+            authenticated);
     }
 }

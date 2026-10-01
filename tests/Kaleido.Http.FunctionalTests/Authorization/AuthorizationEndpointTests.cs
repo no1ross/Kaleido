@@ -24,6 +24,12 @@ public sealed class AuthorizationEndpointTests(
     private const string StepCatalogUrl =
         "/kaleido/processes/steps";
 
+    private static string ProcessStateUrl(Guid processId) =>
+        $"/kaleido/processes/{processId}";
+
+    private static string ProcessTransferUrl(Guid processId) =>
+        $"/kaleido/processes/{processId}/transfer";
+
     private const string QueryableCatalogUrl =
         "/kaleido/queryable";
 
@@ -260,6 +266,157 @@ public sealed class AuthorizationEndpointTests(
                 HttpMethod.Get,
                 SecuredContextMetadataUrl,
                 roles: ["admin"]));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    // -- process ownership ---------------------------------------------------
+
+    private async Task<Guid> CreateProcessAsync(
+        string user,
+        params string[] roles)
+    {
+        var response = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedJson(
+                InternalStepExecuteUrl,
+                StepBody,
+                user,
+                roles));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        return Guid.Parse(
+            response.Headers.GetValues("X-Kaleido-Process-Id").Single());
+    }
+
+    [Fact]
+    public async Task ProcessState_WhenDifferentOwnerAndNoSharedRole_Returns403()
+    {
+        var processId = await CreateProcessAsync("alice", "internal");
+
+        var response = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
+                HttpMethod.Get,
+                ProcessStateUrl(processId),
+                "bob",
+                "viewer"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProcessState_WhenRoleMateOfOwner_Returns200()
+    {
+        var processId = await CreateProcessAsync("alice", "internal");
+
+        var response = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
+                HttpMethod.Get,
+                ProcessStateUrl(processId),
+                "bob",
+                "internal"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProcessState_WhenOwner_Returns200()
+    {
+        var processId = await CreateProcessAsync("alice", "internal");
+
+        var response = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
+                HttpMethod.Get,
+                ProcessStateUrl(processId),
+                "alice",
+                "internal"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProcessTransfer_WhenUnrelatedCaller_Returns403()
+    {
+        var processId = await CreateProcessAsync("alice", "internal");
+
+        var response = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
+                HttpMethod.Post,
+                ProcessTransferUrl(processId),
+                "bob",
+                "viewer"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProcessTransfer_WhenRoleMate_TransfersOwnership()
+    {
+        var processId = await CreateProcessAsync("alice", "internal");
+
+        var transfer = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
+                HttpMethod.Post,
+                ProcessTransferUrl(processId),
+                "bob",
+                "internal"));
+
+        Assert.Equal(HttpStatusCode.OK, transfer.StatusCode);
+
+        // bob now owns the process — alice keeps access as a role-mate.
+        var state = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
+                HttpMethod.Get,
+                ProcessStateUrl(processId),
+                "bob",
+                "internal"));
+
+        Assert.Equal(HttpStatusCode.OK, state.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProcessTransfer_ThenNewOwnerDeniesOriginalOwner()
+    {
+        var processId = await CreateProcessAsync("alice", "internal");
+
+        // bob shares "internal" so he may transfer, but his "admin" role
+        // snapshot drops "internal" — alice loses access.
+        var transfer = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
+                HttpMethod.Post,
+                ProcessTransferUrl(processId),
+                "bob",
+                "internal", "admin"));
+
+        Assert.Equal(HttpStatusCode.OK, transfer.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProcessTransfer_WhenUnauthenticated_Returns401()
+    {
+        var processId = await CreateProcessAsync("alice", "internal");
+
+        var response = await fixture.Client.PostAsync(
+            ProcessTransferUrl(processId),
+            null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Execute_WhenResumingOtherOwnersProcess_Returns403()
+    {
+        var processId = await CreateProcessAsync("alice", "internal");
+
+        var request =
+            AuthorizationAspNetCoreFixture.AuthenticatedJson(
+                OpenStepExecuteUrl,
+                StepBody,
+                "bob",
+                "viewer");
+        request.Headers.Add("X-Kaleido-Process-Id", processId.ToString());
+
+        var response = await fixture.Client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
