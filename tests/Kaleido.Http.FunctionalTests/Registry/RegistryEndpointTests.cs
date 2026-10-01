@@ -30,7 +30,7 @@ public sealed class RegistryEndpointTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var registry =
-            await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>();
+            await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(KaleidoJsonOptions.Options);
 
         Assert.NotNull(registry);
         Assert.NotEmpty(registry.Processes);

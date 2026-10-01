@@ -15,8 +15,8 @@ public sealed class QueryViewRegistryTests
 
     private static QueryViewRegistry CreateSut(params Type[] viewTypes)
     {
-        var dataTypeMapper = new Mock<IDataTypeMapper>();
-        dataTypeMapper
+        var TypeDescriber = new Mock<ITypeDescriber>();
+        TypeDescriber
             .Setup(m => m.GetDescriptor(It.IsAny<PropertyInfo>()))
             .Returns(TestDataType);
 
@@ -26,7 +26,7 @@ public sealed class QueryViewRegistryTests
             .Returns([new ConstraintContract { Type = "Required" }]);
 
         return new QueryViewRegistry(
-            dataTypeMapper.Object,
+            TypeDescriber.Object,
             constraintMapper.Object,
             viewTypes);
     }

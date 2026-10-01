@@ -48,7 +48,7 @@ public sealed class KaleidoProcessClientTests
     private static HttpResponseMessage JsonOk<T>(T value) =>
         new(HttpStatusCode.OK)
         {
-            Content = JsonContent.Create(value)
+            Content = JsonContent.Create(value, options: KaleidoJsonOptions.Options)
         };
 
     private static (KaleidoProcessClient client, Mock<HttpMessageHandler> handler) CreateClient(

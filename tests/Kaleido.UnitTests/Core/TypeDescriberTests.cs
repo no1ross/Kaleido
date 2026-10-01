@@ -1,16 +1,14 @@
 using System.ComponentModel;
-using System.Text.Json;
-using Kaleido.Exceptions;
 
 namespace Kaleido.Abstractions.UnitTests;
 
-public sealed class DataTypeMapperTests
+public sealed class TypeDescriberTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static DataTypeMapper CreateSut() =>
+    private static TypeDescriber CreateSut() =>
         new();
 
-    private readonly DataTypeMapper _sut = CreateSut();
+    private readonly TypeDescriber _sut = CreateSut();
 
     [Fact]
     public void GetDescriptor_WhenPropertyIsNullableValueType_PreservesUnderlyingDescriptorAndMarksNullable()
@@ -83,62 +81,8 @@ public sealed class DataTypeMapperTests
     }
 
     [Fact]
-    public void TryConvertValue_WhenValueIsJsonNumber_ConvertsToRequestedType()
-    {
-        using var document = JsonDocument.Parse("123");
-
-        var result = _sut.TryConvertValue(document.RootElement, typeof(int));
-
-        Assert.True(result.Success);
-        Assert.Equal(123, Assert.IsType<int>(result.Value));
-    }
-
-    [Fact]
-    public void TryConvertValue_WhenEnumTextMatches_ConvertsIgnoringCase()
-    {
-        var result = _sut.TryConvertValue("active", typeof(TestStatus));
-
-        Assert.True(result.Success);
-        Assert.Equal(TestStatus.Active, Assert.IsType<TestStatus>(result.Value));
-    }
-
-    [Fact]
-    public void TryConvertValue_WhenValueIsInvalid_ReturnsFailure()
-    {
-        var result = _sut.TryConvertValue("nope", typeof(int));
-
-        Assert.False(result.Success);
-        Assert.Null(result.Value);
-        Assert.Equal("'nope' is not a valid value for type 'Int32'.", result.ErrorMessage);
-    }
-
-    [Fact]
-    public void TryConvertValue_WhenTargetTypeIsUnsupported_Throws()
-    {
-        var exception =
-            Assert.Throws<KaleidoFrameworkException>(() =>
-                _sut.TryConvertValue("{ }", typeof(TestObject)));
-
-        Assert.Equal(FrameworkErrorCodes.UnsupportedDataType, exception.Code);
-        Assert.Contains("TestObject", exception.Message);
-    }
-
-    [Fact]
-    public void ConvertValue_WhenConversionFails_ThrowsKaleidoFrameworkException()
-    {
-        var exception =
-            Assert.Throws<KaleidoFrameworkException>(() =>
-                _sut.ConvertValue<Guid>("bad-guid"));
-
-        Assert.Equal(FrameworkErrorCodes.DataConversionError, exception.Code);
-        Assert.Contains("bad-guid", exception.Message);
-        Assert.Contains("Guid", exception.Message);
-    }
-
-    [Fact]
     public void GetDescriptor_WhenEnumWithDescription_MapsEnumValues()
     {
-        // Tests reflection safety for GetMember array access
         var descriptor = _sut.GetDescriptor(typeof(TestModel).GetProperty(nameof(TestModel.Status))!);
 
         Assert.Equal("string", descriptor.Type);
@@ -150,7 +94,6 @@ public sealed class DataTypeMapperTests
     [Fact]
     public void GetDescriptor_WhenArrayType_MapsWithItemType()
     {
-        // Tests reflection safety for GetElementType null check
         var descriptor = _sut.GetDescriptor(typeof(TestModel).GetProperty(nameof(TestModel.Ids))!);
 
         Assert.Equal("array", descriptor.Type);
@@ -161,65 +104,11 @@ public sealed class DataTypeMapperTests
     [Fact]
     public void GetDescriptor_WhenGenericList_MapsWithItemType()
     {
-        // Tests reflection safety for GetGenericArguments array access
         var descriptor = _sut.GetDescriptor(typeof(TestModel).GetProperty(nameof(TestModel.Names))!);
 
         Assert.Equal("array", descriptor.Type);
         Assert.NotNull(descriptor.ItemType);
         Assert.Equal("string", descriptor.ItemType!.Type);
-    }
-
-    [Fact]
-    public void TryConvertValue_Generic_WhenConversionSucceeds_ReturnsTypedResult()
-    {
-        var result = _sut.TryConvertValue<int>("123");
-
-        Assert.True(result.Success);
-        Assert.Equal(123, result.Value);
-    }
-
-    [Fact]
-    public void TryConvertValue_Generic_WhenConversionFails_ReturnsFailedResult()
-    {
-        var result = _sut.TryConvertValue<int>("not-a-number");
-
-        Assert.False(result.Success);
-        Assert.Equal(default, result.Value);
-        Assert.NotNull(result.ErrorMessage);
-    }
-
-    [Fact]
-    public void TryConvertValue_Generic_WhenNullAndNullableType_ReturnsNull()
-    {
-        var result = _sut.TryConvertValue<int?>(null);
-
-        Assert.True(result.Success);
-        Assert.Null(result.Value);
-    }
-
-    [Fact]
-    public void TryConvertValue_Generic_WhenNullAndNonNullableType_ReturnsFailure()
-    {
-        var result = _sut.TryConvertValue<int>(null);
-
-        Assert.False(result.Success);
-        Assert.Equal(default, result.Value);
-        Assert.NotNull(result.ErrorMessage);
-    }
-
-    [Fact]
-    public void ConvertValue_Generic_WhenConversionSucceeds_ReturnsValue()
-    {
-        var result = _sut.ConvertValue<int>("123");
-
-        Assert.Equal(123, result);
-    }
-
-    [Fact]
-    public void ConvertValue_Generic_WhenConversionFails_Throws()
-    {
-        Assert.Throws<KaleidoFrameworkException>(() =>
-            _sut.ConvertValue<int>("not-a-number"));
     }
 
     public static TheoryData<Type, string, string?> ScalarDescriptorCases { get; } =
@@ -258,75 +147,6 @@ public sealed class DataTypeMapperTests
 
         Assert.Equal(expectedType, descriptor.Type);
         Assert.Equal(expectedFormat, descriptor.Format);
-    }
-
-    public static TheoryData<Type, bool> SupportedTypeCases { get; } =
-        new()
-        {
-            { typeof(int), true },
-            { typeof(int?), true },
-            { typeof(string), true },
-            { typeof(TestStatus), true },
-            { typeof(TestStatus?), true },
-            { typeof(Guid), true },
-            { typeof(List<int>), false },
-            { typeof(TestObject), false }
-        };
-
-    [Theory]
-    [MemberData(nameof(SupportedTypeCases))]
-    public void IsSupportedType_ReturnsExpected(Type type, bool expected)
-    {
-        Assert.Equal(expected, _sut.IsSupportedType(type));
-    }
-
-    [Fact]
-    public void TryConvertValue_WhenValueIsJsonNull_ConvertsToNull()
-    {
-        using var document = JsonDocument.Parse("null");
-
-        var result = _sut.TryConvertValue(document.RootElement, typeof(int?));
-
-        Assert.True(result.Success);
-        Assert.Null(result.Value);
-    }
-
-    [Fact]
-    public void TryConvertValue_WhenJsonStringToStringType_PassesThrough()
-    {
-        using var document = JsonDocument.Parse("\"hello\"");
-
-        var result = _sut.TryConvertValue(document.RootElement, typeof(string));
-
-        Assert.True(result.Success);
-        Assert.Equal("hello", Assert.IsType<string>(result.Value));
-    }
-
-    [Fact]
-    public void TryConvertValue_WhenValueAlreadyTargetType_ShortCircuits()
-    {
-        var expected = Guid.NewGuid();
-
-        var result = _sut.TryConvertValue(expected, typeof(Guid));
-
-        Assert.True(result.Success);
-        Assert.Equal(expected, Assert.IsType<Guid>(result.Value));
-    }
-
-    [Fact]
-    public void TryConvertValue_WhenEnumNumericNotDefined_ReturnsFailure()
-    {
-        var result = _sut.TryConvertValue("99", typeof(TestStatus));
-
-        Assert.False(result.Success);
-    }
-
-    [Fact]
-    public void ConvertValue_WhenConversionSucceeds_ReturnsValue()
-    {
-        var result = _sut.ConvertValue("42", typeof(int));
-
-        Assert.Equal(42, Assert.IsType<int>(result));
     }
 
     private sealed class ScalarModel<T>

@@ -4,12 +4,12 @@ namespace Kaleido.Http.Queryable;
 
 [ExcludeFromCodeCoverage]
 public record QueryApiRequest(
-    QueryBody? Query = null);
+    QueryApiBody? Query = null);
 
 [ExcludeFromCodeCoverage]
 public record QueryApiRequest<TParameters>(
     TParameters? Parameters = null,
-    QueryBody? Query = null)
+    QueryApiBody? Query = null)
     where TParameters : class;
 
 // ── Registry responses ────────────────────────────────────────────────────────
@@ -43,8 +43,27 @@ public sealed record PageableContract
 }
 
 [ExcludeFromCodeCoverage]
-public sealed record QueryableFieldMetadata : QueryableFieldDescriptor
+public sealed record QueryableFieldMetadata
 {
+    public required string Name { get; init; }
+
+    public string? Description { get; init; }
+
+    public required DataTypeDescriptor DataType { get; init; }
+
+    public bool IsFilterable { get; init; }
+
+    public IReadOnlyCollection<FilterOperator> FilterOperators { get; init; }
+        = [];
+
+    public bool IsSearchable { get; init; }
+
+    public int? SearchPriority { get; init; }
+
+    public MatchMode? MatchMode { get; init; }
+
+    public bool IsSortable { get; init; }
+
     public static QueryableFieldMetadata FromRegistryItem(
         QueryableFieldDescriptor item)
     {
@@ -66,8 +85,17 @@ public sealed record QueryableFieldMetadata : QueryableFieldDescriptor
 }
 
 [ExcludeFromCodeCoverage]
-public sealed record QueryableQueryParameter : QueryableParameterDescriptor
+public sealed record QueryableQueryParameter
 {
+    public required string Name { get; init; }
+
+    public string? Description { get; init; }
+
+    public required DataTypeDescriptor DataType { get; init; }
+
+    public IReadOnlyCollection<ConstraintContract> Constraints { get; init; }
+        = [];
+
     public static QueryableQueryParameter FromRegistryItem(
         QueryableParameterDescriptor item)
     {
@@ -84,8 +112,14 @@ public sealed record QueryableQueryParameter : QueryableParameterDescriptor
 }
 
 [ExcludeFromCodeCoverage]
-public sealed record QueryableQueryProperty : QueryableOutputFieldDescriptor
+public sealed record QueryableQueryProperty
 {
+    public required string Name { get; init; }
+
+    public string? Description { get; init; }
+
+    public required DataTypeDescriptor DataType { get; init; }
+
     public static QueryableQueryProperty FromRegistryItem(
         QueryableOutputFieldDescriptor item)
     {

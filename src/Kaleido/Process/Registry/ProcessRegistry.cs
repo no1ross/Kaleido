@@ -98,13 +98,13 @@ internal sealed class ProcessRegistry : IProcessRegistry
     private readonly IReadOnlyCollection<ProcessorRegistryItem> _registrations;
 
     public ProcessRegistry(
-        IDataTypeMapper dataTypeMapper,
+        ITypeDescriber typeDescriber,
         IConstraintMapper constraintMapper,
         KaleidoServiceOptions serviceOptions,
         IProcessStepRegistry stepRegistry,
         ILogger<ProcessRegistry> logger)
     {
-        ArgumentNullException.ThrowIfNull(dataTypeMapper);
+        ArgumentNullException.ThrowIfNull(typeDescriber);
         ArgumentNullException.ThrowIfNull(constraintMapper);
         ArgumentNullException.ThrowIfNull(serviceOptions);
         ArgumentNullException.ThrowIfNull(stepRegistry);
@@ -123,7 +123,7 @@ internal sealed class ProcessRegistry : IProcessRegistry
                     .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                     .Select(x =>
                         x.ToRegistryItem(
-                            dataTypeMapper,
+                            typeDescriber,
                             constraintMapper))
                     .ToArray()
             }

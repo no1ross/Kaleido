@@ -82,7 +82,8 @@ public static class RegistryEndpointRouteBuilderExtensions
         var cache = endpoints.ServiceProvider.GetService<HttpRegistryCache>() ?? new HttpRegistryCache();
 
         var group =
-            endpoints.MapGroup("");
+            endpoints.MapGroup("")
+            .AddEndpointFilter<KaleidoJsonEndpointFilter>();
 
         group.MapGet(
                 RegistryContractUrls.Registry(localServiceOptions.ServiceName),

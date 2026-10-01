@@ -49,7 +49,8 @@ public static class ProcessEndpointRouteBuilderExtensions
 
         var group =
             endpoints.MapGroup(
-                ProcessContractUrls.ProcessesPrefix(serviceName));
+                ProcessContractUrls.ProcessesPrefix(serviceName))
+            .AddEndpointFilter<KaleidoJsonEndpointFilter>();
 
         logger.LogInformation(
             "Process endpoints mapped at route prefix {RoutePrefix} with {ProcessStepCount} process steps and {InitialStepCount} initial steps.",

@@ -46,7 +46,8 @@ public static class QueryableEndpointRouteBuilderExtensions
 
         var group =
             endpoints.MapGroup(
-                QueryableContractUrls.QueryablePrefix(serviceName));
+                QueryableContractUrls.QueryablePrefix(serviceName))
+            .AddEndpointFilter<KaleidoJsonEndpointFilter>();
 
         var viewCount = queryableRegistry.Registrations.Sum(c => c.Views.Count);
 
@@ -213,6 +214,8 @@ public static class QueryableEndpointRouteBuilderExtensions
         where TView : class
         where TViewParameters : class
     {
+        var fields = context.Fields;
+
         endpoints.MapPost(
                 route,
                 async (
@@ -222,7 +225,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                     Results.Ok(
                         await queryable.QueryAsync<TQueryView, TView>(
                             new QueryRequest<TViewParameters>(
-                                Query: request.Query,
+                                Query: request.Query.ToQueryBody(fields),
                                 ViewParameters: request.Parameters),
                             cancellationToken)))
             .WithName(
@@ -247,6 +250,8 @@ public static class QueryableEndpointRouteBuilderExtensions
         QueryableContextRegistryItem context)
         where TQueryContext : class
     {
+        var fields = context.Fields;
+
         endpoints.MapPost(
                 route,
                 async (
@@ -256,7 +261,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                     Results.Ok(
                         await queryable.QueryAsync<TQueryContext, TQueryContext>(
                             new QueryRequest<EmptyQueryViewParameters>(
-                                Query: request.Query,
+                                Query: request.Query.ToQueryBody(fields),
                                 ViewParameters: request.Parameters),
                             cancellationToken)))
             .WithName(

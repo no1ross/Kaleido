@@ -7,19 +7,19 @@ public sealed class DelegatedQueryViewRegistryTests
     : Kaleido.UnitTests.SutFixture
 {
     private static DelegatedQueryViewRegistry CreateSut(
-        IDataTypeMapper? dataTypeMapper = null,
+        ITypeDescriber? TypeDescriber = null,
         IConstraintMapper? constraintMapper = null,
         IEnumerable<Type>? queryViewTypes = null)
     {
-        var dtm = dataTypeMapper ?? CreateDefaultDataTypeMapper();
+        var dtm = TypeDescriber ?? CreateDefaultTypeDescriber();
         var cm = constraintMapper ?? CreateDefaultConstraintMapper();
 
         return new DelegatedQueryViewRegistry(dtm, cm, queryViewTypes ?? []);
     }
 
-    private static IDataTypeMapper CreateDefaultDataTypeMapper()
+    private static ITypeDescriber CreateDefaultTypeDescriber()
     {
-        var mock = new Mock<IDataTypeMapper>();
+        var mock = new Mock<ITypeDescriber>();
         mock.Setup(m => m.GetDescriptor(It.IsAny<PropertyInfo>()))
             .Returns(new DataTypeDescriptor("string"));
         return mock.Object;

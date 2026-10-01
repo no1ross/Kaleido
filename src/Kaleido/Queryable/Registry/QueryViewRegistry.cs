@@ -23,19 +23,19 @@ internal sealed class QueryViewRegistry
     private readonly IReadOnlyDictionary<Type, QueryViewRegistration> _byType;
     private readonly IReadOnlyCollection<QueryViewRegistration> _registrations;
 
-    private readonly IDataTypeMapper _dataTypeMapper;
+    private readonly ITypeDescriber _dataTypeMapper;
     private readonly IConstraintMapper _constraintMapper;
 
     public QueryViewRegistry(
-        IDataTypeMapper dataTypeMapper,
+        ITypeDescriber TypeDescriber,
         IConstraintMapper constraintMapper,
         IEnumerable<Type> queryViewTypes)
     {
-        ArgumentNullException.ThrowIfNull(dataTypeMapper);
+        ArgumentNullException.ThrowIfNull(TypeDescriber);
         ArgumentNullException.ThrowIfNull(constraintMapper);
         ArgumentNullException.ThrowIfNull(queryViewTypes);
 
-        _dataTypeMapper = dataTypeMapper;
+        _dataTypeMapper = TypeDescriber;
         _constraintMapper = constraintMapper;
 
         var registrations =

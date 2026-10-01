@@ -12,7 +12,7 @@ internal static class QueryMetadataExtensions
     /// </summary>
     internal static FieldMetadata ToFieldMetadata(
         this PropertyInfo property,
-        IDataTypeMapper dataTypeMapper)
+        ITypeDescriber typeDescriber)
     {
         var filterable =
             property.GetCustomAttribute<FilterableAttribute>();
@@ -30,7 +30,7 @@ internal static class QueryMetadataExtensions
             property.Name,
             description?.Description,
             property.PropertyType,
-            dataTypeMapper.GetDescriptor(property),
+            typeDescriber.GetDescriptor(property),
             filterable is not null,
             filterable?.Operators ?? [],
             searchable is not null,
@@ -45,7 +45,7 @@ internal static class QueryMetadataExtensions
     /// </summary>
     internal static IReadOnlyList<QueryParameterMetadata> ToParameterMetadata(
         this Type parametersType,
-        IDataTypeMapper dataTypeMapper,
+        ITypeDescriber typeDescriber,
         IConstraintMapper constraintMapper)
     {
         if (parametersType == typeof(EmptyQueryViewParameters))
@@ -61,7 +61,7 @@ internal static class QueryMetadataExtensions
                 new QueryParameterMetadata(
                     property.Name,
                     property.PropertyType,
-                    dataTypeMapper.GetDescriptor(property),
+                    typeDescriber.GetDescriptor(property),
                     constraintMapper.Map(property),
                     property.GetCustomAttribute<DescriptionAttribute>()?.Description))
             .ToArray();
@@ -72,7 +72,7 @@ internal static class QueryMetadataExtensions
     /// </summary>
     internal static IReadOnlyList<QueryOutputFieldMetadata> ToOutputFieldMetadata(
         this Type viewType,
-        IDataTypeMapper dataTypeMapper) =>
+        ITypeDescriber typeDescriber) =>
         viewType
             .GetProperties(
                 BindingFlags.Public |
@@ -82,7 +82,7 @@ internal static class QueryMetadataExtensions
                     property.Name,
                     property.GetCustomAttribute<DescriptionAttribute>()?.Description,
                     property.PropertyType,
-                    dataTypeMapper.GetDescriptor(property)))
+                    typeDescriber.GetDescriptor(property)))
             .ToArray();
 
     /// <summary>
@@ -95,7 +95,7 @@ internal static class QueryMetadataExtensions
         Type contextType,
         Type parametersType,
         Type viewType,
-        IDataTypeMapper dataTypeMapper,
+        ITypeDescriber typeDescriber,
         IConstraintMapper constraintMapper) =>
         new(
             attribute.Name,
@@ -106,8 +106,8 @@ internal static class QueryMetadataExtensions
                 ?? attribute.Name,
             attribute.Visibility,
             queryViewType.ToViewPageable(contextType, attribute),
-            parametersType.ToParameterMetadata(dataTypeMapper, constraintMapper),
-            viewType.ToOutputFieldMetadata(dataTypeMapper));
+            parametersType.ToParameterMetadata(typeDescriber, constraintMapper),
+            viewType.ToOutputFieldMetadata(typeDescriber));
 
     /// <summary>
     /// Builds pageable metadata for a query view from its <see cref="PageableAttribute"/>,
