@@ -896,6 +896,7 @@ The metadata answers **"What operations exist, and how do I call them?"** It doe
 - **Description:** Discovery exposes every registered capability to every caller. EXT-07 (resolved: `MapKaleido()` returns `IEndpointConventionBuilder`) makes applying auth easier, but the registry still returns all operations without filtering. MCP guidance allows the discoverable tool set to vary according to request authorization. An AI client should receive only what it is permitted to invoke — leaking all capabilities raises both security and prompt-injection surface concerns.
 - **Recommended Fix:** Authorization-aware registry filtering: optional `ICapabilityFilter` contract consulted at discovery time, injected from `HttpContext` claims. Allow explicit include/exclude lists per service. Auth integration tests (401/403 on filtered capabilities).
 - **Complexity:** Medium · **Breaking:** Possibly
+- **Status:** **MERGED into EXT-12** — the HTTP auth epic covers inbound header trust, auth-aware discovery, and fan-out auth together.
 
 #### [AI-005] Default event payloads too expansive for AI-oriented workloads — **HIGH**
 
@@ -923,6 +924,124 @@ The metadata answers **"What operations exist, and how do I call them?"** It doe
 The project is publicly presentable. The concept is legitimate, and its metadata-first design is unusually well suited to AI tool discovery. It should be published as an explicitly pre-1.0 framework, not as a finished stable platform.
 
 For AI specifically, Kaleido currently provides a strong **capability-discovery substrate**. Adding safety semantics (AI-001), schema-standard adapters (AI-006), authorization-aware discovery (AI-004), freshness metadata (AI-003), and reliable retry/idempotency behavior (AI-002) could turn that substrate into a genuinely compelling agent integration layer.
+
+---
+
+## AI & Code Intelligence Compatibility — Developer Tools
+
+> **Note on IDs:** these findings are numbered **AI-008 through AI-014** in `REVIEW_TRACKER.yaml`
+> (`ai_compatibility.ai_findings`), to avoid collision with the agent-safety findings AI-001..AI-007 above.
+> The original AI-001..AI-007 labels below map to AI-008..AI-014 in order.
+
+Kaleido is designed to be **framework-like and developer-friendly**. With AI-assisted development now standard in modern workflows (Copilot, Claude, LLM agents), the framework should explicitly support code generation.
+
+### Why This Matters
+
+AI code generators (LLMs, copilots) are pattern-matchers learning from:
+1. **Documentation** (what should I do?)
+2. **Test examples** (canonical patterns)
+3. **Tooling configuration** (enforce style automatically)
+4. **Type signatures** (parameter semantics via XML docs)
+
+**When these are absent or contradictory, AI generates code that:**
+- Compiles but violates invariants (wrong dispatch lane → O(n) when O(1) expected)
+- Violates style conventions (wrong naming → code review friction)
+- Lacks error handling (missing null checks, unhandled exceptions)
+- Creates security issues (bypasses DI, missing validation)
+
+**Impact:** Teams reject AI PRs not for logic but for style/safety → AI assistance becomes friction instead of acceleration.
+
+---
+
+### 🔴 CRITICAL: AI-008 — Dispatch Order Not Formalized by Tests
+
+**Problem:** Dispatch order (Static → Derived → Generic lanes) is documented but not *proven* by tests. AI copilots can't verify correct lane selection → silent performance regression or logic errors.
+
+**Current State:**
+- ✅ Order documented in `src/AGENTS.md` and README (HP-002 complete)
+- ❌ No theory tests proving exhaustive/deterministic order
+
+**Recommended Fix:**
+1. Add property-based tests to `tests/Kaleido.Http.Tests/Queries/DispatchOrderTests.cs`
+2. Add "For AI-Assisted Development" callout to `src/Kaleido/README.md`
+
+**Effort:** 0.5 days | **Breaking Change:** No | **Owner:** Test lead | **Status:** PENDING
+
+---
+
+### 🟠 HIGH: AI-009 — Missing .editorconfig Rules
+
+**Problem:** `.editorconfig` is minimal; missing C# 12+ rules. AI generates code violating team style → review friction.
+
+**Recommended Fix:** Expand `.editorconfig` with namespace style, naming conventions, primary constructors, sealed records. Create `.editorconfig.template`.
+
+**Effort:** 1 day | **Breaking Change:** No | **Owner:** Architect | **Status:** PENDING
+
+---
+
+### 🟠 HIGH: AI-010 — XML Documentation Coverage Gaps (60–70%)
+
+**Problem:** Public types lack comprehensive XML docs. AI copilots rely on IntelliSense → without docs, generate mismatched code.
+
+**Recommended Fix:** Audit and complete XML docs (Tier 1: core + abstractions). Add CI gate for ≥90% coverage. Add "For AI" remarks to key types.
+
+**Effort:** 2–3 days | **Breaking Change:** No | **Owner:** Team (distributed) | **Status:** PENDING
+
+---
+
+### 🟡 MEDIUM: AI-011 — IQueryContextSource<T> vs. Async Confusion
+
+**Problem:** Both sync and async interfaces public. AI doesn't know which to implement → potential deadlock or mismatch.
+
+**Recommended Fix:** Audit usage; if sync rare, move to internal. Add analyzer KAL1012 for misuse.
+
+**Effort:** 1.5 days | **Breaking Change:** Possibly | **Owner:** Architect | **Status:** PENDING
+
+---
+
+### 🟡 MEDIUM: AI-012 — Correlation Context Invariants Undocumented
+
+**Problem:** Invariant (exactly one ID per request, echo or generate, propagate) not formally documented. AI generates code that overwrites, forgets propagation, or creates multiples.
+
+**Recommended Fix:** Add "Correlation Context Invariants" section to `src/ARCHITECTURE.md`. Add KAL1013 analyzer proposal.
+
+**Effort:** 0.5 days | **Breaking Change:** No | **Owner:** Architect | **Status:** PENDING
+
+---
+
+### 🟡 MEDIUM: AI-013 — Missing Canonical Patterns
+
+**Problem:** Test suite has patterns, but no single source of truth. AI generates plausible-but-wrong code.
+
+**Recommended Fix:** Create `docs/PATTERNS.md` with canonical examples. Update extension points table. Add "For Code Generators" to AGENTS.md.
+
+**Effort:** 1.5 days | **Breaking Change:** No | **Owner:** Tech lead | **Status:** PENDING
+
+---
+
+### 🔵 LOW: AI-014 — Security & Constraint Validation Rules Undocumented
+
+**Problem:** Analyzers (KAL0005–KAL0014) enforce DI/constraint rules. AI doesn't know them → generates code bypassing DI.
+
+**Recommended Fix:** Expand `docs/ANALYZERS.md` with "Security-Relevant Analyzers" table. Add quick-fix providers.
+
+**Effort:** 1 day | **Breaking Change:** No | **Owner:** Security / Architect | **Status:** PENDING
+
+---
+
+### Summary: AI & Developer Tools Compatibility Findings
+
+| ID | Title | Priority | Effort | Impact | Status |
+|---|---|---|---|---|---|
+| AI-008 | Dispatch order tests | 🔴 CRITICAL | 0.5d | HIGH | PENDING |
+| AI-009 | .editorconfig rules | 🟠 HIGH | 1d | MEDIUM | PENDING |
+| AI-010 | XML doc coverage | 🟠 HIGH | 2–3d | MEDIUM | PENDING |
+| AI-011 | Sync/async interface | 🟡 MEDIUM | 1.5d | MEDIUM | PENDING |
+| AI-012 | Correlation invariants | 🟡 MEDIUM | 0.5d | MEDIUM | PENDING |
+| AI-013 | Canonical patterns | 🟡 MEDIUM | 1.5d | MEDIUM | PENDING |
+| AI-014 | Security analyzer docs | 🔵 LOW | 1d | LOW | PENDING |
+
+**Total Effort:** ~9–10 days | **Cumulative Impact:** Kaleido becomes **AI-native**
 
 ---
 
