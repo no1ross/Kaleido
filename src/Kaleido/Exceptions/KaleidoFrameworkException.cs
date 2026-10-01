@@ -44,9 +44,9 @@ public static class FrameworkErrorCodes
     /// <summary>A handler returned an unexpected or null result.</summary>
     public const string InvalidHandlerResult = "invalid_handler_result";
 
-    /// <summary>A CLR type was passed to DataTypeMapper that it does not support.</summary>
+    /// <summary>A CLR type was passed to TypeDescriber that it does not support.</summary>
     public const string UnsupportedDataType = "unsupported_data_type";
 
-    /// <summary>DataTypeMapper failed to convert a value to the target type.</summary>
+    /// <summary>TypeDescriber failed to convert a value to the target type.</summary>
     public const string DataConversionError = "data_conversion_error";
 }

@@ -25,10 +25,11 @@ See also:
 
 ### Queryable HTTP contracts
 - `QueryApiRequest` / `QueryApiRequest<TParameters>` — query request body (search, filter, sort, page, optional view parameters)
+- `QueryApiBody` / `QueryApiFilterNode` / `QueryApiFilterCondition` / `QueryApiFilterGroup` / `QueryApiSort` / `QueryApiPage` — transport-level query body (string enums, raw `JsonElement` values)
 - `QueryableRecordResponse` — full context record in the registry response
 - `QueryableRecordSummary` — lightweight context summary in the catalog response
 - `QueryErrorResponse` — structured query validation error response
-- `QueryBody` / `QueryPage` / `QueryFilterNode` — query body sub-types
+- `QueryApiBodyExtensions.ToApiBody()` — converts a runtime `QueryBody` to `QueryApiBody` for callers that receive a `QueryBody` and need to forward it over HTTP (e.g. delegated view sources calling a remote query context)
 
 ---
 

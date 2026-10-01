@@ -39,7 +39,7 @@ public sealed class RequestingProviderSearchClient(
                     {
                         PlanId = planId
                     },
-                    Query = query
+                    Query = query.ToApiBody()
                 },
                 cancellationToken);
     }

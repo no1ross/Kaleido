@@ -24,7 +24,7 @@ public sealed class RecordMetadataTests : IClassFixture<QueryableAspNetCoreFixtu
     [Fact]
     public async Task GetRecordMetadata_ReturnsContextMetadataAndViews()
     {
-        var metadata = await _client.GetFromJsonAsync<QueryableRecordResponse>("/kaleido/queryable/functional-records/metadata");
+        var metadata = await _client.GetFromJsonAsync<QueryableRecordResponse>("/kaleido/queryable/functional-records/metadata", KaleidoJsonOptions.Options);
 
         Assert.NotNull(metadata);
         Assert.Equal("functional-records", metadata.Name);

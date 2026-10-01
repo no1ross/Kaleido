@@ -1,8 +1,5 @@
-using System.Text.Json.Serialization;
-
 namespace Kaleido.Queryable.Metadata;
 
-[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum QueryContextKind
 {
     Local,
@@ -176,6 +173,12 @@ public record QueryablePropertyDescriptor
     public required string Name { get; init; }
 
     public string? Description { get; init; }
+
+    /// <summary>
+    /// The CLR type of this property. Transport layers use this for value
+    /// resolution and OpenAPI schema generation. Not serialized to the wire.
+    /// </summary>
+    public required Type FieldType { get; init; }
 
     public required DataTypeDescriptor DataType { get; init; }
 }

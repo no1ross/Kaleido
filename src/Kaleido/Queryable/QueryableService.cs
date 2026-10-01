@@ -1,5 +1,4 @@
 using System.Reflection;
-using Kaleido.Json;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Registry;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +14,6 @@ public interface IQueryableService
 
 internal sealed class QueryableService(
     IServiceScopeFactory scopeFactory,
-    IValueConverter valueConverter,
     IDelegatedQueryViewRegistry delegatedViewRegistry,
     IQueryViewRegistry viewRegistry,
     IQueryContextRegistry contextRegistry)
@@ -87,7 +85,7 @@ internal sealed class QueryableService(
 
             return await ExecuteDelegatedViewAsync<TView>(
                 scope.ServiceProvider,
-                NormalizeRequest(request, valueConverter, delegatedViewRegistration.QueryMetadata),
+                request,
                 delegatedViewRegistration,
                 cancellationToken);
         }
@@ -103,7 +101,7 @@ internal sealed class QueryableService(
 
             return await ExecuteWithDiscoveredContextAsync<TView>(
                 scope.ServiceProvider,
-                NormalizeRequest(request, valueConverter, contextRegistration.Metadata),
+                request,
                 contextRegistration,
                 viewRegistration,
                 cancellationToken);
@@ -118,31 +116,9 @@ internal sealed class QueryableService(
 
         return await ExecuteDirectWithDiscoveredContextAsync<TView>(
             scope.ServiceProvider,
-            NormalizeRequest(request, valueConverter, directContextRegistration.Metadata),
+            request,
             directContextRegistration,
             cancellationToken);
-    }
-
-    private static IQueryRequest NormalizeRequest(
-        IQueryRequest request,
-        IValueConverter valueConverter,
-        QueryContextMetadata metadata) =>
-        request.Query is null
-            ? request
-            : new NormalizedQueryRequest(
-                request,
-                request.Query.Normalize(valueConverter, metadata));
-
-    private sealed record NormalizedQueryRequest(
-        IQueryRequest Inner,
-        QueryBody? Query)
-        : IQueryRequest
-    {
-        public object? ViewParameters =>
-            Inner.ViewParameters;
-
-        public Type ViewParametersType =>
-            Inner.ViewParametersType;
     }
 
     private async Task<QueryResult<TView>> ExecuteWithDiscoveredContextAsync<TView>(

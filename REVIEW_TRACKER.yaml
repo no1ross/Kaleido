@@ -723,7 +723,15 @@ external_findings:
     severity: HIGH
     effort: medium
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    resolution_note: >
+      IValueConverter/ValueNormalizer removed entirely. IDataTypeMapper renamed
+      to ITypeDescriber; IsSupportedType added. QueryRequestValidator now injects
+      ITypeDescriber. QueryApiBody transport types (string enums, JsonElement
+      values) replace QueryBody on the wire. QueryBodyResolver converts
+      QueryApiBody→QueryBody in Kaleido.Http. KaleidoJsonEndpointFilter handles
+      outbound enum serialization scoped to Kaleido route groups.
+      KaleidoJsonOptions shared JsonSerializerOptions in Kaleido.Http.Abstractions.
   EXT-11:
     title: Mandatory totalCount = two provider ops per query
     source: KAL-H15

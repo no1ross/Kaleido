@@ -63,7 +63,7 @@ internal sealed class KaleidoProcessClient(
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<ProcessStepResponse>(
-                       cancellationToken: cancellationToken)
+                       KaleidoJsonOptions.Options, cancellationToken)
                    ?? throw new KaleidoHttpClientException(
                        HttpClientErrorCodes.EmptyResponse,
                        $"Process step metadata request for '{stepName}' succeeded but returned no payload.",
@@ -96,7 +96,7 @@ internal sealed class KaleidoProcessClient(
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<ProcessStateResponse>(
-                       cancellationToken: cancellationToken)
+                       KaleidoJsonOptions.Options, cancellationToken)
                    ?? throw new KaleidoHttpClientException(
                        HttpClientErrorCodes.EmptyResponse,
                        $"Process state request for '{processId}' succeeded but returned no payload.",
@@ -117,7 +117,7 @@ internal sealed class KaleidoProcessClient(
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
         {
-            Content = JsonContent.Create(request)
+            Content = JsonContent.Create(request, options: KaleidoJsonOptions.Options)
         };
 
         headerStamper.Stamp(httpRequest);
@@ -127,7 +127,7 @@ internal sealed class KaleidoProcessClient(
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<ProcessExecutionResponse>(
-                       cancellationToken: cancellationToken)
+                       KaleidoJsonOptions.Options, cancellationToken)
                    ?? throw new KaleidoHttpClientException(
                        HttpClientErrorCodes.EmptyResponse,
                        "Process execute request succeeded but returned no payload.",
@@ -155,7 +155,7 @@ internal sealed class KaleidoProcessClient(
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
         {
-            Content = JsonContent.Create(body)
+            Content = JsonContent.Create(body, options: KaleidoJsonOptions.Options)
         };
 
         headerStamper.Stamp(httpRequest);
@@ -165,7 +165,7 @@ internal sealed class KaleidoProcessClient(
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<StepExecutionResponse>(
-                       cancellationToken: cancellationToken)
+                       KaleidoJsonOptions.Options, cancellationToken)
                    ?? throw new KaleidoHttpClientException(
                        HttpClientErrorCodes.EmptyResponse,
                        "Process step request succeeded but returned no payload.",
@@ -193,7 +193,7 @@ internal sealed class KaleidoProcessClient(
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
         {
-            Content = JsonContent.Create(body)
+            Content = JsonContent.Create(body, options: KaleidoJsonOptions.Options)
         };
 
         headerStamper.Stamp(httpRequest);
@@ -203,7 +203,7 @@ internal sealed class KaleidoProcessClient(
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadFromJsonAsync<StepExecutionResponse<TResponse>>(
-                       cancellationToken: cancellationToken)
+                       KaleidoJsonOptions.Options, cancellationToken)
                    ?? throw new KaleidoHttpClientException(
                        HttpClientErrorCodes.EmptyResponse,
                        "Process step request succeeded but returned no payload.",
@@ -220,8 +220,6 @@ internal sealed class KaleidoProcessClient(
         string stepName,
         CancellationToken cancellationToken)
     {
-        // When the step type carries [ProcessStep], its Name is authoritative —
-        // a mismatched stepName is a caller bug, fail fast before any HTTP call.
         var declaredName =
             typeof(TStep).GetCustomAttribute<ProcessStepAttribute>()?.Name;
 
@@ -257,8 +255,6 @@ internal sealed class KaleidoProcessClient(
             HttpStatusCode.NotFound);
     }
 
-    // Reads a structured KaleidoErrorResponse on 400 so validation details survive
-    // the step boundary, matching the queryable client's behavior.
     private static async Task<KaleidoHttpClientException> CreateFailureAsync(
         HttpResponseMessage response,
         string description,
@@ -271,7 +267,7 @@ internal sealed class KaleidoProcessClient(
             try
             {
                 errorResponse = await response.Content
-                    .ReadFromJsonAsync<KaleidoErrorResponse>(cancellationToken: cancellationToken);
+                    .ReadFromJsonAsync<KaleidoErrorResponse>(KaleidoJsonOptions.Options, cancellationToken);
             }
             catch (System.Text.Json.JsonException)
             {
@@ -332,7 +328,7 @@ internal sealed class KaleidoProcessClient(
         using var registryResponse = await SendAsync(registryRequest, cancellationToken);
 
         return await registryResponse.Content.ReadFromJsonAsync<IReadOnlyList<ProcessorRegistryResponse>>(
-            cancellationToken: cancellationToken)
+            KaleidoJsonOptions.Options, cancellationToken)
             ?? throw new KaleidoHttpClientException(
                 HttpClientErrorCodes.EmptyResponse,
                 "Process registry request succeeded but returned no payload.",

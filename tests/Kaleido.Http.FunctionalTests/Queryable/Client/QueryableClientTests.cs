@@ -72,7 +72,7 @@ public sealed class QueryableClientTests : IClassFixture<QueryableAspNetCoreFixt
             "grid",
             new QueryApiRequest<FunctionalRecordViewParameters>(
                 new FunctionalRecordViewParameters { Category = "Alpha" },
-                new QueryBody()));
+                new QueryApiBody()));
 
         Assert.True(result.TotalCount > 0);
         Assert.NotEmpty(result.Results);
@@ -87,7 +87,7 @@ public sealed class QueryableClientTests : IClassFixture<QueryableAspNetCoreFixt
     {
         var result = await _factory.GetClient("test").QueryContextAsync<FunctionalRecordContext>(
             "functional-records",
-            new QueryApiRequest(new QueryBody()));
+            new QueryApiRequest(new QueryApiBody()));
 
         Assert.True(result.TotalCount > 0);
         Assert.NotEmpty(result.Results);

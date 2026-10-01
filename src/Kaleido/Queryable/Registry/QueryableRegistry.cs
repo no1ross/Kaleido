@@ -119,6 +119,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
         {
             Name = metadata.Name,
             Description = metadata.Description,
+            FieldType = metadata.FieldType,
             DataType = metadata.DataType,
             IsFilterable = metadata.IsFilterable,
             FilterOperators = metadata.FilterOperators,
@@ -192,6 +193,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
         {
             Name = metadata.Name,
             Description = metadata.Description,
+            FieldType = metadata.Type,
             DataType = metadata.DataType,
             Constraints = metadata.Constraints
         };
@@ -206,6 +208,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
         {
             Name = metadata.Name,
             Description = metadata.Description,
+            FieldType = metadata.Type,
             DataType = metadata.DataType
         };
     }

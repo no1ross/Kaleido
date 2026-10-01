@@ -23,21 +23,21 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
     private readonly IReadOnlyDictionary<Type, QueryContextRegistration> _byType;
     private readonly IReadOnlyCollection<QueryContextRegistration> _registrations;
 
-    private readonly IDataTypeMapper _dataTypeMapper;
+    private readonly ITypeDescriber _dataTypeMapper;
     private readonly IConstraintMapper _constraintMapper;
 
     public QueryContextRegistry(
-        IDataTypeMapper dataTypeMapper,
+        ITypeDescriber TypeDescriber,
         IConstraintMapper constraintMapper,
         IServiceCollection services,
         IEnumerable<Type> contextTypes)
     {
-        ArgumentNullException.ThrowIfNull(dataTypeMapper);
+        ArgumentNullException.ThrowIfNull(TypeDescriber);
         ArgumentNullException.ThrowIfNull(constraintMapper);
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(contextTypes);
 
-        _dataTypeMapper = dataTypeMapper;
+        _dataTypeMapper = TypeDescriber;
         _constraintMapper = constraintMapper;
 
         var registrations =
