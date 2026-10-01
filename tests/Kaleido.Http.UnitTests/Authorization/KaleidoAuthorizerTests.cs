@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Kaleido.Authorization;
 using Kaleido.Exceptions;
 using Kaleido.Http.Authorization;
 using Kaleido.Process.Context;
@@ -7,7 +8,6 @@ using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.UnitTests.Authorization;
 
@@ -15,100 +15,131 @@ public sealed class KaleidoAuthorizerTests
     : SutFixture
 {
     private static KaleidoAuthorizer CreateSut(
-        bool requireAuthorization = false) =>
-        new(
+        Mock<IKaleidoAuthorizationEvaluator> evaluator,
+        KaleidoCorrelationContext? caller = null,
+        bool requireAuthorization = false,
+        IHttpContextAccessor? httpContextAccessor = null)
+    {
+        var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
+        correlation
+            .Setup(x => x.Current)
+            .Returns(caller ?? new KaleidoCorrelationContext());
+
+        return new(
             new KaleidoHttpOptions
             {
                 RequireAuthorization = requireAuthorization
             },
-            NullLogger<KaleidoAuthorizer>.Instance);
+            evaluator.Object,
+            correlation.Object,
+            httpContextAccessor ?? new HttpContextAccessor());
+    }
 
-    private static DefaultHttpContext CreateContext(
-        ClaimsPrincipal? user = null,
-        IAuthorizationService? authorizationService = null)
+    [Fact]
+    public async Task CanAccessAsync_ForwardsCallerAndRequireAuthorization_ToEvaluator()
     {
-        var services = new ServiceCollection();
+        var evaluator = new Mock<IKaleidoAuthorizationEvaluator>();
+        evaluator
+            .Setup(x => x.CanAccessAsync(
+                It.IsAny<AuthorizationMetadata?>(),
+                It.IsAny<KaleidoCorrelationContext>(),
+                true,
+                It.IsAny<Func<string, CancellationToken, Task<bool>>?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
-        if (authorizationService is not null)
-        {
-            services.AddSingleton(authorizationService);
-        }
+        var caller =
+            new KaleidoCorrelationContext { CallerName = "alice" };
+        var sut = CreateSut(evaluator, caller, requireAuthorization: true);
 
-        return new DefaultHttpContext
+        Assert.True(await sut.CanAccessAsync(null));
+
+        evaluator.Verify(
+            x => x.CanAccessAsync(
+                null,
+                It.Is<KaleidoCorrelationContext>(c => c.CallerName == "alice"),
+                true,
+                null,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task AuthorizeAsync_DelegatesToEvaluator()
+    {
+        var evaluator = new Mock<IKaleidoAuthorizationEvaluator>();
+
+        var sut = CreateSut(evaluator);
+
+        await sut.AuthorizeAsync(
+            new AuthorizationMetadata(null, ["internal"]),
+            "cap");
+
+        evaluator.Verify(
+            x => x.AuthorizeAsync(
+                It.Is<AuthorizationMetadata?>(m =>
+                    m != null && m.Roles.Contains("internal")),
+                "cap",
+                It.IsAny<KaleidoCorrelationContext>(),
+                false,
+                It.IsAny<Func<string, CancellationToken, Task<bool>>?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task FilterAsync_ReturnsOnlyAllowedItems()
+    {
+        var evaluator = new Mock<IKaleidoAuthorizationEvaluator>();
+        evaluator
+            .Setup(x => x.CanAccessAsync(
+                It.IsAny<AuthorizationMetadata?>(),
+                It.IsAny<KaleidoCorrelationContext>(),
+                It.IsAny<bool>(),
+                It.IsAny<Func<string, CancellationToken, Task<bool>>?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AuthorizationMetadata? m, KaleidoCorrelationContext _, bool _, Func<string, CancellationToken, Task<bool>>? _, CancellationToken _)
+                => m is null);
+
+        var sut = CreateSut(evaluator);
+
+        var items = new[]
         {
-            User = user ?? new ClaimsPrincipal(new ClaimsIdentity()),
-            RequestServices =
-                services.BuildServiceProvider(
-                    new ServiceProviderOptions
-                    {
-                        ValidateScopes = true,
-                        ValidateOnBuild = true
-                    })
+            new Item("open", null),
+            new Item("internal-only", new AuthorizationMetadata(null, ["internal"]))
         };
+
+        var filtered =
+            await sut.FilterAsync(items, i => i.Authorization);
+
+        var item = Assert.Single(filtered);
+        Assert.Equal("open", item.Name);
     }
 
-    private static ClaimsPrincipal AuthenticatedUser(params string[] roles) =>
-        new(new ClaimsIdentity(
-            roles.Select(r => new Claim(ClaimTypes.Role, r)),
-            authenticationType: "test"));
-
     [Fact]
-    public async Task CanAccessAsync_NoDeclaration_DefaultOpen_AllowsUnauthenticated()
+    public void AuthorizeProcess_DelegatesToEvaluator()
     {
-        var sut = CreateSut();
+        var evaluator = new Mock<IKaleidoAuthorizationEvaluator>();
+        evaluator
+            .Setup(x => x.AuthorizeProcess(
+                It.IsAny<ProcessorContext>(),
+                It.IsAny<KaleidoCorrelationContext>()))
+            .Throws(new KaleidoAuthorizationException("proc", false));
 
-        Assert.True(
-            await sut.CanAccessAsync(
-                CreateContext(),
-                authorization: null));
+        var sut = CreateSut(evaluator);
+
+        Assert.Throws<KaleidoAuthorizationException>(
+            () => sut.AuthorizeProcess(
+                new ProcessorContext
+                {
+                    ProcessId = Guid.NewGuid(),
+                    ProcessorName = "test",
+                    Owner = "alice"
+                }));
     }
 
     [Fact]
-    public async Task CanAccessAsync_NoDeclaration_RequireAuthorization_RejectsUnauthenticated()
-    {
-        var sut = CreateSut(requireAuthorization: true);
-
-        Assert.False(
-            await sut.CanAccessAsync(
-                CreateContext(),
-                authorization: null));
-    }
-
-    [Fact]
-    public async Task CanAccessAsync_NoDeclaration_RequireAuthorization_AllowsAuthenticated()
-    {
-        var sut = CreateSut(requireAuthorization: true);
-
-        Assert.True(
-            await sut.CanAccessAsync(
-                CreateContext(AuthenticatedUser()),
-                authorization: null));
-    }
-
-    [Fact]
-    public async Task CanAccessAsync_Roles_AllowsCallerInAnyRole()
-    {
-        var sut = CreateSut();
-
-        Assert.True(
-            await sut.CanAccessAsync(
-                CreateContext(AuthenticatedUser("internal")),
-                new AuthorizationMetadata(null, ["internal", "admin"])));
-    }
-
-    [Fact]
-    public async Task CanAccessAsync_Roles_RejectsCallerOutsideRoles()
-    {
-        var sut = CreateSut();
-
-        Assert.False(
-            await sut.CanAccessAsync(
-                CreateContext(AuthenticatedUser("viewer")),
-                new AuthorizationMetadata(null, ["internal", "admin"])));
-    }
-
-    [Fact]
-    public async Task CanAccessAsync_Policy_InvokesAuthorizationService()
+    public async Task CanAccessAsync_WhenAuthorizationServicePresent_SuppliesPolicyEvaluator()
     {
         var authz = new Mock<IAuthorizationService>();
         authz
@@ -118,178 +149,73 @@ public sealed class KaleidoAuthorizerTests
                 "hipaa"))
             .ReturnsAsync(AuthorizationResult.Success());
 
-        var sut = CreateSut();
+        Func<string, CancellationToken, Task<bool>>? captured = null;
 
-        Assert.True(
-            await sut.CanAccessAsync(
-                CreateContext(
-                    AuthenticatedUser(),
-                    authz.Object),
-                new AuthorizationMetadata("hipaa", [])));
+        var evaluator = new Mock<IKaleidoAuthorizationEvaluator>();
+        evaluator
+            .Setup(x => x.CanAccessAsync(
+                It.IsAny<AuthorizationMetadata?>(),
+                It.IsAny<KaleidoCorrelationContext>(),
+                It.IsAny<bool>(),
+                It.IsAny<Func<string, CancellationToken, Task<bool>>?>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<AuthorizationMetadata?, KaleidoCorrelationContext, bool, Func<string, CancellationToken, Task<bool>>?, CancellationToken>(
+                (_, _, _, pe, _) => captured = pe)
+            .ReturnsAsync(true);
+
+        var services = new ServiceCollection();
+        services.AddSingleton(authz.Object);
+
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                RequestServices = services.BuildServiceProvider(
+                    new ServiceProviderOptions
+                    {
+                        ValidateScopes = true,
+                        ValidateOnBuild = true
+                    })
+            }
+        };
+
+        var sut = CreateSut(
+            evaluator,
+            httpContextAccessor: httpContextAccessor);
+
+        await sut.CanAccessAsync(
+            new AuthorizationMetadata("hipaa", []));
+
+        Assert.NotNull(captured);
+        Assert.True(await captured("hipaa", CancellationToken.None));
 
         authz.VerifyAll();
     }
 
     [Fact]
-    public async Task CanAccessAsync_PolicyDenied_ReturnsFalse()
+    public async Task CanAccessAsync_WhenNoAuthorizationService_PolicyEvaluatorIsNull()
     {
-        var authz = new Mock<IAuthorizationService>();
-        authz
-            .Setup(x => x.AuthorizeAsync(
-                It.IsAny<ClaimsPrincipal>(),
-                null,
-                "hipaa"))
-            .ReturnsAsync(AuthorizationResult.Failed());
+        Func<string, CancellationToken, Task<bool>>? captured = null;
 
-        var sut = CreateSut();
+        var evaluator = new Mock<IKaleidoAuthorizationEvaluator>();
+        evaluator
+            .Setup(x => x.CanAccessAsync(
+                It.IsAny<AuthorizationMetadata?>(),
+                It.IsAny<KaleidoCorrelationContext>(),
+                It.IsAny<bool>(),
+                It.IsAny<Func<string, CancellationToken, Task<bool>>?>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<AuthorizationMetadata?, KaleidoCorrelationContext, bool, Func<string, CancellationToken, Task<bool>>?, CancellationToken>(
+                (_, _, _, pe, _) => captured = pe)
+            .ReturnsAsync(true);
 
-        Assert.False(
-            await sut.CanAccessAsync(
-                CreateContext(
-                    AuthenticatedUser(),
-                    authz.Object),
-                new AuthorizationMetadata("hipaa", [])));
-    }
+        var sut = CreateSut(evaluator);
 
-    [Fact]
-    public async Task CanAccessAsync_PolicyWithoutAuthorizationService_FailsClosed()
-    {
-        var sut = CreateSut();
+        await sut.CanAccessAsync(
+            new AuthorizationMetadata("hipaa", []));
 
-        Assert.False(
-            await sut.CanAccessAsync(
-                CreateContext(AuthenticatedUser()),
-                new AuthorizationMetadata("hipaa", [])));
-    }
-
-    [Fact]
-    public async Task AuthorizeAsync_Unauthenticated_ThrowsUnauthorized()
-    {
-        var sut = CreateSut();
-
-        var exception =
-            await Assert.ThrowsAsync<KaleidoAuthorizationException>(
-                () => sut.AuthorizeAsync(
-                    CreateContext(),
-                    new AuthorizationMetadata(null, ["internal"]),
-                    "capture-intake"));
-
-        Assert.False(exception.CallerIsAuthenticated);
-        Assert.Equal("capture-intake", exception.Capability);
-    }
-
-    [Fact]
-    public async Task AuthorizeAsync_AuthenticatedButDenied_ThrowsForbidden()
-    {
-        var sut = CreateSut();
-
-        var exception =
-            await Assert.ThrowsAsync<KaleidoAuthorizationException>(
-                () => sut.AuthorizeAsync(
-                    CreateContext(AuthenticatedUser("viewer")),
-                    new AuthorizationMetadata(null, ["internal"]),
-                    "capture-intake"));
-
-        Assert.True(exception.CallerIsAuthenticated);
-    }
-
-    [Fact]
-    public async Task FilterAsync_ReturnsOnlyAuthorizedItems()
-    {
-        var sut = CreateSut();
-
-        var items = new[]
-        {
-            new Item("open", null),
-            new Item("internal-only", new AuthorizationMetadata(null, ["internal"]))
-        };
-
-        var filtered =
-            await sut.FilterAsync(
-                CreateContext(AuthenticatedUser("viewer")),
-                items,
-                i => i.Authorization);
-
-        var item = Assert.Single(filtered);
-        Assert.Equal("open", item.Name);
+        Assert.Null(captured);
     }
 
     private sealed record Item(string Name, AuthorizationMetadata? Authorization);
-
-    // -- process ownership ---------------------------------------------------
-
-    private static ClaimsPrincipal NamedUser(
-        string name,
-        params string[] roles) =>
-        new(new ClaimsIdentity(
-            roles.Select(r => new Claim(ClaimTypes.Role, r))
-                .Append(new Claim(ClaimTypes.Name, name)),
-            authenticationType: "test"));
-
-    private static ProcessorContext OwnedContext(
-        string? owner,
-        params string[] ownerRoles) =>
-        new()
-        {
-            ProcessId = Guid.NewGuid(),
-            ProcessorName = "test",
-            Owner = owner,
-            OwnerRoles = ownerRoles
-        };
-
-    [Fact]
-    public void AuthorizeProcess_WhenUnowned_PassesForAnonymous()
-    {
-        var sut = CreateSut();
-
-        sut.AuthorizeProcess(
-            CreateContext(),
-            OwnedContext(owner: null));
-    }
-
-    [Fact]
-    public void AuthorizeProcess_WhenOwnedByCaller_Passes()
-    {
-        var sut = CreateSut();
-
-        sut.AuthorizeProcess(
-            CreateContext(NamedUser("alice")),
-            OwnedContext("alice", "intake"));
-    }
-
-    [Fact]
-    public void AuthorizeProcess_WhenCallerSharesOwnerRole_Passes()
-    {
-        var sut = CreateSut();
-
-        sut.AuthorizeProcess(
-            CreateContext(NamedUser("bob", "intake")),
-            OwnedContext("alice", "intake"));
-    }
-
-    [Fact]
-    public void AuthorizeProcess_WhenOtherOwnerAndNoSharedRole_Throws403()
-    {
-        var sut = CreateSut();
-
-        var exception = Assert.Throws<KaleidoAuthorizationException>(
-            () => sut.AuthorizeProcess(
-                CreateContext(NamedUser("bob", "viewer")),
-                OwnedContext("alice", "intake")));
-
-        Assert.True(exception.CallerIsAuthenticated);
-    }
-
-    [Fact]
-    public void AuthorizeProcess_WhenOwnedAndAnonymous_Throws401()
-    {
-        var sut = CreateSut();
-
-        var exception = Assert.Throws<KaleidoAuthorizationException>(
-            () => sut.AuthorizeProcess(
-                CreateContext(),
-                OwnedContext("alice")));
-
-        Assert.False(exception.CallerIsAuthenticated);
-    }
 }

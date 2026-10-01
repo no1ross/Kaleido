@@ -37,7 +37,6 @@ public sealed class ProcessExecutionServiceTests
         var stepAuthorizer = new Mock<IKaleidoAuthorizer>();
         stepAuthorizer
             .Setup(x => x.AuthorizeAsync(
-                It.IsAny<HttpContext>(),
                 It.IsAny<AuthorizationMetadata?>(),
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
@@ -209,7 +208,6 @@ public sealed class ProcessExecutionServiceTests
         var authorizer = new Mock<IKaleidoAuthorizer>();
         authorizer
             .Setup(x => x.AuthorizeAsync(
-                It.IsAny<HttpContext>(),
                 It.IsAny<AuthorizationMetadata?>(),
                 registration.Metadata.Name,
                 It.IsAny<CancellationToken>()))

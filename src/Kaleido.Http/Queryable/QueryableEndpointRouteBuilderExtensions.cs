@@ -71,9 +71,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                     [FromServices] IKaleidoAuthorizer authorizer,
                     CancellationToken cancellationToken) =>
                     Results.Ok(
-                        (await authorizer.FilterAsync(
-                                httpContext,
-                                queryableRegistry.Registrations,
+                        (await authorizer.FilterAsync(queryableRegistry.Registrations,
                                 r => r.Authorization,
                                 cancellationToken))
                             .Select(r =>
@@ -100,9 +98,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 CancellationToken cancellationToken) =>
             {
                 var allowedContexts =
-                    await authorizer.FilterAsync(
-                        httpContext,
-                        queryableRegistry.Registrations,
+                    await authorizer.FilterAsync(queryableRegistry.Registrations,
                         r => r.Authorization,
                         cancellationToken);
 
@@ -111,9 +107,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 foreach (var context in allowedContexts)
                 {
                     var views =
-                        await authorizer.FilterAsync(
-                            httpContext,
-                            context.Views,
+                        await authorizer.FilterAsync(context.Views,
                             v => v.Authorization,
                             cancellationToken);
 
@@ -222,9 +216,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                             context with
                             {
                                 Views =
-                                    await authorizer.FilterAsync(
-                                        httpContext,
-                                        context.Views,
+                                    await authorizer.FilterAsync(context.Views,
                                         v => v.Authorization,
                                         cancellationToken)
                             },

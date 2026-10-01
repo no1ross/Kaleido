@@ -1,7 +1,6 @@
 using Kaleido.Http.Authorization;
 using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Process;
@@ -28,7 +27,6 @@ internal sealed class ProcessStateService(
     IProcessStepRegistry registry,
     KaleidoServiceOptions serviceOptions,
     IProcessResponseFactory responseFactory,
-    IHttpContextAccessor httpContextAccessor,
     IKaleidoAuthorizer authorizer,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     ILogger<ProcessStateService> logger)
@@ -55,12 +53,7 @@ internal sealed class ProcessStateService(
 
         // Owned processes are visible only to the owner and role-mates.
         // Unowned processes pass through.
-        authorizer.AuthorizeProcess(
-            httpContextAccessor.HttpContext
-                ?? throw new KaleidoFrameworkException(
-                    FrameworkErrorCodes.ReflectionError,
-                    "No active HttpContext for process state lookup."),
-            context);
+        authorizer.AuthorizeProcess(context);
 
         logger.LogDebug(
             "Process state loaded for processor {ProcessorName} process {ProcessId} state {State}.",
@@ -150,12 +143,7 @@ internal sealed class ProcessStateService(
         // unowned processes may be taken by any authenticated caller.
         if (context.Owner is not null)
         {
-            authorizer.AuthorizeProcess(
-                httpContextAccessor.HttpContext
-                    ?? throw new KaleidoFrameworkException(
-                        FrameworkErrorCodes.ReflectionError,
-                        "No active HttpContext for process transfer."),
-                context);
+            authorizer.AuthorizeProcess(context);
         }
 
         var transferred =

@@ -42,12 +42,6 @@ internal sealed class ProcessExecutionService(
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var httpContext =
-            httpContextAccessor.HttpContext
-            ?? throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.ReflectionError,
-                "No active HttpContext for process execution.");
-
         // Per-step authorization — a multi-step request may submit steps with
         // different [KaleidoAuthorization] declarations; deny the whole request
         // if any submitted step is not authorized for the caller. Unknown step
@@ -60,7 +54,6 @@ internal sealed class ProcessExecutionService(
             if (registration is not null)
             {
                 await authorizer.AuthorizeAsync(
-                    httpContext,
                     registration.Metadata.Authorization,
                     step.StepName,
                     cancellationToken);
@@ -68,8 +61,7 @@ internal sealed class ProcessExecutionService(
         }
 
         await AuthorizeProcessAccessAsync(
-            httpContext,
-            correlationAccessor.Current.ProcessId,
+            correlationAccessor.Current,
             cancellationToken);
 
         logger.LogDebug(
@@ -139,11 +131,7 @@ internal sealed class ProcessExecutionService(
         var stepName = registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
 
         await AuthorizeProcessAccessAsync(
-            httpContextAccessor.HttpContext
-                ?? throw new KaleidoFrameworkException(
-                    FrameworkErrorCodes.ReflectionError,
-                    "No active HttpContext for process execution."),
-            correlationAccessor.Current.ProcessId,
+            correlationAccessor.Current,
             cancellationToken);
 
         logger.LogDebug(
@@ -186,29 +174,28 @@ internal sealed class ProcessExecutionService(
     /// owned.
     /// </summary>
     private async Task AuthorizeProcessAccessAsync(
-        HttpContext httpContext,
-        Guid? processId,
+        KaleidoCorrelationContext caller,
         CancellationToken cancellationToken)
     {
-        if (processId is not null)
+        if (caller.ProcessId is not null)
         {
             var existing =
                 await contextStore.LoadAsync(
-                    processId.Value,
+                    caller.ProcessId.Value,
                     cancellationToken);
 
             // Unknown process ids fall through to runtime validation, which
             // creates a new instance under that id.
             if (existing is not null)
             {
-                authorizer.AuthorizeProcess(httpContext, existing);
+                authorizer.AuthorizeProcess(existing);
             }
 
             return;
         }
 
         if (httpOptions.RequireProcessOwnership
-            && httpContext.User.Identity?.IsAuthenticated != true)
+            && caller.CallerName is null)
         {
             throw new KaleidoAuthorizationException(
                 "process creation",

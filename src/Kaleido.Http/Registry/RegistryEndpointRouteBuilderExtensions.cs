@@ -188,7 +188,6 @@ public static class RegistryEndpointRouteBuilderExtensions
                         response =
                             await FilterForCaller(
                                 response,
-                                httpContext,
                                 authorizer,
                                 cancellationToken);
                     }
@@ -211,7 +210,6 @@ public static class RegistryEndpointRouteBuilderExtensions
 
     private static async Task<AggregatedRegistryResponse> FilterForCaller(
         AggregatedRegistryResponse response,
-        HttpContext httpContext,
         IKaleidoAuthorizer authorizer,
         CancellationToken cancellationToken)
     {
@@ -220,18 +218,14 @@ public static class RegistryEndpointRouteBuilderExtensions
         foreach (var processor in response.Processes)
         {
             var initialSteps =
-                await authorizer.FilterAsync(
-                    httpContext,
-                    processor.InitialSteps,
+                await authorizer.FilterAsync(processor.InitialSteps,
                     x => x.Authorization,
                     cancellationToken);
 
             var steps =
                 processor.Steps is null
                     ? null
-                    : await authorizer.FilterAsync(
-                        httpContext,
-                        processor.Steps,
+                    : await authorizer.FilterAsync(processor.Steps,
                         x => x.Authorization,
                         cancellationToken);
 
@@ -244,9 +238,7 @@ public static class RegistryEndpointRouteBuilderExtensions
         }
 
         var allowedQueryables =
-            await authorizer.FilterAsync(
-                httpContext,
-                response.Queryables,
+            await authorizer.FilterAsync(response.Queryables,
                 x => x.Authorization,
                 cancellationToken);
 
@@ -255,9 +247,7 @@ public static class RegistryEndpointRouteBuilderExtensions
         foreach (var queryable in allowedQueryables)
         {
             var views =
-                await authorizer.FilterAsync(
-                    httpContext,
-                    queryable.Views,
+                await authorizer.FilterAsync(queryable.Views,
                     x => x.Authorization,
                     cancellationToken);
 
