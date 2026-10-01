@@ -1,10 +1,18 @@
 # Kaleido Pre-Release Review: Status
 
 **Created:** September 25, 2026  
-**Updated:** September 26, 2026 (v2.1 external-review merge)  
-**Status:** v2.1 COMPLETE — ready for team design review
+**Updated:** October 1, 2026 (v2.2 strategic direction: Information Request)  
+**Status:** v2.2 — ready for team design review
 
 ---
+
+## What Changed in v2.2
+
+Added **AI-015 — Information Request as a first-class Process state** as the strategic direction for AI-native positioning, with open question **Q-009** for its design scope and PR slot **PR-12-information-request** (gated on Q-009).
+
+The thesis: AI-001..AI-006 make Kaleido *safe to call*; AI-015 makes it *AI-native*. Instead of returning validation errors that agents must reverse-engineer, a process returns `NeedsInformation` with the exact questions, constraints, valid options, reason, and next action. That is business behavior and domain metadata, not a UI concern — the same artifact drives Angular forms, voice bots, Copilot, MCP agents, and other processes. Kaleido already has the foundations (`AwaitingRequiredStep`, `RequiredStep`/`AvailableSteps`, step field metadata); the PriorAuth sample currently works around the gap by returning `QuestionnaireDefinitionView` inside sample-specific step responses.
+
+Also corrected: the developer-tools AI track (AI-008..AI-014) was labelled "Kaleido becomes AI-native" — relabelled "AI-assisted-development friendly", since it improves code generation, not runtime agent interaction.
 
 ## What Changed in v2.1
 
@@ -38,7 +46,7 @@ A second, code-verified analysis pass was run per `docs/PRERELEASE_PROMPT.md` (p
 ## Files
 
 - **REVIEW_FINDINGS.md** — v2.1 merged findings (9 release blockers + 6 EXT blockers, 14 high, 26 medium incl. EXT items, 15 low, 6 analyzer proposals, consolidated breaking-change list, final assessment + scores)
-- **REVIEW_TRACKER.yaml** — v2.1 tracking (per-item v2 notes, corrected statuses, Q-001–008, EXT-01–019)
+- **REVIEW_TRACKER.yaml** — v2.2 tracking (per-item v2 notes, corrected statuses, Q-001–009, EXT-01–019, AI-001–015)
 - **REVIEW_INTEGRATION.md** — workflow guide
 - **REVIEW_QUICK_REF.md** — v2.1 at-a-glance card
 
