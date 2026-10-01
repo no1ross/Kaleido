@@ -4,3 +4,4 @@ global using Kaleido.Process.Planning;
 global using Kaleido.Queryable;
 global using Kaleido.Queryable.Metadata;
 global using Kaleido.Queryable.Query;
+global using Moq;
