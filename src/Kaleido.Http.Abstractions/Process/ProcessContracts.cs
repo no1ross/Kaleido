@@ -266,6 +266,35 @@ public sealed record ProcessStateResponse
         get;
         init;
     }
+
+    /// <summary>
+    /// Name of the caller that owns this process, captured from the
+    /// authenticated principal at creation. <c>null</c> for unowned
+    /// (anonymously created) processes.
+    /// </summary>
+    public string? Owner
+    {
+        get;
+        init;
+    }
+}
+
+/// <summary>Response for POST /{serviceName}/processes/{processId}/transfer.</summary>
+[ExcludeFromCodeCoverage]
+public sealed record ProcessTransferResponse
+{
+    public required Guid ProcessId
+    {
+        get;
+        init;
+    }
+
+    /// <summary>Caller name that now owns the process.</summary>
+    public required string Owner
+    {
+        get;
+        init;
+    }
 }
 
 [ExcludeFromCodeCoverage]

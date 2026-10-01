@@ -32,4 +32,17 @@ public sealed class KaleidoHttpOptions
     /// </para>
     /// </summary>
     public Func<HttpContext, bool>? TrustCorrelationIdentity { get; set; }
+
+    /// <summary>
+    /// When <c>true</c>, creating a process requires an authenticated caller
+    /// (401 when anonymous) — so every process is owned. Default
+    /// <c>false</c>: anonymous creation is allowed and produces an unowned
+    /// process.
+    /// </summary>
+    /// <remarks>
+    /// Ownership enforcement itself is unconditional: once a process has an
+    /// <c>Owner</c>, only the owner or a caller sharing an
+    /// <c>OwnerRoles</c> entry may resume or read it.
+    /// </remarks>
+    public bool RequireProcessOwnership { get; set; }
 }

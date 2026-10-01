@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Kaleido.Exceptions;
 using Kaleido.Http.Authorization;
+using Kaleido.Process.Context;
 using Kaleido.Registry;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
@@ -46,7 +47,9 @@ public sealed class ProcessExecutionServiceTests
             new HttpContextAccessor { HttpContext = new DefaultHttpContext() },
             registry,
             runtime,
+            Mock.Of<IProcessContextStore>(),
             new KaleidoServiceOptions { ServiceName = "test-processor" },
+            new KaleidoHttpOptions(),
             correlation.Object,
             responseFactory,
             authorizer ?? stepAuthorizer.Object,

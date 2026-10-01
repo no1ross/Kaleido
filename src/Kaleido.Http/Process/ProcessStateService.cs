@@ -1,5 +1,7 @@
+using Kaleido.Http.Authorization;
 using Kaleido.Process.Context;
 using Kaleido.Process.Registry;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Process;
@@ -9,6 +11,16 @@ internal interface IProcessStateService
     Task<ProcessStateResponse?> GetCurrentState(
         Guid processId,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Transfers process ownership to the authenticated caller. Returns
+    /// <c>null</c> when the process does not exist (404); throws
+    /// <see cref="KaleidoAuthorizationException"/> when the caller may not
+    /// take it (unowned processes and role-mates of the owner may).
+    /// </summary>
+    Task<ProcessorContext?> TransferOwnershipAsync(
+        Guid processId,
+        CancellationToken cancellationToken);
 }
 
 internal sealed class ProcessStateService(
@@ -16,6 +28,9 @@ internal sealed class ProcessStateService(
     IProcessStepRegistry registry,
     KaleidoServiceOptions serviceOptions,
     IProcessResponseFactory responseFactory,
+    IHttpContextAccessor httpContextAccessor,
+    IKaleidoAuthorizer authorizer,
+    IKaleidoCorrelationContextAccessor correlationAccessor,
     ILogger<ProcessStateService> logger)
     : IProcessStateService
 {
@@ -37,6 +52,15 @@ internal sealed class ProcessStateService(
 
             return null;
         }
+
+        // Owned processes are visible only to the owner and role-mates.
+        // Unowned processes pass through.
+        authorizer.AuthorizeProcess(
+            httpContextAccessor.HttpContext
+                ?? throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.ReflectionError,
+                    "No active HttpContext for process state lookup."),
+            context);
 
         logger.LogDebug(
             "Process state loaded for processor {ProcessorName} process {ProcessId} state {State}.",
@@ -97,6 +121,57 @@ internal sealed class ProcessStateService(
             CreatedUtc = context.CreatedUtc,
 
             UpdatedUtc = context.UpdatedUtc,
+
+            Owner = context.Owner,
         };
+    }
+
+    public async Task<ProcessorContext?> TransferOwnershipAsync(
+        Guid processId,
+        CancellationToken cancellationToken)
+    {
+        var context = await contextStore.LoadAsync(processId, cancellationToken);
+
+        if (context is null)
+        {
+            return null;
+        }
+
+        var correlation = correlationAccessor.Current;
+
+        if (correlation.CallerName is null)
+        {
+            throw new KaleidoAuthorizationException(
+                $"process '{processId}'",
+                callerIsAuthenticated: false);
+        }
+
+        // Owned processes transfer only to the owner or a role-mate;
+        // unowned processes may be taken by any authenticated caller.
+        if (context.Owner is not null)
+        {
+            authorizer.AuthorizeProcess(
+                httpContextAccessor.HttpContext
+                    ?? throw new KaleidoFrameworkException(
+                        FrameworkErrorCodes.ReflectionError,
+                        "No active HttpContext for process transfer."),
+                context);
+        }
+
+        var transferred =
+            context with
+            {
+                Owner = correlation.CallerName,
+                OwnerRoles = correlation.CallerRoles
+            };
+
+        await contextStore.SaveAsync(transferred, cancellationToken);
+
+        logger.LogDebug(
+            "Process {ProcessId} ownership transferred to {Owner}.",
+            processId,
+            correlation.CallerName);
+
+        return transferred;
     }
 }

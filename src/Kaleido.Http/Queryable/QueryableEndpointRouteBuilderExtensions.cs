@@ -53,7 +53,8 @@ public static class QueryableEndpointRouteBuilderExtensions
         var group =
             endpoints.MapGroup(
                 QueryableContractUrls.QueryablePrefix(serviceName))
-            .AddEndpointFilter<KaleidoJsonEndpointFilter>();
+            .AddEndpointFilter<KaleidoJsonEndpointFilter>()
+            .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 
         var viewCount = queryableRegistry.Registrations.Sum(c => c.Views.Count);
 

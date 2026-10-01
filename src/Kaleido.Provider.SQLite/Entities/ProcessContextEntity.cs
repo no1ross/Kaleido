@@ -14,6 +14,20 @@ internal sealed class ProcessContextEntity
         set;
     }
 
+    /// <summary>Owner name captured at process creation; null when unowned.</summary>
+    public string? Owner
+    {
+        get;
+        set;
+    }
+
+    /// <summary>Owner roles, comma-delimited.</summary>
+    public string OwnerRoles
+    {
+        get;
+        set;
+    } = string.Empty;
+
     public ProcessExecutionState State
     {
         get;

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Kaleido.Exceptions;
 using Kaleido.Http.Authorization;
+using Kaleido.Process.Context;
 using Kaleido.Registry;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Authorization;
@@ -214,4 +215,81 @@ public sealed class KaleidoAuthorizerTests
     }
 
     private sealed record Item(string Name, AuthorizationMetadata? Authorization);
+
+    // -- process ownership ---------------------------------------------------
+
+    private static ClaimsPrincipal NamedUser(
+        string name,
+        params string[] roles) =>
+        new(new ClaimsIdentity(
+            roles.Select(r => new Claim(ClaimTypes.Role, r))
+                .Append(new Claim(ClaimTypes.Name, name)),
+            authenticationType: "test"));
+
+    private static ProcessorContext OwnedContext(
+        string? owner,
+        params string[] ownerRoles) =>
+        new()
+        {
+            ProcessId = Guid.NewGuid(),
+            ProcessorName = "test",
+            Owner = owner,
+            OwnerRoles = ownerRoles
+        };
+
+    [Fact]
+    public void AuthorizeProcess_WhenUnowned_PassesForAnonymous()
+    {
+        var sut = CreateSut();
+
+        sut.AuthorizeProcess(
+            CreateContext(),
+            OwnedContext(owner: null));
+    }
+
+    [Fact]
+    public void AuthorizeProcess_WhenOwnedByCaller_Passes()
+    {
+        var sut = CreateSut();
+
+        sut.AuthorizeProcess(
+            CreateContext(NamedUser("alice")),
+            OwnedContext("alice", "intake"));
+    }
+
+    [Fact]
+    public void AuthorizeProcess_WhenCallerSharesOwnerRole_Passes()
+    {
+        var sut = CreateSut();
+
+        sut.AuthorizeProcess(
+            CreateContext(NamedUser("bob", "intake")),
+            OwnedContext("alice", "intake"));
+    }
+
+    [Fact]
+    public void AuthorizeProcess_WhenOtherOwnerAndNoSharedRole_Throws403()
+    {
+        var sut = CreateSut();
+
+        var exception = Assert.Throws<KaleidoAuthorizationException>(
+            () => sut.AuthorizeProcess(
+                CreateContext(NamedUser("bob", "viewer")),
+                OwnedContext("alice", "intake")));
+
+        Assert.True(exception.CallerIsAuthenticated);
+    }
+
+    [Fact]
+    public void AuthorizeProcess_WhenOwnedAndAnonymous_Throws401()
+    {
+        var sut = CreateSut();
+
+        var exception = Assert.Throws<KaleidoAuthorizationException>(
+            () => sut.AuthorizeProcess(
+                CreateContext(),
+                OwnedContext("alice")));
+
+        Assert.False(exception.CallerIsAuthenticated);
+    }
 }

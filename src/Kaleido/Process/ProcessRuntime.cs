@@ -286,6 +286,9 @@ internal sealed class ProcessRuntime(
         var requestId =
             correlationAccessor.Current.RequestId;
 
+        var callerName = correlationAccessor.Current.CallerName;
+        var callerRoles = correlationAccessor.Current.CallerRoles;
+
         if (request.ProcessId is null)
         {
             var initializedContext =
@@ -293,7 +296,9 @@ internal sealed class ProcessRuntime(
                     Guid.NewGuid())
                     with
                 {
-                    LatestRequestId = requestId
+                    LatestRequestId = requestId,
+                    Owner = callerName,
+                    OwnerRoles = callerRoles
                 };
 
             observation.ContextInitialized(
@@ -331,7 +336,9 @@ internal sealed class ProcessRuntime(
                     request.ProcessId.Value)
                     with
                 {
-                    LatestRequestId = requestId
+                    LatestRequestId = requestId,
+                    Owner = callerName,
+                    OwnerRoles = callerRoles
                 };
 
             observation.ContextInitialized(
