@@ -1,18 +1,18 @@
-﻿using Kaleido.Process.Context;
+using Kaleido.Process.Context;
 
 namespace Kaleido.Process.Planning;
 
-internal interface IExecutionPlanner
+internal interface IProcessPlanner
 {
     ExecutionPlanResult BuildPlan(ProcessorRequest request, ProcessorContext context);
 }
 
-internal sealed class ExecutionPlanner(
+internal sealed class ProcessPlanner(
     IStepCandidateBuilder candidateBuilder,
     IStepCandidateValidator candidateValidator,
     IStepCandidateConsistencyChecker candidateConsistencyChecker,
     IStepCandidatePlanner stepCandidatePlanner)
-    : IExecutionPlanner
+    : IProcessPlanner
 {
 
     public ExecutionPlanResult BuildPlan(

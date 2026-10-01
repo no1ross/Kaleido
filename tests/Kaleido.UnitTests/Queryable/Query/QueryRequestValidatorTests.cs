@@ -13,12 +13,12 @@ public sealed class QueryRequestValidatorTests
 
     private static QueryRequestValidator CreateSut()
     {
-        var dataTypeMapper = new Mock<IDataTypeMapper>();
-        dataTypeMapper
+        var typeDescriber = new Mock<ITypeDescriber>();
+        typeDescriber
             .Setup(m => m.IsSupportedType(It.IsAny<Type>()))
             .Returns(true);
 
-        return new QueryRequestValidator(dataTypeMapper.Object);
+        return new QueryRequestValidator(typeDescriber.Object);
     }
 
     [Fact]

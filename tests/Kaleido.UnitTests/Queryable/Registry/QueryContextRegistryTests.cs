@@ -12,8 +12,8 @@ public sealed class QueryContextRegistryTests
 {
     private static QueryContextRegistry CreateSut(params Type[] contextTypes)
     {
-        var dataTypeMapper = new Mock<IDataTypeMapper>();
-        dataTypeMapper
+        var TypeDescriber = new Mock<ITypeDescriber>();
+        TypeDescriber
             .Setup(m => m.GetDescriptor(It.IsAny<PropertyInfo>()))
             .Returns(new DataTypeDescriptor("mock-type"));
 
@@ -23,7 +23,7 @@ public sealed class QueryContextRegistryTests
             .Returns([]);
 
         return new QueryContextRegistry(
-            dataTypeMapper.Object,
+            TypeDescriber.Object,
             constraintMapper.Object,
             CreateServices(),
             contextTypes);

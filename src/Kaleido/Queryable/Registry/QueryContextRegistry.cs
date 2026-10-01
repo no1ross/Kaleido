@@ -4,56 +4,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable.Registry;
 
-/// <summary>
-/// Read-only directory of all queryable context types registered for this service.
-/// </summary>
-/// <remarks>
-/// <para>
-/// Populated at startup by <c>AddQueryable()</c> via assembly scanning for types
-/// decorated with <c>[QueryContext]</c>. The registry is immutable after the DI
-/// container is built.
-/// </para>
-/// <para>
-/// Distinction from metadata: <c>IQueryContextRegistry</c> knows <em>which</em>
-/// contexts exist (the directory); per-context field and view metadata is produced
-/// separately from the registration.
-/// </para>
-/// </remarks>
-public interface IQueryContextRegistry
+internal interface IQueryContextRegistry
 {
-    /// <summary>
-    /// All registered query context types, in an unspecified order.
-    /// </summary>
     IReadOnlyCollection<QueryContextRegistration> Registrations { get; }
 
-    /// <summary>
-    /// Returns the registration for the context with the given name, or
-    /// <see langword="null"/> if no context with that name is registered.
-    /// Name comparison is case-insensitive.
-    /// </summary>
     QueryContextRegistration? Find(string name);
 
-    /// <summary>
-    /// Returns the registration for the context whose CLR type matches
-    /// <paramref name="recordType"/>, or <see langword="null"/> if not found.
-    /// </summary>
     QueryContextRegistration? Find(Type recordType);
 
-    /// <summary>
-    /// Returns the registration for the context with the given name.
-    /// </summary>
-    /// <exception cref="KaleidoFrameworkException">
-    /// Thrown when no context with <paramref name="name"/> is registered.
-    /// </exception>
     QueryContextRegistration GetRegistration(string name);
 
-    /// <summary>
-    /// Returns the registration for the context whose CLR type matches
-    /// <paramref name="recordType"/>.
-    /// </summary>
-    /// <exception cref="KaleidoFrameworkException">
-    /// Thrown when no context matching <paramref name="recordType"/> is registered.
-    /// </exception>
     QueryContextRegistration GetRegistration(Type recordType);
 }
 
@@ -63,21 +23,21 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
     private readonly IReadOnlyDictionary<Type, QueryContextRegistration> _byType;
     private readonly IReadOnlyCollection<QueryContextRegistration> _registrations;
 
-    private readonly IDataTypeMapper _dataTypeMapper;
+    private readonly ITypeDescriber _dataTypeMapper;
     private readonly IConstraintMapper _constraintMapper;
 
     public QueryContextRegistry(
-        IDataTypeMapper dataTypeMapper,
+        ITypeDescriber TypeDescriber,
         IConstraintMapper constraintMapper,
         IServiceCollection services,
         IEnumerable<Type> contextTypes)
     {
-        ArgumentNullException.ThrowIfNull(dataTypeMapper);
+        ArgumentNullException.ThrowIfNull(TypeDescriber);
         ArgumentNullException.ThrowIfNull(constraintMapper);
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(contextTypes);
 
-        _dataTypeMapper = dataTypeMapper;
+        _dataTypeMapper = TypeDescriber;
         _constraintMapper = constraintMapper;
 
         var registrations =

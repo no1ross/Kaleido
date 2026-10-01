@@ -54,7 +54,7 @@ public sealed class KaleidoQueryableClientTests
     private static HttpResponseMessage JsonOk<T>(T value) =>
         new(HttpStatusCode.OK)
         {
-            Content = JsonContent.Create(value)
+            Content = JsonContent.Create(value, options: KaleidoJsonOptions.Options)
         };
 
     private static Mock<HttpMessageHandler> HandlerThatReturns(
@@ -223,7 +223,7 @@ public sealed class KaleidoQueryableClientTests
 
         var result = await client.QueryViewAsync<FakeParams, FakeView>(
             "my-context", "grid",
-            new QueryApiRequest<FakeParams>(new FakeParams(), new QueryBody()));
+            new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody()));
 
         Assert.Equal(1, result.TotalCount);
         Assert.Equal(42, result.Results.First().Id);
@@ -238,7 +238,7 @@ public sealed class KaleidoQueryableClientTests
         await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QueryViewAsync<FakeParams, FakeView>(
                 "no-such-context", "grid",
-                new QueryApiRequest<FakeParams>(new FakeParams(), new QueryBody())));
+                new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody())));
     }
 
     [Fact]
@@ -249,7 +249,7 @@ public sealed class KaleidoQueryableClientTests
         await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QueryViewAsync<FakeParams, FakeView>(
                 "my-context", "no-such-view",
-                new QueryApiRequest<FakeParams>(new FakeParams(), new QueryBody())));
+                new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody())));
     }
 
     [Fact]
@@ -274,7 +274,7 @@ public sealed class KaleidoQueryableClientTests
         var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QueryViewAsync<FakeParams, FakeView>(
                 "my-context", "grid",
-                new QueryApiRequest<FakeParams>(new FakeParams(), new QueryBody())));
+                new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody())));
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, ex.StatusCode);
     }
@@ -306,7 +306,7 @@ public sealed class KaleidoQueryableClientTests
 
         var result = await client.QueryContextAsync<FakeView>(
             "my-context",
-            new QueryApiRequest(new QueryBody()));
+            new QueryApiRequest(new QueryApiBody()));
 
         Assert.Equal(2, result.TotalCount);
     }
@@ -320,7 +320,7 @@ public sealed class KaleidoQueryableClientTests
         var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QueryContextAsync<FakeView>(
                 "my-context",
-                new QueryApiRequest(new QueryBody())));
+                new QueryApiRequest(new QueryApiBody())));
 
         Assert.Contains("direct", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -380,7 +380,7 @@ public sealed class KaleidoQueryableClientTests
         var stamper = new Mock<ICorrelationHeaderStamper>();
 
         var client = CreateSut(httpClient, stamper.Object);
-        await client.QueryContextAsync<FakeView>("my-context", new QueryApiRequest(new QueryBody()));
+        await client.QueryContextAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()));
 
         stamper.Verify(x => x.Stamp(It.IsAny<HttpRequestMessage>()), Times.AtLeastOnce);
     }
@@ -392,3 +392,4 @@ public sealed class KaleidoQueryableClientTests
     private sealed class FakeParams { }
     private sealed class FakeView { public int Id { get; init; } }
 }
+

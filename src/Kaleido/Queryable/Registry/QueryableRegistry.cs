@@ -6,16 +6,11 @@ namespace Kaleido.Queryable.Registry;
 public interface IQueryableRegistry
 {
     IReadOnlyCollection<QueryableContextRegistryItem> Registrations { get; }
-
-    QueryableContextRegistryItem? Find(string name);
-
-    QueryableContextRegistryItem GetRegistration(string name);
 }
 
 internal sealed class QueryableRegistry : IQueryableRegistry
 {
     private readonly IReadOnlyCollection<QueryableContextRegistryItem> _registrations;
-    private readonly IReadOnlyDictionary<string, QueryableContextRegistryItem> _byName;
 
     public QueryableRegistry(
         IQueryContextRegistry contextRegistry,
@@ -51,11 +46,6 @@ internal sealed class QueryableRegistry : IQueryableRegistry
                 .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
-        _byName =
-            _registrations.ToDictionary(
-                x => x.Name,
-                StringComparer.OrdinalIgnoreCase);
-
         logger.LogInformation(
             "Queryable registry built with {ContextCount} contexts.",
             _registrations.Count);
@@ -64,22 +54,6 @@ internal sealed class QueryableRegistry : IQueryableRegistry
     public IReadOnlyCollection<QueryableContextRegistryItem> Registrations =>
         _registrations;
 
-    public QueryableContextRegistryItem? Find(
-        string name)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-
-        _byName.TryGetValue(name, out var registration);
-        return registration;
-    }
-
-    public QueryableContextRegistryItem GetRegistration(
-        string name) =>
-        Find(name)
-        ?? throw new KaleidoFrameworkException(
-            FrameworkErrorCodes.MissingRegistration,
-            $"Queryable registry item '{name}' is not registered.");
-
     private static QueryableContextRegistryItem Project(
         QueryContextRegistration registration,
         IReadOnlyCollection<QueryViewRegistration> views)
@@ -87,9 +61,25 @@ internal sealed class QueryableRegistry : IQueryableRegistry
         ArgumentNullException.ThrowIfNull(registration);
         ArgumentNullException.ThrowIfNull(views);
 
-        return Project(
-            registration.Metadata,
-            views.Select(x => x.Metadata));
+        return new QueryableContextRegistryItem
+        {
+            ContextType = registration.ContextType,
+            Name = registration.Metadata.Name,
+            Description = registration.Metadata.Description,
+            DisplayName = registration.Metadata.DisplayName,
+            Version = registration.Metadata.Version,
+            Source = registration.Metadata.Source,
+            Kind = registration.Metadata.Kind,
+            Pageable = registration.Metadata.Pageable,
+            Fields = registration.Metadata.Fields
+                .Select(Project)
+                .ToArray(),
+            Views = views
+                .Where(x => x.Metadata.Visibility == QueryViewVisibility.Public)
+                .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(Project)
+                .ToArray()
+        };
     }
 
     private static QueryableContextRegistryItem Project(
@@ -99,20 +89,9 @@ internal sealed class QueryableRegistry : IQueryableRegistry
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(views);
 
-        return Project(
-            metadata,
-            views.Select(x => x.ViewMetadata));
-    }
-
-    private static QueryableContextRegistryItem Project(
-        QueryContextMetadata metadata,
-        IEnumerable<QueryViewMetadata> views)
-    {
-        ArgumentNullException.ThrowIfNull(metadata);
-        ArgumentNullException.ThrowIfNull(views);
-
         return new QueryableContextRegistryItem
         {
+            ContextType = views.First().QueryContextType,
             Name = metadata.Name,
             Description = metadata.Description,
             DisplayName = metadata.DisplayName,
@@ -124,8 +103,8 @@ internal sealed class QueryableRegistry : IQueryableRegistry
                 .Select(Project)
                 .ToArray(),
             Views = views
-                .Where(x => x.Visibility == QueryViewVisibility.Public)
-                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                .Where(x => x.ViewMetadata.Visibility == QueryViewVisibility.Public)
+                .OrderBy(x => x.ViewMetadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(Project)
                 .ToArray()
         };
@@ -140,6 +119,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
         {
             Name = metadata.Name,
             Description = metadata.Description,
+            FieldType = metadata.FieldType,
             DataType = metadata.DataType,
             IsFilterable = metadata.IsFilterable,
             FilterOperators = metadata.FilterOperators,
@@ -151,23 +131,53 @@ internal sealed class QueryableRegistry : IQueryableRegistry
     }
 
     private static QueryableViewRegistryItem Project(
-        QueryViewMetadata metadata)
+        QueryViewRegistration registration)
     {
-        ArgumentNullException.ThrowIfNull(metadata);
+        ArgumentNullException.ThrowIfNull(registration);
 
         return new QueryableViewRegistryItem
         {
-            Name = metadata.Name,
-            Description = metadata.Description,
-            DisplayName = metadata.DisplayName,
-            Version = metadata.Version,
-            Visibility = metadata.Visibility,
-            Pageable = metadata.Pageable,
-            Parameters = metadata.Parameters?
+            QueryViewType = registration.QueryViewType,
+            ViewType = registration.ViewType,
+            ViewParametersType = registration.ViewParametersType,
+            Name = registration.Metadata.Name,
+            Description = registration.Metadata.Description,
+            DisplayName = registration.Metadata.DisplayName,
+            Version = registration.Metadata.Version,
+            Visibility = registration.Metadata.Visibility,
+            Pageable = registration.Metadata.Pageable,
+            Parameters = registration.Metadata.Parameters?
                 .Select(Project)
                 .ToArray()
                 ?? [],
-            OutputFields = metadata.OutputFields?
+            OutputFields = registration.Metadata.OutputFields?
+                .Select(Project)
+                .ToArray()
+                ?? []
+        };
+    }
+
+    private static QueryableViewRegistryItem Project(
+        DelegatedQueryViewRegistration registration)
+    {
+        ArgumentNullException.ThrowIfNull(registration);
+
+        return new QueryableViewRegistryItem
+        {
+            QueryViewType = registration.QueryViewType,
+            ViewType = registration.ViewType,
+            ViewParametersType = registration.ViewParametersType,
+            Name = registration.ViewMetadata.Name,
+            Description = registration.ViewMetadata.Description,
+            DisplayName = registration.ViewMetadata.DisplayName,
+            Version = registration.ViewMetadata.Version,
+            Visibility = registration.ViewMetadata.Visibility,
+            Pageable = registration.ViewMetadata.Pageable,
+            Parameters = registration.ViewMetadata.Parameters?
+                .Select(Project)
+                .ToArray()
+                ?? [],
+            OutputFields = registration.ViewMetadata.OutputFields?
                 .Select(Project)
                 .ToArray()
                 ?? []
@@ -183,6 +193,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
         {
             Name = metadata.Name,
             Description = metadata.Description,
+            FieldType = metadata.Type,
             DataType = metadata.DataType,
             Constraints = metadata.Constraints
         };
@@ -197,6 +208,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
         {
             Name = metadata.Name,
             Description = metadata.Description,
+            FieldType = metadata.Type,
             DataType = metadata.DataType
         };
     }

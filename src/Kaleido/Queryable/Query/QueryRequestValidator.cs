@@ -26,9 +26,7 @@ internal interface IQueryContextValidator
     void Validate(IQueryRequest request, QueryContextRegistration registration);
 }
 
-internal sealed class QueryRequestValidator(
-    IDataTypeMapper dataTypeMapper)
-    : IQueryContextValidator
+internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQueryContextValidator
 {
     public void Validate(
         IQueryRequest request,
@@ -104,7 +102,7 @@ internal sealed class QueryRequestValidator(
                 value.GetType())
             ?? value.GetType();
 
-        if (dataTypeMapper.IsSupportedType(actualType))
+        if (typeDescriber.IsSupportedType(actualType))
         {
             return;
         }

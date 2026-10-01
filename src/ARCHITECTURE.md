@@ -37,11 +37,10 @@ The core project is organized into two main namespaces:
 - `KaleidoServiceCollectionExtensions` — `AddKaleido()` (assemblies via `KaleidoServiceOptions.Assemblies`)
 - `IKaleidoBuilder` / `KaleidoBuilder` — minimal shared builder
 - `KaleidoCorrelationContextAccessor` — scoped accessor for ambient correlation
-- `DataTypeMapper` — CLR type → `DataTypeDescriptor` projection
+- `TypeDescriber` — CLR type → `DataTypeDescriptor` projection and `IsSupportedType` check
 - `ConstraintMapper` — `ValidationAttribute` → `ConstraintContract` projection
 - `KaleidoCorrelationContext` — shared ambient identity
 - `IEventPublisher` / `NullEventPublisher` — infrastructure-agnostic event seam
-- `KaleidoEnumConverter` / `ValueConverter` — JSON and value conversion helpers
 
 **`Kaleido.Queryable`**
 - Registration: `QueryableServiceCollectionExtensions`, `QueryableBuilder`
@@ -59,12 +58,25 @@ The core project is organized into two main namespaces:
 - Registries: `ProcessStepRegistry`, `ProcessorRegistry`
 - Observability: `ProcessObservability`
 
+### Extension points
+
+Public seams consumers are expected to implement or replace:
+
+| Seam | Register via | Notes |
+|------|--------------|-------|
+| `IProcessContextStore` | `UseSqliteProcessContextStore(...)` or your own `services.AddScoped` after `AddKaleido()` | Production deployments implement against their own durable store; SQLite provider is a reference impl |
+| `IEventPublisher` | `services.AddSingleton` before `AddKaleido()` | Default is no-op `NullEventPublisher`; replace for real event delivery |
+| `IQueryContextExecutor<TView>` | `services.AddScoped<IQueryContextExecutor<TView>, ...>` | Provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`) instead of sync fallback |
+| Observability provider | `AddOpenTelemetry()` (Kaleido.Observability.OpenTelemetry) or custom `AddKaleidoInstrumentation()` calls | Core stays provider-agnostic on BCL `ActivitySource`/`Meter` |
+| Delegated query views | implement `IDelegateQueryViewSource<TDelegateContext,TView>` on a query view type | Federates view execution to a downstream delegate context |
+
 ### Key design invariants
 - The core project has no transport dependencies.
 - `KaleidoServiceOptions.Assemblies` records assemblies; recording does not scan them for capabilities. Scanning happens during the `AddQueryable()` / `AddProcessor()` calls that `AddKaleido()` invokes internally.
 - `QueryableService` dispatch order (delegated → local → direct) is a published semantic and must not change casually.
 - `ProcessorContext` is current resumable state only, not an audit log.
 - `IKaleidoBuilder` is intentionally minimal.
+- Core runtime types (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirection`, `LogicalOperator`) are transport-agnostic — they use CLR enums and `object?` values. The HTTP transport converts `QueryApiBody` (string enums, `JsonElement` values) to `QueryBody` via `QueryBodyResolver` before handing to core.
 
 ---
 
@@ -82,6 +94,11 @@ The core project is organized into two main namespaces:
 **Transport services**
 - `ProcessExecutionService` — translates HTTP execute requests into runtime `ProcessRequest` values and writes the resolved `ProcessId` into the response headers
 - `ProcessStateService` — reads durable process state and maps it to the HTTP response contract
+
+**Transport conversion**
+- `QueryBodyResolver` — converts `QueryApiBody` (HTTP transport shape, string enums + `JsonElement` values) to `QueryBody` (runtime shape, typed CLR values + enums) before handing to core. Uses `QueryableFieldDescriptor.FieldType` for value resolution.
+- `KaleidoJsonEndpointFilter` — `IEndpointFilter` applied to all Kaleido route groups; wraps `IValueHttpResult` responses in `Results.Json(..., KaleidoJsonOptions.Options)` so enums serialize as strings without touching global `JsonOptions`.
+- `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` in `Kaleido.Http.Abstractions`, used by both server filter and client.
 
 **Queryable endpoints** (`QueryableEndpointRouteBuilderExtensions`)
 - `GET /{prefix}/queryable` — catalog
@@ -111,6 +128,7 @@ The core project is organized into two main namespaces:
 - Endpoints adapt contracts and publish routes. They do not reimplement runtime planning or business execution.
 - The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from `Kaleido:ServiceName` configuration).
 - Registry endpoint always returns 200. Partial responses are signalled through `ClientErrors`, not through HTTP error status codes.
+- `ConfigureHttpJsonOptions` is never called — Kaleido JSON options are scoped to Kaleido endpoints via `KaleidoJsonEndpointFilter`. Consumer endpoints retain their own serialization behavior.
 
 ---
 
@@ -124,12 +142,17 @@ The core project is organized into two main namespaces:
 - Reference types: `ProcessStepInfo`, `ProcessStepSummary`, `ProcessorRegistryResponse`, `ProcessStepResponse`
 
 **Queryable contracts**
-- Request: `QueryApiRequest`, `QueryApiRequest<TParameters>`, `QueryBody`, `QueryPage`, `QueryFilterNode`
-- Response: `QueryableRecordResponse`, `QueryableRecordSummary`, `QueryErrorResponse`
+- Request: `QueryApiRequest`, `QueryApiRequest<TParameters>` — accepts `QueryApiBody` (transport shape)
+- Transport body: `QueryApiBody`, `QueryApiFilterNode`, `QueryApiFilterCondition`, `QueryApiFilterGroup`, `QueryApiSort`, `QueryApiPage` — string enums, raw `JsonElement` filter values
+- Response: `QueryableRecordResponse`, `QueryableRecordSummary`, `QueryableFieldMetadata`, `QueryableQueryParameter`, `QueryableQueryProperty`, `QueryErrorResponse`
+- `QueryApiBodyExtensions.ToApiBody()` — converts runtime `QueryBody` → `QueryApiBody` for core callers forwarding over HTTP (e.g. delegated view sources)
+- `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` with `JsonStringEnumConverter` for all Kaleido HTTP serialization
 
 ### Key design invariants
 - This project defines the published HTTP contract surface shared by server (`Kaleido.Http`) and client (`Kaleido.Http.Client`).
 - Treat it as a public API boundary. Prefer additive changes.
+- `QueryApiBody` and its sub-types are the wire shape — string enums, `JsonElement` values. Core `QueryBody`/`QueryFilterNode`/`FilterOperator` are never serialized to HTTP directly.
+- `KaleidoJsonOptions.Options` is the single `JsonSerializerOptions` for all Kaleido HTTP serialization — server responses and client read/write. All `ReadFromJsonAsync`/`JsonContent.Create` calls in Kaleido code must pass it explicitly.
 
 ---
 
@@ -196,6 +219,8 @@ Both Queryable and Process publish observability through activity sources and me
 
 ### Event publishing
 `IEventPublisher` is registered by `AddKaleido()` as a no-op `NullEventPublisher` by default. Replace it before calling `AddKaleido()` to install real event infrastructure.
+
+Delivery is best-effort: the runtime persists process state first, then publishes; publish failures are logged at Warning and never roll back state. A transactional outbox is deliberately out of framework scope — consumers needing exactly-once delivery implement their own outbox (e.g. Debezium/WAL tailing against their durable store) since topologies differ per deployment.
 
 ### Discoverability
 Metadata is derived from CLR types at startup:

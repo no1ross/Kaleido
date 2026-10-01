@@ -14,7 +14,7 @@ See also:
 ### `src/Kaleido`
 Owns the core runtime:
 - root bootstrap (`AddKaleido()`, `IKaleidoBuilder`, `KaleidoServiceOptions.Assemblies`)
-- shared metadata primitives (`DataTypeMapper`, `ConstraintMapper`)
+- shared metadata primitives (`TypeDescriber`, `ConstraintMapper`)
 - shared eventing abstractions and correlation context
 - shared JSON/value-conversion helpers
 - Queryable runtime: context/view registration, validation, dispatch, execution, observability
@@ -137,6 +137,15 @@ This is a shared contract boundary. Treat it like a public API:
 
 ### Kaleido.Http should stay thin
 Middleware and endpoint mapping code should adapt contracts and wire the runtime. It should not reimplement runtime planning or execution logic that belongs in `Kaleido`.
+
+### Transport contract boundary
+Core runtime types (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirection`, `LogicalOperator`) are never serialized over HTTP directly. `QueryApiBody` and its sub-types in `Kaleido.Http.Abstractions` are the wire contract — string enums, `JsonElement` values. `QueryBodyResolver` (in `Kaleido.Http`) converts between them before handing to core.
+
+`KaleidoJsonEndpointFilter` is applied to all Kaleido route groups — it wraps `IValueHttpResult` responses in `Results.Json(..., KaleidoJsonOptions.Options)` so enums serialize as strings. Do not call `ConfigureHttpJsonOptions` — it affects all endpoints in the host app, not just Kaleido's.
+
+`KaleidoJsonOptions.Options` (in `Kaleido.Http.Abstractions`) is the single shared `JsonSerializerOptions` for all Kaleido HTTP serialization. Every `ReadFromJsonAsync`/`JsonContent.Create` call in Kaleido code must pass it explicitly.
+
+When a delegated view source (`IDelegateQueryViewSource`) receives a `QueryBody` and needs to forward it over HTTP, use `query.ToApiBody()` from `Kaleido.Http.Abstractions` — samples and consumers should only reference `Kaleido.Http.Abstractions`, not `Kaleido.Http` (which carries ASP.NET Core dependencies).
 
 ---
 

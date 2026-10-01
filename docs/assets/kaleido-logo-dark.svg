@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 320" role="img" aria-labelledby="title desc">
+  <title id="title">Kaleido logo</title>
+  <desc id="desc">The Kaleido faceted K mark followed by the word Kaleido.</desc>
+  <defs>
+    <linearGradient id="vertical" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7358F3"/><stop offset="1" stop-color="#3182F6"/></linearGradient>
+    <linearGradient id="upper" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#4F6AF4"/><stop offset="0.55" stop-color="#8254ED"/><stop offset="1" stop-color="#BC4FD7"/></linearGradient>
+    <linearGradient id="lower" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3182F6"/><stop offset="0.5" stop-color="#20A9DE"/><stop offset="1" stop-color="#19C4A7"/></linearGradient>
+    <linearGradient id="center" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5360EE"/><stop offset="1" stop-color="#3182F6"/></linearGradient>
+  </defs>
+  <g transform="translate(0 0) scale(.625)">
+    <polygon points="256,27 451,140 451,372 256,485 61,372 61,140" fill="none" stroke="#6A62F5" stroke-width="14" stroke-linejoin="miter"/>
+    <polygon points="181,226 344,77 455,77 263,256" fill="url(#upper)"/>
+    <polygon points="181,286 263,256 455,436 341,436" fill="url(#lower)"/>
+    <rect x="76" y="77" width="106" height="359" fill="url(#vertical)"/>
+    <polygon points="129,174 182,226 182,286 129,339" fill="#3F56CF" opacity="0.92"/>
+    <polygon points="182,226 263,256 182,286" fill="url(#center)"/>
+  </g>
+  <text x="345" y="217" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="151" font-weight="900" letter-spacing="-8">Kaleido</text>
+</svg>

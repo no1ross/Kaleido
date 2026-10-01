@@ -6,7 +6,7 @@ using System.Reflection;
 public sealed partial record ProcessStepRegistration
 {
     internal ProcessorStepRegistryItem ToRegistryItem(
-        IDataTypeMapper dataTypeMapper,
+        ITypeDescriber TypeDescriber,
         IConstraintMapper constraintMapper)
     {
         return new ProcessorStepRegistryItem
@@ -21,7 +21,7 @@ public sealed partial record ProcessStepRegistration
                 .Select(property =>
                     ToInputDescriptor(
                         property,
-                        dataTypeMapper,
+                        TypeDescriber,
                         constraintMapper))
                 .ToArray(),
             Dependencies = Dependencies
@@ -36,7 +36,7 @@ public sealed partial record ProcessStepRegistration
                 .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(x => x.ToSummary())
                 .ToArray(),
-            Result = ToResultDescriptor(dataTypeMapper)
+            Result = ToResultDescriptor(TypeDescriber)
         };
     }
 
@@ -54,20 +54,20 @@ public sealed partial record ProcessStepRegistration
 
     private static ProcessorInputFieldDescriptor ToInputDescriptor(
         PropertyInfo property,
-        IDataTypeMapper dataTypeMapper,
+        ITypeDescriber TypeDescriber,
         IConstraintMapper constraintMapper)
     {
         return new ProcessorInputFieldDescriptor
         {
             Name = property.Name,
             Description = property.GetCustomAttribute<DescriptionAttribute>()?.Description,
-            DataType = dataTypeMapper.GetDescriptor(property),
+            DataType = TypeDescriber.GetDescriptor(property),
             Constraints = constraintMapper.Map(property)
         };
     }
 
     private ProcessorStepResultDescriptor? ToResultDescriptor(
-        IDataTypeMapper dataTypeMapper)
+        ITypeDescriber TypeDescriber)
     {
         if (StepResultType is null)
         {
@@ -80,20 +80,20 @@ public sealed partial record ProcessStepRegistration
                 .Select(property =>
                     ToOutputDescriptor(
                         property,
-                        dataTypeMapper))
+                        TypeDescriber))
                 .ToArray()
         };
     }
 
     private static ProcessorOutputFieldDescriptor ToOutputDescriptor(
         PropertyInfo property,
-        IDataTypeMapper dataTypeMapper)
+        ITypeDescriber TypeDescriber)
     {
         return new ProcessorOutputFieldDescriptor
         {
             Name = property.Name,
             Description = property.GetCustomAttribute<DescriptionAttribute>()?.Description,
-            DataType = dataTypeMapper.GetDescriptor(property)
+            DataType = TypeDescriber.GetDescriptor(property)
         };
     }
 

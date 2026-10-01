@@ -18,6 +18,18 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
     }
 
     [Fact]
+    public void MapProcessor_ReturnsRouteGroupBuilder_SoConventionsCompose()
+    {
+        var endpoints =
+            CreateEndpoints();
+
+        var group =
+            endpoints.MapProcessor();
+
+        Assert.IsType<RouteGroupBuilder>(group);
+    }
+
+    [Fact]
     public void MapProcessor_RegistersCatalogRegistryStateAndStepEndpoints()
     {
         var endpoints =

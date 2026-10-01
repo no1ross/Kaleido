@@ -1,3 +1,4 @@
+using Kaleido.Http;
 using Kaleido.Http.Client;
 using Kaleido.Http.Process;
 using Kaleido.Http.Registry;
@@ -56,7 +57,7 @@ public sealed class ProcessAspNetCoreFixture
                         app.UseRouting();
                         app.UseEndpoints(endpoints =>
                         {
-                            endpoints.MapProcessor();
+                            endpoints.MapKaleido();
                             endpoints.MapRegistry();
                         });
                     });

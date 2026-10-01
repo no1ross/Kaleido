@@ -5,7 +5,8 @@ namespace Kaleido.Http.Client.UnitTests;
 public sealed class HttpClientRegistryCacheTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static HttpClientRegistryCache<T> CreateSut<T>() =>
+    private static HttpClientRegistryCache<T> CreateSut<T>()
+        where T : class =>
         new();
 
     [Fact]

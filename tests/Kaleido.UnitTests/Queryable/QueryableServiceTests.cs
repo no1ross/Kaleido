@@ -1,5 +1,4 @@
 using Kaleido.Exceptions;
-using Kaleido.Json;
 using Kaleido.Queryable.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,13 +9,11 @@ public sealed class QueryableServiceTests
 {
     private static QueryableService CreateSut(
         IServiceScopeFactory scopeFactory,
-        IValueConverter valueConverter,
         IDelegatedQueryViewRegistry delegatedViewRegistry,
         IQueryViewRegistry viewRegistry,
         IQueryContextRegistry contextRegistry) =>
         new(
             scopeFactory,
-            valueConverter,
             delegatedViewRegistry,
             viewRegistry,
             contextRegistry);
@@ -47,7 +44,7 @@ public sealed class QueryableServiceTests
         var contextRegistry = new Mock<IQueryContextRegistry>();
         contextRegistry.Setup(x => x.GetRegistration(typeof(TestContext))).Returns(contextRegistration);
 
-        var service = CreateSut(scopeFactory.Object, Mock.Of<IValueConverter>(), Mock.Of<IDelegatedQueryViewRegistry>(), viewRegistry.Object, contextRegistry.Object);
+        var service = CreateSut(scopeFactory.Object, Mock.Of<IDelegatedQueryViewRegistry>(), viewRegistry.Object, contextRegistry.Object);
 
         var result = await service.QueryAsync<TestView, TestViewContract>(request);
 
@@ -80,7 +77,7 @@ public sealed class QueryableServiceTests
         var contextRegistry = new Mock<IQueryContextRegistry>();
         contextRegistry.Setup(x => x.GetRegistration(typeof(TestContext))).Returns(contextRegistration);
 
-        var service = CreateSut(scopeFactory.Object, Mock.Of<IValueConverter>(), Mock.Of<IDelegatedQueryViewRegistry>(), viewRegistry.Object, contextRegistry.Object);
+        var service = CreateSut(scopeFactory.Object, Mock.Of<IDelegatedQueryViewRegistry>(), viewRegistry.Object, contextRegistry.Object);
 
         var result = await service.QueryAsync<TestContext, TestContext>(request);
 
@@ -96,7 +93,6 @@ public sealed class QueryableServiceTests
 
         var service = CreateSut(
             Mock.Of<IServiceScopeFactory>(),
-            Mock.Of<IValueConverter>(),
             EmptyDelegatedViewRegistry(),
             MockViewRegistry(typeof(TestView), viewRegistration),
             Mock.Of<IQueryContextRegistry>());
@@ -115,7 +111,6 @@ public sealed class QueryableServiceTests
 
         var service = CreateSut(
             Mock.Of<IServiceScopeFactory>(),
-            Mock.Of<IValueConverter>(),
             EmptyDelegatedViewRegistry(),
             MockViewRegistry(typeof(TestContext), null),
             MockContextRegistry(registration));
@@ -151,7 +146,7 @@ public sealed class QueryableServiceTests
         var viewRegistry = new Mock<IQueryViewRegistry>();
         viewRegistry.Setup(x => x.Find(typeof(TestView))).Returns((QueryViewRegistration?)null);
 
-        var service = CreateSut(scopeFactory.Object, Mock.Of<IValueConverter>(), delegatedViewRegistry.Object, viewRegistry.Object, Mock.Of<IQueryContextRegistry>());
+        var service = CreateSut(scopeFactory.Object, delegatedViewRegistry.Object, viewRegistry.Object, Mock.Of<IQueryContextRegistry>());
 
         var result = await service.QueryAsync<TestView, TestViewContract>(request);
 
@@ -188,7 +183,7 @@ public sealed class QueryableServiceTests
         var viewRegistry = new Mock<IQueryViewRegistry>();
         viewRegistry.Setup(x => x.Find(typeof(TestView))).Returns(viewRegistration);
 
-        var service = CreateSut(scopeFactory.Object, Mock.Of<IValueConverter>(), delegatedViewRegistry.Object, viewRegistry.Object, Mock.Of<IQueryContextRegistry>());
+        var service = CreateSut(scopeFactory.Object, delegatedViewRegistry.Object, viewRegistry.Object, Mock.Of<IQueryContextRegistry>());
 
         var result = await service.QueryAsync<TestView, TestViewContract>(request);
 
@@ -226,7 +221,7 @@ public sealed class QueryableServiceTests
         var contextRegistry = new Mock<IQueryContextRegistry>();
         contextRegistry.Setup(x => x.GetRegistration(typeof(TestContext))).Returns(contextRegistration);
 
-        var service = CreateSut(scopeFactory.Object, Mock.Of<IValueConverter>(), EmptyDelegatedViewRegistry(), viewRegistry.Object, contextRegistry.Object);
+        var service = CreateSut(scopeFactory.Object, EmptyDelegatedViewRegistry(), viewRegistry.Object, contextRegistry.Object);
 
         var result = await service.QueryAsync<TestView, TestViewContract>(request);
 

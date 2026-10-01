@@ -1,4 +1,4 @@
-namespace Kaleido;
+namespace Kaleido.Http.Client;
 
 /// <summary>
 /// Configuration options for registering downstream Kaleido clients.

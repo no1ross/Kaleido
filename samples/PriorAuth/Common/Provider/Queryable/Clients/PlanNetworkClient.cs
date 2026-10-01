@@ -1,5 +1,4 @@
 using Kaleido.Http.Queryable;
-using Kaleido.Queryable;
 using Kaleido.Samples.PriorAuth.ReferenceData.Queryable.Contexts;
 
 namespace Kaleido.Samples.PriorAuth.Provider.Queryable.Clients;
@@ -17,11 +16,11 @@ public sealed class PlanNetworkClient(
                 "plans",
                 new QueryApiRequest
                 {
-                    Query = new QueryBody(
-                        SearchText: planId,
-                        Page: new QueryPage(
-                            Size: 1,
-                            Offset: 0))
+                    Query = new QueryApiBody
+                    {
+                        SearchText = planId,
+                        Page = new QueryApiPage { Size = 1, Offset = 0 }
+                    }
                 },
                 cancellationToken);
 

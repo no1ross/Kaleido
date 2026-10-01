@@ -3,7 +3,7 @@ using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Registry;
 
-public interface IDelegatedQueryViewRegistry
+internal interface IDelegatedQueryViewRegistry
 {
     IReadOnlyCollection<DelegatedQueryViewRegistration> Registrations { get; }
 
@@ -22,19 +22,19 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
     private readonly IReadOnlyDictionary<string, DelegatedQueryViewRegistration> _byName;
     private readonly IReadOnlyDictionary<Type, DelegatedQueryViewRegistration> _byType;
 
-    private readonly IDataTypeMapper _dataTypeMapper;
+    private readonly ITypeDescriber _dataTypeMapper;
     private readonly IConstraintMapper _constraintMapper;
 
     public DelegatedQueryViewRegistry(
-        IDataTypeMapper dataTypeMapper,
+        ITypeDescriber TypeDescriber,
         IConstraintMapper constraintMapper,
         IEnumerable<Type> queryViewTypes)
     {
-        ArgumentNullException.ThrowIfNull(dataTypeMapper);
+        ArgumentNullException.ThrowIfNull(TypeDescriber);
         ArgumentNullException.ThrowIfNull(constraintMapper);
         ArgumentNullException.ThrowIfNull(queryViewTypes);
 
-        _dataTypeMapper = dataTypeMapper;
+        _dataTypeMapper = TypeDescriber;
         _constraintMapper = constraintMapper;
 
         _registrations =
