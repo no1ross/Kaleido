@@ -31,6 +31,9 @@ See also:
 - `QueryErrorResponse` — structured query validation error response
 - `QueryApiBodyExtensions.ToApiBody()` — converts a runtime `QueryBody` to `QueryApiBody` for callers that receive a `QueryBody` and need to forward it over HTTP (e.g. delegated view sources calling a remote query context)
 
+### `totalCount` semantics
+`QueryResult<T>.totalCount` means "total matching rows" when `page` is provided in the request. When `page` is absent, `totalCount` equals `results.Count` — the caller received all results (capped by `[Pageable].MaxSize` if present). When `page` is provided and the returned page is partial (`results.Count < page.size`), `totalCount` also equals `results.Count` — no additional rows exist.
+
 ---
 
 ## Who uses this project
