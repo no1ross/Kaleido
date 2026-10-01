@@ -15,6 +15,12 @@ public static class KaleidoErrorCodes
 {
     public const string ArgumentError = "argument_error";
     public const string FrameworkError = "framework_error";
+
+    /// <summary>Caller is not authenticated (401).</summary>
+    public const string Unauthorized = "unauthorized";
+
+    /// <summary>Caller is authenticated but lacks the required policy or role (403).</summary>
+    public const string Forbidden = "forbidden";
 }
 
 /// <summary>

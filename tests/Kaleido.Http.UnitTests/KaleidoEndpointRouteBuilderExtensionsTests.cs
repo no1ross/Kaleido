@@ -89,6 +89,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
         return builder.Build();
     }
@@ -97,6 +98,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
@@ -109,6 +111,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
         builder.Services.AddSingleton(Mock.Of<IQueryableService>());
         builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry());
@@ -119,6 +122,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());

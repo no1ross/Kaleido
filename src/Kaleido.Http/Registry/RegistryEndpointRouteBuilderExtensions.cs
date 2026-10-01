@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Kaleido.Http.Authorization;
 using Kaleido.Http.Registry.Contracts;
 using Kaleido.Process.Registry;
 using Kaleido.Queryable.Registry;
@@ -115,6 +116,10 @@ public static class RegistryEndpointRouteBuilderExtensions
                         logger.LogDebug("Registry cache miss — building fresh response.");
                     }
 
+                    var authorizer =
+                        httpContext.RequestServices
+                            .GetService<IKaleidoAuthorizer>();
+
                     var response = await cache.GetOrBuildAsync(forceRefresh, async ct =>
                     {
                         var localProcesses =
@@ -174,6 +179,20 @@ public static class RegistryEndpointRouteBuilderExtensions
                         return result;
                     }, cancellationToken);
 
+                    // Scope the aggregate to the inbound caller's persona —
+                    // capabilities the caller may not invoke are omitted.
+                    // The cache holds the unfiltered union; filtering is
+                    // per-request.
+                    if (authorizer is not null)
+                    {
+                        response =
+                            await FilterForCaller(
+                                response,
+                                httpContext,
+                                authorizer,
+                                cancellationToken);
+                    }
+
                     return Results.Ok(response);
                 })
             .WithName(RegistryEndpointNames.RegistryEndpointName)
@@ -188,6 +207,72 @@ public static class RegistryEndpointRouteBuilderExtensions
                 "Adding a downstream client via AddProcessClient() or AddQueryableClient() makes it appear here automatically.");
 
         return group;
+    }
+
+    private static async Task<AggregatedRegistryResponse> FilterForCaller(
+        AggregatedRegistryResponse response,
+        HttpContext httpContext,
+        IKaleidoAuthorizer authorizer,
+        CancellationToken cancellationToken)
+    {
+        var processes = new List<ProcessorRegistryResponse>();
+
+        foreach (var processor in response.Processes)
+        {
+            var initialSteps =
+                await authorizer.FilterAsync(
+                    httpContext,
+                    processor.InitialSteps,
+                    x => x.Authorization,
+                    cancellationToken);
+
+            var steps =
+                processor.Steps is null
+                    ? null
+                    : await authorizer.FilterAsync(
+                        httpContext,
+                        processor.Steps,
+                        x => x.Authorization,
+                        cancellationToken);
+
+            processes.Add(
+                processor with
+                {
+                    InitialSteps = initialSteps,
+                    Steps = steps
+                });
+        }
+
+        var allowedQueryables =
+            await authorizer.FilterAsync(
+                httpContext,
+                response.Queryables,
+                x => x.Authorization,
+                cancellationToken);
+
+        var queryables = new List<QueryableRecordResponse>();
+
+        foreach (var queryable in allowedQueryables)
+        {
+            var views =
+                await authorizer.FilterAsync(
+                    httpContext,
+                    queryable.Views,
+                    x => x.Authorization,
+                    cancellationToken);
+
+            queryables.Add(
+                queryable with
+                {
+                    Views = views
+                });
+        }
+
+        return response with
+        {
+            Processes = processes,
+            Queryables = queryables
+        };
     }
 
     private static IEnumerable<ProcessorRegistryResponse> GetLocalProcesses(

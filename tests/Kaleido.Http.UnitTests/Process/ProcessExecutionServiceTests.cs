@@ -1,4 +1,7 @@
 using System.Text.Json;
+using Kaleido.Exceptions;
+using Kaleido.Http.Authorization;
+using Kaleido.Registry;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -18,7 +21,8 @@ public sealed class ProcessExecutionServiceTests
         IProcessStepRegistry registry,
         IProcessRuntime runtime,
         IProcessExecutionResponseFactory responseFactory,
-        Guid? contextProcessId = null)
+        Guid? contextProcessId = null,
+        IKaleidoAuthorizer? authorizer = null)
     {
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
         correlation
@@ -29,6 +33,15 @@ public sealed class ProcessExecutionServiceTests
                 ProcessId = contextProcessId
             });
 
+        var stepAuthorizer = new Mock<IKaleidoAuthorizer>();
+        stepAuthorizer
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<HttpContext>(),
+                It.IsAny<AuthorizationMetadata?>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         return new ProcessExecutionService(
             new HttpContextAccessor { HttpContext = new DefaultHttpContext() },
             registry,
@@ -36,6 +49,7 @@ public sealed class ProcessExecutionServiceTests
             new KaleidoServiceOptions { ServiceName = "test-processor" },
             correlation.Object,
             responseFactory,
+            authorizer ?? stepAuthorizer.Object,
             NullLogger<ProcessExecutionService>.Instance);
     }
 
@@ -180,6 +194,51 @@ public sealed class ProcessExecutionServiceTests
         var response = await service.ExecuteAsync(request, CancellationToken.None);
 
         Assert.Same(expectedResponse, response);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenStepNotAuthorized_Throws()
+    {
+        var registration = CreateRegistration();
+        var registry = CreateRegistry(registration);
+        var runtime = new Mock<IProcessRuntime>();
+
+        var authorizer = new Mock<IKaleidoAuthorizer>();
+        authorizer
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<HttpContext>(),
+                It.IsAny<AuthorizationMetadata?>(),
+                registration.Metadata.Name,
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(
+                new KaleidoAuthorizationException(
+                    registration.Metadata.Name,
+                    callerIsAuthenticated: true));
+
+        var service = CreateSut(
+            registry,
+            runtime.Object,
+            Mock.Of<IProcessExecutionResponseFactory>(),
+            authorizer: authorizer.Object);
+
+        var request = new ExecuteProcessRequest
+        {
+            Steps =
+            [
+                new ProcessStepRequest
+                {
+                    StepName = registration.Metadata.Name,
+                    Request = JsonSerializer.SerializeToElement(new { value = "abc" })
+                }
+            ]
+        };
+
+        await Assert.ThrowsAsync<KaleidoAuthorizationException>(
+            () => service.ExecuteAsync(request, CancellationToken.None));
+
+        runtime.Verify(
+            x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     private static ProcessResult CreateProcessResult(string stepName, object response) =>

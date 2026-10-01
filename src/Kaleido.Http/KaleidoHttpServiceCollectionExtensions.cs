@@ -1,5 +1,7 @@
+using Kaleido.Http.Authorization;
 using Kaleido.Http.Startup;
 using Kaleido.Process.Registry;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,13 +15,29 @@ public static class KaleidoHttpServiceCollectionExtensions
     /// <see cref="Microsoft.AspNetCore.Http.IHttpContextAccessor"/>, correlation and exception
     /// middleware, and HTTP-specific execution services.
     /// </summary>
-    public static IKaleidoBuilder AddHttp(this IKaleidoBuilder builder)
+    public static IKaleidoBuilder AddHttp(
+        this IKaleidoBuilder builder,
+        Action<KaleidoHttpOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
         // Generic ASP.NET Core infrastructure needed by HTTP transport
         builder.Services.AddRouting();
         builder.Services.AddHttpContextAccessor();
+
+        // Transport options — always registered so map-time conventions and
+        // runtime services can resolve it unconditionally.
+        var httpOptions = new KaleidoHttpOptions();
+        configure?.Invoke(httpOptions);
+        builder.Services.AddSingleton(httpOptions);
+
+        // Capability authorization: runtime evaluator + KaleidoErrorResponse
+        // bodies for 401/403 authorization results.
+        builder.Services.TryAddScoped<IKaleidoAuthorizer, KaleidoAuthorizer>();
+        builder.Services.Replace(
+            ServiceDescriptor.Singleton<
+                IAuthorizationMiddlewareResultHandler,
+                KaleidoAuthorizationResultHandler>());
 
         // Register Kaleido middleware pipeline via startup filter
         builder.Services.AddSingleton<IStartupFilter, KaleidoStartupFilter>();

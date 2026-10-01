@@ -95,6 +95,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        builder.Services.AddSingleton(new KaleidoHttpOptions());
 
         builder.Services.AddSingleton(Mock.Of<IQueryableService>());
         builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry());

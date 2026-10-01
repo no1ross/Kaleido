@@ -130,6 +130,7 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
             WebApplication.CreateBuilder();
 
         builder.Services.AddRouting();
+        builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
         builder.Services.AddSingleton<IProcessStepRegistry>(CreateRegistry());
