@@ -738,7 +738,13 @@ external_findings:
     severity: HIGH
     effort: medium
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    resolution_note: >
+      CountAsync now skipped when Page is absent (caller gets all results up to
+      [Pageable].MaxSize) or when the returned page is partial (items.Count <
+      page.Size — no more results possible). CountAsync runs only when Page is
+      explicit AND the page is full. TotalCount = items.Count when count skipped.
+      CompiledPage gains IsExplicit flag set by QueryRequestCompiler.
   EXT-12:
     title: Inbound correlation headers trusted as audit identity (spoofable)
     source: KAL-M01

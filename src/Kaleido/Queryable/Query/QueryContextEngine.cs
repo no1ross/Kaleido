@@ -205,7 +205,9 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         using var scope =
             observation.BeginMaterialization();
 
-        var totalCount = await executor.CountAsync(query, cancellationToken);
+        // Capture the unpaged query before ApplyPage so CountAsync counts the
+        // full result set, not just the requested page.
+        var unpagedQuery = query;
 
         if (pageable)
         {
@@ -213,6 +215,13 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         }
 
         var items = await executor.ToListAsync(query, cancellationToken);
+
+        // CountAsync only when page was explicitly requested AND the page is full —
+        // a partial page means all results were returned; an unpaged query
+        // means the caller asked for everything.
+        var totalCount = page.IsExplicit && items.Count == page.Size
+            ? await executor.CountAsync(unpagedQuery, cancellationToken)
+            : items.Count;
 
         observation.Materialized(
             totalCount,
