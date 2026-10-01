@@ -1,4 +1,4 @@
-ï»¿using System.Reflection;
+using System.Reflection;
 using Kaleido.Http.Authorization;
 using Kaleido.Process.Registry;
 using Microsoft.AspNetCore.Builder;
@@ -108,9 +108,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                     foreach (var registration in registry.Registrations)
                     {
                         var initialSteps =
-                            await authorizer.FilterAsync(
-                                httpContext,
-                                registration.InitialSteps,
+                            await authorizer.FilterAsync(registration.InitialSteps,
                                 x => x.Authorization,
                                 cancellationToken);
 
@@ -157,7 +155,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                     return Results.Ok(result);
                 })
             // Multi-step requests authorize each submitted step inside
-            // ProcessExecutionService â€” endpoint-level auth can't express
+            // ProcessExecutionService — endpoint-level auth can't express
             // per-item requirements.
             .WithKaleidoAuthorization(null, options)
             .WithName(ProcessEndpointNames.ExecuteEndpointName)
@@ -226,7 +224,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                                         "Transferred process context has no owner.")
                             });
                 })
-            // Ownership transfer always requires an authenticated caller â€”
+            // Ownership transfer always requires an authenticated caller —
             // the handler additionally enforces owner/role-mate rules.
             .RequireAuthorization()
             .WithName(ProcessEndpointNames.ProcessTransferEndpointName)
@@ -264,16 +262,12 @@ public static class ProcessEndpointRouteBuilderExtensions
                     foreach (var registration in registry.Registrations)
                     {
                         var steps =
-                            await authorizer.FilterAsync(
-                                httpContext,
-                                registration.Steps,
+                            await authorizer.FilterAsync(registration.Steps,
                                 x => x.Authorization,
                                 cancellationToken);
 
                         var initialSteps =
-                            await authorizer.FilterAsync(
-                                httpContext,
-                                registration.InitialSteps,
+                            await authorizer.FilterAsync(registration.InitialSteps,
                                 x => x.Authorization,
                                 cancellationToken);
 
@@ -316,9 +310,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                     [FromServices] IKaleidoAuthorizer authorizer,
                     CancellationToken cancellationToken) =>
                     Results.Ok(
-                        (await authorizer.FilterAsync(
-                                httpContext,
-                                registry.Registrations.SelectMany(x => x.Steps),
+                        (await authorizer.FilterAsync(registry.Registrations.SelectMany(x => x.Steps),
                                 x => x.Authorization,
                                 cancellationToken))
                             .Select(x =>

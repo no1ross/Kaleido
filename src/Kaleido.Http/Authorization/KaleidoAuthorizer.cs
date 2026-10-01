@@ -1,18 +1,19 @@
+using Kaleido.Authorization;
 using Kaleido.Process.Context;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Authorization;
 
 /// <summary>
-/// Evaluates <see cref="AuthorizationMetadata"/> requirements against the
-/// current request's claims principal — <c>Roles</c> via
-/// <c>User.IsInRole</c>, <c>Policy</c> via <c>IAuthorizationService</c>.
+/// HTTP adapter over <see cref="IKaleidoAuthorizationEvaluator"/> — supplies
+/// the ambient caller from <see cref="IKaleidoCorrelationContextAccessor"/>
+/// and bridges declared policies to ASP.NET's <c>IAuthorizationService</c>.
 /// Used on dynamic code paths where endpoint-level
 /// <c>RequireAuthorization</c> cannot express the requirement
-/// (multi-step execute) and to filter discovery payloads per caller.
+/// (multi-step execute, process ownership) and to filter discovery payloads
+/// per caller.
 /// </summary>
 internal interface IKaleidoAuthorizer
 {
@@ -23,7 +24,6 @@ internal interface IKaleidoAuthorizer
     /// which case the caller must be authenticated.
     /// </summary>
     Task<bool> CanAccessAsync(
-        HttpContext context,
         AuthorizationMetadata? authorization,
         CancellationToken cancellationToken = default);
 
@@ -32,7 +32,6 @@ internal interface IKaleidoAuthorizer
     /// <see cref="KaleidoAuthorizationException"/> (401/403) when denied.
     /// </summary>
     Task AuthorizeAsync(
-        HttpContext context,
         AuthorizationMetadata? authorization,
         string capabilityName,
         CancellationToken cancellationToken = default);
@@ -43,115 +42,68 @@ internal interface IKaleidoAuthorizer
     /// catalog/registry endpoints to scope discovery to the caller's persona.
     /// </summary>
     Task<IReadOnlyList<T>> FilterAsync<T>(
-        HttpContext context,
         IEnumerable<T> items,
         Func<T, AuthorizationMetadata?> authorization,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Enforces process ownership on a loaded <see cref="ProcessorContext"/>.
-    /// Unowned processes pass; owned processes require the owner or a caller
-    /// sharing an <c>OwnerRoles</c> entry. Throws
-    /// <see cref="KaleidoAuthorizationException"/> when denied.
+    /// Enforces process ownership on a loaded <see cref="ProcessorContext"/> —
+    /// unowned processes pass; owned processes require the owner or a caller
+    /// sharing an <c>OwnerRoles</c> entry.
     /// </summary>
     void AuthorizeProcess(
-        HttpContext context,
         ProcessorContext processContext);
 }
 
 internal sealed class KaleidoAuthorizer(
     KaleidoHttpOptions options,
-    ILogger<KaleidoAuthorizer> logger)
+    IKaleidoAuthorizationEvaluator evaluator,
+    IKaleidoCorrelationContextAccessor correlationAccessor,
+    IHttpContextAccessor httpContextAccessor)
     : IKaleidoAuthorizer
 {
-    public async Task<bool> CanAccessAsync(
-        HttpContext context,
+    public Task<bool> CanAccessAsync(
         AuthorizationMetadata? authorization,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(context);
+        CancellationToken cancellationToken = default) =>
+        evaluator.CanAccessAsync(
+            authorization,
+            correlationAccessor.Current,
+            options.RequireAuthorization,
+            PolicyEvaluator(),
+            cancellationToken);
 
-        var user = context.User;
-
-        if (authorization is null)
-        {
-            return !options.RequireAuthorization
-                || user.Identity?.IsAuthenticated == true;
-        }
-
-        if (authorization.Roles.Count > 0
-            && !authorization.Roles.Any(user.IsInRole))
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(authorization.Policy))
-        {
-            var authorizationService =
-                context.RequestServices.GetService<IAuthorizationService>();
-
-            if (authorizationService is null)
-            {
-                // No authorization pipeline — the policy can never be
-                // satisfied. Fail closed (deny) rather than poison discovery
-                // endpoints; endpoint-level RequireAuthorization still
-                // surfaces the misconfiguration on direct invocation.
-                logger.LogWarning(
-                    "Capability authorization requires policy '{Policy}' but no IAuthorizationService is registered — denying access. Call AddAuthorization() on the host's service collection.",
-                    authorization.Policy);
-
-                return false;
-            }
-
-            var result =
-                await authorizationService.AuthorizeAsync(
-                    user,
-                    null,
-                    authorization.Policy);
-
-            if (!result.Succeeded)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    public async Task AuthorizeAsync(
-        HttpContext context,
+    public Task AuthorizeAsync(
         AuthorizationMetadata? authorization,
         string capabilityName,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentException.ThrowIfNullOrWhiteSpace(capabilityName);
-
-        if (!await CanAccessAsync(context, authorization, cancellationToken))
-        {
-            throw new KaleidoAuthorizationException(
-                capabilityName,
-                context.User.Identity?.IsAuthenticated == true);
-        }
-    }
+        CancellationToken cancellationToken = default) =>
+        evaluator.AuthorizeAsync(
+            authorization,
+            capabilityName,
+            correlationAccessor.Current,
+            options.RequireAuthorization,
+            PolicyEvaluator(),
+            cancellationToken);
 
     public async Task<IReadOnlyList<T>> FilterAsync<T>(
-        HttpContext context,
         IEnumerable<T> items,
         Func<T, AuthorizationMetadata?> authorization,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(authorization);
+
+        var caller = correlationAccessor.Current;
+        var policyEvaluator = PolicyEvaluator();
 
         var allowed = new List<T>();
 
         foreach (var item in items)
         {
-            if (await CanAccessAsync(
-                    context,
+            if (await evaluator.CanAccessAsync(
                     authorization(item),
+                    caller,
+                    options.RequireAuthorization,
+                    policyEvaluator,
                     cancellationToken))
             {
                 allowed.Add(item);
@@ -162,42 +114,31 @@ internal sealed class KaleidoAuthorizer(
     }
 
     public void AuthorizeProcess(
-        HttpContext context,
-        ProcessorContext processContext)
+        ProcessorContext processContext) =>
+        evaluator.AuthorizeProcess(
+            processContext,
+            correlationAccessor.Current);
+
+    // The policy bridge stays in the transport — ASP.NET policies evaluate
+    // against the live ClaimsPrincipal, which core cannot reconstruct.
+    private Func<string, CancellationToken, Task<bool>>? PolicyEvaluator()
     {
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(processContext);
+        var httpContext = httpContextAccessor.HttpContext;
 
-        if (processContext.Owner is null)
+        if (httpContext is null)
         {
-            return;
+            return null;
         }
 
-        var user = context.User;
-        var callerName =
-            user.Identity?.IsAuthenticated == true
-                ? user.Identity.Name
-                : null;
-        var authenticated = callerName is not null;
+        var authorizationService =
+            httpContext.RequestServices.GetService<IAuthorizationService>();
 
-        if (callerName is not null
-            && string.Equals(
-                callerName,
-                processContext.Owner,
-                StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        if (authenticated
-            && processContext.OwnerRoles.Count > 0
-            && processContext.OwnerRoles.Any(user.IsInRole))
-        {
-            return;
-        }
-
-        throw new KaleidoAuthorizationException(
-            $"process '{processContext.ProcessId}'",
-            authenticated);
+        return authorizationService is null
+            ? null
+            : async (policy, _) =>
+                (await authorizationService.AuthorizeAsync(
+                    httpContext.User,
+                    null,
+                    policy)).Succeeded;
     }
 }

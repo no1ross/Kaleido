@@ -20,10 +20,6 @@ public sealed class ProcessStateServiceTests
             registry,
             new KaleidoServiceOptions { ServiceName = "test-processor" },
             responseFactory,
-            new HttpContextAccessor
-            {
-                HttpContext = new DefaultHttpContext()
-            },
             authorizer ?? Mock.Of<IKaleidoAuthorizer>(),
             Mock.Of<IKaleidoCorrelationContextAccessor>(),
             NullLogger<ProcessStateService>.Instance);
