@@ -21,31 +21,31 @@ public class KaleidoServiceOptions
     /// produces <c>/intake/processes/...</c> and <c>/intake/queryable/...</c>).
     /// Must be non-empty, lowercase, and contain no whitespace or path separators.
     /// </summary>
-    public string ServiceName { get; set; } = string.Empty;
+    public string ServiceName { get; init; } = string.Empty;
 
     /// <summary>
     /// A human-readable display name for this service (e.g. <c>"Prior Auth Intake"</c>).
     /// Optional. Surfaced in registry responses.
     /// </summary>
-    public string? DisplayName { get; set; }
+    public string? DisplayName { get; init; }
 
     /// <summary>
     /// A description of this service's purpose. Optional. Surfaced in registry responses.
     /// </summary>
-    public string? Description { get; set; }
+    public string? Description { get; init; }
 
     /// <summary>
     /// A stable unique identifier for this running instance of the service.
     /// Generated fresh at startup by default. Propagated via the
     /// <c>X-Kaleido-Processor-Instance-Id</c> correlation header for auditing and tracing.
     /// </summary>
-    public Guid InstanceId { get; set; } = Guid.NewGuid();
+    public Guid InstanceId { get; init; } = Guid.NewGuid();
 
     /// <summary>
     /// The assemblies to scan for Process and Queryable registrations.
     /// If null or empty, defaults to Assembly.GetCallingAssembly() and Assembly.GetEntryAssembly().
     /// </summary>
-    public Assembly[]? Assemblies { get; set; }
+    public Assembly[]? Assemblies { get; init; }
 
     /// <summary>
     /// Marks this processor as the entry point for the application workflow.
@@ -53,13 +53,13 @@ public class KaleidoServiceOptions
     /// should start with. Only one processor in a distributed system should have
     /// this set to true.
     /// </summary>
-    public bool IsEntryProcessor { get; set; }
+    public bool IsEntryProcessor { get; init; }
 
     /// <summary>
     /// Optional filter to control which process steps are registered.
     /// Useful when sharing assemblies across multiple services.
     /// </summary>
-    public Func<Type, bool>? TypeFilter { get; set; }
+    public Func<Type, bool>? TypeFilter { get; init; }
 
     /// <summary>
     /// Validates a <see cref="KaleidoServiceOptions"/> instance.
@@ -105,4 +105,47 @@ public class KaleidoServiceOptions
                 $"Use '{options.ServiceName.ToLowerInvariant()}' instead.");
         }
     }
+}
+
+/// <summary>
+/// Mutable bind/configure target for <see cref="KaleidoServiceOptions"/>.
+/// Configuration binding requires settable properties; <c>AddKaleido</c> binds
+/// this builder, applies the configure delegate, then snapshots an immutable
+/// <see cref="KaleidoServiceOptions"/> into DI. Post-registration mutation is
+/// impossible — resolve the options singleton to read, never to write.
+/// </summary>
+public sealed class KaleidoServiceOptionsBuilder
+{
+    /// <inheritdoc cref="KaleidoServiceOptions.ServiceName"/>
+    public string ServiceName { get; set; } = string.Empty;
+
+    /// <inheritdoc cref="KaleidoServiceOptions.DisplayName"/>
+    public string? DisplayName { get; set; }
+
+    /// <inheritdoc cref="KaleidoServiceOptions.Description"/>
+    public string? Description { get; set; }
+
+    /// <inheritdoc cref="KaleidoServiceOptions.InstanceId"/>
+    public Guid InstanceId { get; set; } = Guid.NewGuid();
+
+    /// <inheritdoc cref="KaleidoServiceOptions.Assemblies"/>
+    public Assembly[]? Assemblies { get; set; }
+
+    /// <inheritdoc cref="KaleidoServiceOptions.IsEntryProcessor"/>
+    public bool IsEntryProcessor { get; set; }
+
+    /// <inheritdoc cref="KaleidoServiceOptions.TypeFilter"/>
+    public Func<Type, bool>? TypeFilter { get; set; }
+
+    internal KaleidoServiceOptions Build() =>
+        new()
+        {
+            ServiceName = ServiceName,
+            DisplayName = DisplayName,
+            Description = Description,
+            InstanceId = InstanceId,
+            Assemblies = Assemblies,
+            IsEntryProcessor = IsEntryProcessor,
+            TypeFilter = TypeFilter
+        };
 }

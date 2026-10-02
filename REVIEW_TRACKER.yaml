@@ -345,7 +345,7 @@ medium_priority_items:
     effort_days: 1
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
 
   MP-007:
     title: Delete GuardQueryAsync (duplicates ExceptionMiddleware, skips telemetry)
@@ -441,14 +441,14 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
 
   MP-018:
-    title: Collapse ProcessStepRegistry 4-pass materialization (~250 lines)
+    title: Collapse ProcessorStepRegistry multi-pass materialization (~250 lines)
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
 
   MP-019:
     title: Test gaps on published invariants + dead/stub test files + empty sanitizer test
@@ -543,7 +543,7 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
 
   MP-026:
     title: Registry always-200 contract undocumented; client step-name rule diverges from server attribute
@@ -689,8 +689,9 @@ external_findings:
     effort: medium
     breaking_change: package
     release_blocker: true
-    status: PENDING_DECISION
+    status: COMPLETED
     notes: "VERIFIED: only DiagnosticIds.cs + empty Unshipped notes; IsPackable=true"
+    progress_note: "All three analyzer projects (Kaleido.Analyzers, .Source, .Testing) are now IsPackable=false — no empty package ships."
   EXT-06:
     title: AddKaleido implicitly enables both Process and Queryable
     source: KAL-H01 (merges MP-005)
@@ -805,13 +806,15 @@ external_findings:
     breaking_change: possibly
     status: MERGED
     merged_into: EXT-12
+    progress_note: "PR-13 added RegistryRefreshCooldown + caller-context auth filtering; follow-up: KaleidoHttpMapOptions.RegistryDownstreamMaxParallelism bounds concurrent downstream fetches (null = unbounded)."
   EXT-14:
     title: Case-insensitive filters use culture-sensitive ToLower()
     source: KAL-M03
     severity: MEDIUM
     effort: medium
     breaking_change: if_semantics_change
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "Verified post-EXT-18 sweep: no bare ToLower() remains in src; all case-insensitive comparisons use ToLowerInvariant/OrdinalIgnoreCase."
   EXT-15:
     title: SQLite store rewrites all child rows per save (write amplification)
     source: KAL-M04
@@ -825,7 +828,7 @@ external_findings:
     severity: MEDIUM
     effort: medium
     breaking_change: possibly
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
   EXT-17:
     title: Offset-only paging; optional keyset/continuation
     source: KAL-M08
@@ -867,7 +870,7 @@ external_findings:
     severity: LOW
     effort: small
     breaking_change: false
-    status: PENDING
+    status: COMPLETED
     description: >
       Two visible regressions on generated OpenAPI docs since the EXT-12/EXT-08/MP-005
       changes:
@@ -1141,7 +1144,7 @@ ai_compatibility:
         Add "For AI-Assisted Development" callout to src/Kaleido README.
       effort: small
       breaking_change: false
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
 
     AI-009:
       title: .editorconfig missing C# 12+ rules
@@ -1156,7 +1159,7 @@ ai_compatibility:
         and record preferences. Ship an .editorconfig.template for consumers.
       effort: small
       breaking_change: false
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
 
     AI-010:
       title: XML documentation coverage gaps (60–70%)
@@ -1188,7 +1191,7 @@ ai_compatibility:
         docs/ANALYZERS.md before assigning).
       effort: small
       breaking_change: possibly
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
 
     AI-012:
       title: Correlation context invariants undocumented
@@ -1203,7 +1206,7 @@ ai_compatibility:
         Propose analyzer for overwrite/propagation violations.
       effort: small
       breaking_change: false
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
 
     AI-013:
       title: Missing canonical patterns document
@@ -1217,7 +1220,7 @@ ai_compatibility:
         points table. Add "For Code Generators" section to AGENTS.md.
       effort: medium
       breaking_change: false
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
 
     AI-014:
       title: Security/constraint analyzer rules undocumented
@@ -1231,7 +1234,7 @@ ai_compatibility:
         Add quick-fix providers where feasible.
       effort: small
       breaking_change: false
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
 
 analyzer_proposals:
   KAL0020:

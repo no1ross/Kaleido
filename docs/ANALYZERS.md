@@ -61,6 +61,32 @@ Endpoint names must be declared as `const string` fields in a `*EndpointNames` c
 
 KAL0018 applies to all `src/` projects (suppressed for `Kaleido.Provider.SQLite` where EF Core entity navigation properties conventionally use `ICollection<T>`). Overrides and explicit interface implementations are exempt — the collection type is fixed at the interface/base. KAL0019 applies to all `src/` projects. Overrides, explicit interface implementations, and the ASP.NET Core middleware `InvokeAsync(HttpContext)` convention are exempt from KAL0019.
 
+## Security-relevant analyzers
+
+For code generators: these rules exist because the bypass they prevent is a
+security or correctness hazard, not a style preference. Generate compliant
+code on the first pass — do not suppress.
+
+| Rule | What it prevents |
+|---|---|
+| KAL0006 | `new`-ing a DI-registered service — loses container lifetime/scoping guarantees |
+| KAL0007 | Service-locator calls outside composition roots — hides dependencies from validation |
+| KAL0008 | Injecting concrete types — breaks substitutability, lets callers reach internals |
+| KAL0009 | Property/`Set*` injection on services — services become incompletely initialized |
+| KAL0010 | Non-readonly injected fields / ignored ctor params — mutable deps or silent misconfiguration |
+| KAL0011 | Constructor work on injected deps — side effects at resolution time, ordering hazards |
+| KAL0012 | Manual `new HttpClient`/`ServiceProvider`/`DbContext` — socket exhaustion, leaked scopes |
+| KAL0013 | Disposing container-owned dependencies — disposed-injected-dependency crashes mid-request |
+| KAL0014 | Singleton capturing a scoped service — captive dependency, stale per-request state |
+| KAL0018 | Mutable collection types on the API surface — callers can corrupt shared state |
+| KAL0019 | Async methods without `CancellationToken` — cancellations stop propagating |
+| KAL2001–2003 | Step/context/view attributes missing `Name`/`Version` — startup failures ship as runtime 500s |
+| KAL2004 | Swallowed `OperationCanceledException` in step handlers — canceled steps recorded as failures, false alerts |
+| KAL2005 | Invalid `ServiceName` literals — route-prefix corruption (path separators, casing) |
+| KAL2007 | `[ProcessStep]` classes not ending in `Step` — derived step names drift from intent |
+| KAL2008 | `[ProcessStep]` with no handler — step is registered but can never execute |
+| KAL2009 | `AddKaleido` without `o.Assemblies` — JIT-nondeterministic calling-assembly fallback |
+
 ## Test rules — `KAL1xxx`
 
 Scoped to unit-test projects via `.editorconfig`.
@@ -77,7 +103,10 @@ Scoped to unit-test projects via `.editorconfig`.
 | KAL1008 | The SUT may only be constructed inside `CreateSut()` | `'{0}' may only be constructed inside CreateSut() — use CreateSut() or the Sut property` |
 | KAL1009 | Every testable type in the matching `Kaleido.*` source assembly must have a `{Name}Tests` fixture | `Type '{0}' in '{1}' has no '{2}' fixture — every testable type must have a unit-test fixture` |
 | KAL1010 | A `{Type}Tests` fixture must contain at least one `[Fact]`/`[Theory]` — an empty stub does not satisfy coverage | `Fixture '{0}' has no [Fact] or [Theory] test methods — add at least one test or remove the empty stub` |
+| KAL1011 | Exception types declared in test projects must not be records — exceptions stay classes so `Code`-bearing Kaleido exception semantics are preserved | `Exception type '{0}' is declared as a record — exception classes must remain classes` |
 | KAL1012 | Fixtures may not `new` a framework collaborator — a testable Kaleido type implementing a service interface; mock it instead | `'{0}' is a collaborator, not the SUT — mock it instead of new-ing a real instance` |
+
+KAL1009 is configured as a warning — it flags types missing a fixture without breaking the build; see `.editorconfig` `[tests/**]` section.
 
 ### SutFixture notes (KAL1006–KAL1009)
 

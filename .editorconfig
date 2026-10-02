@@ -89,6 +89,12 @@ csharp_new_line_before_members_in_anonymous_types = true
 csharp_style_namespace_declarations = file_scoped
 csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async:suggestion
 
+; C# 12+ style (see AGENTS.md coding patterns)
+csharp_style_prefer_primary_constructors = true:suggestion
+csharp_style_implicit_object_creation_when_type_is_apparent = true:suggestion
+csharp_style_prefer_collection_expression = when_types_loosely_match:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+
 ; Naming conventions
 ; — const fields: PascalCase
 dotnet_naming_rule.constant_fields_should_be_pascal_case.severity = suggestion
@@ -105,6 +111,13 @@ dotnet_naming_symbols.private_internal_fields.applicable_kinds = field
 dotnet_naming_symbols.private_internal_fields.applicable_accessibilities = private, internal
 dotnet_naming_style.camel_case_underscore_style.required_prefix = _
 dotnet_naming_style.camel_case_underscore_style.capitalization = camel_case
+; — interfaces: IPascalCase
+dotnet_naming_rule.interfaces_should_be_i_pascal.severity = suggestion
+dotnet_naming_rule.interfaces_should_be_i_pascal.symbols  = interfaces
+dotnet_naming_rule.interfaces_should_be_i_pascal.style    = i_pascal_style
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_style.i_pascal_style.required_prefix = I
+dotnet_naming_style.i_pascal_style.capitalization = pascal_case
 
 ; ════════════════════════════════════════════════════════════════════════════
 ; Diagnostic rules — all *.{cs,vb} (global baseline)
@@ -137,6 +150,11 @@ dotnet_diagnostic.IDE0200.severity = warning   ; Lambda expression can be remove
 dotnet_diagnostic.IDE0290.severity = warning   ; Use primary constructor
 dotnet_diagnostic.IDE2000.severity = warning   ; Disallow multiple blank lines
 dotnet_style_allow_multiple_blank_lines_experimental = false
+
+; KAL1009: demoted to warning — a new source type without a fixture flags,
+; does not break the build (reported at assembly level, hence global scope;
+; KAL1010 still errors on empty stub fixtures)
+dotnet_diagnostic.KAL1009.severity = warning
 
 ; ── .NET / CA: naming & design ───────────────────────────────────────────────
 dotnet_diagnostic.CA1018.severity = warning   ; Mark attributes with AttributeUsageAttribute

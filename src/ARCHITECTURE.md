@@ -229,6 +229,25 @@ Public seams consumers are expected to implement or replace:
 - forwarded by HTTP clients as outbound headers (in `Kaleido.Http.Client`)
 - included as tags on observability activities (in `Kaleido`)
 
+#### Correlation context invariants
+
+These are framework invariants — code that violates them produces split traces:
+
+- **Exactly one RequestId per HTTP request** — `ObservabilityMiddleware` echoes the inbound
+  `X-Kaleido-Request-Id` if present, else generates one. Handlers and downstream calls must
+  propagate the ambient `RequestId`, never mint a second one.
+- **Echo-or-generate** — every Kaleido response echoes the correlation headers it accepted.
+  Absent headers are generated, not silently dropped.
+- **Outbound propagation is automatic** — `KaleidoProcessorClient`/`KaleidoQueryableClient`
+  forward the ambient context via `CorrelationHeadersHandler`. Do not set `X-Kaleido-*`
+  headers manually on outbound requests.
+- **Scoped identity, ambient read** — resolve `IKaleidoCorrelationContextAccessor` (scoped);
+  treat the context as read-only after request init. Mutating it mid-request splits the
+  trace.
+- **`X-Kaleido-Process-Id` is a handle, not identity** — it resumes a durable process; it
+  is honored unconditionally and is not part of the identity-trust gate
+  (`TrustCorrelationIdentity`).
+
 ### Observability
 Both Queryable and Process publish observability through activity sources and meters:
 - Queryable: `Kaleido.Queryable` activity source and meter

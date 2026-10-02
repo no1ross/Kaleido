@@ -52,11 +52,11 @@ public static class DevAuthExtensions
                         "Dev persona token — get one from POST /auth/login on the router."
                 });
 
-            options.AddSecurityRequirement(document =>
-                new Microsoft.OpenApi.OpenApiSecurityRequirement
-                {
-                    [new Microsoft.OpenApi.OpenApiSecuritySchemeReference("Bearer", document)] = []
-                });
+            // Security definition stays (Authorize button works), but the
+            // per-operation requirement/401/403 noise Kaleido's
+            // RequireAuthorization metadata produces is stripped.
+            options.OperationFilter<DevSwaggerOperationFilter>();
+            options.DocumentFilter<DevSwaggerDocumentFilter>();
         });
 
         return services;
@@ -80,5 +80,54 @@ public static class DevAuthExtensions
         }
 
         return services;
+    }
+}
+
+/// <summary>
+/// Removes the per-operation security requirement and 401/403 response
+/// entries from every operation. Auth still applies at runtime — this is
+/// documentation noise: the dev token authorizes globally, so repeating the
+/// padlock and denial responses on every capability endpoint adds clutter.
+/// </summary>
+internal sealed class DevSwaggerOperationFilter : Swashbuckle.AspNetCore.SwaggerGen.IOperationFilter
+{
+    public void Apply(
+        Microsoft.OpenApi.OpenApiOperation operation,
+        Swashbuckle.AspNetCore.SwaggerGen.OperationFilterContext context)
+    {
+        operation.Security?.Clear();
+        operation.Responses?.Remove("401");
+        operation.Responses?.Remove("403");
+    }
+}
+
+/// <summary>
+/// Moves Kaleido framework tag groups (Registry, Processes, Queryable) to the
+/// end of the document so per-capability DisplayName groups surface first.
+/// </summary>
+internal sealed class DevSwaggerDocumentFilter : Swashbuckle.AspNetCore.SwaggerGen.IDocumentFilter
+{
+    private static readonly string[] FrameworkTags = ["Registry", "Processes", "Queryable"];
+
+    public void Apply(
+        Microsoft.OpenApi.OpenApiDocument document,
+        Swashbuckle.AspNetCore.SwaggerGen.DocumentFilterContext context)
+    {
+        if (document.Tags is null)
+        {
+            return;
+        }
+
+        var ordered = document.Tags
+            .OrderByDescending(
+                tag => !FrameworkTags.Contains(tag.Name, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+
+        document.Tags.Clear();
+
+        foreach (var tag in ordered)
+        {
+            document.Tags.Add(tag);
+        }
     }
 }

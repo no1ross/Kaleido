@@ -80,54 +80,32 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
                 .Distinct()
                 .ToArray();
 
-        // Pass 1
-        var typeDefinitions =
+        // Materialize one definition per step — relationship attributes are
+        // collected as Type references (all steps may not exist yet).
+        var definitions =
             stepTypeArray
                 .Select(stepType =>
-                    BuildTypeDefinition(
+                    BuildDefinition(
                         handlerTypes,
                         stepType))
-                .ToArray();
-
-        var typeDefinitionsByType =
-            typeDefinitions.ToDictionary(
-                x => x.StepType);
-
-        // Pass 2a
-        var definitions =
-            typeDefinitions
-                .Select(x =>
-                    new ProcessStepDefinition
-                    {
-                        StepType = x.StepType,
-                        StepResultType = x.StepResultType,
-                        HandlerType = x.HandlerType,
-                        Metadata = x.Metadata
-                    })
                 .ToArray();
 
         var definitionsByType =
             definitions.ToDictionary(
                 x => x.StepType);
 
-        // Pass 2b
+        // Hydrate the Type references into definition references — requires
+        // every definition to exist first.
         foreach (var definition in definitions)
         {
-            var typeDefinition =
-                typeDefinitionsByType[
-                    definition.StepType];
-
             HydrateDefinition(
                 definition,
-                typeDefinition,
                 definitionsByType);
         }
 
-        // Pass 3
         ValidateDefinitions(
             definitions);
 
-        // Pass 4
         var registrations =
             BuildRegistrations(
                 definitions);
@@ -196,7 +174,7 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
                 $"Process step type '{stepType.FullName}' is not registered.");
     }
 
-    private static ProcessStepTypeDefinition BuildTypeDefinition(
+    private static ProcessStepDefinition BuildDefinition(
         IReadOnlyDictionary<Type, Type> handlerTypes,
         Type stepType)
     {
@@ -224,7 +202,7 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
                 stepType);
 
         var definition =
-            new ProcessStepTypeDefinition
+            new ProcessStepDefinition
             {
                 StepType = stepType,
                 StepResultType = resultType,
@@ -235,19 +213,19 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
         foreach (var dependency in
             stepType.GetCustomAttributes<DependsOnStepAttribute>())
         {
-            definition.AddDependency(dependency.DependsOnStep);
+            definition.AddDependencyType(dependency.DependsOnStep);
         }
 
         foreach (var availableAfter in
             stepType.GetCustomAttributes<AvailableAfterAttribute>())
         {
-            definition.AddAvailableAfter(availableAfter.AvailableAfterStep);
+            definition.AddAvailableAfterType(availableAfter.AvailableAfterStep);
         }
 
         foreach (var availableUntil in
             stepType.GetCustomAttributes<AvailableUntilAttribute>())
         {
-            definition.AddAvailableUntil(availableUntil.AvailableUntilStep);
+            definition.AddAvailableUntilType(availableUntil.AvailableUntilStep);
         }
 
         return definition;
@@ -274,85 +252,39 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
             $"Type '{handlerInterface.FullName}' is not a valid process step handler.");
     }
 
+    // Create one registration slot per definition, then wire each slot's
+    // direct relationships by lookup. Two phases are required: a registration
+    // can only reference slots that already exist.
     private static IReadOnlyCollection<ProcessStepRegistration> BuildRegistrations(
         IReadOnlyCollection<ProcessStepDefinition> definitions)
     {
         ArgumentNullException.ThrowIfNull(definitions);
 
-        //
-        // Pass 4a:
-        // Build node graph from validated definitions.
-        //
-        var nodes =
+        var slots =
             definitions.ToDictionary(
                 x => x.StepType,
-                x => new RegistrationNode
-                {
-                    Definition = x,
-                    Repeatable = GetRepeatableOptions(
-                        x.StepType)
-                });
-
-        //
-        // Pass 4b:
-        // Wire node relationships using direct lookup.
-        //
-        foreach (var node in nodes.Values)
-        {
-            node.AddDependencies(
-                node.Definition.Dependencies
-                    .Select(x => nodes[x.StepType]));
-
-            node.AddAvailableAfter(
-                node.Definition.AvailableAfter
-                    .Select(x => nodes[x.StepType]));
-
-            node.AddAvailableUntil(
-                node.Definition.AvailableUntil
-                    .Select(x => nodes[x.StepType]));
-        }
-
-        //
-        // Pass 4c:
-        // Create one registration slot per node.
-        //
-        // IMPORTANT:
-        // This does not recursively create related registrations.
-        // Each slot creates exactly one registration for exactly one node.
-        //
-        var slots =
-            nodes.ToDictionary(
-                x => x.Key,
                 x => new RegistrationSlot(
-                    x.Value,
-                    CreateGetResultFromTaskFunc(x.Value.Definition.HandlerType),
-                    CreateInvokeHandlerAsyncFunc(x.Value.Definition.HandlerType)));
+                    x,
+                    GetRepeatableOptions(x.StepType),
+                    CreateGetResultFromTaskFunc(x.HandlerType),
+                    CreateInvokeHandlerAsyncFunc(x.HandlerType)));
 
-        //
-        // Pass 4d:
-        // Wire each registration's immediate relationships.
-        //
-        // IMPORTANT:
-        // This resolves direct references only.
-        // It does not walk dependency chains.
-        // It does not recursively materialize the graph.
-        //
         foreach (var slot in slots.Values)
         {
             slot.AddDependencies(
-                slot.Node.Dependencies
+                slot.Definition.Dependencies
                     .Select(x =>
-                        slots[x.Definition.StepType].Registration));
+                        slots[x.StepType].Registration));
 
             slot.AddAvailableAfter(
-                slot.Node.AvailableAfter
+                slot.Definition.AvailableAfter
                     .Select(x =>
-                        slots[x.Definition.StepType].Registration));
+                        slots[x.StepType].Registration));
 
             slot.AddAvailableUntil(
-                slot.Node.AvailableUntil
+                slot.Definition.AvailableUntil
                     .Select(x =>
-                        slots[x.Definition.StepType].Registration));
+                        slots[x.StepType].Registration));
         }
 
         return definitions
@@ -374,20 +306,19 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
 
     private static void HydrateDefinition(
         ProcessStepDefinition definition,
-        ProcessStepTypeDefinition typeDefinition,
         IReadOnlyDictionary<Type, ProcessStepDefinition> definitions)
     {
-        foreach (var dependency in typeDefinition.Dependencies)
+        foreach (var dependency in definition.DependencyTypes)
         {
             definition.AddDependency(definitions[dependency]);
         }
 
-        foreach (var availableAfter in typeDefinition.AvailableAfter)
+        foreach (var availableAfter in definition.AvailableAfterTypes)
         {
             definition.AddAvailableAfter(definitions[availableAfter]);
         }
 
-        foreach (var availableUntil in typeDefinition.AvailableUntil)
+        foreach (var availableUntil in definition.AvailableUntilTypes)
         {
             definition.AddAvailableUntil(definitions[availableUntil]);
         }
@@ -422,6 +353,16 @@ internal sealed record ProcessStepDefinition
 
     public required ProcessStepMetadata Metadata { get; init; }
 
+    // Relationship attributes are collected as Types first — the target
+    // definitions don't exist until every step has been materialized.
+    private readonly List<Type> _dependencyTypes = [];
+    private readonly List<Type> _availableAfterTypes = [];
+    private readonly List<Type> _availableUntilTypes = [];
+
+    public IReadOnlyCollection<Type> DependencyTypes => _dependencyTypes;
+    public IReadOnlyCollection<Type> AvailableAfterTypes => _availableAfterTypes;
+    public IReadOnlyCollection<Type> AvailableUntilTypes => _availableUntilTypes;
+
     private readonly List<ProcessStepDefinition> _dependencies = [];
     private readonly List<ProcessStepDefinition> _availableAfter = [];
     private readonly List<ProcessStepDefinition> _availableUntil = [];
@@ -430,67 +371,19 @@ internal sealed record ProcessStepDefinition
     public IReadOnlyCollection<ProcessStepDefinition> AvailableAfter => _availableAfter;
     public IReadOnlyCollection<ProcessStepDefinition> AvailableUntil => _availableUntil;
 
+    public void AddDependencyType(Type type) => _dependencyTypes.Add(type);
+    public void AddAvailableAfterType(Type type) => _availableAfterTypes.Add(type);
+    public void AddAvailableUntilType(Type type) => _availableUntilTypes.Add(type);
+
     public void AddDependency(ProcessStepDefinition definition) => _dependencies.Add(definition);
     public void AddAvailableAfter(ProcessStepDefinition definition) => _availableAfter.Add(definition);
     public void AddAvailableUntil(ProcessStepDefinition definition) => _availableUntil.Add(definition);
 }
 
 [ExcludeFromCodeCoverage]
-internal sealed record ProcessStepTypeDefinition
-{
-    public required Type StepType { get; init; }
-
-    public Type? StepResultType { get; init; }
-
-    public required Type HandlerType { get; init; }
-
-    public required ProcessStepMetadata Metadata { get; init; }
-
-    private readonly List<Type> _dependencies = [];
-    private readonly List<Type> _availableAfter = [];
-    private readonly List<Type> _availableUntil = [];
-
-    public IReadOnlyCollection<Type> Dependencies => _dependencies;
-    public IReadOnlyCollection<Type> AvailableAfter => _availableAfter;
-    public IReadOnlyCollection<Type> AvailableUntil => _availableUntil;
-
-    public void AddDependency(Type type) => _dependencies.Add(type);
-    public void AddAvailableAfter(Type type) => _availableAfter.Add(type);
-    public void AddAvailableUntil(Type type) => _availableUntil.Add(type);
-}
-
-[ExcludeFromCodeCoverage]
 public sealed record ProcessStepDependencyGraph(
     IReadOnlyDictionary<Type, IReadOnlyCollection<Type>> Dependencies,
     IReadOnlyDictionary<Type, IReadOnlyCollection<Type>> Dependents);
-
-[ExcludeFromCodeCoverage]
-internal sealed class RegistrationNode
-{
-    public required ProcessStepDefinition Definition
-    {
-        get;
-        init;
-    }
-
-    public required RepeatableOptions Repeatable
-    {
-        get;
-        init;
-    }
-
-    private readonly List<RegistrationNode> _dependencies = [];
-    private readonly List<RegistrationNode> _availableAfter = [];
-    private readonly List<RegistrationNode> _availableUntil = [];
-
-    public IReadOnlyCollection<RegistrationNode> Dependencies => _dependencies;
-    public IReadOnlyCollection<RegistrationNode> AvailableAfter => _availableAfter;
-    public IReadOnlyCollection<RegistrationNode> AvailableUntil => _availableUntil;
-
-    public void AddDependencies(IEnumerable<RegistrationNode> nodes) => _dependencies.AddRange(nodes);
-    public void AddAvailableAfter(IEnumerable<RegistrationNode> nodes) => _availableAfter.AddRange(nodes);
-    public void AddAvailableUntil(IEnumerable<RegistrationNode> nodes) => _availableUntil.AddRange(nodes);
-}
 
 [ExcludeFromCodeCoverage]
 internal sealed class RegistrationSlot
@@ -500,29 +393,30 @@ internal sealed class RegistrationSlot
     private readonly List<ProcessStepRegistration> _availableUntil = [];
 
     public RegistrationSlot(
-        RegistrationNode node,
+        ProcessStepDefinition definition,
+        RepeatableOptions repeatable,
         Func<Task, IProcessStepHandlerResult>? getResultFromTask,
         Func<object, object, ProcessStepContext, CancellationToken, Task>? invokeHandlerAsync)
     {
-        ArgumentNullException.ThrowIfNull(node);
+        ArgumentNullException.ThrowIfNull(definition);
 
-        Node = node;
+        Definition = definition;
 
         Registration =
             new ProcessStepRegistration(
-                node.Definition.StepType,
-                node.Definition.StepResultType,
-                node.Definition.HandlerType,
+                definition.StepType,
+                definition.StepResultType,
+                definition.HandlerType,
                 _dependencies.AsReadOnly(),
                 _availableAfter.AsReadOnly(),
                 _availableUntil.AsReadOnly(),
-                node.Repeatable,
-                node.Definition.Metadata,
+                repeatable,
+                definition.Metadata,
                 getResultFromTask,
                 invokeHandlerAsync);
     }
 
-    public RegistrationNode Node
+    public ProcessStepDefinition Definition
     {
         get;
     }

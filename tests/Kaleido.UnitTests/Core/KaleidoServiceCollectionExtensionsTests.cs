@@ -12,7 +12,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
 
     // Provides a valid ServiceName so tests not concerned with service identity
     // still pass the startup validation check.
-    private static Action<KaleidoServiceOptions> DefaultServiceName() =>
+    private static Action<KaleidoServiceOptionsBuilder> DefaultServiceName() =>
         o => o.ServiceName = "test-service";
 
     [Fact]

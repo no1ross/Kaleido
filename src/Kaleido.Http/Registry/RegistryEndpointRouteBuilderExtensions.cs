@@ -140,7 +140,9 @@ public static class RegistryEndpointRouteBuilderExtensions
                                     downstreamNames,
                                     processClientMap, processClientFactory,
                                     queryableClientMap, queryableClientFactory,
-                                    logger, ct)
+                                    logger,
+                                    mapOptions.RegistryDownstreamMaxParallelism,
+                                    ct)
                                 : ([], [], []);
 
                         var allProcesses = localProcesses
@@ -411,15 +413,27 @@ public static class RegistryEndpointRouteBuilderExtensions
             KaleidoQueryableClientRouteOptionsMap? queryableMap,
             IKaleidoQueryableClientFactory? queryableFactory,
             ILogger logger,
+            int? maxParallelism,
             CancellationToken cancellationToken)
     {
         var processes = new ConcurrentBag<ProcessorRegistryResponse>();
         var queryables = new ConcurrentBag<QueryableRecordResponse>();
         var errors = new ConcurrentBag<RegistryClientError>();
 
+        // Bounds the fan-out when a router aggregates many downstreams —
+        // null = unbounded (client count is the natural bound).
+        using var gate = maxParallelism is { } max
+            ? new SemaphoreSlim(max)
+            : null;
+
         await Task.WhenAll(
             clientNames.Select(async name =>
             {
+                if (gate is not null)
+                {
+                    await gate.WaitAsync(cancellationToken);
+                }
+
                 try
                 {
                     if (processFactory is not null && processMap?.Options.ContainsKey(name) == true)
@@ -456,6 +470,10 @@ public static class RegistryEndpointRouteBuilderExtensions
                         ClientType = "Registry",
                         Reason = "Registry fetch failed. See server logs for details."
                     });
+                }
+                finally
+                {
+                    gate?.Release();
                 }
             }));
 

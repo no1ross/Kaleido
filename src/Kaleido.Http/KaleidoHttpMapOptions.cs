@@ -31,4 +31,13 @@ public sealed class KaleidoHttpMapOptions
     /// throttling.
     /// </summary>
     public TimeSpan RegistryRefreshCooldown { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Maximum number of downstream registry fetches in flight at once during
+    /// an aggregate build/rebuild. When null (default) every registered client
+    /// is fetched concurrently — acceptable for a handful of downstreams, but
+    /// set this when a router aggregates many services so one refresh cannot
+    /// open a connection to every downstream simultaneously.
+    /// </summary>
+    public int? RegistryDownstreamMaxParallelism { get; set; }
 }
