@@ -870,7 +870,7 @@ external_findings:
     severity: LOW
     effort: small
     breaking_change: false
-    status: PENDING
+    status: COMPLETED
     description: >
       Two visible regressions on generated OpenAPI docs since the EXT-12/EXT-08/MP-005
       changes:
