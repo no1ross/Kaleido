@@ -11,6 +11,7 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
     protected abstract TClient CreateClient(
         System.Net.Http.HttpClient httpClient,
         ICorrelationHeaderStamper headerStamper,
+        string clientName,
         string serviceName);
 
     public TClient GetClient(string name)
@@ -23,7 +24,7 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
         var registeredName = GetRegisteredName(name) ?? name;
 
         var httpClient = HttpClientFactory.CreateClient(registeredName);
-        return CreateClient(httpClient, HeaderStamper, serviceName);
+        return CreateClient(httpClient, HeaderStamper, registeredName, serviceName);
     }
 
     private string GetServiceName(string name) =>

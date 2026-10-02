@@ -30,14 +30,12 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
     }
 
     [Fact]
-    public void MapQueryable_RegistersCatalogRegistryAndContextEndpoints()
+    public void MapQueryable_RegistersContextEndpoints()
     {
         var endpoints = CreateEndpoints();
 
         endpoints.MapQueryable();
 
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.CatalogEndpointName));
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.RegistryEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context")));
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryViewEndpointName("test-context", "test-view")));
@@ -50,8 +48,6 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
 
         endpoints.MapQueryable();
 
-        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable"));
-        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/registry"));
         Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/metadata"));
         Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/query"));
         Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/test-view/query"));

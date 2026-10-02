@@ -10,20 +10,18 @@ internal sealed class KaleidoProcessClient(
     HttpClient httpClient,
     ICorrelationHeaderStamper headerStamper,
     ILogger<KaleidoProcessClient> logger,
+    KaleidoRemoteRegistry remoteRegistry,
+    string clientName,
     string serviceName = "")
-    : IKaleidoProcessClient, IDisposable
+    : IKaleidoProcessClient
 {
-    private readonly HttpClientRegistryCache<IReadOnlyList<ProcessorRegistryResponse>> _registryCache = new();
-
-    public void Dispose() => _registryCache.Dispose();
-
     public async Task<IReadOnlyList<ProcessorRegistryResponse>> GetRegistryAsync(
         CancellationToken cancellationToken = default)
     {
         return await EnsureRegistryAsync(cancellationToken);
     }
 
-    public void InvalidateRegistry() => _registryCache.Reset();
+    public void InvalidateRegistry() => remoteRegistry.Invalidate(clientName);
 
     public async Task<ProcessStepResponse> GetStepMetadataAsync(
         string stepName,
@@ -316,36 +314,7 @@ internal sealed class KaleidoProcessClient(
         return response;
     }
 
-    private Task<IReadOnlyList<ProcessorRegistryResponse>> EnsureRegistryAsync(
+    private async Task<IReadOnlyList<ProcessorRegistryResponse>> EnsureRegistryAsync(
         CancellationToken cancellationToken) =>
-        _registryCache.GetOrFetchAsync(FetchRegistryAsync, cancellationToken);
-
-    private async Task<IReadOnlyList<ProcessorRegistryResponse>> FetchRegistryAsync(
-        CancellationToken cancellationToken)
-    {
-        using var registryRequest = new HttpRequestMessage(HttpMethod.Get, ProcessContractUrls.Registry(serviceName));
-        headerStamper.Stamp(registryRequest);
-        using var registryResponse = await SendAsync(registryRequest, cancellationToken);
-
-        if (registryResponse.StatusCode == HttpStatusCode.NotFound)
-        {
-            // The service exposes no process registry — treat as empty.
-            return [];
-        }
-
-        if (!registryResponse.IsSuccessStatusCode)
-        {
-            throw new KaleidoHttpClientException(
-                HttpClientErrorCodes.RequestFailed,
-                $"Process registry request to '{serviceName}' failed with status code {(int)registryResponse.StatusCode} ({registryResponse.StatusCode}).",
-                registryResponse.StatusCode);
-        }
-
-        return await registryResponse.Content.ReadFromJsonAsync<IReadOnlyList<ProcessorRegistryResponse>>(
-            KaleidoJsonOptions.Options, cancellationToken)
-            ?? throw new KaleidoHttpClientException(
-                HttpClientErrorCodes.EmptyResponse,
-                "Process registry request succeeded but returned no payload.",
-                HttpStatusCode.InternalServerError);
-    }
+        [.. (await remoteRegistry.GetAsync(clientName, serviceName, headerStamper, cancellationToken)).Processes];
 }

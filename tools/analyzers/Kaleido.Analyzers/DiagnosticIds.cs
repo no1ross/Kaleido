@@ -23,9 +23,6 @@ internal static class DiagnosticIds
     /// <summary>o.ServiceName must be lowercase with no spaces or separators.</summary>
     public const string ServiceNameFormat = "KAL2005";
 
-    /// <summary>MapRegistry() called without AddHttpClients() in same compilation.</summary>
-    public const string MapRegistryWithoutClients = "KAL2006";
-
     /// <summary>[ProcessStep] class name must end in 'Step'.</summary>
     public const string ProcessStepSuffix = "KAL2007";
 

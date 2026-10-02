@@ -7,12 +7,6 @@ internal static class ProcessRoutePaths
     public const string Process =
         "{processId}";
 
-    public const string StepCatalog =
-        "steps";
-
-    public const string StepRegistry =
-        "registry";
-
     public const string Execute =
         "execute";
 
@@ -35,9 +29,6 @@ internal static class ProcessContractUrls
             ? "/processes"
             : $"/{serviceName.Trim().Trim('/')}/processes";
 
-    public static string Registry(string serviceName)
-        => $"{ProcessesPrefix(serviceName)}/registry";
-
     public static string StepMetadata(string serviceName, string stepName)
         => $"{ProcessesPrefix(serviceName)}/steps/{stepName}/metadata";
 
@@ -56,23 +47,14 @@ internal static class ProcessContractUrls
 
 public static class ProcessEndpointNames
 {
-    public const string ProcessorCatalogEndpointName =
-        "KaleidoProcessCatalog";
-
     public const string ExecuteEndpointName =
         "KaleidoProcessExecute";
 
     public const string ProcessEndpointName =
         "KaleidoProcessState";
 
-    public const string StepCatalogEndpointName =
-        "KaleidoProcessStepCatalog";
-
     public const string ProcessTransferEndpointName =
         "KaleidoProcessTransfer";
-
-    public const string StepRegistryEndpointName =
-        "KaleidoProcessStepRegistry";
 
     public static string StepMetadataEndpointName(
         string stepName) =>

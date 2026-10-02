@@ -12,7 +12,7 @@ public sealed class KaleidoClientHealthCheckTests
         new(
             httpClientFactory,
             "test-client",
-            "/processes/registry",
+            "/test-client/registry",
             NullLogger<KaleidoClientHealthCheck>.Instance);
 
     // -------------------------------------------------------------------------

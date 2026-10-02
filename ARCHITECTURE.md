@@ -44,9 +44,9 @@ The HTTP project provides the full HTTP transport layer:
 - `ObservabilityMiddleware` — reads inbound correlation headers, populates the correlation accessor, tags the Activity, and echoes correlation headers on the response
 - `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers
 - `KaleidoStartupFilter` — registers middlewares in the correct pipeline order
-- `MapQueryable()` — catalog, registry, per-context metadata, direct query, and view query endpoints
-- `MapProcessor()` — catalog, registry, per-step metadata, execute, step execute, and process state endpoints
-- `MapRegistry()` — aggregated discovery combining the local processor and all downstream clients
+- `MapQueryable()` — per-context metadata, direct query, and view query endpoints
+- `MapProcessor()` — per-step metadata, execute, step execute, and process state endpoints
+- `MapKaleidoHttp()` — maps active runtimes plus `GET /{service}/registry` — unified discovery of local Process + Queryable registrations, optionally aggregating all downstream clients (`o.AggregateRegistry = true`)
 
 It depends on `Kaleido.Http.Abstractions` (which depends on `Kaleido`).
 
@@ -55,7 +55,7 @@ See: [`src/Kaleido.Http/README.md`](./src/Kaleido.Http/README.md)
 ### Kaleido.Http.Abstractions
 Shared HTTP contract types used by both the server-side projects and the client project:
 - Process contracts: `ExecuteProcessRequest`, `ProcessExecutionResponse`, `ProcessExecutionStepResponse`, `ProcessStepInfo`, `ProcessStateResponse`, `ProcessStepSummary`, `ProcessorRegistryResponse`, etc.
-- Queryable contracts: `QueryApiRequest`, `QueryableRecordResponse`, `QueryableRecordSummary`, `QueryErrorResponse`, etc.
+- Queryable contracts: `QueryApiRequest`, `QueryableRecordResponse`, `QueryErrorResponse`, etc.
 
 Changes here ripple into server-side endpoints (`Kaleido.Http`) and client-side consumers (`Kaleido.Http.Client`).
 
@@ -158,7 +158,7 @@ Assemblies are passed via `KaleidoServiceOptions.Assemblies` in the `AddKaleido(
 ### Step 4: Transport registration (optional)
 - `AddHttp()` adds the HTTP transport layer services (middleware pipeline, execution services) for both Process and Queryable.
 - `AddHttpClients()` registers typed HTTP clients for downstream services from configuration.
-- `MapProcessor()`, `MapQueryable()`, and `MapRegistry()` publish the HTTP endpoints (call only the ones you need).
+- `MapKaleidoHttp()` publishes all Kaleido HTTP endpoints for the active runtimes plus the registry; `MapProcessor()`/`MapQueryable()` publish individual surfaces when granular control is needed.
 
 This keeps:
 - bootstrap concerns in `Kaleido`

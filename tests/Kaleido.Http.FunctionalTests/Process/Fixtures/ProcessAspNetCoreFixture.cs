@@ -38,6 +38,7 @@ public sealed class ProcessAspNetCoreFixture
                             .AddInMemoryCollection(new Dictionary<string, string?>
                             {
                                 ["Kaleido:Clients:self:BaseUrl"] = "http://localhost/",
+                                ["Kaleido:Clients:self:RoutePrefix"] = "kaleido",
                             })
                             .Build();
 
@@ -57,8 +58,7 @@ public sealed class ProcessAspNetCoreFixture
                         app.UseRouting();
                         app.UseEndpoints(endpoints =>
                         {
-                            endpoints.MapKaleidoHttp();
-                            endpoints.MapRegistry();
+                            endpoints.MapKaleidoHttp(o => o.AggregateRegistry = true);
                         });
                     });
                 })

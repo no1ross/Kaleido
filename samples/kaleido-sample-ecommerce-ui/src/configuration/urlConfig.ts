@@ -1,8 +1,7 @@
 
 const urlConfig = {
     kaleidoApiUrl: 'https://localhost:7251',
-    processRegistryPath: '/kaleido/processes/registry',
-    queryableRegistryPath: '/kaleido/queryable/registry',
+    registryPath: '/kaleido/registry',
     processStepPath: 'kaleido/processes/steps/${stepName}',
     queryableQueryPath: 'kaleido/queryable/${context}/${view}/query'
 } as const;
@@ -19,14 +18,9 @@ export function buildApiUrl(
     return `${baseUrl}/${relativePath}`;
 }
 
-export function getProcessRegistryUrl(
+export function getRegistryUrl(
 ): string {
-    return buildApiUrl(urlConfig.processRegistryPath);
-}
-
-export function getQueryableRegistryUrl(
-): string {
-    return buildApiUrl(urlConfig.queryableRegistryPath);
+    return buildApiUrl(urlConfig.registryPath);
 }
 
 export function getProcessStepUrl(

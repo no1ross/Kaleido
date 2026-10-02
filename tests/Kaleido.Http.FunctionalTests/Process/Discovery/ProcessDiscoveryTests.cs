@@ -1,5 +1,6 @@
 using System.Net;
 using Kaleido.Http.Process;
+using Kaleido.Http.Registry;
 using Kaleido.Process.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
 
@@ -16,20 +17,20 @@ public sealed class ProcessDiscoveryTests
     }
 
     [Fact]
-    public async Task GetCatalog_ReturnsProcessorsWithInitialSteps()
+    public async Task GetRegistry_ReturnsProcessorsWithInitialSteps()
     {
         var response =
-            await _client.GetAsync("/kaleido/processes");
+            await _client.GetAsync("/kaleido/registry");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var contract =
-            await response.Content.ReadAsync<ProcessCatalogResponse>();
+            await response.Content.ReadAsync<AggregatedRegistryResponse>();
 
         Assert.NotNull(contract);
 
         var processor =
-            Assert.Single(contract.Processors);
+            Assert.Single(contract.Processes);
 
         Assert.Equal(FunctionalProcessorNames.TestProcessor, processor.Name);
         Assert.Contains(processor.InitialSteps, x => x.Name == RuntimeStepNames.Root);

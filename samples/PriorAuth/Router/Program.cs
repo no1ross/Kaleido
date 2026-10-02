@@ -114,7 +114,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapRegistry();
+app.MapKaleidoHttp(o => o.AggregateRegistry = true);
 app.MapReverseProxy();
 
 app.Run();

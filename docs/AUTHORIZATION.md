@@ -24,7 +24,7 @@ enforced by the host's auth middleware. Enforcement covers:
 - per-context query + metadata endpoints
 - the multi-step `POST /processes/execute` handler, which authorizes each submitted
   step inside the request (endpoint metadata can't express per-item requirements)
-- discovery filtering: catalogs, registries, `MapRegistry()` aggregates, and context
+- discovery filtering: the `/{service}/registry` endpoint (local and aggregate modes) and context
   metadata return only capabilities the caller may access
 
 `KaleidoHttpOptions.RequireAuthorization` additionally requires an *authenticated*

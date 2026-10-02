@@ -1,12 +1,11 @@
 using System.ComponentModel.DataAnnotations;
-using Kaleido.Process;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
 [KaleidoAuthorization(Roles = "radiology")]
 [ProcessStep(
     Name = "ValidateMember",
-    DisplayName = "Radiology - Validate Member",
+    DisplayName = "Validate Member",
     Description = "Validates member eligibility for the current prior authorization. " +
                   "Requires the radiology intake to have been started. " +
                   "Checks that the member exists and has active enrollment for the date of service.",

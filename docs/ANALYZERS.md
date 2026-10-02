@@ -23,7 +23,6 @@ Shipped inside the `Kaleido` package (`analyzers/dotnet/cs/`). They fire on **co
 | KAL2003 | Error | `[QueryView]` must declare a non-empty `Name` and `Version` — compile-time equivalent of `qry_missing_attribute` |
 | KAL2004 | Warning | `IProcessStepHandler<T>.ExecuteAsync` must not swallow `OperationCanceledException` in a bare `catch (Exception)` — add `when (ex is not OperationCanceledException)` or a preceding OCE catch. A swallowed cancellation inflates failure metrics and hides client disconnects |
 | KAL2005 | Warning | `ServiceName` string literals must be lowercase with no spaces, hyphens, or underscores — it is used verbatim as the HTTP route prefix |
-| KAL2006 | Info | `MapRegistry()` was found but `AddHttpClients()` was not in the same compilation — the registry endpoint depends on the client factories. Heuristic; suppressible when the calls live in different assemblies |
 | KAL2007 | Warning | `[ProcessStep]` class names must end in `Step` — the framework derives the step name by stripping the suffix |
 | KAL2008 | Warning | `[ProcessStep]` type has no `IProcessStepHandler<TStep>` (or `IProcessStepHandler<TStep, TResult>`) in the same compilation — compile-time equivalent of `pro_missing_handler`. Cross-assembly handlers suppress the warning |
 | KAL2009 | Warning | `AddKaleido(config, o => ...)` lambda never sets `o.Assemblies` — the `GetCallingAssembly()` fallback is JIT-nondeterministic; set assemblies explicitly |

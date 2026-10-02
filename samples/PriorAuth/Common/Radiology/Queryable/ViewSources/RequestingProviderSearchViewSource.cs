@@ -8,7 +8,7 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Queryable.ViewSources;
 
 [QueryView(
     Name = "requesting-provider-search",
-    DisplayName = "Radiology - Requesting Provider Search",
+    DisplayName = "Requesting Provider Search",
     Version = "1.0.0",
     Description = "Searchable requesting provider results scoped to the active radiology process.",
     DefaultSortField = nameof(RequestingProviderSearchQueryContext.ProviderName))]

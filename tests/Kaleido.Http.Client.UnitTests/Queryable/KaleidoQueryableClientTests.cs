@@ -11,12 +11,27 @@ public sealed class KaleidoQueryableClientTests
     private static KaleidoQueryableClient CreateSut(
         HttpClient httpClient,
         ICorrelationHeaderStamper headerStamper,
-        string callerServiceName = "") =>
-        new(
+        string callerServiceName = "")
+    {
+        // Registry fetches go through the shared remote registry, which pulls
+        // the HttpClient from IHttpClientFactory — return the test client.
+        var factory = new Mock<IHttpClientFactory>();
+        factory
+            .Setup(f => f.CreateClient(It.IsAny<string>()))
+            .Returns(httpClient);
+
+        var remoteRegistry = new KaleidoRemoteRegistry(
+            factory.Object,
+            NullLogger<KaleidoRemoteRegistry>.Instance);
+
+        return new(
             httpClient,
             headerStamper,
             NullLogger<KaleidoQueryableClient>.Instance,
+            remoteRegistry,
+            "test",
             callerServiceName);
+    }
 
     // ---------------------------------------------------------------------------
     // Helpers
@@ -24,6 +39,7 @@ public sealed class KaleidoQueryableClientTests
 
     private static readonly QueryableRecordResponse FakeContext = new()
     {
+        ServiceName = "test-svc",
         Name = "my-context",
         DisplayName = "My Context",
         Description = "Test context.",
@@ -68,12 +84,16 @@ public sealed class KaleidoQueryableClientTests
         return mock;
     }
 
+    private static readonly AggregatedRegistryResponse FakeRegistry = new()
+    {
+        Queryables = [FakeContext]
+    };
+
     private static (KaleidoQueryableClient client, Mock<HttpMessageHandler> handler) CreateClient(
         string routePrefix = "",
         Func<HttpRequestMessage, HttpResponseMessage>? respond = null)
     {
-        var registry = new[] { FakeContext };
-        var handler = HandlerThatReturns(respond ?? (_ => JsonOk(registry)));
+        var handler = HandlerThatReturns(respond ?? (_ => JsonOk(FakeRegistry)));
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
 
         var stamper = new Mock<ICorrelationHeaderStamper>();
@@ -103,7 +123,7 @@ public sealed class KaleidoQueryableClientTests
         var (client, _) = CreateClient(respond: req =>
         {
             callCount++;
-            return JsonOk(new[] { FakeContext });
+            return JsonOk(FakeRegistry);
         });
 
         await client.GetRegistryAsync();
@@ -145,7 +165,7 @@ public sealed class KaleidoQueryableClientTests
             callUrls.Add(req.RequestUri!.PathAndQuery);
             return req.RequestUri!.PathAndQuery.Contains("metadata")
                 ? JsonOk(FakeContext)
-                : JsonOk(new[] { FakeContext });
+                : JsonOk(FakeRegistry);
         });
 
         var result = await client.GetContextMetadataAsync("my-context");
@@ -175,7 +195,7 @@ public sealed class KaleidoQueryableClientTests
             // First call = registry, second call = metadata
             if (callCount == 1)
             {
-                return JsonOk(new[] { FakeContext });
+                return JsonOk(FakeRegistry);
             }
 
             return new HttpResponseMessage(HttpStatusCode.InternalServerError);
@@ -208,7 +228,7 @@ public sealed class KaleidoQueryableClientTests
             callCount++;
             if (callCount == 1)
             {
-                return JsonOk(new[] { FakeContext });
+                return JsonOk(FakeRegistry);
             }
 
             postedUrl = req.RequestUri!.PathAndQuery;
@@ -259,7 +279,7 @@ public sealed class KaleidoQueryableClientTests
             callCount++;
             if (callCount == 1)
             {
-                return JsonOk(new[] { FakeContext });
+                return JsonOk(FakeRegistry);
             }
 
             return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
@@ -292,7 +312,7 @@ public sealed class KaleidoQueryableClientTests
             callCount++;
             if (callCount == 1)
             {
-                return JsonOk(new[] { FakeContext });
+                return JsonOk(FakeRegistry);
             }
 
             return JsonOk(expectedResult);
@@ -313,7 +333,7 @@ public sealed class KaleidoQueryableClientTests
     public async Task QueryContextAsync_WhenContextHasNoQueryUrl_Throws()
     {
         var noQueryContext = FakeContext with { QueryUrl = null };
-        var (client, _) = CreateClient(respond: _ => JsonOk(new[] { noQueryContext }));
+        var (client, _) = CreateClient(respond: _ => JsonOk(new AggregatedRegistryResponse { Queryables = [noQueryContext] }));
 
         var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QueryContextAsync<FakeView>(
@@ -334,12 +354,12 @@ public sealed class KaleidoQueryableClientTests
         var (client, _) = CreateClient(routePrefix: "radiology", respond: req =>
         {
             registryUrl = req.RequestUri!.PathAndQuery;
-            return JsonOk(new[] { FakeContext });
+            return JsonOk(FakeRegistry);
         });
 
         await client.GetRegistryAsync();
 
-        Assert.Equal("/radiology/queryable/registry", registryUrl);
+        Assert.Equal("/radiology/registry", registryUrl);
     }
 
     [Fact]
@@ -349,12 +369,12 @@ public sealed class KaleidoQueryableClientTests
         var (client, _) = CreateClient(routePrefix: "", respond: req =>
         {
             registryUrl = req.RequestUri!.PathAndQuery;
-            return JsonOk(new[] { FakeContext });
+            return JsonOk(FakeRegistry);
         });
 
         await client.GetRegistryAsync();
 
-        Assert.Equal("/queryable/registry", registryUrl);
+        Assert.Equal("/registry", registryUrl);
     }
 
     // ---------------------------------------------------------------------------
@@ -371,7 +391,7 @@ public sealed class KaleidoQueryableClientTests
         {
             callCount++;
             return callCount == 1
-                ? JsonOk(new[] { FakeContext })
+                ? JsonOk(FakeRegistry)
                 : JsonOk(expectedResult);
         });
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };

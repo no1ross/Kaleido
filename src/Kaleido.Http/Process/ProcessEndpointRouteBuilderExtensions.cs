@@ -66,17 +66,11 @@ public static class ProcessEndpointRouteBuilderExtensions
             registry.Registrations.Count,
             registry.InitialRegistrations.Count);
 
-        group.MapProcessorCatalogEndpoint(processorRegistry, serviceOptions);
-
         group.MapExecuteEndpoint(httpOptions);
 
         group.MapProcessStateEndpoint();
 
         group.MapProcessTransferEndpoint();
-
-        group.MapStepCatalogEndpoint(processorRegistry, serviceName);
-
-        group.MapStepRegistryEndpoint(processorRegistry, serviceOptions);
 
         foreach (var step in registry.Registrations)
         {
@@ -88,52 +82,6 @@ public static class ProcessEndpointRouteBuilderExtensions
         }
 
         return group;
-    }
-
-    private static void MapProcessorCatalogEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        IProcessRegistry registry,
-        KaleidoServiceOptions serviceOptions)
-    {
-        endpoints.MapGet(
-                "",
-                async (
-                    HttpContext httpContext,
-                    [FromServices] IProcessResponseFactory factory,
-                    [FromServices] IKaleidoAuthorizer authorizer,
-                    CancellationToken cancellationToken) =>
-                {
-                    var processors = new List<ProcessorRegistryResponse>();
-
-                    foreach (var registration in registry.Registrations)
-                    {
-                        var initialSteps =
-                            await authorizer.FilterAsync(registration.InitialSteps,
-                                x => x.Authorization,
-                                cancellationToken);
-
-                        processors.Add(
-                            factory.CreateCatalogResponse(
-                                registration with
-                                {
-                                    InitialSteps = initialSteps
-                                },
-                                serviceOptions));
-                    }
-
-                    return Results.Ok(
-                        new ProcessCatalogResponse
-                        {
-                            Processors = processors
-                        });
-                })
-            .WithName(ProcessEndpointNames.ProcessorCatalogEndpointName)
-            .WithTags("Processes")
-            .Produces<ProcessCatalogResponse>()
-            .WithSummary("Get process entry points.")
-            .WithDescription(
-                "Returns the initial process steps that can be used to start a new processor process. " +
-                "This endpoint is intended to let consumers discover how a process can begin without understanding the full process graph.");
     }
 
     private static void MapExecuteEndpoint(
@@ -239,100 +187,6 @@ public static class ProcessEndpointRouteBuilderExtensions
                 "Unowned processes may be taken by any authenticated caller; " +
                 "owned processes may be taken by the current owner or a caller " +
                 "sharing one of the owner's roles.");
-    }
-
-    private static void MapStepRegistryEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        IProcessRegistry registry,
-        KaleidoServiceOptions serviceOptions)
-    {
-        ArgumentNullException.ThrowIfNull(registry);
-        ArgumentNullException.ThrowIfNull(serviceOptions);
-
-        endpoints.MapGet(
-                ProcessRoutePaths.StepRegistry,
-                async (
-                    HttpContext httpContext,
-                    [FromServices] IProcessResponseFactory factory,
-                    [FromServices] IKaleidoAuthorizer authorizer,
-                    CancellationToken cancellationToken) =>
-                {
-                    var processors = new List<ProcessorRegistryResponse>();
-
-                    foreach (var registration in registry.Registrations)
-                    {
-                        var steps =
-                            await authorizer.FilterAsync(registration.Steps,
-                                x => x.Authorization,
-                                cancellationToken);
-
-                        var initialSteps =
-                            await authorizer.FilterAsync(registration.InitialSteps,
-                                x => x.Authorization,
-                                cancellationToken);
-
-                        processors.Add(
-                            factory.CreateRegistryResponse(
-                                registration with
-                                {
-                                    Steps = steps,
-                                    InitialSteps = initialSteps
-                                },
-                                serviceOptions));
-                    }
-
-                    return Results.Ok(processors);
-                })
-            .WithName(ProcessEndpointNames.StepRegistryEndpointName)
-            .WithTags("Processes")
-            .Produces<IReadOnlyCollection<ProcessorRegistryResponse>>()
-            .WithSummary("Get process registry metadata.")
-            .WithDescription(
-                "Returns the complete process metadata registry for all registered process steps. " +
-                "The response contains the information required by consumers to discover available " +
-                "process capabilities, resolve execution endpoints, validate required inputs, and " +
-                "initialize local process registries. This endpoint is optimized for application startup " +
-                "and eliminates the need to retrieve metadata for individual process steps.");
-    }
-
-    private static void MapStepCatalogEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        IProcessRegistry registry,
-        string serviceName)
-    {
-        ArgumentNullException.ThrowIfNull(registry);
-
-        endpoints.MapGet(
-                ProcessRoutePaths.StepCatalog,
-                async (
-                    HttpContext httpContext,
-                    [FromServices] IProcessResponseFactory factory,
-                    [FromServices] IKaleidoAuthorizer authorizer,
-                    CancellationToken cancellationToken) =>
-                    Results.Ok(
-                        (await authorizer.FilterAsync(registry.Registrations.SelectMany(x => x.Steps),
-                                x => x.Authorization,
-                                cancellationToken))
-                            .Select(x =>
-                                factory.CreateStepSummary(
-                                    new ProcessorStepSummary
-                                    {
-                                        Name = x.Name,
-                                        Description = x.Description,
-                                        DisplayName = x.DisplayName,
-                                        Version = x.Version,
-                                        Repeatable = x.Repeatable,
-                                        Authorization = x.Authorization
-                                    },
-                                    serviceName))
-                            .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)))
-            .WithName(ProcessEndpointNames.StepCatalogEndpointName)
-            .WithTags("Processes")
-            .Produces<IReadOnlyCollection<ProcessStepSummary>>()
-            .WithSummary("Get registered process steps.")
-            .WithDescription(
-                "Returns a lightweight catalog of all registered process steps, including names, descriptions, repeatability, and links. " +
-                "Use each step's metadata URL to retrieve fields, constraints, dependencies, and availability rules.");
     }
 
     private static void MapProcessStep(

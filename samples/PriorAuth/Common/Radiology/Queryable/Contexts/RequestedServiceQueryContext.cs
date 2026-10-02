@@ -7,7 +7,7 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Queryable.Contexts;
 [KaleidoAuthorization(Roles = "intake,radiology")]
 [QueryContext(
     Name = "requested-services",
-    DisplayName = "Radiology - Requested Services",
+    DisplayName = "Requested Services",
     Version = "1.0.0",
     Source = "Prior Authorization Radiology",
     Kind = QueryContextKind.Direct)]

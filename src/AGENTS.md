@@ -32,7 +32,7 @@ Owns the full HTTP transport layer — middleware, correlation propagation, and 
 - `KaleidoStartupFilter` — registers middlewares via `IStartupFilter` in the correct pipeline order
 - `MapQueryable()` — all Queryable HTTP endpoints
 - `MapProcessor()` — all Process HTTP endpoints
-- `MapRegistry()` — aggregated discovery endpoint
+- `MapRegistry()` — internal; `GET /{service}/registry` unified discovery endpoint (mapped by `MapKaleidoHttp`, optionally aggregating downstream clients)
 - `IProcessExecutionService` / `ProcessExecutionService` — translates HTTP execute requests into runtime calls
 - `IProcessStateService` / `ProcessStateService` — reads durable process state and maps it to HTTP contracts
 

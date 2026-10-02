@@ -1,10 +1,2260 @@
 {
-  "process": {
-
-  },
-  "queryable": {
-    "steps": {
-      "additemtocart": ""
+  "processes": [
+    {
+      "serviceName": "history",
+      "name": "history",
+      "description": "Prior authorization history processor.",
+      "displayName": "Prior Auth History",
+      "isEntryProcessor": false,
+      "registryUrl": "/history/registry",
+      "initialSteps": [
+        {
+          "name": "UpsertPriorAuthRecord",
+          "description": "Creates or updates the prior authorization history record for the given process.",
+          "displayName": "History - Upsert Record",
+          "version": "1.0.0",
+          "repeatable": false,
+          "authorization": null,
+          "executeUrl": "",
+          "metadataUrl": ""
+        }
+      ],
+      "steps": [
+        {
+          "name": "UpsertPriorAuthRecord",
+          "description": "Creates or updates the prior authorization history record for the given process.",
+          "displayName": "History - Upsert Record",
+          "version": "1.0.0",
+          "repeatable": false,
+          "authorization": null,
+          "executeUrl": "/history/processes/steps/upsertpriorauthrecord",
+          "metadataUrl": "/history/processes/steps/upsertpriorauthrecord/metadata",
+          "fields": [
+            {
+              "constraints": [
+                {
+                  "type": "Required",
+                  "parameters": []
+                },
+                {
+                  "type": "StringLength",
+                  "parameters": [
+                    {
+                      "name": "MaximumLength",
+                      "value": 100
+                    },
+                    {
+                      "name": "MinimumLength",
+                      "value": 0
+                    }
+                  ]
+                }
+              ],
+              "name": "ProcessorName",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "constraints": [],
+              "name": "Status",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": "enum",
+                "nullable": false,
+                "enumValues": [
+                  {
+                    "value": 0,
+                    "name": "Unknown",
+                    "description": null
+                  },
+                  {
+                    "value": 1,
+                    "name": "Draft",
+                    "description": null
+                  },
+                  {
+                    "value": 2,
+                    "name": "Submitted",
+                    "description": null
+                  }
+                ],
+                "itemType": null
+              }
+            },
+            {
+              "constraints": [],
+              "name": "MemberNumber",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "constraints": [],
+              "name": "MemberDisplayName",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "constraints": [],
+              "name": "DateOfService",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": "date",
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "constraints": [],
+              "name": "PrimaryProcedureCode",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "constraints": [],
+              "name": "PrimaryProcedureDescription",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            }
+          ],
+          "dependencies": [],
+          "availableAfter": [],
+          "availableUntil": [],
+          "result": null
+        }
+      ]
+    },
+    {
+      "serviceName": "intake",
+      "name": "intake",
+      "description": "Prior authorization intake processor.",
+      "displayName": "Prior Auth Intake",
+      "isEntryProcessor": true,
+      "registryUrl": "/intake/registry",
+      "initialSteps": [],
+      "steps": []
+    },
+    {
+      "serviceName": "member",
+      "name": "member",
+      "description": "Member and Enrollment service",
+      "displayName": "Member Service",
+      "isEntryProcessor": false,
+      "registryUrl": "/member/registry",
+      "initialSteps": [
+        {
+          "name": "GenerateSnapshot",
+          "description": "Generates a member snapshot for the current process context.",
+          "displayName": "Members - Generate Snapshot",
+          "version": "1.0.0",
+          "repeatable": false,
+          "authorization": null,
+          "executeUrl": "",
+          "metadataUrl": ""
+        }
+      ],
+      "steps": [
+        {
+          "name": "GenerateSnapshot",
+          "description": "Generates a member snapshot for the current process context.",
+          "displayName": "Members - Generate Snapshot",
+          "version": "1.0.0",
+          "repeatable": false,
+          "authorization": null,
+          "executeUrl": "/member/processes/steps/generatesnapshot",
+          "metadataUrl": "/member/processes/steps/generatesnapshot/metadata",
+          "fields": [
+            {
+              "constraints": [],
+              "name": "MemberId",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": "uuid",
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "constraints": [],
+              "name": "MemberEnrollmentId",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": "uuid",
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            }
+          ],
+          "dependencies": [],
+          "availableAfter": [],
+          "availableUntil": [],
+          "result": {
+            "outputFields": [
+              {
+                "name": "MemberSnapshotId",
+                "description": null,
+                "dataType": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": false,
+                  "enumValues": null,
+                  "itemType": null
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "serviceName": "radiology",
+      "name": "radiology",
+      "description": "Prior authorization radiology service.",
+      "displayName": "Prior Auth Radiology",
+      "isEntryProcessor": false,
+      "registryUrl": "/radiology/registry",
+      "initialSteps": [],
+      "steps": []
     }
-  }
+  ],
+  "queryables": [
+    {
+      "name": "diagnosis-codes",
+      "description": "Diagnosis Codes",
+      "displayName": "Diagnosis Codes",
+      "version": "1.0.0",
+      "source": "Prior Authorization Code Set",
+      "kind": "direct",
+      "pageable": {
+        "defaultSize": 25,
+        "maxSize": 100
+      },
+      "authorization": null,
+      "metadataUrl": "/codeset/queryable/diagnosis-codes/metadata",
+      "queryUrl": "/codeset/queryable/diagnosis-codes/query",
+      "fields": [
+        {
+          "name": "DiagnosisCodeId",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "CodeValue",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 1,
+          "matchMode": "exact",
+          "isSortable": true
+        },
+        {
+          "name": "CodeSystem",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "enum",
+            "nullable": false,
+            "enumValues": [
+              {
+                "value": 0,
+                "name": "Unknown",
+                "description": null
+              },
+              {
+                "value": 1,
+                "name": "Icd10Cm",
+                "description": null
+              },
+              {
+                "value": 2,
+                "name": "Local",
+                "description": null
+              }
+            ],
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals",
+            "in"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        },
+        {
+          "name": "ShortDescription",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 2,
+          "matchMode": "contains",
+          "isSortable": true
+        },
+        {
+          "name": "LongDescription",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": true,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 3,
+          "matchMode": "contains",
+          "isSortable": false
+        },
+        {
+          "name": "EffectiveDate",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "date",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals",
+            "greaterThan",
+            "greaterThanOrEqual",
+            "lessThan",
+            "lessThanOrEqual"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        },
+        {
+          "name": "TerminationDate",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals",
+            "isNull",
+            "isNotNull",
+            "greaterThan",
+            "greaterThanOrEqual",
+            "lessThan",
+            "lessThanOrEqual"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        }
+      ],
+      "views": []
+    },
+    {
+      "name": "mri-procedure-code-rules",
+      "description": "MRI Procedure Code Rules",
+      "displayName": "MRI Procedure Code Rules",
+      "version": "1.0.0",
+      "source": "Prior Authorization Configuration",
+      "kind": "direct",
+      "pageable": null,
+      "authorization": null,
+      "metadataUrl": "/configuration/queryable/mri-procedure-code-rules/metadata",
+      "queryUrl": "/configuration/queryable/mri-procedure-code-rules/query",
+      "fields": [
+        {
+          "name": "MriProcedureCodeRuleId",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "SelectedCodeSystem",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "enum",
+            "nullable": false,
+            "enumValues": [
+              {
+                "value": 0,
+                "name": "Unknown",
+                "description": null
+              },
+              {
+                "value": 1,
+                "name": "Cpt",
+                "description": null
+              },
+              {
+                "value": 2,
+                "name": "Hcpcs",
+                "description": null
+              },
+              {
+                "value": 3,
+                "name": "Local",
+                "description": null
+              }
+            ],
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "SelectedCodeValue",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": true,
+          "searchPriority": 1,
+          "matchMode": "exact",
+          "isSortable": false
+        },
+        {
+          "name": "Modality",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "enum",
+            "nullable": false,
+            "enumValues": [
+              {
+                "value": 0,
+                "name": "Unknown",
+                "description": null
+              },
+              {
+                "value": 1,
+                "name": "Mri",
+                "description": null
+              },
+              {
+                "value": 2,
+                "name": "Ct",
+                "description": null
+              }
+            ],
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "BodyPart",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "enum",
+            "nullable": false,
+            "enumValues": [
+              {
+                "value": 0,
+                "name": "Unknown",
+                "description": null
+              },
+              {
+                "value": 1,
+                "name": "Spine",
+                "description": null
+              },
+              {
+                "value": 2,
+                "name": "Knee",
+                "description": null
+              }
+            ],
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "Laterality",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "enum",
+            "nullable": false,
+            "enumValues": [
+              {
+                "value": 0,
+                "name": "Unknown",
+                "description": null
+              },
+              {
+                "value": 1,
+                "name": "None",
+                "description": null
+              },
+              {
+                "value": 2,
+                "name": "Left",
+                "description": null
+              },
+              {
+                "value": 3,
+                "name": "Right",
+                "description": null
+              },
+              {
+                "value": 4,
+                "name": "Bilateral",
+                "description": null
+              }
+            ],
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "Contrast",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "enum",
+            "nullable": false,
+            "enumValues": [
+              {
+                "value": 0,
+                "name": "Unknown",
+                "description": null
+              },
+              {
+                "value": 1,
+                "name": "WithoutContrast",
+                "description": null
+              },
+              {
+                "value": 2,
+                "name": "WithContrast",
+                "description": null
+              },
+              {
+                "value": 3,
+                "name": "WithAndWithoutContrast",
+                "description": null
+              }
+            ],
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "ResolvedCodeSystem",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "enum",
+            "nullable": false,
+            "enumValues": [
+              {
+                "value": 0,
+                "name": "Unknown",
+                "description": null
+              },
+              {
+                "value": 1,
+                "name": "Cpt",
+                "description": null
+              },
+              {
+                "value": 2,
+                "name": "Hcpcs",
+                "description": null
+              },
+              {
+                "value": 3,
+                "name": "Local",
+                "description": null
+              }
+            ],
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "ResolvedCodeValue",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": true,
+          "searchPriority": 2,
+          "matchMode": "exact",
+          "isSortable": false
+        }
+      ],
+      "views": []
+    },
+    {
+      "name": "plans",
+      "description": "Plans",
+      "displayName": "Plans",
+      "version": "1.0.0",
+      "source": "Prior Authorization Reference Data",
+      "kind": "direct",
+      "pageable": {
+        "defaultSize": 25,
+        "maxSize": 100
+      },
+      "authorization": null,
+      "metadataUrl": "/referencedata/queryable/plans/metadata",
+      "queryUrl": "/referencedata/queryable/plans/query",
+      "fields": [
+        {
+          "name": "PlanId",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 1,
+          "matchMode": "exact",
+          "isSortable": true
+        },
+        {
+          "name": "PlanName",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 2,
+          "matchMode": "contains",
+          "isSortable": true
+        },
+        {
+          "name": "LineOfBusiness",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "enum",
+            "nullable": false,
+            "enumValues": [
+              {
+                "value": 0,
+                "name": "Unknown",
+                "description": null
+              },
+              {
+                "value": 1,
+                "name": "Commercial",
+                "description": null
+              },
+              {
+                "value": 2,
+                "name": "Medicare",
+                "description": null
+              },
+              {
+                "value": 3,
+                "name": "Medicaid",
+                "description": null
+              },
+              {
+                "value": 4,
+                "name": "Exchange",
+                "description": null
+              }
+            ],
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals",
+            "in"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "StateCode",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals",
+            "in"
+          ],
+          "isSearchable": true,
+          "searchPriority": 3,
+          "matchMode": "exact",
+          "isSortable": true
+        },
+        {
+          "name": "EffectiveDate",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "date",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        },
+        {
+          "name": "TerminationDate",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals",
+            "isNull",
+            "isNotNull"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        },
+        {
+          "name": "IsActive",
+          "description": null,
+          "dataType": {
+            "type": "boolean",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        },
+        {
+          "name": "NetworkIds",
+          "description": null,
+          "dataType": {
+            "type": "array",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": {
+              "type": "string",
+              "format": "uuid",
+              "nullable": false,
+              "enumValues": null,
+              "itemType": null
+            }
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "in"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        }
+      ],
+      "views": []
+    },
+    {
+      "name": "prior-auth-records",
+      "description": "Prior Auth Records",
+      "displayName": "Prior Auth Records",
+      "version": "1.0.0",
+      "source": "Prior Auth History Service",
+      "kind": "local",
+      "pageable": null,
+      "authorization": null,
+      "metadataUrl": "/history/queryable/prior-auth-records/metadata",
+      "queryUrl": null,
+      "fields": [
+        {
+          "name": "PriorAuthRecordId",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "ProcessId",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "ProcessorName",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "Status",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "enum",
+            "nullable": false,
+            "enumValues": [
+              {
+                "value": 0,
+                "name": "Unknown",
+                "description": null
+              },
+              {
+                "value": 1,
+                "name": "Draft",
+                "description": null
+              },
+              {
+                "value": 2,
+                "name": "Submitted",
+                "description": null
+              }
+            ],
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "in"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        },
+        {
+          "name": "MemberDisplayName",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 1,
+          "matchMode": "contains",
+          "isSortable": true
+        },
+        {
+          "name": "MemberNumber",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 2,
+          "matchMode": "exact",
+          "isSortable": false
+        },
+        {
+          "name": "DateOfService",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "date",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "greaterThanOrEqual",
+            "lessThanOrEqual"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        },
+        {
+          "name": "PrimaryProcedureCode",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        },
+        {
+          "name": "PrimaryProcedureDescription",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        },
+        {
+          "name": "CreatedUtc",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "date-time-offset",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        },
+        {
+          "name": "LastUpdatedUtc",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "date-time-offset",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        }
+      ],
+      "views": [
+        {
+          "name": "prior-auth-records",
+          "description": "Prior authorization history records for grid display.",
+          "displayName": "Prior Auth Records",
+          "version": "1.0.0",
+          "pageable": {
+            "defaultSize": 25,
+            "maxSize": 100
+          },
+          "authorization": null,
+          "queryUrl": "/history/queryable/prior-auth-records/prior-auth-records/query",
+          "parameters": [],
+          "outputFields": [
+            {
+              "name": "PriorAuthRecordId",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": "uuid",
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "ProcessId",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": "uuid",
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "ProcessorName",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "Status",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": "enum",
+                "nullable": false,
+                "enumValues": [
+                  {
+                    "value": 0,
+                    "name": "Unknown",
+                    "description": null
+                  },
+                  {
+                    "value": 1,
+                    "name": "Draft",
+                    "description": null
+                  },
+                  {
+                    "value": 2,
+                    "name": "Submitted",
+                    "description": null
+                  }
+                ],
+                "itemType": null
+              }
+            },
+            {
+              "name": "MemberNumber",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "MemberDisplayName",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "DateOfService",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": "date",
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "PrimaryProcedureCode",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "PrimaryProcedureDescription",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "CreatedUtc",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": "date-time-offset",
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "LastUpdatedUtc",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": "date-time-offset",
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "procedure-codes",
+      "description": "Procedure Codes",
+      "displayName": "Procedure Codes",
+      "version": "1.0.0",
+      "source": "Prior Authorization Code Set",
+      "kind": "direct",
+      "pageable": {
+        "defaultSize": 25,
+        "maxSize": 100
+      },
+      "authorization": null,
+      "metadataUrl": "/codeset/queryable/procedure-codes/metadata",
+      "queryUrl": "/codeset/queryable/procedure-codes/query",
+      "fields": [
+        {
+          "name": "ProcedureCodeId",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "CodeValue",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 1,
+          "matchMode": "exact",
+          "isSortable": true
+        },
+        {
+          "name": "CodeSystem",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "enum",
+            "nullable": false,
+            "enumValues": [
+              {
+                "value": 0,
+                "name": "Unknown",
+                "description": null
+              },
+              {
+                "value": 1,
+                "name": "Cpt",
+                "description": null
+              },
+              {
+                "value": 2,
+                "name": "Hcpcs",
+                "description": null
+              },
+              {
+                "value": 3,
+                "name": "Local",
+                "description": null
+              }
+            ],
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals",
+            "in"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        },
+        {
+          "name": "ShortDescription",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 2,
+          "matchMode": "contains",
+          "isSortable": true
+        },
+        {
+          "name": "LongDescription",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": true,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 3,
+          "matchMode": "contains",
+          "isSortable": false
+        },
+        {
+          "name": "RequiresAuthorization",
+          "description": null,
+          "dataType": {
+            "type": "boolean",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        },
+        {
+          "name": "EffectiveDate",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "date",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals",
+            "greaterThan",
+            "greaterThanOrEqual",
+            "lessThan",
+            "lessThanOrEqual"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        },
+        {
+          "name": "TerminationDate",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals",
+            "isNull",
+            "isNotNull",
+            "greaterThan",
+            "greaterThanOrEqual",
+            "lessThan",
+            "lessThanOrEqual"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        }
+      ],
+      "views": []
+    },
+    {
+      "name": "procedure-modality-rules",
+      "description": "Procedure Modality Rules",
+      "displayName": "Procedure Modality Rules",
+      "version": "1.0.0",
+      "source": "Prior Authorization Configuration",
+      "kind": "direct",
+      "pageable": null,
+      "authorization": null,
+      "metadataUrl": "/configuration/queryable/procedure-modality-rules/metadata",
+      "queryUrl": "/configuration/queryable/procedure-modality-rules/query",
+      "fields": [
+        {
+          "name": "ProcedureModalityRuleId",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "CodeSystem",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "enum",
+            "nullable": false,
+            "enumValues": [
+              {
+                "value": 0,
+                "name": "Unknown",
+                "description": null
+              },
+              {
+                "value": 1,
+                "name": "Cpt",
+                "description": null
+              },
+              {
+                "value": 2,
+                "name": "Hcpcs",
+                "description": null
+              },
+              {
+                "value": 3,
+                "name": "Local",
+                "description": null
+              }
+            ],
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "CodeRangeStart",
+          "description": null,
+          "dataType": {
+            "type": "integer",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "greaterThanOrEqual",
+            "lessThanOrEqual"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "CodeRangeEnd",
+          "description": null,
+          "dataType": {
+            "type": "integer",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "greaterThanOrEqual",
+            "lessThanOrEqual"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "Modality",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "enum",
+            "nullable": false,
+            "enumValues": [
+              {
+                "value": 0,
+                "name": "Unknown",
+                "description": null
+              },
+              {
+                "value": 1,
+                "name": "Mri",
+                "description": null
+              },
+              {
+                "value": 2,
+                "name": "Ct",
+                "description": null
+              }
+            ],
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "Name",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 1,
+          "matchMode": "contains",
+          "isSortable": false
+        }
+      ],
+      "views": []
+    },
+    {
+      "name": "product-code-mappings",
+      "description": "Product Code Mappings",
+      "displayName": "Product Code Mappings",
+      "version": "1.0.0",
+      "source": "Prior Authorization Configuration",
+      "kind": "direct",
+      "pageable": null,
+      "authorization": null,
+      "metadataUrl": "/configuration/queryable/product-code-mappings/metadata",
+      "queryUrl": "/configuration/queryable/product-code-mappings/query",
+      "fields": [
+        {
+          "name": "ProductCodeMappingId",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "CodeSystem",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "enum",
+            "nullable": false,
+            "enumValues": [
+              {
+                "value": 0,
+                "name": "Unknown",
+                "description": null
+              },
+              {
+                "value": 1,
+                "name": "Cpt",
+                "description": null
+              },
+              {
+                "value": 2,
+                "name": "Hcpcs",
+                "description": null
+              },
+              {
+                "value": 3,
+                "name": "Local",
+                "description": null
+              }
+            ],
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "CodeValue",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "in"
+          ],
+          "isSearchable": true,
+          "searchPriority": 1,
+          "matchMode": "exact",
+          "isSortable": false
+        },
+        {
+          "name": "ProcessorName",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": true,
+          "searchPriority": 2,
+          "matchMode": "exact",
+          "isSortable": false
+        }
+      ],
+      "views": []
+    },
+    {
+      "name": "questionnaire-definitions",
+      "description": "Questionnaire Definitions",
+      "displayName": "Questionnaire Definitions",
+      "version": "1.0.0",
+      "source": "Prior Authorization Configuration",
+      "kind": "direct",
+      "pageable": null,
+      "authorization": null,
+      "metadataUrl": "/configuration/queryable/questionnaire-definitions/metadata",
+      "queryUrl": "/configuration/queryable/questionnaire-definitions/query",
+      "fields": [
+        {
+          "name": "QuestionnaireDefinitionId",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        },
+        {
+          "name": "QuestionnaireId",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": true,
+          "searchPriority": 1,
+          "matchMode": "exact",
+          "isSortable": false
+        },
+        {
+          "name": "Version",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": true,
+          "searchPriority": 2,
+          "matchMode": "exact",
+          "isSortable": false
+        },
+        {
+          "name": "Name",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": true,
+          "searchPriority": 3,
+          "matchMode": "contains",
+          "isSortable": false
+        },
+        {
+          "name": "Title",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 4,
+          "matchMode": "contains",
+          "isSortable": false
+        },
+        {
+          "name": "IsActive",
+          "description": null,
+          "dataType": {
+            "type": "boolean",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": false
+        }
+      ],
+      "views": [
+        {
+          "name": "questionnaire-definition",
+          "description": "Resolves a questionnaire definition for a given step and business context.",
+          "displayName": "Questionnaire Definition",
+          "version": "1.0.0",
+          "pageable": null,
+          "authorization": null,
+          "queryUrl": "/configuration/queryable/questionnaire-definitions/questionnaire-definition/query",
+          "parameters": [
+            {
+              "name": "StepName",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              },
+              "constraints": []
+            },
+            {
+              "name": "PlanId",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": true,
+                "enumValues": null,
+                "itemType": null
+              },
+              "constraints": []
+            },
+            {
+              "name": "LineOfBusiness",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": true,
+                "enumValues": null,
+                "itemType": null
+              },
+              "constraints": []
+            },
+            {
+              "name": "ProcedureModality",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": "enum",
+                "nullable": true,
+                "enumValues": [
+                  {
+                    "value": 0,
+                    "name": "Unknown",
+                    "description": null
+                  },
+                  {
+                    "value": 1,
+                    "name": "Mri",
+                    "description": null
+                  },
+                  {
+                    "value": 2,
+                    "name": "Ct",
+                    "description": null
+                  }
+                ],
+                "itemType": null
+              },
+              "constraints": []
+            },
+            {
+              "name": "ProcedureCodeValue",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": true,
+                "enumValues": null,
+                "itemType": null
+              },
+              "constraints": []
+            }
+          ],
+          "outputFields": [
+            {
+              "name": "QuestionnaireId",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "Version",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "Name",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "Title",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "Description",
+              "description": null,
+              "dataType": {
+                "type": "string",
+                "format": null,
+                "nullable": true,
+                "enumValues": null,
+                "itemType": null
+              }
+            },
+            {
+              "name": "Items",
+              "description": null,
+              "dataType": {
+                "type": "array",
+                "format": null,
+                "nullable": false,
+                "enumValues": null,
+                "itemType": {
+                  "type": "object",
+                  "format": null,
+                  "nullable": false,
+                  "enumValues": null,
+                  "itemType": null
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "states",
+      "description": "States",
+      "displayName": "States",
+      "version": "1.0.0",
+      "source": "Prior Authorization Reference Data",
+      "kind": "direct",
+      "pageable": {
+        "defaultSize": 25,
+        "maxSize": 100
+      },
+      "authorization": null,
+      "metadataUrl": "/referencedata/queryable/states/metadata",
+      "queryUrl": "/referencedata/queryable/states/query",
+      "fields": [
+        {
+          "name": "StateCode",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals",
+            "in"
+          ],
+          "isSearchable": true,
+          "searchPriority": 1,
+          "matchMode": "exact",
+          "isSortable": true
+        },
+        {
+          "name": "Name",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 2,
+          "matchMode": "contains",
+          "isSortable": true
+        },
+        {
+          "name": "IsActive",
+          "description": null,
+          "dataType": {
+            "type": "boolean",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        }
+      ],
+      "views": []
+    },
+    {
+      "name": "zipcodes",
+      "description": "Zip Codes",
+      "displayName": "Zip Codes",
+      "version": "1.0.0",
+      "source": "Prior Authorization Reference Data",
+      "kind": "direct",
+      "pageable": {
+        "defaultSize": 25,
+        "maxSize": 250
+      },
+      "authorization": null,
+      "metadataUrl": "/referencedata/queryable/zipcodes/metadata",
+      "queryUrl": "/referencedata/queryable/zipcodes/query",
+      "fields": [
+        {
+          "name": "PostalCode",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals",
+            "in"
+          ],
+          "isSearchable": true,
+          "searchPriority": 1,
+          "matchMode": "exact",
+          "isSortable": true
+        },
+        {
+          "name": "StateCode",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals",
+            "in"
+          ],
+          "isSearchable": true,
+          "searchPriority": 2,
+          "matchMode": "exact",
+          "isSortable": true
+        },
+        {
+          "name": "City",
+          "description": null,
+          "dataType": {
+            "type": "string",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": false,
+          "filterOperators": [],
+          "isSearchable": true,
+          "searchPriority": 3,
+          "matchMode": "contains",
+          "isSortable": true
+        },
+        {
+          "name": "IsActive",
+          "description": null,
+          "dataType": {
+            "type": "boolean",
+            "format": null,
+            "nullable": false,
+            "enumValues": null,
+            "itemType": null
+          },
+          "isFilterable": true,
+          "filterOperators": [
+            "equals",
+            "notEquals"
+          ],
+          "isSearchable": false,
+          "searchPriority": null,
+          "matchMode": null,
+          "isSortable": true
+        }
+      ],
+      "views": []
+    }
+  ],
+  "clientErrors": []
 }

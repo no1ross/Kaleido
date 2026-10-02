@@ -30,18 +30,15 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
     }
 
     [Fact]
-    public void MapProcessor_RegistersCatalogRegistryStateAndStepEndpoints()
+    public void MapProcessor_RegistersStateAndStepEndpoints()
     {
         var endpoints =
             CreateEndpoints();
 
         endpoints.MapProcessor();
 
-        Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ProcessorCatalogEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ProcessEndpointName));
-        Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.StepCatalogEndpointName));
-        Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.StepRegistryEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.StepMetadataEndpointName("test-step")));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.StepExecutionEndpointName("test-step")));
     }
@@ -54,11 +51,8 @@ public sealed class ProcessEndpointRouteBuilderExtensionsTests
 
         endpoints.MapProcessor();
 
-        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes"));
         Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes/execute"));
         Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes/{processId}"));
-        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes/steps"));
-        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes/registry"));
         Assert.Single(FindEndpointsByRoute(endpoints, "/workflows/processes/steps/test-step/metadata"));
         Assert.Single(FindEndpointsByRoute(endpoints, "/workflows/processes/steps/test-step"));
     }

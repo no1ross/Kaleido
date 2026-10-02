@@ -21,25 +21,20 @@ See also:
 
 ### Queryable endpoint mapping
 - `QueryableEndpointRouteBuilderExtensions` — `MapQueryable()` extension
-  - `GET /{prefix}/queryable` — catalog (summary records for discoverable contexts)
-  - `GET /{prefix}/queryable/registry` — full context/view metadata
   - `GET /{prefix}/queryable/{context}/{metadataRoute}` — per-context metadata
   - `POST /{prefix}/queryable/{context}/{queryRoute}` — direct context query (Direct contexts only)
   - `POST /{prefix}/queryable/{context}/{view}/{queryRoute}` — local or delegated view query
 
 ### Process endpoint mapping
 - `ProcessEndpointRouteBuilderExtensions` — `MapProcessor()` extension
-  - `GET /{prefix}/processes` — processor catalog (initial steps grouped by processor)
-  - `GET /{prefix}/processes/steps` — step catalog (lightweight summary of all steps)
-  - `GET /{prefix}/processes/registry` — full processor registry (all step metadata)
   - `GET /{prefix}/processes/steps/{step}/metadata` — per-step metadata
   - `POST /{prefix}/processes/execute` — multi-step execute endpoint
   - `GET /{prefix}/processes/{processId}` — process state
   - `POST /{prefix}/processes/steps/{step}` — per-step execute endpoint
 
 ### Registry endpoint mapping
-- `RegistryEndpointRouteBuilderExtensions` — `MapRegistry()` extension
-  - `GET /{prefix}/registry` — aggregated discovery combining local process + all downstream process clients + all downstream queryable clients
+- `RegistryEndpointRouteBuilderExtensions` — `MapRegistry()` extension (internal; mapped by `MapKaleidoHttp`)
+  - `GET /{prefix}/registry` — unified discovery: local process + queryable registrations; when `MapKaleidoHttp(o => o.AggregateRegistry = true)` is used, also merges every downstream client registered via `AddHttpClients()`
 
 ### URL and route helpers
 - `ProcessContractUrls` / `ProcessRoutePaths` — URL generation for Process metadata and execute URLs
@@ -50,9 +45,9 @@ See also:
 ## What this project is for
 
 Reference this project when you need to:
-- publish Queryable endpoints with `MapQueryable()`
-- publish Process endpoints with `MapProcessor()`
-- publish the aggregated Registry endpoint with `MapRegistry()`
+- publish all Kaleido endpoints at once with `MapKaleidoHttp()` (auto-detects active runtimes and maps the registry)
+- publish only Queryable endpoints with `MapQueryable()`
+- publish only Process endpoints with `MapProcessor()`
 - work with the URL/path generation helpers for Process or Queryable routes
 
 ## What this project is NOT for
@@ -75,9 +70,10 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     .AddHttp();
 
 var app = builder.Build();
-app.MapQueryable();
-app.MapProcessor();
-app.MapRegistry(); // optional aggregated discovery
+app.MapKaleidoHttp(); // maps Process + Queryable + /{service}/registry
+
+// On a router/gateway that fans out to downstream services:
+app.MapKaleidoHttp(o => o.AggregateRegistry = true); // requires AddHttpClients()
 ```
 
 `AddHttp()` wires the middleware pipeline automatically via `KaleidoStartupFilter` — no manual `Use...()` call is needed.
@@ -86,23 +82,18 @@ app.MapRegistry(); // optional aggregated discovery
 
 ## Authorization
 
-`MapProcessor()`, `MapQueryable()`, and `MapRegistry()` each return the `RouteGroupBuilder` they mapped, so endpoint conventions compose directly:
+`MapKaleidoHttp()` returns an `IEndpointConventionBuilder` covering every mapped endpoint, so conventions compose directly. For per-surface conventions, `MapProcessor()` and `MapQueryable()` still return the `RouteGroupBuilder` they mapped:
 
 ```csharp
-// Require authorization on all Process endpoints
-app.MapProcessor().RequireAuthorization();
-
-// Require authorization on all Queryable endpoints
-app.MapQueryable().RequireAuthorization();
+// Require authorization on everything Kaleido publishes
+app.MapKaleidoHttp().RequireAuthorization();
 
 // Different policies per surface
 app.MapProcessor().RequireAuthorization("ProcessPolicy");
 app.MapQueryable().RequireAuthorization("QueryPolicy");
-app.MapRegistry().RequireAuthorization("AdminOnly");
 
 // No auth (default)
-app.MapProcessor();
-app.MapQueryable();
+app.MapKaleidoHttp();
 ```
 
 Any `IEndpointConventionBuilder` extension (`RequireAuthorization`, `WithMetadata`, `RequireCors`, rate limiting, etc.) composes this way. To apply conventions to a broader surface, wrap in `MapGroup("")` as usual — an empty prefix adds no route prefix of its own.
@@ -123,7 +114,7 @@ Enforcement works on two layers:
 
 **In-handler evaluation** — `IKaleidoAuthorizer` (registered scoped by `AddHttp()`) covers what per-route metadata cannot express:
 - *Multi-step execute* — `POST /processes/execute` submits N steps; `ProcessExecutionService` calls `AuthorizeAsync` per submitted step (unknown step names are left to runtime validation). A denied step fails the request with `KaleidoAuthorizationException` → 401/403.
-- *Filtered discovery* — catalog/registry/metadata endpoints stay open but scope their payloads to the caller: `FilterAsync` drops capabilities whose declared roles/policy the caller doesn't satisfy, including views inside context metadata and steps inside the aggregated `MapRegistry` response (the registry cache holds the unfiltered union; filtering is per-request).
+- *Filtered discovery* — registry/metadata endpoints stay open but scope their payloads to the caller: `FilterAsync` drops capabilities whose declared roles/policy the caller doesn't satisfy, including views inside context metadata and steps inside the `/{service}/registry` response (the registry cache holds the unfiltered union; filtering is per-request).
 
 `AddHttp(Action<KaleidoHttpOptions>)` registers `KaleidoHttpOptions` unconditionally; `RequireAuthorization = true` makes *undeclared* capabilities require an authenticated caller (default `false` — undeclared stays open).
 
@@ -135,12 +126,14 @@ A capability declaring `Policy` on a host with no `IAuthorizationService` fails 
 
 ## Registry endpoint
 
-`MapRegistry()` resolves:
-- the local processor's registry from `IProcessorRegistry`
-- all downstream process client registries via `IKaleidoProcessClientFactory`
-- all downstream queryable client registries via `IKaleidoQueryableClientFactory`
+`MapKaleidoHttp()` always maps `GET /{service}/registry` when a runtime is present. The endpoint returns an `AggregatedRegistryResponse` (`Processes`, `Queryables`, `ClientErrors`) built from:
+- the local processor's registry (`IProcessRegistry`)
+- the local queryable registry (`IQueryableRegistry`)
+- when `AggregateRegistry` is set: every downstream client registered via `AddHttpClients()` — one `GET /{downstream}/registry` fetch per named client, deduplicated through a shared cache (`KaleidoRemoteRegistry` in `Kaleido.Http.Client`), so the Process and Queryable halves never issue separate calls
 
-It always returns HTTP 200. Downstream clients that are unreachable populate the `ClientErrors` array in the response. A non-empty `ClientErrors` collection means the response is partial.
+A client whose `RoutePrefix` equals this service's `ServiceName` is skipped (self-fetch would recurse). Aggregation without any registered clients throws a `KaleidoConfigurationException` at map time.
+
+The endpoint always returns HTTP 200. Downstream clients that are unreachable populate the `ClientErrors` array in the response. A non-empty `ClientErrors` collection means the response is partial.
 
 The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from `Kaleido:ServiceName` configuration).
 
@@ -150,7 +143,7 @@ The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from
 
 ## Registration requirement
 
-`AddHttp()` registers the middleware pipeline (`ExceptionMiddleware`, `ObservabilityMiddleware`) and the transport services (`ProcessExecutionService`, `ProcessStateService`) that `MapQueryable()`, `MapProcessor()`, and `MapRegistry()` depend on. Call it on the `IKaleidoBuilder` before mapping endpoints.
+`AddHttp()` registers the middleware pipeline (`ExceptionMiddleware`, `ObservabilityMiddleware`) and the transport services (`ProcessExecutionService`, `ProcessStateService`) that `MapKaleidoHttp()`, `MapQueryable()`, and `MapProcessor()` depend on. Call it on the `IKaleidoBuilder` before mapping endpoints.
 
 ---
 

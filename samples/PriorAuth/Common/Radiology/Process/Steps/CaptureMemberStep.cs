@@ -6,7 +6,7 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 [KaleidoAuthorization(Roles = "radiology")]
 [ProcessStep(
     Name = "CaptureMember",
-    DisplayName = "Radiology - Capture Member",
+    DisplayName = "Capture Member",
     Description = "Creates or updates the prior authorization with the selected member.",
     Version = "1.0.0")]
 [AvailableAfter(typeof(StartRadiologyIntakeStep))]

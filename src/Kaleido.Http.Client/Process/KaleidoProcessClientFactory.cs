@@ -6,7 +6,8 @@ internal sealed class KaleidoProcessClientFactory(
     IHttpClientFactory httpClientFactory,
     ICorrelationHeaderStamper headerStamper,
     ILogger<KaleidoProcessClient> logger,
-    KaleidoProcessClientRouteOptionsMap routeOptionsMap)
+    KaleidoProcessClientRouteOptionsMap routeOptionsMap,
+    KaleidoRemoteRegistry remoteRegistry)
     : KaleidoClientFactoryBase<IKaleidoProcessClient, KaleidoProcessClientRouteOptionsMap>,
       IKaleidoProcessClientFactory
 {
@@ -17,8 +18,9 @@ internal sealed class KaleidoProcessClientFactory(
     protected override IKaleidoProcessClient CreateClient(
         System.Net.Http.HttpClient httpClient,
         ICorrelationHeaderStamper stamper,
+        string clientName,
         string serviceName)
     {
-        return new KaleidoProcessClient(httpClient, stamper, logger, serviceName);
+        return new KaleidoProcessClient(httpClient, stamper, logger, remoteRegistry, clientName, serviceName);
     }
 }
