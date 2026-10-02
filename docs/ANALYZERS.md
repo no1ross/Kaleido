@@ -47,8 +47,6 @@ Shipped inside the `Kaleido` package (`analyzers/dotnet/cs/`). They fire on **co
 | KAL0013 | Do not dispose container-owned dependencies | `'{0}' on '{1}' disposes a container-owned dependency ('{2}') — the container manages its lifetime` |
 | KAL0014 | Singleton registrations must not resolve scoped services | `Singleton factory resolves '{0}' which is registered as Scoped — the scoped instance would be captured for the app lifetime` |
 | KAL0015 | Interface must live in the same file as its same-named implementation (`IProcessRuntime` in `ProcessRuntime.cs`); provider contracts exempt | `Interface '{0}' should be declared in '{1}' alongside '{2}' — an interface and its concrete class share a file` |
-| KAL0016 | Every `MapGet`/`MapPost` call must chain `.WithTags(...)` | `MapGet/MapPost call is missing a .WithTags() chain` |
-| KAL0017 | Every `.WithTags(...)` chain must include `"Kaleido"` as one of the tag arguments | `WithTags() call is missing the "Kaleido" tag` |
 | KAL0018 | Public and internal API members must not expose mutable collection types (`List<T>`, `IList<T>`, `Dictionary<K,V>`, `IDictionary<K,V>`, `HashSet<T>`, `ISet<T>`, `ICollection<T>`) | `'{0}' is a mutable collection type — use IReadOnlyCollection<T>, IReadOnlyList<T>, IReadOnlyDictionary<K,V>, or IEnumerable<T> instead` |
 | KAL0019 | Public and internal async methods returning `Task`/`Task<T>` must accept a `CancellationToken` parameter | `Async method '{0}' does not accept a CancellationToken — add 'CancellationToken cancellationToken = default' so callers can propagate cancellation` |
 
@@ -56,9 +54,9 @@ Shipped inside the `Kaleido` package (`analyzers/dotnet/cs/`). They fire on **co
 
 The registered-service model is harvested from `*ServiceCollectionExtensions` classes in the same compilation (generic args, `typeof()` args, returned `new` in factory lambdas). `*ServiceCollectionExtensions` and `*EndpointRouteBuilderExtensions` are composition roots — exempt. `context.RequestServices` resolution (middleware/endpoint activation) and dynamic resolutions (runtime `Type` args, open-generic type parameters) are exempt from KAL0007 — they are the container's dispatch seam. Tests are exempt via `.editorconfig`.
 
-### HTTP endpoint rules notes (KAL0016–KAL0017)
+### HTTP endpoint notes
 
-These rules run against `src/Kaleido.Http` only (configured via `.editorconfig`). Every `MapGet`/`MapPost` call must chain `.WithTags(...)` (KAL0016) and that chain must include `"Kaleido"` as one of the tag arguments (KAL0017). The `"Kaleido"` tag is used for OpenAPI grouping and endpoint discovery. Endpoint names must be declared as `const string` fields in a `*EndpointNames` class in `Kaleido.Http.Abstractions` — never as inline literals passed to `WithName()`.
+Endpoint names must be declared as `const string` fields in a `*EndpointNames` class in `Kaleido.Http.Abstractions` — never as inline literals passed to `WithName()`.
 
 ### API design rules notes (KAL0018–KAL0019)
 

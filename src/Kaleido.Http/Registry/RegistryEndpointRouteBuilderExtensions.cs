@@ -195,7 +195,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                     return Results.Ok(response);
                 })
             .WithName(RegistryEndpointNames.RegistryEndpointName)
-            .WithTags("Registry", "Kaleido")
+            .WithTags("Registry")
             .Produces<AggregatedRegistryResponse>()
             .WithSummary("Get unified registry.")
             .WithDescription(
