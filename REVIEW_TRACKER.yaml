@@ -444,7 +444,7 @@ medium_priority_items:
     status: PENDING_DESIGN_REVIEW
 
   MP-018:
-    title: Collapse ProcessStepRegistry 4-pass materialization (~250 lines)
+    title: Collapse ProcessorStepRegistry multi-pass materialization (~250 lines)
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: true
@@ -689,8 +689,9 @@ external_findings:
     effort: medium
     breaking_change: package
     release_blocker: true
-    status: PENDING_DECISION
+    status: COMPLETED
     notes: "VERIFIED: only DiagnosticIds.cs + empty Unshipped notes; IsPackable=true"
+    progress_note: "All three analyzer projects (Kaleido.Analyzers, .Source, .Testing) are now IsPackable=false — no empty package ships."
   EXT-06:
     title: AddKaleido implicitly enables both Process and Queryable
     source: KAL-H01 (merges MP-005)
@@ -805,13 +806,15 @@ external_findings:
     breaking_change: possibly
     status: MERGED
     merged_into: EXT-12
+    progress_note: "PR-13 added RegistryRefreshCooldown + caller-context auth filtering; follow-up: KaleidoHttpMapOptions.RegistryDownstreamMaxParallelism bounds concurrent downstream fetches (null = unbounded)."
   EXT-14:
     title: Case-insensitive filters use culture-sensitive ToLower()
     source: KAL-M03
     severity: MEDIUM
     effort: medium
     breaking_change: if_semantics_change
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: "Verified post-EXT-18 sweep: no bare ToLower() remains in src; all case-insensitive comparisons use ToLowerInvariant/OrdinalIgnoreCase."
   EXT-15:
     title: SQLite store rewrites all child rows per save (write amplification)
     source: KAL-M04

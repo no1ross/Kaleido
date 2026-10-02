@@ -45,6 +45,18 @@ public sealed class KaleidoHttpServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddHttp_WithAutoRegisterMiddlewareFalse_SkipsStartupFilter()
+    {
+        var services = new ServiceCollection();
+        var builder = services.AddKaleido(
+            new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(),
+            o => o.ServiceName = "test");
+        builder.AddHttp(o => o.AutoRegisterMiddleware = false);
+
+        Assert.DoesNotContain(services, d => d.ServiceType == typeof(IStartupFilter));
+    }
+
+    [Fact]
     public void AddHttp_WithProcessRuntime_RegistersExecutionAndStateServices()
     {
         var services = new ServiceCollection();
