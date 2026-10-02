@@ -117,7 +117,7 @@ interface ProcessState {
 
 `currentProcessorName` is set automatically on `populateRegistry()` from whichever processor advertises `initialSteps`. No hardcoded processor name strings appear at call sites.
 
-### `ProcessRegistry` — compound keying
+### `ProcessorRegistry` — compound keying
 
 The registry is keyed internally by `processorName:stepName` to prevent collisions when different processors have steps with the same name. Public lookups use `(processorName, stepName)` — the processor comes from `ProcessState`, not from call sites.
 
@@ -146,7 +146,7 @@ After a handoff, all subsequent `executeStep()` calls automatically go to the ne
 The service resolves the target processor's base URL by looking up any registered entry for that processor name in the registry:
 
 ```typescript
-// ProcessRegistry.getAnyEntryForProcessor(targetProcessorName)
+// ProcessorRegistry.getAnyEntryForProcessor(targetProcessorName)
 // → finds the service config (baseUrl, key) for that processor
 // → builds: /{service.key}/processes/{processId}
 ```

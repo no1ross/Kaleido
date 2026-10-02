@@ -1,3 +1,4 @@
+using Kaleido.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -31,6 +32,7 @@ public static class KaleidoServiceCollectionExtensions
         services.TryAddScoped<IKaleidoCorrelationContextInitializer>(
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
         services.TryAddSingleton<IEventPublisher, EventPublisher>();
+        services.TryAddSingleton<IKaleidoAuthorizationEvaluator, KaleidoAuthorizationEvaluator>();
         services.TryAddSingleton<ITypeDescriber, TypeDescriber>();
         services.TryAddSingleton<IConstraintMapper, ConstraintMapper>();
 

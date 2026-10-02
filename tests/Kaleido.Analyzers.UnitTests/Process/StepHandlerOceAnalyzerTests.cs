@@ -13,7 +13,7 @@ public sealed class StepHandlerOceAnalyzerTests
         new();
 
     private const string KaleidoStubs = @"
-namespace Kaleido.Process
+namespace Kaleido.Processor
 {
     public interface IProcessStepHandler<TStep>
     {
@@ -32,7 +32,7 @@ namespace Kaleido.Process
     {
         await RunAsync(@"
 public class MyStep { }
-public class MyHandler : Kaleido.Process.IProcessStepHandler<MyStep>
+public class MyHandler : Kaleido.Processor.IProcessStepHandler<MyStep>
 {
     public System.Threading.Tasks.Task<int> ExecuteAsync(
         MyStep step, object context,
@@ -52,7 +52,7 @@ public class MyHandler : Kaleido.Process.IProcessStepHandler<MyStep>
     {
         await RunAsync(@"
 public class MyStep { }
-public class MyHandler : Kaleido.Process.IProcessStepHandler<MyStep>
+public class MyHandler : Kaleido.Processor.IProcessStepHandler<MyStep>
 {
     public System.Threading.Tasks.Task<int> ExecuteAsync(
         MyStep step, object context,
@@ -71,7 +71,7 @@ public class MyHandler : Kaleido.Process.IProcessStepHandler<MyStep>
     {
         await RunAsync(@"
 public class MyStep { }
-public class MyHandler : Kaleido.Process.IProcessStepHandler<MyStep>
+public class MyHandler : Kaleido.Processor.IProcessStepHandler<MyStep>
 {
     public System.Threading.Tasks.Task<int> ExecuteAsync(
         MyStep step, object context,

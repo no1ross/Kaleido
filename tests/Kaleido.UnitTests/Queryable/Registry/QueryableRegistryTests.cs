@@ -1,4 +1,5 @@
 using Kaleido.Queryable.Registry;
+using Kaleido.Registry;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.UnitTests.Queryable.Registry;
@@ -87,7 +88,7 @@ public sealed class QueryableRegistryTests
             typeof(object),
             typeof(object),
             metadata,
-            new QueryViewMetadata("view1", "desc", "display", "1.0", QueryViewVisibility.Public, null, null, null));
+            new QueryViewMetadata("view1", "desc", "display", "1.0", null, null, null));
 
         contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
         viewRegistry.Setup(r => r.Registrations).Returns([]);
@@ -119,7 +120,7 @@ public sealed class QueryableRegistryTests
             typeof(object),
             typeof(object),
             metadata,
-            new QueryViewMetadata("view1", "desc", "display", "1.0", QueryViewVisibility.Public, null, null, null));
+            new QueryViewMetadata("view1", "desc", "display", "1.0", null, null, null));
 
         contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
         viewRegistry.Setup(r => r.Registrations).Returns([]);
@@ -169,7 +170,7 @@ public sealed class QueryableRegistryTests
             typeof(int),
             typeof(long),
             typeof(object),
-            new QueryViewMetadata("view1", "desc", "display", "1.0", QueryViewVisibility.Public, null, null, null));
+            new QueryViewMetadata("view1", "desc", "display", "1.0", null, null, null));
 
         contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
         viewRegistry.Setup(r => r.Registrations)
@@ -201,7 +202,7 @@ public sealed class QueryableRegistryTests
             typeof(long),
             typeof(object),
             metadata,
-            new QueryViewMetadata("view1", "desc", "display", "1.0", QueryViewVisibility.Public, null, null, null));
+            new QueryViewMetadata("view1", "desc", "display", "1.0", null, null, null));
 
         delegatedRegistry.Setup(r => r.Registrations).Returns([delegatedRegistration]);
 
@@ -214,7 +215,7 @@ public sealed class QueryableRegistryTests
     }
 
     [Fact]
-    public void Registrations_ExcludesNonPublicViews()
+    public void Registrations_IncludesAllViews()
     {
         var contextRegistry = new Mock<IQueryContextRegistry>();
         var viewRegistry = new Mock<IQueryViewRegistry>();
@@ -227,11 +228,11 @@ public sealed class QueryableRegistryTests
 
         var publicView = new QueryViewRegistration(
             typeof(object), typeof(object), typeof(object), typeof(object),
-            new QueryViewMetadata("public-view", "1.0", "Public View", "desc", QueryViewVisibility.Public, null, null, null));
+            new QueryViewMetadata("public-view", "1.0", "Public View", "desc", null, null, null));
 
         var internalView = new QueryViewRegistration(
             typeof(object), typeof(object), typeof(object), typeof(object),
-            new QueryViewMetadata("internal-view", "1.0", "Internal View", "desc", QueryViewVisibility.Internal, null, null, null));
+            new QueryViewMetadata("internal-view", "1.0", "Internal View", "desc", null, null, null, new AuthorizationMetadata(null, ["internal"])));
 
         contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
         viewRegistry.Setup(r => r.Registrations).Returns([publicView, internalView]);
@@ -240,8 +241,92 @@ public sealed class QueryableRegistryTests
         var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
         var views = registry.Registrations.First().Views;
-        Assert.Single(views);
-        Assert.Equal("public-view", views.First().Name);
+        Assert.Equal(2, views.Count);
+        Assert.Contains(views, v => v.Name == "public-view");
+        Assert.Contains(views, v => v.Name == "internal-view");
+    }
+
+    [Fact]
+    public void Registrations_ViewWithoutAuthorization_InheritsContextAuthorization()
+    {
+        var contextRegistry = new Mock<IQueryContextRegistry>();
+        var viewRegistry = new Mock<IQueryViewRegistry>();
+        var delegatedRegistry = new Mock<IDelegatedQueryViewRegistry>();
+
+        var authorization = new AuthorizationMetadata("context-policy", ["internal"]);
+
+        var contextRegistration = new QueryContextRegistration(
+            typeof(object),
+            typeof(object),
+            new QueryContextMetadata("context1", "desc", "display", "1.0", null, QueryContextKind.Local, null, [], authorization));
+
+        var viewRegistration = new QueryViewRegistration(
+            typeof(object), typeof(object), typeof(object), typeof(object),
+            new QueryViewMetadata("view1", "1.0", "View", "desc", null, null, null));
+
+        contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
+        viewRegistry.Setup(r => r.Registrations).Returns([viewRegistration]);
+        delegatedRegistry.Setup(r => r.Registrations).Returns([]);
+
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+
+        var item = registry.Registrations.Single();
+        Assert.Equal(authorization, item.Authorization);
+        Assert.Equal(authorization, item.Views.Single().Authorization);
+    }
+
+    [Fact]
+    public void Registrations_ViewWithAuthorization_KeepsOwnAuthorization()
+    {
+        var contextRegistry = new Mock<IQueryContextRegistry>();
+        var viewRegistry = new Mock<IQueryViewRegistry>();
+        var delegatedRegistry = new Mock<IDelegatedQueryViewRegistry>();
+
+        var contextAuthorization = new AuthorizationMetadata("context-policy", ["internal"]);
+        var viewAuthorization = new AuthorizationMetadata("view-policy", ["clinician"]);
+
+        var contextRegistration = new QueryContextRegistration(
+            typeof(object),
+            typeof(object),
+            new QueryContextMetadata("context1", "desc", "display", "1.0", null, QueryContextKind.Local, null, [], contextAuthorization));
+
+        var viewRegistration = new QueryViewRegistration(
+            typeof(object), typeof(object), typeof(object), typeof(object),
+            new QueryViewMetadata("view1", "1.0", "View", "desc", null, null, null, viewAuthorization));
+
+        contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
+        viewRegistry.Setup(r => r.Registrations).Returns([viewRegistration]);
+        delegatedRegistry.Setup(r => r.Registrations).Returns([]);
+
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+
+        Assert.Equal(viewAuthorization, registry.Registrations.Single().Views.Single().Authorization);
+    }
+
+    [Fact]
+    public void Registrations_DelegatedViewWithoutAuthorization_InheritsDelegateContextAuthorization()
+    {
+        var contextRegistry = new Mock<IQueryContextRegistry>();
+        var viewRegistry = new Mock<IQueryViewRegistry>();
+        var delegatedRegistry = new Mock<IDelegatedQueryViewRegistry>();
+
+        var authorization = new AuthorizationMetadata("delegate-policy", ["internal"]);
+
+        var metadata = new QueryContextMetadata("delegated1", "desc", "display", "1.0", null, QueryContextKind.Local, null, [], authorization);
+        var delegatedRegistration = new DelegatedQueryViewRegistration(
+            typeof(object), typeof(object), typeof(object), typeof(object),
+            metadata,
+            new QueryViewMetadata("view1", "desc", "display", "1.0", null, null, null));
+
+        contextRegistry.Setup(r => r.Registrations).Returns([]);
+        viewRegistry.Setup(r => r.Registrations).Returns([]);
+        delegatedRegistry.Setup(r => r.Registrations).Returns([delegatedRegistration]);
+
+        var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
+
+        var item = registry.Registrations.Single();
+        Assert.Equal(authorization, item.Authorization);
+        Assert.Equal(authorization, item.Views.Single().Authorization);
     }
 
     [Fact]

@@ -90,6 +90,32 @@ public sealed class HttpCorrelationContextReaderTests
     }
 
     [Fact]
+    public void Read_WhenIdentityNotTrusted_GeneratesRequestIdAndDropsIdentityFields()
+    {
+        var processId = Guid.NewGuid();
+        var processorInstanceId = Guid.NewGuid();
+
+        var context = new DefaultHttpContext();
+        context.Request.Headers[KaleidoCorrelationHeaders.RequestId]           = "REQ-001";
+        context.Request.Headers[KaleidoCorrelationHeaders.ProcessId]           = processId.ToString();
+        context.Request.Headers[KaleidoCorrelationHeaders.ProcessorInstanceId] = processorInstanceId.ToString();
+        context.Request.Headers[KaleidoCorrelationHeaders.SourceProcessor]     = "intake";
+        context.Request.Headers[KaleidoCorrelationHeaders.StepName]            = "validate";
+
+        var result = context.ReadCorrelationContext(trustIdentity: false);
+
+        // ProcessId is a resumable handle — always honored.
+        Assert.Equal(processId, result.ProcessId);
+
+        // Identity fields are not honored; a fresh request id is generated.
+        Assert.True(Guid.TryParse(result.RequestId, out _));
+        Assert.NotEqual("REQ-001", result.RequestId);
+        Assert.Null(result.ProcessorInstanceId);
+        Assert.Null(result.SourceProcessorName);
+        Assert.Null(result.StepName);
+    }
+
+    [Fact]
     public void Read_StripsSanitizableCharsFromStringFields()
     {
         var context = new DefaultHttpContext();

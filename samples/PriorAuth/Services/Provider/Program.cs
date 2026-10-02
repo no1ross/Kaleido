@@ -4,6 +4,7 @@ using Kaleido.Http;
 using Kaleido.Http.Client;
 using Kaleido.Observability.OpenTelemetry;
 using Kaleido.Samples.PriorAuth;
+using Kaleido.Samples.PriorAuth.Auth;
 using Kaleido.Samples.PriorAuth.Provider.Data;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Clients;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,10 @@ builder.Services.AddDbContext<ProviderSearchDbContext>(
 builder.Services.AddScoped<PlanNetworkClient>();
 
 builder.Services.AddControllers();
+
+// Dev-token auth (sample stand-in for a real IdP) + outbound token forwarding.
+builder.Services.AddDevAuth();
+builder.Services.AddDevTokenForwarding("ReferenceData");
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -32,8 +37,7 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader();
     });
 });
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddDevSwagger();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ProviderSearchDbContext>();
 
@@ -49,7 +53,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Provider", StringComparison.Ordinal) ?? false;
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp()
+    .AddHttp(o => o.RequireAuthorization = true)
     .AddHttpClients()
     .AddOpenTelemetry();
 
@@ -58,15 +62,15 @@ var app = builder.Build();
 app.UseCors("AllowAll");
 
 app.MapHealthChecks("/health");
-app.MapKaleido();
+app.UseDevAuth();
+
+app.MapKaleidoHttp();
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseAuthorization();
 
 app.MapControllers();
 

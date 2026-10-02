@@ -1,10 +1,10 @@
-//using Kaleido.Process.Processor.Execution;
-//using Kaleido.Process.Shared.Responses;
-//using Kaleido.Process.Shared.Steps;
+//using Kaleido.Processor.Processor.Execution;
+//using Kaleido.Processor.Shared.Responses;
+//using Kaleido.Processor.Shared.Steps;
 //using Kaleido.Samples.ECommerce.Data;
 //using Microsoft.EntityFrameworkCore;
 
-//namespace Kaleido.Process.Shared.Handlers;
+//namespace Kaleido.Processor.Shared.Handlers;
 
 //public sealed class AcceptTermsAndConditionsHandler(
 //    ECommerceDbContext dbContext)

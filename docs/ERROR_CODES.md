@@ -134,10 +134,4 @@ KAL2008 is the compile-time equivalent of `ConfigurationErrorCodes.ProMissingHan
 
 `Assemblies` must be set explicitly; the `GetCallingAssembly()` fallback is JIT-nondeterministic and must not be relied upon in production.
 
-### Infrastructure wiring (KAL2006)
-
-| Rule | Severity | Trigger |
-|---|---|---|
-| `KAL2006` | Info | `MapRegistry()` is called but `AddHttpClients()` is not found in the same compilation |
-
-This is a heuristic: `MapRegistry()` aggregates remote process and queryable registries and depends on the client factories registered by `AddHttpClients()`. If `AddHttpClients()` is in a different project than `MapRegistry()`, this info diagnostic can be suppressed.
+Aggregate registries (`MapKaleidoHttp(o => o.AggregateRegistry = true)`) require `AddHttpClients()` — enforced at map time by a `KaleidoConfigurationException`, so no analyzer rule covers it.

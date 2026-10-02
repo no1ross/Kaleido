@@ -79,7 +79,7 @@ public sealed class ArchitectureTests
         var result =
             Types.InAssembly(KaleidoAssembly)
                 .That()
-                .ResideInNamespace("Kaleido.Process")
+                .ResideInNamespace("Kaleido.Processor")
                 .ShouldNot()
                 .HaveDependencyOn("Kaleido.Queryable")
                 .GetResult();
@@ -88,7 +88,7 @@ public sealed class ArchitectureTests
     }
 
     /// <summary>
-    /// IProcessContextStore is the provider seam — core ships the default
+    /// IProcessorContextStore is the provider seam — core ships the default
     /// in-memory store and must never reference provider implementations.
     /// </summary>
     [Fact]

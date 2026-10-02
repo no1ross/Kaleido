@@ -7,9 +7,9 @@ namespace Kaleido.Analyzers.Source.Layout;
 
 /// <summary>
 /// KAL0015 — the interface for a concrete class belongs in the same file as
-/// its implementation (IProcessRuntime lives in ProcessRuntime.cs). Provider
+/// its implementation (IProcessorRuntime lives in ProcessorRuntime.cs). Provider
 /// contracts are exempt by construction: an interface with no same-named
-/// implementation in the assembly (IProcessContextStore, IProcessStepHandler)
+/// implementation in the assembly (IProcessorContextStore, IProcessStepHandler)
 /// has nothing to co-locate with.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]

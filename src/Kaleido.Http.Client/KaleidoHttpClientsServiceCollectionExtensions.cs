@@ -34,13 +34,17 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
             }
 
             var prefix = entry?.RoutePrefix ?? name.ToLowerInvariant();
+            var registryTtl = entry?.RegistryTtl ?? config.RegistryTtl;
+            var strictProbe = entry?.StrictRegistryProbe ?? config.StrictRegistryProbe;
 
             // Register Process client
-            builder.AddProcessClient(o =>
+            builder.AddProcessorClient(o =>
             {
                 o.Name = name;
                 o.BaseUrl = baseUrl;
                 o.RoutePrefix = prefix;
+                o.RegistryTtl = registryTtl;
+                o.StrictRegistryProbe = strictProbe;
             });
 
             // Register Queryable client
@@ -49,6 +53,8 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
                 o.Name = name;
                 o.BaseUrl = baseUrl;
                 o.RoutePrefix = prefix;
+                o.RegistryTtl = registryTtl;
+                o.StrictRegistryProbe = strictProbe;
             });
         }
 

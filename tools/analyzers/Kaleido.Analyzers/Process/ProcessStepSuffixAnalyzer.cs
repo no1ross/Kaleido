@@ -14,7 +14,7 @@ namespace Kaleido.Analyzers.Process;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ProcessStepSuffixAnalyzer : DiagnosticAnalyzer
 {
-    private const string AttributeFullName = "Kaleido.Process.ProcessStepAttribute";
+    private const string AttributeFullName = "Kaleido.Processor.ProcessStepAttribute";
 
     private static readonly DiagnosticDescriptor Rule =
         new(

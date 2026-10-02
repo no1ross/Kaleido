@@ -33,16 +33,16 @@ For the full repository model, see:
 - `IQueryContextExecutor<TView>` — public extension point: register your own implementation to plug in provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`). Default executor uses `IAsyncEnumerable<T>` when supported, sync LINQ otherwise.
 - `QueryRequestCompiler` / `QueryRequestValidator` — validation and compilation
 - `QueryableBuilder` / `QueryableObservability` — builder and observability
-- `IQueryContextSource<T>` / `IQueryContextSourceAsync<T>` / `IQueryViewSource` / `IQueryViewSourceAsync` / `IDelegateQueryViewSource` — source/view interfaces
+- `IQueryContextSource<T>` / `IQueryContextSourceAsync<T>` / `IQueryViewSource` / `IQueryViewSourceAsync` / `IDelegatedQueryViewSource` — source/view interfaces
 
 ### Process runtime
 - `ProcessorServiceCollectionExtensions` — `AddProcessor(...)` (internal, auto-invoked by `AddKaleido()`)
 - `ExecutionProcessor` — main step execution loop
 - `StepCandidateBuilder` / `StepCandidateValidator` / `StepCandidateConsistencyChecker` / `StepCandidatePlanner` — planning pipeline
-- `ProcessStepRegistry` / `ProcessorRegistry` — runtime registries
-- `ProcessObservability` — observability
+- `ProcessorStepRegistry` / `ProcessorRegistry` — runtime registries
+- `ProcessorObservability` — observability
 - `IProcessStepHandler<TStep>` / `IProcessStepHandler<TStep, TResult>` — handler contracts
-- `IProcessContextStore` / `InMemoryProcessContextStore` — state store abstraction and default implementation
+- `IProcessorContextStore` / `ProcessorContextStore` — state store abstraction and default implementation
 
 ---
 
@@ -96,7 +96,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
 
 Queryable supports three execution lanes, dispatched in this order:
 
-1. **Delegated view** — async orchestration; returns a pre-materialized `QueryResult<TView>`. Implement `IDelegateQueryViewSource`.
+1. **Delegated view** — async orchestration; returns a pre-materialized `QueryResult<TView>`. Implement `IDelegatedQueryViewSource`.
 2. **Local view** — projection over a local `IQueryable<TContext>`; framework applies search/filter/sort/page. Implement `IQueryViewSource` (or `IQueryViewSourceAsync` when setup requires `await`).
 3. **Direct context** — query the context type itself directly. Valid only for contexts marked `Direct`.
 

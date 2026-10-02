@@ -6,6 +6,24 @@ For the top-level repository model, see [`../ARCHITECTURE.md`](../ARCHITECTURE.m
 
 ---
 
+## Terminology
+
+Canonical vocabulary — type names, namespaces, and docs must follow it:
+
+| Term | Meaning |
+|---|---|
+| **Service** | A deployed Kaleido host — `Kaleido:ServiceName`, route prefix `/{service}` |
+| **Processor** | The unit a service hosts that owns and executes Steps — the runtime/DI identity (`Kaleido.Processor` namespace, `IProcessorRuntime`, `ProcessorContext`, `IProcessorContextStore`, `AddProcessor`/`MapProcessor`, `kaleido.processor.*` telemetry) |
+| **Process** | One executing workflow instance — the wire/transport domain (`/processes` routes, `ProcessId`, `ProcessExecutionState`, `ProcessStateResponse`, `ExecuteProcessRequest`, process events) |
+| **Step** | A unit of work inside a Processor (`[ProcessStep]` — annotates the work, not the executor) |
+| **Context / View** | Queryable-side: a queryable context and its named views (`Queryable` is the feature namespace) |
+| **Delegated** | A view forwarded to a remote source — uniform `Delegated*` prefix (`IDelegatedQueryViewSource`, `DelegatedQueryViewRegistry`, `DelegatedQueryViewEngine`) |
+| **Registry / Snapshot** | Discovery envelope (`AggregatedRegistryResponse`); cached under `kaleido:{serviceName}` in `IRegistrySnapshotStore` |
+
+Rule of thumb: if a name refers to *who runs the work* (runtime, registries, planner, executor, stores, telemetry identity) it's `Processor*`; if it refers to *one executing instance* (request/response/state, routes, events) it's `Process*`. Transport namespaces (`Kaleido.Http.Processor`, `Kaleido.Http.Client.Processor`, `Kaleido.Http.Abstractions.Processor`) organize the processor-facing API surface even though the wire resource is `processes`.
+
+---
+
 ## Project dependency graph
 
 ```
@@ -54,9 +72,9 @@ The core project is organized into two main namespaces:
 - Registration: `ProcessorServiceCollectionExtensions`
 - Runtime: `ExecutionProcessor`
 - Planning: `StepCandidateBuilder`, `StepCandidateValidator`, `StepCandidateConsistencyChecker`, `StepCandidatePlanner`
-- State: `IProcessContextStore`, `InMemoryProcessContextStore`, `ProcessorContext`
-- Registries: `ProcessStepRegistry`, `ProcessorRegistry`
-- Observability: `ProcessObservability`
+- State: `IProcessorContextStore`, `ProcessorContextStore`, `ProcessorContext`
+- Registries: `ProcessorStepRegistry`, `ProcessorRegistry`
+- Observability: `ProcessorObservability`
 
 ### Extension points
 
@@ -64,11 +82,11 @@ Public seams consumers are expected to implement or replace:
 
 | Seam | Register via | Notes |
 |------|--------------|-------|
-| `IProcessContextStore` | `UseSqliteProcessContextStore(...)` or your own `services.AddScoped` after `AddKaleido()` | Production deployments implement against their own durable store; SQLite provider is a reference impl |
+| `IProcessorContextStore` | `UseSqliteProcessorContextStore(...)` or your own `services.AddScoped` after `AddKaleido()` | Production deployments implement against their own durable store; SQLite provider is a reference impl |
 | `IEventPublisher` | `services.AddSingleton` before `AddKaleido()` | Default is no-op `NullEventPublisher`; replace for real event delivery |
 | `IQueryContextExecutor<TView>` | `services.AddScoped<IQueryContextExecutor<TView>, ...>` | Provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`) instead of sync fallback |
 | Observability provider | `AddOpenTelemetry()` (Kaleido.Observability.OpenTelemetry) or custom `AddKaleidoInstrumentation()` calls | Core stays provider-agnostic on BCL `ActivitySource`/`Meter` |
-| Delegated query views | implement `IDelegateQueryViewSource<TDelegateContext,TView>` on a query view type | Federates view execution to a downstream delegate context |
+| Delegated query views | implement `IDelegatedQueryViewSource<TDelegateContext,TView>` on a query view type | Federates view execution to a downstream delegate context |
 
 ### Key design invariants
 - The core project has no transport dependencies.
@@ -102,24 +120,22 @@ Public seams consumers are expected to implement or replace:
 - `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` in `Kaleido.Http.Abstractions`, used by both server filter and client.
 
 **Queryable endpoints** (`QueryableEndpointRouteBuilderExtensions`)
-- `GET /{prefix}/queryable` — catalog
-- `GET /{prefix}/queryable/registry` — full registry
 - `GET /{prefix}/queryable/{context}/{metadataRoute}` — per-context metadata
 - `POST /{prefix}/queryable/{context}/{queryRoute}` — direct context query
 - `POST /{prefix}/queryable/{context}/{view}/{queryRoute}` — view query
 
-**Process endpoints** (`ProcessEndpointRouteBuilderExtensions`)
-- `GET /{prefix}/processes` — processor catalog (initial steps only)
-- `GET /{prefix}/processes/steps` — step catalog (all steps, lightweight)
-- `GET /{prefix}/processes/registry` — full registry (all step metadata)
+**Process endpoints** (`ProcessorEndpointRouteBuilderExtensions`)
 - `GET /{prefix}/processes/steps/{step}/metadata` — per-step metadata
 - `POST /{prefix}/processes/execute` — multi-step execute
 - `GET /{prefix}/processes/{processId}` — process state
 - `POST /{prefix}/processes/steps/{step}` — per-step execute
 
-**Registry endpoint** (`RegistryEndpointRouteBuilderExtensions`)
-- `GET /{prefix}/registry` — aggregated discovery (local process + all downstream process clients + all downstream queryable clients)
-- Always returns HTTP 200; unreachable downstream clients populate `ClientErrors`
+**Registry endpoint** (`RegistryEndpointRouteBuilderExtensions` — internal; mapped by `MapKaleidoHttp`)
+- `GET /{prefix}/registry` — unified discovery envelope (`AggregatedRegistryResponse`: `Processes`, `Queryables`, `ClientErrors`)
+- Leaf mode returns this service's local registrations; `MapKaleidoHttp(o => o.AggregateRegistry = true)` also fans out to every `AddHttpClients()` client — one `GET /{svc}/registry` fetch per client, shared via `KaleidoRemoteRegistry`
+- Freshness: `GeneratedAt`, `Revision` (SHA-256 of the filtered payload), `IsPartial`; `ETag`/`Cache-Control` headers, `If-None-Match` → 304; `?strict` → 502 when partial (body still included); `?refresh` forces rebuild, throttled by `KaleidoHttpMapOptions.RegistryRefreshCooldown`
+- Snapshots live in `IRegistrySnapshotStore` (in-memory default; distributed impl optional) under canonical key `kaleido:{ServiceName}` — a shared store lets consumers skip the HTTP call entirely on a fresh hit; only clean snapshots are committed, so degraded states are re-probed per request
+- Always returns HTTP 200 unless `?strict` is requested; unreachable downstream clients populate `ClientErrors`
 
 **URL generation**
 - `ProcessContractUrls` / `ProcessRoutePaths`
@@ -128,7 +144,7 @@ Public seams consumers are expected to implement or replace:
 ### Key design invariants
 - Endpoints adapt contracts and publish routes. They do not reimplement runtime planning or business execution.
 - The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from `Kaleido:ServiceName` configuration).
-- Registry endpoint always returns 200. Partial responses are signalled through `ClientErrors`, not through HTTP error status codes.
+- Registry endpoint returns 200 by default. Partial responses are signalled through `ClientErrors`/`IsPartial`; `?strict` opts into a 502 when partial.
 - `ConfigureHttpJsonOptions` is never called — Kaleido JSON options are scoped to Kaleido endpoints via `KaleidoJsonEndpointFilter`. Consumer endpoints retain their own serialization behavior.
 
 ---
@@ -145,7 +161,7 @@ Public seams consumers are expected to implement or replace:
 **Queryable contracts**
 - Request: `QueryApiRequest`, `QueryApiRequest<TParameters>` — accepts `QueryApiBody` (transport shape)
 - Transport body: `QueryApiBody`, `QueryApiFilterNode`, `QueryApiFilterCondition`, `QueryApiFilterGroup`, `QueryApiSort`, `QueryApiPage` — string enums, raw `JsonElement` filter values
-- Response: `QueryableRecordResponse`, `QueryableRecordSummary`, `QueryableFieldMetadata`, `QueryableQueryParameter`, `QueryableQueryProperty`, `QueryErrorResponse`
+- Response: `QueryableRecordResponse` (carries `ServiceName`, `RegistryUrl`), `QueryableFieldMetadata`, `QueryableQueryParameter`, `QueryableQueryProperty`, `QueryErrorResponse`
 - `QueryApiBodyExtensions.ToApiBody()` — converts runtime `QueryBody` → `QueryApiBody` for core callers forwarding over HTTP (e.g. delegated view sources)
 - `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` with `JsonStringEnumConverter` for all Kaleido HTTP serialization
 
@@ -162,10 +178,10 @@ Public seams consumers are expected to implement or replace:
 ### Internal structure
 
 **Process client**
-- `IKaleidoProcessClient` — typed interface: `GetRegistryAsync`, `GetStepMetadataAsync`, `GetProcessStateAsync`, `ExecuteAsync`, `ExecuteStepAsync`, `ExecuteStepAsync<TStep, TResult>`
-- `KaleidoProcessClient` — concrete implementation; lazily fetches and caches the remote registry per client instance
-- `KaleidoProcessClientException` — thrown on non-success responses and on registry lookup failures
-- `KaleidoProcessClientServiceCollectionExtensions` — internal `AddProcessClient(...)` registration used by `AddHttpClients`
+- `IKaleidoProcessorClient` — typed interface: `GetRegistryAsync`, `GetStepMetadataAsync`, `GetProcessStateAsync`, `ExecuteAsync`, `ExecuteStepAsync`, `ExecuteStepAsync<TStep, TResult>`
+- `KaleidoProcessorClient` — concrete implementation; lazily fetches and caches the remote registry per client instance
+- `KaleidoHttpClientException` — thrown on non-success responses and on registry lookup failures
+- `KaleidoClientServiceCollectionExtensions` — internal `AddProcessorClient(...)` registration used by `AddHttpClients`
 
 **Queryable client**
 - `IKaleidoQueryableClient` — typed interface: `GetRegistryAsync`, `GetContextMetadataAsync`, `QueryViewAsync`, `QueryContextAsync`
@@ -195,11 +211,11 @@ Public seams consumers are expected to implement or replace:
 ## 6. Kaleido.Provider.SQLite
 
 ### Internal structure
-- `SqliteProcessContextStore` — implements `IProcessContextStore` using SQLite via EF Core
-- `SqliteProcessContextStoreServiceCollectionExtensions` — `UseSqliteProcessContextStore(connectionString)` extension; replaces the default in-memory store
+- `SqliteProcessorContextStore` — implements `IProcessorContextStore` using SQLite via EF Core
+- `SqliteProcessContextStoreServiceCollectionExtensions` — `UseSqliteProcessorContextStore(connectionString)` extension; replaces the default in-memory store
 
 ### Key design invariants
-- Calling `UseSqliteProcessContextStore(...)` replaces the in-memory `IProcessContextStore` registered by `AddProcessor(...)`.
+- Calling `UseSqliteProcessorContextStore(...)` replaces the in-memory `IProcessorContextStore` registered by `AddProcessor(...)`.
 - The store must correctly implement state reconciliation so that existing saved contexts remain valid when the step registry changes.
 
 ---
@@ -216,7 +232,7 @@ Public seams consumers are expected to implement or replace:
 ### Observability
 Both Queryable and Process publish observability through activity sources and meters:
 - Queryable: `Kaleido.Queryable` activity source and meter
-- Process: `Kaleido.Process` activity source and meter (names defined in `ProcessTelemetry`)
+- Process: `Kaleido.Processor` activity source and meter (names defined in `ProcessorTelemetry`)
 
 ### Event publishing
 `IEventPublisher` is registered by `AddKaleido()` as a no-op `NullEventPublisher` by default. Replace it before calling `AddKaleido()` to install real event infrastructure.

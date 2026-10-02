@@ -5,12 +5,14 @@ using Kaleido.Samples.PriorAuth.Provider.Queryable.ViewSources.Views;
 
 namespace Kaleido.Samples.PriorAuth.Provider.Queryable.ViewSources;
 
+// Service-to-service only — role-filtered out of user-facing discovery and
+// denied for user tokens. Reachable by internal callers (e.g. radiology).
+[KaleidoAuthorization(Roles = "internal")]
 [QueryView(
     Name = "requesting-provider-search",
     DisplayName = "Requesting Provider Search",
     Version = "1.0.0",
     Description = "Searchable requesting provider results with derived network status.",
-    Visibility = QueryViewVisibility.Internal,
     DefaultSortField = nameof(RequestingProviderQueryContext.ProviderName))]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class RequestingProviderSearchViewSource

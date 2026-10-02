@@ -13,7 +13,7 @@ public sealed class ProcessStepSuffixAnalyzerTests
         new();
 
     private const string ProcessStepStub = @"
-namespace Kaleido.Process
+namespace Kaleido.Processor
 {
     [System.AttributeUsage(System.AttributeTargets.Class)]
     public class ProcessStepAttribute : System.Attribute
@@ -30,7 +30,7 @@ namespace Kaleido.Process
     public async Task NoStepSuffix_Reports()
     {
         await RunAsync(@"
-[Kaleido.Process.ProcessStep(Name = ""capture-requested"", Version = ""1.0"")]
+[Kaleido.Processor.ProcessStep(Name = ""capture-requested"", Version = ""1.0"")]
 public class {|#0:CaptureRequested|} { }
 " + ProcessStepStub,
             Expected.WithLocation(0).WithArguments("CaptureRequested"));
@@ -40,7 +40,7 @@ public class {|#0:CaptureRequested|} { }
     public async Task WithStepSuffix_NoDiagnostic()
     {
         await RunAsync(@"
-[Kaleido.Process.ProcessStep(Name = ""capture-requested"", Version = ""1.0"")]
+[Kaleido.Processor.ProcessStep(Name = ""capture-requested"", Version = ""1.0"")]
 public class CaptureRequestedStep { }
 " + ProcessStepStub);
     }
@@ -57,7 +57,7 @@ public class CaptureRequested { }");
     {
         // "step" (lowercase) is not the same as "Step"
         await RunAsync(@"
-[Kaleido.Process.ProcessStep(Name = ""capture-requested"", Version = ""1.0"")]
+[Kaleido.Processor.ProcessStep(Name = ""capture-requested"", Version = ""1.0"")]
 public class {|#0:CaptureRequestedstep|} { }
 " + ProcessStepStub,
             Expected.WithLocation(0).WithArguments("CaptureRequestedstep"));

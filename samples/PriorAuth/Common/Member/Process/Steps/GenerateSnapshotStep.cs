@@ -1,7 +1,11 @@
-using Kaleido.Process;
+using Kaleido;
+using Kaleido.Processor;
 
 namespace Kaleido.Samples.PriorAuth.Member.Process.Steps;
 
+// Internal step — service-to-service callers only (radiology snapshot fan-out);
+// not visible to or executable by user personas.
+[KaleidoAuthorization(Roles = "internal")]
 [ProcessStep(
     Name = "GenerateSnapshot",
     DisplayName = "Members - Generate Snapshot",

@@ -13,7 +13,7 @@ public sealed class ProcessStepAttributeAnalyzerTests
         new();
 
     private const string ProcessStepStub = @"
-namespace Kaleido.Process
+namespace Kaleido.Processor
 {
     [System.AttributeUsage(System.AttributeTargets.Class)]
     public class ProcessStepAttribute : System.Attribute
@@ -30,7 +30,7 @@ namespace Kaleido.Process
     public async Task Name_Empty_Reports()
     {
         await RunAsync(@"
-using Kaleido.Process;
+using Kaleido.Processor;
 [{|#0:ProcessStep(Name = """", Version = ""1.0.0"")|}]
 public class MyStep { }
 " + ProcessStepStub,
@@ -41,7 +41,7 @@ public class MyStep { }
     public async Task Version_Empty_Reports()
     {
         await RunAsync(@"
-using Kaleido.Process;
+using Kaleido.Processor;
 [{|#0:ProcessStep(Name = ""Foo"", Version = """")|}]
 public class MyStep { }
 " + ProcessStepStub,
@@ -52,7 +52,7 @@ public class MyStep { }
     public async Task Both_Empty_Reports()
     {
         await RunAsync(@"
-using Kaleido.Process;
+using Kaleido.Processor;
 [{|#0:ProcessStep(Name = """", Version = """")|}]
 public class MyStep { }
 " + ProcessStepStub,
@@ -63,7 +63,7 @@ public class MyStep { }
     public async Task Valid_NoDiagnostic()
     {
         await RunAsync(@"
-using Kaleido.Process;
+using Kaleido.Processor;
 [ProcessStep(Name = ""Foo"", Version = ""1.0.0"")]
 public class MyStep { }
 " + ProcessStepStub);
@@ -73,7 +73,7 @@ public class MyStep { }
     public async Task WhitespaceOnly_Name_Reports()
     {
         await RunAsync(@"
-using Kaleido.Process;
+using Kaleido.Processor;
 [{|#0:ProcessStep(Name = ""   "", Version = ""1.0.0"")|}]
 public class MyStep { }
 " + ProcessStepStub,

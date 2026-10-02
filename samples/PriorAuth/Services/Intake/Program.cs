@@ -5,6 +5,7 @@ using Kaleido.Http.Client;
 using Kaleido.Observability.OpenTelemetry;
 using Kaleido.Provider.SQLite;
 using Kaleido.Samples.PriorAuth;
+using Kaleido.Samples.PriorAuth.Auth;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Process.Services;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,12 @@ builder.Services.AddScoped<ProductCodeMappingClient>();
 builder.Services.AddScoped<HistoryClient>();
 
 builder.Services.AddControllers();
+
+// Dev-token auth (sample stand-in for a real IdP) + outbound token forwarding
+// so downstream Kaleido calls carry the user token or an "internal" service token.
+builder.Services.AddDevAuth();
+builder.Services.AddDevTokenForwarding(
+    "CodeSet", "Configuration", "History", "Member", "Provider", "Radiology");
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -42,8 +49,7 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader();
     });
 });
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddDevSwagger();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<IntakeDbContext>();
 
@@ -59,8 +65,12 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Intake", StringComparison.Ordinal) ?? false;
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp()
-    .UseSqliteProcessContextStore(processConnectionString)
+    .AddHttp(o =>
+    {
+        o.RequireAuthorization = true;
+        o.RequireProcessOwnership = true;
+    })
+    .UseSqliteProcessorContextStore(processConnectionString)
     .AddHttpClients()
     .AddOpenTelemetry();
 
@@ -70,14 +80,16 @@ app.UseCors("AllowAll");
 
 app.MapHealthChecks("/health");
 
-app.MapKaleido();
+app.UseDevAuth();
+
+app.MapKaleidoHttp();
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var dbContext =
         scope.ServiceProvider.GetRequiredService<IntakeDbContext>();
     var processDbContext =
-        scope.ServiceProvider.GetRequiredService<SqliteProcessContextDbContext>();
+        scope.ServiceProvider.GetRequiredService<SqliteProcessorContextDbContext>();
 
     await dbContext.Database.EnsureCreatedAsync();
     await processDbContext.Database.EnsureCreatedAsync();
@@ -88,8 +100,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseAuthorization();
 
 app.MapControllers();
 

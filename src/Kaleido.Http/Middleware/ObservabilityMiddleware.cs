@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -12,7 +13,16 @@ internal sealed class ObservabilityMiddleware(RequestDelegate next)
             context.RequestServices
                 .GetService<IKaleidoCorrelationContextInitializer>();
 
-        var correlation = context.ReadCorrelationContext();
+        var options =
+            context.RequestServices
+                .GetService<KaleidoHttpOptions>() ?? new KaleidoHttpOptions();
+
+        var trustIdentity =
+            options.TrustCorrelationIdentity?.Invoke(context)
+            ?? IsCorrelationIdentityTrustedByDefault(context);
+
+        var correlation =
+            context.ReadCorrelationContext(trustIdentity);
 
         initializer?.Initialize(correlation);
 
@@ -27,12 +37,12 @@ internal sealed class ObservabilityMiddleware(RequestDelegate next)
 
             if (correlation.ProcessId.HasValue)
             {
-                activity.SetTag(ProcessTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
+                activity.SetTag(ProcessorTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
             }
 
             if (!string.IsNullOrWhiteSpace(correlation.StepName))
             {
-                activity.SetTag(ProcessTelemetry.TagStepName, correlation.StepName);
+                activity.SetTag(ProcessorTelemetry.TagStepName, correlation.StepName);
             }
         }
 
@@ -70,4 +80,13 @@ internal sealed class ObservabilityMiddleware(RequestDelegate next)
 
         await next(context);
     }
+
+    // Adaptive default: a host with no authentication infrastructure has
+    // nothing to check callers against — trust headers (back-compat).
+    // Otherwise only authenticated callers may propagate identity fields.
+    private static bool IsCorrelationIdentityTrustedByDefault(
+        HttpContext context) =>
+        context.RequestServices
+            .GetService<IAuthenticationSchemeProvider>() is null
+        || context.User.Identity?.IsAuthenticated == true;
 }

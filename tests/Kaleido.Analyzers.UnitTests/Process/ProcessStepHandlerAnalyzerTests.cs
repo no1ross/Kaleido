@@ -13,7 +13,7 @@ public sealed class ProcessStepHandlerAnalyzerTests
         new();
 
     private const string KaleidoStubs = @"
-namespace Kaleido.Process
+namespace Kaleido.Processor
 {
     [System.AttributeUsage(System.AttributeTargets.Class)]
     public class ProcessStepAttribute : System.Attribute
@@ -32,7 +32,7 @@ namespace Kaleido.Process
     public async Task StepWithoutHandler_Reports()
     {
         await RunAsync(@"
-[Kaleido.Process.ProcessStep(Name = ""upsert"", Version = ""1"")]
+[Kaleido.Processor.ProcessStep(Name = ""upsert"", Version = ""1"")]
 public class {|#0:UpsertStep|} { }
 " + KaleidoStubs,
             Expected.WithLocation(0).WithArguments("UpsertStep"));
@@ -42,9 +42,9 @@ public class {|#0:UpsertStep|} { }
     public async Task StepWithHandler_NoDiagnostic()
     {
         await RunAsync(@"
-[Kaleido.Process.ProcessStep(Name = ""upsert"", Version = ""1"")]
+[Kaleido.Processor.ProcessStep(Name = ""upsert"", Version = ""1"")]
 public class UpsertStep { }
-public class UpsertHandler : Kaleido.Process.IProcessStepHandler<UpsertStep> { }
+public class UpsertHandler : Kaleido.Processor.IProcessStepHandler<UpsertStep> { }
 " + KaleidoStubs);
     }
 
@@ -52,9 +52,9 @@ public class UpsertHandler : Kaleido.Process.IProcessStepHandler<UpsertStep> { }
     public async Task StepWithTypedHandler_NoDiagnostic()
     {
         await RunAsync(@"
-[Kaleido.Process.ProcessStep(Name = ""upsert"", Version = ""1"")]
+[Kaleido.Processor.ProcessStep(Name = ""upsert"", Version = ""1"")]
 public class UpsertStep { }
-public class UpsertHandler : Kaleido.Process.IProcessStepHandler<UpsertStep, string> { }
+public class UpsertHandler : Kaleido.Processor.IProcessStepHandler<UpsertStep, string> { }
 " + KaleidoStubs);
     }
 
@@ -62,11 +62,11 @@ public class UpsertHandler : Kaleido.Process.IProcessStepHandler<UpsertStep, str
     public async Task MultipleSteps_OneMissingHandler_ReportsOnlyMissing()
     {
         await RunAsync(@"
-[Kaleido.Process.ProcessStep(Name = ""upsert"", Version = ""1"")]
+[Kaleido.Processor.ProcessStep(Name = ""upsert"", Version = ""1"")]
 public class UpsertStep { }
-[Kaleido.Process.ProcessStep(Name = ""validate"", Version = ""1"")]
+[Kaleido.Processor.ProcessStep(Name = ""validate"", Version = ""1"")]
 public class {|#0:ValidateStep|} { }
-public class UpsertHandler : Kaleido.Process.IProcessStepHandler<UpsertStep> { }
+public class UpsertHandler : Kaleido.Processor.IProcessStepHandler<UpsertStep> { }
 " + KaleidoStubs,
             Expected.WithLocation(0).WithArguments("ValidateStep"));
     }

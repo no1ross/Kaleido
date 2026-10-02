@@ -1,10 +1,12 @@
 export interface QueryableRecord {
+    serviceName: string;
     name: string;
     description: string;
     displayName: string;
     version: string;
     source: string;
     metadataUrl: string;
+    registryUrl: string;
     queryUrl: string | null;
 
     fields: QueryableField[];

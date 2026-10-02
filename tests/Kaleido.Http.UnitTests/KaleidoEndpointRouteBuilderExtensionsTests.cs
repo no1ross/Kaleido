@@ -1,4 +1,6 @@
+using Kaleido.Exceptions;
 using Kaleido.Http.Queryable;
+using Kaleido.Http.Registry.Contracts;
 using Kaleido.Queryable.Registry;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;
@@ -11,67 +13,78 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     : SutFixture
 {
     [Fact]
-    public void MapKaleido_WhenEndpointsIsNull_Throws()
+    public void MapKaleidoHttp_WhenEndpointsIsNull_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            KaleidoEndpointRouteBuilderExtensions.MapKaleido(null!));
+            KaleidoEndpointRouteBuilderExtensions.MapKaleidoHttp(null!));
     }
 
     [Fact]
-    public void MapKaleido_ReturnsIEndpointConventionBuilder()
+    public void MapKaleidoHttp_ReturnsIEndpointConventionBuilder()
     {
         var endpoints = CreateProcessAndQueryableEndpoints();
 
-        var result = endpoints.MapKaleido();
+        var result = endpoints.MapKaleidoHttp();
 
         Assert.NotNull(result);
     }
 
     [Fact]
-    public void MapKaleido_WithProcessOnly_MapsProcessEndpoints()
+    public void MapKaleidoHttp_WithProcessOnly_MapsProcessEndpoints()
     {
         var endpoints = CreateProcessOnlyEndpoints();
 
-        endpoints.MapKaleido();
+        endpoints.MapKaleidoHttp();
 
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ProcessEndpointName));
-        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.CatalogEndpointName));
+        Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
+        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context")));
     }
 
     [Fact]
-    public void MapKaleido_WithQueryableOnly_MapsQueryableEndpoints()
+    public void MapKaleidoHttp_WithQueryableOnly_MapsQueryableEndpoints()
     {
         var endpoints = CreateQueryableOnlyEndpoints();
 
-        endpoints.MapKaleido();
+        endpoints.MapKaleidoHttp();
 
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.CatalogEndpointName));
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.RegistryEndpointName));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context")));
+        Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
         Assert.Null(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
     }
 
     [Fact]
-    public void MapKaleido_WithBoth_MapsBothEndpoints()
+    public void MapKaleidoHttp_WithBoth_MapsBothEndpoints()
     {
         var endpoints = CreateProcessAndQueryableEndpoints();
 
-        endpoints.MapKaleido();
+        endpoints.MapKaleidoHttp();
 
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.CatalogEndpointName));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context")));
+        Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
     }
 
     [Fact]
-    public void MapKaleido_WithNeither_DoesNotThrowAndMapsNoKaleidoEndpoints()
+    public void MapKaleidoHttp_WithNeither_DoesNotThrowAndMapsNoKaleidoEndpoints()
     {
         var endpoints = CreateEmptyEndpoints();
 
-        var result = endpoints.MapKaleido();
+        var result = endpoints.MapKaleidoHttp();
 
         Assert.NotNull(result);
         Assert.Null(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
-        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.CatalogEndpointName));
+        Assert.Null(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
+    }
+
+    [Fact]
+    public void MapKaleidoHttp_WithAggregateRegistryWithoutClients_Throws()
+    {
+        var endpoints = CreateEmptyEndpoints();
+
+        Assert.Throws<KaleidoConfigurationException>(() =>
+            endpoints.MapKaleidoHttp(o => o.AggregateRegistry = true));
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────
@@ -89,6 +102,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
         return builder.Build();
     }
@@ -97,11 +111,12 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
-        builder.Services.AddSingleton<IProcessStepRegistry>(CreateProcessStepRegistry());
-        builder.Services.AddSingleton<IProcessRegistry>(CreateProcessRegistry());
+        builder.Services.AddSingleton<IProcessorStepRegistry>(CreateProcessStepRegistry());
+        builder.Services.AddSingleton<IProcessorRegistry>(CreateProcessRegistry());
         return builder.Build();
     }
 
@@ -109,6 +124,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
         builder.Services.AddSingleton(Mock.Of<IQueryableService>());
         builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry());
@@ -119,11 +135,12 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
-        builder.Services.AddSingleton<IProcessStepRegistry>(CreateProcessStepRegistry());
-        builder.Services.AddSingleton<IProcessRegistry>(CreateProcessRegistry());
+        builder.Services.AddSingleton<IProcessorStepRegistry>(CreateProcessStepRegistry());
+        builder.Services.AddSingleton<IProcessorRegistry>(CreateProcessRegistry());
         builder.Services.AddSingleton(Mock.Of<IQueryableService>());
         builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry());
         return builder.Build();
@@ -131,7 +148,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
     // ── Process registry helpers ─────────────────────────────────────────────
 
-    private static IProcessStepRegistry CreateProcessStepRegistry()
+    private static IProcessorStepRegistry CreateProcessStepRegistry()
     {
         var registration = new ProcessStepRegistration(
             typeof(TestStep),
@@ -143,15 +160,15 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
             new RepeatableOptions { Enabled = false },
             new ProcessStepMetadata("Test-Step", "Test step", "1.0.0", "Test Step"));
 
-        var registry = new Mock<IProcessStepRegistry>();
+        var registry = new Mock<IProcessorStepRegistry>();
         registry.Setup(x => x.Registrations).Returns([registration]);
         registry.Setup(x => x.InitialRegistrations).Returns([registration]);
         return registry.Object;
     }
 
-    private static IProcessRegistry CreateProcessRegistry()
+    private static IProcessorRegistry CreateProcessRegistry()
     {
-        var registry = new Mock<IProcessRegistry>();
+        var registry = new Mock<IProcessorRegistry>();
         registry.Setup(x => x.Registrations).Returns(
         [
             new ProcessorRegistryItem
@@ -209,8 +226,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
                         Name = "Test-View",
                         Description = "Test View",
                         DisplayName = "Test View",
-                        Version = "1.0.0",
-                        Visibility = QueryViewVisibility.Public
+                        Version = "1.0.0"
                     }
                 ]
             }

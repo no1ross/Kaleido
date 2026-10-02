@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
+using Kaleido.Http.Authorization;
 using Kaleido.Http.Registry.Contracts;
-using Kaleido.Process.Registry;
+using Kaleido.Processor.Registry;
 using Kaleido.Queryable.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -14,56 +15,43 @@ namespace Kaleido.Http.Registry;
 public static class RegistryEndpointRouteBuilderExtensions
 {
     /// <summary>
-    /// Maps the unified registry endpoint at <c>GET /{routePrefix}/registry</c>.
-    /// Returns a single <see cref="AggregatedRegistryResponse"/> containing:
-    /// <list type="bullet">
-    ///   <item><description>
-    ///     <c>Processes</c> — this processor's local steps merged with all downstream
-    ///     processors registered via <c>AddProcessClient()</c>.
-    ///   </description></item>
-    ///   <item><description>
-    ///     <c>Queryables</c> — this processor's local queryable contexts (when
-    ///     <c>AddQueryable()</c> has been called) merged with all downstream queryable
-    ///     clients registered via <c>AddQueryableClient()</c>.
-    ///   </description></item>
-    ///   <item><description>
-    ///     <c>ClientErrors</c> — any downstream clients that were unreachable or returned
-    ///     errors. The endpoint always returns HTTP 200 — a non-empty
-    ///     <c>ClientErrors</c> collection means the response is partial.
-    ///   </description></item>
-    /// </list>
-    /// Adding a new downstream client makes it appear automatically.
+    /// Maps the unified registry endpoint at <c>GET /{service}/registry</c>.
+    /// Returns a single <see cref="AggregatedRegistryResponse"/> containing this
+    /// service's local process and queryable registrations; when
+    /// <paramref name="mapOptions"/>.<c>AggregateRegistry</c> is set the response also merges every
+    /// downstream client registered via <c>AddHttpClients()</c>.
+    /// <c>ClientErrors</c> reports downstream clients that failed — the endpoint
+    /// always returns HTTP 200; a non-empty collection means a partial response.
     /// </summary>
-    /// <summary>
-    /// Maps the aggregated registry endpoint and returns the route group so hosts can
-    /// compose conventions (e.g. <c>.RequireAuthorization()</c>) onto the endpoint.
-    /// </summary>
-    public static RouteGroupBuilder MapRegistry(
-        this IEndpointRouteBuilder endpoints)
+    internal static RouteGroupBuilder MapRegistry(
+        this IEndpointRouteBuilder endpoints,
+        KaleidoHttpMapOptions mapOptions)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
         // Resolved once at map-time — these do not change after startup.
         var processClientMap = endpoints.ServiceProvider
-            .GetService<KaleidoProcessClientRouteOptionsMap>();
+            .GetService<KaleidoProcessorClientRouteOptionsMap>();
 
         var queryableClientMap = endpoints.ServiceProvider
             .GetService<KaleidoQueryableClientRouteOptionsMap>();
 
-        // Guard — MapRegistry() requires AddHttpClients() with at least one
+        var aggregate = mapOptions.AggregateRegistry;
+
+        // Guard — aggregation requires AddHttpClients() with at least one
         // configured client. The route-options maps are singletons registered
         // per client; neither present means no client infrastructure exists.
-        if (processClientMap is null && queryableClientMap is null)
+        if (aggregate && processClientMap is null && queryableClientMap is null)
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.ProInvalidRegistration,
-                "Cannot map Registry endpoint: no Kaleido clients are registered. " +
-                "Call AddHttpClients() on the IKaleidoBuilder before calling MapRegistry().");
+                "Cannot aggregate the Registry endpoint: no Kaleido clients are registered. " +
+                "Call AddHttpClients() on the IKaleidoBuilder before mapping an aggregated registry.");
         }
 
         // Optional — only present when the host has called AddHttp().
         var localProcessorRegistry = endpoints.ServiceProvider
-            .GetService<IProcessRegistry>();
+            .GetService<IProcessorRegistry>();
 
         // Required — AddKaleido() must be called before MapRegistry().
         var localServiceOptions = endpoints.ServiceProvider
@@ -77,57 +65,83 @@ public static class RegistryEndpointRouteBuilderExtensions
         var localQueryableRegistry = endpoints.ServiceProvider
             .GetService<IQueryableRegistry>();
 
-        // Resolve from DI if pre-registered, otherwise allocate a local instance
-        // captured in the closure — either way it is singleton-scoped to this endpoint.
-        var cache = endpoints.ServiceProvider.GetService<HttpRegistryCache>() ?? new HttpRegistryCache();
+        // Snapshot store — IRegistrySnapshotStore from DI (distributed impls
+        // registered by the host) or the in-memory default. The cache is
+        // singleton-scoped to this endpoint either way.
+        var snapshotStore =
+            endpoints.ServiceProvider.GetService<IRegistrySnapshotStore>()
+            ?? new InMemoryRegistrySnapshotStore();
+
+        // Canonical key — kaleido:{ServiceName}. Consumers reading this key
+        // from a shared store get exactly what this endpoint returns (the
+        // merged aggregate on a router, local registrations on a leaf).
+        var cache = new HttpRegistryCache(
+            snapshotStore,
+            $"kaleido:{localServiceOptions.ServiceName}");
 
         var group =
             endpoints.MapGroup("")
-            .AddEndpointFilter<KaleidoJsonEndpointFilter>();
+            .AddEndpointFilter<KaleidoJsonEndpointFilter>()
+            .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 
         group.MapGet(
                 RegistryContractUrls.Registry(localServiceOptions.ServiceName),
                 async (
                     HttpContext httpContext,
-                    [FromServices] IProcessResponseFactory responseFactory,
+                    [FromServices] IProcessorResponseFactory responseFactory,
                     CancellationToken cancellationToken) =>
                 {
                     // Optional — resolve inside the handler so a host that only
                     // registers one client type (or none via AddHttpClients with
                     // no clients configured) does not fail endpoint activation.
                     var processClientFactory = httpContext.RequestServices
-                        .GetService<IKaleidoProcessClientFactory>();
+                        .GetService<IKaleidoProcessorClientFactory>();
 
                     var queryableClientFactory = httpContext.RequestServices
                         .GetService<IKaleidoQueryableClientFactory>();
                     var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
+                    var strict = httpContext.Request.Query.ContainsKey("strict");
 
-                    if (!forceRefresh && cache.Current is not null)
-                    {
-                        logger.LogDebug("Registry cache hit — serving cached response.");
-                    }
-                    else if (forceRefresh)
-                    {
-                        logger.LogDebug("Registry cache bypassed (force refresh requested).");
-                    }
-                    else
-                    {
-                        logger.LogDebug("Registry cache miss — building fresh response.");
-                    }
+                    var authorizer =
+                        httpContext.RequestServices
+                            .GetService<IKaleidoAuthorizer>();
 
-                    var response = await cache.GetOrBuildAsync(forceRefresh, async ct =>
+                    var downstreamNames = aggregate
+                        ? DownstreamClientNames(processClientMap, queryableClientMap, localServiceOptions)
+                        : [];
+
+                    var response = await cache.GetOrBuildAsync(
+                        mapOptions.RegistryCacheTtl,
+                        mapOptions.RegistryRefreshCooldown,
+                        forceRefresh,
+                        async ct =>
                     {
+                        // Honored refreshes invalidate downstream client caches
+                        // first — the rebuild re-fetches, not replays stale
+                        // per-client snapshots.
+                        if (forceRefresh && aggregate)
+                        {
+                            InvalidateDownstream(
+                                downstreamNames,
+                                processClientFactory,
+                                queryableClientFactory,
+                                logger);
+                        }
+
                         var localProcesses =
                             GetLocalProcesses(localProcessorRegistry, localServiceOptions, responseFactory);
 
                         var localQueryables =
                             GetLocalQueryables(localQueryableRegistry, localServiceOptions);
 
-                        var (downstreamProcesses, processErrors) =
-                            await GetDownstreamProcessesAsync(processClientMap, processClientFactory, logger, ct);
-
-                        var (downstreamQueryables, queryableErrors) =
-                            await GetDownstreamQueryablesAsync(queryableClientMap, queryableClientFactory, logger, ct);
+                        var (downstreamProcesses, downstreamQueryables, clientErrors) =
+                            aggregate
+                                ? await GetDownstreamAsync(
+                                    downstreamNames,
+                                    processClientMap, processClientFactory,
+                                    queryableClientMap, queryableClientFactory,
+                                    logger, ct)
+                                : ([], [], []);
 
                         var allProcesses = localProcesses
                             .Concat(downstreamProcesses)
@@ -153,8 +167,13 @@ public static class RegistryEndpointRouteBuilderExtensions
                                 .Concat(downstreamQueryables)
                                 .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
                                 .ToArray(),
-                            ClientErrors = [.. processErrors, .. queryableErrors]
+                            ClientErrors = clientErrors
                         };
+
+                        if (forceRefresh)
+                        {
+                            logger.LogDebug("Registry rebuilt via force refresh.");
+                        }
 
                         if (result.ClientErrors.Count > 0)
                         {
@@ -174,26 +193,169 @@ public static class RegistryEndpointRouteBuilderExtensions
                         return result;
                     }, cancellationToken);
 
+                    // Scope the aggregate to the inbound caller's persona —
+                    // capabilities the caller may not invoke are omitted.
+                    // The cache holds the unfiltered union; filtering is
+                    // per-request.
+                    if (authorizer is not null)
+                    {
+                        response =
+                            await FilterForCaller(
+                                response,
+                                authorizer,
+                                cancellationToken);
+                    }
+
+                    // Freshness contract: Revision hashes the per-caller
+                    // filtered payload (same content → same ETag); Cache-Control
+                    // advertises the configured staleness window.
+                    var revision = ComputeRevision(response);
+                    response = response with { Revision = revision };
+
+                    var etag = $"\"{revision}\"";
+                    httpContext.Response.Headers.ETag = etag;
+                    httpContext.Response.Headers.CacheControl =
+                        mapOptions.RegistryCacheTtl is { } ttl
+                            ? $"public, max-age={(int)ttl.TotalSeconds}"
+                            : "no-cache";
+
+                    if (httpContext.Request.Headers.IfNoneMatch.Any(
+                            value => string.Equals(value, etag, StringComparison.Ordinal)
+                                || string.Equals(value, "*", StringComparison.Ordinal)))
+                    {
+                        return Results.StatusCode(StatusCodes.Status304NotModified);
+                    }
+
+                    // ?strict — agents/gateways get a real failure signal when
+                    // the aggregate is partial; the full body is still included.
+                    if (strict && response.ClientErrors.Count > 0)
+                    {
+                        return Results.Json(
+                            response,
+                            KaleidoJsonOptions.Options,
+                            statusCode: StatusCodes.Status502BadGateway);
+                    }
+
                     return Results.Ok(response);
                 })
             .WithName(RegistryEndpointNames.RegistryEndpointName)
-            .WithTags("Registry", "Kaleido")
+            .WithTags("Registry")
             .Produces<AggregatedRegistryResponse>()
             .WithSummary("Get unified registry.")
             .WithDescription(
-                "Returns the combined process and queryable registrations from this processor and all " +
-                "registered downstream clients. Always returns HTTP 200. Inspect ClientErrors to detect " +
+                "Returns the combined process and queryable registrations from this service" +
+                (aggregate ? " and all registered downstream clients." : ".") +
+                " Always returns HTTP 200. Inspect ClientErrors to detect " +
                 "partial responses caused by unreachable or misconfigured downstream clients. " +
                 "Process steps carry fully-resolved ExecuteUrl and MetadataUrl values. " +
-                "Adding a downstream client via AddProcessClient() or AddQueryableClient() makes it appear here automatically.");
+                "Adding a downstream client via AddProcessorClient() or AddQueryableClient() makes it appear here automatically.");
 
         return group;
     }
 
+    // SHA-256 over the filtered payload — same content always produces the
+    // same revision, so it is valid as an ETag (and safe to round-trip via
+    // If-None-Match) per caller persona.
+    private static string ComputeRevision(AggregatedRegistryResponse response)
+    {
+        var payload = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
+            response with { Revision = null },
+            KaleidoJsonOptions.Options);
+
+        return Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(payload)).ToLowerInvariant();
+    }
+
+    // On a real rebuild, drop each downstream client's cached registry first so
+    // GetRegistryAsync below performs a genuine re-fetch instead of replaying
+    // the shared per-client snapshot.
+    private static void InvalidateDownstream(
+        IReadOnlyCollection<string> clientNames,
+        IKaleidoProcessorClientFactory? processFactory,
+        IKaleidoQueryableClientFactory? queryableFactory,
+        ILogger logger)
+    {
+        foreach (var name in clientNames)
+        {
+            try
+            {
+                if (processFactory is not null)
+                {
+                    processFactory.GetClient(name).InvalidateRegistry();
+                }
+                else
+                {
+                    queryableFactory?.GetClient(name).InvalidateRegistry();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to invalidate registry cache for client {ClientName}.", name);
+            }
+        }
+    }
+
+    private static async Task<AggregatedRegistryResponse> FilterForCaller(
+        AggregatedRegistryResponse response,
+        IKaleidoAuthorizer authorizer,
+        CancellationToken cancellationToken)
+    {
+        var processes = new List<ProcessorRegistryResponse>();
+
+        foreach (var processor in response.Processes)
+        {
+            var initialSteps =
+                await authorizer.FilterAsync(processor.InitialSteps,
+                    x => x.Authorization,
+                    cancellationToken);
+
+            var steps =
+                processor.Steps is null
+                    ? null
+                    : await authorizer.FilterAsync(processor.Steps,
+                        x => x.Authorization,
+                        cancellationToken);
+
+            processes.Add(
+                processor with
+                {
+                    InitialSteps = initialSteps,
+                    Steps = steps
+                });
+        }
+
+        var allowedQueryables =
+            await authorizer.FilterAsync(response.Queryables,
+                x => x.Authorization,
+                cancellationToken);
+
+        var queryables = new List<QueryableRecordResponse>();
+
+        foreach (var queryable in allowedQueryables)
+        {
+            var views =
+                await authorizer.FilterAsync(queryable.Views,
+                    x => x.Authorization,
+                    cancellationToken);
+
+            queryables.Add(
+                queryable with
+                {
+                    Views = views
+                });
+        }
+
+        return response with
+        {
+            Processes = processes,
+            Queryables = queryables
+        };
+    }
+
     private static IEnumerable<ProcessorRegistryResponse> GetLocalProcesses(
-        IProcessRegistry? registry,
+        IProcessorRegistry? registry,
         KaleidoServiceOptions? serviceOptions,
-        IProcessResponseFactory responseFactory)
+        IProcessorResponseFactory responseFactory)
         => registry is not null && serviceOptions is not null
             ? registry.Registrations.Select(r => responseFactory.CreateRegistryResponse(r, serviceOptions))
             : Enumerable.Empty<ProcessorRegistryResponse>();
@@ -205,50 +367,54 @@ public static class RegistryEndpointRouteBuilderExtensions
             ? registry.Registrations.Select(r => QueryableRecordResponse.FromRegistryItem(r, serviceOptions.ServiceName))
             : [];
 
-    private static async Task<(IReadOnlyCollection<ProcessorRegistryResponse> Items, IReadOnlyCollection<RegistryClientError> Errors)>
-        GetDownstreamProcessesAsync(
-            KaleidoProcessClientRouteOptionsMap? map,
-            IKaleidoProcessClientFactory? factory,
-            ILogger logger,
-            CancellationToken cancellationToken) =>
-        factory is null
-            ? ([], [])
-            : await GetDownstreamAsync(
-                map?.Options.Keys.ToArray(),
-                (name, ct) => factory.GetClient(name).GetRegistryAsync(ct),
-                "Process",
-                logger,
-                cancellationToken);
+    // Union of all downstream client names. Clients whose RoutePrefix equals
+    // this service's name are excluded — an aggregator must never fetch its own
+    // registry, or the request would recurse through this endpoint (its local
+    // entries are already in the response).
+    private static IReadOnlyCollection<string> DownstreamClientNames(
+        KaleidoProcessorClientRouteOptionsMap? processMap,
+        KaleidoQueryableClientRouteOptionsMap? queryableMap,
+        KaleidoServiceOptions serviceOptions)
+    {
+        var prefixes = new List<KeyValuePair<string, string>>();
 
-    private static async Task<(IReadOnlyCollection<QueryableRecordResponse> Items, IReadOnlyCollection<RegistryClientError> Errors)>
-        GetDownstreamQueryablesAsync(
-            KaleidoQueryableClientRouteOptionsMap? map,
-            IKaleidoQueryableClientFactory? factory,
-            ILogger logger,
-            CancellationToken cancellationToken) =>
-        factory is null
-            ? ([], [])
-            : await GetDownstreamAsync(
-                map?.Options.Keys.ToArray(),
-                (name, ct) => factory.GetClient(name).GetRegistryAsync(ct),
-                "Queryable",
-                logger,
-                cancellationToken);
+        if (processMap is not null)
+        {
+            prefixes.AddRange(processMap.Options);
+        }
 
-    private static async Task<(IReadOnlyCollection<TItem> Items, IReadOnlyCollection<RegistryClientError> Errors)>
-        GetDownstreamAsync<TItem>(
-            IReadOnlyCollection<string>? clientNames,
-            Func<string, CancellationToken, Task<IReadOnlyList<TItem>>> fetch,
-            string clientType,
+        if (queryableMap is not null)
+        {
+            prefixes.AddRange(queryableMap.Options);
+        }
+
+        return prefixes
+            .Where(x => !string.Equals(
+                x.Value,
+                serviceOptions.ServiceName,
+                StringComparison.OrdinalIgnoreCase))
+            .Select(x => x.Key)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    // One logical fetch per downstream client — process and queryable client
+    // registries share the KaleidoRemoteRegistry cache, so the second
+    // GetRegistryAsync resolves without another HTTP call.
+    private static async Task<(IReadOnlyCollection<ProcessorRegistryResponse> Processes,
+                               IReadOnlyCollection<QueryableRecordResponse> Queryables,
+                               IReadOnlyCollection<RegistryClientError> Errors)>
+        GetDownstreamAsync(
+            IReadOnlyCollection<string> clientNames,
+            KaleidoProcessorClientRouteOptionsMap? processMap,
+            IKaleidoProcessorClientFactory? processFactory,
+            KaleidoQueryableClientRouteOptionsMap? queryableMap,
+            IKaleidoQueryableClientFactory? queryableFactory,
             ILogger logger,
             CancellationToken cancellationToken)
     {
-        if (clientNames is null)
-        {
-            return ([], []);
-        }
-
-        var items = new ConcurrentBag<TItem>();
+        var processes = new ConcurrentBag<ProcessorRegistryResponse>();
+        var queryables = new ConcurrentBag<QueryableRecordResponse>();
         var errors = new ConcurrentBag<RegistryClientError>();
 
         await Task.WhenAll(
@@ -256,18 +422,21 @@ public static class RegistryEndpointRouteBuilderExtensions
             {
                 try
                 {
-                    var result = await fetch(name, cancellationToken);
-                    foreach (var r in result)
+                    if (processFactory is not null && processMap?.Options.ContainsKey(name) == true)
                     {
-                        items.Add(r);
+                        foreach (var r in await processFactory.GetClient(name).GetRegistryAsync(cancellationToken))
+                        {
+                            processes.Add(r);
+                        }
                     }
-                }
-                catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    logger.LogDebug(
-                        "Registry {ClientType} client {ClientName} returned 404 — service does not expose a registry.",
-                        clientType,
-                        name);
+
+                    if (queryableFactory is not null && queryableMap?.Options.ContainsKey(name) == true)
+                    {
+                        foreach (var r in await queryableFactory.GetClient(name).GetRegistryAsync(cancellationToken))
+                        {
+                            queryables.Add(r);
+                        }
+                    }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -277,20 +446,19 @@ public static class RegistryEndpointRouteBuilderExtensions
                 {
                     logger.LogWarning(
                         ex,
-                        "Registry {ClientType} client {ClientName} failed: {Reason}.",
-                        clientType,
+                        "Registry client {ClientName} failed: {Reason}.",
                         name,
                         ex.Message);
 
                     errors.Add(new RegistryClientError
                     {
                         ClientName = name,
-                        ClientType = clientType,
-                        Reason = $"{clientType} registry fetch failed. See server logs for details."
+                        ClientType = "Registry",
+                        Reason = "Registry fetch failed. See server logs for details."
                     });
                 }
             }));
 
-        return (items.ToArray(), errors.ToArray());
+        return (processes.ToArray(), queryables.ToArray(), errors.ToArray());
     }
 }

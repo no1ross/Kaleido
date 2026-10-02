@@ -15,6 +15,7 @@ export interface ProcessStepRegistryRecord {
     displayName: string;
     description: string | null;
     repeatable: boolean;
+    isInitial: boolean;
 
     fields: ProcessStepFieldMetadata[];
 

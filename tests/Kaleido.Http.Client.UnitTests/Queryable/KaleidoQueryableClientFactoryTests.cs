@@ -16,7 +16,11 @@ public sealed class KaleidoQueryableClientFactoryTests
             httpClientFactory,
             Mock.Of<ICorrelationHeaderStamper>(),
             NullLogger<KaleidoQueryableClient>.Instance,
-            routeOptionsMap);
+            routeOptionsMap,
+            new KaleidoRemoteRegistry(
+                httpClientFactory,
+                Mock.Of<IRegistrySnapshotStore>(),
+                NullLogger<KaleidoRemoteRegistry>.Instance));
     [Fact]
     public void GetClient_WhenNamedClientIsRegistered_ReturnsClient()
     {
