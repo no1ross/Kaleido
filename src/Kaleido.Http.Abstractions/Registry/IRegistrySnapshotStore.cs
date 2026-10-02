@@ -2,7 +2,7 @@ namespace Kaleido.Http.Registry;
 
 /// <summary>
 /// Storage seam for registry snapshots — the same pattern as
-/// <c>IProcessContextStore</c>. The framework ships an in-memory default;
+/// <c>IProcessorContextStore</c>. The framework ships an in-memory default;
 /// aggregating hosts (routers/gateways) can register a distributed
 /// implementation (e.g. Redis over <c>IDistributedCache</c>) so replicas share
 /// one merged snapshot and one fan-out per refresh window.

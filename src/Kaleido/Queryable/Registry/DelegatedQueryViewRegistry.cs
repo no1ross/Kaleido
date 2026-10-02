@@ -94,8 +94,8 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
                 .Where(i =>
                     i.IsGenericType &&
                     (
-                        i.GetGenericTypeDefinition() == typeof(IDelegateQueryViewSource<,>) ||
-                        i.GetGenericTypeDefinition() == typeof(IDelegateQueryViewSource<,,>)
+                        i.GetGenericTypeDefinition() == typeof(IDelegatedQueryViewSource<,>) ||
+                        i.GetGenericTypeDefinition() == typeof(IDelegatedQueryViewSource<,,>)
                     ))
                 .OrderByDescending(i => i.GenericTypeArguments.Length)
                 .First();

@@ -839,7 +839,21 @@ external_findings:
     severity: MEDIUM
     effort: medium
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: >
+      Glossary adopted (src/ARCHITECTURE.md): Processor = the unit that owns and
+      executes Steps (runtime/DI identity); Process = one executing instance
+      (wire/transport domain). Renames: ProcessRuntime/Registry/Planner/Executor/
+      StepRegistry/ContextStore/StateUpdater/Observability*/EventFactory/
+      StepInvoker/Telemetry/ErrorCodes -> Processor*; KaleidoProcessClient* ->
+      KaleidoProcessorClient*, AddProcessClient -> AddProcessorClient,
+      UseSqliteProcessContextStore -> UseSqliteProcessorContextStore + SQLite
+      entities; AddKaleidoProcessInstrumentation -> AddKaleidoProcessorInstrumentation;
+      IDelegateQueryViewSource -> IDelegatedQueryViewSource. Telemetry identity
+      unified: Kaleido.Processor source/meter + kaleido.processor.* names.
+      Namespaces unified to Kaleido.Processor.* in core and Kaleido.Http(.Client).
+      Processor in transport projects. Wire JSON, routes, and X-Kaleido-* headers
+      unchanged.
   EXT-19:
     title: "XML docs: CS1591 suppressed + stale comments (/queries vs /queryable)"
     source: KAL-M12, F-20

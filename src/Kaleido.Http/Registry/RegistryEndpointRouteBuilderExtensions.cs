@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Kaleido.Http.Authorization;
 using Kaleido.Http.Registry.Contracts;
-using Kaleido.Process.Registry;
+using Kaleido.Processor.Registry;
 using Kaleido.Queryable.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -31,7 +31,7 @@ public static class RegistryEndpointRouteBuilderExtensions
 
         // Resolved once at map-time — these do not change after startup.
         var processClientMap = endpoints.ServiceProvider
-            .GetService<KaleidoProcessClientRouteOptionsMap>();
+            .GetService<KaleidoProcessorClientRouteOptionsMap>();
 
         var queryableClientMap = endpoints.ServiceProvider
             .GetService<KaleidoQueryableClientRouteOptionsMap>();
@@ -51,7 +51,7 @@ public static class RegistryEndpointRouteBuilderExtensions
 
         // Optional — only present when the host has called AddHttp().
         var localProcessorRegistry = endpoints.ServiceProvider
-            .GetService<IProcessRegistry>();
+            .GetService<IProcessorRegistry>();
 
         // Required — AddKaleido() must be called before MapRegistry().
         var localServiceOptions = endpoints.ServiceProvider
@@ -88,14 +88,14 @@ public static class RegistryEndpointRouteBuilderExtensions
                 RegistryContractUrls.Registry(localServiceOptions.ServiceName),
                 async (
                     HttpContext httpContext,
-                    [FromServices] IProcessResponseFactory responseFactory,
+                    [FromServices] IProcessorResponseFactory responseFactory,
                     CancellationToken cancellationToken) =>
                 {
                     // Optional — resolve inside the handler so a host that only
                     // registers one client type (or none via AddHttpClients with
                     // no clients configured) does not fail endpoint activation.
                     var processClientFactory = httpContext.RequestServices
-                        .GetService<IKaleidoProcessClientFactory>();
+                        .GetService<IKaleidoProcessorClientFactory>();
 
                     var queryableClientFactory = httpContext.RequestServices
                         .GetService<IKaleidoQueryableClientFactory>();
@@ -248,7 +248,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                 " Always returns HTTP 200. Inspect ClientErrors to detect " +
                 "partial responses caused by unreachable or misconfigured downstream clients. " +
                 "Process steps carry fully-resolved ExecuteUrl and MetadataUrl values. " +
-                "Adding a downstream client via AddProcessClient() or AddQueryableClient() makes it appear here automatically.");
+                "Adding a downstream client via AddProcessorClient() or AddQueryableClient() makes it appear here automatically.");
 
         return group;
     }
@@ -271,7 +271,7 @@ public static class RegistryEndpointRouteBuilderExtensions
     // the shared per-client snapshot.
     private static void InvalidateDownstream(
         IReadOnlyCollection<string> clientNames,
-        IKaleidoProcessClientFactory? processFactory,
+        IKaleidoProcessorClientFactory? processFactory,
         IKaleidoQueryableClientFactory? queryableFactory,
         ILogger logger)
     {
@@ -353,9 +353,9 @@ public static class RegistryEndpointRouteBuilderExtensions
     }
 
     private static IEnumerable<ProcessorRegistryResponse> GetLocalProcesses(
-        IProcessRegistry? registry,
+        IProcessorRegistry? registry,
         KaleidoServiceOptions? serviceOptions,
-        IProcessResponseFactory responseFactory)
+        IProcessorResponseFactory responseFactory)
         => registry is not null && serviceOptions is not null
             ? registry.Registrations.Select(r => responseFactory.CreateRegistryResponse(r, serviceOptions))
             : Enumerable.Empty<ProcessorRegistryResponse>();
@@ -372,7 +372,7 @@ public static class RegistryEndpointRouteBuilderExtensions
     // registry, or the request would recurse through this endpoint (its local
     // entries are already in the response).
     private static IReadOnlyCollection<string> DownstreamClientNames(
-        KaleidoProcessClientRouteOptionsMap? processMap,
+        KaleidoProcessorClientRouteOptionsMap? processMap,
         KaleidoQueryableClientRouteOptionsMap? queryableMap,
         KaleidoServiceOptions serviceOptions)
     {
@@ -406,8 +406,8 @@ public static class RegistryEndpointRouteBuilderExtensions
                                IReadOnlyCollection<RegistryClientError> Errors)>
         GetDownstreamAsync(
             IReadOnlyCollection<string> clientNames,
-            KaleidoProcessClientRouteOptionsMap? processMap,
-            IKaleidoProcessClientFactory? processFactory,
+            KaleidoProcessorClientRouteOptionsMap? processMap,
+            IKaleidoProcessorClientFactory? processFactory,
             KaleidoQueryableClientRouteOptionsMap? queryableMap,
             IKaleidoQueryableClientFactory? queryableFactory,
             ILogger logger,

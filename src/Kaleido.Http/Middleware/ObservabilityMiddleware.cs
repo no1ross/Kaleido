@@ -37,12 +37,12 @@ internal sealed class ObservabilityMiddleware(RequestDelegate next)
 
             if (correlation.ProcessId.HasValue)
             {
-                activity.SetTag(ProcessTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
+                activity.SetTag(ProcessorTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
             }
 
             if (!string.IsNullOrWhiteSpace(correlation.StepName))
             {
-                activity.SetTag(ProcessTelemetry.TagStepName, correlation.StepName);
+                activity.SetTag(ProcessorTelemetry.TagStepName, correlation.StepName);
             }
         }
 

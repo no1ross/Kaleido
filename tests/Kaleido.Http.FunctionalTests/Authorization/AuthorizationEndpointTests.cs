@@ -1,8 +1,8 @@
 using System.Net;
-using Kaleido.Http.Process;
+using Kaleido.Http.Processor;
 using Kaleido.Http.Queryable;
 using Kaleido.Http.Registry;
-using Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
+using Kaleido.Processor.AspNetCore.FunctionalTests.Infrastructure;
 
 namespace Kaleido.AspNetCore.FunctionalTests.Authorization;
 

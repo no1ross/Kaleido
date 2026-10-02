@@ -86,7 +86,7 @@ can authenticate (e.g. a bearer token) — the transport's job, not Kaleido's.
 
 ```
 step handler / consumer code
-  └─ IKaleidoProcessClient / IKaleidoQueryableClient
+  └─ IKaleidoProcessorClient / IKaleidoQueryableClient
        └─ CorrelationHeaderStamper.Stamp(request)
             reads IKaleidoCorrelationContextAccessor.Current
             └─ stamps the five X-Kaleido-* headers on every

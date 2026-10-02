@@ -1,5 +1,5 @@
 using Kaleido.Http.Registry;
-using Kaleido.Process.Registry;
+using Kaleido.Processor.Registry;
 using Kaleido.Queryable.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
@@ -28,11 +28,11 @@ public static class KaleidoEndpointRouteBuilderExtensions
         var mapOptions = new KaleidoHttpMapOptions();
         configure?.Invoke(mapOptions);
 
-        var hasProcess = endpoints.ServiceProvider.GetService<IProcessStepRegistry>() is not null;
+        var hasProcess = endpoints.ServiceProvider.GetService<IProcessorStepRegistry>() is not null;
         var hasQueryable = endpoints.ServiceProvider.GetService<IQueryableRegistry>() is not null;
 
         var stepCount = hasProcess
-            ? endpoints.ServiceProvider.GetRequiredService<IProcessStepRegistry>().Registrations.Count
+            ? endpoints.ServiceProvider.GetRequiredService<IProcessorStepRegistry>().Registrations.Count
             : 0;
 
         var contextCount = 0;

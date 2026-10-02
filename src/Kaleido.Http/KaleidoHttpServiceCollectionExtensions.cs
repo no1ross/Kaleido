@@ -1,6 +1,6 @@
 using Kaleido.Http.Authorization;
 using Kaleido.Http.Startup;
-using Kaleido.Process.Registry;
+using Kaleido.Processor.Registry;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,14 +43,14 @@ public static class KaleidoHttpServiceCollectionExtensions
         builder.Services.AddSingleton<IStartupFilter, KaleidoStartupFilter>();
 
         // Register HTTP-specific execution services — only when Process runtime is present
-        if (builder.Services.Any(d => d.ServiceType == typeof(IProcessRegistry)))
+        if (builder.Services.Any(d => d.ServiceType == typeof(IProcessorRegistry)))
         {
             builder.Services.TryAddScoped<IProcessExecutionService, ProcessExecutionService>();
             builder.Services.TryAddScoped<IProcessStateService, ProcessStateService>();
         }
 
         builder.Services.TryAddSingleton<Registry.IRegistrySnapshotStore, Registry.InMemoryRegistrySnapshotStore>();
-        builder.Services.TryAddSingleton<IProcessResponseFactory, ProcessResponseFactory>();
+        builder.Services.TryAddSingleton<IProcessorResponseFactory, ProcessorResponseFactory>();
         builder.Services.TryAddSingleton<IProcessExecutionResponseFactory, ProcessExecutionResponseFactory>();
 
         return builder;

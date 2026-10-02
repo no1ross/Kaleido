@@ -80,7 +80,7 @@ internal static class KaleidoClientServiceCollectionExtensions
         return services;
     }
 
-    internal static IKaleidoBuilder AddProcessClient(
+    internal static IKaleidoBuilder AddProcessorClient(
         this IKaleidoBuilder builder,
         Action<KaleidoHttpClientOptions> configure,
         Action<IHttpClientBuilder>? configureClient = null)
@@ -88,7 +88,7 @@ internal static class KaleidoClientServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);
 
-        builder.Services.AddKaleidoClient<IKaleidoProcessClient, KaleidoProcessClientRouteOptionsMap, KaleidoProcessClientFactory, IKaleidoProcessClientFactory>(
+        builder.Services.AddKaleidoClient<IKaleidoProcessorClient, KaleidoProcessorClientRouteOptionsMap, KaleidoProcessorClientFactory, IKaleidoProcessorClientFactory>(
             configure,
             Registry.RegistryContractUrls.Registry,
             configureClient);

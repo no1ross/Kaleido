@@ -40,7 +40,7 @@ public sealed class KaleidoRemoteRegistryTests
     {
         Processes =
         [
-            new Kaleido.Http.Process.ProcessorRegistryResponse
+            new Kaleido.Http.Processor.ProcessorRegistryResponse
             {
                 ServiceName = "remote-svc",
                 Name = "remote-svc"
