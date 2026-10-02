@@ -10,15 +10,20 @@ public static class KaleidoServiceCollectionExtensions
     public static IKaleidoBuilder AddKaleido(
         this IServiceCollection services,
         IConfiguration configuration,
-        Action<KaleidoServiceOptions>? configure = null)
+        Action<KaleidoServiceOptionsBuilder>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var serviceOptions = new KaleidoServiceOptions();
-        configuration.GetSection(KaleidoServiceOptions.SectionName).Bind(serviceOptions);
+        // Bind + configure run on the mutable builder; the immutable
+        // KaleidoServiceOptions snapshot is what DI sees (EXT-16). Eager
+        // validation here is strictly stronger than ValidateOnStart — it
+        // fails at composition, not first resolution.
+        var optionsBuilder = new KaleidoServiceOptionsBuilder();
+        configuration.GetSection(KaleidoServiceOptions.SectionName).Bind(optionsBuilder);
 
-        configure?.Invoke(serviceOptions);
+        configure?.Invoke(optionsBuilder);
+        var serviceOptions = optionsBuilder.Build();
         KaleidoServiceOptions.Validate(serviceOptions);
         services.AddSingleton(serviceOptions);
 
