@@ -1144,7 +1144,7 @@ ai_compatibility:
         Add "For AI-Assisted Development" callout to src/Kaleido README.
       effort: small
       breaking_change: false
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
 
     AI-009:
       title: .editorconfig missing C# 12+ rules
@@ -1159,7 +1159,7 @@ ai_compatibility:
         and record preferences. Ship an .editorconfig.template for consumers.
       effort: small
       breaking_change: false
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
 
     AI-010:
       title: XML documentation coverage gaps (60–70%)

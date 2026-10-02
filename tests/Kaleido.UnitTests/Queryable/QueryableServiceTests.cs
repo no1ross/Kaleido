@@ -233,6 +233,52 @@ public sealed class QueryableServiceTests
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    // AI-008: exhaustive lane-order proof — when all three lanes could serve
+    // the same view, delegated wins: the delegated engine is the only engine
+    // invoked and the context registry is never consulted for the local/direct
+    // paths. Registry lookups themselves are lookups, not dispatch — pinned
+    // dispatch order is delegated > local view > direct context.
+    [Fact]
+    public async Task QueryAsync_WhenAllThreeLanesExist_DelegatedWinsAndOthersAreUntouched()
+    {
+        var request = new QueryRequest<EmptyQueryViewParameters>(new EmptyQueryViewParameters(), null);
+        var expected = new QueryResult<TestViewContract>(1, 0, 25, [new TestViewContract()]);
+        var delegatedRegistration = CreateDelegatedViewRegistration();
+        var viewRegistration = CreateViewRegistration();
+        var contextRegistration = CreateContextRegistration();
+
+        var delegatedEngine = new Mock<IDelegatedQueryViewEngine<TestContext, TestViewContract>>();
+        delegatedEngine.Setup(x => x.ExecuteAsync(request, delegatedRegistration, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
+
+        var localEngine = new Mock<IQueryContextEngine<TestContext, TestViewContract>>(MockBehavior.Strict);
+
+        var provider = new Mock<IServiceProvider>();
+        provider.Setup(x => x.GetService(typeof(IDelegatedQueryViewEngine<TestContext, TestViewContract>))).Returns(delegatedEngine.Object);
+        provider.Setup(x => x.GetService(typeof(IQueryContextEngine<TestContext, TestViewContract>))).Returns(localEngine.Object);
+
+        var scope = new Mock<IServiceScope>();
+        scope.SetupGet(x => x.ServiceProvider).Returns(provider.Object);
+
+        var scopeFactory = new Mock<IServiceScopeFactory>();
+        scopeFactory.Setup(x => x.CreateScope()).Returns(scope.Object);
+
+        var delegatedViewRegistry = new Mock<IDelegatedQueryViewRegistry>();
+        delegatedViewRegistry.Setup(x => x.Find(typeof(TestView))).Returns(delegatedRegistration);
+
+        var viewRegistry = new Mock<IQueryViewRegistry>();
+        viewRegistry.Setup(x => x.Find(typeof(TestView))).Returns(viewRegistration);
+
+        var contextRegistry = new Mock<IQueryContextRegistry>(MockBehavior.Strict);
+
+        var service = CreateSut(scopeFactory.Object, delegatedViewRegistry.Object, viewRegistry.Object, contextRegistry.Object);
+
+        var result = await service.QueryAsync<TestView, TestViewContract>(request);
+
+        Assert.Same(expected, result);
+        delegatedEngine.Verify(x => x.ExecuteAsync(request, delegatedRegistration, It.IsAny<CancellationToken>()), Times.Once);
+        contextRegistry.VerifyNoOtherCalls();
+    }
+
     private static IDelegatedQueryViewRegistry EmptyDelegatedViewRegistry()
     {
         var registry = new Mock<IDelegatedQueryViewRegistry>();
