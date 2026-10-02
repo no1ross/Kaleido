@@ -26,6 +26,7 @@ jobs:
           */bin/*,*/obj/*,*/node_modules/*,*/dist/*,*/data/*,*packages.lock.json
 
     - name: Upload SARIF
+      if: ${{ hashFiles('sarif/*.sarif') != '' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: sarif
