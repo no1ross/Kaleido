@@ -32,8 +32,7 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader();
     });
 });
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddDevSwagger();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<HistoryDbContext>();
 
@@ -75,8 +74,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-
 
 app.MapControllers();
 

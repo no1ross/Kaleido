@@ -390,7 +390,8 @@
           "Microsoft.EntityFrameworkCore.Sqlite": "[8.0.31, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[8.0.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )",
-          "Microsoft.Extensions.Http": "[8.0.1, )"
+          "Microsoft.Extensions.Http": "[8.0.1, )",
+          "Swashbuckle.AspNetCore": "[10.2.3, )"
         }
       },
       "Microsoft.EntityFrameworkCore": {
