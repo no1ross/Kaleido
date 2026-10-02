@@ -44,7 +44,7 @@ critical_decisions:
         effort_days: 2
         breaking_change: false
     assigned_to: null
-    status: PENDING_DECISION
+    status: COMPLETE
 
   CR-002:
     title: Build Hardening for Release
@@ -60,7 +60,14 @@ critical_decisions:
     effort_days: 2-3
     breaking_change: false
     assigned_to: null
-    status: PENDING_DECISION
+    status: COMPLETED
+    progress_note: >
+      Done: NBGV version.json (1.0.0-preview.{height}, tags flip to stable),
+      pack step on master pushes (artifacts only - no NuGet publish),
+      NuGetAudit=true, CodeQL security-and-quality, DevSkim SARIF,
+      dependency-review gate. Deferred: SonarQube Cloud (needs account/token),
+      NuGet publish workflow (needs API key / trusted publishing) - both for
+      release time.
 
   CR-003:
     title: Versioning & Release Strategy
@@ -74,7 +81,7 @@ critical_decisions:
     effort_days: 1-2
     breaking_change: false
     assigned_to: null
-    status: PENDING_DECISION
+    status: COMPLETED
 
   CR-004:
     title: Root docs describe removed Kaleido.AspNetCore; quickstart does not compile
@@ -512,7 +519,7 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: false
-    status: PARTIAL
+    status: COMPLETED
     progress_note: >
       (PR-05) Done: RestorePackagesWithLockFile + 37 committed packages.lock.json
       + CI restore --locked-mode; coverage ratchet gate (10% floor, baseline ~14.6%).
