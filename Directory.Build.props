@@ -13,7 +13,7 @@
     <!-- Git-height versioning: version.json produces 1.0.0-preview.{height}
          until a v* tag flips publicReleaseRefSpec to stable. Scoped to src/ +
          tools/ — samples are never packaged and manage their own CPM file. -->
-    <ItemGroup Condition="$(MSBuildProjectDirectory.Contains('src\')) or $(MSBuildProjectDirectory.Contains('tools\'))">
+    <ItemGroup Condition="$([System.String]::Copy('$(MSBuildProjectDirectory)').Replace('\','/').Contains('/src/')) or $([System.String]::Copy('$(MSBuildProjectDirectory)').Replace('\','/').Contains('/tools/'))">
         <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
     </ItemGroup>
 </Project>

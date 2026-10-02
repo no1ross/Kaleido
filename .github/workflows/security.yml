@@ -26,6 +26,6 @@ jobs:
           */bin/*,*/obj/*,*/node_modules/*,*/dist/*,*/data/*,*packages.lock.json
 
     - name: Upload SARIF
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       with:
-        sarif_file: sarif/devskimResults.sarif
+        sarif_file: sarif
