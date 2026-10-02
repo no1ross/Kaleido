@@ -828,7 +828,7 @@ external_findings:
     severity: MEDIUM
     effort: medium
     breaking_change: possibly
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
   EXT-17:
     title: Offset-only paging; optional keyset/continuation
     source: KAL-M08
