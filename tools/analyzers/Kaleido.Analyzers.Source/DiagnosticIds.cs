@@ -46,14 +46,8 @@ internal static class DiagnosticIds
     /// <summary>Singleton factory lambdas must not resolve scoped services; doing so captures the scoped instance for the application lifetime.</summary>
     public const string CaptiveDependency = "KAL0014";
 
-    /// <summary>An interface and its concrete implementation must be declared in the same source file (e.g. IProcessRuntime lives in ProcessRuntime.cs).</summary>
+    /// <summary>An interface and its concrete implementation must be declared in the same source file (e.g. IProcessorRuntime lives in ProcessorRuntime.cs).</summary>
     public const string InterfaceCoLocation = "KAL0015";
-
-    /// <summary>Every MapGet/MapPost call in Kaleido.Http must have a .WithTags() call in the same fluent chain.</summary>
-    public const string EndpointTagMissing = "KAL0016";
-
-    /// <summary>Every MapGet/MapPost call in Kaleido.Http that has .WithTags() must include "Kaleido" as one of the tag arguments.</summary>
-    public const string EndpointKaleidoTag = "KAL0017";
 
     /// <summary>Public API members must not expose mutable collection types; use IReadOnlyCollection, IReadOnlyList, IReadOnlyDictionary, or IEnumerable instead.</summary>
     public const string MutableCollectionInPublicApi = "KAL0018";

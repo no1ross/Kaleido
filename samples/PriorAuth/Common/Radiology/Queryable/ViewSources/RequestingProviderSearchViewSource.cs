@@ -8,15 +8,14 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Queryable.ViewSources;
 
 [QueryView(
     Name = "requesting-provider-search",
-    DisplayName = "Radiology - Requesting Provider Search",
+    DisplayName = "Requesting Provider Search",
     Version = "1.0.0",
     Description = "Searchable requesting provider results scoped to the active radiology process.",
-    Visibility = QueryViewVisibility.Public,
     DefaultSortField = nameof(RequestingProviderSearchQueryContext.ProviderName))]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class RequestingProviderSearchViewSource(
     RequestingProviderSearchClient requestingProviderSearchClient)
-    : IDelegateQueryViewSource<RequestingProviderSearchQueryContext, RequestingProviderSearchView, RequestingProviderSearchQueryParameters>
+    : IDelegatedQueryViewSource<RequestingProviderSearchQueryContext, RequestingProviderSearchView, RequestingProviderSearchQueryParameters>
 {
     public async Task<QueryResult<RequestingProviderSearchView>> ExecuteAsync(
         IQueryRequest<RequestingProviderSearchQueryParameters> request,

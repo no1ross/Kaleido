@@ -1,11 +1,11 @@
 using System.ComponentModel.DataAnnotations;
-using Kaleido.Process;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
+[KaleidoAuthorization(Roles = "radiology")]
 [ProcessStep(
     Name = "CaptureRequestingProvider",
-    DisplayName = "Radiology - Capture Requesting Provider",
+    DisplayName = "Capture Requesting Provider",
     Description = "Captures the requesting provider for the current prior authorization.",
     Version = "1.0.0")]
 [AvailableAfter(typeof(StartRadiologyIntakeStep))]

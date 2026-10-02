@@ -1,11 +1,12 @@
 using System.ComponentModel.DataAnnotations;
-using Kaleido.Process;
+using Kaleido.Processor;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
+[KaleidoAuthorization(Roles = "radiology")]
 [ProcessStep(
     Name = "CaptureMriInfo",
-    DisplayName = "Radiology - Capture MRI Information",
+    DisplayName = "Capture MRI Information",
     Description = "Captures MRI-specific information for the requested service.",
     Version = "1.0.0")]
 [AvailableAfter(typeof(StartRadiologyIntakeStep))]

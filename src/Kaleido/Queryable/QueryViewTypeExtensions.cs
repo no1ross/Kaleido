@@ -23,8 +23,8 @@ internal static class QueryViewTypeExtensions
 
     private static readonly Type[] DelegateViewSourceDefinitions =
     [
-        typeof(IDelegateQueryViewSource<,>),
-        typeof(IDelegateQueryViewSource<,,>)
+        typeof(IDelegatedQueryViewSource<,>),
+        typeof(IDelegatedQueryViewSource<,,>)
     ];
 
     /// <summary>
@@ -61,7 +61,7 @@ internal static class QueryViewTypeExtensions
             [.. SyncViewSourceDefinitions, .. AsyncViewSourceDefinitions]);
 
     /// <summary>
-    /// Returns the <see cref="IDelegateQueryViewSource{TDelegateContext,TView}"/>
+    /// Returns the <see cref="IDelegatedQueryViewSource{TDelegateContext,TView}"/>
     /// interfaces implemented by this type.
     /// </summary>
     internal static Type[] GetDelegateViewSourceInterfaces(

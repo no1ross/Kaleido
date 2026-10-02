@@ -17,7 +17,5 @@ KAL0012 | Kaleido.Design | Error | Do not manually instantiate infrastructure de
 KAL0013 | Kaleido.Design | Error | Do not dispose container-owned dependencies
 KAL0014 | Kaleido.Design | Error | Singleton registrations must not capture scoped services
 KAL0015 | Kaleido.Layout | Error | Interface must live in the same file as its implementation
-KAL0016 | Kaleido.Design | Warning | MapGet/MapPost endpoints in Kaleido.Http must call .WithTags()
-KAL0017 | Kaleido.Design | Warning | Endpoint tags must include "Kaleido"
 KAL0018 | Kaleido.Design | Warning | Public API members must not expose mutable collection types
 KAL0019 | Kaleido.Design | Warning | Async methods must accept a CancellationToken parameter

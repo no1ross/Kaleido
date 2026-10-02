@@ -168,13 +168,12 @@ export class RegistryCatalog {
             processorsByService.set(processor.serviceName, group);
         }
 
-        // Group queryables by service key derived from first path segment of metadataUrl
+        // Group queryables by the service that registered them
         const queryablesByService = new Map<string, QueryableRecord[]>();
         for (const context of queryables) {
-            const key = this.serviceKeyFromUrl(context.metadataUrl);
-            const group = queryablesByService.get(key) ?? [];
+            const group = queryablesByService.get(context.serviceName) ?? [];
             group.push(context);
-            queryablesByService.set(key, group);
+            queryablesByService.set(context.serviceName, group);
         }
 
         const processSteps: ProcessStepEntry[] =
@@ -197,12 +196,12 @@ export class RegistryCatalog {
                 e => e.serviceName),
             ...this.detectConflicts(
                 'queryable-context',
-                queryables.map(ctx => ({ key: this.serviceKeyFromUrl(ctx.metadataUrl), ctx })),
+                queryables.map(ctx => ({ key: ctx.serviceName, ctx })),
                 e => e.ctx.name,
                 e => e.key),
             ...this.detectConflicts(
                 'queryable-view',
-                queryableViews.map(qv => ({ key: this.serviceKeyFromUrl(qv.context.metadataUrl), qv })),
+                queryableViews.map(qv => ({ key: qv.context.serviceName, qv })),
                 e => e.qv.view.name,
                 e => e.key)
         ];
@@ -237,10 +236,6 @@ export class RegistryCatalog {
                 !conflictedViewNames.has(qv.view.name)),
             conflicts
         };
-    }
-
-    private serviceKeyFromUrl(url: string): string {
-        return url.replace(/^\/+/, '').split('/')[0] ?? '';
     }
 
     private detectConflicts<TEntry>(

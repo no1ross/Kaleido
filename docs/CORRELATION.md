@@ -18,6 +18,8 @@ constants in its own project — the context shape does not change.
 | `ProcessorInstanceId` | `X-Kaleido-Processor-Instance-Id` | GUID | The running instance of the processor that handled the request (`KaleidoServiceOptions.InstanceId`). |
 | `SourceProcessorName` | `X-Kaleido-Source-Processor` | string | Service name of the processor that originated the call. |
 | `StepName` | `X-Kaleido-Step-Name` | string | The process step making the inter-service call — lets a queryable service see which step asked. |
+| `CallerName` | *(none)* | string | Authenticated caller name — populated from the request principal after authentication, never from headers. |
+| `CallerRoles` | *(none)* | string[] | Authenticated caller roles — populated alongside `CallerName`. |
 
 ## Inbound path (server)
 
@@ -41,11 +43,50 @@ HTTP request
   ID downstream. `KaleidoCorrelationContext.IsEmpty` reports whether any meaningful field
   was supplied.
 
+### Header trust
+
+Identity-bearing headers (`RequestId`, `SourceProcessor`, `StepName`,
+`ProcessorInstanceId`) are honored only for trusted callers — untrusted callers get a
+fresh `RequestId` and the remaining identity fields are dropped (the response echo still
+reflects the resolved context, so callers see exactly what was used). `ProcessId` is
+always honored: it is a resumable process handle, not an identity claim.
+
+Trust is governed by `KaleidoHttpOptions.TrustCorrelationIdentity` (`Func<HttpContext, bool>`).
+The default is adaptive:
+
+- **No authentication infrastructure registered** (no `IAuthenticationSchemeProvider`) —
+  headers are trusted; there is nothing to check a caller against. This preserves
+  behavior on hosts that never wire auth.
+- **Authentication registered** — headers are trusted only when
+  `User.Identity.IsAuthenticated`.
+
+Override the predicate to apply a custom policy (e.g. service-account-only trust):
+
+```csharp
+.AddHttp(o =>
+    o.TrustCorrelationIdentity = ctx =>
+        ctx.User.IsInRole("internal-service"));
+```
+
+### Caller identity
+
+`CallerName` and `CallerRoles` are **never** read from headers — they come from the
+authenticated request principal. The `ObservabilityMiddleware` runs before the host's
+`UseAuthentication`, so they are stamped later by `KaleidoCallerContextEndpointFilter`
+(runs inside endpoint execution, always after auth middleware) on all Kaleido endpoint
+groups. Anonymous requests get `CallerName = null`, `CallerRoles = []`.
+
+These fields feed process ownership (`ProcessorContext.Owner`/`OwnerRoles`) and
+capability authorization — see [`AUTHORIZATION.md`](./AUTHORIZATION.md). They are
+**not** propagated outbound: each hop derives its own caller identity from its own
+authenticated principal. Service-to-service calls must carry credentials the next hop
+can authenticate (e.g. a bearer token) — the transport's job, not Kaleido's.
+
 ## Outbound path (client)
 
 ```
 step handler / consumer code
-  └─ IKaleidoProcessClient / IKaleidoQueryableClient
+  └─ IKaleidoProcessorClient / IKaleidoQueryableClient
        └─ CorrelationHeaderStamper.Stamp(request)
             reads IKaleidoCorrelationContextAccessor.Current
             └─ stamps the five X-Kaleido-* headers on every

@@ -42,6 +42,27 @@ public sealed record KaleidoCorrelationContext
     }
 
     /// <summary>
+    /// Name of the authenticated caller, populated by the transport from the
+    /// request principal — <b>never</b> from caller-supplied headers.
+    /// <c>null</c> for anonymous requests.
+    /// </summary>
+    public string? CallerName
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// Roles of the authenticated caller, populated alongside
+    /// <see cref="CallerName"/>. Empty for anonymous requests.
+    /// </summary>
+    public IReadOnlyCollection<string> CallerRoles
+    {
+        get;
+        init;
+    } = [];
+
+    /// <summary>
     /// Returns <c>true</c> when the correlation context has no meaningful correlation fields set —
     /// indicating no correlation context has been established for the current request.
     /// </summary>

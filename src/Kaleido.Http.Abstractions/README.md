@@ -18,7 +18,7 @@ See also:
 - `ExecuteStepRequest<TStep>` — typed per-step execute request body
 - `StepExecutionResponse` / `StepExecutionResponse<TResult>` — per-step execute response
 - `ProcessStateResponse` — process state read response
-- `ProcessStepSummary` — lightweight step summary used in catalog and state responses
+- `ProcessStepSummary` — lightweight step summary used in registry and state responses
 - `ProcessStepInfo` — step reference with execute/metadata URLs (used in required/available step fields)
 - `ProcessorRegistryResponse` — full processor registry record (all step metadata)
 - `ProcessStepResponse` — detailed step metadata record
@@ -26,8 +26,7 @@ See also:
 ### Queryable HTTP contracts
 - `QueryApiRequest` / `QueryApiRequest<TParameters>` — query request body (search, filter, sort, page, optional view parameters)
 - `QueryApiBody` / `QueryApiFilterNode` / `QueryApiFilterCondition` / `QueryApiFilterGroup` / `QueryApiSort` / `QueryApiPage` — transport-level query body (string enums, raw `JsonElement` values)
-- `QueryableRecordResponse` — full context record in the registry response
-- `QueryableRecordSummary` — lightweight context summary in the catalog response
+- `QueryableRecordResponse` — full context record in the registry response (carries `ServiceName`, `RegistryUrl`)
 - `QueryErrorResponse` — structured query validation error response
 - `QueryApiBodyExtensions.ToApiBody()` — converts a runtime `QueryBody` to `QueryApiBody` for callers that receive a `QueryBody` and need to forward it over HTTP (e.g. delegated view sources calling a remote query context)
 

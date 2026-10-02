@@ -36,6 +36,13 @@ internal static class KaleidoClientServiceCollectionExtensions
         var routeOptions = GetOrAddRouteOptions<TMap>(services);
         routeOptions.Options[options.Name] = options.RoutePrefix;
 
+        if (options.RegistryTtl.HasValue)
+        {
+            routeOptions.RegistryTtls[options.Name] = options.RegistryTtl.Value;
+        }
+
+        services.TryAddSingleton<Registry.IRegistrySnapshotStore, Registry.InMemoryRegistrySnapshotStore>();
+        services.TryAddSingleton<KaleidoRemoteRegistry>();
         services.TryAddScoped<ICorrelationHeaderStamper, CorrelationHeaderStamper>();
         services.TryAddScoped<TFactoryInterface, TFactory>();
 
@@ -46,7 +53,10 @@ internal static class KaleidoClientServiceCollectionExtensions
         // safely skips duplicate names even when AddHttpClients() is called multiple times.
         var clientName = options.Name;
         var healthCheckName = $"kaleido-{clientName}";
-        var registryPath = registryUrlFactory(options.RoutePrefix);
+        var registryPath =
+            options.StrictRegistryProbe
+                ? $"{registryUrlFactory(options.RoutePrefix)}?strict"
+                : registryUrlFactory(options.RoutePrefix);
 
         services.AddHealthChecks();
         services.Configure<HealthCheckServiceOptions>(o =>
@@ -70,7 +80,7 @@ internal static class KaleidoClientServiceCollectionExtensions
         return services;
     }
 
-    internal static IKaleidoBuilder AddProcessClient(
+    internal static IKaleidoBuilder AddProcessorClient(
         this IKaleidoBuilder builder,
         Action<KaleidoHttpClientOptions> configure,
         Action<IHttpClientBuilder>? configureClient = null)
@@ -78,9 +88,9 @@ internal static class KaleidoClientServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);
 
-        builder.Services.AddKaleidoClient<IKaleidoProcessClient, KaleidoProcessClientRouteOptionsMap, KaleidoProcessClientFactory, IKaleidoProcessClientFactory>(
+        builder.Services.AddKaleidoClient<IKaleidoProcessorClient, KaleidoProcessorClientRouteOptionsMap, KaleidoProcessorClientFactory, IKaleidoProcessorClientFactory>(
             configure,
-            ProcessContractUrls.Registry,
+            Registry.RegistryContractUrls.Registry,
             configureClient);
 
         return builder;
@@ -96,7 +106,7 @@ internal static class KaleidoClientServiceCollectionExtensions
 
         builder.Services.AddKaleidoClient<IKaleidoQueryableClient, KaleidoQueryableClientRouteOptionsMap, KaleidoQueryableClientFactory, IKaleidoQueryableClientFactory>(
             configure,
-            QueryableContractUrls.QueryRegistry,
+            Registry.RegistryContractUrls.Registry,
             configureClient);
 
         return builder;

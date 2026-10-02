@@ -58,7 +58,7 @@ builder.Services
 
 var app = builder.Build();
 
-app.MapKaleido();
+app.MapKaleidoHttp();
 
 app.Run();
 ```

@@ -13,7 +13,7 @@ namespace Kaleido.Analyzers.Process;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ProcessStepHandlerAnalyzer : DiagnosticAnalyzer
 {
-    private const string AttributeFullName = "Kaleido.Process.ProcessStepAttribute";
+    private const string AttributeFullName = "Kaleido.Processor.ProcessStepAttribute";
     private const string HandlerInterfaceName = "IProcessStepHandler";
 
     private static readonly DiagnosticDescriptor Rule =

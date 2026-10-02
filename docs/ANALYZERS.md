@@ -23,7 +23,6 @@ Shipped inside the `Kaleido` package (`analyzers/dotnet/cs/`). They fire on **co
 | KAL2003 | Error | `[QueryView]` must declare a non-empty `Name` and `Version` — compile-time equivalent of `qry_missing_attribute` |
 | KAL2004 | Warning | `IProcessStepHandler<T>.ExecuteAsync` must not swallow `OperationCanceledException` in a bare `catch (Exception)` — add `when (ex is not OperationCanceledException)` or a preceding OCE catch. A swallowed cancellation inflates failure metrics and hides client disconnects |
 | KAL2005 | Warning | `ServiceName` string literals must be lowercase with no spaces, hyphens, or underscores — it is used verbatim as the HTTP route prefix |
-| KAL2006 | Info | `MapRegistry()` was found but `AddHttpClients()` was not in the same compilation — the registry endpoint depends on the client factories. Heuristic; suppressible when the calls live in different assemblies |
 | KAL2007 | Warning | `[ProcessStep]` class names must end in `Step` — the framework derives the step name by stripping the suffix |
 | KAL2008 | Warning | `[ProcessStep]` type has no `IProcessStepHandler<TStep>` (or `IProcessStepHandler<TStep, TResult>`) in the same compilation — compile-time equivalent of `pro_missing_handler`. Cross-assembly handlers suppress the warning |
 | KAL2009 | Warning | `AddKaleido(config, o => ...)` lambda never sets `o.Assemblies` — the `GetCallingAssembly()` fallback is JIT-nondeterministic; set assemblies explicitly |
@@ -46,9 +45,7 @@ Shipped inside the `Kaleido` package (`analyzers/dotnet/cs/`). They fire on **co
 | KAL0012 | No manual infrastructure instantiation (`HttpClient`, `ServiceCollection`, `ServiceProvider`, `LoggerFactory`, `DbContext`) | `'new {0}()' bypasses the container-managed factory — inject the corresponding abstraction instead` |
 | KAL0013 | Do not dispose container-owned dependencies | `'{0}' on '{1}' disposes a container-owned dependency ('{2}') — the container manages its lifetime` |
 | KAL0014 | Singleton registrations must not resolve scoped services | `Singleton factory resolves '{0}' which is registered as Scoped — the scoped instance would be captured for the app lifetime` |
-| KAL0015 | Interface must live in the same file as its same-named implementation (`IProcessRuntime` in `ProcessRuntime.cs`); provider contracts exempt | `Interface '{0}' should be declared in '{1}' alongside '{2}' — an interface and its concrete class share a file` |
-| KAL0016 | Every `MapGet`/`MapPost` call must chain `.WithTags(...)` | `MapGet/MapPost call is missing a .WithTags() chain` |
-| KAL0017 | Every `.WithTags(...)` chain must include `"Kaleido"` as one of the tag arguments | `WithTags() call is missing the "Kaleido" tag` |
+| KAL0015 | Interface must live in the same file as its same-named implementation (`IProcessorRuntime` in `ProcessorRuntime.cs`); provider contracts exempt | `Interface '{0}' should be declared in '{1}' alongside '{2}' — an interface and its concrete class share a file` |
 | KAL0018 | Public and internal API members must not expose mutable collection types (`List<T>`, `IList<T>`, `Dictionary<K,V>`, `IDictionary<K,V>`, `HashSet<T>`, `ISet<T>`, `ICollection<T>`) | `'{0}' is a mutable collection type — use IReadOnlyCollection<T>, IReadOnlyList<T>, IReadOnlyDictionary<K,V>, or IEnumerable<T> instead` |
 | KAL0019 | Public and internal async methods returning `Task`/`Task<T>` must accept a `CancellationToken` parameter | `Async method '{0}' does not accept a CancellationToken — add 'CancellationToken cancellationToken = default' so callers can propagate cancellation` |
 
@@ -56,9 +53,9 @@ Shipped inside the `Kaleido` package (`analyzers/dotnet/cs/`). They fire on **co
 
 The registered-service model is harvested from `*ServiceCollectionExtensions` classes in the same compilation (generic args, `typeof()` args, returned `new` in factory lambdas). `*ServiceCollectionExtensions` and `*EndpointRouteBuilderExtensions` are composition roots — exempt. `context.RequestServices` resolution (middleware/endpoint activation) and dynamic resolutions (runtime `Type` args, open-generic type parameters) are exempt from KAL0007 — they are the container's dispatch seam. Tests are exempt via `.editorconfig`.
 
-### HTTP endpoint rules notes (KAL0016–KAL0017)
+### HTTP endpoint notes
 
-These rules run against `src/Kaleido.Http` only (configured via `.editorconfig`). Every `MapGet`/`MapPost` call must chain `.WithTags(...)` (KAL0016) and that chain must include `"Kaleido"` as one of the tag arguments (KAL0017). The `"Kaleido"` tag is used for OpenAPI grouping and endpoint discovery. Endpoint names must be declared as `const string` fields in a `*EndpointNames` class in `Kaleido.Http.Abstractions` — never as inline literals passed to `WithName()`.
+Endpoint names must be declared as `const string` fields in a `*EndpointNames` class in `Kaleido.Http.Abstractions` — never as inline literals passed to `WithName()`.
 
 ### API design rules notes (KAL0018–KAL0019)
 

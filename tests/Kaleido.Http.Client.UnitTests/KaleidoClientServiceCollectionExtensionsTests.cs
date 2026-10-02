@@ -1,5 +1,5 @@
 using System.Reflection;
-using Kaleido.Http.Process;
+using Kaleido.Http.Processor;
 using Kaleido.Http.Queryable;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,7 +9,7 @@ namespace Kaleido.Http.Client.UnitTests;
 public sealed class KaleidoClientServiceCollectionExtensionsTests
     : Kaleido.UnitTests.SutFixture
 {
-    // ── AddProcessClient — guard clauses ────────────────────────────────────────
+    // ── AddProcessorClient — guard clauses ────────────────────────────────────────
 
     [Fact]
     public void AddProcessClient_WhenBuilderIsNull_Throws()
@@ -17,7 +17,7 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         IKaleidoBuilder? builder = null;
 
         Assert.Throws<ArgumentNullException>(
-            () => builder!.AddProcessClient(o =>
+            () => builder!.AddProcessorClient(o =>
             {
                 o.Name = "name";
                 o.BaseUrl = "http://localhost";
@@ -30,7 +30,7 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         var builder = new FakeKaleidoBuilder(new ServiceCollection());
 
         Assert.Throws<ArgumentNullException>(
-            () => builder.AddProcessClient(null!));
+            () => builder.AddProcessorClient(null!));
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         var builder = new FakeKaleidoBuilder(new ServiceCollection());
 
         Assert.Throws<ArgumentException>(
-            () => builder.AddProcessClient(o =>
+            () => builder.AddProcessorClient(o =>
             {
                 o.Name = "";
                 o.BaseUrl = "http://localhost";
@@ -52,14 +52,14 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         var builder = new FakeKaleidoBuilder(new ServiceCollection());
 
         Assert.Throws<ArgumentException>(
-            () => builder.AddProcessClient(o =>
+            () => builder.AddProcessorClient(o =>
             {
                 o.Name = "name";
                 o.BaseUrl = "";
             }));
     }
 
-    // ── AddProcessClient — factory registration ──────────────────────────────────
+    // ── AddProcessorClient — factory registration ──────────────────────────────────
 
     [Fact]
     public void AddProcessClient_RegistersFactory()
@@ -67,14 +67,14 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var builder = new FakeKaleidoBuilder(services);
 
-        builder.AddProcessClient(o =>
+        builder.AddProcessorClient(o =>
         {
             o.Name = "RemoteProcessor";
             o.BaseUrl = "http://localhost";
         });
 
         Assert.Contains(services,
-            d => d.ServiceType == typeof(IKaleidoProcessClientFactory));
+            d => d.ServiceType == typeof(IKaleidoProcessorClientFactory));
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var builder = new FakeKaleidoBuilder(services);
 
-        var result = builder.AddProcessClient(o =>
+        var result = builder.AddProcessorClient(o =>
         {
             o.Name = "RemoteProcessor";
             o.BaseUrl = "http://localhost";
@@ -92,7 +92,7 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         Assert.Same(builder, result);
     }
 
-    // ── AddProcessClient — RouteOptionsMap ───────────────────────────────────────
+    // ── AddProcessorClient — RouteOptionsMap ───────────────────────────────────────
 
     [Fact]
     public void AddProcessClient_WithRoutePrefix_StoresOptionsInMap()
@@ -100,7 +100,7 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var builder = new FakeKaleidoBuilder(services);
 
-        builder.AddProcessClient(o =>
+        builder.AddProcessorClient(o =>
         {
             o.Name = "Radiology";
             o.BaseUrl = "http://localhost";
@@ -108,8 +108,8 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         });
 
         var descriptor = services.First(
-            d => d.ServiceType == typeof(KaleidoProcessClientRouteOptionsMap));
-        var map = (KaleidoProcessClientRouteOptionsMap)descriptor.ImplementationInstance!;
+            d => d.ServiceType == typeof(KaleidoProcessorClientRouteOptionsMap));
+        var map = (KaleidoProcessorClientRouteOptionsMap)descriptor.ImplementationInstance!;
 
         Assert.True(map.Options.TryGetValue("Radiology", out var prefix));
         Assert.Equal("radiology", prefix);
@@ -122,16 +122,16 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         var builder = new FakeKaleidoBuilder(services);
 
         builder
-            .AddProcessClient(o => { o.Name = "ProcessorA"; o.BaseUrl = "http://a.localhost"; })
-            .AddProcessClient(o => { o.Name = "ProcessorB"; o.BaseUrl = "http://b.localhost"; o.RoutePrefix = "prefix"; });
+            .AddProcessorClient(o => { o.Name = "ProcessorA"; o.BaseUrl = "http://a.localhost"; })
+            .AddProcessorClient(o => { o.Name = "ProcessorB"; o.BaseUrl = "http://b.localhost"; o.RoutePrefix = "prefix"; });
 
         var maps = services
-            .Where(d => d.ServiceType == typeof(KaleidoProcessClientRouteOptionsMap))
+            .Where(d => d.ServiceType == typeof(KaleidoProcessorClientRouteOptionsMap))
             .ToList();
 
         Assert.Single(maps); // only one singleton
 
-        var map = (KaleidoProcessClientRouteOptionsMap)maps[0].ImplementationInstance!;
+        var map = (KaleidoProcessorClientRouteOptionsMap)maps[0].ImplementationInstance!;
         Assert.True(map.Options.ContainsKey("ProcessorA"));
         Assert.True(map.Options.ContainsKey("ProcessorB"));
     }
@@ -142,15 +142,15 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var builder = new FakeKaleidoBuilder(services);
 
-        builder.AddProcessClient(o =>
+        builder.AddProcessorClient(o =>
         {
             o.Name = "RemoteProcessor";
             o.BaseUrl = "http://localhost";
         });
 
         var descriptor = services.First(
-            d => d.ServiceType == typeof(KaleidoProcessClientRouteOptionsMap));
-        var map = (KaleidoProcessClientRouteOptionsMap)descriptor.ImplementationInstance!;
+            d => d.ServiceType == typeof(KaleidoProcessorClientRouteOptionsMap));
+        var map = (KaleidoProcessorClientRouteOptionsMap)descriptor.ImplementationInstance!;
 
         Assert.True(map.Options.TryGetValue("RemoteProcessor", out var prefix));
         Assert.Equal("", prefix);
@@ -162,7 +162,7 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var builder = new FakeKaleidoBuilder(services);
 
-        builder.AddProcessClient(
+        builder.AddProcessorClient(
             o =>
             {
                 o.Name = "RemoteProcessor";
@@ -171,8 +171,8 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
             });
 
         var descriptor = services.First(
-            d => d.ServiceType == typeof(KaleidoProcessClientRouteOptionsMap));
-        var map = (KaleidoProcessClientRouteOptionsMap)descriptor.ImplementationInstance!;
+            d => d.ServiceType == typeof(KaleidoProcessorClientRouteOptionsMap));
+        var map = (KaleidoProcessorClientRouteOptionsMap)descriptor.ImplementationInstance!;
 
         Assert.True(map.Options.TryGetValue("RemoteProcessor", out var stored));
         Assert.Equal("kaleido", stored);
@@ -185,7 +185,7 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         var builder = new FakeKaleidoBuilder(services);
         var callbackInvoked = false;
 
-        builder.AddProcessClient(
+        builder.AddProcessorClient(
             o =>
             {
                 o.Name = "RemoteProcessor";

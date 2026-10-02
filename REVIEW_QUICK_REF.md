@@ -1,4 +1,4 @@
-# Kaleido Review: Quick Reference Card (v2.1)
+# Kaleido Review: Quick Reference Card (v2.2)
 
 ## Review Documents
 
@@ -12,6 +12,23 @@
 **v2.0:** second-pass analysis per `docs/PRERELEASE_PROMPT.md` merged in. v1 findings re-validated: CR-002 partially incorrect (Source Link/symbols ARE configured), HP-004 superseded (referenced deleted project), CR-001 de-scoped to boundary-leak fixes.
 
 **v2.1:** merged two external reviews (`cleanup chatgpt ent.md`, `cleanup copilot.md`). Both used a compressed Repomix export — re-validated; 19 new EXT findings added, most external items deduplicated into existing IDs. Two external claims verified in source: sync `Count()`/`ToList()` behind async query APIs; `Kaleido.Analyzers` packable with zero rules.
+
+**v2.2:** adds **AI-015** — Information Request as a first-class Process state — as the strategic direction for AI-native positioning, plus **Q-009** (its design scope).
+
+---
+
+## Strategic Direction (v2.2)
+
+```
+AI-015  Information Request is not first-class — process can say "next step" but not
+        "here is exactly what I need, why, and what happens next"
+```
+
+- Agents shouldn't reverse-engineer workflows from `400`s. The process should return `NeedsInformation` + questions, constraints, options, reason, next action.
+- It's business behavior + domain metadata, not UI. A questionnaire is one presentation; Angular, voice, Copilot, MCP agents, and other processes all consume the same artifact.
+- Foundations exist (`AwaitingRequiredStep`, `RequiredStep`, field metadata). PriorAuth already works around the gap with questionnaire-in-payload.
+- Next: `InformationRequest` in core → `AwaitingInformation` state → additive wire field → PriorAuth migration. Later: `NeedsApproval` / `NeedsHumanReview` / `NeedsDocument`.
+- **MCP is a transport. AI-015 is the differentiator.**
 
 ---
 
@@ -102,6 +119,7 @@ Key: MP-005 MapProcessor throws for query-only svc · MP-007 delete GuardQueryAs
 | Q-006 | Keep DI-hygiene analyzers or prune to correctness-only? | Medium |
 | Q-007 | EXT-01/02 scope: implement CAS+outbox now or design-only? | **Critical** |
 | Q-008 | Ship KAL2xxx consumer analyzer pkg or repo-only? | Medium |
+| Q-009 | Information Request (AI-015) shape + 1.0 scope? | **High (strategic)** |
 
 ---
 

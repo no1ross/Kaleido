@@ -19,7 +19,7 @@ Owns the core runtime:
 - shared JSON/value-conversion helpers
 - Queryable runtime: context/view registration, validation, dispatch, execution, observability
 - Process runtime: step registration, planning, execution, state mutation, observability
-- Default in-memory `IProcessContextStore`
+- Default in-memory `IProcessorContextStore`
 
 Does **not** own HTTP endpoints, ASP.NET Core DI, HTTP contracts, remote client consumption, or SQLite persistence.
 
@@ -32,7 +32,7 @@ Owns the full HTTP transport layer — middleware, correlation propagation, and 
 - `KaleidoStartupFilter` — registers middlewares via `IStartupFilter` in the correct pipeline order
 - `MapQueryable()` — all Queryable HTTP endpoints
 - `MapProcessor()` — all Process HTTP endpoints
-- `MapRegistry()` — aggregated discovery endpoint
+- `MapRegistry()` — internal; `GET /{service}/registry` unified discovery endpoint (mapped by `MapKaleidoHttp`, optionally aggregating downstream clients)
 - `IProcessExecutionService` / `ProcessExecutionService` — translates HTTP execute requests into runtime calls
 - `IProcessStateService` / `ProcessStateService` — reads durable process state and maps it to HTTP contracts
 
@@ -49,9 +49,9 @@ Changes here ripple into `Kaleido.Http` (server) and `Kaleido.Http.Client` (clie
 
 ### `src/Kaleido.Http.Client`
 Owns typed HTTP clients for consuming remote Kaleido services:
-- `IKaleidoProcessClientFactory` / `KaleidoProcessClient`
+- `IKaleidoProcessorClientFactory` / `KaleidoProcessorClient`
 - `IKaleidoQueryableClientFactory` / `KaleidoQueryableClient`
-- `AddHttpClients()` — consumer-facing registration (config-driven `Kaleido:Clients`); `AddProcessClient(...)`/`AddQueryableClient(...)` are internal
+- `AddHttpClients()` — consumer-facing registration (config-driven `Kaleido:Clients`); `AddProcessorClient(...)`/`AddQueryableClient(...)` are internal
 
 Does **not** own server-side runtime logic or endpoint mapping.
 
@@ -65,9 +65,9 @@ Owns the OpenTelemetry observability provider (opt-in, no OTel dependency in cor
 Future observability providers follow the same pattern: `Kaleido.Observability.<Technology>`.
 
 ### `src/Kaleido.Provider.SQLite`
-Owns the reference `IProcessContextStore` implementation (SQLite):
-- `UseSqliteProcessContextStore(...)` extension
-- SQLite-backed `IProcessContextStore` — a worked example only; consumers implement `IProcessContextStore` against their own durable infrastructure
+Owns the reference `IProcessorContextStore` implementation (SQLite):
+- `UseSqliteProcessorContextStore(...)` extension
+- SQLite-backed `IProcessorContextStore` — a worked example only; consumers implement `IProcessorContextStore` against their own durable infrastructure
 
 ---
 
@@ -128,6 +128,16 @@ The planning pipeline is layered — keep those responsibilities separated:
 
 ---
 
+### Telemetry conventions
+Instrument names and tag keys live in the `*Telemetry` constants classes
+(`ProcessorTelemetry`, `QueryableTelemetry`, `KaleidoHttpTelemetry`) — constants
+only, no `Meter`/`Counter` instances. Each emitting class owns its
+instruments as `private static readonly Meter`/`Counter`/`Histogram` fields
+created with the shared `MeterName`; when two classes emit the same logical
+signal (e.g. `endpoint_errors` from `ExceptionMiddleware` and the
+authorization result handler), each declares its own counter with the same
+instrument name — the meter-name subscription merges them.
+
 ## Transport and HTTP rules
 
 ### Kaleido.Http.Abstractions stability
@@ -147,7 +157,7 @@ Core runtime types (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirec
 
 `QueryResult<T>.TotalCount` semantics: equals `results.Count` when `page` is absent from the request (caller got all results, no count query ran), or when `page` is present but the returned page is partial (`results.Count < page.Size`). Only when `page` is provided AND the page is full does `TotalCount` equal the true unfiltered count — `CountAsync` runs only in that case.
 
-When a delegated view source (`IDelegateQueryViewSource`) receives a `QueryBody` and needs to forward it over HTTP, use `query.ToApiBody()` from `Kaleido.Http.Abstractions` — samples and consumers should only reference `Kaleido.Http.Abstractions`, not `Kaleido.Http` (which carries ASP.NET Core dependencies).
+When a delegated view source (`IDelegatedQueryViewSource`) receives a `QueryBody` and needs to forward it over HTTP, use `query.ToApiBody()` from `Kaleido.Http.Abstractions` — samples and consumers should only reference `Kaleido.Http.Abstractions`, not `Kaleido.Http` (which carries ASP.NET Core dependencies).
 
 ---
 

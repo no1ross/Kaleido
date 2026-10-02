@@ -9,27 +9,49 @@ namespace Kaleido.Http.Observability;
 /// </summary>
 internal static class HttpCorrelationContextReader
 {
-    public static KaleidoCorrelationContext ReadCorrelationContext(this HttpContext context)
+    /// <summary>
+    /// Reads inbound correlation headers into a
+    /// <see cref="KaleidoCorrelationContext"/>.
+    /// </summary>
+    /// <param name="context">The current HTTP request context.</param>
+    /// <param name="trustIdentity">
+    /// When <c>false</c>, identity-bearing headers are not honored — a fresh
+    /// <see cref="KaleidoCorrelationContext.RequestId"/> is generated and the
+    /// SourceProcessor/StepName/ProcessorInstanceId headers are ignored.
+    /// <c>X-Kaleido-Process-Id</c> is always read — it is a resumable process
+    /// handle, not an identity claim.
+    /// </param>
+    public static KaleidoCorrelationContext ReadCorrelationContext(
+        this HttpContext context,
+        bool trustIdentity = true)
     {
         ArgumentNullException.ThrowIfNull(context);
 
         return new KaleidoCorrelationContext
         {
             RequestId =
-                ReadString(context, KaleidoCorrelationHeaders.RequestId)
-                ?? Guid.NewGuid().ToString(),
+                trustIdentity
+                    ? ReadString(context, KaleidoCorrelationHeaders.RequestId)
+                        ?? Guid.NewGuid().ToString()
+                    : Guid.NewGuid().ToString(),
 
             ProcessId =
                 ReadGuid(context, KaleidoCorrelationHeaders.ProcessId),
 
             ProcessorInstanceId =
-                ReadGuid(context, KaleidoCorrelationHeaders.ProcessorInstanceId),
+                trustIdentity
+                    ? ReadGuid(context, KaleidoCorrelationHeaders.ProcessorInstanceId)
+                    : null,
 
             SourceProcessorName =
-                ReadString(context, KaleidoCorrelationHeaders.SourceProcessor),
+                trustIdentity
+                    ? ReadString(context, KaleidoCorrelationHeaders.SourceProcessor)
+                    : null,
 
             StepName =
-                ReadString(context, KaleidoCorrelationHeaders.StepName)
+                trustIdentity
+                    ? ReadString(context, KaleidoCorrelationHeaders.StepName)
+                    : null
         };
     }
 

@@ -1,11 +1,11 @@
 using System.ComponentModel.DataAnnotations;
-using Kaleido.Process;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
+[KaleidoAuthorization(Roles = "radiology")]
 [ProcessStep(
     Name = "RemoveRequestedService",
-    DisplayName = "Radiology - Remove Requested Service",
+    DisplayName = "Remove Requested Service",
     Description = "Removes a requested service from the current prior authorization.",
     Version = "1.0.0")]
 [AvailableAfter(typeof(StartRadiologyIntakeStep))]

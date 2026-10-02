@@ -1,16 +1,18 @@
 ---
 # Kaleido Pre-Release Review: Tracking Configuration
-# Version: 2.1
+# Version: 2.2
 # Purpose: Central tracking for all review findings and action items
 # This file can be imported into GitHub Projects, Jira, or other PM tools
 
 metadata:
   created: 2026-09-25
-  version: 2.1
+  version: 2.2
   status: DRAFT
   next_review: 2026-09-28
   owner: null  # TBD
   notes: >
+    v2.2 (2026-10-01) adds AI-015 (Information Request as a first-class Process
+    state — strategic direction for AI-native positioning) and Q-009.
     v2.0 merges a second code-verified analysis pass (docs/PRERELEASE_PROMPT.md).
     v1 items re-validated; corrections and new findings appended below.
     See REVIEW_FINDINGS.md "Prior Findings — v1 Validation" for per-item status.
@@ -333,7 +335,7 @@ medium_priority_items:
     breaking_change: true
     status: COMPLETED
     notes: >
-      MapKaleido() added as single public entry point. MapProcessor/MapQueryable
+      MapKaleidoHttp() added as single public entry point. MapProcessor/MapQueryable
       made internal. Framework auto-detects active runtimes and maps only those.
       Startup log emitted at Information level. All samples + functional test
       fixtures migrated. 5 new unit tests.
@@ -392,7 +394,7 @@ medium_priority_items:
     priority: MEDIUM
     breaking_change: possibly
     status: COMPLETED
-    progress_note: "PR-11: Reset() is now a non-blocking Interlocked.Exchange (documented benign stale-write). Fetch-once lifetime + explicit InvalidateRegistry() already documented."
+    progress_note: "PR-11: Reset() is now a non-blocking Interlocked.Exchange (documented benign stale-write). Fetch-once lifetime + explicit InvalidateRegistry() already documented. PR-13: opt-in TTL — Kaleido:RegistryTtl (shared + per-client) expires client snapshots against the remote's GeneratedAt; KaleidoHttpMapOptions.RegistryCacheTtl bounds the aggregate snapshot."
 
   MP-013:
     title: Move ProcessResponseFactory out of Http.Abstractions (internal statics in Kaleido.Http)
@@ -625,6 +627,11 @@ low_priority_items:
     title: Document client registry-cache lifetime/staleness
     effort_days: 0.25
     priority: LOW
+    status: COMPLETED
+    progress_note: "PR-13: Kaleido.Http.Client README documents RegistryTtl (per-client +
+Kaleido:RegistryTtl default), canonical kaleido:{serviceName} store keys, InvalidateRegistry
+semantics under a shared IRegistrySnapshotStore, and the resilience-handler seam for
+transient-failure retry."
   LP-015:
     title: Dead API surface (GetAll(), Stamper.Sanitize, CorrelationAccessor)
     effort_days: 0.25
@@ -691,7 +698,7 @@ external_findings:
     effort: medium
     breaking_change: true
     status: COMPLETED
-    notes: "Resolved via MP-005: MapKaleido() replaces Map* pair; auto-detects active runtimes."
+    notes: "Resolved via MP-005: MapKaleidoHttp() replaces Map* pair; auto-detects active runtimes."
   EXT-07:
     title: Map* return IEndpointRouteBuilder — authorization cannot compose
     source: KAL-H09
@@ -751,8 +758,20 @@ external_findings:
     severity: HIGH
     effort: medium
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
     related: [EXT-07]
+    resolution_note: >
+      (EXT-12) Correlation identity trust: TrustCorrelationIdentity predicate
+      (default: trust w/o auth infra, IsAuthenticated when auth present);
+      caller name/roles stamped post-auth onto KaleidoCorrelationContext via
+      endpoint filter. Discovery: [KaleidoAuthorization] metadata projected
+      into RequireAuthorization per endpoint + filtered catalogs/registries;
+      RequireAuthorization option guards undeclared capabilities. Ownership:
+      ProcessorContext.Owner/OwnerRoles stamped at creation; resume/state gated
+      by owner-or-role-mate (IKaleidoAuthorizationEvaluator in core);
+      POST /processes/{id}/transfer reassigns; RequireProcessOwnership option.
+      Fan-out: documented transport responsibility; PriorAuth sample
+      demonstrates dev-token auth + forwarding end-to-end.
     description: >
       Three related gaps in the HTTP auth story, merged into one design:
       (a) Inbound X-Kaleido-* correlation headers are trusted as identity.
@@ -820,14 +839,49 @@ external_findings:
     severity: MEDIUM
     effort: medium
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
+    progress_note: >
+      Glossary adopted (src/ARCHITECTURE.md): Processor = the unit that owns and
+      executes Steps (runtime/DI identity); Process = one executing instance
+      (wire/transport domain). Renames: ProcessRuntime/Registry/Planner/Executor/
+      StepRegistry/ContextStore/StateUpdater/Observability*/EventFactory/
+      StepInvoker/Telemetry/ErrorCodes -> Processor*; KaleidoProcessClient* ->
+      KaleidoProcessorClient*, AddProcessClient -> AddProcessorClient,
+      UseSqliteProcessContextStore -> UseSqliteProcessorContextStore + SQLite
+      entities; AddKaleidoProcessInstrumentation -> AddKaleidoProcessorInstrumentation;
+      IDelegateQueryViewSource -> IDelegatedQueryViewSource. Telemetry identity
+      unified: Kaleido.Processor source/meter + kaleido.processor.* names.
+      Namespaces unified to Kaleido.Processor.* in core and Kaleido.Http(.Client).
+      Processor in transport projects. Wire JSON, routes, and X-Kaleido-* headers
+      unchanged.
   EXT-19:
-    title: XML docs: CS1591 suppressed + stale comments (/queries vs /queryable)
+    title: "XML docs: CS1591 suppressed + stale comments (/queries vs /queryable)"
     source: KAL-M12, F-20
     severity: MEDIUM
     effort: medium
     breaking_change: false
     status: COMPLETED
+  EXT-20:
+    title: Swagger/OpenAPI regressed — auth metadata noise + endpoint grouping buckets
+    source: owner feedback (PriorAuth sample swagger)
+    severity: LOW
+    effort: small
+    breaking_change: false
+    status: PENDING
+    description: >
+      Two visible regressions on generated OpenAPI docs since the EXT-12/EXT-08/MP-005
+      changes:
+      (a) RequireAuthorization/WithKaleidoAuthorization metadata adds padlocks,
+          Authorize button, and 401/403 response entries on every operation —
+          noisy for capability docs.
+      (b) Endpoint grouping shifted: framework endpoints (catalog/execute/state/
+          transfer) land in shared "Processes"/"Kaleido" buckets mapped before the
+          per-capability DisplayName groups, so framework noise sits on top.
+      Candidate fixes: a Swashbuckle OperationFilter stripping security/40x entries
+      in the sample, dropping extra .Produces(401/403) declarations, reordering
+      mapping so capability groups precede framework groups, or
+      ExcludeFromDescription on framework endpoints.
+    notes: "Deferred — cosmetic; enforcement unaffected."
 
 # ──────────────────────────────────────────────────────────────────────────────
 # AI Compatibility Findings  (added post-v2.1)
@@ -920,7 +974,14 @@ ai_compatibility:
         DegradedServices list.
       effort: small
       breaking_change: additive
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
+      progress_note: >
+        (PR-13) AggregatedRegistryResponse now carries GeneratedAt, Revision
+        (SHA-256 of the per-caller filtered payload), and IsPartial. The
+        endpoint emits ETag + Cache-Control and honors If-None-Match -> 304.
+        ClientErrors is the DegradedServices equivalent; ?strict returns 502
+        (full body included) when partial. FreshnessRequired->stale blocking is
+        covered by ?refresh + client Kaleido:RegistryTtl instead of a new header.
 
     AI-004:
       title: Authorization is possible but not the easy default — registry leaks all capabilities
@@ -995,11 +1056,71 @@ ai_compatibility:
         1. Allowlisted read-only Queryable operations, supervised, authenticated, bounded, auditable.
         2. Add canonical capability manifest + AI-tool adapter (AI-006).
         3. Expose low-risk idempotent Process steps with confirmation.
-        4. Permit consequential Process actions only after AI-002 (concurrency/idempotency),
+        4. Introduce InformationRequest (AI-015) so processes drive the conversation;
+           migrate the PriorAuth sample as the reference.
+        5. Permit consequential Process actions only after AI-002 (concurrency/idempotency),
            AI-004 (auth-aware discovery), AI-005 (event redaction), and AI-001 (safety metadata).
+        AI-015 design may proceed in parallel with 1–3; only autonomous-agent exposure is gated on 5.
       effort: N/A
       breaking_change: false
       status: GUIDANCE
+
+    AI-015:
+      title: Information Request is not a first-class Process concept
+      severity: HIGH
+      priority_note: STRATEGIC — the differentiator for AI-native positioning
+      category: API design / AI-native capability
+      description: >
+        Agent frameworks focus on "how does the agent call the tool?". Kaleido's
+        differentiator is "how does the capability tell the agent what to do
+        next?". "The process cannot continue until these facts are collected"
+        is business behavior and domain metadata, not UI — a questionnaire is
+        one presentation of it. Waiting for information is the most common
+        non-terminal enterprise state (prior auth, claims, onboarding,
+        credentialing, appeals, case management, enrollment) and should not be
+        modelled as a validation error.
+        Existing foundations: ExecutionDecisionType.AwaitingRequiredStep /
+        AwaitingStepSelection, ProcessExecutionState.AwaitingRequiredStep,
+        RequiredStep + AvailableSteps on responses, step field metadata
+        (types, constraints, enums).
+        Gaps: (1) no first-class "information needed" artifact — consumer must
+        fetch MetadataUrl and infer questions from a CLR schema with no prompt,
+        reason, or grouping; (2) no dynamic per-instance questions/options
+        (e.g. "Which of these three enrollments?"); (3) PriorAuth sample works
+        around it by returning QuestionnaireDefinitionView inside sample-specific
+        typed responses (CaptureRequestedServiceResponse.Questionnaire,
+        StartRadiologyIntakeResponse) that only its Angular UI understands;
+        (4) not-yet-collected input surfaces as ValidationFailed / error
+        ProcessMessages; (5) no sibling interaction states (NeedsApproval,
+        NeedsHumanReview, NeedsDocument, NeedsDecision).
+      recommended_fix: >
+        Core (transport-agnostic): InformationRequest record — Title,
+        Description, Reason, Questions (Id, Prompt, Required, data type +
+        constraints via DataTypeMapper/ConstraintMapper, static or
+        runtime-resolved Options, optional EnableWhen), ResponseStep,
+        NextAction. Handler factory ProcessStepHandlerResult.NeedsInformation(...)
+        mapping to a new AwaitingInformation decision/state value — valid
+        workflow state, never an error or failure metric. Static defaults
+        derived from required-step field metadata + additive prompt/reason
+        attributes; dynamic per-instance overrides from handlers. Open request
+        persisted on ProcessorContext (current state only) so state endpoint
+        returns it on resume. Additive informationRequest field on
+        ProcessExecutionResponse / StepExecutionResponse / ProcessStateResponse.
+        AI-006 adapters project it directly (MCP: ask these questions, then call
+        ResponseStep). Migrate PriorAuth questionnaire-in-payload to
+        NeedsInformation as the reference consumer (Angular form, agent, voice
+        all from the same metadata). NeedsApproval/NeedsHumanReview/etc. follow
+        the same "awaiting + descriptor" pattern later — not built speculatively.
+      effort: large
+      breaking_change: additive
+      status: PENDING_DESIGN_REVIEW
+      gate: [Q-009]
+      related: [AI-001, AI-002, AI-006, EXT-12]
+      dependency_notes: >
+        AI-001 — NextAction needs side-effect/confirmation semantics.
+        AI-002 — agents retry answer submissions; idempotency matters most here.
+        EXT-12 — questions/options may contain PHI; only authorized callers (and,
+        with ownership on, the owner/role) may read or answer an open request.
 
     # ── Developer-tools / AI code-generation track ────────────────────────────
     # (originally numbered AI-001..AI-007 in REVIEW_FINDINGS.md "Developer
@@ -1236,6 +1357,21 @@ open_questions:
     due: 2026-09-29
     impact: MEDIUM
 
+  Q-009:
+    question: "Information Request (AI-015): what is the shape and scope of the first-class 'process needs information' concept?"
+    context: >
+      Strategic direction for AI-native positioning. Decisions needed:
+      (a) naming — InformationRequest vs InformationCollection (not 'Questionnaire');
+      (b) new AwaitingInformation state vs enriching AwaitingRequiredStep with a descriptor;
+      (c) static (attribute/field-metadata-derived) vs dynamic (handler-supplied) questions — or both, with override rules;
+      (d) answer submission — reuse the ResponseStep's execute endpoint vs a dedicated submit-information endpoint;
+      (e) partial/progressive answers — can a consumer answer a subset and get the next question?;
+      (f) persistence on ProcessorContext and IProcessContextStore contract impact;
+      (g) scope for 1.0 — design + additive contract now vs fully post-1.0;
+      (h) whether NeedsApproval / NeedsHumanReview / NeedsDocument share one generic 'awaiting' descriptor or get distinct types.
+    due: null
+    impact: HIGH
+
 pr_plan:
   policy: >
     Docs: catch-up pass in PR-01 to remove wrong content, docs-as-we-go in each
@@ -1268,7 +1404,7 @@ pr_plan:
     findings: [CR-005, CR-006, HP-002, HP-017, MP-019, MP-002]
   DECISION-SESSION:
     gate: "blocks PR-07..PR-10"
-    findings: [Q-001, Q-002, Q-003, Q-004, Q-005, Q-006, Q-007, Q-008]
+    findings: [Q-001, Q-002, Q-003, Q-004, Q-005, Q-006, Q-007, Q-008, Q-009]
   PR-07-http-taxonomy:
     gate: [EXT-07, HP-016]
     findings: [HP-007, HP-016, EXT-07, MP-014]
@@ -1285,6 +1421,10 @@ pr_plan:
     gate: "after all code PRs merge"
     findings: [CR-004, HP-001, HP-003, HP-006, HP-008, MP-003, MP-004, MP-023]
     note: "Authoritative docs rewrite against final public surface"
+  PR-12-information-request:
+    gate: [Q-009]
+    findings: [AI-015]
+    note: "Core InformationRequest + AwaitingInformation state, additive wire fields, state persistence, PriorAuth sample migration. 1.0 vs post-1.0 placement decided by Q-009(g)."
   post_1_0:
     findings: [LP-001, LP-002, LP-003, LP-004, LP-005, LP-006, LP-007, LP-008, LP-009, LP-010, LP-011, LP-012, LP-013, LP-014, LP-015, HP-018]
 
@@ -1303,7 +1443,7 @@ review_milestones:
   design_review_meeting:
     date: null
     attendees: [architect, product_manager, tech_lead]
-    agenda: [Q-007, CR-001, CR-003, EXT-04, EXT-05, EXT-06, EXT-07, EXT-08, HP-008, HP-009, HP-011, HP-012, HP-016, MP-016, MP-018, MP-021, MP-027, Q-006]
+    agenda: [Q-007, CR-001, CR-003, EXT-04, EXT-05, EXT-06, EXT-07, EXT-08, HP-008, HP-009, HP-011, HP-012, HP-016, MP-016, MP-018, MP-021, MP-027, Q-006, Q-009, AI-015]
     duration_hours: 3
     outcome: All critical decisions approved
   documentation_review:

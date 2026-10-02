@@ -1,6 +1,6 @@
 using Kaleido.Exceptions;
 
-namespace Kaleido.Queryable.UnitTests.Query;
+namespace Kaleido.UnitTests.Queryable.Query;
 
 public sealed class QueryRequestCompilerTests
     : Kaleido.UnitTests.SutFixture
@@ -148,7 +148,6 @@ public sealed class QueryRequestCompilerTests
             "1.0.0",
             "Test View",
             "Test View",
-            QueryViewVisibility.Public,
             new PageableMetadata(10, 20),
             [],
             []);

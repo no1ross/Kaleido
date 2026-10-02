@@ -1,11 +1,12 @@
 using System.ComponentModel.DataAnnotations;
-using Kaleido.Process;
+using Kaleido.Processor;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
+[KaleidoAuthorization(Roles = "radiology")]
 [ProcessStep(
     Name = "StartRadiologyIntake",
-    DisplayName = "Radiology - Start Radiology Intake",
+    DisplayName = "Start Radiology Intake",
     Description = "Initializes a radiology prior authorization from intake handoff data. " +
                   "Accepts member and procedure information collected by the intake processor.",
     Version = "1.0.0")]

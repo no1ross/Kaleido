@@ -6,13 +6,14 @@ import { firstValueFrom } from 'rxjs';
 import { routes } from './app.routes';
 import { RegistryCatalog } from './registries/registry-catalog';
 import { kaleidoCorrelationInterceptor } from './kaleido/interceptors/kaleido-correlation-interceptor';
+import { authInterceptor } from './auth/auth-interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(
-      withInterceptors([kaleidoCorrelationInterceptor])
+      withInterceptors([authInterceptor, kaleidoCorrelationInterceptor])
     ),
     provideAppInitializer(async () => {
       const registryCatalog =

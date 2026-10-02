@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using Kaleido.Http.Queryable;
+using Kaleido.Http.Registry;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
 
 namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Discovery;
@@ -14,33 +15,35 @@ public sealed class QueryableDiscoveryTests : IClassFixture<QueryableAspNetCoreF
     }
 
     [Fact]
-    public async Task GetQueryable_ReturnsOk()
+    public async Task GetRegistry_ReturnsOk()
     {
-        var response = await _client.GetAsync("/kaleido/queryable");
+        var response = await _client.GetAsync("/kaleido/registry");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
-    public async Task GetQueryable_ReturnsFunctionalRecordSummary()
+    public async Task GetRegistry_ReturnsFunctionalRecord()
     {
-        var records = await _client.GetFromJsonAsync<QueryableRecordSummary[]>("/kaleido/queryable", KaleidoJsonOptions.Options);
+        var registry = await _client.GetFromJsonAsync<AggregatedRegistryResponse>("/kaleido/registry", KaleidoJsonOptions.Options);
 
-        var record = Assert.Single(records!, x => x.Name == "functional-records");
+        var record = Assert.Single(registry!.Queryables, x => x.Name == "functional-records");
 
+        Assert.Equal("kaleido", record.ServiceName);
         Assert.Equal("Functional records for Queryable HTTP tests.", record.Description);
+        Assert.Equal("/kaleido/registry", record.RegistryUrl);
         Assert.Equal("/kaleido/queryable/functional-records/metadata", record.MetadataUrl);
     }
 
     [Fact]
     public async Task GetRegistry_ReturnsContextAndViewMetadata()
     {
-        var response = await _client.GetAsync("/kaleido/queryable/registry");
+        var response = await _client.GetAsync("/kaleido/registry");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var registry = await response.Content.ReadFromJsonAsync<QueryableRecordResponse[]>(KaleidoJsonOptions.Options);
-        var record = Assert.Single(registry!, x => x.Name == "functional-records");
+        var registry = await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(KaleidoJsonOptions.Options);
+        var record = Assert.Single(registry!.Queryables, x => x.Name == "functional-records");
         var view = Assert.Single(record.Views, x => x.Name == "grid");
 
         Assert.Equal("/kaleido/queryable/functional-records/metadata", record.MetadataUrl);
