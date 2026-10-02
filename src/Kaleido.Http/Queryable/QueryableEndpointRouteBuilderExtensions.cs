@@ -81,7 +81,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                             .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)))
             .WithName(
                 QueryableEndpointNames.CatalogEndpointName)
-            .WithTags("Queryable", "Kaleido")
+            .WithTags("Queryable")
             .WithSummary(
                 "Get registered query contexts.")
             .WithDescription(
@@ -124,7 +124,7 @@ public static class QueryableEndpointRouteBuilderExtensions
             })
                 .WithName(
                     QueryableEndpointNames.RegistryEndpointName)
-                .WithTags("Queryable", "Kaleido")
+                .WithTags("Queryable")
                 .WithSummary(
                     "Get queryable registry metadata.")
                 .WithDescription(
@@ -226,7 +226,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 QueryableEndpointNames.QueryContextMetadataEndpointName(
                     context.Name.ToLowerInvariant()))
             .WithTags(
-                context.DisplayName ?? context.Name, "Kaleido")
+                context.DisplayName ?? context.Name)
             .WithSummary(
                 $"Get metadata for {context.DisplayName ?? context.Name}.")
             .WithDescription(
@@ -289,7 +289,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                     context.Name.ToLowerInvariant(),
                     view.Name.ToLowerInvariant()))
             .WithTags(
-                $"{context.DisplayName} - {view.DisplayName}", "Kaleido")
+                $"{context.DisplayName} - {view.DisplayName}")
             .WithSummary(
                 $"Query {view.DisplayName}.")
             .WithDescription(
@@ -326,7 +326,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                 QueryableEndpointNames.QueryContextEndpointName(
                     context.Name.ToLowerInvariant()))
             .WithTags(
-                context.DisplayName ?? context.Name, "Kaleido")
+                context.DisplayName ?? context.Name)
             .WithSummary(
                 $"Query {context.DisplayName ?? context.Name}.")
             .WithDescription(
