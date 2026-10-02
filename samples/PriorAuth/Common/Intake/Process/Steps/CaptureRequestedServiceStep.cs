@@ -3,6 +3,7 @@ using Kaleido.Process;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 
+[KaleidoAuthorization(Roles = "intake")]
 [ProcessStep(
     Name = "CaptureRequestedService",
     DisplayName = "Intake - Capture Requested Service",

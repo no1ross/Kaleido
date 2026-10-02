@@ -30,7 +30,7 @@ builder.Services.AddSingleton<SampleKaleidoCsvData>();
 
 var app = builder.Build();
 
-app.MapKaleido();
+app.MapKaleidoHttp();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

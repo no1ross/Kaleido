@@ -3,6 +3,7 @@ using Kaleido.Exceptions;
 using Kaleido.Http;
 using Kaleido.Observability.OpenTelemetry;
 using Kaleido.Samples.PriorAuth;
+using Kaleido.Samples.PriorAuth.Auth;
 using Kaleido.Samples.PriorAuth.History.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +19,9 @@ builder.Services.AddDbContext<HistoryDbContext>(
     options => options.UseSqlite(historyConnectionString));
 
 builder.Services.AddControllers();
+
+// Dev-token auth (sample stand-in for a real IdP).
+builder.Services.AddDevAuth();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -45,7 +49,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.History", StringComparison.Ordinal) ?? false;
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp()
+    .AddHttp(o => o.RequireAuthorization = true)
     .AddOpenTelemetry();
 
 var app = builder.Build();
@@ -54,7 +58,9 @@ app.UseCors("AllowAll");
 
 app.MapHealthChecks("/health");
 
-app.MapKaleido();
+app.UseDevAuth();
+
+app.MapKaleidoHttp();
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
@@ -70,7 +76,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseAuthorization();
+
 
 app.MapControllers();
 

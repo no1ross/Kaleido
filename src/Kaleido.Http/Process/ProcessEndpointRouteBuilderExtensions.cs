@@ -30,7 +30,7 @@ public static class ProcessEndpointRouteBuilderExtensions
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.ProInvalidRegistration,
                 "Cannot map Process endpoints: Process runtime is not registered. " +
-                "Use MapKaleido() to map Kaleido endpoints.");
+                "Use MapKaleidoHttp() to map Kaleido endpoints.");
         }
 
         var processorRegistry =
@@ -155,7 +155,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                     return Results.Ok(result);
                 })
             // Multi-step requests authorize each submitted step inside
-            // ProcessExecutionService — endpoint-level auth can't express
+            // ProcessExecutionService ï¿½ endpoint-level auth can't express
             // per-item requirements.
             .WithKaleidoAuthorization(null, options)
             .WithName(ProcessEndpointNames.ExecuteEndpointName)
@@ -224,7 +224,7 @@ public static class ProcessEndpointRouteBuilderExtensions
                                         "Transferred process context has no owner.")
                             });
                 })
-            // Ownership transfer always requires an authenticated caller —
+            // Ownership transfer always requires an authenticated caller ï¿½
             // the handler additionally enforces owner/role-mate rules.
             .RequireAuthorization()
             .WithName(ProcessEndpointNames.ProcessTransferEndpointName)

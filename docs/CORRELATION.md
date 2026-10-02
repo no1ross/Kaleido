@@ -18,6 +18,8 @@ constants in its own project — the context shape does not change.
 | `ProcessorInstanceId` | `X-Kaleido-Processor-Instance-Id` | GUID | The running instance of the processor that handled the request (`KaleidoServiceOptions.InstanceId`). |
 | `SourceProcessorName` | `X-Kaleido-Source-Processor` | string | Service name of the processor that originated the call. |
 | `StepName` | `X-Kaleido-Step-Name` | string | The process step making the inter-service call — lets a queryable service see which step asked. |
+| `CallerName` | *(none)* | string | Authenticated caller name — populated from the request principal after authentication, never from headers. |
+| `CallerRoles` | *(none)* | string[] | Authenticated caller roles — populated alongside `CallerName`. |
 
 ## Inbound path (server)
 
@@ -65,6 +67,20 @@ Override the predicate to apply a custom policy (e.g. service-account-only trust
     o.TrustCorrelationIdentity = ctx =>
         ctx.User.IsInRole("internal-service"));
 ```
+
+### Caller identity
+
+`CallerName` and `CallerRoles` are **never** read from headers — they come from the
+authenticated request principal. The `ObservabilityMiddleware` runs before the host's
+`UseAuthentication`, so they are stamped later by `KaleidoCallerContextEndpointFilter`
+(runs inside endpoint execution, always after auth middleware) on all Kaleido endpoint
+groups. Anonymous requests get `CallerName = null`, `CallerRoles = []`.
+
+These fields feed process ownership (`ProcessorContext.Owner`/`OwnerRoles`) and
+capability authorization — see [`AUTHORIZATION.md`](./AUTHORIZATION.md). They are
+**not** propagated outbound: each hop derives its own caller identity from its own
+authenticated principal. Service-to-service calls must carry credentials the next hop
+can authenticate (e.g. a bearer token) — the transport's job, not Kaleido's.
 
 ## Outbound path (client)
 

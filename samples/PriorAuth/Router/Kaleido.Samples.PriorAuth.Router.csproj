@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Common\Kaleido.Samples.PriorAuth.Common.csproj" />
     <ProjectReference Include="..\..\..\src\Kaleido.Http\Kaleido.Http.csproj" />
     <ProjectReference Include="..\..\..\src\Kaleido.Http.Client\Kaleido.Http.Client.csproj" />
   </ItemGroup>

@@ -6,6 +6,16 @@
         <p>Prior authorization process scaffolding with registry diagnostics.</p>
       </div>
 
+      <div class="shell__persona">
+        <label for="persona-picker">Persona</label>
+        <select id="persona-picker" [value]="auth.persona() ?? ''" (change)="onPersonaChange($event)">
+          <option value="">Anonymous</option>
+          @for (persona of auth.personas; track persona.name) {
+            <option [value]="persona.name">{{ persona.displayName }}</option>
+          }
+        </select>
+      </div>
+
       @if (processId()) {
         <div class="shell__process-id">
           <div class="shell__process-id-header">

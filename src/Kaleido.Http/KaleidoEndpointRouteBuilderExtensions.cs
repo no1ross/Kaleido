@@ -15,7 +15,7 @@ public static class KaleidoEndpointRouteBuilderExtensions
     /// and maps only those. Returns an <see cref="IEndpointConventionBuilder"/> that
     /// propagates conventions (e.g. <c>.RequireAuthorization()</c>) to all mapped endpoints.
     /// </summary>
-    public static IEndpointConventionBuilder MapKaleido(
+    public static IEndpointConventionBuilder MapKaleidoHttp(
         this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);

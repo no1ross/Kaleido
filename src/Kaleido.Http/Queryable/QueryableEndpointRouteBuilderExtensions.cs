@@ -33,7 +33,7 @@ public static class QueryableEndpointRouteBuilderExtensions
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.QryInvalidRegistration,
                 "Cannot map Queryable endpoints: Queryable runtime is not registered. " +
-                "Use MapKaleido() to map Kaleido endpoints.");
+                "Use MapKaleidoHttp() to map Kaleido endpoints.");
         }
 
         var httpOptions =
