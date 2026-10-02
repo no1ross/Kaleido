@@ -1,3 +1,5 @@
+using Kaleido.Http.Registry;
+
 namespace Kaleido.Http.Queryable;
 
 // ── Request ──────────────────────────────────────────────────────────────────
@@ -13,21 +15,6 @@ public record QueryApiRequest<TParameters>(
     where TParameters : class;
 
 // ── Registry responses ────────────────────────────────────────────────────────
-
-[ExcludeFromCodeCoverage]
-public sealed record QueryableRecordSummary
-{
-    public required string Name { get; init; }
-
-    public string? Description { get; init; }
-
-    public string? MetadataUrl { get; init; }
-
-    /// <summary>
-    /// Authorization requirement for this context. Null means open.
-    /// </summary>
-    public AuthorizationMetadata? Authorization { get; init; }
-}
 
 [ExcludeFromCodeCoverage]
 public sealed record PageableContract
@@ -199,6 +186,12 @@ public sealed record QueryableViewResponse
 [ExcludeFromCodeCoverage]
 public sealed record QueryableRecordResponse
 {
+    /// <summary>
+    /// The service name — matches <see cref="KaleidoServiceOptions.ServiceName"/>.
+    /// Allows consumers to identify which service this context belongs to.
+    /// </summary>
+    public required string ServiceName { get; init; }
+
     public required string Name { get; init; }
 
     public string? Description { get; init; }
@@ -220,6 +213,9 @@ public sealed record QueryableRecordResponse
 
     public required string MetadataUrl { get; init; }
 
+    public string RegistryUrl { get; init; }
+        = string.Empty;
+
     public string? QueryUrl { get; init; }
 
     public IReadOnlyCollection<QueryableFieldMetadata> Fields { get; init; }
@@ -239,6 +235,7 @@ public sealed record QueryableRecordResponse
 
         return new QueryableRecordResponse
         {
+            ServiceName = serviceName,
             Name = item.Name,
             Description = item.Description,
             DisplayName = item.DisplayName,
@@ -248,6 +245,7 @@ public sealed record QueryableRecordResponse
             Pageable = item.Pageable,
             Authorization = item.Authorization,
             MetadataUrl = QueryableContractUrls.QueryContextMetadata(serviceName, contextName),
+            RegistryUrl = RegistryContractUrls.Registry(serviceName),
             QueryUrl = item.Kind == QueryContextKind.Direct
                 ? QueryableContractUrls.QueryContextQuery(serviceName, contextName)
                 : null,
@@ -257,23 +255,6 @@ public sealed record QueryableRecordResponse
             Views = item.Views
                 .Select(view => QueryableViewResponse.FromRegistryItem(view, contextName, serviceName))
                 .ToArray()
-        };
-    }
-
-    public static QueryableRecordSummary ToSummary(
-        QueryableContextRegistryItem item,
-        string serviceName)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-
-        return new QueryableRecordSummary
-        {
-            Name = item.Name,
-            Description = item.Description,
-            Authorization = item.Authorization,
-            MetadataUrl = QueryableContractUrls.QueryContextMetadata(
-                serviceName,
-                item.Name.ToLowerInvariant())
         };
     }
 }

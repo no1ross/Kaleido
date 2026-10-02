@@ -352,22 +352,10 @@ public sealed record ProcessorRegistryResponse
         = [];
 
     /// <summary>
-    /// Full step detail — populated on the registry endpoint only.
-    /// Null on the catalog endpoint, where only entry-point summaries are returned.
+    /// Full step detail for every registered step.
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyCollection<ProcessStepResponse>? Steps { get; init; }
-        = [];
-}
-
-[ExcludeFromCodeCoverage]
-public sealed record ProcessCatalogResponse
-{
-    public IReadOnlyCollection<ProcessorRegistryResponse> Processors
-    {
-        get;
-        init;
-    }
         = [];
 }
 
@@ -383,6 +371,12 @@ public sealed record ProcessStepResponse
     public string? Version { get; init; }
 
     public bool Repeatable { get; init; }
+
+    /// <summary>
+    /// True when this step is an entry point — it has no dependencies and no
+    /// availability preconditions, so it can start a new process instance.
+    /// </summary>
+    public bool IsInitial { get; init; }
 
     /// <summary>
     /// Authorization requirement for this step. Null means open.

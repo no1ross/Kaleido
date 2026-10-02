@@ -1,3 +1,4 @@
+using Kaleido.Http.Registry;
 using Kaleido.Process.Registry;
 using Kaleido.Queryable.Registry;
 using Microsoft.AspNetCore.Builder;
@@ -12,13 +13,20 @@ public static class KaleidoEndpointRouteBuilderExtensions
     /// <summary>
     /// Maps all registered Kaleido endpoints in one call.
     /// The framework auto-detects which runtimes are active (Process and/or Queryable)
-    /// and maps only those. Returns an <see cref="IEndpointConventionBuilder"/> that
+    /// and maps only those, plus the unified <c>GET /{service}/registry</c> endpoint.
+    /// Set <see cref="KaleidoHttpMapOptions.AggregateRegistry"/> to also fan out to
+    /// downstream services registered via <c>AddHttpClients()</c> (routers/gateways).
+    /// Returns an <see cref="IEndpointConventionBuilder"/> that
     /// propagates conventions (e.g. <c>.RequireAuthorization()</c>) to all mapped endpoints.
     /// </summary>
     public static IEndpointConventionBuilder MapKaleidoHttp(
-        this IEndpointRouteBuilder endpoints)
+        this IEndpointRouteBuilder endpoints,
+        Action<KaleidoHttpMapOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
+
+        var mapOptions = new KaleidoHttpMapOptions();
+        configure?.Invoke(mapOptions);
 
         var hasProcess = endpoints.ServiceProvider.GetService<IProcessStepRegistry>() is not null;
         var hasQueryable = endpoints.ServiceProvider.GetService<IQueryableRegistry>() is not null;
@@ -61,6 +69,14 @@ public static class KaleidoEndpointRouteBuilderExtensions
         {
             builders.Add(
                 endpoints.MapQueryable());
+        }
+
+        // Every Kaleido host exposes its registry; aggregation mode fans out to
+        // downstream clients (validated inside MapRegistry).
+        if (hasProcess || hasQueryable || mapOptions.AggregateRegistry)
+        {
+            builders.Add(
+                endpoints.MapRegistry(mapOptions.AggregateRegistry));
         }
 
         return new RouteHandlerBuilder(builders);

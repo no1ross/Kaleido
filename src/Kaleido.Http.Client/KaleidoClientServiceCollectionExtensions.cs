@@ -36,6 +36,7 @@ internal static class KaleidoClientServiceCollectionExtensions
         var routeOptions = GetOrAddRouteOptions<TMap>(services);
         routeOptions.Options[options.Name] = options.RoutePrefix;
 
+        services.TryAddSingleton<KaleidoRemoteRegistry>();
         services.TryAddScoped<ICorrelationHeaderStamper, CorrelationHeaderStamper>();
         services.TryAddScoped<TFactoryInterface, TFactory>();
 
@@ -80,7 +81,7 @@ internal static class KaleidoClientServiceCollectionExtensions
 
         builder.Services.AddKaleidoClient<IKaleidoProcessClient, KaleidoProcessClientRouteOptionsMap, KaleidoProcessClientFactory, IKaleidoProcessClientFactory>(
             configure,
-            ProcessContractUrls.Registry,
+            Registry.RegistryContractUrls.Registry,
             configureClient);
 
         return builder;
@@ -96,7 +97,7 @@ internal static class KaleidoClientServiceCollectionExtensions
 
         builder.Services.AddKaleidoClient<IKaleidoQueryableClient, KaleidoQueryableClientRouteOptionsMap, KaleidoQueryableClientFactory, IKaleidoQueryableClientFactory>(
             configure,
-            QueryableContractUrls.QueryRegistry,
+            Registry.RegistryContractUrls.Registry,
             configureClient);
 
         return builder;

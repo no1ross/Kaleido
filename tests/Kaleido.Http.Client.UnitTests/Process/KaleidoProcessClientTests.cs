@@ -14,12 +14,27 @@ public sealed class KaleidoProcessClientTests
     private static KaleidoProcessClient CreateSut(
         HttpClient httpClient,
         ICorrelationHeaderStamper headerStamper,
-        string serviceName = "") =>
-        new(
+        string serviceName = "")
+    {
+        // Registry fetches go through the shared remote registry, which pulls
+        // the HttpClient from IHttpClientFactory — return the test client.
+        var factory = new Mock<IHttpClientFactory>();
+        factory
+            .Setup(f => f.CreateClient(It.IsAny<string>()))
+            .Returns(httpClient);
+
+        var remoteRegistry = new KaleidoRemoteRegistry(
+            factory.Object,
+            NullLogger<KaleidoRemoteRegistry>.Instance);
+
+        return new(
             httpClient,
             headerStamper,
             NullLogger<KaleidoProcessClient>.Instance,
+            remoteRegistry,
+            "test",
             serviceName);
+    }
 
     private static readonly ProcessStepResponse FakeStep = new()
     {
@@ -40,9 +55,14 @@ public sealed class KaleidoProcessClientTests
         Name = "test-processor",
         Description = "Test processor.",
         DisplayName = "Test Processor",
-        RegistryUrl = "/processes/registry",
+        RegistryUrl = "/test-processor/registry",
         Steps = [FakeStep],
         InitialSteps = []
+    };
+
+    private static readonly AggregatedRegistryResponse FakeRegistry = new()
+    {
+        Processes = [FakeProcessor]
     };
 
     private static HttpResponseMessage JsonOk<T>(T value) =>
@@ -62,7 +82,7 @@ public sealed class KaleidoProcessClientTests
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync((HttpRequestMessage req, CancellationToken _) =>
-                respond != null ? respond(req) : JsonOk(new[] { FakeProcessor }));
+                respond != null ? respond(req) : JsonOk(FakeRegistry));
 
         var httpClient = new HttpClient(mock.Object) { BaseAddress = new Uri("http://localhost") };
         var stamper = new Mock<ICorrelationHeaderStamper>();
@@ -92,7 +112,7 @@ public sealed class KaleidoProcessClientTests
         var (client, _) = CreateClient(respond: req =>
         {
             callCount++;
-            return JsonOk(new[] { FakeProcessor });
+            return JsonOk(FakeRegistry);
         });
 
         await client.GetRegistryAsync();
@@ -140,7 +160,7 @@ public sealed class KaleidoProcessClientTests
             callCount++;
             if (callCount == 1)
             {
-                return JsonOk(new[] { FakeProcessor });
+                return JsonOk(FakeRegistry);
             }
 
             return JsonOk(FakeStep);
@@ -172,7 +192,7 @@ public sealed class KaleidoProcessClientTests
             callCount++;
             if (callCount == 1)
             {
-                return JsonOk(new[] { FakeProcessor });
+                return JsonOk(FakeRegistry);
             }
 
             return new HttpResponseMessage(HttpStatusCode.InternalServerError);
@@ -253,7 +273,7 @@ public sealed class KaleidoProcessClientTests
             callCount++;
             if (callCount == 1)
             {
-                return JsonOk(new[] { FakeProcessor });
+                return JsonOk(FakeRegistry);
             }
 
             postedUrl = req.RequestUri!.PathAndQuery;
@@ -284,7 +304,7 @@ public sealed class KaleidoProcessClientTests
             callCount++;
             if (callCount == 1)
             {
-                return JsonOk(new[] { FakeProcessor });
+                return JsonOk(FakeRegistry);
             }
 
             return new HttpResponseMessage(HttpStatusCode.BadGateway);
@@ -318,7 +338,7 @@ public sealed class KaleidoProcessClientTests
             callCount++;
             if (callCount == 1)
             {
-                return JsonOk(new[] { FakeProcessor });
+                return JsonOk(FakeRegistry);
             }
 
             return JsonOk(fakeResult);
@@ -342,12 +362,12 @@ public sealed class KaleidoProcessClientTests
         var (client, _) = CreateClient(routePrefix: "radiology", respond: req =>
         {
             registryUrl = req.RequestUri!.PathAndQuery;
-            return JsonOk(new[] { FakeProcessor });
+            return JsonOk(FakeRegistry);
         });
 
         await client.GetRegistryAsync();
 
-        Assert.Equal("/radiology/processes/registry", registryUrl);
+        Assert.Equal("/radiology/registry", registryUrl);
     }
 
     [Fact]
@@ -375,12 +395,12 @@ public sealed class KaleidoProcessClientTests
         var (client, _) = CreateClient(routePrefix: "", respond: req =>
         {
             registryUrl = req.RequestUri!.PathAndQuery;
-            return JsonOk(new[] { FakeProcessor });
+            return JsonOk(FakeRegistry);
         });
 
         await client.GetRegistryAsync();
 
-        Assert.Equal("/processes/registry", registryUrl);
+        Assert.Equal("/registry", registryUrl);
     }
 
     // ---------------------------------------------------------------------------

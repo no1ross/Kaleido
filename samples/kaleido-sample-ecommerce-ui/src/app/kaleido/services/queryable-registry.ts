@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, tap, map, of, catchError, throwError } from 'rxjs';
 import { QueryableView, QueryableRecord, QueryableField, QueryableViewRegistration } from '../models/queryable-registry';
 import { HttpClient } from '@angular/common/http';
-import { getQueryableRegistryUrl } from '../../../configuration/urlConfig';
+import { getRegistryUrl } from '../../../configuration/urlConfig';
 
 @Injectable({
     providedIn: 'root'
@@ -44,9 +44,10 @@ export class QueryableRegistry {
             performance.now();
 
         return this.http
-            .get<QueryableRecord[]>(
-                getQueryableRegistryUrl())
+            .get<{ queryables: QueryableRecord[] }>(
+                getRegistryUrl())
             .pipe(
+                map(response => response.queryables),
                 tap(records => {
 
                     this.populateRegistry(records);

@@ -53,7 +53,7 @@ Owns the full HTTP transport layer:
 - `KaleidoStartupFilter` — registers middlewares in the correct pipeline order via `IStartupFilter`
 - Queryable endpoint mapping (`MapQueryable`) — catalog, registry, query, and metadata endpoints
 - Process endpoint mapping (`MapProcessor`) — catalog, registry, metadata, execute, and state endpoints
-- Registry endpoint mapping (`MapRegistry`) — aggregated discovery combining Process and Queryable
+- Registry endpoint mapping (`MapRegistry`, internal) — `GET /{service}/registry` unified discovery combining Process and Queryable; `MapKaleidoHttp(o => o.AggregateRegistry = true)` fans out to `AddHttpClients()` clients
 
 ### Kaleido.Http.Abstractions
 Owns shared HTTP contract types and HTTP-specific correlation primitives:

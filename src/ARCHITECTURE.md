@@ -102,23 +102,19 @@ Public seams consumers are expected to implement or replace:
 - `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` in `Kaleido.Http.Abstractions`, used by both server filter and client.
 
 **Queryable endpoints** (`QueryableEndpointRouteBuilderExtensions`)
-- `GET /{prefix}/queryable` — catalog
-- `GET /{prefix}/queryable/registry` — full registry
 - `GET /{prefix}/queryable/{context}/{metadataRoute}` — per-context metadata
 - `POST /{prefix}/queryable/{context}/{queryRoute}` — direct context query
 - `POST /{prefix}/queryable/{context}/{view}/{queryRoute}` — view query
 
 **Process endpoints** (`ProcessEndpointRouteBuilderExtensions`)
-- `GET /{prefix}/processes` — processor catalog (initial steps only)
-- `GET /{prefix}/processes/steps` — step catalog (all steps, lightweight)
-- `GET /{prefix}/processes/registry` — full registry (all step metadata)
 - `GET /{prefix}/processes/steps/{step}/metadata` — per-step metadata
 - `POST /{prefix}/processes/execute` — multi-step execute
 - `GET /{prefix}/processes/{processId}` — process state
 - `POST /{prefix}/processes/steps/{step}` — per-step execute
 
-**Registry endpoint** (`RegistryEndpointRouteBuilderExtensions`)
-- `GET /{prefix}/registry` — aggregated discovery (local process + all downstream process clients + all downstream queryable clients)
+**Registry endpoint** (`RegistryEndpointRouteBuilderExtensions` — internal; mapped by `MapKaleidoHttp`)
+- `GET /{prefix}/registry` — unified discovery envelope (`AggregatedRegistryResponse`: `Processes`, `Queryables`, `ClientErrors`)
+- Leaf mode returns this service's local registrations; `MapKaleidoHttp(o => o.AggregateRegistry = true)` also fans out to every `AddHttpClients()` client — one `GET /{svc}/registry` fetch per client, shared via `KaleidoRemoteRegistry`
 - Always returns HTTP 200; unreachable downstream clients populate `ClientErrors`
 
 **URL generation**
@@ -145,7 +141,7 @@ Public seams consumers are expected to implement or replace:
 **Queryable contracts**
 - Request: `QueryApiRequest`, `QueryApiRequest<TParameters>` — accepts `QueryApiBody` (transport shape)
 - Transport body: `QueryApiBody`, `QueryApiFilterNode`, `QueryApiFilterCondition`, `QueryApiFilterGroup`, `QueryApiSort`, `QueryApiPage` — string enums, raw `JsonElement` filter values
-- Response: `QueryableRecordResponse`, `QueryableRecordSummary`, `QueryableFieldMetadata`, `QueryableQueryParameter`, `QueryableQueryProperty`, `QueryErrorResponse`
+- Response: `QueryableRecordResponse` (carries `ServiceName`, `RegistryUrl`), `QueryableFieldMetadata`, `QueryableQueryParameter`, `QueryableQueryProperty`, `QueryErrorResponse`
 - `QueryApiBodyExtensions.ToApiBody()` — converts runtime `QueryBody` → `QueryApiBody` for core callers forwarding over HTTP (e.g. delegated view sources)
 - `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` with `JsonStringEnumConverter` for all Kaleido HTTP serialization
 

@@ -1,3 +1,4 @@
+using Kaleido.Http.Registry;
 using Kaleido.Process.Registry;
 
 namespace Kaleido.Http.Process;
@@ -9,10 +10,6 @@ namespace Kaleido.Http.Process;
 public interface IProcessResponseFactory
 {
     ProcessorRegistryResponse CreateRegistryResponse(
-        ProcessorRegistryItem registration,
-        KaleidoServiceOptions serviceOptions);
-
-    ProcessorRegistryResponse CreateCatalogResponse(
         ProcessorRegistryItem registration,
         KaleidoServiceOptions serviceOptions);
 
@@ -43,7 +40,7 @@ public sealed class ProcessResponseFactory : IProcessResponseFactory
             Description = serviceOptions.Description,
             DisplayName = serviceOptions.DisplayName,
             IsEntryProcessor = registration.IsEntryProcessor,
-            RegistryUrl = ProcessContractUrls.Registry(serviceName),
+            RegistryUrl = RegistryContractUrls.Registry(serviceName),
             InitialSteps = registration.InitialSteps
                 .Select(x => new ProcessStepSummary
                 {
@@ -63,30 +60,6 @@ public sealed class ProcessResponseFactory : IProcessResponseFactory
         };
     }
 
-    public ProcessorRegistryResponse CreateCatalogResponse(
-        ProcessorRegistryItem registration,
-        KaleidoServiceOptions serviceOptions)
-    {
-        ArgumentNullException.ThrowIfNull(registration);
-        ArgumentNullException.ThrowIfNull(serviceOptions);
-
-        var serviceName = serviceOptions.ServiceName;
-
-        return new ProcessorRegistryResponse
-        {
-            ServiceName = serviceName,
-            Name = serviceName,
-            Description = serviceOptions.Description,
-            DisplayName = serviceOptions.DisplayName,
-            IsEntryProcessor = registration.IsEntryProcessor,
-            RegistryUrl = ProcessContractUrls.Registry(serviceName),
-            InitialSteps = registration.InitialSteps
-                .Select(x => CreateStepSummary(x, serviceName))
-                .ToArray(),
-            Steps = null
-        };
-    }
-
     public ProcessStepResponse CreateStepResponse(
         ProcessorStepRegistryItem registration,
         string serviceName)
@@ -103,6 +76,9 @@ public sealed class ProcessResponseFactory : IProcessResponseFactory
             DisplayName = registration.DisplayName,
             Version = registration.Version,
             Repeatable = registration.Repeatable,
+            IsInitial =
+                registration.Dependencies.Count == 0 &&
+                registration.AvailableAfter.Count == 0,
             Authorization = registration.Authorization,
             Fields = registration.Fields
                 .Select(CreateFieldMetadata)

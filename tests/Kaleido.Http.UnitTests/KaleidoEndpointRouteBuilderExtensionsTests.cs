@@ -1,4 +1,6 @@
+using Kaleido.Exceptions;
 using Kaleido.Http.Queryable;
+using Kaleido.Http.Registry.Contracts;
 using Kaleido.Queryable.Registry;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;
@@ -36,7 +38,8 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ProcessEndpointName));
-        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.CatalogEndpointName));
+        Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
+        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context")));
     }
 
     [Fact]
@@ -46,8 +49,8 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
         endpoints.MapKaleidoHttp();
 
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.CatalogEndpointName));
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.RegistryEndpointName));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context")));
+        Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
         Assert.Null(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
     }
 
@@ -59,7 +62,8 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         endpoints.MapKaleidoHttp();
 
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.CatalogEndpointName));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context")));
+        Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
     }
 
     [Fact]
@@ -71,7 +75,16 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
         Assert.NotNull(result);
         Assert.Null(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
-        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.CatalogEndpointName));
+        Assert.Null(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
+    }
+
+    [Fact]
+    public void MapKaleidoHttp_WithAggregateRegistryWithoutClients_Throws()
+    {
+        var endpoints = CreateEmptyEndpoints();
+
+        Assert.Throws<KaleidoConfigurationException>(() =>
+            endpoints.MapKaleidoHttp(o => o.AggregateRegistry = true));
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────

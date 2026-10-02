@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, tap, map, of, catchError, throwError } from 'rxjs';
 import { ProcessStepRegistryRecord, ProcessStepFieldMetadata } from '../models/process-registry';
 import { HttpClient } from '@angular/common/http';
-import { getProcessRegistryUrl } from '../../../configuration/urlConfig';
+import { getRegistryUrl } from '../../../configuration/urlConfig';
 
 @Injectable({
     providedIn: 'root'
@@ -37,9 +37,11 @@ export class ProcessRegistry {
             performance.now();
 
         return this.http
-            .get<ProcessStepRegistryRecord[]>(
-                getProcessRegistryUrl())
+            .get<{ processes: { steps: ProcessStepRegistryRecord[] }[] }>(
+                getRegistryUrl())
             .pipe(
+                map(response =>
+                    response.processes.flatMap(p => p.steps)),
                 tap(steps => {
 
                     this.populateRegistry(steps);

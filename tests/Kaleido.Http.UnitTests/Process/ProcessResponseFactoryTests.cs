@@ -21,16 +21,4 @@ public sealed class ProcessResponseFactoryTests
         Assert.Empty(result.Steps ?? []);
     }
 
-    [Fact]
-    public void CreateCatalogResponse_WithEmptyRegistration_ReturnsResponse()
-    {
-        var sut = CreateSut();
-        var registration = new ProcessorRegistryItem();
-        var options = new KaleidoServiceOptions { ServiceName = "test-svc" };
-
-        var result = sut.CreateCatalogResponse(registration, options);
-
-        Assert.Equal("test-svc", result.ServiceName);
-        Assert.Null(result.Steps);
-    }
 }

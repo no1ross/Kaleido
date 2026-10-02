@@ -1,6 +1,7 @@
 using System.Net;
 using Kaleido.Http.Process;
 using Kaleido.Http.Queryable;
+using Kaleido.Http.Registry;
 using Kaleido.Process.AspNetCore.FunctionalTests.Infrastructure;
 
 namespace Kaleido.AspNetCore.FunctionalTests.Authorization;
@@ -21,17 +22,14 @@ public sealed class AuthorizationEndpointTests(
     private const string OpenStepExecuteUrl =
         "/kaleido/processes/steps/auth-open";
 
-    private const string StepCatalogUrl =
-        "/kaleido/processes/steps";
+    private const string RegistryUrl =
+        "/kaleido/registry";
 
     private static string ProcessStateUrl(Guid processId) =>
         $"/kaleido/processes/{processId}";
 
     private static string ProcessTransferUrl(Guid processId) =>
         $"/kaleido/processes/{processId}/transfer";
-
-    private const string QueryableCatalogUrl =
-        "/kaleido/queryable";
 
     private const string SecuredContextMetadataUrl =
         "/kaleido/queryable/secured-records/metadata";
@@ -144,68 +142,71 @@ public sealed class AuthorizationEndpointTests(
     // -- discovery filtering ------------------------------------------------
 
     [Fact]
-    public async Task StepCatalog_WhenUnauthenticated_ReturnsEmpty()
+    public async Task Registry_WhenUnauthenticated_ReturnsNoCapabilities()
     {
-        var response = await fixture.Client.GetAsync(StepCatalogUrl);
+        var response = await fixture.Client.GetAsync(RegistryUrl);
 
-        var steps =
-            await response.Content.ReadAsync<ProcessStepSummary[]>();
+        var registry =
+            await response.Content.ReadAsync<AggregatedRegistryResponse>();
 
-        Assert.Empty(steps!);
+        Assert.All(registry!.Processes, p => Assert.Empty(p.Steps!));
+        Assert.Empty(registry.Queryables);
     }
 
     [Fact]
-    public async Task StepCatalog_WhenViewerRole_ExcludesInternalStep()
+    public async Task Registry_WhenViewerRole_ExcludesInternalStep()
     {
         var response = await fixture.Client.SendAsync(
             AuthorizationAspNetCoreFixture.AuthenticatedRequest(
                 HttpMethod.Get,
-                StepCatalogUrl,
+                RegistryUrl,
                 roles: ["viewer"]));
 
-        var steps =
-            await response.Content.ReadAsync<ProcessStepSummary[]>();
+        var registry =
+            await response.Content.ReadAsync<AggregatedRegistryResponse>();
 
+        var processor = Assert.Single(registry!.Processes);
         Assert.DoesNotContain(
-            steps!,
+            processor.Steps!,
             s => s.Name.Equals(
                 AuthorizationStepNames.InternalStep,
                 StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public async Task StepCatalog_WhenInternalRole_IncludesInternalStep()
+    public async Task Registry_WhenInternalRole_IncludesInternalStep()
     {
         var response = await fixture.Client.SendAsync(
             AuthorizationAspNetCoreFixture.AuthenticatedRequest(
                 HttpMethod.Get,
-                StepCatalogUrl,
+                RegistryUrl,
                 roles: ["internal"]));
 
-        var steps =
-            await response.Content.ReadAsync<ProcessStepSummary[]>();
+        var registry =
+            await response.Content.ReadAsync<AggregatedRegistryResponse>();
 
+        var processor = Assert.Single(registry!.Processes);
         Assert.Contains(
-            steps!,
+            processor.Steps!,
             s => s.Name.Equals(
                 AuthorizationStepNames.InternalStep,
                 StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public async Task QueryableCatalog_WhenViewerRole_ExcludesSecuredContext()
+    public async Task Registry_WhenViewerRole_ExcludesSecuredContext()
     {
         var response = await fixture.Client.SendAsync(
             AuthorizationAspNetCoreFixture.AuthenticatedRequest(
                 HttpMethod.Get,
-                QueryableCatalogUrl,
+                RegistryUrl,
                 roles: ["viewer"]));
 
-        var records =
-            await response.Content.ReadAsync<QueryableRecordSummary[]>();
+        var registry =
+            await response.Content.ReadAsync<AggregatedRegistryResponse>();
 
         Assert.DoesNotContain(
-            records!,
+            registry!.Queryables,
             r => r.Name.Equals(
                 "secured-records",
                 StringComparison.OrdinalIgnoreCase));

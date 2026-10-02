@@ -49,8 +49,8 @@ public sealed record RegistryClientError
     public required string ClientName { get; init; }
 
     /// <summary>
-    /// The category of client that failed.
-    /// Either <c>"Process"</c> or <c>"Queryable"</c>.
+    /// The category of client that failed — <c>"Registry"</c> for a unified
+    /// registry fetch.
     /// </summary>
     public required string ClientType { get; init; }
 

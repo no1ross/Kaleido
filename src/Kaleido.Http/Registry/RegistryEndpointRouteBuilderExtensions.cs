@@ -15,32 +15,17 @@ namespace Kaleido.Http.Registry;
 public static class RegistryEndpointRouteBuilderExtensions
 {
     /// <summary>
-    /// Maps the unified registry endpoint at <c>GET /{routePrefix}/registry</c>.
-    /// Returns a single <see cref="AggregatedRegistryResponse"/> containing:
-    /// <list type="bullet">
-    ///   <item><description>
-    ///     <c>Processes</c> — this processor's local steps merged with all downstream
-    ///     processors registered via <c>AddProcessClient()</c>.
-    ///   </description></item>
-    ///   <item><description>
-    ///     <c>Queryables</c> — this processor's local queryable contexts (when
-    ///     <c>AddQueryable()</c> has been called) merged with all downstream queryable
-    ///     clients registered via <c>AddQueryableClient()</c>.
-    ///   </description></item>
-    ///   <item><description>
-    ///     <c>ClientErrors</c> — any downstream clients that were unreachable or returned
-    ///     errors. The endpoint always returns HTTP 200 — a non-empty
-    ///     <c>ClientErrors</c> collection means the response is partial.
-    ///   </description></item>
-    /// </list>
-    /// Adding a new downstream client makes it appear automatically.
+    /// Maps the unified registry endpoint at <c>GET /{service}/registry</c>.
+    /// Returns a single <see cref="AggregatedRegistryResponse"/> containing this
+    /// service's local process and queryable registrations; when
+    /// <paramref name="aggregate"/> is set the response also merges every
+    /// downstream client registered via <c>AddHttpClients()</c>.
+    /// <c>ClientErrors</c> reports downstream clients that failed — the endpoint
+    /// always returns HTTP 200; a non-empty collection means a partial response.
     /// </summary>
-    /// <summary>
-    /// Maps the aggregated registry endpoint and returns the route group so hosts can
-    /// compose conventions (e.g. <c>.RequireAuthorization()</c>) onto the endpoint.
-    /// </summary>
-    public static RouteGroupBuilder MapRegistry(
-        this IEndpointRouteBuilder endpoints)
+    internal static RouteGroupBuilder MapRegistry(
+        this IEndpointRouteBuilder endpoints,
+        bool aggregate)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
@@ -51,15 +36,15 @@ public static class RegistryEndpointRouteBuilderExtensions
         var queryableClientMap = endpoints.ServiceProvider
             .GetService<KaleidoQueryableClientRouteOptionsMap>();
 
-        // Guard — MapRegistry() requires AddHttpClients() with at least one
+        // Guard — aggregation requires AddHttpClients() with at least one
         // configured client. The route-options maps are singletons registered
         // per client; neither present means no client infrastructure exists.
-        if (processClientMap is null && queryableClientMap is null)
+        if (aggregate && processClientMap is null && queryableClientMap is null)
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.ProInvalidRegistration,
-                "Cannot map Registry endpoint: no Kaleido clients are registered. " +
-                "Call AddHttpClients() on the IKaleidoBuilder before calling MapRegistry().");
+                "Cannot aggregate the Registry endpoint: no Kaleido clients are registered. " +
+                "Call AddHttpClients() on the IKaleidoBuilder before mapping an aggregated registry.");
         }
 
         // Optional — only present when the host has called AddHttp().
@@ -84,7 +69,8 @@ public static class RegistryEndpointRouteBuilderExtensions
 
         var group =
             endpoints.MapGroup("")
-            .AddEndpointFilter<KaleidoJsonEndpointFilter>();
+            .AddEndpointFilter<KaleidoJsonEndpointFilter>()
+            .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 
         group.MapGet(
                 RegistryContractUrls.Registry(localServiceOptions.ServiceName),
@@ -128,11 +114,14 @@ public static class RegistryEndpointRouteBuilderExtensions
                         var localQueryables =
                             GetLocalQueryables(localQueryableRegistry, localServiceOptions);
 
-                        var (downstreamProcesses, processErrors) =
-                            await GetDownstreamProcessesAsync(processClientMap, processClientFactory, logger, ct);
-
-                        var (downstreamQueryables, queryableErrors) =
-                            await GetDownstreamQueryablesAsync(queryableClientMap, queryableClientFactory, logger, ct);
+                        var (downstreamProcesses, downstreamQueryables, clientErrors) =
+                            aggregate
+                                ? await GetDownstreamAsync(
+                                    DownstreamClientNames(processClientMap, queryableClientMap, localServiceOptions),
+                                    processClientMap, processClientFactory,
+                                    queryableClientMap, queryableClientFactory,
+                                    logger, ct)
+                                : ([], [], []);
 
                         var allProcesses = localProcesses
                             .Concat(downstreamProcesses)
@@ -158,7 +147,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                                 .Concat(downstreamQueryables)
                                 .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
                                 .ToArray(),
-                            ClientErrors = [.. processErrors, .. queryableErrors]
+                            ClientErrors = clientErrors
                         };
 
                         if (result.ClientErrors.Count > 0)
@@ -199,8 +188,9 @@ public static class RegistryEndpointRouteBuilderExtensions
             .Produces<AggregatedRegistryResponse>()
             .WithSummary("Get unified registry.")
             .WithDescription(
-                "Returns the combined process and queryable registrations from this processor and all " +
-                "registered downstream clients. Always returns HTTP 200. Inspect ClientErrors to detect " +
+                "Returns the combined process and queryable registrations from this service" +
+                (aggregate ? " and all registered downstream clients." : ".") +
+                " Always returns HTTP 200. Inspect ClientErrors to detect " +
                 "partial responses caused by unreachable or misconfigured downstream clients. " +
                 "Process steps carry fully-resolved ExecuteUrl and MetadataUrl values. " +
                 "Adding a downstream client via AddProcessClient() or AddQueryableClient() makes it appear here automatically.");
@@ -280,50 +270,54 @@ public static class RegistryEndpointRouteBuilderExtensions
             ? registry.Registrations.Select(r => QueryableRecordResponse.FromRegistryItem(r, serviceOptions.ServiceName))
             : [];
 
-    private static async Task<(IReadOnlyCollection<ProcessorRegistryResponse> Items, IReadOnlyCollection<RegistryClientError> Errors)>
-        GetDownstreamProcessesAsync(
-            KaleidoProcessClientRouteOptionsMap? map,
-            IKaleidoProcessClientFactory? factory,
-            ILogger logger,
-            CancellationToken cancellationToken) =>
-        factory is null
-            ? ([], [])
-            : await GetDownstreamAsync(
-                map?.Options.Keys.ToArray(),
-                (name, ct) => factory.GetClient(name).GetRegistryAsync(ct),
-                "Process",
-                logger,
-                cancellationToken);
+    // Union of all downstream client names. Clients whose RoutePrefix equals
+    // this service's name are excluded — an aggregator must never fetch its own
+    // registry, or the request would recurse through this endpoint (its local
+    // entries are already in the response).
+    private static IReadOnlyCollection<string> DownstreamClientNames(
+        KaleidoProcessClientRouteOptionsMap? processMap,
+        KaleidoQueryableClientRouteOptionsMap? queryableMap,
+        KaleidoServiceOptions serviceOptions)
+    {
+        var prefixes = new List<KeyValuePair<string, string>>();
 
-    private static async Task<(IReadOnlyCollection<QueryableRecordResponse> Items, IReadOnlyCollection<RegistryClientError> Errors)>
-        GetDownstreamQueryablesAsync(
-            KaleidoQueryableClientRouteOptionsMap? map,
-            IKaleidoQueryableClientFactory? factory,
-            ILogger logger,
-            CancellationToken cancellationToken) =>
-        factory is null
-            ? ([], [])
-            : await GetDownstreamAsync(
-                map?.Options.Keys.ToArray(),
-                (name, ct) => factory.GetClient(name).GetRegistryAsync(ct),
-                "Queryable",
-                logger,
-                cancellationToken);
+        if (processMap is not null)
+        {
+            prefixes.AddRange(processMap.Options);
+        }
 
-    private static async Task<(IReadOnlyCollection<TItem> Items, IReadOnlyCollection<RegistryClientError> Errors)>
-        GetDownstreamAsync<TItem>(
-            IReadOnlyCollection<string>? clientNames,
-            Func<string, CancellationToken, Task<IReadOnlyList<TItem>>> fetch,
-            string clientType,
+        if (queryableMap is not null)
+        {
+            prefixes.AddRange(queryableMap.Options);
+        }
+
+        return prefixes
+            .Where(x => !string.Equals(
+                x.Value,
+                serviceOptions.ServiceName,
+                StringComparison.OrdinalIgnoreCase))
+            .Select(x => x.Key)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    // One logical fetch per downstream client — process and queryable client
+    // registries share the KaleidoRemoteRegistry cache, so the second
+    // GetRegistryAsync resolves without another HTTP call.
+    private static async Task<(IReadOnlyCollection<ProcessorRegistryResponse> Processes,
+                               IReadOnlyCollection<QueryableRecordResponse> Queryables,
+                               IReadOnlyCollection<RegistryClientError> Errors)>
+        GetDownstreamAsync(
+            IReadOnlyCollection<string> clientNames,
+            KaleidoProcessClientRouteOptionsMap? processMap,
+            IKaleidoProcessClientFactory? processFactory,
+            KaleidoQueryableClientRouteOptionsMap? queryableMap,
+            IKaleidoQueryableClientFactory? queryableFactory,
             ILogger logger,
             CancellationToken cancellationToken)
     {
-        if (clientNames is null)
-        {
-            return ([], []);
-        }
-
-        var items = new ConcurrentBag<TItem>();
+        var processes = new ConcurrentBag<ProcessorRegistryResponse>();
+        var queryables = new ConcurrentBag<QueryableRecordResponse>();
         var errors = new ConcurrentBag<RegistryClientError>();
 
         await Task.WhenAll(
@@ -331,18 +325,21 @@ public static class RegistryEndpointRouteBuilderExtensions
             {
                 try
                 {
-                    var result = await fetch(name, cancellationToken);
-                    foreach (var r in result)
+                    if (processFactory is not null && processMap?.Options.ContainsKey(name) == true)
                     {
-                        items.Add(r);
+                        foreach (var r in await processFactory.GetClient(name).GetRegistryAsync(cancellationToken))
+                        {
+                            processes.Add(r);
+                        }
                     }
-                }
-                catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    logger.LogDebug(
-                        "Registry {ClientType} client {ClientName} returned 404 — service does not expose a registry.",
-                        clientType,
-                        name);
+
+                    if (queryableFactory is not null && queryableMap?.Options.ContainsKey(name) == true)
+                    {
+                        foreach (var r in await queryableFactory.GetClient(name).GetRegistryAsync(cancellationToken))
+                        {
+                            queryables.Add(r);
+                        }
+                    }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -352,20 +349,19 @@ public static class RegistryEndpointRouteBuilderExtensions
                 {
                     logger.LogWarning(
                         ex,
-                        "Registry {ClientType} client {ClientName} failed: {Reason}.",
-                        clientType,
+                        "Registry client {ClientName} failed: {Reason}.",
                         name,
                         ex.Message);
 
                     errors.Add(new RegistryClientError
                     {
                         ClientName = name,
-                        ClientType = clientType,
-                        Reason = $"{clientType} registry fetch failed. See server logs for details."
+                        ClientType = "Registry",
+                        Reason = "Registry fetch failed. See server logs for details."
                     });
                 }
             }));
 
-        return (items.ToArray(), errors.ToArray());
+        return (processes.ToArray(), queryables.ToArray(), errors.ToArray());
     }
 }

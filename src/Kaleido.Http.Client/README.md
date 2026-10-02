@@ -12,6 +12,9 @@ See also:
 
 ## What lives here
 
+### Shared registry fetch
+- `KaleidoRemoteRegistry` — singleton that fetches `GET /{routePrefix}/registry` once per named client and caches the combined `AggregatedRegistryResponse`; both typed clients project their half (`Processes` / `Queryables`) from it, so a service's registry is only ever fetched once regardless of how many client types consume it
+
 ### Process client
 - `IKaleidoProcessClient` — typed interface for registry, step metadata, process state, and step execution
 - `IKaleidoProcessClientFactory` — factory resolved by registered client name
@@ -141,7 +144,8 @@ var result = await clientFactory
 ## Client behavior
 
 Both clients:
-- lazily fetch and cache the remote registry for the lifetime of the client instance
+- share `KaleidoRemoteRegistry` — one `GET /{routePrefix}/registry` call per named client, cached as `AggregatedRegistryResponse`; each client projects its half
+- a non-success registry response (including 404 — every Kaleido service is expected to publish `/{service}/registry`) throws `KaleidoHttpClientException`
 - automatically forward Kaleido correlation headers on outbound requests
 - throw their respective exception types (`KaleidoProcessClientException` / `KaleidoQueryableClientException`) on non-success HTTP responses
 
