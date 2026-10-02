@@ -448,7 +448,7 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
 
   MP-019:
     title: Test gaps on published invariants + dead/stub test files + empty sanitizer test
