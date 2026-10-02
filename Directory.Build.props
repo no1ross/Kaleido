@@ -8,5 +8,12 @@
         <AnalysisLevel>latest-recommended</AnalysisLevel>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
         <RestoreLockedMode Condition="'$(CI)' != 'true'">false</RestoreLockedMode>
+        <NuGetAudit>true</NuGetAudit>
     </PropertyGroup>
+    <!-- Git-height versioning: version.json produces 1.0.0-preview.{height}
+         until a v* tag flips publicReleaseRefSpec to stable. Scoped to src/ +
+         tools/ — samples are never packaged and manage their own CPM file. -->
+    <ItemGroup Condition="$(MSBuildProjectDirectory.Contains('src\')) or $(MSBuildProjectDirectory.Contains('tools\'))">
+        <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
+    </ItemGroup>
 </Project>

@@ -77,3 +77,17 @@ jobs:
           coverage/index.html
         if-no-files-found: ignore
 
+    # Pack src/ projects on master merges — validates packages + produces
+    # downloadable artifacts. NuGet publish is deliberately not wired up.
+    - name: Pack
+      if: github.event_name == 'push'
+      run: dotnet pack --configuration Release --no-build -o artifacts
+
+    - name: Upload packages
+      if: github.event_name == 'push'
+      uses: actions/upload-artifact@v4
+      with:
+        name: packages
+        path: artifacts/*.nupkg
+        if-no-files-found: error
+
