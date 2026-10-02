@@ -26,15 +26,18 @@ jobs:
         global-json-file: global.json
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      uses: github/codeql-action/init@v4
       with:
         languages: csharp
         queries: security-and-quality
 
+    - name: Restore
+      run: dotnet restore --locked-mode
+
     - name: Build
-      run: dotnet build --configuration Release --locked-mode
+      run: dotnet build --configuration Release --no-restore
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
+      uses: github/codeql-action/analyze@v4
       with:
         category: "/language:csharp"
