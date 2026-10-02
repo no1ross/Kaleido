@@ -76,7 +76,7 @@ app.MapKaleidoHttp(); // maps Process + Queryable + /{service}/registry
 app.MapKaleidoHttp(o => o.AggregateRegistry = true); // requires AddHttpClients()
 ```
 
-`AddHttp()` wires the middleware pipeline automatically via `KaleidoStartupFilter` — no manual `Use...()` call is needed.
+`AddHttp()` wires the middleware pipeline automatically via `KaleidoStartupFilter` — no manual `Use...()` call is needed. Opt out with `AddHttp(o => o.AutoRegisterMiddleware = false)` if the host owns middleware ordering; it must then register `ExceptionMiddleware`/`ObservabilityMiddleware` itself.
 
 ---
 

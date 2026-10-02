@@ -45,4 +45,14 @@ public sealed class KaleidoHttpOptions
     /// <c>OwnerRoles</c> entry may resume or read it.
     /// </remarks>
     public bool RequireProcessOwnership { get; set; }
+
+    /// <summary>
+    /// When <c>true</c> (default), <c>AddHttp()</c> registers
+    /// <c>KaleidoStartupFilter</c> — an <c>IStartupFilter</c> that wires
+    /// <c>ExceptionMiddleware</c> and <c>ObservabilityMiddleware</c> into the
+    /// pipeline automatically. Set to <c>false</c> to suppress the filter and
+    /// own the middleware order yourself; the host must then call the
+    /// equivalent <c>UseMiddleware</c> registrations explicitly.
+    /// </summary>
+    public bool AutoRegisterMiddleware { get; set; } = true;
 }
