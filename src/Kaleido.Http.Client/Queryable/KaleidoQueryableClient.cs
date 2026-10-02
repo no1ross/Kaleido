@@ -10,7 +10,8 @@ internal sealed class KaleidoQueryableClient(
     ILogger<KaleidoQueryableClient> logger,
     KaleidoRemoteRegistry remoteRegistry,
     string clientName,
-    string callerServiceName = "")
+    string callerServiceName = "",
+    TimeSpan? registryTtl = null)
     : IKaleidoQueryableClient
 {
     public async Task<IReadOnlyList<QueryableRecordResponse>> GetRegistryAsync(
@@ -202,5 +203,5 @@ internal sealed class KaleidoQueryableClient(
 
     private async Task<IReadOnlyList<QueryableRecordResponse>> EnsureRegistryAsync(
         CancellationToken cancellationToken) =>
-        [.. (await remoteRegistry.GetAsync(clientName, callerServiceName, headerStamper, cancellationToken)).Queryables];
+        [.. (await remoteRegistry.GetAsync(clientName, callerServiceName, registryTtl, headerStamper, cancellationToken)).Queryables];
 }

@@ -15,6 +15,18 @@ public sealed class KaleidoClientOptions
     public string? BaseUrl { get; set; }
 
     /// <summary>
+    /// Shared default for <see cref="KaleidoClientEntry.RegistryTtl"/> applied
+    /// to every client that does not set its own. Null (default) means the
+    /// remote registry is cached until explicitly invalidated.
+    /// </summary>
+    public TimeSpan? RegistryTtl { get; set; }
+
+    /// <summary>
+    /// Shared default for <see cref="KaleidoClientEntry.StrictRegistryProbe"/>.
+    /// </summary>
+    public bool StrictRegistryProbe { get; set; }
+
+    /// <summary>
     /// Named downstream Kaleido service clients.
     /// The dictionary key is the client name (e.g. <c>"Member"</c>).
     /// <see cref="KaleidoClientEntry.RoutePrefix"/> defaults to the key lowercased
@@ -46,4 +58,18 @@ public sealed class KaleidoClientEntry
     /// When null or unset, defaults to the dictionary key lowercased.
     /// </summary>
     public string? RoutePrefix { get; set; }
+
+    /// <summary>
+    /// Maximum age of this client's cached registry snapshot. Overrides
+    /// <see cref="KaleidoClientOptions.RegistryTtl"/>; null means the registry
+    /// is cached until explicitly invalidated.
+    /// </summary>
+    public TimeSpan? RegistryTtl { get; set; }
+
+    /// <summary>
+    /// Overrides <see cref="KaleidoClientOptions.StrictRegistryProbe"/> —
+    /// when true the health check probes <c>?strict</c> so a partially
+    /// degraded aggregating downstream reports Unhealthy.
+    /// </summary>
+    public bool? StrictRegistryProbe { get; set; }
 }

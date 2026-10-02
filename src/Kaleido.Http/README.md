@@ -133,7 +133,13 @@ A capability declaring `Policy` on a host with no `IAuthorizationService` fails 
 
 A client whose `RoutePrefix` equals this service's `ServiceName` is skipped (self-fetch would recurse). Aggregation without any registered clients throws a `KaleidoConfigurationException` at map time.
 
-The endpoint always returns HTTP 200. Downstream clients that are unreachable populate the `ClientErrors` array in the response. A non-empty `ClientErrors` collection means the response is partial.
+**Partial responses:** by default the endpoint always returns HTTP 200; unreachable downstream clients populate `ClientErrors` (and set `IsPartial` on the response). Append `?strict` to get **502** when the aggregate is partial — the body is still included, so callers get both the catalog of what worked and the error list. `?strict` is for agents/gateways that need a real failure signal.
+
+**Freshness contract:** every response carries `GeneratedAt` (snapshot build time — reflects data age even when served from cache), `Revision` (SHA-256 of the filtered payload), an `ETag` header, and `Cache-Control`. Clients may send `If-None-Match` to get a **304** when nothing changed. `Revision` is computed on the per-caller filtered payload, so ETags are correct per persona.
+
+**Caching & TTL:** the built snapshot is stored under the canonical key `kaleido:{ServiceName}` in `IRegistrySnapshotStore` (in-memory by default; register a distributed implementation — e.g. Redis over `IDistributedCache` — on multi-replica aggregators so replicas share one snapshot and one downstream fan-out). Only fully-clean snapshots are committed: a partial result is served but never cached, so every request while degraded naturally re-probes the failed services. Options on `MapKaleidoHttp`:
+- `RegistryCacheTtl` — opt-in max age for the snapshot (default: never expires). Bounds how long a clean snapshot can mask a newly-failing downstream.
+- `RegistryRefreshCooldown` — minimum interval between honored `?refresh` requests (default 30s). Refreshes inside the window serve the cache instead of re-fanning-out; an honored refresh first invalidates each downstream client snapshot so the rebuild re-fetches.
 
 The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from `Kaleido:ServiceName` configuration).
 

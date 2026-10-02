@@ -115,7 +115,9 @@ Public seams consumers are expected to implement or replace:
 **Registry endpoint** (`RegistryEndpointRouteBuilderExtensions` — internal; mapped by `MapKaleidoHttp`)
 - `GET /{prefix}/registry` — unified discovery envelope (`AggregatedRegistryResponse`: `Processes`, `Queryables`, `ClientErrors`)
 - Leaf mode returns this service's local registrations; `MapKaleidoHttp(o => o.AggregateRegistry = true)` also fans out to every `AddHttpClients()` client — one `GET /{svc}/registry` fetch per client, shared via `KaleidoRemoteRegistry`
-- Always returns HTTP 200; unreachable downstream clients populate `ClientErrors`
+- Freshness: `GeneratedAt`, `Revision` (SHA-256 of the filtered payload), `IsPartial`; `ETag`/`Cache-Control` headers, `If-None-Match` → 304; `?strict` → 502 when partial (body still included); `?refresh` forces rebuild, throttled by `KaleidoHttpMapOptions.RegistryRefreshCooldown`
+- Snapshots live in `IRegistrySnapshotStore` (in-memory default; distributed impl optional) under canonical key `kaleido:{ServiceName}` — a shared store lets consumers skip the HTTP call entirely on a fresh hit; only clean snapshots are committed, so degraded states are re-probed per request
+- Always returns HTTP 200 unless `?strict` is requested; unreachable downstream clients populate `ClientErrors`
 
 **URL generation**
 - `ProcessContractUrls` / `ProcessRoutePaths`
@@ -124,7 +126,7 @@ Public seams consumers are expected to implement or replace:
 ### Key design invariants
 - Endpoints adapt contracts and publish routes. They do not reimplement runtime planning or business execution.
 - The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from `Kaleido:ServiceName` configuration).
-- Registry endpoint always returns 200. Partial responses are signalled through `ClientErrors`, not through HTTP error status codes.
+- Registry endpoint returns 200 by default. Partial responses are signalled through `ClientErrors`/`IsPartial`; `?strict` opts into a 502 when partial.
 - `ConfigureHttpJsonOptions` is never called — Kaleido JSON options are scoped to Kaleido endpoints via `KaleidoJsonEndpointFilter`. Consumer endpoints retain their own serialization behavior.
 
 ---

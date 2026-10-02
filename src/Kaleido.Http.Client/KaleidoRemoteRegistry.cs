@@ -13,18 +13,26 @@ namespace Kaleido.Http.Client;
 /// </summary>
 internal sealed class KaleidoRemoteRegistry(
     IHttpClientFactory httpClientFactory,
+    IRegistrySnapshotStore snapshotStore,
     ILogger<KaleidoRemoteRegistry> logger)
 {
-    private readonly ConcurrentDictionary<string, HttpClientRegistryCache<AggregatedRegistryResponse>> _caches =
+    private readonly ConcurrentDictionary<string, HttpClientRegistryCache> _caches =
         new(StringComparer.OrdinalIgnoreCase);
 
     public Task<AggregatedRegistryResponse> GetAsync(
         string clientName,
         string routePrefix,
+        TimeSpan? registryTtl,
         ICorrelationHeaderStamper stamper,
         CancellationToken cancellationToken) =>
-        _caches.GetOrAdd(clientName, _ => new HttpClientRegistryCache<AggregatedRegistryResponse>())
+        _caches.GetOrAdd(
+                clientName,
+                // Canonical per-service key — matches the key the downstream
+                // writes its own snapshot under (kaleido:{ServiceName}), since
+                // RoutePrefix equals ServiceName by contract.
+                _ => new HttpClientRegistryCache(snapshotStore, $"kaleido:{routePrefix}"))
             .GetOrFetchAsync(
+                registryTtl,
                 ct => FetchAsync(clientName, routePrefix, stamper, ct),
                 cancellationToken);
 

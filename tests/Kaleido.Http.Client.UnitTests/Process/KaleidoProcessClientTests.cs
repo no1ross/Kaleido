@@ -25,6 +25,7 @@ public sealed class KaleidoProcessClientTests
 
         var remoteRegistry = new KaleidoRemoteRegistry(
             factory.Object,
+            CreateSnapshotStore(),
             NullLogger<KaleidoRemoteRegistry>.Instance);
 
         return new(
@@ -34,6 +35,25 @@ public sealed class KaleidoProcessClientTests
             remoteRegistry,
             "test",
             serviceName);
+    }
+
+    private static IRegistrySnapshotStore CreateSnapshotStore()
+    {
+        var data = new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
+        var store = new Mock<IRegistrySnapshotStore>();
+        store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns((string k, CancellationToken _) =>
+            {
+                data.TryGetValue(k, out var snapshot);
+                return new ValueTask<AggregatedRegistryResponse?>(snapshot);
+            });
+        store.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()))
+            .Returns((string k, AggregatedRegistryResponse v, CancellationToken _) =>
+            {
+                data[k] = v;
+                return ValueTask.CompletedTask;
+            });
+        return store.Object;
     }
 
     private static readonly ProcessStepResponse FakeStep = new()

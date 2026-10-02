@@ -34,6 +34,28 @@ public sealed record AggregatedRegistryResponse
     /// </summary>
     public IReadOnlyCollection<RegistryClientError> ClientErrors { get; init; }
         = [];
+
+    /// <summary>
+    /// Convenience flag — <c>true</c> when <see cref="ClientErrors"/> is non-empty,
+    /// i.e. one or more downstream services failed during aggregation and their
+    /// registrations are absent. Lets agents detect degradation without parsing
+    /// the error list.
+    /// </summary>
+    public bool IsPartial { get; init; }
+
+    /// <summary>
+    /// UTC timestamp of the snapshot build. When the response is served from a
+    /// cache (server or distributed snapshot store), this reflects the age of the
+    /// underlying data — not the time the HTTP response was emitted.
+    /// </summary>
+    public DateTimeOffset GeneratedAt { get; init; }
+
+    /// <summary>
+    /// Content hash of the response payload (SHA-256, lowercase hex). Mirrors the
+    /// <c>ETag</c> response header — clients may send it back as
+    /// <c>If-None-Match</c> to receive a 304 when nothing changed.
+    /// </summary>
+    public string? Revision { get; init; }
 }
 
 /// <summary>

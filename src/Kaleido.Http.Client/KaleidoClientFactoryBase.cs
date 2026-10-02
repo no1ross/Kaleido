@@ -12,11 +12,13 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
         System.Net.Http.HttpClient httpClient,
         ICorrelationHeaderStamper headerStamper,
         string clientName,
-        string serviceName);
+        string serviceName,
+        TimeSpan? registryTtl);
 
     public TClient GetClient(string name)
     {
         var serviceName = GetServiceName(name);
+        var registryTtl = GetRegistryTtl(name);
 
         // Find the exact registered name (case-sensitive) from the map.
         // This handles the case where handlers call GetClient with lowercase
@@ -24,8 +26,13 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
         var registeredName = GetRegisteredName(name) ?? name;
 
         var httpClient = HttpClientFactory.CreateClient(registeredName);
-        return CreateClient(httpClient, HeaderStamper, registeredName, serviceName);
+        return CreateClient(httpClient, HeaderStamper, registeredName, serviceName, registryTtl);
     }
+
+    private TimeSpan? GetRegistryTtl(string name) =>
+        RouteOptionsMap.RegistryTtls.TryGetValue(name, out var ttl)
+            ? ttl
+            : null;
 
     private string GetServiceName(string name) =>
         RouteOptionsMap.Options.TryGetValue(name, out var serviceName)

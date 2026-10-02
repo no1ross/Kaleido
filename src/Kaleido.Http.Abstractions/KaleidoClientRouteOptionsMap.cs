@@ -14,6 +14,16 @@ internal interface IKaleidoClientRouteOptionsMap
 #pragma warning disable KAL0018
     IDictionary<string, string> Options { get; }
 #pragma warning restore KAL0018
+
+    /// <summary>
+    /// Per-client registry-cache TTL written at registration time (only
+    /// entries with a configured TTL appear). Read by the client factories so
+    /// every client instance shares the registered freshness window.
+    /// </summary>
+    // KAL0018: IDictionary is intentional — see Options.
+#pragma warning disable KAL0018
+    IDictionary<string, TimeSpan> RegistryTtls { get; }
+#pragma warning restore KAL0018
 }
 
 /// <summary>
@@ -27,5 +37,11 @@ internal abstract class KaleidoClientRouteOptionsMap : IKaleidoClientRouteOption
 #pragma warning disable KAL0018
     public IDictionary<string, string> Options { get; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+#pragma warning restore KAL0018
+
+    // KAL0018: see IKaleidoClientRouteOptionsMap.RegistryTtls
+#pragma warning disable KAL0018
+    public IDictionary<string, TimeSpan> RegistryTtls { get; } =
+        new Dictionary<string, TimeSpan>(StringComparer.OrdinalIgnoreCase);
 #pragma warning restore KAL0018
 }

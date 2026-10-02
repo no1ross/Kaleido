@@ -394,7 +394,7 @@ medium_priority_items:
     priority: MEDIUM
     breaking_change: possibly
     status: COMPLETED
-    progress_note: "PR-11: Reset() is now a non-blocking Interlocked.Exchange (documented benign stale-write). Fetch-once lifetime + explicit InvalidateRegistry() already documented."
+    progress_note: "PR-11: Reset() is now a non-blocking Interlocked.Exchange (documented benign stale-write). Fetch-once lifetime + explicit InvalidateRegistry() already documented. PR-13: opt-in TTL — Kaleido:RegistryTtl (shared + per-client) expires client snapshots against the remote's GeneratedAt; KaleidoHttpMapOptions.RegistryCacheTtl bounds the aggregate snapshot."
 
   MP-013:
     title: Move ProcessResponseFactory out of Http.Abstractions (internal statics in Kaleido.Http)
@@ -627,6 +627,11 @@ low_priority_items:
     title: Document client registry-cache lifetime/staleness
     effort_days: 0.25
     priority: LOW
+    status: COMPLETED
+    progress_note: "PR-13: Kaleido.Http.Client README documents RegistryTtl (per-client +
+Kaleido:RegistryTtl default), canonical kaleido:{serviceName} store keys, InvalidateRegistry
+semantics under a shared IRegistrySnapshotStore, and the resilience-handler seam for
+transient-failure retry."
   LP-015:
     title: Dead API surface (GetAll(), Stamper.Sanitize, CorrelationAccessor)
     effort_days: 0.25
@@ -955,7 +960,14 @@ ai_compatibility:
         DegradedServices list.
       effort: small
       breaking_change: additive
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
+      progress_note: >
+        (PR-13) AggregatedRegistryResponse now carries GeneratedAt, Revision
+        (SHA-256 of the per-caller filtered payload), and IsPartial. The
+        endpoint emits ETag + Cache-Control and honors If-None-Match -> 304.
+        ClientErrors is the DegradedServices equivalent; ?strict returns 502
+        (full body included) when partial. FreshnessRequired->stale blocking is
+        covered by ?refresh + client Kaleido:RegistryTtl instead of a new header.
 
     AI-004:
       title: Authorization is possible but not the easy default — registry leaks all capabilities
