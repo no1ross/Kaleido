@@ -151,6 +151,11 @@ dotnet_diagnostic.IDE0290.severity = warning   ; Use primary constructor
 dotnet_diagnostic.IDE2000.severity = warning   ; Disallow multiple blank lines
 dotnet_style_allow_multiple_blank_lines_experimental = false
 
+; KAL1009: demoted to warning — a new source type without a fixture flags,
+; does not break the build (reported at assembly level, hence global scope;
+; KAL1010 still errors on empty stub fixtures)
+dotnet_diagnostic.KAL1009.severity = warning
+
 ; ── .NET / CA: naming & design ───────────────────────────────────────────────
 dotnet_diagnostic.CA1018.severity = warning   ; Mark attributes with AttributeUsageAttribute
 dotnet_diagnostic.CA1047.severity = warning   ; Do not declare protected member in sealed type
