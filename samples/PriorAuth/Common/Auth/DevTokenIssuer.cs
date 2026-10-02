@@ -42,11 +42,15 @@ public static class DevTokenIssuer
         return $"dev.{payload}.{Sign(payload, key)}";
     }
 
-    /// <summary>Issues a service-to-service token with the "internal" role.</summary>
+    /// <summary>
+    /// Issues a service-to-service token carrying the "internal" role plus all
+    /// sample domain roles — trusted infrastructure sees the full capability
+    /// surface; caller scoping happens at the edge (router).
+    /// </summary>
     public static string IssueServiceToken(
         string serviceName,
         string key) =>
-        Issue($"svc-{serviceName}", ["internal"], key);
+        Issue($"svc-{serviceName}", ["internal", "intake", "radiology", "admin"], key);
 
     public static bool TryValidate(
         string token,

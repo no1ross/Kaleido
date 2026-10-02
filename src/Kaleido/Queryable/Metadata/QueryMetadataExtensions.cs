@@ -105,7 +105,6 @@ internal static class QueryMetadataExtensions
             attribute.Description
                 ?? attribute.DisplayName
                 ?? attribute.Name,
-            attribute.Visibility,
             queryViewType.ToViewPageable(contextType, attribute),
             parametersType.ToParameterMetadata(typeDescriber, constraintMapper),
             viewType.ToOutputFieldMetadata(typeDescriber),

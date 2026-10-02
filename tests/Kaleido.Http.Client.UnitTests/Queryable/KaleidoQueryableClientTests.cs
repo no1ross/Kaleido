@@ -1,4 +1,3 @@
-using Kaleido.Http.Client;
 using Kaleido.Http.Client.Queryable;
 using Kaleido.Http.Queryable;
 using Kaleido.Observability;
@@ -42,7 +41,6 @@ public sealed class KaleidoQueryableClientTests
                 DisplayName = "Grid",
                 Description = "Grid view.",
                 Version = "1.0.0",
-                Visibility = QueryViewVisibility.Public,
                 QueryUrl = "/queryable/my-context/grid/query",
                 Parameters = [],
                 OutputFields = [],

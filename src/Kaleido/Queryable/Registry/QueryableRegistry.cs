@@ -77,7 +77,6 @@ internal sealed class QueryableRegistry : IQueryableRegistry
                 .Select(Project)
                 .ToArray(),
             Views = views
-                .Where(x => x.Metadata.Visibility == QueryViewVisibility.Public)
                 .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(view => Project(view, registration.Metadata.Authorization))
                 .ToArray()
@@ -106,7 +105,6 @@ internal sealed class QueryableRegistry : IQueryableRegistry
                 .Select(Project)
                 .ToArray(),
             Views = views
-                .Where(x => x.ViewMetadata.Visibility == QueryViewVisibility.Public)
                 .OrderBy(x => x.ViewMetadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(view => Project(view, metadata.Authorization))
                 .ToArray()
@@ -150,7 +148,6 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             Description = registration.Metadata.Description,
             DisplayName = registration.Metadata.DisplayName,
             Version = registration.Metadata.Version,
-            Visibility = registration.Metadata.Visibility,
             Pageable = registration.Metadata.Pageable,
             Parameters = registration.Metadata.Parameters?
                 .Select(Project)
@@ -180,7 +177,6 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             Description = registration.ViewMetadata.Description,
             DisplayName = registration.ViewMetadata.DisplayName,
             Version = registration.ViewMetadata.Version,
-            Visibility = registration.ViewMetadata.Visibility,
             Pageable = registration.ViewMetadata.Pageable,
             Parameters = registration.ViewMetadata.Parameters?
                 .Select(Project)

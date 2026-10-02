@@ -150,8 +150,6 @@ public sealed record QueryableViewResponse
 
     public string? Version { get; init; }
 
-    public required QueryViewVisibility Visibility { get; init; }
-
     public PageableMetadata? Pageable { get; init; }
 
     /// <summary>
@@ -182,7 +180,6 @@ public sealed record QueryableViewResponse
             Description = item.Description,
             DisplayName = item.DisplayName,
             Version = item.Version,
-            Visibility = item.Visibility,
             Pageable = item.Pageable,
             Authorization = item.Authorization,
             QueryUrl = QueryableContractUrls.QueryViewQuery(

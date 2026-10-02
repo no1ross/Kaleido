@@ -327,6 +327,20 @@ internal sealed class KaleidoProcessClient(
         headerStamper.Stamp(registryRequest);
         using var registryResponse = await SendAsync(registryRequest, cancellationToken);
 
+        if (registryResponse.StatusCode == HttpStatusCode.NotFound)
+        {
+            // The service exposes no process registry — treat as empty.
+            return [];
+        }
+
+        if (!registryResponse.IsSuccessStatusCode)
+        {
+            throw new KaleidoHttpClientException(
+                HttpClientErrorCodes.RequestFailed,
+                $"Process registry request to '{serviceName}' failed with status code {(int)registryResponse.StatusCode} ({registryResponse.StatusCode}).",
+                registryResponse.StatusCode);
+        }
+
         return await registryResponse.Content.ReadFromJsonAsync<IReadOnlyList<ProcessorRegistryResponse>>(
             KaleidoJsonOptions.Options, cancellationToken)
             ?? throw new KaleidoHttpClientException(

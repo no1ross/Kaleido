@@ -2,7 +2,7 @@ using Kaleido.Exceptions;
 using Kaleido.Queryable.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Queryable.UnitTests;
+namespace Kaleido.UnitTests.Queryable;
 
 public sealed class QueryableServiceTests
     : Kaleido.UnitTests.SutFixture
@@ -267,7 +267,7 @@ public sealed class QueryableServiceTests
             typeof(EmptyQueryViewParameters),
             typeof(TestContext),
             new QueryContextMetadata("test-context", "Test Context", "Test Context", "1.0.0", "Unit Test", QueryContextKind.Delegated, new PageableMetadata(25, 250), []),
-            new QueryViewMetadata("test-view", "1.0.0", "Test View", "Test View", QueryViewVisibility.Public, null, [], []));
+            new QueryViewMetadata("test-view", "1.0.0", "Test View", "Test View", null, [], []));
 
     private static QueryViewRegistration CreateViewRegistration() =>
         new(
@@ -275,7 +275,7 @@ public sealed class QueryableServiceTests
             typeof(TestViewContract),
             typeof(EmptyQueryViewParameters),
             typeof(TestContext),
-            new QueryViewMetadata("test-view", "1.0.0", "Test View", "Test View", QueryViewVisibility.Public, null, [], []));
+            new QueryViewMetadata("test-view", "1.0.0", "Test View", "Test View", null, [], []));
 
     public sealed class TestContext
     {
