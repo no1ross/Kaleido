@@ -345,7 +345,7 @@ medium_priority_items:
     effort_days: 1
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
 
   MP-007:
     title: Delete GuardQueryAsync (duplicates ExceptionMiddleware, skips telemetry)
@@ -441,7 +441,7 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
 
   MP-018:
     title: Collapse ProcessorStepRegistry multi-pass materialization (~250 lines)
@@ -543,7 +543,7 @@ medium_priority_items:
     effort_days: 1-2
     priority: MEDIUM
     breaking_change: false
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
 
   MP-026:
     title: Registry always-200 contract undocumented; client step-name rule diverges from server attribute
@@ -1191,7 +1191,7 @@ ai_compatibility:
         docs/ANALYZERS.md before assigning).
       effort: small
       breaking_change: possibly
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
 
     AI-012:
       title: Correlation context invariants undocumented
@@ -1206,7 +1206,7 @@ ai_compatibility:
         Propose analyzer for overwrite/propagation violations.
       effort: small
       breaking_change: false
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
 
     AI-013:
       title: Missing canonical patterns document
@@ -1220,7 +1220,7 @@ ai_compatibility:
         points table. Add "For Code Generators" section to AGENTS.md.
       effort: medium
       breaking_change: false
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
 
     AI-014:
       title: Security/constraint analyzer rules undocumented
@@ -1234,7 +1234,7 @@ ai_compatibility:
         Add quick-fix providers where feasible.
       effort: small
       breaking_change: false
-      status: PENDING_DESIGN_REVIEW
+      status: COMPLETED
 
 analyzer_proposals:
   KAL0020:

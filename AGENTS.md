@@ -155,6 +155,18 @@ The rule is: **one observability signal per cancellation, at the lowest level th
 - Use global usings where appropriate to reduce redundant using statements
 - Keep using statements minimal and project-specific
 
+## For code generators
+
+- Read [`docs/PATTERNS.md`](./docs/PATTERNS.md) first — it is the canonical
+  convention doc (step/handler shape, sync-vs-async sources, options
+  snapshots, exceptions, DI, correlation).
+- The vocabulary is: **Processor** = owns/executes steps; **Process** = one
+  executing instance. See `src/ARCHITECTURE.md` → Terminology.
+- `docs/ANALYZERS.md` → *Security-relevant analyzers* lists every rule and
+  the bypass it prevents — generate compliant code, never suppress KAL rules.
+- Correlation invariants (one RequestId per request, echo-or-generate,
+  automatic outbound propagation) are in `src/ARCHITECTURE.md`.
+
 ## Documentation rules
 
 - Root docs should explain how the projects fit together.
