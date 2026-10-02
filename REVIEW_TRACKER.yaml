@@ -842,6 +842,27 @@ external_findings:
     effort: medium
     breaking_change: false
     status: COMPLETED
+  EXT-20:
+    title: Swagger/OpenAPI regressed — auth metadata noise + endpoint grouping buckets
+    source: owner feedback (PriorAuth sample swagger)
+    severity: LOW
+    effort: small
+    breaking_change: false
+    status: PENDING
+    description: >
+      Two visible regressions on generated OpenAPI docs since the EXT-12/EXT-08/MP-005
+      changes:
+      (a) RequireAuthorization/WithKaleidoAuthorization metadata adds padlocks,
+          Authorize button, and 401/403 response entries on every operation —
+          noisy for capability docs.
+      (b) Endpoint grouping shifted: framework endpoints (catalog/execute/state/
+          transfer) land in shared "Processes"/"Kaleido" buckets mapped before the
+          per-capability DisplayName groups, so framework noise sits on top.
+      Candidate fixes: a Swashbuckle OperationFilter stripping security/40x entries
+      in the sample, dropping extra .Produces(401/403) declarations, reordering
+      mapping so capability groups precede framework groups, or
+      ExcludeFromDescription on framework endpoints.
+    notes: "Deferred — cosmetic; enforcement unaffected."
 
 # ──────────────────────────────────────────────────────────────────────────────
 # AI Compatibility Findings  (added post-v2.1)
