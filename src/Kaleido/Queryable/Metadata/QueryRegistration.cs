@@ -72,7 +72,6 @@ public sealed record QueryViewMetadata
     string Version,
     string DisplayName,
     string Description,
-    QueryViewVisibility Visibility,
     PageableMetadata? Pageable,
     IReadOnlyList<QueryParameterMetadata>? Parameters,
     IReadOnlyList<QueryOutputFieldMetadata>? OutputFields,
@@ -165,8 +164,6 @@ public record QueryableViewRegistryItem
     public string? DisplayName { get; init; }
 
     public string? Version { get; init; }
-
-    public required QueryViewVisibility Visibility { get; init; }
 
     public PageableMetadata? Pageable { get; init; }
 

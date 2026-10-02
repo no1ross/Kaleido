@@ -11,7 +11,6 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Queryable.ViewSources;
     DisplayName = "Radiology - Requesting Provider Search",
     Version = "1.0.0",
     Description = "Searchable requesting provider results scoped to the active radiology process.",
-    Visibility = QueryViewVisibility.Public,
     DefaultSortField = nameof(RequestingProviderSearchQueryContext.ProviderName))]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class RequestingProviderSearchViewSource(

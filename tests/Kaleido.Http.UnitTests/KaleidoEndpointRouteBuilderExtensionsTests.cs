@@ -213,8 +213,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
                         Name = "Test-View",
                         Description = "Test View",
                         DisplayName = "Test View",
-                        Version = "1.0.0",
-                        Visibility = QueryViewVisibility.Public
+                        Version = "1.0.0"
                     }
                 ]
             }

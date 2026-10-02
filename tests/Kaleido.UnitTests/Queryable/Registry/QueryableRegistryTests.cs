@@ -88,7 +88,7 @@ public sealed class QueryableRegistryTests
             typeof(object),
             typeof(object),
             metadata,
-            new QueryViewMetadata("view1", "desc", "display", "1.0", QueryViewVisibility.Public, null, null, null));
+            new QueryViewMetadata("view1", "desc", "display", "1.0", null, null, null));
 
         contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
         viewRegistry.Setup(r => r.Registrations).Returns([]);
@@ -120,7 +120,7 @@ public sealed class QueryableRegistryTests
             typeof(object),
             typeof(object),
             metadata,
-            new QueryViewMetadata("view1", "desc", "display", "1.0", QueryViewVisibility.Public, null, null, null));
+            new QueryViewMetadata("view1", "desc", "display", "1.0", null, null, null));
 
         contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
         viewRegistry.Setup(r => r.Registrations).Returns([]);
@@ -170,7 +170,7 @@ public sealed class QueryableRegistryTests
             typeof(int),
             typeof(long),
             typeof(object),
-            new QueryViewMetadata("view1", "desc", "display", "1.0", QueryViewVisibility.Public, null, null, null));
+            new QueryViewMetadata("view1", "desc", "display", "1.0", null, null, null));
 
         contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
         viewRegistry.Setup(r => r.Registrations)
@@ -202,7 +202,7 @@ public sealed class QueryableRegistryTests
             typeof(long),
             typeof(object),
             metadata,
-            new QueryViewMetadata("view1", "desc", "display", "1.0", QueryViewVisibility.Public, null, null, null));
+            new QueryViewMetadata("view1", "desc", "display", "1.0", null, null, null));
 
         delegatedRegistry.Setup(r => r.Registrations).Returns([delegatedRegistration]);
 
@@ -215,7 +215,7 @@ public sealed class QueryableRegistryTests
     }
 
     [Fact]
-    public void Registrations_ExcludesNonPublicViews()
+    public void Registrations_IncludesAllViews()
     {
         var contextRegistry = new Mock<IQueryContextRegistry>();
         var viewRegistry = new Mock<IQueryViewRegistry>();
@@ -228,11 +228,11 @@ public sealed class QueryableRegistryTests
 
         var publicView = new QueryViewRegistration(
             typeof(object), typeof(object), typeof(object), typeof(object),
-            new QueryViewMetadata("public-view", "1.0", "Public View", "desc", QueryViewVisibility.Public, null, null, null));
+            new QueryViewMetadata("public-view", "1.0", "Public View", "desc", null, null, null));
 
         var internalView = new QueryViewRegistration(
             typeof(object), typeof(object), typeof(object), typeof(object),
-            new QueryViewMetadata("internal-view", "1.0", "Internal View", "desc", QueryViewVisibility.Internal, null, null, null));
+            new QueryViewMetadata("internal-view", "1.0", "Internal View", "desc", null, null, null, new AuthorizationMetadata(null, ["internal"])));
 
         contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
         viewRegistry.Setup(r => r.Registrations).Returns([publicView, internalView]);
@@ -241,8 +241,9 @@ public sealed class QueryableRegistryTests
         var registry = CreateSut(contextRegistry.Object, viewRegistry.Object, delegatedRegistry.Object);
 
         var views = registry.Registrations.First().Views;
-        Assert.Single(views);
-        Assert.Equal("public-view", views.First().Name);
+        Assert.Equal(2, views.Count);
+        Assert.Contains(views, v => v.Name == "public-view");
+        Assert.Contains(views, v => v.Name == "internal-view");
     }
 
     [Fact]
@@ -261,7 +262,7 @@ public sealed class QueryableRegistryTests
 
         var viewRegistration = new QueryViewRegistration(
             typeof(object), typeof(object), typeof(object), typeof(object),
-            new QueryViewMetadata("view1", "1.0", "View", "desc", QueryViewVisibility.Public, null, null, null));
+            new QueryViewMetadata("view1", "1.0", "View", "desc", null, null, null));
 
         contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
         viewRegistry.Setup(r => r.Registrations).Returns([viewRegistration]);
@@ -291,7 +292,7 @@ public sealed class QueryableRegistryTests
 
         var viewRegistration = new QueryViewRegistration(
             typeof(object), typeof(object), typeof(object), typeof(object),
-            new QueryViewMetadata("view1", "1.0", "View", "desc", QueryViewVisibility.Public, null, null, null, viewAuthorization));
+            new QueryViewMetadata("view1", "1.0", "View", "desc", null, null, null, viewAuthorization));
 
         contextRegistry.Setup(r => r.Registrations).Returns([contextRegistration]);
         viewRegistry.Setup(r => r.Registrations).Returns([viewRegistration]);
@@ -315,7 +316,7 @@ public sealed class QueryableRegistryTests
         var delegatedRegistration = new DelegatedQueryViewRegistration(
             typeof(object), typeof(object), typeof(object), typeof(object),
             metadata,
-            new QueryViewMetadata("view1", "desc", "display", "1.0", QueryViewVisibility.Public, null, null, null));
+            new QueryViewMetadata("view1", "desc", "display", "1.0", null, null, null));
 
         contextRegistry.Setup(r => r.Registrations).Returns([]);
         viewRegistry.Setup(r => r.Registrations).Returns([]);

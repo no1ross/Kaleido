@@ -3,8 +3,10 @@ using Kaleido.Http;
 using Kaleido.Http.Client;
 using Kaleido.Http.Registry;
 using Kaleido.Samples.PriorAuth.Auth;
+using Kaleido.Observability.OpenTelemetry;
 using Microsoft.Net.Http.Headers;
 using Yarp.ReverseProxy.Transforms;
+using Kaleido.Samples.PriorAuth.Router;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,7 +55,26 @@ builder.Services.AddKaleido(builder.Configuration)
     // (IProcessResponseFactory, authorizer) + the Exception/
     // Observability middleware so errors render as Kaleido error JSON.
     .AddHttp()
-    .AddHttpClients();
+    .AddHttpClients()
+    .AddOpenTelemetry();
+
+// Registry aggregation is a service-to-service call: always stamp the
+// router's service token (never the inbound user token) so the cached
+// aggregate stays caller-agnostic — the router's own FilterForCaller
+// scopes the result per user at the edge.
+var routerServiceToken =
+    $"Bearer {DevTokenIssuer.IssueServiceToken("router", authKey)}";
+
+foreach (var clientName in builder.Configuration
+             .GetSection("Kaleido:Clients")
+             .GetChildren()
+             .Select(c => c.Key))
+{
+    builder.Services.AddHttpClient(
+        clientName,
+        client => client.DefaultRequestHeaders.TryAddWithoutValidation(
+            HeaderNames.Authorization, routerServiceToken));
+}
 
 builder.Services.AddDevAuth();
 
@@ -91,6 +112,9 @@ app.MapReverseProxy();
 
 app.Run();
 
-public sealed record DevLoginRequest(string Name);
+namespace Kaleido.Samples.PriorAuth.Router
+{
+    public sealed record DevLoginRequest(string Name);
 
-public sealed record DevLoginResponse(string Token);
+    public sealed record DevLoginResponse(string Token);
+}
