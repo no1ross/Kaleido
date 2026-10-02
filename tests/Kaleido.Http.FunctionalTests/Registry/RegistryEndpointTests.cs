@@ -1,15 +1,15 @@
 using System.Net;
 using Kaleido.Http.Registry;
-using Kaleido.Process.AspNetCore.FunctionalTests.Fixtures;
+using Kaleido.Processor.AspNetCore.FunctionalTests.Fixtures;
 
-namespace Kaleido.Process.AspNetCore.FunctionalTests.Registry;
+namespace Kaleido.Processor.AspNetCore.FunctionalTests.Registry;
 
-[Collection(nameof(ProcessAspNetCoreSuite))]
+[Collection(nameof(ProcessorAspNetCoreSuite))]
 public sealed class RegistryEndpointTests
 {
     private readonly HttpClient _client;
 
-    public RegistryEndpointTests(ProcessAspNetCoreFixture fixture)
+    public RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
     {
         _client = fixture.Client;
     }

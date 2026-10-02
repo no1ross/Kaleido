@@ -1,7 +1,7 @@
 using Kaleido.Authorization;
 using Kaleido.Exceptions;
 using Kaleido.Observability;
-using Kaleido.Process.Context;
+using Kaleido.Processor.Context;
 using Kaleido.Registry;
 using Microsoft.Extensions.Logging.Abstractions;
 

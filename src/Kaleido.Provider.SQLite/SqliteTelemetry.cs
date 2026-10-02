@@ -21,7 +21,7 @@ public static class SqliteTelemetry
 
     // ── Tag key names ─────────────────────────────────────────────────────────
 
-    public const string TagProcessId = "kaleido.process.id";
+    public const string TagProcessId = "kaleido.processor.id";
 
     // ── Metric names ──────────────────────────────────────────────────────────
 

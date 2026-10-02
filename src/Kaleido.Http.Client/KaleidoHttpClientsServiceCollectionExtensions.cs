@@ -38,7 +38,7 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
             var strictProbe = entry?.StrictRegistryProbe ?? config.StrictRegistryProbe;
 
             // Register Process client
-            builder.AddProcessClient(o =>
+            builder.AddProcessorClient(o =>
             {
                 o.Name = name;
                 o.BaseUrl = baseUrl;

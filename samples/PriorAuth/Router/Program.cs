@@ -52,7 +52,7 @@ builder.Services
 
 builder.Services.AddKaleido(builder.Configuration)
     // AddHttp registers the HTTP service layer MapRegistry resolves
-    // (IProcessResponseFactory, authorizer) + the Exception/
+    // (IProcessorResponseFactory, authorizer) + the Exception/
     // Observability middleware so errors render as Kaleido error JSON.
     .AddHttp()
     .AddHttpClients()

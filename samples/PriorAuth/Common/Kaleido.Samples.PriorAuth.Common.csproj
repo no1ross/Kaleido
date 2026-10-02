@@ -21,8 +21,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="Kaleido.Process" />
-    <Using Include="Kaleido.Process.Execution" />
+    <Using Include="Kaleido.Processor" />
+    <Using Include="Kaleido.Processor.Execution" />
   		<Using Include="Kaleido.Queryable.Query" />
 </ItemGroup>
 

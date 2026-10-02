@@ -49,7 +49,7 @@ public interface IQueryViewSourceAsync<TQueryContext, TView>
 {
 }
 
-public interface IDelegateQueryViewSource<TDelegateContext, TView, TViewParameters>
+public interface IDelegatedQueryViewSource<TDelegateContext, TView, TViewParameters>
     where TDelegateContext : class
     where TView : class
     where TViewParameters : class
@@ -59,8 +59,8 @@ public interface IDelegateQueryViewSource<TDelegateContext, TView, TViewParamete
         CancellationToken cancellationToken = default);
 }
 
-public interface IDelegateQueryViewSource<TDelegateContext, TView>
-    : IDelegateQueryViewSource<TDelegateContext, TView, EmptyQueryViewParameters>
+public interface IDelegatedQueryViewSource<TDelegateContext, TView>
+    : IDelegatedQueryViewSource<TDelegateContext, TView, EmptyQueryViewParameters>
     where TDelegateContext : class
     where TView : class
 {

@@ -128,11 +128,11 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
         CancellationToken cancellationToken)
         where TParameters : class
     {
-        if (source is not IDelegateQueryViewSource<TDelegateContext, TView, TParameters> delegatedSource)
+        if (source is not IDelegatedQueryViewSource<TDelegateContext, TView, TParameters> delegatedSource)
         {
             throw new KaleidoFrameworkException(
                 FrameworkErrorCodes.TypeMismatch,
-                $"Delegated query view '{registration.QueryViewType.FullName}' must implement '{typeof(IDelegateQueryViewSource<TDelegateContext, TView, TParameters>).FullName}'.");
+                $"Delegated query view '{registration.QueryViewType.FullName}' must implement '{typeof(IDelegatedQueryViewSource<TDelegateContext, TView, TParameters>).FullName}'.");
         }
 
         if (request is not IQueryRequest<TParameters> typedRequest)

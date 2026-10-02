@@ -15,7 +15,7 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Queryable.ViewSources;
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class RequestingProviderSearchViewSource(
     RequestingProviderSearchClient requestingProviderSearchClient)
-    : IDelegateQueryViewSource<RequestingProviderSearchQueryContext, RequestingProviderSearchView, RequestingProviderSearchQueryParameters>
+    : IDelegatedQueryViewSource<RequestingProviderSearchQueryContext, RequestingProviderSearchView, RequestingProviderSearchQueryParameters>
 {
     public async Task<QueryResult<RequestingProviderSearchView>> ExecuteAsync(
         IQueryRequest<RequestingProviderSearchQueryParameters> request,

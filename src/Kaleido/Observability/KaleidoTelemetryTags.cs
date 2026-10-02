@@ -3,7 +3,7 @@ namespace Kaleido.Observability;
 /// <summary>
 /// Canonical OpenTelemetry tag key names for cross-cutting correlation context fields.
 /// These tags are shared across Process, Queryable, and HTTP transport instrumentation.
-/// For domain-specific tag keys see <c>ProcessTelemetry</c> and <c>QueryableTelemetry</c>.
+/// For domain-specific tag keys see <c>ProcessorTelemetry</c> and <c>QueryableTelemetry</c>.
 /// </summary>
 public static class KaleidoTelemetryTags
 {

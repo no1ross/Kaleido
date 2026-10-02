@@ -1,12 +1,12 @@
 using Kaleido.Http.Client;
-using Kaleido.Http.Process;
+using Kaleido.Http.Processor;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Services;
 
 public sealed class HistoryClient(
-    IKaleidoProcessClientFactory processClientFactory,
+    IKaleidoProcessorClientFactory processClientFactory,
     ILogger<HistoryClient> logger)
 {
     public async Task UpsertAsync(

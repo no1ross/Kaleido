@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Security.Claims;
 using Kaleido.Observability;
 using Microsoft.AspNetCore.Authentication;
-using Kaleido.Process.Observability;
+using Kaleido.Processor.Observability;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -258,7 +258,7 @@ public sealed class ObservabilityMiddlewareTests
         Assert.Equal("req-9", activity.GetTagItem(KaleidoTelemetryTags.RequestId));
         Assert.Equal(instanceId.ToString(), activity.GetTagItem(KaleidoTelemetryTags.ProcessorInstanceId));
         Assert.Equal("intake", activity.GetTagItem(KaleidoTelemetryTags.SourceProcessor));
-        Assert.Equal(processId.ToString(), activity.GetTagItem(ProcessTelemetry.TagProcessId));
-        Assert.Equal("Capture", activity.GetTagItem(ProcessTelemetry.TagStepName));
+        Assert.Equal(processId.ToString(), activity.GetTagItem(ProcessorTelemetry.TagProcessId));
+        Assert.Equal("Capture", activity.GetTagItem(ProcessorTelemetry.TagStepName));
     }
 }

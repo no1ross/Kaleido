@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Kaleido.Authorization;
 using Kaleido.Exceptions;
 using Kaleido.Http.Authorization;
-using Kaleido.Process.Context;
+using Kaleido.Processor.Context;
 using Kaleido.Registry;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Authorization;

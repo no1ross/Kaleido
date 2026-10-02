@@ -1,5 +1,5 @@
 using Kaleido.Eventing;
-using Kaleido.Process.Eventing;
+using Kaleido.Processor.Eventing;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.UnitTests.Eventing;

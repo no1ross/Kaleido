@@ -26,7 +26,7 @@ See also:
   - `POST /{prefix}/queryable/{context}/{view}/{queryRoute}` — local or delegated view query
 
 ### Process endpoint mapping
-- `ProcessEndpointRouteBuilderExtensions` — `MapProcessor()` extension
+- `ProcessorEndpointRouteBuilderExtensions` — `MapProcessor()` extension
   - `GET /{prefix}/processes/steps/{step}/metadata` — per-step metadata
   - `POST /{prefix}/processes/execute` — multi-step execute endpoint
   - `GET /{prefix}/processes/{processId}` — process state
@@ -127,7 +127,7 @@ A capability declaring `Policy` on a host with no `IAuthorizationService` fails 
 ## Registry endpoint
 
 `MapKaleidoHttp()` always maps `GET /{service}/registry` when a runtime is present. The endpoint returns an `AggregatedRegistryResponse` (`Processes`, `Queryables`, `ClientErrors`) built from:
-- the local processor's registry (`IProcessRegistry`)
+- the local processor's registry (`IProcessorRegistry`)
 - the local queryable registry (`IQueryableRegistry`)
 - when `AggregateRegistry` is set: every downstream client registered via `AddHttpClients()` — one `GET /{downstream}/registry` fetch per named client, deduplicated through a shared cache (`KaleidoRemoteRegistry` in `Kaleido.Http.Client`), so the Process and Queryable halves never issue separate calls
 
@@ -156,7 +156,7 @@ The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from
 ## Where to look
 
 - `QueryableEndpointRouteBuilderExtensions.cs` — Queryable route publication
-- `ProcessEndpointRouteBuilderExtensions.cs` — Process route publication
+- `ProcessorEndpointRouteBuilderExtensions.cs` — Process route publication
 - `RegistryEndpointRouteBuilderExtensions.cs` — Registry route publication
 - `Contracts/ProcessContractUrls.cs` / `ProcessRoutePaths.cs` — Process URL generation
 - `Contracts/QueryableContractUrls.cs` / `QueryableRoutePaths.cs` — Queryable URL generation

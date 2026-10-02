@@ -1,5 +1,5 @@
 using Kaleido.Http.Client;
-using Kaleido.Http.Process;
+using Kaleido.Http.Processor;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
@@ -14,7 +14,7 @@ public sealed class CaptureRequestedServiceHandler(
     IntakeDbContext dbContext,
     ProcedureCodeClient procedureCodeClient,
     ProductCodeMappingClient productCodeMappingClient,
-    IKaleidoProcessClientFactory processClientFactory,
+    IKaleidoProcessorClientFactory processClientFactory,
     HistoryClient historyClient)
     : IProcessStepHandler<Intake.Process.Steps.CaptureRequestedServiceStep>
 {

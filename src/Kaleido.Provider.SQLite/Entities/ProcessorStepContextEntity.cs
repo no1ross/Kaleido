@@ -1,0 +1,46 @@
+namespace Kaleido.Provider.SQLite.Entities;
+
+internal sealed class ProcessorStepContextEntity
+{
+    public Guid ProcessId
+    {
+        get;
+        set;
+    }
+
+    public string StepName
+    {
+        get;
+        set;
+    } = string.Empty;
+
+    public string Version
+    {
+        get;
+        set;
+    } = string.Empty;
+
+    public StepExecutionStatus Status
+    {
+        get;
+        set;
+    }
+
+    public string? LatestRequestId
+    {
+        get;
+        set;
+    }
+
+    public DateTimeOffset? LastExecuted
+    {
+        get;
+        set;
+    }
+
+    public ProcessorContextEntity? Context
+    {
+        get;
+        set;
+    }
+}

@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using Kaleido.Process.Observability;
+using Kaleido.Processor.Observability;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Queryable.Observability;
@@ -118,7 +118,7 @@ internal sealed class QueryableObservability(
 
         if (correlation.ProcessId.HasValue)
         {
-            activity?.SetTag(ProcessTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
+            activity?.SetTag(ProcessorTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
         }
 
         activity?.SetTag(QueryableTelemetry.TagQueryContext, details.QueryContextName);

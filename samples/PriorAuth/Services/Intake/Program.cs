@@ -70,7 +70,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.RequireAuthorization = true;
         o.RequireProcessOwnership = true;
     })
-    .UseSqliteProcessContextStore(processConnectionString)
+    .UseSqliteProcessorContextStore(processConnectionString)
     .AddHttpClients()
     .AddOpenTelemetry();
 
@@ -89,7 +89,7 @@ await using (var scope = app.Services.CreateAsyncScope())
     var dbContext =
         scope.ServiceProvider.GetRequiredService<IntakeDbContext>();
     var processDbContext =
-        scope.ServiceProvider.GetRequiredService<SqliteProcessContextDbContext>();
+        scope.ServiceProvider.GetRequiredService<SqliteProcessorContextDbContext>();
 
     await dbContext.Database.EnsureCreatedAsync();
     await processDbContext.Database.EnsureCreatedAsync();

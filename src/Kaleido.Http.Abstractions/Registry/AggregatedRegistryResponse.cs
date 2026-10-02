@@ -1,4 +1,4 @@
-using Kaleido.Http.Process;
+using Kaleido.Http.Processor;
 using Kaleido.Http.Queryable;
 
 namespace Kaleido.Http.Registry;
@@ -13,7 +13,7 @@ public sealed record AggregatedRegistryResponse
 {
     /// <summary>
     /// All process processor registrations, including this processor's local steps
-    /// and all downstream processors registered via <c>AddProcessClient()</c>.
+    /// and all downstream processors registered via <c>AddProcessorClient()</c>.
     /// </summary>
     public IReadOnlyCollection<ProcessorRegistryResponse> Processes { get; init; }
         = [];
@@ -66,7 +66,7 @@ public sealed record RegistryClientError
 {
     /// <summary>
     /// The registered name of the downstream client (e.g. <c>"Member"</c>, <c>"CodeSet"</c>).
-    /// Matches the <c>Name</c> passed to <c>AddProcessClient()</c> or <c>AddQueryableClient()</c>.
+    /// Matches the <c>Name</c> passed to <c>AddProcessorClient()</c> or <c>AddQueryableClient()</c>.
     /// </summary>
     public required string ClientName { get; init; }
 

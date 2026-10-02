@@ -115,8 +115,8 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
-        builder.Services.AddSingleton<IProcessStepRegistry>(CreateProcessStepRegistry());
-        builder.Services.AddSingleton<IProcessRegistry>(CreateProcessRegistry());
+        builder.Services.AddSingleton<IProcessorStepRegistry>(CreateProcessStepRegistry());
+        builder.Services.AddSingleton<IProcessorRegistry>(CreateProcessRegistry());
         return builder.Build();
     }
 
@@ -139,8 +139,8 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
-        builder.Services.AddSingleton<IProcessStepRegistry>(CreateProcessStepRegistry());
-        builder.Services.AddSingleton<IProcessRegistry>(CreateProcessRegistry());
+        builder.Services.AddSingleton<IProcessorStepRegistry>(CreateProcessStepRegistry());
+        builder.Services.AddSingleton<IProcessorRegistry>(CreateProcessRegistry());
         builder.Services.AddSingleton(Mock.Of<IQueryableService>());
         builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry());
         return builder.Build();
@@ -148,7 +148,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
     // ── Process registry helpers ─────────────────────────────────────────────
 
-    private static IProcessStepRegistry CreateProcessStepRegistry()
+    private static IProcessorStepRegistry CreateProcessStepRegistry()
     {
         var registration = new ProcessStepRegistration(
             typeof(TestStep),
@@ -160,15 +160,15 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
             new RepeatableOptions { Enabled = false },
             new ProcessStepMetadata("Test-Step", "Test step", "1.0.0", "Test Step"));
 
-        var registry = new Mock<IProcessStepRegistry>();
+        var registry = new Mock<IProcessorStepRegistry>();
         registry.Setup(x => x.Registrations).Returns([registration]);
         registry.Setup(x => x.InitialRegistrations).Returns([registration]);
         return registry.Object;
     }
 
-    private static IProcessRegistry CreateProcessRegistry()
+    private static IProcessorRegistry CreateProcessRegistry()
     {
-        var registry = new Mock<IProcessRegistry>();
+        var registry = new Mock<IProcessorRegistry>();
         registry.Setup(x => x.Registrations).Returns(
         [
             new ProcessorRegistryItem

@@ -74,7 +74,7 @@ public sealed class DelegatedQueryViewRegistryTests
     [QueryView(Name = "secured-delegated-view", Version = "1.0.0")]
     [KaleidoAuthorization(Policy = "view-policy")]
     private sealed class SecuredDelegatedView
-        : IDelegateQueryViewSource<DelegateContext, DelegateContract>
+        : IDelegatedQueryViewSource<DelegateContext, DelegateContract>
     {
         public Task<QueryResult<DelegateContract>> ExecuteAsync(
             IQueryRequest<EmptyQueryViewParameters> request,
