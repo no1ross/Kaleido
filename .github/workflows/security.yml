@@ -1,0 +1,32 @@
+name: Security scans
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  devskim:
+    name: DevSkim
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run DevSkim
+      uses: microsoft/DevSkim-Action@v1
+      with:
+        directory-to-scan: .
+        sarif-output-directory: sarif
+        ignore-filters: |
+          */bin/*,*/obj/*,*/node_modules/*,*/dist/*,*/data/*,*packages.lock.json
+
+    - name: Upload SARIF
+      if: ${{ hashFiles('sarif/*.sarif') != '' }}
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: sarif
