@@ -49,8 +49,7 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader();
     });
 });
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddDevSwagger();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<IntakeDbContext>();
 

@@ -77,6 +77,7 @@ foreach (var clientName in builder.Configuration
 }
 
 builder.Services.AddDevAuth();
+builder.Services.AddDevSwagger();
 
 builder.Services.AddHealthChecks();
 
@@ -106,6 +107,12 @@ app.MapPost("/auth/login", (DevLoginRequest request) =>
 app.MapHealthChecks("/health");
 
 app.UseDevAuth();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.MapRegistry();
 app.MapReverseProxy();

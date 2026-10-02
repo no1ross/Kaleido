@@ -30,6 +30,39 @@ public static class DevAuthExtensions
             .UseAuthorization();
 
     /// <summary>
+    /// Registers Swagger with a Bearer security definition for the dev-token
+    /// scheme so Swagger UI exposes an Authorize button. Paste a token from
+    /// the router's <c>POST /auth/login</c>.
+    /// </summary>
+    public static IServiceCollection AddDevSwagger(
+        this IServiceCollection services)
+    {
+        services.AddEndpointsApiExplorer();
+        services.AddSwaggerGen(options =>
+        {
+            options.AddSecurityDefinition(
+                "Bearer",
+                new Microsoft.OpenApi.OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = Microsoft.OpenApi.SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    In = Microsoft.OpenApi.ParameterLocation.Header,
+                    Description =
+                        "Dev persona token — get one from POST /auth/login on the router."
+                });
+
+            options.AddSecurityRequirement(document =>
+                new Microsoft.OpenApi.OpenApiSecurityRequirement
+                {
+                    [new Microsoft.OpenApi.OpenApiSecuritySchemeReference("Bearer", document)] = []
+                });
+        });
+
+        return services;
+    }
+
+    /// <summary>
     /// Registers <see cref="DevTokenForwardingHandler"/> for the given named
     /// Kaleido clients so outbound calls carry the inbound user token or an
     /// <c>internal</c> service token.
