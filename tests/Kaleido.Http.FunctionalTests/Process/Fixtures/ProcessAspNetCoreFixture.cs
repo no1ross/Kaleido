@@ -57,7 +57,7 @@ public sealed class ProcessAspNetCoreFixture
                         app.UseRouting();
                         app.UseEndpoints(endpoints =>
                         {
-                            endpoints.MapKaleido();
+                            endpoints.MapKaleidoHttp();
                             endpoints.MapRegistry();
                         });
                     });

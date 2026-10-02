@@ -103,7 +103,7 @@ public sealed class AuthorizationAspNetCoreFixture
 
                         app.UseEndpoints(endpoints =>
                         {
-                            endpoints.MapKaleido();
+                            endpoints.MapKaleidoHttp();
                         });
                     });
                 })

@@ -2,6 +2,7 @@ using Kaleido.Process;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
+[KaleidoAuthorization(Roles = "radiology")]
 [ProcessStep(
     Name = "CaptureServicingProvider",
     DisplayName = "Radiology - Capture Servicing Provider",

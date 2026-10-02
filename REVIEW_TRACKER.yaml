@@ -335,7 +335,7 @@ medium_priority_items:
     breaking_change: true
     status: COMPLETED
     notes: >
-      MapKaleido() added as single public entry point. MapProcessor/MapQueryable
+      MapKaleidoHttp() added as single public entry point. MapProcessor/MapQueryable
       made internal. Framework auto-detects active runtimes and maps only those.
       Startup log emitted at Information level. All samples + functional test
       fixtures migrated. 5 new unit tests.
@@ -693,7 +693,7 @@ external_findings:
     effort: medium
     breaking_change: true
     status: COMPLETED
-    notes: "Resolved via MP-005: MapKaleido() replaces Map* pair; auto-detects active runtimes."
+    notes: "Resolved via MP-005: MapKaleidoHttp() replaces Map* pair; auto-detects active runtimes."
   EXT-07:
     title: Map* return IEndpointRouteBuilder — authorization cannot compose
     source: KAL-H09
@@ -753,8 +753,20 @@ external_findings:
     severity: HIGH
     effort: medium
     breaking_change: true
-    status: PENDING_DESIGN_REVIEW
+    status: COMPLETED
     related: [EXT-07]
+    resolution_note: >
+      (EXT-12) Correlation identity trust: TrustCorrelationIdentity predicate
+      (default: trust w/o auth infra, IsAuthenticated when auth present);
+      caller name/roles stamped post-auth onto KaleidoCorrelationContext via
+      endpoint filter. Discovery: [KaleidoAuthorization] metadata projected
+      into RequireAuthorization per endpoint + filtered catalogs/registries;
+      RequireAuthorization option guards undeclared capabilities. Ownership:
+      ProcessorContext.Owner/OwnerRoles stamped at creation; resume/state gated
+      by owner-or-role-mate (IKaleidoAuthorizationEvaluator in core);
+      POST /processes/{id}/transfer reassigns; RequireProcessOwnership option.
+      Fan-out: documented transport responsibility; PriorAuth sample
+      demonstrates dev-token auth + forwarding end-to-end.
     description: >
       Three related gaps in the HTTP auth story, merged into one design:
       (a) Inbound X-Kaleido-* correlation headers are trusted as identity.

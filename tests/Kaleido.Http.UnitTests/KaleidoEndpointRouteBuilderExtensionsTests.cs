@@ -11,28 +11,28 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     : SutFixture
 {
     [Fact]
-    public void MapKaleido_WhenEndpointsIsNull_Throws()
+    public void MapKaleidoHttp_WhenEndpointsIsNull_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            KaleidoEndpointRouteBuilderExtensions.MapKaleido(null!));
+            KaleidoEndpointRouteBuilderExtensions.MapKaleidoHttp(null!));
     }
 
     [Fact]
-    public void MapKaleido_ReturnsIEndpointConventionBuilder()
+    public void MapKaleidoHttp_ReturnsIEndpointConventionBuilder()
     {
         var endpoints = CreateProcessAndQueryableEndpoints();
 
-        var result = endpoints.MapKaleido();
+        var result = endpoints.MapKaleidoHttp();
 
         Assert.NotNull(result);
     }
 
     [Fact]
-    public void MapKaleido_WithProcessOnly_MapsProcessEndpoints()
+    public void MapKaleidoHttp_WithProcessOnly_MapsProcessEndpoints()
     {
         var endpoints = CreateProcessOnlyEndpoints();
 
-        endpoints.MapKaleido();
+        endpoints.MapKaleidoHttp();
 
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ProcessEndpointName));
@@ -40,11 +40,11 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     }
 
     [Fact]
-    public void MapKaleido_WithQueryableOnly_MapsQueryableEndpoints()
+    public void MapKaleidoHttp_WithQueryableOnly_MapsQueryableEndpoints()
     {
         var endpoints = CreateQueryableOnlyEndpoints();
 
-        endpoints.MapKaleido();
+        endpoints.MapKaleidoHttp();
 
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.CatalogEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.RegistryEndpointName));
@@ -52,22 +52,22 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     }
 
     [Fact]
-    public void MapKaleido_WithBoth_MapsBothEndpoints()
+    public void MapKaleidoHttp_WithBoth_MapsBothEndpoints()
     {
         var endpoints = CreateProcessAndQueryableEndpoints();
 
-        endpoints.MapKaleido();
+        endpoints.MapKaleidoHttp();
 
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.CatalogEndpointName));
     }
 
     [Fact]
-    public void MapKaleido_WithNeither_DoesNotThrowAndMapsNoKaleidoEndpoints()
+    public void MapKaleidoHttp_WithNeither_DoesNotThrowAndMapsNoKaleidoEndpoints()
     {
         var endpoints = CreateEmptyEndpoints();
 
-        var result = endpoints.MapKaleido();
+        var result = endpoints.MapKaleidoHttp();
 
         Assert.NotNull(result);
         Assert.Null(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));

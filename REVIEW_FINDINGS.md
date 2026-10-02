@@ -735,7 +735,7 @@ Two independent external reviews were merged into this document. **Provenance ca
 
 - **Severity:** High · **Category:** Security / endpoint ergonomics
 - **Description:** `MapProcessor`/`MapQueryable`/`MapRegistry` return `IEndpointRouteBuilder`, so consumers can't chain `.RequireAuthorization()`/endpoint conventions; docs recommend `MapGroup` wrapping as a workaround. Endpoints execute steps, query data, and expose registry metadata with no framework auth posture. (KAL-H09)
-- **Recommended Fix:** Return `IEndpointConventionBuilder`/`RouteGroupBuilder` (or one `MapKaleido()` group); document the unauthenticated default; authorization integration tests (401/403).
+- **Recommended Fix:** Return `IEndpointConventionBuilder`/`RouteGroupBuilder` (or one `MapKaleidoHttp()` group); document the unauthenticated default; authorization integration tests (401/403).
 - **Complexity:** Medium · **Breaking:** Yes — Public API · **Migration:** Low–Medium · **Automatable:** Yes
 
 #### [EXT-08] Queryable surface proliferates: registries × parallel source families — **HIGH** ✅ RESOLVED
@@ -895,7 +895,7 @@ The metadata answers **"What operations exist, and how do I call them?"** It doe
 #### [AI-004] Registry leaks all capabilities regardless of caller authorization — **HIGH**
 
 - **Severity:** High · **Category:** Security / API design
-- **Description:** Discovery exposes every registered capability to every caller. EXT-07 (resolved: `MapKaleido()` returns `IEndpointConventionBuilder`) makes applying auth easier, but the registry still returns all operations without filtering. MCP guidance allows the discoverable tool set to vary according to request authorization. An AI client should receive only what it is permitted to invoke — leaking all capabilities raises both security and prompt-injection surface concerns.
+- **Description:** Discovery exposes every registered capability to every caller. EXT-07 (resolved: `MapKaleidoHttp()` returns `IEndpointConventionBuilder`) makes applying auth easier, but the registry still returns all operations without filtering. MCP guidance allows the discoverable tool set to vary according to request authorization. An AI client should receive only what it is permitted to invoke — leaking all capabilities raises both security and prompt-injection surface concerns.
 - **Recommended Fix:** Authorization-aware registry filtering: optional `ICapabilityFilter` contract consulted at discovery time, injected from `HttpContext` claims. Allow explicit include/exclude lists per service. Auth integration tests (401/403 on filtered capabilities).
 - **Complexity:** Medium · **Breaking:** Possibly
 - **Status:** **MERGED into EXT-12** — the HTTP auth epic covers inbound header trust, auth-aware discovery, and fan-out auth together.

@@ -65,7 +65,7 @@ app.UseCors("AllowAll");
 //    .InitializeAsync(
 //        app.Services);
 
-app.MapKaleido();
+app.MapKaleidoHttp();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

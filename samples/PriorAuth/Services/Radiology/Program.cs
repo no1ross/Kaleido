@@ -5,6 +5,7 @@ using Kaleido.Http.Client;
 using Kaleido.Observability.OpenTelemetry;
 using Kaleido.Provider.SQLite;
 using Kaleido.Samples.PriorAuth;
+using Kaleido.Samples.PriorAuth.Auth;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 using Microsoft.EntityFrameworkCore;
@@ -36,6 +37,13 @@ builder.Services.AddScoped<RequestingProviderSearchClient>();
 builder.Services.AddScoped<HistoryClient>();
 
 builder.Services.AddControllers();
+
+// Dev-token auth (sample stand-in for a real IdP) + outbound token forwarding
+// so downstream Kaleido calls carry the user token or an "internal" service token.
+builder.Services.AddDevAuth();
+builder.Services.AddDevTokenForwarding(
+    "CodeSet", "Configuration", "History", "Member", "Provider");
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -63,7 +71,11 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Radiology", StringComparison.Ordinal) ?? false;
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp()
+    .AddHttp(o =>
+    {
+        o.RequireAuthorization = true;
+        o.RequireProcessOwnership = true;
+    })
     .UseSqliteProcessContextStore(processConnectionString)
     .AddHttpClients()
     .AddOpenTelemetry();
@@ -74,7 +86,9 @@ app.UseCors("AllowAll");
 
 app.MapHealthChecks("/health");
 
-app.MapKaleido();
+app.UseDevAuth();
+
+app.MapKaleidoHttp();
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
@@ -92,8 +106,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseAuthorization();
 
 app.MapControllers();
 

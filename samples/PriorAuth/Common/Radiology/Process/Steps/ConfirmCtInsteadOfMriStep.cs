@@ -2,6 +2,7 @@ using Kaleido.Process;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
+[KaleidoAuthorization(Roles = "radiology")]
 [ProcessStep(
     Name = "ConfirmCtInsteadOfMri",
     DisplayName = "Radiology - Confirm CT Instead Of MRI",
