@@ -1,56 +1,67 @@
 namespace Kaleido.Http.Registry;
 
 /// <summary>
-/// Singleton cache for the aggregated registry response.
-/// Only stores fully-successful (zero <see cref="AggregatedRegistryResponse.ClientErrors"/>) results.
-/// Partial results are served to callers but never committed to cache, so the last
-/// clean snapshot remains available for subsequent calls.
+/// Server-side cache for the aggregated registry response, backed by
+/// <see cref="IRegistrySnapshotStore"/> (in-memory by default; aggregating
+/// hosts may register a distributed implementation). Only stores
+/// fully-successful (zero <see cref="AggregatedRegistryResponse.ClientErrors"/>)
+/// results. Partial results are served to callers but never committed to the
+/// store, so the last clean snapshot remains available for subsequent calls —
+/// and every request while degraded naturally retries the failed downstreams.
 /// </summary>
-internal sealed class HttpRegistryCache
+internal sealed class HttpRegistryCache(
+    IRegistrySnapshotStore store,
+    string key)
     : IDisposable
 {
-    private volatile AggregatedRegistryResponse? _cached;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
-    public void Dispose()
-    {
-        _lock.Dispose();
-    }
-
-    /// <summary>The last fully-clean cached response, or <c>null</c> if none exists yet.</summary>
-    public AggregatedRegistryResponse? Current => _cached;
+    public void Dispose() => _lock.Dispose();
 
     /// <summary>
-    /// Returns the cached response if one exists and <paramref name="forceRefresh"/> is false.
-    /// Otherwise, invokes <paramref name="build"/> to produce a fresh response.
-    /// The cache is only updated when the fresh response has no <see cref="AggregatedRegistryResponse.ClientErrors"/>.
+    /// Returns the cached snapshot while it is fresh: younger than
+    /// <paramref name="ttl"/> (null = never expires) and not force-refreshed —
+    /// except that refresh requests inside the <paramref name="refreshCooldown"/>
+    /// window are throttled back to the cache rather than fanning out again.
+    /// Otherwise invokes <paramref name="build"/>, stamps
+    /// <see cref="AggregatedRegistryResponse.GeneratedAt"/>/<c>IsPartial</c>,
+    /// and commits the result to the store only when it has no ClientErrors.
     /// </summary>
     public async Task<AggregatedRegistryResponse> GetOrBuildAsync(
+        TimeSpan? ttl,
+        TimeSpan refreshCooldown,
         bool forceRefresh,
         Func<CancellationToken, Task<AggregatedRegistryResponse>> build,
         CancellationToken cancellationToken)
     {
-        if (!forceRefresh && _cached is not null)
+        var cached = await store.GetAsync(key, cancellationToken);
+
+        if (cached is not null && ServeFromCache(cached, forceRefresh, ttl, refreshCooldown))
         {
-            return _cached;
+            return cached;
         }
 
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            if (!forceRefresh && _cached is not null)
+            cached = await store.GetAsync(key, cancellationToken);
+
+            if (cached is not null && ServeFromCache(cached, forceRefresh, ttl, refreshCooldown))
             {
-                return _cached;
+                return cached;
             }
 
             var result = await build(cancellationToken);
 
-            // Only advance the cache on a fully-clean result.
-            // Partial results are returned to the caller so they can see ClientErrors,
-            // but the last clean snapshot is preserved for non-refresh callers.
+            result = result with
+            {
+                GeneratedAt = DateTimeOffset.UtcNow,
+                IsPartial = result.ClientErrors.Count > 0
+            };
+
             if (result.ClientErrors.Count == 0)
             {
-                _cached = result;
+                await store.SetAsync(key, result, cancellationToken);
             }
 
             return result;
@@ -59,5 +70,23 @@ internal sealed class HttpRegistryCache
         {
             _lock.Release();
         }
+    }
+
+    private static bool ServeFromCache(
+        AggregatedRegistryResponse cached,
+        bool forceRefresh,
+        TimeSpan? ttl,
+        TimeSpan refreshCooldown)
+    {
+        var age = DateTimeOffset.UtcNow - cached.GeneratedAt;
+
+        // Throttle: refreshes inside the cooldown window reuse the snapshot
+        // instead of triggering another downstream fan-out.
+        if (forceRefresh)
+        {
+            return refreshCooldown > TimeSpan.Zero && age < refreshCooldown;
+        }
+
+        return ttl is null || age < ttl.Value;
     }
 }

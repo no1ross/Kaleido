@@ -18,14 +18,14 @@ public static class RegistryEndpointRouteBuilderExtensions
     /// Maps the unified registry endpoint at <c>GET /{service}/registry</c>.
     /// Returns a single <see cref="AggregatedRegistryResponse"/> containing this
     /// service's local process and queryable registrations; when
-    /// <paramref name="aggregate"/> is set the response also merges every
+    /// <paramref name="mapOptions"/>.<c>AggregateRegistry</c> is set the response also merges every
     /// downstream client registered via <c>AddHttpClients()</c>.
     /// <c>ClientErrors</c> reports downstream clients that failed — the endpoint
     /// always returns HTTP 200; a non-empty collection means a partial response.
     /// </summary>
     internal static RouteGroupBuilder MapRegistry(
         this IEndpointRouteBuilder endpoints,
-        bool aggregate)
+        KaleidoHttpMapOptions mapOptions)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
@@ -35,6 +35,8 @@ public static class RegistryEndpointRouteBuilderExtensions
 
         var queryableClientMap = endpoints.ServiceProvider
             .GetService<KaleidoQueryableClientRouteOptionsMap>();
+
+        var aggregate = mapOptions.AggregateRegistry;
 
         // Guard — aggregation requires AddHttpClients() with at least one
         // configured client. The route-options maps are singletons registered
@@ -63,9 +65,19 @@ public static class RegistryEndpointRouteBuilderExtensions
         var localQueryableRegistry = endpoints.ServiceProvider
             .GetService<IQueryableRegistry>();
 
-        // Resolve from DI if pre-registered, otherwise allocate a local instance
-        // captured in the closure — either way it is singleton-scoped to this endpoint.
-        var cache = endpoints.ServiceProvider.GetService<HttpRegistryCache>() ?? new HttpRegistryCache();
+        // Snapshot store — IRegistrySnapshotStore from DI (distributed impls
+        // registered by the host) or the in-memory default. The cache is
+        // singleton-scoped to this endpoint either way.
+        var snapshotStore =
+            endpoints.ServiceProvider.GetService<IRegistrySnapshotStore>()
+            ?? new InMemoryRegistrySnapshotStore();
+
+        // Canonical key — kaleido:{ServiceName}. Consumers reading this key
+        // from a shared store get exactly what this endpoint returns (the
+        // merged aggregate on a router, local registrations on a leaf).
+        var cache = new HttpRegistryCache(
+            snapshotStore,
+            $"kaleido:{localServiceOptions.ServiceName}");
 
         var group =
             endpoints.MapGroup("")
@@ -88,26 +100,34 @@ public static class RegistryEndpointRouteBuilderExtensions
                     var queryableClientFactory = httpContext.RequestServices
                         .GetService<IKaleidoQueryableClientFactory>();
                     var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
-
-                    if (!forceRefresh && cache.Current is not null)
-                    {
-                        logger.LogDebug("Registry cache hit — serving cached response.");
-                    }
-                    else if (forceRefresh)
-                    {
-                        logger.LogDebug("Registry cache bypassed (force refresh requested).");
-                    }
-                    else
-                    {
-                        logger.LogDebug("Registry cache miss — building fresh response.");
-                    }
+                    var strict = httpContext.Request.Query.ContainsKey("strict");
 
                     var authorizer =
                         httpContext.RequestServices
                             .GetService<IKaleidoAuthorizer>();
 
-                    var response = await cache.GetOrBuildAsync(forceRefresh, async ct =>
+                    var downstreamNames = aggregate
+                        ? DownstreamClientNames(processClientMap, queryableClientMap, localServiceOptions)
+                        : [];
+
+                    var response = await cache.GetOrBuildAsync(
+                        mapOptions.RegistryCacheTtl,
+                        mapOptions.RegistryRefreshCooldown,
+                        forceRefresh,
+                        async ct =>
                     {
+                        // Honored refreshes invalidate downstream client caches
+                        // first — the rebuild re-fetches, not replays stale
+                        // per-client snapshots.
+                        if (forceRefresh && aggregate)
+                        {
+                            InvalidateDownstream(
+                                downstreamNames,
+                                processClientFactory,
+                                queryableClientFactory,
+                                logger);
+                        }
+
                         var localProcesses =
                             GetLocalProcesses(localProcessorRegistry, localServiceOptions, responseFactory);
 
@@ -117,7 +137,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                         var (downstreamProcesses, downstreamQueryables, clientErrors) =
                             aggregate
                                 ? await GetDownstreamAsync(
-                                    DownstreamClientNames(processClientMap, queryableClientMap, localServiceOptions),
+                                    downstreamNames,
                                     processClientMap, processClientFactory,
                                     queryableClientMap, queryableClientFactory,
                                     logger, ct)
@@ -150,6 +170,11 @@ public static class RegistryEndpointRouteBuilderExtensions
                             ClientErrors = clientErrors
                         };
 
+                        if (forceRefresh)
+                        {
+                            logger.LogDebug("Registry rebuilt via force refresh.");
+                        }
+
                         if (result.ClientErrors.Count > 0)
                         {
                             logger.LogWarning(
@@ -181,6 +206,36 @@ public static class RegistryEndpointRouteBuilderExtensions
                                 cancellationToken);
                     }
 
+                    // Freshness contract: Revision hashes the per-caller
+                    // filtered payload (same content → same ETag); Cache-Control
+                    // advertises the configured staleness window.
+                    var revision = ComputeRevision(response);
+                    response = response with { Revision = revision };
+
+                    var etag = $"\"{revision}\"";
+                    httpContext.Response.Headers.ETag = etag;
+                    httpContext.Response.Headers.CacheControl =
+                        mapOptions.RegistryCacheTtl is { } ttl
+                            ? $"public, max-age={(int)ttl.TotalSeconds}"
+                            : "no-cache";
+
+                    if (httpContext.Request.Headers.IfNoneMatch.Any(
+                            value => string.Equals(value, etag, StringComparison.Ordinal)
+                                || string.Equals(value, "*", StringComparison.Ordinal)))
+                    {
+                        return Results.StatusCode(StatusCodes.Status304NotModified);
+                    }
+
+                    // ?strict — agents/gateways get a real failure signal when
+                    // the aggregate is partial; the full body is still included.
+                    if (strict && response.ClientErrors.Count > 0)
+                    {
+                        return Results.Json(
+                            response,
+                            KaleidoJsonOptions.Options,
+                            statusCode: StatusCodes.Status502BadGateway);
+                    }
+
                     return Results.Ok(response);
                 })
             .WithName(RegistryEndpointNames.RegistryEndpointName)
@@ -196,6 +251,48 @@ public static class RegistryEndpointRouteBuilderExtensions
                 "Adding a downstream client via AddProcessClient() or AddQueryableClient() makes it appear here automatically.");
 
         return group;
+    }
+
+    // SHA-256 over the filtered payload — same content always produces the
+    // same revision, so it is valid as an ETag (and safe to round-trip via
+    // If-None-Match) per caller persona.
+    private static string ComputeRevision(AggregatedRegistryResponse response)
+    {
+        var payload = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
+            response with { Revision = null },
+            KaleidoJsonOptions.Options);
+
+        return Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(payload)).ToLowerInvariant();
+    }
+
+    // On a real rebuild, drop each downstream client's cached registry first so
+    // GetRegistryAsync below performs a genuine re-fetch instead of replaying
+    // the shared per-client snapshot.
+    private static void InvalidateDownstream(
+        IReadOnlyCollection<string> clientNames,
+        IKaleidoProcessClientFactory? processFactory,
+        IKaleidoQueryableClientFactory? queryableFactory,
+        ILogger logger)
+    {
+        foreach (var name in clientNames)
+        {
+            try
+            {
+                if (processFactory is not null)
+                {
+                    processFactory.GetClient(name).InvalidateRegistry();
+                }
+                else
+                {
+                    queryableFactory?.GetClient(name).InvalidateRegistry();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to invalidate registry cache for client {ClientName}.", name);
+            }
+        }
     }
 
     private static async Task<AggregatedRegistryResponse> FilterForCaller(

@@ -19,8 +19,9 @@ internal sealed class KaleidoProcessClientFactory(
         System.Net.Http.HttpClient httpClient,
         ICorrelationHeaderStamper stamper,
         string clientName,
-        string serviceName)
+        string serviceName,
+        TimeSpan? registryTtl)
     {
-        return new KaleidoProcessClient(httpClient, stamper, logger, remoteRegistry, clientName, serviceName);
+        return new KaleidoProcessClient(httpClient, stamper, logger, remoteRegistry, clientName, serviceName, registryTtl);
     }
 }

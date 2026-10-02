@@ -76,7 +76,7 @@ public static class KaleidoEndpointRouteBuilderExtensions
         if (hasProcess || hasQueryable || mapOptions.AggregateRegistry)
         {
             builders.Add(
-                endpoints.MapRegistry(mapOptions.AggregateRegistry));
+                endpoints.MapRegistry(mapOptions));
         }
 
         return new RouteHandlerBuilder(builders);

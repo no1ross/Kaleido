@@ -12,7 +12,8 @@ internal sealed class KaleidoProcessClient(
     ILogger<KaleidoProcessClient> logger,
     KaleidoRemoteRegistry remoteRegistry,
     string clientName,
-    string serviceName = "")
+    string serviceName = "",
+    TimeSpan? registryTtl = null)
     : IKaleidoProcessClient
 {
     public async Task<IReadOnlyList<ProcessorRegistryResponse>> GetRegistryAsync(
@@ -316,5 +317,5 @@ internal sealed class KaleidoProcessClient(
 
     private async Task<IReadOnlyList<ProcessorRegistryResponse>> EnsureRegistryAsync(
         CancellationToken cancellationToken) =>
-        [.. (await remoteRegistry.GetAsync(clientName, serviceName, headerStamper, cancellationToken)).Processes];
+        [.. (await remoteRegistry.GetAsync(clientName, serviceName, registryTtl, headerStamper, cancellationToken)).Processes];
 }

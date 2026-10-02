@@ -36,6 +36,12 @@ internal static class KaleidoClientServiceCollectionExtensions
         var routeOptions = GetOrAddRouteOptions<TMap>(services);
         routeOptions.Options[options.Name] = options.RoutePrefix;
 
+        if (options.RegistryTtl.HasValue)
+        {
+            routeOptions.RegistryTtls[options.Name] = options.RegistryTtl.Value;
+        }
+
+        services.TryAddSingleton<Registry.IRegistrySnapshotStore, Registry.InMemoryRegistrySnapshotStore>();
         services.TryAddSingleton<KaleidoRemoteRegistry>();
         services.TryAddScoped<ICorrelationHeaderStamper, CorrelationHeaderStamper>();
         services.TryAddScoped<TFactoryInterface, TFactory>();
@@ -47,7 +53,10 @@ internal static class KaleidoClientServiceCollectionExtensions
         // safely skips duplicate names even when AddHttpClients() is called multiple times.
         var clientName = options.Name;
         var healthCheckName = $"kaleido-{clientName}";
-        var registryPath = registryUrlFactory(options.RoutePrefix);
+        var registryPath =
+            options.StrictRegistryProbe
+                ? $"{registryUrlFactory(options.RoutePrefix)}?strict"
+                : registryUrlFactory(options.RoutePrefix);
 
         services.AddHealthChecks();
         services.Configure<HealthCheckServiceOptions>(o =>
