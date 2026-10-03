@@ -16,6 +16,9 @@ metadata:
     v2.0 merges a second code-verified analysis pass (docs/PRERELEASE_PROMPT.md).
     v1 items re-validated; corrections and new findings appended below.
     See REVIEW_FINDINGS.md "Prior Findings — v1 Validation" for per-item status.
+    Items discovered while working another item carry discovered_during: <ID> and
+    relation: requires (parent can't be COMPLETE until done) | should (do alongside,
+    not a gate) | separate (independent schedule); the parent lists them in spawned: [...].
 
 critical_decisions:
   CR-001:
@@ -287,6 +290,7 @@ high_priority_items:
     priority: HIGH
     breaking_change: possibly
     status: PENDING_DESIGN_REVIEW
+    spawned: [HP-019, HP-021]
 
   HP-017:
     title: SQLite store test depth (round-trip fidelity, concurrency, update)
@@ -304,6 +308,59 @@ high_priority_items:
     priority: HIGH
     breaking_change: false
     status: COMPLETED
+
+  HP-019:
+    title: PriorAuth sample auth model (personas, roles vs. call identity, router proxy, annotations, UI login)
+    description: >
+      Persona login never fired (UI joined routerBaseUrl + 'auth/login' without a slash).
+      Router proxy stamped an all-roles service token on anonymous requests. The on-behalf-of
+      token mixed 'internal' + calling-service name into the user's roles, making every
+      forwarded caller an owner role-mate. Capabilities used a non-existent 'intake' role.
+      Fix: roles describe the user only; an actor claim describes service-to-service hops
+      (InternalCaller policy); EnforceAuthorization on every host; corrected annotations.
+    discovered_during: HP-016
+    relation: separate
+    effort_days: 1
+    priority: HIGH
+    breaking_change: false
+    status: IN_PROGRESS
+    spawned: [HP-022]
+    progress_note: "Plan: ~/.devin/plans/plan-a635fa55a8541ae7.md (Commit 3)."
+
+  HP-021:
+    title: EnforceAuthorization (zero trust) switch + AllowAnonymous opt-in
+    description: >
+      Replace KaleidoHttpOptions.RequireAuthorization / RequireProcessOwnership with
+      AddKaleido(o => o.EnforceAuthorization). Off (default) = nothing enforced. On = every
+      capability requires an authenticated caller; [KaleidoAuthorization] narrows to
+      Roles/Policy or opens with AllowAnonymous = true. Fixes: empty attribute open even when
+      enforcing; router filtering undeclared leaf entries with its own (open) setting; empty
+      processor shells in the registry; unconditional auth metadata on the transfer endpoint.
+    discovered_during: HP-019
+    relation: requires
+    effort_days: 1-2
+    priority: HIGH
+    breaking_change: true
+    status: IN_PROGRESS
+    spawned: [MP-028]
+    progress_note: "Plan: ~/.devin/plans/plan-a635fa55a8541ae7.md (Commits 1-2)."
+
+  HP-022:
+    title: Audit fields (CreatedBy/CreatedUtc/UpdatedBy/UpdatedUtc) on PriorAuth Intake/Radiology/History entities
+    description: >
+      Requirement: every Intake/Radiology entity records who created and updated it. No
+      CreatedBy/UpdatedBy exist today; timestamps are inconsistent. Design: IAuditable +
+      scoped EF SaveChangesInterceptor stamping from IKaleidoCorrelationContextAccessor
+      CallerName (fallback "system"). Not Member. History keeps LastUpdatedUtc via explicit
+      interface implementation. Local intake/radiology/history DBs must be recreated
+      (EnsureCreated, no migrations).
+    discovered_during: HP-019
+    relation: separate
+    effort_days: 0.5-1
+    priority: HIGH
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+    progress_note: "Design: ~/.devin/plans/plan-a635fa55a8541ae7.md (Discovered along the way)."
 
 medium_priority_items:
   MP-001:
@@ -569,6 +626,20 @@ medium_priority_items:
       attribute is present. Not-found error lists available registry steps.
       Compile-time literal validation of step-name strings is a consumer
       analyzer rule -- see consumer_analyzer_candidates.
+
+  MP-028:
+    title: Extract PriorAuth + ECommerce samples to their own repos; replace with small task-focused samples
+    description: >
+      The large samples exist mainly to verify the framework in one solution. Move them to
+      their own repos consuming published packages; add small samples here, one per task.
+      Include: ECommerce AddItemToCart (and cart steps) as the AllowAnonymous = true example,
+      and an "anonymous -> login -> transfer" sample.
+    discovered_during: HP-021
+    relation: separate
+    effort_days: 3-5
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_DECISION
 
 low_priority_items:
   LP-001:

@@ -115,7 +115,7 @@ v1 described `Kaleido.AspNetCore/` containing `QueryableValueNormalizer`/`Proces
 
 ### MP-001..MP-004, LP-001..LP-003 — **UNCHANGED** (still valid as written)
 
-MP-002 caveat: SQLite store coverage is thinner than feared — see MP-021. LP-002 partially addressed by HP-020 (validation bugs found in `ValidatePage`).
+MP-002 caveat: SQLite store coverage is thinner than feared — see MP-021. LP-002 partially addressed by HP-014 (validation bugs found in `ValidatePage`).
 
 ---
 
