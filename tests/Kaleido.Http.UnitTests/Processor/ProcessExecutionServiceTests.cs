@@ -48,7 +48,6 @@ public sealed class ProcessExecutionServiceTests
             runtime,
             Mock.Of<IProcessorContextStore>(),
             new KaleidoServiceOptions { ServiceName = "test-processor" },
-            new KaleidoHttpOptions(),
             correlation.Object,
             responseFactory,
             authorizer ?? stepAuthorizer.Object,
@@ -240,6 +239,123 @@ public sealed class ProcessExecutionServiceTests
         runtime.Verify(
             x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenAnySubmittedStepDenied_RejectsWholeRequestBeforeRunning()
+    {
+        var allowed = CreateRegistration();
+        var registry = new Mock<IProcessorStepRegistry>();
+        registry.Setup(x => x.Find(allowed.Metadata.Name)).Returns(allowed);
+
+        var runtime = new Mock<IProcessorRuntime>();
+
+        var authorizer = new Mock<IKaleidoAuthorizer>();
+        authorizer
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<AuthorizationMetadata?>(),
+                allowed.Metadata.Name,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        authorizer
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<AuthorizationMetadata?>(),
+                "Denied",
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(
+                new KaleidoAuthorizationException(
+                    "Denied",
+                    callerIsAuthenticated: false));
+
+        var service = CreateSut(
+            registry.Object,
+            runtime.Object,
+            Mock.Of<IProcessExecutionResponseFactory>(),
+            authorizer: authorizer.Object);
+
+        var request = new ExecuteProcessRequest
+        {
+            Steps =
+            [
+                new ProcessStepRequest
+                {
+                    StepName = allowed.Metadata.Name,
+                    Request = JsonSerializer.SerializeToElement(new { value = "abc" })
+                },
+                new ProcessStepRequest
+                {
+                    StepName = "Denied",
+                    Request = JsonSerializer.SerializeToElement(new { })
+                }
+            ]
+        };
+
+        await Assert.ThrowsAsync<KaleidoAuthorizationException>(
+            () => service.ExecuteAsync(request, CancellationToken.None));
+
+        runtime.Verify(
+            x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenStepUnknown_AuthorizesAsUndeclared()
+    {
+        var registry = new Mock<IProcessorStepRegistry>();
+        var authorizer = new Mock<IKaleidoAuthorizer>();
+
+        var service = CreateSut(
+            registry.Object,
+            CompletingRuntime(),
+            Mock.Of<IProcessExecutionResponseFactory>(),
+            authorizer: authorizer.Object);
+
+        await service.ExecuteAsync(
+            new ExecuteProcessRequest
+            {
+                Steps =
+                [
+                    new ProcessStepRequest
+                    {
+                        StepName = "NoSuchStep",
+                        Request = JsonSerializer.SerializeToElement(new { })
+                    }
+                ]
+            },
+            CancellationToken.None);
+
+        authorizer.Verify(
+            x => x.AuthorizeAsync(null, "NoSuchStep", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenNoStepsSubmitted_AuthorizesAsUndeclared()
+    {
+        var authorizer = new Mock<IKaleidoAuthorizer>();
+
+        var service = CreateSut(
+            Mock.Of<IProcessorStepRegistry>(),
+            CompletingRuntime(),
+            Mock.Of<IProcessExecutionResponseFactory>(),
+            authorizer: authorizer.Object);
+
+        await service.ExecuteAsync(
+            new ExecuteProcessRequest { Steps = [] },
+            CancellationToken.None);
+
+        authorizer.Verify(
+            x => x.AuthorizeAsync(null, It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    private static IProcessorRuntime CompletingRuntime()
+    {
+        var runtime = new Mock<IProcessorRuntime>();
+        runtime
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateProcessResult("any", new TestResponse()));
+        return runtime.Object;
     }
 
     private static ProcessResult CreateProcessResult(string stepName, object response) =>

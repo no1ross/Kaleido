@@ -199,7 +199,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                     // capabilities the caller may not invoke are omitted.
                     // The cache holds the unfiltered union; filtering is
                     // per-request.
-                    if (authorizer is not null)
+                    if (authorizer?.IsEnforced == true)
                     {
                         response =
                             await FilterForCaller(
@@ -317,6 +317,19 @@ public static class RegistryEndpointRouteBuilderExtensions
                     : await authorizer.FilterAsync(processor.Steps,
                         x => x.Authorization,
                         cancellationToken);
+
+            // A processor whose every step was filtered out is invisible to
+            // the caller — don't advertise an empty shell.
+            var hadSteps =
+                processor.InitialSteps.Count > 0 || processor.Steps?.Count > 0;
+
+            var hasSteps =
+                initialSteps.Count > 0 || steps?.Count > 0;
+
+            if (hadSteps && !hasSteps)
+            {
+                continue;
+            }
 
             processes.Add(
                 processor with
