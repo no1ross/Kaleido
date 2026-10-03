@@ -324,7 +324,7 @@ high_priority_items:
     priority: HIGH
     breaking_change: false
     status: IN_PROGRESS
-    spawned: [HP-022, HP-023, MP-029, MP-030]
+    spawned: [HP-022, HP-023, HP-024, MP-029, MP-030, MP-031]
     progress_note: >
       Plan: ~/.devin/plans/plan-a635fa55a8541ae7.md (Commit 3). Sample code committed;
       PriorAuth UI build now succeeds; HP-023 remains open for the ECommerce UI template.
@@ -381,6 +381,26 @@ high_priority_items:
       PriorAuth templates fixed; its build and 2 UI tests pass. Three component-style
       budget warnings resolved by sharing scoped SCSS without raising budgets.
       ECommerce template remains to be fixed and verified.
+
+  HP-024:
+    title: PriorAuth Configuration callers page non-pageable contexts
+    description: >
+      CaptureRequestedService fails while Intake queries product-code-mappings.
+      ProductCodeMappingClient sends QueryApiPage for a context without [Pageable];
+      Intake/Radiology ProcedureModalityClient do the same for procedure-modality-rules.
+      Remove unsupported Page from all three calls and verify the workflow.
+      The reported 500 status is not explained by the expected 400 validation
+      response and remains to be diagnosed if it persists after the client fix.
+    discovered_during: HP-019
+    relation: requires
+    effort_days: 0.1
+    priority: HIGH
+    breaking_change: false
+    status: IN_PROGRESS
+    progress_note: >
+      Removed unsupported paging from ProductCodeMappingClient and Intake/Radiology
+      ProcedureModalityClient. Release build 0 errors/0 warnings; 804 tests pass.
+      Live workflow/500 requires service restart and retry; do not close yet.
 
 medium_priority_items:
   MP-001:
@@ -690,6 +710,21 @@ medium_priority_items:
     priority: MEDIUM
     breaking_change: possibly
     status: PENDING_DECISION
+
+  MP-031:
+    title: Investigate EF Core MultipleCollectionIncludeWarning in PriorAuth runtime
+    description: >
+      An EF Core warning about multiple collection navigations was observed
+      during the failing Intake flow. The Configuration ProductCodeMappingQueryContextSource
+      projects scalar fields only and does not produce this warning. Find the actual query
+      and verify whether it needs AsSplitQuery or a more targeted projection; do not
+      relax EF warnings or globally change query splitting without evidence.
+    discovered_during: HP-019
+    relation: separate
+    effort_days: 0.25-0.5
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_VERIFICATION
 
 low_priority_items:
   LP-001:
