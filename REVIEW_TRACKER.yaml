@@ -327,7 +327,7 @@ high_priority_items:
     spawned: [HP-022, HP-023, MP-029, MP-030]
     progress_note: >
       Plan: ~/.devin/plans/plan-a635fa55a8541ae7.md (Commit 3). Sample code committed;
-      UI build verification blocked by HP-023 (requires).
+      PriorAuth UI build now succeeds; HP-023 remains open for the ECommerce UI template.
 
   HP-021:
     title: EnforceAuthorization (zero trust) switch + AllowAnonymous opt-in
@@ -376,7 +376,11 @@ high_priority_items:
     effort_days: 0.1
     priority: HIGH
     breaking_change: false
-    status: PENDING_IMPLEMENTATION
+    status: IN_PROGRESS
+    progress_note: >
+      PriorAuth templates fixed; its build and 2 UI tests pass. Three component-style
+      budget warnings resolved by sharing scoped SCSS without raising budgets.
+      ECommerce template remains to be fixed and verified.
 
 medium_priority_items:
   MP-001:
