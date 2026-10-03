@@ -18,15 +18,16 @@ namespace Kaleido.Http.Authorization;
 internal interface IKaleidoAuthorizer
 {
     /// <summary>
-    /// <c>true</c> when <see cref="KaleidoServiceOptions.EnforceAuthorization"/> is set.
+    /// <c>true</c> when <see cref="KaleidoServiceOptions.AuthorizationMode"/> is not <c>None</c>.
     /// </summary>
     bool IsEnforced { get; }
 
     /// <summary>
     /// Returns whether the caller may access the capability. Always true when
-    /// <see cref="KaleidoServiceOptions.EnforceAuthorization"/> is off; when on,
-    /// a null <paramref name="authorization"/> (undeclared) requires an
-    /// authenticated caller.
+    /// <see cref="KaleidoServiceOptions.AuthorizationMode"/> is <c>None</c>.
+    /// A null <paramref name="authorization"/> (undeclared) requires an
+    /// authenticated caller in <c>Authenticated</c> mode and is denied in
+    /// <c>ZeroTrust</c> mode.
     /// </summary>
     Task<bool> CanAccessAsync(
         AuthorizationMetadata? authorization,

@@ -6,6 +6,10 @@ namespace Kaleido.UnitTests.Registry;
 public sealed class AuthorizationMetadataTests
     : SutFixture
 {
+    private static AuthorizationMetadata CreateSut(
+        string? policy = null, string[]? roles = null, bool allowAnonymous = false) =>
+        new(policy, roles ?? []) { AllowAnonymous = allowAnonymous };
+
     private static readonly string[] InternalAdminRoles = ["internal", "admin"];
     private static readonly string[] SpacedRolesExpected = ["a", "b", "c"];
 
@@ -70,6 +74,16 @@ public sealed class AuthorizationMetadataTests
         Assert.Equal(
             SpacedRolesExpected,
             metadata.Roles);
+    }
+
+    [Fact]
+    public void IsExplicit_RequiresRolePolicyOrAllowAnonymous()
+    {
+        Assert.False(CreateSut().IsExplicit());
+        Assert.False(CreateSut(policy: "  ").IsExplicit());
+        Assert.True(CreateSut(roles: ["radiology"]).IsExplicit());
+        Assert.True(CreateSut(policy: "can-view").IsExplicit());
+        Assert.True(CreateSut(allowAnonymous: true).IsExplicit());
     }
 
     [Fact]

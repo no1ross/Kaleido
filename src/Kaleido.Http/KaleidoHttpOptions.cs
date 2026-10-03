@@ -6,7 +6,7 @@ namespace Kaleido.Http;
 /// itself — these options shape how inbound correlation headers are
 /// interpreted against the host's authentication middleware. Capability
 /// authorization is controlled by
-/// <see cref="KaleidoServiceOptions.EnforceAuthorization"/>.
+/// <see cref="KaleidoServiceOptions.AuthorizationMode"/>.
 /// </summary>
 public sealed class KaleidoHttpOptions
 {

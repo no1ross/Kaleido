@@ -147,6 +147,6 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Select(x => x.ToFieldMetadata(_dataTypeMapper))
                 .ToArray(),
-            AuthorizationMetadata.ForType(contextType));
+            AuthorizationMetadata.ForType(contextType) ?? AuthorizationMetadata.Unspecified);
     }
 }

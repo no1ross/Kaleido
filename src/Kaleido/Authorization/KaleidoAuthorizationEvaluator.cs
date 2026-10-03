@@ -11,13 +11,14 @@ namespace Kaleido.Authorization;
 /// <see cref="KaleidoCorrelationContext.CallerRoles"/> — populated by the
 /// transport from the authenticated principal, never headers). An
 /// <see cref="KaleidoAuthorizationException"/> is thrown on denial.
-/// Nothing is enforced unless
-/// <see cref="KaleidoServiceOptions.EnforceAuthorization"/> is <c>true</c>.
+/// Nothing is enforced when <see cref="KaleidoServiceOptions.AuthorizationMode"/>
+/// is <see cref="KaleidoAuthorizationMode.None"/>.
 /// </summary>
 public interface IKaleidoAuthorizationEvaluator
 {
     /// <summary>
-    /// <c>true</c> when <see cref="KaleidoServiceOptions.EnforceAuthorization"/> is set.
+    /// <c>true</c> when <see cref="KaleidoServiceOptions.AuthorizationMode"/> is
+    /// not <see cref="KaleidoAuthorizationMode.None"/>.
     /// </summary>
     bool IsEnforced { get; }
 
@@ -25,8 +26,9 @@ public interface IKaleidoAuthorizationEvaluator
     /// Returns whether the caller may access the capability. When enforced, the
     /// caller must be authenticated unless the capability declares
     /// <c>AllowAnonymous</c>, plus any declared roles (any-of) and policy.
-    /// A null <paramref name="authorization"/> means undeclared — authenticated
-    /// caller only.
+    /// A null or empty <paramref name="authorization"/> means undeclared: any
+    /// authenticated caller in <see cref="KaleidoAuthorizationMode.Authenticated"/>
+    /// mode, denied in <see cref="KaleidoAuthorizationMode.ZeroTrust"/> mode.
     /// <paramref name="policyEvaluator"/> resolves a declared policy name
     /// for the caller — supplied by the transport (HTTP: ASP.NET
     /// <c>IAuthorizationService</c>). <c>null</c> when the transport has no
@@ -69,7 +71,8 @@ internal sealed class KaleidoAuthorizationEvaluator(
     private static bool IsAuthenticated(KaleidoCorrelationContext caller) =>
         caller.CallerName is not null;
 
-    public bool IsEnforced => serviceOptions.EnforceAuthorization;
+    public bool IsEnforced =>
+        serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.None;
 
     public async Task<bool> CanAccessAsync(
         AuthorizationMetadata? authorization,
@@ -89,9 +92,12 @@ internal sealed class KaleidoAuthorizationEvaluator(
             return false;
         }
 
-        if (authorization is null)
+        // Undeclared (or an empty declaration): any authenticated caller in
+        // Authenticated mode; denied in ZeroTrust (fail closed — the startup
+        // check normally prevents undeclared capabilities from being mapped).
+        if (authorization is null || !authorization.IsExplicit())
         {
-            return true;
+            return serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust;
         }
 
         if (authorization.Roles.Count > 0

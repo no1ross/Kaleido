@@ -11,11 +11,23 @@ public sealed record AuthorizationMetadata(
     string? Policy,
     IReadOnlyList<string> Roles)
 {
+    public static AuthorizationMetadata Unspecified { get; } = new(null, []);
+
     /// <summary>
     /// The capability is open to unauthenticated callers when authorization is
     /// enforced. Never combined with <see cref="Roles"/> or <see cref="Policy"/>.
     /// </summary>
     public bool AllowAnonymous { get; init; }
+
+    /// <summary>
+    /// The declaration says who may access the capability: anonymous callers,
+    /// specific roles, or a policy. An empty declaration is not explicit.
+    /// Zero-trust mode requires every capability to be explicit.
+    /// </summary>
+    public bool IsExplicit() =>
+        AllowAnonymous
+        || Roles.Count > 0
+        || !string.IsNullOrWhiteSpace(Policy);
 
     /// <summary>
     /// Reads <see cref="KaleidoAuthorizationAttribute"/> from a capability type

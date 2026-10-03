@@ -173,7 +173,7 @@ internal sealed class ProcessExecutionService(
     /// <summary>
     /// Process ownership: resuming an owned process requires the owner or a
     /// caller sharing an <c>OwnerRoles</c> entry (only when
-    /// <see cref="KaleidoServiceOptions.EnforceAuthorization"/> is set).
+    /// <see cref="KaleidoServiceOptions.AuthorizationMode"/> is not <c>None</c>).
     /// Creation needs no separate check — when enforcing, step authorization
     /// already requires an authenticated caller unless the step is
     /// <c>AllowAnonymous</c>, which creates an unowned process.

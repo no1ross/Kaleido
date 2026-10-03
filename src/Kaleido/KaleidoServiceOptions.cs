@@ -62,22 +62,13 @@ public class KaleidoServiceOptions
     public Func<Type, bool>? TypeFilter { get; init; }
 
     /// <summary>
-    /// Zero-trust switch for every Kaleido capability (process steps, query
-    /// contexts, query views). Kaleido performs no authentication itself — it
-    /// evaluates the caller the transport derives from the host's
-    /// authentication.
-    /// <list type="bullet">
-    /// <item><c>false</c> (default): nothing is enforced — declared
-    /// <c>[KaleidoAuthorization]</c> roles/policies, process ownership, and
-    /// registry filtering are all skipped. Suitable for samples, local
-    /// development, and hosts without authentication.</item>
-    /// <item><c>true</c>: every capability requires an authenticated caller;
-    /// <c>[KaleidoAuthorization]</c> narrows access to roles/policy or opens it
-    /// with <c>AllowAnonymous = true</c>. Every host in a deployment — including
-    /// registry aggregators/routers — should set this.</item>
-    /// </list>
+    /// How capability authorization is enforced. Default
+    /// <see cref="KaleidoAuthorizationMode.None"/> (nothing enforced).
+    /// Production deployments should use
+    /// <see cref="KaleidoAuthorizationMode.ZeroTrust"/> on every host,
+    /// including registry aggregators/routers.
     /// </summary>
-    public bool EnforceAuthorization { get; init; }
+    public KaleidoAuthorizationMode AuthorizationMode { get; init; }
 
     /// <summary>
     /// Validates a <see cref="KaleidoServiceOptions"/> instance.
@@ -155,8 +146,8 @@ public sealed class KaleidoServiceOptionsBuilder
     /// <inheritdoc cref="KaleidoServiceOptions.TypeFilter"/>
     public Func<Type, bool>? TypeFilter { get; set; }
 
-    /// <inheritdoc cref="KaleidoServiceOptions.EnforceAuthorization"/>
-    public bool EnforceAuthorization { get; set; }
+    /// <inheritdoc cref="KaleidoServiceOptions.AuthorizationMode"/>
+    public KaleidoAuthorizationMode AuthorizationMode { get; set; }
 
     internal KaleidoServiceOptions Build() =>
         new()
@@ -168,6 +159,6 @@ public sealed class KaleidoServiceOptionsBuilder
             Assemblies = Assemblies,
             IsEntryProcessor = IsEntryProcessor,
             TypeFilter = TypeFilter,
-            EnforceAuthorization = EnforceAuthorization
+            AuthorizationMode = AuthorizationMode
         };
 }

@@ -5,11 +5,12 @@ namespace Kaleido;
 /// query context, or query view. Transport-agnostic metadata only: the HTTP layer
 /// maps <see cref="Policy"/> to an ASP.NET named authorization policy and
 /// <see cref="Roles"/> to role checks against the caller's claims principal.
-/// Declarations take effect only when
-/// <see cref="KaleidoServiceOptions.EnforceAuthorization"/> is <c>true</c>; then every
-/// capability requires an authenticated caller, and this attribute narrows access
-/// to roles/policy or opens it with <see cref="AllowAnonymous"/>. When enforcement
-/// is off, nothing is enforced.
+/// Declarations take effect when <see cref="KaleidoServiceOptions.AuthorizationMode"/>
+/// is <see cref="KaleidoAuthorizationMode.Authenticated"/> or
+/// <see cref="KaleidoAuthorizationMode.ZeroTrust"/>: every capability then requires an
+/// authenticated caller, and this attribute narrows access to roles/policy or opens it
+/// with <see cref="AllowAnonymous"/>. In <c>ZeroTrust</c> every capability must declare
+/// one of the three. In <c>None</c> nothing is enforced.
 /// </summary>
 /// <remarks>
 /// <list type="bullet">
@@ -44,9 +45,8 @@ public sealed class KaleidoAuthorizationAttribute : Attribute
     public string? Roles { get; init; }
 
     /// <summary>
-    /// Opens the capability to unauthenticated callers when
-    /// <see cref="KaleidoServiceOptions.EnforceAuthorization"/> is <c>true</c>
-    /// (e.g. adding an item to a cart before login). Combining it with
+    /// Opens the capability to unauthenticated callers when authorization is
+    /// enforced (e.g. adding an item to a cart before login). Combining it with
     /// <see cref="Roles"/> or <see cref="Policy"/> is a configuration error.
     /// </summary>
     public bool AllowAnonymous { get; init; }

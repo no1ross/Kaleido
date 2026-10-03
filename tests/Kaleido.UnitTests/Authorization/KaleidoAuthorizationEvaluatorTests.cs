@@ -11,12 +11,12 @@ public sealed class KaleidoAuthorizationEvaluatorTests
     : SutFixture
 {
     private static KaleidoAuthorizationEvaluator CreateSut(
-        bool enforce = true) =>
+        KaleidoAuthorizationMode mode = KaleidoAuthorizationMode.Authenticated) =>
         new(
             new KaleidoServiceOptions
             {
                 ServiceName = "test",
-                EnforceAuthorization = enforce
+                AuthorizationMode = mode
             },
             NullLogger<KaleidoAuthorizationEvaluator>.Instance);
 
@@ -48,8 +48,8 @@ public sealed class KaleidoAuthorizationEvaluatorTests
     [Fact]
     public void IsEnforced_ReflectsServiceOptions()
     {
-        Assert.True(CreateSut(enforce: true).IsEnforced);
-        Assert.False(CreateSut(enforce: false).IsEnforced);
+        Assert.True(CreateSut(KaleidoAuthorizationMode.Authenticated).IsEnforced);
+        Assert.False(CreateSut(KaleidoAuthorizationMode.None).IsEnforced);
     }
 
     // -- CanAccessAsync: not enforced ----------------------------------------
@@ -57,7 +57,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
     [Fact]
     public async Task CanAccessAsync_NotEnforced_NoDeclaration_AllowsAnonymous()
     {
-        var sut = CreateSut(enforce: false);
+        var sut = CreateSut(KaleidoAuthorizationMode.None);
 
         Assert.True(
             await sut.CanAccessAsync(
@@ -69,7 +69,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
     [Fact]
     public async Task CanAccessAsync_NotEnforced_WithRoles_AllowsAnonymous()
     {
-        var sut = CreateSut(enforce: false);
+        var sut = CreateSut(KaleidoAuthorizationMode.None);
 
         Assert.True(
             await sut.CanAccessAsync(
@@ -81,7 +81,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
     [Fact]
     public async Task CanAccessAsync_NotEnforced_WithPolicy_DoesNotInvokeEvaluator()
     {
-        var sut = CreateSut(enforce: false);
+        var sut = CreateSut(KaleidoAuthorizationMode.None);
 
         Assert.True(
             await sut.CanAccessAsync(
@@ -200,6 +200,27 @@ public sealed class KaleidoAuthorizationEvaluatorTests
                 (_, _) => Task.FromResult(true)));
     }
 
+    [Fact]
+    public async Task CanAccessAsync_ZeroTrust_DeniesUndeclaredAndEmptyEvenWhenAuthenticated()
+    {
+        var sut = CreateSut(KaleidoAuthorizationMode.ZeroTrust);
+
+        Assert.False(await sut.CanAccessAsync(null, Caller("alice"), null));
+        Assert.False(await sut.CanAccessAsync(new AuthorizationMetadata(null, []), Caller("alice"), null));
+    }
+
+    [Fact]
+    public async Task CanAccessAsync_ZeroTrust_AllowsExplicitRolePolicyAndAnonymous()
+    {
+        var sut = CreateSut(KaleidoAuthorizationMode.ZeroTrust);
+
+        Assert.True(await sut.CanAccessAsync(
+            new AuthorizationMetadata(null, ["radiology"]), Caller("bob", "radiology"), null));
+        Assert.True(await sut.CanAccessAsync(
+            new AuthorizationMetadata("can-view", []), Caller("alice"), (_, _) => Task.FromResult(true)));
+        Assert.True(await sut.CanAccessAsync(Anonymous, Caller(), null));
+    }
+
     // -- AuthorizeAsync ------------------------------------------------------
 
     [Fact]
@@ -231,7 +252,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
     [Fact]
     public void AuthorizeProcess_NotEnforced_PassesForOtherOwner()
     {
-        var sut = CreateSut(enforce: false);
+        var sut = CreateSut(KaleidoAuthorizationMode.None);
 
         sut.AuthorizeProcess(
             OwnedContext("alice", "radiology"),
