@@ -35,6 +35,22 @@
 - Use `npm` for the Angular app
 - Preserve existing service ports and compose service names unless the task requires changing them
 
+## Auth model
+
+The sample's dev auth (`Common/Auth`) stands in for a real IdP. Kaleido itself only reads `ClaimTypes.Role` and evaluates policies.
+
+- **Every host sets `AddKaleido(…, o => o.EnforceAuthorization = true)`**, router included. Undeclared capabilities then require a logged-in user; `[KaleidoAuthorization]` only narrows access to roles/policy (or opens it with `AllowAnonymous = true`).
+- **Roles describe the user; the actor claim describes the call.** No user ever gets an `internal` or `intake` role.
+  - Direct user call: name + the user's roles.
+  - On-behalf-of hop (`DevTokenForwardingHandler`): the same name + roles, plus `kaleido_actor = {calling service}`.
+  - Pure service token (`IssueServiceToken`, used only on the router's registry clients): `svc-{service}`, service app roles (`radiology, admin`), plus the actor claim.
+- **`InternalCaller` policy** = actor claim present. Use `Policy = DevAuthPolicies.InternalCaller` for capabilities that must never be called directly by a consumer. Combine it with `Roles` to also require the user's role (e.g. `StartRadiologyIntake` = `radiology` + `InternalCaller`).
+- **Personas** (router `/auth/login`):
+  - `alice`: no domain role. Can use Intake, but is refused at the Radiology handoff.
+  - `bob`: `radiology`.
+  - `carol`: `admin, radiology`.
+- The router forwards the caller's token unchanged; anonymous requests stay anonymous.
+
 ## Cross-processor handoff convention
 
 When a step handler resolves a downstream processor (e.g. Intake routing to Radiology), it:

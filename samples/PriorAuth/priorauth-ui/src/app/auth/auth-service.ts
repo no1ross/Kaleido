@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 
-import { environment } from '../../environments/environment';
+import { buildRouterUrl } from '../../configuration/urlConfig';
 
 export interface DevLoginResponse {
     token: string;
@@ -21,9 +21,9 @@ export class AuthService {
     private readonly personaKey = 'priorauth.dev.persona';
 
     readonly personas: DevPersona[] = [
-        { name: 'alice', displayName: 'Alice (Intake)', roles: ['intake', 'staff'] },
-        { name: 'bob', displayName: 'Bob (Radiology)', roles: ['radiology', 'staff'] },
-        { name: 'carol', displayName: 'Carol (Admin)', roles: ['intake', 'radiology', 'admin', 'staff'] }
+        { name: 'alice', displayName: 'Alice (no domain role)', roles: [] },
+        { name: 'bob', displayName: 'Bob (Radiology)', roles: ['radiology'] },
+        { name: 'carol', displayName: 'Carol (Admin)', roles: ['admin', 'radiology'] }
     ];
 
     readonly token = signal<string | null>(
@@ -35,7 +35,7 @@ export class AuthService {
     login(name: string): Observable<DevLoginResponse> {
         return this.http
             .post<DevLoginResponse>(
-                `${environment.routerBaseUrl}auth/login`,
+                buildRouterUrl('auth/login'),
                 { name })
             .pipe(
                 tap(response => {

@@ -35,7 +35,8 @@ builder.Services.AddScoped<HistoryClient>();
 builder.Services.AddControllers();
 
 // Dev-token auth (sample stand-in for a real IdP) + outbound token forwarding
-// so downstream Kaleido calls carry the user token or an "internal" service token.
+// so downstream Kaleido calls carry an on-behalf-of token (the user + this
+// service as actor) or a service token.
 builder.Services.AddDevAuth();
 builder.Services.AddDevTokenForwarding(
     "CodeSet", "Configuration", "History", "Member", "Provider", "Radiology");
@@ -63,13 +64,10 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.ServiceName = "intake";
         o.Assemblies = new[] { typeof(Program).Assembly, typeof(IntakeDbContext).Assembly };
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Intake", StringComparison.Ordinal) ?? false;
+        o.EnforceAuthorization = true;
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp(o =>
-    {
-        o.RequireAuthorization = true;
-        o.RequireProcessOwnership = true;
-    })
+    .AddHttp()
     .UseSqliteProcessorContextStore(processConnectionString)
     .AddHttpClients()
     .AddOpenTelemetry();

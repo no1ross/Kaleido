@@ -1,9 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
+using Kaleido.Samples.PriorAuth.Auth;
 
 namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 
+// Service-to-service only: queried by Radiology.
+[KaleidoAuthorization(Policy = DevAuthPolicies.InternalCaller)]
 [QueryContext(
     Name = "mri-procedure-code-rules",
     DisplayName = "MRI Procedure Code Rules",

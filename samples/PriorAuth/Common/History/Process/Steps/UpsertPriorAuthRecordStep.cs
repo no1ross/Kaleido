@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
-using Kaleido.Processor;
+using Kaleido.Samples.PriorAuth.Auth;
 
 namespace Kaleido.Samples.PriorAuth.History.Process.Steps;
 
+// Service-to-service only: Intake/Radiology record history on the user's behalf.
+[KaleidoAuthorization(Policy = DevAuthPolicies.InternalCaller)]
 [ProcessStep(
     Name = "UpsertPriorAuthRecord",
     DisplayName = "History - Upsert Record",

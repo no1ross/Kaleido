@@ -4,7 +4,7 @@ using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Queryable.Contexts;
 
-[KaleidoAuthorization(Roles = "intake,radiology")]
+[KaleidoAuthorization(Roles = "radiology")]
 [QueryContext(
     Name = "requesting-provider-searches",
     DisplayName = "Requesting Provider Searches",

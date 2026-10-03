@@ -2,7 +2,6 @@ using Kaleido.Processor;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 
-[KaleidoAuthorization(Roles = "intake")]
 [ProcessStep(
     Name = "StartIntake",
     DisplayName = "Intake - Start",

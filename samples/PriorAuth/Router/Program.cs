@@ -1,7 +1,6 @@
 using Kaleido;
 using Kaleido.Http;
 using Kaleido.Http.Client;
-using Kaleido.Http.Registry;
 using Kaleido.Samples.PriorAuth.Auth;
 using Kaleido.Observability.OpenTelemetry;
 using Microsoft.Net.Http.Headers;
@@ -14,12 +13,15 @@ var authKey =
     builder.Configuration[DevTokenIssuer.AuthKeyConfigName]
     ?? DevTokenIssuer.DefaultKey;
 
-// Dev personas — a real deployment would integrate an IdP.
+// Dev personas — a real deployment would integrate an IdP. Roles describe
+// the user only: Intake accepts any logged-in user (no role), Radiology
+// requires "radiology". alice has no domain role, so Intake can't route her
+// to Radiology.
 var personas = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
 {
-    ["alice"] = ["intake"],
+    ["alice"] = [],
     ["bob"] = ["radiology"],
-    ["carol"] = ["admin", "intake", "radiology"]
+    ["carol"] = ["admin", "radiology"]
 };
 
 builder.Services
@@ -36,21 +38,16 @@ builder.Services
                     Guid.NewGuid().ToString());
             }
 
-            // No inbound token → this is an unauthenticated browser call or a
-            // service-to-service hop; stamp the router's internal service
-            // token so downstream RequireAuthorization checks pass.
-            if (!transformContext.ProxyRequest.Headers.Contains(HeaderNames.Authorization))
-            {
-                transformContext.ProxyRequest.Headers.TryAddWithoutValidation(
-                    HeaderNames.Authorization,
-                    $"Bearer {DevTokenIssuer.IssueServiceToken("router", authKey)}");
-            }
-
+            // The inbound Authorization header (if any) is forwarded as-is.
+            // Anonymous requests stay anonymous — downstream services return
+            // 401 for anything that isn't AllowAnonymous.
             return ValueTask.CompletedTask;
         });
     });
 
-builder.Services.AddKaleido(builder.Configuration)
+// EnforceAuthorization: the router filters the aggregated registry per caller
+// with the same rules as the leaves (undeclared = authenticated).
+builder.Services.AddKaleido(builder.Configuration, o => o.EnforceAuthorization = true)
     // AddHttp registers the HTTP service layer MapRegistry resolves
     // (IProcessorResponseFactory, authorizer) + the Exception/
     // Observability middleware so errors render as Kaleido error JSON.

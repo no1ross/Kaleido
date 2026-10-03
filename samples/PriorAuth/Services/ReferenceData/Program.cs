@@ -43,9 +43,10 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.ServiceName = "referencedata";
         o.Assemblies = new System.Reflection.Assembly[] { typeof(Program).Assembly, typeof(ReferenceDataDbContext).Assembly };
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.ReferenceData", StringComparison.Ordinal) ?? false;
+        o.EnforceAuthorization = true;
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp(o => o.RequireAuthorization = true)
+    .AddHttp()
     .AddOpenTelemetry();
 
 var app = builder.Build();

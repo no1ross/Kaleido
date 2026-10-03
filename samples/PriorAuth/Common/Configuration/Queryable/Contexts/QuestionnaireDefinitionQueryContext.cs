@@ -1,9 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
+using Kaleido.Samples.PriorAuth.Auth;
 
 namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 
+// Service-to-service only: Radiology resolves questionnaires into step results.
+[KaleidoAuthorization(Policy = DevAuthPolicies.InternalCaller)]
 [QueryContext(
     Name = "questionnaire-definitions",
     DisplayName = "Questionnaire Definitions",
