@@ -1,6 +1,4 @@
 using System.Net;
-using Kaleido.Http.Processor;
-using Kaleido.Http.Queryable;
 using Kaleido.Http.Registry;
 using Kaleido.Processor.AspNetCore.FunctionalTests.Infrastructure;
 
@@ -12,9 +10,6 @@ public sealed class AuthorizationEndpointTests(
 {
     private const string InternalStepExecuteUrl =
         "/kaleido/processes/steps/auth-internal";
-
-    private const string InternalStepMetadataUrl =
-        "/kaleido/processes/steps/auth-internal/metadata";
 
     private const string PolicyStepExecuteUrl =
         "/kaleido/processes/steps/auth-policy";
@@ -30,9 +25,6 @@ public sealed class AuthorizationEndpointTests(
 
     private static string ProcessTransferUrl(Guid processId) =>
         $"/kaleido/processes/{processId}/transfer";
-
-    private const string SecuredContextMetadataUrl =
-        "/kaleido/queryable/secured-records/metadata";
 
     private const string SecuredContextQueryUrl =
         "/kaleido/queryable/secured-records/query";
@@ -130,15 +122,6 @@ public sealed class AuthorizationEndpointTests(
         Assert.Equal(HttpStatusCode.OK, authenticated.StatusCode);
     }
 
-    [Fact]
-    public async Task StepMetadata_WhenUnauthenticated_Returns401()
-    {
-        var response =
-            await fixture.Client.GetAsync(InternalStepMetadataUrl);
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
     // -- discovery filtering ------------------------------------------------
 
     [Fact]
@@ -215,15 +198,6 @@ public sealed class AuthorizationEndpointTests(
     // -- queryable capability enforcement ------------------------------------
 
     [Fact]
-    public async Task QueryContextMetadata_WhenUnauthenticated_Returns401()
-    {
-        var response =
-            await fixture.Client.GetAsync(SecuredContextMetadataUrl);
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
     public async Task QueryContextQuery_WhenRoleMismatch_Returns403()
     {
         var response = await fixture.Client.SendAsync(
@@ -236,39 +210,23 @@ public sealed class AuthorizationEndpointTests(
     }
 
     [Fact]
-    public async Task QueryContextMetadata_FiltersAdminOnlyView()
+    public async Task Registry_WhenInternalRole_FiltersAdminOnlyView()
     {
         var response = await fixture.Client.SendAsync(
             AuthorizationAspNetCoreFixture.AuthenticatedRequest(
                 HttpMethod.Get,
-                SecuredContextMetadataUrl,
+                RegistryUrl,
                 roles: ["internal"]));
 
-        var metadata =
-            await response.Content.ReadAsync<QueryableRecordResponse>();
+        var registry =
+            await response.Content.ReadAsync<AggregatedRegistryResponse>();
 
-        Assert.Contains(
-            metadata!.Views,
-            v => v.Name == "internal-view");
+        var secured = Assert.Single(
+            registry!.Queryables,
+            r => r.Name.Equals("secured-records", StringComparison.OrdinalIgnoreCase));
 
-        Assert.DoesNotContain(
-            metadata.Views,
-            v => v.Name == "admin-view");
-    }
-
-    [Fact]
-    public async Task QueryContextMetadata_WhenContextRoleMissing_Returns403()
-    {
-        // "admin" lacks the context's "internal" role — the context
-        // metadata endpoint itself is denied even though admin-view
-        // would be visible to it.
-        var response = await fixture.Client.SendAsync(
-            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
-                HttpMethod.Get,
-                SecuredContextMetadataUrl,
-                roles: ["admin"]));
-
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Contains(secured.Views, v => v.Name == "internal-view");
+        Assert.DoesNotContain(secured.Views, v => v.Name == "admin-view");
     }
 
     // -- process ownership ---------------------------------------------------

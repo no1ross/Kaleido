@@ -3,7 +3,6 @@ using Kaleido.Http.Authorization;
 using Kaleido.Queryable.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -66,13 +65,6 @@ public static class QueryableEndpointRouteBuilderExtensions
 
         foreach (var context in queryableRegistry.Registrations)
         {
-            group.MapMetadataEndpoint(
-                context,
-                QueryableRoutePaths.QueryContextMetadata(
-                    context.Name.ToLowerInvariant()),
-                serviceName,
-                httpOptions);
-
             if (context.Kind == QueryContextKind.Direct)
             {
                 group.MapDirectQueryContext(context, httpOptions);
@@ -126,42 +118,6 @@ public static class QueryableEndpointRouteBuilderExtensions
                     context,
                     options
                 ]);
-    }
-
-    private static void MapMetadataEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        QueryableContextRegistryItem context,
-        string route,
-        string serviceName,
-        KaleidoHttpOptions options)
-    {
-        endpoints.MapGet(
-                route,
-                async (
-                    HttpContext httpContext,
-                    [FromServices] IKaleidoAuthorizer authorizer,
-                    CancellationToken cancellationToken) =>
-                    Results.Ok(
-                        QueryableRecordResponse.FromRegistryItem(
-                            context with
-                            {
-                                Views =
-                                    await authorizer.FilterAsync(context.Views,
-                                        v => v.Authorization,
-                                        cancellationToken)
-                            },
-                            serviceName)))
-            .WithKaleidoAuthorization(context.Authorization, options)
-            .WithName(
-                QueryableEndpointNames.QueryContextMetadataEndpointName(
-                    context.Name.ToLowerInvariant()))
-            .WithTags(
-                context.DisplayName ?? context.Name)
-            .WithSummary(
-                $"Get metadata for {context.DisplayName ?? context.Name}.")
-            .WithDescription(
-                $"Returns metadata describing the '{context.DisplayName ?? context.Name}' query context, including fields, data types, query capabilities, available views, and available named queries.")
-            .Produces<QueryableRecordResponse>();
     }
 
     private static void MapQueryEndpoint(

@@ -11,10 +11,6 @@ public interface IKaleidoProcessorClient
     /// </summary>
     void InvalidateRegistry();
 
-    Task<ProcessStepResponse> GetStepMetadataAsync(
-        string stepName,
-        CancellationToken cancellationToken = default);
-
     Task<ProcessStateResponse?> GetProcessStateAsync(
         Guid processId,
         CancellationToken cancellationToken = default);

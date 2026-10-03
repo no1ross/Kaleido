@@ -66,7 +66,6 @@ public sealed class KaleidoQueryableClientTests
         Version = "1.0.0",
         Source = "test",
         Kind = QueryContextKind.Direct,
-        MetadataUrl = "/queryable/my-context/metadata",
         QueryUrl = "/queryable/my-context/query",
         Fields = [],
         Views =
@@ -169,67 +168,6 @@ public sealed class KaleidoQueryableClientTests
 
         await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.GetRegistryAsync());
-    }
-
-    // ---------------------------------------------------------------------------
-    // GetContextMetadataAsync
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task GetContextMetadataAsync_ResolvesContextAndFetchesMetadataUrl()
-    {
-        var callUrls = new List<string>();
-
-        var (client, _) = CreateClient(respond: req =>
-        {
-            callUrls.Add(req.RequestUri!.PathAndQuery);
-            return req.RequestUri!.PathAndQuery.Contains("metadata")
-                ? JsonOk(FakeContext)
-                : JsonOk(FakeRegistry);
-        });
-
-        var result = await client.GetContextMetadataAsync("my-context");
-
-        Assert.Equal("my-context", result.Name);
-        Assert.Contains(callUrls, u => u.Contains("metadata"));
-    }
-
-    [Fact]
-    public async Task GetContextMetadataAsync_WhenContextNotFound_Throws()
-    {
-        var (client, _) = CreateClient();
-
-        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.GetContextMetadataAsync("does-not-exist"));
-
-        Assert.Contains("does-not-exist", ex.Message);
-    }
-
-    [Fact]
-    public async Task GetContextMetadataAsync_WhenMetadataHttpFails_ThrowsKaleidoException()
-    {
-        var callCount = 0;
-        var handler = HandlerThatReturns(req =>
-        {
-            callCount++;
-            // First call = registry, second call = metadata
-            if (callCount == 1)
-            {
-                return JsonOk(FakeRegistry);
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.InternalServerError);
-        });
-        var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
-        var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
-        correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext());
-        var client = CreateSut(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
-
-        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.GetContextMetadataAsync("my-context"));
-
-        Assert.Equal(HttpStatusCode.InternalServerError, ex.StatusCode);
-        Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
     }
 
     // ---------------------------------------------------------------------------

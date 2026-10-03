@@ -9,9 +9,6 @@ internal static class QueryableContractUrls
             ? "/queryable"
             : $"/{serviceName.Trim().Trim('/')}/queryable";
 
-    public static string QueryContextMetadata(string serviceName, string contextName)
-        => $"{QueryablePrefix(serviceName)}/{contextName}/metadata";
-
     public static string QueryContextQuery(string serviceName, string contextName)
         => $"{QueryablePrefix(serviceName)}/{contextName}/query";
 

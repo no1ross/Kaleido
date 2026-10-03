@@ -13,10 +13,6 @@ internal static class ProcessRoutePaths
     public const string ProcessTransfer =
         "{processId}/transfer";
 
-    public static string StepMetadata(
-        string stepName)
-        => $"steps/{stepName}/metadata";
-
     public static string ExecuteStep(
         string stepName)
         => $"steps/{stepName}";
@@ -28,9 +24,6 @@ internal static class ProcessContractUrls
         string.IsNullOrWhiteSpace(serviceName)
             ? "/processes"
             : $"/{serviceName.Trim().Trim('/')}/processes";
-
-    public static string StepMetadata(string serviceName, string stepName)
-        => $"{ProcessesPrefix(serviceName)}/steps/{stepName}/metadata";
 
     public static string ExecuteStep(string serviceName, string stepName)
         => $"{ProcessesPrefix(serviceName)}/steps/{stepName}";
@@ -55,10 +48,6 @@ public static class ProcessEndpointNames
 
     public const string ProcessTransferEndpointName =
         "KaleidoProcessTransfer";
-
-    public static string StepMetadataEndpointName(
-        string stepName) =>
-        $"KaleidoProcessStepMetadata_{stepName}";
 
     public static string StepExecutionEndpointName(
         string stepName) =>

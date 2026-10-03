@@ -211,8 +211,6 @@ public sealed record QueryableRecordResponse
     /// </summary>
     public AuthorizationMetadata? Authorization { get; init; }
 
-    public required string MetadataUrl { get; init; }
-
     public string RegistryUrl { get; init; }
         = string.Empty;
 
@@ -244,7 +242,6 @@ public sealed record QueryableRecordResponse
             Kind = item.Kind,
             Pageable = item.Pageable,
             Authorization = item.Authorization,
-            MetadataUrl = QueryableContractUrls.QueryContextMetadata(serviceName, contextName),
             RegistryUrl = RegistryContractUrls.Registry(serviceName),
             QueryUrl = item.Kind == QueryContextKind.Direct
                 ? QueryableContractUrls.QueryContextQuery(serviceName, contextName)

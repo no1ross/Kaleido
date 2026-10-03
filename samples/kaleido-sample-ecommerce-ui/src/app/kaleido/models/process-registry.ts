@@ -12,7 +12,6 @@ export interface ProcessStepRegistryRecord {
     availableUntil: ProcessStepSummary[];
 
     executeUrl: string;
-    metadataUrl: string;
 }
 
 export interface ProcessStepSummary {
@@ -22,7 +21,6 @@ export interface ProcessStepSummary {
     description: string;
     repeatable: boolean;
     executeUrl: string;
-    metadataUrl: string;
 }
 
 export interface ProcessStepFieldMetadata {

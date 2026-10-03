@@ -249,7 +249,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                 (aggregate ? " and all registered downstream clients." : ".") +
                 " Always returns HTTP 200. Inspect ClientErrors to detect " +
                 "partial responses caused by unreachable or misconfigured downstream clients. " +
-                "Process steps carry fully-resolved ExecuteUrl and MetadataUrl values. " +
+                "Process steps carry fully-resolved ExecuteUrl values. " +
                 "Adding a downstream client via AddProcessorClient() or AddQueryableClient() makes it appear here automatically.");
 
         return group;
