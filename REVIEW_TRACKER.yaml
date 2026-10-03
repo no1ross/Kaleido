@@ -660,6 +660,9 @@ medium_priority_items:
   MP-029:
     title: full_clean.cmd deletes bin folders inside node_modules and never restores npm packages
     description: >
+      Intent: full_clean.cmd resets the whole repo to a clean, ready-to-build state and
+      restores everything, including the .NET solution and every Angular/npm site, so dotnet
+      build/test and npm run build/test all work afterwards with no extra steps.
       The script deletes every bin/obj/.vs/TestResults/artifacts/coverage folder recursively,
       including node_modules package folders (e.g. @angular/cli/bin, TypeScript files), then
       only runs dotnet restore; npm install reports "up to date" without repairing. Fix: skip
