@@ -1,6 +1,7 @@
 using Kaleido.Exceptions;
 using Kaleido.Processor;
 using Kaleido.Processor.Registry;
+using Kaleido.Registry;
 
 using Kaleido.UnitTests;
 
@@ -262,7 +263,7 @@ public sealed class ProcessorStepRegistryTests
     }
 
     [Fact]
-    public void Registration_WithoutKaleidoAuthorization_HasNullAuthorization()
+    public void Registration_WithoutKaleidoAuthorization_HasUnspecifiedAuthorization()
     {
         var registry =
             CreateSut(
@@ -272,7 +273,8 @@ public sealed class ProcessorStepRegistryTests
             registry.GetRegistration(
                 typeof(StepA));
 
-        Assert.Null(
+        Assert.Same(
+            AuthorizationMetadata.Unspecified,
             registration.Metadata.Authorization);
     }
 

@@ -144,7 +144,8 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             ViewParametersType = registration.ViewParametersType,
             Name = registration.Metadata.Name,
             Authorization = registration.Metadata.Authorization
-                ?? contextAuthorization,
+                ?? contextAuthorization
+                ?? AuthorizationMetadata.Unspecified,
             Description = registration.Metadata.Description,
             DisplayName = registration.Metadata.DisplayName,
             Version = registration.Metadata.Version,
@@ -173,7 +174,8 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             ViewParametersType = registration.ViewParametersType,
             Name = registration.ViewMetadata.Name,
             Authorization = registration.ViewMetadata.Authorization
-                ?? contextAuthorization,
+                ?? contextAuthorization
+                ?? AuthorizationMetadata.Unspecified,
             Description = registration.ViewMetadata.Description,
             DisplayName = registration.ViewMetadata.DisplayName,
             Version = registration.ViewMetadata.Version,

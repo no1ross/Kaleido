@@ -7,8 +7,8 @@ internal static class AuthorizationConventionExtensions
     /// <summary>
     /// For framework endpoints that are not capabilities (execute, transfer):
     /// requires an authenticated caller when
-    /// <see cref="KaleidoServiceOptions.EnforceAuthorization"/> is set; attaches
-    /// nothing otherwise.
+    /// <see cref="KaleidoServiceOptions.AuthorizationMode"/> is not <c>None</c>;
+    /// attaches nothing otherwise.
     /// </summary>
     internal static TBuilder RequireKaleidoAuthorization<TBuilder>(
         this TBuilder builder,
@@ -18,8 +18,8 @@ internal static class AuthorizationConventionExtensions
 
     /// <summary>
     /// Attaches a capability's <see cref="AuthorizationMetadata"/> requirement
-    /// to the endpoint when <see cref="KaleidoServiceOptions.EnforceAuthorization"/>
-    /// is set: <c>AllowAnonymous</c> maps to <c>AllowAnonymous()</c>; otherwise an
+    /// to the endpoint when <see cref="KaleidoServiceOptions.AuthorizationMode"/>
+    /// is not <c>None</c>: <c>AllowAnonymous</c> maps to <c>AllowAnonymous()</c>; otherwise an
     /// authenticated caller is required, plus a role requirement for declared
     /// <c>Roles</c> and the consumer's named policy for a declared <c>Policy</c>
     /// (ANDed). When not enforced nothing is attached, so hosts without
@@ -34,7 +34,7 @@ internal static class AuthorizationConventionExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(options);
 
-        if (!options.EnforceAuthorization)
+        if (options.AuthorizationMode == KaleidoAuthorizationMode.None)
         {
             return builder;
         }

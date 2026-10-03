@@ -338,7 +338,7 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
             attribute.Description ?? attribute.DisplayName ?? attribute.Name,
             attribute.Version,
             attribute.DisplayName ?? attribute.Name,
-            AuthorizationMetadata.ForType(stepType));
+            AuthorizationMetadata.ForType(stepType) ?? AuthorizationMetadata.Unspecified);
     }
 }
 

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Reflection;
 using Kaleido.Exceptions;
 using Kaleido.Queryable.Registry;
+using Kaleido.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable.UnitTests.Records;
@@ -101,13 +102,13 @@ public sealed class QueryContextRegistryTests
     }
 
     [Fact]
-    public void Constructor_WithoutKaleidoAuthorization_HasNullAuthorization()
+    public void Constructor_WithoutKaleidoAuthorization_HasUnspecifiedAuthorization()
     {
         var registry = CreateSut(typeof(TestContext));
 
         var registration = registry.GetRegistration(typeof(TestContext));
 
-        Assert.Null(registration.Metadata.Authorization);
+        Assert.Same(AuthorizationMetadata.Unspecified, registration.Metadata.Authorization);
     }
 
     private static ServiceCollection CreateServices()

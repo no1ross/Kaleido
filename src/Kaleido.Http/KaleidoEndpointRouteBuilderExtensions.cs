@@ -29,7 +29,11 @@ public static class KaleidoEndpointRouteBuilderExtensions
         var mapOptions = new KaleidoHttpMapOptions();
         configure?.Invoke(mapOptions);
 
-        EnsureAuthenticationConfigured(endpoints.ServiceProvider);
+        var logger = endpoints.ServiceProvider
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Kaleido.Startup");
+
+        ValidateAuthorization(endpoints.ServiceProvider, logger);
 
         var hasProcess = endpoints.ServiceProvider.GetService<IProcessorStepRegistry>() is not null;
         var hasQueryable = endpoints.ServiceProvider.GetService<IQueryableRegistry>() is not null;
@@ -51,10 +55,7 @@ public static class KaleidoEndpointRouteBuilderExtensions
             viewCount = registrations.Sum(c => c.Views.Count);
         }
 
-        endpoints.ServiceProvider
-            .GetRequiredService<ILoggerFactory>()
-            .CreateLogger("Kaleido.Startup")
-            .LogInformation(
+        logger.LogInformation(
                 "Kaleido started: {StepCount} process step(s), {ContextCount} query context(s), {ViewCount} query view(s).",
                 stepCount,
                 contextCount,
@@ -85,13 +86,30 @@ public static class KaleidoEndpointRouteBuilderExtensions
         return new RouteHandlerBuilder(builders);
     }
 
-    // Enforcing without an authentication scheme would fail every request
-    // at runtime (no scheme to challenge) — fail at startup instead.
-    private static void EnsureAuthenticationConfigured(
-        IServiceProvider services)
+    // Startup authorization checks, by mode:
+    // - None: warn once if capabilities declare authorization that won't be enforced.
+    // - Authenticated / ZeroTrust: fail if no authentication scheme is registered
+    //   (every request would otherwise fail at runtime with no scheme to challenge).
+    // - ZeroTrust: fail if any exposed capability has no explicit authorization.
+    private static void ValidateAuthorization(
+        IServiceProvider services,
+        ILogger logger)
     {
-        if (!services.GetRequiredService<KaleidoServiceOptions>().EnforceAuthorization)
+        var mode = services.GetRequiredService<KaleidoServiceOptions>().AuthorizationMode;
+        var capabilities = ExposedCapabilities(services);
+
+        if (mode == KaleidoAuthorizationMode.None)
         {
+            var declared = capabilities.Count(c => c.Authorization.IsExplicit() == true);
+
+            if (declared > 0)
+            {
+                logger.LogWarning(
+                    "{DeclaredCount} capability(ies) declare authorization, but AuthorizationMode is None so it is not enforced. " +
+                    "Set AuthorizationMode to Authenticated or ZeroTrust.",
+                    declared);
+            }
+
             return;
         }
 
@@ -105,9 +123,62 @@ public static class KaleidoEndpointRouteBuilderExtensions
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.AuthenticationNotConfigured,
-                "EnforceAuthorization is true but no authentication scheme is registered. " +
+                $"AuthorizationMode is {mode} but no authentication scheme is registered. " +
                 "Call AddAuthentication(...) with at least one scheme, plus UseAuthentication()/UseAuthorization(), " +
-                "or set EnforceAuthorization = false.");
+                "or set AuthorizationMode = None.");
         }
+
+        if (mode != KaleidoAuthorizationMode.ZeroTrust)
+        {
+            return;
+        }
+
+        var undeclared =
+            capabilities
+                .Where(c => c.Authorization.IsExplicit() != true)
+                .Select(c => c.Name)
+                .ToArray();
+
+        if (undeclared.Length > 0)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.UndeclaredAuthorization,
+                $"AuthorizationMode is ZeroTrust and {undeclared.Length} capability(ies) have no explicit authorization: " +
+                $"{string.Join(", ", undeclared)}. " +
+                "Declare [KaleidoAuthorization] with Roles, Policy, or AllowAnonymous = true.");
+        }
+    }
+
+    // Every capability that gets an endpoint: process steps, direct query
+    // contexts, and query views (views already carry their effective rule:
+    // their own declaration, else their context's).
+    private static IReadOnlyList<(string Name, AuthorizationMetadata Authorization)> ExposedCapabilities(
+        IServiceProvider services)
+    {
+        var capabilities = new List<(string Name, AuthorizationMetadata Authorization)>();
+
+        if (services.GetService<IProcessorStepRegistry>() is { } steps)
+        {
+            capabilities.AddRange(
+                steps.Registrations.Select(s =>
+                    ($"step '{s.Metadata.Name}'", s.Metadata.Authorization)));
+        }
+
+        if (services.GetService<IQueryableRegistry>() is { } queryables)
+        {
+            foreach (var context in queryables.Registrations)
+            {
+                if (context.Kind == QueryContextKind.Direct)
+                {
+                    capabilities.Add(($"context '{context.Name}'", context.Authorization));
+                }
+
+                capabilities.AddRange(
+                    context.Views.Select(v =>
+                        ($"view '{context.Name}/{v.Name}'", v.Authorization)));
+            }
+        }
+
+        return capabilities;
     }
 }

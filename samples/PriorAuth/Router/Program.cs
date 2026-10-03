@@ -45,9 +45,9 @@ builder.Services
         });
     });
 
-// EnforceAuthorization: the router filters the aggregated registry per caller
+// AuthorizationMode.Authenticated: the router filters the aggregated registry per caller
 // with the same rules as the leaves (undeclared = authenticated).
-builder.Services.AddKaleido(builder.Configuration, o => o.EnforceAuthorization = true)
+builder.Services.AddKaleido(builder.Configuration, o => o.AuthorizationMode = KaleidoAuthorizationMode.Authenticated)
     // AddHttp registers the HTTP service layer MapRegistry resolves
     // (IProcessorResponseFactory, authorizer) + the Exception/
     // Observability middleware so errors render as Kaleido error JSON.

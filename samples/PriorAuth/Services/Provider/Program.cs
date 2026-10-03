@@ -51,7 +51,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.ServiceName = "provider";
         o.Assemblies = new System.Reflection.Assembly[] { typeof(Program).Assembly, typeof(ProviderSearchDbContext).Assembly };
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Provider", StringComparison.Ordinal) ?? false;
-        o.EnforceAuthorization = true;
+        o.AuthorizationMode = KaleidoAuthorizationMode.Authenticated;
     })
     .AddEventPublisher<HttpEventPublisher>()
     .AddHttp()
