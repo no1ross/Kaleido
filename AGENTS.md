@@ -167,6 +167,19 @@ The rule is: **one observability signal per cancellation, at the lowest level th
 - Correlation invariants (one RequestId per request, echo-or-generate,
   automatic outbound propagation) are in `src/ARCHITECTURE.md`.
 
+## Tracking work discovered mid-item
+
+Active work lives in [`REVIEW_TRACKER.yaml`](./REVIEW_TRACKER.yaml); plan files live in `~/.devin/plans/`. At the start of any session or context, read the tracker's `IN_PROGRESS` and `PENDING_*` items and their plan files before starting new work.
+
+When something new surfaces while working an item:
+- Log it **before** discussing a fix: add a tracker entry with `discovered_during: <ID>` and `relation`, add it to the parent's `spawned: [...]`, and add a line to the parent plan's *Discovered along the way* section.
+- Classify the relation; never dismiss it as "unrelated":
+  - `requires`: the parent cannot be `COMPLETE` until this is done
+  - `should`: do alongside the parent; not a hard gate
+  - `separate`: found there, independent schedule
+- A parent cannot move to `COMPLETE` while a `requires` child is open; open `should` children are listed in the parent's `progress_note`.
+- Before closing a PR, re-read the tracker and list every open spawned item in the summary.
+
 ## Documentation rules
 
 - Root docs should explain how the projects fit together.
