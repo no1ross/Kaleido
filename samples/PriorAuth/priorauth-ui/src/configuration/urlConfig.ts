@@ -16,8 +16,12 @@ export function getServiceRoutes(): readonly PriorAuthServiceRouteConfig[] {
     return environment.serviceRoutes;
 }
 
-export function buildRegistryUrl(path: string): string {
+export function buildRouterUrl(path: string): string {
     return buildUrl(environment.routerBaseUrl, path);
+}
+
+export function buildRegistryUrl(path: string): string {
+    return buildRouterUrl(path);
 }
 
 export function buildServiceUrl(

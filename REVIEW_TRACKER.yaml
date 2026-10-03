@@ -324,8 +324,10 @@ high_priority_items:
     priority: HIGH
     breaking_change: false
     status: IN_PROGRESS
-    spawned: [HP-022]
-    progress_note: "Plan: ~/.devin/plans/plan-a635fa55a8541ae7.md (Commit 3)."
+    spawned: [HP-022, HP-023, MP-029, MP-030]
+    progress_note: >
+      Plan: ~/.devin/plans/plan-a635fa55a8541ae7.md (Commit 3). Sample code committed;
+      UI build verification blocked by HP-023 (requires).
 
   HP-021:
     title: EnforceAuthorization (zero trust) switch + AllowAnonymous opt-in
@@ -342,7 +344,7 @@ high_priority_items:
     priority: HIGH
     breaking_change: true
     status: IN_PROGRESS
-    spawned: [MP-028]
+    spawned: [MP-028, LP-016]
     progress_note: "Plan: ~/.devin/plans/plan-a635fa55a8541ae7.md (Commits 1-2)."
 
   HP-022:
@@ -361,6 +363,20 @@ high_priority_items:
     breaking_change: false
     status: PENDING_IMPLEMENTATION
     progress_note: "Design: ~/.devin/plans/plan-a635fa55a8541ae7.md (Discovered along the way)."
+
+  HP-023:
+    title: UI registry viewers still bind removed metadataUrl (ng build fails)
+    description: >
+      Commit 3b3399f removed MetadataUrl from contracts and TS models, but the registry
+      viewer templates still bind it: priorauth-ui process-registry.html:110 and
+      queryable-registry.html:97 (TS2339), and kaleido-sample-ecommerce-ui
+      process-registry.html:105. Fix: remove the "Metadata Url" rows.
+    discovered_during: HP-019
+    relation: requires
+    effort_days: 0.1
+    priority: HIGH
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
 
 medium_priority_items:
   MP-001:
@@ -641,6 +657,33 @@ medium_priority_items:
     breaking_change: false
     status: PENDING_DECISION
 
+  MP-029:
+    title: full_clean.cmd deletes bin folders inside node_modules and never restores npm packages
+    description: >
+      The script deletes every bin/obj/.vs/TestResults/artifacts/coverage folder recursively,
+      including node_modules package folders (e.g. @angular/cli/bin, TypeScript files), then
+      only runs dotnet restore; npm install reports "up to date" without repairing. Fix: skip
+      node_modules when deleting; run npm ci in every folder with a package-lock.json;
+      restore Kaleido.slnx explicitly (currently globs *.sln); optional --no-pause.
+    discovered_during: HP-019
+    relation: should
+    effort_days: 0.25
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  MP-030:
+    title: priorauth-ui npm audit reports 18 vulnerabilities (3 moderate, 13 high, 2 critical)
+    description: >
+      Reported by npm install / npm ci. Needs dependency upgrades reviewed for supply-chain
+      safety (prefer versions published >= 7 days); not npm audit fix --force.
+    discovered_during: HP-019
+    relation: separate
+    effort_days: 0.5-1
+    priority: MEDIUM
+    breaking_change: possibly
+    status: PENDING_DECISION
+
 low_priority_items:
   LP-001:
     title: Enum Serialization Strategy Documentation
@@ -714,6 +757,18 @@ transient-failure retry."
     title: Dead API surface (GetAll(), Stamper.Sanitize, CorrelationAccessor)
     effort_days: 0.25
     priority: LOW
+
+  LP-016:
+    title: Kaleido.Http.FunctionalTests namespaces still use old project names
+    description: >
+      13 files use Kaleido.AspNetCore.FunctionalTests.* / Kaleido.Processor.AspNetCore.FunctionalTests.*;
+      IDE0130 expects Kaleido.Http.FunctionalTests.*.
+    discovered_during: HP-021
+    relation: separate
+    effort_days: 0.1
+    priority: LOW
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
 
 external_findings:
   # Merged from cleanup chatgpt ent.md (KAL-*) and cleanup copilot.md (F-*).

@@ -1,9 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
+using Kaleido.Samples.PriorAuth.Auth;
 
 namespace Kaleido.Samples.PriorAuth.ReferenceData.Queryable.Contexts;
 
+// Service-to-service only: queried by Provider (PlanNetworkClient).
+[KaleidoAuthorization(Policy = DevAuthPolicies.InternalCaller)]
 [QueryContext(
     Name = "plans",
     DisplayName = "Plans",

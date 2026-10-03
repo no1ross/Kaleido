@@ -2,12 +2,14 @@ using Kaleido.Queryable;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Contexts;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Parameters;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.ViewSources.Views;
+using Kaleido.Samples.PriorAuth.Auth;
 
 namespace Kaleido.Samples.PriorAuth.Provider.Queryable.ViewSources;
 
-// Service-to-service only — role-filtered out of user-facing discovery and
-// denied for user tokens. Reachable by internal callers (e.g. radiology).
-[KaleidoAuthorization(Roles = "internal")]
+// Service-to-service only — filtered out of user-facing discovery and denied
+// for direct user calls. Reachable by internal callers (e.g. radiology on the
+// user's behalf).
+[KaleidoAuthorization(Policy = DevAuthPolicies.InternalCaller)]
 [QueryView(
     Name = "requesting-provider-search",
     DisplayName = "Requesting Provider Search",
