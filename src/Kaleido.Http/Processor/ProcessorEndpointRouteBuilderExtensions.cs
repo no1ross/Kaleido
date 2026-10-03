@@ -3,7 +3,6 @@ using Kaleido.Http.Authorization;
 using Kaleido.Processor.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -32,10 +31,6 @@ public static class ProcessorEndpointRouteBuilderExtensions
                 "Cannot map Process endpoints: Process runtime is not registered. " +
                 "Use MapKaleidoHttp() to map Kaleido endpoints.");
         }
-
-        var processorRegistry =
-            endpoints.ServiceProvider
-                .GetRequiredService<IProcessorRegistry>();
 
         var httpOptions =
             endpoints.ServiceProvider
@@ -74,11 +69,7 @@ public static class ProcessorEndpointRouteBuilderExtensions
 
         foreach (var step in registry.Registrations)
         {
-            group.MapProcessStep(
-                step,
-                processorRegistry,
-                serviceName,
-                httpOptions);
+            group.MapProcessStep(step, httpOptions);
         }
 
         return group;
@@ -192,64 +183,17 @@ public static class ProcessorEndpointRouteBuilderExtensions
     private static void MapProcessStep(
         this IEndpointRouteBuilder endpoints,
         ProcessStepRegistration step,
-        IProcessorRegistry processorRegistry,
-        string serviceName,
         KaleidoHttpOptions options)
     {
         ArgumentNullException.ThrowIfNull(step);
-        ArgumentNullException.ThrowIfNull(processorRegistry);
 
         var stepName =
             step.Metadata.Name.ToLowerInvariant();
-
-        var registryStep =
-            processorRegistry.Registrations
-                .SelectMany(x => x.Steps)
-                .Single(x => string.Equals(
-                    x.Name,
-                    step.Metadata.Name,
-                    StringComparison.OrdinalIgnoreCase));
-
-        endpoints.MapStepMetadataEndpoint(
-            step,
-            registryStep,
-            ProcessRoutePaths.StepMetadata(stepName),
-            serviceName,
-            options);
 
         endpoints.MapStepExecutionEndpoint(
             step,
             ProcessRoutePaths.ExecuteStep(stepName),
             options);
-    }
-
-    private static void MapStepMetadataEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        ProcessStepRegistration step,
-        ProcessorStepRegistryItem registryStep,
-        string route,
-        string serviceName,
-        KaleidoHttpOptions options)
-    {
-        endpoints.MapGet(
-                route,
-                ([FromServices] IProcessorResponseFactory factory) => Results.Ok(
-                    factory.CreateStepResponse(
-                        registryStep,
-                        serviceName)))
-            .WithKaleidoAuthorization(step.Metadata.Authorization, options)
-            .WithName(
-                ProcessEndpointNames.StepMetadataEndpointName(
-                    step.Metadata.Name.ToLowerInvariant()))
-            .WithTags(step.Metadata.DisplayName)
-            .Produces<ProcessStepResponse>()
-            .WithSummary($"Get metadata for {step.Metadata.DisplayName}.")
-            .WithDescription(
-                $"Returns metadata describing the '{step.Metadata.DisplayName}' process step, including field definitions, " +
-                "data types, validation constraints, dependency relationships, availability rules, repeatability settings, " +
-                "and links required to execute or discover related process steps. " +
-                "This endpoint is intended for dynamic clients such as user interfaces, workflow explorers, " +
-                "and process discovery tools. This endpoint does not execute the step.");
     }
 
     private static void MapStepExecutionEndpoint(

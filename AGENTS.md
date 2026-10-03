@@ -182,6 +182,37 @@ Tests and samples are important navigation aids:
 Use samples to understand intended consumer usage.
 Use tests to understand behavioral expectations and invariants.
 
+## Build and test commands
+
+### Build
+```
+dotnet build Kaleido.slnx
+```
+
+### Run tests
+
+Test projects use xUnit v3 with **Microsoft Testing Platform (MTP)**. The `--` separator after `dotnet test` is required — it signals dotnet to route through MTP instead of VSTest:
+
+```
+dotnet test Kaleido.slnx --
+```
+
+Without `--`, dotnet uses VSTest discovery which cannot see MTP projects and reports "Zero tests ran". The CI workflow (`build.yml`) already includes `--` (passing `--coverage` after it), which is why it works on GitHub but not when running `dotnet test` bare locally.
+
+Add `--no-build` when the solution is already built:
+```
+dotnet test Kaleido.slnx --no-build --
+```
+
+### When tests still report "Zero tests ran"
+
+Stale bin/obj folders are the most common cause after a failed or partial build. Run `full_clean.cmd` from the repo root to nuke all bin/obj folders and restore, then rebuild:
+```
+full_clean.cmd   # deletes bin/, obj/, .vs/, TestResults/ and runs dotnet restore
+dotnet build Kaleido.slnx
+dotnet test Kaleido.slnx --no-build --
+```
+
 ## Rule of thumb
 
 - If the concern is bootstrap, shared metadata, eventing, correlation, or the Queryable/Process runtime, it belongs in `Kaleido`.

@@ -50,8 +50,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
                     Version = x.Version,
                     Repeatable = x.Repeatable,
                     Authorization = x.Authorization,
-                    ExecuteUrl = string.Empty,
-                    MetadataUrl = string.Empty
+                    ExecuteUrl = string.Empty
                 })
                 .ToArray(),
             Steps = registration.Steps
@@ -98,8 +97,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Result = registration.Result is null
                 ? null
                 : CreateResultMetadata(registration.Result),
-            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName),
-            MetadataUrl = ProcessContractUrls.StepMetadata(serviceName, stepName)
+            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName)
         };
     }
 
@@ -120,8 +118,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Version = registration.Version,
             Repeatable = registration.Repeatable,
             Authorization = registration.Authorization,
-            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName),
-            MetadataUrl = ProcessContractUrls.StepMetadata(serviceName, stepName)
+            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName)
         };
     }
 

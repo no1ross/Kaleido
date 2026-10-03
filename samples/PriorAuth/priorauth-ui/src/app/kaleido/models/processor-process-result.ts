@@ -31,7 +31,6 @@ export interface ProcessStepSummary {
     description?: string;
     repeatable: boolean;
     executeUrl: string;
-    metadataUrl: string;
 }
 
 export interface ProcessMessage {

@@ -1,4 +1,3 @@
-using Kaleido.Http.Client;
 using Kaleido.Http.Queryable;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
@@ -27,37 +26,12 @@ public sealed class QueryableClientTests : IClassFixture<QueryableAspNetCoreFixt
     }
 
     [Fact]
-    public async Task GetRegistryAsync_ContainsExpectedMetadataUrls()
+    public async Task GetRegistryAsync_ContainsExpectedQueryUrls()
     {
         var registry = await _factory.GetClient("test").GetRegistryAsync();
 
         var record = Assert.Single(registry, r => r.Name == "functional-records");
-        Assert.Equal("/kaleido/queryable/functional-records/metadata", record.MetadataUrl);
         Assert.Equal("/kaleido/queryable/functional-records/query", record.QueryUrl);
-    }
-
-    // ---------------------------------------------------------------------------
-    // GetContextMetadataAsync
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task GetContextMetadataAsync_ReturnsFullMetadata()
-    {
-        var metadata = await _factory.GetClient("test").GetContextMetadataAsync("functional-records");
-
-        Assert.Equal("functional-records", metadata.Name);
-        Assert.Equal("Functional records for Queryable HTTP tests.", metadata.Description);
-        Assert.Equal("Functional Records", metadata.DisplayName);
-        Assert.Equal("1.0.0", metadata.Version);
-        Assert.NotEmpty(metadata.Fields);
-        Assert.Contains(metadata.Views, v => v.Name == "grid");
-    }
-
-    [Fact]
-    public async Task GetContextMetadataAsync_WhenContextNotFound_Throws()
-    {
-        await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => _factory.GetClient("test").GetContextMetadataAsync("does-not-exist"));
     }
 
     // ---------------------------------------------------------------------------

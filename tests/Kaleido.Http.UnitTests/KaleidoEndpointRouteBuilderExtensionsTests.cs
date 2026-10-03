@@ -39,7 +39,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ProcessEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
-        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context")));
+        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
         endpoints.MapKaleidoHttp();
 
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context")));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
         Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
         Assert.Null(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
     }
@@ -62,7 +62,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         endpoints.MapKaleidoHttp();
 
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context")));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
         Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
     }
 

@@ -36,7 +36,6 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
 
         endpoints.MapQueryable();
 
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context")));
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryViewEndpointName("test-context", "test-view")));
     }
@@ -48,7 +47,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
 
         endpoints.MapQueryable();
 
-        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/metadata"));
+        Assert.Null(FindEndpointByRoute(endpoints, "/data/queryable/test-context/metadata"));
         Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/query"));
         Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/test-view/query"));
     }
@@ -60,13 +59,10 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
 
         endpoints.MapQueryable();
 
-        var metadataEndpoint = FindEndpoint(endpoints, QueryableEndpointNames.QueryContextMetadataEndpointName("test-context"))!;
         var viewEndpoint = FindEndpoint(endpoints, QueryableEndpointNames.QueryViewEndpointName("test-context", "test-view"))!;
 
-        var metadataTags = metadataEndpoint.Metadata.GetMetadata<ITagsMetadata>();
         var viewTags = viewEndpoint.Metadata.GetMetadata<ITagsMetadata>();
 
-        Assert.Contains("Test Context", metadataTags!.Tags);
         Assert.Contains("Test Context - Test View", viewTags!.Tags);
     }
 
