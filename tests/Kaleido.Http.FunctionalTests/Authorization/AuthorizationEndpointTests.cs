@@ -17,6 +17,12 @@ public sealed class AuthorizationEndpointTests(
     private const string OpenStepExecuteUrl =
         "/kaleido/processes/steps/auth-open";
 
+    private const string AnonymousStepExecuteUrl =
+        "/kaleido/processes/steps/auth-anonymous";
+
+    private const string ExecuteUrl =
+        "/kaleido/processes/execute";
+
     private const string RegistryUrl =
         "/kaleido/registry";
 
@@ -125,16 +131,102 @@ public sealed class AuthorizationEndpointTests(
     // -- discovery filtering ------------------------------------------------
 
     [Fact]
-    public async Task Registry_WhenUnauthenticated_ReturnsNoCapabilities()
+    public async Task Registry_WhenUnauthenticated_ReturnsOnlyAnonymousCapabilities()
     {
         var response = await fixture.Client.GetAsync(RegistryUrl);
 
         var registry =
             await response.Content.ReadAsync<AggregatedRegistryResponse>();
 
-        Assert.All(registry!.Processes, p => Assert.Empty(p.Steps!));
+        var processor = Assert.Single(registry!.Processes);
+        var step = Assert.Single(processor.Steps!);
+        Assert.Equal(AuthorizationStepNames.AnonymousStep, step.Name);
+        Assert.True(step.Authorization?.AllowAnonymous);
         Assert.Empty(registry.Queryables);
     }
+
+    // -- AllowAnonymous ------------------------------------------------------
+
+    [Fact]
+    public async Task StepExecute_AllowAnonymous_Returns200ForAnonymous()
+    {
+        var response = await fixture.Client.PostAsJsonAsync(
+            AnonymousStepExecuteUrl,
+            StepBody);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Execute_AnonymousWithOnlyAnonymousSteps_Returns200()
+    {
+        var response = await fixture.Client.PostAsJsonAsync(
+            ExecuteUrl,
+            ExecuteBody(AuthorizationStepNames.AnonymousStep));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Execute_AnonymousWithAnySecuredStep_RejectsWholeRequest()
+    {
+        var response = await fixture.Client.PostAsJsonAsync(
+            ExecuteUrl,
+            ExecuteBody(
+                AuthorizationStepNames.AnonymousStep,
+                AuthorizationStepNames.OpenStep));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Execute_AnonymousWithUnknownStep_Returns401()
+    {
+        var response = await fixture.Client.PostAsJsonAsync(
+            ExecuteUrl,
+            ExecuteBody("no-such-step"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AnonymousProcess_ClaimedAfterLogin_DeniesOtherUsers()
+    {
+        var created = await fixture.Client.PostAsJsonAsync(
+            AnonymousStepExecuteUrl,
+            StepBody);
+
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+
+        var processId = Guid.Parse(
+            created.Headers.GetValues("X-Kaleido-Process-Id").Single());
+
+        var claim = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
+                HttpMethod.Post,
+                ProcessTransferUrl(processId),
+                "carol",
+                "shopper"));
+
+        Assert.Equal(HttpStatusCode.OK, claim.StatusCode);
+
+        var other = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
+                HttpMethod.Get,
+                ProcessStateUrl(processId),
+                "dave",
+                "viewer"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, other.StatusCode);
+    }
+
+    private static object ExecuteBody(params string[] stepNames) =>
+        new
+        {
+            steps = stepNames
+                .Select(name => new { stepName = name, request = new { } })
+                .ToArray()
+        };
 
     [Fact]
     public async Task Registry_WhenViewerRole_ExcludesInternalStep()

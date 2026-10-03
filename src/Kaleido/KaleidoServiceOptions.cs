@@ -62,6 +62,24 @@ public class KaleidoServiceOptions
     public Func<Type, bool>? TypeFilter { get; init; }
 
     /// <summary>
+    /// Zero-trust switch for every Kaleido capability (process steps, query
+    /// contexts, query views). Kaleido performs no authentication itself — it
+    /// evaluates the caller the transport derives from the host's
+    /// authentication.
+    /// <list type="bullet">
+    /// <item><c>false</c> (default): nothing is enforced — declared
+    /// <c>[KaleidoAuthorization]</c> roles/policies, process ownership, and
+    /// registry filtering are all skipped. Suitable for samples, local
+    /// development, and hosts without authentication.</item>
+    /// <item><c>true</c>: every capability requires an authenticated caller;
+    /// <c>[KaleidoAuthorization]</c> narrows access to roles/policy or opens it
+    /// with <c>AllowAnonymous = true</c>. Every host in a deployment — including
+    /// registry aggregators/routers — should set this.</item>
+    /// </list>
+    /// </summary>
+    public bool EnforceAuthorization { get; init; }
+
+    /// <summary>
     /// Validates a <see cref="KaleidoServiceOptions"/> instance.
     /// Throws <see cref="KaleidoConfigurationException"/> if <see cref="ServiceName"/> is null,
     /// empty, contains whitespace, path separators, or uppercase characters.
@@ -137,6 +155,9 @@ public sealed class KaleidoServiceOptionsBuilder
     /// <inheritdoc cref="KaleidoServiceOptions.TypeFilter"/>
     public Func<Type, bool>? TypeFilter { get; set; }
 
+    /// <inheritdoc cref="KaleidoServiceOptions.EnforceAuthorization"/>
+    public bool EnforceAuthorization { get; set; }
+
     internal KaleidoServiceOptions Build() =>
         new()
         {
@@ -146,6 +167,7 @@ public sealed class KaleidoServiceOptionsBuilder
             InstanceId = InstanceId,
             Assemblies = Assemblies,
             IsEntryProcessor = IsEntryProcessor,
-            TypeFilter = TypeFilter
+            TypeFilter = TypeFilter,
+            EnforceAuthorization = EnforceAuthorization
         };
 }

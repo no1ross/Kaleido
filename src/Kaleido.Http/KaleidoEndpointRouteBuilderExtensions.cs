@@ -1,6 +1,7 @@
 using Kaleido.Http.Registry;
 using Kaleido.Processor.Registry;
 using Kaleido.Queryable.Registry;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +28,8 @@ public static class KaleidoEndpointRouteBuilderExtensions
 
         var mapOptions = new KaleidoHttpMapOptions();
         configure?.Invoke(mapOptions);
+
+        EnsureAuthenticationConfigured(endpoints.ServiceProvider);
 
         var hasProcess = endpoints.ServiceProvider.GetService<IProcessorStepRegistry>() is not null;
         var hasQueryable = endpoints.ServiceProvider.GetService<IQueryableRegistry>() is not null;
@@ -80,5 +83,31 @@ public static class KaleidoEndpointRouteBuilderExtensions
         }
 
         return new RouteHandlerBuilder(builders);
+    }
+
+    // Enforcing without an authentication scheme would fail every request
+    // at runtime (no scheme to challenge) — fail at startup instead.
+    private static void EnsureAuthenticationConfigured(
+        IServiceProvider services)
+    {
+        if (!services.GetRequiredService<KaleidoServiceOptions>().EnforceAuthorization)
+        {
+            return;
+        }
+
+        var schemes =
+            services.GetService<IAuthenticationSchemeProvider>()?
+                .GetAllSchemesAsync()
+                .GetAwaiter()
+                .GetResult();
+
+        if (schemes is null || !schemes.Any())
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.AuthenticationNotConfigured,
+                "EnforceAuthorization is true but no authentication scheme is registered. " +
+                "Call AddAuthentication(...) with at least one scheme, plus UseAuthentication()/UseAuthorization(), " +
+                "or set EnforceAuthorization = false.");
+        }
     }
 }

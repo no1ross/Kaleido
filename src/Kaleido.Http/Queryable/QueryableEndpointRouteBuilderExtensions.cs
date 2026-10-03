@@ -35,14 +35,11 @@ public static class QueryableEndpointRouteBuilderExtensions
                 "Use MapKaleidoHttp() to map Kaleido endpoints.");
         }
 
-        var httpOptions =
+        var serviceOptions =
             endpoints.ServiceProvider
-                .GetRequiredService<KaleidoHttpOptions>();
+                .GetRequiredService<KaleidoServiceOptions>();
 
-        var serviceName =
-            endpoints.ServiceProvider
-                .GetRequiredService<KaleidoServiceOptions>()
-                .ServiceName;
+        var serviceName = serviceOptions.ServiceName;
 
         var logger =
             endpoints.ServiceProvider
@@ -67,12 +64,12 @@ public static class QueryableEndpointRouteBuilderExtensions
         {
             if (context.Kind == QueryContextKind.Direct)
             {
-                group.MapDirectQueryContext(context, httpOptions);
+                group.MapDirectQueryContext(context, serviceOptions);
             }
 
             foreach (var view in context.Views)
             {
-                group.MapQueryView(context, view, httpOptions);
+                group.MapQueryView(context, view, serviceOptions);
             }
         }
 
@@ -83,7 +80,7 @@ public static class QueryableEndpointRouteBuilderExtensions
         this IEndpointRouteBuilder endpoints,
         QueryableContextRegistryItem context,
         QueryableViewRegistryItem view,
-        KaleidoHttpOptions options)
+        KaleidoServiceOptions options)
     {
         var contextName = context.Name.ToLowerInvariant();
         var viewName = view.Name.ToLowerInvariant();
@@ -98,7 +95,7 @@ public static class QueryableEndpointRouteBuilderExtensions
     private static void MapDirectQueryContext(
         this IEndpointRouteBuilder endpoints,
         QueryableContextRegistryItem context,
-        KaleidoHttpOptions options)
+        KaleidoServiceOptions options)
     {
         var method = typeof(QueryableEndpointRouteBuilderExtensions)
             .GetMethod(
@@ -125,7 +122,7 @@ public static class QueryableEndpointRouteBuilderExtensions
         QueryableContextRegistryItem context,
         QueryableViewRegistryItem view,
         string route,
-        KaleidoHttpOptions options)
+        KaleidoServiceOptions options)
     {
         var method = typeof(QueryableEndpointRouteBuilderExtensions)
             .GetMethod(
@@ -150,7 +147,7 @@ public static class QueryableEndpointRouteBuilderExtensions
         string route,
         QueryableContextRegistryItem context,
         QueryableViewRegistryItem view,
-        KaleidoHttpOptions options)
+        KaleidoServiceOptions options)
         where TQueryView : class
         where TView : class
         where TViewParameters : class
@@ -190,7 +187,7 @@ public static class QueryableEndpointRouteBuilderExtensions
         IEndpointRouteBuilder endpoints,
         string route,
         QueryableContextRegistryItem context,
-        KaleidoHttpOptions options)
+        KaleidoServiceOptions options)
         where TQueryContext : class
     {
         var fields = context.Fields;

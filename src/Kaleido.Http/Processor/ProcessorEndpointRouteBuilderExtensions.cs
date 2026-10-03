@@ -32,10 +32,6 @@ public static class ProcessorEndpointRouteBuilderExtensions
                 "Use MapKaleidoHttp() to map Kaleido endpoints.");
         }
 
-        var httpOptions =
-            endpoints.ServiceProvider
-                .GetRequiredService<KaleidoHttpOptions>();
-
         var serviceOptions =
             endpoints.ServiceProvider
                 .GetRequiredService<KaleidoServiceOptions>();
@@ -61,24 +57,27 @@ public static class ProcessorEndpointRouteBuilderExtensions
             registry.Registrations.Count,
             registry.InitialRegistrations.Count);
 
-        group.MapExecuteEndpoint(httpOptions);
+        group.MapExecuteEndpoint();
 
         group.MapProcessStateEndpoint();
 
-        group.MapProcessTransferEndpoint();
+        group.MapProcessTransferEndpoint(serviceOptions);
 
         foreach (var step in registry.Registrations)
         {
-            group.MapProcessStep(step, httpOptions);
+            group.MapProcessStep(step, serviceOptions);
         }
 
         return group;
     }
 
     private static void MapExecuteEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        KaleidoHttpOptions options)
+        this IEndpointRouteBuilder endpoints)
     {
+        // No route-level auth: a request can carry any mix of steps, so
+        // ProcessExecutionService checks every submitted step against its own
+        // [KaleidoAuthorization] before anything runs and rejects the whole
+        // request if any check fails.
         endpoints.MapPost(
                 ProcessRoutePaths.Execute,
                 async (
@@ -93,10 +92,6 @@ public static class ProcessorEndpointRouteBuilderExtensions
 
                     return Results.Ok(result);
                 })
-            // Multi-step requests authorize each submitted step inside
-            // ProcessExecutionService � endpoint-level auth can't express
-            // per-item requirements.
-            .WithKaleidoAuthorization(null, options)
             .WithName(ProcessEndpointNames.ExecuteEndpointName)
             .Accepts<ExecuteProcessRequest>("application/json")
             .WithTags("Processes")
@@ -137,7 +132,8 @@ public static class ProcessorEndpointRouteBuilderExtensions
     }
 
     private static void MapProcessTransferEndpoint(
-        this IEndpointRouteBuilder endpoints)
+        this IEndpointRouteBuilder endpoints,
+        KaleidoServiceOptions options)
     {
         endpoints.MapPost(
                 ProcessRoutePaths.ProcessTransfer,
@@ -164,8 +160,10 @@ public static class ProcessorEndpointRouteBuilderExtensions
                             });
                 })
             // Ownership transfer always requires an authenticated caller �
-            // the handler additionally enforces owner/role-mate rules.
-            .RequireAuthorization()
+            // the handler rejects anonymous callers and enforces owner/role-mate
+            // rules. Route metadata is attached only when enforcing so hosts
+            // without authentication don't fail at request time.
+            .RequireKaleidoAuthorization(options)
             .WithName(ProcessEndpointNames.ProcessTransferEndpointName)
             .WithTags("Processes")
             .Produces<ProcessTransferResponse>()
@@ -183,7 +181,7 @@ public static class ProcessorEndpointRouteBuilderExtensions
     private static void MapProcessStep(
         this IEndpointRouteBuilder endpoints,
         ProcessStepRegistration step,
-        KaleidoHttpOptions options)
+        KaleidoServiceOptions options)
     {
         ArgumentNullException.ThrowIfNull(step);
 
@@ -200,7 +198,7 @@ public static class ProcessorEndpointRouteBuilderExtensions
         this IEndpointRouteBuilder endpoints,
         ProcessStepRegistration step,
         string route,
-        KaleidoHttpOptions options)
+        KaleidoServiceOptions options)
     {
         if (step.StepResultType is null)
         {
@@ -242,7 +240,7 @@ public static class ProcessorEndpointRouteBuilderExtensions
         IEndpointRouteBuilder endpoints,
         string route,
         ProcessStepRegistration step,
-        KaleidoHttpOptions options)
+        KaleidoServiceOptions options)
     {
         var stepName =
             step.Metadata.Name.ToLowerInvariant();
@@ -283,7 +281,7 @@ public static class ProcessorEndpointRouteBuilderExtensions
         IEndpointRouteBuilder endpoints,
         string route,
         ProcessStepRegistration step,
-        KaleidoHttpOptions options)
+        KaleidoServiceOptions options)
     {
         var stepName =
             step.Metadata.Name.ToLowerInvariant();

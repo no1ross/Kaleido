@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Registry;
 
 namespace Kaleido.UnitTests.Registry;
@@ -71,7 +72,55 @@ public sealed class AuthorizationMetadataTests
             metadata.Roles);
     }
 
+    [Fact]
+    public void ForType_WithAllowAnonymous_ReturnsAllowAnonymous()
+    {
+        var metadata =
+            AuthorizationMetadata.ForType(
+                typeof(Public));
+
+        Assert.NotNull(metadata);
+        Assert.True(metadata.AllowAnonymous);
+        Assert.Null(metadata.Policy);
+        Assert.Empty(metadata.Roles);
+    }
+
+    [Fact]
+    public void ForType_WithRolesOnly_AllowAnonymousIsFalse()
+    {
+        var metadata =
+            AuthorizationMetadata.ForType(
+                typeof(RoleSecured));
+
+        Assert.NotNull(metadata);
+        Assert.False(metadata.AllowAnonymous);
+    }
+
+    [Theory]
+    [InlineData(typeof(AnonymousWithRoles))]
+    [InlineData(typeof(AnonymousWithPolicy))]
+    public void ForType_WithAllowAnonymousAndRolesOrPolicy_ThrowsConflictingAuthorization(
+        Type type)
+    {
+        var exception =
+            Assert.Throws<KaleidoConfigurationException>(
+                () => AuthorizationMetadata.ForType(type));
+
+        Assert.Equal(
+            ConfigurationErrorCodes.ConflictingAuthorization,
+            exception.Code);
+    }
+
     private sealed class Unsecured;
+
+    [KaleidoAuthorization(AllowAnonymous = true)]
+    private sealed class Public;
+
+    [KaleidoAuthorization(AllowAnonymous = true, Roles = "admin")]
+    private sealed class AnonymousWithRoles;
+
+    [KaleidoAuthorization(AllowAnonymous = true, Policy = "p")]
+    private sealed class AnonymousWithPolicy;
 
     [KaleidoAuthorization(Policy = "internal-policy")]
     private sealed class PolicySecured;
