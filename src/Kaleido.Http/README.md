@@ -78,7 +78,9 @@ app.MapKaleidoHttp(); // maps Process + Queryable + /{service}/registry
 app.MapKaleidoHttp(o => o.AggregateRegistry = true); // requires AddHttpClients()
 ```
 
-`AddHttp()` wires the middleware pipeline automatically via `KaleidoStartupFilter` — no manual `Use...()` call is needed. Opt out with `AddHttp(o => o.AutoRegisterMiddleware = false)` if the host owns middleware ordering; it must then register `ExceptionMiddleware`/`ObservabilityMiddleware` itself.
+`AddHttp()` wires the middleware pipeline automatically via `KaleidoStartupFilter`. It places `ExceptionMiddleware` **outermost**, then `ObservabilityMiddleware`, then the rest of the host pipeline. The exception boundary catches failures from correlation setup and downstream endpoints and maps them to Kaleido HTTP error responses. The inner observability middleware initializes correlation before endpoints run and schedules response-header echo. Reversing the pair would leave errors thrown during observability setup outside Kaleido's exception mapping.
+
+`AddHttp(o => o.AutoRegisterMiddleware = false)` skips both built-in middlewares. Their types are internal and there is currently no public manual-registration helper: a host opting out must provide its **own** equivalent exception and correlation handling, or lose Kaleido's default error mapping and header echo. Prefer automatic registration unless that integration is deliberately owned by the host.
 
 ## Per-step Process execution contract
 
