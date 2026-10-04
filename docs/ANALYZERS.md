@@ -4,9 +4,9 @@ Kaleido ships three analyzer projects (in `tools/analyzers`), each with a distin
 
 | Project | IDs | Audience |
 |---|---|---|
-| `Kaleido.Analyzers` | `KAL2xxx` | **Consumers** of the `Kaleido` NuGet package — bundled into the package and applied to consumer compilations to catch framework misuse at compile time |
-| `Kaleido.Analyzers.Source` | `KAL0xxx` | **Contributors** to this repository — enforces internal design conventions; never shipped |
-| `Kaleido.Analyzers.Testing` | `KAL1xxx` | **Contributors** writing tests — enforces fixture conventions; never shipped |
+| [`Kaleido.Analyzers`](../tools/analyzers/Kaleido.Analyzers/) | `KAL2xxx` | **Consumers** of the `Kaleido` NuGet package — bundled into the package and applied to consumer compilations to catch framework misuse at compile time |
+| [`Kaleido.Analyzers.Source`](../tools/analyzers/Kaleido.Analyzers.Source/) | `KAL0xxx` | **Contributors** to this repository — enforces internal design conventions; never shipped |
+| [`Kaleido.Analyzers.Testing`](../tools/analyzers/Kaleido.Analyzers.Testing/) | `KAL1xxx` | **Contributors** writing tests — enforces fixture conventions; never shipped |
 
 These are build diagnostics, not runtime error codes — runtime codes are documented in [`ERROR_CODES.md`](./ERROR_CODES.md).
 
@@ -55,7 +55,7 @@ The registered-service model is harvested from `*ServiceCollectionExtensions` cl
 
 ### HTTP endpoint notes
 
-Endpoint names must be declared as `const string` fields in a `*EndpointNames` class in `Kaleido.Http.Abstractions` — never as inline literals passed to `WithName()`.
+Contributor convention: declare endpoint names as `const string` fields in a `*EndpointNames` class in `Kaleido.Http.Abstractions`, not inline literals passed to `WithName()`. This is **not** a shipped analyzer diagnostic; the proposed KAL0020 rule remains separately tracked in [#152](https://github.com/no1ross/Kaleido/issues/152).
 
 ### API design rules notes (KAL0018–KAL0019)
 
@@ -89,7 +89,7 @@ code on the first pass — do not suppress.
 
 ## Test rules — `KAL1xxx`
 
-Scoped to unit-test projects via `.editorconfig`.
+`Kaleido.Analyzers.Testing` is referenced by all test projects through `tests/Directory.Build.props`. Individual fixture rules have their own applicability checks and `.editorconfig` exemptions: KAL1006 is disabled for functional/integration tests, KAL1009 runs only in `*.UnitTests` assemblies, and KAL1010/KAL1011 apply wherever their matching test-project code occurs.
 
 | ID | Rule | Diagnostic message |
 |---|---|---|
@@ -102,12 +102,34 @@ Scoped to unit-test projects via `.editorconfig`.
 | KAL1007 | Fixture name must equal `{TSut.Name}Tests` | `Test fixture '{0}' declares SUT '{1}' — it must be named '{2}'` |
 | KAL1008 | The SUT may only be constructed inside `CreateSut()` | `'{0}' may only be constructed inside CreateSut() — use CreateSut() or the Sut property` |
 | KAL1009 | Every testable type in the matching `Kaleido.*` source assembly must have a `{Name}Tests` fixture | `Type '{0}' in '{1}' has no '{2}' fixture — every testable type must have a unit-test fixture` |
-| KAL1010 | A `{Type}Tests` fixture must contain at least one `[Fact]`/`[Theory]` — an empty stub does not satisfy coverage | `Fixture '{0}' has no [Fact] or [Theory] test methods — add at least one test or remove the empty stub` |
-| KAL1011 | Exception types declared in test projects must not be records — exceptions stay classes so `Code`-bearing Kaleido exception semantics are preserved | `Exception type '{0}' is declared as a record — exception classes must remain classes` |
+| KAL1010 | A concrete `*Tests` class that declares ordinary methods but no `[Fact]`/`[Theory]` is a helper-only stub, not evidence of tests; a class with no ordinary methods is exempt | `Fixture '{0}' has no [Fact] or [Theory] test methods — add at least one test or remove the empty stub` |
+| KAL1011 | A record deriving from `System.Exception` has inappropriate synthesized value/copy semantics; the C# compiler also rejects this declaration today | `Exception type '{0}' is declared as a record — exception classes must remain classes` |
 | KAL1012 | Fixtures may not `new` a framework collaborator — a testable Kaleido type implementing a service interface; mock it instead | `'{0}' is a collaborator, not the SUT — mock it instead of new-ing a real instance` |
 
 KAL1009 is configured as a warning — it flags types missing a fixture without breaking the build; see `.editorconfig` `[tests/**]` section.
 
 ### SutFixture notes (KAL1006–KAL1009)
 
-`SutFixture<TSut>` lives in `Kaleido.UnitTests` (the base test project — other `*.UnitTests` projects reference it). Testable means public or internal class, non-static, non-abstract, with at least one ordinary method; records, exceptions, attributes, DTO-suffix types, and static `*Extensions` classes are exempt. These rules apply to `*.UnitTests` projects only — functional/integration test projects are scenario-scoped.
+`SutFixture<TSut>` lives in `Kaleido.UnitTests` (the base test project — other `*.UnitTests` projects reference it). Testable means public or internal class, non-static, non-abstract, with at least one ordinary method; records, exceptions, attributes, DTO-suffix types, and static `*Extensions` classes are exempt. KAL1009 runs only in `*.UnitTests` assemblies; KAL1006 is disabled for functional/integration projects in `.editorconfig`. Those suites are scenario-scoped and do not normally use `SutFixture`, while the other fixture-shape rules activate only when their specific fixture pattern occurs.
+
+## Rationale, examples, and implementation
+
+### Consumer checks
+
+- **KAL2004 — preserve cancellation.** A step handler's `ExecuteAsync` with a bare `catch (Exception)` can turn `OperationCanceledException` into a false execution failure. Use `catch (Exception ex) when (ex is not OperationCanceledException)` or handle cancellation in an earlier catch. The rule targets Process step-handler `ExecuteAsync` bodies, not every catch in an application. [Implementation](../tools/analyzers/Kaleido.Analyzers/Process/StepHandlerOceAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Process/StepHandlerOceAnalyzerTests.cs).
+- **KAL2009 — explicit discovery.** `AddKaleido(config, o => o.ServiceName = "app")` omits `Assemblies`; set `o.Assemblies = [typeof(Program).Assembly]` in the options lambda so registration does not depend on the calling-assembly fallback. This checks options lambdas, not arbitrary configuration loaded from other sources. [Implementation](../tools/analyzers/Kaleido.Analyzers/Bootstrap/AddKaleidoAssembliesAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Bootstrap/AddKaleidoAssembliesAnalyzerTests.cs).
+
+The KAL2001–KAL2003 attribute rules catch missing `Name`/`Version` before startup, and KAL2008 detects a missing same-compilation step handler; the table above distinguishes warnings from errors. These are consumer checks bundled with the main Kaleido package, unlike the contributor checks below.
+
+### Contributor conventions
+
+- **KAL0003 — make null assumptions visible.** `typeof(Widget).GetMethod("Run")!` hides a missing-reflection-member failure; `typeof(Widget).GetMethod("Run") ?? throw new KaleidoFrameworkException(FrameworkErrorCodes.ReflectionError, "Run was not found.")` handles it explicitly. Test code legitimately uses `!` in assertion/stub setups and is exempted in `.editorconfig`. [Implementation](../tools/analyzers/Kaleido.Analyzers.Source/Design/NullForgivingOperatorAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Source.UnitTests/Design/NullForgivingOperatorAnalyzerTests.cs).
+- **KAL0015 — keep a local interface with its implementation.** If `IWidgetService` and its same-named `WidgetService` implementation live in one assembly, declare both in `WidgetService.cs` instead of a separate `IWidgetService.cs`. Provider contracts such as `IProcessorContextStore`, which have no same-named implementation in that assembly, are exempt. This is a repository layout convention, not a runtime correctness check. [Implementation](../tools/analyzers/Kaleido.Analyzers.Source/Structure/InterfaceCoLocationAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Source.UnitTests/Structure/InterfaceCoLocationAnalyzerTests.cs).
+
+The DI and API-design tables above state the remaining source rules' immediate failure modes and scoped exemptions; see their implementations under [`Kaleido.Analyzers.Source`](../tools/analyzers/Kaleido.Analyzers.Source/) when changing a convention.
+
+### Test-fixture safeguards
+
+**KAL1010** prevents a helper-only `*Tests` class from looking like coverage. For example, a concrete `WidgetTests : SutFixture<Widget>` with `CreateSut()` and only helper methods, but no `[Fact]` or `[Theory]`, reports KAL1010; add a real test rather than an empty assertion. A `*Tests` class with **no ordinary methods at all** is intentionally skipped by KAL1010, as are abstract/static or differently named classes. KAL1009 independently looks for an actual `[Fact]`/`[Theory]` fixture for a testable source type in a matching `*.UnitTests` assembly. [Implementation](../tools/analyzers/Kaleido.Analyzers.Testing/Fixtures/FixtureEmptyAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Testing.UnitTests/Fixtures/FixtureEmptyAnalyzerTests.cs).
+
+**KAL1011** rejects a record inheriting from `System.Exception`; synthesized record equality and copy behavior do not belong on an exception. `record WidgetException : System.Exception` is already invalid C# today, so this diagnostic is a **secondary safeguard**, not a claim to detect an otherwise compiling bug. Use `class WidgetException : System.Exception` instead; a record that is not an exception (for example `record WidgetResult(bool Success)`) is exempt. The analyzer test suppresses the compiler's own errors to assert the rule independently. [Implementation](../tools/analyzers/Kaleido.Analyzers.Testing/Design/ExceptionRecordAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Testing.UnitTests/Design/ExceptionRecordAnalyzerTests.cs).
