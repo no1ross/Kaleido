@@ -32,6 +32,12 @@ For `POST /{service}/processes/steps/{step}`, the JSON request is an `ExecuteSte
 - `QueryErrorResponse` — structured query validation error response
 - `QueryApiBodyExtensions.ToApiBody()` — converts a runtime `QueryBody` to `QueryApiBody` for callers that receive a `QueryBody` and need to forward it over HTTP (e.g. delegated view sources calling a remote query context)
 
+### JSON enum values
+
+Kaleido endpoints and the .NET HTTP clients use `KaleidoJsonOptions.Options` without changing the host application's JSON settings. Property names are camelCase; Kaleido enum-valued contract fields serialize as **camelCase strings**, for example `"outcome":"completed"`, `"status":"validationFailed"` and `"type":"information"`. Numeric values for these enum fields are rejected. Consumers should use the published strings rather than CLR integer ordinals, and handle unfamiliar future values without treating them as numbers. Property-name binding is case-insensitive, but producing the documented casing keeps non-.NET clients consistent.
+
+Queryable query operators and sort directions are already **string properties** on `QueryApiBody`, not serialized core CLR enums: `QueryApiFilterCondition.Operator`, `QueryApiFilterGroup.Operator` and `QueryApiSort.Direction` accept documented names such as `"notEquals"`, `"and"` and `"ascending"` case-insensitively. Use the canonical string names when building a request; custom converters on application-defined payload types may define their own business-data representation.
+
 ### `totalCount` semantics
 `QueryResult<T>.totalCount` means "total matching rows" when `page` is provided in the request. When `page` is absent, `totalCount` equals `results.Count` — the caller received all results (capped by `[Pageable].MaxSize` if present). When `page` is provided and the returned page is partial (`results.Count < page.size`), `totalCount` also equals `results.Count` — no additional rows exist.
 
