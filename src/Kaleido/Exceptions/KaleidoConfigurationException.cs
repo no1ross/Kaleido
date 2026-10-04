@@ -43,6 +43,17 @@ public static class ConfigurationErrorCodes
     /// <summary>A configured Kaleido client is missing a BaseUrl (neither client-level nor shared Kaleido:BaseUrl).</summary>
     public const string MissingBaseUrl          = "missing_base_url";
 
+    /// <summary>A [KaleidoAuthorization] declares AllowAnonymous together with Roles or Policy.</summary>
+    public const string ConflictingAuthorization = "conflicting_authorization";
+
+    /// <summary>Authorization is enforced (AuthorizationMode is not None) but the host has no authentication scheme registered.</summary>
+    public const string AuthenticationNotConfigured = "authentication_not_configured";
+
+    public const string InvalidAuthorizationMode = "invalid_authorization_mode";
+
+    /// <summary>Reserved for hosts that choose to reject undeclared authorization at startup rather than omit the capability.</summary>
+    public const string UndeclaredAuthorization = "undeclared_authorization";
+
     // Process-specific (pro_ prefix)
 
     /// <summary>A process step type is missing the [ProcessStep] attribute.</summary>

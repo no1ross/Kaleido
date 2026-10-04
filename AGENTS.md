@@ -167,6 +167,26 @@ The rule is: **one observability signal per cancellation, at the lowest level th
 - Correlation invariants (one RequestId per request, echo-or-generate,
   automatic outbound propagation) are in `src/ARCHITECTURE.md`.
 
+## Tracking work discovered mid-item
+
+Active work lives in [`REVIEW_TRACKER.yaml`](./REVIEW_TRACKER.yaml); plan files live in `~/.devin/plans/`. At the start of any session or context, read the tracker's `IN_PROGRESS` and `PENDING_*` items and their plan files before starting new work.
+
+**Write done-criteria before starting an item** (in its plan file or the tracker `description`). Anything outside them is a discovered item.
+
+When something new surfaces while working an item:
+- Log it **before** discussing a fix: add a tracker entry with `discovered_during: <ID>` and `relation`, add it to the parent's `spawned: [...]`, and add a line to the parent plan's *Discovered along the way* section.
+- Classify the relation; never dismiss it as "unrelated":
+  - `requires`: the parent cannot be `COMPLETE` until this is done
+  - `should`: do alongside the parent; not a hard gate
+  - `separate`: found there, independent schedule
+- **Scope gate:** ask "do the current item's done-criteria require this?"
+  - Yes → `requires`; do it now.
+  - No → log it (`should` / `separate`) and **default to deferring** it to a future commit or PR. Pulling it in is an explicit, stated decision, never the default.
+- Propose the minimal fix that meets the done-criteria first; offer broader redesigns as a separate, logged option.
+- Timebox discovery: if a side thread is still growing after a couple of exchanges, stop and log it with what is known so far.
+- A parent cannot move to `COMPLETE` while a `requires` child is open; open `should` children are listed in the parent's `progress_note`.
+- Before closing a PR, re-read the tracker and list every open spawned item in the summary.
+
 ## Documentation rules
 
 - Root docs should explain how the projects fit together.
@@ -181,6 +201,52 @@ Tests and samples are important navigation aids:
 
 Use samples to understand intended consumer usage.
 Use tests to understand behavioral expectations and invariants.
+
+## Build and test commands
+
+### Build
+```
+dotnet build Kaleido.slnx
+```
+
+### Run tests
+
+Test projects use xUnit v3 with **Microsoft Testing Platform (MTP)**. The `--` separator after `dotnet test` is required — it signals dotnet to route through MTP instead of VSTest:
+
+```
+dotnet test Kaleido.slnx --
+```
+
+Without `--`, dotnet uses VSTest discovery which cannot see MTP projects and reports "Zero tests ran". The CI workflow (`build.yml`) already includes `--` (passing `--coverage` after it), which is why it works on GitHub but not when running `dotnet test` bare locally.
+
+Add `--no-build` when the solution is already built:
+```
+dotnet test Kaleido.slnx --no-build --
+```
+
+### Per-commit quality gate
+
+Every commit must pass this gate on its own. A later commit fixing an earlier one doesn't count.
+
+1. **Fresh build:** `dotnet build Kaleido.slnx --no-incremental` → **0 errors, 0 warnings**.
+2. **All tests pass:** `dotnet test Kaleido.slnx --no-build --` → 0 failed, with a non-zero test count.
+3. **If the commit touches a UI sample:** `npm run build` (0 errors) and `npm test` in that UI folder.
+4. **Record the result in the commit message body**, e.g. `Gate: build 0 errors / 0 warnings; tests 812 passed; priorauth-ui build + test OK`.
+
+Never delete `bin`/`obj` folders inside `node_modules`; if a clean is needed, exclude `node_modules` (see below).
+
+### When tests still report "Zero tests ran"
+
+Stale bin/obj folders are the most common cause after a failed or partial build. Run `full_clean.cmd` from the repo root to nuke all bin/obj folders and restore, then rebuild:
+```
+full_clean.cmd   # deletes bin/, obj/, .vs/, TestResults/ and runs dotnet restore
+dotnet build Kaleido.slnx
+dotnet test Kaleido.slnx --no-build --
+```
+
+**Intent of `full_clean.cmd`:** reset the whole repository to a clean, ready-to-build state. It removes all build output and restores **everything**: the .NET solution *and* every Angular/npm site (`samples/PriorAuth/priorauth-ui`, `samples/kaleido-sample-ecommerce-ui`). After it runs, `dotnet build`, `dotnet test`, `npm run build` and `npm test` should all work with no extra steps.
+
+> **Known issue (MP-029):** the script doesn't meet that intent yet. It also deletes `bin` folders inside `node_modules` and doesn't restore npm packages. Afterwards, stop any running `ng serve` and run `npm ci` in each UI folder (`samples/PriorAuth/priorauth-ui`, `samples/kaleido-sample-ecommerce-ui`).
 
 ## Rule of thumb
 

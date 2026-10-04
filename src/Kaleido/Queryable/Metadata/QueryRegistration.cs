@@ -26,8 +26,18 @@ public sealed record QueryContextMetadata
     QueryContextKind Kind,
     PageableMetadata? Pageable,
     IReadOnlyList<FieldMetadata> Fields,
-    AuthorizationMetadata? Authorization = null
-);
+    AuthorizationMetadata Authorization
+)
+{
+    public QueryContextMetadata(
+        string name, string description, string displayName, string version,
+        string? source, QueryContextKind kind, PageableMetadata? pageable,
+        IReadOnlyList<FieldMetadata> fields)
+        : this(name, description, displayName, version, source, kind, pageable,
+            fields, AuthorizationMetadata.Unspecified)
+    {
+    }
+}
 
 [ExcludeFromCodeCoverage]
 public sealed record FieldMetadata
@@ -124,10 +134,10 @@ public record QueryableContextRegistryItem
     public PageableMetadata? Pageable { get; init; }
 
     /// <summary>
-    /// Authorization requirement declared via <c>[KaleidoAuthorization]</c>.
-    /// <c>null</c> means open (subject to transport-level defaults).
+    /// Effective authorization rule. <see cref="AuthorizationMetadata.Unspecified"/>
+    /// means neither the capability nor its service declared a rule.
     /// </summary>
-    public AuthorizationMetadata? Authorization { get; init; }
+    public AuthorizationMetadata Authorization { get; init; } = AuthorizationMetadata.Unspecified;
 
     public IReadOnlyCollection<QueryableFieldDescriptor> Fields { get; init; }
         = [];
@@ -170,9 +180,10 @@ public record QueryableViewRegistryItem
     /// <summary>
     /// Effective authorization requirement — the view's own
     /// <c>[KaleidoAuthorization]</c>, or the owning context's when the view
-    /// declares none. <c>null</c> means open (subject to transport-level defaults).
+    /// declares none. <see cref="AuthorizationMetadata.Unspecified"/> means
+    /// no declaration exists at either level.
     /// </summary>
-    public AuthorizationMetadata? Authorization { get; init; }
+    public AuthorizationMetadata Authorization { get; init; } = AuthorizationMetadata.Unspecified;
 
     public IReadOnlyCollection<QueryableParameterDescriptor> Parameters { get; init; }
         = [];

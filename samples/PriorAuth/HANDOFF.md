@@ -6,7 +6,9 @@ This document explains how the PriorAuth sample implements server-to-server proc
 
 ## Overview
 
-A **cross-processor handoff** occurs when one processor (e.g. Intake) determines mid-execution that the process must continue on a different processor (e.g. Radiology). Intake does not own Radiology's steps, state, or domain — it simply delegates and signals the UI which processor to talk to next.
+In **this PriorAuth sample**, consumers begin a prior-authorization request with Intake. After the consumer supplies a procedure/service code, Intake uses Configuration's product-code mapping to select the dedicated product processor that owns the remaining workflow. Radiology is the first implemented target; Oncology, Sleep, Rehab, and other products can each have their own processors with different steps and domain rules. Intake does not own those product-specific steps or state.
+
+This is an application design choice, **not a required Kaleido architecture**. Kaleido supplies processors, steps, correlation, and a handoff signal; the sample decides how to select a target. Only the Intake → Radiology path is implemented today. A new product needs its own processor and entry step plus a corresponding Intake dispatch path; adding mapping data alone cannot make the current Radiology-specific call work for another processor.
 
 The handoff is fully server-driven. The UI receives a clear signal (`targetProcessorName`) and reacts by fetching state from the target processor before navigating.
 
@@ -42,48 +44,36 @@ The same `targetProcessorName` field is present on `GET /{processor}/processes/{
 
 ## How the handoff is implemented in Intake
 
-`Intake.Artifacts/Process/Handlers/CaptureRequestedServiceHandler.cs`
+`Common/Intake/Process/Handlers/CaptureRequestedServiceHandler.cs`
 
 ```
-1. Validate the procedure code against the code set service
-2. Determine the modality (MRI, CT, ...) via the modality client
-3. Look up the target processor name from configuration:
-      ProcessorMappings:{modality} → e.g. "radiology"
-4. Load the intake session (including the captured member)
-5. Guard: if session.Member is null, return Failure(MemberNotCaptured)
-6. Persist the resolved procedure + target processor to the intake session
-7. Call the target processor's StartRadiologyIntake step via ExecuteStepAsync<StartRadiologyIntakeStep>:
-      POST /radiology/processes/steps/startRadiologyIntake
-      { memberId, memberEnrollmentId, dateOfService, codeValue, codeSystem }
-      (same ProcessId, typed step — member + procedure data from the intake session)
-8. If downstreamResult.Outcome == Failed → return Failure(downstreamResult.Messages)
-9. Otherwise → return ProcessStepHandlerResult.HandOff(processorName)
+1. Resolve and validate the submitted procedure code through CodeSet.
+2. Query Configuration's product-code-mappings context for its processor name
+   (CodeSystem + CodeValue); the seeded mappings currently point to radiology.
+3. Return a business failure if the code or processor mapping cannot be found.
+4. Load or create the Intake session, preserving any member data already captured.
+5. Persist the procedure and resolved processor name; update History.
+6. For the currently supported Radiology target, call its typed
+   StartRadiologyIntake step with available member + procedure data.
+7. If the downstream step fails, return its failure messages; otherwise return
+   ProcessStepHandlerResult.HandOff(processorName).
 ```
+
+The mapping lives in Configuration data (seeded from `Seeder/assets/configuration/product-code-mappings.json`), **not** in an Intake `ProcessorMappings` setting. Modality (MRI/CT) is resolved later within Radiology; it does not choose the product processor in Intake.
 
 Key points:
-- The `ProcessId` is shared — Radiology receives and operates on the same process instance
-- Intake submits a strongly typed `StartRadiologyIntakeStep` carrying member + procedure data resolved during the intake flow; it does not forward the original raw request payload
-- `HandOff()` leaves `RequiredStep` null — Intake does not know Radiology's internal required step; the consumer must fetch it from Radiology's state endpoint
-- Intake returns no typed result — it is a routing step, not a data-capture step
-
-The target processor name comes from `appsettings.json`:
-
-```json
-"ProcessorMappings": {
-  "Mri": "radiology",
-  "Ct": "radiology"
-}
-```
-
-This keeps the routing table out of code and allows new modality → processor mappings without a recompile.
+- The contract intends to carry the same `ProcessId` through Intake and the target processor. Actual propagation is under investigation (HP-025); do not treat a successful handoff response alone as proof the target has persisted state.
+- Intake submits a strongly typed `StartRadiologyIntakeStep` with whatever member data is available plus the validated procedure; it does not forward the original raw request payload.
+- `HandOff()` leaves `RequiredStep` null — the consumer must fetch the target processor's state for its authoritative next step.
+- The current call is statically typed to `StartRadiologyIntakeStep`. Future products require their own entry step and Intake dispatch logic even if a mapping resolves their processor name.
 
 ---
 
 ## How Radiology receives the handoff
 
-`Radiology.Artifacts/Process/Handlers/StartRadiologyIntakeHandler.cs`
+`Common/Radiology/Process/Handlers/StartRadiologyIntakeHandler.cs`
 
-Radiology's `StartRadiologyIntake` handler is the dedicated entry point for handoffs from Intake. In a single atomic step it:
+Radiology's `StartRadiologyIntake` handler is the dedicated entry point for handoffs from Intake. During this step it:
 
 1. Validates the member against the member service
 2. Resolves the procedure code
@@ -165,9 +155,9 @@ POST /intake/processes/steps/captureRequestedService
     │
     ▼
 Intake: CaptureRequestedServiceHandler
-    ├── resolves procedure code → MRI modality
-    ├── looks up ProcessorMappings:Mri → "radiology"
-    ├── loads intake session (member + procedure)
+    ├── validates procedure code through CodeSet
+    ├── looks up Configuration product-code-mappings → "radiology"
+    ├── loads or creates intake session (member may not yet be captured)
     ├── persists procedure + target to intake session
     ├── calls StartRadiologyIntake on Radiology:
     │       POST /radiology/processes/steps/startRadiologyIntake
@@ -212,39 +202,32 @@ POST /radiology/processes/steps/capturemriinfo
 
 ---
 
-## Adding a new processor handoff
+## Adding another product processor
 
-To add a new modality → processor mapping (e.g. Oncology):
+For a product such as Oncology, Sleep, or Rehab (not implemented in this sample yet):
 
-1. Register the Oncology processor and its steps in its own `*.Artifacts` project
-2. Create a `StartOncologyIntakeStep` and `StartOncologyIntakeHandler` in `Oncology.Artifacts` (same pattern as `StartRadiologyIntakeStep`)
-3. Add `"ProcessorMappings:Oncology": "oncology"` to Intake's `appsettings.json`
-4. Add a `"Kaleido:Clients:Oncology"` entry in Intake's `appsettings.json` (`BaseUrl`/`RoutePrefix` as needed) — `AddHttpClients()` in `Program.cs` registers it automatically
-5. Add `Intake.Artifacts` → `Oncology.Artifacts` project reference so `CaptureRequestedServiceHandler` can submit the typed step
-6. Update `CaptureRequestedServiceHandler` to call `ExecuteStepAsync<StartOncologyIntakeStep>` when `processorName == "oncology"`
-7. The Intake → target handoff signal (`HandOff(processorName)`) and `ProcessService` require no changes
+1. Implement its own processor, domain steps, durable process state, and a typed entry step/handler for the Intake handoff.
+2. Add the product's procedure/service codes and processor name to Configuration's `ProductCodeMappings` data. The code mapping chooses the product processor, not an MRI/CT modality.
+3. Configure Intake's Kaleido HTTP client for that processor and make its entry-step contract available to Intake.
+4. Extend `CaptureRequestedServiceHandler`'s typed dispatch. It currently calls `ExecuteStepAsync<StartRadiologyIntakeStep>` for **every** resolved processor name; configuration alone cannot make that call work for a different product.
+5. Register the new processor with the router and consumer service routes, and verify the target's state can be fetched using the handed-off `ProcessId` (HP-025 remains open for the current Radiology path).
+
+The framework handoff signal, `HandOff(processorName)`, does not require a product-specific change.
 
 ---
 
 ## Files involved
 
+`Common`, `Seeder`, and `priorauth-ui` paths below are relative to `samples/PriorAuth/`; `src` paths are relative to the repository root.
+
 | File | Role |
 |------|------|
-| `Intake.Artifacts/Process/Handlers/CaptureRequestedServiceHandler.cs` | Detects modality, calls `StartRadiologyIntake` on target, signals `HandOff(processorName)` |
-| `Intake/appsettings.json` | `ProcessorMappings` configuration |
-| `Radiology.Artifacts/Process/Steps/StartRadiologyIntakeStep.cs` | Entry-point step for handoff from Intake |
-| `Radiology.Artifacts/Process/Models/StartRadiologyIntakeResponse.cs` | Response carrying questionnaire data back to Intake |
-| `Radiology.Artifacts/Process/Handlers/StartRadiologyIntakeHandler.cs` | Validates member + procedure, upserts rows, returns `requiredStep` |
-| `src/Process/Abstractions/Execution/ProcessStepResult.cs` | `ProcessStepHandlerResult.HandOff(targetProcessorName)` factory |
-| `src/Process/Abstractions/Execution/ExecutionDecision.cs` | `ExecutionDecision.HandOff(targetProcessorName)` factory |
-| `src/Process/Process/Execution/StepExecutionEvaluator.cs` | Checks `TargetProcessorName` before `RequiredStep` so pure handoffs are not dropped |
-| `src/Process/AspNetCore.Abstractions/Contracts/ProcessExecutionResponse.cs` | `TargetProcessorName` on HTTP step response |
-| `src/Process/AspNetCore.Abstractions/Contracts/ProcessStateResponse.cs` | `TargetProcessorName` on HTTP state response |
-| `src/Registry/RegistryEndpointRouteBuilderExtensions.cs` | `MapRegistry()` — unified discovery endpoint |
-| `priorauth-ui/src/app/kaleido/services/process-registry.ts` | Compound keying; `getAnyEntryForProcessor()` |
-| `priorauth-ui/src/app/kaleido/services/process-service.ts` | Cross-processor state fetch; `currentProcessorName` switching |
-| `priorauth-ui/src/app/process/services/process-state-service.ts` | `currentProcessorName` in `ProcessState`; `setProcessFlow()` |
-| `priorauth-ui/src/app/kaleido/models/process-state-response.ts` | UI model for the target processor's state response |
-| `priorauth-ui/src/configuration/serviceRoutes.ts` | Service registry entries; intake uses unified `registryPath` |
-| `priorauth-ui/src/app/registries/registry-catalog.ts` | `loadUnifiedRegistry()` for `registryPath`-bearing services |
-| `priorauth-ui/src/app/process/services/step-route.ts` | Step name → Angular route mapping |
+| `Common/Intake/Process/Handlers/CaptureRequestedServiceHandler.cs` | Resolves the target from the procedure code, calls the currently supported Radiology entry step, signals `HandOff(processorName)` |
+| `Common/Intake/Process/Services/ProductCodeMappingClient.cs` | Queries Configuration for a code's target processor |
+| `Seeder/assets/configuration/product-code-mappings.json` | Sample procedure-code-to-processor mapping data (currently Radiology) |
+| `Common/Radiology/Process/Steps/StartRadiologyIntakeStep.cs` | Typed entry step for the Radiology product processor |
+| `Common/Radiology/Process/Handlers/StartRadiologyIntakeHandler.cs` | Receives Intake's validated member/procedure data |
+| `src/Kaleido/Processor/Execution/ProcessStepHandler.cs` | `ProcessStepHandlerResult.HandOff(targetProcessorName)` factory |
+| `src/Kaleido.Http.Abstractions/Processor/ProcessContracts.cs` | HTTP execution and state response contracts |
+| `priorauth-ui/src/app/kaleido/services/process-service.ts` | Fetches target processor state and switches the active processor after handoff |
+| `priorauth-ui/src/configuration/serviceRoutes.ts` | Consumer service routes for target processors |

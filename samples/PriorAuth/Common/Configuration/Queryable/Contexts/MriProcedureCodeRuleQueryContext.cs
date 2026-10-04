@@ -4,6 +4,7 @@ using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 
+// Service-to-service only: queried by Radiology.
 [QueryContext(
     Name = "mri-procedure-code-rules",
     DisplayName = "MRI Procedure Code Rules",

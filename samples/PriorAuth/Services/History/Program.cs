@@ -46,9 +46,11 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.ServiceName = "history";
         o.Assemblies = new System.Reflection.Assembly[] { typeof(Program).Assembly, typeof(HistoryDbContext).Assembly };
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.History", StringComparison.Ordinal) ?? false;
+        o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
+        o.DefaultAuthorization = new(DevAuthPolicies.AuthenticatedUser, []);
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp(o => o.RequireAuthorization = true)
+    .AddHttp()
     .AddOpenTelemetry();
 
 var app = builder.Build();

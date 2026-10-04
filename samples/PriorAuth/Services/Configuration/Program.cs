@@ -43,9 +43,11 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.ServiceName = "configuration";
         o.Assemblies = new System.Reflection.Assembly[] { typeof(Program).Assembly, typeof(ConfigurationDbContext).Assembly };
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Configuration", StringComparison.Ordinal) ?? false;
+        o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
+        o.DefaultAuthorization = new(DevAuthPolicies.InternalCaller, []);
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp(o => o.RequireAuthorization = true)
+    .AddHttp()
     .AddOpenTelemetry();
 
 var app = builder.Build();

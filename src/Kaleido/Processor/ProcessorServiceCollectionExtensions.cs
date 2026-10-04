@@ -58,7 +58,8 @@ public static class ProcessorServiceCollectionExtensions
         builder.Services.TryAddSingleton<IProcessorStepRegistry>(
             _ => new ProcessorStepRegistry(
                 recordTypes,
-                handlerTypes));
+                handlerTypes,
+                builder.ServiceOptions.DefaultAuthorization));
 
         builder.Services.TryAddSingleton<IProcessorRegistry>(
             sp => new ProcessorRegistry(

@@ -28,8 +28,7 @@ public sealed class ProductCodeMappingClient(
                                 Operator = "equals",
                                 Values = [JsonSerializer.SerializeToElement(codeSystem.ToString())]
                             }
-                        },
-                        Page = new QueryApiPage { Size = 25, Offset = 0 }
+                        }
                     }
                 },
                 cancellationToken);

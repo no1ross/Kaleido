@@ -24,57 +24,6 @@ internal sealed class KaleidoProcessorClient(
 
     public void InvalidateRegistry() => remoteRegistry.Invalidate(clientName);
 
-    public async Task<ProcessStepResponse> GetStepMetadataAsync(
-        string stepName,
-        CancellationToken cancellationToken = default)
-    {
-        var registry = await EnsureRegistryAsync(cancellationToken);
-
-        ProcessStepResponse? match = null;
-
-        foreach (var processor in registry)
-        {
-            match = processor.Steps?.FirstOrDefault(
-                s => string.Equals(s.Name, stepName, StringComparison.OrdinalIgnoreCase));
-
-            if (match is not null)
-            {
-                break;
-            }
-        }
-
-        if (match is null)
-        {
-            throw new KaleidoHttpClientException(
-                HttpClientErrorCodes.NotFound,
-                $"Process step '{stepName}' was not found in the remote registry.",
-                HttpStatusCode.NotFound);
-        }
-
-        using var httpRequest = new HttpRequestMessage(
-            HttpMethod.Get,
-            match.MetadataUrl.RequireValidRegistryUrl(nameof(match.MetadataUrl), httpClient.BaseAddress));
-
-        headerStamper.Stamp(httpRequest);
-
-        using var response = await SendAsync(httpRequest, cancellationToken);
-
-        if (response.IsSuccessStatusCode)
-        {
-            return await response.Content.ReadFromJsonAsync<ProcessStepResponse>(
-                       KaleidoJsonOptions.Options, cancellationToken)
-                   ?? throw new KaleidoHttpClientException(
-                       HttpClientErrorCodes.EmptyResponse,
-                       $"Process step metadata request for '{stepName}' succeeded but returned no payload.",
-                       response.StatusCode);
-        }
-
-        throw await CreateFailureAsync(
-            response,
-            $"Process step metadata request for '{stepName}' failed",
-            cancellationToken);
-    }
-
     public async Task<ProcessStateResponse?> GetProcessStateAsync(
         Guid processId,
         CancellationToken cancellationToken = default)

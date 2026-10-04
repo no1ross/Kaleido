@@ -6,9 +6,15 @@ namespace Kaleido.Samples.PriorAuth.Auth;
 /// <summary>
 /// Issues and validates HMAC-signed dev tokens for the sample. This is a
 /// demo-only stand-in for a real identity provider — tokens carry a
-/// <c>name|role1,role2|expiryUtc</c> payload plus an HMACSHA256 signature,
-/// both base64url-encoded: <c>dev.&lt;payload&gt;.&lt;sig&gt;</c>.
+/// <c>name|role1,role2|actor|expiryUtc</c> payload plus an HMACSHA256
+/// signature, both base64url-encoded: <c>dev.&lt;payload&gt;.&lt;sig&gt;</c>.
 /// </summary>
+/// <remarks>
+/// Roles describe the <b>user</b>; the optional actor names the <b>service</b>
+/// making a service-to-service call (on behalf of the user, or on its own).
+/// Users never carry an "internal" role — internal-only capabilities check
+/// for the actor via <see cref="DevAuthPolicies.InternalCaller"/>.
+/// </remarks>
 public static class DevTokenIssuer
 {
     /// <summary>Config key holding the shared HMAC secret.</summary>
@@ -21,6 +27,13 @@ public static class DevTokenIssuer
     public const string DefaultKey =
         "priorauth-sample-dev-key-do-not-use-in-production";
 
+    /// <summary>
+    /// App roles granted to a service principal (e.g. the router aggregating
+    /// registries) so it sees every downstream capability — the equivalent of
+    /// app-role assignments on a daemon identity in a real IdP.
+    /// </summary>
+    private static readonly string[] ServiceAppRoles = ["radiology", "admin"];
+
     private static readonly TimeSpan DefaultLifetime =
         TimeSpan.FromHours(8);
 
@@ -28,6 +41,7 @@ public static class DevTokenIssuer
         string name,
         IReadOnlyCollection<string> roles,
         string key,
+        string? actor = null,
         TimeSpan? lifetime = null)
     {
         var expiry =
@@ -37,20 +51,20 @@ public static class DevTokenIssuer
 
         var payload =
             Base64UrlEncode(
-                $"{name}|{string.Join(",", roles)}|{expiry}");
+                $"{name}|{string.Join(",", roles)}|{actor}|{expiry}");
 
         return $"dev.{payload}.{Sign(payload, key)}";
     }
 
     /// <summary>
-    /// Issues a service-to-service token carrying the "internal" role plus all
-    /// sample domain roles — trusted infrastructure sees the full capability
-    /// surface; caller scoping happens at the edge (router).
+    /// Issues a service-to-service token with no user: name
+    /// <c>svc-{serviceName}</c>, the service's app roles, and the service as
+    /// actor.
     /// </summary>
     public static string IssueServiceToken(
         string serviceName,
         string key) =>
-        Issue($"svc-{serviceName}", ["internal", "intake", "radiology", "admin"], key);
+        Issue($"svc-{serviceName}", ServiceAppRoles, key, actor: serviceName);
 
     public static bool TryValidate(
         string token,
@@ -77,8 +91,8 @@ public static class DevTokenIssuer
             Encoding.UTF8.GetString(Base64UrlDecode(parts[1]))
                 .Split('|');
 
-        if (fields.Length != 3
-            || !long.TryParse(fields[2], out var expiry)
+        if (fields.Length != 4
+            || !long.TryParse(fields[3], out var expiry)
             || DateTimeOffset.UtcNow.ToUnixTimeSeconds() > expiry)
         {
             return false;
@@ -89,7 +103,8 @@ public static class DevTokenIssuer
             fields[1].Split(
                 ',',
                 StringSplitOptions.RemoveEmptyEntries |
-                StringSplitOptions.TrimEntries));
+                StringSplitOptions.TrimEntries),
+            string.IsNullOrWhiteSpace(fields[2]) ? null : fields[2]);
 
         return true;
     }
@@ -118,6 +133,11 @@ public static class DevTokenIssuer
     }
 }
 
+/// <summary>The identity carried by a validated dev token.</summary>
+/// <param name="Name">The user (or <c>svc-{service}</c> for service tokens).</param>
+/// <param name="Roles">The user's roles (or a service principal's app roles).</param>
+/// <param name="Actor">The calling service on service-to-service hops; null for direct user calls.</param>
 public sealed record DevTokenIdentity(
     string Name,
-    string[] Roles);
+    string[] Roles,
+    string? Actor);

@@ -1,6 +1,4 @@
 using System.Net;
-using Kaleido.Http.Processor;
-using Kaleido.Http.Queryable;
 using Kaleido.Http.Registry;
 using Kaleido.Processor.AspNetCore.FunctionalTests.Infrastructure;
 
@@ -13,14 +11,17 @@ public sealed class AuthorizationEndpointTests(
     private const string InternalStepExecuteUrl =
         "/kaleido/processes/steps/auth-internal";
 
-    private const string InternalStepMetadataUrl =
-        "/kaleido/processes/steps/auth-internal/metadata";
-
     private const string PolicyStepExecuteUrl =
         "/kaleido/processes/steps/auth-policy";
 
     private const string OpenStepExecuteUrl =
         "/kaleido/processes/steps/auth-open";
+
+    private const string AnonymousStepExecuteUrl =
+        "/kaleido/processes/steps/auth-anonymous";
+
+    private const string ExecuteUrl =
+        "/kaleido/processes/execute";
 
     private const string RegistryUrl =
         "/kaleido/registry";
@@ -30,9 +31,6 @@ public sealed class AuthorizationEndpointTests(
 
     private static string ProcessTransferUrl(Guid processId) =>
         $"/kaleido/processes/{processId}/transfer";
-
-    private const string SecuredContextMetadataUrl =
-        "/kaleido/queryable/secured-records/metadata";
 
     private const string SecuredContextQueryUrl =
         "/kaleido/queryable/secured-records/query";
@@ -130,28 +128,105 @@ public sealed class AuthorizationEndpointTests(
         Assert.Equal(HttpStatusCode.OK, authenticated.StatusCode);
     }
 
-    [Fact]
-    public async Task StepMetadata_WhenUnauthenticated_Returns401()
-    {
-        var response =
-            await fixture.Client.GetAsync(InternalStepMetadataUrl);
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
     // -- discovery filtering ------------------------------------------------
 
     [Fact]
-    public async Task Registry_WhenUnauthenticated_ReturnsNoCapabilities()
+    public async Task Registry_WhenUnauthenticated_ReturnsOnlyAnonymousCapabilities()
     {
         var response = await fixture.Client.GetAsync(RegistryUrl);
 
         var registry =
             await response.Content.ReadAsync<AggregatedRegistryResponse>();
 
-        Assert.All(registry!.Processes, p => Assert.Empty(p.Steps!));
+        var processor = Assert.Single(registry!.Processes);
+        var step = Assert.Single(processor.Steps!);
+        Assert.Equal(AuthorizationStepNames.AnonymousStep, step.Name);
+        Assert.True(step.Authorization?.AllowAnonymous);
         Assert.Empty(registry.Queryables);
     }
+
+    // -- AllowAnonymous ------------------------------------------------------
+
+    [Fact]
+    public async Task StepExecute_AllowAnonymous_Returns200ForAnonymous()
+    {
+        var response = await fixture.Client.PostAsJsonAsync(
+            AnonymousStepExecuteUrl,
+            StepBody);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Execute_AnonymousWithOnlyAnonymousSteps_Returns200()
+    {
+        var response = await fixture.Client.PostAsJsonAsync(
+            ExecuteUrl,
+            ExecuteBody(AuthorizationStepNames.AnonymousStep));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Execute_AnonymousWithAnySecuredStep_RejectsWholeRequest()
+    {
+        var response = await fixture.Client.PostAsJsonAsync(
+            ExecuteUrl,
+            ExecuteBody(
+                AuthorizationStepNames.AnonymousStep,
+                AuthorizationStepNames.OpenStep));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Execute_AnonymousWithUnknownStep_Returns401()
+    {
+        var response = await fixture.Client.PostAsJsonAsync(
+            ExecuteUrl,
+            ExecuteBody("no-such-step"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AnonymousProcess_ClaimedAfterLogin_DeniesOtherUsers()
+    {
+        var created = await fixture.Client.PostAsJsonAsync(
+            AnonymousStepExecuteUrl,
+            StepBody);
+
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+
+        var processId = Guid.Parse(
+            created.Headers.GetValues("X-Kaleido-Process-Id").Single());
+
+        var claim = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
+                HttpMethod.Post,
+                ProcessTransferUrl(processId),
+                "carol",
+                "shopper"));
+
+        Assert.Equal(HttpStatusCode.OK, claim.StatusCode);
+
+        var other = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
+                HttpMethod.Get,
+                ProcessStateUrl(processId),
+                "dave",
+                "viewer"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, other.StatusCode);
+    }
+
+    private static object ExecuteBody(params string[] stepNames) =>
+        new
+        {
+            steps = stepNames
+                .Select(name => new { stepName = name, request = new { } })
+                .ToArray()
+        };
 
     [Fact]
     public async Task Registry_WhenViewerRole_ExcludesInternalStep()
@@ -215,12 +290,21 @@ public sealed class AuthorizationEndpointTests(
     // -- queryable capability enforcement ------------------------------------
 
     [Fact]
-    public async Task QueryContextMetadata_WhenUnauthenticated_Returns401()
+    public async Task Registry_WhenViewOverridesDeniedContext_ShowsOnlyView()
     {
-        var response =
-            await fixture.Client.GetAsync(SecuredContextMetadataUrl);
+        var response = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
+                HttpMethod.Get,
+                RegistryUrl,
+                roles: ["admin"]));
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var registry =
+            await response.Content.ReadAsync<AggregatedRegistryResponse>();
+
+        var context = Assert.Single(registry!.Queryables, r => r.Name == "secured-records");
+        Assert.Null(context.QueryUrl);
+        Assert.Contains(context.Views, view => view.Name == "admin-view");
+        Assert.Contains(context.Views, view => view.Name == "internal-view");
     }
 
     [Fact]
@@ -236,39 +320,23 @@ public sealed class AuthorizationEndpointTests(
     }
 
     [Fact]
-    public async Task QueryContextMetadata_FiltersAdminOnlyView()
+    public async Task Registry_WhenInternalRole_FiltersAdminOnlyView()
     {
         var response = await fixture.Client.SendAsync(
             AuthorizationAspNetCoreFixture.AuthenticatedRequest(
                 HttpMethod.Get,
-                SecuredContextMetadataUrl,
+                RegistryUrl,
                 roles: ["internal"]));
 
-        var metadata =
-            await response.Content.ReadAsync<QueryableRecordResponse>();
+        var registry =
+            await response.Content.ReadAsync<AggregatedRegistryResponse>();
 
-        Assert.Contains(
-            metadata!.Views,
-            v => v.Name == "internal-view");
+        var secured = Assert.Single(
+            registry!.Queryables,
+            r => r.Name.Equals("secured-records", StringComparison.OrdinalIgnoreCase));
 
-        Assert.DoesNotContain(
-            metadata.Views,
-            v => v.Name == "admin-view");
-    }
-
-    [Fact]
-    public async Task QueryContextMetadata_WhenContextRoleMissing_Returns403()
-    {
-        // "admin" lacks the context's "internal" role — the context
-        // metadata endpoint itself is denied even though admin-view
-        // would be visible to it.
-        var response = await fixture.Client.SendAsync(
-            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
-                HttpMethod.Get,
-                SecuredContextMetadataUrl,
-                roles: ["admin"]));
-
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Contains(secured.Views, v => v.Name == "internal-view");
+        Assert.DoesNotContain(secured.Views, v => v.Name == "admin-view");
     }
 
     // -- process ownership ---------------------------------------------------

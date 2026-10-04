@@ -3,7 +3,6 @@ using Kaleido.Queryable;
 
 namespace Kaleido.Samples.PriorAuth.Member.Queryable.Contexts;
 
-[KaleidoAuthorization(Roles = "intake")]
 [QueryContext(
     Name = "members",
     DisplayName = "Members",

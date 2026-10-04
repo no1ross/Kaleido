@@ -52,8 +52,7 @@ public sealed class KaleidoRemoteRegistryTests
             {
                 ServiceName = "remote-svc",
                 Name = "my-context",
-                Kind = Kaleido.Queryable.Metadata.QueryContextKind.Direct,
-                MetadataUrl = "/remote-svc/queryable/my-context/metadata"
+                Kind = Kaleido.Queryable.Metadata.QueryContextKind.Direct
             }
         ]
     };

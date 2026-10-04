@@ -1,4 +1,5 @@
 using System.Reflection;
+using Kaleido.Registry;
 
 namespace Kaleido;
 
@@ -62,6 +63,17 @@ public class KaleidoServiceOptions
     public Func<Type, bool>? TypeFilter { get; init; }
 
     /// <summary>
+    /// How capability authorization is enforced. Default
+    /// <see cref="KaleidoAuthorizationMode.None"/> (nothing enforced).
+    /// Production deployments should use
+    /// <see cref="KaleidoAuthorizationMode.ZeroTrust"/> on every host,
+    /// including registry aggregators/routers.
+    /// </summary>
+    public KaleidoAuthorizationMode AuthorizationMode { get; init; }
+
+    public AuthorizationMetadata DefaultAuthorization { get; init; } = AuthorizationMetadata.Unspecified;
+
+    /// <summary>
     /// Validates a <see cref="KaleidoServiceOptions"/> instance.
     /// Throws <see cref="KaleidoConfigurationException"/> if <see cref="ServiceName"/> is null,
     /// empty, contains whitespace, path separators, or uppercase characters.
@@ -73,6 +85,30 @@ public class KaleidoServiceOptions
     internal static void Validate(KaleidoServiceOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
+
+        if (!Enum.IsDefined(options.AuthorizationMode))
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.InvalidAuthorizationMode,
+                $"AuthorizationMode '{options.AuthorizationMode}' is not supported. Use None, Authenticated, or ZeroTrust.");
+        }
+
+        if (options.DefaultAuthorization is null
+            || options.DefaultAuthorization.Roles is null)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.ConflictingAuthorization,
+                "DefaultAuthorization and its Roles must not be null. Use AuthorizationMetadata.Unspecified when no service default is declared.");
+        }
+
+        if (options.DefaultAuthorization.AllowAnonymous
+            && (options.DefaultAuthorization.Roles.Count > 0
+                || !string.IsNullOrWhiteSpace(options.DefaultAuthorization.Policy)))
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.ConflictingAuthorization,
+                "DefaultAuthorization cannot combine AllowAnonymous with Roles or Policy.");
+        }
 
         if (string.IsNullOrWhiteSpace(options.ServiceName))
         {
@@ -137,6 +173,11 @@ public sealed class KaleidoServiceOptionsBuilder
     /// <inheritdoc cref="KaleidoServiceOptions.TypeFilter"/>
     public Func<Type, bool>? TypeFilter { get; set; }
 
+    /// <inheritdoc cref="KaleidoServiceOptions.AuthorizationMode"/>
+    public KaleidoAuthorizationMode AuthorizationMode { get; set; }
+
+    public AuthorizationMetadata DefaultAuthorization { get; set; } = new(null, []);
+
     internal KaleidoServiceOptions Build() =>
         new()
         {
@@ -146,6 +187,12 @@ public sealed class KaleidoServiceOptionsBuilder
             InstanceId = InstanceId,
             Assemblies = Assemblies,
             IsEntryProcessor = IsEntryProcessor,
-            TypeFilter = TypeFilter
+            TypeFilter = TypeFilter,
+            AuthorizationMode = AuthorizationMode,
+            DefaultAuthorization = DefaultAuthorization is { Roles: not null } declaration
+                ? declaration with { Roles = [.. declaration.Roles] }
+                : throw new KaleidoConfigurationException(
+                    ConfigurationErrorCodes.ConflictingAuthorization,
+                    "DefaultAuthorization and its Roles must not be null.")
         };
 }

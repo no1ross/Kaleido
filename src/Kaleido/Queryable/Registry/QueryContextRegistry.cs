@@ -26,20 +26,33 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
 
     private readonly ITypeDescriber _dataTypeMapper;
     private readonly IConstraintMapper _constraintMapper;
+    private readonly AuthorizationMetadata _defaultAuthorization;
+
+    public QueryContextRegistry(
+        ITypeDescriber typeDescriber,
+        IConstraintMapper constraintMapper,
+        IServiceCollection services,
+        IEnumerable<Type> contextTypes)
+        : this(typeDescriber, constraintMapper, services, contextTypes, AuthorizationMetadata.Unspecified)
+    {
+    }
 
     public QueryContextRegistry(
         ITypeDescriber TypeDescriber,
         IConstraintMapper constraintMapper,
         IServiceCollection services,
-        IEnumerable<Type> contextTypes)
+        IEnumerable<Type> contextTypes,
+        AuthorizationMetadata defaultAuthorization)
     {
         ArgumentNullException.ThrowIfNull(TypeDescriber);
+        ArgumentNullException.ThrowIfNull(defaultAuthorization);
         ArgumentNullException.ThrowIfNull(constraintMapper);
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(contextTypes);
 
         _dataTypeMapper = TypeDescriber;
         _constraintMapper = constraintMapper;
+        _defaultAuthorization = defaultAuthorization;
 
         var registrations =
             contextTypes
@@ -190,7 +203,7 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Select(x => x.ToFieldMetadata(_dataTypeMapper))
                 .ToArray(),
-            AuthorizationMetadata.ForType(contextType));
+            AuthorizationMetadata.ForType(contextType, _defaultAuthorization));
     }
 
     private static PageableMetadata? BuildPageable(

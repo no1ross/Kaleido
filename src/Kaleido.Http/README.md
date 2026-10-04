@@ -100,23 +100,22 @@ Any `IEndpointConventionBuilder` extension (`RequireAuthorization`, `WithMetadat
 
 ### Per-capability authorization
 
-Individual capabilities declare requirements with `[KaleidoAuthorization]` in `Kaleido` core:
+Capability authorization is switched on in core with `AddKaleido(…, o => o.EnforceAuthorization = true)` (see [`docs/AUTHORIZATION.md`](../../docs/AUTHORIZATION.md)). When it is off (default) Kaleido attaches no auth metadata and enforces nothing, so hosts without authentication work unchanged. When it is on, every capability requires an authenticated caller, and `[KaleidoAuthorization]` narrows or opens it:
 
 ```csharp
 [ProcessStep(Name = "approve", ...)]
-[KaleidoAuthorization(Roles = "internal")]        // or Policy = "named-policy"
+[KaleidoAuthorization(Roles = "radiology")]       // or Policy = "named-policy", or AllowAnonymous = true
 public sealed record ApproveStep;
 ```
 
 Enforcement works on two layers:
 
-**Route-level gate** — `MapProcessor()`/`MapQueryable()` attach `RequireAuthorization` metadata to each capability's execute, query, and metadata endpoint at map time. Declared `Roles` become a role requirement (`RequireRole`), declared `Policy` becomes the named ASP.NET policy; both declared are ANDed. Evaluation is done by the host's `UseAuthorization()` middleware — Kaleido performs no authentication itself, so the host must wire `AddAuthentication()`/`AddAuthorization()` and `app.UseAuthentication(); app.UseAuthorization();` in its pipeline. Without them, `RequireAuthorization` metadata is inert.
+**Route-level gate** — `MapProcessor()`/`MapQueryable()` attach metadata to each capability's execute/query endpoint at map time: `AllowAnonymous` → `AllowAnonymous()`; otherwise `RequireAuthorization()` plus a role requirement for declared `Roles` and the named ASP.NET policy for a declared `Policy` (ANDed). The transfer endpoint requires an authenticated caller. Evaluation is done by the host's `UseAuthorization()` middleware — the host must wire `AddAuthentication()`/`AddAuthorization()` and `app.UseAuthentication(); app.UseAuthorization();`. `MapKaleidoHttp()` throws `authentication_not_configured` at startup when enforcing without any authentication scheme.
 
 **In-handler evaluation** — `IKaleidoAuthorizer` (registered scoped by `AddHttp()`) covers what per-route metadata cannot express:
-- *Multi-step execute* — `POST /processes/execute` submits N steps; `ProcessExecutionService` calls `AuthorizeAsync` per submitted step (unknown step names are left to runtime validation). A denied step fails the request with `KaleidoAuthorizationException` → 401/403.
-- *Filtered discovery* — registry/metadata endpoints stay open but scope their payloads to the caller: `FilterAsync` drops capabilities whose declared roles/policy the caller doesn't satisfy, including views inside context metadata and steps inside the `/{service}/registry` response (the registry cache holds the unfiltered union; filtering is per-request).
-
-`AddHttp(Action<KaleidoHttpOptions>)` registers `KaleidoHttpOptions` unconditionally; `RequireAuthorization = true` makes *undeclared* capabilities require an authenticated caller (default `false` — undeclared stays open).
+- *Multi-step execute* — `POST /processes/execute` has no route-level auth; `ProcessExecutionService` checks every submitted step against its own declaration before anything runs, and the first denial rejects the whole request (401/403). Unknown step names and empty requests are checked as undeclared.
+- *Process ownership* — resuming or reading an owned process requires the owner or a role-mate.
+- *Filtered discovery* — the `/{service}/registry` endpoint stays open but scopes its payload to the caller: `FilterAsync` drops capabilities the caller can't access (including views inside contexts and steps inside processors) and omits processors whose steps are all filtered out. The registry cache holds the unfiltered union; filtering is per-request with this host's `EnforceAuthorization`, so routers must enable it too.
 
 Authorization failures are `KaleidoErrorResponse` bodies with codes `unauthorized` (401, unauthenticated) and `forbidden` (403, denied) — via `KaleidoAuthorizationResultHandler` for middleware-level denials and `ExceptionMiddleware` for thrown `KaleidoAuthorizationException`s. Both record the `endpoint_errors` counter.
 

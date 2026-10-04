@@ -28,7 +28,6 @@ internal sealed class ProcessExecutionService(
     IProcessorRuntime runtime,
     IProcessorContextStore contextStore,
     KaleidoServiceOptions serviceOptions,
-    KaleidoHttpOptions httpOptions,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     IProcessExecutionResponseFactory responseFactory,
     IKaleidoAuthorizer authorizer,
@@ -42,22 +41,27 @@ internal sealed class ProcessExecutionService(
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        // Per-step authorization — a multi-step request may submit steps with
-        // different [KaleidoAuthorization] declarations; deny the whole request
-        // if any submitted step is not authorized for the caller. Unknown step
-        // names are left to the runtime's validation, which reports them as
-        // request errors rather than authorization failures.
+        // All-or-nothing per-step authorization, before anything runs. The
+        // execute route carries no auth of its own, so this is the only gate:
+        // every submitted step is checked against its own [KaleidoAuthorization]
+        // (undeclared = authenticated caller when enforcing; AllowAnonymous =
+        // open), and the first denial rejects the whole request. Unknown step
+        // names and empty requests are checked as undeclared (fail closed),
+        // then left to the runtime's validation for request errors.
+        if (request.Steps.Count == 0)
+        {
+            await authorizer.AuthorizeAsync(
+                null,
+                "process execution",
+                cancellationToken);
+        }
+
         foreach (var step in request.Steps)
         {
-            var registration = registry.Find(step.StepName);
-
-            if (registration is not null)
-            {
-                await authorizer.AuthorizeAsync(
-                    registration.Metadata.Authorization,
-                    step.StepName,
-                    cancellationToken);
-            }
+            await authorizer.AuthorizeAsync(
+                registry.Find(step.StepName)?.Metadata.Authorization,
+                step.StepName,
+                cancellationToken);
         }
 
         await AuthorizeProcessAccessAsync(
@@ -168,38 +172,31 @@ internal sealed class ProcessExecutionService(
 
     /// <summary>
     /// Process ownership: resuming an owned process requires the owner or a
-    /// caller sharing an <c>OwnerRoles</c> entry. With
-    /// <see cref="KaleidoHttpOptions.RequireProcessOwnership"/>, creation
-    /// additionally requires an authenticated caller so every process is
-    /// owned.
+    /// caller sharing an <c>OwnerRoles</c> entry (only when
+    /// <see cref="KaleidoServiceOptions.AuthorizationMode"/> is not <c>None</c>).
+    /// Creation needs no separate check — when enforcing, step authorization
+    /// already requires an authenticated caller unless the step is
+    /// <c>AllowAnonymous</c>, which creates an unowned process.
     /// </summary>
     private async Task AuthorizeProcessAccessAsync(
         KaleidoCorrelationContext caller,
         CancellationToken cancellationToken)
     {
-        if (caller.ProcessId is not null)
+        if (!authorizer.IsEnforced || caller.ProcessId is null)
         {
-            var existing =
-                await contextStore.LoadAsync(
-                    caller.ProcessId.Value,
-                    cancellationToken);
-
-            // Unknown process ids fall through to runtime validation, which
-            // creates a new instance under that id.
-            if (existing is not null)
-            {
-                authorizer.AuthorizeProcess(existing);
-            }
-
             return;
         }
 
-        if (httpOptions.RequireProcessOwnership
-            && caller.CallerName is null)
+        var existing =
+            await contextStore.LoadAsync(
+                caller.ProcessId.Value,
+                cancellationToken);
+
+        // Unknown process ids fall through to runtime validation, which
+        // creates a new instance under that id.
+        if (existing is not null)
         {
-            throw new KaleidoAuthorizationException(
-                "process creation",
-                callerIsAuthenticated: false);
+            authorizer.AuthorizeProcess(existing);
         }
     }
 

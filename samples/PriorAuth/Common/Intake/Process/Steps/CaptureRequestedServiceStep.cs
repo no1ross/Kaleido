@@ -1,9 +1,7 @@
 using System.ComponentModel.DataAnnotations;
-using Kaleido.Processor;
 
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 
-[KaleidoAuthorization(Roles = "intake")]
 [ProcessStep(
     Name = "CaptureRequestedService",
     DisplayName = "Intake - Capture Requested Service",

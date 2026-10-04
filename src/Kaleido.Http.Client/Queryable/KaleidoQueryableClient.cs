@@ -22,44 +22,6 @@ internal sealed class KaleidoQueryableClient(
 
     public void InvalidateRegistry() => remoteRegistry.Invalidate(clientName);
 
-    public async Task<QueryableRecordResponse> GetContextMetadataAsync(
-        string context,
-        CancellationToken cancellationToken = default)
-    {
-        var registry = await EnsureRegistryAsync(cancellationToken);
-
-        var contextRecord = registry.FirstOrDefault(
-            r => string.Equals(r.Name, context, StringComparison.OrdinalIgnoreCase))
-            ?? throw new KaleidoHttpClientException(
-                HttpClientErrorCodes.NotFound,
-                $"{callerServiceName} tried to call context '{context}' on the remote registry, but it was not found.",
-                HttpStatusCode.NotFound);
-
-        using var httpRequest = new HttpRequestMessage(
-            HttpMethod.Get,
-            contextRecord.MetadataUrl.RequireValidRegistryUrl(nameof(contextRecord.MetadataUrl), httpClient.BaseAddress));
-
-        headerStamper.Stamp(httpRequest);
-
-        using var response = await SendAsync(httpRequest, cancellationToken);
-
-        if (response.IsSuccessStatusCode)
-        {
-            return await response.Content.ReadFromJsonAsync<QueryableRecordResponse>(
-                       KaleidoJsonOptions.Options,
-                       cancellationToken)
-                   ?? throw new KaleidoHttpClientException(
-                       HttpClientErrorCodes.EmptyResponse,
-                       $"{callerServiceName} tried to call context '{context}' metadata, but the request succeeded and returned no payload.",
-                       response.StatusCode);
-        }
-
-        throw new KaleidoHttpClientException(
-            HttpClientErrorCodes.RequestFailed,
-            $"{callerServiceName} tried to call context '{context}' metadata, but the request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
-            response.StatusCode);
-    }
-
     public async Task<QueryResult<TView>> QueryViewAsync<TParameters, TView>(
         string context,
         string view,

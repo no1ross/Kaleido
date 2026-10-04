@@ -4,6 +4,30 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Samples.PriorAuth.Auth;
 
+/// <summary>Claim types issued by the sample's dev auth.</summary>
+public static class DevAuthClaims
+{
+    /// <summary>
+    /// The calling service on a service-to-service hop. Present only when a
+    /// service makes the call (on behalf of a user or on its own); never on a
+    /// direct user call.
+    /// </summary>
+    public const string Actor = "kaleido_actor";
+}
+
+/// <summary>Authorization policy names used by sample capabilities.</summary>
+public static class DevAuthPolicies
+{
+    /// <summary>
+    /// The call came from another service (actor claim present). Use for
+    /// capabilities that must never be called directly by a consumer; combine
+    /// with <c>Roles</c> to also require the user's role.
+    /// </summary>
+    public const string InternalCaller = "InternalCaller";
+
+    public const string AuthenticatedUser = "AuthenticatedUser";
+}
+
 /// <summary>
 /// Dev-auth wiring for the sample services. <see cref="AddDevAuth"/>
 /// registers the dev-token scheme + authorization services;
@@ -18,7 +42,18 @@ public static class DevAuthExtensions
         services.AddAuthentication(DevTokenAuthenticationHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, DevTokenAuthenticationHandler>(
                 DevTokenAuthenticationHandler.SchemeName, _ => { });
-        services.AddAuthorization();
+
+        // Registered on every host: leaves enforce it, and the router
+        // evaluates it when filtering the aggregated registry per caller.
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy(
+                DevAuthPolicies.InternalCaller,
+                policy => policy.RequireClaim(DevAuthClaims.Actor));
+            options.AddPolicy(
+                DevAuthPolicies.AuthenticatedUser,
+                policy => policy.RequireAuthenticatedUser());
+        });
 
         return services;
     }
@@ -64,8 +99,8 @@ public static class DevAuthExtensions
 
     /// <summary>
     /// Registers <see cref="DevTokenForwardingHandler"/> for the given named
-    /// Kaleido clients so outbound calls carry the inbound user token or an
-    /// <c>internal</c> service token.
+    /// Kaleido clients so outbound calls carry an on-behalf-of token (the
+    /// user plus this service as actor) or a service token.
     /// </summary>
     public static IServiceCollection AddDevTokenForwarding(
         this IServiceCollection services,

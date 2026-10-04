@@ -116,7 +116,8 @@ public static class QueryableServiceCollectionExtensions
                     sp.GetRequiredService<ITypeDescriber>(),
                     sp.GetRequiredService<IConstraintMapper>(),
                     builder.Services,
-                    localContextTypes);
+                    localContextTypes,
+                    builder.ServiceOptions.DefaultAuthorization);
             });
 
         builder.Services.TryAddSingleton<QueryViewRegistry>(
@@ -140,7 +141,8 @@ public static class QueryableServiceCollectionExtensions
             sp => new DelegatedQueryViewRegistry(
                 sp.GetRequiredService<ITypeDescriber>(),
                 sp.GetRequiredService<IConstraintMapper>(),
-                delegatedQueryViewTypes));
+                delegatedQueryViewTypes,
+                builder.ServiceOptions.DefaultAuthorization));
 
         builder.Services.TryAddSingleton<IQueryContextRegistry>(sp => sp.GetRequiredService<QueryContextRegistry>());
         builder.Services.TryAddSingleton<IQueryViewRegistry>(sp => sp.GetRequiredService<QueryViewRegistry>());

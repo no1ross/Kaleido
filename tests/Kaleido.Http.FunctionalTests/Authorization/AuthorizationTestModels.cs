@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace Kaleido.AspNetCore.FunctionalTests.Authorization;
 
 internal static class AuthorizationStepNames
@@ -7,6 +5,23 @@ internal static class AuthorizationStepNames
     public const string InternalStep = "auth-internal";
     public const string PolicyStep = "auth-policy";
     public const string OpenStep = "auth-open";
+    public const string AnonymousStep = "auth-anonymous";
+}
+
+[ProcessStep(Name = AuthorizationStepNames.AnonymousStep, Description = "Anonymous step", Version = "1.0")]
+[KaleidoAuthorization(AllowAnonymous = true)]
+public sealed record AuthorizedAnonymousStep;
+
+public sealed class AuthorizedAnonymousStepHandler
+    : IProcessStepHandler<AuthorizedAnonymousStep, AuthorizedStepResponse>
+{
+    public Task<ProcessStepHandlerResult<AuthorizedStepResponse>> ExecuteAsync(
+        AuthorizedAnonymousStep step,
+        ProcessStepContext context,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(
+            ProcessStepHandlerResult<AuthorizedStepResponse>.Success(
+                new AuthorizedStepResponse()));
 }
 
 [ProcessStep(Name = AuthorizationStepNames.InternalStep, Description = "Role-secured step", Version = "1.0")]

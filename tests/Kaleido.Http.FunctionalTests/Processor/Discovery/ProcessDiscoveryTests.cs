@@ -1,5 +1,4 @@
 using System.Net;
-using Kaleido.Http.Processor;
 using Kaleido.Http.Registry;
 using Kaleido.Processor.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Processor.AspNetCore.FunctionalTests.Infrastructure;
@@ -39,24 +38,24 @@ public sealed class ProcessDiscoveryTests
     }
 
     [Fact]
-    public async Task GetStepMetadata_ReturnsDependenciesLinksAndResultMetadata()
+    public async Task GetRegistry_StepRecordsCarryDependenciesLinksAndResultMetadata()
     {
         var response =
-            await _client.GetAsync("/kaleido/processes/steps/runtimemerge/metadata");
+            await _client.GetAsync("/kaleido/registry");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var contract =
-            await response.Content.ReadAsync<ProcessStepResponse>();
+        var registry =
+            await response.Content.ReadAsync<AggregatedRegistryResponse>();
 
-        Assert.NotNull(contract);
-        Assert.Equal(RuntimeStepNames.Merge, contract.Name);
+        var processor = Assert.Single(registry!.Processes);
+        var contract = Assert.Single(processor.Steps!, s => s.Name == RuntimeStepNames.Merge);
+
         Assert.Equal(2, contract.Dependencies.Count);
         Assert.Contains(contract.Dependencies, x => x.Name == RuntimeStepNames.StepA);
         Assert.Contains(contract.Dependencies, x => x.Name == RuntimeStepNames.StepB);
         Assert.NotNull(contract.Result);
         Assert.NotEmpty(contract.Result!.OutputFields);
         Assert.Equal("/kaleido/processes/steps/runtimemerge", contract.ExecuteUrl);
-        Assert.Equal("/kaleido/processes/steps/runtimemerge/metadata", contract.MetadataUrl);
     }
 }

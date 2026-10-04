@@ -26,7 +26,6 @@ export interface ProcessStepRegistryRecord {
     result: ProcessStepResultMetadata | null;
 
     executeUrl: string;
-    metadataUrl: string;
 }
 
 export interface ProcessStepSummary {
@@ -36,7 +35,6 @@ export interface ProcessStepSummary {
     description: string | null;
     repeatable: boolean;
     executeUrl: string;
-    metadataUrl: string;
 }
 
 export interface ProcessStepFieldMetadata {
