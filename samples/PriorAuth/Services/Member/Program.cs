@@ -43,7 +43,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.ServiceName = "member";
         o.Assemblies = new System.Reflection.Assembly[] { typeof(Program).Assembly, typeof(MemberDbContext).Assembly };
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Member", StringComparison.Ordinal) ?? false;
-        o.AuthorizationMode = KaleidoAuthorizationMode.Authenticated;
+        o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
+        o.DefaultAuthorization = new(DevAuthPolicies.AuthenticatedUser, []);
     })
     .AddEventPublisher<HttpEventPublisher>()
     .AddHttp()

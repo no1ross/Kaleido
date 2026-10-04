@@ -69,7 +69,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.ServiceName = "radiology";
         o.Assemblies = [typeof(Program).Assembly, typeof(RadiologyDbContext).Assembly];
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.Radiology", StringComparison.Ordinal) ?? false;
-        o.AuthorizationMode = KaleidoAuthorizationMode.Authenticated;
+        o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
+        o.DefaultAuthorization = new(null, ["radiology"]);
     })
     .AddEventPublisher<HttpEventPublisher>()
     .AddHttp()

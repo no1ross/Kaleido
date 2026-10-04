@@ -1,6 +1,5 @@
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
-[KaleidoAuthorization(Roles = "radiology")]
 [ProcessStep(
     Name = "CaptureServicingProvider",
     DisplayName = "Capture Servicing Provider",

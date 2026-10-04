@@ -1,11 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Queryable;
-using Kaleido.Samples.PriorAuth.Auth;
 
 namespace Kaleido.Samples.PriorAuth.Provider.Queryable.Contexts;
 
 // Service-to-service only: queried by Radiology (RequestingProviderSearchClient).
-[KaleidoAuthorization(Policy = DevAuthPolicies.InternalCaller)]
 [QueryContext(
     Name = "requesting-providers",
     DisplayName = "Requesting Providers",

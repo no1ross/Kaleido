@@ -1,12 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
-using Kaleido.Samples.PriorAuth.Auth;
 
 namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 
 // Service-to-service only: queried by Intake and Radiology.
-[KaleidoAuthorization(Policy = DevAuthPolicies.InternalCaller)]
 [QueryContext(
     Name = "procedure-modality-rules",
     DisplayName = "Procedure Modality Rules",

@@ -43,7 +43,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.ServiceName = "referencedata";
         o.Assemblies = new System.Reflection.Assembly[] { typeof(Program).Assembly, typeof(ReferenceDataDbContext).Assembly };
         o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.Samples.PriorAuth.ReferenceData", StringComparison.Ordinal) ?? false;
-        o.AuthorizationMode = KaleidoAuthorizationMode.Authenticated;
+        o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
+        o.DefaultAuthorization = new(DevAuthPolicies.AuthenticatedUser, []);
     })
     .AddEventPublisher<HttpEventPublisher>()
     .AddHttp()
