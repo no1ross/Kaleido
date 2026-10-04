@@ -2,9 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Kaleido.Http.Queryable;
-using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
+using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
 
-namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Observability;
+namespace Kaleido.Http.FunctionalTests.Queryable.Observability;
 
 public sealed class ErrorShapeTests(
     QueryableAspNetCoreFixture fixture)

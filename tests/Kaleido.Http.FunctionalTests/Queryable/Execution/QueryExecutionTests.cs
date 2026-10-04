@@ -2,10 +2,10 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
-using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
+using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
+using Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
 
-namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Execution;
+namespace Kaleido.Http.FunctionalTests.Queryable.Execution;
 
 public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixture>
 {

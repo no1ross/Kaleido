@@ -7,7 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Kaleido.AspNetCore.FunctionalTests.Authorization;
+namespace Kaleido.Http.FunctionalTests.Authorization;
 
 /// <summary>
 /// TestServer host with header-driven test authentication

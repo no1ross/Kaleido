@@ -1,11 +1,11 @@
 using Kaleido.Http.Client;
 using Kaleido.Http.Processor;
 using Kaleido.Observability;
-using Kaleido.Processor.AspNetCore.FunctionalTests.Fixtures;
+using Kaleido.Http.FunctionalTests.Processor.Fixtures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Processor.AspNetCore.FunctionalTests.Client;
+namespace Kaleido.Http.FunctionalTests.Processor.Client;
 
 /// <summary>
 /// Validates that <see cref="IKaleidoProcessorClientFactory"/> and its dependencies are correctly
