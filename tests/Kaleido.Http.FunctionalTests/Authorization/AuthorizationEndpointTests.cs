@@ -1,8 +1,8 @@
 using System.Net;
+using Kaleido.Http.FunctionalTests.Processor.Infrastructure;
 using Kaleido.Http.Registry;
-using Kaleido.Processor.AspNetCore.FunctionalTests.Infrastructure;
 
-namespace Kaleido.AspNetCore.FunctionalTests.Authorization;
+namespace Kaleido.Http.FunctionalTests.Authorization;
 
 public sealed class AuthorizationEndpointTests(
     AuthorizationAspNetCoreFixture fixture)

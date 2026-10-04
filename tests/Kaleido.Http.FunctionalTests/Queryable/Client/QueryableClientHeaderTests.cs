@@ -1,11 +1,11 @@
 using Kaleido.Http.Client;
 using Kaleido.Http.Queryable;
 using Kaleido.Observability;
-using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
+using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Client;
+namespace Kaleido.Http.FunctionalTests.Queryable.Client;
 
 /// <summary>
 /// Validates that <see cref="IKaleidoQueryableClientFactory"/> and its dependencies are correctly

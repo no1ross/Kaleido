@@ -1,9 +1,9 @@
 ﻿using System.Net;
 using Kaleido.Http.Queryable;
 using Kaleido.Http.Registry;
-using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
+using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
 
-namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Discovery;
+namespace Kaleido.Http.FunctionalTests.Queryable.Discovery;
 
 public sealed class QueryableDiscoveryTests : IClassFixture<QueryableAspNetCoreFixture>
 {

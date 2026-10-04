@@ -21,8 +21,9 @@ public static class RegistryEndpointRouteBuilderExtensions
     /// service's local process and queryable registrations; when
     /// <paramref name="mapOptions"/>.<c>AggregateRegistry</c> is set the response also merges every
     /// downstream client registered via <c>AddHttpClients()</c>.
-    /// <c>ClientErrors</c> reports downstream clients that failed — the endpoint
-    /// always returns HTTP 200; a non-empty collection means a partial response.
+    /// <c>ClientErrors</c> reports failed downstream clients. Partial aggregates
+    /// return HTTP 200 by default, or HTTP 502 with the same body when
+    /// <c>?strict</c> is requested.
     /// </summary>
     internal static RouteGroupBuilder MapRegistry(
         this IEndpointRouteBuilder endpoints,
@@ -85,7 +86,7 @@ public static class RegistryEndpointRouteBuilderExtensions
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
             .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 
-        group.MapGet(
+        var endpoint = group.MapGet(
                 RegistryContractUrls.Registry(localServiceOptions.ServiceName),
                 async (
                     HttpContext httpContext,
@@ -254,12 +255,21 @@ public static class RegistryEndpointRouteBuilderExtensions
             .Produces<AggregatedRegistryResponse>()
             .WithSummary("Get unified registry.")
             .WithDescription(
-                "Returns the combined process and queryable registrations from this service" +
-                (aggregate ? " and all registered downstream clients." : ".") +
-                " Always returns HTTP 200. Inspect ClientErrors to detect " +
-                "partial responses caused by unreachable or misconfigured downstream clients. " +
-                "Process steps carry fully-resolved ExecuteUrl values. " +
-                "Adding a downstream client via AddProcessorClient() or AddQueryableClient() makes it appear here automatically.");
+                "Returns process and queryable registrations from this service" +
+                (aggregate ? " and configured downstream clients. " : ". ") +
+                (aggregate
+                    ? "A partial aggregate returns HTTP 200 by default with isPartial and clientErrors; " +
+                      "?strict returns HTTP 502 with the same body. Partial results are not cached. "
+                    : "A successful local-only registry request returns HTTP 200. ") +
+                "Process steps carry fully-resolved executeUrl values. " +
+                (aggregate
+                    ? "Configured downstream clients are registered via AddHttpClients()."
+                    : "To include downstream clients, enable AggregateRegistry and call AddHttpClients()."));
+
+        if (aggregate)
+        {
+            endpoint.Produces<AggregatedRegistryResponse>(StatusCodes.Status502BadGateway);
+        }
 
         return group;
     }

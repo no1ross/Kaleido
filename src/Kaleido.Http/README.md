@@ -25,6 +25,8 @@ See also:
   - `POST /{prefix}/queryable/{context}/{queryRoute}` — direct context query (Direct contexts only)
   - `POST /{prefix}/queryable/{context}/{view}/{queryRoute}` — local or delegated view query
 
+Queryable requests use an optional `query.page` object. An omitted page can still apply the registered default size, and `totalCount` is not always a global match count; see [Queryable paging and totalCount](../Kaleido.Http.Abstractions/README.md#queryable-paging-and-totalcount) before implementing a non-.NET consumer.
+
 ### Process endpoint mapping
 - `ProcessorEndpointRouteBuilderExtensions` — `MapProcessor()` extension
   - `GET /{prefix}/processes/steps/{step}/metadata` — per-step metadata
@@ -76,7 +78,40 @@ app.MapKaleidoHttp(); // maps Process + Queryable + /{service}/registry
 app.MapKaleidoHttp(o => o.AggregateRegistry = true); // requires AddHttpClients()
 ```
 
-`AddHttp()` wires the middleware pipeline automatically via `KaleidoStartupFilter` — no manual `Use...()` call is needed. Opt out with `AddHttp(o => o.AutoRegisterMiddleware = false)` if the host owns middleware ordering; it must then register `ExceptionMiddleware`/`ObservabilityMiddleware` itself.
+`AddHttp()` wires the middleware pipeline automatically via `KaleidoStartupFilter`. It places `ExceptionMiddleware` **outermost**, then `ObservabilityMiddleware`, then the rest of the host pipeline. The exception boundary catches failures from correlation setup and downstream endpoints and maps them to Kaleido HTTP error responses. The inner observability middleware initializes correlation before endpoints run and schedules response-header echo. Reversing the pair would leave errors thrown during observability setup outside Kaleido's exception mapping.
+
+`AddHttp(o => o.AutoRegisterMiddleware = false)` skips both built-in middlewares. Their types are internal and there is currently no public manual-registration helper: a host opting out must provide its **own** equivalent exception and correlation handling, or lose Kaleido's default error mapping and header echo. Prefer automatic registration unless that integration is deliberately owned by the host.
+
+## Per-step Process execution contract
+
+Each registered step publishes an `ExecuteUrl` in its registry metadata. POST to that URL with an `application/json` body containing exactly the step-input envelope; the fields inside `processStep` depend on the registered step:
+
+```http
+POST /{service}/processes/steps/{step}
+Content-Type: application/json
+
+{"processStep":{"field":"value"}}
+```
+
+To continue an existing process, send its id in the `X-Kaleido-Process-Id` **request header**, not in the JSON body. Omit that header to create a new process. The route identifies the step, so neither `processId` nor `stepName` is a request-body field. The resulting process id is returned in both the `processId` response property and the `X-Kaleido-Process-Id` response header.
+
+A step whose handler returns a typed result has this response shape (values are illustrative):
+
+```json
+{
+  "processId": "00000000-0000-0000-0000-000000000001",
+  "stepName": "Example",
+  "requiredStep": null,
+  "targetProcessorName": null,
+  "outcome": "completed",
+  "availableSteps": [],
+  "businessMessages": [],
+  "frameworkMessages": [],
+  "result": { "value": "example" }
+}
+```
+
+Steps without a typed handler result return the same fields without `result`. Handler-authored `businessMessages` remain available; `frameworkMessages` is an empty collection unless `AddHttp(o => o.IncludeFrameworkMessages = true)` enables diagnostics. Inspect `outcome` rather than interpreting HTTP 200 alone as step completion. Kaleido's HTTP JSON options use camelCase property names and string enum values; see the [JSON enum contract](../Kaleido.Http.Abstractions/README.md#json-enum-values) for canonical names and numeric-input rules.
 
 ---
 
@@ -132,7 +167,7 @@ A capability declaring `Policy` on a host with no `IAuthorizationService` fails 
 
 A client whose `RoutePrefix` equals this service's `ServiceName` is skipped (self-fetch would recurse). Aggregation without any registered clients throws a `KaleidoConfigurationException` at map time.
 
-**Partial responses:** by default the endpoint always returns HTTP 200; unreachable downstream clients populate `ClientErrors` (and set `IsPartial` on the response). Append `?strict` to get **502** when the aggregate is partial — the body is still included, so callers get both the catalog of what worked and the error list. `?strict` is for agents/gateways that need a real failure signal.
+**Partial responses:** when an aggregated registry rebuild encounters an unreachable downstream, the endpoint returns HTTP **200** by default with `isPartial: true` and non-empty `clientErrors`. Append `?strict` for HTTP **502** with the **same partial body**; agents/gateways can still read both the working catalog and the error list. A healthy registry returns 200. `?strict` changes the failure status, not snapshot freshness: cached clean results may still be served, and a matching `If-None-Match` can return 304 before the strict check. Use `?refresh` when a fresh downstream probe is needed, subject to the refresh cooldown.
 
 **Freshness contract:** every response carries `GeneratedAt` (snapshot build time — reflects data age even when served from cache), `Revision` (SHA-256 of the filtered payload), an `ETag` header, and `Cache-Control`. Clients may send `If-None-Match` to get a **304** when nothing changed. `Revision` is computed on the per-caller filtered payload, so ETags are correct per persona.
 

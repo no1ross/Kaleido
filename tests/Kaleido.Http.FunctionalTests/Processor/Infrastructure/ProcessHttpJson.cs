@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Kaleido.Processor.AspNetCore.FunctionalTests.Infrastructure;
+namespace Kaleido.Http.FunctionalTests.Processor.Infrastructure;
 
 internal static class ProcessHttpJson
 {
