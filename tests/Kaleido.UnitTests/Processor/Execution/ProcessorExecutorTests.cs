@@ -1,4 +1,5 @@
 using Kaleido.Eventing;
+using Kaleido.Exceptions;
 using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Eventing;
@@ -6,9 +7,7 @@ using Kaleido.Processor.Observability;
 using Kaleido.Processor.Registry;
 using Microsoft.Extensions.Logging.Abstractions;
 
-using Kaleido.UnitTests;
-
-namespace Kaleido.Processor.UnitTests.Processor.Execution;
+namespace Kaleido.UnitTests.Processor.Execution;
 
 public sealed class ProcessorExecutorTests
     : SutFixture
@@ -454,6 +453,29 @@ public sealed class ProcessorExecutorTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WhenInvokerThrowsValidationException_PreservesItsCode()
+    {
+        var candidate = CreateCandidate<TestStepA>("step-a");
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(
+                It.IsAny<ProcessStepRegistration>(),
+                It.IsAny<object>(),
+                It.IsAny<ProcessStepContext>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KaleidoValidationException("pro_custom_validation", "Member invalid."));
+
+        var result = await CreateSut(invoker).ExecuteAsync(
+            [candidate], CreateContext("step-a"), new ProcessorRequest());
+
+        var outcome = Assert.Single(result.Outcomes);
+        Assert.Equal(StepExecutionStatus.ValidationFailed, outcome.Status);
+        var message = Assert.Single(outcome.RuntimeMessages);
+        Assert.Equal("pro_custom_validation", message.Code);
+        Assert.Equal("Member invalid.", message.Message);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WhenInvokerThrows_AppliesExceptionPersistsAndReturnsExceptionOutcome()
     {
         var registration =
@@ -509,7 +531,7 @@ public sealed class ProcessorExecutorTests
 
         Assert.Contains(
             outcome.RuntimeMessages,
-            x => x.Code == StepProcessingMessageCode.FrameworkException);
+            x => x.Code == ProcessorErrorCodes.FrameworkException);
 
         var persisted =
             Assert.Single(savedContexts);
@@ -572,7 +594,7 @@ public sealed class ProcessorExecutorTests
 
         Assert.Contains(
             outcome.RuntimeMessages,
-            x => x.Code == StepProcessingMessageCode.ExecutionCanceled);
+            x => x.Code == ProcessorErrorCodes.ExecutionCanceled);
 
         invoker.Verify(
             x =>
@@ -634,7 +656,7 @@ public sealed class ProcessorExecutorTests
 
         Assert.Contains(
             outcome.RuntimeMessages,
-            x => x.Code == StepProcessingMessageCode.FrameworkException);
+            x => x.Code == ProcessorErrorCodes.FrameworkException);
 
         var persisted =
             Assert.Single(savedContexts);
@@ -687,7 +709,7 @@ public sealed class ProcessorExecutorTests
 
         Assert.Contains(
             outcome.RuntimeMessages,
-            x => x.Code == StepProcessingMessageCode.FrameworkException);
+            x => x.Code == ProcessorErrorCodes.FrameworkException);
 
         var persisted =
             Assert.Single(savedContexts);
@@ -743,7 +765,7 @@ public sealed class ProcessorExecutorTests
 
         Assert.Contains(
             outcome.RuntimeMessages,
-            x => x.Code == StepProcessingMessageCode.FrameworkException);
+            x => x.Code == ProcessorErrorCodes.FrameworkException);
     }
 
     private static Mock<IProcessorContextStore> CreateStore(

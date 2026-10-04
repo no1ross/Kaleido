@@ -34,4 +34,11 @@ public sealed class KaleidoHttpOptions
     /// equivalent <c>UseMiddleware</c> registrations explicitly.
     /// </summary>
     public bool AutoRegisterMiddleware { get; set; } = true;
+
+    /// <summary>
+    /// Includes framework-generated diagnostics in Process execution responses when enabled.
+    /// Off by default: <c>FrameworkMessages</c> stays empty, while handler-authored
+    /// <c>BusinessMessages</c> is always returned.
+    /// </summary>
+    public bool IncludeFrameworkMessages { get; set; }
 }

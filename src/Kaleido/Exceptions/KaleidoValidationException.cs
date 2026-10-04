@@ -27,7 +27,7 @@ public sealed class KaleidoValidationException : Exception
 /// <summary>
 /// Stable machine-readable error codes for Kaleido validation failures.
 /// These codes are wire-safe — they appear directly in 400 response bodies.
-/// Queryable codes are prefixed <c>qry_</c>; Process codes will use <c>pro_</c> when added.
+/// Queryable codes are prefixed <c>qry_</c>; Process codes belong to <see cref="Kaleido.Processor.ProcessorErrorCodes"/>.
 /// </summary>
 public static class ValidationErrorCodes
 {
@@ -98,6 +98,4 @@ public static class ValidationErrorCodes
 
     /// <summary>A named query parameter value cannot be converted to the parameter's declared type.</summary>
     public const string QryInvalidParameterValue  = "qry_invalid_parameter_value";
-
-    // Process validation — reserved for future use (pro_ prefix when added)
 }

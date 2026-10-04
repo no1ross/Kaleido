@@ -82,7 +82,7 @@ export class ProcessService {
             .pipe(
                 switchMap(result => {
                     this.processState.setProcessId(result.processId);
-                    this.processState.setProcessMessages(result.messages);
+                    this.processState.setProcessMessages(result.businessMessages);
                     this.logStepOutcome(result);
 
                     if (result.targetProcessorName) {
@@ -124,7 +124,7 @@ export class ProcessService {
                     ) {
                         throw {
                             outcome: result.outcome,
-                            messages: result.messages
+                            messages: result.businessMessages
                         } satisfies ProcessErrorResponse;
                     }
 
@@ -216,8 +216,12 @@ export class ProcessService {
             console.log('Available Steps', result.availableSteps);
         }
 
-        for (const message of result.messages) {
+        for (const message of result.businessMessages) {
             this.logMessage(message);
+        }
+
+        for (const message of result.frameworkMessages) {
+            console.debug(`[FRAMEWORK:${message.code}] ${message.message}`);
         }
 
         console.groupEnd();

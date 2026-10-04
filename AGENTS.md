@@ -93,6 +93,7 @@ Owns the reference `IProcessContextStore` implementation:
 - Prefer explicit registration and discoverability over hidden behavior.
 - Match documentation to the actual code and runtime behavior.
 - When you change contracts or metadata semantics, review the downstream docs and tests for the affected area.
+- Define response semantics before choosing a serialization format: keep distinct message streams separate and represent an empty collection consistently across transports. Options control which messages adapters populate, not JSON-specific field presence.
 
 ## Coding patterns
 
@@ -120,14 +121,15 @@ Information logs must stay minimal — treat them as the "normal operations" vie
 
 ### Exception handling
 - Always use custom exceptions from `Kaleido.Exceptions` namespace, never `InvalidOperationException`
-- `KaleidoValidationException` — 400 Bad Request; `Code` and `Message` are returned in the HTTP response body
+- `KaleidoValidationException` — 400 Bad Request when caught by HTTP middleware; in a Process step handler, its original `Code` and `Message` become an opt-in framework message on a failed step outcome
 - `KaleidoConfigurationException` — 500; startup/DI misconfiguration; `Code` is log-only, `Message` is safe to surface
 - `KaleidoFrameworkException` — 500; internal integrity violation; `Code` is log-only, `Message` is safe to surface
 - `KaleidoHttpClientException` — client-side only, never reaches HTTP; carries `Code`, `StatusCode`, and `Errors`
 - Error codes are organized by domain:
-  - `ValidationErrorCodes` (`KaleidoValidationException.cs`) — `qry_*` codes for queryable validation
-  - `ConfigurationErrorCodes` (`KaleidoConfigurationException.cs`) — `pro_*`/`qry_*`/unprefixed for startup errors
-  - `FrameworkErrorCodes` (`KaleidoFrameworkException.cs`) — internal integrity violation codes
+  - `ProcessorErrorCodes` (`ProcessorErrorCodes.cs`) — `pro_*` codes shared across Processor startup, planning, validation, and execution
+  - `ValidationErrorCodes` (`KaleidoValidationException.cs`) — `qry_*` codes for Queryable request validation
+  - `ConfigurationErrorCodes` (`KaleidoConfigurationException.cs`) — generic and `qry_*` startup codes (Queryable consolidation is tracked separately)
+  - `FrameworkErrorCodes` (`KaleidoFrameworkException.cs`) — cross-cutting integrity violation codes
   - `HttpClientErrorCodes` (`KaleidoClientException.cs`) — `httpclient_*` codes for remote call failures
   - `KaleidoErrorCodes` (`KaleidoErrorResponse.cs`) — shared HTTP error codes (`argument_error`, `framework_error`)
 

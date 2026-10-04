@@ -31,7 +31,7 @@ public static class ProcessorServiceCollectionExtensions
                 .Where(x =>
                     x.PassesTypeFilter(
                         builder.ServiceOptions.TypeFilter,
-                        ConfigurationErrorCodes.ProInvalidRegistration,
+                        ProcessorErrorCodes.InvalidRegistration,
                         "process step"))
                 .ToArray();
 
@@ -91,14 +91,14 @@ public static class ProcessorServiceCollectionExtensions
             if (string.IsNullOrWhiteSpace(metadata.Name))
             {
                 throw new KaleidoConfigurationException(
-                    ConfigurationErrorCodes.ProMissingAttribute,
+                    ProcessorErrorCodes.MissingAttribute,
                     $"Process step '{stepType.FullName}' must specify a non-empty name.");
             }
 
             if (string.IsNullOrWhiteSpace(metadata.Version))
             {
                 throw new KaleidoConfigurationException(
-                    ConfigurationErrorCodes.ProMissingAttribute,
+                    ProcessorErrorCodes.MissingAttribute,
                     $"Process step '{stepType.FullName}' must specify a non-empty version.");
             }
         }
@@ -135,7 +135,7 @@ public static class ProcessorServiceCollectionExtensions
                 }));
 
         throw new KaleidoConfigurationException(
-            ConfigurationErrorCodes.ProDuplicateStep,
+            ProcessorErrorCodes.DuplicateStep,
             $"Duplicate process step names were found.{Environment.NewLine}{duplicateDetails}");
     }
 
@@ -148,7 +148,7 @@ public static class ProcessorServiceCollectionExtensions
         if (metadata is null)
         {
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProMissingAttribute,
+                ProcessorErrorCodes.MissingAttribute,
                 $"Type '{stepType.FullName}' is not decorated with ProcessStepAttribute.");
         }
 
@@ -197,7 +197,7 @@ public static class ProcessorServiceCollectionExtensions
         if (handlerTypes.Length == 0)
         {
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProMissingHandler,
+                ProcessorErrorCodes.MissingHandler,
                 $"Process step '{metadata.Name}' ({stepType.FullName}) does not have a registered handler.");
         }
 
@@ -209,7 +209,7 @@ public static class ProcessorServiceCollectionExtensions
                     handlerTypes.Select(x => x.FullName));
 
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProInvalidHandler,
+                ProcessorErrorCodes.InvalidHandler,
                 $"Process step '{metadata.Name}' ({stepType.FullName}) has multiple handlers: {handlers}.");
         }
 

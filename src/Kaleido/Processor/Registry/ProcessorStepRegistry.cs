@@ -192,7 +192,7 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
         if (!handlerTypes.TryGetValue(stepType, out var handlerType))
         {
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProMissingHandler,
+                ProcessorErrorCodes.MissingHandler,
                 $"No handler type registered for step '{stepType.FullName}'.");
         }
 
@@ -260,7 +260,7 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
         }
 
         throw new KaleidoConfigurationException(
-            ConfigurationErrorCodes.ProInvalidHandler,
+            ProcessorErrorCodes.InvalidHandler,
             $"Type '{handlerInterface.FullName}' is not a valid process step handler.");
     }
 
@@ -343,7 +343,7 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
         var attribute =
             stepType.GetCustomAttribute<ProcessStepAttribute>()
             ?? throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProMissingAttribute,
+                ProcessorErrorCodes.MissingAttribute,
                 $"Process step '{stepType.Name}' is missing ProcessStepAttribute.");
 
         return new ProcessStepMetadata(

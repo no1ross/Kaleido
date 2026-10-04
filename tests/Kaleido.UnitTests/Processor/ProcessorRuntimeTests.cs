@@ -2,14 +2,10 @@ using Kaleido.Eventing;
 using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Eventing;
-using Kaleido.Processor.Execution;
 using Kaleido.Processor.Observability;
-using Kaleido.Processor.Planning;
 using Microsoft.Extensions.Logging.Abstractions;
 
-using Kaleido.UnitTests;
-
-namespace Kaleido.Processor.UnitTests.Processor;
+namespace Kaleido.UnitTests.Processor;
 
 public sealed class ProcessorRuntimeTests
     : SutFixture
@@ -435,7 +431,7 @@ public sealed class ProcessorRuntimeTests
             };
 
         candidate.AddError(
-            StepProcessingMessageCode.InvalidRequest,
+            ProcessorErrorCodes.InvalidRequest,
             "candidate-message");
 
         var executionOutcome =
@@ -450,7 +446,7 @@ public sealed class ProcessorRuntimeTests
                 RuntimeMessages =
                 [
                     StepProcessingMessage.Information(
-                        StepProcessingMessageCode.ProcessMessage,
+                        ProcessorErrorCodes.ProcessMessage,
                         "execution-message")
                 ]
             };
