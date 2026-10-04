@@ -1,6 +1,6 @@
 # Kaleido error codes
 
-Every Kaleido exception carries a stable, machine-readable `Code`. These codes are safe to match on in client code and log aggregators — they will not change between releases.
+Every Kaleido exception carries a machine-readable `Code`. Framework-defined codes listed below are stable across releases and safe to match in clients or log aggregators; handler-supplied domain codes follow the owning application's contract.
 
 > **Analyzer codes** — the `Kaleido` NuGet package ships with a set of Roslyn analyzers (KAL2xxx) that surface misconfiguration at compile time rather than at runtime. See [Analyzer rules](#analyzer-rules-kal2xxx) below.
 
@@ -8,18 +8,18 @@ Every Kaleido exception carries a stable, machine-readable `Code`. These codes a
 
 | Type | Namespace | HTTP result | Code set |
 |---|---|---|---|
-| `KaleidoValidationException` | `Kaleido.Exceptions` | 400 Bad Request | `ValidationErrorCodes` |
-| `KaleidoConfigurationException` | `Kaleido.Exceptions` | 500 Internal Server Error | `ConfigurationErrorCodes` |
+| `KaleidoValidationException` | `Kaleido.Exceptions` | 400 Bad Request, or a failed Process step outcome | `ValidationErrorCodes` (`qry_*`), `ProcessorErrorCodes` (`pro_*`), or a handler-supplied domain code |
+| `KaleidoConfigurationException` | `Kaleido.Exceptions` | 500 Internal Server Error | `ConfigurationErrorCodes` (generic/`qry_*`) or `ProcessorErrorCodes` (`pro_*`) |
 | `KaleidoFrameworkException` | `Kaleido.Exceptions` | 500 Internal Server Error | `FrameworkErrorCodes` |
 | `KaleidoHttpClientException` | `Kaleido.Http.Client` | — (client-side) | `HttpClientErrorCodes` |
 
-For `Kaleido` exceptions the `Code` and `Message` are both returned in the HTTP error response body.
+HTTP middleware exposes a validation exception's `Code` and `Message` in a 400 error body. A Process step handler's validation exception instead produces a failed step outcome; its original code and message appear in `FrameworkMessages` only when the transport enables framework diagnostics. Configuration and framework exception codes remain log-only.
 
 ---
 
 ## `ValidationErrorCodes` — 400 Bad Request
 
-All queryable validation codes are prefixed `qry_`. Process validation codes (`pro_`) are reserved for future use.
+Queryable request-validation codes are prefixed `qry_`. Process-specific codes are owned by `ProcessorErrorCodes` below; the wider Queryable catalog consolidation is tracked in [Issue #171](https://github.com/no1ross/Kaleido/issues/171).
 
 | Constant | Code | Meaning |
 |---|---|---|
@@ -48,19 +48,51 @@ All queryable validation codes are prefixed `qry_`. Process validation codes (`p
 
 ---
 
+## `ProcessorErrorCodes` — Process startup and execution
+
+One Processor-owned catalog supplies `pro_*` strings to startup exceptions, planning and step-validation diagnostics, Process events, and opt-in HTTP `FrameworkMessages`. `MessageType` carries severity separately from `Code`. Handler-authored `BusinessMessages` use domain-specific codes; a handler's `KaleidoValidationException.Code` is passed through unchanged rather than replaced by a generic framework code.
+
+Both message collections are present on Process execution responses. `BusinessMessages` contains handler-authored messages; `FrameworkMessages` is empty unless the HTTP host sets `AddHttp(o => o.IncludeFrameworkMessages = true)`. A different transport may encode an empty collection differently, but must preserve the same meaning.
+
+| Constant | Code | Meaning |
+|---|---|---|
+| `MissingAttribute` | `pro_missing_attribute` | Step type missing `[ProcessStep]` at startup |
+| `MissingHandler` | `pro_missing_handler` | Step has no registered handler |
+| `InvalidHandler` | `pro_invalid_handler` | Handler signature is invalid |
+| `DuplicateStep` | `pro_duplicate_step` | Registered step names are duplicated |
+| `InvalidRegistration` | `pro_invalid_registration` | Step registration is structurally invalid |
+| `UnknownStep` | `pro_unknown_step` | Requested step is not registered |
+| `InvalidRequest` | `pro_invalid_request` | Step request cannot be hydrated or processed |
+| `PropertyNotFound` | `pro_property_not_found` | Requested step property was not found |
+| `ConversionFailed` | `pro_conversion_failed` | Request value could not be converted |
+| `ValidationFailed` | `pro_validation_failed` | Generic, custom, or object-level step validation failed |
+| `Required` | `pro_required` | Required step field is missing |
+| `InvalidLength` | `pro_invalid_length` | Step field violates a length constraint |
+| `OutOfRange` | `pro_out_of_range` | Step field violates a range constraint |
+| `InvalidFormat` | `pro_invalid_format` | Step field violates a format constraint |
+| `AlreadyProcessed` | `pro_already_processed` | Previously completed step needs no further execution |
+| `ConsistencyViolation` | `pro_consistency_violation` | Candidate violates an execution consistency rule |
+| `DependencyNotSatisfied` | `pro_dependency_not_satisfied` | Required step dependency is incomplete |
+| `DependencySatisfied` | `pro_dependency_satisfied` | Required step dependency is complete |
+| `HandlerExecutionFailed` | `pro_handler_execution_failed` | Step handler execution failed |
+| `ExceptionThrown` | `pro_exception_thrown` | Exception interrupted step processing |
+| `InvalidRequiredStep` | `pro_invalid_required_step` | Required next step is invalid |
+| `RequiredStepNotAllowed` | `pro_required_step_not_allowed` | Required next step cannot be executed |
+| `ExecutionCanceled` | `pro_execution_canceled` | Step execution was cancelled |
+| `FrameworkException` | `pro_framework_exception` | Unexpected framework error interrupted a step |
+| `ProcessMessage` | `pro_process_message` | Process diagnostic message was produced |
+| `RepeatableStep` | `pro_repeatable_step` | Repeatable step remains eligible after prior execution |
+
+---
+
 ## `ConfigurationErrorCodes` — 500 (startup / DI misconfiguration)
 
-Cross-cutting codes have no prefix. `pro_` = Process, `qry_` = Queryable.
+Cross-cutting codes have no prefix. Queryable startup codes use `qry_`; Process startup codes are in `ProcessorErrorCodes` above.
 
 | Constant | Code | Meaning |
 |---|---|---|
 | `InvalidServiceName` | `invalid_service_name` | `ServiceName` is null, empty, or invalid |
 | `MissingAssembly` | `missing_assembly` | No assemblies configured via `KaleidoServiceOptions.Assemblies` before runtime registration |
-| `ProMissingAttribute` | `pro_missing_attribute` | Process step type missing `[ProcessStep]` |
-| `ProMissingHandler` | `pro_missing_handler` | Process step has no registered handler |
-| `ProInvalidHandler` | `pro_invalid_handler` | Handler does not implement a valid `IProcessStepHandler` |
-| `ProDuplicateStep` | `pro_duplicate_step` | Duplicate step names across registered assemblies |
-| `ProInvalidRegistration` | `pro_invalid_registration` | Structurally invalid registration (self-ref, circular dep) |
 | `QryMissingAttribute` | `qry_missing_attribute` | Context or view missing `[QueryContext]`/`[QueryView]` |
 | `QryMissingSource` | `qry_missing_source` | Context has no registered source |
 | `QryDuplicateSource` | `qry_duplicate_source` | Context has multiple registered sources |
@@ -109,7 +141,7 @@ The `Kaleido` NuGet package bundles `Kaleido.Analyzers` — a Roslyn analyzer th
 | `KAL2002` | Error | `[QueryContext]` has an empty `Name` or `Version` |
 | `KAL2003` | Error | `[QueryView]` has an empty `Name` or `Version` |
 
-These are compile-time equivalents of the `ConfigurationErrorCodes.ProMissingAttribute` / `QryMissingAttribute` runtime errors. Catching them at compile time prevents the process from failing at startup.
+These are compile-time equivalents of the `ProcessorErrorCodes.MissingAttribute` / `ConfigurationErrorCodes.QryMissingAttribute` runtime errors. Catching them at compile time prevents the process from failing at startup.
 
 ### Handler and step conventions (KAL2004, KAL2007, KAL2008)
 
@@ -121,7 +153,7 @@ These are compile-time equivalents of the `ConfigurationErrorCodes.ProMissingAtt
 
 KAL2004 enforces the cancellation-observability rule from `AGENTS.md`: a bare `catch (Exception)` in a step handler swallows `OperationCanceledException`, inflating error metrics. Add `when (ex is not OperationCanceledException)` or a preceding `catch (OperationCanceledException)`.
 
-KAL2008 is the compile-time equivalent of `ConfigurationErrorCodes.ProMissingHandler`. It fires when the handler is missing from the **same** compilation; cross-assembly handlers suppress the warning.
+KAL2008 is the compile-time equivalent of `ProcessorErrorCodes.MissingHandler`. It fires when the handler is missing from the **same** compilation; cross-assembly handlers suppress the warning.
 
 ### Bootstrap conventions (KAL2005, KAL2009)
 

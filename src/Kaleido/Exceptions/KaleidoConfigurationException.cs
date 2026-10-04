@@ -27,8 +27,8 @@ public sealed class KaleidoConfigurationException : Exception
 /// <summary>
 /// Stable machine-readable diagnostic codes for Kaleido configuration errors.
 /// These are log-only — startup crashes never reach HTTP response bodies.
-/// Queryable-specific codes are prefixed <c>qry_</c>; Process-specific codes are prefixed <c>pro_</c>.
-/// Cross-cutting codes have no prefix.
+/// Queryable-specific codes are prefixed <c>qry_</c>; cross-cutting codes have no prefix.
+/// Process-specific codes live in <see cref="Kaleido.Processor.ProcessorErrorCodes"/>.
 /// </summary>
 public static class ConfigurationErrorCodes
 {
@@ -53,23 +53,6 @@ public static class ConfigurationErrorCodes
 
     /// <summary>Reserved for hosts that choose to reject undeclared authorization at startup rather than omit the capability.</summary>
     public const string UndeclaredAuthorization = "undeclared_authorization";
-
-    // Process-specific (pro_ prefix)
-
-    /// <summary>A process step type is missing the [ProcessStep] attribute.</summary>
-    public const string ProMissingAttribute     = "pro_missing_attribute";
-
-    /// <summary>A process step has no registered handler.</summary>
-    public const string ProMissingHandler       = "pro_missing_handler";
-
-    /// <summary>A registered handler does not implement a valid IProcessStepHandler interface.</summary>
-    public const string ProInvalidHandler       = "pro_invalid_handler";
-
-    /// <summary>Duplicate process step names were detected across the registered assemblies.</summary>
-    public const string ProDuplicateStep        = "pro_duplicate_step";
-
-    /// <summary>A process step registration is structurally invalid (e.g. self-reference, circular dependency).</summary>
-    public const string ProInvalidRegistration  = "pro_invalid_registration";
 
     // Queryable-specific (qry_ prefix)
 

@@ -1,87 +1,86 @@
 namespace Kaleido.Processor;
 
 /// <summary>
-/// Standard error codes used across Process validation and execution.
+/// Stable Processor codes shared by startup, planning, validation, and execution.
+/// Message severity is carried separately by <see cref="MessageType"/>.
 /// </summary>
 public static class ProcessorErrorCodes
 {
-    /// <summary>
-    /// Process step is missing required ProcessStepAttribute.
-    /// </summary>
-    public const string MissingStepAttribute = "MISSING_STEP_ATTRIBUTE";
+    /// <summary>A step type is missing [ProcessStep].</summary>
+    public const string MissingAttribute = "pro_missing_attribute";
 
-    /// <summary>
-    /// Process step name is empty or whitespace.
-    /// </summary>
-    public const string InvalidStepName = "INVALID_STEP_NAME";
+    /// <summary>A step has no registered handler.</summary>
+    public const string MissingHandler = "pro_missing_handler";
 
-    /// <summary>
-    /// Process step version is empty or whitespace.
-    /// </summary>
-    public const string InvalidStepVersion = "INVALID_STEP_VERSION";
+    /// <summary>A handler has an invalid signature.</summary>
+    public const string InvalidHandler = "pro_invalid_handler";
 
-    /// <summary>
-    /// Multiple process steps have the same name.
-    /// </summary>
-    public const string DuplicateStepName = "DUPLICATE_STEP_NAME";
+    /// <summary>Registered step names are duplicated.</summary>
+    public const string DuplicateStep = "pro_duplicate_step";
 
-    /// <summary>
-    /// Process step has no registered handler.
-    /// </summary>
-    public const string MissingStepHandler = "MISSING_STEP_HANDLER";
+    /// <summary>A step registration is structurally invalid.</summary>
+    public const string InvalidRegistration = "pro_invalid_registration";
 
-    /// <summary>
-    /// Process step has multiple registered handlers.
-    /// </summary>
-    public const string MultipleStepHandlers = "MULTIPLE_STEP_HANDLERS";
+    /// <summary>The requested step is not registered.</summary>
+    public const string UnknownStep = "pro_unknown_step";
 
-    /// <summary>
-    /// Process step has circular dependencies.
-    /// </summary>
-    public const string CircularDependency = "CIRCULAR_DEPENDENCY";
+    /// <summary>The supplied step request is invalid.</summary>
+    public const string InvalidRequest = "pro_invalid_request";
 
-    /// <summary>
-    /// Process step references a dependency that does not exist.
-    /// </summary>
-    public const string MissingDependency = "MISSING_DEPENDENCY";
+    /// <summary>A requested property was not found.</summary>
+    public const string PropertyNotFound = "pro_property_not_found";
 
-    /// <summary>
-    /// Step has already been executed and is not repeatable.
-    /// </summary>
-    public const string StepNotRepeatable = "STEP_NOT_REPEATABLE";
+    /// <summary>A request value could not be converted.</summary>
+    public const string ConversionFailed = "pro_conversion_failed";
 
-    /// <summary>
-    /// Step execution violates history consistency (invalid state transition).
-    /// </summary>
-    public const string HistoryConsistencyViolation = "HISTORY_CONSISTENCY_VIOLATION";
+    /// <summary>Step validation failed without a more specific built-in code.</summary>
+    public const string ValidationFailed = "pro_validation_failed";
 
-    /// <summary>
-    /// Handler returned an invalid result.
-    /// </summary>
-    public const string InvalidHandlerResult = "INVALID_HANDLER_RESULT";
+    /// <summary>A required step field is missing.</summary>
+    public const string Required = "pro_required";
 
-    /// <summary>
-    /// Handler threw an exception during execution.
-    /// </summary>
-    public const string HandlerExecutionFailed = "HANDLER_EXECUTION_FAILED";
+    /// <summary>A step field violates a length constraint.</summary>
+    public const string InvalidLength = "pro_invalid_length";
 
-    /// <summary>
-    /// Process context state is corrupted or invalid.
-    /// </summary>
-    public const string StateCorruption = "STATE_CORRUPTION";
+    /// <summary>A step field is outside its allowed range.</summary>
+    public const string OutOfRange = "pro_out_of_range";
 
-    /// <summary>
-    /// Step not found in the local registry.
-    /// </summary>
-    public const string StepNotFound = "STEP_NOT_FOUND";
+    /// <summary>A step field does not match its declared format.</summary>
+    public const string InvalidFormat = "pro_invalid_format";
 
-    /// <summary>
-    /// Step input deserialization failed.
-    /// </summary>
-    public const string StepDeserializationFailed = "STEP_DESERIALIZATION_FAILED";
+    /// <summary>A previously completed step requires no additional processing.</summary>
+    public const string AlreadyProcessed = "pro_already_processed";
 
-    /// <summary>
-    /// Type filter failed during step registration.
-    /// </summary>
-    public const string TypeFilterFailed = "TYPE_FILTER_FAILED";
+    /// <summary>A step violates an execution consistency rule.</summary>
+    public const string ConsistencyViolation = "pro_consistency_violation";
+
+    /// <summary>A required dependency has not been completed.</summary>
+    public const string DependencyNotSatisfied = "pro_dependency_not_satisfied";
+
+    /// <summary>A required dependency has been completed.</summary>
+    public const string DependencySatisfied = "pro_dependency_satisfied";
+
+    /// <summary>Step handler execution failed.</summary>
+    public const string HandlerExecutionFailed = "pro_handler_execution_failed";
+
+    /// <summary>An exception interrupted step processing.</summary>
+    public const string ExceptionThrown = "pro_exception_thrown";
+
+    /// <summary>A required next step is invalid.</summary>
+    public const string InvalidRequiredStep = "pro_invalid_required_step";
+
+    /// <summary>The required next step cannot be executed.</summary>
+    public const string RequiredStepNotAllowed = "pro_required_step_not_allowed";
+
+    /// <summary>Step execution was cancelled.</summary>
+    public const string ExecutionCanceled = "pro_execution_canceled";
+
+    /// <summary>An unexpected framework error interrupted a step.</summary>
+    public const string FrameworkException = "pro_framework_exception";
+
+    /// <summary>A Process message was produced.</summary>
+    public const string ProcessMessage = "pro_process_message";
+
+    /// <summary>A repeatable step remains eligible after prior execution.</summary>
+    public const string RepeatableStep = "pro_repeatable_step";
 }

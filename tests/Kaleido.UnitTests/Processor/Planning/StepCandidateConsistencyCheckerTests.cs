@@ -17,7 +17,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         var candidate =
             StepCandidate.Invalid(
                 "step-a",
-                StepProcessingMessageCode.InvalidRequest,
+                ProcessorErrorCodes.InvalidRequest,
                 "already invalid");
 
         checker.Validate(
@@ -199,7 +199,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             };
 
         dependencyCandidate.AddError(
-            StepProcessingMessageCode.InvalidRequest,
+            ProcessorErrorCodes.InvalidRequest,
             "invalid");
 
         var targetCandidate =
@@ -219,7 +219,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         Assert.Contains(
             targetCandidate.Messages,
             x => x.Code ==
-                 StepProcessingMessageCode.DependencyNotSatisfied);
+                 ProcessorErrorCodes.DependencyNotSatisfied);
     }
 
     [Fact]
@@ -252,7 +252,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         Assert.Contains(
             candidate.Messages,
             x => x.Code ==
-                 StepProcessingMessageCode.DependencyNotSatisfied);
+                 ProcessorErrorCodes.DependencyNotSatisfied);
     }
 
     [Fact]
@@ -285,7 +285,7 @@ public sealed class StepCandidateConsistencyCheckerTests
             2,
             candidate.Messages.Count(x =>
                 x.Code ==
-                StepProcessingMessageCode.DependencyNotSatisfied));
+                ProcessorErrorCodes.DependencyNotSatisfied));
     }
 
     [Fact]
@@ -364,7 +364,7 @@ public sealed class StepCandidateConsistencyCheckerTests
         Assert.Contains(
             candidate.Messages,
             x => x.Code ==
-                 StepProcessingMessageCode.RepeatableStep);
+                 ProcessorErrorCodes.RepeatableStep);
     }
 
     [Fact]

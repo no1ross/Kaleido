@@ -1,5 +1,6 @@
 using System.Reflection;
 using Kaleido.Http.Authorization;
+using Kaleido.Processor;
 using Kaleido.Processor.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -27,7 +28,7 @@ public static class ProcessorEndpointRouteBuilderExtensions
         if (registry is null)
         {
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProInvalidRegistration,
+                ProcessorErrorCodes.InvalidRegistration,
                 "Cannot map Process endpoints: Process runtime is not registered. " +
                 "Use MapKaleidoHttp() to map Kaleido endpoints.");
         }

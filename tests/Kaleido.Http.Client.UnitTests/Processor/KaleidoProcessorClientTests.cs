@@ -1,4 +1,3 @@
-using Kaleido.Http.Client.Processor;
 using Kaleido.Http.Processor;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -222,7 +221,7 @@ public sealed class KaleidoProcessorClientTests
         {
             ProcessId = Guid.NewGuid(),
             StepName = "MyStep",
-            Messages = []
+            BusinessMessages = []
         };
 
         string? postedUrl = null;
@@ -287,7 +286,7 @@ public sealed class KaleidoProcessorClientTests
         {
             ProcessId = Guid.NewGuid(),
             StepName = "MyStep",
-            Messages = [],
+            BusinessMessages = [],
             Result = new MyStepResponse { Value = "done" }
         };
 

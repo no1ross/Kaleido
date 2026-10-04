@@ -89,69 +89,6 @@ public enum MessageType
 }
 
 /// <summary>
-/// Identifies the specific condition that generated a
-/// planning, validation, or consistency diagnostic message.
-/// </summary>
-public enum StepProcessingMessageCode
-{
-    /// <summary>
-    /// A requested step does not exist in the process registry.
-    /// </summary>
-    UnknownStep,
-
-    /// <summary>
-    /// The supplied request is invalid and could not be processed.
-    /// </summary>
-    InvalidRequest,
-
-    /// <summary>
-    /// A required property could not be found on the step request.
-    /// </summary>
-    PropertyNotFound,
-
-    /// <summary>
-    /// A value could not be converted to the expected type.
-    /// </summary>
-    ConversionFailed,
-
-    /// <summary>
-    /// Candidate validation failed and the step cannot participate
-    /// in execution planning.
-    /// </summary>
-    ValidationFailed,
-
-    /// <summary>
-    /// The step was previously completed and does not require
-    /// additional processing.
-    /// </summary>
-    AlreadyProcessed,
-
-    /// <summary>
-    /// A consistency rule was violated during candidate evaluation.
-    /// </summary>
-    ConsistencyViolation,
-
-    /// <summary>
-    /// One or more required dependencies have not been satisfied.
-    /// </summary>
-    DependencyNotSatisfied,
-
-    /// <summary>
-    /// All required dependencies have been satisfied.
-    /// </summary>
-    DependencySatisfied,
-
-    HandlerExecutionFailed,
-    ExceptionThrown,
-    InvalidRequiredStep,
-    RequiredStepNotAllowed,
-    ExecutionCanceled,
-    FrameworkException,
-    ProcessMessage,
-    RepeatableStep
-}
-
-/// <summary>
 /// Represents the action the execution processor should take
 /// after evaluating the outcome of a step execution.
 /// </summary>

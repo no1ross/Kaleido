@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Kaleido.Http.Authorization;
 using Kaleido.Http.Registry.Contracts;
+using Kaleido.Processor;
 using Kaleido.Processor.Registry;
 using Kaleido.Queryable.Registry;
 using Microsoft.AspNetCore.Builder;
@@ -44,7 +45,7 @@ public static class RegistryEndpointRouteBuilderExtensions
         if (aggregate && processClientMap is null && queryableClientMap is null)
         {
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProInvalidRegistration,
+                ProcessorErrorCodes.InvalidRegistration,
                 "Cannot aggregate the Registry endpoint: no Kaleido clients are registered. " +
                 "Call AddHttpClients() on the IKaleidoBuilder before mapping an aggregated registry.");
         }
@@ -165,7 +166,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                         if (entryProcessors.Length > 1)
                         {
                             throw new KaleidoConfigurationException(
-                                ConfigurationErrorCodes.ProInvalidRegistration,
+                                ProcessorErrorCodes.InvalidRegistration,
                                 $"Multiple processors are marked as entry processors: {string.Join(", ", entryProcessors.Select(p => p.Name))}. " +
                                 "Only one processor in a distributed system should have IsEntryProcessor set to true.");
                         }

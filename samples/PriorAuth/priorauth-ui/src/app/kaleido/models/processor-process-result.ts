@@ -10,7 +10,8 @@ export interface ParticipantStepResult {
     stepName: string;
     response: any;
     executionStatus?: string;
-    messages: ProcessMessage[];
+    businessMessages: ProcessMessage[];
+    frameworkMessages: ProcessMessage[];
 }
 
 export interface ProcessExecutionResponse<TResponse> {
@@ -21,7 +22,8 @@ export interface ProcessExecutionResponse<TResponse> {
     requiredStep?: string;
     targetProcessorName?: string;
     availableSteps: ProcessStepSummary[];
-    messages: ProcessMessage[];
+    businessMessages: ProcessMessage[];
+    frameworkMessages: ProcessMessage[];
 }
 
 export interface ProcessStepSummary {

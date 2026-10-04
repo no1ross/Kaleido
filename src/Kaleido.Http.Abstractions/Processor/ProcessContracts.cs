@@ -120,7 +120,16 @@ public sealed record ProcessExecutionStepResponse
         init;
     }
 
-    public IReadOnlyCollection<ProcessMessage> Messages
+    /// <summary>Handler-authored messages for consumers, independent of framework diagnostics.</summary>
+    public IReadOnlyCollection<ProcessMessage> BusinessMessages
+    {
+        get;
+        init;
+    }
+        = [];
+
+    /// <summary>Framework diagnostics, empty unless the transport explicitly enables them.</summary>
+    public IReadOnlyCollection<ProcessMessage> FrameworkMessages
     {
         get;
         init;
@@ -184,7 +193,16 @@ public record StepExecutionResponse
     }
         = [];
 
-    public IReadOnlyCollection<ProcessMessage> Messages
+    /// <summary>Handler-authored messages for consumers, independent of framework diagnostics.</summary>
+    public IReadOnlyCollection<ProcessMessage> BusinessMessages
+    {
+        get;
+        init;
+    }
+        = [];
+
+    /// <summary>Framework diagnostics, empty unless the transport explicitly enables them.</summary>
+    public IReadOnlyCollection<ProcessMessage> FrameworkMessages
     {
         get;
         init;

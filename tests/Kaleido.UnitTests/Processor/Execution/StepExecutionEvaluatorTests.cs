@@ -1,9 +1,7 @@
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Registry;
 
-using Kaleido.UnitTests;
-
-namespace Kaleido.Processor.UnitTests.Processor.Execution;
+namespace Kaleido.UnitTests.Processor.Execution;
 
 public sealed class StepExecutionEvaluatorTests
     : SutFixture
@@ -58,7 +56,7 @@ public sealed class StepExecutionEvaluatorTests
                 decision.Messages);
 
         Assert.Equal(
-            StepProcessingMessageCode.RequiredStepNotAllowed,
+            ProcessorErrorCodes.RequiredStepNotAllowed,
             message.Code);
     }
 
@@ -313,7 +311,7 @@ public sealed class StepExecutionEvaluatorTests
     {
         var message =
             StepProcessingMessage.Error(
-                StepProcessingMessageCode.RequiredStepNotAllowed,
+                ProcessorErrorCodes.RequiredStepNotAllowed,
                 "test");
 
         var decision =
