@@ -1,15 +1,19 @@
 ## Test project structure
 
-Tests follow a one-project-per-source-project convention:
+Unit-test suites generally mirror source and analyzer projects; functional and integration suites exercise composed behavior:
 
 | Test project | Tests code in |
 |---|---|
 | `Kaleido.UnitTests` | `src/Kaleido` (core runtime: bootstrap, Process, Queryable) |
 | `Kaleido.Http.UnitTests` | `src/Kaleido.Http` (middleware, startup filter, correlation reader, endpoint extensions, queryable value normalizer) |
-| `Kaleido.Http.FunctionalTests` | `src/Kaleido.Http` (full HTTP functional tests via TestServer) |
+| `Kaleido.Http.FunctionalTests` | `src/Kaleido.Http` and client contracts through TestServer |
 | `Kaleido.Http.Client.UnitTests` | `src/Kaleido.Http.Client` |
 | `Kaleido.Http.Abstractions.UnitTests` | `src/Kaleido.Http.Abstractions` (`HttpHeaderSanitizer` and contract types) |
-| `Kaleido.Provider.SQLite.UnitTests` | `src/Kaleido.Provider.SQLite` (placeholder) |
+| `Kaleido.Provider.SQLite.UnitTests` | `src/Kaleido.Provider.SQLite` (`IProcessorContextStore` contract and SQLite fidelity) |
+| `Kaleido.Analyzers.UnitTests` | `tools/analyzers/Kaleido.Analyzers` (consumer `KAL2xxx` rules) |
+| `Kaleido.Analyzers.Source.UnitTests` | `tools/analyzers/Kaleido.Analyzers.Source` (contributor `KAL0xxx` rules) |
+| `Kaleido.Analyzers.Testing.UnitTests` | `tools/analyzers/Kaleido.Analyzers.Testing` (test `KAL1xxx` rules) |
+| `Kaleido.IntegrationTests` | cross-project DI and EF Core registration behavior |
 
 ## Testing conventions
 - When adding unit tests, scope them to a single class
