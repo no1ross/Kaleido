@@ -3,8 +3,6 @@ namespace Kaleido.Http.Client;
 internal interface ICorrelationHeaderStamper
 {
     void Stamp(HttpRequestMessage request);
-
-    string? Sanitize(string? value);
 }
 
 internal sealed class CorrelationHeaderStamper(
@@ -19,7 +17,7 @@ internal sealed class CorrelationHeaderStamper(
         {
             request.Headers.TryAddWithoutValidation(
                 KaleidoCorrelationHeaders.RequestId,
-                Sanitize(ctx.RequestId));
+                ctx.RequestId.Sanitize());
         }
 
         if (ctx.ProcessId.HasValue)
@@ -33,7 +31,7 @@ internal sealed class CorrelationHeaderStamper(
         {
             request.Headers.TryAddWithoutValidation(
                 KaleidoCorrelationHeaders.SourceProcessor,
-                Sanitize(ctx.SourceProcessorName));
+                ctx.SourceProcessorName.Sanitize());
         }
 
         if (ctx.ProcessorInstanceId.HasValue)
@@ -47,10 +45,7 @@ internal sealed class CorrelationHeaderStamper(
         {
             request.Headers.TryAddWithoutValidation(
                 KaleidoCorrelationHeaders.StepName,
-                Sanitize(ctx.StepName));
+                ctx.StepName.Sanitize());
         }
     }
-
-    public string? Sanitize(string? value) =>
-        value.Sanitize();
 }

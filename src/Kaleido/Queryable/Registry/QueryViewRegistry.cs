@@ -59,9 +59,6 @@ internal sealed class QueryViewRegistry
     public IReadOnlyCollection<QueryViewRegistration> Registrations =>
         _registrations;
 
-    public IReadOnlyCollection<QueryViewRegistration> GetAll() =>
-        _registrations;
-
     public QueryViewRegistration? Find(string name)
     {
         _byName.TryGetValue(
