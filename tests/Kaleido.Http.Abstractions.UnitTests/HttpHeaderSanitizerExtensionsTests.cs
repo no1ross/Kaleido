@@ -14,7 +14,15 @@ public sealed class HttpHeaderSanitizerExtensionsTests
     }
 
     [Fact]
-    public void Sanitize_WhenValueIsClean_ReturnsTrimmedValue()
+    public void Sanitize_WhenValueIsPrintableAndUnpadded_ReturnsSameInstance()
+    {
+        var input = new string("hello world".ToCharArray());
+
+        Assert.Same(input, input.Sanitize());
+    }
+
+    [Fact]
+    public void Sanitize_WhenValueHasPadding_ReturnsTrimmedValue()
     {
         Assert.Equal("hello", "  hello  ".Sanitize());
     }
@@ -53,6 +61,6 @@ public sealed class HttpHeaderSanitizerExtensionsTests
     {
         var input = new string('a', HttpHeaderSanitizerExtensions.MaxLength);
 
-        Assert.Equal(input, input.Sanitize());
+        Assert.Same(input, input.Sanitize());
     }
 }
