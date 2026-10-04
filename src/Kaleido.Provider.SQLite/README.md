@@ -17,7 +17,7 @@ See also:
 ## What lives here
 
 - `SqliteProcessorContextStore` — example SQLite-backed `IProcessorContextStore` implementation
-- `SqliteProcessContextStoreServiceCollectionExtensions` — `UseSqliteProcessorContextStore(connectionString)` builder extension
+- `SqliteProcessorContextStoreServiceCollectionExtensions` — `UseSqliteProcessorContextStore(connectionString)` builder extension
 
 ---
 
@@ -63,6 +63,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
 
 This registers `SqliteProcessorContextStore` as `IProcessorContextStore`, replacing the default in-memory store.
 
+Malformed, non-blank connection strings fail at registration with `KaleidoConfigurationException` (`invalid_connection_string`) before DI services are replaced. The parser checks connection-string syntax only: registration does **not** open or create a database, and reachability remains a separate health-check concern.
+
 The default in-memory store is sufficient for tests and single-request processes; it logs a warning at registration precisely because production without a durable store is a configuration smell.
 
 ---
@@ -79,5 +81,5 @@ The default in-memory store is sufficient for tests and single-request processes
 ## Where to look
 
 - `SqliteProcessorContextStore.cs` — the reference `IProcessorContextStore` implementation
-- `SqliteProcessContextStoreServiceCollectionExtensions.cs` — `UseSqliteProcessorContextStore(...)` registration
+- `SqliteProcessorContextStoreServiceCollectionExtensions.cs` — `UseSqliteProcessorContextStore(...)` registration
 - `tests/Kaleido.Provider.SQLite.UnitTests` — the executable contract specification to mirror for your own store

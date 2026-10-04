@@ -93,6 +93,7 @@ Cross-cutting codes have no prefix. Queryable startup codes use `qry_`; Process 
 |---|---|---|
 | `InvalidServiceName` | `invalid_service_name` | `ServiceName` is null, empty, or invalid |
 | `MissingAssembly` | `missing_assembly` | No assemblies configured via `KaleidoServiceOptions.Assemblies` before runtime registration |
+| `InvalidConnectionString` | `invalid_connection_string` | SQLite process context-store connection string cannot be parsed at registration |
 | `QryMissingAttribute` | `qry_missing_attribute` | Context or view missing `[QueryContext]`/`[QueryView]` |
 | `QryMissingSource` | `qry_missing_source` | Context has no registered source |
 | `QryDuplicateSource` | `qry_duplicate_source` | Context has multiple registered sources |

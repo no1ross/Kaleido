@@ -43,6 +43,8 @@ public static class ConfigurationErrorCodes
     /// <summary>A configured Kaleido client is missing a BaseUrl (neither client-level nor shared Kaleido:BaseUrl).</summary>
     public const string MissingBaseUrl          = "missing_base_url";
 
+    public const string InvalidConnectionString = "invalid_connection_string";
+
     /// <summary>A [KaleidoAuthorization] declares AllowAnonymous together with Roles or Policy.</summary>
     public const string ConflictingAuthorization = "conflicting_authorization";
 

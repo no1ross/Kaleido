@@ -1,4 +1,6 @@
+using Kaleido.Exceptions;
 using Kaleido.Processor.Context;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,6 +15,18 @@ public static class SqliteProcessorContextStoreServiceCollectionExtensions
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(
             connectionString);
+
+        try
+        {
+            _ = new SqliteConnectionStringBuilder(connectionString);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.InvalidConnectionString,
+                "The SQLite process context store connection string is invalid.",
+                exception);
+        }
 
         builder.Services.AddDbContext<SqliteProcessorContextDbContext>(
             options =>
