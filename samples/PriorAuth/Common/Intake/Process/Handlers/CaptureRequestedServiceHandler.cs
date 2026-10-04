@@ -119,7 +119,7 @@ public sealed class CaptureRequestedServiceHandler(
             if (downstreamResult.Outcome == StepExecutionOutcome.Failed)
             {
                 return ProcessStepHandlerResult.Failure(
-                    downstreamResult.Messages.ToArray());
+                    downstreamResult.BusinessMessages.ToArray());
             }
 
             return ProcessStepHandlerResult.HandOff(processorName);

@@ -53,6 +53,17 @@ registered options are init-only.
 `KaleidoStartupFilter`. Opt out with `o.AutoRegisterMiddleware = false` when
 the host owns middleware ordering.
 
+## Transport-neutral response semantics
+
+Design the meaning of response fields before choosing JSON, gRPC, or another
+transport. Keep handler-authored `BusinessMessages` separate from framework
+`FrameworkMessages`: consumers may present the former and treat the latter as
+diagnostics. A transport option may include framework messages, but when it is
+off the collection is empty, not absent by a JSON-only rule. Repeated fields
+have the same empty-collection meaning in a gRPC consumer. Adapters decide
+which messages to populate; serializer-specific omission does not define the
+contract or belong in core runtime types.
+
 ## Queryable sources — sync vs async
 
 - `IQueryContextSource<T>` — the queryable is already in hand (in-memory,

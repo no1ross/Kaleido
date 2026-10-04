@@ -81,7 +81,7 @@ private readonly processRequestValidator =
                         {
                             throw {
                                 outcome: result.outcome,
-                                messages: result.messages
+                                messages: result.businessMessages
                             } satisfies ProcessErrorResponse;
                         }
 
@@ -153,7 +153,7 @@ private readonly processRequestValidator =
                 result.availableSteps);
         }
 
-        for (const message of result.messages) {
+        for (const message of result.businessMessages) {
 
             switch (message.type) {
 
@@ -177,6 +177,10 @@ private readonly processRequestValidator =
                         `[${message.code}] ${message.message}`);
                     break;
             }
+        }
+
+        for (const message of result.frameworkMessages) {
+            console.debug(`[FRAMEWORK:${message.code}] ${message.message}`);
         }
 
         //console.log('Response', result);

@@ -3,9 +3,7 @@ using Kaleido.Processor.Context;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Registry;
 
-using Kaleido.UnitTests;
-
-namespace Kaleido.Processor.UnitTests.Eventing;
+namespace Kaleido.UnitTests.Processor.Eventing;
 
 public sealed class ProcessorEventFactoryTests
     : SutFixture
@@ -139,6 +137,7 @@ public sealed class ProcessorEventFactoryTests
                 new ProcessStepMetadata("test-step", "desc", "1.0", "display")),
             IncludedInExecutionPlan = true
         };
+        candidate.AddError(ProcessorErrorCodes.Required, "Name is required.");
 
         var plan = new ExecutionPlanResult { Candidates = [candidate] };
 
@@ -151,6 +150,9 @@ public sealed class ProcessorEventFactoryTests
         Assert.Equal("1.0", result.Event.Candidates.First().StepVersion);
         Assert.Equal(StepCandidateStatus.Built, result.Event.Candidates.First().CandidateStatus);
         Assert.True(result.Event.Candidates.First().IncludedInExecutionPlan);
+        Assert.Equal(
+            ProcessorErrorCodes.Required,
+            Assert.Single(result.Event.Candidates.First().Messages).Code);
     }
 
     [Fact]
