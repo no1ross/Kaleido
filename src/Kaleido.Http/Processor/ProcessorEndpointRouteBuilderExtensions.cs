@@ -273,10 +273,11 @@ public static class ProcessorEndpointRouteBuilderExtensions
                 $"Execute {step.Metadata.DisplayName}.")
             .WithDescription(
                 $"Executes the '{step.Metadata.DisplayName}' process step. " +
-                "If the request does not include a processor process id, a new processor process is created. " +
-                "If the request includes a processor process id, the existing processor process is continued. " +
-                "The response includes the step result, consumer-facing messages, required next step if one exists, " +
-                "and currently available next steps.")
+                "Send a JSON body with a required processStep property containing the step input. " +
+                "To resume, send X-Kaleido-Process-Id as a request header; omit it to create a new process. " +
+                "The response includes processId, outcome, requiredStep, availableSteps, businessMessages, " +
+                "and frameworkMessages (empty by default). Typed steps also include result. " +
+                "The process id is echoed in the X-Kaleido-Process-Id response header.")
             .Accepts<ExecuteStepRequest<TProcessStep>>(
                 "application/json")
             .Produces<StepExecutionResponse<TResponse>>();
@@ -314,10 +315,11 @@ public static class ProcessorEndpointRouteBuilderExtensions
                 $"Execute {step.Metadata.DisplayName}.")
             .WithDescription(
                 $"Executes the '{step.Metadata.DisplayName}' process step. " +
-                "If the request does not include a processor process id, a new processor process is created. " +
-                "If the request includes a processor process id, the existing processor process is continued. " +
-                "The response includes the step result, consumer-facing messages, required next step if one exists, " +
-                "and currently available next steps.")
+                "Send a JSON body with a required processStep property containing the step input. " +
+                "To resume, send X-Kaleido-Process-Id as a request header; omit it to create a new process. " +
+                "The response includes processId, outcome, requiredStep, availableSteps, businessMessages, " +
+                "and frameworkMessages (empty by default). Typed steps also include result. " +
+                "The process id is echoed in the X-Kaleido-Process-Id response header.")
             .Accepts<ExecuteStepRequest<TProcessStep>>(
                 "application/json")
             .Produces<StepExecutionResponse>();
