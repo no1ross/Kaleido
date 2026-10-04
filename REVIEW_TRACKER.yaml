@@ -324,7 +324,7 @@ high_priority_items:
     priority: HIGH
     breaking_change: false
     status: IN_PROGRESS
-    spawned: [HP-022, HP-023, HP-024, HP-025, MP-029, MP-030, MP-031]
+    spawned: [HP-022, HP-023, HP-024, HP-025, HP-026, MP-029, MP-030, MP-031, MP-032]
     progress_note: >
       Plan: ~/.devin/plans/plan-a635fa55a8541ae7.md (Commit 3). Sample code committed;
       PriorAuth UI build now succeeds; HP-023 remains open for the ECommerce UI template.
@@ -423,6 +423,26 @@ high_priority_items:
     breaking_change: false
     status: PENDING_VERIFICATION
     progress_note: "User asked to defer investigation; return after current authorization work."
+
+  HP-026:
+    title: Pure service tokens can satisfy Radiology's on-behalf-of handoff rule
+    description: >
+      StartRadiologyIntake requires Roles=radiology AND InternalCaller (actor claim).
+      IssueServiceToken grants every service principal the radiology app role and
+      actor claim, and DevTokenForwardingHandler uses it when there is no inbound
+      authenticated user. Thus a service-only call can pass without a logged-in
+      radiology user. Distinguish signed on-behalf-of user identity from a pure
+      service token in sample dev auth; require both user provenance and actor
+      for StartRadiologyIntake while preserving service-principal registry aggregation.
+    discovered_during: HP-019
+    relation: separate
+    effort_days: 0.25-0.5
+    priority: HIGH
+    breaking_change: false
+    status: PENDING_DESIGN_REVIEW
+    progress_note: >
+      Deferred by user while validating the current radiology-role Intake flow.
+      No dev-token format change now; revisit pure-service vs on-behalf-of distinction later.
 
 medium_priority_items:
   MP-001:
@@ -747,6 +767,24 @@ medium_priority_items:
     priority: MEDIUM
     breaking_change: false
     status: PENDING_VERIFICATION
+
+  MP-032:
+    title: PriorAuth presentation-quality architecture and walkthrough documentation
+    description: >
+      Produce a detailed, sample-specific documentation set explaining both how and why
+      PriorAuth works as a demonstration: service boundaries, bootstrap and seeding,
+      personas and authorization, user-vs-service identity, registry discovery,
+      consumer-facing delegated views over internal Provider searches, Intake routing
+      to Radiology, ProcessId/correlation/ownership across handoffs, process state,
+      history/auditing, UI flow, observability, and reproducible examples.
+      Index it from the sample README; verify diagrams and claims against the running
+      sample after HP-025 and HP-022 are resolved. No documentation is authored now.
+    discovered_during: HP-019
+    relation: separate
+    effort_days: 2-3
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_DESIGN_REVIEW
 
 low_priority_items:
   LP-001:
