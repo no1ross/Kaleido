@@ -26,9 +26,9 @@ public enum KaleidoAuthorizationMode
     /// <summary>
     /// Zero trust: nothing is reachable unless its declaration says who may
     /// reach it. Every capability must declare <c>Roles</c>, <c>Policy</c>,
-    /// or <c>AllowAnonymous</c>. Undeclared capabilities fail the host at
-    /// startup (<c>undeclared_authorization</c>) and are denied at runtime
-    /// if one is ever evaluated.
+    /// or <c>AllowAnonymous</c>, directly or through a service default.
+    /// Capabilities with no applicable rule are omitted from discovery and
+    /// endpoint mapping, and denied if submitted through a generic execute request.
     /// </summary>
     ZeroTrust = 2
 }

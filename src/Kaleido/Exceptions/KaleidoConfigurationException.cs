@@ -49,7 +49,9 @@ public static class ConfigurationErrorCodes
     /// <summary>Authorization is enforced (AuthorizationMode is not None) but the host has no authentication scheme registered.</summary>
     public const string AuthenticationNotConfigured = "authentication_not_configured";
 
-    /// <summary>AuthorizationMode is ZeroTrust and at least one capability has no explicit authorization (Roles, Policy, or AllowAnonymous).</summary>
+    public const string InvalidAuthorizationMode = "invalid_authorization_mode";
+
+    /// <summary>Reserved for hosts that choose to reject undeclared authorization at startup rather than omit the capability.</summary>
     public const string UndeclaredAuthorization = "undeclared_authorization";
 
     // Process-specific (pro_ prefix)

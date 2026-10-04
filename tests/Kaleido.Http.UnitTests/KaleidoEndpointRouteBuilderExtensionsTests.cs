@@ -6,6 +6,7 @@ using Kaleido.Registry;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -91,26 +92,50 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     }
 
     [Fact]
-    public void MapKaleidoHttp_ZeroTrust_UndeclaredStep_ThrowsWithStepName()
+    public void MapKaleidoHttp_ZeroTrust_UndeclaredStep_IsNotMapped()
     {
         var endpoints = CreateProcessOnlyEndpoints(mode: KaleidoAuthorizationMode.ZeroTrust);
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => endpoints.MapKaleidoHttp());
+        endpoints.MapKaleidoHttp();
 
-        Assert.Equal(ConfigurationErrorCodes.UndeclaredAuthorization, exception.Code);
-        Assert.Contains("Test-Step", exception.Message);
+        Assert.Null(FindEndpoint(endpoints, ProcessEndpointNames.StepExecutionEndpointName("test-step")));
+        Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
     }
 
     [Fact]
-    public void MapKaleidoHttp_ZeroTrust_UndeclaredContextAndView_ThrowsWithNames()
+    public void MapKaleidoHttp_ZeroTrust_ExplicitStep_IsMapped()
+    {
+        var endpoints = CreateProcessOnlyEndpoints(
+            mode: KaleidoAuthorizationMode.ZeroTrust,
+            authorization: new AuthorizationMetadata(null, ["radiology"]));
+
+        endpoints.MapKaleidoHttp();
+
+        Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.StepExecutionEndpointName("test-step")));
+    }
+
+    [Fact]
+    public void MapKaleidoHttp_ZeroTrust_UndeclaredContextAndView_AreNotMapped()
     {
         var endpoints = CreateQueryableOnlyEndpoints(mode: KaleidoAuthorizationMode.ZeroTrust);
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => endpoints.MapKaleidoHttp());
+        endpoints.MapKaleidoHttp();
 
-        Assert.Equal(ConfigurationErrorCodes.UndeclaredAuthorization, exception.Code);
-        Assert.Contains("Test-Context", exception.Message);
-        Assert.Contains("Test-View", exception.Message);
+        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
+        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QueryViewEndpointName("test-context", "test-view")));
+    }
+
+    [Fact]
+    public void MapKaleidoHttp_ZeroTrust_ExplicitViewOnUnspecifiedContext_MapsOnlyView()
+    {
+        var endpoints = CreateQueryableOnlyEndpoints(
+            mode: KaleidoAuthorizationMode.ZeroTrust,
+            viewAuthorization: new AuthorizationMetadata(null, ["radiology"]));
+
+        endpoints.MapKaleidoHttp();
+
+        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryViewEndpointName("test-context", "test-view")));
     }
 
     [Fact]
@@ -140,6 +165,26 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
                 It.IsAny<Exception?>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task MapKaleidoHttp_Authenticated_WithoutHttpAuthorizer_RegistryFailsClosed()
+    {
+        var endpoints = CreateProcessOnlyEndpoints(mode: KaleidoAuthorizationMode.Authenticated);
+        endpoints.MapKaleidoHttp();
+
+        var registry = FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName);
+        Assert.NotNull(registry?.RequestDelegate);
+
+        var context = new DefaultHttpContext
+        {
+            RequestServices = endpoints.Services
+        };
+        context.Response.Body = new MemoryStream();
+
+        var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(
+            () => registry.RequestDelegate(context));
+        Assert.Equal(ConfigurationErrorCodes.AuthenticationNotConfigured, exception.Code);
     }
 
     [Fact]
@@ -205,13 +250,15 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         }
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
+        builder.Services.AddSingleton<IProcessorResponseFactory>(Mock.Of<IProcessorResponseFactory>());
         builder.Services.AddSingleton<IProcessorStepRegistry>(CreateProcessStepRegistry(authorization));
         builder.Services.AddSingleton<IProcessorRegistry>(CreateProcessRegistry());
         return builder.Build();
     }
 
     private static WebApplication CreateQueryableOnlyEndpoints(
-        string serviceName = "test", KaleidoAuthorizationMode mode = KaleidoAuthorizationMode.None)
+        string serviceName = "test", KaleidoAuthorizationMode mode = KaleidoAuthorizationMode.None,
+        AuthorizationMetadata? viewAuthorization = null)
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
@@ -219,7 +266,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, AuthorizationMode = mode });
         AddTestScheme(builder);
         builder.Services.AddSingleton(Mock.Of<IQueryableService>());
-        builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry());
+        builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry(viewAuthorization));
         return builder.Build();
     }
 
@@ -294,7 +341,8 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
     // ── Queryable registry helpers ───────────────────────────────────────────
 
-    private static IQueryableRegistry CreateQueryableRegistry()
+    private static IQueryableRegistry CreateQueryableRegistry(
+        AuthorizationMetadata? viewAuthorization = null)
     {
         var registry = new Mock<IQueryableRegistry>();
         registry.Setup(x => x.Registrations).Returns(
@@ -318,7 +366,8 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
                         Name = "Test-View",
                         Description = "Test View",
                         DisplayName = "Test View",
-                        Version = "1.0.0"
+                        Version = "1.0.0",
+                        Authorization = viewAuthorization ?? AuthorizationMetadata.Unspecified
                     }
                 ]
             }

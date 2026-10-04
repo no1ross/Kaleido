@@ -290,6 +290,24 @@ public sealed class AuthorizationEndpointTests(
     // -- queryable capability enforcement ------------------------------------
 
     [Fact]
+    public async Task Registry_WhenViewOverridesDeniedContext_ShowsOnlyView()
+    {
+        var response = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
+                HttpMethod.Get,
+                RegistryUrl,
+                roles: ["admin"]));
+
+        var registry =
+            await response.Content.ReadAsync<AggregatedRegistryResponse>();
+
+        var context = Assert.Single(registry!.Queryables, r => r.Name == "secured-records");
+        Assert.Null(context.QueryUrl);
+        Assert.Contains(context.Views, view => view.Name == "admin-view");
+        Assert.Contains(context.Views, view => view.Name == "internal-view");
+    }
+
+    [Fact]
     public async Task QueryContextQuery_WhenRoleMismatch_Returns403()
     {
         var response = await fixture.Client.SendAsync(

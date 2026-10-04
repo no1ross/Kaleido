@@ -65,7 +65,11 @@ public static class ProcessorEndpointRouteBuilderExtensions
 
         foreach (var step in registry.Registrations)
         {
-            group.MapProcessStep(step, serviceOptions);
+            if (serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
+                || step.Metadata.Authorization.IsExplicit())
+            {
+                group.MapProcessStep(step, serviceOptions);
+            }
         }
 
         return group;

@@ -106,6 +106,14 @@ public static class RegistryEndpointRouteBuilderExtensions
                         httpContext.RequestServices
                             .GetService<IKaleidoAuthorizer>();
 
+                    if (localServiceOptions.AuthorizationMode != KaleidoAuthorizationMode.None
+                        && authorizer is null)
+                    {
+                        throw new KaleidoConfigurationException(
+                            ConfigurationErrorCodes.AuthenticationNotConfigured,
+                            "Registry filtering requires AddHttp() to register the Kaleido HTTP authorizer.");
+                    }
+
                     var downstreamNames = aggregate
                         ? DownstreamClientNames(processClientMap, queryableClientMap, localServiceOptions)
                         : [];
@@ -339,23 +347,27 @@ public static class RegistryEndpointRouteBuilderExtensions
                 });
         }
 
-        var allowedQueryables =
-            await authorizer.FilterAsync(response.Queryables,
-                x => x.Authorization,
-                cancellationToken);
-
         var queryables = new List<QueryableRecordResponse>();
 
-        foreach (var queryable in allowedQueryables)
+        foreach (var queryable in response.Queryables)
         {
+            var contextAllowed =
+                await authorizer.CanAccessAsync(queryable.Authorization, cancellationToken);
+
             var views =
                 await authorizer.FilterAsync(queryable.Views,
                     x => x.Authorization,
                     cancellationToken);
 
+            if (!contextAllowed && views.Count == 0)
+            {
+                continue;
+            }
+
             queryables.Add(
                 queryable with
                 {
+                    QueryUrl = contextAllowed ? queryable.QueryUrl : null,
                     Views = views
                 });
         }

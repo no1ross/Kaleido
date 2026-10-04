@@ -1,5 +1,6 @@
 using System.Reflection;
 using Kaleido.Queryable.Registry;
+using Kaleido.Registry;
 
 namespace Kaleido.Queryable.UnitTests.Records;
 
@@ -9,12 +10,14 @@ public sealed class DelegatedQueryViewRegistryTests
     private static DelegatedQueryViewRegistry CreateSut(
         ITypeDescriber? TypeDescriber = null,
         IConstraintMapper? constraintMapper = null,
-        IEnumerable<Type>? queryViewTypes = null)
+        IEnumerable<Type>? queryViewTypes = null,
+        AuthorizationMetadata? defaultAuthorization = null)
     {
         var dtm = TypeDescriber ?? CreateDefaultTypeDescriber();
         var cm = constraintMapper ?? CreateDefaultConstraintMapper();
 
-        return new DelegatedQueryViewRegistry(dtm, cm, queryViewTypes ?? []);
+        return new DelegatedQueryViewRegistry(
+            dtm, cm, queryViewTypes ?? [], defaultAuthorization ?? AuthorizationMetadata.Unspecified);
     }
 
     private static ITypeDescriber CreateDefaultTypeDescriber()
@@ -63,6 +66,33 @@ public sealed class DelegatedQueryViewRegistryTests
 
         Assert.Equal("delegate-policy", registration.QueryMetadata.Authorization?.Policy);
         Assert.Equal("view-policy", registration.ViewMetadata.Authorization?.Policy);
+    }
+
+    [Fact]
+    public void BuildRegistration_UndeclaredContext_InheritsServiceAuthorization()
+    {
+        var rule = new AuthorizationMetadata(null, ["radiology"]);
+        var sut = CreateSut(
+            queryViewTypes: [typeof(UnsecuredDelegatedView)],
+            defaultAuthorization: rule);
+
+        var registration = sut.GetRegistration(typeof(UnsecuredDelegatedView));
+
+        Assert.Same(rule, registration.QueryMetadata.Authorization);
+        Assert.Null(registration.ViewMetadata.Authorization);
+    }
+
+    [QueryContext(Name = "unsecured-context", Version = "1.0.0")]
+    private sealed class UnsecuredContext;
+
+    [QueryView(Name = "unsecured-delegated-view", Version = "1.0.0")]
+    private sealed class UnsecuredDelegatedView
+        : IDelegatedQueryViewSource<UnsecuredContext, DelegateContract>
+    {
+        public Task<QueryResult<DelegateContract>> ExecuteAsync(
+            IQueryRequest<EmptyQueryViewParameters> request,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new QueryResult<DelegateContract>(0, 0, 0, []));
     }
 
     [QueryContext(Name = "delegate-context", Version = "1.0.0")]

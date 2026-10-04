@@ -317,27 +317,29 @@ high_priority_items:
       token mixed 'internal' + calling-service name into the user's roles, making every
       forwarded caller an owner role-mate. Capabilities used a non-existent 'intake' role.
       Fix: roles describe the user only; an actor claim describes service-to-service hops
-      (InternalCaller policy); EnforceAuthorization on every host; corrected annotations.
+      (InternalCaller policy); explicit authorization mode on every host; corrected annotations.
     discovered_during: HP-016
     relation: separate
     effort_days: 1
     priority: HIGH
     breaking_change: false
     status: IN_PROGRESS
-    spawned: [HP-022, HP-023, HP-024, MP-029, MP-030, MP-031]
+    spawned: [HP-022, HP-023, HP-024, HP-025, MP-029, MP-030, MP-031]
     progress_note: >
       Plan: ~/.devin/plans/plan-a635fa55a8541ae7.md (Commit 3). Sample code committed;
       PriorAuth UI build now succeeds; HP-023 remains open for the ECommerce UI template.
 
   HP-021:
-    title: EnforceAuthorization (zero trust) switch + AllowAnonymous opt-in
+    title: Authorization modes, service defaults, and AllowAnonymous opt-in
     description: >
       Replace KaleidoHttpOptions.RequireAuthorization / RequireProcessOwnership with
-      AddKaleido(o => o.EnforceAuthorization). Off (default) = nothing enforced. On = every
-      capability requires an authenticated caller; [KaleidoAuthorization] narrows to
-      Roles/Policy or opens with AllowAnonymous = true. Fixes: empty attribute open even when
-      enforcing; router filtering undeclared leaf entries with its own (open) setting; empty
-      processor shells in the registry; unconditional auth metadata on the transfer endpoint.
+      AddKaleido(o => o.AuthorizationMode). None (default) disables Kaleido auth for quickstarts;
+      Authenticated requires login by default; ZeroTrust denies and hides capabilities with
+      no applicable explicit service or capability rule. An attribute overrides the service
+      DefaultAuthorization (non-null Unspecified means no rule). AllowAnonymous explicitly
+      opens a capability. Registry filtering is per caller, including view overrides; generic
+      execute denies omitted steps. The owning service decides its rules; enterprise production
+      deployment pipelines must verify ZeroTrust in their own effective host configuration.
     discovered_during: HP-019
     relation: requires
     effort_days: 1-2
@@ -345,7 +347,11 @@ high_priority_items:
     breaking_change: true
     status: IN_PROGRESS
     spawned: [MP-028, LP-016]
-    progress_note: "Plan: ~/.devin/plans/plan-a635fa55a8541ae7.md (Commits 1-2)."
+    progress_note: >
+      Plan: ~/.devin/plans/plan-a635fa55a8541ae7.md. Mode enum committed (8b91f0b);
+      service default and selective ZeroTrust publication implemented locally.
+      Sample conversion and docs still pending; ZeroTrust no-rule behavior was
+      confirmed as omit from discovery/endpoints + deny generic execution.
 
   HP-022:
     title: Audit fields (CreatedBy/CreatedUtc/UpdatedBy/UpdatedUtc) on PriorAuth Intake/Radiology/History entities
@@ -396,11 +402,27 @@ high_priority_items:
     effort_days: 0.1
     priority: HIGH
     breaking_change: false
-    status: IN_PROGRESS
+    status: COMPLETE
     progress_note: >
-      Removed unsupported paging from ProductCodeMappingClient and Intake/Radiology
-      ProcedureModalityClient. Release build 0 errors/0 warnings; 804 tests pass.
-      Live workflow/500 requires service restart and retry; do not close yet.
+      Commit c7f16bb removed unsupported paging from ProductCodeMappingClient and
+      Intake/Radiology ProcedureModalityClient. Release build 0 errors/0 warnings,
+      804 tests pass; user confirmed the paging issue works after retry.
+
+  HP-025:
+    title: Investigate ProcessId propagation across Intake to Radiology handoff
+    description: >
+      After the Intake handoff, GET /radiology/processes/{processId} returned 404
+      for process 7a3b4ff3-c12e-4d82-9dd1-286fada2f073. Determine whether the
+      process id was forwarded, whether downstream state was persisted, and whether
+      the UI targets the authoritative processor and correct route. Do not assume
+      the 404 proves a propagation bug until the full path has been traced.
+    discovered_during: HP-019
+    relation: separate
+    effort_days: 0.5-1
+    priority: HIGH
+    breaking_change: false
+    status: PENDING_VERIFICATION
+    progress_note: "User asked to defer investigation; return after current authorization work."
 
 medium_priority_items:
   MP-001:
