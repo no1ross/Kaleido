@@ -9,6 +9,13 @@ namespace Kaleido.Http.UnitTests;
 public sealed class KaleidoHttpServiceCollectionExtensionsTests
     : SutFixture
 {
+    private static Action<KaleidoServiceOptionsBuilder> ConfigureKaleido(string serviceName) =>
+        o =>
+        {
+            o.ServiceName = serviceName;
+            o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
+        };
+
     [Fact]
     public void AddHttp_WhenBuilderIsNull_Throws()
     {
@@ -21,7 +28,7 @@ public sealed class KaleidoHttpServiceCollectionExtensionsTests
     public void AddHttp_ReturnsSameBuilder()
     {
         var services = new ServiceCollection();
-        var builder = services.AddKaleido(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), o => o.ServiceName = "test");
+        var builder = services.AddKaleido(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), ConfigureKaleido("test"));
 
         var result = builder.AddHttp();
 
@@ -34,7 +41,7 @@ public sealed class KaleidoHttpServiceCollectionExtensionsTests
         var webBuilder = WebApplication.CreateBuilder();
         webBuilder.WebHost.UseTestServer();
 
-        var kaleidoBuilder = webBuilder.Services.AddKaleido(webBuilder.Configuration, o => o.ServiceName = "test-service");
+        var kaleidoBuilder = webBuilder.Services.AddKaleido(webBuilder.Configuration, ConfigureKaleido("test-service"));
         kaleidoBuilder.AddHttp();
 
         var serviceProvider = webBuilder.Services.BuildServiceProvider();
@@ -50,7 +57,7 @@ public sealed class KaleidoHttpServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var builder = services.AddKaleido(
             new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(),
-            o => o.ServiceName = "test");
+            ConfigureKaleido("test"));
         builder.AddHttp(o => o.AutoRegisterMiddleware = false);
 
         Assert.DoesNotContain(services, d => d.ServiceType == typeof(IStartupFilter));
@@ -63,7 +70,7 @@ public sealed class KaleidoHttpServiceCollectionExtensionsTests
         services.AddSingleton(Mock.Of<IProcessorRegistry>());
         services.AddSingleton(Mock.Of<IProcessorRuntime>());
 
-        var builder = services.AddKaleido(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), o => o.ServiceName = "test");
+        var builder = services.AddKaleido(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), ConfigureKaleido("test"));
         builder.AddHttp();
 
         Assert.Contains(services, d => d.ServiceType == typeof(IProcessExecutionService));
@@ -74,7 +81,7 @@ public sealed class KaleidoHttpServiceCollectionExtensionsTests
     public void AddHttp_WithoutProcessRuntime_DoesNotRegisterExecutionServices()
     {
         var services = new ServiceCollection();
-        var builder = services.AddKaleido(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), o => o.ServiceName = "test");
+        var builder = services.AddKaleido(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), ConfigureKaleido("test"));
         builder.AddHttp();
 
         Assert.DoesNotContain(services, d => d.ServiceType == typeof(IProcessExecutionService));

@@ -45,9 +45,13 @@ builder.Services
         });
     });
 
-// AuthorizationMode.Authenticated: the router filters the aggregated registry per caller
-// with the same rules as the leaves (undeclared = authenticated).
-builder.Services.AddKaleido(builder.Configuration, o => o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust)
+// ZeroTrust: the router filters the aggregate per caller with the leaf rules;
+// undeclared capabilities are not exposed.
+builder.Services.AddKaleido(builder.Configuration, o =>
+    {
+        o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
+        o.Assemblies = [typeof(Program).Assembly];
+    })
     // AddHttp registers the HTTP service layer MapRegistry resolves
     // (IProcessorResponseFactory, authorizer) + the Exception/
     // Observability middleware so errors render as Kaleido error JSON.

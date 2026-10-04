@@ -12,10 +12,13 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     private static IConfiguration EmptyConfig() =>
         new ConfigurationBuilder().Build();
 
-    // Provides a valid ServiceName so tests not concerned with service identity
-    // still pass the startup validation check.
-    private static Action<KaleidoServiceOptionsBuilder> DefaultServiceName() =>
-        o => o.ServiceName = "test-service";
+    // Provides valid bootstrap options so unrelated DI tests pass startup validation.
+    private static Action<KaleidoServiceOptionsBuilder> DefaultServiceOptions() =>
+        o =>
+        {
+            o.ServiceName = "test-service";
+            o.Assemblies = [typeof(KaleidoServiceCollectionExtensionsTests).Assembly];
+        };
 
     [Fact]
     public void AddKaleido_ShouldThrow_WhenServicesIsNull()
@@ -41,7 +44,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         var builder =
-            services.AddKaleido(EmptyConfig(), DefaultServiceName());
+            services.AddKaleido(EmptyConfig(), DefaultServiceOptions());
 
         Assert.NotNull(builder);
 
@@ -66,7 +69,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         });
 
         var concreteBuilder = Assert.IsType<KaleidoBuilder>(builder);
-        Assert.Contains(assembly, concreteBuilder.Assemblies);
+        Assert.Same(assembly, Assert.Single(concreteBuilder.Assemblies));
     }
 
     [Fact]
@@ -103,12 +106,33 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         Assert.Equal(1, concreteBuilder.Assemblies.Count(a => a == assembly));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AddKaleido_WhenAssembliesAreMissingOrEmpty_FailsBeforeRegistration(bool empty)
+    {
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
+            services.AddKaleido(EmptyConfig(), o =>
+            {
+                o.ServiceName = "test-service";
+                if (empty)
+                {
+                    o.Assemblies = [];
+                }
+            }));
+
+        Assert.Equal(ConfigurationErrorCodes.MissingAssembly, exception.Code);
+        Assert.Empty(services);
+    }
+
     [Fact]
     public void AddKaleido_NoServiceAuthorizationRule_UsesUnspecified()
     {
         var services = new ServiceCollection();
 
-        var builder = services.AddKaleido(EmptyConfig(), DefaultServiceName());
+        var builder = services.AddKaleido(EmptyConfig(), DefaultServiceOptions());
 
         Assert.False(builder.ServiceOptions.DefaultAuthorization.IsExplicit());
         Assert.Empty(builder.ServiceOptions.DefaultAuthorization.Roles);
@@ -126,7 +150,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
             .Build();
         var services = new ServiceCollection();
 
-        var builder = services.AddKaleido(config, DefaultServiceName());
+        var builder = services.AddKaleido(config, DefaultServiceOptions());
 
         Assert.Equal("staff", builder.ServiceOptions.DefaultAuthorization.Policy);
         Assert.Equal("radiology", Assert.Single(builder.ServiceOptions.DefaultAuthorization.Roles));
@@ -170,7 +194,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var custom = new CustomCorrelationContextAccessor();
         services.AddScoped<IKaleidoCorrelationContextAccessor>(_ => custom);
 
-        services.AddKaleido(EmptyConfig(), DefaultServiceName());
+        services.AddKaleido(EmptyConfig(), DefaultServiceOptions());
 
         using var provider = services.BuildServiceProvider(validateScopes: false);
         using var scope = provider.CreateScope();
@@ -186,7 +210,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var custom = new CustomCorrelationContextInitializer();
         services.AddScoped<IKaleidoCorrelationContextInitializer>(_ => custom);
 
-        services.AddKaleido(EmptyConfig(), DefaultServiceName());
+        services.AddKaleido(EmptyConfig(), DefaultServiceOptions());
 
         using var provider = services.BuildServiceProvider(validateScopes: false);
         using var scope = provider.CreateScope();
@@ -199,7 +223,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     public void AddKaleido_ShouldRegisterDefaultAccessor_WhenNonePreregistered()
     {
         var services = new ServiceCollection();
-        services.AddKaleido(EmptyConfig(), DefaultServiceName());
+        services.AddKaleido(EmptyConfig(), DefaultServiceOptions());
 
         using var provider = services.BuildServiceProvider(validateScopes: false);
         using var scope = provider.CreateScope();
@@ -212,7 +236,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     public void AddKaleido_ShouldRegisterDefaultInitializer_WhenNonePreregistered()
     {
         var services = new ServiceCollection();
-        services.AddKaleido(EmptyConfig(), DefaultServiceName());
+        services.AddKaleido(EmptyConfig(), DefaultServiceOptions());
 
         using var provider = services.BuildServiceProvider(validateScopes: false);
         using var scope = provider.CreateScope();

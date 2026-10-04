@@ -212,7 +212,7 @@ Public seams consumers are expected to implement or replace:
 
 ### Internal structure
 - `SqliteProcessorContextStore` — implements `IProcessorContextStore` using SQLite via EF Core
-- `SqliteProcessContextStoreServiceCollectionExtensions` — `UseSqliteProcessorContextStore(connectionString)` extension; replaces the default in-memory store
+- `SqliteProcessorContextStoreServiceCollectionExtensions` — `UseSqliteProcessorContextStore(connectionString)` extension; replaces the default in-memory store
 
 ### Key design invariants
 - Calling `UseSqliteProcessorContextStore(...)` replaces the in-memory `IProcessorContextStore` registered by `AddProcessor(...)`.
