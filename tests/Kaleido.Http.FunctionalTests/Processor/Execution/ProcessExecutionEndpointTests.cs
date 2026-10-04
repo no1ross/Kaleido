@@ -1,8 +1,7 @@
 using System.Net;
+using Kaleido.Http.FunctionalTests.Processor.Fixtures;
+using Kaleido.Http.FunctionalTests.Processor.Infrastructure;
 using Kaleido.Http.Processor;
-using Kaleido.Processor.AspNetCore.FunctionalTests;
-using Kaleido.Processor.AspNetCore.FunctionalTests.Fixtures;
-using Kaleido.Processor.AspNetCore.FunctionalTests.Infrastructure;
 
 namespace Kaleido.Http.FunctionalTests.Processor.Execution;
 

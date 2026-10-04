@@ -1,11 +1,11 @@
 using Kaleido.Processor;
 
-namespace Kaleido.Processor.AspNetCore.FunctionalTests.Infrastructure;
+namespace Kaleido.Http.FunctionalTests.Processor.Infrastructure;
 
 internal static class FunctionalRuntimeNamespaces
 {
     public const string Runtime =
-        "Kaleido.Processor.AspNetCore.FunctionalTests.Infrastructure";
+        "Kaleido.Http.FunctionalTests.Processor.Infrastructure";
 }
 
 internal static class FunctionalProcessorNames

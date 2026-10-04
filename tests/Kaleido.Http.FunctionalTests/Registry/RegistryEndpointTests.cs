@@ -1,8 +1,9 @@
 using System.Net;
+using Kaleido.Http.FunctionalTests.Processor;
+using Kaleido.Http.FunctionalTests.Processor.Fixtures;
 using Kaleido.Http.Registry;
-using Kaleido.Processor.AspNetCore.FunctionalTests.Fixtures;
 
-namespace Kaleido.Processor.AspNetCore.FunctionalTests.Registry;
+namespace Kaleido.Http.FunctionalTests.Registry;
 
 [Collection(nameof(ProcessorAspNetCoreSuite))]
 public sealed class RegistryEndpointTests

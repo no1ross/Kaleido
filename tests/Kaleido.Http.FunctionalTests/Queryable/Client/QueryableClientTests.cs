@@ -1,8 +1,8 @@
 using Kaleido.Http.Queryable;
-using Kaleido.Queryable.AspNetCore.FunctionalTests.Fixtures;
-using Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
+using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
+using Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
 
-namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Client;
+namespace Kaleido.Http.FunctionalTests.Queryable.Client;
 
 public sealed class QueryableClientTests : IClassFixture<QueryableAspNetCoreFixture>
 {

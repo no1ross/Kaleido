@@ -1,4 +1,4 @@
-namespace Kaleido.AspNetCore.FunctionalTests.Authorization;
+namespace Kaleido.Http.FunctionalTests.Authorization;
 
 internal static class AuthorizationStepNames
 {

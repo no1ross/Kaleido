@@ -10,7 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Kaleido.Processor.AspNetCore.FunctionalTests.Fixtures;
+namespace Kaleido.Http.FunctionalTests.Processor.Fixtures;
 
 public sealed class ProcessorAspNetCoreFixture
     : IAsyncLifetime
