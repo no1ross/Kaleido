@@ -44,7 +44,7 @@ public class KaleidoServiceOptions
 
     /// <summary>
     /// The assemblies to scan for Process and Queryable registrations.
-    /// If null or empty, defaults to Assembly.GetCallingAssembly() and Assembly.GetEntryAssembly().
+    /// A non-empty explicit list is required when calling AddKaleido().
     /// </summary>
     public Assembly[]? Assemblies { get; init; }
 
@@ -75,12 +75,12 @@ public class KaleidoServiceOptions
 
     /// <summary>
     /// Validates a <see cref="KaleidoServiceOptions"/> instance.
-    /// Throws <see cref="KaleidoConfigurationException"/> if <see cref="ServiceName"/> is null,
-    /// empty, contains whitespace, path separators, or uppercase characters.
+    /// Throws <see cref="KaleidoConfigurationException"/> if <see cref="ServiceName"/> is invalid
+    /// or <see cref="Assemblies"/> is null or empty.
     /// </summary>
     /// <param name="options">The options instance to validate.</param>
     /// <exception cref="KaleidoConfigurationException">
-    /// Thrown when <see cref="ServiceName"/> fails any validation rule.
+    /// Thrown when <see cref="ServiceName"/> or <see cref="Assemblies"/> fails validation.
     /// </exception>
     internal static void Validate(KaleidoServiceOptions options)
     {
@@ -139,6 +139,14 @@ public class KaleidoServiceOptions
                 ConfigurationErrorCodes.InvalidServiceName,
                 $"KaleidoServiceOptions.ServiceName '{options.ServiceName}' must be lowercase. " +
                 $"Use '{options.ServiceName.ToLowerInvariant()}' instead.");
+        }
+
+        if (options.Assemblies is null || options.Assemblies.Length == 0)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.MissingAssembly,
+                "KaleidoServiceOptions.Assemblies must contain at least one assembly. " +
+                "Set o.Assemblies in the AddKaleido configure callback.");
         }
     }
 }

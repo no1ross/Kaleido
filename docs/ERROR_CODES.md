@@ -92,7 +92,8 @@ Cross-cutting codes have no prefix. Queryable startup codes use `qry_`; Process 
 | Constant | Code | Meaning |
 |---|---|---|
 | `InvalidServiceName` | `invalid_service_name` | `ServiceName` is null, empty, or invalid |
-| `MissingAssembly` | `missing_assembly` | No assemblies configured via `KaleidoServiceOptions.Assemblies` before runtime registration |
+| `MissingAssembly` | `missing_assembly` | `AddKaleido()` received a null or empty explicit `Assemblies` list; fails before DI registration |
+| `InvalidConnectionString` | `invalid_connection_string` | SQLite process context-store connection string cannot be parsed at registration |
 | `QryMissingAttribute` | `qry_missing_attribute` | Context or view missing `[QueryContext]`/`[QueryView]` |
 | `QryMissingSource` | `qry_missing_source` | Context has no registered source |
 | `QryDuplicateSource` | `qry_duplicate_source` | Context has multiple registered sources |
@@ -164,6 +165,6 @@ KAL2008 is the compile-time equivalent of `ProcessorErrorCodes.MissingHandler`. 
 
 `ServiceName` is used verbatim as the HTTP route prefix — it must be lowercase with no separators (e.g. `"priorauth"` not `"PriorAuth"`).
 
-`Assemblies` must be set explicitly; the `GetCallingAssembly()` fallback is JIT-nondeterministic and must not be relied upon in production.
+`Assemblies` must contain at least one explicit assembly. `AddKaleido()` throws `missing_assembly` at registration for null or empty lists; there is no calling-assembly fallback. KAL2009 warns when an options lambda omits the assignment, but runtime validation is authoritative.
 
 Aggregate registries (`MapKaleidoHttp(o => o.AggregateRegistry = true)`) require `AddHttpClients()` — enforced at map time by a `KaleidoConfigurationException`, so no analyzer rule covers it.
