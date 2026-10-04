@@ -20,7 +20,7 @@ public sealed class RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
     [Fact]
     public async Task GetRegistry_ReturnsOk()
     {
-        var response = await _client.GetAsync("/kaleido/registry");
+        using var response = await _client.GetAsync("/kaleido/registry");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -28,7 +28,7 @@ public sealed class RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
     [Fact]
     public async Task GetRegistry_IncludesLocalProcessRegistrations()
     {
-        var response = await _client.GetAsync("/kaleido/registry");
+        using var response = await _client.GetAsync("/kaleido/registry");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -42,7 +42,7 @@ public sealed class RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
     [Fact]
     public async Task GetRegistry_StampsFreshnessMetadata()
     {
-        var response = await _client.GetAsync("/kaleido/registry");
+        using var response = await _client.GetAsync("/kaleido/registry");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotEmpty(response.Headers.ETag?.Tag ?? "");
@@ -63,12 +63,12 @@ public sealed class RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
     [Fact]
     public async Task GetRegistry_IfNoneMatch_Returns304()
     {
-        var first = await _client.GetAsync("/kaleido/registry");
+        using var first = await _client.GetAsync("/kaleido/registry");
         var etag = first.Headers.ETag!.Tag;
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "/kaleido/registry");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/kaleido/registry");
         request.Headers.IfNoneMatch.ParseAdd(etag);
-        var second = await _client.SendAsync(request);
+        using var second = await _client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.NotModified, second.StatusCode);
         Assert.Equal(etag, second.Headers.ETag?.Tag);
