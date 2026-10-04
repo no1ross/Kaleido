@@ -167,7 +167,7 @@ A capability declaring `Policy` on a host with no `IAuthorizationService` fails 
 
 A client whose `RoutePrefix` equals this service's `ServiceName` is skipped (self-fetch would recurse). Aggregation without any registered clients throws a `KaleidoConfigurationException` at map time.
 
-**Partial responses:** by default the endpoint always returns HTTP 200; unreachable downstream clients populate `ClientErrors` (and set `IsPartial` on the response). Append `?strict` to get **502** when the aggregate is partial — the body is still included, so callers get both the catalog of what worked and the error list. `?strict` is for agents/gateways that need a real failure signal.
+**Partial responses:** when an aggregated registry rebuild encounters an unreachable downstream, the endpoint returns HTTP **200** by default with `isPartial: true` and non-empty `clientErrors`. Append `?strict` for HTTP **502** with the **same partial body**; agents/gateways can still read both the working catalog and the error list. A healthy registry returns 200. `?strict` changes the failure status, not snapshot freshness: cached clean results may still be served, and a matching `If-None-Match` can return 304 before the strict check. Use `?refresh` when a fresh downstream probe is needed, subject to the refresh cooldown.
 
 **Freshness contract:** every response carries `GeneratedAt` (snapshot build time — reflects data age even when served from cache), `Revision` (SHA-256 of the filtered payload), an `ETag` header, and `Cache-Control`. Clients may send `If-None-Match` to get a **304** when nothing changed. `Revision` is computed on the per-caller filtered payload, so ETags are correct per persona.
 
