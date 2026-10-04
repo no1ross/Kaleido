@@ -1,9 +1,9 @@
 using System.Net;
 using Kaleido.Http.Registry;
-using Kaleido.Processor.AspNetCore.FunctionalTests.Fixtures;
-using Kaleido.Processor.AspNetCore.FunctionalTests.Infrastructure;
+using Kaleido.Http.FunctionalTests.Processor.Fixtures;
+using Kaleido.Http.FunctionalTests.Processor.Infrastructure;
 
-namespace Kaleido.Processor.AspNetCore.FunctionalTests.Discovery;
+namespace Kaleido.Http.FunctionalTests.Processor.Discovery;
 
 [Collection(nameof(ProcessorAspNetCoreSuite))]
 public sealed class ProcessDiscoveryTests

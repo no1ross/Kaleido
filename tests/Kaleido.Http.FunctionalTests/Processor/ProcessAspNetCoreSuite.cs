@@ -1,6 +1,6 @@
-using Kaleido.Processor.AspNetCore.FunctionalTests.Fixtures;
+using Kaleido.Http.FunctionalTests.Processor.Fixtures;
 
-namespace Kaleido.Processor.AspNetCore.FunctionalTests;
+namespace Kaleido.Http.FunctionalTests.Processor;
 
 [CollectionDefinition(nameof(ProcessorAspNetCoreSuite))]
 public sealed class ProcessorAspNetCoreSuite

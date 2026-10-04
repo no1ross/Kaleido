@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Kaleido.AspNetCore.FunctionalTests.Authorization;
+namespace Kaleido.Http.FunctionalTests.Authorization;
 
 /// <summary>
 /// Header-driven test authentication scheme. <c>X-Test-User</c> +

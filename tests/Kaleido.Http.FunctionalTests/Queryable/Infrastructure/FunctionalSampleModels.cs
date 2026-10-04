@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace Kaleido.Queryable.AspNetCore.FunctionalTests.Infrastructure;
+namespace Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum FunctionalRecordStatus
