@@ -1,4 +1,6 @@
+using Kaleido.Exceptions;
 using Kaleido.Observability;
+using Kaleido.Registry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -99,6 +101,66 @@ public sealed class KaleidoServiceCollectionExtensionsTests
 
         var concreteBuilder = Assert.IsType<KaleidoBuilder>(builder);
         Assert.Equal(1, concreteBuilder.Assemblies.Count(a => a == assembly));
+    }
+
+    [Fact]
+    public void AddKaleido_NoServiceAuthorizationRule_UsesUnspecified()
+    {
+        var services = new ServiceCollection();
+
+        var builder = services.AddKaleido(EmptyConfig(), DefaultServiceName());
+
+        Assert.False(builder.ServiceOptions.DefaultAuthorization.IsExplicit());
+        Assert.Empty(builder.ServiceOptions.DefaultAuthorization.Roles);
+    }
+
+    [Fact]
+    public void AddKaleido_BindsServiceAuthorizationRuleFromConfiguration()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Kaleido:DefaultAuthorization:Policy"] = "staff",
+                ["Kaleido:DefaultAuthorization:Roles:0"] = "radiology"
+            })
+            .Build();
+        var services = new ServiceCollection();
+
+        var builder = services.AddKaleido(config, DefaultServiceName());
+
+        Assert.Equal("staff", builder.ServiceOptions.DefaultAuthorization.Policy);
+        Assert.Equal("radiology", Assert.Single(builder.ServiceOptions.DefaultAuthorization.Roles));
+        Assert.False(AuthorizationMetadata.Unspecified.IsExplicit());
+    }
+
+    [Fact]
+    public void AddKaleido_RejectsConflictingServiceAuthorizationRule()
+    {
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
+            services.AddKaleido(EmptyConfig(), o =>
+            {
+                o.ServiceName = "test-service";
+                o.DefaultAuthorization = new AuthorizationMetadata("staff", []) { AllowAnonymous = true };
+            }));
+
+        Assert.Equal(ConfigurationErrorCodes.ConflictingAuthorization, exception.Code);
+    }
+
+    [Fact]
+    public void AddKaleido_RejectsUnknownAuthorizationMode()
+    {
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
+            services.AddKaleido(EmptyConfig(), o =>
+            {
+                o.ServiceName = "test-service";
+                o.AuthorizationMode = (KaleidoAuthorizationMode)123;
+            }));
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidAuthorizationMode, exception.Code);
     }
 
     [Fact]

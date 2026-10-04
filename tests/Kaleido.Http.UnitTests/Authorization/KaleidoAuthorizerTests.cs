@@ -17,7 +17,6 @@ public sealed class KaleidoAuthorizerTests
     private static KaleidoAuthorizer CreateSut(
         Mock<IKaleidoAuthorizationEvaluator> evaluator,
         KaleidoCorrelationContext? caller = null,
-        bool requireAuthorization = false,
         IHttpContextAccessor? httpContextAccessor = null)
     {
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
@@ -26,31 +25,44 @@ public sealed class KaleidoAuthorizerTests
             .Returns(caller ?? new KaleidoCorrelationContext());
 
         return new(
-            new KaleidoHttpOptions
-            {
-                RequireAuthorization = requireAuthorization
-            },
             evaluator.Object,
             correlation.Object,
             httpContextAccessor ?? new HttpContextAccessor());
     }
 
-    [Fact]
-    public async Task CanAccessAsync_ForwardsCallerAndRequireAuthorization_ToEvaluator()
+    private static Mock<IKaleidoAuthorizationEvaluator> Evaluator(
+        bool enforced = true)
     {
         var evaluator = new Mock<IKaleidoAuthorizationEvaluator>();
+        evaluator.Setup(x => x.IsEnforced).Returns(enforced);
+        return evaluator;
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void IsEnforced_ReflectsEvaluator(bool enforced)
+    {
+        var sut = CreateSut(Evaluator(enforced));
+
+        Assert.Equal(enforced, sut.IsEnforced);
+    }
+
+    [Fact]
+    public async Task CanAccessAsync_ForwardsCaller_ToEvaluator()
+    {
+        var evaluator = Evaluator();
         evaluator
             .Setup(x => x.CanAccessAsync(
                 It.IsAny<AuthorizationMetadata?>(),
                 It.IsAny<KaleidoCorrelationContext>(),
-                true,
                 It.IsAny<Func<string, CancellationToken, Task<bool>>?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         var caller =
             new KaleidoCorrelationContext { CallerName = "alice" };
-        var sut = CreateSut(evaluator, caller, requireAuthorization: true);
+        var sut = CreateSut(evaluator, caller);
 
         Assert.True(await sut.CanAccessAsync(null));
 
@@ -58,7 +70,6 @@ public sealed class KaleidoAuthorizerTests
             x => x.CanAccessAsync(
                 null,
                 It.Is<KaleidoCorrelationContext>(c => c.CallerName == "alice"),
-                true,
                 null,
                 It.IsAny<CancellationToken>()),
             Times.Once);
@@ -67,38 +78,36 @@ public sealed class KaleidoAuthorizerTests
     [Fact]
     public async Task AuthorizeAsync_DelegatesToEvaluator()
     {
-        var evaluator = new Mock<IKaleidoAuthorizationEvaluator>();
+        var evaluator = Evaluator();
 
         var sut = CreateSut(evaluator);
 
         await sut.AuthorizeAsync(
-            new AuthorizationMetadata(null, ["internal"]),
+            new AuthorizationMetadata(null, ["radiology"]),
             "cap");
 
         evaluator.Verify(
             x => x.AuthorizeAsync(
                 It.Is<AuthorizationMetadata?>(m =>
-                    m != null && m.Roles.Contains("internal")),
+                    m != null && m.Roles.Contains("radiology")),
                 "cap",
                 It.IsAny<KaleidoCorrelationContext>(),
-                false,
                 It.IsAny<Func<string, CancellationToken, Task<bool>>?>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
     [Fact]
-    public async Task FilterAsync_ReturnsOnlyAllowedItems()
+    public async Task FilterAsync_WhenEnforced_ReturnsOnlyAllowedItems()
     {
-        var evaluator = new Mock<IKaleidoAuthorizationEvaluator>();
+        var evaluator = Evaluator();
         evaluator
             .Setup(x => x.CanAccessAsync(
                 It.IsAny<AuthorizationMetadata?>(),
                 It.IsAny<KaleidoCorrelationContext>(),
-                It.IsAny<bool>(),
                 It.IsAny<Func<string, CancellationToken, Task<bool>>?>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync((AuthorizationMetadata? m, KaleidoCorrelationContext _, bool _, Func<string, CancellationToken, Task<bool>>? _, CancellationToken _)
+            .ReturnsAsync((AuthorizationMetadata? m, KaleidoCorrelationContext _, Func<string, CancellationToken, Task<bool>>? _, CancellationToken _)
                 => m is null);
 
         var sut = CreateSut(evaluator);
@@ -106,7 +115,7 @@ public sealed class KaleidoAuthorizerTests
         var items = new[]
         {
             new Item("open", null),
-            new Item("internal-only", new AuthorizationMetadata(null, ["internal"]))
+            new Item("radiology-only", new AuthorizationMetadata(null, ["radiology"]))
         };
 
         var filtered =
@@ -117,9 +126,36 @@ public sealed class KaleidoAuthorizerTests
     }
 
     [Fact]
+    public async Task FilterAsync_WhenNotEnforced_ReturnsAllItemsWithoutEvaluating()
+    {
+        var evaluator = Evaluator(enforced: false);
+
+        var sut = CreateSut(evaluator);
+
+        var items = new[]
+        {
+            new Item("open", null),
+            new Item("radiology-only", new AuthorizationMetadata(null, ["radiology"]))
+        };
+
+        var filtered =
+            await sut.FilterAsync(items, i => i.Authorization);
+
+        Assert.Equal(2, filtered.Count);
+
+        evaluator.Verify(
+            x => x.CanAccessAsync(
+                It.IsAny<AuthorizationMetadata?>(),
+                It.IsAny<KaleidoCorrelationContext>(),
+                It.IsAny<Func<string, CancellationToken, Task<bool>>?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public void AuthorizeProcess_DelegatesToEvaluator()
     {
-        var evaluator = new Mock<IKaleidoAuthorizationEvaluator>();
+        var evaluator = Evaluator();
         evaluator
             .Setup(x => x.AuthorizeProcess(
                 It.IsAny<ProcessorContext>(),
@@ -151,16 +187,15 @@ public sealed class KaleidoAuthorizerTests
 
         Func<string, CancellationToken, Task<bool>>? captured = null;
 
-        var evaluator = new Mock<IKaleidoAuthorizationEvaluator>();
+        var evaluator = Evaluator();
         evaluator
             .Setup(x => x.CanAccessAsync(
                 It.IsAny<AuthorizationMetadata?>(),
                 It.IsAny<KaleidoCorrelationContext>(),
-                It.IsAny<bool>(),
                 It.IsAny<Func<string, CancellationToken, Task<bool>>?>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<AuthorizationMetadata?, KaleidoCorrelationContext, bool, Func<string, CancellationToken, Task<bool>>?, CancellationToken>(
-                (_, _, _, pe, _) => captured = pe)
+            .Callback<AuthorizationMetadata?, KaleidoCorrelationContext, Func<string, CancellationToken, Task<bool>>?, CancellationToken>(
+                (_, _, pe, _) => captured = pe)
             .ReturnsAsync(true);
 
         var services = new ServiceCollection();
@@ -197,16 +232,15 @@ public sealed class KaleidoAuthorizerTests
     {
         Func<string, CancellationToken, Task<bool>>? captured = null;
 
-        var evaluator = new Mock<IKaleidoAuthorizationEvaluator>();
+        var evaluator = Evaluator();
         evaluator
             .Setup(x => x.CanAccessAsync(
                 It.IsAny<AuthorizationMetadata?>(),
                 It.IsAny<KaleidoCorrelationContext>(),
-                It.IsAny<bool>(),
                 It.IsAny<Func<string, CancellationToken, Task<bool>>?>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<AuthorizationMetadata?, KaleidoCorrelationContext, bool, Func<string, CancellationToken, Task<bool>>?, CancellationToken>(
-                (_, _, _, pe, _) => captured = pe)
+            .Callback<AuthorizationMetadata?, KaleidoCorrelationContext, Func<string, CancellationToken, Task<bool>>?, CancellationToken>(
+                (_, _, pe, _) => captured = pe)
             .ReturnsAsync(true);
 
         var sut = CreateSut(evaluator);

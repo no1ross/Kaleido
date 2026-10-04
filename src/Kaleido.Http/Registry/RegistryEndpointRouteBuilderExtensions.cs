@@ -106,6 +106,14 @@ public static class RegistryEndpointRouteBuilderExtensions
                         httpContext.RequestServices
                             .GetService<IKaleidoAuthorizer>();
 
+                    if (localServiceOptions.AuthorizationMode != KaleidoAuthorizationMode.None
+                        && authorizer is null)
+                    {
+                        throw new KaleidoConfigurationException(
+                            ConfigurationErrorCodes.AuthenticationNotConfigured,
+                            "Registry filtering requires AddHttp() to register the Kaleido HTTP authorizer.");
+                    }
+
                     var downstreamNames = aggregate
                         ? DownstreamClientNames(processClientMap, queryableClientMap, localServiceOptions)
                         : [];
@@ -199,7 +207,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                     // capabilities the caller may not invoke are omitted.
                     // The cache holds the unfiltered union; filtering is
                     // per-request.
-                    if (authorizer is not null)
+                    if (authorizer?.IsEnforced == true)
                     {
                         response =
                             await FilterForCaller(
@@ -249,7 +257,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                 (aggregate ? " and all registered downstream clients." : ".") +
                 " Always returns HTTP 200. Inspect ClientErrors to detect " +
                 "partial responses caused by unreachable or misconfigured downstream clients. " +
-                "Process steps carry fully-resolved ExecuteUrl and MetadataUrl values. " +
+                "Process steps carry fully-resolved ExecuteUrl values. " +
                 "Adding a downstream client via AddProcessorClient() or AddQueryableClient() makes it appear here automatically.");
 
         return group;
@@ -318,6 +326,19 @@ public static class RegistryEndpointRouteBuilderExtensions
                         x => x.Authorization,
                         cancellationToken);
 
+            // A processor whose every step was filtered out is invisible to
+            // the caller — don't advertise an empty shell.
+            var hadSteps =
+                processor.InitialSteps.Count > 0 || processor.Steps?.Count > 0;
+
+            var hasSteps =
+                initialSteps.Count > 0 || steps?.Count > 0;
+
+            if (hadSteps && !hasSteps)
+            {
+                continue;
+            }
+
             processes.Add(
                 processor with
                 {
@@ -326,23 +347,27 @@ public static class RegistryEndpointRouteBuilderExtensions
                 });
         }
 
-        var allowedQueryables =
-            await authorizer.FilterAsync(response.Queryables,
-                x => x.Authorization,
-                cancellationToken);
-
         var queryables = new List<QueryableRecordResponse>();
 
-        foreach (var queryable in allowedQueryables)
+        foreach (var queryable in response.Queryables)
         {
+            var contextAllowed =
+                await authorizer.CanAccessAsync(queryable.Authorization, cancellationToken);
+
             var views =
                 await authorizer.FilterAsync(queryable.Views,
                     x => x.Authorization,
                     cancellationToken);
 
+            if (!contextAllowed && views.Count == 0)
+            {
+                continue;
+            }
+
             queryables.Add(
                 queryable with
                 {
+                    QueryUrl = contextAllowed ? queryable.QueryUrl : null,
                     Views = views
                 });
         }

@@ -7,11 +7,12 @@ namespace Kaleido.Samples.PriorAuth.Auth;
 
 /// <summary>
 /// Delegating handler for outbound Kaleido client calls. When an inbound user
-/// is authenticated it mints an on-behalf-of token — the user's name plus the
-/// union of the user's roles and the calling service's "internal" role — so
-/// downstream ownership/audit records the real user while service-only
-/// capabilities (e.g. <c>Roles = "internal"</c> views) stay reachable. With no
-/// inbound user it mints a service-to-service <c>svc-{name}</c> token.
+/// is authenticated it mints an on-behalf-of token: the user's name and the
+/// user's own roles, unchanged, plus this service as the
+/// <see cref="DevAuthClaims.Actor"/>. Downstream ownership/audit therefore
+/// records the real user with the user's real roles, while internal-only
+/// capabilities (<see cref="DevAuthPolicies.InternalCaller"/>) see the hop.
+/// With no inbound user it mints a service-to-service token.
 /// </summary>
 public sealed class DevTokenForwardingHandler(
     IHttpContextAccessor httpContextAccessor,
@@ -37,11 +38,9 @@ public sealed class DevTokenForwardingHandler(
                     user.Identity.Name ?? "unknown",
                     [.. user.Claims
                             .Where(c => c.Type == ClaimTypes.Role)
-                            .Select(c => c.Value)
-                            .Append("internal")
-                            .Append(serviceName)
-                            .Distinct(StringComparer.OrdinalIgnoreCase)],
-                    key)
+                            .Select(c => c.Value)],
+                    key,
+                    actor: serviceName)
                 : DevTokenIssuer.IssueServiceToken(serviceName, key);
 
         request.Headers.TryAddWithoutValidation(

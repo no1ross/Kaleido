@@ -3,7 +3,7 @@ using Kaleido.Queryable;
 
 namespace Kaleido.Samples.PriorAuth.Provider.Queryable.Contexts;
 
-[KaleidoAuthorization(Roles = "intake,radiology")]
+// Service-to-service only: queried by Radiology (RequestingProviderSearchClient).
 [QueryContext(
     Name = "requesting-providers",
     DisplayName = "Requesting Providers",

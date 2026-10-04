@@ -34,10 +34,10 @@ public record ProcessorStepRegistryItem
     public bool Repeatable { get; init; }
 
     /// <summary>
-    /// Authorization requirement declared via <c>[KaleidoAuthorization]</c>.
-    /// <c>null</c> means open (subject to transport-level defaults).
+    /// Effective authorization rule. <see cref="AuthorizationMetadata.Unspecified"/>
+    /// means neither the capability nor its service declared a rule.
     /// </summary>
-    public AuthorizationMetadata? Authorization { get; init; }
+    public AuthorizationMetadata Authorization { get; init; } = AuthorizationMetadata.Unspecified;
 
     public IReadOnlyCollection<ProcessorInputFieldDescriptor> Fields { get; init; }
         = [];
@@ -68,10 +68,10 @@ public record ProcessorStepSummary
     public bool Repeatable { get; init; }
 
     /// <summary>
-    /// Authorization requirement declared via <c>[KaleidoAuthorization]</c>.
-    /// <c>null</c> means open (subject to transport-level defaults).
+    /// Effective authorization rule. <see cref="AuthorizationMetadata.Unspecified"/>
+    /// means neither the capability nor its service declared a rule.
     /// </summary>
-    public AuthorizationMetadata? Authorization { get; init; }
+    public AuthorizationMetadata Authorization { get; init; } = AuthorizationMetadata.Unspecified;
 }
 
 [ExcludeFromCodeCoverage]

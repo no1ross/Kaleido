@@ -39,7 +39,6 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
 
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ProcessEndpointName));
-        Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.StepMetadataEndpointName("test-step")));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.StepExecutionEndpointName("test-step")));
     }
 
@@ -53,7 +52,6 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
 
         Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes/execute"));
         Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes/{processId}"));
-        Assert.Single(FindEndpointsByRoute(endpoints, "/workflows/processes/steps/test-step/metadata"));
         Assert.Single(FindEndpointsByRoute(endpoints, "/workflows/processes/steps/test-step"));
     }
 
@@ -65,23 +63,14 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
 
         endpoints.MapProcessor();
 
-        var metadataEndpoint =
-            FindEndpoint(
-                endpoints,
-                ProcessEndpointNames.StepMetadataEndpointName("test-step"))!;
-
         var executionEndpoint =
             FindEndpoint(
                 endpoints,
                 ProcessEndpointNames.StepExecutionEndpointName("test-step"))!;
 
-        var metadataTags =
-            metadataEndpoint.Metadata.GetMetadata<ITagsMetadata>();
-
         var executionTags =
             executionEndpoint.Metadata.GetMetadata<ITagsMetadata>();
 
-        Assert.Contains("Test Step", metadataTags!.Tags);
         Assert.Contains("Test Step", executionTags!.Tags);
     }
 

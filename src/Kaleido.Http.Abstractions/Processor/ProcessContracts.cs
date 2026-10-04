@@ -386,9 +386,6 @@ public sealed record ProcessStepResponse
     public string ExecuteUrl { get; init; }
         = string.Empty;
 
-    public string MetadataUrl { get; init; }
-        = string.Empty;
-
     public IReadOnlyCollection<ProcessFieldMetadata> Fields { get; init; }
         = [];
 
@@ -423,9 +420,6 @@ public sealed record ProcessStepSummary
     public AuthorizationMetadata? Authorization { get; init; }
 
     public string ExecuteUrl { get; init; }
-        = string.Empty;
-
-    public string MetadataUrl { get; init; }
         = string.Empty;
 }
 

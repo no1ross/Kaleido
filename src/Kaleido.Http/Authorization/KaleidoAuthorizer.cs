@@ -18,10 +18,16 @@ namespace Kaleido.Http.Authorization;
 internal interface IKaleidoAuthorizer
 {
     /// <summary>
-    /// Returns whether the caller may access the capability. A null
-    /// <paramref name="authorization"/> means undeclared — open unless
-    /// <see cref="KaleidoHttpOptions.RequireAuthorization"/> is set, in
-    /// which case the caller must be authenticated.
+    /// <c>true</c> when <see cref="KaleidoServiceOptions.AuthorizationMode"/> is not <c>None</c>.
+    /// </summary>
+    bool IsEnforced { get; }
+
+    /// <summary>
+    /// Returns whether the caller may access the capability. Always true when
+    /// <see cref="KaleidoServiceOptions.AuthorizationMode"/> is <c>None</c>.
+    /// A null <paramref name="authorization"/> (undeclared) requires an
+    /// authenticated caller in <c>Authenticated</c> mode and is denied in
+    /// <c>ZeroTrust</c> mode.
     /// </summary>
     Task<bool> CanAccessAsync(
         AuthorizationMetadata? authorization,
@@ -56,19 +62,19 @@ internal interface IKaleidoAuthorizer
 }
 
 internal sealed class KaleidoAuthorizer(
-    KaleidoHttpOptions options,
     IKaleidoAuthorizationEvaluator evaluator,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     IHttpContextAccessor httpContextAccessor)
     : IKaleidoAuthorizer
 {
+    public bool IsEnforced => evaluator.IsEnforced;
+
     public Task<bool> CanAccessAsync(
         AuthorizationMetadata? authorization,
         CancellationToken cancellationToken = default) =>
         evaluator.CanAccessAsync(
             authorization,
             correlationAccessor.Current,
-            options.RequireAuthorization,
             PolicyEvaluator(),
             cancellationToken);
 
@@ -80,7 +86,6 @@ internal sealed class KaleidoAuthorizer(
             authorization,
             capabilityName,
             correlationAccessor.Current,
-            options.RequireAuthorization,
             PolicyEvaluator(),
             cancellationToken);
 
@@ -92,6 +97,11 @@ internal sealed class KaleidoAuthorizer(
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(authorization);
 
+        if (!evaluator.IsEnforced)
+        {
+            return [.. items];
+        }
+
         var caller = correlationAccessor.Current;
         var policyEvaluator = PolicyEvaluator();
 
@@ -102,7 +112,6 @@ internal sealed class KaleidoAuthorizer(
             if (await evaluator.CanAccessAsync(
                     authorization(item),
                     caller,
-                    options.RequireAuthorization,
                     policyEvaluator,
                     cancellationToken))
             {

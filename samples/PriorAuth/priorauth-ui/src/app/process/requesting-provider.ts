@@ -113,9 +113,7 @@ export class RequestingProvider {
     }
 
     get registrationServiceName(): string | undefined {
-        return this.registration
-            ? this.registration.context.metadataUrl.replace(/^\/+/, '').split('/')[0]
-            : undefined;
+        return this.registration?.context.serviceName;
     }
 
     get context(): QueryableRecord | undefined {

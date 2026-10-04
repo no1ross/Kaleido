@@ -62,7 +62,6 @@ public sealed class KaleidoProcessorClientTests
         Description = "Test step.",
         Version = "1.0",
         ExecuteUrl = "/processes/steps/mystep",
-        MetadataUrl = "/processes/steps/mystep/metadata",
         Fields = [],
         Dependencies = [],
         AvailableAfter = [],
@@ -163,66 +162,6 @@ public sealed class KaleidoProcessorClientTests
 
         await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.GetRegistryAsync());
-    }
-
-    // ---------------------------------------------------------------------------
-    // GetStepMetadataAsync
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task GetStepMetadataAsync_ResolvesStepAndFetchesMetadataUrl()
-    {
-        var callUrls = new List<string>();
-        var callCount = 0;
-        var (client, _) = CreateClient(respond: req =>
-        {
-            callUrls.Add(req.RequestUri!.PathAndQuery);
-            callCount++;
-            if (callCount == 1)
-            {
-                return JsonOk(FakeRegistry);
-            }
-
-            return JsonOk(FakeStep);
-        });
-
-        var result = await client.GetStepMetadataAsync("MyStep");
-
-        Assert.Equal("MyStep", result.Name);
-        Assert.Contains(callUrls, u => u.Contains("metadata"));
-    }
-
-    [Fact]
-    public async Task GetStepMetadataAsync_WhenStepNotFound_Throws()
-    {
-        var (client, _) = CreateClient();
-
-        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.GetStepMetadataAsync("NoSuchStep"));
-
-        Assert.Contains("NoSuchStep", ex.Message);
-    }
-
-    [Fact]
-    public async Task GetStepMetadataAsync_WhenHttpFails_ThrowsKaleidoException()
-    {
-        var callCount = 0;
-        var (client, _) = CreateClient(respond: req =>
-        {
-            callCount++;
-            if (callCount == 1)
-            {
-                return JsonOk(FakeRegistry);
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.InternalServerError);
-        });
-
-        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.GetStepMetadataAsync("MyStep"));
-
-        Assert.Equal(HttpStatusCode.InternalServerError, ex.StatusCode);
-        Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
     }
 
     // ---------------------------------------------------------------------------

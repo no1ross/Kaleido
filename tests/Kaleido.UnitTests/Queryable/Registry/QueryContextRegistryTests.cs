@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Reflection;
 using Kaleido.Exceptions;
 using Kaleido.Queryable.Registry;
+using Kaleido.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable.UnitTests.Records;
@@ -9,7 +10,12 @@ namespace Kaleido.Queryable.UnitTests.Records;
 public sealed class QueryContextRegistryTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static QueryContextRegistry CreateSut(params Type[] contextTypes)
+    private static QueryContextRegistry CreateSut(params Type[] contextTypes) =>
+        CreateSut(AuthorizationMetadata.Unspecified, contextTypes);
+
+    private static QueryContextRegistry CreateSut(
+        AuthorizationMetadata defaultAuthorization,
+        params Type[] contextTypes)
     {
         var TypeDescriber = new Mock<ITypeDescriber>();
         TypeDescriber
@@ -25,7 +31,8 @@ public sealed class QueryContextRegistryTests
             TypeDescriber.Object,
             constraintMapper.Object,
             CreateServices(),
-            contextTypes);
+            contextTypes,
+            defaultAuthorization);
     }
 
     [Fact]
@@ -101,13 +108,32 @@ public sealed class QueryContextRegistryTests
     }
 
     [Fact]
-    public void Constructor_WithoutKaleidoAuthorization_HasNullAuthorization()
+    public void Constructor_WithoutKaleidoAuthorization_HasUnspecifiedAuthorization()
     {
         var registry = CreateSut(typeof(TestContext));
 
         var registration = registry.GetRegistration(typeof(TestContext));
 
-        Assert.Null(registration.Metadata.Authorization);
+        Assert.Same(AuthorizationMetadata.Unspecified, registration.Metadata.Authorization);
+    }
+
+    [Fact]
+    public void Constructor_ContextWithoutAttribute_InheritsServiceAuthorization()
+    {
+        var rule = new AuthorizationMetadata(null, ["radiology"]);
+        var registry = CreateSut(rule, typeof(TestContext));
+
+        Assert.Same(rule, registry.GetRegistration(typeof(TestContext)).Metadata.Authorization);
+    }
+
+    [Fact]
+    public void Constructor_ContextAttribute_ReplacesServiceAuthorization()
+    {
+        var rule = new AuthorizationMetadata(null, ["radiology"]);
+        var registry = CreateSut(rule, typeof(SecuredContext));
+
+        Assert.Equal("internal", registry.GetRegistration(typeof(SecuredContext)).Metadata.Authorization.Policy);
+        Assert.DoesNotContain("radiology", registry.GetRegistration(typeof(SecuredContext)).Metadata.Authorization.Roles);
     }
 
     private static ServiceCollection CreateServices()

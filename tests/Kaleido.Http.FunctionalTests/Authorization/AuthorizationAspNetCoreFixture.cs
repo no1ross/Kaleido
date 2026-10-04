@@ -11,10 +11,10 @@ namespace Kaleido.AspNetCore.FunctionalTests.Authorization;
 
 /// <summary>
 /// TestServer host with header-driven test authentication
-/// (<see cref="TestAuthHandler"/>) and <see cref="KaleidoHttpOptions"/>.<c>RequireAuthorization</c>
-/// enabled — undeclared capabilities require an authenticated caller,
+/// (<see cref="TestAuthHandler"/>) and <see cref="KaleidoServiceOptions"/>.<c>AuthorizationMode = Authenticated</c>
+/// — undeclared capabilities require an authenticated caller,
 /// capabilities declaring <c>[KaleidoAuthorization]</c> require the
-/// declared role/policy.
+/// declared role/policy or open with <c>AllowAnonymous</c>.
 /// </summary>
 public sealed class AuthorizationAspNetCoreFixture
     : IAsyncLifetime
@@ -87,12 +87,9 @@ public sealed class AuthorizationAspNetCoreFixture
                                 o.ServiceName = "kaleido";
                                 o.DisplayName = "Auth Test Processor";
                                 o.Assemblies = new[] { typeof(AuthorizationAspNetCoreFixture).Assembly };
+                                o.AuthorizationMode = KaleidoAuthorizationMode.Authenticated;
                             })
-                            .AddHttp(o =>
-                            {
-                                o.RequireAuthorization = true;
-                                o.RequireProcessOwnership = true;
-                            });
+                            .AddHttp();
                     });
 
                     webBuilder.Configure(app =>

@@ -71,9 +71,18 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
     public ProcessorStepRegistry(
         IEnumerable<Type> stepTypes,
         IReadOnlyDictionary<Type, Type> handlerTypes)
+        : this(stepTypes, handlerTypes, AuthorizationMetadata.Unspecified)
+    {
+    }
+
+    public ProcessorStepRegistry(
+        IEnumerable<Type> stepTypes,
+        IReadOnlyDictionary<Type, Type> handlerTypes,
+        AuthorizationMetadata defaultAuthorization)
     {
         ArgumentNullException.ThrowIfNull(stepTypes);
         ArgumentNullException.ThrowIfNull(handlerTypes);
+        ArgumentNullException.ThrowIfNull(defaultAuthorization);
 
         var stepTypeArray =
             stepTypes
@@ -87,7 +96,8 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
                 .Select(stepType =>
                     BuildDefinition(
                         handlerTypes,
-                        stepType))
+                        stepType,
+                        defaultAuthorization))
                 .ToArray();
 
         var definitionsByType =
@@ -176,7 +186,8 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
 
     private static ProcessStepDefinition BuildDefinition(
         IReadOnlyDictionary<Type, Type> handlerTypes,
-        Type stepType)
+        Type stepType,
+        AuthorizationMetadata defaultAuthorization)
     {
         if (!handlerTypes.TryGetValue(stepType, out var handlerType))
         {
@@ -199,7 +210,8 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
 
         var metadata =
             BuildStepMetadata(
-                stepType);
+                stepType,
+                defaultAuthorization);
 
         var definition =
             new ProcessStepDefinition
@@ -325,7 +337,8 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
     }
 
     private static ProcessStepMetadata BuildStepMetadata(
-        Type stepType)
+        Type stepType,
+        AuthorizationMetadata defaultAuthorization)
     {
         var attribute =
             stepType.GetCustomAttribute<ProcessStepAttribute>()
@@ -338,7 +351,7 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
             attribute.Description ?? attribute.DisplayName ?? attribute.Name,
             attribute.Version,
             attribute.DisplayName ?? attribute.Name,
-            AuthorizationMetadata.ForType(stepType));
+            AuthorizationMetadata.ForType(stepType, defaultAuthorization));
     }
 }
 

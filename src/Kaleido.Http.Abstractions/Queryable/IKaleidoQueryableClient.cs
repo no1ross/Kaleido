@@ -11,10 +11,6 @@ public interface IKaleidoQueryableClient
     /// </summary>
     void InvalidateRegistry();
 
-    Task<QueryableRecordResponse> GetContextMetadataAsync(
-        string context,
-        CancellationToken cancellationToken = default);
-
     Task<QueryResult<TView>> QueryViewAsync<TParameters, TView>(
         string context,
         string view,

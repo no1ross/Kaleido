@@ -16,6 +16,9 @@ metadata:
     v2.0 merges a second code-verified analysis pass (docs/PRERELEASE_PROMPT.md).
     v1 items re-validated; corrections and new findings appended below.
     See REVIEW_FINDINGS.md "Prior Findings — v1 Validation" for per-item status.
+    Items discovered while working another item carry discovered_during: <ID> and
+    relation: requires (parent can't be COMPLETE until done) | should (do alongside,
+    not a gate) | separate (independent schedule); the parent lists them in spawned: [...].
 
 critical_decisions:
   CR-001:
@@ -287,6 +290,7 @@ high_priority_items:
     priority: HIGH
     breaking_change: possibly
     status: PENDING_DESIGN_REVIEW
+    spawned: [HP-019, HP-021]
 
   HP-017:
     title: SQLite store test depth (round-trip fidelity, concurrency, update)
@@ -304,6 +308,141 @@ high_priority_items:
     priority: HIGH
     breaking_change: false
     status: COMPLETED
+
+  HP-019:
+    title: PriorAuth sample auth model (personas, roles vs. call identity, router proxy, annotations, UI login)
+    description: >
+      Persona login never fired (UI joined routerBaseUrl + 'auth/login' without a slash).
+      Router proxy stamped an all-roles service token on anonymous requests. The on-behalf-of
+      token mixed 'internal' + calling-service name into the user's roles, making every
+      forwarded caller an owner role-mate. Capabilities used a non-existent 'intake' role.
+      Fix: roles describe the user only; an actor claim describes service-to-service hops
+      (InternalCaller policy); explicit authorization mode on every host; corrected annotations.
+    discovered_during: HP-016
+    relation: separate
+    effort_days: 1
+    priority: HIGH
+    breaking_change: false
+    status: IN_PROGRESS
+    spawned: [HP-022, HP-023, HP-024, HP-025, HP-026, MP-029, MP-030, MP-031, MP-032]
+    progress_note: >
+      Plan: ~/.devin/plans/plan-a635fa55a8541ae7.md (Commit 3). Sample code committed;
+      PriorAuth UI build now succeeds; HP-023 remains open for the ECommerce UI template.
+
+  HP-021:
+    title: Authorization modes, service defaults, and AllowAnonymous opt-in
+    description: >
+      Replace KaleidoHttpOptions.RequireAuthorization / RequireProcessOwnership with
+      AddKaleido(o => o.AuthorizationMode). None (default) disables Kaleido auth for quickstarts;
+      Authenticated requires login by default; ZeroTrust denies and hides capabilities with
+      no applicable explicit service or capability rule. An attribute overrides the service
+      DefaultAuthorization (non-null Unspecified means no rule). AllowAnonymous explicitly
+      opens a capability. Registry filtering is per caller, including view overrides; generic
+      execute denies omitted steps. The owning service decides its rules; enterprise production
+      deployment pipelines must verify ZeroTrust in their own effective host configuration.
+    discovered_during: HP-019
+    relation: requires
+    effort_days: 1-2
+    priority: HIGH
+    breaking_change: true
+    status: IN_PROGRESS
+    spawned: [MP-028, LP-016]
+    progress_note: >
+      Plan: ~/.devin/plans/plan-a635fa55a8541ae7.md. Mode enum committed (8b91f0b);
+      service default and selective ZeroTrust publication implemented locally.
+      Sample conversion and docs still pending; ZeroTrust no-rule behavior was
+      confirmed as omit from discovery/endpoints + deny generic execution.
+
+  HP-022:
+    title: Audit fields (CreatedBy/CreatedUtc/UpdatedBy/UpdatedUtc) on PriorAuth Intake/Radiology/History entities
+    description: >
+      Requirement: every Intake/Radiology entity records who created and updated it. No
+      CreatedBy/UpdatedBy exist today; timestamps are inconsistent. Design: IAuditable +
+      scoped EF SaveChangesInterceptor stamping from IKaleidoCorrelationContextAccessor
+      CallerName (fallback "system"). Not Member. History keeps LastUpdatedUtc via explicit
+      interface implementation. Local intake/radiology/history DBs must be recreated
+      (EnsureCreated, no migrations).
+    discovered_during: HP-019
+    relation: separate
+    effort_days: 0.5-1
+    priority: HIGH
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+    progress_note: "Design: ~/.devin/plans/plan-a635fa55a8541ae7.md (Discovered along the way)."
+
+  HP-023:
+    title: UI registry viewers still bind removed metadataUrl (ng build fails)
+    description: >
+      Commit 3b3399f removed MetadataUrl from contracts and TS models, but the registry
+      viewer templates still bind it: priorauth-ui process-registry.html:110 and
+      queryable-registry.html:97 (TS2339), and kaleido-sample-ecommerce-ui
+      process-registry.html:105. Fix: remove the "Metadata Url" rows.
+    discovered_during: HP-019
+    relation: requires
+    effort_days: 0.1
+    priority: HIGH
+    breaking_change: false
+    status: IN_PROGRESS
+    progress_note: >
+      PriorAuth templates fixed; its build and 2 UI tests pass. Three component-style
+      budget warnings resolved by sharing scoped SCSS without raising budgets.
+      ECommerce template remains to be fixed and verified.
+
+  HP-024:
+    title: PriorAuth Configuration callers page non-pageable contexts
+    description: >
+      CaptureRequestedService fails while Intake queries product-code-mappings.
+      ProductCodeMappingClient sends QueryApiPage for a context without [Pageable];
+      Intake/Radiology ProcedureModalityClient do the same for procedure-modality-rules.
+      Remove unsupported Page from all three calls and verify the workflow.
+      The reported 500 status is not explained by the expected 400 validation
+      response and remains to be diagnosed if it persists after the client fix.
+    discovered_during: HP-019
+    relation: requires
+    effort_days: 0.1
+    priority: HIGH
+    breaking_change: false
+    status: COMPLETE
+    progress_note: >
+      Commit c7f16bb removed unsupported paging from ProductCodeMappingClient and
+      Intake/Radiology ProcedureModalityClient. Release build 0 errors/0 warnings,
+      804 tests pass; user confirmed the paging issue works after retry.
+
+  HP-025:
+    title: Investigate ProcessId propagation across Intake to Radiology handoff
+    description: >
+      After the Intake handoff, GET /radiology/processes/{processId} returned 404
+      for process 7a3b4ff3-c12e-4d82-9dd1-286fada2f073. Determine whether the
+      process id was forwarded, whether downstream state was persisted, and whether
+      the UI targets the authoritative processor and correct route. Do not assume
+      the 404 proves a propagation bug until the full path has been traced.
+    discovered_during: HP-019
+    relation: separate
+    effort_days: 0.5-1
+    priority: HIGH
+    breaking_change: false
+    status: PENDING_VERIFICATION
+    progress_note: "User asked to defer investigation; return after current authorization work."
+
+  HP-026:
+    title: Pure service tokens can satisfy Radiology's on-behalf-of handoff rule
+    description: >
+      StartRadiologyIntake requires Roles=radiology AND InternalCaller (actor claim).
+      IssueServiceToken grants every service principal the radiology app role and
+      actor claim, and DevTokenForwardingHandler uses it when there is no inbound
+      authenticated user. Thus a service-only call can pass without a logged-in
+      radiology user. Distinguish signed on-behalf-of user identity from a pure
+      service token in sample dev auth; require both user provenance and actor
+      for StartRadiologyIntake while preserving service-principal registry aggregation.
+    discovered_during: HP-019
+    relation: separate
+    effort_days: 0.25-0.5
+    priority: HIGH
+    breaking_change: false
+    status: PENDING_DESIGN_REVIEW
+    progress_note: >
+      Deferred by user while validating the current radiology-role Intake flow.
+      No dev-token format change now; revisit pure-service vs on-behalf-of distinction later.
 
 medium_priority_items:
   MP-001:
@@ -570,6 +709,83 @@ medium_priority_items:
       Compile-time literal validation of step-name strings is a consumer
       analyzer rule -- see consumer_analyzer_candidates.
 
+  MP-028:
+    title: Extract PriorAuth + ECommerce samples to their own repos; replace with small task-focused samples
+    description: >
+      The large samples exist mainly to verify the framework in one solution. Move them to
+      their own repos consuming published packages; add small samples here, one per task.
+      Include: ECommerce AddItemToCart (and cart steps) as the AllowAnonymous = true example,
+      and an "anonymous -> login -> transfer" sample.
+    discovered_during: HP-021
+    relation: separate
+    effort_days: 3-5
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_DECISION
+
+  MP-029:
+    title: full_clean.cmd deletes bin folders inside node_modules and never restores npm packages
+    description: >
+      Intent: full_clean.cmd resets the whole repo to a clean, ready-to-build state and
+      restores everything, including the .NET solution and every Angular/npm site, so dotnet
+      build/test and npm run build/test all work afterwards with no extra steps.
+      The script deletes every bin/obj/.vs/TestResults/artifacts/coverage folder recursively,
+      including node_modules package folders (e.g. @angular/cli/bin, TypeScript files), then
+      only runs dotnet restore; npm install reports "up to date" without repairing. Fix: skip
+      node_modules when deleting; run npm ci in every folder with a package-lock.json;
+      restore Kaleido.slnx explicitly (currently globs *.sln); optional --no-pause.
+    discovered_during: HP-019
+    relation: should
+    effort_days: 0.25
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
+
+  MP-030:
+    title: priorauth-ui npm audit reports 18 vulnerabilities (3 moderate, 13 high, 2 critical)
+    description: >
+      Reported by npm install / npm ci. Needs dependency upgrades reviewed for supply-chain
+      safety (prefer versions published >= 7 days); not npm audit fix --force.
+    discovered_during: HP-019
+    relation: separate
+    effort_days: 0.5-1
+    priority: MEDIUM
+    breaking_change: possibly
+    status: PENDING_DECISION
+
+  MP-031:
+    title: Investigate EF Core MultipleCollectionIncludeWarning in PriorAuth runtime
+    description: >
+      An EF Core warning about multiple collection navigations was observed
+      during the failing Intake flow. The Configuration ProductCodeMappingQueryContextSource
+      projects scalar fields only and does not produce this warning. Find the actual query
+      and verify whether it needs AsSplitQuery or a more targeted projection; do not
+      relax EF warnings or globally change query splitting without evidence.
+    discovered_during: HP-019
+    relation: separate
+    effort_days: 0.25-0.5
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_VERIFICATION
+
+  MP-032:
+    title: PriorAuth presentation-quality architecture and walkthrough documentation
+    description: >
+      Produce a detailed, sample-specific documentation set explaining both how and why
+      PriorAuth works as a demonstration: service boundaries, bootstrap and seeding,
+      personas and authorization, user-vs-service identity, registry discovery,
+      consumer-facing delegated views over internal Provider searches, Intake routing
+      to Radiology, ProcessId/correlation/ownership across handoffs, process state,
+      history/auditing, UI flow, observability, and reproducible examples.
+      Index it from the sample README; verify diagrams and claims against the running
+      sample after HP-025 and HP-022 are resolved. No documentation is authored now.
+    discovered_during: HP-019
+    relation: separate
+    effort_days: 2-3
+    priority: MEDIUM
+    breaking_change: false
+    status: PENDING_DESIGN_REVIEW
+
 low_priority_items:
   LP-001:
     title: Enum Serialization Strategy Documentation
@@ -643,6 +859,18 @@ transient-failure retry."
     title: Dead API surface (GetAll(), Stamper.Sanitize, CorrelationAccessor)
     effort_days: 0.25
     priority: LOW
+
+  LP-016:
+    title: Kaleido.Http.FunctionalTests namespaces still use old project names
+    description: >
+      13 files use Kaleido.AspNetCore.FunctionalTests.* / Kaleido.Processor.AspNetCore.FunctionalTests.*;
+      IDE0130 expects Kaleido.Http.FunctionalTests.*.
+    discovered_during: HP-021
+    relation: separate
+    effort_days: 0.1
+    priority: LOW
+    breaking_change: false
+    status: PENDING_IMPLEMENTATION
 
 external_findings:
   # Merged from cleanup chatgpt ent.md (KAL-*) and cleanup copilot.md (F-*).

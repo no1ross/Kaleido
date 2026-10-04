@@ -27,4 +27,10 @@ public sealed record ProcessStepMetadata(
     string Description,
     string Version,
     string DisplayName,
-    AuthorizationMetadata? Authorization = null);
+    AuthorizationMetadata Authorization)
+{
+    public ProcessStepMetadata(string name, string description, string version, string displayName)
+        : this(name, description, version, displayName, AuthorizationMetadata.Unspecified)
+    {
+    }
+}

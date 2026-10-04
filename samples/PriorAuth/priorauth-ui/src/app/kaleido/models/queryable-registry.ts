@@ -5,7 +5,6 @@ export interface QueryableRecord {
     displayName: string;
     version: string;
     source: string;
-    metadataUrl: string;
     registryUrl: string;
     queryUrl: string | null;
 

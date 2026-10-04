@@ -1,6 +1,7 @@
 using Kaleido.Exceptions;
 using Kaleido.Processor;
 using Kaleido.Processor.Registry;
+using Kaleido.Registry;
 
 using Kaleido.UnitTests;
 
@@ -262,7 +263,7 @@ public sealed class ProcessorStepRegistryTests
     }
 
     [Fact]
-    public void Registration_WithoutKaleidoAuthorization_HasNullAuthorization()
+    public void Registration_WithoutKaleidoAuthorization_HasUnspecifiedAuthorization()
     {
         var registry =
             CreateSut(
@@ -272,8 +273,28 @@ public sealed class ProcessorStepRegistryTests
             registry.GetRegistration(
                 typeof(StepA));
 
-        Assert.Null(
+        Assert.Same(
+            AuthorizationMetadata.Unspecified,
             registration.Metadata.Authorization);
+    }
+
+    [Fact]
+    public void Registration_WithoutAttribute_InheritsServiceAuthorization()
+    {
+        var rule = new AuthorizationMetadata(null, ["radiology"]);
+        var registry = CreateSut(rule, typeof(StepA));
+
+        Assert.Same(rule, registry.GetRegistration(typeof(StepA)).Metadata.Authorization);
+    }
+
+    [Fact]
+    public void Registration_Attribute_ReplacesServiceAuthorization()
+    {
+        var rule = new AuthorizationMetadata(null, ["radiology"]);
+        var registry = CreateSut(rule, typeof(SecuredStep));
+
+        Assert.Equal("step-policy", registry.GetRegistration(typeof(SecuredStep)).Metadata.Authorization.Policy);
+        Assert.DoesNotContain("radiology", registry.GetRegistration(typeof(SecuredStep)).Metadata.Authorization.Roles);
     }
 
     [Fact]
@@ -322,6 +343,11 @@ public sealed class ProcessorStepRegistryTests
         new(stepTypes, handlerTypes);
 
     private static ProcessorStepRegistry CreateSut(
+        params Type[] stepTypes) =>
+        CreateSut(AuthorizationMetadata.Unspecified, stepTypes);
+
+    private static ProcessorStepRegistry CreateSut(
+        AuthorizationMetadata defaultAuthorization,
         params Type[] stepTypes)
     {
         var handlerTypes = new Dictionary<Type, Type>
@@ -339,7 +365,8 @@ public sealed class ProcessorStepRegistryTests
 
         return new ProcessorStepRegistry(
             stepTypes,
-            handlerTypes);
+            handlerTypes,
+            defaultAuthorization);
     }
 
     [ProcessStep(Name = "step-a", Description = "step-a description", Version = "1.0")]
