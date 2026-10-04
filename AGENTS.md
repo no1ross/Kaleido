@@ -8,7 +8,7 @@ Kaleido is organized into six main framework projects:
 - [`src/Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP contract types and HTTP-specific correlation primitives (`KaleidoCorrelationHeaders`, `HttpHeaderSanitizer`) used by both server-side and client-side projects
 - [`src/Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) — typed HTTP clients for consuming remote Process and Queryable endpoints
 - [`src/Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) — optional OpenTelemetry provider: `AddOpenTelemetry()` on `IKaleidoBuilder` for full OTel setup (logging + tracing + metrics + OTLP), and `AddKaleidoInstrumentation()` on `TracerProviderBuilder`/`MeterProviderBuilder` for consumers managing their own OTel pipeline
-- [`src/Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) — reference implementation of `IProcessContextStore` (SQLite); consumers write their own durable store
+- [`src/Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) — reference implementation of `IProcessorContextStore` (SQLite); consumers write their own durable store
 
 Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository model. Then read the project README for the area you are changing.
 
@@ -45,7 +45,7 @@ Owns shared substrate concerns and capability runtimes:
 - shared eventing abstractions and correlation context
 - Queryable runtime: context/view registration, validation, dispatch, execution, observability
 - Process runtime: step registration, planning, execution, state mutation, observability
-- Providers abstraction (`IProcessContextStore`)
+- Providers abstraction (`IProcessorContextStore`)
 
 ### Kaleido.Http
 Owns the full HTTP transport layer:
@@ -82,9 +82,9 @@ Owns the OpenTelemetry observability provider (opt-in):
 Kaleido core is observability-provider-agnostic. This project is one of many possible providers (`Kaleido.Observability.<Technology>`).
 
 ### Kaleido.Provider.SQLite
-Owns the reference `IProcessContextStore` implementation:
-- `UseSqliteProcessContextStore(...)` extension
-- SQLite-backed `IProcessContextStore` — a worked example only; production deployments implement `IProcessContextStore` against their own durable infrastructure
+Owns the reference `IProcessorContextStore` implementation:
+- `UseSqliteProcessorContextStore(...)` extension
+- SQLite-backed `IProcessorContextStore` — a worked example only; production deployments implement `IProcessorContextStore` against their own durable infrastructure
 
 ## General contributor rules
 
@@ -259,4 +259,4 @@ dotnet test Kaleido.slnx --no-build --
 - If the concern is shared HTTP contract types used by both server and client, it belongs in `Kaleido.Http.Abstractions`.
 - If the concern is calling a remote Kaleido service over HTTP, it belongs in `Kaleido.Http.Client`.
 - If the concern is OpenTelemetry provider wiring (exporters, instrumentation, resource config), it belongs in `Kaleido.Observability.OpenTelemetry`.
-- If the concern is the `IProcessContextStore` contract or the SQLite reference implementation, it belongs in `Kaleido.Provider.SQLite`.
+- If the concern is the `IProcessorContextStore` contract or the SQLite reference implementation, it belongs in `Kaleido.Provider.SQLite`.

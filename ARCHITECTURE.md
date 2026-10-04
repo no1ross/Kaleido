@@ -31,7 +31,7 @@ The core project provides everything needed to bootstrap the framework and run P
 - eventing abstractions and correlation context
 - Queryable runtime: context/view registration, validation, dispatch (direct, local-view, delegated-view), execution, observability
 - Process runtime: step registration, planning, candidate building/validation, execution, state mutation, persistence integration, observability
-- Default in-memory `IProcessContextStore`
+- Default in-memory `IProcessorContextStore`
 
 The core project does not define transport endpoints or ASP.NET Core services.
 
@@ -79,8 +79,8 @@ See: [`src/Kaleido.Observability.OpenTelemetry/README.md`](./src/Kaleido.Observa
 
 ### Kaleido.Provider.SQLite
 SQLite-backed durable process state:
-- Replaces the default in-memory `IProcessContextStore` with a SQLite-backed implementation
-- Registered via `UseSqliteProcessContextStore(connectionString)`
+- Replaces the default in-memory `IProcessorContextStore` with a SQLite-backed implementation
+- Registered via `UseSqliteProcessorContextStore(connectionString)`
 
 See: [`src/Kaleido.Provider.SQLite/README.md`](./src/Kaleido.Provider.SQLite/README.md)
 

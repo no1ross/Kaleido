@@ -7,9 +7,8 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Bootstrap;
 
 /// <summary>
-/// KAL2009 — AddKaleido() options lambdas must set Assemblies explicitly.
-/// The GetCallingAssembly() fallback is JIT-nondeterministic and should not
-/// be relied upon in production code.
+/// KAL2009 — AddKaleido() options lambdas should set Assemblies explicitly.
+/// Missing or empty assemblies now fail during AddKaleido() registration.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class AddKaleidoAssembliesAnalyzer : DiagnosticAnalyzer
@@ -18,11 +17,11 @@ public sealed class AddKaleidoAssembliesAnalyzer : DiagnosticAnalyzer
         new(
             DiagnosticIds.AddKaleidoMissingAssemblies,
             "AddKaleido() options lambda does not set Assemblies",
-            "AddKaleido() options lambda does not set Assemblies — the GetCallingAssembly() fallback is JIT-nondeterministic. Set o.Assemblies explicitly.",
+            "AddKaleido() requires a non-empty Assemblies collection — set o.Assemblies explicitly in the options lambda",
             "Kaleido.Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "Setting Assemblies explicitly ensures deterministic step and view discovery regardless of JIT inlining.");
+            description: "Missing or empty Assemblies causes AddKaleido() to fail at registration; explicit assemblies make discovery deterministic.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(Rule);
