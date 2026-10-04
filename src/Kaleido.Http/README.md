@@ -25,6 +25,8 @@ See also:
   - `POST /{prefix}/queryable/{context}/{queryRoute}` — direct context query (Direct contexts only)
   - `POST /{prefix}/queryable/{context}/{view}/{queryRoute}` — local or delegated view query
 
+Queryable requests use an optional `query.page` object. An omitted page can still apply the registered default size, and `totalCount` is not always a global match count; see [Queryable paging and totalCount](../Kaleido.Http.Abstractions/README.md#queryable-paging-and-totalcount) before implementing a non-.NET consumer.
+
 ### Process endpoint mapping
 - `ProcessorEndpointRouteBuilderExtensions` — `MapProcessor()` extension
   - `GET /{prefix}/processes/steps/{step}/metadata` — per-step metadata

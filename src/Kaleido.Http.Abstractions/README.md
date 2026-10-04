@@ -38,8 +38,19 @@ Kaleido endpoints and the .NET HTTP clients use `KaleidoJsonOptions.Options` wit
 
 Queryable query operators and sort directions are already **string properties** on `QueryApiBody`, not serialized core CLR enums: `QueryApiFilterCondition.Operator`, `QueryApiFilterGroup.Operator` and `QueryApiSort.Direction` accept documented names such as `"notEquals"`, `"and"` and `"ascending"` case-insensitively. Use the canonical string names when building a request; custom converters on application-defined payload types may define their own business-data representation.
 
-### `totalCount` semantics
-`QueryResult<T>.totalCount` means "total matching rows" when `page` is provided in the request. When `page` is absent, `totalCount` equals `results.Count` — the caller received all results (capped by `[Pageable].MaxSize` if present). When `page` is provided and the returned page is partial (`results.Count < page.size`), `totalCount` also equals `results.Count` — no additional rows exist.
+### Queryable paging and `totalCount`
+
+A Queryable request may supply `{"query":{"page":{"size":10,"offset":0}}}`. `offset` is zero-based. An explicit `page` is accepted only for a context or view registered with `[Pageable]`; otherwise the endpoint returns `qry_paging_not_supported` (400). Omitted `size` uses the configured `DefaultSize`, and omitted `offset` uses zero. Explicit `size` must be greater than zero and no greater than `MaxSize` (`qry_invalid_page_size`); a negative `offset` returns `qry_invalid_page_offset`. An oversized explicit request is rejected, not silently clamped.
+
+For locally executed Queryable contexts and views, `QueryResult<T>.totalCount` depends on whether the request explicitly contains `page` and whether the returned page is full:
+
+| Request | Rows returned | `totalCount` |
+|---|---|---|
+| No `page` | A pageable query applies its default page size; a non-pageable query is not paged. | `results.Count` — **not necessarily all matching rows** when the default size caps a pageable query. |
+| Explicit `page`, full (`results.Count == effective size`) | Up to the requested or defaulted size, from `offset`. | Count of all matching rows from a separate count query. |
+| Explicit `page`, partial or empty | Fewer rows than the effective size, including an offset beyond the end. | `results.Count`, **not** a global count when `offset` is nonzero. No separate count query runs. |
+
+For example, with six matching rows and a default page size of three: omitting `page` returns three rows and `totalCount: 3`; `{ "size": 2, "offset": 2 }` returns two rows and `totalCount: 6`; `{ "size": 4, "offset": 4 }` returns two rows and `totalCount: 2`; and an offset beyond the end returns no rows and `totalCount: 0`. Do not calculate a global page count from `totalCount` on the skipped-count paths. A delegated view supplies its own `QueryResult<T>` and is responsible for its reported count.
 
 ---
 

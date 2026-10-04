@@ -74,6 +74,40 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
     }
 
     [Fact]
+    public async Task PostDirectQuery_WhenExplicitPageIsPartial_ReportsReturnedRowCount()
+    {
+        var request = new QueryRequest(new QueryBody(
+            Sort: [new QuerySort("Id", SortDirection.Ascending)],
+            Page: new QueryPage(4, 4)));
+
+        var response = await PostContextQueryAsync(request);
+
+        await AssertStatusCodeAsync(HttpStatusCode.OK, response);
+        var root = await ReadResponseRootAsync(response);
+        Assert.Equal(2, GetTotalCount(root));
+        Assert.Equal(4, GetOffset(root));
+        Assert.Equal(4, GetPageSize(root));
+        Assert.Equal([5, 6], GetRecords(root).Select(x => GetInt32(x, "Id")));
+    }
+
+    [Fact]
+    public async Task PostDirectQuery_WhenOffsetExceedsResults_ReturnsEmptyPage()
+    {
+        var request = new QueryRequest(new QueryBody(
+            Sort: [new QuerySort("Id", SortDirection.Ascending)],
+            Page: new QueryPage(4, 100)));
+
+        var response = await PostContextQueryAsync(request);
+
+        await AssertStatusCodeAsync(HttpStatusCode.OK, response);
+        var root = await ReadResponseRootAsync(response);
+        Assert.Equal(0, GetTotalCount(root));
+        Assert.Equal(100, GetOffset(root));
+        Assert.Equal(4, GetPageSize(root));
+        Assert.Empty(GetRecords(root));
+    }
+
+    [Fact]
     public async Task PostDirectQuery_AcceptsRawJsonEnumFilter()
     {
         var response = await PostRawContextQueryAsync(
