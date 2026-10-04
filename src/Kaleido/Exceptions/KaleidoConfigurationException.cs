@@ -37,11 +37,13 @@ public static class ConfigurationErrorCodes
     /// <summary>KaleidoServiceOptions.ServiceName is null, empty, or contains invalid characters.</summary>
     public const string InvalidServiceName      = "invalid_service_name";
 
-    /// <summary>At least one assembly must be registered before calling AddQueryable() or AddProcessor().</summary>
+    /// <summary>AddKaleido requires a non-empty explicit assembly list before registering services.</summary>
     public const string MissingAssembly         = "missing_assembly";
 
     /// <summary>A configured Kaleido client is missing a BaseUrl (neither client-level nor shared Kaleido:BaseUrl).</summary>
     public const string MissingBaseUrl          = "missing_base_url";
+
+    public const string InvalidConnectionString = "invalid_connection_string";
 
     /// <summary>A [KaleidoAuthorization] declares AllowAnonymous together with Roles or Policy.</summary>
     public const string ConflictingAuthorization = "conflicting_authorization";
