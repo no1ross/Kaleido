@@ -21,6 +21,11 @@ public static class HttpHeaderSanitizerExtensions
             return null;
         }
 
+        if (IsClean(value))
+        {
+            return value;
+        }
+
         var sanitized = new string(
             value.Where(c => c >= 0x20 && c <= 0x7E).ToArray())
             .Trim();
@@ -33,5 +38,23 @@ public static class HttpHeaderSanitizerExtensions
         return sanitized.Length <= MaxLength
             ? sanitized
             : sanitized[..MaxLength];
+    }
+
+    private static bool IsClean(string value)
+    {
+        if (value.Length > MaxLength || value[0] == ' ' || value[^1] == ' ')
+        {
+            return false;
+        }
+
+        foreach (var c in value)
+        {
+            if (c < 0x20 || c > 0x7E)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
