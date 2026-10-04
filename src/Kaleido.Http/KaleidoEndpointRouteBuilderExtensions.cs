@@ -128,7 +128,7 @@ public static class KaleidoEndpointRouteBuilderExtensions
 
         var undeclared =
             capabilities
-                .Where(c => c.Authorization.IsExplicit() != true)
+                .Where(c => !c.Authorization.IsExplicit())
                 .Select(c => c.Name)
                 .ToArray();
 
