@@ -169,23 +169,22 @@ The rule is: **one observability signal per cancellation, at the lowest level th
 
 ## Tracking work discovered mid-item
 
-Active work lives in [`REVIEW_TRACKER.yaml`](./REVIEW_TRACKER.yaml); plan files live in `~/.devin/plans/`. At the start of any session or context, read the tracker's `IN_PROGRESS` and `PENDING_*` items and their plan files before starting new work.
+GitHub Issues in `no1ross/Kaleido` are the system of record for active and historical work. At the start of a session, read the relevant open Issue and its linked Issues/PRs; do not use old review documents or private plans as status trackers. Every new change needs an Issue and a corresponding PR. Include `Fixes #N` in new commit messages and PR bodies for the Issue(s) the change resolves.
 
-**Write done-criteria before starting an item** (in its plan file or the tracker `description`). Anything outside them is a discovered item.
+**Write done criteria in the Issue before starting work.** Anything outside those criteria is a discovered item.
 
-When something new surfaces while working an item:
-- Log it **before** discussing a fix: add a tracker entry with `discovered_during: <ID>` and `relation`, add it to the parent's `spawned: [...]`, and add a line to the parent plan's *Discovered along the way* section.
+When something new surfaces while working an Issue:
+- Create a separate Issue **before** discussing a fix, and link it to the discovery Issue. Record its context, done criteria and relation rather than silently widening the current PR.
 - Classify the relation; never dismiss it as "unrelated":
-  - `requires`: the parent cannot be `COMPLETE` until this is done
-  - `should`: do alongside the parent; not a hard gate
-  - `separate`: found there, independent schedule
-- **Scope gate:** ask "do the current item's done-criteria require this?"
+  - `requires`: add a GitHub sub-issue; the parent cannot close until it is resolved
+  - `should`: link a related Issue to consider alongside the parent, but do not block it
+  - `separate`: link a related Issue for independent scheduling
+- **Scope gate:** ask "do the current Issue's done criteria require this?"
   - Yes → `requires`; do it now.
-  - No → log it (`should` / `separate`) and **default to deferring** it to a future commit or PR. Pulling it in is an explicit, stated decision, never the default.
-- Propose the minimal fix that meets the done-criteria first; offer broader redesigns as a separate, logged option.
-- Timebox discovery: if a side thread is still growing after a couple of exchanges, stop and log it with what is known so far.
-- A parent cannot move to `COMPLETE` while a `requires` child is open; open `should` children are listed in the parent's `progress_note`.
-- Before closing a PR, re-read the tracker and list every open spawned item in the summary.
+  - No → log it (`should` / `separate`) and **default to deferring** it to a future PR. Pulling it in requires an explicit decision.
+- Propose the minimal fix that meets the done criteria first; offer broader redesigns as separate Issues.
+- Timebox discovery: if a side thread grows after a couple of exchanges, stop and record what is known in the linked Issue.
+- Before completing a PR, list open related and sub-issues in its summary; do not close a parent while a required sub-issue remains open.
 
 ## Documentation rules
 
