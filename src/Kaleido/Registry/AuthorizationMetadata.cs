@@ -37,6 +37,12 @@ public sealed record AuthorizationMetadata(
     /// <exception cref="KaleidoConfigurationException">
     /// <c>AllowAnonymous</c> is declared together with roles or a policy.
     /// </exception>
+    internal static AuthorizationMetadata ForType(Type type, AuthorizationMetadata fallback)
+    {
+        ArgumentNullException.ThrowIfNull(fallback);
+        return ForType(type) ?? fallback;
+    }
+
     internal static AuthorizationMetadata? ForType(Type type)
     {
         ArgumentNullException.ThrowIfNull(type);

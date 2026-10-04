@@ -25,18 +25,30 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
 
     private readonly ITypeDescriber _dataTypeMapper;
     private readonly IConstraintMapper _constraintMapper;
+    private readonly AuthorizationMetadata _defaultAuthorization;
+
+    public DelegatedQueryViewRegistry(
+        ITypeDescriber typeDescriber,
+        IConstraintMapper constraintMapper,
+        IEnumerable<Type> queryViewTypes)
+        : this(typeDescriber, constraintMapper, queryViewTypes, AuthorizationMetadata.Unspecified)
+    {
+    }
 
     public DelegatedQueryViewRegistry(
         ITypeDescriber TypeDescriber,
         IConstraintMapper constraintMapper,
-        IEnumerable<Type> queryViewTypes)
+        IEnumerable<Type> queryViewTypes,
+        AuthorizationMetadata defaultAuthorization)
     {
         ArgumentNullException.ThrowIfNull(TypeDescriber);
+        ArgumentNullException.ThrowIfNull(defaultAuthorization);
         ArgumentNullException.ThrowIfNull(constraintMapper);
         ArgumentNullException.ThrowIfNull(queryViewTypes);
 
         _dataTypeMapper = TypeDescriber;
         _constraintMapper = constraintMapper;
+        _defaultAuthorization = defaultAuthorization;
 
         _registrations =
             queryViewTypes
@@ -147,6 +159,6 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Select(x => x.ToFieldMetadata(_dataTypeMapper))
                 .ToArray(),
-            AuthorizationMetadata.ForType(contextType) ?? AuthorizationMetadata.Unspecified);
+            AuthorizationMetadata.ForType(contextType, _defaultAuthorization));
     }
 }

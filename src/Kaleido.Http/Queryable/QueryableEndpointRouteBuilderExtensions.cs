@@ -62,14 +62,20 @@ public static class QueryableEndpointRouteBuilderExtensions
 
         foreach (var context in queryableRegistry.Registrations)
         {
-            if (context.Kind == QueryContextKind.Direct)
+            if (context.Kind == QueryContextKind.Direct
+                && (serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
+                    || context.Authorization.IsExplicit()))
             {
                 group.MapDirectQueryContext(context, serviceOptions);
             }
 
             foreach (var view in context.Views)
             {
-                group.MapQueryView(context, view, serviceOptions);
+                if (serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
+                    || view.Authorization.IsExplicit())
+                {
+                    group.MapQueryView(context, view, serviceOptions);
+                }
             }
         }
 

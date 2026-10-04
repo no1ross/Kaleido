@@ -87,10 +87,10 @@ public static class KaleidoEndpointRouteBuilderExtensions
     }
 
     // Startup authorization checks, by mode:
-    // - None: warn once if capabilities declare authorization that won't be enforced.
+    // - None: warn once that capability authorization is disabled.
     // - Authenticated / ZeroTrust: fail if no authentication scheme is registered
     //   (every request would otherwise fail at runtime with no scheme to challenge).
-    // - ZeroTrust: fail if any exposed capability has no explicit authorization.
+    // - ZeroTrust: omit capabilities without an explicit authorization rule.
     private static void ValidateAuthorization(
         IServiceProvider services,
         ILogger logger)
@@ -100,16 +100,9 @@ public static class KaleidoEndpointRouteBuilderExtensions
 
         if (mode == KaleidoAuthorizationMode.None)
         {
-            var declared = capabilities.Count(c => c.Authorization.IsExplicit() == true);
-
-            if (declared > 0)
-            {
-                logger.LogWarning(
-                    "{DeclaredCount} capability(ies) declare authorization, but AuthorizationMode is None so it is not enforced. " +
-                    "Set AuthorizationMode to Authenticated or ZeroTrust.",
-                    declared);
-            }
-
+            logger.LogWarning(
+                "AuthorizationMode is None: Kaleido capability authorization, registry filtering, and process ownership are disabled. " +
+                "Set AuthorizationMode to Authenticated or ZeroTrust for enforcement.");
             return;
         }
 
@@ -141,11 +134,11 @@ public static class KaleidoEndpointRouteBuilderExtensions
 
         if (undeclared.Length > 0)
         {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.UndeclaredAuthorization,
-                $"AuthorizationMode is ZeroTrust and {undeclared.Length} capability(ies) have no explicit authorization: " +
-                $"{string.Join(", ", undeclared)}. " +
-                "Declare [KaleidoAuthorization] with Roles, Policy, or AllowAnonymous = true.");
+            logger.LogWarning(
+                "ZeroTrust omits {OmittedCount} capability(ies) without an explicit authorization rule: {Capabilities}. " +
+                "Declare a service default or a capability rule to publish them.",
+                undeclared.Length,
+                string.Join(", ", undeclared));
         }
     }
 
