@@ -2,9 +2,11 @@
   <Folder Name="/docs/">
     <File Path="docs/ANALYZERS.md" />
     <File Path="docs/ASSETS.md" />
+    <File Path="docs/AUTHORIZATION.md" />
     <File Path="docs/BRAND.md" />
     <File Path="docs/CORRELATION.md" />
     <File Path="docs/ERROR_CODES.md" />
+    <File Path="docs/PATTERNS.md" />
     <File Path="docs/PRERELEASE_PROMPT.md" />
   </Folder>
   <Folder Name="/samples/">
@@ -79,6 +81,7 @@
   </Folder>
   <Folder Name="/tools/">
     <File Path="tools/Directory.Packages.props" />
+    <File Path="tools/analyzers/README.md" />
     <Project Path="tools/analyzers/Kaleido.Analyzers.Source/Kaleido.Analyzers.Source.csproj" />
     <Project Path="tools/analyzers/Kaleido.Analyzers.Testing/Kaleido.Analyzers.Testing.csproj" />
     <Project Path="tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj" />
