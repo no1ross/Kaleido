@@ -39,11 +39,15 @@
 
 The sample's dev auth (`Common/Auth`) stands in for a real IdP. Kaleido itself only reads `ClaimTypes.Role` and evaluates policies.
 
-- **Every host sets `AddKaleido(…, o => o.EnforceAuthorization = true)`**, router included. Undeclared capabilities then require a logged-in user; `[KaleidoAuthorization]` only narrows access to roles/policy (or opens it with `AllowAnonymous = true`).
+- **Every host sets `AddKaleido(…, o => o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust)`**, router included. Each leaf defines `DefaultAuthorization` (an explicit service rule), overridden by a capability's `[KaleidoAuthorization]`. A capability with neither is omitted from discovery and endpoint mapping, and denied by generic execution. The router filters the aggregate by the leaf's effective rules.
+  - Intake, Member, CodeSet, ReferenceData, History: `Policy = DevAuthPolicies.AuthenticatedUser` (any logged-in caller).
+  - Provider, Configuration: `Policy = DevAuthPolicies.InternalCaller` (service-to-service only).
+  - Radiology: `Roles = "radiology"`.
+  - Exceptions: `StartRadiologyIntake` needs `radiology` **and** `InternalCaller`; `GenerateSnapshot`, `UpsertPriorAuthRecord`, and ReferenceData `plans` need `InternalCaller`.
 - **Roles describe the user; the actor claim describes the call.** No user ever gets an `internal` or `intake` role.
   - Direct user call: name + the user's roles.
   - On-behalf-of hop (`DevTokenForwardingHandler`): the same name + roles, plus `kaleido_actor = {calling service}`.
-  - Pure service token (`IssueServiceToken`, used only on the router's registry clients): `svc-{service}`, service app roles (`radiology, admin`), plus the actor claim.
+  - Pure service token (`IssueServiceToken`, used by the router's registry clients and by outbound calls with no inbound user): `svc-{service}`, service app roles (`radiology, admin`), plus the actor claim. HP-026 tracks the distinction between this principal and an on-behalf-of user for handoff authorization.
 - **`InternalCaller` policy** = actor claim present. Use `Policy = DevAuthPolicies.InternalCaller` for capabilities that must never be called directly by a consumer. Combine it with `Roles` to also require the user's role (e.g. `StartRadiologyIntake` = `radiology` + `InternalCaller`).
 - **Personas** (router `/auth/login`):
   - `alice`: no domain role. Can use Intake, but is refused at the Radiology handoff.

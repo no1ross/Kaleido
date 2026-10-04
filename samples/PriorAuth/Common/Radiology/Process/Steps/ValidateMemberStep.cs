@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
-[KaleidoAuthorization(Roles = "radiology")]
 [ProcessStep(
     Name = "ValidateMember",
     DisplayName = "Validate Member",

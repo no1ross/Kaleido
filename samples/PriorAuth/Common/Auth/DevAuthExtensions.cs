@@ -24,6 +24,8 @@ public static class DevAuthPolicies
     /// with <c>Roles</c> to also require the user's role.
     /// </summary>
     public const string InternalCaller = "InternalCaller";
+
+    public const string AuthenticatedUser = "AuthenticatedUser";
 }
 
 /// <summary>
@@ -44,9 +46,14 @@ public static class DevAuthExtensions
         // Registered on every host: leaves enforce it, and the router
         // evaluates it when filtering the aggregated registry per caller.
         services.AddAuthorization(options =>
+        {
             options.AddPolicy(
                 DevAuthPolicies.InternalCaller,
-                policy => policy.RequireClaim(DevAuthClaims.Actor)));
+                policy => policy.RequireClaim(DevAuthClaims.Actor));
+            options.AddPolicy(
+                DevAuthPolicies.AuthenticatedUser,
+                policy => policy.RequireAuthenticatedUser());
+        });
 
         return services;
     }
