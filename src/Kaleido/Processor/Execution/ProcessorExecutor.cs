@@ -215,7 +215,7 @@ internal sealed class ProcessorExecutor(
                         RuntimeMessages =
                         [
                             StepProcessingMessage.Error(
-                            StepProcessingMessageCode.ExecutionCanceled,
+                            ProcessorErrorCodes.ExecutionCanceled,
                             "Step execution was cancelled.")
                         ],
 
@@ -255,7 +255,7 @@ internal sealed class ProcessorExecutor(
                         RuntimeMessages =
                         [
                             StepProcessingMessage.Error(
-                            StepProcessingMessageCode.ValidationFailed,
+                            exception.Code,
                             exception.Message)
                         ],
 
@@ -295,7 +295,7 @@ internal sealed class ProcessorExecutor(
                         RuntimeMessages =
                         [
                             StepProcessingMessage.Error(
-                            StepProcessingMessageCode.FrameworkException,
+                            ProcessorErrorCodes.FrameworkException,
                             $"An unexpected error occurred while executing step '{candidate.StepName}'.")
                         ],
 

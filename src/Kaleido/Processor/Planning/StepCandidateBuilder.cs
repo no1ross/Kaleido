@@ -28,7 +28,7 @@ internal sealed class StepCandidateBuilder(
                 candidates.Add(
                     StepCandidate.Invalid(
                         step.Key,
-                        StepProcessingMessageCode.UnknownStep,
+                        ProcessorErrorCodes.UnknownStep,
                         $"Process step '{step.Key}' is not registered."));
 
                 continue;
@@ -88,7 +88,7 @@ internal sealed class StepCandidateBuilder(
             if (instance is null)
             {
                 candidate.MarkInvalid(
-                    StepProcessingMessageCode.InvalidRequest,
+                    ProcessorErrorCodes.InvalidRequest,
                     $"Unable to create process step '{stepType.Name}'.");
             }
 
@@ -97,7 +97,7 @@ internal sealed class StepCandidateBuilder(
         catch (JsonException exception)
         {
             candidate.MarkInvalid(
-                StepProcessingMessageCode.InvalidRequest,
+                ProcessorErrorCodes.InvalidRequest,
                 $"Unable to create process step '{stepType.Name}'. {exception.Message}");
 
             return null;

@@ -21,7 +21,7 @@ internal sealed partial class ProcessorStepRegistry
                     x => x.StepType == definition.StepType))
             {
                 throw new KaleidoConfigurationException(
-                    ConfigurationErrorCodes.ProInvalidRegistration,
+                    ProcessorErrorCodes.InvalidRegistration,
                     $"Process step '{definition.StepType.FullName}' cannot depend on itself.");
             }
 
@@ -29,7 +29,7 @@ internal sealed partial class ProcessorStepRegistry
                     x => x.StepType == definition.StepType))
             {
                 throw new KaleidoConfigurationException(
-                    ConfigurationErrorCodes.ProInvalidRegistration,
+                    ProcessorErrorCodes.InvalidRegistration,
                     $"Process step '{definition.StepType.FullName}' cannot reference itself in AvailableAfter.");
             }
 
@@ -37,7 +37,7 @@ internal sealed partial class ProcessorStepRegistry
                     x => x.StepType == definition.StepType))
             {
                 throw new KaleidoConfigurationException(
-                    ConfigurationErrorCodes.ProInvalidRegistration,
+                    ProcessorErrorCodes.InvalidRegistration,
                     $"Process step '{definition.StepType.FullName}' cannot reference itself in AvailableUntil.");
             }
         }
@@ -70,7 +70,7 @@ internal sealed partial class ProcessorStepRegistry
                     .Select(x => x.Name);
 
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProInvalidRegistration,
+                ProcessorErrorCodes.InvalidRegistration,
                 $"Circular process step dependency detected: {string.Join(" -> ", cycle)}");
         }
 
@@ -100,7 +100,7 @@ internal sealed partial class ProcessorStepRegistry
             nameof(IProcessStepHandler<object>.ExecuteAsync),
             BindingFlags.Public | BindingFlags.Instance)
         ?? throw new KaleidoConfigurationException(
-            ConfigurationErrorCodes.ProInvalidHandler,
+            ProcessorErrorCodes.InvalidHandler,
             $"Handler '{handlerType.FullName}' does not expose ExecuteAsync.");
 
     private static Func<object, object, ProcessStepContext, CancellationToken, Task> CreateInvokeHandlerAsyncFunc(
@@ -160,7 +160,7 @@ internal sealed partial class ProcessorStepRegistry
         var taskType = executeAsyncMethod.ReturnType;
         var resultProperty = taskType.GetProperty(nameof(Task<object>.Result))
             ?? throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.ProInvalidHandler,
+                ProcessorErrorCodes.InvalidHandler,
                 $"Task type '{taskType.FullName}' does not have a Result property.");
 
         return task =>

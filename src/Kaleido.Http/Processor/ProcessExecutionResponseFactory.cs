@@ -28,7 +28,8 @@ internal interface IProcessExecutionResponseFactory
 }
 
 internal sealed class ProcessExecutionResponseFactory(
-    IProcessorResponseFactory responseFactory)
+    IProcessorResponseFactory responseFactory,
+    KaleidoHttpOptions options)
     : IProcessExecutionResponseFactory
 {
     public ProcessExecutionResponse CreateExecutionResponse(
@@ -119,9 +120,11 @@ internal sealed class ProcessExecutionResponseFactory(
                         })
                     .ToList(),
 
-            Messages =
-                ToMessages(stepResult)
-                    .ToList()
+            BusinessMessages =
+                stepResult.BusinessMessages.ToArray(),
+
+            FrameworkMessages =
+                ToFrameworkMessages(stepResult)
         };
     }
 
@@ -158,22 +161,26 @@ internal sealed class ProcessExecutionResponseFactory(
             AvailableSteps =
                 response.AvailableSteps,
 
-            Messages =
-                response.Messages,
+            BusinessMessages =
+                response.BusinessMessages,
+
+            FrameworkMessages =
+                response.FrameworkMessages,
 
             Result =
                 (TResponse?)stepResult.Response
         };
     }
 
-    private static ProcessExecutionStepResponse CreateStepResult(
+    private ProcessExecutionStepResponse CreateStepResult(
         ProcessStepResult stepResult)
     {
         return new ProcessExecutionStepResponse
         {
             StepName = stepResult.StepName,
             Response = stepResult.Response ?? new { },
-            Messages = ToMessages(stepResult).ToArray()
+            BusinessMessages = stepResult.BusinessMessages.ToArray(),
+            FrameworkMessages = ToFrameworkMessages(stepResult)
         };
     }
 
@@ -187,25 +194,17 @@ internal sealed class ProcessExecutionResponseFactory(
             Repeatable = registration.Repeatable.Enabled
         };
 
-    private static IEnumerable<ProcessMessage> ToMessages(
-        ProcessStepResult stepResult)
-    {
-        return stepResult.RuntimeMessages
-            .Select(message =>
-                new ProcessMessage
-                {
-                    Type = message.Type,
-                    Message = message.Message,
-                    Code = message.Code.ToString()
-                })
-            .Concat(
-                stepResult.BusinessMessages
-                    .Select(message =>
-                        new ProcessMessage
-                        {
-                            Type = message.Type,
-                            Message = message.Message,
-                            Code = message.Code
-                        }));
-    }
+    private IReadOnlyCollection<ProcessMessage> ToFrameworkMessages(
+        ProcessStepResult stepResult) =>
+        options.IncludeFrameworkMessages
+            ? stepResult.RuntimeMessages
+                .Select(message =>
+                    new ProcessMessage
+                    {
+                        Type = message.Type,
+                        Message = message.Message,
+                        Code = message.Code
+                    })
+                .ToArray()
+            : [];
 }

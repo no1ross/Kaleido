@@ -17,7 +17,9 @@ export interface ParticipantStepResult {
 
     executionStatus?: string;
 
-    messages: ProcessMessage[];
+    businessMessages: ProcessMessage[];
+
+    frameworkMessages: ProcessMessage[];
 }
 
 export interface ProcessExecutionResponse<TResponse> {
@@ -34,7 +36,9 @@ export interface ProcessExecutionResponse<TResponse> {
 
     availableSteps: ProcessStepSummary[];
 
-    messages: ProcessMessage[];
+    businessMessages: ProcessMessage[];
+
+    frameworkMessages: ProcessMessage[];
 }
 
 export interface ProcessStepSummary {

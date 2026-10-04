@@ -1,7 +1,4 @@
-
-using Kaleido.UnitTests;
-
-namespace Kaleido.Processor.UnitTests.Planning;
+namespace Kaleido.UnitTests.Processor.Planning;
 
 public sealed class StepCandidateTests
     : SutFixture
@@ -31,7 +28,7 @@ public sealed class StepCandidateTests
     public void AddError_AddsMessageAndSetsHasErrors()
     {
         var sut = CreateSut();
-        sut.AddError(StepProcessingMessageCode.UnknownStep, "test error");
+        sut.AddError(ProcessorErrorCodes.UnknownStep, "test error");
 
         Assert.True(sut.HasErrors);
         Assert.Single(sut.Messages);
@@ -41,7 +38,7 @@ public sealed class StepCandidateTests
     public void AddWarning_AddsMessageButDoesNotSetHasErrors()
     {
         var sut = CreateSut();
-        sut.AddWarning(StepProcessingMessageCode.UnknownStep, "test warning");
+        sut.AddWarning(ProcessorErrorCodes.UnknownStep, "test warning");
 
         Assert.False(sut.HasErrors);
         Assert.Single(sut.Messages);
@@ -51,7 +48,7 @@ public sealed class StepCandidateTests
     public void AddInformation_AddsMessageButDoesNotSetHasErrors()
     {
         var sut = CreateSut();
-        sut.AddInformation(StepProcessingMessageCode.UnknownStep, "test info");
+        sut.AddInformation(ProcessorErrorCodes.UnknownStep, "test info");
 
         Assert.False(sut.HasErrors);
         Assert.Single(sut.Messages);
@@ -61,7 +58,7 @@ public sealed class StepCandidateTests
     public void MarkInvalid_SetsStatusToInvalidAndAddsError()
     {
         var sut = CreateSut();
-        sut.MarkInvalid(StepProcessingMessageCode.UnknownStep, "bad step");
+        sut.MarkInvalid(ProcessorErrorCodes.UnknownStep, "bad step");
 
         Assert.Equal(StepCandidateStatus.Invalid, sut.Status);
         Assert.True(sut.HasErrors);
@@ -72,7 +69,7 @@ public sealed class StepCandidateTests
     {
         var candidate = StepCandidate.Invalid(
             "missing-step",
-            StepProcessingMessageCode.UnknownStep,
+            ProcessorErrorCodes.UnknownStep,
             "not registered");
 
         Assert.Equal(StepCandidateStatus.Invalid, candidate.Status);

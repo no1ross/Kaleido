@@ -42,7 +42,7 @@ internal sealed class StepCandidate
     }
 
     public void AddInformation(
-        StepProcessingMessageCode code,
+        string code,
         string message)
     {
         AddMessage(
@@ -52,7 +52,7 @@ internal sealed class StepCandidate
     }
 
     public void AddWarning(
-        StepProcessingMessageCode code,
+        string code,
         string message)
     {
         AddMessage(
@@ -62,7 +62,7 @@ internal sealed class StepCandidate
     }
 
     public void AddError(
-        StepProcessingMessageCode code,
+        string code,
         string message)
     {
         AddMessage(
@@ -73,7 +73,7 @@ internal sealed class StepCandidate
 
     public static StepCandidate Invalid(
         string stepName,
-        StepProcessingMessageCode code,
+        string code,
         string message)
     {
         var candidate =
@@ -90,7 +90,7 @@ internal sealed class StepCandidate
     }
 
     public void MarkInvalid(
-        StepProcessingMessageCode code,
+        string code,
         string message)
     {
         Status = StepCandidateStatus.Invalid;

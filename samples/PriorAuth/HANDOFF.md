@@ -27,7 +27,8 @@ The handoff is fully server-driven. The UI receives a clear signal (`targetProce
   "requiredStep": null,
   "targetProcessorName": "radiology",
   "availableSteps": [],
-  "messages": []
+  "businessMessages": [],
+  "frameworkMessages": []
 }
 ```
 
@@ -55,7 +56,7 @@ The same `targetProcessorName` field is present on `GET /{processor}/processes/{
 5. Persist the procedure and resolved processor name; update History.
 6. For the currently supported Radiology target, call its typed
    StartRadiologyIntake step with available member + procedure data.
-7. If the downstream step fails, return its failure messages; otherwise return
+7. If the downstream step fails, return its business failure messages; otherwise return
    ProcessStepHandlerResult.HandOff(processorName).
 ```
 

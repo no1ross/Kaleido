@@ -70,7 +70,7 @@ internal sealed class StepExecutionEvaluator(
         {
             return ExecutionDecision.ProcessViolation(
                 StepProcessingMessage.Error(
-                    StepProcessingMessageCode.RequiredStepNotAllowed,
+                    ProcessorErrorCodes.RequiredStepNotAllowed,
                     $"'{requiredStep}' is not a valid next step from '{currentCandidate.StepName}'."));
         }
 

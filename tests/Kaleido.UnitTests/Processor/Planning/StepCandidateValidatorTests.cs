@@ -1,9 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Exceptions;
 
-using Kaleido.UnitTests;
-
-namespace Kaleido.Processor.UnitTests.Processor.Planning;
+namespace Kaleido.UnitTests.Processor.Planning;
 
 public sealed class StepCandidateValidatorTests
     : SutFixture
@@ -20,7 +18,7 @@ public sealed class StepCandidateValidatorTests
         var candidate =
             StepCandidate.Invalid(
                 "test-step",
-                StepProcessingMessageCode.InvalidRequest,
+                ProcessorErrorCodes.InvalidRequest,
                 "Already invalid.");
 
         candidate.Step = null;
@@ -106,7 +104,7 @@ public sealed class StepCandidateValidatorTests
             Assert.Single(candidate.Messages);
 
         Assert.Equal(
-            StepProcessingMessageCode.ValidationFailed,
+            ProcessorErrorCodes.Required,
             message.Code);
     }
 
@@ -131,12 +129,8 @@ public sealed class StepCandidateValidatorTests
             3,
             candidate.Messages.Count);
 
-        Assert.All(
-            candidate.Messages,
-            message =>
-                Assert.Equal(
-                    StepProcessingMessageCode.ValidationFailed,
-                    message.Code));
+        Assert.Equal(2, candidate.Messages.Count(x => x.Code == ProcessorErrorCodes.Required));
+        Assert.Contains(candidate.Messages, x => x.Code == ProcessorErrorCodes.OutOfRange);
     }
 
     [Fact]
@@ -165,7 +159,61 @@ public sealed class StepCandidateValidatorTests
 
         Assert.Contains(
             candidate.Messages,
-            x => x.Code == StepProcessingMessageCode.ValidationFailed);
+            x => x.Code == ProcessorErrorCodes.OutOfRange);
+    }
+
+    [Fact]
+    public void Validate_WhenDisplayedRequiredFieldFails_UsesStableRequiredCode()
+    {
+        var candidate = CreateCandidate(new DisplayNameStep());
+
+        Sut.Validate([candidate]);
+
+        Assert.Equal(ProcessorErrorCodes.Required, Assert.Single(candidate.Messages).Code);
+    }
+
+    [Fact]
+    public void Validate_WhenLengthFails_UsesStableLengthCode()
+    {
+        var candidate = CreateCandidate(new LengthStep { Value = "too long" });
+
+        Sut.Validate([candidate]);
+
+        Assert.Equal(StepCandidateStatus.Invalid, candidate.Status);
+        Assert.Equal(ProcessorErrorCodes.InvalidLength, Assert.Single(candidate.Messages).Code);
+    }
+
+    [Fact]
+    public void Validate_WhenFormatFails_UsesStableFormatCode()
+    {
+        var candidate = CreateCandidate(new FormatStep { Email = "not-an-email" });
+
+        Sut.Validate([candidate]);
+
+        Assert.Equal(StepCandidateStatus.Invalid, candidate.Status);
+        Assert.Equal(ProcessorErrorCodes.InvalidFormat, Assert.Single(candidate.Messages).Code);
+    }
+
+    [Fact]
+    public void Validate_WhenCustomOrObjectLevelRulesFail_PreservesResultsWithGenericCode()
+    {
+        var candidates = new[]
+        {
+            CreateCandidate(new CustomPropertyStep()),
+            CreateCandidate(new ClassRuleStep()),
+            CreateCandidate(new ObjectRuleStep())
+        };
+
+        Sut.Validate(candidates);
+
+        Assert.All(candidates, candidate =>
+        {
+            Assert.Equal(StepCandidateStatus.Invalid, candidate.Status);
+            Assert.Equal(ProcessorErrorCodes.ValidationFailed, Assert.Single(candidate.Messages).Code);
+        });
+        Assert.Equal("Custom validation failed.", Assert.Single(candidates[0].Messages).Message);
+        Assert.Equal("Class validation failed.", Assert.Single(candidates[1].Messages).Message);
+        Assert.Equal("Object validation failed.", Assert.Single(candidates[2].Messages).Message);
     }
 
     [Fact]
@@ -211,6 +259,14 @@ public sealed class StepCandidateValidatorTests
         Assert.True(invalidCandidate.HasErrors);
     }
 
+    private static StepCandidate CreateCandidate(object step) =>
+        new()
+        {
+            StepName = "validation-step",
+            Status = StepCandidateStatus.Built,
+            Step = step
+        };
+
     private sealed class ValidationStep
     {
         [Required]
@@ -221,5 +277,58 @@ public sealed class StepCandidateValidatorTests
 
         [Range(1, 100)]
         public int Quantity { get; init; }
+    }
+
+    private sealed class DisplayNameStep
+    {
+        [Display(Name = "Full name")]
+        [Required]
+        public string? Name { get; init; }
+    }
+
+    private sealed class LengthStep
+    {
+        [StringLength(4)]
+        public string Value { get; init; } = string.Empty;
+    }
+
+    private sealed class FormatStep
+    {
+        [EmailAddress]
+        public string Email { get; init; } = string.Empty;
+    }
+
+    private sealed class CustomPropertyStep
+    {
+        [CustomPropertyRule]
+        public string Value { get; init; } = "valid";
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    private sealed class CustomPropertyRuleAttribute : ValidationAttribute
+    {
+        protected override ValidationResult? IsValid(object? value, ValidationContext validationContext) =>
+            new("Custom validation failed.");
+    }
+
+    [ClassRule]
+    private sealed class ClassRuleStep
+    {
+        public string Value { get; init; } = "valid";
+    }
+
+    [AttributeUsage(AttributeTargets.Class)]
+    private sealed class ClassRuleAttribute : ValidationAttribute
+    {
+        protected override ValidationResult? IsValid(object? value, ValidationContext validationContext) =>
+            new("Class validation failed.", [nameof(ClassRuleStep.Value)]);
+    }
+
+    private sealed class ObjectRuleStep : IValidatableObject
+    {
+        public string Value { get; init; } = "valid";
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
+            [new ValidationResult("Object validation failed.", [nameof(Value)])];
     }
 }

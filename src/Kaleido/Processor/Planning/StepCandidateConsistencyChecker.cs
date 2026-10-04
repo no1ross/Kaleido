@@ -70,7 +70,7 @@ internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistenc
         if (registration.Repeatable.Enabled)
         {
             candidate.AddInformation(
-                StepProcessingMessageCode.RepeatableStep,
+                ProcessorErrorCodes.RepeatableStep,
                 $"Step '{candidate.StepName}' is repeatable and remains eligible for execution despite prior execution history.");
 
             return;
@@ -83,7 +83,7 @@ internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistenc
                 StepCandidateStatus.Satisfied;
 
             candidate.AddInformation(
-                StepProcessingMessageCode.AlreadyProcessed,
+                ProcessorErrorCodes.AlreadyProcessed,
                 $"Step '{candidate.StepName}' was previously completed and did not require execution.");
         }
     }
@@ -117,7 +117,7 @@ internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistenc
             }
 
             candidate.MarkInvalid(
-                StepProcessingMessageCode.DependencyNotSatisfied,
+                ProcessorErrorCodes.DependencyNotSatisfied,
                 $"Process step '{candidate.Registration.Metadata.Name}' " +
                 $"requires process step '{dependency.Metadata.Name}' " +
                 $"to be completed before it can execute.");

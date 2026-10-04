@@ -5,12 +5,12 @@ public sealed record StepProcessingMessage
 {
     public required MessageType Type { get; init; }
 
-    public required StepProcessingMessageCode Code { get; init; }
+    public required string Code { get; init; }
 
     public required string Message { get; init; }
 
     public static StepProcessingMessage Information(
-        StepProcessingMessageCode code,
+        string code,
         string message)
     {
         return new()
@@ -22,7 +22,7 @@ public sealed record StepProcessingMessage
     }
 
     public static StepProcessingMessage Warning(
-        StepProcessingMessageCode code,
+        string code,
         string message)
     {
         return new()
@@ -34,7 +34,7 @@ public sealed record StepProcessingMessage
     }
 
     public static StepProcessingMessage Error(
-        StepProcessingMessageCode code,
+        string code,
         string message)
     {
         return new()

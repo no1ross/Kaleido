@@ -1,19 +1,14 @@
 using System.Net;
 using Kaleido.Http.Processor;
+using Kaleido.Processor.AspNetCore.FunctionalTests;
 using Kaleido.Processor.AspNetCore.FunctionalTests.Fixtures;
 using Kaleido.Processor.AspNetCore.FunctionalTests.Infrastructure;
 
-namespace Kaleido.Processor.AspNetCore.FunctionalTests.Execution;
+namespace Kaleido.Http.FunctionalTests.Processor.Execution;
 
 [Collection(nameof(ProcessorAspNetCoreSuite))]
-public sealed class ProcessExecutionEndpointTests
+public sealed class ProcessExecutionEndpointTests(ProcessorAspNetCoreFixture fixture)
 {
-    private readonly HttpClient _client;
-
-    public ProcessExecutionEndpointTests(ProcessorAspNetCoreFixture fixture)
-    {
-        _client = fixture.Client;
-    }
 
     [Fact]
     public async Task PostExecute_WhenAllDependentStepsAreProvided_CompletesAvailableSteps()
@@ -74,7 +69,7 @@ public sealed class ProcessExecutionEndpointTests
     }
 
     [Fact]
-    public async Task PostExecute_WhenUnknownStepIsProvided_ReturnsValidationMessage()
+    public async Task PostExecute_WhenUnknownStepIsProvided_HidesFrameworkMessagesByDefault()
     {
         var request =
             new ExecuteProcessRequest
@@ -98,7 +93,8 @@ public sealed class ProcessExecutionEndpointTests
         Assert.Contains(
             contract.Results,
             x => x.StepName == "TotallyFakeStep"
-                 && x.Messages.Any(m => m.Code == "UnknownStep"));
+                 && x.BusinessMessages.Count == 0
+                 && x.FrameworkMessages.Count == 0);
     }
 
     [Fact]
@@ -129,7 +125,7 @@ public sealed class ProcessExecutionEndpointTests
                 x => x.StepName == RuntimeStepNames.Failing);
 
         Assert.Contains(
-            result.Messages,
+            result.BusinessMessages,
             x => x.Code == "RuntimeFailingFailed"
                  && x.Type == MessageType.Error);
     }
@@ -141,7 +137,7 @@ public sealed class ProcessExecutionEndpointTests
             Content = JsonContent.Create(body)
         };
         request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, processId.ToString());
-        return _client.SendAsync(request);
+        return fixture.Client.SendAsync(request);
     }
 
     private static ProcessStepRequest CreateStep(string stepName) =>
