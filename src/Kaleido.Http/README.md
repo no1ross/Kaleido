@@ -78,6 +78,37 @@ app.MapKaleidoHttp(o => o.AggregateRegistry = true); // requires AddHttpClients(
 
 `AddHttp()` wires the middleware pipeline automatically via `KaleidoStartupFilter` — no manual `Use...()` call is needed. Opt out with `AddHttp(o => o.AutoRegisterMiddleware = false)` if the host owns middleware ordering; it must then register `ExceptionMiddleware`/`ObservabilityMiddleware` itself.
 
+## Per-step Process execution contract
+
+Each registered step publishes an `ExecuteUrl` in its registry metadata. POST to that URL with an `application/json` body containing exactly the step-input envelope; the fields inside `processStep` depend on the registered step:
+
+```http
+POST /{service}/processes/steps/{step}
+Content-Type: application/json
+
+{"processStep":{"field":"value"}}
+```
+
+To continue an existing process, send its id in the `X-Kaleido-Process-Id` **request header**, not in the JSON body. Omit that header to create a new process. The route identifies the step, so neither `processId` nor `stepName` is a request-body field. The resulting process id is returned in both the `processId` response property and the `X-Kaleido-Process-Id` response header.
+
+A step whose handler returns a typed result has this response shape (values are illustrative):
+
+```json
+{
+  "processId": "00000000-0000-0000-0000-000000000001",
+  "stepName": "Example",
+  "requiredStep": null,
+  "targetProcessorName": null,
+  "outcome": "completed",
+  "availableSteps": [],
+  "businessMessages": [],
+  "frameworkMessages": [],
+  "result": { "value": "example" }
+}
+```
+
+Steps without a typed handler result return the same fields without `result`. Handler-authored `businessMessages` remain available; `frameworkMessages` is an empty collection unless `AddHttp(o => o.IncludeFrameworkMessages = true)` enables diagnostics. Inspect `outcome` rather than interpreting HTTP 200 alone as step completion. Kaleido's HTTP JSON options use camelCase property names and string enum values.
+
 ---
 
 ## Authorization

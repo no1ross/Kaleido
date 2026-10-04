@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using Kaleido.Http.Processor;
 using Kaleido.Http.FunctionalTests.Processor.Fixtures;
 using Kaleido.Http.FunctionalTests.Processor.Infrastructure;
@@ -13,6 +14,39 @@ public sealed class StepExecutionEndpointTests
     public StepExecutionEndpointTests(ProcessorAspNetCoreFixture fixture)
     {
         _client = fixture.Client;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PostStepExecute_WithRawEnvelope_UsesOptionalProcessIdHeader(bool resume)
+    {
+        var expectedProcessId = resume ? Guid.NewGuid() : (Guid?)null;
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/kaleido/processes/steps/runtimeroot")
+        {
+            Content = new StringContent("""{"processStep":{}}""", Encoding.UTF8, "application/json")
+        };
+        if (expectedProcessId is { } processId)
+        {
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, processId.ToString());
+        }
+
+        using var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var contract = await response.Content.ReadAsync<StepExecutionResponse<RuntimeRootStepResponse>>();
+        Assert.NotNull(contract);
+        if (expectedProcessId.HasValue)
+        {
+            Assert.Equal(expectedProcessId.Value, contract.ProcessId);
+        }
+        Assert.NotEqual(Guid.Empty, contract.ProcessId);
+        Assert.True(response.Headers.TryGetValues(KaleidoCorrelationHeaders.ProcessId, out var values));
+        Assert.Equal(contract.ProcessId.ToString(), Assert.Single(values));
+        Assert.Equal(StepExecutionOutcome.Completed, contract.Outcome);
+        Assert.Equal(RuntimeStepNames.Root, contract.Result?.Value);
+        Assert.Empty(contract.BusinessMessages);
+        Assert.Empty(contract.FrameworkMessages);
     }
 
     [Fact]
