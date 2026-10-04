@@ -29,6 +29,9 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository m
 - [`src/Kaleido.Observability.OpenTelemetry/README.md`](./src/Kaleido.Observability.OpenTelemetry/README.md)
 - [`src/Kaleido.Provider.SQLite/README.md`](./src/Kaleido.Provider.SQLite/README.md)
 
+### Tooling
+- [`tools/analyzers/README.md`](./tools/analyzers/README.md) — analyzer project roles and test locations; rule catalog in `docs/ANALYZERS.md`
+
 ### Tests and samples
 - [`tests/AGENTS.md`](./tests/AGENTS.md)
 - [`samples/PriorAuth/AGENTS.md`](./samples/PriorAuth/AGENTS.md)
