@@ -79,11 +79,17 @@ jobs:
           coverage/index.html
         if-no-files-found: ignore
 
-    # Pack src/ projects on master merges — validates packages + produces
-    # downloadable artifacts. NuGet publish is deliberately not wired up.
+    # Pack shipped src/ projects on PRs and master merges; master uploads
+    # artifacts. NuGet publish is deliberately not wired up.
     - name: Pack
-      if: github.event_name == 'push'
-      run: dotnet pack --configuration Release --no-build -o artifacts
+      run: |
+        for project in src/*/*.csproj; do
+          dotnet pack "$project" --configuration Release --no-build -o artifacts
+        done
+        packages=(artifacts/*.nupkg)
+        test "${#packages[@]}" -eq 6
+        unzip -Z1 artifacts/Kaleido.[0-9]*.nupkg |
+          awk '$0 == "analyzers/dotnet/cs/Kaleido.Analyzers.dll" { found=1 } END { exit !found }'
 
     - name: Upload packages
       if: github.event_name == 'push'
