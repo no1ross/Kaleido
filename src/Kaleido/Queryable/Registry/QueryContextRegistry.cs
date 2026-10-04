@@ -77,9 +77,6 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
     public IReadOnlyCollection<QueryContextRegistration> Registrations =>
         _registrations;
 
-    public IReadOnlyCollection<QueryContextRegistration> GetAll() =>
-        _registrations;
-
     public QueryContextRegistration? Find(string name)
     {
         _byName.TryGetValue(

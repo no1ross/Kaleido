@@ -16,53 +16,46 @@ public sealed class CorrelationHeaderStamperTests
     [Fact]
     public void Sanitize_NullValue_ReturnsNull()
     {
-        var stamper = CreateStamper();
-        Assert.Null(stamper.Sanitize(null));
+        Assert.Null(HttpHeaderSanitizerExtensions.Sanitize(null));
     }
 
     [Fact]
     public void Sanitize_WhiteSpaceOnly_ReturnsNull()
     {
-        var stamper = CreateStamper();
-        Assert.Null(stamper.Sanitize("   "));
+        Assert.Null(HttpHeaderSanitizerExtensions.Sanitize("   "));
     }
 
     [Fact]
     public void Sanitize_PrintableAscii_ReturnsUnchanged()
     {
-        var stamper = CreateStamper();
-        Assert.Equal("hello-world_123", stamper.Sanitize("hello-world_123"));
+        Assert.Equal("hello-world_123", HttpHeaderSanitizerExtensions.Sanitize("hello-world_123"));
     }
 
     [Fact]
     public void Sanitize_ControlCharacters_AreStripped()
     {
-        var stamper = CreateStamper();
         // \r, \n, \t, \0 are all control characters and must be stripped
-        Assert.Equal("abc", stamper.Sanitize("a\rb\nc\t"));
-        Assert.Equal("abc", stamper.Sanitize("a\0b\u001Fc"));
+        Assert.Equal("abc", HttpHeaderSanitizerExtensions.Sanitize("a\rb\nc\t"));
+        Assert.Equal("abc", HttpHeaderSanitizerExtensions.Sanitize("a\0b\u001Fc"));
     }
 
     [Fact]
     public void Sanitize_NonAsciiCharacters_AreStripped()
     {
-        var stamper = CreateStamper();
-        Assert.Equal("caf", stamper.Sanitize("caf\u00E9")); // é is non-ASCII
+        Assert.Equal("caf", HttpHeaderSanitizerExtensions.Sanitize("caf\u00E9")); // é is non-ASCII
     }
 
     [Fact]
     public void Sanitize_LeadingAndTrailingSpaces_AreTrimmed()
     {
-        var stamper = CreateStamper();
-        Assert.Equal("trimmed", stamper.Sanitize("  trimmed  "));
+        Assert.Equal("trimmed", HttpHeaderSanitizerExtensions.Sanitize("  trimmed  "));
     }
 
     [Fact]
     public void Sanitize_ValueExceedingMaxLength_IsTruncated()
     {
-        var stamper = CreateStamper();
         var longValue = new string('a', 300);
-        var result = stamper.Sanitize(longValue);
+        var result = HttpHeaderSanitizerExtensions.Sanitize(longValue);
         Assert.NotNull(result);
         Assert.Equal(256, result!.Length);
     }
@@ -70,8 +63,7 @@ public sealed class CorrelationHeaderStamperTests
     [Fact]
     public void Sanitize_AfterStrippingBecomesEmpty_ReturnsNull()
     {
-        var stamper = CreateStamper();
-        Assert.Null(stamper.Sanitize("\r\n\t\0")); // all control chars, nothing left
+        Assert.Null(HttpHeaderSanitizerExtensions.Sanitize("\r\n\t\0")); // all control chars, nothing left
     }
 
     // ---------------------------------------------------------------------------
@@ -177,9 +169,6 @@ public sealed class CorrelationHeaderStamperTests
     // ---------------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------------
-
-    private static CorrelationHeaderStamper CreateStamper() =>
-        CreateSut(SetupContext(new KaleidoCorrelationContext()));
 
     private static IKaleidoCorrelationContextAccessor SetupContext(KaleidoCorrelationContext ctx)
     {
