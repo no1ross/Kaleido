@@ -263,6 +263,11 @@ dotnet_diagnostic.CA1711.severity = silent
 ; CA1822: stub handlers must stay instance methods — resolved via BindingFlags.Instance
 dotnet_diagnostic.CA1822.severity = silent
 
+; IDE0130: unit-test fixtures use their SUT's namespace + .UnitTests (KAL1013), not
+;          the folder path; folders still mirror src/ (KAL1003)
+dotnet_style_namespace_match_folder = false
+dotnet_diagnostic.IDE0130.severity = none
+
 ; CA2263: tests deliberately exercise non-generic overloads
 dotnet_diagnostic.CA2263.severity = silent
 

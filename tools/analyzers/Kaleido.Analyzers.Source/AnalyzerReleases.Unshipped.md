@@ -19,3 +19,5 @@ KAL0014 | Kaleido.Design | Error | Singleton registrations must not capture scop
 KAL0015 | Kaleido.Layout | Error | Interface must live in the same file as its implementation
 KAL0018 | Kaleido.Design | Warning | Public API members must not expose mutable collection types
 KAL0019 | Kaleido.Design | Warning | Async methods must accept a CancellationToken parameter
+KAL0020 | Kaleido.Design | Warning | Endpoint names must come from an *EndpointNames type
+KAL0021 | Kaleido.Design | Warning | Catch-all that records observability must exclude OperationCanceledException

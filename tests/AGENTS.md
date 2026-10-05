@@ -43,6 +43,12 @@ collaborators must be mocked — never `new` a real Kaleido service
 implementation (KAL1012; domain data the SUT consumes is exempt) — and the
 fixture file must mirror the SUT's source path (KAL1003 — e.g.
 `src/Kaleido/Json/ValueConverter.cs` → `tests/Kaleido.UnitTests/Json/ValueConverterTests.cs`).
+The fixture's namespace is the SUT's namespace with `.UnitTests` appended, not
+the folder path (KAL1013 — e.g. `Kaleido.Queryable.Query.QueryContextEngine` →
+`namespace Kaleido.Queryable.Query.UnitTests;`), so the SUT's types resolve
+without a `using`. Shared helpers (`SutFixture`, analyzer harnesses) stay in
+`Kaleido.UnitTests` / `Kaleido.Testing`; functional and integration test
+projects keep project-based namespaces.
 A unit test exercises exactly one SUT; assembled-pipeline behavior belongs in
 functional or integration tests.
 

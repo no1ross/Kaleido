@@ -49,4 +49,7 @@ public static class FrameworkErrorCodes
 
     /// <summary>TypeDescriber failed to convert a value to the target type.</summary>
     public const string DataConversionError = "data_conversion_error";
+
+    /// <summary>A process execution result contained no entry for the step that was executed.</summary>
+    public const string MissingStepResult = "missing_step_result";
 }

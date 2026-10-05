@@ -1,7 +1,7 @@
 using Kaleido.Http.Processor;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Kaleido.Http.Client.UnitTests.Process;
+namespace Kaleido.Http.Client.Processor.UnitTests;
 
 public sealed class KaleidoProcessorClientTests
     : Kaleido.UnitTests.SutFixture

@@ -2,7 +2,7 @@ using Kaleido.Processor;
 
 using Kaleido.UnitTests;
 
-namespace Kaleido.Processor.UnitTests.Processor;
+namespace Kaleido.Processor.UnitTests;
 
 public sealed class ProcessRequestTests
     : SutFixture

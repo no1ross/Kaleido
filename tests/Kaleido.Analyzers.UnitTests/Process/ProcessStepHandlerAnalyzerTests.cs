@@ -4,7 +4,7 @@ using Xunit;
 using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Process.ProcessStepHandlerAnalyzer>;
 
-namespace Kaleido.Analyzers.UnitTests.Process;
+namespace Kaleido.Analyzers.Process.UnitTests;
 
 public sealed class ProcessStepHandlerAnalyzerTests
     : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Process.ProcessStepHandlerAnalyzer>

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 using Kaleido.UnitTests;
 
-namespace Kaleido.Processor.UnitTests.Context;
+namespace Kaleido.Processor.Context.UnitTests;
 
 public sealed class ProcessorContextStoreTests
     : SutFixture

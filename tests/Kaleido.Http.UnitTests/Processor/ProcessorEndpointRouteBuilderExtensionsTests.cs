@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Http.UnitTests.Process;
+namespace Kaleido.Http.Processor.UnitTests;
 
 public sealed class ProcessorEndpointRouteBuilderExtensionsTests
     : SutFixture

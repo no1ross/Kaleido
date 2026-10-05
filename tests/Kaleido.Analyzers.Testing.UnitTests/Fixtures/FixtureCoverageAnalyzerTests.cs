@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Xunit;
 
-namespace Kaleido.Analyzers.Testing.UnitTests;
+namespace Kaleido.Analyzers.Testing.Fixtures.UnitTests;
 
 /// <summary>
 /// KAL1009 runs against whole compilations (assembly-name driven), so these

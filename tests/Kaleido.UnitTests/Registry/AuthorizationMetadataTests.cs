@@ -1,7 +1,9 @@
 using Kaleido.Exceptions;
 using Kaleido.Registry;
 
-namespace Kaleido.UnitTests.Registry;
+using Kaleido.UnitTests;
+
+namespace Kaleido.Registry.UnitTests;
 
 public sealed class AuthorizationMetadataTests
     : SutFixture

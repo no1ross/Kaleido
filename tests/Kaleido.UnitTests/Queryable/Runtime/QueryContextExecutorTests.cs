@@ -1,6 +1,6 @@
 using Kaleido.Queryable.Runtime;
 
-namespace Kaleido.Queryable.UnitTests.Runtime;
+namespace Kaleido.Queryable.Runtime.UnitTests;
 
 public sealed class QueryContextExecutorTests
     : Kaleido.UnitTests.SutFixture

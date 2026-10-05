@@ -2,7 +2,7 @@ using System.Reflection;
 using Kaleido.Queryable.Registry;
 using Kaleido.Registry;
 
-namespace Kaleido.Queryable.UnitTests.Records;
+namespace Kaleido.Queryable.Registry.UnitTests;
 
 public sealed class DelegatedQueryViewRegistryTests
     : Kaleido.UnitTests.SutFixture

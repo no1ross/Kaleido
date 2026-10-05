@@ -4,7 +4,7 @@ using Xunit;
 using static Kaleido.Analyzers.Testing.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Testing.Fixtures.CollaboratorMustBeMockedAnalyzer>;
 
-namespace Kaleido.Analyzers.Testing.UnitTests;
+namespace Kaleido.Analyzers.Testing.Fixtures.UnitTests;
 
 public sealed class CollaboratorMustBeMockedAnalyzerTests
     : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Testing.Fixtures.CollaboratorMustBeMockedAnalyzer>

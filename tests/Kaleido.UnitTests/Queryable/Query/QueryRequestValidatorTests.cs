@@ -1,6 +1,6 @@
 using Kaleido.Exceptions;
 
-namespace Kaleido.UnitTests.Queryable.Query;
+namespace Kaleido.Queryable.Query.UnitTests;
 
 public sealed class QueryRequestValidatorTests
     : Kaleido.UnitTests.SutFixture

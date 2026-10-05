@@ -138,8 +138,8 @@ Public seams consumers are expected to implement or replace:
 - Always returns HTTP 200 unless `?strict` is requested; unreachable downstream clients populate `ClientErrors`
 
 **URL generation**
-- `ProcessContractUrls` / `ProcessRoutePaths`
-- `QueryableContractUrls` / `QueryableRoutePaths`
+- `ProcessContractUrls` / `ProcessRoutePaths` (`Kaleido.Http.Abstractions/Processor/ProcessRoutes.cs`)
+- `QueryableContractUrls` (`Kaleido.Http.Abstractions/Queryable/QueryableRoutes.cs`)
 
 ### Key design invariants
 - Endpoints adapt contracts and publish routes. They do not reimplement runtime planning or business execution.

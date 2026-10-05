@@ -114,6 +114,7 @@ These indicate a framework bug or broken DI wiring, not a user error.
 | `InvalidHandlerResult` | `invalid_handler_result` | Handler returned an unexpected or null result |
 | `UnsupportedDataType` | `unsupported_data_type` | `DataTypeMapper` does not support the CLR type |
 | `DataConversionError` | `data_conversion_error` | `DataTypeMapper` failed to convert a value |
+| `MissingStepResult` | `missing_step_result` | A process execution result had no entry for the executed step |
 
 ---
 

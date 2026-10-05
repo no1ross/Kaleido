@@ -54,4 +54,10 @@ internal static class DiagnosticIds
 
     /// <summary>Public and internal async methods must accept a CancellationToken parameter so callers can propagate cancellation.</summary>
     public const string AsyncMissingCancellationToken = "KAL0019";
+
+    /// <summary>Endpoint names passed to WithName must reference an *EndpointNames constant or factory method, not an ad-hoc string.</summary>
+    public const string EndpointNameConstant = "KAL0020";
+
+    /// <summary>A catch-all that calls an observability member must exclude OperationCanceledException (filter or earlier catch clause) so cancellations are not recorded as failures.</summary>
+    public const string ObservabilityCancellation = "KAL0021";
 }

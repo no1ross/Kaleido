@@ -3,7 +3,7 @@ using Kaleido.Http.Queryable;
 using Kaleido.Observability;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Kaleido.Http.Client.UnitTests.Queryable;
+namespace Kaleido.Http.Client.Queryable.UnitTests;
 
 public sealed class KaleidoQueryableClientTests
     : Kaleido.UnitTests.SutFixture

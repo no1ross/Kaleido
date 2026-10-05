@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Http.UnitTests.Authorization;
+namespace Kaleido.Http.Authorization.UnitTests;
 
 public sealed class KaleidoAuthorizerTests
     : SutFixture
