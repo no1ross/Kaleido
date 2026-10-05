@@ -118,7 +118,7 @@ Owns the reference `IProcessorContextStore` implementation:
 Information logs must stay minimal — treat them as the "normal operations" view an operator reads without filtering. Target no more than 2–5 Information logs per request.
 - **Information** — boundary signals only: request-in/response-out equivalents (e.g. `ExecutionCompleted` — once per request) and once-per-service-lifetime events (e.g. registry built at startup). Never per-step or per-item logs.
 - **Debug** — all internals: step started/completed, context saves, source/view/materialization scopes, downstream fetch details, send/receive plumbing. This is what gets enabled when investigating by correlationId / requestId / processId.
-- **Warning** — cancellations, client disconnects, downstream non-success responses, validation failures.
+- **Warning** — cancellations, downstream non-success responses, validation failures. The runtime observation that owns a cancellation (`ProcessorExecutor`, the Queryable engines) logs it at Warning once. `ExceptionMiddleware`'s client-disconnect catch stays at **Debug** so the same cancellation is not logged twice.
 - **Error** — exceptions and failures only.
 - Do not promote internals to Information "for visibility" — if it fires more than once per request, it belongs at Debug.
 

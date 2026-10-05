@@ -61,7 +61,7 @@ internal sealed class QueryEventFactory(
 
         return new KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>
         {
-            EventType = "query.executed.v1",
+            EventType = KaleidoEventTypes.QueryExecuted,
             Context = context,
             Event = @event
         };
