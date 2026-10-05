@@ -94,7 +94,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
 }
 
 [ExcludeFromCodeCoverage]
-public record ProcessStepHandlerResult : IProcessStepHandlerResult
+public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
 {
     internal ProcessStepHandlerResult() { }
 
@@ -110,7 +110,7 @@ public record ProcessStepHandlerResult : IProcessStepHandlerResult
         = [];
 
     public static ProcessStepHandlerResult Success(
-        string? requiredStep = null,
+        string? requiredStep,
         params ProcessMessage[] messages)
     {
         return new()

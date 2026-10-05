@@ -1,7 +1,7 @@
 namespace Kaleido.Processor;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-public class ProcessStepAttribute : Attribute
+public sealed class ProcessStepAttribute : Attribute
 {
     public required string Name { get; init; }
     public required string Version { get; init; }
@@ -10,7 +10,7 @@ public class ProcessStepAttribute : Attribute
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-public class RepeatableAttribute : Attribute
+public sealed class RepeatableAttribute : Attribute
 {
     public RepeatableAttribute()
     {
@@ -18,21 +18,21 @@ public class RepeatableAttribute : Attribute
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class DependsOnStepAttribute(
+public sealed class DependsOnStepAttribute(
     Type dependsOnStep) : Attribute
 {
     public Type DependsOnStep { get; } = dependsOnStep;
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class AvailableAfterAttribute(
+public sealed class AvailableAfterAttribute(
     Type availableAfterStep) : Attribute
 {
     public Type AvailableAfterStep { get; } = availableAfterStep;
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-public class AvailableUntilAttribute(
+public sealed class AvailableUntilAttribute(
     Type availableUntilStep) : Attribute
 {
     public Type AvailableUntilStep { get; } = availableUntilStep;
