@@ -3,7 +3,9 @@ using Kaleido.Processor.Context;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Registry;
 
-namespace Kaleido.UnitTests.Processor.Eventing;
+using Kaleido.UnitTests;
+
+namespace Kaleido.Processor.Eventing.UnitTests;
 
 public sealed class ProcessorEventFactoryTests
     : SutFixture

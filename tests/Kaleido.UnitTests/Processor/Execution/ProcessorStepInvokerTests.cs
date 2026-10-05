@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Kaleido.UnitTests;
 
-namespace Kaleido.Processor.UnitTests.Processor.Execution;
+namespace Kaleido.Processor.Execution.UnitTests;
 
 public sealed class ProcessorStepInvokerTests
     : SutFixture

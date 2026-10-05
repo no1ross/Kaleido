@@ -1,7 +1,9 @@
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Registry;
 
-namespace Kaleido.UnitTests.Processor.Execution;
+using Kaleido.UnitTests;
+
+namespace Kaleido.Processor.Execution.UnitTests;
 
 public sealed class StepExecutionEvaluatorTests
     : SutFixture

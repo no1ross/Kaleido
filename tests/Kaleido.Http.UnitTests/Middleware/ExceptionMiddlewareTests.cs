@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Kaleido.Exceptions;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
@@ -5,11 +6,13 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Http.UnitTests.Middleware;
+namespace Kaleido.Http.Middleware.UnitTests;
 
 public sealed class ExceptionMiddlewareTests
     : SutFixture
 {
+    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
+
     private Mock<ILogger<ExceptionMiddleware>> Logger { get; } = new();
 
     private RequestDelegate Next { get; set; } = _ => Task.CompletedTask;
@@ -38,39 +41,15 @@ public sealed class ExceptionMiddlewareTests
         Assert.Equal(StatusCodes.Status204NoContent, context.Response.StatusCode);
     }
 
-    public static TheoryData<string, int, string> ErrorContractCases { get; } =
+    public static TheoryData<string, int, string, string> ErrorContractCases { get; } =
         new()
         {
-            {
-                nameof(KaleidoValidationException),
-                StatusCodes.Status400BadRequest,
-                "{\"errors\":[{\"code\":\"qry_invalid_field\",\"message\":\"bad field\",\"field\":null}]}"
-            },
-            {
-                nameof(ArgumentException),
-                StatusCodes.Status400BadRequest,
-                "{\"errors\":[{\"code\":\"argument_error\",\"message\":\"An invalid argument was provided.\",\"field\":null}]}"
-            },
-            {
-                nameof(BadHttpRequestException),
-                StatusCodes.Status400BadRequest,
-                "{\"errors\":[{\"code\":\"argument_error\",\"message\":\"bad request\",\"field\":null}]}"
-            },
-            {
-                nameof(KaleidoConfigurationException),
-                StatusCodes.Status500InternalServerError,
-                "{\"errors\":[{\"code\":\"pro_missing_handler\",\"message\":\"no handler\",\"field\":null}]}"
-            },
-            {
-                nameof(KaleidoFrameworkException),
-                StatusCodes.Status500InternalServerError,
-                "{\"errors\":[{\"code\":\"type_mismatch\",\"message\":\"bad type\",\"field\":null}]}"
-            },
-            {
-                nameof(Exception),
-                StatusCodes.Status500InternalServerError,
-                "{\"errors\":[{\"code\":\"framework_error\",\"message\":\"An unexpected error occurred.\",\"field\":null}]}"
-            }
+            { nameof(KaleidoValidationException), StatusCodes.Status400BadRequest, "qry_invalid_field", "bad field" },
+            { nameof(ArgumentException), StatusCodes.Status400BadRequest, "argument_error", "An invalid argument was provided." },
+            { nameof(BadHttpRequestException), StatusCodes.Status400BadRequest, "argument_error", "bad request" },
+            { nameof(KaleidoConfigurationException), StatusCodes.Status500InternalServerError, "pro_missing_handler", "no handler" },
+            { nameof(KaleidoFrameworkException), StatusCodes.Status500InternalServerError, "type_mismatch", "bad type" },
+            { nameof(Exception), StatusCodes.Status500InternalServerError, "framework_error", "An unexpected error occurred." }
         };
 
     [Theory]
@@ -78,7 +57,8 @@ public sealed class ExceptionMiddlewareTests
     public async Task InvokeAsync_WhenExceptionIsThrown_ReturnsExpectedContract(
         string exceptionName,
         int expectedStatus,
-        string expectedBody)
+        string expectedCode,
+        string expectedMessage)
     {
         var context = CreateContext();
 
@@ -104,7 +84,12 @@ public sealed class ExceptionMiddlewareTests
 
         Assert.Equal(expectedStatus, context.Response.StatusCode);
         Assert.Equal("application/json; charset=utf-8", context.Response.ContentType);
-        Assert.Equal(expectedBody, ReadBody(context));
+
+        var body = JsonSerializer.Deserialize<KaleidoErrorResponse>(ReadBody(context), WebJson);
+        var error = Assert.Single(Assert.IsType<KaleidoErrorResponse>(body).Errors);
+        Assert.Equal(expectedCode, error.Code);
+        Assert.Equal(expectedMessage, error.Message);
+        Assert.Null(error.Field);
     }
 
     [Fact]

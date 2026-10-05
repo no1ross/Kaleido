@@ -1,6 +1,6 @@
 using Kaleido.Http.Registry;
 
-namespace Kaleido.Http.Abstractions.UnitTests.Registry;
+namespace Kaleido.Http.Registry.UnitTests;
 
 public sealed class InMemoryRegistrySnapshotStoreTests
     : Kaleido.UnitTests.SutFixture<InMemoryRegistrySnapshotStore>

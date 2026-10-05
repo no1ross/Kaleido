@@ -4,7 +4,7 @@ using Xunit;
 using static Kaleido.Analyzers.Testing.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Testing.Design.ExceptionRecordAnalyzer>;
 
-namespace Kaleido.Analyzers.Testing.UnitTests;
+namespace Kaleido.Analyzers.Testing.Design.UnitTests;
 
 public sealed class ExceptionRecordAnalyzerTests
     : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Testing.Design.ExceptionRecordAnalyzer>

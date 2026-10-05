@@ -118,7 +118,7 @@ Owns the reference `IProcessorContextStore` implementation:
 Information logs must stay minimal — treat them as the "normal operations" view an operator reads without filtering. Target no more than 2–5 Information logs per request.
 - **Information** — boundary signals only: request-in/response-out equivalents (e.g. `ExecutionCompleted` — once per request) and once-per-service-lifetime events (e.g. registry built at startup). Never per-step or per-item logs.
 - **Debug** — all internals: step started/completed, context saves, source/view/materialization scopes, downstream fetch details, send/receive plumbing. This is what gets enabled when investigating by correlationId / requestId / processId.
-- **Warning** — cancellations, client disconnects, downstream non-success responses, validation failures.
+- **Warning** — cancellations, downstream non-success responses, validation failures. The runtime observation that owns a cancellation (`ProcessorExecutor`, the Queryable engines) logs it at Warning once. `ExceptionMiddleware`'s client-disconnect catch stays at **Debug** so the same cancellation is not logged twice.
 - **Error** — exceptions and failures only.
 - Do not promote internals to Information "for visibility" — if it fires more than once per request, it belongs at Debug.
 
@@ -144,6 +144,7 @@ The rule is: **one observability signal per cancellation, at the lowest level th
 - **Process:** `ProcessExecutor` is the single recording point (`stepObservation.Canceled()`). It has step name, version, and processor name, and is where state is saved on cancellation. All layers above (`ProcessStepInvoker`, `ProcessRuntime`) use `when (exception is not OperationCanceledException)` on their `catch (Exception)` blocks so OCE propagates cleanly without triggering `ExecutionFailed` or `HandlerFailed`.
 - **Queryable:** `QueryContextEngine` and `DelegatedQueryViewEngine` each call `observation.Canceled()` in an explicit `catch (OperationCanceledException)` block placed before `catch (Exception)`. These are mutually exclusive code paths (dispatched by `QueryableService`), so only one signal fires per request.
 - Do **not** add `Canceled()` calls at higher levels (`ProcessRuntime`, `ProcessStepInvoker`) — you will get duplicate signals for the same cancellation event.
+- KAL0021 enforces the "exclude OCE" half: a catch-all that calls an observability member without a `when (… is not OperationCanceledException)` filter or an earlier `catch (OperationCanceledException)` is reported. The one-signal-per-cancellation placement is still a review responsibility.
 
 ### Record conversion
 - Convert immutable data containers with init-only properties to records
@@ -207,6 +208,11 @@ Use samples to understand intended consumer usage.
 Use tests to understand behavioral expectations and invariants.
 
 ## Build and test commands
+
+### SDK and target framework
+- **Building Kaleido needs the .NET 10 SDK** (`global.json`, `rollForward: latestFeature`). That's a requirement for framework contributors only.
+- **The published packages target `net8.0`** (`Directory.Build.props`), so any consumer on .NET 8 or later can use them. We can require a newer SDK of contributors, but we can't require consumers to move.
+- **These are separate settings on purpose.** Don't raise `TargetFramework` just because the SDK is newer; changing it is an explicit owner decision.
 
 ### Build
 ```

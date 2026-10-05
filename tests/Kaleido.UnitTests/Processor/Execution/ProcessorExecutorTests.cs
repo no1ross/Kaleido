@@ -7,7 +7,9 @@ using Kaleido.Processor.Observability;
 using Kaleido.Processor.Registry;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Kaleido.UnitTests.Processor.Execution;
+using Kaleido.UnitTests;
+
+namespace Kaleido.Processor.Execution.UnitTests;
 
 public sealed class ProcessorExecutorTests
     : SutFixture

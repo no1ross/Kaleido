@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Http.UnitTests.Queryable;
+namespace Kaleido.Http.Queryable.UnitTests;
 
 public sealed class QueryableEndpointRouteBuilderExtensionsTests
     : SutFixture

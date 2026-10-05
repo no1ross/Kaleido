@@ -1,4 +1,4 @@
-namespace Kaleido.Http.UnitTests.Startup;
+namespace Kaleido.Http.Startup.UnitTests;
 
 public sealed class KaleidoStartupFilterTests
     : Kaleido.UnitTests.SutFixture

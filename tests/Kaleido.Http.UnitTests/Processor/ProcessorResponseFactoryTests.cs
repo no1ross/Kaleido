@@ -1,7 +1,7 @@
 using Kaleido.Http.Processor;
 using Kaleido.Processor.Registry;
 
-namespace Kaleido.Http.UnitTests.Process;
+namespace Kaleido.Http.Processor.UnitTests;
 
 public sealed class ProcessorResponseFactoryTests
     : Kaleido.UnitTests.SutFixture<ProcessorResponseFactory>

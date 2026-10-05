@@ -3,7 +3,7 @@ using Kaleido.Processor.Registry;
 
 using Kaleido.UnitTests;
 
-namespace Kaleido.Processor.UnitTests.Processor.Planning;
+namespace Kaleido.Processor.Planning.UnitTests;
 
 public sealed class StepCandidateConsistencyCheckerTests
     : SutFixture

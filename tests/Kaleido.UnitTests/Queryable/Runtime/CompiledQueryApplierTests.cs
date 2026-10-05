@@ -1,7 +1,7 @@
 using Kaleido.Queryable.Query;
 using Kaleido.Queryable.Runtime;
 
-namespace Kaleido.Queryable.UnitTests.Runtime;
+namespace Kaleido.Queryable.Runtime.UnitTests;
 
 public sealed class CompiledQueryApplierTests
     : Kaleido.UnitTests.SutFixture

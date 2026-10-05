@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Kaleido.UnitTests.Core;
+namespace Kaleido.UnitTests;
 
 public sealed class KaleidoErrorResponseTests
     : SutFixture<KaleidoErrorResponse>

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 using Kaleido.UnitTests;
 
-namespace Kaleido.Processor.UnitTests.Observability;
+namespace Kaleido.Processor.Observability.UnitTests;
 
 public sealed class ProcessorObservabilityTests
     : SutFixture
@@ -47,7 +47,7 @@ public sealed class ProcessorObservabilityTests
         {
             foreach (var tag in tags)
             {
-                if (tag.Key == "processor.name" &&
+                if (tag.Key == KaleidoTelemetryTags.ProcessorName &&
                     tag.Value as string == serviceName)
                 {
                     measurements.Add((instrument.Name, measurement));

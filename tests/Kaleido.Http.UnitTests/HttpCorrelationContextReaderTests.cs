@@ -2,7 +2,7 @@ using Kaleido.Http.Observability;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 
-namespace Kaleido.Http.UnitTests;
+namespace Kaleido.Http.Observability.UnitTests;
 
 public sealed class HttpCorrelationContextReaderTests
     : SutFixture

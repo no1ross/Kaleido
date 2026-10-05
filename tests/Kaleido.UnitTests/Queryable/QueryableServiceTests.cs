@@ -2,7 +2,7 @@ using Kaleido.Exceptions;
 using Kaleido.Queryable.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.UnitTests.Queryable;
+namespace Kaleido.Queryable.UnitTests;
 
 public sealed class QueryableServiceTests
     : Kaleido.UnitTests.SutFixture

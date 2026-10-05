@@ -32,9 +32,6 @@ public static class QueryableTelemetry
     public const string CanceledEventName =
         "kaleido.queryable.canceled";
 
-    public const string ExceptionEventName =
-        "kaleido.queryable.exception";
-
     // ── Tag key names (activity tags) ─────────────────────────────────────────
 
     public const string TagQueryContext =

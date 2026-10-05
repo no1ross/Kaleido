@@ -4,7 +4,7 @@ using Xunit;
 using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Process.ProcessStepSuffixAnalyzer>;
 
-namespace Kaleido.Analyzers.UnitTests.Process;
+namespace Kaleido.Analyzers.Process.UnitTests;
 
 public sealed class ProcessStepSuffixAnalyzerTests
     : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Process.ProcessStepSuffixAnalyzer>

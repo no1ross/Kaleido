@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Exceptions;
 
-namespace Kaleido.UnitTests.Processor.Planning;
+using Kaleido.UnitTests;
+
+namespace Kaleido.Processor.Planning.UnitTests;
 
 public sealed class StepCandidateValidatorTests
     : SutFixture

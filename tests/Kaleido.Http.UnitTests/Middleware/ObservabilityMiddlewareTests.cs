@@ -6,7 +6,7 @@ using Kaleido.Processor.Observability;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Http.UnitTests.Middleware;
+namespace Kaleido.Http.Middleware.UnitTests;
 
 public sealed class ObservabilityMiddlewareTests
     : Kaleido.UnitTests.SutFixture

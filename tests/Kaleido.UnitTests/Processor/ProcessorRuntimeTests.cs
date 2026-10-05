@@ -5,7 +5,9 @@ using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Kaleido.UnitTests.Processor;
+using Kaleido.UnitTests;
+
+namespace Kaleido.Processor.UnitTests;
 
 public sealed class ProcessorRuntimeTests
     : SutFixture

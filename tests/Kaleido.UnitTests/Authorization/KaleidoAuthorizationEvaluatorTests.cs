@@ -5,7 +5,9 @@ using Kaleido.Processor.Context;
 using Kaleido.Registry;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Kaleido.UnitTests.Authorization;
+using Kaleido.UnitTests;
+
+namespace Kaleido.Authorization.UnitTests;
 
 public sealed class KaleidoAuthorizationEvaluatorTests
     : SutFixture

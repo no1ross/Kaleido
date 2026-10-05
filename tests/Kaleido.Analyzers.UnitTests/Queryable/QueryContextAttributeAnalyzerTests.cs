@@ -4,7 +4,7 @@ using Xunit;
 using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Queryable.QueryContextAttributeAnalyzer>;
 
-namespace Kaleido.Analyzers.UnitTests.Queryable;
+namespace Kaleido.Analyzers.Queryable.UnitTests;
 
 public sealed class QueryContextAttributeAnalyzerTests
     : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Queryable.QueryContextAttributeAnalyzer>
