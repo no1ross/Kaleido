@@ -135,7 +135,7 @@ Any `IEndpointConventionBuilder` extension (`RequireAuthorization`, `WithMetadat
 
 ### Per-capability authorization
 
-Capability authorization is switched on in core with `AddKaleido(…, o => o.EnforceAuthorization = true)` (see [`docs/AUTHORIZATION.md`](../../docs/AUTHORIZATION.md)). When it is off (default) Kaleido attaches no auth metadata and enforces nothing, so hosts without authentication work unchanged. When it is on, every capability requires an authenticated caller, and `[KaleidoAuthorization]` narrows or opens it:
+Capability authorization is set in core with `AddKaleido(…, o => o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust)` (see [`docs/AUTHORIZATION.md`](../../docs/AUTHORIZATION.md)). With `None` (default) Kaleido attaches no auth metadata and enforces nothing, so hosts without authentication work unchanged. With `Authenticated`, every capability requires an authenticated caller and undeclared capabilities are open to any of them. With `ZeroTrust`, a capability needs an explicit rule (its own `[KaleidoAuthorization]` or the service `DefaultAuthorization`) or it is not mapped or discovered at all. `[KaleidoAuthorization]` narrows or opens access:
 
 ```csharp
 [ProcessStep(Name = "approve", ...)]
@@ -150,7 +150,7 @@ Enforcement works on two layers:
 **In-handler evaluation** — `IKaleidoAuthorizer` (registered scoped by `AddHttp()`) covers what per-route metadata cannot express:
 - *Multi-step execute* — `POST /processes/execute` has no route-level auth; `ProcessExecutionService` checks every submitted step against its own declaration before anything runs, and the first denial rejects the whole request (401/403). Unknown step names and empty requests are checked as undeclared.
 - *Process ownership* — resuming or reading an owned process requires the owner or a role-mate.
-- *Filtered discovery* — the `/{service}/registry` endpoint stays open but scopes its payload to the caller: `FilterAsync` drops capabilities the caller can't access (including views inside contexts and steps inside processors) and omits processors whose steps are all filtered out. The registry cache holds the unfiltered union; filtering is per-request with this host's `EnforceAuthorization`, so routers must enable it too.
+- *Filtered discovery* — the `/{service}/registry` endpoint stays open but scopes its payload to the caller: `FilterAsync` drops capabilities the caller can't access (including views inside contexts and steps inside processors) and omits processors whose steps are all filtered out. The registry cache holds the unfiltered union; filtering is per-request with this host's `AuthorizationMode`, so routers must use `ZeroTrust` too.
 
 Authorization failures are `KaleidoErrorResponse` bodies with codes `unauthorized` (401, unauthenticated) and `forbidden` (403, denied) — via `KaleidoAuthorizationResultHandler` for middleware-level denials and `ExceptionMiddleware` for thrown `KaleidoAuthorizationException`s. Both record the `endpoint_errors` counter.
 
