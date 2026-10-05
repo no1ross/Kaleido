@@ -12,8 +12,8 @@ public sealed class KaleidoHttpOptions
 {
     /// <summary>
     /// Decides whether identity-bearing correlation headers
-    /// (<c>X-Kaleido-Request-Id</c>, <c>X-Kaleido-Source-Processor</c>,
-    /// <c>X-Kaleido-Step-Name</c>, <c>X-Kaleido-Processor-Instance-Id</c>)
+    /// (<c>X-Kaleido-Request-Id</c>, <c>X-Kaleido-Calling-Processor</c>,
+    /// <c>X-Kaleido-Calling-Step</c>)
     /// are honored for a request. <c>X-Kaleido-Process-Id</c> is always
     /// honored — it is a resumable process handle, not an identity claim.
     /// <para>

@@ -30,7 +30,8 @@ internal sealed record StepInvocationResult
 
 internal sealed class ProcessorStepInvoker(
     IProcessorObservability observability,
-    IServiceScopeFactory scopeFactory)
+    IServiceScopeFactory scopeFactory,
+    IKaleidoCorrelationContextAccessor correlationAccessor)
     : IProcessStepInvoker
 {
 
@@ -52,6 +53,19 @@ internal sealed class ProcessorStepInvoker(
 
         using var scope =
             scopeFactory.CreateScope();
+
+        // The handler runs in its own scope, whose scoped correlation would otherwise be
+        // empty: carry the request's correlation in, with this process's id and the
+        // executing step, so the handler's outbound calls forward RequestId/ProcessId and
+        // stamp this processor + step as the caller.
+        scope.ServiceProvider
+            .GetRequiredService<IKaleidoCorrelationContextInitializer>()
+            .Initialize(
+                correlationAccessor.Current with
+                {
+                    ProcessId = context.ProcessId,
+                    ExecutingStepName = registration.Metadata.Name
+                });
 
         var handler =
             scope.ServiceProvider.GetRequiredService(

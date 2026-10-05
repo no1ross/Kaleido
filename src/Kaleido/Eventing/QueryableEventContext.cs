@@ -25,10 +25,10 @@ public sealed record QueryableEventContext
     public Guid? ProcessId { get; init; }
 
     /// <summary>
-    /// The process step that triggered this query, if propagated via <c>X-Kaleido-Step-Name</c>.
-    /// Allows tracing which process step initiated a queryable operation.
+    /// The step that called this query (<c>X-Kaleido-Calling-Step</c>), in
+    /// <see cref="CallingProcessorName"/>. <c>null</c> when not called from a processor step.
     /// </summary>
-    public string? StepName { get; init; }
+    public string? CallingStepName { get; init; }
 
     /// <summary>The query context that was executed.</summary>
     public required string QueryContextName { get; init; }
@@ -43,8 +43,8 @@ public sealed record QueryableEventContext
     public string? ProcessorInstanceId { get; init; }
 
     /// <summary>
-    /// The service name of the caller that originated this request, if propagated via <c>X-Kaleido-Source-Processor</c>.
-    /// Falls back to <see cref="ServiceName"/> when not present.
+    /// The processor whose step called this query (<c>X-Kaleido-Calling-Processor</c>).
+    /// <c>null</c> when not called from a processor step.
     /// </summary>
-    public string? SourceProcessorName { get; init; }
+    public string? CallingProcessorName { get; init; }
 }

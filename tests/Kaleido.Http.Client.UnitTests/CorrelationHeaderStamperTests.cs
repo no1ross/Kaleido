@@ -7,7 +7,7 @@ public sealed class CorrelationHeaderStamperTests
 {
     private static CorrelationHeaderStamper CreateSut(
         IKaleidoCorrelationContextAccessor correlation) =>
-        new(correlation);
+        new(correlation, new KaleidoServiceOptions { ServiceName = "intake" });
 
     // ---------------------------------------------------------------------------
     // Sanitize
@@ -98,43 +98,53 @@ public sealed class CorrelationHeaderStamperTests
     }
 
     [Fact]
-    public void Stamp_SourceProcessorNamePresent_AddsHeader()
+    public void Stamp_InsideStep_AddsThisServiceAndExecutingStepAsCaller()
     {
-        var correlation = SetupContext(new KaleidoCorrelationContext { SourceProcessorName = "my-processor" });
+        var correlation = SetupContext(new KaleidoCorrelationContext { ExecutingStepName = "route-to-radiology" });
         var stamper = CreateSut(correlation);
         var request = new HttpRequestMessage();
 
         stamper.Stamp(request);
 
-        Assert.True(request.Headers.TryGetValues(KaleidoCorrelationHeaders.SourceProcessor, out var values));
-        Assert.Contains("my-processor", values);
+        Assert.True(request.Headers.TryGetValues(KaleidoCorrelationHeaders.CallingProcessor, out var processor));
+        Assert.Contains("intake", processor);
+        Assert.True(request.Headers.TryGetValues(KaleidoCorrelationHeaders.CallingStep, out var step));
+        Assert.Contains("route-to-radiology", step);
     }
 
     [Fact]
-    public void Stamp_ProcessorInstanceIdPresent_AddsHeader()
+    public void Stamp_InboundCallerOutsideStep_IsNotForwarded()
     {
-        var id = Guid.NewGuid();
-        var correlation = SetupContext(new KaleidoCorrelationContext { ProcessorInstanceId = id });
+        var correlation = SetupContext(new KaleidoCorrelationContext
+        {
+            CallingProcessorName = "router",
+            CallingStepName = "upstream-step"
+        });
         var stamper = CreateSut(correlation);
         var request = new HttpRequestMessage();
 
         stamper.Stamp(request);
 
-        Assert.True(request.Headers.TryGetValues(KaleidoCorrelationHeaders.ProcessorInstanceId, out var values));
-        Assert.Contains(id.ToString(), values);
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.CallingProcessor));
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.CallingStep));
     }
 
     [Fact]
-    public void Stamp_StepNamePresent_AddsHeader()
+    public void Stamp_InboundCallerInsideStep_IsReplacedByThisService()
     {
-        var correlation = SetupContext(new KaleidoCorrelationContext { StepName = "my-step" });
+        var correlation = SetupContext(new KaleidoCorrelationContext
+        {
+            CallingProcessorName = "upstream",
+            CallingStepName = "upstream-step",
+            ExecutingStepName = "my-step"
+        });
         var stamper = CreateSut(correlation);
         var request = new HttpRequestMessage();
 
         stamper.Stamp(request);
 
-        Assert.True(request.Headers.TryGetValues(KaleidoCorrelationHeaders.StepName, out var values));
-        Assert.Contains("my-step", values);
+        Assert.Equal(["intake"], request.Headers.GetValues(KaleidoCorrelationHeaders.CallingProcessor));
+        Assert.Equal(["my-step"], request.Headers.GetValues(KaleidoCorrelationHeaders.CallingStep));
     }
 
     [Fact]
@@ -148,9 +158,8 @@ public sealed class CorrelationHeaderStamperTests
 
         Assert.False(request.Headers.TryGetValues(KaleidoCorrelationHeaders.RequestId, out _));
         Assert.False(request.Headers.TryGetValues(KaleidoCorrelationHeaders.ProcessId, out _));
-        Assert.False(request.Headers.TryGetValues(KaleidoCorrelationHeaders.SourceProcessor, out _));
-        Assert.False(request.Headers.TryGetValues(KaleidoCorrelationHeaders.ProcessorInstanceId, out _));
-        Assert.False(request.Headers.TryGetValues(KaleidoCorrelationHeaders.StepName, out _));
+        Assert.False(request.Headers.TryGetValues(KaleidoCorrelationHeaders.CallingProcessor, out _));
+        Assert.False(request.Headers.TryGetValues(KaleidoCorrelationHeaders.CallingStep, out _));
     }
 
     [Fact]

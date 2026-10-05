@@ -26,29 +26,26 @@ internal sealed class ObservabilityMiddleware(RequestDelegate next)
 
         initializer?.Initialize(correlation);
 
-        // Tag all correlation fields on the current Activity (created by ASP.NET Core
-        // instrumentation) so every span for this request carries the full Kaleido context.
+        // Tag the correlation on the current Activity (created by ASP.NET Core
+        // instrumentation). The instance id is this service's own, never from the wire.
         var activity = Activity.Current;
         if (activity is not null)
         {
             activity.SetTag(KaleidoTelemetryTags.RequestId, correlation.RequestId);
-            activity.SetTag(KaleidoTelemetryTags.ProcessorInstanceId, correlation.ProcessorInstanceId?.ToString());
-            activity.SetTag(KaleidoTelemetryTags.SourceProcessor, correlation.SourceProcessorName);
+            activity.SetTag(
+                KaleidoTelemetryTags.ProcessorInstanceId,
+                context.RequestServices.GetService<KaleidoServiceOptions>()?.InstanceId.ToString());
+            activity.SetTag(KaleidoTelemetryTags.CallingProcessor, correlation.CallingProcessorName);
+            activity.SetTag(KaleidoTelemetryTags.CallingStep, correlation.CallingStepName);
 
             if (correlation.ProcessId.HasValue)
             {
                 activity.SetTag(ProcessorTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
             }
-
-            if (!string.IsNullOrWhiteSpace(correlation.StepName))
-            {
-                activity.SetTag(ProcessorTelemetry.TagStepName, correlation.StepName);
-            }
         }
 
-        // Echo the full correlation context on the response so callers can correlate
-        // requests with backend traces and know exactly where in the process graph
-        // this service was called from.
+        // Echo only the end-to-end correlation on the response; per-hop identity
+        // describes the request, not the response.
         context.Response.OnStarting(() =>
         {
             var headers = context.Response.Headers;
@@ -58,21 +55,6 @@ internal sealed class ObservabilityMiddleware(RequestDelegate next)
             if (correlation.ProcessId.HasValue)
             {
                 headers[KaleidoCorrelationHeaders.ProcessId] = correlation.ProcessId.Value.ToString();
-            }
-
-            if (correlation.ProcessorInstanceId.HasValue)
-            {
-                headers[KaleidoCorrelationHeaders.ProcessorInstanceId] = correlation.ProcessorInstanceId.Value.ToString();
-            }
-
-            if (!string.IsNullOrWhiteSpace(correlation.SourceProcessorName))
-            {
-                headers[KaleidoCorrelationHeaders.SourceProcessor] = correlation.SourceProcessorName;
-            }
-
-            if (!string.IsNullOrWhiteSpace(correlation.StepName))
-            {
-                headers[KaleidoCorrelationHeaders.StepName] = correlation.StepName;
             }
 
             return Task.CompletedTask;

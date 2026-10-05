@@ -31,8 +31,11 @@ public sealed record ProcessEventContext
     public string? ProcessorInstanceId { get; init; }
 
     /// <summary>
-    /// The service name of the caller that originated this request, if propagated via <c>X-Kaleido-Source-Processor</c>.
-    /// Falls back to <see cref="ServiceName"/> when not present.
+    /// The processor whose step called this service (<c>X-Kaleido-Calling-Processor</c>).
+    /// <c>null</c> when the request did not come from another processor's step.
     /// </summary>
-    public string? SourceProcessorName { get; init; }
+    public string? CallingProcessorName { get; init; }
+
+    /// <summary>The step in <see cref="CallingProcessorName"/> that called this service (<c>X-Kaleido-Calling-Step</c>).</summary>
+    public string? CallingStepName { get; init; }
 }

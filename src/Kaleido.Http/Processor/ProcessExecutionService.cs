@@ -213,11 +213,5 @@ internal sealed class ProcessExecutionService(
 
         headers[KaleidoCorrelationHeaders.ProcessId] =
             processId.ToString();
-
-        headers[KaleidoCorrelationHeaders.ProcessorInstanceId] =
-            serviceOptions.InstanceId.ToString();
-
-        headers[KaleidoCorrelationHeaders.SourceProcessor] =
-            serviceOptions.ServiceName;
     }
 }
