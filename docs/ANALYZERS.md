@@ -109,6 +109,7 @@ code on the first pass — do not suppress.
 | KAL1010 | A concrete `*Tests` class that declares ordinary methods but no `[Fact]`/`[Theory]` is a helper-only stub, not evidence of tests; a class with no ordinary methods is exempt | `Fixture '{0}' has no [Fact] or [Theory] test methods — add at least one test or remove the empty stub` |
 | KAL1011 | A record deriving from `System.Exception` has inappropriate synthesized value/copy semantics; the C# compiler also rejects this declaration today | `Exception type '{0}' is declared as a record — exception classes must remain classes` |
 | KAL1012 | Fixtures may not `new` a framework collaborator — a testable Kaleido type implementing a service interface; mock it instead | `'{0}' is a collaborator, not the SUT — mock it instead of new-ing a real instance` |
+| KAL1013 | A unit-test fixture is declared in its SUT's namespace with `.UnitTests` appended (`Kaleido.Queryable.Query.QueryContextEngine` → `Kaleido.Queryable.Query.UnitTests`); `*.UnitTests` assemblies only | `Test fixture '{0}' tests '{1}' — declare it in namespace '{2}'` |
 
 KAL1009 is configured as a warning — it flags types missing a fixture without breaking the build; see `.editorconfig` `[tests/**]` section.
 
