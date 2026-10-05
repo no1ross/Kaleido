@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Middleware;
@@ -27,33 +29,29 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
         }
         catch (KaleidoAuthorizationException exception)
         {
-            var statusCode =
-                exception.CallerIsAuthenticated
-                    ? StatusCodes.Status403Forbidden
-                    : StatusCodes.Status401Unauthorized;
-
-            var errorCode =
-                exception.CallerIsAuthenticated
-                    ? KaleidoErrorCodes.Forbidden
-                    : KaleidoErrorCodes.Unauthorized;
-
             Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
 
             logger.LogWarning(
                 exception,
-                "Authorization denied [{Code}]: {Message}",
-                errorCode,
+                "Authorization denied (caller authenticated: {CallerIsAuthenticated}): {Message}",
+                exception.CallerIsAuthenticated,
                 exception.Message);
 
-            context.Response.StatusCode = statusCode;
-
-            RecordEndpointError(errorCode, statusCode);
-
-            await context.Response.WriteAsJsonAsync(
-                new KaleidoErrorResponse(
-                [
-                    new KaleidoError(errorCode, exception.Message)
-                ]));
+            if (context.RequestServices.GetService<IAuthenticationService>() is null)
+            {
+                context.Response.StatusCode =
+                    exception.CallerIsAuthenticated
+                        ? StatusCodes.Status403Forbidden
+                        : StatusCodes.Status401Unauthorized;
+            }
+            else if (exception.CallerIsAuthenticated)
+            {
+                await context.ForbidAsync();
+            }
+            else
+            {
+                await context.ChallengeAsync();
+            }
         }
         catch (KaleidoValidationException exception)
         {

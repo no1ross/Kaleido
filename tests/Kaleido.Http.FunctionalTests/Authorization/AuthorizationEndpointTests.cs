@@ -44,22 +44,20 @@ public sealed class AuthorizationEndpointTests(
     // -- per-capability endpoint enforcement -------------------------------
 
     [Fact]
-    public async Task StepExecute_WhenUnauthenticated_Returns401WithKaleidoError()
+    public async Task StepExecute_WhenUnauthenticated_ChallengesWithHostScheme()
     {
         var response = await fixture.Client.PostAsJsonAsync(
             InternalStepExecuteUrl,
             StepBody);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var body =
-            await response.Content.ReadAsync<KaleidoErrorResponse>();
-
-        Assert.Equal(KaleidoErrorCodes.Unauthorized, Assert.Single(body!.Errors).Code);
+        Assert.Equal(
+            TestAuthHandler.ChallengeHeaderValue,
+            response.Headers.WwwAuthenticate.ToString());
     }
 
     [Fact]
-    public async Task StepExecute_WhenRoleMismatch_Returns403WithKaleidoError()
+    public async Task StepExecute_WhenRoleMismatch_ForbidsWithHostScheme()
     {
         var response = await fixture.Client.SendAsync(
             AuthorizationAspNetCoreFixture.AuthenticatedJson(
@@ -68,11 +66,7 @@ public sealed class AuthorizationEndpointTests(
                 roles: ["viewer"]));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-
-        var body =
-            await response.Content.ReadAsync<KaleidoErrorResponse>();
-
-        Assert.Equal(KaleidoErrorCodes.Forbidden, Assert.Single(body!.Errors).Code);
+        Assert.Empty(await response.Content.ReadAsByteArrayAsync());
     }
 
     [Fact]
@@ -177,6 +171,9 @@ public sealed class AuthorizationEndpointTests(
                 AuthorizationStepNames.OpenStep));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(
+            TestAuthHandler.ChallengeHeaderValue,
+            response.Headers.WwwAuthenticate.ToString());
     }
 
     [Fact]
