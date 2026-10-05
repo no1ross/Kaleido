@@ -74,10 +74,10 @@ public sealed class QueryRequestTests
     public void KaleidoValidationException_CreatesWithCodeAndMessage()
     {
         var exception = new KaleidoValidationException(
-            ValidationErrorCodes.QryInvalidField,
+            QueryableErrorCodes.InvalidField,
             "Field 'test-field' does not exist.");
 
-        Assert.Equal(ValidationErrorCodes.QryInvalidField, exception.Code);
+        Assert.Equal(QueryableErrorCodes.InvalidField, exception.Code);
         Assert.Equal("Field 'test-field' does not exist.", exception.Message);
     }
 
@@ -86,11 +86,11 @@ public sealed class QueryRequestTests
     {
         var inner = new InvalidOperationException("inner");
         var exception = new KaleidoValidationException(
-            ValidationErrorCodes.QryInvalidFilterValue,
+            QueryableErrorCodes.InvalidFilterValue,
             "Bad filter value.",
             inner);
 
-        Assert.Equal(ValidationErrorCodes.QryInvalidFilterValue, exception.Code);
+        Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
         Assert.Equal("Bad filter value.", exception.Message);
         Assert.Same(inner, exception.InnerException);
     }

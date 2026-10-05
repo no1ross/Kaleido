@@ -31,7 +31,7 @@ public static class QueryableServiceCollectionExtensions
                 .Where(x =>
                     x.PassesTypeFilter(
                         builder.ServiceOptions.TypeFilter,
-                        ConfigurationErrorCodes.QryInvalidRegistration,
+                        QueryableErrorCodes.InvalidRegistration,
                         "queryable type"))
                 .ToArray();
 
@@ -71,7 +71,7 @@ public static class QueryableServiceCollectionExtensions
                 .Where(x =>
                     x.PassesTypeFilter(
                         builder.ServiceOptions.TypeFilter,
-                        ConfigurationErrorCodes.QryInvalidRegistration,
+                        QueryableErrorCodes.InvalidRegistration,
                         "queryable type"))
                 .ToArray();
 
@@ -319,7 +319,7 @@ public static class QueryableServiceCollectionExtensions
         if (syncInterfaces.Length == 0 && asyncInterfaces.Length == 0)
         {
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.QryInvalidRegistration,
+                QueryableErrorCodes.InvalidRegistration,
                 $"Query view '{queryViewType.FullName}' does not implement IQueryViewSource or IQueryViewSourceAsync.");
         }
 

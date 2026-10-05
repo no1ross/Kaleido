@@ -57,7 +57,7 @@ internal sealed class QueryViewRegistrationValidator
         }
 
         throw new KaleidoConfigurationException(
-            ConfigurationErrorCodes.QryDuplicateRegistration,
+            QueryableErrorCodes.DuplicateRegistration,
             $"Duplicate query view names detected: {string.Join(", ", duplicates.Select(x => x.Key))}");
     }
 
@@ -91,14 +91,14 @@ internal sealed class QueryViewRegistrationValidator
             if (syncInterfaces.Length == 0 && asyncInterfaces.Length == 0)
             {
                 throw new KaleidoConfigurationException(
-                    ConfigurationErrorCodes.QryInvalidRegistration,
+                    QueryableErrorCodes.InvalidRegistration,
                     $"Query view '{queryViewType.Name}' must implement IQueryViewSource or IQueryViewSourceAsync.");
             }
 
             if (syncInterfaces.Length > 0 && asyncInterfaces.Length > 0)
             {
                 throw new KaleidoConfigurationException(
-                    ConfigurationErrorCodes.QryInvalidRegistration,
+                    QueryableErrorCodes.InvalidRegistration,
                     $"Query view '{queryViewType.Name}' implements both IQueryViewSource and IQueryViewSourceAsync. " +
                     $"Implement exactly one.");
             }
@@ -123,7 +123,7 @@ internal sealed class QueryViewRegistrationValidator
             if (!registeredContexts.Contains(contextType))
             {
                 throw new KaleidoConfigurationException(
-                    ConfigurationErrorCodes.QryInvalidRegistration,
+                    QueryableErrorCodes.InvalidRegistration,
                     $"Query view '{queryViewType.Name}' references unregistered query context '{contextType.Name}'.");
             }
 
@@ -133,7 +133,7 @@ internal sealed class QueryViewRegistrationValidator
             if (!contractType.IsClass)
             {
                 throw new KaleidoConfigurationException(
-                    ConfigurationErrorCodes.QryInvalidRegistration,
+                    QueryableErrorCodes.InvalidRegistration,
                     $"Query view '{queryViewType.Name}' references invalid contract type '{contractType.Name}'.");
             }
         }

@@ -141,7 +141,7 @@ internal static class QueryMetadataExtensions
         if (string.IsNullOrWhiteSpace(attribute.DefaultSortField))
         {
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.QryInvalidRegistration,
+                QueryableErrorCodes.InvalidRegistration,
                 $"Query view '{attribute.Name}' is pageable and must define a DefaultSortField.");
         }
 
@@ -155,14 +155,14 @@ internal static class QueryMetadataExtensions
         if (property is null)
         {
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.QryInvalidRegistration,
+                QueryableErrorCodes.InvalidRegistration,
                 $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' which does not exist on query context '{contextType.Name}'.");
         }
 
         if (property.GetCustomAttribute<SortableAttribute>() is null)
         {
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.QryInvalidRegistration,
+                QueryableErrorCodes.InvalidRegistration,
                 $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' but the field is not marked as sortable.");
         }
     }

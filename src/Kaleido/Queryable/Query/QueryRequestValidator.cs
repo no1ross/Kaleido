@@ -108,7 +108,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         }
 
         throw new KaleidoValidationException(
-            ValidationErrorCodes.QryUnsupportedRuntimeType,
+            QueryableErrorCodes.UnsupportedRuntimeType,
             $"Value '{name}' contains unsupported runtime type '{actualType.FullName}'. " +
             "Transport layers must normalize values before invoking Queryable.");
     }
@@ -128,7 +128,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         if (depth > MaxFilterDepth)
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryFilterDepthExceeded,
+                QueryableErrorCodes.FilterDepthExceeded,
                 $"Filter expression exceeds the maximum nesting depth of {MaxFilterDepth}.");
         }
 
@@ -136,7 +136,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
             node.Group is not null)
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidFilterNode,
+                QueryableErrorCodes.InvalidFilterNode,
                 "Filter node cannot specify both Condition and Group.");
         }
 
@@ -160,7 +160,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         }
 
         throw new KaleidoValidationException(
-            ValidationErrorCodes.QryInvalidFilterNode,
+            QueryableErrorCodes.InvalidFilterNode,
             "Filter node must specify either Condition or Group.");
     }
 
@@ -172,7 +172,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         if (group.Filters.Count == 0)
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryEmptyFilterGroup,
+                QueryableErrorCodes.EmptyFilterGroup,
                 "Filter group must contain at least one expression.");
         }
 
@@ -192,7 +192,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         if (string.IsNullOrWhiteSpace(condition.Field))
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryMissingFilterField,
+                QueryableErrorCodes.MissingFilterField,
                 "Filter field is required.");
         }
 
@@ -203,14 +203,14 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         if (!field.IsFilterable)
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryFieldNotFilterable,
+                QueryableErrorCodes.FieldNotFilterable,
                 $"Field '{condition.Field}' is not filterable.");
         }
 
         if (!field.FilterOperators.Contains(condition.Operator))
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryUnsupportedOperator,
+                QueryableErrorCodes.UnsupportedOperator,
                 $"Field '{condition.Field}' does not support operator '{condition.Operator}'.");
         }
 
@@ -231,7 +231,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
                 x => x.IsSearchable))
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryFieldNotSearchable,
+                QueryableErrorCodes.FieldNotSearchable,
                 "No searchable fields are defined.");
         }
     }
@@ -257,7 +257,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         if (duplicateFields.Length > 0)
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryDuplicateSortField,
+                QueryableErrorCodes.DuplicateSortField,
                 $"Duplicate sort fields are not allowed: {string.Join(", ", duplicateFields)}.");
         }
 
@@ -270,7 +270,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
             if (!field.IsSortable)
             {
                 throw new KaleidoValidationException(
-                    ValidationErrorCodes.QryFieldNotSortable,
+                    QueryableErrorCodes.FieldNotSortable,
                     $"Field '{sort.Field}' is not sortable.");
             }
         }
@@ -288,14 +288,14 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         if (pageable is null)
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryPagingNotSupported,
+                QueryableErrorCodes.PagingNotSupported,
                 "Paging is not supported for this record.");
         }
 
         if (page.Size is <= 0)
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidPageSize,
+                QueryableErrorCodes.InvalidPageSize,
                 $"Page size '{page.Size.Value}' must be greater than zero.");
         }
 
@@ -303,14 +303,14 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
             page.Size.Value > pageable.MaxSize)
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidPageSize,
+                QueryableErrorCodes.InvalidPageSize,
                 $"Page size '{page.Size.Value}' exceeds maximum page size '{pageable.MaxSize}'.");
         }
 
         if (page.Offset is < 0)
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidPageOffset,
+                QueryableErrorCodes.InvalidPageOffset,
                 $"Page offset '{page.Offset.Value}' must not be negative.");
         }
     }

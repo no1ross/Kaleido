@@ -67,4 +67,7 @@ public static class HttpClientErrorCodes
 
     /// <summary>A URL returned by a remote registry was not a valid absolute http(s) URL.</summary>
     public const string InvalidRegistryUrl   = "httpclient_invalid_registry_url";
+
+    /// <summary>A configured Kaleido client is missing a BaseUrl (neither client-level nor shared Kaleido:BaseUrl). Raised at startup as a configuration error.</summary>
+    public const string MissingBaseUrl       = "missing_base_url";
 }

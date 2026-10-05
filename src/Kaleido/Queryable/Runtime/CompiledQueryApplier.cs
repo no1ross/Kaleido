@@ -160,7 +160,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                         .ToArray()),
 
             _ => throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidFilterNode,
+                QueryableErrorCodes.InvalidFilterNode,
                 $"Unsupported compiled filter type '{expression.GetType().Name}'.")
         };
     }
@@ -227,7 +227,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                     negate: false),
 
             _ => throw new KaleidoValidationException(
-                ValidationErrorCodes.QryUnsupportedMatchMode,
+                QueryableErrorCodes.UnsupportedMatchMode,
                 $"Field '{field.Field.Name}' does not support match mode '{field.MatchMode}'.")
         };
     }
@@ -374,7 +374,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                     expected: false),
 
             _ => throw new KaleidoValidationException(
-                ValidationErrorCodes.QryUnsupportedOperator,
+                QueryableErrorCodes.UnsupportedOperator,
                 $"Field '{condition.Field.Name}' does not support operator '{condition.Operator}'.")
         };
     }
@@ -508,7 +508,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         if (member.Type != typeof(string))
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidFilterNode,
+                QueryableErrorCodes.InvalidFilterNode,
                 $"String operator '{methodName}' can only be applied to string fields. Field expression type was '{member.Type.Name}'.");
         }
 
@@ -648,7 +648,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         if (values.Count < 2)
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidFilterNode,
+                QueryableErrorCodes.InvalidFilterNode,
                 "Between and NotBetween require exactly two values.");
         }
 
@@ -693,7 +693,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         if (targetType != typeof(bool))
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidFilterNode,
+                QueryableErrorCodes.InvalidFilterNode,
                 $"Boolean operator can only be applied to bool fields. Field expression type was '{member.Type.Name}'.");
         }
 
@@ -732,7 +732,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         if (condition.Values.Count <= index)
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidFilterNode,
+                QueryableErrorCodes.InvalidFilterNode,
                 $"Filter operator '{condition.Operator}' requires a value at index {index}.");
         }
 
@@ -781,7 +781,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
             if (!CanBeNull(targetType))
             {
                 throw new KaleidoValidationException(
-                    ValidationErrorCodes.QryInvalidFilterValue,
+                    QueryableErrorCodes.InvalidFilterValue,
                     $"Value 'null' is not valid for field '{targetType.Name}'. Expected a value of type '{targetType.Name}'.");
             }
 
@@ -819,7 +819,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         }
 
         throw new KaleidoValidationException(
-            ValidationErrorCodes.QryInvalidFilterValue,
+            QueryableErrorCodes.InvalidFilterValue,
             $"Value '{value}' is not valid for field '{expectedType.Name}'. Expected a value of type '{expectedType.Name}'.");
     }
 

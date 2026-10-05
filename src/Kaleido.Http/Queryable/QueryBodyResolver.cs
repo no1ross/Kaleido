@@ -119,21 +119,21 @@ internal static class QueryBodyResolver
         Enum.TryParse<FilterOperator>(raw, ignoreCase: true, out var result)
             ? result
             : throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidFilterValue,
+                QueryableErrorCodes.InvalidFilterValue,
                 $"Filter operator '{raw}' is not valid.");
 
     private static LogicalOperator ParseLogicalOperator(string raw) =>
         Enum.TryParse<LogicalOperator>(raw, ignoreCase: true, out var result)
             ? result
             : throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidFilterValue,
+                QueryableErrorCodes.InvalidFilterValue,
                 $"Logical operator '{raw}' is not valid. Expected 'and' or 'or'.");
 
     private static SortDirection ParseSortDirection(string raw) =>
         Enum.TryParse<SortDirection>(raw, ignoreCase: true, out var result)
             ? result
             : throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidFilterValue,
+                QueryableErrorCodes.InvalidFilterValue,
                 $"Sort direction '{raw}' is not valid. Expected 'ascending' or 'descending'.");
 
     // ── JsonElement value resolution ──────────────────────────────────────────
@@ -159,11 +159,11 @@ internal static class QueryBodyResolver
             JsonValueKind.String => ResolveString(
                 element.GetString()
                 ?? throw new KaleidoValidationException(
-                    ValidationErrorCodes.QryInvalidFilterValue,
+                    QueryableErrorCodes.InvalidFilterValue,
                     "String JSON element has a null value."),
                 targetType),
             _ => throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidFilterValue,
+                QueryableErrorCodes.InvalidFilterValue,
                 $"Unsupported JSON value kind '{element.ValueKind}' for field type '{targetType.Name}'.")
         };
     }
@@ -261,5 +261,5 @@ internal static class QueryBodyResolver
     }
 
     private static KaleidoValidationException InvalidValue(string raw, string expected) =>
-        new(ValidationErrorCodes.QryInvalidFilterValue, $"Value '{raw}' is not {expected}.");
+        new(QueryableErrorCodes.InvalidFilterValue, $"Value '{raw}' is not {expected}.");
 }

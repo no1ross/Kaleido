@@ -8,6 +8,6 @@ internal static class QueryContextMetadataExtensions
         metadata.Fields.FirstOrDefault(
             x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase))
         ?? throw new KaleidoValidationException(
-            ValidationErrorCodes.QryInvalidField,
+            QueryableErrorCodes.InvalidField,
             $"Field '{name}' does not exist on record '{metadata.Name}'.");
 }
