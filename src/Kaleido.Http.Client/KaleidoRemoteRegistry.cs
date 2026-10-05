@@ -67,7 +67,7 @@ internal sealed class KaleidoRemoteRegistry(
 
         // IHttpClientFactory owns the client lifetime — never dispose it.
         var httpClient = httpClientFactory.CreateClient(clientName);
-        var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
