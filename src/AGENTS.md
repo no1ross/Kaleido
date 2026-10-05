@@ -83,7 +83,7 @@ Owns the reference `IProcessorContextStore` implementation (SQLite):
 `AddAssembly(...)` is a lightweight recording step only. Core does not itself scan assemblies for capability registrations.
 
 ### Builder rules
-`IKaleidoBuilder` is intentionally small (`Services` + `Assemblies`). Be cautious about expanding it — additional members affect every framework built on top.
+`IKaleidoBuilder` is intentionally small: `Services`, `Assemblies`, `Configuration` and `ServiceOptions` — what every subsystem builder (Process, Queryable, Registry, transports) needs without a DI lookup. Be cautious about expanding it — additional members affect every framework built on top.
 
 `KaleidoBuilder` deduplicates assemblies by identity. Preserve that behavior.
 
