@@ -209,6 +209,11 @@ Use tests to understand behavioral expectations and invariants.
 
 ## Build and test commands
 
+### SDK and target framework
+- **Building Kaleido needs the .NET 10 SDK** (`global.json`, `rollForward: latestFeature`). That's a requirement for framework contributors only.
+- **The published packages target `net8.0`** (`Directory.Build.props`), so any consumer on .NET 8 or later can use them. We can require a newer SDK of contributors, but we can't require consumers to move.
+- **These are separate settings on purpose.** Don't raise `TargetFramework` just because the SDK is newer; changing it is an explicit owner decision.
+
 ### Build
 ```
 dotnet build Kaleido.slnx
