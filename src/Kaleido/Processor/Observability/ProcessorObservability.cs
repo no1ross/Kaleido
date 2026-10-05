@@ -251,12 +251,12 @@ internal sealed class ProcessorObservability(
     {
         TagList tags =
         [
-            new("processor.name", processorName)
+            new(KaleidoTelemetryTags.ProcessorName, processorName)
         ];
 
         if (!string.IsNullOrWhiteSpace(sourceProcessorName))
         {
-            tags.Add("source.processor", sourceProcessorName);
+            tags.Add(KaleidoTelemetryTags.SourceProcessor, sourceProcessorName);
         }
 
         return tags;
@@ -269,13 +269,13 @@ internal sealed class ProcessorObservability(
     {
         TagList tags =
         [
-            new("processor.name", processorName),
-            new("step.name", stepName)
+            new(KaleidoTelemetryTags.ProcessorName, processorName),
+            new(ProcessorTelemetry.TagStepName, stepName)
         ];
 
         if (!string.IsNullOrWhiteSpace(stepVersion))
         {
-            tags.Add("step.version", stepVersion);
+            tags.Add(ProcessorTelemetry.TagStepVersion, stepVersion);
         }
 
         return tags;
@@ -294,7 +294,7 @@ internal sealed class ProcessorObservability(
 
             ProcessContextsInitializedCounter.Add(
                 1,
-                new TagList { new("processor.name", processorName) });
+                new TagList { new(KaleidoTelemetryTags.ProcessorName, processorName) });
 
             logger.LogDebug(
                 "Process context initialized for processor {ProcessorName} process {ProcessId}.",
@@ -309,7 +309,7 @@ internal sealed class ProcessorObservability(
 
             ProcessContextsLoadedCounter.Add(
                 1,
-                new TagList { new("processor.name", processorName) });
+                new TagList { new(KaleidoTelemetryTags.ProcessorName, processorName) });
 
             logger.LogDebug(
                 "Process context loaded for processor {ProcessorName} process {ProcessId}.",
@@ -322,7 +322,7 @@ internal sealed class ProcessorObservability(
             activity?.SetTag(ProcessorTelemetry.TagPlanCandidateCount, candidateCount);
             activity?.SetTag(ProcessorTelemetry.TagPlanExecutableCount, executableCount);
 
-            var tags = new TagList { new("processor.name", processorName) };
+            var tags = new TagList { new(KaleidoTelemetryTags.ProcessorName, processorName) };
 
             ProcessPlanCandidateCountHistogram.Record(candidateCount, tags);
             ProcessPlanExecutableCountHistogram.Record(executableCount, tags);
@@ -343,7 +343,7 @@ internal sealed class ProcessorObservability(
 
             ProcessExecutionFailuresCounter.Add(
                 1,
-                new TagList { new("processor.name", processorName) });
+                new TagList { new(KaleidoTelemetryTags.ProcessorName, processorName) });
 
             logger.LogError(
                 exception,
@@ -367,7 +367,7 @@ internal sealed class ProcessorObservability(
         {
             ProcessExecutionDurationHistogram.Record(
                 Stopwatch.GetElapsedTime(_startTimestamp).TotalSeconds,
-                new TagList { new("processor.name", processorName) });
+                new TagList { new(KaleidoTelemetryTags.ProcessorName, processorName) });
 
             activity?.Dispose();
         }
@@ -388,8 +388,8 @@ internal sealed class ProcessorObservability(
             activity?.SetTag(ProcessorTelemetry.TagExecutionStatus, executionStatus);
 
             var tags = CreateStepTags(processorName, details.StepName, details.StepVersion);
-            tags.Add("decision.type", decisionType);
-            tags.Add("execution.status", executionStatus);
+            tags.Add(ProcessorTelemetry.TagDecisionType, decisionType);
+            tags.Add(ProcessorTelemetry.TagExecutionStatus, executionStatus);
 
             logger.LogDebug(
                 "Process step decision recorded for processor {ProcessorName} step {StepName} version {StepVersion} decision {DecisionType} status {ExecutionStatus}.",

@@ -145,14 +145,14 @@ internal sealed class QueryableObservability(
     {
         TagList tags =
         [
-            new("query.context", details.QueryContextName),
-            new("query.direct", details.IsDirectQuery),
-            new("query.execution_mode", details.ExecutionMode.ToString())
+            new(QueryableTelemetry.TagQueryContext, details.QueryContextName),
+            new(QueryableTelemetry.TagQueryDirect, details.IsDirectQuery),
+            new(QueryableTelemetry.TagQueryExecutionMode, details.ExecutionMode.ToString())
         ];
 
         if (!string.IsNullOrWhiteSpace(details.QueryViewName))
         {
-            tags.Add("query.view", details.QueryViewName);
+            tags.Add(QueryableTelemetry.TagQueryView, details.QueryViewName);
         }
 
         return tags;
@@ -269,7 +269,7 @@ internal sealed class QueryableObservability(
         private static TagList CreateValidationTags(QueryObservationDetails details, string validationCode)
         {
             var tags = CreateExecutionTags(details);
-            tags.Add("validation.code", validationCode);
+            tags.Add(QueryableTelemetry.TagValidationCode, validationCode);
             return tags;
         }
 
