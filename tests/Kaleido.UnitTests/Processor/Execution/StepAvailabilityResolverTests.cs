@@ -3,7 +3,7 @@ using Kaleido.Processor.Registry;
 
 using Kaleido.UnitTests;
 
-namespace Kaleido.Processor.UnitTests.Processor.Execution;
+namespace Kaleido.Processor.Execution.UnitTests;
 
 public sealed class StepAvailabilityResolverTests
     : SutFixture

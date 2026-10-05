@@ -5,7 +5,7 @@ using Kaleido.Queryable.Registry;
 using Kaleido.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Queryable.UnitTests.Records;
+namespace Kaleido.Queryable.Registry.UnitTests;
 
 public sealed class QueryContextRegistryTests
     : Kaleido.UnitTests.SutFixture

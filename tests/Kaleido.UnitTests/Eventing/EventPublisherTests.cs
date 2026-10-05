@@ -2,7 +2,9 @@ using Kaleido.Eventing;
 using Kaleido.Processor.Eventing;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Kaleido.UnitTests.Eventing;
+using Kaleido.UnitTests;
+
+namespace Kaleido.Eventing.UnitTests;
 
 public sealed class EventPublisherTests
     : SutFixture

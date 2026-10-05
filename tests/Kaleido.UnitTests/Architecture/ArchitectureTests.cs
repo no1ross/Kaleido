@@ -1,7 +1,9 @@
 using NetArchTest.Rules;
 using TestResult = NetArchTest.Rules.TestResult;
 
-namespace Kaleido.UnitTests.Architecture;
+using Kaleido.UnitTests;
+
+namespace System.Runtime.InteropServices.UnitTests;
 
 /// <summary>
 /// Enforces the project/namespace boundaries documented in src/AGENTS.md.

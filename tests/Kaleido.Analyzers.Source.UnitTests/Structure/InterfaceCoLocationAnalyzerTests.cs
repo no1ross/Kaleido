@@ -4,7 +4,7 @@ using Xunit;
 using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Source.Layout.InterfaceCoLocationAnalyzer>;
 
-namespace Kaleido.Analyzers.Source.UnitTests;
+namespace Kaleido.Analyzers.Source.Layout.UnitTests;
 
 public sealed class InterfaceCoLocationAnalyzerTests
     : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Source.Layout.InterfaceCoLocationAnalyzer>

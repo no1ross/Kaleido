@@ -1,4 +1,6 @@
-namespace Kaleido.UnitTests.Queryable.Metadata;
+using Kaleido.UnitTests;
+
+namespace Kaleido.Queryable.Metadata.UnitTests;
 
 public sealed class QueryContextRegistrationTests
     : SutFixture<QueryContextRegistration>

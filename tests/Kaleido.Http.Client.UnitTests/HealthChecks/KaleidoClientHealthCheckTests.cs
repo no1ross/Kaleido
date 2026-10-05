@@ -2,7 +2,7 @@ using Kaleido.Http.Client.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Kaleido.Http.Client.UnitTests.HealthChecks;
+namespace Kaleido.Http.Client.HealthChecks.UnitTests;
 
 public sealed class KaleidoClientHealthCheckTests
     : Kaleido.UnitTests.SutFixture

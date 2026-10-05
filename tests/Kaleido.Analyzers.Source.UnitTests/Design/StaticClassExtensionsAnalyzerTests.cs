@@ -4,7 +4,7 @@ using Xunit;
 using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Source.Design.StaticClassExtensionsAnalyzer>;
 
-namespace Kaleido.Analyzers.Source.UnitTests;
+namespace Kaleido.Analyzers.Source.Design.UnitTests;
 
 public sealed class StaticClassExtensionsAnalyzerTests
     : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Source.Design.StaticClassExtensionsAnalyzer>

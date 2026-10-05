@@ -5,7 +5,7 @@ using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Http.UnitTests.Observability;
+namespace Kaleido.Http.Observability.UnitTests;
 
 public sealed class KaleidoCallerContextEndpointFilterTests
     : SutFixture
