@@ -243,7 +243,7 @@ internal sealed class QueryableObservability(
             ArgumentNullException.ThrowIfNull(exception);
 
             activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
-            activity?.AddEvent(new ActivityEvent(QueryableTelemetry.ExceptionEventName));
+            activity.AddExceptionEvent(exception);
 
             QueryExecutionFailuresCounter.Add(1, CreateExecutionTags(details));
 

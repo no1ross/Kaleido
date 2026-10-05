@@ -29,20 +29,11 @@ public static class ProcessorTelemetry
     public const string ContextLoadedEventName =
         "kaleido.processor.context.loaded";
 
-    public const string ExceptionEventName =
-        "kaleido.processor.exception";
-
     public const string ExecutionCompletedEventName =
         "kaleido.processor.execution.completed";
 
     public const string StepCanceledEventName =
         "kaleido.processor.step.canceled";
-
-    public const string StepExceptionEventName =
-        "kaleido.processor.step.exception";
-
-    public const string HandlerExceptionEventName =
-        "kaleido.processor.handler.exception";
 
     // ── Tag key names (activity tags) ─────────────────────────────────────────
 
