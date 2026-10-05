@@ -51,7 +51,6 @@ internal sealed record QueryObservationDetails(
     bool IsDirectQuery,
     QueryExecutionMode ExecutionMode);
 
-[ExcludeFromCodeCoverage]
 internal sealed class QueryableObservability(
     IKaleidoCorrelationContextAccessor correlationAccessor,
     ILogger<QueryableObservability> logger)
