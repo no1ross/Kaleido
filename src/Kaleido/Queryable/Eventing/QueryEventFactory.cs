@@ -41,7 +41,7 @@ internal sealed class QueryEventFactory(
             PageSize = result.PageSize,
             Offset = result.Offset,
             Records = result.Results.Cast<object?>().ToArray(),
-            SearchText = (request.Query as QueryBody)?.SearchText,
+            SearchText = request.Query?.SearchText,
             SortCount = request.Query?.Sort?.Count ?? 0,
             FilterProvided = request.Query?.Filter is not null,
             ViewParameters = request.ViewParameters
