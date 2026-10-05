@@ -4,6 +4,7 @@ using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Queryable.Query;
 
@@ -32,7 +33,8 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
     IEventPublisher eventPublisher,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     IQueryableObservability observability,
-    IServiceProvider serviceProvider) : IQueryContextEngine<TQueryContext, TView>
+    IServiceProvider serviceProvider,
+    ILogger<QueryContextEngine<TQueryContext, TView>> logger) : IQueryContextEngine<TQueryContext, TView>
     where TQueryContext : class
     where TView : class
 {
@@ -72,13 +74,23 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
             if (eventPublisher is not EventPublisher)
             {
-                await eventPublisher.PublishAsync(
-                    eventFactory.CreateQueryExecuted(
-                        correlationAccessor.Current,
-                        details,
-                        request,
-                        result),
-                    cancellationToken);
+                try
+                {
+                    _ = eventPublisher.PublishAsync(
+                        eventFactory.CreateQueryExecuted(
+                            correlationAccessor.Current,
+                            details,
+                            request,
+                            result),
+                        cancellationToken);
+                }
+                catch (Exception publishException) when (publishException is not OperationCanceledException)
+                {
+                    logger.LogWarning(
+                        publishException,
+                        "Event publish failed for QueryExecuted on context {QueryContextName}. Event delivery is best-effort.",
+                        details.QueryContextName);
+                }
             }
 
             return result;
@@ -141,13 +153,23 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
             if (eventPublisher is not EventPublisher)
             {
-                await eventPublisher.PublishAsync(
-                    eventFactory.CreateQueryExecuted(
-                        correlationAccessor.Current,
-                        details,
-                        request,
-                        result),
-                    cancellationToken);
+                try
+                {
+                    _ = eventPublisher.PublishAsync(
+                        eventFactory.CreateQueryExecuted(
+                            correlationAccessor.Current,
+                            details,
+                            request,
+                            result),
+                        cancellationToken);
+                }
+                catch (Exception publishException) when (publishException is not OperationCanceledException)
+                {
+                    logger.LogWarning(
+                        publishException,
+                        "Event publish failed for QueryExecuted on context {QueryContextName}. Event delivery is best-effort.",
+                        details.QueryContextName);
+                }
             }
 
             return result;

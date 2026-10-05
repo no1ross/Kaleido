@@ -208,7 +208,7 @@ internal sealed class ProcessorRuntime(
 
             try
             {
-                await eventPublisher.PublishAsync(
+                _ = eventPublisher.PublishAsync(
                     eventFactory.CreatePlanBuilt(
                         correlationAccessor.Current,
                         context,
@@ -239,7 +239,7 @@ internal sealed class ProcessorRuntime(
 
             try
             {
-                await eventPublisher.PublishAsync(
+                _ = eventPublisher.PublishAsync(
                     eventFactory.CreateExecutionCompleted(
                         correlationAccessor.Current,
                         context,
@@ -299,7 +299,7 @@ internal sealed class ProcessorRuntime(
 
             try
             {
-                await eventPublisher.PublishAsync(
+                _ = eventPublisher.PublishAsync(
                     eventFactory.CreateProcessCreated(
                         correlationAccessor.Current,
                         initializedContext,
@@ -339,7 +339,7 @@ internal sealed class ProcessorRuntime(
 
             try
             {
-                await eventPublisher.PublishAsync(
+                _ = eventPublisher.PublishAsync(
                     eventFactory.CreateProcessCreated(
                         correlationAccessor.Current,
                         initializedContext,

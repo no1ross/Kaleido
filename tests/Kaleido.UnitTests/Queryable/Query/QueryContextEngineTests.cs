@@ -32,7 +32,8 @@ public sealed class QueryContextEngineTests
             eventPublisher ?? Mock.Of<IEventPublisher>(),
             correlationAccessor ?? Mock.Of<IKaleidoCorrelationContextAccessor>(),
             observability ?? Mock.Of<IQueryableObservability>(),
-            serviceProvider ?? Mock.Of<IServiceProvider>());
+            serviceProvider ?? Mock.Of<IServiceProvider>(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<QueryContextEngine<FakeContext, FakeView>>.Instance);
     }
 
     [Fact]
