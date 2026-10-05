@@ -1,12 +1,16 @@
 @echo off
 setlocal
 
+rem Usage: full_clean.cmd [--no-pause]
+
 echo.
 echo ==========================================
 echo   Cleaning .NET Build Artifacts
 echo ==========================================
 echo.
 
+rem node_modules is skipped: npm packages ship their own bin folders
+rem (e.g. @angular/cli/bin) and deleting them corrupts the install.
 for %%D in (
     bin
     obj
@@ -16,7 +20,7 @@ for %%D in (
     coverage
 ) do (
     echo Removing %%D folders...
-    for /f "delims=" %%I in ('dir /s /b /ad %%D 2^>nul') do (
+    for /f "delims=" %%I in ('dir /s /b /ad %%D 2^>nul ^| findstr /v /i /l "node_modules"') do (
         echo    %%I
         rmdir /s /q "%%I"
     )
@@ -28,17 +32,19 @@ echo   Restoring Solution
 echo ==========================================
 echo.
 
-set FOUND_SOLUTION=
+dotnet restore "%~dp0Kaleido.slnx"
 
-for %%S in (*.sln) do (
-    set FOUND_SOLUTION=1
-    echo Restoring %%S...
-    dotnet restore "%%S"
-)
+echo.
+echo ==========================================
+echo   Restoring npm Packages
+echo ==========================================
+echo.
 
-if not defined FOUND_SOLUTION (
-    echo No solution file found. Running generic restore...
-    dotnet restore
+for /f "delims=" %%L in ('dir /s /b "%~dp0package-lock.json" 2^>nul ^| findstr /v /i /l "node_modules"') do (
+    echo npm ci in %%~dpL
+    pushd "%%~dpL"
+    call npm ci
+    popd
 )
 
 echo.
@@ -47,4 +53,4 @@ echo   Cleanup Complete
 echo ==========================================
 echo.
 
-pause
+if /i not "%~1"=="--no-pause" pause
