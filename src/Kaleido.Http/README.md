@@ -152,7 +152,7 @@ Enforcement works on two layers:
 - *Process ownership* — resuming or reading an owned process requires the owner or a role-mate.
 - *Filtered discovery* — the `/{service}/registry` endpoint stays open but scopes its payload to the caller: `FilterAsync` drops capabilities the caller can't access (including views inside contexts and steps inside processors) and omits processors whose steps are all filtered out. The registry cache holds the unfiltered union; filtering is per-request with this host's `AuthorizationMode`, so routers must use `ZeroTrust` too.
 
-Authorization failures are `KaleidoErrorResponse` bodies with codes `unauthorized` (401, unauthenticated) and `forbidden` (403, denied) — via `KaleidoAuthorizationResultHandler` for middleware-level denials and `ExceptionMiddleware` for thrown `KaleidoAuthorizationException`s. Both record the `endpoint_errors` counter.
+Authorization failures are answered by the host's authentication scheme, as standard ASP.NET Core: endpoint-metadata denials use ASP.NET's default authorization result handler, and `ExceptionMiddleware` turns thrown `KaleidoAuthorizationException`s into `ChallengeAsync()` (401) or `ForbidAsync()` (403). Kaleido does not replace the host's authorization result handler, so consumer endpoints are unaffected.
 
 A capability declaring `Policy` on a host with no `IAuthorizationService` fails closed — filtered out of discovery and denied at execution (with a warning log), rather than erroring the whole response.
 
