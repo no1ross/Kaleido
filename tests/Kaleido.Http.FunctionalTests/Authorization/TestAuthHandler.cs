@@ -23,6 +23,13 @@ internal sealed class TestAuthHandler(
     internal const string SchemeName = "test";
     internal const string UserHeader = "X-Test-User";
     internal const string RolesHeader = "X-Test-Roles";
+    internal const string ChallengeHeaderValue = "Test realm=\"kaleido\"";
+
+    protected override Task HandleChallengeAsync(AuthenticationProperties properties)
+    {
+        Response.Headers.WWWAuthenticate = ChallengeHeaderValue;
+        return base.HandleChallengeAsync(properties);
+    }
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {

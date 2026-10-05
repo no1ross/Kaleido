@@ -78,9 +78,13 @@ When enforcing (`Authenticated` or `ZeroTrust`), requirements are applied to:
   capabilities the caller may access; processors whose steps are all filtered out are
   omitted
 
-Denials throw `KaleidoAuthorizationException` → **401** unauthenticated / **403**
-authenticated-but-denied, and increment `kaleido.http.endpoint_errors` with
-`kaleido.error.code = "unauthorized" | "forbidden"`.
+Denials follow standard ASP.NET Core behavior: the host's authentication scheme
+produces the response. Endpoint-metadata denials go through ASP.NET's default
+authorization result handler; runtime denials (`KaleidoAuthorizationException`) are
+turned into `HttpContext.ChallengeAsync()` (**401**, unauthenticated) or `ForbidAsync()`
+(**403**, authenticated but denied) by `ExceptionMiddleware`. So a bearer scheme sends
+`WWW-Authenticate`, a cookie scheme redirects, and so on. Kaleido does not replace the
+host's authorization result handler and writes no Kaleido body for 401/403.
 
 ## Process ownership
 
