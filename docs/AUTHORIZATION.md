@@ -9,37 +9,51 @@ resulting principal via the transport and enforces two orthogonal gates:
 - **Process ownership** — `ProcessorContext.Owner`/`OwnerRoles` records who created a
   process; resumable access is restricted to the owner and role-mates.
 
-## The switch: `EnforceAuthorization`
+## The mode: `AuthorizationMode`
 
 ```csharp
-services.AddKaleido(configuration, o => o.EnforceAuthorization = true);
+services.AddKaleido(configuration, o =>
+{
+    o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
+    o.DefaultAuthorization = new AuthorizationMetadata("staff", []); // optional service default
+});
 ```
 
-| | `EnforceAuthorization = false` (default) | `EnforceAuthorization = true` |
-|---|---|---|
-| no attribute / empty attribute | open | authenticated caller required |
-| `Roles = "a,b"` | not enforced | authenticated + any of the roles |
-| `Policy = "p"` | not enforced | authenticated + policy |
-| `Roles` + `Policy` | not enforced | both (AND) |
-| `AllowAnonymous = true` | open | open to anonymous callers |
-| process ownership | not enforced | enforced |
-| registry filtering | none (full registry) | per caller, same rules |
-| route auth metadata | none (hosts without auth keep working) | attached |
-| no authentication scheme registered | fine | startup error (`authentication_not_configured`) |
+Both can also be bound from configuration (`Kaleido:AuthorizationMode`,
+`Kaleido:DefaultAuthorization:Policy`, `Kaleido:DefaultAuthorization:Roles:0`, …).
 
-Off is for samples, local development, and hosts without authentication. Production
-deployments set it on **every** host, including registry aggregators/routers: a router
-filters the cached registry per caller with its own setting, so a router left off
-returns everything to everyone.
+| | `None` (default) | `Authenticated` | `ZeroTrust` |
+|---|---|---|---|
+| no rule (no attribute and no service default, or an empty attribute) | open | any authenticated caller | omitted from discovery and endpoint mapping; denied in generic execute |
+| `Roles = "a,b"` | not enforced | authenticated + any of the roles | authenticated + any of the roles |
+| `Policy = "p"` | not enforced | authenticated + policy | authenticated + policy |
+| `Roles` + `Policy` | not enforced | both (AND) | both (AND) |
+| `AllowAnonymous = true` | open | open to anonymous callers | open to anonymous callers |
+| process ownership | not enforced | enforced | enforced |
+| registry filtering | none (full registry) | per caller, same rules | per caller, same rules |
+| route auth metadata | none (hosts without auth keep working) | attached | attached |
+| no authentication scheme registered | not checked | startup error (`authentication_not_configured`) | startup error (`authentication_not_configured`) |
 
-`AllowAnonymous` cannot be combined with `Roles`/`Policy` — that fails at registration
-(`conflicting_authorization`).
+**Effective rule.** A capability's `[KaleidoAuthorization]` attribute, when present,
+**replaces** `DefaultAuthorization` entirely (it is not merged). Without an attribute the
+service default applies. An empty attribute (no `Roles`, `Policy` or `AllowAnonymous`)
+overrides the default with "no rule".
+
+`None` is for samples, local development, and hosts without authentication; a startup
+warning is logged. `Authenticated` treats undeclared capabilities as "any logged-in
+caller". `ZeroTrust` exposes nothing without an explicit rule and logs a startup warning
+listing the omitted capabilities. Production deployments use `ZeroTrust` on **every**
+host, including registry aggregators/routers: a router filters the cached registry per
+caller with its own mode, so a router left at `None` returns everything to everyone.
+
+`AllowAnonymous` cannot be combined with `Roles`/`Policy` — on an attribute or on
+`DefaultAuthorization` — that fails at registration (`conflicting_authorization`).
 
 ## Capability authorization
 
 ```csharp
 [ProcessStep(Name = "CaptureMember", Version = "1.0.0", ...)]
-public sealed record CaptureMemberStep;                          // any logged-in user
+public sealed record CaptureMemberStep;                          // service default; Authenticated: any logged-in user
 
 [ProcessStep(Name = "Approve", Version = "1.0.0", ...)]
 [KaleidoAuthorization(Roles = "radiology")]
@@ -50,14 +64,15 @@ public sealed record ApproveStep;                                // logged in + 
 public sealed record AddItemToCartStep;                          // no login needed
 ```
 
-When enforcing, requirements are applied to:
+When enforcing (`Authenticated` or `ZeroTrust`), requirements are applied to:
 
 - per-step execute endpoints (`/processes/steps/{step}`) and per-context/view query
   endpoints, as endpoint metadata enforced by the host's auth middleware
 - the multi-step `POST /processes/execute` handler: the route carries no auth of its
   own; every submitted step is checked against its own declaration **before anything
   runs**, and the first denial rejects the whole request. Unknown step names and empty
-  requests are checked as undeclared (authenticated caller).
+  requests are checked as undeclared (authenticated caller in `Authenticated`, denied in
+  `ZeroTrust`).
 - `POST /processes/{id}/transfer`: authenticated caller
 - discovery filtering: `/{service}/registry` (local and aggregate modes) returns only
   capabilities the caller may access; processors whose steps are all filtered out are
@@ -93,7 +108,7 @@ a service-to-service hop should identify the calling service with a separate cla
 
 `IKaleidoAuthorizationEvaluator` (core, transport-agnostic) evaluates
 `AuthorizationMetadata` and ownership against the caller fields on
-`KaleidoCorrelationContext`, using `KaleidoServiceOptions.EnforceAuthorization`.
+`KaleidoCorrelationContext`, using `KaleidoServiceOptions.AuthorizationMode`.
 Declared `Policy` names resolve via a transport-supplied evaluator — HTTP bridges to
 `IAuthorizationService`. Transports supply caller identity + policy evaluation; core
 owns the rules.
