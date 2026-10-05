@@ -330,7 +330,6 @@
       "kaleido.http.client": {
         "type": "Project",
         "dependencies": {
-          "Kaleido": "[1.0.0, )",
           "Kaleido.Http.Abstractions": "[1.0.0, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[8.0.0, )",
           "Microsoft.Extensions.Configuration.Binder": "[8.0.2, )",

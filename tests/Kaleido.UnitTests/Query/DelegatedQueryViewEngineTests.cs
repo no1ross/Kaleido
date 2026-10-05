@@ -19,7 +19,8 @@ public sealed class DelegatedQueryViewEngineTests
             eventPublisher,
             correlationAccessor,
             observability,
-            serviceProvider);
+            serviceProvider,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<DelegatedQueryViewEngine<object, object>>.Instance);
 
     [Fact]
     public void Constructor_CreatesInstance()
