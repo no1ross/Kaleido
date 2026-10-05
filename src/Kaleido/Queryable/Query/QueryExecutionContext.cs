@@ -23,7 +23,7 @@ public sealed record QueryExecutionContext
         }
 
         throw new KaleidoValidationException(
-            ValidationErrorCodes.QryInvalidParameterValue,
+            QueryableErrorCodes.InvalidParameterValue,
             $"ViewParameters is of type '{Request.ViewParameters.GetType().Name}' but expected '{typeof(TViewParameters).Name}'.");
     }
 }

@@ -30,7 +30,7 @@ public static class QueryableEndpointRouteBuilderExtensions
         if (queryableRegistry is null)
         {
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.QryInvalidRegistration,
+                QueryableErrorCodes.InvalidRegistration,
                 "Cannot map Queryable endpoints: Queryable runtime is not registered. " +
                 "Use MapKaleidoHttp() to map Kaleido endpoints.");
         }

@@ -28,7 +28,7 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
             if (string.IsNullOrWhiteSpace(baseUrl))
             {
                 throw new KaleidoConfigurationException(
-                    ConfigurationErrorCodes.MissingBaseUrl,
+                    HttpClientErrorCodes.MissingBaseUrl,
                     $"Kaleido client '{name}' has no BaseUrl configured. " +
                     $"Set 'Kaleido:Clients:{name}:BaseUrl' or the shared 'Kaleido:BaseUrl' fallback.");
             }

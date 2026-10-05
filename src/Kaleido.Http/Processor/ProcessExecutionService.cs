@@ -161,7 +161,7 @@ internal sealed class ProcessExecutionService(
                         StringComparison.OrdinalIgnoreCase))
                 .MaxBy(x => (x.ExecutionStatus != StepExecutionStatus.Pending, x.RuntimeMessages.Count, x.BusinessMessages.Count))
             ?? throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.MissingStepResult,
+                ProcessorErrorCodes.MissingStepResult,
                 $"Process result for step '{stepName}' contained no entry for that step.");
 
         WriteResponseHeaders(

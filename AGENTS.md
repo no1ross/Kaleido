@@ -128,12 +128,13 @@ Information logs must stay minimal — treat them as the "normal operations" vie
 - `KaleidoConfigurationException` — 500; startup/DI misconfiguration; `Code` is log-only, `Message` is safe to surface
 - `KaleidoFrameworkException` — 500; internal integrity violation; `Code` is log-only, `Message` is safe to surface
 - `KaleidoHttpClientException` — client-side only, never reaches HTTP; carries `Code`, `StatusCode`, and `Errors`
-- Error codes are organized by domain:
-  - `ProcessorErrorCodes` (`ProcessorErrorCodes.cs`) — `pro_*` codes shared across Processor startup, planning, validation, and execution
-  - `ValidationErrorCodes` (`KaleidoValidationException.cs`) — `qry_*` codes for Queryable request validation
-  - `ConfigurationErrorCodes` (`KaleidoConfigurationException.cs`) — generic and `qry_*` startup codes (Queryable consolidation is tracked separately)
+- Error codes are owned by their area — no single catalog; a new code goes in its area's class, never in a shared one. Code string values never change when a constant moves:
+  - `ProcessorErrorCodes` (`Processor/ProcessorErrorCodes.cs`) — `pro_*` codes shared across Processor startup, planning, validation, and execution
+  - `QueryableErrorCodes` (`Queryable/QueryableErrorCodes.cs`) — `qry_*` codes for Queryable startup registration and request validation
+  - `ConfigurationErrorCodes` (`KaleidoConfigurationException.cs`) — core service-setup and authorization-settings codes only
   - `FrameworkErrorCodes` (`KaleidoFrameworkException.cs`) — cross-cutting integrity violation codes
-  - `HttpClientErrorCodes` (`KaleidoClientException.cs`) — `httpclient_*` codes for remote call failures
+  - `HttpClientErrorCodes` (`Kaleido.Http.Client/KaleidoClientException.cs`) — `httpclient_*` codes for remote call failures, plus the client's startup `missing_base_url`
+  - `SqliteErrorCodes` (`Kaleido.Provider.SQLite`) — the provider's own codes; providers never add codes to core
   - `KaleidoErrorCodes` (`KaleidoErrorResponse.cs`) — shared HTTP error codes (`argument_error`, `framework_error`)
 
 ### OperationCanceledException and observability

@@ -38,7 +38,7 @@ public sealed class QueryRequestValidatorTests
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("", FilterOperator.Equals, "A")));
 
         var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
-        Assert.Equal(ValidationErrorCodes.QryMissingFilterField, ex.Code);
+        Assert.Equal(QueryableErrorCodes.MissingFilterField, ex.Code);
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class QueryRequestValidatorTests
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Missing", FilterOperator.Equals, "A")));
 
         var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
-        Assert.Equal(ValidationErrorCodes.QryInvalidField, ex.Code);
+        Assert.Equal(QueryableErrorCodes.InvalidField, ex.Code);
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public sealed class QueryRequestValidatorTests
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Description", FilterOperator.Equals, "A")));
 
         var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
-        Assert.Equal(ValidationErrorCodes.QryFieldNotFilterable, ex.Code);
+        Assert.Equal(QueryableErrorCodes.FieldNotFilterable, ex.Code);
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public sealed class QueryRequestValidatorTests
         var request = new QueryRequest(new QueryBody(Sort: [new QuerySort("Code", SortDirection.Ascending), new QuerySort("Code", SortDirection.Descending)]));
 
         var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
-        Assert.Equal(ValidationErrorCodes.QryDuplicateSortField, ex.Code);
+        Assert.Equal(QueryableErrorCodes.DuplicateSortField, ex.Code);
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public sealed class QueryRequestValidatorTests
         var request = new QueryRequest(new QueryBody(Sort: [new QuerySort("Description", SortDirection.Ascending)]));
 
         var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
-        Assert.Equal(ValidationErrorCodes.QryFieldNotSortable, ex.Code);
+        Assert.Equal(QueryableErrorCodes.FieldNotSortable, ex.Code);
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public sealed class QueryRequestValidatorTests
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateGroup(LogicalOperator.And)));
 
         var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
-        Assert.Equal(ValidationErrorCodes.QryEmptyFilterGroup, ex.Code);
+        Assert.Equal(QueryableErrorCodes.EmptyFilterGroup, ex.Code);
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public sealed class QueryRequestValidatorTests
         var request = new QueryRequest(new QueryBody(Page: new QueryPage(999, 0)));
 
         var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
-        Assert.Equal(ValidationErrorCodes.QryInvalidPageSize, ex.Code);
+        Assert.Equal(QueryableErrorCodes.InvalidPageSize, ex.Code);
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public sealed class QueryRequestValidatorTests
         var request = new QueryRequest(new QueryBody(SearchText: "abc"));
 
         var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistrationWithoutSearchableFields()));
-        Assert.Equal(ValidationErrorCodes.QryFieldNotSearchable, ex.Code);
+        Assert.Equal(QueryableErrorCodes.FieldNotSearchable, ex.Code);
     }
 
     private static QueryContextRegistration CreateRegistration() =>

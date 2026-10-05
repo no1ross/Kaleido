@@ -99,7 +99,7 @@ internal sealed class QueryViewRegistry
         var queryViewAttribute =
             queryViewType.GetCustomAttribute<QueryViewAttribute>()
             ?? throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.QryMissingAttribute,
+                QueryableErrorCodes.MissingAttribute,
                 $"Query view '{queryViewType.Name}' is missing QueryViewAttribute.");
 
         var queryViewInterface =

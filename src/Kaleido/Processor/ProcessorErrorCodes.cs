@@ -83,4 +83,7 @@ public static class ProcessorErrorCodes
 
     /// <summary>A repeatable step remains eligible after prior execution.</summary>
     public const string RepeatableStep = "pro_repeatable_step";
+
+    /// <summary>A process execution result contained no entry for the step that was executed.</summary>
+    public const string MissingStepResult = "missing_step_result";
 }
