@@ -9,9 +9,8 @@ public sealed class CorrelationEchoTests(
     private HttpClient CreateClientWithHeaders(
         string? requestId = null,
         Guid? processId = null,
-        Guid? processorInstanceId = null,
-        string? sourceProcessor = null,
-        string? stepName = null)
+        string? callingProcessor = null,
+        string? callingStep = null)
     {
         var client = fixture.TestServer.CreateClient();
 
@@ -19,28 +18,24 @@ public sealed class CorrelationEchoTests(
             client.DefaultRequestHeaders.Add(KaleidoCorrelationHeaders.RequestId, requestId);
         if (processId.HasValue)
             client.DefaultRequestHeaders.Add(KaleidoCorrelationHeaders.ProcessId, processId.Value.ToString());
-        if (processorInstanceId.HasValue)
-            client.DefaultRequestHeaders.Add(KaleidoCorrelationHeaders.ProcessorInstanceId, processorInstanceId.Value.ToString());
-        if (sourceProcessor is not null)
-            client.DefaultRequestHeaders.Add(KaleidoCorrelationHeaders.SourceProcessor, sourceProcessor);
-        if (stepName is not null)
-            client.DefaultRequestHeaders.Add(KaleidoCorrelationHeaders.StepName, stepName);
+        if (callingProcessor is not null)
+            client.DefaultRequestHeaders.Add(KaleidoCorrelationHeaders.CallingProcessor, callingProcessor);
+        if (callingStep is not null)
+            client.DefaultRequestHeaders.Add(KaleidoCorrelationHeaders.CallingStep, callingStep);
 
         return client;
     }
 
     [Fact]
-    public async Task Request_WhenCorrelationHeadersSent_EchoesFullContext()
+    public async Task Request_WhenCorrelationHeadersSent_EchoesEndToEndOnly()
     {
         var processId = Guid.NewGuid();
-        var instanceId = Guid.NewGuid();
 
         var client = CreateClientWithHeaders(
             requestId: "req-77",
             processId: processId,
-            processorInstanceId: instanceId,
-            sourceProcessor: "intake",
-            stepName: "Capture");
+            callingProcessor: "intake",
+            callingStep: "Capture");
 
         var response = await client.GetAsync("/kaleido/registry");
 
@@ -48,9 +43,10 @@ public sealed class CorrelationEchoTests(
 
         Assert.Equal("req-77", Header(response, KaleidoCorrelationHeaders.RequestId));
         Assert.Equal(processId.ToString(), Header(response, KaleidoCorrelationHeaders.ProcessId));
-        Assert.Equal(instanceId.ToString(), Header(response, KaleidoCorrelationHeaders.ProcessorInstanceId));
-        Assert.Equal("intake", Header(response, KaleidoCorrelationHeaders.SourceProcessor));
-        Assert.Equal("Capture", Header(response, KaleidoCorrelationHeaders.StepName));
+        // per-hop identity describes the request, not the response
+        Assert.Null(Header(response, KaleidoCorrelationHeaders.CallingProcessor));
+        Assert.Null(Header(response, KaleidoCorrelationHeaders.CallingStep));
+        Assert.Null(Header(response, "X-Kaleido-Processor-Instance-Id"));
     }
 
     [Fact]
@@ -66,7 +62,7 @@ public sealed class CorrelationEchoTests(
             string.IsNullOrWhiteSpace(
                 Header(response, KaleidoCorrelationHeaders.RequestId)));
         Assert.Null(Header(response, KaleidoCorrelationHeaders.ProcessId));
-        Assert.Null(Header(response, KaleidoCorrelationHeaders.StepName));
+        Assert.Null(Header(response, KaleidoCorrelationHeaders.CallingStep));
     }
 
     private static string? Header(

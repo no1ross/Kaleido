@@ -27,7 +27,7 @@ Does **not** own HTTP endpoints, ASP.NET Core DI, HTTP contracts, remote client 
 Owns the full HTTP transport layer — middleware, correlation propagation, and endpoint publication:
 - `AddHttp()` — public entry point; registers routing, `IHttpContextAccessor`, the middleware pipeline, and HTTP execution services
 - `ExceptionMiddleware` — outermost middleware; maps exceptions to JSON error responses
-- `ObservabilityMiddleware` — reads inbound correlation headers via `HttpCorrelationContextReader`, populates `IKaleidoCorrelationContextAccessor`, tags the `Activity`, and echoes the full correlation context on the response
+- `ObservabilityMiddleware` — reads inbound correlation headers via `HttpCorrelationContextReader`, populates `IKaleidoCorrelationContextAccessor`, tags the `Activity`, and echoes `RequestId`/`ProcessId` on the response
 - `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers into `KaleidoCorrelationContext`
 - `KaleidoStartupFilter` — registers middlewares via `IStartupFilter` in the correct pipeline order
 - `MapQueryable()` — all Queryable HTTP endpoints

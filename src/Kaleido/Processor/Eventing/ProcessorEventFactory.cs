@@ -41,7 +41,8 @@ internal sealed class ProcessorEventFactory(
             ProcessId = processId,
             StepName = stepName,
             ProcessorInstanceId = serviceOptions.InstanceId.ToString(),
-            SourceProcessorName = correlation.SourceProcessorName ?? serviceOptions.ServiceName
+            CallingProcessorName = correlation.CallingProcessorName,
+            CallingStepName = correlation.CallingStepName
         };
 
     public KaleidoEventEnvelope<ProcessCreated, ProcessEventContext> CreateProcessCreated(

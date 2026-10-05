@@ -25,6 +25,14 @@ namespace Microsoft.Extensions.DependencyInjection
         public static T GetRequiredService<T>(this System.IServiceProvider provider) => default;
         public static object GetRequiredService(this System.IServiceProvider provider, System.Type type) => null;
     }
+    public interface IServiceScope : System.IDisposable
+    {
+        System.IServiceProvider ServiceProvider { get; }
+    }
+    public interface IServiceScopeFactory
+    {
+        IServiceScope CreateScope();
+    }
 }
 ";
 
@@ -51,6 +59,35 @@ public sealed class Consumer
     public Consumer(System.IServiceProvider provider) => this.provider = provider;
     public void M(System.Type handlerType) { var x = provider.GetRequiredService(handlerType); }
 }");
+    }
+
+    [Fact]
+    public async Task GetRequiredService_FromScopeCreatedInSameMethod_NoDiagnostic()
+    {
+        await RunAsync(References + @"
+public sealed class Invoker
+{
+    private readonly IServiceScopeFactory scopeFactory;
+    public Invoker(IServiceScopeFactory scopeFactory) => this.scopeFactory = scopeFactory;
+    public void M()
+    {
+        using var scope = scopeFactory.CreateScope();
+        var x = scope.ServiceProvider.GetRequiredService<IFoo>();
+    }
+}");
+    }
+
+    [Fact]
+    public async Task GetRequiredService_FromInjectedScope_Reports()
+    {
+        await RunAsync(References + @"
+public sealed class Consumer
+{
+    private readonly IServiceScope scope;
+    public Consumer(IServiceScope scope) => this.scope = scope;
+    public void M() { var x = {|#0:scope.ServiceProvider.GetRequiredService<IFoo>()|}; }
+}",
+            Expected.WithLocation(0).WithArguments("GetRequiredService"));
     }
 
     [Fact]

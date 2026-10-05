@@ -1,5 +1,11 @@
 namespace Kaleido.Observability;
 
+/// <summary>
+/// Correlation for the current request. <see cref="RequestId"/> and <see cref="ProcessId"/>
+/// are end-to-end: forwarded unchanged on every hop. <see cref="CallingProcessorName"/> and
+/// <see cref="CallingStepName"/> are per-hop: they describe the processor step that called
+/// this service and are never forwarded. A service's own instance id is never on the wire.
+/// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record KaleidoCorrelationContext
 {
@@ -13,29 +19,36 @@ public sealed record KaleidoCorrelationContext
         init;
     } = string.Empty;
 
+    /// <summary>The process instance this request belongs to (end-to-end).</summary>
     public Guid? ProcessId
     {
         get;
         init;
     }
 
-    public Guid? ProcessorInstanceId
+    /// <summary>
+    /// The processor whose step made this call (per-hop, inbound). <c>null</c> when the
+    /// call was not made from inside a processor step — e.g. routed or registry calls.
+    /// </summary>
+    public string? CallingProcessorName
     {
         get;
         init;
     }
 
-    public string? SourceProcessorName
+    /// <summary>The step in <see cref="CallingProcessorName"/> that made this call (per-hop, inbound).</summary>
+    public string? CallingStepName
     {
         get;
         init;
     }
 
     /// <summary>
-    /// The name of the process step making the current inter-service call, if propagated by the caller.
-    /// Populated on queryable services when a process step calls them, enabling step-level traceability.
+    /// The step this service is currently executing. Set by the runtime for a step
+    /// handler's scope; outbound calls made from that scope stamp it, with this
+    /// service's name, as the calling processor and step. <c>null</c> outside a step.
     /// </summary>
-    public string? StepName
+    public string? ExecutingStepName
     {
         get;
         init;
@@ -69,7 +82,6 @@ public sealed record KaleidoCorrelationContext
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(RequestId)
         && ProcessId is null
-        && ProcessorInstanceId is null
-        && string.IsNullOrWhiteSpace(SourceProcessorName)
-        && string.IsNullOrWhiteSpace(StepName);
+        && string.IsNullOrWhiteSpace(CallingProcessorName)
+        && string.IsNullOrWhiteSpace(CallingStepName);
 }

@@ -37,8 +37,8 @@ public class KaleidoServiceOptions
 
     /// <summary>
     /// A stable unique identifier for this running instance of the service.
-    /// Generated fresh at startup by default. Propagated via the
-    /// <c>X-Kaleido-Processor-Instance-Id</c> correlation header for auditing and tracing.
+    /// Generated fresh at startup by default. Recorded in this service's own trace tags,
+    /// events and logs for auditing; never sent or read in correlation headers.
     /// </summary>
     public Guid InstanceId { get; init; } = Guid.NewGuid();
 

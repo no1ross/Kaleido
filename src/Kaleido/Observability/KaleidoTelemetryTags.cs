@@ -10,12 +10,15 @@ public static class KaleidoTelemetryTags
     /// <summary>The unique identifier of the originating request.</summary>
     public const string RequestId = "kaleido.request.id";
 
-    /// <summary>The instance identifier of the processor that handled the request.</summary>
+    /// <summary>This service's own instance id (<c>KaleidoServiceOptions.InstanceId</c>); never taken from the wire.</summary>
     public const string ProcessorInstanceId = "kaleido.processor.instance_id";
 
     /// <summary>The service name of this processor instance.</summary>
     public const string ProcessorName = "kaleido.processor.name";
 
-    /// <summary>The service name of the processor that originated the request.</summary>
-    public const string SourceProcessor = "kaleido.source.processor";
+    /// <summary>The processor whose step called this service (per-hop, inbound).</summary>
+    public const string CallingProcessor = "kaleido.calling.processor";
+
+    /// <summary>The step in the calling processor that called this service (per-hop, inbound).</summary>
+    public const string CallingStep = "kaleido.calling.step";
 }
