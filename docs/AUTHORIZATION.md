@@ -79,8 +79,8 @@ When enforcing (`Authenticated` or `ZeroTrust`), requirements are applied to:
   omitted
 
 Denials throw `KaleidoAuthorizationException` → **401** unauthenticated / **403**
-authenticated-but-denied, and increment `kaleido.endpoint.errors` with
-`error_code = "unauthorized" | "forbidden"`.
+authenticated-but-denied, and increment `kaleido.http.endpoint_errors` with
+`kaleido.error.code = "unauthorized" | "forbidden"`.
 
 ## Process ownership
 

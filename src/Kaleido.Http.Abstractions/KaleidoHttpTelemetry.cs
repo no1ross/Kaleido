@@ -15,8 +15,8 @@ public static class KaleidoHttpTelemetry
     // ── Tag names ─────────────────────────────────────────────────────────────
 
     public const string TagErrorCode =
-        "error.code";
+        "kaleido.error.code";
 
     public const string TagHttpStatusCode =
-        "http.status_code";
+        "http.response.status_code";
 }
