@@ -4,7 +4,7 @@ using Xunit;
 using static Kaleido.Analyzers.Testing.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Testing.Fixtures.FixtureSutResolutionAnalyzer>;
 
-namespace Kaleido.Analyzers.Testing.UnitTests;
+namespace Kaleido.Analyzers.Testing.Fixtures.UnitTests;
 
 public sealed class FixtureSutResolutionAnalyzerTests
     : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Testing.Fixtures.FixtureSutResolutionAnalyzer>

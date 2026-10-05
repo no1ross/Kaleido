@@ -4,7 +4,7 @@ using Xunit;
 using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Source.DependencyInjection.InjectedDisposalAnalyzer>;
 
-namespace Kaleido.Analyzers.Source.UnitTests;
+namespace Kaleido.Analyzers.Source.DependencyInjection.UnitTests;
 
 public sealed class InjectedDisposalAnalyzerTests
     : global::Kaleido.UnitTests.SutFixture<Kaleido.Analyzers.Source.DependencyInjection.InjectedDisposalAnalyzer>

@@ -3,7 +3,7 @@ using Kaleido.Observability;
 using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Observability;
 
-namespace Kaleido.Queryable.UnitTests.Query;
+namespace Kaleido.Queryable.Query.UnitTests;
 
 public sealed class DelegatedQueryViewEngineTests
     : Kaleido.UnitTests.SutFixture

@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 using Kaleido.UnitTests;
 
-namespace Kaleido.Queryable.UnitTests.Observability;
+namespace Kaleido.Queryable.Observability.UnitTests;
 
 public sealed class QueryableObservabilityTests
     : SutFixture

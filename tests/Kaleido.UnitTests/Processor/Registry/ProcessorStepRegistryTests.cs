@@ -5,7 +5,7 @@ using Kaleido.Registry;
 
 using Kaleido.UnitTests;
 
-namespace Kaleido.Processor.UnitTests.Processor.Registry;
+namespace Kaleido.Processor.Registry.UnitTests;
 
 public sealed class ProcessorStepRegistryTests
     : SutFixture

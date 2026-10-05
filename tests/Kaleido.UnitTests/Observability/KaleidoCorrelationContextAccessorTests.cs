@@ -1,6 +1,8 @@
 using Kaleido.Observability;
 
-namespace Kaleido.UnitTests.Observability;
+using Kaleido.UnitTests;
+
+namespace Kaleido.Observability.UnitTests;
 
 public sealed class KaleidoCorrelationContextAccessorTests
     : SutFixture

@@ -4,7 +4,7 @@ using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Runtime;
 
-namespace Kaleido.Queryable.UnitTests.Query;
+namespace Kaleido.Queryable.Query.UnitTests;
 
 public sealed class QueryContextEngineTests
     : Kaleido.UnitTests.SutFixture

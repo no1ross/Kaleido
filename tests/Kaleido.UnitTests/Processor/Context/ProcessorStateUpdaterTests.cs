@@ -4,7 +4,7 @@ using Kaleido.Processor.Registry;
 
 using Kaleido.UnitTests;
 
-namespace Kaleido.Processor.UnitTests.Context;
+namespace Kaleido.Processor.Context.UnitTests;
 
 public sealed class ProcessorStateUpdaterTests
     : SutFixture

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Kaleido.Http.Processor;
 
-namespace Kaleido.Http.UnitTests.Process;
+namespace Kaleido.Http.Processor.UnitTests;
 
 public sealed class ProcessExecutionResponseFactoryTests
     : Kaleido.UnitTests.SutFixture

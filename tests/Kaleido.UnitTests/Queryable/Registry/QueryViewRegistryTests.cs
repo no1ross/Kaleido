@@ -4,7 +4,7 @@ using System.Reflection;
 using Kaleido.Exceptions;
 using Kaleido.Queryable.Registry;
 
-namespace Kaleido.Queryable.UnitTests.Records;
+namespace Kaleido.Queryable.Registry.UnitTests;
 
 public sealed class QueryViewRegistryTests
     : Kaleido.UnitTests.SutFixture

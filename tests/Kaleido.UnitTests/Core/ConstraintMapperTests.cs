@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Kaleido.UnitTests;
 
-namespace Kaleido.Abstractions.UnitTests;
+namespace Kaleido.UnitTests;
 
 public sealed class ConstraintMapperTests
     : SutFixture

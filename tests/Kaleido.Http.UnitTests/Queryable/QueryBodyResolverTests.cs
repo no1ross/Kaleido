@@ -5,7 +5,7 @@ using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Query;
 
-namespace Kaleido.Http.UnitTests.Queryable;
+namespace Kaleido.Http.Queryable.UnitTests;
 
 public sealed class QueryBodyResolverTests
     : Kaleido.UnitTests.SutFixture

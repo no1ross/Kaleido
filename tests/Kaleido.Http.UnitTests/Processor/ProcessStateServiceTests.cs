@@ -5,7 +5,7 @@ using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Kaleido.Http.UnitTests.Process;
+namespace Kaleido.Http.Processor.UnitTests;
 
 public sealed class ProcessStateServiceTests
     : SutFixture

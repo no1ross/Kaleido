@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 using Kaleido.UnitTests;
 
-namespace Kaleido.Processor.UnitTests.Observability;
+namespace Kaleido.Processor.Observability.UnitTests;
 
 public sealed class ProcessorObservabilityTests
     : SutFixture

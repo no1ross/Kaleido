@@ -1,4 +1,4 @@
-namespace Kaleido.Http.Abstractions.UnitTests;
+namespace Kaleido.Http.UnitTests;
 
 public sealed class HttpHeaderSanitizerExtensionsTests
     : Kaleido.UnitTests.SutFixture

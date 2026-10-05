@@ -1,6 +1,6 @@
 using Kaleido.Http.Registry;
 
-namespace Kaleido.Http.UnitTests.Registry;
+namespace Kaleido.Http.Registry.UnitTests;
 
 public sealed class HttpRegistryCacheTests
     : Kaleido.UnitTests.SutFixture

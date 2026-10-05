@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace Kaleido.Abstractions.UnitTests;
+namespace Kaleido.UnitTests;
 
 public sealed class TypeDescriberTests
     : Kaleido.UnitTests.SutFixture
