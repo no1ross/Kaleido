@@ -8,43 +8,50 @@ Every Kaleido exception carries a machine-readable `Code`. Framework-defined cod
 
 | Type | Namespace | HTTP result | Code set |
 |---|---|---|---|
-| `KaleidoValidationException` | `Kaleido.Exceptions` | 400 Bad Request, or a failed Process step outcome | `ValidationErrorCodes` (`qry_*`), `ProcessorErrorCodes` (`pro_*`), or a handler-supplied domain code |
-| `KaleidoConfigurationException` | `Kaleido.Exceptions` | 500 Internal Server Error | `ConfigurationErrorCodes` (generic/`qry_*`) or `ProcessorErrorCodes` (`pro_*`) |
+| `KaleidoValidationException` | `Kaleido.Exceptions` | 400 Bad Request, or a failed Process step outcome | `QueryableErrorCodes` (`qry_*`), `ProcessorErrorCodes` (`pro_*`), or a handler-supplied domain code |
+| `KaleidoConfigurationException` | `Kaleido.Exceptions` | 500 Internal Server Error | the owning area's codes: `ConfigurationErrorCodes` (core), `QueryableErrorCodes`, `ProcessorErrorCodes`, `HttpClientErrorCodes`, `SqliteErrorCodes` |
 | `KaleidoFrameworkException` | `Kaleido.Exceptions` | 500 Internal Server Error | `FrameworkErrorCodes` |
 | `KaleidoHttpClientException` | `Kaleido.Http.Client` | — (client-side) | `HttpClientErrorCodes` |
+
+Each area owns its codes; there is no single catalog. Code string values are stable regardless of which class declares them.
 
 HTTP middleware exposes a validation exception's `Code` and `Message` in a 400 error body. A Process step handler's validation exception instead produces a failed step outcome; its original code and message appear in `FrameworkMessages` only when the transport enables framework diagnostics. Configuration and framework exception codes remain log-only.
 
 ---
 
-## `ValidationErrorCodes` — 400 Bad Request
+## `QueryableErrorCodes` — Queryable startup and request validation
 
-Queryable request-validation codes are prefixed `qry_`. Process-specific codes are owned by `ProcessorErrorCodes` below; the wider Queryable catalog consolidation is tracked in [Issue #171](https://github.com/no1ross/Kaleido/issues/171).
+One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup registration codes are raised as `KaleidoConfigurationException` (log-only); request-validation codes as `KaleidoValidationException` (400 body).
 
 | Constant | Code | Meaning |
 |---|---|---|
-| `QryInvalidField` | `qry_invalid_field` | Field referenced in a filter, sort, or parameter does not exist on the query context |
-| `QryUnsupportedOperator` | `qry_unsupported_operator` | Filter condition uses an operator not supported by the field |
-| `QryFieldNotFilterable` | `qry_field_not_filterable` | Filter condition references a field not marked as filterable |
-| `QryFieldNotSortable` | `qry_field_not_sortable` | Sort clause references a field not marked as sortable |
-| `QryInvalidPageSize` | `qry_invalid_page_size` | Requested page size is invalid or exceeds the maximum |
-| `QryInvalidPageOffset` | `qry_invalid_page_offset` | Requested page offset is negative |
-| `QryUnsupportedMatchMode` | `qry_unsupported_match_mode` | Search field uses a match mode not supported by the field |
-| `QryMissingParameter` | `qry_missing_parameter` | Required named query parameter is missing |
-| `QryInvalidParameterType` | `qry_invalid_parameter_type` | Named query parameter value has an incompatible type |
-| `QryFieldNotSearchable` | `qry_field_not_searchable` | Search text provided but no searchable fields are defined |
-| `QryDuplicateSortField` | `qry_duplicate_sort_field` | Same field appears more than once in the sort clause |
-| `QryPagingNotSupported` | `qry_paging_not_supported` | Page request made on a context that does not support paging |
-| `QryInvalidFilterNode` | `qry_invalid_filter_node` | Filter node is structurally invalid |
-| `QryInvalidSearchNode` | `qry_invalid_search_node` | Search node is structurally invalid |
-| `QryEmptyFilterGroup` | `qry_empty_filter_group` | Filter group contains no child expressions |
-| `QryFilterDepthExceeded` | `qry_filter_depth_exceeded` | Filter expression exceeds the maximum nesting depth |
-| `QryEmptySearchGroup` | `qry_empty_search_group` | Search group contains no child expressions |
-| `QryUnsupportedRuntimeType` | `qry_unsupported_runtime_type` | Filter value has a CLR type not supported by the transport layer |
-| `QryMissingFilterField` | `qry_missing_filter_field` | Filter condition is missing its field name |
-| `QryMissingSearchText` | `qry_missing_search_text` | Search request is missing the required search text |
-| `QryInvalidFilterValue` | `qry_invalid_filter_value` | Filter value cannot be converted to the field's declared type |
-| `QryInvalidParameterValue` | `qry_invalid_parameter_value` | Named query parameter value cannot be converted |
+| `MissingAttribute` | `qry_missing_attribute` | Context or view missing `[QueryContext]`/`[QueryView]` (startup) |
+| `MissingSource` | `qry_missing_source` | Context has no registered source (startup) |
+| `DuplicateSource` | `qry_duplicate_source` | Context has multiple registered sources (startup) |
+| `DuplicateRegistration` | `qry_duplicate_registration` | Duplicate context or view names (startup) |
+| `InvalidRegistration` | `qry_invalid_registration` | Structurally invalid registration (startup) |
+| `InvalidField` | `qry_invalid_field` | Field referenced in a filter, sort, or parameter does not exist on the query context |
+| `UnsupportedOperator` | `qry_unsupported_operator` | Filter condition uses an operator not supported by the field |
+| `FieldNotFilterable` | `qry_field_not_filterable` | Filter condition references a field not marked as filterable |
+| `FieldNotSortable` | `qry_field_not_sortable` | Sort clause references a field not marked as sortable |
+| `InvalidPageSize` | `qry_invalid_page_size` | Requested page size is invalid or exceeds the maximum |
+| `InvalidPageOffset` | `qry_invalid_page_offset` | Requested page offset is negative |
+| `UnsupportedMatchMode` | `qry_unsupported_match_mode` | Search field uses a match mode not supported by the field |
+| `MissingParameter` | `qry_missing_parameter` | Required named query parameter is missing |
+| `InvalidParameterType` | `qry_invalid_parameter_type` | Named query parameter value has an incompatible type |
+| `FieldNotSearchable` | `qry_field_not_searchable` | Search text provided but no searchable fields are defined |
+| `DuplicateSortField` | `qry_duplicate_sort_field` | Same field appears more than once in the sort clause |
+| `PagingNotSupported` | `qry_paging_not_supported` | Page request made on a context that does not support paging |
+| `InvalidFilterNode` | `qry_invalid_filter_node` | Filter node is structurally invalid |
+| `InvalidSearchNode` | `qry_invalid_search_node` | Search node is structurally invalid |
+| `EmptyFilterGroup` | `qry_empty_filter_group` | Filter group contains no child expressions |
+| `FilterDepthExceeded` | `qry_filter_depth_exceeded` | Filter expression exceeds the maximum nesting depth |
+| `EmptySearchGroup` | `qry_empty_search_group` | Search group contains no child expressions |
+| `UnsupportedRuntimeType` | `qry_unsupported_runtime_type` | Filter value has a CLR type not supported by the transport layer |
+| `MissingFilterField` | `qry_missing_filter_field` | Filter condition is missing its field name |
+| `MissingSearchText` | `qry_missing_search_text` | Search request is missing the required search text |
+| `InvalidFilterValue` | `qry_invalid_filter_value` | Filter value cannot be converted to the field's declared type |
+| `InvalidParameterValue` | `qry_invalid_parameter_value` | Named query parameter value cannot be converted |
 
 ---
 
@@ -82,23 +89,21 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `FrameworkException` | `pro_framework_exception` | Unexpected framework error interrupted a step |
 | `ProcessMessage` | `pro_process_message` | Process diagnostic message was produced |
 | `RepeatableStep` | `pro_repeatable_step` | Repeatable step remains eligible after prior execution |
+| `MissingStepResult` | `missing_step_result` | A process execution result had no entry for the executed step (raised as `KaleidoFrameworkException`) |
 
 ---
 
 ## `ConfigurationErrorCodes` — 500 (startup / DI misconfiguration)
 
-Cross-cutting codes have no prefix. Queryable startup codes use `qry_`; Process startup codes are in `ProcessorErrorCodes` above.
+Core service-setup and authorization-settings codes. Area startup codes live with their area (`QueryableErrorCodes`, `ProcessorErrorCodes`, `HttpClientErrorCodes`, `SqliteErrorCodes`).
 
 | Constant | Code | Meaning |
 |---|---|---|
 | `InvalidServiceName` | `invalid_service_name` | `ServiceName` is null, empty, or invalid |
 | `MissingAssembly` | `missing_assembly` | `AddKaleido()` received a null or empty explicit `Assemblies` list; fails before DI registration |
-| `InvalidConnectionString` | `invalid_connection_string` | SQLite process context-store connection string cannot be parsed at registration |
-| `QryMissingAttribute` | `qry_missing_attribute` | Context or view missing `[QueryContext]`/`[QueryView]` |
-| `QryMissingSource` | `qry_missing_source` | Context has no registered source |
-| `QryDuplicateSource` | `qry_duplicate_source` | Context has multiple registered sources |
-| `QryDuplicateRegistration` | `qry_duplicate_registration` | Duplicate context or view names |
-| `QryInvalidRegistration` | `qry_invalid_registration` | Structurally invalid registration |
+| `ConflictingAuthorization` | `conflicting_authorization` | `[KaleidoAuthorization]` declares `AllowAnonymous` together with `Roles`/`Policy` |
+| `AuthenticationNotConfigured` | `authentication_not_configured` | `AuthorizationMode` enforces authorization but no authentication scheme is registered |
+| `InvalidAuthorizationMode` | `invalid_authorization_mode` | `AuthorizationMode` is not a defined value |
 
 ---
 
@@ -114,13 +119,12 @@ These indicate a framework bug or broken DI wiring, not a user error.
 | `InvalidHandlerResult` | `invalid_handler_result` | Handler returned an unexpected or null result |
 | `UnsupportedDataType` | `unsupported_data_type` | `DataTypeMapper` does not support the CLR type |
 | `DataConversionError` | `data_conversion_error` | `DataTypeMapper` failed to convert a value |
-| `MissingStepResult` | `missing_step_result` | A process execution result had no entry for the executed step |
 
 ---
 
 ## `HttpClientErrorCodes` — client-side (never an HTTP response)
 
-All client codes are prefixed `httpclient_`.
+Runtime client codes are prefixed `httpclient_`; `missing_base_url` is a startup configuration code owned by the client.
 
 | Constant | Code | Meaning |
 |---|---|---|
@@ -128,6 +132,19 @@ All client codes are prefixed `httpclient_`.
 | `EmptyResponse` | `httpclient_empty_response` | Remote request succeeded but returned no payload |
 | `RequestFailed` | `httpclient_request_failed` | Remote request failed with a non-success HTTP status |
 | `ValidationFailed` | `httpclient_validation_failed` | Remote request failed with structured validation errors |
+| `InvalidStepName` | `httpclient_invalid_step_name` | Supplied step name does not match the step type's attribute |
+| `InvalidRegistryUrl` | `httpclient_invalid_registry_url` | A URL returned by a remote registry was not a valid absolute http(s) URL |
+| `MissingBaseUrl` | `missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
+
+---
+
+## `SqliteErrorCodes` — SQLite provider (`Kaleido.Provider.SQLite`)
+
+The reference provider owns its own code; core knows nothing about it.
+
+| Constant | Code | Meaning |
+|---|---|---|
+| `InvalidConnectionString` | `invalid_connection_string` | Process context-store connection string cannot be parsed at registration |
 
 ---
 
@@ -143,7 +160,7 @@ The `Kaleido` NuGet package bundles `Kaleido.Analyzers` — a Roslyn analyzer th
 | `KAL2002` | Error | `[QueryContext]` has an empty `Name` or `Version` |
 | `KAL2003` | Error | `[QueryView]` has an empty `Name` or `Version` |
 
-These are compile-time equivalents of the `ProcessorErrorCodes.MissingAttribute` / `ConfigurationErrorCodes.QryMissingAttribute` runtime errors. Catching them at compile time prevents the process from failing at startup.
+These are compile-time equivalents of the `ProcessorErrorCodes.MissingAttribute` / `QueryableErrorCodes.MissingAttribute` runtime errors. Catching them at compile time prevents the process from failing at startup.
 
 ### Handler and step conventions (KAL2004, KAL2007, KAL2008)
 

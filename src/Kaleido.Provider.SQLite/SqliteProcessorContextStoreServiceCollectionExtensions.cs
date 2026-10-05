@@ -23,7 +23,7 @@ public static class SqliteProcessorContextStoreServiceCollectionExtensions
         catch (ArgumentException exception)
         {
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.InvalidConnectionString,
+                SqliteErrorCodes.InvalidConnectionString,
                 "The SQLite process context store connection string is invalid.",
                 exception);
         }

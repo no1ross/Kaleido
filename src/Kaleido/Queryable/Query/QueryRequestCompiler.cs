@@ -86,7 +86,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
         if (node.Condition is not null && node.Group is not null)
         {
             throw new KaleidoValidationException(
-                ValidationErrorCodes.QryInvalidFilterNode,
+                QueryableErrorCodes.InvalidFilterNode,
                 "Filter node cannot specify both Condition and Group.");
         }
 
@@ -105,7 +105,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
         }
 
         throw new KaleidoValidationException(
-            ValidationErrorCodes.QryInvalidFilterNode,
+            QueryableErrorCodes.InvalidFilterNode,
             "Filter node must specify either Condition or Group.");
     }
 
