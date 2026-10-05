@@ -49,8 +49,8 @@ services.AddKaleido(builder.Configuration, o =>
 options via the `KaleidoServiceOptionsBuilder` configure lambda — the
 registered options are init-only.
 
-`AddHttp()` wires `ExceptionMiddleware` + `ObservabilityMiddleware` via
-`KaleidoStartupFilter` by default.
+`AddHttp()` always wires `ExceptionMiddleware` + `ObservabilityMiddleware` via
+`KaleidoStartupFilter`; there is no opt-out.
 
 ### Middleware ordering
 
@@ -59,11 +59,8 @@ The startup filter registers `ExceptionMiddleware` **outside**
 boundary turns exceptions from correlation setup and endpoints into Kaleido
 HTTP error responses; the inner middleware initializes correlation and echoes
 its headers. Reversing them would leave a failure during observability setup
-outside Kaleido's exception handler. `AutoRegisterMiddleware = false` skips the
-filter entirely: the built-in middleware types are internal and no public
-manual-registration helper exists. A host opting out must provide its own
-equivalent error/correlation behavior or lose the default response mapping and
-header echo; do not recommend manually referencing the internal types.
+outside Kaleido's exception handler. Both middleware types are internal; hosts
+never register them manually.
 
 ## Transport-neutral response semantics
 
