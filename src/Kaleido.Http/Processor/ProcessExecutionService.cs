@@ -159,10 +159,10 @@ internal sealed class ProcessExecutionService(
                     x.StepName.Equals(
                         stepName,
                         StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(x => x.ExecutionStatus != StepExecutionStatus.Pending)
-                .ThenByDescending(x => x.RuntimeMessages.Count)
-                .ThenByDescending(x => x.BusinessMessages.Count)
-                .First();
+                .MaxBy(x => (x.ExecutionStatus != StepExecutionStatus.Pending, x.RuntimeMessages.Count, x.BusinessMessages.Count))
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingStepResult,
+                $"Process result for step '{stepName}' contained no entry for that step.");
 
         WriteResponseHeaders(
             processResult.ProcessId);

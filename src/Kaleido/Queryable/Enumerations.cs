@@ -51,16 +51,7 @@ public enum FilterOperator
     [Description("Is True")]
     IsTrue,
     [Description("Is False")]
-    IsFalse,
-
-    //// Collection
-    //Any,
-    //All,
-
-    //// Advanced
-    //Regex,
-    //Like,
-    //NotLike
+    IsFalse
 }
 
 public enum MatchMode

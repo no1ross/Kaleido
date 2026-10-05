@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 namespace Kaleido.Processor.Registry;
 
 [ExcludeFromCodeCoverage]
-public record ProcessorRegistryItem
+public sealed record ProcessorRegistryItem
 {
     /// <summary>
     /// Marks this processor as the entry point for the application workflow.
@@ -21,7 +21,7 @@ public record ProcessorRegistryItem
 }
 
 [ExcludeFromCodeCoverage]
-public record ProcessorStepRegistryItem
+public sealed record ProcessorStepRegistryItem
 {
     public required string Name { get; init; }
 
@@ -55,7 +55,7 @@ public record ProcessorStepRegistryItem
 }
 
 [ExcludeFromCodeCoverage]
-public record ProcessorStepSummary
+public sealed record ProcessorStepSummary
 {
     public required string Name { get; init; }
 
@@ -95,7 +95,7 @@ public record ProcessorInputFieldDescriptor : ProcessorPropertyDescriptor
 public record ProcessorOutputFieldDescriptor : ProcessorPropertyDescriptor;
 
 [ExcludeFromCodeCoverage]
-public record ProcessorStepResultDescriptor
+public sealed record ProcessorStepResultDescriptor
 {
     public IReadOnlyCollection<ProcessorOutputFieldDescriptor> OutputFields { get; init; }
         = [];

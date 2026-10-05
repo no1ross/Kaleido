@@ -39,8 +39,8 @@ Queryable requests use an optional `query.page` object. An omitted page can stil
   - `GET /{prefix}/registry` — unified discovery: local process + queryable registrations; when `MapKaleidoHttp(o => o.AggregateRegistry = true)` is used, also merges every downstream client registered via `AddHttpClients()`
 
 ### URL and route helpers
-- `ProcessContractUrls` / `ProcessRoutePaths` — URL generation for Process metadata and execute URLs
-- `QueryableContractUrls` / `QueryableRoutePaths` — URL generation for Queryable metadata and query URLs
+- `ProcessContractUrls` / `ProcessRoutePaths` (in `Kaleido.Http.Abstractions`) — URL generation for Process metadata and execute URLs
+- `QueryableContractUrls` (in `Kaleido.Http.Abstractions`) — URL generation for Queryable metadata and query URLs
 
 ---
 
@@ -192,5 +192,5 @@ The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from
 - `QueryableEndpointRouteBuilderExtensions.cs` — Queryable route publication
 - `ProcessorEndpointRouteBuilderExtensions.cs` — Process route publication
 - `RegistryEndpointRouteBuilderExtensions.cs` — Registry route publication
-- `Contracts/ProcessContractUrls.cs` / `ProcessRoutePaths.cs` — Process URL generation
-- `Contracts/QueryableContractUrls.cs` / `QueryableRoutePaths.cs` — Queryable URL generation
+- `../Kaleido.Http.Abstractions/Processor/ProcessRoutes.cs` — `ProcessContractUrls`, `ProcessRoutePaths`, `ProcessEndpointNames`
+- `../Kaleido.Http.Abstractions/Queryable/QueryableRoutes.cs` — `QueryableContractUrls`
