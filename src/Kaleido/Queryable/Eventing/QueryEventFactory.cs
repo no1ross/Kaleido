@@ -52,11 +52,11 @@ internal sealed class QueryEventFactory(
             RequestId = correlation.RequestId,
             ServiceName = serviceOptions.ServiceName,
             ProcessId = correlation.ProcessId,
-            StepName = correlation.StepName,
+            CallingStepName = correlation.CallingStepName,
             QueryContextName = details.QueryContextName,
             QueryViewName = details.QueryViewName,
             ProcessorInstanceId = serviceOptions.InstanceId.ToString(),
-            SourceProcessorName = correlation.SourceProcessorName ?? serviceOptions.ServiceName
+            CallingProcessorName = correlation.CallingProcessorName
         };
 
         return new KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>

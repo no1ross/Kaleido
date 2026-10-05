@@ -198,8 +198,8 @@ public sealed class ProcessorObservabilityTests
                 {
                     RequestId = "REQ-001",
                     ProcessId = Guid.NewGuid(),
-                    ProcessorInstanceId = Guid.NewGuid(),
-                    SourceProcessorName = "source-processor"
+                    CallingProcessorName = "calling-processor",
+                    CallingStepName = "calling-step"
                 });
 
         return new ProcessorObservability(

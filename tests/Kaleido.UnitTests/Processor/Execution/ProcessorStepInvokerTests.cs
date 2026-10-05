@@ -1,4 +1,5 @@
 using Kaleido.Exceptions;
+using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Observability;
 using Kaleido.Processor.Registry;
@@ -298,13 +299,56 @@ public sealed class ProcessorStepInvokerTests
             exception.Message);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_SeedsHandlerScopeCorrelationWithProcessIdAndExecutingStep()
+    {
+        var recorder =
+            new CorrelationRecorder();
+
+        var requestCorrelation =
+            new KaleidoCorrelationContext
+            {
+                RequestId = "req-1",
+                CallingProcessorName = "intake",
+                CallingStepName = "route"
+            };
+
+        var invoker =
+            CreateSut(
+                services =>
+                {
+                    services.AddSingleton(recorder);
+                    services.AddTransient<CorrelationCapturingHandler>();
+                },
+                requestCorrelation);
+
+        var context =
+            CreateContext();
+
+        await invoker.ExecuteAsync(
+            CreateRegistration<CorrelationCapturingHandler>(),
+            new TestStep(),
+            context);
+
+        var seen = Assert.IsType<KaleidoCorrelationContext>(recorder.Seen);
+        Assert.Equal("req-1", seen.RequestId);
+        Assert.Equal(context.ProcessId, seen.ProcessId);
+        Assert.Equal("test-step", seen.ExecutingStepName);
+        Assert.Equal("intake", seen.CallingProcessorName);
+        Assert.Equal("route", seen.CallingStepName);
+    }
+
     private static ProcessorStepInvoker CreateSut(
-        Action<IServiceCollection>? configureServices = null)
+        Action<IServiceCollection>? configureServices = null,
+        KaleidoCorrelationContext? requestCorrelation = null)
     {
         var services =
             new ServiceCollection();
 
         services.AddScoped<IProcessorObservability, TestProcessObservability>();
+        services.AddScoped<KaleidoCorrelationContextAccessor>();
+        services.AddScoped<IKaleidoCorrelationContextAccessor>(sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
+        services.AddScoped<IKaleidoCorrelationContextInitializer>(sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
 
         configureServices?.Invoke(services);
 
@@ -317,9 +361,42 @@ public sealed class ProcessorStepInvokerTests
         var scopeFactory =
             provider.GetRequiredService<IServiceScopeFactory>();
 
+        var requestAccessor =
+            new Mock<IKaleidoCorrelationContextAccessor>();
+
+        requestAccessor
+            .SetupGet(x => x.Current)
+            .Returns(requestCorrelation ?? new KaleidoCorrelationContext());
+
         return new ProcessorStepInvoker(
             observability,
-            scopeFactory);
+            scopeFactory,
+            requestAccessor.Object);
+    }
+
+    private sealed class CorrelationRecorder
+    {
+        public KaleidoCorrelationContext? Seen { get; set; }
+    }
+
+    private sealed class CorrelationCapturingHandler(
+        CorrelationRecorder recorder,
+        IKaleidoCorrelationContextAccessor correlation) :
+        IProcessStepHandler<TestStep, TestStepResponse>
+    {
+        public Task<ProcessStepHandlerResult<TestStepResponse>> ExecuteAsync(
+            TestStep processStep,
+            ProcessStepContext context,
+            CancellationToken cancellationToken = default)
+        {
+            recorder.Seen = correlation.Current;
+
+            return Task.FromResult(
+                new ProcessStepHandlerResult<TestStepResponse>
+                {
+                    Succeeded = true
+                });
+        }
     }
 
     private static ProcessStepRegistration CreateRegistration<THandler>(

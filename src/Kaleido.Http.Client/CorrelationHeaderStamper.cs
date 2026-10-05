@@ -5,8 +5,14 @@ internal interface ICorrelationHeaderStamper
     void Stamp(HttpRequestMessage request);
 }
 
+/// <summary>
+/// Stamps outbound correlation headers. Request id and process id are forwarded
+/// unchanged; calling processor and step are this service and its executing step,
+/// sent only when the call is made from inside a step (never forwarded from inbound).
+/// </summary>
 internal sealed class CorrelationHeaderStamper(
-    IKaleidoCorrelationContextAccessor correlation)
+    IKaleidoCorrelationContextAccessor correlation,
+    KaleidoServiceOptions serviceOptions)
     : ICorrelationHeaderStamper
 {
     public void Stamp(HttpRequestMessage request)
@@ -27,25 +33,17 @@ internal sealed class CorrelationHeaderStamper(
                 ctx.ProcessId.Value.ToString());
         }
 
-        if (!string.IsNullOrWhiteSpace(ctx.SourceProcessorName))
+        if (string.IsNullOrWhiteSpace(ctx.ExecutingStepName))
         {
-            request.Headers.TryAddWithoutValidation(
-                KaleidoCorrelationHeaders.SourceProcessor,
-                ctx.SourceProcessorName.Sanitize());
+            return;
         }
 
-        if (ctx.ProcessorInstanceId.HasValue)
-        {
-            request.Headers.TryAddWithoutValidation(
-                KaleidoCorrelationHeaders.ProcessorInstanceId,
-                ctx.ProcessorInstanceId.Value.ToString());
-        }
+        request.Headers.TryAddWithoutValidation(
+            KaleidoCorrelationHeaders.CallingProcessor,
+            serviceOptions.ServiceName.Sanitize());
 
-        if (!string.IsNullOrWhiteSpace(ctx.StepName))
-        {
-            request.Headers.TryAddWithoutValidation(
-                KaleidoCorrelationHeaders.StepName,
-                ctx.StepName.Sanitize());
-        }
+        request.Headers.TryAddWithoutValidation(
+            KaleidoCorrelationHeaders.CallingStep,
+            ctx.ExecutingStepName.Sanitize());
     }
 }

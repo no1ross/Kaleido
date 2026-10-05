@@ -12,7 +12,9 @@ namespace Kaleido.Analyzers.Source.DependencyInjection;
 /// GetServices / GetRequiredService outside composition roots hides
 /// dependencies; constructor injection makes them explicit.
 /// *ServiceCollectionExtensions classes are exempt — registration factories
-/// legitimately resolve services there.
+/// legitimately resolve services there. Resolution from a scope created in the
+/// same method (<c>var scope = factory.CreateScope(); scope.ServiceProvider.Get…</c>)
+/// is exempt too — a child scope's services can never be constructor-injected.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ServiceLocatorAnalyzer : DiagnosticAnalyzer
@@ -68,6 +70,11 @@ public sealed class ServiceLocatorAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        if (IsFromScopeCreatedHere(invocation, context))
+        {
+            return;
+        }
+
         // dynamic resolution is the container's dispatch seam — only flag
         // statically-closed service types that could be ctor-injected
         var resolvedType =
@@ -83,5 +90,32 @@ public sealed class ServiceLocatorAnalyzer : DiagnosticAnalyzer
 
         context.ReportDiagnostic(
             Diagnostic.Create(Rule, invocation.GetLocation(), method.Name));
+    }
+
+    // scope.ServiceProvider.Get…() where `scope` is a local initialized by
+    // CreateScope()/CreateAsyncScope() — the child scope is the composition seam.
+    private static bool IsFromScopeCreatedHere(
+        InvocationExpressionSyntax invocation,
+        SyntaxNodeAnalysisContext context)
+    {
+        var target =
+            invocation.Expression is MemberAccessExpressionSyntax call
+                ? call.Expression
+                : null;
+
+        if (target is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "ServiceProvider" } providerAccess ||
+            context.SemanticModel.GetSymbolInfo(providerAccess.Expression, context.CancellationToken).Symbol
+                is not ILocalSymbol scopeLocal)
+        {
+            return false;
+        }
+
+        return scopeLocal.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax(context.CancellationToken))
+            .OfType<VariableDeclaratorSyntax>()
+            .Any(declarator =>
+                declarator.Initializer?.Value is InvocationExpressionSyntax creation &&
+                context.SemanticModel.GetSymbolInfo(creation, context.CancellationToken).Symbol
+                    is IMethodSymbol { Name: "CreateScope" or "CreateAsyncScope" });
     }
 }

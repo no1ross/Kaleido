@@ -1,29 +1,28 @@
 namespace Kaleido.Http;
 
-/// <summary>HTTP header names used to propagate Kaleido correlation context between services.</summary>
+/// <summary>
+/// HTTP header names used to propagate Kaleido correlation context between services.
+/// Request id and process id are end-to-end (forwarded unchanged on every hop); calling
+/// processor and calling step are per-hop (set by the caller, never forwarded).
+/// </summary>
 public static class KaleidoCorrelationHeaders
 {
-    /// <summary>Carries the unique identifier of the originating request across service hops.</summary>
+    /// <summary>End-to-end: the unique identifier of the originating request.</summary>
     public const string RequestId =
         "X-Kaleido-Request-Id";
 
-    /// <summary>Carries the unique identifier of the active processor process.</summary>
+    /// <summary>End-to-end: the process instance the request belongs to.</summary>
     public const string ProcessId =
         "X-Kaleido-Process-Id";
 
-    /// <summary>Carries the instance identifier of the processor that handled the request.</summary>
-    public const string ProcessorInstanceId =
-        "X-Kaleido-Processor-Instance-Id";
-
-    /// <summary>Carries the service name of the processor that originated the request.</summary>
-    public const string SourceProcessor =
-        "X-Kaleido-Source-Processor";
-
     /// <summary>
-    /// Carries the name of the process step that is making an inter-service call.
-    /// Set by a process step handler when calling a Queryable service, enabling traceability
-    /// of which step initiated a queryable operation.
+    /// Per-hop: the processor whose step is making this call. Sent only when the call is
+    /// made from inside a step execution; never forwarded to the next hop.
     /// </summary>
-    public const string StepName =
-        "X-Kaleido-Step-Name";
+    public const string CallingProcessor =
+        "X-Kaleido-Calling-Processor";
+
+    /// <summary>Per-hop: the step in the calling processor that is making this call.</summary>
+    public const string CallingStep =
+        "X-Kaleido-Calling-Step";
 }

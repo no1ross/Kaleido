@@ -44,17 +44,16 @@ public sealed class ProcessClientHeaderTests : IClassFixture<ProcessorAspNetCore
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public async Task GetRegistryAsync_StampsAllCorrelationHeadersOnRequest()
+    public async Task GetRegistryAsync_InsideStep_StampsEndToEndAndCallingProcessorStep()
     {
         var processId = Guid.NewGuid();
-        var instanceId = Guid.NewGuid();
         var ctx = new KaleidoCorrelationContext
         {
-            RequestId           = "req-process-header-test",
-            ProcessId           = processId,
-            ProcessorInstanceId = instanceId,
-            SourceProcessorName = "intake",
-            StepName            = "validate",
+            RequestId            = "req-process-header-test",
+            ProcessId            = processId,
+            CallingProcessorName = "upstream",
+            CallingStepName      = "upstream-step",
+            ExecutingStepName    = "validate",
         };
 
         var (factory, captured) = BuildClientFactory(ctx);
@@ -66,12 +65,32 @@ public sealed class ProcessClientHeaderTests : IClassFixture<ProcessorAspNetCore
             request.Headers.GetValues(KaleidoCorrelationHeaders.RequestId).First());
         Assert.Equal(processId.ToString(),
             request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId).First());
-        Assert.Equal(instanceId.ToString(),
-            request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessorInstanceId).First());
-        Assert.Equal("intake",
-            request.Headers.GetValues(KaleidoCorrelationHeaders.SourceProcessor).First());
+        // per-hop: this service and its executing step, never the inbound caller
+        Assert.Equal("test-client",
+            request.Headers.GetValues(KaleidoCorrelationHeaders.CallingProcessor).First());
         Assert.Equal("validate",
-            request.Headers.GetValues(KaleidoCorrelationHeaders.StepName).First());
+            request.Headers.GetValues(KaleidoCorrelationHeaders.CallingStep).First());
+    }
+
+    [Fact]
+    public async Task GetRegistryAsync_OutsideStep_ForwardsEndToEndOnly()
+    {
+        var ctx = new KaleidoCorrelationContext
+        {
+            RequestId            = "req-process-header-test",
+            CallingProcessorName = "upstream",
+            CallingStepName      = "upstream-step",
+        };
+
+        var (factory, captured) = BuildClientFactory(ctx);
+
+        await factory.GetClient("test").GetRegistryAsync();
+
+        var request = Assert.Single(captured);
+        Assert.Equal("req-process-header-test",
+            request.Headers.GetValues(KaleidoCorrelationHeaders.RequestId).First());
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.CallingProcessor));
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.CallingStep));
     }
 
     [Fact]
@@ -84,9 +103,8 @@ public sealed class ProcessClientHeaderTests : IClassFixture<ProcessorAspNetCore
         var request = Assert.Single(captured);
         Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.RequestId));
         Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.ProcessId));
-        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.ProcessorInstanceId));
-        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.SourceProcessor));
-        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.StepName));
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.CallingProcessor));
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.CallingStep));
     }
 
     // ---------------------------------------------------------------------------
