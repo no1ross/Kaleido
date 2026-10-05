@@ -5,11 +5,11 @@ public static class QueryableEndpointNames
 {
     public static string QueryContextEndpointName(
         string contextName)
-        => $"{contextName}-query";
+        => $"KaleidoQueryableQuery_{contextName}";
 
     public static string QueryViewEndpointName(
         string contextName,
         string viewName)
-        => $"{contextName}-{viewName}-query";
+        => $"KaleidoQueryableViewQuery_{contextName}_{viewName}";
 
 }
