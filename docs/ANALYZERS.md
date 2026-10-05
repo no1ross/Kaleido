@@ -48,6 +48,7 @@ Shipped inside the `Kaleido` package (`analyzers/dotnet/cs/`). They fire on **co
 | KAL0015 | Interface must live in the same file as its same-named implementation (`IProcessorRuntime` in `ProcessorRuntime.cs`); provider contracts exempt | `Interface '{0}' should be declared in '{1}' alongside '{2}' — an interface and its concrete class share a file` |
 | KAL0018 | Public and internal API members must not expose mutable collection types (`List<T>`, `IList<T>`, `Dictionary<K,V>`, `IDictionary<K,V>`, `HashSet<T>`, `ISet<T>`, `ICollection<T>`) | `'{0}' is a mutable collection type — use IReadOnlyCollection<T>, IReadOnlyList<T>, IReadOnlyDictionary<K,V>, or IEnumerable<T> instead` |
 | KAL0019 | Public and internal async methods returning `Task`/`Task<T>` must accept a `CancellationToken` parameter | `Async method '{0}' does not accept a CancellationToken — add 'CancellationToken cancellationToken = default' so callers can propagate cancellation` |
+| KAL0020 | ASP.NET Core `WithName(...)` must take a constant or factory method from a type whose name ends in `EndpointNames` | `Pass a member of an *EndpointNames type to WithName instead of '{0}'` |
 
 ### DI rule notes (KAL0005–KAL0014)
 
@@ -55,7 +56,7 @@ The registered-service model is harvested from `*ServiceCollectionExtensions` cl
 
 ### HTTP endpoint notes
 
-Contributor convention: declare endpoint names as `const string` fields in a `*EndpointNames` class in `Kaleido.Http.Abstractions`, not inline literals passed to `WithName()`. This is **not** a shipped analyzer diagnostic; the proposed KAL0020 rule remains separately tracked in [#152](https://github.com/no1ross/Kaleido/issues/152).
+Endpoint names are declared as `const string` fields or name-factory methods on a `*EndpointNames` class in `Kaleido.Http.Abstractions` (`ProcessEndpointNames`, `RegistryEndpointNames`) or `Kaleido.Http` (`QueryableEndpointNames`). KAL0020 enforces it: an inline literal or a constant from any other type passed to `WithName()` is reported. Endpoint names are link targets and OpenAPI operation ids, and an unenforced literal let the `KaleidoProcessStepREgistry` typo ship (HP-015, [#62](https://github.com/no1ross/Kaleido/issues/62)).
 
 ### API design rules notes (KAL0018–KAL0019)
 
@@ -80,6 +81,7 @@ code on the first pass — do not suppress.
 | KAL0014 | Singleton capturing a scoped service — captive dependency, stale per-request state |
 | KAL0018 | Mutable collection types on the API surface — callers can corrupt shared state |
 | KAL0019 | Async methods without `CancellationToken` — cancellations stop propagating |
+| KAL0020 | Ad-hoc endpoint names — typos break link generation and OpenAPI operation ids silently |
 | KAL2001–2003 | Step/context/view attributes missing `Name`/`Version` — startup failures ship as runtime 500s |
 | KAL2004 | Swallowed `OperationCanceledException` in step handlers — canceled steps recorded as failures, false alerts |
 | KAL2005 | Invalid `ServiceName` literals — route-prefix corruption (path separators, casing) |
