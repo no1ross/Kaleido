@@ -144,6 +144,7 @@ The rule is: **one observability signal per cancellation, at the lowest level th
 - **Process:** `ProcessExecutor` is the single recording point (`stepObservation.Canceled()`). It has step name, version, and processor name, and is where state is saved on cancellation. All layers above (`ProcessStepInvoker`, `ProcessRuntime`) use `when (exception is not OperationCanceledException)` on their `catch (Exception)` blocks so OCE propagates cleanly without triggering `ExecutionFailed` or `HandlerFailed`.
 - **Queryable:** `QueryContextEngine` and `DelegatedQueryViewEngine` each call `observation.Canceled()` in an explicit `catch (OperationCanceledException)` block placed before `catch (Exception)`. These are mutually exclusive code paths (dispatched by `QueryableService`), so only one signal fires per request.
 - Do **not** add `Canceled()` calls at higher levels (`ProcessRuntime`, `ProcessStepInvoker`) — you will get duplicate signals for the same cancellation event.
+- KAL0021 enforces the "exclude OCE" half: a catch-all that calls an observability member without a `when (… is not OperationCanceledException)` filter or an earlier `catch (OperationCanceledException)` is reported. The one-signal-per-cancellation placement is still a review responsibility.
 
 ### Record conversion
 - Convert immutable data containers with init-only properties to records

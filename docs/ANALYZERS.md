@@ -49,6 +49,7 @@ Shipped inside the `Kaleido` package (`analyzers/dotnet/cs/`). They fire on **co
 | KAL0018 | Public and internal API members must not expose mutable collection types (`List<T>`, `IList<T>`, `Dictionary<K,V>`, `IDictionary<K,V>`, `HashSet<T>`, `ISet<T>`, `ICollection<T>`) | `'{0}' is a mutable collection type — use IReadOnlyCollection<T>, IReadOnlyList<T>, IReadOnlyDictionary<K,V>, or IEnumerable<T> instead` |
 | KAL0019 | Public and internal async methods returning `Task`/`Task<T>` must accept a `CancellationToken` parameter | `Async method '{0}' does not accept a CancellationToken — add 'CancellationToken cancellationToken = default' so callers can propagate cancellation` |
 | KAL0020 | ASP.NET Core `WithName(...)` must take a constant or factory method from a type whose name ends in `EndpointNames` | `Pass a member of an *EndpointNames type to WithName instead of '{0}'` |
+| KAL0021 | A catch-all (`catch` / `catch (Exception)`) that calls a member on an `*Observation`/`*Observability` type must exclude `OperationCanceledException`, via a `when` filter or an earlier `catch (OperationCanceledException)` | `This catch-all calls '{0}' but does not exclude OperationCanceledException — add 'when (ex is not OperationCanceledException)' or an earlier catch (OperationCanceledException)` |
 
 ### DI rule notes (KAL0005–KAL0014)
 
@@ -82,6 +83,7 @@ code on the first pass — do not suppress.
 | KAL0018 | Mutable collection types on the API surface — callers can corrupt shared state |
 | KAL0019 | Async methods without `CancellationToken` — cancellations stop propagating |
 | KAL0020 | Ad-hoc endpoint names — typos break link generation and OpenAPI operation ids silently |
+| KAL0021 | Cancellations recorded as failures in observability catch-alls — inflated error metrics, false alerts |
 | KAL2001–2003 | Step/context/view attributes missing `Name`/`Version` — startup failures ship as runtime 500s |
 | KAL2004 | Swallowed `OperationCanceledException` in step handlers — canceled steps recorded as failures, false alerts |
 | KAL2005 | Invalid `ServiceName` literals — route-prefix corruption (path separators, casing) |
