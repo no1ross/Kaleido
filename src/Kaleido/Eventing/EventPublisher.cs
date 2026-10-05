@@ -26,6 +26,12 @@ namespace Kaleido.Eventing;
 /// you will have no data warehouse feed, no audit trail, no analytics, and no replay capability.
 /// </para>
 /// <para>
+/// <strong>Fire-and-forget:</strong> Kaleido calls <see cref="PublishAsync"/> and does not await it.
+/// An exception thrown by the call is logged at Warning and never fails the request. Delivery,
+/// ordering, retries and error handling after the call are owned by the implementation; it may
+/// still be running after the response is sent, so it must not depend on request-scoped services.
+/// </para>
+/// <para>
 /// Register a real publisher before calling <c>AddKaleido()</c>, or use
 /// <c>AddEventPublisher&lt;TPublisher&gt;()</c> on the builder:
 /// <code>

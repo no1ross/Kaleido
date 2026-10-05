@@ -2,6 +2,7 @@ using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Queryable.Query;
 
@@ -20,7 +21,8 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
     IEventPublisher eventPublisher,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     IQueryableObservability observability,
-    IServiceProvider serviceProvider)
+    IServiceProvider serviceProvider,
+    ILogger<DelegatedQueryViewEngine<TDelegateContext, TView>> logger)
     : IDelegatedQueryViewEngine<TDelegateContext, TView>
     where TDelegateContext : class
     where TView : class
@@ -93,13 +95,23 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
 
             if (eventPublisher is not EventPublisher)
             {
-                await eventPublisher.PublishAsync(
-                    eventFactory.CreateQueryExecuted(
-                        correlationAccessor.Current,
-                        details,
-                        request,
-                        result),
-                    cancellationToken);
+                try
+                {
+                    _ = eventPublisher.PublishAsync(
+                        eventFactory.CreateQueryExecuted(
+                            correlationAccessor.Current,
+                            details,
+                            request,
+                            result),
+                        cancellationToken);
+                }
+                catch (Exception publishException) when (publishException is not OperationCanceledException)
+                {
+                    logger.LogWarning(
+                        publishException,
+                        "Event publish failed for QueryExecuted on context {QueryContextName}. Event delivery is best-effort.",
+                        details.QueryContextName);
+                }
             }
 
             return result;
