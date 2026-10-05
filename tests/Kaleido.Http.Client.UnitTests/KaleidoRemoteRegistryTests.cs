@@ -162,6 +162,49 @@ public sealed class KaleidoRemoteRegistryTests
         Assert.Equal(HttpClientErrorCodes.EmptyResponse, ex.Code);
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.OK)]
+    [InlineData(HttpStatusCode.NotFound)]
+    public async Task GetAsync_DisposesResponse(HttpStatusCode statusCode)
+    {
+        var content = new DisposalTrackingContent(
+            JsonContent.Create(FakeRegistry, options: KaleidoJsonOptions.Options));
+        var (sut, _) = CreateSutWithHandler(_ => new HttpResponseMessage(statusCode) { Content = content });
+
+        if (statusCode == HttpStatusCode.OK)
+        {
+            await sut.GetAsync("remote", "remote-svc", null, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
+        }
+        else
+        {
+            await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
+                sut.GetAsync("remote", "remote-svc", null, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
+        }
+
+        Assert.True(content.Disposed);
+    }
+
+    private sealed class DisposalTrackingContent(HttpContent inner) : HttpContent
+    {
+        public bool Disposed { get; private set; }
+
+        protected override Task SerializeToStreamAsync(Stream stream, System.Net.TransportContext? context) =>
+            inner.CopyToAsync(stream);
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            Disposed = true;
+            inner.Dispose();
+            base.Dispose(disposing);
+        }
+    }
+
     [Fact]
     public async Task Invalidate_RefetchesClient()
     {

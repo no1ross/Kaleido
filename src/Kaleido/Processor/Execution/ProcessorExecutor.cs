@@ -162,7 +162,7 @@ internal sealed class ProcessorExecutor(
 
                 try
                 {
-                    await eventPublisher.PublishAsync(
+                    _ = eventPublisher.PublishAsync(
                         eventFactory.CreateStepCompleted(
                             correlationAccessor.Current,
                             context,

@@ -39,13 +39,8 @@ public static class KaleidoHttpServiceCollectionExtensions
                 IAuthorizationMiddlewareResultHandler,
                 KaleidoAuthorizationResultHandler>());
 
-        // Register Kaleido middleware pipeline via startup filter — opt-out
-        // via KaleidoHttpOptions.AutoRegisterMiddleware for hosts that own
-        // their middleware order.
-        if (httpOptions.AutoRegisterMiddleware)
-        {
-            builder.Services.AddSingleton<IStartupFilter, KaleidoStartupFilter>();
-        }
+        // Register Kaleido middleware pipeline via startup filter.
+        builder.Services.AddSingleton<IStartupFilter, KaleidoStartupFilter>();
 
         // Register HTTP-specific execution services — only when Process runtime is present
         if (builder.Services.Any(d => d.ServiceType == typeof(IProcessorRegistry)))

@@ -26,16 +26,6 @@ public sealed class KaleidoHttpOptions
     public Func<HttpContext, bool>? TrustCorrelationIdentity { get; set; }
 
     /// <summary>
-    /// When <c>true</c> (default), <c>AddHttp()</c> registers
-    /// <c>KaleidoStartupFilter</c> — an <c>IStartupFilter</c> that wires
-    /// <c>ExceptionMiddleware</c> and <c>ObservabilityMiddleware</c> into the
-    /// pipeline automatically. Set to <c>false</c> to suppress the filter and
-    /// own the middleware order yourself; the host must then call the
-    /// equivalent <c>UseMiddleware</c> registrations explicitly.
-    /// </summary>
-    public bool AutoRegisterMiddleware { get; set; } = true;
-
-    /// <summary>
     /// Includes framework-generated diagnostics in Process execution responses when enabled.
     /// Off by default: <c>FrameworkMessages</c> stays empty, while handler-authored
     /// <c>BusinessMessages</c> is always returned.
