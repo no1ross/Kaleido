@@ -53,7 +53,7 @@ Shipped inside the `Kaleido` package (`analyzers/dotnet/cs/`). They fire on **co
 
 ### DI rule notes (KAL0005–KAL0014)
 
-The registered-service model is harvested from `*ServiceCollectionExtensions` classes in the same compilation (generic args, `typeof()` args, returned `new` in factory lambdas). `*ServiceCollectionExtensions` and `*EndpointRouteBuilderExtensions` are composition roots — exempt. `context.RequestServices` resolution (middleware/endpoint activation) and dynamic resolutions (runtime `Type` args, open-generic type parameters) are exempt from KAL0007 — they are the container's dispatch seam. Tests are exempt via `.editorconfig`.
+The registered-service model is harvested from `*ServiceCollectionExtensions` classes in the same compilation (generic args, `typeof()` args, returned `new` in factory lambdas). `*ServiceCollectionExtensions` and `*EndpointRouteBuilderExtensions` are composition roots — exempt. `context.RequestServices` resolution (middleware/endpoint activation) and dynamic resolutions (runtime `Type` args, open-generic type parameters) are exempt from KAL0007 — they are the container's dispatch seam. So is resolution from a scope created in the same method (`using var scope = scopeFactory.CreateScope(); scope.ServiceProvider.Get…`): a child scope's services can never be constructor-injected (injection yields the parent scope's instance), so that scope is a composition seam. Resolution from an injected `IServiceProvider` or `IServiceScope` is still reported. Tests are exempt via `.editorconfig`.
 
 ### HTTP endpoint notes
 
