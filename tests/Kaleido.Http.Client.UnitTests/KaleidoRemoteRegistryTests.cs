@@ -171,12 +171,14 @@ public sealed class KaleidoRemoteRegistryTests
             JsonContent.Create(FakeRegistry, options: KaleidoJsonOptions.Options));
         var (sut, _) = CreateSutWithHandler(_ => new HttpResponseMessage(statusCode) { Content = content });
 
-        try
+        if (statusCode == HttpStatusCode.OK)
         {
             await sut.GetAsync("remote", "remote-svc", null, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
         }
-        catch (KaleidoHttpClientException) when (statusCode != HttpStatusCode.OK)
+        else
         {
+            await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
+                sut.GetAsync("remote", "remote-svc", null, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
         }
 
         Assert.True(content.Disposed);
