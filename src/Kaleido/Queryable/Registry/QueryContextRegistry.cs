@@ -158,19 +158,19 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
         {
             return allSources[0].ImplementationType
                 ?? throw new KaleidoConfigurationException(
-                    ConfigurationErrorCodes.QryMissingSource,
+                    QueryableErrorCodes.MissingSource,
                     $"No implementation type registered for source of query context '{contextType.Name}'.");
         }
 
         if (allSources.Length > 1)
         {
             throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.QryDuplicateSource,
+                QueryableErrorCodes.DuplicateSource,
                 $"Query context '{contextType.Name}' has multiple registered local sources.");
         }
 
         throw new KaleidoConfigurationException(
-            ConfigurationErrorCodes.QryMissingSource,
+            QueryableErrorCodes.MissingSource,
             $"Query context '{contextType.Name}' does not have a registered source.");
     }
 
@@ -180,7 +180,7 @@ internal sealed class QueryContextRegistry : IQueryContextRegistry
         var attribute =
             contextType.GetCustomAttribute<QueryContextAttribute>()
             ?? throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.QryMissingAttribute,
+                QueryableErrorCodes.MissingAttribute,
                 $"Query context '{contextType.Name}' is missing QueryContextAttribute.");
 
         var pageable =

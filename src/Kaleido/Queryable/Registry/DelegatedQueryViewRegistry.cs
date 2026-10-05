@@ -97,7 +97,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
         var queryViewAttribute =
             queryViewType.GetCustomAttribute<QueryViewAttribute>()
             ?? throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.QryMissingAttribute,
+                QueryableErrorCodes.MissingAttribute,
                 $"Query view '{queryViewType.Name}' is missing QueryViewAttribute.");
 
         var queryViewInterface =
@@ -139,7 +139,7 @@ internal sealed class DelegatedQueryViewRegistry : IDelegatedQueryViewRegistry
         var attribute =
             contextType.GetCustomAttribute<QueryContextAttribute>()
             ?? throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.QryMissingAttribute,
+                QueryableErrorCodes.MissingAttribute,
                 $"Delegated query view context '{contextType.Name}' is missing QueryContextAttribute.");
 
         var pageable =

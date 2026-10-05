@@ -120,7 +120,7 @@ public sealed class QueryRequestCompilerTests
 
         var exception = Assert.Throws<KaleidoValidationException>(() => Sut.Compile(request, CreateContextMetadata()));
 
-        Assert.Equal(ValidationErrorCodes.QryInvalidField, exception.Code);
+        Assert.Equal(QueryableErrorCodes.InvalidField, exception.Code);
         Assert.Contains("Field 'Missing' does not exist", exception.Message);
     }
 
