@@ -17,7 +17,7 @@ internal static class HttpCorrelationContextReader
     /// <param name="trustIdentity">
     /// When <c>false</c>, identity-bearing headers are not honored — a fresh
     /// <see cref="KaleidoCorrelationContext.RequestId"/> is generated and the
-    /// SourceProcessor/StepName/ProcessorInstanceId headers are ignored.
+    /// calling-processor/calling-step headers are ignored.
     /// <c>X-Kaleido-Process-Id</c> is always read — it is a resumable process
     /// handle, not an identity claim.
     /// </param>
@@ -38,19 +38,14 @@ internal static class HttpCorrelationContextReader
             ProcessId =
                 ReadGuid(context, KaleidoCorrelationHeaders.ProcessId),
 
-            ProcessorInstanceId =
+            CallingProcessorName =
                 trustIdentity
-                    ? ReadGuid(context, KaleidoCorrelationHeaders.ProcessorInstanceId)
+                    ? ReadString(context, KaleidoCorrelationHeaders.CallingProcessor)
                     : null,
 
-            SourceProcessorName =
+            CallingStepName =
                 trustIdentity
-                    ? ReadString(context, KaleidoCorrelationHeaders.SourceProcessor)
-                    : null,
-
-            StepName =
-                trustIdentity
-                    ? ReadString(context, KaleidoCorrelationHeaders.StepName)
+                    ? ReadString(context, KaleidoCorrelationHeaders.CallingStep)
                     : null
         };
     }

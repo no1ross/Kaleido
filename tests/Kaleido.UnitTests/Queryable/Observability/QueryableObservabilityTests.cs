@@ -129,12 +129,13 @@ public sealed class QueryableObservabilityTests
                 {
                     RequestId = "REQ-001",
                     ProcessId = Guid.NewGuid(),
-                    ProcessorInstanceId = Guid.NewGuid(),
-                    SourceProcessorName = "source-processor"
+                    CallingProcessorName = "calling-processor",
+                    CallingStepName = "calling-step"
                 });
 
         return new QueryableObservability(
             correlationAccessor.Object,
+            new KaleidoServiceOptions { ServiceName = "test-queryable" },
             Mock.Of<ILogger<QueryableObservability>>());
     }
 }

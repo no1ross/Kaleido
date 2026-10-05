@@ -155,9 +155,10 @@ internal sealed class ProcessorObservability(
         var correlation = correlationAccessor.Current;
 
         activity?.SetTag(KaleidoTelemetryTags.RequestId, correlation.RequestId);
-        activity?.SetTag(KaleidoTelemetryTags.ProcessorInstanceId, correlation.ProcessorInstanceId?.ToString());
+        activity?.SetTag(KaleidoTelemetryTags.ProcessorInstanceId, serviceOptions.InstanceId.ToString());
         activity?.SetTag(KaleidoTelemetryTags.ProcessorName, _processorName);
-        activity?.SetTag(KaleidoTelemetryTags.SourceProcessor, correlation.SourceProcessorName);
+        activity?.SetTag(KaleidoTelemetryTags.CallingProcessor, correlation.CallingProcessorName);
+        activity?.SetTag(KaleidoTelemetryTags.CallingStep, correlation.CallingStepName);
 
         if (correlation.ProcessId.HasValue)
         {
@@ -169,7 +170,7 @@ internal sealed class ProcessorObservability(
         var executionTags =
             CreateExecutionTags(
                 _processorName,
-                correlation.SourceProcessorName);
+                correlation.CallingProcessorName);
 
         ProcessExecutionsCounter.Add(1, executionTags);
         ProcessSubmittedStepCountHistogram.Record(details.SubmittedStepCount, executionTags);
@@ -247,16 +248,16 @@ internal sealed class ProcessorObservability(
 
     private static TagList CreateExecutionTags(
         string processorName,
-        string? sourceProcessorName)
+        string? callingProcessorName)
     {
         TagList tags =
         [
             new(KaleidoTelemetryTags.ProcessorName, processorName)
         ];
 
-        if (!string.IsNullOrWhiteSpace(sourceProcessorName))
+        if (!string.IsNullOrWhiteSpace(callingProcessorName))
         {
-            tags.Add(KaleidoTelemetryTags.SourceProcessor, sourceProcessorName);
+            tags.Add(KaleidoTelemetryTags.CallingProcessor, callingProcessorName);
         }
 
         return tags;

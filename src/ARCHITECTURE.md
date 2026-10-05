@@ -236,14 +236,20 @@ These are framework invariants — code that violates them produces split traces
 - **Exactly one RequestId per HTTP request** — `ObservabilityMiddleware` echoes the inbound
   `X-Kaleido-Request-Id` if present, else generates one. Handlers and downstream calls must
   propagate the ambient `RequestId`, never mint a second one.
-- **Echo-or-generate** — every Kaleido response echoes the correlation headers it accepted.
-  Absent headers are generated, not silently dropped.
+- **Echo-or-generate** — every Kaleido response echoes the end-to-end pair (`RequestId`,
+  `ProcessId`). An absent `RequestId` is generated, not silently dropped. Per-hop headers
+  are never echoed.
+- **End-to-end vs per-hop** — `RequestId`/`ProcessId` are forwarded unchanged on every hop.
+  `X-Kaleido-Calling-Processor`/`-Calling-Step` are set by the caller only when the call is
+  made from inside a step, and never forwarded. The processor instance id is never on the
+  wire. See [`../docs/CORRELATION.md`](../docs/CORRELATION.md).
 - **Outbound propagation is automatic** — `KaleidoProcessorClient`/`KaleidoQueryableClient`
-  forward the ambient context via `CorrelationHeadersHandler`. Do not set `X-Kaleido-*`
-  headers manually on outbound requests.
+  stamp headers via `CorrelationHeaderStamper`. Do not set `X-Kaleido-*` headers manually
+  on outbound requests.
 - **Scoped identity, ambient read** — resolve `IKaleidoCorrelationContextAccessor` (scoped);
   treat the context as read-only after request init. Mutating it mid-request splits the
-  trace.
+  trace. The one sanctioned write is `ProcessorStepInvoker` seeding a step handler's child
+  scope (request context + `ProcessId` + `ExecutingStepName`).
 - **`X-Kaleido-Process-Id` is a handle, not identity** — it resumes a durable process; it
   is honored unconditionally and is not part of the identity-trust gate
   (`TrustCorrelationIdentity`).

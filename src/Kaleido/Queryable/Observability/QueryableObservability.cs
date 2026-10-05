@@ -53,6 +53,7 @@ internal sealed record QueryObservationDetails(
 
 internal sealed class QueryableObservability(
     IKaleidoCorrelationContextAccessor correlationAccessor,
+    KaleidoServiceOptions serviceOptions,
     ILogger<QueryableObservability> logger)
     : IQueryableObservability
 {
@@ -112,8 +113,9 @@ internal sealed class QueryableObservability(
         var correlation = correlationAccessor.Current;
 
         activity?.SetTag(KaleidoTelemetryTags.RequestId, correlation.RequestId);
-        activity?.SetTag(KaleidoTelemetryTags.ProcessorInstanceId, correlation.ProcessorInstanceId?.ToString());
-        activity?.SetTag(KaleidoTelemetryTags.SourceProcessor, correlation.SourceProcessorName);
+        activity?.SetTag(KaleidoTelemetryTags.ProcessorInstanceId, serviceOptions.InstanceId.ToString());
+        activity?.SetTag(KaleidoTelemetryTags.CallingProcessor, correlation.CallingProcessorName);
+        activity?.SetTag(KaleidoTelemetryTags.CallingStep, correlation.CallingStepName);
 
         if (correlation.ProcessId.HasValue)
         {
