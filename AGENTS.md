@@ -243,14 +243,12 @@ Never delete `bin`/`obj` folders inside `node_modules`; if a clean is needed, ex
 
 Stale bin/obj folders are the most common cause after a failed or partial build. Run `full_clean.cmd` from the repo root to nuke all bin/obj folders and restore, then rebuild:
 ```
-full_clean.cmd   # deletes bin/, obj/, .vs/, TestResults/ and runs dotnet restore
+full_clean.cmd --no-pause   # deletes bin/, obj/, .vs/, TestResults/ (not inside node_modules), restores Kaleido.slnx, runs npm ci per UI
 dotnet build Kaleido.slnx
 dotnet test Kaleido.slnx --no-build --
 ```
 
-**Intent of `full_clean.cmd`:** reset the whole repository to a clean, ready-to-build state. It removes all build output and restores **everything**: the .NET solution *and* every Angular/npm site (`samples/PriorAuth/priorauth-ui`, `samples/kaleido-sample-ecommerce-ui`). After it runs, `dotnet build`, `dotnet test`, `npm run build` and `npm test` should all work with no extra steps.
-
-> **Known issue (MP-029):** the script doesn't meet that intent yet. It also deletes `bin` folders inside `node_modules` and doesn't restore npm packages. Afterwards, stop any running `ng serve` and run `npm ci` in each UI folder (`samples/PriorAuth/priorauth-ui`, `samples/kaleido-sample-ecommerce-ui`).
+**Intent of `full_clean.cmd`:** reset the whole repository to a clean, ready-to-build state. It removes all build output and restores **everything**: the .NET solution *and* every Angular/npm site (`samples/PriorAuth/priorauth-ui`, `samples/kaleido-sample-ecommerce-ui`). After it runs, `dotnet build`, `dotnet test`, `npm run build` and `npm test` should all work with no extra steps. Stop any running `ng serve` first, because `npm ci` replaces `node_modules`.
 
 ## Rule of thumb
 
