@@ -22,8 +22,8 @@ public sealed class ProcessRequestTests
         var request = ProcessRequest.ForStep(step);
 
         Assert.Null(request.ProcessId);
-        Assert.True(request.Processor.Steps.ContainsKey(nameof(MyStep)));
-        Assert.Same(step, request.Processor.Steps[nameof(MyStep)]);
+        Assert.True(request.Processor.Steps.TryGetValue(nameof(MyStep), out var registeredStep));
+        Assert.Same(step, registeredStep);
     }
 
     [Fact]
