@@ -130,7 +130,8 @@ public sealed class MemberEligibilityService(
             ProcedureModality.Mri =>
                 await BuildModalityResultAsync(
                     processId,
-                    nameof(CaptureMriInfoStep).Replace("Step", string.Empty),
+                    ModalityRoute.CaptureMriInfo,
+                    nameof(CaptureMriInfoStep),
                     ProcedureModality.Mri,
                     requestedService.ResolvedCodeValue,
                     cancellationToken),
@@ -138,7 +139,8 @@ public sealed class MemberEligibilityService(
             ProcedureModality.Ct =>
                 await BuildModalityResultAsync(
                     processId,
-                    nameof(ConfirmCtInsteadOfMriStep).Replace("Step", string.Empty),
+                    ModalityRoute.ConfirmCtInsteadOfMri,
+                    nameof(ConfirmCtInsteadOfMriStep),
                     ProcedureModality.Mri,
                     requestedService.ResolvedCodeValue,
                     cancellationToken),
@@ -154,7 +156,8 @@ public sealed class MemberEligibilityService(
 
     private async Task<ModalityRoutingResult> BuildModalityResultAsync(
         Guid processId,
-        string requiredStep,
+        ModalityRoute route,
+        string stepName,
         ProcedureModality modality,
         string procedureCodeValue,
         CancellationToken cancellationToken)
@@ -162,12 +165,12 @@ public sealed class MemberEligibilityService(
         var questionnaire =
             await questionnaireDefinitionClient.ResolveAsync(
                 processId,
-                requiredStep,
+                stepName,
                 modality,
                 procedureCodeValue,
                 cancellationToken);
 
-        return ModalityRoutingResult.Ok(requiredStep, questionnaire);
+        return ModalityRoutingResult.Ok(route, questionnaire);
     }
 }
 
@@ -184,17 +187,23 @@ public sealed record MemberEligibilityResult
         new() { Succeeded = false, FailureMessage = message };
 }
 
+public enum ModalityRoute
+{
+    CaptureMriInfo,
+    ConfirmCtInsteadOfMri
+}
+
 public sealed record ModalityRoutingResult
 {
     public bool Succeeded { get; init; }
-    public string? RequiredStep { get; init; }
+    public ModalityRoute? Route { get; init; }
     public QuestionnaireDefinitionView? Questionnaire { get; init; }
     public ProcessMessage? FailureMessage { get; init; }
 
     public static ModalityRoutingResult Ok(
-        string requiredStep,
+        ModalityRoute route,
         QuestionnaireDefinitionView? questionnaire) =>
-        new() { Succeeded = true, RequiredStep = requiredStep, Questionnaire = questionnaire };
+        new() { Succeeded = true, Route = route, Questionnaire = questionnaire };
 
     public static ModalityRoutingResult Fail(ProcessMessage message) =>
         new() { Succeeded = false, FailureMessage = message };

@@ -9,7 +9,7 @@
       "registryUrl": "/history/registry",
       "initialSteps": [
         {
-          "name": "UpsertPriorAuthRecord",
+          "name": "UpsertPriorAuthRecordStep",
           "description": "Creates or updates the prior authorization history record for the given process.",
           "displayName": "History - Upsert Record",
           "version": "1.0.0",
@@ -21,14 +21,14 @@
       ],
       "steps": [
         {
-          "name": "UpsertPriorAuthRecord",
+          "name": "UpsertPriorAuthRecordStep",
           "description": "Creates or updates the prior authorization history record for the given process.",
           "displayName": "History - Upsert Record",
           "version": "1.0.0",
           "repeatable": false,
           "authorization": null,
-          "executeUrl": "/history/processes/steps/upsertpriorauthrecord",
-          "metadataUrl": "/history/processes/steps/upsertpriorauthrecord/metadata",
+          "executeUrl": "/history/processes/steps/upsertpriorauthrecordstep",
+          "metadataUrl": "/history/processes/steps/upsertpriorauthrecordstep/metadata",
           "fields": [
             {
               "constraints": [
@@ -175,7 +175,7 @@
       "registryUrl": "/member/registry",
       "initialSteps": [
         {
-          "name": "GenerateSnapshot",
+          "name": "GenerateSnapshotStep",
           "description": "Generates a member snapshot for the current process context.",
           "displayName": "Members - Generate Snapshot",
           "version": "1.0.0",
@@ -187,14 +187,14 @@
       ],
       "steps": [
         {
-          "name": "GenerateSnapshot",
+          "name": "GenerateSnapshotStep",
           "description": "Generates a member snapshot for the current process context.",
           "displayName": "Members - Generate Snapshot",
           "version": "1.0.0",
           "repeatable": false,
           "authorization": null,
-          "executeUrl": "/member/processes/steps/generatesnapshot",
-          "metadataUrl": "/member/processes/steps/generatesnapshot/metadata",
+          "executeUrl": "/member/processes/steps/generatesnapshotstep",
+          "metadataUrl": "/member/processes/steps/generatesnapshotstep/metadata",
           "fields": [
             {
               "constraints": [],

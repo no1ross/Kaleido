@@ -47,7 +47,7 @@ public sealed class ProcessorStepRegistryTests
 
         var registration =
             registry.Find(
-                "step-a");
+                nameof(StepA));
 
         Assert.NotNull(
             registration);
@@ -72,7 +72,7 @@ public sealed class ProcessorStepRegistryTests
             registration);
 
         Assert.Equal(
-            "step-a",
+            nameof(StepA),
             registration.Metadata.Name);
     }
 
@@ -112,7 +112,7 @@ public sealed class ProcessorStepRegistryTests
                 typeof(StepA));
 
         Assert.Equal(
-            "step-a",
+            nameof(StepA),
             registration.Metadata.Name);
 
         Assert.Equal(
@@ -369,41 +369,41 @@ public sealed class ProcessorStepRegistryTests
             defaultAuthorization);
     }
 
-    [ProcessStep(Name = "step-a", Description = "step-a description", Version = "1.0")]
-    private sealed class StepA;
+    [ProcessStep(DisplayName = nameof(StepA), Description = "step-a description", Version = "1.0")]
+    private sealed class StepA : IProcessStep;
 
-    [ProcessStep(Name = "step-b", Description = "step-b description", Version = "1.0")]
-    [DependsOnStep(typeof(StepA))]
-    private sealed class StepB;
+    [ProcessStep(DisplayName = nameof(StepB), Description = "step-b description", Version = "1.0")]
+    [DependsOn<StepA>]
+    private sealed class StepB : IProcessStep;
 
-    [ProcessStep(Name = "step-c", Description = "step-c description", Version = "1.0")]
-    private sealed class StepC;
+    [ProcessStep(DisplayName = nameof(StepC), Description = "step-c description", Version = "1.0")]
+    private sealed class StepC : IProcessStep;
 
-    [ProcessStep(Name = "step-d", Description = "step-d description", Version = "1.0")]
-    private sealed class StepD;
+    [ProcessStep(DisplayName = nameof(StepD), Description = "step-d description", Version = "1.0")]
+    private sealed class StepD : IProcessStep;
 
-    [ProcessStep(Name = "step-after", Description = "step-after description", Version = "1.0")]
-    [AvailableAfter(typeof(StepA))]
-    private sealed class StepAfter;
+    [ProcessStep(DisplayName = nameof(StepAfter), Description = "step-after description", Version = "1.0")]
+    [AvailableAfter<StepA>]
+    private sealed class StepAfter : IProcessStep;
 
-    [ProcessStep(Name = "step-until", Description = "step-until description", Version = "1.0")]
-    [AvailableUntil(typeof(StepA))]
-    private sealed class StepUntil;
+    [ProcessStep(DisplayName = nameof(StepUntil), Description = "step-until description", Version = "1.0")]
+    [AvailableUntil<StepA>]
+    private sealed class StepUntil : IProcessStep;
 
-    [ProcessStep(Name = "repeatable-step", Description = "repeatable-step description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(RepeatableStep), Description = "repeatable-step description", Version = "1.0")]
     [Repeatable]
-    private sealed class RepeatableStep;
+    private sealed class RepeatableStep : IProcessStep;
 
-    [ProcessStep(Name = "step-multi", Description = "step-multi description", Version = "1.0")]
-    [AvailableAfter(typeof(StepA))]
-    [AvailableAfter(typeof(StepB))]
-    [AvailableUntil(typeof(StepC))]
-    [AvailableUntil(typeof(StepD))]
-    private sealed class StepMultiAvailability;
+    [ProcessStep(DisplayName = nameof(StepMultiAvailability), Description = "step-multi description", Version = "1.0")]
+    [AvailableAfter<StepA>]
+    [AvailableAfter<StepB>]
+    [AvailableUntil<StepC>]
+    [AvailableUntil<StepD>]
+    private sealed class StepMultiAvailability : IProcessStep;
 
-    [ProcessStep(Name = "secured-step", Description = "secured-step description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(SecuredStep), Description = "secured-step description", Version = "1.0")]
     [KaleidoAuthorization(Policy = "step-policy", Roles = "internal")]
-    private sealed class SecuredStep;
+    private sealed class SecuredStep : IProcessStep;
 
     private sealed class MissingStep;
 
@@ -438,7 +438,7 @@ public sealed class ProcessorStepRegistryTests
 
     private abstract class BaseHandler<TStep, TResponse>
         : IProcessStepHandler<TStep, TResponse>
-        where TStep : class
+        where TStep : class, IProcessStep
     {
         public Task<ProcessStepHandlerResult<TResponse>> ExecuteAsync(
             TStep processStep,

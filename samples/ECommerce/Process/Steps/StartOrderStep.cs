@@ -6,12 +6,11 @@
 //namespace Kaleido.Samples.ECommerce.Steps;
 
 //[ProcessStep(
-//    Name = "StartOrder",
 //    DisplayName = "Create Order",
 //    Description = "Creates an order from the current shopping cart contents.",
 //    Version = "1.0")]
-//[DependsOnStep(typeof(AddItemToCartStep))]
-//public sealed record StartOrderStep
+//[DependsOn<AddItemToCartStep>]
+//public sealed record StartOrderStep : IProcessStep
 //{
 //    [Required]
 //    public required string CartId { get; init; }

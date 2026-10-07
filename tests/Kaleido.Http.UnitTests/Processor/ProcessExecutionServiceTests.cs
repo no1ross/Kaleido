@@ -402,7 +402,7 @@ public sealed class ProcessExecutionServiceTests
             new RepeatableOptions { Enabled = false },
             new ProcessStepMetadata("Test-Step", "Test step", "1.0.0", "Test Step"));
 
-    public sealed record TestStep;
+    public sealed record TestStep : IProcessStep;
     public sealed record TestResponse;
 
     public sealed class TestStepHandler : IProcessStepHandler<TestStep, TestResponse>

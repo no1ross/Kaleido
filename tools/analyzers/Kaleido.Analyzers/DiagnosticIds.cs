@@ -8,7 +8,7 @@ internal static class DiagnosticIds
 {
     // Attribute validity rules (KAL2001–KAL2003)
 
-    /// <summary>[ProcessStep] Name and Version must be non-empty strings.</summary>
+    /// <summary>[ProcessStep] Version, DisplayName, and Description must be non-empty strings.</summary>
     public const string ProcessStepAttributeValidity = "KAL2001";
 
     /// <summary>[QueryContext] Name and Version must be non-empty strings.</summary>
@@ -23,12 +23,15 @@ internal static class DiagnosticIds
     /// <summary>o.ServiceName must be lowercase with no spaces or separators.</summary>
     public const string ServiceNameFormat = "KAL2005";
 
-    /// <summary>[ProcessStep] class name must end in 'Step'.</summary>
-    public const string ProcessStepSuffix = "KAL2007";
-
-    /// <summary>[ProcessStep] class has no IProcessStepHandler in same compilation.</summary>
+    /// <summary>IProcessStep type has no IProcessStepHandler in same compilation.</summary>
     public const string ProcessStepMissingHandler = "KAL2008";
 
     /// <summary>AddKaleido() lambda never sets o.Assemblies.</summary>
     public const string AddKaleidoMissingAssemblies = "KAL2009";
+
+    /// <summary>[ProcessStep] applied to a type that does not implement IProcessStep.</summary>
+    public const string ProcessStepAttributeWithoutInterface = "KAL2010";
+
+    /// <summary>IProcessStep type is missing the required [ProcessStep] attribute.</summary>
+    public const string ProcessStepMissingAttribute = "KAL2011";
 }

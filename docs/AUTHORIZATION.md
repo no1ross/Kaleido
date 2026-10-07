@@ -52,16 +52,16 @@ caller with its own mode, so a router left at `None` returns everything to every
 ## Capability authorization
 
 ```csharp
-[ProcessStep(Name = "CaptureMember", Version = "1.0.0", ...)]
-public sealed record CaptureMemberStep;                          // service default; Authenticated: any logged-in user
+[ProcessStep(Version = "1.0.0", DisplayName = "...", Description = "...")]
+public sealed record CaptureMemberStep : IProcessStep;           // service default; Authenticated: any logged-in user
 
-[ProcessStep(Name = "Approve", Version = "1.0.0", ...)]
+[ProcessStep(Version = "1.0.0", DisplayName = "...", Description = "...")]
 [KaleidoAuthorization(Roles = "radiology")]
-public sealed record ApproveStep;                                // logged in + role
+public sealed record ApproveStep : IProcessStep;                 // logged in + role
 
-[ProcessStep(Name = "AddItemToCart", Version = "1.0.0", ...)]
+[ProcessStep(Version = "1.0.0", DisplayName = "...", Description = "...")]
 [KaleidoAuthorization(AllowAnonymous = true)]
-public sealed record AddItemToCartStep;                          // no login needed
+public sealed record AddItemToCartStep : IProcessStep;           // no login needed
 ```
 
 When enforcing (`Authenticated` or `ZeroTrust`), requirements are applied to:

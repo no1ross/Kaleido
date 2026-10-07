@@ -189,7 +189,7 @@ export class RequestingProvider {
         this.registryCatalog.loadState().subscribe({
             next: () => {
                 this.processService
-                    .executeStep<CaptureRequestingProviderStep, object>('CaptureRequestingProvider', {
+                    .executeStep<CaptureRequestingProviderStep, object>('CaptureRequestingProviderStep', {
                         processId: this.processState.state().processId,
                         processStep: {
                             providerId: selectedRecord.providerId,
@@ -202,7 +202,7 @@ export class RequestingProvider {
                         next: result => {
                             this.isSubmitting.set(false);
 
-                            if (result.requiredStep !== 'CaptureServicingProvider') {
+                            if (result.requiredStep !== 'CaptureServicingProviderStep') {
                                 void this.router.navigate(
                                     buildProcessRoute(
                                         this.processState.state().processId,

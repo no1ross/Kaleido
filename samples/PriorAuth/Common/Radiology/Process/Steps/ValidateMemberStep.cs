@@ -3,16 +3,15 @@ using System.ComponentModel.DataAnnotations;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
 [ProcessStep(
-    Name = "ValidateMember",
     DisplayName = "Validate Member",
     Description = "Validates member eligibility for the current prior authorization. " +
                   "Requires the radiology intake to have been started. " +
                   "Checks that the member exists and has active enrollment for the date of service.",
     Version = "1.0.0")]
-[AvailableAfter(typeof(StartRadiologyIntakeStep))]
-[AvailableUntil(typeof(CaptureRequestingProviderStep))]
+[AvailableAfter<StartRadiologyIntakeStep>]
+[AvailableUntil<CaptureRequestingProviderStep>]
 [Repeatable]
-public sealed record ValidateMemberStep
+public sealed record ValidateMemberStep : IProcessStep
 {
     [Required]
     public Guid MemberId { get; init; }

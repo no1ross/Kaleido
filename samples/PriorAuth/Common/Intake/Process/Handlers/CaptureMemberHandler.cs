@@ -86,8 +86,7 @@ public sealed class CaptureMemberHandler(
                 context.ProcessId,
                 cancellationToken);
 
-            return ProcessStepHandlerResult.Success(
-                requiredStep: nameof(CaptureRequestedServiceStep).Replace("Step", string.Empty));
+            return ProcessStepHandlerResult.Success<CaptureRequestedServiceStep>();
         }
         catch (KaleidoHttpClientException ex)
         {

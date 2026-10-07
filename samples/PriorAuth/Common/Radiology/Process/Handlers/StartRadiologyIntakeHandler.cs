@@ -109,10 +109,9 @@ public sealed class StartRadiologyIntakeHandler(
             if (!processStep.MemberId.HasValue || !processStep.MemberEnrollmentId.HasValue)
             {
                 // No member provided — require ValidateMember next
-                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success(
+                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success<ValidateMemberStep>(
                     new StartRadiologyIntakeResponse(),
-                    requiredStep: nameof(ValidateMemberStep).Replace("Step", string.Empty),
-                    messages: RadiologyProcessMessages.MemberInfoNotProvided());
+                    RadiologyProcessMessages.MemberInfoNotProvided());
             }
 
             // Member provided — validate eligibility and route by modality
@@ -165,14 +164,17 @@ public sealed class StartRadiologyIntakeHandler(
                     routing.FailureMessage!);
             }
 
-            return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success(
+            var response =
                 new StartRadiologyIntakeResponse
                 {
                     QuestionnaireId = routing.Questionnaire?.QuestionnaireId,
                     QuestionnaireVersion = routing.Questionnaire?.Version,
                     Questionnaire = routing.Questionnaire
-                },
-                requiredStep: routing.RequiredStep);
+                };
+
+            return routing.Route == ModalityRoute.CaptureMriInfo
+                ? ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success<CaptureMriInfoStep>(response)
+                : ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success<ConfirmCtInsteadOfMriStep>(response);
         }
         catch (KaleidoHttpClientException ex)
         {

@@ -2,17 +2,17 @@ export function getRouteForStep(
     stepName: string | undefined
 ): string | undefined {
     switch (stepName) {
-        case 'CaptureMriInfo':
+        case 'CaptureMriInfoStep':
             return 'capture-mri-info';
-        case 'ConfirmCtInsteadOfMri':
+        case 'ConfirmCtInsteadOfMriStep':
             return 'confirm-ct-instead-of-mri';
         case 'RequestedServices':
             return 'requested-services';
-        case 'CaptureServicingProvider':
+        case 'CaptureServicingProviderStep':
             return 'servicing-provider';
-        case 'ValidateMember':
+        case 'ValidateMemberStep':
             return 'member-search';
-        case 'CaptureMember':
+        case 'CaptureMemberStep':
             return 'capture-member';
         default:
             return undefined;

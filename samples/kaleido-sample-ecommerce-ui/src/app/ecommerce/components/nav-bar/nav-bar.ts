@@ -252,7 +252,7 @@ export class NavBar
                 .executeStep<
                     ReconcileCartOwnershipStep,
                     ReconcileCartOwnershipResponse>(
-                        'reconcile-cart',
+                        'ReconcileCartStep',
                         request)
                 .subscribe({
 
