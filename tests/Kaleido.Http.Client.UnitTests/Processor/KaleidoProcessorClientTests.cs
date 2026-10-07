@@ -238,7 +238,7 @@ public sealed class KaleidoProcessorClientTests
             return JsonOk(fakeResult);
         });
 
-        var result = await client.ExecuteStepAsync("MyStep", new MyStepStep());
+        var result = await client.ExecuteStepAsync(new MyStep());
 
         Assert.Equal("MyStep", result.StepName);
         Assert.Contains("/processes/steps/mystep", postedUrl);
@@ -250,7 +250,7 @@ public sealed class KaleidoProcessorClientTests
         var (client, _) = CreateClient();
 
         await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.ExecuteStepAsync("UnknownStep", new UnknownTypeForTest()));
+            () => client.ExecuteStepAsync(new UnknownTypeForTest()));
     }
 
     [Fact]
@@ -269,7 +269,7 @@ public sealed class KaleidoProcessorClientTests
         });
 
         var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.ExecuteStepAsync("MyStep", new MyStepStep()));
+            () => client.ExecuteStepAsync(new MyStep()));
 
         Assert.Equal(HttpStatusCode.BadGateway, ex.StatusCode);
         Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
@@ -302,7 +302,7 @@ public sealed class KaleidoProcessorClientTests
             return JsonOk(fakeResult);
         });
 
-        var result = await client.ExecuteStepAsync<MyStepStep, MyStepResponse>("MyStep", new MyStepStep());
+        var result = await client.ExecuteStepAsync<MyStep, MyStepResponse>(new MyStep());
 
         Assert.Equal("MyStep", result.StepName);
         Assert.NotNull(result.Result);
@@ -395,8 +395,8 @@ public sealed class KaleidoProcessorClientTests
     // Fake types
     // ---------------------------------------------------------------------------
 
-    // "MyStepStep" — strip "Step" suffix — name is "MyStep", matches FakeStep.Name
-    private sealed class MyStepStep { }
+    // The step name is the type name: "MyStep" matches FakeStep.Name
+    private sealed class MyStep { }
 
     private sealed class UnknownTypeForTest { }
 

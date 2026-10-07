@@ -3,12 +3,11 @@ using System.ComponentModel.DataAnnotations;
 namespace Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 
 [ProcessStep(
-    Name = "CaptureMember",
     DisplayName = "Intake - Capture Member",
     Description = "Records member information against the intake session for auditing and correlation.",
     Version = "1.0.0")]
-[AvailableAfter(typeof(ValidateMemberStep))]
-public sealed record CaptureMemberStep
+[AvailableAfter<ValidateMemberStep>]
+public sealed record CaptureMemberStep : IProcessStep
 {
     [Required]
     public Guid MemberId { get; init; }

@@ -89,7 +89,9 @@ public sealed class CaptureMemberHandler(
                 return ProcessStepHandlerResult.Failure(routing.FailureMessage!);
             }
 
-            return ProcessStepHandlerResult.Success(requiredStep: routing.RequiredStep);
+            return routing.Route == ModalityRoute.CaptureMriInfo
+                ? ProcessStepHandlerResult.Success<CaptureMriInfoStep>()
+                : ProcessStepHandlerResult.Success<ConfirmCtInsteadOfMriStep>();
         }
         catch (KaleidoHttpClientException ex)
         {

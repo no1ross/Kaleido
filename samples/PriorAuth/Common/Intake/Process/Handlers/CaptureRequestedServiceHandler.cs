@@ -104,8 +104,7 @@ public sealed class CaptureRequestedServiceHandler(
             var downstreamResult =
                 await processClientFactory
                     .GetClient(processorName)
-                    .ExecuteStepAsync<StartRadiologyIntakeStep>(
-                        "StartRadiologyIntake",
+                    .ExecuteStepAsync(
                         new StartRadiologyIntakeStep
                         {
                             MemberId = session.Member?.MemberId,

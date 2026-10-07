@@ -227,7 +227,7 @@ export class OrderDetails
             .executeStep<
                 SubmitOrderStep,
                 SubmitOrderResponse>(
-                    'submit-order',
+                    'SubmitOrderStep',
                     request)
             .subscribe({
 

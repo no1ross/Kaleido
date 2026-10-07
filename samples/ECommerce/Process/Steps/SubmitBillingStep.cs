@@ -6,14 +6,13 @@
 //namespace Kaleido.Samples.ECommerce.Steps;
 
 //[ProcessStep(
-//    Name = "SubmitBilling",
 //    DisplayName = "Provide Billing Information",
 //    Description = "Captures and validates billing information required to complete an order.",
 //    Version = "1.0")]
-//[AvailableAfter(typeof(StartOrderStep))]
-//[AvailableUntil(typeof(SubmitOrderStep))]
+//[AvailableAfter<StartOrderStep>]
+//[AvailableUntil<SubmitOrderStep>]
 //[Repeatable]
-//public sealed record SubmitBillingStep
+//public sealed record SubmitBillingStep : IProcessStep
 //{
 //    [Required]
 //    public required string OrderId { get; init; }

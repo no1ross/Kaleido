@@ -8,10 +8,11 @@ namespace Kaleido.Processor.Registry;
 /// </summary>
 /// <remarks>
 /// Populated at startup by <c>AddProcessor()</c> via assembly scanning for types
-/// decorated with <c>[ProcessStep]</c>. The registry is immutable after the DI
+/// implementing <see cref="IProcessStep"/> (each described by its required
+/// <see cref="ProcessStepAttribute"/>). The registry is immutable after the DI
 /// container is built.
 /// Inject this interface to inspect available steps, resolve step metadata by name
-/// or CLR type, or drive dynamic process execution logic.
+/// (the step type's name) or CLR type, or drive dynamic process execution logic.
 /// </remarks>
 public interface IProcessorStepRegistry
 {
@@ -223,24 +224,37 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
             };
 
         foreach (var dependency in
-            stepType.GetCustomAttributes<DependsOnStepAttribute>())
+            GetRelationships(stepType, typeof(DependsOnAttribute<>)))
         {
-            definition.AddDependencyType(dependency.DependsOnStep);
+            definition.AddDependencyType(dependency);
         }
 
         foreach (var availableAfter in
-            stepType.GetCustomAttributes<AvailableAfterAttribute>())
+            GetRelationships(stepType, typeof(AvailableAfterAttribute<>)))
         {
-            definition.AddAvailableAfterType(availableAfter.AvailableAfterStep);
+            definition.AddAvailableAfterType(availableAfter);
         }
 
         foreach (var availableUntil in
-            stepType.GetCustomAttributes<AvailableUntilAttribute>())
+            GetRelationships(stepType, typeof(AvailableUntilAttribute<>)))
         {
-            definition.AddAvailableUntilType(availableUntil.AvailableUntilStep);
+            definition.AddAvailableUntilType(availableUntil);
         }
 
         return definition;
+    }
+
+    private static IEnumerable<Type> GetRelationships(
+        Type stepType,
+        Type attributeDefinition)
+    {
+        return stepType
+            .GetCustomAttributes(inherit: false)
+            .Where(x =>
+                x.GetType().IsGenericType &&
+                x.GetType().GetGenericTypeDefinition() == attributeDefinition)
+            .OfType<IStepRelationshipAttribute>()
+            .Select(x => x.StepType);
     }
 
     private static Type? GetProcessStepResultType(
@@ -347,10 +361,10 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
                 $"Process step '{stepType.Name}' is missing ProcessStepAttribute.");
 
         return new ProcessStepMetadata(
-            attribute.Name,
-            attribute.Description ?? attribute.DisplayName ?? attribute.Name,
+            stepType.Name,
+            attribute.Description,
             attribute.Version,
-            attribute.DisplayName ?? attribute.Name,
+            attribute.DisplayName,
             AuthorizationMetadata.ForType(stepType, defaultAuthorization));
     }
 }

@@ -100,6 +100,11 @@ Owns the reference `IProcessorContextStore` implementation:
 
 ## Coding patterns
 
+### Public API documentation
+- Every public type and public member in `src/` must carry strong XML documentation (`<summary>`, plus `<remarks>`, `<typeparam>`, `<param>`, `<returns>`, `<exception>`, `<example>` where they add meaning). Public APIs are consumed by people, generated docs, and AI agents — the docs are part of the contract.
+- Document behavior and intent, not restated signatures: what it is for, invariants, failure modes, and how it relates to neighbouring types.
+- Keep docs truthful to the code — verify semantics before writing them, and update them in the same change when behavior changes.
+
 ### Primary constructors
 - Use primary constructor syntax for simple dependency injection: `class MyClass(IService service)`
 - Use parameter names without underscore prefix: `service` not `_service`

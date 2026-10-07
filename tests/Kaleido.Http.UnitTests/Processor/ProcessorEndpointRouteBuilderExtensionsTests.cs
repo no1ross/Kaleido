@@ -196,7 +196,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         return registry.Object;
     }
 
-    public sealed record TestStep;
+    public sealed record TestStep : IProcessStep;
 
     public sealed record TestResponse;
 

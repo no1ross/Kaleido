@@ -1,10 +1,9 @@
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
 [ProcessStep(
-    Name = "CaptureServicingProvider",
     DisplayName = "Capture Servicing Provider",
     Description = "Placeholder for servicing provider selection in the current prior authorization flow.",
     Version = "1.0.0")]
-[AvailableAfter(typeof(CaptureRequestingProviderStep))]
+[AvailableAfter<CaptureRequestingProviderStep>]
 [Repeatable]
-public sealed record CaptureServicingProviderStep;
+public sealed record CaptureServicingProviderStep : IProcessStep;

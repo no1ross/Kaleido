@@ -112,8 +112,9 @@ Process is step-centric, not query-centric. Do not import Queryable terminology 
 
 Registration invariants:
 - `AddKaleido()` must be called before `AddProcessor(...)`
-- Every `[ProcessStep]` must have a non-empty `Name` and `Version`
-- Process step names must be unique across the assembly scan
+- A step is identified by `IProcessStep`; `[ProcessStep]` only describes it. Every `IProcessStep` type needs `[ProcessStep]` with a non-empty `Version`, `DisplayName`, and `Description`, and `[ProcessStep]` is only valid on `IProcessStep` types
+- A step's name is its type name (`Type.Name`, unmodified); step type names must be unique across the assembly scan
+- Inside the runtime the next step is typed (`Success<TNext>()`, `Type` through invoker → evaluator); step names are produced only at the boundary (state, events, responses)
 - Every discovered step must have exactly one handler
 - Relationship graphs must not self-reference or be circular
 

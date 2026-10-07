@@ -180,7 +180,7 @@ export class ShoppingCart
             .executeStep<
             RemoveCartItemStep,
             RemoveCartItemResponse>(
-                'remove-cart-item',
+                'RemoveCartItemStep',
                 request)
             .subscribe({
                 next: result => {
@@ -248,7 +248,7 @@ export class ShoppingCart
             .executeStep<
             UpdateCartItemStep,
             UpdateCartItemResponse>(
-                'update-cart-item',
+                'UpdateCartItemStep',
                 request)
             .subscribe({
                 next: result => {
@@ -290,7 +290,7 @@ export class ShoppingCart
             .executeStep<
                 ProcessCartStep,
                 ProcessCartResponse>(
-                    'process-cart',
+                    'ProcessCartStep',
                     request)
             .subscribe({
 

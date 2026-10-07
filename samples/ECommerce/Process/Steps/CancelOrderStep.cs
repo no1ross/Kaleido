@@ -4,12 +4,11 @@
 //namespace Kaleido.Samples.ECommerce.Steps;
 
 //[ProcessStep(
-//    Name = "CancelOrder",
 //    DisplayName = "Cancel Order",
 //    Description = "Cancels an order that has already been submitted.",
 //    Version = "1.0")]
-//[AvailableAfter(typeof(SubmitOrderStep))]
-//public sealed record CancelOrderStep
+//[AvailableAfter<SubmitOrderStep>]
+//public sealed record CancelOrderStep : IProcessStep
 //{
 //    [Required]
 //    public required string OrderId { get; init; }

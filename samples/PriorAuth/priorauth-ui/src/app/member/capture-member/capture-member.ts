@@ -123,7 +123,7 @@ export class CaptureMember {
         };
 
         this.processService
-            .executeStep<CaptureMemberStep, object>('CaptureMember', captureRequest)
+            .executeStep<CaptureMemberStep, object>('CaptureMemberStep', captureRequest)
             .subscribe({
                 next: () => {
                     this.isNavigating.set(false);

@@ -9,16 +9,16 @@ public sealed class AuthorizationEndpointTests(
     : IClassFixture<AuthorizationAspNetCoreFixture>
 {
     private const string InternalStepExecuteUrl =
-        "/kaleido/processes/steps/auth-internal";
+        "/kaleido/processes/steps/authorizedinternalstep";
 
     private const string PolicyStepExecuteUrl =
-        "/kaleido/processes/steps/auth-policy";
+        "/kaleido/processes/steps/authorizedpolicystep";
 
     private const string OpenStepExecuteUrl =
-        "/kaleido/processes/steps/auth-open";
+        "/kaleido/processes/steps/authorizedopenstep";
 
     private const string AnonymousStepExecuteUrl =
-        "/kaleido/processes/steps/auth-anonymous";
+        "/kaleido/processes/steps/authorizedanonymousstep";
 
     private const string ExecuteUrl =
         "/kaleido/processes/execute";

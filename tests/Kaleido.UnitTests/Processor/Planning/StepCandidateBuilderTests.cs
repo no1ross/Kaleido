@@ -179,8 +179,8 @@ public sealed class StepCandidateBuilderTests
         Assert.All(candidates, c => Assert.Equal(StepCandidateStatus.Built, c.Status));
     }
 
-    [ProcessStep(Name = "test-step", Version = "1.0")]
-    private sealed class TestStep
+    [ProcessStep(DisplayName = "test-step", Description = "test-step", Version = "1.0")]
+    private sealed class TestStep : IProcessStep
     {
         public string? Name { get; init; }
     }

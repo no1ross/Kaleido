@@ -8,13 +8,17 @@ follow. Each pattern links the enforcing analyzer where one exists — see
 
 - **Processor** — the unit that owns and executes steps (runtime/DI identity).
 - **Process** — one executing instance of a processor (wire/transport domain).
-- **Step / Handler** — `[ProcessStep]` POCO + `IProcessStepHandler<T>` pair.
+- **Step / Handler** — an `IProcessStep` record (described by `[ProcessStep]`) + `IProcessStepHandler<T>` pair.
 
 ## Step + handler
 
 ```csharp
-[ProcessStep(Name = "capture-service", Version = "1.0")]
-public sealed class CaptureServiceStep { /* input fields */ }
+[ProcessStep(
+    Version = "1.0",
+    DisplayName = "Capture service",
+    Description = "Captures the requested service for the authorization.")]
+[AvailableAfter<CaptureMemberStep>]
+public sealed record CaptureServiceStep : IProcessStep { /* input fields */ }
 
 public sealed class CaptureServiceHandler(IHistoryClient history)
     : IProcessStepHandler<CaptureServiceStep>
@@ -23,15 +27,28 @@ public sealed class CaptureServiceHandler(IHistoryClient history)
         CaptureServiceStep step, ProcessStepContext context, CancellationToken ct)
     {
         // ... domain work ...
-        return ProcessStepHandlerResult.Complete();
+        return ProcessStepHandlerResult.Success<CaptureProviderStep>();
     }
 }
 ```
 
-Rules: step class ends in `Step` (KAL2007); `[ProcessStep]` declares non-empty
-`Name`/`Version` (KAL2001); handler must not swallow
-`OperationCanceledException` in `catch (Exception)` — filter it or let the
-executor own cancellation (KAL2004).
+Rules:
+- **`IProcessStep` is the step's identity**; `[ProcessStep]` only describes it. Every
+  `IProcessStep` type needs `[ProcessStep]` (KAL2011), and `[ProcessStep]` is only
+  valid on `IProcessStep` types (KAL2010).
+- **The step name is the type name** (`Type.Name`, unmodified) — in the registry, on
+  the wire, in persisted state, and in events. Renaming the type renames the step.
+- `[ProcessStep]` declares non-empty `Version`, `DisplayName`, and `Description`
+  (KAL2001). `DisplayName`/`Description` are what UIs and AI agents read — write
+  them for that audience.
+- **The next step is named by type**: `Success<TNext>()` (or
+  `ProcessStepHandlerResult<T>.Success<TNext>(response)`); `Success()` lets the
+  process rules decide. Cross-processor routing uses `HandOff(targetProcessorName)`.
+- Relationships are typed: `[DependsOn<T>]`, `[AvailableAfter<T>]`,
+  `[AvailableUntil<T>]`, constrained to `IProcessStep`.
+- Every step needs exactly one handler (KAL2008); the handler must not swallow
+  `OperationCanceledException` in `catch (Exception)` — filter it or let the
+  executor own cancellation (KAL2004).
 
 ## Process authoring
 

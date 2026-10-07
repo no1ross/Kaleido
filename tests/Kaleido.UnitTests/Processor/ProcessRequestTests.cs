@@ -8,34 +8,29 @@ public sealed class ProcessRequestTests
     : SutFixture
 {
 
-    [ProcessStep(Name = "my-step", Version = "1.0")]
-    private sealed class StepWithAttribute
-    {
-        public int Value { get; init; }
-    }
-
-    private sealed class StepWithoutAttribute
+    [ProcessStep(DisplayName = "My step", Description = "My step description.", Version = "1.0")]
+    private sealed class MyStep : IProcessStep
     {
         public int Value { get; init; }
     }
 
     [Fact]
-    public void ForStep_WithAttribute_UsesAttributeName()
+    public void ForStep_UsesStepTypeName()
     {
-        var step = new StepWithAttribute { Value = 42 };
+        var step = new MyStep { Value = 42 };
 
         var request = ProcessRequest.ForStep(step);
 
         Assert.Null(request.ProcessId);
-        Assert.True(request.Processor.Steps.ContainsKey("my-step"));
-        Assert.Same(step, request.Processor.Steps["my-step"]);
+        Assert.True(request.Processor.Steps.ContainsKey(nameof(MyStep)));
+        Assert.Same(step, request.Processor.Steps[nameof(MyStep)]);
     }
 
     [Fact]
-    public void ForStep_WithAttribute_PassesProcessId()
+    public void ForStep_PassesProcessId()
     {
         var processId = Guid.NewGuid();
-        var step = new StepWithAttribute { Value = 1 };
+        var step = new MyStep { Value = 1 };
 
         var request = ProcessRequest.ForStep(step, processId);
 
@@ -43,32 +38,21 @@ public sealed class ProcessRequestTests
     }
 
     [Fact]
-    public void ForStep_WithoutAttribute_FallsBackToTypeName()
-    {
-        var step = new StepWithoutAttribute { Value = 7 };
-
-        var request = ProcessRequest.ForStep(step);
-
-        Assert.True(request.Processor.Steps.ContainsKey("StepWithoutAttribute"));
-        Assert.Same(step, request.Processor.Steps["StepWithoutAttribute"]);
-    }
-
-    [Fact]
     public void ForStep_NullStep_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            ProcessRequest.ForStep<StepWithAttribute>(null!));
+            ProcessRequest.ForStep<MyStep>(null!));
     }
 
     [Fact]
     public void ForStep_StepLookupIsCaseInsensitive()
     {
-        var step = new StepWithAttribute { Value = 1 };
+        var step = new MyStep { Value = 1 };
 
         var request = ProcessRequest.ForStep(step);
 
-        Assert.True(request.Processor.Steps.ContainsKey("MY-STEP"));
-        Assert.True(request.Processor.Steps.ContainsKey("my-step"));
-        Assert.True(request.Processor.Steps.ContainsKey("My-Step"));
+        Assert.True(request.Processor.Steps.ContainsKey("MYSTEP"));
+        Assert.True(request.Processor.Steps.ContainsKey("mystep"));
+        Assert.True(request.Processor.Steps.ContainsKey("MyStep"));
     }
 }

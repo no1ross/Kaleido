@@ -15,7 +15,7 @@ Canonical vocabulary — type names, namespaces, and docs must follow it:
 | **Service** | A deployed Kaleido host — `Kaleido:ServiceName`, route prefix `/{service}` |
 | **Processor** | The unit a service hosts that owns and executes Steps — the runtime/DI identity (`Kaleido.Processor` namespace, `IProcessorRuntime`, `ProcessorContext`, `IProcessorContextStore`, `AddProcessor`/`MapProcessor`, `kaleido.processor.*` telemetry) |
 | **Process** | One executing workflow instance — the wire/transport domain (`/processes` routes, `ProcessId`, `ProcessExecutionState`, `ProcessStateResponse`, `ExecuteProcessRequest`, process events) |
-| **Step** | A unit of work inside a Processor (`[ProcessStep]` — annotates the work, not the executor) |
+| **Step** | A unit of work inside a Processor — identified by `IProcessStep`, described by `[ProcessStep]`, named by its type name (it marks the work, not the executor) |
 | **Context / View** | Queryable-side: a queryable context and its named views (`Queryable` is the feature namespace) |
 | **Delegated** | A view forwarded to a remote source — uniform `Delegated*` prefix (`IDelegatedQueryViewSource`, `DelegatedQueryViewRegistry`, `DelegatedQueryViewEngine`) |
 | **Registry / Snapshot** | Discovery envelope (`AggregatedRegistryResponse`); cached under `kaleido:{serviceName}` in `IRegistrySnapshotStore` |
@@ -178,7 +178,7 @@ Public seams consumers are expected to implement or replace:
 ### Internal structure
 
 **Process client**
-- `IKaleidoProcessorClient` — typed interface: `GetRegistryAsync`, `GetStepMetadataAsync`, `GetProcessStateAsync`, `ExecuteAsync`, `ExecuteStepAsync`, `ExecuteStepAsync<TStep, TResult>`
+- `IKaleidoProcessorClient` — typed interface: `GetRegistryAsync`, `InvalidateRegistry`, `GetProcessStateAsync`, `ExecuteAsync`, `ExecuteStepAsync<TStep>`, `ExecuteStepAsync<TStep, TResult>` (the step name is `typeof(TStep).Name`)
 - `KaleidoProcessorClient` — concrete implementation; lazily fetches and caches the remote registry per client instance
 - `KaleidoHttpClientException` — thrown on non-success responses and on registry lookup failures
 - `KaleidoClientServiceCollectionExtensions` — internal `AddProcessorClient(...)` registration used by `AddHttpClients`

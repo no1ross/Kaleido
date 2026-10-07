@@ -7,8 +7,9 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Process;
 
 /// <summary>
-/// KAL2001 — [ProcessStep] must declare a non-empty Name and Version.
-/// A step with an empty Name or Version cannot be registered by the framework.
+/// KAL2001 — [ProcessStep] must declare a non-empty Version, DisplayName, and Description.
+/// A step with any of them empty fails startup registration; DisplayName and Description
+/// are published through the registry for UIs, documentation, and AI agents.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ProcessStepAttributeAnalyzer : DiagnosticAnalyzer
@@ -18,12 +19,12 @@ public sealed class ProcessStepAttributeAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule =
         new(
             DiagnosticIds.ProcessStepAttributeValidity,
-            "[ProcessStep] Name and Version must be non-empty",
-            "[ProcessStep] '{0}' must have a non-empty Name and Version",
+            "[ProcessStep] Version, DisplayName, and Description must be non-empty",
+            "[ProcessStep] '{0}' must have a non-empty Version, DisplayName, and Description",
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
-            description: "A [ProcessStep]-annotated class with an empty Name or Version cannot be registered by the Kaleido runtime.");
+            description: "A [ProcessStep] with an empty Version, DisplayName, or Description cannot be registered by the Kaleido runtime.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(Rule);
@@ -52,8 +53,9 @@ public sealed class ProcessStepAttributeAnalyzer : DiagnosticAnalyzer
 
         var args = attributeSyntax.ArgumentList?.Arguments ?? default;
 
-        if (!AttributeHelper.HasNonEmptyNamedArgument(args, "Name") ||
-            !AttributeHelper.HasNonEmptyNamedArgument(args, "Version"))
+        if (!AttributeHelper.HasNonEmptyNamedArgument(args, "Version") ||
+            !AttributeHelper.HasNonEmptyNamedArgument(args, "DisplayName") ||
+            !AttributeHelper.HasNonEmptyNamedArgument(args, "Description"))
         {
             context.ReportDiagnostic(
                 Diagnostic.Create(Rule, attributeSyntax.GetLocation(), ctorSymbol.ContainingType.Name));
