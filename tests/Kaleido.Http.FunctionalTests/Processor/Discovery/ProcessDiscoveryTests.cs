@@ -56,6 +56,6 @@ public sealed class ProcessDiscoveryTests
         Assert.Contains(contract.Dependencies, x => x.Name == RuntimeStepNames.StepB);
         Assert.NotNull(contract.Result);
         Assert.NotEmpty(contract.Result!.OutputFields);
-        Assert.Equal("/kaleido/processes/steps/runtimemerge", contract.ExecuteUrl);
+        Assert.Equal("/kaleido/processes/steps/runtimemergestep", contract.ExecuteUrl);
     }
 }

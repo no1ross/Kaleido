@@ -3,14 +3,13 @@ using System.ComponentModel.DataAnnotations;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
 [ProcessStep(
-    Name = "RemoveRequestedService",
     DisplayName = "Remove Requested Service",
     Description = "Removes a requested service from the current prior authorization.",
     Version = "1.0.0")]
-[AvailableAfter(typeof(StartRadiologyIntakeStep))]
-[AvailableUntil(typeof(CaptureRequestingProviderStep))]
+[AvailableAfter<StartRadiologyIntakeStep>]
+[AvailableUntil<CaptureRequestingProviderStep>]
 [Repeatable]
-public sealed record RemoveRequestedServiceStep
+public sealed record RemoveRequestedServiceStep : IProcessStep
 {
     [Required]
     public Guid PriorAuthorizationRequestedServiceId { get; init; }

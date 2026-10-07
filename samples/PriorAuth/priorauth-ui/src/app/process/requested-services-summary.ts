@@ -82,7 +82,7 @@ export class RequestedServicesSummary {
         this.errorMessage.set(undefined);
 
         this.processService
-            .executeStep<RemoveRequestedServiceStep, object>('RemoveRequestedService', {
+            .executeStep<RemoveRequestedServiceStep, object>('RemoveRequestedServiceStep', {
                 processId,
                 processStep: {
                     priorAuthorizationRequestedServiceId: requestedServiceId
@@ -92,7 +92,7 @@ export class RequestedServicesSummary {
                 next: result => {
                     this.removingServiceId.set(undefined);
 
-                    if (result.requiredStep !== 'CaptureRequestedService') {
+                    if (result.requiredStep !== 'CaptureRequestedServiceStep') {
                         this.loadRequestedServices();
                     }
                 },

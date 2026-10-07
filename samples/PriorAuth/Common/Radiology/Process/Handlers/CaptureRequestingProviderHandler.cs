@@ -49,7 +49,6 @@ public sealed class CaptureRequestingProviderHandler(
             context.ProcessId,
             cancellationToken);
 
-        return ProcessStepHandlerResult.Success(
-            requiredStep: nameof(CaptureServicingProviderStep).Replace("Step", string.Empty));
+        return ProcessStepHandlerResult.Success<CaptureServicingProviderStep>();
     }
 }

@@ -30,8 +30,7 @@ public sealed class ValidateMemberHandler(
                         processStep.MemberEnrollmentId));
             }
 
-            return ProcessStepHandlerResult.Success(
-                requiredStep: nameof(CaptureMemberStep).Replace("Step", string.Empty));
+            return ProcessStepHandlerResult.Success<CaptureMemberStep>();
         }
         catch (KaleidoHttpClientException ex)
         {

@@ -5,14 +5,13 @@ using Kaleido.Samples.ECommerce.Steps;
 namespace Kaleido.Samples.ECommerce.Process.Steps;
 
 [ProcessStep(
-    Name = "update-cart-item",
     DisplayName = "Shopping Carts - Update Item Quantity",
     Description = "Changes the quantity of an item in the shopping cart.",
     Version = "1.0")]
-[AvailableAfter(typeof(AddItemToCartStep))]
-[AvailableUntil(typeof(SubmitOrderStep))]
+[AvailableAfter<AddItemToCartStep>]
+[AvailableUntil<SubmitOrderStep>]
 [Repeatable]
-public sealed record UpdateCartItemStep
+public sealed record UpdateCartItemStep : IProcessStep
 {
     [Required]
     public required Guid ShoppingCartId { get; init; }

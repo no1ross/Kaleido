@@ -18,7 +18,7 @@ public sealed class HistoryClient(
         {
             await processClientFactory
                 .GetClient("History")
-                .ExecuteStepAsync("UpsertPriorAuthRecord", step, cancellationToken);
+                .ExecuteStepAsync(step, cancellationToken);
         }
         catch (KaleidoHttpClientException ex)
         {

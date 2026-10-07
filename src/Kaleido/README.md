@@ -121,15 +121,17 @@ The dispatch order is pinned by `QueryableServiceTests` precedence tests — the
 ## Process execution model
 
 Process is step-centric:
-1. declare a step type with `[ProcessStep]`
+1. declare a step type that implements `IProcessStep` (its identity) and carries `[ProcessStep]` (its required metadata: `Version`, `DisplayName`, `Description`)
 2. implement exactly one `IProcessStepHandler<TStep>` (or `<TStep, TResult>`)
 3. register the assemblies containing steps via `KaleidoServiceOptions.Assemblies`
 4. let the runtime build a registry and manage state
 5. submit one or more steps through `IProcessorRuntime` or the HTTP transport layer
 
+A step's public name is its type name (`Type.Name`, unmodified) — in the registry, on the wire, in persisted state, and in events. Handlers name the next step by type (`ProcessStepHandlerResult.Success<TNext>()`); names are only produced at the boundary.
+
 The runtime:
 - builds and validates submitted step candidates
-- evaluates dependency and repeatability rules (`AvailableAfter`, `DependsOnStep`, `Repeatable`)
+- evaluates dependency and repeatability rules (`[DependsOn<T>]`, `[AvailableAfter<T>]`, `[AvailableUntil<T>]`, `[Repeatable]`)
 - orders executable steps
 - invokes handlers
 - persists updated processor state

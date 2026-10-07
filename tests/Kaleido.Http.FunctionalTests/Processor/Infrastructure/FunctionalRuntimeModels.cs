@@ -15,49 +15,49 @@ internal static class FunctionalProcessorNames
 
 internal static class RuntimeStepNames
 {
-    public const string Root = "RuntimeRoot";
-    public const string StepA = "RuntimeStepA";
-    public const string StepB = "RuntimeStepB";
-    public const string Merge = "RuntimeMerge";
-    public const string RequiredRoot = "RuntimeRequiredRoot";
-    public const string RequiredStep = "RuntimeRequiredStep";
-    public const string InvalidRequiredRoot = "RuntimeInvalidRequiredRoot";
-    public const string AllowedStep = "RuntimeAllowedStep";
-    public const string Failing = "RuntimeFailing";
+    public const string Root = nameof(RuntimeRootStep);
+    public const string StepA = nameof(RuntimeStepA);
+    public const string StepB = nameof(RuntimeStepB);
+    public const string Merge = nameof(RuntimeMergeStep);
+    public const string RequiredRoot = nameof(RuntimeRequiredRootStep);
+    public const string RequiredStep = nameof(RuntimeRequiredStep);
+    public const string InvalidRequiredRoot = nameof(RuntimeInvalidRequiredRootStep);
+    public const string AllowedStep = nameof(RuntimeAllowedStep);
+    public const string Failing = nameof(RuntimeFailingStep);
 }
 
-[ProcessStep(Name = RuntimeStepNames.Root, Description = "Runtime root step", Version = "1.0")]
-public sealed record RuntimeRootStep;
+[ProcessStep(DisplayName = RuntimeStepNames.Root, Description = "Runtime root step", Version = "1.0")]
+public sealed record RuntimeRootStep : IProcessStep;
 
-[ProcessStep(Name = RuntimeStepNames.StepA, Description = "Runtime step A", Version = "1.0")]
-[DependsOnStep(typeof(RuntimeRootStep))]
-public sealed record RuntimeStepA;
+[ProcessStep(DisplayName = RuntimeStepNames.StepA, Description = "Runtime step A", Version = "1.0")]
+[DependsOn<RuntimeRootStep>]
+public sealed record RuntimeStepA : IProcessStep;
 
-[ProcessStep(Name = RuntimeStepNames.StepB, Description = "Runtime step B", Version = "1.0")]
-[DependsOnStep(typeof(RuntimeRootStep))]
-public sealed record RuntimeStepB;
+[ProcessStep(DisplayName = RuntimeStepNames.StepB, Description = "Runtime step B", Version = "1.0")]
+[DependsOn<RuntimeRootStep>]
+public sealed record RuntimeStepB : IProcessStep;
 
-[ProcessStep(Name = RuntimeStepNames.Merge, Description = "Runtime merge step", Version = "1.0")]
-[DependsOnStep(typeof(RuntimeStepA))]
-[DependsOnStep(typeof(RuntimeStepB))]
-public sealed record RuntimeMergeStep;
+[ProcessStep(DisplayName = RuntimeStepNames.Merge, Description = "Runtime merge step", Version = "1.0")]
+[DependsOn<RuntimeStepA>]
+[DependsOn<RuntimeStepB>]
+public sealed record RuntimeMergeStep : IProcessStep;
 
-[ProcessStep(Name = RuntimeStepNames.RequiredRoot, Description = "Runtime required root step", Version = "1.0")]
-public sealed record RuntimeRequiredRootStep;
+[ProcessStep(DisplayName = RuntimeStepNames.RequiredRoot, Description = "Runtime required root step", Version = "1.0")]
+public sealed record RuntimeRequiredRootStep : IProcessStep;
 
-[ProcessStep(Name = RuntimeStepNames.RequiredStep, Description = "Runtime required step", Version = "1.0")]
-[DependsOnStep(typeof(RuntimeRequiredRootStep))]
-public sealed record RuntimeRequiredStep;
+[ProcessStep(DisplayName = RuntimeStepNames.RequiredStep, Description = "Runtime required step", Version = "1.0")]
+[DependsOn<RuntimeRequiredRootStep>]
+public sealed record RuntimeRequiredStep : IProcessStep;
 
-[ProcessStep(Name = RuntimeStepNames.InvalidRequiredRoot, Description = "Runtime invalid required root step", Version = "1.0")]
-public sealed record RuntimeInvalidRequiredRootStep;
+[ProcessStep(DisplayName = RuntimeStepNames.InvalidRequiredRoot, Description = "Runtime invalid required root step", Version = "1.0")]
+public sealed record RuntimeInvalidRequiredRootStep : IProcessStep;
 
-[ProcessStep(Name = RuntimeStepNames.AllowedStep, Description = "Runtime allowed step", Version = "1.0")]
-[DependsOnStep(typeof(RuntimeInvalidRequiredRootStep))]
-public sealed record RuntimeAllowedStep;
+[ProcessStep(DisplayName = RuntimeStepNames.AllowedStep, Description = "Runtime allowed step", Version = "1.0")]
+[DependsOn<RuntimeInvalidRequiredRootStep>]
+public sealed record RuntimeAllowedStep : IProcessStep;
 
-[ProcessStep(Name = RuntimeStepNames.Failing, Description = "Runtime step that always fails", Version = "1.0")]
-public sealed record RuntimeFailingStep;
+[ProcessStep(DisplayName = RuntimeStepNames.Failing, Description = "Runtime step that always fails", Version = "1.0")]
+public sealed record RuntimeFailingStep : IProcessStep;
 
 public sealed record RuntimeRootStepResponse
 {
@@ -154,9 +154,8 @@ public sealed class RuntimeRequiredRootStepHandler :
         CancellationToken cancellationToken)
     {
         return Task.FromResult(
-            ProcessStepHandlerResult<RuntimeRequiredRootStepResponse>.Success(
-                new RuntimeRequiredRootStepResponse(),
-                requiredStep: RuntimeStepNames.RequiredStep));
+            ProcessStepHandlerResult<RuntimeRequiredRootStepResponse>.Success<RuntimeRequiredStep>(
+                new RuntimeRequiredRootStepResponse()));
     }
 }
 
@@ -183,9 +182,8 @@ public sealed class RuntimeInvalidRequiredRootStepHandler :
         CancellationToken cancellationToken)
     {
         return Task.FromResult(
-            ProcessStepHandlerResult<RuntimeInvalidRequiredRootStepResponse>.Success(
-                new RuntimeInvalidRequiredRootStepResponse(),
-                requiredStep: RuntimeStepNames.Merge));
+            ProcessStepHandlerResult<RuntimeInvalidRequiredRootStepResponse>.Success<RuntimeMergeStep>(
+                new RuntimeInvalidRequiredRootStepResponse()));
     }
 }
 

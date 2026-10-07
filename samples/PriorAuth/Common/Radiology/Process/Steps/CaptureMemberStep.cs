@@ -4,14 +4,13 @@ using Kaleido.Processor;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
 [ProcessStep(
-    Name = "CaptureMember",
     DisplayName = "Capture Member",
     Description = "Creates or updates the prior authorization with the selected member.",
     Version = "1.0.0")]
-[AvailableAfter(typeof(StartRadiologyIntakeStep))]
-[AvailableUntil(typeof(CaptureRequestingProviderStep))]
+[AvailableAfter<StartRadiologyIntakeStep>]
+[AvailableUntil<CaptureRequestingProviderStep>]
 [Repeatable]
-public sealed record CaptureMemberStep
+public sealed record CaptureMemberStep : IProcessStep
 {
     [Required]
     public Guid MemberId { get; init; }

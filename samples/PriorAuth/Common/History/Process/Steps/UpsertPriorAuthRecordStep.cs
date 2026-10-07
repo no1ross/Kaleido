@@ -6,11 +6,10 @@ namespace Kaleido.Samples.PriorAuth.History.Process.Steps;
 // Service-to-service only: Intake/Radiology record history on the user's behalf.
 [KaleidoAuthorization(Policy = DevAuthPolicies.InternalCaller)]
 [ProcessStep(
-    Name = "UpsertPriorAuthRecord",
     DisplayName = "History - Upsert Record",
     Description = "Creates or updates the prior authorization history record for the given process.",
     Version = "1.0.0")]
-public sealed record UpsertPriorAuthRecordStep
+public sealed record UpsertPriorAuthRecordStep : IProcessStep
 {
     [Required]
     [StringLength(100)]

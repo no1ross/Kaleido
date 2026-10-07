@@ -183,7 +183,7 @@ export class MemberSearch {
                     };
 
                     this.processService
-                        .executeStep<ValidateMemberStep, object>('ValidateMember', validateRequest)
+                        .executeStep<ValidateMemberStep, object>('ValidateMemberStep', validateRequest)
                         .subscribe({
                             next: () => {
                                 this.isNavigating.set(false);

@@ -18,7 +18,7 @@ internal sealed record StepInvocationResult
 {
     public bool Succeeded { get; init; }
 
-    public string? RequiredStep { get; init; }
+    public Type? RequiredStep { get; init; }
 
     public string? TargetProcessorName { get; init; }
 

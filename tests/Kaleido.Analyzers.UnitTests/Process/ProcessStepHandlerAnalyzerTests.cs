@@ -15,12 +15,7 @@ public sealed class ProcessStepHandlerAnalyzerTests
     private const string KaleidoStubs = @"
 namespace Kaleido.Processor
 {
-    [System.AttributeUsage(System.AttributeTargets.Class)]
-    public class ProcessStepAttribute : System.Attribute
-    {
-        public required string Name { get; init; }
-        public required string Version { get; init; }
-    }
+    public interface IProcessStep { }
     public interface IProcessStepHandler<TStep> { }
     public interface IProcessStepHandler<TStep, TResult> { }
 }";
@@ -32,8 +27,17 @@ namespace Kaleido.Processor
     public async Task StepWithoutHandler_Reports()
     {
         await RunAsync(@"
-[Kaleido.Processor.ProcessStep(Name = ""upsert"", Version = ""1"")]
-public class {|#0:UpsertStep|} { }
+public class {|#0:UpsertStep|} : Kaleido.Processor.IProcessStep { }
+" + KaleidoStubs,
+            Expected.WithLocation(0).WithArguments("UpsertStep"));
+    }
+
+    [Fact]
+    public async Task RecordStepWithoutHandler_Reports()
+    {
+        await RunAsync(@"
+public sealed record {|#0:UpsertStep|} : Kaleido.Processor.IProcessStep;
+namespace System.Runtime.CompilerServices { internal static class IsExternalInit { } }
 " + KaleidoStubs,
             Expected.WithLocation(0).WithArguments("UpsertStep"));
     }
@@ -42,8 +46,7 @@ public class {|#0:UpsertStep|} { }
     public async Task StepWithHandler_NoDiagnostic()
     {
         await RunAsync(@"
-[Kaleido.Processor.ProcessStep(Name = ""upsert"", Version = ""1"")]
-public class UpsertStep { }
+public class UpsertStep : Kaleido.Processor.IProcessStep { }
 public class UpsertHandler : Kaleido.Processor.IProcessStepHandler<UpsertStep> { }
 " + KaleidoStubs);
     }
@@ -52,9 +55,16 @@ public class UpsertHandler : Kaleido.Processor.IProcessStepHandler<UpsertStep> {
     public async Task StepWithTypedHandler_NoDiagnostic()
     {
         await RunAsync(@"
-[Kaleido.Processor.ProcessStep(Name = ""upsert"", Version = ""1"")]
-public class UpsertStep { }
+public class UpsertStep : Kaleido.Processor.IProcessStep { }
 public class UpsertHandler : Kaleido.Processor.IProcessStepHandler<UpsertStep, string> { }
+" + KaleidoStubs);
+    }
+
+    [Fact]
+    public async Task AbstractStep_NoDiagnostic()
+    {
+        await RunAsync(@"
+public abstract class StepBase : Kaleido.Processor.IProcessStep { }
 " + KaleidoStubs);
     }
 
@@ -62,10 +72,8 @@ public class UpsertHandler : Kaleido.Processor.IProcessStepHandler<UpsertStep, s
     public async Task MultipleSteps_OneMissingHandler_ReportsOnlyMissing()
     {
         await RunAsync(@"
-[Kaleido.Processor.ProcessStep(Name = ""upsert"", Version = ""1"")]
-public class UpsertStep { }
-[Kaleido.Processor.ProcessStep(Name = ""validate"", Version = ""1"")]
-public class {|#0:ValidateStep|} { }
+public class UpsertStep : Kaleido.Processor.IProcessStep { }
+public class {|#0:ValidateStep|} : Kaleido.Processor.IProcessStep { }
 public class UpsertHandler : Kaleido.Processor.IProcessStepHandler<UpsertStep> { }
 " + KaleidoStubs,
             Expected.WithLocation(0).WithArguments("ValidateStep"));

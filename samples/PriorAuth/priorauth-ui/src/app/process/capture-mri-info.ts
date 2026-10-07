@@ -79,7 +79,7 @@ export class CaptureMriInfo {
 
     readonly questionnaire =
         computed(() =>
-            this.processState.state().questionnaireStepName === 'CaptureMriInfo'
+            this.processState.state().questionnaireStepName === 'CaptureMriInfoStep'
                 ? this.processState.state().questionnaire
                 : undefined);
     readonly title =
@@ -108,7 +108,7 @@ export class CaptureMriInfo {
         this.errorMessage.set(undefined);
 
         this.processService
-            .executeStep<CaptureMriInfoStep, object>('CaptureMriInfo', {
+            .executeStep<CaptureMriInfoStep, object>('CaptureMriInfoStep', {
                 processId: this.processState.state().processId,
                 processStep: {
                     bodyPart: this.bodyPart,

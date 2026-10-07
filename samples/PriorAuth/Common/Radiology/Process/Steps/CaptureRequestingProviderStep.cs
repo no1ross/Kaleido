@@ -3,13 +3,12 @@ using System.ComponentModel.DataAnnotations;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
 [ProcessStep(
-    Name = "CaptureRequestingProvider",
     DisplayName = "Capture Requesting Provider",
     Description = "Captures the requesting provider for the current prior authorization.",
     Version = "1.0.0")]
-[AvailableAfter(typeof(StartRadiologyIntakeStep))]
+[AvailableAfter<StartRadiologyIntakeStep>]
 [Repeatable]
-public sealed record CaptureRequestingProviderStep
+public sealed record CaptureRequestingProviderStep : IProcessStep
 {
     [Required]
     public Guid ProviderId { get; init; }

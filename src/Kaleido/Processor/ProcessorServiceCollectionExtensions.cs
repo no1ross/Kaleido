@@ -24,15 +24,23 @@ public static class ProcessorServiceCollectionExtensions
 
         var types = builder.Assemblies.ScanTypes();
 
-        var recordTypes =
+        var candidateTypes =
             types
                 .Where(x =>
+                    IsProcessStepType(x) ||
                     x.GetCustomAttribute<ProcessStepAttribute>() is not null)
                 .Where(x =>
                     x.PassesTypeFilter(
                         builder.ServiceOptions.TypeFilter,
                         ProcessorErrorCodes.InvalidRegistration,
                         "process step"))
+                .ToArray();
+
+        ValidateAttributesHaveInterface(candidateTypes);
+
+        var recordTypes =
+            candidateTypes
+                .Where(IsProcessStepType)
                 .ToArray();
 
         if (recordTypes.Length == 0)
@@ -88,19 +96,9 @@ public static class ProcessorServiceCollectionExtensions
             var metadata =
                 GetProcessStepMetadata(stepType);
 
-            if (string.IsNullOrWhiteSpace(metadata.Name))
-            {
-                throw new KaleidoConfigurationException(
-                    ProcessorErrorCodes.MissingAttribute,
-                    $"Process step '{stepType.FullName}' must specify a non-empty name.");
-            }
-
-            if (string.IsNullOrWhiteSpace(metadata.Version))
-            {
-                throw new KaleidoConfigurationException(
-                    ProcessorErrorCodes.MissingAttribute,
-                    $"Process step '{stepType.FullName}' must specify a non-empty version.");
-            }
+            RequireNonEmpty(stepType, metadata.Version, nameof(ProcessStepAttribute.Version));
+            RequireNonEmpty(stepType, metadata.DisplayName, nameof(ProcessStepAttribute.DisplayName));
+            RequireNonEmpty(stepType, metadata.Description, nameof(ProcessStepAttribute.Description));
         }
 
         var duplicateNames =
@@ -108,10 +106,10 @@ public static class ProcessorServiceCollectionExtensions
                 .Select(x => new
                 {
                     StepType = x,
-                    Metadata = GetProcessStepMetadata(x)
+                    Name = x.Name
                 })
                 .GroupBy(
-                    x => x.Metadata.Name,
+                    x => x.Name,
                     StringComparer.OrdinalIgnoreCase)
                 .Where(x => x.Count() > 1)
                 .ToArray();
@@ -139,6 +137,46 @@ public static class ProcessorServiceCollectionExtensions
             $"Duplicate process step names were found.{Environment.NewLine}{duplicateDetails}");
     }
 
+    private static bool IsProcessStepType(
+        Type type)
+    {
+        return type is { IsClass: true, IsAbstract: false }
+            && typeof(IProcessStep).IsAssignableFrom(type);
+    }
+
+    private static void ValidateAttributesHaveInterface(
+        IEnumerable<Type> types)
+    {
+        var invalid =
+            types
+                .Where(x =>
+                    x.GetCustomAttribute<ProcessStepAttribute>() is not null &&
+                    !typeof(IProcessStep).IsAssignableFrom(x))
+                .Select(x => x.FullName)
+                .ToArray();
+
+        if (invalid.Length > 0)
+        {
+            throw new KaleidoConfigurationException(
+                ProcessorErrorCodes.InvalidRegistration,
+                $"[ProcessStep] is applied to types that do not implement {nameof(IProcessStep)}: {string.Join(", ", invalid)}. "
+                + $"A process step is identified by {nameof(IProcessStep)}; the attribute only describes it.");
+        }
+    }
+
+    private static void RequireNonEmpty(
+        Type stepType,
+        string? value,
+        string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new KaleidoConfigurationException(
+                ProcessorErrorCodes.MissingAttribute,
+                $"Process step '{stepType.FullName}' must specify a non-empty {propertyName} on [ProcessStep].");
+        }
+    }
+
     private static ProcessStepAttribute GetProcessStepMetadata(
         Type stepType)
     {
@@ -149,7 +187,7 @@ public static class ProcessorServiceCollectionExtensions
         {
             throw new KaleidoConfigurationException(
                 ProcessorErrorCodes.MissingAttribute,
-                $"Type '{stepType.FullName}' is not decorated with ProcessStepAttribute.");
+                $"Process step '{stepType.FullName}' implements {nameof(IProcessStep)} but is missing the required [ProcessStep] attribute.");
         }
 
         return metadata;
@@ -182,9 +220,6 @@ public static class ProcessorServiceCollectionExtensions
         Type stepType,
         IEnumerable<Type> types)
     {
-        var metadata =
-            GetProcessStepMetadata(stepType);
-
         var handlerTypes =
             types
                 .Where(type =>
@@ -198,7 +233,7 @@ public static class ProcessorServiceCollectionExtensions
         {
             throw new KaleidoConfigurationException(
                 ProcessorErrorCodes.MissingHandler,
-                $"Process step '{metadata.Name}' ({stepType.FullName}) does not have a registered handler.");
+                $"Process step '{stepType.Name}' ({stepType.FullName}) does not have a registered handler.");
         }
 
         if (handlerTypes.Length > 1)
@@ -210,7 +245,7 @@ public static class ProcessorServiceCollectionExtensions
 
             throw new KaleidoConfigurationException(
                 ProcessorErrorCodes.InvalidHandler,
-                $"Process step '{metadata.Name}' ({stepType.FullName}) has multiple handlers: {handlers}.");
+                $"Process step '{stepType.Name}' ({stepType.FullName}) has multiple handlers: {handlers}.");
         }
 
         var handlerType = handlerTypes[0];

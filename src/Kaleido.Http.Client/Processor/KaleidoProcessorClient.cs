@@ -1,7 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Reflection;
-using Kaleido.Processor;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Client.Processor;
@@ -89,12 +87,11 @@ internal sealed class KaleidoProcessorClient(
     }
 
     public async Task<StepExecutionResponse> ExecuteStepAsync<TStep>(
-        string stepName,
         TStep processStep,
         CancellationToken cancellationToken = default)
         where TStep : class
     {
-        var url = await ResolveExecuteUrlAsync<TStep>(stepName, cancellationToken);
+        var url = await ResolveExecuteUrlAsync(typeof(TStep).Name, cancellationToken);
 
         var body = new ExecuteStepRequest<TStep>
         {
@@ -127,12 +124,11 @@ internal sealed class KaleidoProcessorClient(
     }
 
     public async Task<StepExecutionResponse<TResponse>> ExecuteStepAsync<TStep, TResponse>(
-        string stepName,
         TStep processStep,
         CancellationToken cancellationToken = default)
         where TStep : class
     {
-        var url = await ResolveExecuteUrlAsync<TStep>(stepName, cancellationToken);
+        var url = await ResolveExecuteUrlAsync(typeof(TStep).Name, cancellationToken);
 
         var body = new ExecuteStepRequest<TStep>
         {
@@ -164,22 +160,10 @@ internal sealed class KaleidoProcessorClient(
             cancellationToken);
     }
 
-    private async Task<string> ResolveExecuteUrlAsync<TStep>(
+    private async Task<string> ResolveExecuteUrlAsync(
         string stepName,
         CancellationToken cancellationToken)
     {
-        var declaredName =
-            typeof(TStep).GetCustomAttribute<ProcessStepAttribute>()?.Name;
-
-        if (declaredName is not null &&
-            !string.Equals(declaredName, stepName, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new KaleidoHttpClientException(
-                HttpClientErrorCodes.InvalidStepName,
-                $"Step name '{stepName}' does not match the [ProcessStep] name '{declaredName}' on type '{typeof(TStep).Name}'.",
-                HttpStatusCode.BadRequest);
-        }
-
         var registry = await EnsureRegistryAsync(cancellationToken);
 
         foreach (var processor in registry)

@@ -22,7 +22,7 @@ public sealed class StepExecutionEndpointTests
     public async Task PostStepExecute_WithRawEnvelope_UsesOptionalProcessIdHeader(bool resume)
     {
         var expectedProcessId = resume ? Guid.NewGuid() : (Guid?)null;
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/kaleido/processes/steps/runtimeroot")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/kaleido/processes/steps/runtimerootstep")
         {
             Content = new StringContent("""{"processStep":{}}""", Encoding.UTF8, "application/json")
         };
@@ -54,7 +54,7 @@ public sealed class StepExecutionEndpointTests
     {
         var response =
             await PostWithProcessIdAsync(
-                "/kaleido/processes/steps/runtimeroot",
+                "/kaleido/processes/steps/runtimerootstep",
                 new ExecuteStepRequest<RuntimeRootStep> { ProcessStep = new RuntimeRootStep() },
                 Guid.NewGuid());
 
@@ -75,7 +75,7 @@ public sealed class StepExecutionEndpointTests
         var processId = Guid.NewGuid();
 
         await PostWithProcessIdAsync(
-            "/kaleido/processes/steps/runtimeroot",
+            "/kaleido/processes/steps/runtimerootstep",
             new ExecuteStepRequest<RuntimeRootStep> { ProcessStep = new RuntimeRootStep() },
             processId);
 

@@ -7,13 +7,12 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 // holds the radiology role. Never called directly by a consumer.
 [KaleidoAuthorization(Roles = "radiology", Policy = DevAuthPolicies.InternalCaller)]
 [ProcessStep(
-    Name = "StartRadiologyIntake",
     DisplayName = "Start Radiology Intake",
     Description = "Initializes a radiology prior authorization from intake handoff data. " +
                   "Accepts member and procedure information collected by the intake processor.",
     Version = "1.0.0")]
-[AvailableUntil(typeof(CaptureRequestingProviderStep))]
-public sealed record StartRadiologyIntakeStep
+[AvailableUntil<CaptureRequestingProviderStep>]
+public sealed record StartRadiologyIntakeStep : IProcessStep
 {
     public Guid? MemberId { get; init; }
 
