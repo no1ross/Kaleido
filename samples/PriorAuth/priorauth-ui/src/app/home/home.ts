@@ -39,7 +39,7 @@ export class PriorAuthHome {
         this.startError.set(undefined);
 
         this.processService
-            .executeStep<object, object>('StartIntake', {
+            .executeStep<object, object>('StartIntakeStep', {
                 processId: undefined,
                 processStep: {}
             })

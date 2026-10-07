@@ -44,7 +44,7 @@ public sealed class StepExecutionEvaluatorTests
                 new StepInvocationResult
                 {
                     Succeeded = true,
-                    RequiredStep = "step-c"
+                    RequiredStep = typeof(StepC)
                 },
                 [],
                 CreateContext());
@@ -74,7 +74,7 @@ public sealed class StepExecutionEvaluatorTests
                 new StepInvocationResult
                 {
                     Succeeded = true,
-                    RequiredStep = "step-b"
+                    RequiredStep = typeof(StepB)
                 },
                 [],
                 CreateContext());
@@ -108,7 +108,7 @@ public sealed class StepExecutionEvaluatorTests
                 new StepInvocationResult
                 {
                     Succeeded = true,
-                    RequiredStep = "step-b"
+                    RequiredStep = typeof(StepB)
                 },
                 [nextCandidate],
                 CreateContext());
@@ -204,7 +204,8 @@ public sealed class StepExecutionEvaluatorTests
     {
         var evaluator =
             CreateSut(
-                ["step-b"]);
+                ["step-b"],
+                new Dictionary<Type, string> { [typeof(StepB)] = "Step-B" });
 
         var nextCandidate =
             CreateCandidate<StepB>(
@@ -216,7 +217,7 @@ public sealed class StepExecutionEvaluatorTests
                 new StepInvocationResult
                 {
                     Succeeded = true,
-                    RequiredStep = "Step-B"
+                    RequiredStep = typeof(StepB)
                 },
                 [nextCandidate],
                 CreateContext());
@@ -224,6 +225,37 @@ public sealed class StepExecutionEvaluatorTests
         Assert.Equal(
             ExecutionDecisionType.Continue,
             decision.Type);
+    }
+
+    [Fact]
+    public void Evaluate_WhenRequiredStepTypeIsNotRegistered_ReturnsProcessViolation()
+    {
+        var evaluator =
+            CreateSut(
+                ["step-b"]);
+
+        var decision =
+            evaluator.Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult
+                {
+                    Succeeded = true,
+                    RequiredStep = typeof(UnregisteredStep)
+                },
+                [],
+                CreateContext());
+
+        Assert.Equal(
+            ExecutionDecisionType.ProcessViolation,
+            decision.Type);
+
+        var message =
+            Assert.Single(
+                decision.Messages);
+
+        Assert.Equal(
+            ProcessorErrorCodes.RequiredStepNotAllowed,
+            message.Code);
     }
 
     [Fact]
@@ -242,7 +274,7 @@ public sealed class StepExecutionEvaluatorTests
                 new StepInvocationResult
                 {
                     Succeeded = true,
-                    RequiredStep = "imaging-request",
+                    RequiredStep = typeof(StepC),
                     TargetProcessorName = "radiology"
                 },
                 [],
@@ -271,7 +303,7 @@ public sealed class StepExecutionEvaluatorTests
                 new StepInvocationResult
                 {
                     Succeeded = true,
-                    RequiredStep = "imaging-request",
+                    RequiredStep = typeof(StepC),
                     TargetProcessorName = "radiology"
                 },
                 [],
@@ -333,7 +365,8 @@ public sealed class StepExecutionEvaluatorTests
     }
 
     private static StepExecutionEvaluator CreateSut(
-        IReadOnlyCollection<string>? availableSteps = null)
+        IReadOnlyCollection<string>? availableSteps = null,
+        IReadOnlyDictionary<Type, string>? registeredNames = null)
     {
         var resolver =
             new Mock<IStepAvailabilityResolver>();
@@ -347,8 +380,27 @@ public sealed class StepExecutionEvaluatorTests
             .Returns(
                 availableSteps ?? []);
 
+        var names =
+            registeredNames ?? new Dictionary<Type, string>
+            {
+                [typeof(StepA)] = "step-a",
+                [typeof(StepB)] = "step-b",
+                [typeof(StepC)] = "step-c"
+            };
+
+        var registry =
+            new Mock<IProcessorStepRegistry>();
+
+        registry
+            .Setup(x => x.Find(It.IsAny<Type>()))
+            .Returns((Type type) =>
+                names.TryGetValue(type, out var name)
+                    ? CreateRegistration(type, name)
+                    : null);
+
         return new StepExecutionEvaluator(
             resolver.Object,
+            registry.Object,
             new KaleidoServiceOptions { ServiceName = LocalProcessorName });
     }
 
@@ -382,10 +434,15 @@ public sealed class StepExecutionEvaluatorTests
     }
 
     private static ProcessStepRegistration CreateRegistration<TStep>(
+        string name) =>
+        CreateRegistration(typeof(TStep), name);
+
+    private static ProcessStepRegistration CreateRegistration(
+        Type stepType,
         string name)
     {
         return new ProcessStepRegistration(
-            typeof(TStep),
+            stepType,
             typeof(object),
             typeof(object),
             [],
@@ -399,9 +456,11 @@ public sealed class StepExecutionEvaluatorTests
                 $"{name} displayname"));
     }
 
-    private sealed class StepA;
+    private sealed class StepA : IProcessStep;
 
-    private sealed class StepB;
+    private sealed class StepB : IProcessStep;
 
-    private sealed class StepC;
+    private sealed class StepC : IProcessStep;
+
+    private sealed class UnregisteredStep : IProcessStep;
 }

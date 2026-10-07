@@ -18,14 +18,15 @@ Shipped inside the `Kaleido` package (`analyzers/dotnet/cs/`). They fire on **co
 
 | ID | Severity | Rule |
 |---|---|---|
-| KAL2001 | Error | `[ProcessStep]` must declare a non-empty `Name` and `Version` — compile-time equivalent of startup `pro_missing_attribute` failures |
+| KAL2001 | Error | `[ProcessStep]` must declare a non-empty `Version`, `DisplayName`, and `Description` — compile-time equivalent of startup `pro_missing_attribute` failures |
 | KAL2002 | Error | `[QueryContext]` must declare a non-empty `Name` and `Version` — compile-time equivalent of `qry_missing_attribute` |
 | KAL2003 | Error | `[QueryView]` must declare a non-empty `Name` and `Version` — compile-time equivalent of `qry_missing_attribute` |
 | KAL2004 | Warning | `IProcessStepHandler<T>.ExecuteAsync` must not swallow `OperationCanceledException` in a bare `catch (Exception)` — add `when (ex is not OperationCanceledException)` or a preceding OCE catch. A swallowed cancellation inflates failure metrics and hides client disconnects |
 | KAL2005 | Warning | `ServiceName` string literals must be lowercase with no spaces, hyphens, or underscores — it is used verbatim as the HTTP route prefix |
-| KAL2007 | Warning | `[ProcessStep]` class names must end in `Step` — the framework derives the step name by stripping the suffix |
-| KAL2008 | Warning | `[ProcessStep]` type has no `IProcessStepHandler<TStep>` (or `IProcessStepHandler<TStep, TResult>`) in the same compilation — compile-time equivalent of `pro_missing_handler`. Cross-assembly handlers suppress the warning |
+| KAL2008 | Warning | `IProcessStep` type has no `IProcessStepHandler<TStep>` (or `IProcessStepHandler<TStep, TResult>`) in the same compilation — compile-time equivalent of `pro_missing_handler`. Cross-assembly handlers suppress the warning |
 | KAL2009 | Warning | `AddKaleido(config, o => ...)` lambda never sets `o.Assemblies` — missing or empty assemblies now fail registration; set them explicitly |
+| KAL2010 | Error | `[ProcessStep]` is applied to a type that does not implement `IProcessStep` — compile-time equivalent of startup `pro_invalid_registration` |
+| KAL2011 | Error | A concrete `IProcessStep` type is missing the required `[ProcessStep]` attribute — compile-time equivalent of startup `pro_missing_attribute` |
 
 ## Source rules — `KAL0xxx`
 
@@ -84,12 +85,12 @@ code on the first pass — do not suppress.
 | KAL0019 | Async methods without `CancellationToken` — cancellations stop propagating |
 | KAL0020 | Ad-hoc endpoint names — typos break link generation and OpenAPI operation ids silently |
 | KAL0021 | Cancellations recorded as failures in observability catch-alls — inflated error metrics, false alerts |
-| KAL2001–2003 | Step/context/view attributes missing `Name`/`Version` — startup failures ship as runtime 500s |
+| KAL2001–2003 | Step/context/view attributes missing required metadata — startup failures ship as runtime 500s |
 | KAL2004 | Swallowed `OperationCanceledException` in step handlers — canceled steps recorded as failures, false alerts |
 | KAL2005 | Invalid `ServiceName` literals — route-prefix corruption (path separators, casing) |
-| KAL2007 | `[ProcessStep]` classes not ending in `Step` — derived step names drift from intent |
-| KAL2008 | `[ProcessStep]` with no handler — step is registered but can never execute |
+| KAL2008 | `IProcessStep` with no handler — step is registered but can never execute |
 | KAL2009 | `AddKaleido` without an explicit assembly list — deterministic startup validation rejects missing or empty discovery inputs |
+| KAL2010–2011 | Step identity and metadata out of sync (`[ProcessStep]` without `IProcessStep`, or the reverse) — startup failures ship as runtime 500s |
 
 ## Test rules — `KAL1xxx`
 
@@ -124,7 +125,9 @@ KAL1009 is configured as a warning — it flags types missing a fixture without 
 - **KAL2004 — preserve cancellation.** A step handler's `ExecuteAsync` with a bare `catch (Exception)` can turn `OperationCanceledException` into a false execution failure. Use `catch (Exception ex) when (ex is not OperationCanceledException)` or handle cancellation in an earlier catch. The rule targets Process step-handler `ExecuteAsync` bodies, not every catch in an application. [Implementation](../tools/analyzers/Kaleido.Analyzers/Process/StepHandlerOceAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Process/StepHandlerOceAnalyzerTests.cs).
 - **KAL2009 — explicit discovery.** `AddKaleido(config, o => o.ServiceName = "app")` omits `Assemblies`; set `o.Assemblies = [typeof(Program).Assembly]` in the options lambda. The warning is a syntax-level hint for lambdas; `AddKaleido()` itself rejects missing or empty lists with `missing_assembly`, including when no lambda is supplied. [Implementation](../tools/analyzers/Kaleido.Analyzers/Bootstrap/AddKaleidoAssembliesAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Bootstrap/AddKaleidoAssembliesAnalyzerTests.cs).
 
-The KAL2001–KAL2003 attribute rules catch missing `Name`/`Version` before startup, and KAL2008 detects a missing same-compilation step handler; the table above distinguishes warnings from errors. These are consumer checks bundled with the main Kaleido package, unlike the contributor checks below.
+- **KAL2010/KAL2011 — interface is identity, attribute is metadata.** A process step is identified by `IProcessStep`; `[ProcessStep]` only describes it. KAL2010 flags the attribute on a type without the interface; KAL2011 flags a concrete `IProcessStep` type without the attribute. Both mirror startup validation (`pro_invalid_registration`, `pro_missing_attribute`). [Implementation](../tools/analyzers/Kaleido.Analyzers/Process/ProcessStepIdentityAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Process/ProcessStepIdentityAnalyzerTests.cs).
+
+The KAL2001–KAL2003 attribute rules catch missing required metadata before startup (for steps: `Version`, `DisplayName`, `Description` — the step name is the type name), and KAL2008 detects a missing same-compilation step handler; the table above distinguishes warnings from errors. These are consumer checks bundled with the main Kaleido package, unlike the contributor checks below.
 
 ### Contributor conventions
 

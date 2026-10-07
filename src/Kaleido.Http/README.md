@@ -138,9 +138,9 @@ Any `IEndpointConventionBuilder` extension (`RequireAuthorization`, `WithMetadat
 Capability authorization is set in core with `AddKaleido(…, o => o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust)` (see [`docs/AUTHORIZATION.md`](../../docs/AUTHORIZATION.md)). With `None` (default) Kaleido attaches no auth metadata and enforces nothing, so hosts without authentication work unchanged. With `Authenticated`, every capability requires an authenticated caller and undeclared capabilities are open to any of them. With `ZeroTrust`, a capability needs an explicit rule (its own `[KaleidoAuthorization]` or the service `DefaultAuthorization`) or it is not mapped or discovered at all. `[KaleidoAuthorization]` narrows or opens access:
 
 ```csharp
-[ProcessStep(Name = "approve", ...)]
+[ProcessStep(Version = "1.0.0", DisplayName = "Approve", Description = "...")]
 [KaleidoAuthorization(Roles = "radiology")]       // or Policy = "named-policy", or AllowAnonymous = true
-public sealed record ApproveStep;
+public sealed record ApproveStep : IProcessStep;
 ```
 
 Enforcement works on two layers:

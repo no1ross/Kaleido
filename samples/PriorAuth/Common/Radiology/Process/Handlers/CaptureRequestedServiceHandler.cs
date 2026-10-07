@@ -149,19 +149,18 @@ public sealed class CaptureRequestedServiceHandler(
                 var questionnaire =
                     await questionnaireDefinitionClient.ResolveAsync(
                         processId,
-                        nameof(CaptureMriInfoStep).Replace("Step", string.Empty),
+                        nameof(CaptureMriInfoStep),
                         ProcedureModality.Mri,
                         procedureCodeValue,
                         ct);
 
-                return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success(
+                return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success<CaptureMriInfoStep>(
                     new CaptureRequestedServiceResponse
                     {
                         QuestionnaireId = questionnaire?.QuestionnaireId,
                         QuestionnaireVersion = questionnaire?.Version,
                         Questionnaire = questionnaire
-                    },
-                    requiredStep: nameof(CaptureMriInfoStep).Replace("Step", string.Empty));
+                    });
             }
 
             async Task<ProcessStepHandlerResult<CaptureRequestedServiceResponse>> CreateCtResponseAsync(
@@ -172,19 +171,18 @@ public sealed class CaptureRequestedServiceHandler(
                 var questionnaire =
                     await questionnaireDefinitionClient.ResolveAsync(
                         processId,
-                        nameof(CaptureMriInfoStep).Replace("Step", string.Empty),
+                        nameof(CaptureMriInfoStep),
                         ProcedureModality.Mri,
                         procedureCodeValue,
                         ct);
 
-                return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success(
+                return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success<ConfirmCtInsteadOfMriStep>(
                     new CaptureRequestedServiceResponse
                     {
                         QuestionnaireId = questionnaire?.QuestionnaireId,
                         QuestionnaireVersion = questionnaire?.Version,
                         Questionnaire = questionnaire
-                    },
-                    requiredStep: nameof(ConfirmCtInsteadOfMriStep).Replace("Step", string.Empty));
+                    });
             }
         }
         catch (KaleidoHttpClientException ex)

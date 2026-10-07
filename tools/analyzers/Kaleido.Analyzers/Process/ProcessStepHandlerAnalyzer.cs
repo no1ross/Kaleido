@@ -6,25 +6,24 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Process;
 
 /// <summary>
-/// KAL2008 — every [ProcessStep] class must have an IProcessStepHandler&lt;TStep&gt; (or
+/// KAL2008 — every IProcessStep type must have an IProcessStepHandler&lt;TStep&gt; (or
 /// IProcessStepHandler&lt;TStep, TResult&gt;) implementation in the same compilation.
 /// A step without a handler cannot be executed by the framework.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ProcessStepHandlerAnalyzer : DiagnosticAnalyzer
 {
-    private const string AttributeFullName = "Kaleido.Processor.ProcessStepAttribute";
     private const string HandlerInterfaceName = "IProcessStepHandler";
 
     private static readonly DiagnosticDescriptor Rule =
         new(
             DiagnosticIds.ProcessStepMissingHandler,
-            "[ProcessStep] class has no handler in this compilation",
-            "[ProcessStep] type '{0}' has no IProcessStepHandler<{0}> in this compilation. Register a handler or this step cannot be executed.",
+            "IProcessStep type has no handler in this compilation",
+            "Process step '{0}' has no IProcessStepHandler<{0}> in this compilation. Register a handler or this step cannot be executed.",
             "Kaleido.Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "Every [ProcessStep] type must have a corresponding IProcessStepHandler<TStep> in the same compilation for the framework to execute it.",
+            description: "Every IProcessStep type must have a corresponding IProcessStepHandler<TStep> in the same compilation for the framework to execute it.",
             customTags: [WellKnownDiagnosticTags.CompilationEnd]);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
@@ -47,14 +46,11 @@ public sealed class ProcessStepHandlerAnalyzer : DiagnosticAnalyzer
             {
                 var type = (INamedTypeSymbol)symbolContext.Symbol;
 
-                // Collect [ProcessStep]-annotated types
-                foreach (var attribute in type.GetAttributes())
+                // Collect concrete IProcessStep types
+                if (type.TypeKind == TypeKind.Class && !type.IsAbstract &&
+                    ProcessStepSymbols.ImplementsProcessStep(type))
                 {
-                    if (attribute.AttributeClass?.ToDisplayString() == AttributeFullName)
-                    {
-                        stepTypes.Add(type);
-                        break;
-                    }
+                    stepTypes.Add(type);
                 }
 
                 // Collect types handled by IProcessStepHandler<TStep> or <TStep, TResult>

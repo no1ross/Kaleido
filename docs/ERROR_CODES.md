@@ -63,11 +63,11 @@ Both message collections are present on Process execution responses. `BusinessMe
 
 | Constant | Code | Meaning |
 |---|---|---|
-| `MissingAttribute` | `pro_missing_attribute` | Step type missing `[ProcessStep]` at startup |
+| `MissingAttribute` | `pro_missing_attribute` | `IProcessStep` type missing `[ProcessStep]`, or `[ProcessStep]` with an empty `Version`/`DisplayName`/`Description`, at startup |
 | `MissingHandler` | `pro_missing_handler` | Step has no registered handler |
 | `InvalidHandler` | `pro_invalid_handler` | Handler signature is invalid |
-| `DuplicateStep` | `pro_duplicate_step` | Registered step names are duplicated |
-| `InvalidRegistration` | `pro_invalid_registration` | Step registration is structurally invalid |
+| `DuplicateStep` | `pro_duplicate_step` | Two step types share a type name (step names are type names) |
+| `InvalidRegistration` | `pro_invalid_registration` | Step registration is structurally invalid (including `[ProcessStep]` on a type that does not implement `IProcessStep`) |
 | `UnknownStep` | `pro_unknown_step` | Requested step is not registered |
 | `InvalidRequest` | `pro_invalid_request` | Step request cannot be hydrated or processed |
 | `PropertyNotFound` | `pro_property_not_found` | Requested step property was not found |
@@ -84,7 +84,7 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `HandlerExecutionFailed` | `pro_handler_execution_failed` | Step handler execution failed |
 | `ExceptionThrown` | `pro_exception_thrown` | Exception interrupted step processing |
 | `InvalidRequiredStep` | `pro_invalid_required_step` | Required next step is invalid |
-| `RequiredStepNotAllowed` | `pro_required_step_not_allowed` | Required next step cannot be executed |
+| `RequiredStepNotAllowed` | `pro_required_step_not_allowed` | Required next step cannot be executed (not a legal next step, or not a registered step in this processor) |
 | `ExecutionCanceled` | `pro_execution_canceled` | Step execution was cancelled |
 | `FrameworkException` | `pro_framework_exception` | Unexpected framework error interrupted a step |
 | `ProcessMessage` | `pro_process_message` | Process diagnostic message was produced |
@@ -132,7 +132,6 @@ Runtime client codes are prefixed `httpclient_`; `missing_base_url` is a startup
 | `EmptyResponse` | `httpclient_empty_response` | Remote request succeeded but returned no payload |
 | `RequestFailed` | `httpclient_request_failed` | Remote request failed with a non-success HTTP status |
 | `ValidationFailed` | `httpclient_validation_failed` | Remote request failed with structured validation errors |
-| `InvalidStepName` | `httpclient_invalid_step_name` | Supplied step name does not match the step type's attribute |
 | `InvalidRegistryUrl` | `httpclient_invalid_registry_url` | A URL returned by a remote registry was not a valid absolute http(s) URL |
 | `MissingBaseUrl` | `missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
 
@@ -150,25 +149,26 @@ The reference provider owns its own code; core knows nothing about it.
 
 ## Analyzer rules (KAL2xxx)
 
-The `Kaleido` NuGet package bundles `Kaleido.Analyzers` — a Roslyn analyzer that surfaces framework misuse at **compile time** rather than at runtime startup. Errors (KAL2001–KAL2003) prevent compilation; warnings and infos (KAL2004–KAL2009) are advisory.
+The `Kaleido` NuGet package bundles `Kaleido.Analyzers` — a Roslyn analyzer that surfaces framework misuse at **compile time** rather than at runtime startup. Errors (KAL2001–KAL2003, KAL2010–KAL2011) prevent compilation; warnings (KAL2004, KAL2005, KAL2008, KAL2009) are advisory.
 
 ### Attribute validity (KAL2001–KAL2003)
 
 | Rule | Severity | Trigger |
 |---|---|---|
-| `KAL2001` | Error | `[ProcessStep]` has an empty `Name` or `Version` |
+| `KAL2001` | Error | `[ProcessStep]` has an empty `Version`, `DisplayName`, or `Description` |
 | `KAL2002` | Error | `[QueryContext]` has an empty `Name` or `Version` |
 | `KAL2003` | Error | `[QueryView]` has an empty `Name` or `Version` |
 
 These are compile-time equivalents of the `ProcessorErrorCodes.MissingAttribute` / `QueryableErrorCodes.MissingAttribute` runtime errors. Catching them at compile time prevents the process from failing at startup.
 
-### Handler and step conventions (KAL2004, KAL2007, KAL2008)
+### Handler and step conventions (KAL2004, KAL2008, KAL2010, KAL2011)
 
 | Rule | Severity | Trigger |
 |---|---|---|
 | `KAL2004` | Warning | `ExecuteAsync` in an `IProcessStepHandler<T>` has a bare `catch (Exception)` without an `OperationCanceledException` filter |
-| `KAL2007` | Warning | `[ProcessStep]` class name does not end in `Step` (e.g. `CaptureRequested` instead of `CaptureRequestedStep`) |
-| `KAL2008` | Warning | `[ProcessStep]` class has no `IProcessStepHandler<TStep>` in the same compilation |
+| `KAL2008` | Warning | `IProcessStep` type has no `IProcessStepHandler<TStep>` in the same compilation |
+| `KAL2010` | Error | `[ProcessStep]` is applied to a type that does not implement `IProcessStep` (runtime: `ProcessorErrorCodes.InvalidRegistration`) |
+| `KAL2011` | Error | A concrete `IProcessStep` type has no `[ProcessStep]` attribute (runtime: `ProcessorErrorCodes.MissingAttribute`) |
 
 KAL2004 enforces the cancellation-observability rule from `AGENTS.md`: a bare `catch (Exception)` in a step handler swallows `OperationCanceledException`, inflating error metrics. Add `when (ex is not OperationCanceledException)` or a preceding `catch (OperationCanceledException)`.
 

@@ -21,7 +21,7 @@ The handoff is fully server-driven. The UI receives a clear signal (`targetProce
 ```json
 {
   "processId": "...",
-  "stepName": "CaptureRequestedService",
+  "stepName": "CaptureRequestedServiceStep",
   "outcome": "Completed",
   "result": null,
   "requiredStep": null,
@@ -84,7 +84,7 @@ Radiology's `StartRadiologyIntake` handler is the dedicated entry point for hand
 6. Upserts a history record
 7. Returns a typed `StartRadiologyIntakeResponse` with:
    - A `questionnaire` definition for the appropriate capture step
-   - `requiredStep: "CaptureMriInfo"` (or `"ConfirmCtInsteadOfMri"` for CT)
+   - `requiredStep: "CaptureMriInfoStep"` (or `"ConfirmCtInsteadOfMriStep"` for CT)
 
 This is equivalent to Radiology's own `CaptureMember` + `CaptureRequestedService` sequence, collapsed into one step for the handoff path so Intake only needs to make one downstream call.
 
@@ -152,7 +152,7 @@ This means the target processor must be in the UI's service registry (configured
 User submits CaptureRequestedService (code: MRI procedure)
     │
     ▼
-POST /intake/processes/steps/captureRequestedService
+POST /intake/processes/steps/capturerequestedservicestep
     │
     ▼
 Intake: CaptureRequestedServiceHandler
@@ -161,7 +161,7 @@ Intake: CaptureRequestedServiceHandler
     ├── loads or creates intake session (member may not yet be captured)
     ├── persists procedure + target to intake session
     ├── calls StartRadiologyIntake on Radiology:
-    │       POST /radiology/processes/steps/startRadiologyIntake
+    │       POST /radiology/processes/steps/startradiologyintakestep
     │       { memberId, memberEnrollmentId, dateOfService, codeValue, codeSystem }
     │           │
     │           ▼
@@ -171,7 +171,7 @@ Intake: CaptureRequestedServiceHandler
     │           ├── upserts PriorAuthorization + Member rows
     │           ├── adds PriorAuthorizationRequestedService row
     │           ├── upserts history record
-    │           └── returns requiredStep: "CaptureMriInfo"
+    │           └── returns requiredStep: "CaptureMriInfoStep"
     │                       + questionnaire definition
     │
     └── returns to caller:
@@ -183,13 +183,13 @@ Intake: CaptureRequestedServiceHandler
 UI: ProcessService.executeStep() receives response
     ├── sees targetProcessorName: "radiology"
     ├── calls GET /radiology/processes/{processId}
-    │       → returns requiredStep: "CaptureMriInfo"
+    │       → returns requiredStep: "CaptureMriInfoStep"
     │                  availableSteps: [...]
-    │                  per-step results: { StartRadiologyIntake: { questionnaire: ... } }
+    │                  per-step results: { StartRadiologyIntakeStep: { questionnaire: ... } }
     │
     ├── updates ProcessState:
     │       currentProcessorName: "radiology"
-    │       requiredStep: "CaptureMriInfo"
+    │       requiredStep: "CaptureMriInfoStep"
     │       questionnaire: <from result>
     │
     └── navigates to /process/{processId}/capture-mri-info
@@ -197,7 +197,7 @@ UI: ProcessService.executeStep() receives response
 User completes CaptureMriInfo form
     │
     ▼
-POST /radiology/processes/steps/capturemriinfo
+POST /radiology/processes/steps/capturemriinfostep
     (currentProcessorName is already "radiology" — no special handling needed)
 ```
 

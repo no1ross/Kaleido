@@ -2,15 +2,15 @@ namespace Kaleido.Http.FunctionalTests.Authorization;
 
 internal static class AuthorizationStepNames
 {
-    public const string InternalStep = "auth-internal";
-    public const string PolicyStep = "auth-policy";
-    public const string OpenStep = "auth-open";
-    public const string AnonymousStep = "auth-anonymous";
+    public const string InternalStep = nameof(AuthorizedInternalStep);
+    public const string PolicyStep = nameof(AuthorizedPolicyStep);
+    public const string OpenStep = nameof(AuthorizedOpenStep);
+    public const string AnonymousStep = nameof(AuthorizedAnonymousStep);
 }
 
-[ProcessStep(Name = AuthorizationStepNames.AnonymousStep, Description = "Anonymous step", Version = "1.0")]
+[ProcessStep(DisplayName = AuthorizationStepNames.AnonymousStep, Description = "Anonymous step", Version = "1.0")]
 [KaleidoAuthorization(AllowAnonymous = true)]
-public sealed record AuthorizedAnonymousStep;
+public sealed record AuthorizedAnonymousStep : IProcessStep;
 
 public sealed class AuthorizedAnonymousStepHandler
     : IProcessStepHandler<AuthorizedAnonymousStep, AuthorizedStepResponse>
@@ -24,16 +24,16 @@ public sealed class AuthorizedAnonymousStepHandler
                 new AuthorizedStepResponse()));
 }
 
-[ProcessStep(Name = AuthorizationStepNames.InternalStep, Description = "Role-secured step", Version = "1.0")]
+[ProcessStep(DisplayName = AuthorizationStepNames.InternalStep, Description = "Role-secured step", Version = "1.0")]
 [KaleidoAuthorization(Roles = "internal")]
-public sealed record AuthorizedInternalStep;
+public sealed record AuthorizedInternalStep : IProcessStep;
 
-[ProcessStep(Name = AuthorizationStepNames.PolicyStep, Description = "Policy-secured step", Version = "1.0")]
+[ProcessStep(DisplayName = AuthorizationStepNames.PolicyStep, Description = "Policy-secured step", Version = "1.0")]
 [KaleidoAuthorization(Policy = "clinician-only")]
-public sealed record AuthorizedPolicyStep;
+public sealed record AuthorizedPolicyStep : IProcessStep;
 
-[ProcessStep(Name = AuthorizationStepNames.OpenStep, Description = "Undeclared step", Version = "1.0")]
-public sealed record AuthorizedOpenStep;
+[ProcessStep(DisplayName = AuthorizationStepNames.OpenStep, Description = "Undeclared step", Version = "1.0")]
+public sealed record AuthorizedOpenStep : IProcessStep;
 
 public sealed record AuthorizedStepResponse;
 

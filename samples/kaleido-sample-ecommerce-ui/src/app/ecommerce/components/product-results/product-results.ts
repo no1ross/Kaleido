@@ -171,7 +171,7 @@ addToCart(
         .executeStep<
         AddItemToCartStep,
         AddItemToCartResponse>(
-            'add-item-to-cart',
+            'AddItemToCartStep',
             request)
         .subscribe({
             next: result => {

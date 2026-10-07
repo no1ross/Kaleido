@@ -7,11 +7,10 @@ namespace Kaleido.Samples.PriorAuth.Member.Process.Steps;
 // not visible to or executable by user personas.
 [KaleidoAuthorization(Policy = DevAuthPolicies.InternalCaller)]
 [ProcessStep(
-    Name = "GenerateSnapshot",
     DisplayName = "Members - Generate Snapshot",
     Description = "Generates a member snapshot for the current process context.",
     Version = "1.0.0")]
-public sealed record GenerateSnapshotStep
+public sealed record GenerateSnapshotStep : IProcessStep
 {
     public required Guid MemberId { get; init; }
 

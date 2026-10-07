@@ -6,13 +6,12 @@
 //namespace Kaleido.Samples.ECommerce.Steps;
 
 //[ProcessStep(
-//    Name = "ChangePaymentInfo",
 //    DisplayName = "Update Payment Information",
 //    Description = "Updates payment information for an existing order.",
 //    Version = "1.0")]
-//[AvailableAfter(typeof(SubmitOrderStep))]
+//[AvailableAfter<SubmitOrderStep>]
 //[Repeatable]
-//public sealed record ChangePaymentInfoStep
+//public sealed record ChangePaymentInfoStep : IProcessStep
 //{
 //    [Required]
 //    public required string OrderId { get; init; }

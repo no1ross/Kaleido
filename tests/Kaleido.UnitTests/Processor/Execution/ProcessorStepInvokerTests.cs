@@ -104,7 +104,7 @@ public sealed class ProcessorStepInvokerTests
 
         Assert.True(result.Succeeded);
         Assert.NotNull(result.RequiredStep);
-        Assert.Equal("required-step", result.RequiredStep);
+        Assert.Equal(typeof(RequiredNextStep), result.RequiredStep);
 
         var response =
             Assert.IsType<TestStepResponse>(result.Response);
@@ -404,7 +404,7 @@ public sealed class ProcessorStepInvokerTests
     {
         var executeAsyncMethod =
             typeof(THandler).GetMethod(
-                nameof(IProcessStepHandler<object>.ExecuteAsync),
+                nameof(IProcessStepHandler<IProcessStep>.ExecuteAsync),
                 System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
 
         invokeHandlerAsync ??= executeAsyncMethod is null
@@ -495,7 +495,9 @@ public sealed class ProcessorStepInvokerTests
         }
     }
 
-    private sealed class TestStep
+    private sealed class RequiredNextStep : IProcessStep;
+
+    private sealed class TestStep : IProcessStep
     {
         public string Name { get; init; } = string.Empty;
     }
@@ -530,7 +532,7 @@ public sealed class ProcessorStepInvokerTests
                 new ProcessStepHandlerResult<TestStepResponse>
                 {
                     Succeeded = true,
-                    RequiredStep = "required-step",
+                    RequiredStep = typeof(RequiredNextStep),
                     Response =
                         new TestStepResponse
                         {

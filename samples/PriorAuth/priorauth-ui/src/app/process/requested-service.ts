@@ -89,7 +89,7 @@ export class RequestedService {
         this.errorMessage.set(undefined);
 
         this.processService
-            .executeStep<CaptureRequestedServiceStep, CaptureRequestedServiceResponse>('CaptureRequestedService', {
+            .executeStep<CaptureRequestedServiceStep, CaptureRequestedServiceResponse>('CaptureRequestedServiceStep', {
                 processId: this.processState.state().processId,
                 processStep: {
                     codeValue: record.codeValue,

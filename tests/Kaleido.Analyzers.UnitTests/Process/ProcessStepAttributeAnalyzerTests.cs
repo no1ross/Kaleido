@@ -18,8 +18,9 @@ namespace Kaleido.Processor
     [System.AttributeUsage(System.AttributeTargets.Class)]
     public class ProcessStepAttribute : System.Attribute
     {
-        public required string Name { get; init; }
         public required string Version { get; init; }
+        public required string DisplayName { get; init; }
+        public required string Description { get; init; }
     }
 }";
 
@@ -27,33 +28,33 @@ namespace Kaleido.Processor
         new("KAL2001", DiagnosticSeverity.Error);
 
     [Fact]
-    public async Task Name_Empty_Reports()
-    {
-        await RunAsync(@"
-using Kaleido.Processor;
-[{|#0:ProcessStep(Name = """", Version = ""1.0.0"")|}]
-public class MyStep { }
-" + ProcessStepStub,
-            Expected.WithLocation(0).WithArguments("ProcessStepAttribute"));
-    }
-
-    [Fact]
     public async Task Version_Empty_Reports()
     {
         await RunAsync(@"
 using Kaleido.Processor;
-[{|#0:ProcessStep(Name = ""Foo"", Version = """")|}]
+[{|#0:ProcessStep(Version = """", DisplayName = ""Foo"", Description = ""Does foo."")|}]
 public class MyStep { }
 " + ProcessStepStub,
             Expected.WithLocation(0).WithArguments("ProcessStepAttribute"));
     }
 
     [Fact]
-    public async Task Both_Empty_Reports()
+    public async Task DisplayName_Empty_Reports()
     {
         await RunAsync(@"
 using Kaleido.Processor;
-[{|#0:ProcessStep(Name = """", Version = """")|}]
+[{|#0:ProcessStep(Version = ""1.0.0"", DisplayName = """", Description = ""Does foo."")|}]
+public class MyStep { }
+" + ProcessStepStub,
+            Expected.WithLocation(0).WithArguments("ProcessStepAttribute"));
+    }
+
+    [Fact]
+    public async Task Description_WhitespaceOnly_Reports()
+    {
+        await RunAsync(@"
+using Kaleido.Processor;
+[{|#0:ProcessStep(Version = ""1.0.0"", DisplayName = ""Foo"", Description = ""   "")|}]
 public class MyStep { }
 " + ProcessStepStub,
             Expected.WithLocation(0).WithArguments("ProcessStepAttribute"));
@@ -64,19 +65,8 @@ public class MyStep { }
     {
         await RunAsync(@"
 using Kaleido.Processor;
-[ProcessStep(Name = ""Foo"", Version = ""1.0.0"")]
+[ProcessStep(Version = ""1.0.0"", DisplayName = ""Foo"", Description = ""Does foo."")]
 public class MyStep { }
 " + ProcessStepStub);
-    }
-
-    [Fact]
-    public async Task WhitespaceOnly_Name_Reports()
-    {
-        await RunAsync(@"
-using Kaleido.Processor;
-[{|#0:ProcessStep(Name = ""   "", Version = ""1.0.0"")|}]
-public class MyStep { }
-" + ProcessStepStub,
-            Expected.WithLocation(0).WithArguments("ProcessStepAttribute"));
     }
 }

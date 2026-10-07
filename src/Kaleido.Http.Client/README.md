@@ -95,28 +95,25 @@ var registry = await clientFactory
     .GetClient("RemoteProcessor")
     .GetRegistryAsync(cancellationToken);
 
-// Get metadata for a single step
-var metadata = await clientFactory
-    .GetClient("RemoteProcessor")
-    .GetStepMetadataAsync("CaptureMriInfo", cancellationToken);
-
 // Get process state (returns null on 404)
 var state = await clientFactory
     .GetClient("RemoteProcessor")
     .GetProcessStateAsync(processId, cancellationToken);
 
-// Execute a step (untyped)
+// Execute a step — the step name is the payload's type name ("CaptureMriInfoStep")
 var response = await clientFactory
     .GetClient("RemoteProcessor")
-    .ExecuteStepAsync(new MyRemoteStep { ... }, processId: existingId);
+    .ExecuteStepAsync(new CaptureMriInfoStep { ... }, cancellationToken);
 
 // Execute a step (typed result)
 var response = await clientFactory
     .GetClient("RemoteProcessor")
-    .ExecuteStepAsync<MyRemoteStep, MyRemoteResult>(
-        new MyRemoteStep { ... },
-        processId: existingId);
+    .ExecuteStepAsync<CaptureMriInfoStep, CaptureMriInfoResult>(
+        new CaptureMriInfoStep { ... },
+        cancellationToken);
 ```
+
+`ExecuteStepAsync` identifies the remote step by the payload's type name (`typeof(TStep).Name`), which must match a step name in the remote registry — the same name the remote service derives from its own step type. Use the remote step type itself, or a local mirror record with the **same type name**. Mirror records should not implement `IProcessStep`, so the calling service's own discovery does not register them as local steps. The process to continue travels in the `X-Kaleido-ProcessId` correlation header (propagated automatically from the current correlation context).
 
 ### Queryable client
 

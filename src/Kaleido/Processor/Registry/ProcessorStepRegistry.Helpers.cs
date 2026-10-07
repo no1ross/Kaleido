@@ -97,7 +97,7 @@ internal sealed partial class ProcessorStepRegistry
     private static MethodInfo GetExecuteAsyncMethod(
         Type handlerType) =>
         handlerType.GetMethod(
-            nameof(IProcessStepHandler<object>.ExecuteAsync),
+            nameof(IProcessStepHandler<IProcessStep>.ExecuteAsync),
             BindingFlags.Public | BindingFlags.Instance)
         ?? throw new KaleidoConfigurationException(
             ProcessorErrorCodes.InvalidHandler,

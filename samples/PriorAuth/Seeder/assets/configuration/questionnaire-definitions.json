@@ -127,7 +127,7 @@
       {
         "QuestionnaireMappingRuleId": "fb60b588-9b3a-4499-a2b7-208e9869a2aa",
         "QuestionnaireDefinitionId": "f5c7a0a8-8d42-4cd3-91a5-8e65b9f96301",
-        "StepName": "CaptureMriInfo",
+        "StepName": "CaptureMriInfoStep",
         "PlanId": null,
         "LineOfBusiness": null,
         "ProcedureModality": "Mri",

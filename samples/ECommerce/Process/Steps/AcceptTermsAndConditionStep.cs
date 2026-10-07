@@ -4,14 +4,13 @@
 //namespace Kaleido.Samples.ECommerce.Steps;
 
 //[ProcessStep(
-//    Name = "AcceptTermsAndConditions",
 //    DisplayName = "Accept Order Terms",
 //    Description = "Confirms acceptance of the terms and conditions required before an order can be submitted.",
 //    Version = "1.0")]
-//[AvailableUntil(typeof(SubmitOrderStep))]
-//[AvailableAfter(typeof(StartOrderStep))]
+//[AvailableUntil<SubmitOrderStep>]
+//[AvailableAfter<StartOrderStep>]
 //[Repeatable]
-//public sealed record AcceptTermsAndConditionsStep
+//public sealed record AcceptTermsAndConditionsStep : IProcessStep
 //{
 //    [Required]
 //    public required string OrderId { get; init; }

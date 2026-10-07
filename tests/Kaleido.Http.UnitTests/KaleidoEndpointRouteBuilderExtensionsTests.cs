@@ -377,7 +377,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
     // ── Nested test types ────────────────────────────────────────────────────
 
-    public sealed record TestStep;
+    public sealed record TestStep : IProcessStep;
     public sealed record TestStepResponse;
 
     public sealed class TestStepHandler : IProcessStepHandler<TestStep, TestStepResponse>

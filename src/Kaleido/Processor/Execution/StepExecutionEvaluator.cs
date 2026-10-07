@@ -1,4 +1,5 @@
 using Kaleido.Processor.Context;
+using Kaleido.Processor.Registry;
 
 namespace Kaleido.Processor.Execution;
 
@@ -13,6 +14,7 @@ internal interface IStepExecutionEvaluator
 
 internal sealed class StepExecutionEvaluator(
     IStepAvailabilityResolver availabilityResolver,
+    IProcessorStepRegistry registry,
     KaleidoServiceOptions serviceOptions)
     : IStepExecutionEvaluator
 {
@@ -36,9 +38,20 @@ internal sealed class StepExecutionEvaluator(
         if (result.RequiredStep is not null &&
             string.IsNullOrEmpty(result.TargetProcessorName))
         {
+            var requiredRegistration =
+                registry.Find(result.RequiredStep);
+
+            if (requiredRegistration is null)
+            {
+                return ExecutionDecision.ProcessViolation(
+                    StepProcessingMessage.Error(
+                        ProcessorErrorCodes.RequiredStepNotAllowed,
+                        $"'{result.RequiredStep.Name}' is not a registered step in this processor and cannot be required from '{currentCandidate.StepName}'."));
+            }
+
             return EvaluateRequiredStep(
                 currentCandidate,
-                result.RequiredStep,
+                requiredRegistration.Metadata.Name,
                 candidates,
                 context);
         }
