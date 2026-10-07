@@ -1,5 +1,3 @@
-using Kaleido.Processor;
-
 using Kaleido.UnitTests;
 
 namespace Kaleido.Processor.UnitTests;
