@@ -274,7 +274,7 @@ public sealed class KaleidoQueryableClientTests
 
             return JsonOk(expectedResult);
         });
-        using var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
+        using var httpClient = new HttpClient(handler.Object, disposeHandler: false) { BaseAddress = new Uri("http://localhost") };
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
         correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext());
         var client = CreateSut(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
@@ -304,7 +304,7 @@ public sealed class KaleidoQueryableClientTests
             postedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
             return JsonOk(new QueryResult<FakeView>(1, 0, 1, [new FakeView { Id = 7 }]));
         });
-        using var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
+        using var httpClient = new HttpClient(handler.Object, disposeHandler: false) { BaseAddress = new Uri("http://localhost") };
         var client = CreateSut(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
 
         var result = await client.QuerySourceAsync<FakeSearchParams, FakeView>(

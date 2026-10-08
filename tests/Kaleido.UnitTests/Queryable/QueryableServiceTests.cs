@@ -151,8 +151,8 @@ public sealed class QueryableServiceTests
 
     private static IQueryViewRegistry ViewRegistryWith(QueryViewRegistration? registration)
     {
+        // Loose mock: Find returns null (not a view) for any type not set up below.
         var registry = new Mock<IQueryViewRegistry>();
-        registry.Setup(x => x.Find(It.IsAny<Type>())).Returns(null);
 
         if (registration is not null)
         {
