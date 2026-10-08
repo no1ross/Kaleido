@@ -36,8 +36,9 @@ public interface IProcessorContextStore
 Your implementation must preserve, with full fidelity:
 
 - `ProcessId`, `ProcessorName`, `LatestRequestId`
-- `State` (`ProcessExecutionState` enum — Active, Complete, BusinessFailure, ProcessViolation, HandOff, AwaitingRequiredStep, AwaitingStepSelection, Exception, Canceled)
+- `State` (`ProcessExecutionState` enum — Active, Complete, BusinessFailure, ProcessViolation, HandOff, AwaitingRequiredStep, AwaitingStepSelection, Exception, Canceled, AwaitingInformation)
 - `RequiredStep` and `TargetProcessorName` (mutually exclusive continuation markers)
+- `RequiredInformationRequest` — the pending information request for `RequiredStep`, stored whole (the SQLite store keeps it as JSON on the required-step row; recreate dev databases created before this column existed)
 - `AvailableSteps` (collection — order not significant)
 - `Steps` — every `StepContext` including `StepName`, `Version`, `Status`, `LatestRequestId`, `LastExecuted`
 - `CreatedUtc` / `UpdatedUtc` timestamps

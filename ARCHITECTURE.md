@@ -88,6 +88,9 @@ See: [`src/Kaleido.Provider.SQLite/README.md`](./src/Kaleido.Provider.SQLite/REA
 
 ## 2. Top-level design principles
 
+### A process engine, never a decision maker
+Kaleido does what it's told: it moves requests between clients and existing systems, applies declared rules (the step graph, declared roles and policies, structural validation) and records what happened. Business decisions — what to ask, who may access a case, which path to take, what wording to use — belong to the implementer and the underlying systems. See [ADR 0001](./docs/decisions/0001-process-engine-not-decision-maker.md) and the other [decision records](./docs/decisions/README.md).
+
 ### Metadata first
 Capabilities are described through metadata and registrations rather than ad hoc, hardcoded integration knowledge.
 

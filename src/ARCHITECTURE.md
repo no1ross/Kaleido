@@ -71,7 +71,7 @@ The core project is organized into two main namespaces:
 **`Kaleido.Process`**
 - Registration: `ProcessorServiceCollectionExtensions`
 - Runtime: `ExecutionProcessor`
-- Planning: `StepCandidateBuilder`, `StepCandidateValidator`, `StepCandidateConsistencyChecker`, `StepCandidatePlanner`
+- Planning: `StepCandidateBuilder`, `StepCandidateValidator`, `StepCandidateConsistencyChecker`, `StepCandidatePlanner`, `StepCandidateNextStepChecker` (only next steps run; answers checked against the pending information request)
 - State: `IProcessorContextStore`, `ProcessorContextStore`, `ProcessorContext`
 - Registries: `ProcessorStepRegistry`, `ProcessorRegistry`
 - Observability: `ProcessorObservability`
