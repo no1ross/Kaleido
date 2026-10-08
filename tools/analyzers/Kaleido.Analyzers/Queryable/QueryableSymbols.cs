@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using System.Linq;
 
 namespace Kaleido.Analyzers.Queryable;
 
@@ -70,10 +71,8 @@ internal static class QueryableSymbols
         INamedTypeSymbol type,
         string[] openDefinitions)
     {
-        foreach (var iface in type.AllInterfaces)
+        foreach (var definition in type.AllInterfaces.Select(iface => iface.OriginalDefinition.ToDisplayString()))
         {
-            var definition = iface.OriginalDefinition.ToDisplayString();
-
             foreach (var candidate in openDefinitions)
             {
                 if (definition == candidate)
