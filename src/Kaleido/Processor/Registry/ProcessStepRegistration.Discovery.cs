@@ -1,6 +1,7 @@
 namespace Kaleido.Processor.Registry;
 
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 public sealed partial record ProcessStepRegistration
@@ -16,8 +17,11 @@ public sealed partial record ProcessStepRegistration
             DisplayName = Metadata.DisplayName,
             Version = Metadata.Version,
             Repeatable = Repeatable.Enabled,
+            IsInformationStep = IsInformationStep,
             Authorization = Metadata.Authorization,
-            Fields = StepType
+            // An information step's input is described by its pending InformationRequest,
+            // not by its fixed InformationRequestId/Items shape.
+            Fields = IsInformationStep ? [] : StepType
                 .GetProperties()
                 .Select(property =>
                     ToInputDescriptor(
@@ -50,6 +54,7 @@ public sealed partial record ProcessStepRegistration
             DisplayName = Metadata.DisplayName,
             Version = Metadata.Version,
             Repeatable = Repeatable.Enabled,
+            IsInformationStep = IsInformationStep,
             Authorization = Metadata.Authorization
         };
     }
@@ -59,10 +64,16 @@ public sealed partial record ProcessStepRegistration
         ITypeDescriber TypeDescriber,
         IConstraintMapper constraintMapper)
     {
+        var display = property.GetCustomAttribute<DisplayAttribute>();
+
         return new ProcessorInputFieldDescriptor
         {
             Name = property.Name,
-            Description = property.GetCustomAttribute<DescriptionAttribute>()?.Description,
+            DisplayName = display?.GetName(),
+            Prompt = display?.GetPrompt(),
+            Description =
+                property.GetCustomAttribute<DescriptionAttribute>()?.Description
+                ?? display?.GetDescription(),
             DataType = TypeDescriber.GetDescriptor(property),
             Constraints = constraintMapper.Map(property)
         };

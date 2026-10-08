@@ -70,9 +70,8 @@ internal sealed class ProcessStateService(
             // RequiredStep is null when TargetProcessorName is set —
             // consumer must call the target processor's state endpoint instead.
             RequiredStep =
-                context.TargetProcessorName is null
-                    ? context.RequiredStep
-                    : null,
+                CreateRequiredStep(
+                    context),
 
             TargetProcessorName =
                 context.TargetProcessorName,
@@ -92,7 +91,8 @@ internal sealed class ProcessStateService(
                                     Description = registration.Metadata.Description,
                                     DisplayName = registration.Metadata.DisplayName,
                                     Version = registration.Metadata.Version,
-                                    Repeatable = registration.Repeatable.Enabled
+                                    Repeatable = registration.Repeatable.Enabled,
+                                    IsInformationStep = registration.IsInformationStep
                                 },
                                 serviceOptions.ServiceName);
                         })
@@ -117,6 +117,35 @@ internal sealed class ProcessStateService(
 
             Owner = context.Owner,
         };
+    }
+
+    // Never builds an information request: it returns the pending one stored with the state.
+    private ProcessRequiredStep? CreateRequiredStep(
+        ProcessorContext context)
+    {
+        if (context.TargetProcessorName is not null ||
+            context.RequiredStep is not { } requiredStep)
+        {
+            return null;
+        }
+
+        var registration = registry.Find(requiredStep)
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
+                $"Required step '{requiredStep}' was not found in the local registry.");
+
+        return responseFactory.CreateRequiredStep(
+            new ProcessorStepSummary
+            {
+                Name = registration.Metadata.Name,
+                Description = registration.Metadata.Description,
+                DisplayName = registration.Metadata.DisplayName,
+                Version = registration.Metadata.Version,
+                Repeatable = registration.Repeatable.Enabled,
+                IsInformationStep = registration.IsInformationStep
+            },
+            context.RequiredInformationRequest,
+            serviceOptions.ServiceName);
     }
 
     public async Task<ProcessorContext?> TransferOwnershipAsync(

@@ -75,11 +75,12 @@ public sealed record ProcessExecutionResponse
     }
 
     /// <summary>
-    /// The next required step on the local processor.
+    /// The next required step on the local processor, including its pending information
+    /// request when the process is <see cref="ProcessExecutionState.AwaitingInformation"/>.
     /// Null when <see cref="TargetProcessorName"/> is set — call the target processor's
     /// state endpoint instead to get the authoritative required step.
     /// </summary>
-    public string? RequiredStep
+    public ProcessRequiredStep? RequiredStep
     {
         get;
         init;
@@ -159,11 +160,12 @@ public record StepExecutionResponse
     }
 
     /// <summary>
-    /// The next required step on the local processor.
+    /// The next required step on the local processor, including its pending information
+    /// request when the process is <see cref="ProcessExecutionState.AwaitingInformation"/>.
     /// Null when <see cref="TargetProcessorName"/> is set — call the target processor's
     /// state endpoint instead to get the authoritative required step.
     /// </summary>
-    public string? RequiredStep
+    public ProcessRequiredStep? RequiredStep
     {
         get;
         init;
@@ -238,11 +240,12 @@ public sealed record ProcessStateResponse
     }
 
     /// <summary>
-    /// The next required step on the local processor.
+    /// The next required step on the local processor, including its pending information
+    /// request when the process is <see cref="ProcessExecutionState.AwaitingInformation"/>.
     /// Null when <see cref="TargetProcessorName"/> is set — call the target processor's
     /// state endpoint instead to get the authoritative required step.
     /// </summary>
-    public string? RequiredStep
+    public ProcessRequiredStep? RequiredStep
     {
         get;
         init;
@@ -391,6 +394,12 @@ public sealed record ProcessStepResponse
     public bool Repeatable { get; init; }
 
     /// <summary>
+    /// True when the step's input is the answers to an information request; <see cref="Fields"/>
+    /// is then empty and the pending request (on the required step) says what to answer.
+    /// </summary>
+    public bool IsInformationStep { get; init; }
+
+    /// <summary>
     /// True when this step is an entry point — it has no dependencies and no
     /// availability preconditions, so it can start a new process instance.
     /// </summary>
@@ -432,6 +441,9 @@ public sealed record ProcessStepSummary
 
     public bool Repeatable { get; init; }
 
+    /// <summary>True when the step's input is the answers to an information request.</summary>
+    public bool IsInformationStep { get; init; }
+
     /// <summary>
     /// Authorization requirement for this step. Null means open.
     /// </summary>
@@ -439,6 +451,42 @@ public sealed record ProcessStepSummary
 
     public string ExecuteUrl { get; init; }
         = string.Empty;
+}
+
+/// <summary>
+/// The step a process requires next: the same shape as each <c>AvailableSteps</c> entry, plus the
+/// pending <see cref="InformationRequest"/> when the step is an information step.
+/// </summary>
+[ExcludeFromCodeCoverage]
+public sealed record ProcessRequiredStep
+{
+    public required string Name { get; init; }
+
+    public string? Description { get; init; }
+
+    public string? DisplayName { get; init; }
+
+    public string? Version { get; init; }
+
+    public bool Repeatable { get; init; }
+
+    /// <summary>True when the step's input is the answers to <see cref="InformationRequest"/>.</summary>
+    public bool IsInformationStep { get; init; }
+
+    /// <summary>
+    /// Authorization requirement for this step. Null means open.
+    /// </summary>
+    public AuthorizationMetadata? Authorization { get; init; }
+
+    public string ExecuteUrl { get; init; }
+        = string.Empty;
+
+    /// <summary>
+    /// The questions to answer, submitted as this step's payload
+    /// (<c>{ "informationRequestId": …, "items": [ … ] }</c>); null for an ordinary step.
+    /// Question and display text is delivered verbatim: do not paraphrase it.
+    /// </summary>
+    public InformationRequest? InformationRequest { get; init; }
 }
 
 [ExcludeFromCodeCoverage]

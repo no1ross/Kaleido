@@ -105,6 +105,19 @@ public sealed record ProcessorContext
     }
 
     /// <summary>
+    /// The pending information request: the questions <see cref="RequiredStep"/> (an
+    /// <see cref="IInformationStep"/>) needs answered, stored as presented. Set only in
+    /// <see cref="ProcessExecutionState.AwaitingInformation"/>; replaced or cleared by the next
+    /// outcome. This is execution state only: recording the questions and answers over time is
+    /// the implementer's concern.
+    /// </summary>
+    public InformationRequest? RequiredInformationRequest
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
     /// When set, the process has been handed off to this processor.
     /// The consumer must call the target processor's state endpoint to continue.
     /// </summary>

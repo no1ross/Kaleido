@@ -13,7 +13,15 @@ public sealed partial record ProcessStepRegistration(
     RepeatableOptions Repeatable,
     ProcessStepMetadata Metadata,
     Func<Task, IProcessStepHandlerResult>? GetResultFromTask = null,
-    Func<object, object, ProcessStepContext, CancellationToken, Task>? InvokeHandlerAsync = null);
+    Func<object, object, ProcessStepContext, CancellationToken, Task>? InvokeHandlerAsync = null)
+{
+    /// <summary>
+    /// <see langword="true"/> when the step's input is the answers to an
+    /// <see cref="InformationRequest"/> (it implements <see cref="IInformationStep"/>).
+    /// </summary>
+    public bool IsInformationStep =>
+        typeof(IInformationStep).IsAssignableFrom(StepType);
+}
 
 [ExcludeFromCodeCoverage]
 public sealed record RepeatableOptions

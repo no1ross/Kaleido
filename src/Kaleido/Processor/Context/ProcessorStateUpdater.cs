@@ -167,6 +167,9 @@ internal sealed class ProcessorStateUpdater(
             RequiredStep =
                 decision.RequiredStep,
 
+            RequiredInformationRequest =
+                decision.InformationRequest,
+
             TargetProcessorName =
                 decision.TargetProcessorName,
 
@@ -219,6 +222,8 @@ internal sealed class ProcessorStateUpdater(
 
             RequiredStep = null,
 
+            RequiredInformationRequest = null,
+
             TargetProcessorName = null,
 
             AvailableSteps = [],
@@ -265,6 +270,8 @@ internal sealed class ProcessorStateUpdater(
                 ProcessExecutionState.Canceled,
 
             RequiredStep = null,
+
+            RequiredInformationRequest = null,
 
             TargetProcessorName = null,
 
@@ -328,6 +335,9 @@ internal sealed class ProcessorStateUpdater(
 
             ExecutionDecisionType.AwaitingStepSelection =>
                 ProcessExecutionState.AwaitingStepSelection,
+
+            ExecutionDecisionType.AwaitingInformation =>
+                ProcessExecutionState.AwaitingInformation,
 
             ExecutionDecisionType.HandOff =>
                 ProcessExecutionState.HandOff,

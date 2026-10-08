@@ -99,6 +99,7 @@ public static class ProcessorServiceCollectionExtensions
             RequireNonEmpty(stepType, metadata.Version, nameof(ProcessStepAttribute.Version));
             RequireNonEmpty(stepType, metadata.DisplayName, nameof(ProcessStepAttribute.DisplayName));
             RequireNonEmpty(stepType, metadata.Description, nameof(ProcessStepAttribute.Description));
+            RequireInformationStepShape(stepType);
         }
 
         var duplicateNames =
@@ -135,6 +136,34 @@ public static class ProcessorServiceCollectionExtensions
         throw new KaleidoConfigurationException(
             ProcessorErrorCodes.DuplicateStep,
             $"Duplicate process step names were found.{Environment.NewLine}{duplicateDetails}");
+    }
+
+    // An information step's payload is the answers to its pending request and nothing else:
+    // known inputs belong on ordinary steps, so the same data never lives in two places.
+    private static void RequireInformationStepShape(
+        Type stepType)
+    {
+        if (!typeof(IInformationStep).IsAssignableFrom(stepType))
+        {
+            return;
+        }
+
+        var extra =
+            stepType
+                .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                .Where(x =>
+                    x.Name is not (nameof(IInformationStep.InformationRequestId) or nameof(IInformationStep.Items)))
+                .Select(x => x.Name)
+                .ToArray();
+
+        if (extra.Length > 0)
+        {
+            throw new KaleidoConfigurationException(
+                ProcessorErrorCodes.InvalidRegistration,
+                $"Information step '{stepType.FullName}' declares {string.Join(", ", extra)}. "
+                + $"An {nameof(IInformationStep)} may only declare {nameof(IInformationStep.InformationRequestId)} and {nameof(IInformationStep.Items)}; "
+                + "put known inputs on an ordinary step instead.");
+        }
     }
 
     private static bool IsProcessStepType(
@@ -202,6 +231,8 @@ public static class ProcessorServiceCollectionExtensions
         services.TryAddSingleton<IStepCandidateConsistencyChecker, StepCandidateConsistencyChecker>();
         services.TryAddSingleton<IStepCandidatePlanner, StepCandidatePlanner>();
         services.TryAddSingleton<IStepCandidateValidator, StepCandidateValidator>();
+        services.TryAddSingleton<IStepCandidateNextStepChecker, StepCandidateNextStepChecker>();
+        services.TryAddSingleton<IInformationValidator, InformationValidator>();
 
         services.TryAddScoped<IProcessStepInvoker, ProcessorStepInvoker>();
         services.TryAddSingleton<IStepExecutionEvaluator, StepExecutionEvaluator>();

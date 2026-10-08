@@ -34,6 +34,12 @@ public sealed record ProcessorStepRegistryItem
     public bool Repeatable { get; init; }
 
     /// <summary>
+    /// <see langword="true"/> when the step's input is the answers to an information request;
+    /// <see cref="Fields"/> is then empty and the pending request describes what to answer.
+    /// </summary>
+    public bool IsInformationStep { get; init; }
+
+    /// <summary>
     /// Effective authorization rule. <see cref="AuthorizationMetadata.Unspecified"/>
     /// means neither the capability nor its service declared a rule.
     /// </summary>
@@ -68,6 +74,11 @@ public sealed record ProcessorStepSummary
     public bool Repeatable { get; init; }
 
     /// <summary>
+    /// <see langword="true"/> when the step's input is the answers to an information request.
+    /// </summary>
+    public bool IsInformationStep { get; init; }
+
+    /// <summary>
     /// Effective authorization rule. <see cref="AuthorizationMetadata.Unspecified"/>
     /// means neither the capability nor its service declared a rule.
     /// </summary>
@@ -87,6 +98,17 @@ public record ProcessorPropertyDescriptor
 [ExcludeFromCodeCoverage]
 public record ProcessorInputFieldDescriptor : ProcessorPropertyDescriptor
 {
+    /// <summary>
+    /// A short label for the input, from <c>[Display(Name = …)]</c>. A hint for UIs and AI
+    /// agents, which may phrase the question their own way.
+    /// </summary>
+    public string? DisplayName { get; init; }
+
+    /// <summary>
+    /// A suggested prompt, from <c>[Display(Prompt = …)]</c>. A hint, like <see cref="DisplayName"/>.
+    /// </summary>
+    public string? Prompt { get; init; }
+
     public IReadOnlyCollection<ConstraintContract> Constraints { get; init; }
         = [];
 }

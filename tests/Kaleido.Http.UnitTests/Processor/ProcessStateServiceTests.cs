@@ -64,6 +64,7 @@ public sealed class ProcessStateServiceTests
                 ProcessorName = "test-processor",
                 State = ProcessExecutionState.AwaitingStepSelection,
                 RequiredStep = "Step-B",
+                RequiredInformationRequest = PendingRequest,
                 AvailableSteps = ["Step-A"],
                 CreatedUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
                 UpdatedUtc = DateTimeOffset.UtcNow,
@@ -107,10 +108,23 @@ public sealed class ProcessStateServiceTests
                 "test-processor"))
             .Returns(expectedSummary);
 
+        var expectedRequired = new ProcessRequiredStep
+        {
+            Name = "Step-B",
+            InformationRequest = PendingRequest
+        };
+
+        responseFactory
+            .Setup(x => x.CreateRequiredStep(
+                It.Is<ProcessorStepSummary>(s => s.Name == "Step-B"),
+                PendingRequest,
+                "test-processor"))
+            .Returns(expectedRequired);
+
         var service =
             CreateSut(
                 contextStore.Object,
-                CreateRegistry("Step-A"),
+                CreateRegistry("Step-A", "Step-B"),
                 responseFactory.Object);
 
         var result =
@@ -121,7 +135,7 @@ public sealed class ProcessStateServiceTests
         Assert.NotNull(result);
         Assert.Equal(processId, result.ProcessId);
         Assert.Equal(ProcessExecutionState.AwaitingStepSelection, result.State);
-        Assert.Equal("Step-B", result.RequiredStep);
+        Assert.Same(expectedRequired, result.RequiredStep);
         Assert.Null(result.TargetProcessorName);
         Assert.Equal("Step-A", Assert.Single(result.AvailableSteps).Name);
 
@@ -138,6 +152,13 @@ public sealed class ProcessStateServiceTests
                 Assert.Equal(StepExecutionStatus.Pending, step.Status);
             });
     }
+
+    private static readonly InformationRequest PendingRequest =
+        new()
+        {
+            InformationRequestId = "out-of-network",
+            Items = [new InformationItem { Id = "q1", Text = "Proceed?", Type = InformationItemType.Boolean }]
+        };
 
     private static IProcessorStepRegistry CreateRegistry(
         params string[] stepNames)
