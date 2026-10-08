@@ -87,9 +87,18 @@ public static class DevAuthExtensions
                         "Dev persona token — get one from POST /auth/login on the router."
                 });
 
-            // Security definition stays (Authorize button works), but the
-            // per-operation requirement/401/403 noise Kaleido's
-            // RequireAuthorization metadata produces is stripped.
+            // One document-wide requirement: Swagger UI only sends the
+            // Authorization header for operations that declare a requirement,
+            // so without it the Authorize token is stored but never sent.
+            options.AddSecurityRequirement(document =>
+                new Microsoft.OpenApi.OpenApiSecurityRequirement
+                {
+                    [new Microsoft.OpenApi.OpenApiSecuritySchemeReference("Bearer", document)] = []
+                });
+
+            // The per-operation requirement/401/403 noise Kaleido's
+            // RequireAuthorization metadata produces is stripped; operations
+            // inherit the document-wide requirement above.
             options.OperationFilter<DevSwaggerOperationFilter>();
             options.DocumentFilter<DevSwaggerDocumentFilter>();
         });
@@ -130,7 +139,9 @@ internal sealed class DevSwaggerOperationFilter : Swashbuckle.AspNetCore.Swagger
         Microsoft.OpenApi.OpenApiOperation operation,
         Swashbuckle.AspNetCore.SwaggerGen.OperationFilterContext context)
     {
-        operation.Security?.Clear();
+        // Null (not an empty list): an empty `security: []` on an operation
+        // means "no auth" and would stop Swagger UI sending the token.
+        operation.Security = null;
         operation.Responses?.Remove("401");
         operation.Responses?.Remove("403");
     }
