@@ -40,13 +40,13 @@ internal interface IQueryExecutionObservation
 internal enum QueryExecutionMode
 {
     LocalView = 0,
-    DirectContext = 1,
-    DelegatedContext = 2
+    DirectSource = 1,
+    DelegatedSource = 2
 }
 
 [ExcludeFromCodeCoverage]
 internal sealed record QueryObservationDetails(
-    string QueryContextName,
+    string QuerySourceName,
     string? QueryViewName,
     bool IsDirectQuery,
     QueryExecutionMode ExecutionMode);
@@ -122,7 +122,7 @@ internal sealed class QueryableObservability(
             activity?.SetTag(ProcessorTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
         }
 
-        activity?.SetTag(QueryableTelemetry.TagQueryContext, details.QueryContextName);
+        activity?.SetTag(QueryableTelemetry.TagQuerySource, details.QuerySourceName);
         activity?.SetTag(QueryableTelemetry.TagQueryView, details.QueryViewName);
         activity?.SetTag(QueryableTelemetry.TagQueryDirect, details.IsDirectQuery);
         activity?.SetTag(QueryableTelemetry.TagQueryExecutionMode, details.ExecutionMode.ToString());
@@ -130,8 +130,8 @@ internal sealed class QueryableObservability(
         QueryExecutionsCounter.Add(1, CreateExecutionTags(details));
 
         logger.LogDebug(
-            "Queryable execution started for context {QueryContextName} view {QueryViewName} direct {IsDirectQuery} mode {ExecutionMode}.",
-            details.QueryContextName,
+            "Queryable execution started for source {QuerySourceName} view {QueryViewName} direct {IsDirectQuery} mode {ExecutionMode}.",
+            details.QuerySourceName,
             details.QueryViewName,
             details.IsDirectQuery,
             details.ExecutionMode);
@@ -146,7 +146,7 @@ internal sealed class QueryableObservability(
     {
         TagList tags =
         [
-            new(QueryableTelemetry.TagQueryContext, details.QueryContextName),
+            new(QueryableTelemetry.TagQuerySource, details.QuerySourceName),
             new(QueryableTelemetry.TagQueryDirect, details.IsDirectQuery),
             new(QueryableTelemetry.TagQueryExecutionMode, details.ExecutionMode.ToString())
         ];
@@ -190,8 +190,8 @@ internal sealed class QueryableObservability(
 
             logger.LogWarning(
                 exception,
-                "Queryable validation failed for context {QueryContextName} view {QueryViewName} with code {ValidationCode}.",
-                details.QueryContextName,
+                "Queryable validation failed for source {QuerySourceName} view {QueryViewName} with code {ValidationCode}.",
+                details.QuerySourceName,
                 details.QueryViewName,
                 exception.Code);
         }
@@ -219,8 +219,8 @@ internal sealed class QueryableObservability(
             }
 
             logger.LogDebug(
-                "Queryable materialization completed for context {QueryContextName} view {QueryViewName} total {TotalCount} returned {ReturnedCount} pageSize {PageSize} pageOffset {PageOffset}.",
-                details.QueryContextName,
+                "Queryable materialization completed for source {QuerySourceName} view {QueryViewName} total {TotalCount} returned {ReturnedCount} pageSize {PageSize} pageOffset {PageOffset}.",
+                details.QuerySourceName,
                 details.QueryViewName,
                 totalCount,
                 returnedCount,
@@ -235,8 +235,8 @@ internal sealed class QueryableObservability(
             QueryExecutionCancellationsCounter.Add(1, CreateExecutionTags(details));
 
             logger.LogWarning(
-                "Queryable execution was canceled for context {QueryContextName} view {QueryViewName}.",
-                details.QueryContextName,
+                "Queryable execution was canceled for source {QuerySourceName} view {QueryViewName}.",
+                details.QuerySourceName,
                 details.QueryViewName);
         }
 
@@ -251,8 +251,8 @@ internal sealed class QueryableObservability(
 
             logger.LogError(
                 exception,
-                "Queryable execution failed for context {QueryContextName} view {QueryViewName}.",
-                details.QueryContextName,
+                "Queryable execution failed for source {QuerySourceName} view {QueryViewName}.",
+                details.QuerySourceName,
                 details.QueryViewName);
         }
 

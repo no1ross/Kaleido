@@ -127,7 +127,7 @@ export class RequestedService {
         };
 
         return this.queryableService
-            .queryContext<ProcedureCodeSearchResult>('procedure-codes', request)
+            .queryContext<ProcedureCodeSearchResult>('ProcedureCodeQueryContextSource', request)
             .pipe(
                 tap(result => {
                     this.results.set(result.results);

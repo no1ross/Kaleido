@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 
-import { QueryableConstraint, QueryableRecord, QueryableView } from '../../kaleido/models/queryable-registry';
+import { QueryableConstraint, QueryableSource, QueryableView } from '../../kaleido/models/queryable-registry';
 import {
     RegistryCatalog,
     RegistryCatalogState,
@@ -24,7 +24,7 @@ export class QueryableRegistryViewer {
         this.registryCatalog.loadState();
 
     selectedGroup?: QueryableGroup;
-    selectedContext?: QueryableRecord;
+    selectedContext?: QueryableSource;
     selectedView?: QueryableView;
 
     refresh(): void {
@@ -46,7 +46,7 @@ export class QueryableRegistryViewer {
         }
     }
 
-    selectContext(group: QueryableGroup, context: QueryableRecord): void {
+    selectContext(group: QueryableGroup, context: QueryableSource): void {
         this.selectedGroup = group;
         this.selectedContext = context;
         this.selectedView = context.views[0];

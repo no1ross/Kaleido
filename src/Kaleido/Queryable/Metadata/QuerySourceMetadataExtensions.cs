@@ -1,13 +1,13 @@
 namespace Kaleido.Queryable.Metadata;
 
-internal static class QueryContextMetadataExtensions
+internal static class QuerySourceMetadataExtensions
 {
     public static FieldMetadata GetField(
-        this QueryContextMetadata metadata,
+        this QuerySourceMetadata metadata,
         string name) =>
         metadata.Fields.FirstOrDefault(
             x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase))
         ?? throw new KaleidoValidationException(
             QueryableErrorCodes.InvalidField,
-            $"Field '{name}' does not exist on record '{metadata.Name}'.");
+            $"Field '{name}' does not exist on query source '{metadata.Name}'.");
 }

@@ -1,7 +1,7 @@
 <section class="member-search-page">
     @if (!context) {
         <div class="member-search-page__error">
-            The <strong>{{ searchContextName }}</strong> queryable query context is not available. Check registry conflicts and service registration.
+            The <strong>{{ searchSourceName }}</strong> query source is not available. Check registry conflicts and service registration.
         </div>
     } @else {
         @if (viewMode() === 'results') {
@@ -9,7 +9,7 @@
                 <div class="member-search-card">
                     <div class="member-search-card__title">Requesting Provider Search</div>
                     <div class="member-search-card__meta">Service: {{ registrationServiceName }}</div>
-                    <div class="member-search-card__meta">Context: {{ context.displayName }}</div>
+                    <div class="member-search-card__meta">Source: {{ context.displayName }}</div>
 
                     <div class="member-search-card__form">
                         <div class="member-search-card__field">

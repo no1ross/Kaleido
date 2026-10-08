@@ -1,3 +1,4 @@
+using Kaleido.Samples.ECommerce.Data.QueryContexttSources;
 using Kaleido.Queryable;
 using Kaleido.Samples.ECommerce.Data.QueryContexts;
 using Kaleido.Samples.ECommerce.Data.QueryViewSources.Views;
@@ -5,13 +6,12 @@ using Kaleido.Samples.ECommerce.Data.QueryViewSources.Views;
 namespace Kaleido.Samples.ECommerce.Data.QueryViewSources;
 
 [QueryView(
-    Name = "customer-context",
     DisplayName = "Customer Personas",
     Version = "1.0.0",
     Description = "Available customer personas.")]
 internal sealed class CustomerPersonaViewSource
     : IQueryViewSource<
-        CustomerQueryContext,
+        CustomerQueryContextSource, CustomerQueryContext,
         CustomerPersonaView>
 {
     public IQueryable<CustomerPersonaView> CreateView(

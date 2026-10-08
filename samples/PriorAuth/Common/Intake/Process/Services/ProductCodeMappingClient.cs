@@ -14,8 +14,8 @@ public sealed class ProductCodeMappingClient(
     {
         var result = await queryableClientFactory
             .GetClient("Configuration")
-            .QueryContextAsync<ProductCodeMappingQueryContext>(
-                "product-code-mappings",
+            .QuerySourceAsync<ProductCodeMappingQueryContext>(
+                "ProductCodeMappingQueryContextSource",
                 new QueryApiRequest
                 {
                     Query = new QueryApiBody

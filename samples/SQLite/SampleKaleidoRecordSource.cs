@@ -2,7 +2,13 @@ using Kaleido.Queryable;
 
 namespace Kaleido.Samples.SQLite;
 
-public sealed class SampleKaleidoRecordSource : IQueryContextSource<SampleKaleidoRecord>
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Functional Records",
+    Description = "Sample records covering every supported field type, filter operator and match mode.",
+    Source = "CSV Functional Test Data")]
+[Pageable(DefaultSize = 25, MaxSize = 500)]
+public sealed class SampleKaleidoRecordSource : IQuerySource<SampleKaleidoRecord>
 {
     private readonly SampleKaleidoCsvData _data;
 
@@ -17,7 +23,8 @@ public sealed class SampleKaleidoRecordSource : IQueryContextSource<SampleKaleid
     }
 }
 
-public sealed class SampleKalediRecordView : IQueryViewSource<SampleKaleidoRecord, SampleKaleidoRecord>
+[QueryView(DisplayName = "Sample View", Version = "1.0.0", Description = "Sample view for functional testing.")]
+public sealed class SampleKalediRecordView : IQueryViewSource<SampleKaleidoRecordSource, SampleKaleidoRecord, SampleKaleidoRecord>
 {
     public IQueryable<SampleKaleidoRecord> CreateView(IQueryable<SampleKaleidoRecord> query, QueryExecutionContext executionContext)
     {

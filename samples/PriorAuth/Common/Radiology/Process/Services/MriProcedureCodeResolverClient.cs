@@ -16,8 +16,8 @@ public sealed class MriProcedureCodeResolverClient(
     {
         var result = await queryableClientFactory
             .GetClient("Configuration")
-            .QueryContextAsync<MriProcedureCodeRuleQueryContext>(
-                "mri-procedure-code-rules",
+            .QuerySourceAsync<MriProcedureCodeRuleQueryContext>(
+                "MriProcedureCodeRuleQueryContextSource",
                 new QueryApiRequest
                 {
                     Query = new QueryApiBody

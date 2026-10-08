@@ -3,12 +3,7 @@ using Kaleido.Queryable;
 
 namespace Kaleido.Samples.PriorAuth.Member.Queryable.Contexts;
 
-[QueryContext(
-    Name = "members",
-    DisplayName = "Members",
-    Version = "1.0.0",
-    Source = "Prior Authorization Member Service")]
-public sealed class MemberQueryContext
+public sealed class MemberQueryContext : IQueryContext
 {
     [Key]
     public Guid MemberEnrollmentId { get; init; }

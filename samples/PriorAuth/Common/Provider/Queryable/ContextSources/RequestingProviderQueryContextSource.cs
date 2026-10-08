@@ -7,10 +7,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.Provider.Queryable.ContextSources;
 
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Requesting Providers",
+    Description = "Providers that can request a prior authorization, with their locations.",
+    Source = "Prior Authorization Provider Search")]
+[Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class RequestingProviderQueryContextSource(
     ProviderSearchDbContext dbContext,
     PlanNetworkClient planNetworkClient)
-    : IQueryContextSourceAsync<RequestingProviderQueryContext>
+    : IQuerySourceAsync<RequestingProviderQueryContext>
 {
     public async Task<IQueryable<RequestingProviderQueryContext>> CreateQueryAsync(
         QueryExecutionContext executionContext,

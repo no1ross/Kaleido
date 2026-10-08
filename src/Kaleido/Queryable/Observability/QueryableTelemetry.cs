@@ -34,8 +34,8 @@ public static class QueryableTelemetry
 
     // ── Tag key names (activity tags) ─────────────────────────────────────────
 
-    public const string TagQueryContext =
-        "kaleido.query.context";
+    public const string TagQuerySource =
+        "kaleido.query.source";
 
     public const string TagQueryView =
         "kaleido.query.view";

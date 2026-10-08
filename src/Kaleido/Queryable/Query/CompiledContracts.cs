@@ -3,7 +3,7 @@ using Kaleido.Queryable.Metadata;
 namespace Kaleido.Queryable.Query;
 
 [ExcludeFromCodeCoverage]
-internal sealed record CompiledRecordQuery(
+internal sealed record CompiledQuery(
     CompiledFilterExpression? Filter,
     CompiledSearch? Search,
     IReadOnlyList<CompiledSort> Sort,

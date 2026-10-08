@@ -31,7 +31,7 @@ internal sealed class QueryEventFactory(
         var @event = new QueryExecuted
         {
             OccurredOn = DateTimeOffset.UtcNow,
-            QueryContextName = details.QueryContextName,
+            QuerySourceName = details.QuerySourceName,
             QueryViewName = details.QueryViewName,
             IsDirectQuery = details.IsDirectQuery,
             ExecutionMode = details.ExecutionMode.ToString(),
@@ -53,7 +53,7 @@ internal sealed class QueryEventFactory(
             ServiceName = serviceOptions.ServiceName,
             ProcessId = correlation.ProcessId,
             CallingStepName = correlation.CallingStepName,
-            QueryContextName = details.QueryContextName,
+            QuerySourceName = details.QuerySourceName,
             QueryViewName = details.QueryViewName,
             ProcessorInstanceId = serviceOptions.InstanceId.ToString(),
             CallingProcessorName = correlation.CallingProcessorName

@@ -4,13 +4,7 @@ using Kaleido.Queryable;
 namespace Kaleido.Samples.PriorAuth.Provider.Queryable.Contexts;
 
 // Service-to-service only: no direct consumer use.
-[QueryContext(
-    Name = "provider-locations",
-    DisplayName = "Provider Locations",
-    Version = "1.0.0",
-    Source = "Prior Authorization Provider Search")]
-[Pageable(DefaultSize = 25, MaxSize = 250)]
-public sealed class ProviderLocationQueryContext
+public sealed class ProviderLocationQueryContext : IQueryContext
 {
     [Key]
     public Guid ProviderLocationId { get; init; }

@@ -39,7 +39,7 @@ export class CaptureMember {
         inject(Router);
 
     readonly detailsViewName =
-        'member-details';
+        'MemberDetailsViewSource';
 
     readonly selectedMemberDetails =
         signal<MemberDetailsResult | undefined>(undefined);

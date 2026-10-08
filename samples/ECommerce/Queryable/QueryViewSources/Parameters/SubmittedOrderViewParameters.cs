@@ -1,8 +1,9 @@
-﻿using System.ComponentModel.DataAnnotations;
+using Kaleido.Queryable;
+using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.ECommerce.Data.QueryViewSources.Parameters;
 
-public sealed record SubmittedOrderViewParameters
+public sealed record SubmittedOrderViewParameters : IQueryParameters
 {
     [Required]
     public Guid? ProcessId

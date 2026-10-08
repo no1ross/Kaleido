@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, tap, map, of, catchError, throwError } from 'rxjs';
-import { QueryableView, QueryableRecord, QueryableField, QueryableViewRegistration } from '../models/queryable-registry';
+import { QueryableView, QueryableSource, QueryableField, QueryableViewRegistration } from '../models/queryable-registry';
 import { HttpClient } from '@angular/common/http';
 import { getRegistryUrl } from '../../../configuration/urlConfig';
 
@@ -15,7 +15,7 @@ export class QueryableRegistry {
         inject(HttpClient);
 
     private readonly contextsByName =
-        new Map<string, QueryableRecord>();
+        new Map<string, QueryableSource>();
 
     private readonly viewsByName =
         new Map<string, QueryableView>();
@@ -44,7 +44,7 @@ export class QueryableRegistry {
             performance.now();
 
         return this.http
-            .get<{ queryables: QueryableRecord[] }>(
+            .get<{ queryables: QueryableSource[] }>(
                 getRegistryUrl())
             .pipe(
                 map(response => response.queryables),
@@ -87,7 +87,7 @@ export class QueryableRegistry {
     }
 
     private populateRegistry(
-        records: QueryableRecord[]
+        records: QueryableSource[]
     ): void {
 
         this.contextsByName.clear();
@@ -117,7 +117,7 @@ export class QueryableRegistry {
 
     getContext(
         name: string
-    ): QueryableRecord {
+    ): QueryableSource {
 
         const context =
             this.contextsByName.get(name);
@@ -131,7 +131,7 @@ export class QueryableRegistry {
         return context;
     }
 
-    getContexts(): readonly QueryableRecord[] {
+    getContexts(): readonly QueryableSource[] {
 
         return Array.from(
             this.contextsByName.values());
@@ -168,7 +168,7 @@ export class QueryableRegistry {
 
     tryGetContext(
         name: string
-    ): QueryableRecord | undefined {
+    ): QueryableSource | undefined {
 
         return this.contextsByName.get(name);
     }

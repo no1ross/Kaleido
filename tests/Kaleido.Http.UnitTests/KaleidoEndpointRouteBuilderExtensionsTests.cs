@@ -43,7 +43,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ProcessEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
-        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
+        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QuerySourceEndpointName("test-context")));
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
         endpoints.MapKaleidoHttp();
 
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QuerySourceEndpointName("test-context")));
         Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
         Assert.Null(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
     }
@@ -66,7 +66,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         endpoints.MapKaleidoHttp();
 
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QuerySourceEndpointName("test-context")));
         Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
     }
 
@@ -115,18 +115,18 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     }
 
     [Fact]
-    public void MapKaleidoHttp_ZeroTrust_UndeclaredContextAndView_AreNotMapped()
+    public void MapKaleidoHttp_ZeroTrust_UndeclaredSourceAndView_AreNotMapped()
     {
         var endpoints = CreateQueryableOnlyEndpoints(mode: KaleidoAuthorizationMode.ZeroTrust);
 
         endpoints.MapKaleidoHttp();
 
-        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
+        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QuerySourceEndpointName("test-context")));
         Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QueryViewEndpointName("test-context", "test-view")));
     }
 
     [Fact]
-    public void MapKaleidoHttp_ZeroTrust_ExplicitViewOnUnspecifiedContext_MapsOnlyView()
+    public void MapKaleidoHttp_ZeroTrust_ExplicitViewOnUnspecifiedSource_MapsOnlyView()
     {
         var endpoints = CreateQueryableOnlyEndpoints(
             mode: KaleidoAuthorizationMode.ZeroTrust,
@@ -134,7 +134,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
         endpoints.MapKaleidoHttp();
 
-        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
+        Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QuerySourceEndpointName("test-context")));
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryViewEndpointName("test-context", "test-view")));
     }
 
@@ -347,15 +347,17 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         var registry = new Mock<IQueryableRegistry>();
         registry.Setup(x => x.Registrations).Returns(
         [
-            new QueryableContextRegistryItem
+            new QueryableSourceRegistryItem
             {
-                ContextType = typeof(TestContext),
+                SourceType = typeof(TestSource),
+                QueryContextType = typeof(TestContext),
+                ResultType = typeof(TestContext),
+                ParametersType = typeof(EmptyQueryViewParameters),
                 Name = "Test-Context",
                 Description = "Test Context",
                 DisplayName = "Test Context",
                 Version = "1.0.0",
                 Source = "Unit Test",
-                Kind = QueryContextKind.Direct,
                 Views =
                 [
                     new QueryableViewRegistryItem

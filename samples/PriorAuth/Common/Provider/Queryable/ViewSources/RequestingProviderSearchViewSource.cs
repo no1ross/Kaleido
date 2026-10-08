@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Provider.Queryable.ContextSources;
 using Kaleido.Queryable;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Contexts;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Parameters;
@@ -9,14 +10,13 @@ namespace Kaleido.Samples.PriorAuth.Provider.Queryable.ViewSources;
 // for direct user calls. Reachable by internal callers (e.g. radiology on the
 // user's behalf).
 [QueryView(
-    Name = "requesting-provider-search",
     DisplayName = "Requesting Provider Search",
     Version = "1.0.0",
     Description = "Searchable requesting provider results with derived network status.",
     DefaultSortField = nameof(RequestingProviderQueryContext.ProviderName))]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class RequestingProviderSearchViewSource
-    : IQueryViewSource<RequestingProviderQueryContext, RequestingProviderSearchView, RequestingProviderSearchParameters>
+    : IQueryViewSource<RequestingProviderQueryContextSource, RequestingProviderQueryContext, RequestingProviderSearchView, RequestingProviderSearchParameters>
 {
     public IQueryable<RequestingProviderSearchView> CreateView(
         IQueryable<RequestingProviderQueryContext> query,

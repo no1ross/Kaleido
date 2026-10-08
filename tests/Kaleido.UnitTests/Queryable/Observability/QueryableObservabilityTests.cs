@@ -48,7 +48,7 @@ public sealed class QueryableObservabilityTests
         {
             foreach (var tag in tags)
             {
-                if (tag.Key == QueryableTelemetry.TagQueryContext &&
+                if (tag.Key == QueryableTelemetry.TagQuerySource &&
                     tag.Value as string == contextName)
                 {
                     measurements.Add((instrument.Name, measurement));
@@ -115,7 +115,7 @@ public sealed class QueryableObservabilityTests
                 "test-context",
                 null,
                 true,
-                QueryExecutionMode.DirectContext));
+                QueryExecutionMode.DirectSource));
 
     private static QueryableObservability CreateSut()
     {

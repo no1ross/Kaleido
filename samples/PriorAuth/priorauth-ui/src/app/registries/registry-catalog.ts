@@ -7,7 +7,7 @@ import {
     ProcessStepRegistryRecord
 } from '../kaleido/models/process-registry';
 import {
-    QueryableRecord,
+    QueryableSource,
     QueryableView,
     QueryableViewRegistration
 } from '../kaleido/models/queryable-registry';
@@ -37,7 +37,7 @@ export interface ProcessorGroup {
 
 export interface QueryableGroup {
     readonly serviceName: string;
-    readonly contexts: readonly QueryableRecord[];
+    readonly contexts: readonly QueryableSource[];
 }
 
 export interface RegistryCatalogState {
@@ -107,7 +107,7 @@ export class RegistryCatalog {
         const started = performance.now();
 
         return this.http
-            .get<{ processes: ProcessProcessorRegistryRecord[]; queryables: QueryableRecord[]; clientErrors?: RegistryClientError[] }>(url)
+            .get<{ processes: ProcessProcessorRegistryRecord[]; queryables: QueryableSource[]; clientErrors?: RegistryClientError[] }>(url)
             .pipe(
                 map(data => {
                     const duration = Math.round(performance.now() - started);
@@ -157,7 +157,7 @@ export class RegistryCatalog {
     private buildState(
         url: string,
         processes: readonly ProcessProcessorRegistryRecord[],
-        queryables: readonly QueryableRecord[],
+        queryables: readonly QueryableSource[],
         clientErrors: readonly RegistryClientError[]
     ): RegistryCatalogState {
         // Group processors by serviceName
@@ -169,7 +169,7 @@ export class RegistryCatalog {
         }
 
         // Group queryables by the service that registered them
-        const queryablesByService = new Map<string, QueryableRecord[]>();
+        const queryablesByService = new Map<string, QueryableSource[]>();
         for (const context of queryables) {
             const group = queryablesByService.get(context.serviceName) ?? [];
             group.push(context);

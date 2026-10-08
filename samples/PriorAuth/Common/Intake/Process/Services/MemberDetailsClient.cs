@@ -15,8 +15,8 @@ public sealed class MemberDetailsClient(
         var result = await queryableClientFactory
             .GetClient("Member")
             .QueryViewAsync<MemberDetailsViewParameters, MemberDetailsView>(
-                "members",
-                "member-details",
+                "MemberQueryContextSource",
+                "MemberDetailsViewSource",
                 new QueryApiRequest<MemberDetailsViewParameters>
                 {
                     Parameters = new MemberDetailsViewParameters

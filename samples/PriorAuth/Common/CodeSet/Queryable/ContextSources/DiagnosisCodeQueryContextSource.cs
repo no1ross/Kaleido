@@ -5,9 +5,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.CodeSet.Queryable.ContextSources;
 
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Diagnosis Codes",
+    Description = "Diagnosis codes, searchable by code and description.",
+    Source = "Prior Authorization Code Set")]
+[Pageable(
+    DefaultSize = 25,
+    MaxSize = 100)]
 internal sealed class DiagnosisCodeQueryContextSource(
     CodeSetDbContext dbContext)
-    : IQueryContextSource<DiagnosisCodeQueryContext>
+    : IQuerySource<DiagnosisCodeQueryContext>
 {
     public IQueryable<DiagnosisCodeQueryContext> CreateQuery(
         QueryExecutionContext executionContext)
