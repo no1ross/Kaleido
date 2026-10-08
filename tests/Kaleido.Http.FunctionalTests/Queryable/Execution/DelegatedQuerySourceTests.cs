@@ -10,6 +10,8 @@ public sealed class DelegatedQuerySourceTests : IClassFixture<QueryableAspNetCor
 {
     private const string QueryUrl = "/kaleido/queryable/functionalrecordsummarysource/query";
 
+    private static readonly string[] EastRegion = ["East"];
+
     private readonly HttpClient _client;
     private readonly IKaleidoQueryableClientFactory _factory;
 
@@ -74,7 +76,7 @@ public sealed class DelegatedQuerySourceTests : IClassFixture<QueryableAspNetCor
                     parameters = new { category = "Alpha" },
                     query = new
                     {
-                        filter = new { condition = new { field = nameof(FunctionalRecordContext.Region), @operator = "equals", values = new[] { "East" } } }
+                        filter = new { condition = new { field = nameof(FunctionalRecordContext.Region), @operator = "equals", values = EastRegion } }
                     }
                 });
 
