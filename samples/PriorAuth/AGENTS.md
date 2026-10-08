@@ -43,7 +43,7 @@ The sample's dev auth (`Common/Auth`) stands in for a real IdP. Kaleido itself o
   - Intake, Member, CodeSet, ReferenceData, History: `Policy = DevAuthPolicies.AuthenticatedUser` (any logged-in caller).
   - Provider, Configuration: `Policy = DevAuthPolicies.InternalCaller` (service-to-service only).
   - Radiology: `Roles = "radiology"`.
-  - Exceptions: `StartRadiologyIntakeStep` needs `radiology` **and** `InternalCaller`; `GenerateSnapshotStep`, `UpsertPriorAuthRecordStep`, and ReferenceData `plans` need `InternalCaller`.
+  - Exceptions: `StartRadiologyIntakeStep` needs `radiology` **and** `InternalCaller`; `GenerateSnapshotStep`, `UpsertPriorAuthRecordStep`, and ReferenceData `PlanQueryContextSource` need `InternalCaller`.
 - **Roles describe the user; the actor claim describes the call.** No user ever gets an `internal` or `intake` role.
   - Direct user call: name + the user's roles.
   - On-behalf-of hop (`DevTokenForwardingHandler`): the same name + roles, plus `kaleido_actor = {calling service}`.

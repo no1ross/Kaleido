@@ -134,7 +134,7 @@ export class ShoppingCart
             .query<
                 ShoppingCartDetailView,
                 ShoppingCartViewParameters>(
-                    'shopping-cart-detail',
+                    'ShoppingCartDetailViewSource',
                     request)
             .subscribe({
                 next: result => {

@@ -28,9 +28,14 @@ For `POST /{service}/processes/steps/{step}`, the JSON request is an `ExecuteSte
 ### Queryable HTTP contracts
 - `QueryApiRequest` / `QueryApiRequest<TParameters>` — query request body (search, filter, sort, page, optional view parameters)
 - `QueryApiBody` / `QueryApiFilterNode` / `QueryApiFilterCondition` / `QueryApiFilterGroup` / `QueryApiSort` / `QueryApiPage` — transport-level query body (string enums, raw `JsonElement` values)
-- `QueryableRecordResponse` — full context record in the registry response (carries `ServiceName`, `RegistryUrl`)
+- `QueryableSourceResponse` — a query source in the registry response. It carries:
+  - `ServiceName`, `RegistryUrl` and `QueryUrl`;
+  - `Fields` (query rules), `Parameters`, `OutputFields` and `Views`.
+
+  Every source is presented the same way; how the service fulfils it is not part of the contract. `QueryUrl` is null only in a caller-filtered registry, when the caller may use some of the source's views but not the source itself.
+- `QueryableViewResponse` — a view of a source (`QueryUrl`, `Parameters`, `OutputFields`, paging)
 - `QueryErrorResponse` — structured query validation error response
-- `QueryApiBodyExtensions.ToApiBody()` — converts a runtime `QueryBody` to `QueryApiBody` for callers that receive a `QueryBody` and need to forward it over HTTP (e.g. delegated view sources calling a remote query context)
+- `QueryApiBodyExtensions.ToApiBody()` — converts a runtime `QueryBody` to `QueryApiBody` for callers that receive a `QueryBody` and need to forward it over HTTP (e.g. delegated query sources calling a remote source or view)
 
 ### JSON enum values
 
@@ -40,9 +45,9 @@ Queryable query operators and sort directions are already **string properties** 
 
 ### Queryable paging and `totalCount`
 
-A Queryable request may supply `{"query":{"page":{"size":10,"offset":0}}}`. `offset` is zero-based. An explicit `page` is accepted only for a context or view registered with `[Pageable]`; otherwise the endpoint returns `qry_paging_not_supported` (400). Omitted `size` uses the configured `DefaultSize`, and omitted `offset` uses zero. Explicit `size` must be greater than zero and no greater than `MaxSize` (`qry_invalid_page_size`); a negative `offset` returns `qry_invalid_page_offset`. An oversized explicit request is rejected, not silently clamped.
+A Queryable request may supply `{"query":{"page":{"size":10,"offset":0}}}`. `offset` is zero-based. An explicit `page` is accepted only for a source or view registered with `[Pageable]` (a source's paging applies to direct queries of it, a view's to that view); otherwise the endpoint returns `qry_paging_not_supported` (400). Omitted `size` uses the configured `DefaultSize`, and omitted `offset` uses zero. Explicit `size` must be greater than zero and no greater than `MaxSize` (`qry_invalid_page_size`); a negative `offset` returns `qry_invalid_page_offset`. An oversized explicit request is rejected, not silently clamped.
 
-For locally executed Queryable contexts and views, `QueryResult<T>.totalCount` depends on whether the request explicitly contains `page` and whether the returned page is full:
+For locally executed Queryable sources and views, `QueryResult<T>.totalCount` depends on whether the request explicitly contains `page` and whether the returned page is full:
 
 | Request | Rows returned | `totalCount` |
 |---|---|---|
@@ -50,7 +55,7 @@ For locally executed Queryable contexts and views, `QueryResult<T>.totalCount` d
 | Explicit `page`, full (`results.Count == effective size`) | Up to the requested or defaulted size, from `offset`. | Count of all matching rows from a separate count query. |
 | Explicit `page`, partial or empty | Fewer rows than the effective size, including an offset beyond the end. | `results.Count`, **not** a global count when `offset` is nonzero. No separate count query runs. |
 
-For example, with six matching rows and a default page size of three: omitting `page` returns three rows and `totalCount: 3`; `{ "size": 2, "offset": 2 }` returns two rows and `totalCount: 6`; `{ "size": 4, "offset": 4 }` returns two rows and `totalCount: 2`; and an offset beyond the end returns no rows and `totalCount: 0`. Do not calculate a global page count from `totalCount` on the skipped-count paths. A delegated view supplies its own `QueryResult<T>` and is responsible for its reported count.
+For example, with six matching rows and a default page size of three: omitting `page` returns three rows and `totalCount: 3`; `{ "size": 2, "offset": 2 }` returns two rows and `totalCount: 6`; `{ "size": 4, "offset": 4 }` returns two rows and `totalCount: 2`; and an offset beyond the end returns no rows and `totalCount: 0`. Do not calculate a global page count from `totalCount` on the skipped-count paths. A delegated source supplies its own `QueryResult<T>` (its downstream system's paging and count), which Kaleido returns unchanged.
 
 ---
 

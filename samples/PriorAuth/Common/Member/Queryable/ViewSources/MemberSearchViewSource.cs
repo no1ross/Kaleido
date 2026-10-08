@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Member.Queryable.ContextSources;
 using Kaleido.Queryable;
 using Kaleido.Samples.PriorAuth.Member.Queryable.Contexts;
 using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Views;
@@ -5,14 +6,13 @@ using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Views;
 namespace Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources;
 
 [QueryView(
-    Name = "member-search",
     DisplayName = "Member Search",
     Version = "1.0.0",
     Description = "Searchable member enrollment results.",
     DefaultSortField = nameof(MemberQueryContext.LastName))]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class MemberSearchViewSource
-    : IQueryViewSource<MemberQueryContext, MemberSearchView>
+    : IQueryViewSource<MemberQueryContextSource, MemberQueryContext, MemberSearchView>
 {
     public IQueryable<MemberSearchView> CreateView(
         IQueryable<MemberQueryContext> query,

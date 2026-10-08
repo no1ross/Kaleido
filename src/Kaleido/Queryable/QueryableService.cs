@@ -5,347 +5,161 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable;
 
+/// <summary>In-process entry point for executing Queryable requests.</summary>
 public interface IQueryableService
 {
-    Task<QueryResult<TView>> QueryAsync<TQueryView, TView>(IQueryRequest request, CancellationToken cancellationToken = default)
-        where TQueryView : class
-        where TView : class;
+    /// <summary>Executes a query against a query source or a query view.</summary>
+    /// <typeparam name="TQuery">
+    /// What to query: a local query view type (a view query), or a query source type (a direct
+    /// query of a local source, or a delegated source).
+    /// </typeparam>
+    /// <typeparam name="TResult">
+    /// The returned record type: the view's record for a view, the query context for a local
+    /// source, or the source's result record for a delegated source.
+    /// </typeparam>
+    /// <param name="request">The query and parameters.</param>
+    /// <param name="cancellationToken">Cancels the query.</param>
+    /// <returns>The query result.</returns>
+    /// <exception cref="KaleidoFrameworkException">
+    /// <typeparamref name="TQuery"/> is not a registered source or view, or
+    /// <typeparamref name="TResult"/> does not match what it returns.
+    /// </exception>
+    Task<QueryResult<TResult>> QueryAsync<TQuery, TResult>(IQueryRequest request, CancellationToken cancellationToken = default)
+        where TQuery : class
+        where TResult : class;
 }
 
 internal sealed class QueryableService(
     IServiceScopeFactory scopeFactory,
-    IDelegatedQueryViewRegistry delegatedViewRegistry,
     IQueryViewRegistry viewRegistry,
-    IQueryContextRegistry contextRegistry)
+    IQuerySourceRegistry sourceRegistry)
     : IQueryableService
 {
-    private static readonly MethodInfo ExecuteTypedAsyncMethod =
-        typeof(QueryableService)
-            .GetMethod(
-                nameof(ExecuteTypedAsync),
-                BindingFlags.Static |
-                BindingFlags.NonPublic)
-        ?? throw new KaleidoFrameworkException(
-            FrameworkErrorCodes.ReflectionError,
-            $"Could not locate method '{nameof(ExecuteTypedAsync)}'.");
-
-    private static readonly MethodInfo ExecuteDelegatedTypedAsyncMethod =
-        typeof(QueryableService)
-            .GetMethod(
-                nameof(ExecuteDelegatedTypedAsync),
-                BindingFlags.Static |
-                BindingFlags.NonPublic)
-        ?? throw new KaleidoFrameworkException(
-            FrameworkErrorCodes.ReflectionError,
-            $"Could not locate method '{nameof(ExecuteDelegatedTypedAsync)}'.");
+    private static readonly MethodInfo ExecuteViewTypedAsyncMethod =
+        GetMethod(nameof(ExecuteViewTypedAsync));
 
     private static readonly MethodInfo ExecuteDirectTypedAsyncMethod =
-        typeof(QueryableService)
-            .GetMethod(
-                nameof(ExecuteDirectTypedAsync),
-                BindingFlags.Static |
-                BindingFlags.NonPublic)
-        ?? throw new KaleidoFrameworkException(
-            FrameworkErrorCodes.ReflectionError,
-            $"Could not locate method '{nameof(ExecuteDirectTypedAsync)}'.");
+        GetMethod(nameof(ExecuteDirectTypedAsync));
+
+    private static readonly MethodInfo ExecuteDelegatedTypedAsyncMethod =
+        GetMethod(nameof(ExecuteDelegatedTypedAsync));
 
     // Closed-generic MethodInfo cache — MakeGenericMethod allocates per call,
     // and these execute once per query request.
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<(MethodInfo Open, Type A, Type B), MethodInfo> ClosedMethods =
         new();
 
-    private static MethodInfo Close(MethodInfo open, Type a, Type b) =>
-        ClosedMethods.GetOrAdd(
-            (open, a, b),
-            key => key.Open.MakeGenericMethod(key.A, key.B));
-
-    public async Task<QueryResult<TView>> QueryAsync<TQueryView, TView>(
+    public async Task<QueryResult<TResult>> QueryAsync<TQuery, TResult>(
         IQueryRequest request,
         CancellationToken cancellationToken = default)
-        where TQueryView : class
-        where TView : class
+        where TQuery : class
+        where TResult : class
     {
         ArgumentNullException.ThrowIfNull(request);
-
-        var delegatedViewRegistration =
-            delegatedViewRegistry.Find(
-                typeof(TQueryView));
-
-        var viewRegistration =
-            viewRegistry.Find(
-                typeof(TQueryView));
 
         using var scope =
             scopeFactory.CreateScope();
 
-        if (delegatedViewRegistration is not null)
+        // A type is exactly one capability (enforced at startup), so a view lookup and a
+        // source lookup never both match.
+        if (viewRegistry.Find(typeof(TQuery)) is { } viewRegistration)
         {
-            ValidateDelegatedViewRegistration<TQueryView, TView>(
-                delegatedViewRegistration);
+            if (viewRegistration.ViewType != typeof(TResult))
+            {
+                throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.TypeMismatch,
+                    $"Query view '{viewRegistration.QueryViewType.FullName}' returns " +
+                    $"'{viewRegistration.ViewType.FullName}', but query requested '{typeof(TResult).FullName}'.");
+            }
 
-            return await ExecuteDelegatedViewAsync<TView>(
-                scope.ServiceProvider,
-                request,
-                delegatedViewRegistration,
-                cancellationToken);
+            return await InvokeAsync<TResult>(
+                ExecuteViewTypedAsyncMethod,
+                viewRegistration.QueryContextType,
+                [scope.ServiceProvider, request, sourceRegistry.GetRegistration(viewRegistration.SourceType), viewRegistration, cancellationToken]);
         }
 
-        if (viewRegistration is not null)
+        var source =
+            sourceRegistry.GetRegistration(
+                typeof(TQuery));
+
+        if (source.ResultType != typeof(TResult))
         {
-            ValidateViewRegistration<TQueryView, TView>(
-                viewRegistration);
-
-            var contextRegistration =
-                contextRegistry.GetRegistration(
-                    viewRegistration.QueryContextType);
-
-            return await ExecuteWithDiscoveredContextAsync<TView>(
-                scope.ServiceProvider,
-                request,
-                contextRegistration,
-                viewRegistration,
-                cancellationToken);
+            throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.TypeMismatch,
+                $"Query source '{source.SourceType.FullName}' returns " +
+                $"'{source.ResultType.FullName}', but query requested '{typeof(TResult).FullName}'.");
         }
 
-        var directContextRegistration =
-            contextRegistry.GetRegistration(
-                typeof(TQueryView));
-
-        ValidateDirectQuery<TQueryView, TView>(
-            directContextRegistration);
-
-        return await ExecuteDirectWithDiscoveredContextAsync<TView>(
-            scope.ServiceProvider,
-            request,
-            directContextRegistration,
-            cancellationToken);
+        return await InvokeAsync<TResult>(
+            source.Metadata.Kind == QuerySourceKind.Delegated
+                ? ExecuteDelegatedTypedAsyncMethod
+                : ExecuteDirectTypedAsyncMethod,
+            source.QueryContextType,
+            [scope.ServiceProvider, request, source, cancellationToken]);
     }
 
-    private async Task<QueryResult<TView>> ExecuteWithDiscoveredContextAsync<TView>(
+    private static async Task<QueryResult<TResult>> InvokeAsync<TResult>(
+        MethodInfo open,
+        Type contextType,
+        object?[] arguments)
+        where TResult : class
+    {
+        var closed =
+            ClosedMethods.GetOrAdd(
+                (open, contextType, typeof(TResult)),
+                key => key.Open.MakeGenericMethod(key.A, key.B));
+
+        if (closed.Invoke(null, arguments) is not Task<QueryResult<TResult>> typedTask)
+        {
+            throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.TypeMismatch,
+                $"Query execution '{open.Name}' did not return '{typeof(QueryResult<TResult>).FullName}'.");
+        }
+
+        return await typedTask;
+    }
+
+    private static Task<QueryResult<TResult>> ExecuteViewTypedAsync<TQueryContext, TResult>(
         IServiceProvider serviceProvider,
         IQueryRequest request,
-        QueryContextRegistration contextRegistration,
+        QuerySourceRegistration source,
         QueryViewRegistration viewRegistration,
         CancellationToken cancellationToken)
-        where TView : class
-    {
-        var typedMethod =
-            Close(
-                ExecuteTypedAsyncMethod,
-                viewRegistration.QueryContextType,
-                typeof(TView));
+        where TQueryContext : class, IQueryContext
+        where TResult : class =>
+        serviceProvider
+            .GetRequiredService<IQueryContextEngine<TQueryContext, TResult>>()
+            .ExecuteAsync(request, source, viewRegistration, cancellationToken);
 
-        var result =
-            typedMethod.Invoke(
-                this,
-                [serviceProvider, request, contextRegistration, viewRegistration, cancellationToken]);
-
-        if (result is not Task<QueryResult<TView>> typedTask)
-        {
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.TypeMismatch,
-                $"Query execution for view '{viewRegistration.QueryViewType.FullName}' " +
-                $"did not return '{typeof(QueryResult<TView>).FullName}'.");
-        }
-
-        return await typedTask;
-    }
-
-    private async Task<QueryResult<TView>> ExecuteDirectWithDiscoveredContextAsync<TView>(
+    private static Task<QueryResult<TResult>> ExecuteDirectTypedAsync<TQueryContext, TResult>(
         IServiceProvider serviceProvider,
         IQueryRequest request,
-        QueryContextRegistration contextRegistration,
+        QuerySourceRegistration source,
         CancellationToken cancellationToken)
-        where TView : class
-    {
-        var typedMethod =
-            Close(
-                ExecuteDirectTypedAsyncMethod,
-                contextRegistration.ContextType,
-                typeof(TView));
+        where TQueryContext : class, IQueryContext
+        where TResult : class =>
+        serviceProvider
+            .GetRequiredService<IQueryContextEngine<TQueryContext, TResult>>()
+            .ExecuteAsync(request, source, cancellationToken);
 
-        var result =
-            typedMethod.Invoke(
-                this,
-                [serviceProvider, request, contextRegistration, cancellationToken]);
-
-        if (result is not Task<QueryResult<TView>> typedTask)
-        {
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.TypeMismatch,
-                $"Direct query execution for context '{contextRegistration.ContextType.FullName}' " +
-                $"did not return '{typeof(QueryResult<TView>).FullName}'.");
-        }
-
-        return await typedTask;
-    }
-
-    private static async Task<QueryResult<TView>> ExecuteTypedAsync<TContext, TView>(
+    private static Task<QueryResult<TResult>> ExecuteDelegatedTypedAsync<TQueryContext, TResult>(
         IServiceProvider serviceProvider,
         IQueryRequest request,
-        QueryContextRegistration contextRegistration,
-        QueryViewRegistration viewRegistration,
+        QuerySourceRegistration source,
         CancellationToken cancellationToken)
-        where TContext : class
-        where TView : class
-    {
-        var engine =
-            serviceProvider.GetRequiredService<
-                IQueryContextEngine<TContext, TView>>();
+        where TQueryContext : class, IQueryContext
+        where TResult : class =>
+        serviceProvider
+            .GetRequiredService<IDelegatedQuerySourceEngine<TQueryContext, TResult>>()
+            .ExecuteAsync(request, source, cancellationToken);
 
-        return await engine.ExecuteAsync(
-            request,
-            contextRegistration,
-            viewRegistration,
-            cancellationToken);
-    }
-
-    private static async Task<QueryResult<TView>> ExecuteDelegatedTypedAsync<TContext, TView>(
-        IServiceProvider serviceProvider,
-        IQueryRequest request,
-        DelegatedQueryViewRegistration viewRegistration,
-        CancellationToken cancellationToken)
-        where TContext : class
-        where TView : class
-    {
-        var engine =
-            serviceProvider.GetRequiredService<
-                IDelegatedQueryViewEngine<TContext, TView>>();
-
-        return await engine.ExecuteAsync(
-            request,
-            viewRegistration,
-            cancellationToken);
-    }
-
-    private static async Task<QueryResult<TView>> ExecuteDirectTypedAsync<TContext, TView>(
-        IServiceProvider serviceProvider,
-        IQueryRequest request,
-        QueryContextRegistration contextRegistration,
-        CancellationToken cancellationToken)
-        where TContext : class
-        where TView : class
-    {
-        var engine =
-            serviceProvider.GetRequiredService<
-                IQueryContextEngine<TContext, TView>>();
-
-        return await engine.ExecuteAsync(
-            request,
-            contextRegistration,
-            cancellationToken);
-    }
-
-    private async Task<QueryResult<TView>> ExecuteDelegatedViewAsync<TView>(
-        IServiceProvider serviceProvider,
-        IQueryRequest request,
-        DelegatedQueryViewRegistration viewRegistration,
-        CancellationToken cancellationToken)
-        where TView : class
-    {
-        var typedMethod =
-            Close(
-                ExecuteDelegatedTypedAsyncMethod,
-                viewRegistration.QueryContextType,
-                typeof(TView));
-
-        var result =
-            typedMethod.Invoke(
-                this,
-                [serviceProvider, request, viewRegistration, cancellationToken]);
-
-        if (result is not Task<QueryResult<TView>> typedTask)
-        {
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.TypeMismatch,
-                $"Delegated query execution for view '{viewRegistration.QueryViewType.FullName}' did not return '{typeof(QueryResult<TView>).FullName}'.");
-        }
-
-        return await typedTask;
-    }
-
-    private static void ValidateDelegatedViewRegistration<TQueryView, TView>(
-        DelegatedQueryViewRegistration viewRegistration)
-        where TQueryView : class
-        where TView : class
-    {
-        if (viewRegistration.QueryViewType != typeof(TQueryView))
-        {
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.TypeMismatch,
-                $"Delegated query view registration mismatch. Requested query view " +
-                $"'{typeof(TQueryView).FullName}', but registration contains " +
-                $"'{viewRegistration.QueryViewType.FullName}'.");
-        }
-
-        if (viewRegistration.ViewType != typeof(TView))
-        {
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.TypeMismatch,
-                $"Delegated query view '{viewRegistration.QueryViewType.FullName}' returns " +
-                $"'{viewRegistration.ViewType.FullName}', but query requested " +
-                $"'{typeof(TView).FullName}'.");
-        }
-    }
-
-    private static void ValidateViewRegistration<TQueryView, TView>(
-        QueryViewRegistration viewRegistration)
-        where TQueryView : class
-        where TView : class
-    {
-        if (viewRegistration.QueryViewType != typeof(TQueryView))
-        {
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.TypeMismatch,
-                $"Query view registration mismatch. Requested query view " +
-                $"'{typeof(TQueryView).FullName}', but registration contains " +
-                $"'{viewRegistration.QueryViewType.FullName}'.");
-        }
-
-        if (viewRegistration.ViewType != typeof(TView))
-        {
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.TypeMismatch,
-                $"Query view '{viewRegistration.QueryViewType.FullName}' returns " +
-                $"'{viewRegistration.ViewType.FullName}', but query requested " +
-                $"'{typeof(TView).FullName}'.");
-        }
-
-        if (viewRegistration.QueryContextType is null)
-        {
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.TypeMismatch,
-                $"Query view '{viewRegistration.QueryViewType.FullName}' does not define a query context type.");
-        }
-    }
-
-    private static void ValidateDirectQuery<TQueryView, TView>(
-        QueryContextRegistration contextRegistration)
-        where TQueryView : class
-        where TView : class
-    {
-        if (contextRegistration.Metadata.Kind != QueryContextKind.Direct)
-        {
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.TypeMismatch,
-                $"Query context '{contextRegistration.ContextType.FullName}' does not allow direct query.");
-        }
-
-        if (contextRegistration.ContextType != typeof(TQueryView))
-        {
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.TypeMismatch,
-                $"Query context registration mismatch. Requested query context " +
-                $"'{typeof(TQueryView).FullName}', but registration contains " +
-                $"'{contextRegistration.ContextType.FullName}'.");
-        }
-
-        if (contextRegistration.ContextType != typeof(TView))
-        {
-            throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.TypeMismatch,
-                $"Direct query for context '{contextRegistration.ContextType.FullName}' must return " +
-                $"the same type, but query requested '{typeof(TView).FullName}'.");
-        }
-    }
+    private static MethodInfo GetMethod(string name) =>
+        typeof(QueryableService)
+            .GetMethod(
+                name,
+                BindingFlags.Static |
+                BindingFlags.NonPublic)
+        ?? throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.ReflectionError,
+            $"Could not locate method '{name}'.");
 }

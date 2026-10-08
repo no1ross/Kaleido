@@ -18,7 +18,7 @@ public sealed class QueryEventFactoryTests
     [Fact]
     public void CreateQueryExecuted_WhenCorrelationIsNull_Throws()
     {
-        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedContext);
+        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedSource);
         var request = new QueryRequest();
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
@@ -41,7 +41,7 @@ public sealed class QueryEventFactoryTests
     public void CreateQueryExecuted_WhenRequestIsNull_Throws()
     {
         var correlation = new KaleidoCorrelationContext();
-        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedContext);
+        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedSource);
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
         Assert.Throws<ArgumentNullException>(() =>
@@ -52,7 +52,7 @@ public sealed class QueryEventFactoryTests
     public void CreateQueryExecuted_WhenResultIsNull_Throws()
     {
         var correlation = new KaleidoCorrelationContext();
-        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedContext);
+        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedSource);
         var request = new QueryRequest();
 
         Assert.Throws<ArgumentNullException>(() =>
@@ -63,7 +63,7 @@ public sealed class QueryEventFactoryTests
     public void CreateQueryExecuted_CreatesEventWithCorrectContext()
     {
         var correlation = new KaleidoCorrelationContext { RequestId = "test-request" };
-        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedContext);
+        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedSource);
         var request = new QueryRequest();
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
@@ -73,7 +73,7 @@ public sealed class QueryEventFactoryTests
         Assert.NotNull(envelope.Context);
         Assert.Equal("test-request", envelope.Context.RequestId);
         Assert.Equal("test-service", envelope.Context.ServiceName);
-        Assert.Equal("test-context", envelope.Context.QueryContextName);
+        Assert.Equal("test-context", envelope.Context.QuerySourceName);
         Assert.Equal("test-view", envelope.Context.QueryViewName);
     }
 
@@ -81,7 +81,7 @@ public sealed class QueryEventFactoryTests
     public void CreateQueryExecuted_CreatesEventWithCorrectData()
     {
         var correlation = new KaleidoCorrelationContext { RequestId = "test-request" };
-        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedContext);
+        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedSource);
         var request = new QueryRequest();
         var results = new[] { new TestView { Id = 1, Name = "test" } };
         var result = new QueryResult<TestView>(1, 0, 10, results);
@@ -90,7 +90,7 @@ public sealed class QueryEventFactoryTests
 
         Assert.NotNull(envelope);
         Assert.NotNull(envelope.Event);
-        Assert.Equal("test-context", envelope.Event.QueryContextName);
+        Assert.Equal("test-context", envelope.Event.QuerySourceName);
         Assert.Equal("test-view", envelope.Event.QueryViewName);
         Assert.False(envelope.Event.IsDirectQuery);
         Assert.Equal(1, envelope.Event.TotalCount);
@@ -103,7 +103,7 @@ public sealed class QueryEventFactoryTests
     public void CreateQueryExecuted_WhenDirectQuery_SetsIsDirectQueryTrue()
     {
         var correlation = new KaleidoCorrelationContext();
-        var details = new QueryObservationDetails("test-context", "test-view", true, QueryExecutionMode.DirectContext);
+        var details = new QueryObservationDetails("test-context", "test-view", true, QueryExecutionMode.DirectSource);
         var request = new QueryRequest();
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
@@ -116,7 +116,7 @@ public sealed class QueryEventFactoryTests
     public void CreateQueryExecuted_WhenNoSearchText_SetsSearchTextNull()
     {
         var correlation = new KaleidoCorrelationContext();
-        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedContext);
+        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedSource);
         var request = new QueryRequest { Query = new QueryBody() };
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
@@ -129,7 +129,7 @@ public sealed class QueryEventFactoryTests
     public void CreateQueryExecuted_WhenNoSort_SetsSortCountZero()
     {
         var correlation = new KaleidoCorrelationContext();
-        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedContext);
+        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedSource);
         var request = new QueryRequest { Query = new QueryBody() };
         var result = new QueryResult<TestView>(0, 0, 10, []);
 
@@ -142,7 +142,7 @@ public sealed class QueryEventFactoryTests
     public void CreateQueryExecuted_WhenNoFilter_SetsFilterProvidedFalse()
     {
         var correlation = new KaleidoCorrelationContext();
-        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedContext);
+        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedSource);
         var request = new QueryRequest { Query = new QueryBody() };
         var result = new QueryResult<TestView>(0, 0, 10, []);
 

@@ -30,10 +30,10 @@ public sealed record QueryableEventContext
     /// </summary>
     public string? CallingStepName { get; init; }
 
-    /// <summary>The query context that was executed.</summary>
-    public required string QueryContextName { get; init; }
+    /// <summary>The query source that was executed (its type name).</summary>
+    public required string QuerySourceName { get; init; }
 
-    /// <summary>The query view that was executed, if applicable. Null for direct context queries.</summary>
+    /// <summary>The query view that was executed, if applicable. Null for direct and delegated source queries.</summary>
     public string? QueryViewName { get; init; }
 
     /// <summary>

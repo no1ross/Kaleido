@@ -48,7 +48,7 @@ export class BasicQueryTest implements OnInit {
 
         this.queryableService
             .query<ProductCatalogView>(
-                'product-list',
+                'ProductListQueryViewSource',
                 request)
             .subscribe({
                 next: result => {

@@ -90,13 +90,73 @@ have the same empty-collection meaning in a gRPC consumer. Adapters decide
 which messages to populate; serializer-specific omission does not define the
 contract or belong in core runtime types.
 
-## Queryable sources — sync vs async
+## Queryable: sources, views and query contexts
 
-- `IQueryContextSource<T>` — the queryable is already in hand (in-memory,
-  pre-fetched, or deferred LINQ). Prefer this.
-- `IQueryContextSourceAsync<T>` — producing the queryable needs async I/O.
-- Same split for views: `IQueryViewSource` vs `IQueryViewSourceAsync`.
-- Never `.Result`/`.GetAwaiter().GetResult()` inside a sync source.
+The **source is the identity**; the **query context** describes how it is queried.
+
+```csharp
+// The query context: how the source can be queried. A record with query rules, no identity.
+public sealed record MemberQueryContext : IQueryContext
+{
+    [Key] public Guid MemberEnrollmentId { get; init; }
+
+    [Searchable(Priority = 1, MatchMode = MatchMode.Exact)]
+    [Sortable]
+    public string MemberNumber { get; init; } = string.Empty;
+}
+
+// The source: the published capability. Queryable directly at /{service}/queryable/{source}/query.
+[QuerySource(Version = "1.0.0", DisplayName = "Members", Description = "Member enrollments, searchable by member number and name.")]
+[Pageable(DefaultSize = 25, MaxSize = 250)]
+internal sealed class MemberQuerySource(MemberDbContext db) : IQuerySource<MemberQueryContext>
+{
+    public IQueryable<MemberQueryContext> CreateQuery(QueryExecutionContext ctx) =>
+        db.MemberEnrollments.AsNoTracking().Select(e => new MemberQueryContext { /* ... */ });
+}
+
+// A view: a projection over one source, at /{service}/queryable/{source}/{view}/query.
+[QueryView(Version = "1.0.0", DisplayName = "Member search", Description = "Searchable member results.",
+           DefaultSortField = nameof(MemberQueryContext.MemberNumber))]
+[Pageable(DefaultSize = 25, MaxSize = 250)]
+internal sealed class MemberSearchView : IQueryViewSource<MemberQuerySource, MemberQueryContext, MemberSearchResult>
+{
+    public IQueryable<MemberSearchResult> CreateView(IQueryable<MemberQueryContext> query, QueryExecutionContext ctx) =>
+        query.Select(x => new MemberSearchResult { /* ... */ });
+}
+```
+
+Rules:
+- **Interfaces are the identity; attributes describe** (as for steps). Discovery is
+  interface-only:
+  - every source needs `[QuerySource]`, every view needs `[QueryView]` (KAL2013);
+  - an attribute without its interface is never discovered (KAL2012);
+  - both attributes require a non-empty `Version`, `DisplayName` and `Description`
+    (KAL2002, KAL2003).
+- **Public names are type names:** a source's name is its `Type.Name`, unique per
+  service; a view's name is its `Type.Name`, unique per source.
+- **Query contexts implement `IQueryContext`** and carry the query rules
+  (`[Filterable]`, `[Searchable]`, `[Sortable]`). Those attributes on any other type
+  have no effect (KAL2014). A context can back several sources.
+- **Parameter records implement `IQueryParameters`.** View and result records are
+  plain output shapes, with no marker.
+- **Paging:** a source's `[Pageable]` applies to direct queries of that source, a
+  view's to that view. Nothing is inherited.
+- **Sync vs async:** prefer `IQuerySource<T>` / `IQueryViewSource<…>` when the
+  queryable is already in hand (in-memory, pre-fetched, or deferred LINQ). Use
+  `IQuerySourceAsync<T>` / `IQueryViewSourceAsync<…>` when producing it needs async I/O.
+  Never `.Result` / `.GetAwaiter().GetResult()` inside a sync implementation.
+- **Delegated sources** (`IDelegatedQuerySource<TQueryContext, TResult, TParameters>`)
+  are facades. Kaleido validates the consumer's query against `TQueryContext`; the
+  source then:
+  - translates it into a downstream query, adding internal criteria the consumer
+    never sees;
+  - calls a remote source or view (forward with `query.ToApiBody()`);
+  - maps the response to its own `TResult`.
+
+  Paging, filtering and sorting happen downstream, and Kaleido passes the returned
+  `QueryResult` through untouched. Delegated sources have no views.
+- **How a source is fulfilled (local or delegated) is not published:** consumers see
+  every source the same way.
 
 ## Exceptions
 
@@ -108,7 +168,7 @@ Exception types are classes, never records (KAL0004/KAL1011).
 ## Dependency injection
 
 Constructor injection, service abstractions, readonly fields — enforced by
-KAL0005–KAL0014 (see the security-relevant table in `ANALYZERS.md`). AddHttpClients /
+KAL0005–KAL0014 (see the source rules in `ANALYZERS.md`). AddHttpClients /
 AddKaleido configure lambdas are composition roots; `IServiceProvider` resolution
 belongs there or in `HttpContext.RequestServices` — nowhere else.
 

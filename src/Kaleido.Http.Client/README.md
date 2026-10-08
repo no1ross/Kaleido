@@ -23,7 +23,7 @@ See also:
 - `KaleidoClientServiceCollectionExtensions` — internal `AddProcessorClient(...)` builder extension (consumers register via `AddHttpClients`)
 
 ### Queryable client
-- `IKaleidoQueryableClient` — typed interface for registry, context metadata, view queries, and direct context queries
+- `IKaleidoQueryableClient` — interface for the registry, view queries, and direct source queries (sources and views are addressed by their published names)
 - `IKaleidoQueryableClientFactory` — factory resolved by registered client name
 - `KaleidoQueryableClient` — concrete HTTP client implementation
 - `KaleidoQueryableClientException` — exception wrapping non-success HTTP responses
@@ -36,14 +36,14 @@ See also:
 Use this project when a service needs to:
 - invoke process steps on a remote processor over HTTP
 - check the state of a remote process instance
-- query a remote Queryable context or view
+- query a remote query source or view
 - fetch registry or metadata from a remote Kaleido service
 
 Typical scenarios:
 - one processor's handler must signal a required step on another processor
 - a process handler needs reference data from a remote Queryable service before executing
 - an orchestrator or gateway needs to drive remote process steps
-- a delegated view implementation calls a downstream queryable service
+- a delegated query source calls a downstream queryable service
 
 ---
 
@@ -125,22 +125,25 @@ var registry = await clientFactory
     .GetClient("MemberService")
     .GetRegistryAsync(cancellationToken);
 
-// Get metadata for a single context
-var metadata = await clientFactory
-    .GetClient("MemberService")
-    .GetContextMetadataAsync("Members", cancellationToken);
-
-// View query with typed parameters
+// View query with typed parameters: source name, then view name
 var result = await clientFactory
     .GetClient("MemberService")
     .QueryViewAsync<MemberDetailsParameters, MemberDetailsView>(
-        "Members", "MemberDetails", request, cancellationToken);
+        "MemberQueryContextSource", "MemberDetailsViewSource", request, cancellationToken);
 
-// Direct context query
+// Direct source query
 var result = await clientFactory
     .GetClient("CodeSet")
-    .QueryContextAsync<ProcedureCodeView>("ProcedureCodes", request, cancellationToken);
+    .QuerySourceAsync<ProcedureCodeView>("ProcedureCodeQueryContextSource", request, cancellationToken);
+
+// Direct source query with parameters (e.g. a delegated source scoped to a process)
+var result = await clientFactory
+    .GetClient("Radiology")
+    .QuerySourceAsync<ProviderSearchParameters, ProviderSearchResult>(
+        "RequestingProviderSearchSource", request, cancellationToken);
 ```
+
+Sources and views are addressed by their **published names**, the remote type names, as strings. The calling service cannot reference the remote types (they live in another service and are often `internal`). The parameter and result types can be local mirror records. Names are resolved against the remote registry case-insensitively; an unknown name throws `KaleidoHttpClientException` (`httpclient_not_found`) before any query is sent.
 
 ---
 

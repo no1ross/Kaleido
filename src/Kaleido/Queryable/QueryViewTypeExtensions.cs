@@ -1,91 +1,81 @@
 
 namespace Kaleido.Queryable;
 
+/// <summary>
+/// Reflection helpers for the Queryable identity interfaces. The shorter generic forms
+/// (without a parameters type) derive from the full forms, so every implementation exposes a
+/// full-form interface; these helpers only look at the full forms.
+/// </summary>
 internal static class QueryViewTypeExtensions
 {
-    private static readonly Type[] ContextSourceDefinitions =
-    [
-        typeof(IQueryContextSource<>),
-        typeof(IQueryContextSourceAsync<>)
-    ];
-
-    private static readonly Type[] SyncViewSourceDefinitions =
-    [
-        typeof(IQueryViewSource<,>),
-        typeof(IQueryViewSource<,,>)
-    ];
-
-    private static readonly Type[] AsyncViewSourceDefinitions =
-    [
-        typeof(IQueryViewSourceAsync<,>),
-        typeof(IQueryViewSourceAsync<,,>)
-    ];
-
-    private static readonly Type[] DelegateViewSourceDefinitions =
-    [
-        typeof(IDelegatedQueryViewSource<,>),
-        typeof(IDelegatedQueryViewSource<,,>)
-    ];
-
     /// <summary>
-    /// Returns the <see cref="IQueryContextSource{T}"/> / <see cref="IQueryContextSourceAsync{T}"/>
-    /// interfaces implemented by this type.
+    /// The synchronous local source interfaces (<see cref="IQuerySource{TQueryContext}"/>)
+    /// implemented by this type.
     /// </summary>
-    internal static Type[] GetContextSourceInterfaces(
+    internal static Type[] GetSyncSourceInterfaces(
         this Type type) =>
-        type.GetGenericInterfaces(ContextSourceDefinitions);
+        type.GetGenericInterfaces(typeof(IQuerySource<>));
 
     /// <summary>
-    /// Returns the synchronous <see cref="IQueryViewSource{TQueryView,TView}"/>
-    /// interfaces implemented by this type.
+    /// The asynchronous local source interfaces (<see cref="IQuerySourceAsync{TQueryContext}"/>)
+    /// implemented by this type.
     /// </summary>
-    internal static Type[] GetSyncViewSourceInterfaces(
+    internal static Type[] GetAsyncSourceInterfaces(
         this Type type) =>
-        type.GetGenericInterfaces(SyncViewSourceDefinitions);
+        type.GetGenericInterfaces(typeof(IQuerySourceAsync<>));
 
     /// <summary>
-    /// Returns the asynchronous <see cref="IQueryViewSourceAsync{TQueryContext,TView}"/>
-    /// interfaces implemented by this type.
+    /// The local source marker interfaces (<see cref="ILocalQuerySource{TQueryContext}"/>)
+    /// implemented by this type.
     /// </summary>
-    internal static Type[] GetAsyncViewSourceInterfaces(
+    internal static Type[] GetLocalSourceMarkerInterfaces(
         this Type type) =>
-        type.GetGenericInterfaces(AsyncViewSourceDefinitions);
+        type.GetGenericInterfaces(typeof(ILocalQuerySource<>));
 
     /// <summary>
-    /// Returns all <see cref="IQueryViewSource{TQueryView,TView}"/> and
-    /// <see cref="IQueryViewSourceAsync{TQueryContext,TView}"/> interfaces implemented by this type.
+    /// The delegated source interfaces
+    /// (<see cref="IDelegatedQuerySource{TQueryContext,TResult,TParameters}"/>) implemented by this type.
+    /// Generic arguments: query context, result, parameters.
     /// </summary>
-    internal static Type[] GetViewSourceInterfaces(
+    internal static Type[] GetDelegatedSourceInterfaces(
         this Type type) =>
-        type.GetGenericInterfaces(
-            [.. SyncViewSourceDefinitions, .. AsyncViewSourceDefinitions]);
+        type.GetGenericInterfaces(typeof(IDelegatedQuerySource<,,>));
 
     /// <summary>
-    /// Returns the <see cref="IDelegatedQueryViewSource{TDelegateContext,TView}"/>
-    /// interfaces implemented by this type.
+    /// The synchronous view interfaces
+    /// (<see cref="IQueryViewSource{TSource,TQueryContext,TView,TViewParameters}"/>) implemented by this type.
+    /// Generic arguments: source, query context, view, parameters.
     /// </summary>
-    internal static Type[] GetDelegateViewSourceInterfaces(
+    internal static Type[] GetSyncViewInterfaces(
         this Type type) =>
-        type.GetGenericInterfaces(DelegateViewSourceDefinitions);
+        type.GetGenericInterfaces(typeof(IQueryViewSource<,,,>));
 
     /// <summary>
-    /// Returns the <see cref="IQueryViewSource{TQueryView,TView}"/> /
-    /// <see cref="IQueryViewSourceAsync{TQueryContext,TView}"/> interface implemented by
-    /// this query view type (preferring the three-parameter overload when both exist).
+    /// The asynchronous view interfaces
+    /// (<see cref="IQueryViewSourceAsync{TSource,TQueryContext,TView,TViewParameters}"/>) implemented by this type.
+    /// Generic arguments: source, query context, view, parameters.
     /// </summary>
-    internal static Type GetQueryViewInterface(
-        this Type queryViewType) =>
-        queryViewType
-            .GetInterfaces()
-            .Where(i =>
-                i.IsGenericType &&
-                (
-                    i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,>) ||
-                    i.GetGenericTypeDefinition() == typeof(IQueryViewSource<,,>) ||
-                    i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,>) ||
-                    i.GetGenericTypeDefinition() == typeof(IQueryViewSourceAsync<,,>)
-                ))
-            .OrderByDescending(
-                i => i.GenericTypeArguments.Length)
-            .First();
+    internal static Type[] GetAsyncViewInterfaces(
+        this Type type) =>
+        type.GetGenericInterfaces(typeof(IQueryViewSourceAsync<,,,>));
+
+    /// <summary>All synchronous and asynchronous view interfaces implemented by this type.</summary>
+    internal static Type[] GetViewInterfaces(
+        this Type type) =>
+        [.. type.GetSyncViewInterfaces(), .. type.GetAsyncViewInterfaces()];
+
+    /// <summary>Whether this type is a local source (implements the local source marker).</summary>
+    internal static bool IsLocalQuerySource(
+        this Type type) =>
+        type.GetLocalSourceMarkerInterfaces().Length > 0;
+
+    /// <summary>Whether this type is a delegated source.</summary>
+    internal static bool IsDelegatedQuerySource(
+        this Type type) =>
+        type.GetDelegatedSourceInterfaces().Length > 0;
+
+    /// <summary>Whether this type is a local query view.</summary>
+    internal static bool IsQueryView(
+        this Type type) =>
+        type.GetViewInterfaces().Length > 0;
 }

@@ -5,9 +5,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.ContextSources;
 
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Questionnaire Definitions",
+    Description = "Clinical questionnaire definitions, by questionnaire id and version.",
+    Source = "Prior Authorization Configuration")]
 internal sealed class QuestionnaireDefinitionQueryContextSource(
     ConfigurationDbContext dbContext)
-    : IQueryContextSource<QuestionnaireDefinitionQueryContext>
+    : IQuerySource<QuestionnaireDefinitionQueryContext>
 {
     public IQueryable<QuestionnaireDefinitionQueryContext> CreateQuery(
         QueryExecutionContext executionContext)

@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using Kaleido.Exceptions;
-using Kaleido.Queryable.Registry;
 
 namespace Kaleido.Queryable.Registry.UnitTests;
 
@@ -14,8 +13,8 @@ public sealed class QueryViewRegistryTests
 
     private static QueryViewRegistry CreateSut(params Type[] viewTypes)
     {
-        var TypeDescriber = new Mock<ITypeDescriber>();
-        TypeDescriber
+        var typeDescriber = new Mock<ITypeDescriber>();
+        typeDescriber
             .Setup(m => m.GetDescriptor(It.IsAny<PropertyInfo>()))
             .Returns(TestDataType);
 
@@ -25,7 +24,7 @@ public sealed class QueryViewRegistryTests
             .Returns([new ConstraintContract { Type = "Required" }]);
 
         return new QueryViewRegistry(
-            TypeDescriber.Object,
+            typeDescriber.Object,
             constraintMapper.Object,
             viewTypes);
     }
@@ -40,8 +39,9 @@ public sealed class QueryViewRegistryTests
         Assert.Equal(typeof(TestView), registration.QueryViewType);
         Assert.Equal(typeof(TestContract), registration.ViewType);
         Assert.Equal(typeof(TestParameters), registration.ViewParametersType);
+        Assert.Equal(typeof(TestSource), registration.SourceType);
         Assert.Equal(typeof(TestContext), registration.QueryContextType);
-        Assert.Equal("test-view", registration.Metadata.Name);
+        Assert.Equal(nameof(TestView), registration.Metadata.Name);
         Assert.Equal("Test View", registration.Metadata.DisplayName);
         Assert.Equal("Test view description", registration.Metadata.Description);
         Assert.NotNull(registration.Metadata.Pageable);
@@ -67,7 +67,7 @@ public sealed class QueryViewRegistryTests
     }
 
     [Fact]
-    public void Constructor_UsesEmptyParametersForTwoGenericArgumentView()
+    public void Constructor_UsesEmptyParametersForViewWithoutParameters()
     {
         var registry = CreateSut(typeof(SimpleView));
 
@@ -76,6 +76,17 @@ public sealed class QueryViewRegistryTests
         Assert.Equal(typeof(EmptyQueryViewParameters), registration.ViewParametersType);
         Assert.Empty(registration.Metadata.Parameters!);
         Assert.Single(registration.Metadata.OutputFields!, x => x.Name == nameof(TestContract.Id));
+    }
+
+    [Fact]
+    public void Constructor_RegistersAsyncView()
+    {
+        var registry = CreateSut(typeof(AsyncView));
+
+        var registration = registry.GetRegistration(typeof(AsyncView));
+
+        Assert.Equal(typeof(TestSource), registration.SourceType);
+        Assert.Equal(typeof(TestContract), registration.ViewType);
     }
 
     [Fact]
@@ -101,15 +112,10 @@ public sealed class QueryViewRegistryTests
     {
         var registry = CreateSut(typeof(SecuredView));
 
-        var registration = registry.GetRegistration(typeof(SecuredView));
+        var authorization = registry.GetRegistration(typeof(SecuredView)).Metadata.Authorization;
 
-        Assert.Equal(
-            "clinician-policy",
-            registration.Metadata.Authorization?.Policy);
-
-        Assert.Equal(
-            "clinician",
-            Assert.Single(registration.Metadata.Authorization!.Roles));
+        Assert.Equal("clinician-policy", authorization?.Policy);
+        Assert.Equal("clinician", Assert.Single(authorization!.Roles));
     }
 
     [Fact]
@@ -117,22 +123,20 @@ public sealed class QueryViewRegistryTests
     {
         var registry = CreateSut(typeof(TestView));
 
-        var registration = registry.GetRegistration(typeof(TestView));
-
-        Assert.Null(registration.Metadata.Authorization);
+        Assert.Null(registry.GetRegistration(typeof(TestView)).Metadata.Authorization);
     }
 
     [Fact]
-    public void FindAndGetRegistration_AreCaseInsensitiveByName()
+    public void GetRegistration_WhenTypeIsMissing_Throws()
     {
         var registry = CreateSut(typeof(TestView));
 
-        Assert.NotNull(registry.Find("TEST-VIEW"));
-        Assert.Equal(typeof(TestView), registry.GetRegistration("test-view").QueryViewType);
+        var exception = Assert.Throws<KaleidoFrameworkException>(() => registry.GetRegistration(typeof(SimpleView)));
+
+        Assert.Equal(FrameworkErrorCodes.MissingRegistration, exception.Code);
     }
 
-    [QueryContext(Name = "test-context", Version = "1.0.0")]
-    private sealed class TestContext
+    private sealed class TestContext : IQueryContext
     {
         [Sortable]
         public int Id { get; init; }
@@ -140,45 +144,60 @@ public sealed class QueryViewRegistryTests
         public string Name { get; init; } = string.Empty;
     }
 
+    private sealed class TestSource : IQuerySource<TestContext>
+    {
+        public IQueryable<TestContext> CreateQuery(QueryExecutionContext executionContext) =>
+            Array.Empty<TestContext>().AsQueryable();
+    }
+
     [QueryView(
-        Name = "test-view",
         DisplayName = "Test View",
         Description = "Test view description",
         Version = "1.0.0",
         DefaultSortField = nameof(TestContext.Id))]
     [Pageable(DefaultSize = 25, MaxSize = 100)]
-    private sealed class TestView : IQueryViewSource<TestContext, TestContract, TestParameters>
+    private sealed class TestView : IQueryViewSource<TestSource, TestContext, TestContract, TestParameters>
     {
         public IQueryable<TestContract> CreateView(IQueryable<TestContext> query, QueryExecutionContext executionContext) =>
             Array.Empty<TestContract>().AsQueryable();
     }
 
-    [QueryView(Name = "simple-view", Version = "1.0.0")]
-    private sealed class SimpleView : IQueryViewSource<TestContext, TestContract>
+    [QueryView(DisplayName = "Simple", Description = "Simple view.", Version = "1.0.0")]
+    private sealed class SimpleView : IQueryViewSource<TestSource, TestContext, TestContract>
     {
         public IQueryable<TestContract> CreateView(IQueryable<TestContext> query, QueryExecutionContext executionContext) =>
             Array.Empty<TestContract>().AsQueryable();
     }
 
-    [QueryView(Name = "missing-sort-view", Version = "1.0.0")]
+    [QueryView(DisplayName = "Async", Description = "Async view.", Version = "1.0.0")]
+    private sealed class AsyncView : IQueryViewSourceAsync<TestSource, TestContext, TestContract>
+    {
+        public Task<IQueryable<TestContract>> CreateViewAsync(
+            IQueryable<TestContext> query,
+            QueryExecutionContext executionContext,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Array.Empty<TestContract>().AsQueryable());
+    }
+
+    [QueryView(DisplayName = "Missing sort", Description = "Missing sort view.", Version = "1.0.0")]
     [Pageable(DefaultSize = 25, MaxSize = 100)]
-    private sealed class MissingSortView : IQueryViewSource<TestContext, TestContract>
+    private sealed class MissingSortView : IQueryViewSource<TestSource, TestContext, TestContract>
     {
         public IQueryable<TestContract> CreateView(IQueryable<TestContext> query, QueryExecutionContext executionContext) =>
             Array.Empty<TestContract>().AsQueryable();
     }
 
-    [QueryView(Name = "not-sortable-view", Version = "1.0.0", DefaultSortField = nameof(TestContext.Name))]
+    [QueryView(DisplayName = "Not sortable", Description = "Not sortable view.", Version = "1.0.0", DefaultSortField = nameof(TestContext.Name))]
     [Pageable(DefaultSize = 25, MaxSize = 100)]
-    private sealed class NotSortableView : IQueryViewSource<TestContext, TestContract>
+    private sealed class NotSortableView : IQueryViewSource<TestSource, TestContext, TestContract>
     {
         public IQueryable<TestContract> CreateView(IQueryable<TestContext> query, QueryExecutionContext executionContext) =>
             Array.Empty<TestContract>().AsQueryable();
     }
 
-    [QueryView(Name = "secured-view", Version = "1.0.0")]
+    [QueryView(DisplayName = "Secured", Description = "Secured view.", Version = "1.0.0")]
     [KaleidoAuthorization(Policy = "clinician-policy", Roles = "clinician")]
-    private sealed class SecuredView : IQueryViewSource<TestContext, TestContract>
+    private sealed class SecuredView : IQueryViewSource<TestSource, TestContext, TestContract>
     {
         public IQueryable<TestContract> CreateView(IQueryable<TestContext> query, QueryExecutionContext executionContext) =>
             Array.Empty<TestContract>().AsQueryable();
@@ -189,7 +208,7 @@ public sealed class QueryViewRegistryTests
         public int Id { get; init; }
     }
 
-    private sealed class TestParameters
+    private sealed class TestParameters : IQueryParameters
     {
         [Required]
         [Description("Category description")]

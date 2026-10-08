@@ -11,10 +11,10 @@ internal static class DiagnosticIds
     /// <summary>[ProcessStep] Version, DisplayName, and Description must be non-empty strings.</summary>
     public const string ProcessStepAttributeValidity = "KAL2001";
 
-    /// <summary>[QueryContext] Name and Version must be non-empty strings.</summary>
-    public const string QueryContextAttributeValidity = "KAL2002";
+    /// <summary>[QuerySource] Version, DisplayName, and Description must be non-empty strings.</summary>
+    public const string QuerySourceAttributeValidity = "KAL2002";
 
-    /// <summary>[QueryView] Name and Version must be non-empty strings.</summary>
+    /// <summary>[QueryView] Version, DisplayName, and Description must be non-empty strings.</summary>
     public const string QueryViewAttributeValidity = "KAL2003";
 
     /// <summary>Step handler catch (Exception) must filter OperationCanceledException.</summary>
@@ -34,4 +34,13 @@ internal static class DiagnosticIds
 
     /// <summary>IProcessStep type is missing the required [ProcessStep] attribute.</summary>
     public const string ProcessStepMissingAttribute = "KAL2011";
+
+    /// <summary>[QuerySource] or [QueryView] applied to a type without the matching interface.</summary>
+    public const string QueryableAttributeWithoutInterface = "KAL2012";
+
+    /// <summary>Query source or view is missing its required [QuerySource] or [QueryView] attribute.</summary>
+    public const string QueryableMissingAttribute = "KAL2013";
+
+    /// <summary>[Filterable]/[Searchable]/[Sortable] on a property of a type that is not an IQueryContext.</summary>
+    public const string QueryRuleAttributeOutsideQueryContext = "KAL2014";
 }

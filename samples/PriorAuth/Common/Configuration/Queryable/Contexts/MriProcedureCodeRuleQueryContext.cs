@@ -5,13 +5,7 @@ using Kaleido.Queryable.Metadata;
 namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 
 // Service-to-service only: queried by Radiology.
-[QueryContext(
-    Name = "mri-procedure-code-rules",
-    DisplayName = "MRI Procedure Code Rules",
-    Version = "1.0.0",
-    Source = "Prior Authorization Configuration",
-    Kind = QueryContextKind.Direct)]
-public sealed class MriProcedureCodeRuleQueryContext
+public sealed class MriProcedureCodeRuleQueryContext : IQueryContext
 {
     [Key]
     public Guid MriProcedureCodeRuleId { get; init; }

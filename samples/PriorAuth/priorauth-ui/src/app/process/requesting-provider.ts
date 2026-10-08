@@ -5,10 +5,7 @@ import { Router } from '@angular/router';
 import { FilterOperator, LogicalOperator } from '../kaleido/models/enumerations';
 import { QueryErrorResponse } from '../kaleido/models/query-error-response';
 import { QueryRequest } from '../kaleido/models/queryable-request';
-import {
-    QueryableRecord,
-    QueryableViewRegistration
-} from '../kaleido/models/queryable-registry';
+import { QueryableSource } from '../kaleido/models/queryable-registry';
 import { QueryableResult } from '../kaleido/models/queryable-result';
 import { QueryableRegistry } from '../kaleido/services/queryable-registry';
 import { QueryableRequestValidationError } from '../kaleido/services/queryable-request-validator';
@@ -53,11 +50,8 @@ export class RequestingProvider {
     private readonly router =
         inject(Router);
 
-    readonly searchContextName =
-        'requesting-provider-searches';
-
-    readonly searchViewName =
-        'requesting-provider-search';
+    readonly searchSourceName =
+        'RequestingProviderSearchSource';
 
     readonly request: QueryRequest<{ processId: string | undefined }> = {
         parameters: {
@@ -108,16 +102,12 @@ export class RequestingProvider {
     readonly viewMode =
         signal<'results' | 'details'>('results');
 
-    get registration(): QueryableViewRegistration | undefined {
-        return this.queryableRegistry.tryGetViewRegistration(this.searchViewName);
+    get context(): QueryableSource | undefined {
+        return this.queryableRegistry.tryGetContext(this.searchSourceName);
     }
 
     get registrationServiceName(): string | undefined {
-        return this.registration?.context.serviceName;
-    }
-
-    get context(): QueryableRecord | undefined {
-        return this.registration?.context;
+        return this.context?.serviceName;
     }
 
     readonly selectedRecordSummary =
@@ -227,7 +217,7 @@ export class RequestingProvider {
         this.stateOptionsError.set(undefined);
 
         this.queryableService
-            .queryContext<StateOption>('states', {
+            .queryContext<StateOption>('StateQueryContextSource', {
                 query: {
                     page: {
                         size: 100,
@@ -256,8 +246,8 @@ export class RequestingProvider {
         this.specialtyOptionsError.set(undefined);
 
         this.queryableService
-            .queryView<ProviderSearchResult, { processId: string | undefined }>(
-                this.searchViewName,
+            .queryContext<ProviderSearchResult, { processId: string | undefined }>(
+                this.searchSourceName,
                 {
                     parameters: {
                         processId: this.processState.state().processId
@@ -371,7 +361,7 @@ export class RequestingProvider {
         };
 
         this.queryableService
-            .queryView<ProviderSearchResult, { processId: string | undefined }>(this.searchViewName, this.request)
+            .queryContext<ProviderSearchResult, { processId: string | undefined }>(this.searchSourceName, this.request)
             .subscribe({
                 next: result => this.applySearchResult(result),
                 error: error => {

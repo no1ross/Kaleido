@@ -5,9 +5,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.ReferenceData.Queryable.ContextSources;
 
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Zip Codes",
+    Description = "Zip codes with their city and state (reference data).",
+    Source = "Prior Authorization Reference Data")]
+[Pageable(
+    DefaultSize = 25,
+    MaxSize = 250)]
 internal sealed class ZipCodeQueryContextSource(
     ReferenceDataDbContext dbContext)
-    : IQueryContextSource<ZipCodeQueryContext>
+    : IQuerySource<ZipCodeQueryContext>
 {
     public IQueryable<ZipCodeQueryContext> CreateQuery(
         QueryExecutionContext executionContext)

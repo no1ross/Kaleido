@@ -16,8 +16,8 @@ Canonical vocabulary — type names, namespaces, and docs must follow it:
 | **Processor** | The unit a service hosts that owns and executes Steps — the runtime/DI identity (`Kaleido.Processor` namespace, `IProcessorRuntime`, `ProcessorContext`, `IProcessorContextStore`, `AddProcessor`/`MapProcessor`, `kaleido.processor.*` telemetry) |
 | **Process** | One executing workflow instance — the wire/transport domain (`/processes` routes, `ProcessId`, `ProcessExecutionState`, `ProcessStateResponse`, `ExecuteProcessRequest`, process events) |
 | **Step** | A unit of work inside a Processor — identified by `IProcessStep`, described by `[ProcessStep]`, named by its type name (it marks the work, not the executor) |
-| **Context / View** | Queryable-side: a queryable context and its named views (`Queryable` is the feature namespace) |
-| **Delegated** | A view forwarded to a remote source — uniform `Delegated*` prefix (`IDelegatedQueryViewSource`, `DelegatedQueryViewRegistry`, `DelegatedQueryViewEngine`) |
+| **Source / View / Query context** | Queryable-side (`Queryable` is the feature namespace). Names are type names. <br>- **Query source** (`IQuerySource<T>`, described by `[QuerySource]`): the published capability. <br>- **Query view** (`IQueryViewSource<TSource, …>`, `[QueryView]`): projects a source. <br>- **Query context** (`IQueryContext`): the record that describes how a source is queried. |
+| **Delegated** | A query source that fulfils queries downstream (a facade): `IDelegatedQuerySource`, `DelegatedQuerySourceEngine`. Not visible to consumers |
 | **Registry / Snapshot** | Discovery envelope (`AggregatedRegistryResponse`); cached under `kaleido:{serviceName}` in `IRegistrySnapshotStore` |
 
 Rule of thumb: if a name refers to *who runs the work* (runtime, registries, planner, executor, stores, telemetry identity) it's `Processor*`; if it refers to *one executing instance* (request/response/state, routes, events) it's `Process*`. Transport namespaces (`Kaleido.Http.Processor`, `Kaleido.Http.Client.Processor`, `Kaleido.Http.Abstractions.Processor`) organize the processor-facing API surface even though the wire resource is `processes`.
@@ -62,10 +62,10 @@ The core project is organized into two main namespaces:
 
 **`Kaleido.Queryable`**
 - Registration: `QueryableServiceCollectionExtensions`, `QueryableBuilder`
-- Runtime: `QueryableService` (dispatch), `QueryContextEngine`, `QueryContextExecutor`
+- Runtime: `QueryableService` (dispatch by queried type), `QueryContextEngine`, `DelegatedQuerySourceEngine`, `QueryContextExecutor`
 - Extension point: `IQueryContextExecutor<TView>` is public — consumers on async-capable providers (e.g. EF Core) should register their own implementation so `CountAsync`/`ToListAsync` call provider-native async operators instead of the default `IAsyncEnumerable`/sync fallback.
 - Planning: `QueryRequestCompiler`, `QueryRequestValidator`
-- Registries: `IQueryContextRegistry`, `IQueryViewRegistry`, `IDelegatedQueryViewRegistry`
+- Registries: `IQuerySourceRegistry`, `IQueryViewRegistry`, `IQueryableRegistry` (published projection)
 - Observability: `QueryableObservability`
 
 **`Kaleido.Process`**
@@ -86,12 +86,12 @@ Public seams consumers are expected to implement or replace:
 | `IEventPublisher` | `services.AddSingleton` before `AddKaleido()` | Default is no-op `NullEventPublisher`; replace for real event delivery |
 | `IQueryContextExecutor<TView>` | `services.AddScoped<IQueryContextExecutor<TView>, ...>` | Provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`) instead of sync fallback |
 | Observability provider | `AddOpenTelemetry()` (Kaleido.Observability.OpenTelemetry) or custom `AddKaleidoInstrumentation()` calls | Core stays provider-agnostic on BCL `ActivitySource`/`Meter` |
-| Delegated query views | implement `IDelegatedQueryViewSource<TDelegateContext,TView>` on a query view type | Federates view execution to a downstream delegate context |
+| Delegated query sources | implement `IDelegatedQuerySource<TQueryContext, TResult[, TParameters]>` and add `[QuerySource]` | A facade: translates the consumer's query (validated against `TQueryContext`), calls a downstream source or view, and maps to `TResult` |
 
 ### Key design invariants
 - The core project has no transport dependencies.
 - `KaleidoServiceOptions.Assemblies` records assemblies; recording does not scan them for capabilities. Scanning happens during the `AddQueryable()` / `AddProcessor()` calls that `AddKaleido()` invokes internally.
-- `QueryableService` dispatch order (delegated → local → direct) is a published semantic and must not change casually.
+- Queryable discovery is interface-only and a type is exactly one capability; `QueryableService` dispatches by the queried type. How a source is fulfilled (local or delegated) is never published.
 - `ProcessorContext` is current resumable state only, not an audit log.
 - `IKaleidoBuilder` is intentionally minimal.
 - `CountAsync` runs only when `Page` is explicitly provided AND the returned page is full (`items.Count == page.Size`). When `Page` is absent or the page is partial, `TotalCount = items.Count` — the caller received all results.
@@ -120,9 +120,8 @@ Public seams consumers are expected to implement or replace:
 - `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` in `Kaleido.Http.Abstractions`, used by both server filter and client.
 
 **Queryable endpoints** (`QueryableEndpointRouteBuilderExtensions`)
-- `GET /{prefix}/queryable/{context}/{metadataRoute}` — per-context metadata
-- `POST /{prefix}/queryable/{context}/{queryRoute}` — direct context query
-- `POST /{prefix}/queryable/{context}/{view}/{queryRoute}` — view query
+- `POST /{prefix}/queryable/{source}/query` — direct query of a source (every local or delegated source)
+- `POST /{prefix}/queryable/{source}/{view}/query` — view query
 
 **Process endpoints** (`ProcessorEndpointRouteBuilderExtensions`)
 - `GET /{prefix}/processes/steps/{step}/metadata` — per-step metadata
@@ -161,8 +160,8 @@ Public seams consumers are expected to implement or replace:
 **Queryable contracts**
 - Request: `QueryApiRequest`, `QueryApiRequest<TParameters>` — accepts `QueryApiBody` (transport shape)
 - Transport body: `QueryApiBody`, `QueryApiFilterNode`, `QueryApiFilterCondition`, `QueryApiFilterGroup`, `QueryApiSort`, `QueryApiPage` — string enums, raw `JsonElement` filter values
-- Response: `QueryableRecordResponse` (carries `ServiceName`, `RegistryUrl`), `QueryableFieldMetadata`, `QueryableQueryParameter`, `QueryableQueryProperty`, `QueryErrorResponse`
-- `QueryApiBodyExtensions.ToApiBody()` — converts runtime `QueryBody` → `QueryApiBody` for core callers forwarding over HTTP (e.g. delegated view sources)
+- Response: `QueryableSourceResponse` (carries `ServiceName`, `RegistryUrl`), `QueryableFieldMetadata`, `QueryableQueryParameter`, `QueryableQueryProperty`, `QueryErrorResponse`
+- `QueryApiBodyExtensions.ToApiBody()` — converts runtime `QueryBody` → `QueryApiBody` for core callers forwarding over HTTP (e.g. delegated query sources)
 - `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` with `JsonStringEnumConverter` for all Kaleido HTTP serialization
 
 ### Key design invariants
@@ -184,7 +183,7 @@ Public seams consumers are expected to implement or replace:
 - `KaleidoClientServiceCollectionExtensions` — internal `AddProcessorClient(...)` registration used by `AddHttpClients`
 
 **Queryable client**
-- `IKaleidoQueryableClient` — typed interface: `GetRegistryAsync`, `GetContextMetadataAsync`, `QueryViewAsync`, `QueryContextAsync`
+- `IKaleidoQueryableClient` — interface: `GetRegistryAsync`, `InvalidateRegistry`, `QueryViewAsync(source, view, …)`, `QuerySourceAsync(source, …)` (with and without parameters). Sources and views are addressed by their published names (strings): the caller cannot reference the remote types
 - `KaleidoQueryableClient` — concrete implementation; lazily fetches and caches the remote registry per client instance
 - `KaleidoQueryableClientException` — thrown on non-success responses and on registry lookup failures
 - `KaleidoQueryableClientServiceCollectionExtensions` — internal `AddQueryableClient(...)` registration used by `AddHttpClients`

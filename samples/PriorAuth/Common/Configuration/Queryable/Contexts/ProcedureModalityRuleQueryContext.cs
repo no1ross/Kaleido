@@ -5,13 +5,7 @@ using Kaleido.Queryable.Metadata;
 namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 
 // Service-to-service only: queried by Intake and Radiology.
-[QueryContext(
-    Name = "procedure-modality-rules",
-    DisplayName = "Procedure Modality Rules",
-    Version = "1.0.0",
-    Source = "Prior Authorization Configuration",
-    Kind = QueryContextKind.Direct)]
-public sealed class ProcedureModalityRuleQueryContext
+public sealed class ProcedureModalityRuleQueryContext : IQueryContext
 {
     [Key]
     public Guid ProcedureModalityRuleId { get; init; }

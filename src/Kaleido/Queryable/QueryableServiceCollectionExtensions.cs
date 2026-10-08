@@ -1,6 +1,5 @@
 using System.Reflection;
 using Kaleido.Queryable.Eventing;
-using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Registry;
 using Kaleido.Queryable.Runtime;
@@ -22,131 +21,42 @@ public static class QueryableServiceCollectionExtensions
                 "At least one assembly must be registered before AddQueryable().");
         }
 
-        var types = builder.Assemblies.ScanTypes();
-
-        var queryContextTypes =
-            types
-                .Where(x =>
-                    x.GetCustomAttribute<QueryContextAttribute>() is not null)
+        var (localSourceTypes, delegatedSourceTypes, viewTypes) =
+            builder.Assemblies.ScanTypes()
                 .Where(x =>
                     x.PassesTypeFilter(
                         builder.ServiceOptions.TypeFilter,
                         QueryableErrorCodes.InvalidRegistration,
                         "queryable type"))
-                .ToArray();
+                .DiscoverQueryableCapabilities();
 
-        if (queryContextTypes.Length == 0)
+        if (localSourceTypes.Length + delegatedSourceTypes.Length + viewTypes.Length == 0)
         {
-            // No query contexts to register - this is valid for Process-only services
+            // No query sources to register - this is valid for Process-only services
             return builder;
         }
 
-        var delegatedContextTypes =
-            queryContextTypes
-                .Where(x => x.GetCustomAttribute<QueryContextAttribute>()?.Kind == QueryContextKind.Delegated)
-                .ToArray();
-
-        var localContextTypes =
-            queryContextTypes
-                .Except(delegatedContextTypes)
-                .ToArray();
-
-        foreach (var contextType in localContextTypes)
+        foreach (var type in localSourceTypes.Concat(delegatedSourceTypes).Concat(viewTypes))
         {
-            RegisterSource(
-                builder.Services,
-                contextType,
-                types);
-
-            RegisterContextEngines(
-                builder.Services,
-                contextType,
-                types);
+            builder.Services.TryAddScoped(type);
         }
 
-        var queryViewTypes =
-            types
-                .Where(x =>
-                    x.GetCustomAttribute<QueryViewAttribute>() is not null)
-                .Where(x =>
-                    x.PassesTypeFilter(
-                        builder.ServiceOptions.TypeFilter,
-                        QueryableErrorCodes.InvalidRegistration,
-                        "queryable type"))
-                .ToArray();
-
-        var delegatedQueryViewTypes =
-            queryViewTypes
-                .Where(IsDelegatedQueryView)
-                .ToArray();
-
-        var localQueryViewTypes =
-            queryViewTypes
-                .Except(delegatedQueryViewTypes)
-                .ToArray();
-
-        foreach (var viewType in localQueryViewTypes)
-        {
-            RegisterQueryView(
-                builder.Services,
-                viewType);
-        }
-
-        foreach (var viewType in delegatedQueryViewTypes)
-        {
-            RegisterDelegatedQueryView(
-                builder.Services,
-                viewType);
-        }
-
-        builder.Services.TryAddSingleton<QueryContextRegistrationValidator>();
-        builder.Services.TryAddSingleton<QueryViewRegistrationValidator>();
-
-        builder.Services.TryAddSingleton<QueryContextRegistry>(
-            sp =>
-            {
-                var validator =
-                    sp.GetRequiredService<QueryContextRegistrationValidator>();
-
-                validator.Validate(
-                    localContextTypes,
-                    builder.Services);
-
-                return new QueryContextRegistry(
-                    sp.GetRequiredService<ITypeDescriber>(),
-                    sp.GetRequiredService<IConstraintMapper>(),
-                    builder.Services,
-                    localContextTypes,
-                    builder.ServiceOptions.DefaultAuthorization);
-            });
-
-        builder.Services.TryAddSingleton<QueryViewRegistry>(
-            sp =>
-            {
-                var validator =
-                    sp.GetRequiredService<QueryViewRegistrationValidator>();
-
-                validator.Validate(
-                    localQueryViewTypes,
-                    localContextTypes,
-                    builder.Services);
-
-                return new QueryViewRegistry(
-                    sp.GetRequiredService<ITypeDescriber>(),
-                    sp.GetRequiredService<IConstraintMapper>(),
-                    localQueryViewTypes);
-            });
-
-        builder.Services.TryAddSingleton<DelegatedQueryViewRegistry>(
-            sp => new DelegatedQueryViewRegistry(
+        builder.Services.TryAddSingleton<QuerySourceRegistry>(
+            sp => new QuerySourceRegistry(
                 sp.GetRequiredService<ITypeDescriber>(),
                 sp.GetRequiredService<IConstraintMapper>(),
-                delegatedQueryViewTypes,
+                localSourceTypes,
+                delegatedSourceTypes,
                 builder.ServiceOptions.DefaultAuthorization));
 
-        builder.Services.TryAddSingleton<IQueryContextRegistry>(sp => sp.GetRequiredService<QueryContextRegistry>());
+        builder.Services.TryAddSingleton<QueryViewRegistry>(
+            sp => new QueryViewRegistry(
+                sp.GetRequiredService<ITypeDescriber>(),
+                sp.GetRequiredService<IConstraintMapper>(),
+                viewTypes));
+
+        builder.Services.TryAddSingleton<IQuerySourceRegistry>(sp => sp.GetRequiredService<QuerySourceRegistry>());
         builder.Services.TryAddSingleton<IQueryViewRegistry>(sp => sp.GetRequiredService<QueryViewRegistry>());
-        builder.Services.TryAddSingleton<IDelegatedQueryViewRegistry>(sp => sp.GetRequiredService<DelegatedQueryViewRegistry>());
 
         builder.Services.TryAddSingleton<IQueryableRegistry, QueryableRegistry>();
 
@@ -169,176 +79,198 @@ public static class QueryableServiceCollectionExtensions
             typeof(IQueryContextExecutor<>),
             typeof(QueryContextExecutor<>));
 
+        services.TryAddScoped(
+            typeof(IQueryContextEngine<,>),
+            typeof(QueryContextEngine<,>));
+
+        services.TryAddScoped(
+            typeof(IDelegatedQuerySourceEngine<,>),
+            typeof(DelegatedQuerySourceEngine<,>));
+
         services.TryAddSingleton<IQueryEventFactory, QueryEventFactory>();
         services.TryAddScoped<IQueryableObservability, QueryableObservability>();
     }
 
-    private static void RegisterSource(
-        IServiceCollection services,
-        Type contextType,
-        IEnumerable<Type> types)
+    /// <summary>
+    /// Discovers and validates the Queryable capabilities among <paramref name="types"/>.
+    /// Discovery is interface-only — the interfaces are the identity; each discovered
+    /// capability must then carry its attribute with complete metadata.
+    /// </summary>
+    /// <exception cref="KaleidoConfigurationException">A discovered capability is invalid.</exception>
+    internal static (Type[] LocalSources, Type[] DelegatedSources, Type[] Views) DiscoverQueryableCapabilities(
+        this IEnumerable<Type> types)
     {
-        var typeList = types as Type[] ?? types.ToArray();
-
-        var syncSources =
-            typeList
+        var candidateTypes =
+            types
                 .Where(x =>
-                    x.ImplementsGenericInterfaceFor(
-                        contextType,
-                        typeof(IQueryContextSource<>)))
+                    x.IsLocalQuerySource() ||
+                    x.IsDelegatedQuerySource() ||
+                    x.IsQueryView())
                 .ToArray();
 
-        var asyncSources =
-            typeList
-                .Where(x =>
-                    x.ImplementsGenericInterfaceFor(
-                        contextType,
-                        typeof(IQueryContextSourceAsync<>)))
-                .ToArray();
+        var localSourceTypes = candidateTypes.Where(x => x.IsLocalQuerySource()).ToArray();
+        var delegatedSourceTypes = candidateTypes.Where(x => x.IsDelegatedQuerySource()).ToArray();
+        var viewTypes = candidateTypes.Where(x => x.IsQueryView()).ToArray();
 
-        if (syncSources.Length > 1 || asyncSources.Length > 1)
-        {
-            // Duplicate validation is handled by the validator — skip silently here.
-            return;
-        }
+        ValidateSources(localSourceTypes, delegatedSourceTypes, viewTypes);
+        ValidateViews(viewTypes, localSourceTypes);
 
-        if (syncSources.Length == 1 && asyncSources.Length == 1)
-        {
-            // Exclusivity violation — handled by the validator.
-            return;
-        }
-
-        if (syncSources.Length == 1)
-        {
-            services.TryAddScoped(
-                typeof(IQueryContextSource<>).MakeGenericType(contextType),
-                syncSources[0]);
-        }
-        else if (asyncSources.Length == 1)
-        {
-            services.TryAddScoped(
-                typeof(IQueryContextSourceAsync<>).MakeGenericType(contextType),
-                asyncSources[0]);
-        }
+        return (localSourceTypes, delegatedSourceTypes, viewTypes);
     }
 
-    private static void RegisterContextEngines(
-        IServiceCollection services,
-        Type contextType,
-        IEnumerable<Type> types)
+    private static void ValidateSources(
+        IReadOnlyCollection<Type> localSourceTypes,
+        IReadOnlyCollection<Type> delegatedSourceTypes,
+        IReadOnlyCollection<Type> viewTypes)
     {
-        var typeList = types as Type[] ?? types.ToArray();
-
-        var hasLocalSource =
-            typeList.Any(x =>
-                x.ImplementsGenericInterfaceFor(
-                    contextType,
-                    typeof(IQueryContextSource<>),
-                    typeof(IQueryContextSourceAsync<>)));
-
-        var localViewTypes =
-            typeList
-                .Where(x =>
-                    x.GetCustomAttribute<QueryViewAttribute>() is not null)
-                .SelectMany(x =>
-                    x.GetViewSourceInterfaces()
-                        .Where(i => i.GenericTypeArguments[0] == contextType)
-                        .Select(i => i.GenericTypeArguments[1]))
-                .Where(x => x != contextType)
-                .Distinct()
-                .ToArray();
-
-        if (hasLocalSource)
+        foreach (var type in localSourceTypes)
         {
-            services.TryAddScoped(
-                typeof(IQueryContextEngine<,>)
-                    .MakeGenericType(
-                        contextType,
-                        contextType),
-                typeof(QueryContextEngine<,>)
-                    .MakeGenericType(
-                        contextType,
-                        contextType));
+            var sourceInterfaceCount =
+                type.GetSyncSourceInterfaces().Length +
+                type.GetAsyncSourceInterfaces().Length;
 
-            foreach (var viewType in localViewTypes)
+            if (sourceInterfaceCount == 0)
             {
-                services.TryAddScoped(
-                    typeof(IQueryContextEngine<,>)
-                        .MakeGenericType(
-                            contextType,
-                            viewType),
-                    typeof(QueryContextEngine<,>)
-                        .MakeGenericType(
-                            contextType,
-                            viewType));
+                throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.InvalidRegistration,
+                    $"Query source '{type.FullName}' implements ILocalQuerySource<T> only. " +
+                    "Implement exactly one of IQuerySource<TQueryContext> or IQuerySourceAsync<TQueryContext>.");
+            }
+
+            if (sourceInterfaceCount > 1)
+            {
+                throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.InvalidRegistration,
+                    $"Query source '{type.FullName}' implements more than one source interface. " +
+                    "Implement exactly one of IQuerySource<TQueryContext> or IQuerySourceAsync<TQueryContext>, for one query context.");
             }
         }
 
-    }
-
-    private static bool IsDelegatedQueryView(Type queryViewType) =>
-        queryViewType.GetDelegateViewSourceInterfaces().Length > 0;
-
-    private static void RegisterDelegatedQueryView(
-        IServiceCollection services,
-        Type queryViewType)
-    {
-        services.TryAddScoped(queryViewType);
-
-        var interfaces =
-            queryViewType.GetDelegateViewSourceInterfaces();
-
-        foreach (var queryViewInterface in interfaces)
+        foreach (var type in delegatedSourceTypes)
         {
-            services.AddScoped(
-                queryViewInterface,
-                queryViewType);
+            if (type.IsLocalQuerySource())
+            {
+                throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.InvalidRegistration,
+                    $"Query source '{type.FullName}' is both a local and a delegated source. Implement exactly one.");
+            }
 
-            services.TryAddScoped(
-                typeof(IDelegatedQueryViewEngine<,>)
-                    .MakeGenericType(
-                        queryViewInterface.GenericTypeArguments[0],
-                        queryViewInterface.GenericTypeArguments[1]),
-                typeof(DelegatedQueryViewEngine<,>)
-                    .MakeGenericType(
-                        queryViewInterface.GenericTypeArguments[0],
-                        queryViewInterface.GenericTypeArguments[1]));
+            if (type.GetDelegatedSourceInterfaces().Length > 1)
+            {
+                throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.InvalidRegistration,
+                    $"Delegated query source '{type.FullName}' implements more than one IDelegatedQuerySource interface. Implement exactly one.");
+            }
         }
-    }
 
-    private static void RegisterQueryView(
-        IServiceCollection services,
-        Type queryViewType)
-    {
-        var syncInterfaces =
-            queryViewType.GetSyncViewSourceInterfaces();
+        var sourceTypes = localSourceTypes.Concat(delegatedSourceTypes).ToArray();
 
-        var asyncInterfaces =
-            queryViewType.GetAsyncViewSourceInterfaces();
-
-        if (syncInterfaces.Length == 0 && asyncInterfaces.Length == 0)
+        if (sourceTypes.Intersect(viewTypes).FirstOrDefault() is { } sourceAndView)
         {
             throw new KaleidoConfigurationException(
                 QueryableErrorCodes.InvalidRegistration,
-                $"Query view '{queryViewType.FullName}' does not implement IQueryViewSource or IQueryViewSourceAsync.");
+                $"Type '{sourceAndView.FullName}' is both a query source and a query view. A type is exactly one capability.");
         }
 
-        // Exclusivity is validated by QueryViewRegistrationValidator; skip registration if both are present.
-        var interfaces = syncInterfaces.Length > 0 ? syncInterfaces : asyncInterfaces;
-
-        //
-        // Register the actual QueryView implementation
-        //
-        services.TryAddScoped(queryViewType);
-
-        //
-        // Register all implemented interfaces
-        //
-        foreach (var queryViewInterface in interfaces)
+        foreach (var type in sourceTypes)
         {
-            services.AddScoped(
-                queryViewInterface,
-                queryViewType);
+            var attribute =
+                type.GetCustomAttribute<QuerySourceAttribute>()
+                ?? throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.MissingAttribute,
+                    $"Query source '{type.FullName}' must be decorated with [QuerySource].");
+
+            RequireNonEmpty(type, "Query source", attribute.Version, nameof(QuerySourceAttribute.Version));
+            RequireNonEmpty(type, "Query source", attribute.DisplayName, nameof(QuerySourceAttribute.DisplayName));
+            RequireNonEmpty(type, "Query source", attribute.Description, nameof(QuerySourceAttribute.Description));
+        }
+
+        var duplicates =
+            sourceTypes
+                .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                .Where(x => x.Count() > 1)
+                .ToArray();
+
+        if (duplicates.Length > 0)
+        {
+            throw new KaleidoConfigurationException(
+                QueryableErrorCodes.DuplicateRegistration,
+                "Duplicate query source names detected (a source's name is its type name): " +
+                string.Join("; ", duplicates.Select(g => $"'{g.Key}' ({string.Join(", ", g.Select(t => t.FullName))})")));
+        }
+    }
+
+    private static void ValidateViews(
+        IReadOnlyCollection<Type> viewTypes,
+        IReadOnlyCollection<Type> localSourceTypes)
+    {
+        var registeredSources = localSourceTypes.ToHashSet();
+
+        foreach (var type in viewTypes)
+        {
+            var syncCount = type.GetSyncViewInterfaces().Length;
+            var asyncCount = type.GetAsyncViewInterfaces().Length;
+
+            if (syncCount > 0 && asyncCount > 0)
+            {
+                throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.InvalidRegistration,
+                    $"Query view '{type.FullName}' implements both IQueryViewSource and IQueryViewSourceAsync. Implement exactly one.");
+            }
+
+            if (syncCount + asyncCount > 1)
+            {
+                throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.InvalidRegistration,
+                    $"Query view '{type.FullName}' implements more than one view interface. A view projects exactly one source.");
+            }
+
+            var attribute =
+                type.GetCustomAttribute<QueryViewAttribute>()
+                ?? throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.MissingAttribute,
+                    $"Query view '{type.FullName}' must be decorated with [QueryView].");
+
+            RequireNonEmpty(type, "Query view", attribute.Version, nameof(QueryViewAttribute.Version));
+            RequireNonEmpty(type, "Query view", attribute.DisplayName, nameof(QueryViewAttribute.DisplayName));
+            RequireNonEmpty(type, "Query view", attribute.Description, nameof(QueryViewAttribute.Description));
+
+            var sourceType = type.GetViewInterfaces()[0].GenericTypeArguments[0];
+
+            if (!registeredSources.Contains(sourceType))
+            {
+                throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.MissingSource,
+                    $"Query view '{type.FullName}' references query source '{sourceType.FullName}', which is not a registered local query source.");
+            }
+        }
+
+        var duplicates =
+            viewTypes
+                .GroupBy(x => (Source: x.GetViewInterfaces()[0].GenericTypeArguments[0], Name: x.Name.ToUpperInvariant()))
+                .Where(x => x.Count() > 1)
+                .ToArray();
+
+        if (duplicates.Length > 0)
+        {
+            throw new KaleidoConfigurationException(
+                QueryableErrorCodes.DuplicateRegistration,
+                "Duplicate query view names detected within a source (a view's name is its type name): " +
+                string.Join("; ", duplicates.Select(g => $"'{g.First().Name}' on '{g.Key.Source.Name}'")));
+        }
+    }
+
+    private static void RequireNonEmpty(
+        Type type,
+        string kind,
+        string? value,
+        string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new KaleidoConfigurationException(
+                QueryableErrorCodes.MissingAttribute,
+                $"{kind} '{type.FullName}' must specify a non-empty {propertyName}.");
         }
     }
 }

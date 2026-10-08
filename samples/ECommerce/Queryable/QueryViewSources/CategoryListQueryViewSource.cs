@@ -1,3 +1,4 @@
+using Kaleido.Samples.ECommerce.Data.QueryContexttSources;
 using Kaleido.Queryable;
 using Kaleido.Samples.ECommerce.Data.QueryContexts;
 using Kaleido.Samples.ECommerce.Data.QueryViewSources.Parameters;
@@ -6,12 +7,11 @@ using Kaleido.Samples.ECommerce.Data.QueryViewSources.Views;
 namespace Kaleido.Samples.ECommerce.Data.QueryViewSources;
 
 [QueryView(
-    Name = "categories",
     DisplayName = "Categories",
     Version = "1.0.0",
     Description = "Category navigation results for the current catalog context.")]
 internal sealed class CategoryListQueryViewSource
-    : IQueryViewSource<ProductCatalogQueryContext, CategoryCatalogView, ProductByCategoryParameters>
+    : IQueryViewSource<ProductCatalogContextSource, ProductCatalogQueryContext, CategoryCatalogView, ProductByCategoryParameters>
 {
     private readonly ECommerceDbContext _dbContext;
 

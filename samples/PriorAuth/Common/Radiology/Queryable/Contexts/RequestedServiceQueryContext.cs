@@ -4,13 +4,7 @@ using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Queryable.Contexts;
 
-[QueryContext(
-    Name = "requested-services",
-    DisplayName = "Requested Services",
-    Version = "1.0.0",
-    Source = "Prior Authorization Radiology",
-    Kind = QueryContextKind.Direct)]
-public sealed class RequestedServiceQueryContext
+public sealed class RequestedServiceQueryContext : IQueryContext
 {
     [Key]
     public Guid PriorAuthorizationRequestedServiceId { get; init; }

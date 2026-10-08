@@ -55,7 +55,7 @@ See: [`src/Kaleido.Http/README.md`](./src/Kaleido.Http/README.md)
 ### Kaleido.Http.Abstractions
 Shared HTTP contract types used by both the server-side projects and the client project:
 - Process contracts: `ExecuteProcessRequest`, `ProcessExecutionResponse`, `ProcessExecutionStepResponse`, `ProcessStepInfo`, `ProcessStateResponse`, `ProcessStepSummary`, `ProcessorRegistryResponse`, etc.
-- Queryable contracts: `QueryApiRequest`, `QueryableRecordResponse`, `QueryErrorResponse`, etc.
+- Queryable contracts: `QueryApiRequest`, `QueryableSourceResponse`, `QueryErrorResponse`, etc.
 
 Changes here ripple into server-side endpoints (`Kaleido.Http`) and client-side consumers (`Kaleido.Http.Client`).
 
@@ -64,7 +64,7 @@ See: [`src/Kaleido.Http.Abstractions/README.md`](./src/Kaleido.Http.Abstractions
 ### Kaleido.Http.Client
 Typed HTTP clients for downstream service consumption:
 - `IKaleidoProcessClientFactory` / `KaleidoProcessClient` — registry, step metadata, process state, and step execution
-- `IKaleidoQueryableClientFactory` / `KaleidoQueryableClient` — registry, context metadata, view queries, direct context queries
+- `IKaleidoQueryableClientFactory` / `KaleidoQueryableClient` — registry, view queries, direct source queries
 - `AddHttpClients()` — registers both Process and Queryable clients from configuration
 - `AddProcessClient(...)`, `AddQueryableClient(...)` — individual client registration (internal)
 
@@ -153,7 +153,7 @@ Assemblies are passed via `KaleidoServiceOptions.Assemblies` in the `AddKaleido(
 
 ### Step 3: Capability registration
 - `AddProcessor()` (internal, called automatically) scans registered assemblies for `[ProcessStep]` types and handlers. It builds the step registry and registers runtime services.
-- `AddQueryable()` (internal, called automatically) scans registered assemblies for `[QueryContext]` types, view sources, and context sources. It builds the query registry and registers runtime services.
+- `AddQueryable()` (internal, called automatically) scans registered assemblies for query sources (`IQuerySource<T>`, `IQuerySourceAsync<T>`, `IDelegatedQuerySource<…>`) and query views (`IQueryViewSource<TSource, …>`), each described by `[QuerySource]` / `[QueryView]`. It builds the query registry and registers runtime services.
 
 ### Step 4: Transport registration (optional)
 - `AddHttp()` adds the HTTP transport layer services (middleware pipeline, execution services) for both Process and Queryable.

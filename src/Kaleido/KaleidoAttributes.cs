@@ -23,8 +23,9 @@ namespace Kaleido;
 /// <item><c>AllowAnonymous</c> — the only way to open a capability to
 /// unauthenticated callers; cannot be combined with <c>Roles</c>/<c>Policy</c>.</item>
 /// </list>
-/// Query views without their own attribute inherit the authorization of their
-/// query context (including the delegate context for delegated views).
+/// Apply it to process steps, query sources and query views (never to query context
+/// records). Query views without their own attribute inherit the authorization of
+/// their query source.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 public sealed class KaleidoAuthorizationAttribute : Attribute

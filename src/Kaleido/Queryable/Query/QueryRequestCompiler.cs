@@ -4,7 +4,7 @@ namespace Kaleido.Queryable.Query;
 
 /// <summary>
 /// Converts a validated QueryRequest into an optimized
-/// provider-neutral CompiledRecordQuery.
+/// provider-neutral CompiledQuery.
 ///
 /// Compilation resolves field references, operators,
 /// search modes, paging definitions, and named query
@@ -17,46 +17,23 @@ namespace Kaleido.Queryable.Query;
 /// </summary>
 internal interface IQueryContextCompiler
 {
-    CompiledRecordQuery Compile(IQueryRequest request, QueryContextMetadata metadata, QueryViewMetadata queryViewMetadata);
-
-    CompiledRecordQuery Compile(IQueryRequest request, QueryContextMetadata metadata);
+    /// <summary>
+    /// Compiles a validated request against a source's query context fields and the paging that
+    /// applies (the view's for a view query, the source's for a direct query).
+    /// </summary>
+    CompiledQuery Compile(IQueryRequest request, QuerySourceMetadata metadata, PageableMetadata? pageable);
 }
 
 internal sealed class QueryRequestCompiler : IQueryContextCompiler
 {
-    public CompiledRecordQuery Compile(
+    public CompiledQuery Compile(
         IQueryRequest request,
-        QueryContextMetadata metadata,
-        QueryViewMetadata queryViewMetadata)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(metadata);
-        ArgumentNullException.ThrowIfNull(queryViewMetadata);
-
-        return CompileInternal(
-            request,
-            metadata,
-            queryViewMetadata.Pageable);
-    }
-
-    public CompiledRecordQuery Compile(
-        IQueryRequest request,
-        QueryContextMetadata metadata)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(metadata);
-
-        return CompileInternal(
-            request,
-            metadata,
-            metadata.Pageable);
-    }
-
-    private static CompiledRecordQuery CompileInternal(
-        IQueryRequest request,
-        QueryContextMetadata metadata,
+        QuerySourceMetadata metadata,
         PageableMetadata? pageable)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(metadata);
+
         var size = request.Query?.Page?.Size
                    ?? pageable?.DefaultSize
                    ?? 50;
@@ -67,7 +44,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
         var offset = request.Query?.Page?.Offset ?? 0;
 
-        return new CompiledRecordQuery(
+        return new CompiledQuery(
             CompileFilter(request.Query?.Filter, metadata),
             CompileSearch(request.Query?.SearchText, metadata),
             CompileSort(request.Query?.Sort, metadata),
@@ -76,7 +53,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
     private static CompiledFilterExpression? CompileFilter(
         QueryFilterNode? node,
-        QueryContextMetadata metadata)
+        QuerySourceMetadata metadata)
     {
         if (node is null)
         {
@@ -111,7 +88,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
     private static CompiledFilterCondition CompileFilterCondition(
         QueryFilterCondition condition,
-        QueryContextMetadata metadata)
+        QuerySourceMetadata metadata)
     {
         return new CompiledFilterCondition(
             metadata.GetField(condition.Field),
@@ -121,7 +98,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
     private static CompiledFilterGroup CompileFilterGroup(
         QueryFilterGroup group,
-        QueryContextMetadata metadata)
+        QuerySourceMetadata metadata)
     {
         var compiledFilters = group.Filters
             .Select(x => CompileFilter(x, metadata))
@@ -135,7 +112,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
     private static CompiledSearch? CompileSearch(
         string? searchText,
-        QueryContextMetadata metadata)
+        QuerySourceMetadata metadata)
     {
         if (string.IsNullOrWhiteSpace(searchText))
         {
@@ -168,7 +145,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
 
     private static IReadOnlyList<CompiledSort> CompileSort(
         IReadOnlyList<QuerySort>? sorts,
-        QueryContextMetadata metadata)
+        QuerySourceMetadata metadata)
     {
         if (sorts is null || sorts.Count == 0)
         {

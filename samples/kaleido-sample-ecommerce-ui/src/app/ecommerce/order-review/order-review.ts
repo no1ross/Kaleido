@@ -123,7 +123,7 @@ export class OrderReview
             .query<
                 OrderReviewView,
                 OrderReviewViewParameters>(
-                    'order-review',
+                    'OrderReviewViewSource',
                     request)
             .subscribe({
 

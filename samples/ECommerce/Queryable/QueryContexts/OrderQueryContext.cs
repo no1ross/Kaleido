@@ -2,12 +2,7 @@ using Kaleido.Queryable;
 
 namespace Kaleido.Samples.ECommerce.Data.QueryContexts;
 
-[QueryContext(
-    Name = "orders",
-    DisplayName = "Orders",
-    Version = "1.0",
-    Source = "E-Commerce Orders")]
-public sealed record OrderQueryContext
+public sealed record OrderQueryContext : IQueryContext
 {
     public Guid OrderId
     {

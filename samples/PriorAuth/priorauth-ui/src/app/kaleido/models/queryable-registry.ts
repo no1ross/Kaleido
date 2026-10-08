@@ -1,4 +1,4 @@
-export interface QueryableRecord {
+export interface QueryableSource {
     serviceName: string;
     name: string;
     description: string;
@@ -8,7 +8,11 @@ export interface QueryableRecord {
     registryUrl: string;
     queryUrl: string | null;
 
+    pageable: QueryablePagingMetadata | null;
+
     fields: QueryableField[];
+
+    parameters: QueryableParameter[];
 
     views: QueryableView[];
 }
@@ -93,7 +97,7 @@ export interface QueryableConstraintParameter {
 }
 
 export interface QueryableViewRegistration {
-    context: QueryableRecord;
+    context: QueryableSource;
     view: QueryableView;
 }
 

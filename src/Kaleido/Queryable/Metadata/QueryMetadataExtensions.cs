@@ -99,12 +99,10 @@ internal static class QueryMetadataExtensions
         ITypeDescriber typeDescriber,
         IConstraintMapper constraintMapper) =>
         new(
-            attribute.Name,
+            queryViewType.Name,
             attribute.Version,
-            attribute.DisplayName ?? attribute.Name,
-            attribute.Description
-                ?? attribute.DisplayName
-                ?? attribute.Name,
+            attribute.DisplayName,
+            attribute.Description,
             queryViewType.ToViewPageable(contextType, attribute),
             parametersType.ToParameterMetadata(typeDescriber, constraintMapper),
             viewType.ToOutputFieldMetadata(typeDescriber),
@@ -127,7 +125,7 @@ internal static class QueryMetadataExtensions
             return null;
         }
 
-        ValidateDefaultSort(contextType, attribute);
+        ValidateDefaultSort(queryViewType, contextType, attribute);
 
         return new PageableMetadata(
             pageable.DefaultSize,
@@ -135,6 +133,7 @@ internal static class QueryMetadataExtensions
     }
 
     private static void ValidateDefaultSort(
+        Type queryViewType,
         Type contextType,
         QueryViewAttribute attribute)
     {
@@ -142,7 +141,7 @@ internal static class QueryMetadataExtensions
         {
             throw new KaleidoConfigurationException(
                 QueryableErrorCodes.InvalidRegistration,
-                $"Query view '{attribute.Name}' is pageable and must define a DefaultSortField.");
+                $"Query view '{queryViewType.Name}' is pageable and must define a DefaultSortField.");
         }
 
         var property =
@@ -156,14 +155,14 @@ internal static class QueryMetadataExtensions
         {
             throw new KaleidoConfigurationException(
                 QueryableErrorCodes.InvalidRegistration,
-                $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' which does not exist on query context '{contextType.Name}'.");
+                $"Query view '{queryViewType.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' which does not exist on query context '{contextType.Name}'.");
         }
 
         if (property.GetCustomAttribute<SortableAttribute>() is null)
         {
             throw new KaleidoConfigurationException(
                 QueryableErrorCodes.InvalidRegistration,
-                $"Query view '{attribute.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' but the field is not marked as sortable.");
+                $"Query view '{queryViewType.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' but the field is not marked as sortable.");
         }
     }
 }

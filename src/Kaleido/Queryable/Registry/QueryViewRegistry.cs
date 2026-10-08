@@ -7,35 +7,34 @@ internal interface IQueryViewRegistry
 {
     IReadOnlyCollection<QueryViewRegistration> Registrations { get; }
 
-    QueryViewRegistration? Find(string name);
+    QueryViewRegistration? Find(Type queryViewType);
 
-    QueryViewRegistration? Find(Type recordType);
-
-    QueryViewRegistration GetRegistration(string name);
-
-    QueryViewRegistration GetRegistration(Type recordType);
+    QueryViewRegistration GetRegistration(Type queryViewType);
 }
 
+/// <summary>
+/// The discovered local query views, keyed by view type. View names are unique per source, not
+/// per service, so views are not looked up by name here.
+/// </summary>
 internal sealed class QueryViewRegistry
     : IQueryViewRegistry
 {
-    private readonly IReadOnlyDictionary<string, QueryViewRegistration> _byName;
     private readonly IReadOnlyDictionary<Type, QueryViewRegistration> _byType;
     private readonly IReadOnlyCollection<QueryViewRegistration> _registrations;
 
-    private readonly ITypeDescriber _dataTypeMapper;
+    private readonly ITypeDescriber _typeDescriber;
     private readonly IConstraintMapper _constraintMapper;
 
     public QueryViewRegistry(
-        ITypeDescriber TypeDescriber,
+        ITypeDescriber typeDescriber,
         IConstraintMapper constraintMapper,
         IEnumerable<Type> queryViewTypes)
     {
-        ArgumentNullException.ThrowIfNull(TypeDescriber);
+        ArgumentNullException.ThrowIfNull(typeDescriber);
         ArgumentNullException.ThrowIfNull(constraintMapper);
         ArgumentNullException.ThrowIfNull(queryViewTypes);
 
-        _dataTypeMapper = TypeDescriber;
+        _typeDescriber = typeDescriber;
         _constraintMapper = constraintMapper;
 
         var registrations =
@@ -46,11 +45,6 @@ internal sealed class QueryViewRegistry
         _registrations =
             registrations;
 
-        _byName =
-            registrations.ToDictionary(
-                x => x.Metadata.Name,
-                StringComparer.OrdinalIgnoreCase);
-
         _byType =
             registrations.ToDictionary(
                 x => x.QueryViewType);
@@ -59,15 +53,6 @@ internal sealed class QueryViewRegistry
     public IReadOnlyCollection<QueryViewRegistration> Registrations =>
         _registrations;
 
-    public QueryViewRegistration? Find(string name)
-    {
-        _byName.TryGetValue(
-            name,
-            out var registration);
-
-        return registration;
-    }
-
     public QueryViewRegistration? Find(Type queryViewType)
     {
         _byType.TryGetValue(
@@ -75,14 +60,6 @@ internal sealed class QueryViewRegistry
             out var registration);
 
         return registration;
-    }
-
-    public QueryViewRegistration GetRegistration(string name)
-    {
-        return Find(name)
-            ?? throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.MissingRegistration,
-                $"Query view '{name}' is not registered.");
     }
 
     public QueryViewRegistration GetRegistration(Type queryViewType)
@@ -100,33 +77,31 @@ internal sealed class QueryViewRegistry
             queryViewType.GetCustomAttribute<QueryViewAttribute>()
             ?? throw new KaleidoConfigurationException(
                 QueryableErrorCodes.MissingAttribute,
-                $"Query view '{queryViewType.Name}' is missing QueryViewAttribute.");
+                $"Query view '{queryViewType.FullName}' must be decorated with [QueryView].");
 
-        var queryViewInterface =
-            queryViewType.GetQueryViewInterface();
+        // Generic arguments: source, query context, view, parameters.
+        var arguments =
+            queryViewType.GetViewInterfaces()
+                .Single()
+                .GenericTypeArguments;
 
-        var contextType =
-            queryViewInterface.GenericTypeArguments[0];
-
-        var sourceType =
-            queryViewInterface.GenericTypeArguments[1];
-
-        var parametersType =
-            queryViewInterface.GenericTypeArguments.Length == 3
-                ? queryViewInterface.GenericTypeArguments[2]
-                : typeof(EmptyQueryViewParameters);
+        var sourceType = arguments[0];
+        var contextType = arguments[1];
+        var viewType = arguments[2];
+        var parametersType = arguments[3];
 
         return new QueryViewRegistration(
             queryViewType,
-            sourceType,
+            viewType,
             parametersType,
+            sourceType,
             contextType,
             queryViewAttribute.ToViewMetadata(
                 queryViewType,
                 contextType,
                 parametersType,
-                sourceType,
-                _dataTypeMapper,
+                viewType,
+                _typeDescriber,
                 _constraintMapper));
     }
 }

@@ -12,8 +12,8 @@ public sealed class PlanNetworkClient(
     {
         var result = await queryableClientFactory
             .GetClient("ReferenceData")
-            .QueryContextAsync<PlanQueryContext>(
-                "plans",
+            .QuerySourceAsync<PlanQueryContext>(
+                "PlanQueryContextSource",
                 new QueryApiRequest
                 {
                     Query = new QueryApiBody

@@ -9,7 +9,7 @@ import {
     QueryableField,
     QueryablePagingMetadata,
     QueryableParameter,
-    QueryableRecord,
+    QueryableSource,
     QueryableViewRegistration
 } from '../models/queryable-registry';
 import { QueryableRegistry } from './queryable-registry';
@@ -59,7 +59,7 @@ export class QueryableService {
         if (!context.queryUrl) {
             return throwError(
                 () => new Error(
-                    `Queryable context '${contextName}' does not support direct query.`));
+                    `Query source '${contextName}' is not available to this caller.`));
         }
 
         return this.executeValidatedQuery<TResponse, TParameters>(
@@ -67,15 +67,15 @@ export class QueryableService {
             request,
             context,
             context.queryUrl,
-            [],
+            context.parameters ?? [],
             context.fields,
-            null);
+            context.pageable ?? null);
     }
 
     private executeValidatedQuery<TResponse, TParameters>(
         operation: string,
         request: QueryRequest<TParameters>,
-        context: QueryableRecord,
+        context: QueryableSource,
         path: string,
         parameters: readonly QueryableParameter[],
         fields: readonly QueryableField[],

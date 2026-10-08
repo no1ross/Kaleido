@@ -3,12 +3,9 @@
 #pragma warning disable KAL0001 // Pure route factory — no state, intentional static
 public static class QueryableRoutePaths
 {
-    public static string QueryContextMetadata(string contextName)
-        => $"{contextName}/metadata";
+    public static string QuerySourceQuery(string sourceName)
+        => $"{sourceName}/query";
 
-    public static string QueryContextQuery(string contextName)
-        => $"{contextName}/query";
-
-    public static string QueryViewQuery(string contextName, string viewName)
-        => $"{contextName}/{viewName}/query";
+    public static string QueryViewQuery(string sourceName, string viewName)
+        => $"{sourceName}/{viewName}/query";
 }
