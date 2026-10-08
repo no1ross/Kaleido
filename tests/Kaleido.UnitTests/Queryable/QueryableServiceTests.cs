@@ -152,7 +152,7 @@ public sealed class QueryableServiceTests
     private static IQueryViewRegistry ViewRegistryWith(QueryViewRegistration? registration)
     {
         var registry = new Mock<IQueryViewRegistry>();
-        registry.Setup(x => x.Find(It.IsAny<Type>())).Returns((QueryViewRegistration?)null);
+        registry.Setup(x => x.Find(It.IsAny<Type>())).Returns(null);
 
         if (registration is not null)
         {
