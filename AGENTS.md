@@ -88,6 +88,7 @@ Owns the reference `IProcessorContextStore` implementation:
 
 ## General contributor rules
 
+- **Kaleido is a process engine; it never makes business decisions** ([ADR 0001](./docs/decisions/0001-process-engine-not-decision-maker.md)). It applies declared rules (the step graph, declared roles/policies, structural validation) and records what happened; what to ask, who may access a case, which path to take and what wording to use belong to the implementer. New capabilities are mechanisms, never content.
 - Keep concerns in the correct project.
 - `Kaleido` (core) should remain free of transport-specific behavior.
 - `Kaleido.Http` should adapt and publish; it should not reimplement runtime logic.
@@ -208,6 +209,7 @@ When something new surfaces while working an Issue:
 - Root docs should explain how the projects fit together.
 - Project READMEs should explain what lives in that project specifically.
 - Contributor guides should focus on invariants, boundaries, and what not to change casually.
+- Framework-shaping decisions (contracts, boundaries, principles) get a decision record in [`docs/decisions/`](./docs/decisions/README.md): numbered, never rewritten, superseded by a new record when they change, and linked to their issues/PRs.
 
 ## Tests and samples
 

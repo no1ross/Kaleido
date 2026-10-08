@@ -130,9 +130,12 @@ The planning pipeline is layered — keep those responsibilities separated:
 - `StepCandidateValidator` → enforces `DataAnnotations`
 - `StepCandidateConsistencyChecker` → enforces history, dependency, and repeatability consistency
 - `StepCandidatePlanner` → orders executable candidates
+- `StepCandidateNextStepChecker` → admits only next steps (the pending required step, or a step available under the process rules) and checks information-step answers against the pending request
 - `ExecutionProcessor` → invokes handlers, evaluates decisions, updates state, persists, emits events
 
-`ProcessorContext` is current resumable state only. Keep it small. Historical evidence belongs in emitted process events.
+`ProcessorContext` is current resumable state only. Keep it small. Historical evidence belongs in emitted process events. The pending information request (`RequiredInformationRequest`) is part of that state; past questions and answers are not.
+
+Information requests: Kaleido owns the schema, never the content. Validation is structural only; an `IInformationStep` declares only `InformationRequestId` and `Items`; a request travels only with the required step. See [`docs/INFORMATION_REQUESTS.md`](../docs/INFORMATION_REQUESTS.md) and ADRs 0002–0006.
 
 ---
 

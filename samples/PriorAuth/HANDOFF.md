@@ -82,9 +82,7 @@ Radiology's `StartRadiologyIntake` handler is the dedicated entry point for hand
 4. Upserts the `PriorAuthorization` + `PriorAuthorizationMember` rows
 5. Adds the `PriorAuthorizationRequestedService` row
 6. Upserts a history record
-7. Returns a typed `StartRadiologyIntakeResponse` with:
-   - A `questionnaire` definition for the appropriate capture step
-   - `requiredStep: "CaptureMriInfoStep"` (or `"ConfirmCtInsteadOfMriStep"` for CT)
+7. Returns `RequireInformation<CaptureMriInfoStep>(response, request)` (or `RequireInformation<ConfirmCtInsteadOfMriStep>` for CT): the process waits in `AwaitingInformation`, and `requiredStep.informationRequest` carries the questions (the MRI questions come from the Configuration service; the CT confirmation is interim sample code, see #209)
 
 This is equivalent to Radiology's own `CaptureMember` + `CaptureRequestedService` sequence, collapsed into one step for the handoff path so Intake only needs to make one downstream call.
 
@@ -100,8 +98,10 @@ The UI tracks which processor it is currently talking to in `ProcessStateService
 interface ProcessState {
     processId?: string;
     currentProcessorName?: string;  // derived from registry on load; updated on handoff
-    requiredStep?: string;
+    requiredStep?: string;              // requiredStep.name from the response
     availableSteps: ProcessStepSummary[];
+    informationStepName?: string;       // the step the pending questions belong to
+    informationRequest?: InformationRequest; // requiredStep.informationRequest
     ...
 }
 ```
@@ -171,8 +171,8 @@ Intake: CaptureRequestedServiceHandler
     │           ├── upserts PriorAuthorization + Member rows
     │           ├── adds PriorAuthorizationRequestedService row
     │           ├── upserts history record
-    │           └── returns requiredStep: "CaptureMriInfoStep"
-    │                       + questionnaire definition
+    │           └── returns RequireInformation<CaptureMriInfoStep>(request)
+    │                       → state AwaitingInformation
     │
     └── returns to caller:
             targetProcessorName: "radiology"
@@ -183,14 +183,13 @@ Intake: CaptureRequestedServiceHandler
 UI: ProcessService.executeStep() receives response
     ├── sees targetProcessorName: "radiology"
     ├── calls GET /radiology/processes/{processId}
-    │       → returns requiredStep: "CaptureMriInfoStep"
-    │                  availableSteps: [...]
-    │                  per-step results: { StartRadiologyIntakeStep: { questionnaire: ... } }
+    │       → returns requiredStep: { name: "CaptureMriInfoStep",
+    │                                 informationRequest: { informationRequestId, items } }
     │
     ├── updates ProcessState:
     │       currentProcessorName: "radiology"
     │       requiredStep: "CaptureMriInfoStep"
-    │       questionnaire: <from result>
+    │       informationRequest: <requiredStep.informationRequest>
     │
     └── navigates to /process/{processId}/capture-mri-info
 

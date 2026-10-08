@@ -112,6 +112,8 @@ A step whose handler returns a typed result has this response shape (values are 
 }
 ```
 
+`requiredStep` is an object with the same fields as an `availableSteps` entry (`name`, `displayName`, `description`, `version`, `repeatable`, `isInformationStep`, `authorization`, `executeUrl`), plus `informationRequest` when the process is `AwaitingInformation`. The questions arrive there; submit the answers as that step's payload. See [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md). The state endpoint (`GET /{service}/processes/{processId}`) returns the same `requiredStep` with the pending request. A step that isn't a next step of the process is rejected (`pro_step_not_available`).
+
 Steps without a typed handler result return the same fields without `result`. Handler-authored `businessMessages` remain available; `frameworkMessages` is an empty collection unless `AddHttp(o => o.IncludeFrameworkMessages = true)` enables diagnostics. Inspect `outcome` rather than interpreting HTTP 200 alone as step completion. Kaleido's HTTP JSON options use camelCase property names and string enum values; see the [JSON enum contract](../Kaleido.Http.Abstractions/README.md#json-enum-values) for canonical names and numeric-input rules.
 
 ---
