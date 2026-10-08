@@ -1,5 +1,3 @@
-using Kaleido.Processor;
-
 namespace Kaleido.Http.FunctionalTests.Processor.Infrastructure;
 
 internal static class FunctionalRuntimeNamespaces
