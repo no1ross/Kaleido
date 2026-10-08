@@ -13,7 +13,7 @@ public sealed class QueryViewRegistrationTests
 
     private static QueryViewRegistration CreateSut(
         QueryViewMetadata metadata) =>
-        new(typeof(TestView), typeof(TestContract), typeof(TestParameters), typeof(TestContext), metadata);
+        new(typeof(TestView), typeof(TestContract), typeof(TestParameters), typeof(TestSource), typeof(TestContext), metadata);
 
     [Fact]
     public void QueryViewRegistration_PreservesMetadataShape()
@@ -27,6 +27,7 @@ public sealed class QueryViewRegistrationTests
         Assert.Equal(typeof(TestView), registration.QueryViewType);
         Assert.Equal(typeof(TestContract), registration.ViewType);
         Assert.Equal(typeof(TestParameters), registration.ViewParametersType);
+        Assert.Equal(typeof(TestSource), registration.SourceType);
         Assert.Equal(typeof(TestContext), registration.QueryContextType);
         Assert.Equal("grid", registration.Metadata.Name);
         Assert.Equal(10, registration.Metadata.Pageable!.DefaultSize);
@@ -46,6 +47,10 @@ public sealed class QueryViewRegistrationTests
     }
 
     private sealed class TestContext
+    {
+    }
+
+    private sealed class TestSource
     {
     }
 }

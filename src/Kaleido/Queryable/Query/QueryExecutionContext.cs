@@ -1,11 +1,11 @@
-﻿using Kaleido.Queryable.Metadata;
+using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Query;
 
 [ExcludeFromCodeCoverage]
 public sealed record QueryExecutionContext
 (
-    QueryContextMetadata Metadata,
+    QuerySourceMetadata Metadata,
     IQueryRequest Request
 )
 {

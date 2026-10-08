@@ -4,108 +4,78 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Queryable.Registry;
 
+/// <summary>The Queryable registry: every query source with its views, as published to transports.</summary>
 public interface IQueryableRegistry
 {
-    IReadOnlyCollection<QueryableContextRegistryItem> Registrations { get; }
+    /// <summary>The registered query sources (local and delegated), ordered by name.</summary>
+    IReadOnlyCollection<QueryableSourceRegistryItem> Registrations { get; }
 }
 
 internal sealed class QueryableRegistry : IQueryableRegistry
 {
-    private readonly IReadOnlyCollection<QueryableContextRegistryItem> _registrations;
+    private readonly IReadOnlyCollection<QueryableSourceRegistryItem> _registrations;
 
     public QueryableRegistry(
-        IQueryContextRegistry contextRegistry,
+        IQuerySourceRegistry sourceRegistry,
         IQueryViewRegistry viewRegistry,
-        IDelegatedQueryViewRegistry delegatedViewRegistry,
         ILogger<QueryableRegistry> logger)
     {
-        ArgumentNullException.ThrowIfNull(contextRegistry);
+        ArgumentNullException.ThrowIfNull(sourceRegistry);
         ArgumentNullException.ThrowIfNull(viewRegistry);
-        ArgumentNullException.ThrowIfNull(delegatedViewRegistry);
         ArgumentNullException.ThrowIfNull(logger);
 
-        var localRegistrations =
-            contextRegistry.Registrations
-                .Select(context =>
-                    Project(
-                        context,
-                        viewRegistry.Registrations
-                            .Where(view => view.QueryContextType == context.ContextType)
-                            .ToArray()));
-
-        var delegatedRegistrations =
-            delegatedViewRegistry.Registrations
-                .GroupBy(x => x.QueryMetadata.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(group =>
-                    Project(
-                        group.First().QueryMetadata,
-                        group.ToArray()));
-
         _registrations =
-            localRegistrations
-                .Concat(delegatedRegistrations)
+            sourceRegistry.Registrations
+                .Select(source =>
+                    Project(
+                        source,
+                        viewRegistry.Registrations
+                            .Where(view => view.SourceType == source.SourceType)
+                            .ToArray()))
                 .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
         logger.LogInformation(
-            "Queryable registry built with {ContextCount} contexts.",
+            "Queryable registry built with {SourceCount} sources.",
             _registrations.Count);
     }
 
-    public IReadOnlyCollection<QueryableContextRegistryItem> Registrations =>
+    public IReadOnlyCollection<QueryableSourceRegistryItem> Registrations =>
         _registrations;
 
-    private static QueryableContextRegistryItem Project(
-        QueryContextRegistration registration,
+    private static QueryableSourceRegistryItem Project(
+        QuerySourceRegistration registration,
         IReadOnlyCollection<QueryViewRegistration> views)
     {
         ArgumentNullException.ThrowIfNull(registration);
         ArgumentNullException.ThrowIfNull(views);
 
-        return new QueryableContextRegistryItem
-        {
-            ContextType = registration.ContextType,
-            Name = registration.Metadata.Name,
-            Description = registration.Metadata.Description,
-            DisplayName = registration.Metadata.DisplayName,
-            Version = registration.Metadata.Version,
-            Source = registration.Metadata.Source,
-            Kind = registration.Metadata.Kind,
-            Pageable = registration.Metadata.Pageable,
-            Authorization = registration.Metadata.Authorization,
-            Fields = registration.Metadata.Fields
-                .Select(Project)
-                .ToArray(),
-            Views = views
-                .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(view => Project(view, registration.Metadata.Authorization))
-                .ToArray()
-        };
-    }
+        var metadata = registration.Metadata;
 
-    private static QueryableContextRegistryItem Project(
-        QueryContextMetadata metadata,
-        IReadOnlyCollection<DelegatedQueryViewRegistration> views)
-    {
-        ArgumentNullException.ThrowIfNull(metadata);
-        ArgumentNullException.ThrowIfNull(views);
-
-        return new QueryableContextRegistryItem
+        return new QueryableSourceRegistryItem
         {
-            ContextType = views.First().QueryContextType,
+            SourceType = registration.SourceType,
+            QueryContextType = registration.QueryContextType,
+            ResultType = registration.ResultType,
+            ParametersType = registration.ParametersType,
             Name = metadata.Name,
             Description = metadata.Description,
             DisplayName = metadata.DisplayName,
             Version = metadata.Version,
             Source = metadata.Source,
-            Kind = metadata.Kind,
             Pageable = metadata.Pageable,
             Authorization = metadata.Authorization,
             Fields = metadata.Fields
                 .Select(Project)
                 .ToArray(),
+            Parameters = metadata.Parameters
+                .Select(Project)
+                .ToArray(),
+            OutputFields = metadata.OutputFields
+                .Select(Project)
+                .ToArray(),
             Views = views
-                .OrderBy(x => x.ViewMetadata.Name, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(view => Project(view, metadata.Authorization))
                 .ToArray()
         };
@@ -133,7 +103,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
 
     private static QueryableViewRegistryItem Project(
         QueryViewRegistration registration,
-        AuthorizationMetadata? contextAuthorization)
+        AuthorizationMetadata sourceAuthorization)
     {
         ArgumentNullException.ThrowIfNull(registration);
 
@@ -144,8 +114,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             ViewParametersType = registration.ViewParametersType,
             Name = registration.Metadata.Name,
             Authorization = registration.Metadata.Authorization
-                ?? contextAuthorization
-                ?? AuthorizationMetadata.Unspecified,
+                ?? sourceAuthorization,
             Description = registration.Metadata.Description,
             DisplayName = registration.Metadata.DisplayName,
             Version = registration.Metadata.Version,
@@ -155,36 +124,6 @@ internal sealed class QueryableRegistry : IQueryableRegistry
                 .ToArray()
                 ?? [],
             OutputFields = registration.Metadata.OutputFields?
-                .Select(Project)
-                .ToArray()
-                ?? []
-        };
-    }
-
-    private static QueryableViewRegistryItem Project(
-        DelegatedQueryViewRegistration registration,
-        AuthorizationMetadata? contextAuthorization)
-    {
-        ArgumentNullException.ThrowIfNull(registration);
-
-        return new QueryableViewRegistryItem
-        {
-            QueryViewType = registration.QueryViewType,
-            ViewType = registration.ViewType,
-            ViewParametersType = registration.ViewParametersType,
-            Name = registration.ViewMetadata.Name,
-            Authorization = registration.ViewMetadata.Authorization
-                ?? contextAuthorization
-                ?? AuthorizationMetadata.Unspecified,
-            Description = registration.ViewMetadata.Description,
-            DisplayName = registration.ViewMetadata.DisplayName,
-            Version = registration.ViewMetadata.Version,
-            Pageable = registration.ViewMetadata.Pageable,
-            Parameters = registration.ViewMetadata.Parameters?
-                .Select(Project)
-                .ToArray()
-                ?? [],
-            OutputFields = registration.ViewMetadata.OutputFields?
                 .Select(Project)
                 .ToArray()
                 ?? []

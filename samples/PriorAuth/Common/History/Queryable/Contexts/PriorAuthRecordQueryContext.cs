@@ -3,12 +3,7 @@ using Kaleido.Queryable;
 
 namespace Kaleido.Samples.PriorAuth.History.Queryable.Contexts;
 
-[QueryContext(
-    Name = "prior-auth-records",
-    DisplayName = "Prior Auth Records",
-    Version = "1.0.0",
-    Source = "Prior Auth History Service")]
-public sealed class PriorAuthRecordQueryContext
+public sealed class PriorAuthRecordQueryContext : IQueryContext
 {
     [Key]
     public Guid PriorAuthRecordId { get; init; }

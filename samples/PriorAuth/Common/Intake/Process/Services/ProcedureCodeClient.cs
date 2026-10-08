@@ -14,8 +14,8 @@ public sealed class ProcedureCodeClient(
     {
         var result = await queryableClientFactory
             .GetClient("CodeSet")
-            .QueryContextAsync<ProcedureCodeQueryContext>(
-                "procedure-codes",
+            .QuerySourceAsync<ProcedureCodeQueryContext>(
+                "ProcedureCodeQueryContextSource",
                 new QueryApiRequest
                 {
                     Query = new QueryApiBody

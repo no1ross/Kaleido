@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Kaleido.Http.Queryable;
 using Kaleido.Http.Registry;
 using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
@@ -27,7 +27,7 @@ public sealed class QueryableDiscoveryTests : IClassFixture<QueryableAspNetCoreF
     {
         var registry = await _client.GetFromJsonAsync<AggregatedRegistryResponse>("/kaleido/registry", KaleidoJsonOptions.Options);
 
-        var record = Assert.Single(registry!.Queryables, x => x.Name == "functional-records");
+        var record = Assert.Single(registry!.Queryables, x => x.Name == "FunctionalRecordContextSource");
 
         Assert.Equal("kaleido", record.ServiceName);
         Assert.Equal("Functional records for Queryable HTTP tests.", record.Description);
@@ -42,13 +42,13 @@ public sealed class QueryableDiscoveryTests : IClassFixture<QueryableAspNetCoreF
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var registry = await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(KaleidoJsonOptions.Options);
-        var record = Assert.Single(registry!.Queryables, x => x.Name == "functional-records");
-        var view = Assert.Single(record.Views, x => x.Name == "grid");
+        var record = Assert.Single(registry!.Queryables, x => x.Name == "FunctionalRecordContextSource");
+        var view = Assert.Single(record.Views, x => x.Name == "FunctionalRecordGridView");
 
-        Assert.Equal("/kaleido/queryable/functional-records/query", record.QueryUrl);
+        Assert.Equal("/kaleido/queryable/functionalrecordcontextsource/query", record.QueryUrl);
         Assert.Equal("Grid View", view.DisplayName);
-        Assert.Equal("/kaleido/queryable/functional-records/query", record.QueryUrl);
-        Assert.Equal("/kaleido/queryable/functional-records/grid/query", view.QueryUrl);
+        Assert.Equal("/kaleido/queryable/functionalrecordcontextsource/query", record.QueryUrl);
+        Assert.Equal("/kaleido/queryable/functionalrecordcontextsource/functionalrecordgridview/query", view.QueryUrl);
         Assert.Single(view.Parameters!);
         Assert.NotEmpty(view.OutputFields);
     }

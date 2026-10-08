@@ -5,13 +5,7 @@ using Kaleido.Queryable.Metadata;
 namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 
 // Service-to-service only: queried by Intake to route to a domain processor.
-[QueryContext(
-    Name = "product-code-mappings",
-    DisplayName = "Product Code Mappings",
-    Version = "1.0.0",
-    Source = "Prior Authorization Configuration",
-    Kind = QueryContextKind.Direct)]
-public sealed class ProductCodeMappingQueryContext
+public sealed class ProductCodeMappingQueryContext : IQueryContext
 {
     [Key]
     public Guid ProductCodeMappingId { get; init; }

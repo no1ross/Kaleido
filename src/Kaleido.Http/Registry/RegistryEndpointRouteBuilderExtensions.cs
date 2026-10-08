@@ -358,11 +358,11 @@ public static class RegistryEndpointRouteBuilderExtensions
                 });
         }
 
-        var queryables = new List<QueryableRecordResponse>();
+        var queryables = new List<QueryableSourceResponse>();
 
         foreach (var queryable in response.Queryables)
         {
-            var contextAllowed =
+            var sourceAllowed =
                 await authorizer.CanAccessAsync(queryable.Authorization, cancellationToken);
 
             var views =
@@ -370,7 +370,7 @@ public static class RegistryEndpointRouteBuilderExtensions
                     x => x.Authorization,
                     cancellationToken);
 
-            if (!contextAllowed && views.Count == 0)
+            if (!sourceAllowed && views.Count == 0)
             {
                 continue;
             }
@@ -378,7 +378,7 @@ public static class RegistryEndpointRouteBuilderExtensions
             queryables.Add(
                 queryable with
                 {
-                    QueryUrl = contextAllowed ? queryable.QueryUrl : null,
+                    QueryUrl = sourceAllowed ? queryable.QueryUrl : null,
                     Views = views
                 });
         }
@@ -398,11 +398,11 @@ public static class RegistryEndpointRouteBuilderExtensions
             ? registry.Registrations.Select(r => responseFactory.CreateRegistryResponse(r, serviceOptions))
             : Enumerable.Empty<ProcessorRegistryResponse>();
 
-    private static IEnumerable<QueryableRecordResponse> GetLocalQueryables(
+    private static IEnumerable<QueryableSourceResponse> GetLocalQueryables(
         IQueryableRegistry? registry,
         KaleidoServiceOptions? serviceOptions)
         => registry is not null && serviceOptions is not null
-            ? registry.Registrations.Select(r => QueryableRecordResponse.FromRegistryItem(r, serviceOptions.ServiceName))
+            ? registry.Registrations.Select(r => QueryableSourceResponse.FromRegistryItem(r, serviceOptions.ServiceName))
             : [];
 
     // Union of all downstream client names. Clients whose RoutePrefix equals
@@ -440,7 +440,7 @@ public static class RegistryEndpointRouteBuilderExtensions
     // registries share the KaleidoRemoteRegistry cache, so the second
     // GetRegistryAsync resolves without another HTTP call.
     private static async Task<(IReadOnlyCollection<ProcessorRegistryResponse> Processes,
-                               IReadOnlyCollection<QueryableRecordResponse> Queryables,
+                               IReadOnlyCollection<QueryableSourceResponse> Queryables,
                                IReadOnlyCollection<RegistryClientError> Errors)>
         GetDownstreamAsync(
             IReadOnlyCollection<string> clientNames,
@@ -453,7 +453,7 @@ public static class RegistryEndpointRouteBuilderExtensions
             CancellationToken cancellationToken)
     {
         var processes = new ConcurrentBag<ProcessorRegistryResponse>();
-        var queryables = new ConcurrentBag<QueryableRecordResponse>();
+        var queryables = new ConcurrentBag<QueryableSourceResponse>();
         var errors = new ConcurrentBag<RegistryClientError>();
 
         // Bounds the fan-out when a router aggregates many downstreams —

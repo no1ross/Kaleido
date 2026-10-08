@@ -27,13 +27,15 @@ For the full repository model, see:
 
 ### Queryable runtime
 - `QueryableServiceCollectionExtensions` — `AddQueryable()` (internal, auto-invoked by `AddKaleido()`)
-- `QueryableService` — main dispatch service (delegated view → local view → direct context)
-- `IQueryContextRegistry` / `IQueryViewRegistry` / `IDelegatedQueryViewRegistry` — runtime registries
-- `QueryContextEngine` / `QueryContextExecutor` — query execution pipeline
+- `QueryableService` — main dispatch service (by queried type: view, local source, or delegated source)
+- `IQuerySourceRegistry` / `IQueryViewRegistry` — runtime registries (sources keyed by source type and name; views keyed by view type)
+- `QueryContextEngine` / `DelegatedQuerySourceEngine` / `QueryContextExecutor` — query execution pipeline
 - `IQueryContextExecutor<TView>` — public extension point: register your own implementation to plug in provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`). Default executor uses `IAsyncEnumerable<T>` when supported, sync LINQ otherwise.
 - `QueryRequestCompiler` / `QueryRequestValidator` — validation and compilation
 - `QueryableBuilder` / `QueryableObservability` — builder and observability
-- `IQueryContextSource<T>` / `IQueryContextSourceAsync<T>` / `IQueryViewSource` / `IQueryViewSourceAsync` / `IDelegatedQueryViewSource` — source/view interfaces
+- `IQuerySource<T>` / `IQuerySourceAsync<T>` / `IDelegatedQuerySource<…>` — source interfaces (the identity, described by `[QuerySource]`)
+- `IQueryViewSource<TSource, …>` / `IQueryViewSourceAsync<TSource, …>` — view interfaces (the identity, described by `[QueryView]`)
+- `IQueryContext` / `IQueryParameters` — markers for query context records (query rules) and parameter records
 
 ### Process runtime
 - `ProcessorServiceCollectionExtensions` — `AddProcessor(...)` (internal, auto-invoked by `AddKaleido()`)
@@ -52,7 +54,7 @@ Reference this project when you need to:
 - bootstrap Kaleido with `AddKaleido()` (which auto-registers the Queryable and Process runtimes)
 - register assemblies via `KaleidoServiceOptions.Assemblies` in the `AddKaleido()` configure callback
 - work with shared metadata primitives (`DataTypeMapper`, `ConstraintMapper`)
-- implement a query context source, view source, or step handler
+- implement a query source, query view, delegated query source, or step handler
 - work with correlation context or event publishing
 
 ## What this project is NOT for
@@ -92,29 +94,28 @@ builder.Services.AddKaleido(builder.Configuration, o =>
 
 ---
 
-## Queryable execution lanes
+## Queryable model and execution
 
-Queryable supports three execution lanes, dispatched in this order:
+**The source is the identity; the query context describes how it is queried.** See [`docs/PATTERNS.md`](../../docs/PATTERNS.md) for the canonical shapes.
 
-1. **Delegated view** — async orchestration; returns a pre-materialized `QueryResult<TView>`. Implement `IDelegatedQueryViewSource`.
-2. **Local view** — projection over a local `IQueryable<TContext>`; framework applies search/filter/sort/page. Implement `IQueryViewSource` (or `IQueryViewSourceAsync` when setup requires `await`).
-3. **Direct context** — query the context type itself directly. Valid only for contexts marked `Direct`.
+| Capability | Identity (interface) | Metadata | Public name / route | Who applies search, filter, sort, paging |
+|---|---|---|---|---|
+| **Local source** | `IQuerySource<TQueryContext>` / `IQuerySourceAsync<TQueryContext>` | `[QuerySource]` | `Type.Name` (unique per service), `/{source}/query` | Kaleido, in-process |
+| **Local view** | `IQueryViewSource<TSource, TQueryContext, TView[, TParams]>` / async | `[QueryView]` | `Type.Name` (unique per source), `/{source}/{view}/query` | Kaleido (on the source's queryable), then the view's projection |
+| **Delegated source** | `IDelegatedQuerySource<TQueryContext, TResult[, TParams]>` | `[QuerySource]` | `Type.Name`, `/{source}/query` | the downstream system; Kaleido passes the `QueryResult` through untouched |
 
-Do not change that dispatch order. It is part of the current framework semantics.
-
-### Selection and fallback
-
-- Dispatch is **first-match-wins by view name**: if a view type is registered in both the delegated and local registries, the delegated lane executes. If a view is registered locally *and* its query context permits direct query, the local lane executes. Direct context is the fallback, not the default.
-- Fallback happens only when `Find(viewType)` returns `null` — not on failures. A failing lane is a defect, not a signal to try the next lane.
-- When no lane matches, the caller's generic type arguments drive a reflective `ExecuteWithDiscoveredContextAsync` fallback across context registrations; a bad view→contract pairing is surfaced as `KaleidoFrameworkException`, not silently re-routed.
+- **Discovery is interface-only:** a source or view must carry its attribute, with a non-empty `Version`, `DisplayName` and `Description`.
+- **A type is exactly one capability,** so `QueryableService.QueryAsync<TQuery, TResult>` dispatches by the queried type. A view type runs the view over its source; a local source type runs a direct query; a delegated source type runs the delegated engine. There are no competing lanes and no fallback.
+- **Every local source can be queried directly.** Exposure is controlled by what its query context publishes and by authorization.
+- **A query context may back several sources.** Sources are registered and resolved by their concrete type.
+- **The consumer's query is always validated against the source's query context,** for delegated sources too. Paging comes from the source's `[Pageable]` (direct queries) or the view's (view queries); it is not inherited.
+- **How a source is fulfilled (`QuerySourceKind`: local or delegated) is runtime metadata for the service only.** It is available via `QueryExecutionContext.Metadata` and never published to consumers.
 
 ### Performance implications
 
-- **Delegated views pay full materialization cost** — the source computes and returns the whole `QueryResult<TView>` (typically a cross-service or cross-source aggregation). Nothing downstream re-queries it.
-- **Local views pay projection cost only** — the framework applies request semantics (filter/sort/page) to an `IQueryable<TContext>` in-process; paging bounds memory.
-- **Direct context is the rawest lane** — request semantics applied directly against the context's queryable. The `Direct` kind opt-in is deliberate: exposing the context shape means no view contract shield exists.
-
-The dispatch order is pinned by `QueryableServiceTests` precedence tests — the suite fails if the lane order regresses.
+- **Delegated sources pay full materialization cost:** the source computes and returns the whole `QueryResult<TResult>` (typically a cross-service call). Nothing re-queries it.
+- **Local views pay projection cost only:** the framework applies request semantics (filter/sort/page) to an `IQueryable<TQueryContext>` in-process; paging bounds memory.
+- **Direct source queries are the rawest lane:** request semantics apply directly against the source's queryable and return query context records.
 
 ---
 

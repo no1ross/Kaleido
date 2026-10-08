@@ -4,16 +4,7 @@ using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Samples.PriorAuth.CodeSet.Queryable.Contexts;
 
-[QueryContext(
-    Name = "procedure-codes",
-    DisplayName = "Procedure Codes",
-    Version = "1.0.0",
-    Source = "Prior Authorization Code Set",
-    Kind = QueryContextKind.Direct)]
-[Pageable(
-    DefaultSize = 25,
-    MaxSize = 100)]
-public sealed class ProcedureCodeQueryContext
+public sealed class ProcedureCodeQueryContext : IQueryContext
 {
     [Key]
     public Guid ProcedureCodeId { get; init; }

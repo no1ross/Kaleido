@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 
-import { QueryableView, QueryableRecord, QueryableConstraint } from '../../kaleido/models/queryable-registry';
+import { QueryableView, QueryableSource, QueryableConstraint } from '../../kaleido/models/queryable-registry';
 import { QueryableRegistry } from '../../kaleido/services/queryable-registry';
 
 @Component({
@@ -11,9 +11,9 @@ import { QueryableRegistry } from '../../kaleido/services/queryable-registry';
 })
 export class QueryableRegistryViewer {
 
-    readonly contexts: QueryableRecord[];
+    readonly contexts: QueryableSource[];
 
-    selectedContext?: QueryableRecord;
+    selectedContext?: QueryableSource;
 
     selectedView?: QueryableView;
 
@@ -34,7 +34,7 @@ export class QueryableRegistryViewer {
     }
 
     selectContext(
-        context: QueryableRecord
+        context: QueryableSource
     ): void {
 
         this.selectedContext =

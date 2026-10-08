@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.History.Queryable.ContextSources;
 using Kaleido.Queryable;
 using Kaleido.Samples.PriorAuth.History.Queryable.Contexts;
 using Kaleido.Samples.PriorAuth.History.Queryable.ViewSources.Views;
@@ -5,14 +6,13 @@ using Kaleido.Samples.PriorAuth.History.Queryable.ViewSources.Views;
 namespace Kaleido.Samples.PriorAuth.History.Queryable.ViewSources;
 
 [QueryView(
-    Name = "prior-auth-records",
     DisplayName = "Prior Auth Records",
     Version = "1.0.0",
     Description = "Prior authorization history records for grid display.",
     DefaultSortField = nameof(PriorAuthRecordQueryContext.LastUpdatedUtc))]
 [Pageable(DefaultSize = 25, MaxSize = 100)]
 internal sealed class PriorAuthRecordViewSource
-    : IQueryViewSource<PriorAuthRecordQueryContext, PriorAuthRecordView>
+    : IQueryViewSource<PriorAuthRecordQueryContextSource, PriorAuthRecordQueryContext, PriorAuthRecordView>
 {
     public IQueryable<PriorAuthRecordView> CreateView(
         IQueryable<PriorAuthRecordQueryContext> query,

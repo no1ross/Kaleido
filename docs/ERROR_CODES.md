@@ -25,11 +25,10 @@ One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup 
 
 | Constant | Code | Meaning |
 |---|---|---|
-| `MissingAttribute` | `qry_missing_attribute` | Context or view missing `[QueryContext]`/`[QueryView]` (startup) |
-| `MissingSource` | `qry_missing_source` | Context has no registered source (startup) |
-| `DuplicateSource` | `qry_duplicate_source` | Context has multiple registered sources (startup) |
-| `DuplicateRegistration` | `qry_duplicate_registration` | Duplicate context or view names (startup) |
-| `InvalidRegistration` | `qry_invalid_registration` | Structurally invalid registration (startup) |
+| `MissingAttribute` | `qry_missing_attribute` | Query source or view missing `[QuerySource]`/`[QueryView]`, or with an empty `Version`/`DisplayName`/`Description` (startup) |
+| `MissingSource` | `qry_missing_source` | Query view references a type that is not a registered local query source (startup) |
+| `DuplicateRegistration` | `qry_duplicate_registration` | Two sources share a type name, or two views of one source share a type name (startup) |
+| `InvalidRegistration` | `qry_invalid_registration` | Structurally invalid registration, for example both sync and async shapes, more than one source/view interface, a type that is both a source and a view, or a bad default sort field (startup) |
 | `InvalidField` | `qry_invalid_field` | Field referenced in a filter, sort, or parameter does not exist on the query context |
 | `UnsupportedOperator` | `qry_unsupported_operator` | Filter condition uses an operator not supported by the field |
 | `FieldNotFilterable` | `qry_field_not_filterable` | Filter condition references a field not marked as filterable |
@@ -149,40 +148,6 @@ The reference provider owns its own code; core knows nothing about it.
 
 ## Analyzer rules (KAL2xxx)
 
-The `Kaleido` NuGet package bundles `Kaleido.Analyzers` — a Roslyn analyzer that surfaces framework misuse at **compile time** rather than at runtime startup. Errors (KAL2001–KAL2003, KAL2010–KAL2011) prevent compilation; warnings (KAL2004, KAL2005, KAL2008, KAL2009) are advisory.
-
-### Attribute validity (KAL2001–KAL2003)
-
-| Rule | Severity | Trigger |
-|---|---|---|
-| `KAL2001` | Error | `[ProcessStep]` has an empty `Version`, `DisplayName`, or `Description` |
-| `KAL2002` | Error | `[QueryContext]` has an empty `Name` or `Version` |
-| `KAL2003` | Error | `[QueryView]` has an empty `Name` or `Version` |
-
-These are compile-time equivalents of the `ProcessorErrorCodes.MissingAttribute` / `QueryableErrorCodes.MissingAttribute` runtime errors. Catching them at compile time prevents the process from failing at startup.
-
-### Handler and step conventions (KAL2004, KAL2008, KAL2010, KAL2011)
-
-| Rule | Severity | Trigger |
-|---|---|---|
-| `KAL2004` | Warning | `ExecuteAsync` in an `IProcessStepHandler<T>` has a bare `catch (Exception)` without an `OperationCanceledException` filter |
-| `KAL2008` | Warning | `IProcessStep` type has no `IProcessStepHandler<TStep>` in the same compilation |
-| `KAL2010` | Error | `[ProcessStep]` is applied to a type that does not implement `IProcessStep` (runtime: `ProcessorErrorCodes.InvalidRegistration`) |
-| `KAL2011` | Error | A concrete `IProcessStep` type has no `[ProcessStep]` attribute (runtime: `ProcessorErrorCodes.MissingAttribute`) |
-
-KAL2004 enforces the cancellation-observability rule from `AGENTS.md`: a bare `catch (Exception)` in a step handler swallows `OperationCanceledException`, inflating error metrics. Add `when (ex is not OperationCanceledException)` or a preceding `catch (OperationCanceledException)`.
-
-KAL2008 is the compile-time equivalent of `ProcessorErrorCodes.MissingHandler`. It fires when the handler is missing from the **same** compilation; cross-assembly handlers suppress the warning.
-
-### Bootstrap conventions (KAL2005, KAL2009)
-
-| Rule | Severity | Trigger |
-|---|---|---|
-| `KAL2005` | Warning | `o.ServiceName` is assigned a string literal containing uppercase letters, spaces, hyphens, or underscores |
-| `KAL2009` | Warning | `AddKaleido(config, o => { ... })` lambda never references `o.Assemblies` |
-
-`ServiceName` is used verbatim as the HTTP route prefix — it must be lowercase with no separators (e.g. `"priorauth"` not `"PriorAuth"`).
-
-`Assemblies` must contain at least one explicit assembly. `AddKaleido()` throws `missing_assembly` at registration for null or empty lists; there is no calling-assembly fallback. KAL2009 warns when an options lambda omits the assignment, but runtime validation is authoritative.
+The `Kaleido` package bundles compile-time checks (`KAL2xxx`) that catch most startup registration failures above in consumer code before it runs. They are build diagnostics, not runtime codes; see [consumer rules in `ANALYZERS.md`](./ANALYZERS.md#consumer-rules--kal2xxx) for the rules, severities and the runtime code each one mirrors.
 
 Aggregate registries (`MapKaleidoHttp(o => o.AggregateRegistry = true)`) require `AddHttpClients()` — enforced at map time by a `KaleidoConfigurationException`, so no analyzer rule covers it.

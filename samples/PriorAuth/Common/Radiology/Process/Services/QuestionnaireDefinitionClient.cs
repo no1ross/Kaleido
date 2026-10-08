@@ -28,8 +28,8 @@ public sealed class QuestionnaireDefinitionClient(
         var result = await queryableClientFactory
             .GetClient("Configuration")
             .QueryViewAsync<QuestionnaireDefinitionViewParameters, QuestionnaireDefinitionView>(
-                "questionnaire-definitions",
-                "questionnaire-definition",
+                "QuestionnaireDefinitionQueryContextSource",
+                "QuestionnaireDefinitionViewSource",
                 new QueryApiRequest<QuestionnaireDefinitionViewParameters>
                 {
                     Parameters = new QuestionnaireDefinitionViewParameters

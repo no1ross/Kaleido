@@ -33,7 +33,7 @@ public sealed class AuthorizationEndpointTests(
         $"/kaleido/processes/{processId}/transfer";
 
     private const string SecuredContextQueryUrl =
-        "/kaleido/queryable/secured-records/query";
+        "/kaleido/queryable/securedrecordcontextsource/query";
 
     private static readonly object StepBody =
         new { processStep = new { } };
@@ -280,7 +280,7 @@ public sealed class AuthorizationEndpointTests(
         Assert.DoesNotContain(
             registry!.Queryables,
             r => r.Name.Equals(
-                "secured-records",
+                "SecuredRecordContextSource",
                 StringComparison.OrdinalIgnoreCase));
     }
 
@@ -298,10 +298,10 @@ public sealed class AuthorizationEndpointTests(
         var registry =
             await response.Content.ReadAsync<AggregatedRegistryResponse>();
 
-        var context = Assert.Single(registry!.Queryables, r => r.Name == "secured-records");
+        var context = Assert.Single(registry!.Queryables, r => r.Name == "SecuredRecordContextSource");
         Assert.Null(context.QueryUrl);
-        Assert.Contains(context.Views, view => view.Name == "admin-view");
-        Assert.Contains(context.Views, view => view.Name == "internal-view");
+        Assert.Contains(context.Views, view => view.Name == "SecuredAdminView");
+        Assert.Contains(context.Views, view => view.Name == "SecuredInternalView");
     }
 
     [Fact]
@@ -330,10 +330,10 @@ public sealed class AuthorizationEndpointTests(
 
         var secured = Assert.Single(
             registry!.Queryables,
-            r => r.Name.Equals("secured-records", StringComparison.OrdinalIgnoreCase));
+            r => r.Name.Equals("SecuredRecordContextSource", StringComparison.OrdinalIgnoreCase));
 
-        Assert.Contains(secured.Views, v => v.Name == "internal-view");
-        Assert.DoesNotContain(secured.Views, v => v.Name == "admin-view");
+        Assert.Contains(secured.Views, v => v.Name == "SecuredInternalView");
+        Assert.DoesNotContain(secured.Views, v => v.Name == "SecuredAdminView");
     }
 
     // -- process ownership ---------------------------------------------------

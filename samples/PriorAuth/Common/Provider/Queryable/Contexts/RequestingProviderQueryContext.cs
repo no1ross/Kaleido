@@ -4,13 +4,7 @@ using Kaleido.Queryable;
 namespace Kaleido.Samples.PriorAuth.Provider.Queryable.Contexts;
 
 // Service-to-service only: queried by Radiology (RequestingProviderSearchClient).
-[QueryContext(
-    Name = "requesting-providers",
-    DisplayName = "Requesting Providers",
-    Version = "1.0.0",
-    Source = "Prior Authorization Provider Search")]
-[Pageable(DefaultSize = 25, MaxSize = 250)]
-public sealed class RequestingProviderQueryContext
+public sealed class RequestingProviderQueryContext : IQueryContext
 {
     [Key]
     public Guid ProviderLocationId { get; init; }

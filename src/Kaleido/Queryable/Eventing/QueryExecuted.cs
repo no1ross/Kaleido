@@ -9,7 +9,7 @@ public sealed record QueryExecuted : IQueryEvent
 {
     public required DateTimeOffset OccurredOn { get; init; }
 
-    public required string QueryContextName { get; init; }
+    public required string QuerySourceName { get; init; }
 
     public string? QueryViewName { get; init; }
 

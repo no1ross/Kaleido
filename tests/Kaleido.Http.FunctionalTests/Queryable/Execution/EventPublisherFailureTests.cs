@@ -49,7 +49,7 @@ public sealed class EventPublisherFailureTests
 
         using var content = new StringContent("""{ "query": {} }""", Encoding.UTF8, "application/json");
         using var response = await host.GetTestClient().PostAsync(
-            "/kaleido/queryable/functional-records/query",
+            "/kaleido/queryable/functionalrecordcontextsource/query",
             content,
             TestContext.Current.CancellationToken);
 

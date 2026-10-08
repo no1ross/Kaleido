@@ -122,7 +122,7 @@ step handler / consumer code
 ```
 
 - Inbound per-hop values are never forwarded: a call made outside a step (router
-  forwarding, registry fan-out, a delegated view) carries no calling processor or step.
+  forwarding, registry fan-out, a delegated query source) carries no calling processor or step.
 - The stamper is scoped (`ICorrelationHeaderStamper`), so the stamped values always
   reflect the correlation context of the request being served — handlers never touch
   headers manually.

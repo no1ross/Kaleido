@@ -1,3 +1,4 @@
+using Kaleido.Registry;
 using Kaleido.Exceptions;
 
 namespace Kaleido.Queryable.Query.UnitTests;
@@ -29,7 +30,7 @@ public sealed class QueryRequestValidatorTests
                 Sort: [new QuerySort("Code", SortDirection.Ascending)],
                 Page: new QueryPage(10, 0)));
 
-        _validator.Validate(request, CreateRegistration());
+        Validate(request, CreateMetadata());
     }
 
     [Fact]
@@ -37,7 +38,7 @@ public sealed class QueryRequestValidatorTests
     {
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("", FilterOperator.Equals, "A")));
 
-        var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
         Assert.Equal(QueryableErrorCodes.MissingFilterField, ex.Code);
     }
 
@@ -46,7 +47,7 @@ public sealed class QueryRequestValidatorTests
     {
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Missing", FilterOperator.Equals, "A")));
 
-        var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
         Assert.Equal(QueryableErrorCodes.InvalidField, ex.Code);
     }
 
@@ -55,7 +56,7 @@ public sealed class QueryRequestValidatorTests
     {
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Description", FilterOperator.Equals, "A")));
 
-        var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
         Assert.Equal(QueryableErrorCodes.FieldNotFilterable, ex.Code);
     }
 
@@ -64,7 +65,7 @@ public sealed class QueryRequestValidatorTests
     {
         var request = new QueryRequest(new QueryBody(Sort: [new QuerySort("Code", SortDirection.Ascending), new QuerySort("Code", SortDirection.Descending)]));
 
-        var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
         Assert.Equal(QueryableErrorCodes.DuplicateSortField, ex.Code);
     }
 
@@ -73,7 +74,7 @@ public sealed class QueryRequestValidatorTests
     {
         var request = new QueryRequest(new QueryBody(Sort: [new QuerySort("Description", SortDirection.Ascending)]));
 
-        var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
         Assert.Equal(QueryableErrorCodes.FieldNotSortable, ex.Code);
     }
 
@@ -82,7 +83,7 @@ public sealed class QueryRequestValidatorTests
     {
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateGroup(LogicalOperator.And)));
 
-        var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
         Assert.Equal(QueryableErrorCodes.EmptyFilterGroup, ex.Code);
     }
 
@@ -91,7 +92,7 @@ public sealed class QueryRequestValidatorTests
     {
         var request = new QueryRequest(new QueryBody(Page: new QueryPage(999, 0)));
 
-        var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistration()));
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
         Assert.Equal(QueryableErrorCodes.InvalidPageSize, ex.Code);
     }
 
@@ -100,42 +101,44 @@ public sealed class QueryRequestValidatorTests
     {
         var request = new QueryRequest(new QueryBody(SearchText: "abc"));
 
-        var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateRegistrationWithoutSearchableFields()));
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadataWithoutSearchableFields()));
         Assert.Equal(QueryableErrorCodes.FieldNotSearchable, ex.Code);
     }
 
-    private static QueryContextRegistration CreateRegistration() =>
-        new(
-            typeof(TestRecord),
-            typeof(object),
-            new QueryContextMetadata(
-                "test-record",
-                "Test Record",
-                "Test Record",
-                "1.0.0",
-                "Unit Test",
-                QueryContextKind.Direct,
-                new PageableMetadata(25, 100),
-                [
-                    new FieldMetadata("Code", null, typeof(string), TestDataType, true, [FilterOperator.Equals], false, null, null, true),
-                    new FieldMetadata("Description", null, typeof(string), TestDataType, false, [], true, 1, MatchMode.Contains, false)
-                ]));
-
-    private static QueryContextRegistration CreateRegistrationWithoutSearchableFields() =>
-        new(
-            typeof(TestRecord),
-            typeof(object),
-            new QueryContextMetadata(
-                "test-record",
-                "Test Record",
-                "Test Record",
-                "1.0.0",
-                "Unit Test",
-                QueryContextKind.Direct,
-                new PageableMetadata(25, 100),
-                [new FieldMetadata("Code", null, typeof(string), TestDataType, true, [FilterOperator.Equals], false, null, null, true)]));
-
-    private sealed class TestRecord
+    [Fact]
+    public void Validate_WhenPageRequestedButNotPageable_Throws()
     {
+        var request = new QueryRequest(new QueryBody(Page: new QueryPage(10, 0)));
+
+        var ex = Assert.Throws<KaleidoValidationException>(() => _validator.Validate(request, CreateMetadata(), pageable: null));
+        Assert.Equal(QueryableErrorCodes.PagingNotSupported, ex.Code);
     }
+
+    private void Validate(IQueryRequest request, QuerySourceMetadata metadata) =>
+        _validator.Validate(request, metadata, metadata.Pageable);
+
+    private static QuerySourceMetadata CreateMetadata() =>
+        CreateMetadata(
+            [
+                new FieldMetadata("Code", null, typeof(string), TestDataType, true, [FilterOperator.Equals], false, null, null, true),
+                new FieldMetadata("Description", null, typeof(string), TestDataType, false, [], true, 1, MatchMode.Contains, false)
+            ]);
+
+    private static QuerySourceMetadata CreateMetadataWithoutSearchableFields() =>
+        CreateMetadata(
+            [new FieldMetadata("Code", null, typeof(string), TestDataType, true, [FilterOperator.Equals], false, null, null, true)]);
+
+    private static QuerySourceMetadata CreateMetadata(IReadOnlyList<FieldMetadata> fields) =>
+        new(
+            "TestSource",
+            "Test source",
+            "Test Source",
+            "1.0.0",
+            "Unit Test",
+            QuerySourceKind.Local,
+            new PageableMetadata(25, 100),
+            fields,
+            [],
+            [],
+            AuthorizationMetadata.Unspecified);
 }

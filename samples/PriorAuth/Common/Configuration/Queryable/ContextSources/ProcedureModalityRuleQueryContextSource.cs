@@ -5,9 +5,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.ContextSources;
 
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Procedure Modality Rules",
+    Description = "Rules that map procedure codes to an imaging modality (for example MRI or CT).",
+    Source = "Prior Authorization Configuration")]
 internal sealed class ProcedureModalityRuleQueryContextSource(
     ConfigurationDbContext dbContext)
-    : IQueryContextSource<ProcedureModalityRuleQueryContext>
+    : IQuerySource<ProcedureModalityRuleQueryContext>
 {
     public IQueryable<ProcedureModalityRuleQueryContext> CreateQuery(
         QueryExecutionContext executionContext)

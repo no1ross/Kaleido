@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 
 import {
-    QueryableRecord,
+    QueryableSource,
     QueryableView,
     QueryableViewRegistration
 } from '../models/queryable-registry';
@@ -12,7 +12,7 @@ import { RegistryConflict } from '../../registries/registry-catalog';
 })
 export class QueryableRegistry {
     private readonly contextsByName =
-        new Map<string, QueryableRecord>();
+        new Map<string, QueryableSource>();
 
     private readonly viewsByName =
         new Map<string, QueryableViewRegistration>();
@@ -20,7 +20,7 @@ export class QueryableRegistry {
     private conflicts: readonly RegistryConflict[] = [];
 
     populateRegistry(
-        contexts: readonly { context: QueryableRecord }[],
+        contexts: readonly { context: QueryableSource }[],
         views: readonly QueryableViewRegistration[],
         conflicts: readonly RegistryConflict[]
     ): void {
@@ -37,7 +37,7 @@ export class QueryableRegistry {
         }
     }
 
-    getContext(name: string): QueryableRecord {
+    getContext(name: string): QueryableSource {
         const entry = this.tryGetContext(name);
 
         if (!entry) {
@@ -47,7 +47,7 @@ export class QueryableRegistry {
         return entry;
     }
 
-    tryGetContext(name: string): QueryableRecord | undefined {
+    tryGetContext(name: string): QueryableSource | undefined {
         return this.contextsByName.get(name);
     }
 
@@ -73,7 +73,7 @@ export class QueryableRegistry {
         return this.tryGetViewRegistration(name)?.view;
     }
 
-    getContexts(): readonly QueryableRecord[] {
+    getContexts(): readonly QueryableSource[] {
         return Array.from(this.contextsByName.values());
     }
 

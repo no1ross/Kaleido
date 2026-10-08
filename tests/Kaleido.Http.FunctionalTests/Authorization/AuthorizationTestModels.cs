@@ -73,22 +73,20 @@ public sealed class AuthorizedOpenStepHandler
                 new AuthorizedStepResponse()));
 }
 
-[QueryContext(
-    Name = "secured-records",
-    DisplayName = "Secured Records",
-    Description = "Role-secured records for authorization tests.",
-    Version = "1.0.0",
-    Kind = QueryContextKind.Direct)]
-[KaleidoAuthorization(Roles = "internal")]
-public sealed class SecuredRecordContext
+public sealed class SecuredRecordContext : IQueryContext
 {
     [Filterable(FilterOperator.Equals)]
     [Sortable]
     public int Id { get; init; }
 }
 
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Secured Records",
+    Description = "Role-secured records for authorization tests.")]
+[KaleidoAuthorization(Roles = "internal")]
 public sealed class SecuredRecordContextSource
-    : IQueryContextSource<SecuredRecordContext>
+    : IQuerySource<SecuredRecordContext>
 {
     public IQueryable<SecuredRecordContext> CreateQuery(
         QueryExecutionContext executionContext) =>
@@ -104,14 +102,13 @@ public sealed record SecuredRecordView
 }
 
 [QueryView(
-    Name = "admin-view",
     DisplayName = "Admin View",
     Description = "Admin-only view over secured records.",
     Version = "1.0.0",
     DefaultSortField = nameof(SecuredRecordContext.Id))]
 [KaleidoAuthorization(Roles = "admin")]
 public sealed class SecuredAdminView
-    : IQueryViewSource<SecuredRecordContext, SecuredRecordView>
+    : IQueryViewSource<SecuredRecordContextSource, SecuredRecordContext, SecuredRecordView>
 {
     public IQueryable<SecuredRecordView> CreateView(
         IQueryable<SecuredRecordContext> query,
@@ -120,14 +117,13 @@ public sealed class SecuredAdminView
 }
 
 [QueryView(
-    Name = "internal-view",
     DisplayName = "Internal View",
     Description = "Internal view over secured records.",
     Version = "1.0.0",
     DefaultSortField = nameof(SecuredRecordContext.Id))]
 [KaleidoAuthorization(Roles = "internal,admin")]
 public sealed class SecuredInternalView
-    : IQueryViewSource<SecuredRecordContext, SecuredRecordView>
+    : IQueryViewSource<SecuredRecordContextSource, SecuredRecordContext, SecuredRecordView>
 {
     public IQueryable<SecuredRecordView> CreateView(
         IQueryable<SecuredRecordContext> query,

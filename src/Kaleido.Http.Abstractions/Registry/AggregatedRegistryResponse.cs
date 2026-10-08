@@ -22,7 +22,7 @@ public sealed record AggregatedRegistryResponse
     /// All queryable context registrations from this processor's local contexts
     /// and all downstream queryable clients registered via <c>AddQueryableClient()</c>.
     /// </summary>
-    public IReadOnlyCollection<QueryableRecordResponse> Queryables { get; init; }
+    public IReadOnlyCollection<QueryableSourceResponse> Queryables { get; init; }
         = [];
 
     /// <summary>

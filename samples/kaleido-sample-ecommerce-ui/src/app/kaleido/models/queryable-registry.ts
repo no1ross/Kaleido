@@ -1,4 +1,4 @@
-export interface QueryableRecord {
+export interface QueryableSource {
     name: string;
     description: string;
     displayName: string;
@@ -91,7 +91,7 @@ export interface QueryableConstraintParameter {
 
 export interface QueryableViewRegistration {
 
-    context: QueryableRecord;
+    context: QueryableSource;
 
     view: QueryableView;
 }

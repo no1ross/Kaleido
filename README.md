@@ -63,7 +63,7 @@ app.MapKaleidoHttp();
 app.Run();
 ```
 
-Kaleido discovers annotated Queryable contexts, views, Process steps, and handlers from the configured assemblies, validates their registrations at startup, and publishes their HTTP surfaces and metadata. `Assemblies` is required even for client-only hosts; a missing or empty list fails at `AddKaleido()` with `missing_assembly` instead of scanning an implicit calling assembly.
+Kaleido discovers Queryable sources and views, Process steps, and handlers from the configured assemblies, validates their registrations at startup, and publishes their HTTP surfaces and metadata. `Assemblies` is required even for client-only hosts; a missing or empty list fails at `AddKaleido()` with `missing_assembly` instead of scanning an implicit calling assembly.
 
 For durable Process state, add the SQLite provider:
 
@@ -86,7 +86,7 @@ Queryable answers:
 
 > **What information does the business know?**
 
-A context describes discoverable data. Views describe supported projections and parameters. Metadata communicates searchable, filterable, and sortable fields, paging limits, data types, and validation constraints.
+A query source publishes discoverable data; its query context describes how it can be searched, filtered, and sorted. Views describe supported projections and parameters. Metadata communicates searchable, filterable, and sortable fields, paging limits, data types, and validation constraints.
 
 ### Process
 

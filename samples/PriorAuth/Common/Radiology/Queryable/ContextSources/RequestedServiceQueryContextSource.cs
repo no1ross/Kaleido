@@ -5,9 +5,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Queryable.ContextSources;
 
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Requested Services",
+    Description = "Services requested on a radiology prior authorization.",
+    Source = "Prior Authorization Radiology")]
 internal sealed class RequestedServiceQueryContextSource(
     RadiologyDbContext dbContext)
-    : IQueryContextSource<RequestedServiceQueryContext>
+    : IQuerySource<RequestedServiceQueryContext>
 {
     public IQueryable<RequestedServiceQueryContext> CreateQuery(
         QueryExecutionContext executionContext)

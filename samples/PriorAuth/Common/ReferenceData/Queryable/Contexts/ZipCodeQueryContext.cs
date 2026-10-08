@@ -4,16 +4,7 @@ using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Samples.PriorAuth.ReferenceData.Queryable.Contexts;
 
-[QueryContext(
-    Name = "zipcodes",
-    DisplayName = "Zip Codes",
-    Version = "1.0.0",
-    Source = "Prior Authorization Reference Data",
-    Kind = QueryContextKind.Direct)]
-[Pageable(
-    DefaultSize = 25,
-    MaxSize = 250)]
-public sealed class ZipCodeQueryContext
+public sealed class ZipCodeQueryContext : IQueryContext
 {
     [Key]
     [Searchable(

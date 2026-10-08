@@ -92,8 +92,8 @@ export class ProductResults implements OnInit, OnDestroy {
                 ProductsByCategoryParameters | undefined;
 
         return parameters?.categoryPath
-            ? 'product-by-category'
-            : 'product-list';
+            ? 'ProductByCategoryQueryViewSource'
+            : 'ProductListQueryViewSource';
     }
 
     private loadProducts(): void {

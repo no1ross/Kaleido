@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
 
@@ -14,7 +14,7 @@ internal sealed class KaleidoQueryableClient(
     TimeSpan? registryTtl = null)
     : IKaleidoQueryableClient
 {
-    public async Task<IReadOnlyList<QueryableRecordResponse>> GetRegistryAsync(
+    public async Task<IReadOnlyList<QueryableSourceResponse>> GetRegistryAsync(
         CancellationToken cancellationToken = default)
     {
         return await EnsureRegistryAsync(cancellationToken);
@@ -23,63 +23,79 @@ internal sealed class KaleidoQueryableClient(
     public void InvalidateRegistry() => remoteRegistry.Invalidate(clientName);
 
     public async Task<QueryResult<TView>> QueryViewAsync<TParameters, TView>(
-        string context,
+        string source,
         string view,
         QueryApiRequest<TParameters> request,
         CancellationToken cancellationToken = default)
         where TParameters : class
         where TView : class
     {
-        var registry = await EnsureRegistryAsync(cancellationToken);
+        var sourceEntry = await FindSourceAsync(source, view, cancellationToken);
 
-        var contextRecord = registry.FirstOrDefault(
-            r => string.Equals(r.Name, context, StringComparison.OrdinalIgnoreCase))
-            ?? throw new KaleidoHttpClientException(
-                HttpClientErrorCodes.NotFound,
-                $"{callerServiceName} tried to call view '{view}' on context '{context}', but the context was not found in the remote registry.",
-                HttpStatusCode.NotFound);
-
-        var viewRecord = contextRecord.Views.FirstOrDefault(
+        var viewEntry = sourceEntry.Views.FirstOrDefault(
             v => string.Equals(v.Name, view, StringComparison.OrdinalIgnoreCase))
             ?? throw new KaleidoHttpClientException(
                 HttpClientErrorCodes.NotFound,
-                $"{callerServiceName} tried to call view '{view}' on context '{context}', but the view was not found in the remote registry.",
+                $"{callerServiceName} tried to call view '{view}' on source '{source}', but the view was not found in the remote registry.",
                 HttpStatusCode.NotFound);
 
-        return await SendQueryAsync<TView>(viewRecord.QueryUrl, request, cancellationToken, context, view);
+        return await SendQueryAsync<TView>(viewEntry.QueryUrl, request, cancellationToken, source, view);
     }
 
-    public async Task<QueryResult<TView>> QueryContextAsync<TView>(
-        string context,
+    public Task<QueryResult<TResult>> QuerySourceAsync<TResult>(
+        string source,
         QueryApiRequest request,
         CancellationToken cancellationToken = default)
-        where TView : class
+        where TResult : class =>
+        QuerySourceCoreAsync<TResult>(source, request, cancellationToken);
+
+    public Task<QueryResult<TResult>> QuerySourceAsync<TParameters, TResult>(
+        string source,
+        QueryApiRequest<TParameters> request,
+        CancellationToken cancellationToken = default)
+        where TParameters : class
+        where TResult : class =>
+        QuerySourceCoreAsync<TResult>(source, request, cancellationToken);
+
+    private async Task<QueryResult<TResult>> QuerySourceCoreAsync<TResult>(
+        string source,
+        object request,
+        CancellationToken cancellationToken)
+        where TResult : class
     {
-        var registry = await EnsureRegistryAsync(cancellationToken);
+        var sourceEntry = await FindSourceAsync(source, null, cancellationToken);
 
-        var contextRecord = registry.FirstOrDefault(
-            r => string.Equals(r.Name, context, StringComparison.OrdinalIgnoreCase))
-            ?? throw new KaleidoHttpClientException(
-                HttpClientErrorCodes.NotFound,
-                $"{callerServiceName} tried to call context '{context}', but the context was not found in the remote registry.",
-                HttpStatusCode.NotFound);
-
-        if (string.IsNullOrEmpty(contextRecord.QueryUrl))
+        if (string.IsNullOrEmpty(sourceEntry.QueryUrl))
         {
             throw new KaleidoHttpClientException(
                 HttpClientErrorCodes.NotFound,
-                $"{callerServiceName} tried to call context '{context}', but the context does not support direct queries (no QueryUrl). Only Direct contexts expose a query URL.",
+                $"{callerServiceName} tried to call source '{source}', but the remote registry does not expose a query URL for it to this caller.",
                 HttpStatusCode.NotFound);
         }
 
-        return await SendQueryAsync<TView>(contextRecord.QueryUrl, request, cancellationToken, context, null);
+        return await SendQueryAsync<TResult>(sourceEntry.QueryUrl, request, cancellationToken, source, null);
+    }
+
+    private async Task<QueryableSourceResponse> FindSourceAsync(
+        string source,
+        string? view,
+        CancellationToken cancellationToken)
+    {
+        var registry = await EnsureRegistryAsync(cancellationToken);
+
+        return registry.FirstOrDefault(
+            r => string.Equals(r.Name, source, StringComparison.OrdinalIgnoreCase))
+            ?? throw new KaleidoHttpClientException(
+                HttpClientErrorCodes.NotFound,
+                $"{callerServiceName} tried to call {FormatTarget(source, view)}, but the source was not found in the remote registry.",
+                HttpStatusCode.NotFound);
     }
 
     private async Task<QueryResult<TView>> SendQueryAsync<TView>(
         string url,
         object request,
         CancellationToken cancellationToken,
-        string? context = null,
+        string? source = null,
         string? view = null)
         where TView : class
     {
@@ -101,7 +117,7 @@ internal sealed class KaleidoQueryableClient(
                        cancellationToken)
                    ?? throw new KaleidoHttpClientException(
                        HttpClientErrorCodes.EmptyResponse,
-                       $"{callerServiceName} tried to call {FormatTarget(context, view)}, but the request succeeded and returned no payload.",
+                       $"{callerServiceName} tried to call {FormatTarget(source, view)}, but the request succeeded and returned no payload.",
                        response.StatusCode);
         }
 
@@ -116,25 +132,25 @@ internal sealed class KaleidoQueryableClient(
         {
             throw new KaleidoHttpClientException(
                 HttpClientErrorCodes.ValidationFailed,
-                $"{callerServiceName} tried to call {FormatTarget(context, view)}, but the request failed: {string.Join(" ", errorResponse.Errors.Select(e => e.Message))}",
+                $"{callerServiceName} tried to call {FormatTarget(source, view)}, but the request failed: {string.Join(" ", errorResponse.Errors.Select(e => e.Message))}",
                 response.StatusCode,
                 errorResponse.Errors);
         }
 
         throw new KaleidoHttpClientException(
             HttpClientErrorCodes.RequestFailed,
-            $"{callerServiceName} tried to call {FormatTarget(context, view)}, but the request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
+            $"{callerServiceName} tried to call {FormatTarget(source, view)}, but the request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
             response.StatusCode);
     }
 
-    private static string FormatTarget(string? context, string? view)
+    private static string FormatTarget(string? source, string? view)
     {
         if (!string.IsNullOrEmpty(view))
         {
-            return $"view '{view}' on context '{context}'";
+            return $"view '{view}' on source '{source}'";
         }
 
-        return $"context '{context}'";
+        return $"source '{source}'";
     }
 
     private async Task<HttpResponseMessage> SendAsync(
@@ -163,7 +179,7 @@ internal sealed class KaleidoQueryableClient(
         return response;
     }
 
-    private async Task<IReadOnlyList<QueryableRecordResponse>> EnsureRegistryAsync(
+    private async Task<IReadOnlyList<QueryableSourceResponse>> EnsureRegistryAsync(
         CancellationToken cancellationToken) =>
         [.. (await remoteRegistry.GetAsync(clientName, callerServiceName, registryTtl, headerStamper, cancellationToken)).Queryables];
 }

@@ -98,14 +98,21 @@ Be careful when changing:
 - conversion error behavior
 
 ### Queryable runtime rules
-The dispatch order in `QueryableService` is fixed:
-1. delegated view registry
-2. local view registry
-3. direct context registry fallback
+Registration invariants:
+- **The source is the identity; the query context describes how it is queried.** Discovery is interface-only:
+  - sources: `IQuerySource<T>`, `IQuerySourceAsync<T>`, `IDelegatedQuerySource<…>`;
+  - views: `IQueryViewSource<TSource, …>`, `IQueryViewSourceAsync<TSource, …>`.
 
-Do not change that order. It is published framework semantics.
+  Every source needs `[QuerySource]` and every view `[QueryView]`, each with a non-empty `Version`, `DisplayName` and `Description`.
+- **Names are type names:** source names are unique per service; view names are unique per source.
+- **A type is exactly one capability:** one source shape (sync xor async, one query context; local xor delegated) or one view shape. A view must reference a registered local source.
+- **A query context may back several sources.** Sources are registered and resolved by their concrete type, never as `IQuerySource<T>`.
 
-`QueryContextKind` semantics, pageable/default-sort validation behavior, and the context-centric discovery model must stay stable unless the semantics are intentionally changing.
+Runtime invariants:
+- **`QueryableService` dispatches by the queried type** (view, local source, delegated source). Because each type is exactly one capability, there is no lane order or fallback.
+- **The consumer's query is validated against the source's query context before execution, delegated sources included.** A delegated source's `QueryResult` (including its paging) is returned untouched.
+- **`QuerySourceKind` (local or delegated) is service-side runtime metadata.** It must not be published on the registry or wire contracts; consumers see every source the same way.
+- **Paging is per capability:** the source's `[Pageable]` applies to direct queries, a view's to that view; it is never inherited. A pageable view must declare a sortable `DefaultSortField`.
 
 ### Process runtime rules
 Process is step-centric, not query-centric. Do not import Queryable terminology into Process code or docs.
@@ -158,7 +165,7 @@ Core runtime types (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirec
 
 `QueryResult<T>.TotalCount` semantics: equals `results.Count` when `page` is absent from the request (caller got all results, no count query ran), or when `page` is present but the returned page is partial (`results.Count < page.Size`). Only when `page` is provided AND the page is full does `TotalCount` equal the true unfiltered count — `CountAsync` runs only in that case.
 
-When a delegated view source (`IDelegatedQueryViewSource`) receives a `QueryBody` and needs to forward it over HTTP, use `query.ToApiBody()` from `Kaleido.Http.Abstractions` — samples and consumers should only reference `Kaleido.Http.Abstractions`, not `Kaleido.Http` (which carries ASP.NET Core dependencies).
+When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` and needs to forward it over HTTP, use `query.ToApiBody()` from `Kaleido.Http.Abstractions` — samples and consumers should only reference `Kaleido.Http.Abstractions`, not `Kaleido.Http` (which carries ASP.NET Core dependencies).
 
 ---
 
@@ -178,8 +185,8 @@ When a delegated view source (`IDelegatedQueryViewSource`) receives a `QueryBody
 - the default no-op event publisher
 - `DataTypeMapper` scalar/format conventions
 - `ConstraintMapper` constraint naming and parameter conventions
-- `QueryableService` dispatch order
-- `QueryContextKind` semantics
+- Queryable registration invariants (interface identity, type-name naming, one capability per type)
+- `QuerySourceKind` staying unpublished (consumers see every source the same way)
 - Process step registration invariants
 - `ProcessorContext` as current resumable state only
 - `Kaleido.Http.Abstractions` contract shapes without coordinating server and client changes

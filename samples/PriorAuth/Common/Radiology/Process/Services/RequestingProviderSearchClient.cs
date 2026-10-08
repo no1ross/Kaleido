@@ -31,8 +31,8 @@ public sealed class RequestingProviderSearchClient(
         return await queryableClientFactory
             .GetClient("Provider")
             .QueryViewAsync<RequestingProviderSearchParameters, RequestingProviderSearchView>(
-                "requesting-providers",
-                "requesting-provider-search",
+                "RequestingProviderQueryContextSource",
+                "RequestingProviderSearchViewSource",
                 new QueryApiRequest<RequestingProviderSearchParameters>
                 {
                     Parameters = new RequestingProviderSearchParameters

@@ -6,83 +6,91 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Queryable.Query;
 
-internal interface IDelegatedQueryViewEngine<TDelegateContext, TView>
-    where TDelegateContext : class
-    where TView : class
+/// <summary>
+/// Executes queries against a delegated source. The consumer's query is validated against the
+/// source's query context (its public contract) and paging; the source then executes it
+/// downstream and returns its own mapped results.
+/// </summary>
+internal interface IDelegatedQuerySourceEngine<TQueryContext, TResult>
+    where TQueryContext : class, IQueryContext
+    where TResult : class
 {
-    Task<QueryResult<TView>> ExecuteAsync(
+    Task<QueryResult<TResult>> ExecuteAsync(
         IQueryRequest request,
-        DelegatedQueryViewRegistration registration,
+        QuerySourceRegistration source,
         CancellationToken cancellationToken = default);
 }
 
-internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
+internal sealed class DelegatedQuerySourceEngine<TQueryContext, TResult>(
+    IQueryContextValidator validator,
     IQueryEventFactory eventFactory,
     IEventPublisher eventPublisher,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     IQueryableObservability observability,
     IServiceProvider serviceProvider,
-    ILogger<DelegatedQueryViewEngine<TDelegateContext, TView>> logger)
-    : IDelegatedQueryViewEngine<TDelegateContext, TView>
-    where TDelegateContext : class
-    where TView : class
+    ILogger<DelegatedQuerySourceEngine<TQueryContext, TResult>> logger)
+    : IDelegatedQuerySourceEngine<TQueryContext, TResult>
+    where TQueryContext : class, IQueryContext
+    where TResult : class
 {
     private static readonly System.Reflection.MethodInfo ExecuteTypedAsyncMethod =
-        typeof(DelegatedQueryViewEngine<TDelegateContext, TView>)
+        typeof(DelegatedQuerySourceEngine<TQueryContext, TResult>)
             .GetMethod(
                 nameof(ExecuteTypedAsync),
                 System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
         ?? throw new KaleidoFrameworkException(
             FrameworkErrorCodes.ReflectionError,
-            $"Could not locate method '{nameof(ExecuteTypedAsync)}' on DelegatedQueryViewEngine.");
+            $"Could not locate method '{nameof(ExecuteTypedAsync)}' on DelegatedQuerySourceEngine.");
 
     // Closed-generic cache — MakeGenericMethod allocates per call and this
     // executes once per delegated query request.
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, System.Reflection.MethodInfo> ClosedMethods =
         new();
 
-    public async Task<QueryResult<TView>> ExecuteAsync(
+    public async Task<QueryResult<TResult>> ExecuteAsync(
         IQueryRequest request,
-        DelegatedQueryViewRegistration registration,
+        QuerySourceRegistration source,
         CancellationToken cancellationToken = default)
     {
         var details =
             new QueryObservationDetails(
-                registration.QueryMetadata.Name,
-                registration.ViewMetadata.Name,
-                false,
-                QueryExecutionMode.DelegatedContext);
+                source.Metadata.Name,
+                null,
+                true,
+                QueryExecutionMode.DelegatedSource);
 
         using var observation =
             observability.BeginExecution(details);
 
         try
         {
-            var source =
-                serviceProvider.GetRequiredService(
-                    registration.QueryViewType);
-
-            if (request.ViewParametersType != registration.ViewParametersType)
+            if (request.ViewParametersType != source.ParametersType)
             {
                 throw new KaleidoFrameworkException(
                     FrameworkErrorCodes.TypeMismatch,
-                    $"Delegated query view '{registration.QueryViewType.FullName}' expected parameters '{registration.ViewParametersType.FullName}', but request used '{request.ViewParametersType.FullName}'.");
+                    $"Delegated query source '{source.SourceType.FullName}' expected parameters '{source.ParametersType.FullName}', but request used '{request.ViewParametersType.FullName}'.");
             }
+
+            validator.Validate(request, source.Metadata, source.Metadata.Pageable);
+
+            var instance =
+                serviceProvider.GetRequiredService(
+                    source.SourceType);
 
             var typedMethod =
                 ClosedMethods.GetOrAdd(
-                    registration.ViewParametersType,
+                    source.ParametersType,
                     key => ExecuteTypedAsyncMethod.MakeGenericMethod(key));
 
             using var scope = observation.BeginDelegate();
 
-            var invocation = typedMethod.Invoke(this, [source, request, registration, cancellationToken]);
+            var invocation = typedMethod.Invoke(this, [instance, request, source, cancellationToken]);
 
-            if (invocation is not Task<QueryResult<TView>> typedTask)
+            if (invocation is not Task<QueryResult<TResult>> typedTask)
             {
                 throw new KaleidoFrameworkException(
                     FrameworkErrorCodes.TypeMismatch,
-                    $"Delegated query execution for view '{registration.QueryViewType.FullName}' did not return '{typeof(QueryResult<TView>).FullName}'.");
+                    $"Delegated query execution for source '{source.SourceType.FullName}' did not return '{typeof(QueryResult<TResult>).FullName}'.");
             }
 
             var result = await typedTask;
@@ -109,8 +117,8 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
                 {
                     logger.LogWarning(
                         publishException,
-                        "Event publish failed for QueryExecuted on context {QueryContextName}. Event delivery is best-effort.",
-                        details.QueryContextName);
+                        "Event publish failed for QueryExecuted on source {QuerySourceName}. Event delivery is best-effort.",
+                        details.QuerySourceName);
                 }
             }
 
@@ -133,25 +141,25 @@ internal sealed class DelegatedQueryViewEngine<TDelegateContext, TView>(
         }
     }
 
-    private static Task<QueryResult<TView>> ExecuteTypedAsync<TParameters>(
-        object source,
+    private static Task<QueryResult<TResult>> ExecuteTypedAsync<TParameters>(
+        object instance,
         IQueryRequest request,
-        DelegatedQueryViewRegistration registration,
+        QuerySourceRegistration source,
         CancellationToken cancellationToken)
-        where TParameters : class
+        where TParameters : class, IQueryParameters
     {
-        if (source is not IDelegatedQueryViewSource<TDelegateContext, TView, TParameters> delegatedSource)
+        if (instance is not IDelegatedQuerySource<TQueryContext, TResult, TParameters> delegatedSource)
         {
             throw new KaleidoFrameworkException(
                 FrameworkErrorCodes.TypeMismatch,
-                $"Delegated query view '{registration.QueryViewType.FullName}' must implement '{typeof(IDelegatedQueryViewSource<TDelegateContext, TView, TParameters>).FullName}'.");
+                $"Delegated query source '{source.SourceType.FullName}' must implement '{typeof(IDelegatedQuerySource<TQueryContext, TResult, TParameters>).FullName}'.");
         }
 
         if (request is not IQueryRequest<TParameters> typedRequest)
         {
             throw new KaleidoFrameworkException(
                 FrameworkErrorCodes.TypeMismatch,
-                $"Delegated query view '{registration.QueryViewType.FullName}' expected request type '{typeof(IQueryRequest<TParameters>).FullName}'.");
+                $"Delegated query source '{source.SourceType.FullName}' expected request type '{typeof(IQueryRequest<TParameters>).FullName}'.");
         }
 
         return delegatedSource.ExecuteAsync(
