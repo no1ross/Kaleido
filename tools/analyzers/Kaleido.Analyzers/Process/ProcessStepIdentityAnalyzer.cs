@@ -27,7 +27,7 @@ public sealed class ProcessStepIdentityAnalyzer : DiagnosticAnalyzer
         new(
             DiagnosticIds.ProcessStepMissingAttribute,
             "IProcessStep type must have [ProcessStep]",
-            "Process step '{0}' implements IProcessStep but is missing the required [ProcessStep] attribute (Version, DisplayName, Description).",
+            "Process step '{0}' implements IProcessStep but is missing the required [ProcessStep] attribute (Version, DisplayName, Description)",
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
