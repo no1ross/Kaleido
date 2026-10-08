@@ -165,16 +165,11 @@ public sealed class StartRadiologyIntakeHandler(
             }
 
             var response =
-                new StartRadiologyIntakeResponse
-                {
-                    QuestionnaireId = routing.Questionnaire?.QuestionnaireId,
-                    QuestionnaireVersion = routing.Questionnaire?.Version,
-                    Questionnaire = routing.Questionnaire
-                };
+                new StartRadiologyIntakeResponse();
 
             return routing.Route == ModalityRoute.CaptureMriInfo
-                ? ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success<CaptureMriInfoStep>(response)
-                : ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success<ConfirmCtInsteadOfMriStep>(response);
+                ? ProcessStepHandlerResult<StartRadiologyIntakeResponse>.RequireInformation<CaptureMriInfoStep>(response, routing.InformationRequest!)
+                : ProcessStepHandlerResult<StartRadiologyIntakeResponse>.RequireInformation<ConfirmCtInsteadOfMriStep>(response, routing.InformationRequest!);
         }
         catch (KaleidoHttpClientException ex)
         {
