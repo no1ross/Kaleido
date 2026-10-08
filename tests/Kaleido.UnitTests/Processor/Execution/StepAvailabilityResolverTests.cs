@@ -9,6 +9,26 @@ public sealed class StepAvailabilityResolverTests
     : SutFixture
 {
     [Fact]
+    public void ResolveCurrent_UsesOnlyCompletedSteps()
+    {
+        var initial = CreateRegistration<TestStepA>("step-a");
+        var after = CreateRegistration<TestStepB>("step-b", dependencies: [initial]);
+
+        var resolver = CreateSut(initial, after);
+
+        Assert.Equal(["step-a"], resolver.ResolveCurrent(CreateContext()));
+        Assert.Equal(["step-b"], resolver.ResolveCurrent(CreateContext(("step-a", StepExecutionStatus.Completed))));
+    }
+
+    [Fact]
+    public void ResolveCurrent_KeepsAFailedStepAvailableForRetry()
+    {
+        var resolver = CreateSut(CreateRegistration<TestStepA>("step-a"));
+
+        Assert.Equal(["step-a"], resolver.ResolveCurrent(CreateContext(("step-a", StepExecutionStatus.Exception))));
+    }
+
+    [Fact]
     public void Resolve_WhenCandidateHasNoDependencies_ReturnsCandidate()
     {
         var currentRegistration =

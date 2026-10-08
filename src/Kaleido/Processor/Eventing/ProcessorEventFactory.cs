@@ -93,6 +93,7 @@ internal sealed class ProcessorEventFactory(
             OccurredOn = DateTimeOffset.UtcNow,
             State = context.State,
             RequiredStep = context.RequiredStep,
+            RequiredInformationRequest = context.RequiredInformationRequest,
             TargetProcessorName = context.TargetProcessorName,
             AvailableSteps = context.AvailableSteps,
             SubmittedStepNames = submittedStepNames,
@@ -159,6 +160,7 @@ internal sealed class ProcessorEventFactory(
             RuntimeMessages = outcome.RuntimeMessages,
             ProcessState = context.State,
             RequiredStep = context.RequiredStep,
+            RequiredInformationRequest = context.RequiredInformationRequest,
             TargetProcessorName = context.TargetProcessorName,
             AvailableSteps = context.AvailableSteps,
             StepLatestRequestId = stepContext?.LatestRequestId,
@@ -186,6 +188,7 @@ internal sealed class ProcessorEventFactory(
             OccurredOn = DateTimeOffset.UtcNow,
             State = executionResult.State,
             RequiredStep = executionResult.RequiredStep,
+            RequiredInformationRequest = executionResult.RequiredInformationRequest,
             TargetProcessorName = executionResult.TargetProcessorName,
             AvailableSteps = executionResult.AvailableSteps,
             ExecutedStepCount = executionResult.Outcomes.Count

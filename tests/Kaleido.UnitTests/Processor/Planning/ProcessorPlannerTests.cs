@@ -12,8 +12,9 @@ public sealed class ProcessorPlannerTests
         IStepCandidateBuilder candidateBuilder,
         IStepCandidateValidator validator,
         IStepCandidateConsistencyChecker consistencyChecker,
-        IStepCandidatePlanner candidatePlanner) =>
-        new(candidateBuilder, validator, consistencyChecker, candidatePlanner);
+        IStepCandidatePlanner candidatePlanner,
+        IStepCandidateNextStepChecker? nextStepChecker = null) =>
+        new(candidateBuilder, validator, consistencyChecker, candidatePlanner, nextStepChecker ?? Mock.Of<IStepCandidateNextStepChecker>());
 
     [Fact]
     public void BuildPlan_CallsCollaboratorsInOrder()
@@ -77,12 +78,20 @@ public sealed class ProcessorPlannerTests
             .Setup(x => x.Build(candidates))
             .Returns(orderedCandidates);
 
+        var nextStepChecker =
+            new Mock<IStepCandidateNextStepChecker>(MockBehavior.Strict);
+
+        nextStepChecker
+            .InSequence(sequence)
+            .Setup(x => x.Check(orderedCandidates, context));
+
         var planner =
             CreateSut(
                 candidateBuilder.Object,
                 validator.Object,
                 consistencyChecker.Object,
-                candidatePlanner.Object);
+                candidatePlanner.Object,
+                nextStepChecker.Object);
 
         planner.BuildPlan(
             request,
@@ -92,6 +101,7 @@ public sealed class ProcessorPlannerTests
         validator.VerifyAll();
         consistencyChecker.VerifyAll();
         candidatePlanner.VerifyAll();
+        nextStepChecker.VerifyAll();
     }
 
     [Fact]

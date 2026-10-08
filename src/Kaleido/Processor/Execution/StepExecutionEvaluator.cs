@@ -15,6 +15,7 @@ internal interface IStepExecutionEvaluator
 internal sealed class StepExecutionEvaluator(
     IStepAvailabilityResolver availabilityResolver,
     IProcessorStepRegistry registry,
+    IInformationValidator informationValidator,
     KaleidoServiceOptions serviceOptions)
     : IStepExecutionEvaluator
 {
@@ -49,11 +50,18 @@ internal sealed class StepExecutionEvaluator(
                         $"'{result.RequiredStep.Name}' is not a registered step in this processor and cannot be required from '{currentCandidate.StepName}'."));
             }
 
-            return EvaluateRequiredStep(
-                currentCandidate,
-                requiredRegistration.Metadata.Name,
-                candidates,
-                context);
+            return requiredRegistration.IsInformationStep
+                ? EvaluateRequiredInformation(
+                    currentCandidate,
+                    requiredRegistration.Metadata.Name,
+                    result.InformationRequest,
+                    candidates,
+                    context)
+                : EvaluateRequiredStep(
+                    currentCandidate,
+                    requiredRegistration.Metadata.Name,
+                    candidates,
+                    context);
         }
 
         return EvaluateAvailableSteps(
@@ -63,28 +71,51 @@ internal sealed class StepExecutionEvaluator(
             context);
     }
 
+    // An information step always waits for answers to the request presented now, so it never
+    // continues straight into a candidate submitted in the same request.
+    private ExecutionDecision EvaluateRequiredInformation(
+        StepCandidate currentCandidate,
+        string requiredStep,
+        InformationRequest? informationRequest,
+        IReadOnlyCollection<StepCandidate> candidates,
+        ProcessorContext context)
+    {
+        if (informationRequest is null)
+        {
+            return ExecutionDecision.ProcessViolation(
+                StepProcessingMessage.Error(
+                    ProcessorErrorCodes.InformationRequestMissing,
+                    $"'{requiredStep}' is an information step and must be required with an information request (RequireInformation), from '{currentCandidate.StepName}'."));
+        }
+
+        var problems =
+            informationValidator.ValidateRequest(
+                informationRequest);
+
+        if (problems.Count > 0)
+        {
+            return ExecutionDecision.ProcessViolation(
+                StepProcessingMessage.Error(
+                    ProcessorErrorCodes.InformationRequestInvalid,
+                    $"The information request from '{currentCandidate.StepName}' for '{requiredStep}' is not well-formed: {string.Join(" ", problems.Select(x => x.Message))}"));
+        }
+
+        return IsAvailable(currentCandidate, requiredStep, candidates, context)
+            ? ExecutionDecision.AwaitingInformation(
+                requiredStep,
+                informationRequest)
+            : NotAValidNextStep(currentCandidate, requiredStep);
+    }
+
     private ExecutionDecision EvaluateRequiredStep(
         StepCandidate currentCandidate,
         string requiredStep,
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context)
     {
-        var availableSteps =
-            availabilityResolver.Resolve(
-                currentCandidate,
-                candidates,
-                context);
-
-        if (!availableSteps.Any(x =>
-                string.Equals(
-                    x,
-                    requiredStep,
-                    StringComparison.OrdinalIgnoreCase)))
+        if (!IsAvailable(currentCandidate, requiredStep, candidates, context))
         {
-            return ExecutionDecision.ProcessViolation(
-                StepProcessingMessage.Error(
-                    ProcessorErrorCodes.RequiredStepNotAllowed,
-                    $"'{requiredStep}' is not a valid next step from '{currentCandidate.StepName}'."));
+            return NotAValidNextStep(currentCandidate, requiredStep);
         }
 
         var nextCandidate =
@@ -129,13 +160,16 @@ internal sealed class StepExecutionEvaluator(
                 candidates,
                 context);
 
+        // Information steps only run against a request presented in an earlier outcome, so a
+        // pre-submitted information step is never picked up here.
         var nextCandidate =
             candidates.FirstOrDefault(
-                x => availableSteps.Any(a =>
-                    string.Equals(
-                        a,
-                        x.StepName,
-                        StringComparison.OrdinalIgnoreCase)));
+                x => x.Registration?.IsInformationStep != true &&
+                     availableSteps.Any(a =>
+                         string.Equals(
+                             a,
+                             x.StepName,
+                             StringComparison.OrdinalIgnoreCase)));
 
         if (nextCandidate is not null)
         {
@@ -151,4 +185,21 @@ internal sealed class StepExecutionEvaluator(
 
         return ExecutionDecision.Complete();
     }
+
+    private bool IsAvailable(
+        StepCandidate currentCandidate,
+        string step,
+        IReadOnlyCollection<StepCandidate> candidates,
+        ProcessorContext context) =>
+        availabilityResolver
+            .Resolve(currentCandidate, candidates, context)
+            .Any(x => string.Equals(x, step, StringComparison.OrdinalIgnoreCase));
+
+    private static ExecutionDecision NotAValidNextStep(
+        StepCandidate currentCandidate,
+        string requiredStep) =>
+        ExecutionDecision.ProcessViolation(
+            StepProcessingMessage.Error(
+                ProcessorErrorCodes.RequiredStepNotAllowed,
+                $"'{requiredStep}' is not a valid next step from '{currentCandidate.StepName}'."));
 }

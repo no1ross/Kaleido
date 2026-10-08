@@ -22,6 +22,8 @@ internal static class RuntimeStepNames
     public const string InvalidRequiredRoot = nameof(RuntimeInvalidRequiredRootStep);
     public const string AllowedStep = nameof(RuntimeAllowedStep);
     public const string Failing = nameof(RuntimeFailingStep);
+    public const string Ask = nameof(RuntimeAskStep);
+    public const string Answer = nameof(RuntimeAnswerStep);
 }
 
 [ProcessStep(DisplayName = RuntimeStepNames.Root, Description = "Runtime root step", Version = "1.0")]
@@ -216,5 +218,79 @@ public sealed class RuntimeFailingStepHandler :
                     Type = MessageType.Error,
                     Message = "Step intentionally failed."
                 }));
+    }
+}
+
+[ProcessStep(DisplayName = RuntimeStepNames.Ask, Description = "Runtime step that asks for information", Version = "1.0")]
+public sealed record RuntimeAskStep : IProcessStep;
+
+[ProcessStep(DisplayName = RuntimeStepNames.Answer, Description = "Runtime information step", Version = "1.0")]
+[AvailableAfter<RuntimeAskStep>]
+[Repeatable]
+public sealed record RuntimeAnswerStep : IInformationStep
+{
+    public string InformationRequestId { get; init; } = string.Empty;
+
+    public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
+}
+
+public static class RuntimeInformationRequests
+{
+    public const string FirstRound = "runtime-first-round";
+    public const string SecondRound = "runtime-second-round";
+
+    public static InformationRequest Round(string informationRequestId) =>
+        new()
+        {
+            InformationRequestId = informationRequestId,
+            Title = "Runtime questions",
+            Items =
+            [
+                new InformationItem { Id = $"{informationRequestId}-intro", Text = "Answer every question.", Type = InformationItemType.Display },
+                new InformationItem { Id = $"{informationRequestId}-more", Text = "Ask another round?", Type = InformationItemType.Boolean },
+                new InformationItem
+                {
+                    Id = $"{informationRequestId}-reason",
+                    Text = "Why?",
+                    Type = InformationItemType.Choice,
+                    Options = [new InformationOption { Value = "a", Display = "Reason A" }, new InformationOption { Value = "b", Display = "Reason B" }]
+                }
+            ]
+        };
+}
+
+public sealed class RuntimeAskStepHandler :
+    IProcessStepHandler<RuntimeAskStep>
+{
+    public Task<ProcessStepHandlerResult> ExecuteAsync(
+        RuntimeAskStep step,
+        ProcessStepContext context,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(
+            ProcessStepHandlerResult.RequireInformation<RuntimeAnswerStep>(
+                RuntimeInformationRequests.Round(RuntimeInformationRequests.FirstRound)));
+}
+
+// Loops while the "more" answer is true: a [Repeatable] information step requiring itself.
+public sealed class RuntimeAnswerStepHandler :
+    IProcessStepHandler<RuntimeAnswerStep>
+{
+    public Task<ProcessStepHandlerResult> ExecuteAsync(
+        RuntimeAnswerStep step,
+        ProcessStepContext context,
+        CancellationToken cancellationToken)
+    {
+        var more =
+            step.Items
+                .Single(x => x.ItemId == $"{step.InformationRequestId}-more")
+                .Answers
+                .Single()
+                .Value;
+
+        return Task.FromResult(
+            bool.Parse(more)
+                ? ProcessStepHandlerResult.RequireInformation<RuntimeAnswerStep>(
+                    RuntimeInformationRequests.Round(RuntimeInformationRequests.SecondRound))
+                : ProcessStepHandlerResult.Success());
     }
 }

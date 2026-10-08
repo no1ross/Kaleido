@@ -260,6 +260,64 @@ public sealed class ProcessorStateUpdaterTests
     }
 
     [Fact]
+    public void ApplyExecution_AwaitingInformation_StoresThePendingRequest()
+    {
+        var request = new InformationRequest { InformationRequestId = "out-of-network" };
+        var context = new ProcessorContext
+        {
+            ProcessId = Guid.NewGuid(),
+            ProcessorName = "test",
+            Steps = [new StepContext { StepName = "test-step", Version = "1.0" }]
+        };
+        var decision = ExecutionDecision.AwaitingInformation("info-step", request);
+
+        var result = Sut.ApplyExecution(context, new StepCandidate { StepName = "test-step" }, decision);
+
+        Assert.Equal(ProcessExecutionState.AwaitingInformation, result.State);
+        Assert.Equal("info-step", result.RequiredStep);
+        Assert.Same(request, result.RequiredInformationRequest);
+    }
+
+    [Fact]
+    public void ApplyExecution_NextOutcomeWithoutRequest_ClearsThePendingRequest()
+    {
+        var context = new ProcessorContext
+        {
+            ProcessId = Guid.NewGuid(),
+            ProcessorName = "test",
+            RequiredStep = "info-step",
+            RequiredInformationRequest = new InformationRequest { InformationRequestId = "out-of-network" },
+            Steps = [new StepContext { StepName = "info-step", Version = "1.0" }]
+        };
+
+        var result =
+            Sut.ApplyExecution(
+                context,
+                new StepCandidate { StepName = "info-step" },
+                ExecutionDecision.AwaitingStepSelection(["next-step"]));
+
+        Assert.Null(result.RequiredStep);
+        Assert.Null(result.RequiredInformationRequest);
+    }
+
+    [Fact]
+    public void ApplyException_ClearsThePendingRequest()
+    {
+        var context = new ProcessorContext
+        {
+            ProcessId = Guid.NewGuid(),
+            ProcessorName = "test",
+            RequiredStep = "info-step",
+            RequiredInformationRequest = new InformationRequest { InformationRequestId = "out-of-network" },
+            Steps = [new StepContext { StepName = "info-step", Version = "1.0" }]
+        };
+
+        var result = Sut.ApplyException(context, new StepCandidate { StepName = "info-step" });
+
+        Assert.Null(result.RequiredInformationRequest);
+    }
+
+    [Fact]
     public void ApplyExecution_UpdatesTimestamp()
     {
         var context = new ProcessorContext

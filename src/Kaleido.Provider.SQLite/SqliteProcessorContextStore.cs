@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Kaleido.Processor.Context;
 using Kaleido.Provider.SQLite.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -255,10 +257,16 @@ internal sealed class SqliteProcessorContextStore(
         var processorName =
             context.TargetProcessorName ?? localProcessorName;
 
+        var informationRequestJson =
+            context.RequiredInformationRequest is null
+                ? null
+                : JsonSerializer.Serialize(context.RequiredInformationRequest, JsonOptions);
+
         if (entity.RequiredStep is not null)
         {
             entity.RequiredStep.ProcessorName = processorName;
             entity.RequiredStep.StepName = context.RequiredStep;
+            entity.RequiredStep.InformationRequestJson = informationRequestJson;
             return;
         }
 
@@ -266,9 +274,15 @@ internal sealed class SqliteProcessorContextStore(
         {
             ProcessId = context.ProcessId,
             ProcessorName = processorName,
-            StepName = context.RequiredStep
+            StepName = context.RequiredStep,
+            InformationRequestJson = informationRequestJson
         };
     }
+
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+    };
 
     private static ProcessorContext ToProcessorContext(
         ProcessorContextEntity entity,
@@ -301,6 +315,11 @@ internal sealed class SqliteProcessorContextStore(
 
             RequiredStep =
                 entity.RequiredStep?.StepName,
+
+            RequiredInformationRequest =
+                entity.RequiredStep?.InformationRequestJson is { } json
+                    ? JsonSerializer.Deserialize<InformationRequest>(json, JsonOptions)
+                    : null,
 
             // When the stored processor name differs from the local processor,
             // this was a cross-processor handoff — surface it as TargetProcessorName.

@@ -48,9 +48,10 @@ internal sealed class ProcessExecutionResponseFactory(
             // RequiredStep is null when TargetProcessorName is set —
             // consumer must call the target processor's state endpoint instead.
             RequiredStep =
-                processResult.TargetProcessorName is null
-                    ? processResult.RequiredStep
-                    : null,
+                CreateRequiredStep(
+                    processResult,
+                    registry,
+                    serviceName),
 
             TargetProcessorName =
                 processResult.TargetProcessorName,
@@ -97,9 +98,10 @@ internal sealed class ProcessExecutionResponseFactory(
             // RequiredStep is null when TargetProcessorName is set —
             // consumer must call the target processor's state endpoint instead.
             RequiredStep =
-                processResult.TargetProcessorName is null
-                    ? processResult.RequiredStep
-                    : null,
+                CreateRequiredStep(
+                    processResult,
+                    registry,
+                    serviceName),
 
             TargetProcessorName =
                 processResult.TargetProcessorName,
@@ -184,6 +186,28 @@ internal sealed class ProcessExecutionResponseFactory(
         };
     }
 
+    private ProcessRequiredStep? CreateRequiredStep(
+        ProcessResult processResult,
+        IProcessorStepRegistry registry,
+        string serviceName)
+    {
+        if (processResult.TargetProcessorName is not null ||
+            processResult.RequiredStep is not { } requiredStep)
+        {
+            return null;
+        }
+
+        var registration = registry.Find(requiredStep)
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
+                $"Required step '{requiredStep}' was not found in the local registry.");
+
+        return responseFactory.CreateRequiredStep(
+            ToSummary(registration),
+            processResult.RequiredInformationRequest,
+            serviceName);
+    }
+
     private static ProcessorStepSummary ToSummary(ProcessStepRegistration registration) =>
         new()
         {
@@ -191,7 +215,8 @@ internal sealed class ProcessExecutionResponseFactory(
             Description = registration.Metadata.Description,
             DisplayName = registration.Metadata.DisplayName,
             Version = registration.Metadata.Version,
-            Repeatable = registration.Repeatable.Enabled
+            Repeatable = registration.Repeatable.Enabled,
+            IsInformationStep = registration.IsInformationStep
         };
 
     private IReadOnlyCollection<ProcessMessage> ToFrameworkMessages(

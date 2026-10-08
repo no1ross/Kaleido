@@ -20,6 +20,13 @@ internal sealed class ProcessorRequiredStepEntity
         set;
     } = string.Empty;
 
+    /// <summary>The pending information request for this step, as JSON; null when none.</summary>
+    public string? InformationRequestJson
+    {
+        get;
+        set;
+    }
+
     public ProcessorContextEntity? Context
     {
         get;

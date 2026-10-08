@@ -84,6 +84,13 @@ public sealed record ProcessResult
         init;
     }
 
+    /// <summary>The pending information request of <see cref="RequiredStep"/>, if any.</summary>
+    public InformationRequest? RequiredInformationRequest
+    {
+        get;
+        init;
+    }
+
     public string? TargetProcessorName
     {
         get;
@@ -202,6 +209,10 @@ internal sealed class ProcessorRuntime(
             observation.PlanBuilt(
                 plan.Candidates.Count,
                 executionCandidates.Count);
+
+            RecordRejectedInformationResponses(
+                plan,
+                observation);
 
             try
             {
@@ -365,6 +376,23 @@ internal sealed class ProcessorRuntime(
         };
     }
 
+    private static void RecordRejectedInformationResponses(
+        ExecutionPlanResult plan,
+        IProcessorExecutionObservation observation)
+    {
+        foreach (var candidate in plan.Candidates.Where(x => x.Registration?.IsInformationStep == true))
+        {
+            foreach (var message in candidate.Messages.Where(x =>
+                         x.Type == MessageType.Error &&
+                         x.Code.StartsWith("pro_information_response_", StringComparison.Ordinal)))
+            {
+                observation.InformationResponseRejected(
+                    candidate.StepName,
+                    message.Code);
+            }
+        }
+    }
+
     private static IReadOnlyCollection<StepCandidate> GetExecutionCandidates(
         ExecutionPlanResult plan)
     {
@@ -433,6 +461,9 @@ internal sealed class ProcessorRuntime(
 
             RequiredStep =
                 executionResult.RequiredStep,
+
+            RequiredInformationRequest =
+                executionResult.RequiredInformationRequest,
 
             TargetProcessorName =
                 executionResult.TargetProcessorName,

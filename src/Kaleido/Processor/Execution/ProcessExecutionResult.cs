@@ -17,6 +17,13 @@ public sealed record ProcessExecutionResult
         init;
     }
 
+    /// <summary>The pending information request of <see cref="RequiredStep"/>, if any.</summary>
+    public InformationRequest? RequiredInformationRequest
+    {
+        get;
+        init;
+    }
+
     public string? TargetProcessorName
     {
         get;

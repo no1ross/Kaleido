@@ -61,7 +61,7 @@ public sealed class ProcessExecutionEndpointTests(ProcessorAspNetCoreFixture fix
 
         Assert.NotNull(contract);
         Assert.NotNull(contract.RequiredStep);
-        Assert.Equal(RuntimeStepNames.RequiredStep, contract.RequiredStep);
+        Assert.Equal(RuntimeStepNames.RequiredStep, contract.RequiredStep.Name);
         Assert.Null(contract.TargetProcessorName);
         Assert.Empty(contract.AvailableSteps);
         Assert.Contains(contract.Results, x => x.StepName == RuntimeStepNames.RequiredRoot);

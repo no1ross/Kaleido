@@ -34,6 +34,10 @@ internal interface IProcessorExecutionObservation
 
     void ExecutionCompleted(
         ProcessExecutionState finalState);
+
+    void InformationResponseRejected(
+        string stepName,
+        string code);
 }
 
 internal interface IProcessorStepObservation
@@ -42,6 +46,9 @@ internal interface IProcessorStepObservation
     void DecisionRecorded(
         string decisionType,
         string executionStatus);
+
+    void InformationRequested(
+        string informationRequestId);
 
     void Canceled();
 
@@ -63,7 +70,8 @@ internal sealed record ProcessorExecutionObservationDetails(
 [ExcludeFromCodeCoverage]
 internal sealed record ProcessorStepObservationDetails(
     string StepName,
-    string? StepVersion);
+    string? StepVersion,
+    bool IsInformationStep = false);
 
 [ExcludeFromCodeCoverage]
 internal sealed record ProcessorHandlerObservationDetails(
@@ -129,6 +137,14 @@ internal sealed class ProcessorObservability(
     private static readonly Counter<long> ProcessHandlerFailuresCounter =
         Meter.CreateCounter<long>(
             ProcessorTelemetry.HandlerFailuresCounterName);
+
+    private static readonly Counter<long> InformationRequestsCounter =
+        Meter.CreateCounter<long>(
+            ProcessorTelemetry.InformationRequestsCounterName);
+
+    private static readonly Counter<long> InformationResponsesRejectedCounter =
+        Meter.CreateCounter<long>(
+            ProcessorTelemetry.InformationResponsesRejectedCounterName);
 
     private static readonly Histogram<double> ProcessExecutionDurationHistogram =
         Meter.CreateHistogram<double>(
@@ -198,6 +214,7 @@ internal sealed class ProcessorObservability(
 
         activity?.SetTag(ProcessorTelemetry.TagStepName, details.StepName);
         activity?.SetTag(ProcessorTelemetry.TagStepVersion, details.StepVersion);
+        activity?.SetTag(ProcessorTelemetry.TagStepKind, details.IsInformationStep ? "information" : "properties");
 
         ProcessStepExecutionsCounter.Add(
             1,
@@ -364,6 +381,26 @@ internal sealed class ProcessorObservability(
                 finalState);
         }
 
+        public void InformationResponseRejected(
+            string stepName,
+            string code)
+        {
+            InformationResponsesRejectedCounter.Add(
+                1,
+                new TagList
+                {
+                    new(KaleidoTelemetryTags.ProcessorName, processorName),
+                    new(ProcessorTelemetry.TagStepName, stepName),
+                    new(ProcessorTelemetry.TagRejectionCode, code)
+                });
+
+            logger.LogDebug(
+                "Information response rejected for processor {ProcessorName} step {StepName} with {Code}.",
+                processorName,
+                stepName,
+                code);
+        }
+
         public void Dispose()
         {
             ProcessExecutionDurationHistogram.Record(
@@ -399,6 +436,23 @@ internal sealed class ProcessorObservability(
                 details.StepVersion,
                 decisionType,
                 executionStatus);
+        }
+
+        public void InformationRequested(
+            string informationRequestId)
+        {
+            activity?.SetTag(ProcessorTelemetry.TagInformationRequestId, informationRequestId);
+            activity?.AddEvent(new ActivityEvent(ProcessorTelemetry.InformationRequestedEventName));
+
+            InformationRequestsCounter.Add(
+                1,
+                CreateStepTags(processorName, details.StepName, details.StepVersion));
+
+            logger.LogDebug(
+                "Information request {InformationRequestId} presented by processor {ProcessorName} step {StepName}.",
+                informationRequestId,
+                processorName,
+                details.StepName);
         }
 
         public void Canceled()
