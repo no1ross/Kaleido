@@ -1,3 +1,4 @@
+using Kaleido.Samples.ECommerce.Data.QueryContextSources;
 using Kaleido.Queryable;
 using Kaleido.Samples.ECommerce.Data.QueryContexts;
 using Kaleido.Samples.ECommerce.Data.QueryViewSources.Parameters;
@@ -6,13 +7,12 @@ using Kaleido.Samples.ECommerce.Data.QueryViewSources.Views;
 namespace Kaleido.Samples.ECommerce.Data.QueryViewSources;
 
 [QueryView(
-    Name = "order-review",
     DisplayName = "Order Review",
     Version = "1.0.0",
     Description = "Order details for review before submission.")]
 internal sealed class OrderReviewViewSource
     : IQueryViewSource<
-        OrderQueryContext,
+        OrderQueryContextSource, OrderQueryContext,
         OrderReviewView,
         OrderReviewViewParameters>
 {

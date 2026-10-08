@@ -48,11 +48,11 @@ public sealed class KaleidoRemoteRegistryTests
         ],
         Queryables =
         [
-            new Kaleido.Http.Queryable.QueryableRecordResponse
+            new Kaleido.Http.Queryable.QueryableSourceResponse
             {
                 ServiceName = "remote-svc",
                 Name = "my-context",
-                Kind = Kaleido.Queryable.Metadata.QueryContextKind.Direct
+                QueryUrl = "/remote-svc/queryable/my-context/query"
             }
         ]
     };

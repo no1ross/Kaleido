@@ -1,34 +1,54 @@
 # Kaleido analyzer rules
 
-Kaleido ships three analyzer projects (in `tools/analyzers`), each with a distinct audience:
+Kaleido has three analyzer projects (in `tools/analyzers`). Each targets **one audience and one kind of code**; this guide gives each its own self-contained section.
 
-| Project | IDs | Audience |
-|---|---|---|
-| [`Kaleido.Analyzers`](../tools/analyzers/Kaleido.Analyzers/) | `KAL2xxx` | **Consumers** of the `Kaleido` NuGet package — bundled into the package and applied to consumer compilations to catch framework misuse at compile time |
-| [`Kaleido.Analyzers.Source`](../tools/analyzers/Kaleido.Analyzers.Source/) | `KAL0xxx` | **Contributors** to this repository — enforces internal design conventions; never shipped |
-| [`Kaleido.Analyzers.Testing`](../tools/analyzers/Kaleido.Analyzers.Testing/) | `KAL1xxx` | **Contributors** writing tests — enforces fixture conventions; never shipped |
+| Section | IDs | Who sees it | Runs on | Shipped |
+|---|---|---|---|---|
+| [Consumer rules](#consumer-rules--kal2xxx) | `KAL2xxx` | Anyone referencing the `Kaleido` NuGet package | Consumer services (and this repo's samples) | Yes — inside `Kaleido.nupkg` (`analyzers/dotnet/cs/`) |
+| [Source rules](#source-rules--kal0xxx) | `KAL0xxx` | Contributors to this repository | Framework source (`src/`) | No |
+| [Test rules](#test-rules--kal1xxx) | `KAL1xxx` | Contributors writing tests in this repository | Test projects (`tests/`) | No |
 
-These are build diagnostics, not runtime error codes — runtime codes are documented in [`ERROR_CODES.md`](./ERROR_CODES.md).
+All three are build diagnostics, not runtime error codes (runtime codes are in [`ERROR_CODES.md`](./ERROR_CODES.md)). Severities are configured in `.editorconfig`: in `src/` warnings are treated as errors; in `tests/` some rules are relaxed where the convention genuinely differs.
 
-Severities are configured in `.editorconfig`. In `src/` warnings are treated as errors; in `tests/` several rules are relaxed where the convention genuinely differs (e.g. `!` usage, `KAL0002` stubs).
+**For code generators:** every rule below exists because of a correctness or security hazard, not style. Generate compliant code on the first pass; never suppress a `KAL` rule.
+
+---
 
 ## Consumer rules — `KAL2xxx`
 
-Shipped inside the `Kaleido` package (`analyzers/dotnet/cs/`). They fire on **consumer code** — anyone referencing the `Kaleido` package gets these checks automatically.
+**Audience:** developers building services on Kaleido. **Project:** [`Kaleido.Analyzers`](../tools/analyzers/Kaleido.Analyzers/), shipped in the `Kaleido` package, so the rules apply automatically to any code that references it. Most are compile-time equivalents of startup validation: a misconfigured step, source or view fails the build instead of failing at startup.
 
-| ID | Severity | Rule |
-|---|---|---|
-| KAL2001 | Error | `[ProcessStep]` must declare a non-empty `Version`, `DisplayName`, and `Description` — compile-time equivalent of startup `pro_missing_attribute` failures |
-| KAL2002 | Error | `[QueryContext]` must declare a non-empty `Name` and `Version` — compile-time equivalent of `qry_missing_attribute` |
-| KAL2003 | Error | `[QueryView]` must declare a non-empty `Name` and `Version` — compile-time equivalent of `qry_missing_attribute` |
-| KAL2004 | Warning | `IProcessStepHandler<T>.ExecuteAsync` must not swallow `OperationCanceledException` in a bare `catch (Exception)` — add `when (ex is not OperationCanceledException)` or a preceding OCE catch. A swallowed cancellation inflates failure metrics and hides client disconnects |
-| KAL2005 | Warning | `ServiceName` string literals must be lowercase with no spaces, hyphens, or underscores — it is used verbatim as the HTTP route prefix |
-| KAL2008 | Warning | `IProcessStep` type has no `IProcessStepHandler<TStep>` (or `IProcessStepHandler<TStep, TResult>`) in the same compilation — compile-time equivalent of `pro_missing_handler`. Cross-assembly handlers suppress the warning |
-| KAL2009 | Warning | `AddKaleido(config, o => ...)` lambda never sets `o.Assemblies` — missing or empty assemblies now fail registration; set them explicitly |
-| KAL2010 | Error | `[ProcessStep]` is applied to a type that does not implement `IProcessStep` — compile-time equivalent of startup `pro_invalid_registration` |
-| KAL2011 | Error | A concrete `IProcessStep` type is missing the required `[ProcessStep]` attribute — compile-time equivalent of startup `pro_missing_attribute` |
+| ID | Severity | Rule | What it prevents |
+|---|---|---|---|
+| KAL2001 | Error | `[ProcessStep]` must declare a non-empty `Version`, `DisplayName` and `Description` | Startup failure `pro_missing_attribute` |
+| KAL2002 | Error | `[QuerySource]` must declare a non-empty `Version`, `DisplayName` and `Description` | Startup failure `qry_missing_attribute` |
+| KAL2003 | Error | `[QueryView]` must declare a non-empty `Version`, `DisplayName` and `Description` | Startup failure `qry_missing_attribute` |
+| KAL2004 | Warning | A step handler's `ExecuteAsync` must not swallow `OperationCanceledException` in a bare `catch (Exception)` | Canceled steps recorded as failures; inflated error metrics, false alerts |
+| KAL2005 | Warning | `ServiceName` literals must be lowercase with no spaces, hyphens or underscores | Corrupted route prefix (the name is used verbatim) |
+| KAL2008 | Warning | An `IProcessStep` type has no `IProcessStepHandler<TStep>` (or `<TStep, TResult>`) in the same compilation | A step that is published but can never run (startup `pro_missing_handler`) |
+| KAL2009 | Warning | An `AddKaleido(config, o => …)` lambda never sets `o.Assemblies` | Startup failure `missing_assembly` |
+| KAL2010 | Error | `[ProcessStep]` on a type that does not implement `IProcessStep` | Startup failure `pro_invalid_registration` |
+| KAL2011 | Error | A concrete `IProcessStep` type without `[ProcessStep]` | Startup failure `pro_missing_attribute` |
+| KAL2012 | Error | `[QuerySource]` or `[QueryView]` on a type without the matching source/view interface | A capability that is silently never published (discovery is interface-only) |
+| KAL2013 | Error | A concrete query source or view without its `[QuerySource]` / `[QueryView]` attribute | Startup failure `qry_missing_attribute` |
+| KAL2014 | Warning | `[Filterable]`, `[Searchable]` or `[Sortable]` on a property of a type that is not an `IQueryContext` | Query rules that silently have no effect |
+
+### Examples and notes
+
+- **KAL2001–KAL2003 — required metadata.** Steps, sources and views are named by their type name; `Version`, `DisplayName` and `Description` are what the registry publishes to UIs, documentation and AI agents, so they must be non-empty.
+- **KAL2004 — preserve cancellation.** Use `catch (Exception ex) when (ex is not OperationCanceledException)` or handle cancellation in an earlier catch. The rule targets step-handler `ExecuteAsync` bodies, not every catch in an application. [Implementation](../tools/analyzers/Kaleido.Analyzers/Process/StepHandlerOceAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Process/StepHandlerOceAnalyzerTests.cs).
+- **KAL2008 — one handler per step.** Only the same compilation is inspected; a handler in another assembly suppresses the warning.
+- **KAL2009 — explicit discovery.** `AddKaleido(config, o => o.ServiceName = "app")` omits `Assemblies`; set `o.Assemblies = [typeof(Program).Assembly]`. The warning is a syntax-level hint for lambdas; `AddKaleido()` itself rejects missing or empty lists with `missing_assembly`, including when no lambda is supplied. [Implementation](../tools/analyzers/Kaleido.Analyzers/Bootstrap/AddKaleidoAssembliesAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Bootstrap/AddKaleidoAssembliesAnalyzerTests.cs).
+- **KAL2010–KAL2013 — the interface is the identity, the attribute describes it.** This holds for steps (`IProcessStep` / `[ProcessStep]`), sources (`IQuerySource<T>`, `IQuerySourceAsync<T>`, `IDelegatedQuerySource<…>` / `[QuerySource]`) and views (`IQueryViewSource<TSource, …>` / `[QueryView]`). Each rule flags one side without the other. [Step implementation](../tools/analyzers/Kaleido.Analyzers/Process/ProcessStepIdentityAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Process/ProcessStepIdentityAnalyzerTests.cs); [Queryable implementation](../tools/analyzers/Kaleido.Analyzers/Queryable/QueryableIdentityAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Queryable/QueryableIdentityAnalyzerTests.cs).
+- **KAL2014 — query rules live on query contexts.** Put `[Filterable]` / `[Searchable]` / `[Sortable]` on the `IQueryContext` record a source is queried by, not on view or result records.
+
+Compliant shapes for all of the above are in [`PATTERNS.md`](./PATTERNS.md).
+
+---
 
 ## Source rules — `KAL0xxx`
+
+**Audience:** contributors changing the framework. **Project:** [`Kaleido.Analyzers.Source`](../tools/analyzers/Kaleido.Analyzers.Source/), referenced by every `src/` project through `src/Directory.Build.props`; never shipped.
 
 | ID | Rule | Diagnostic message |
 |---|---|---|
@@ -52,23 +72,7 @@ Shipped inside the `Kaleido` package (`analyzers/dotnet/cs/`). They fire on **co
 | KAL0020 | ASP.NET Core `WithName(...)` must take a constant or factory method from a type whose name ends in `EndpointNames` | `Pass a member of an *EndpointNames type to WithName instead of '{0}'` |
 | KAL0021 | A catch-all (`catch` / `catch (Exception)`) that calls a member on an `*Observation`/`*Observability` type must exclude `OperationCanceledException`, via a `when` filter or an earlier `catch (OperationCanceledException)` | `This catch-all calls '{0}' but does not exclude OperationCanceledException — add 'when (ex is not OperationCanceledException)' or an earlier catch (OperationCanceledException)` |
 
-### DI rule notes (KAL0005–KAL0014)
-
-The registered-service model is harvested from `*ServiceCollectionExtensions` classes in the same compilation (generic args, `typeof()` args, returned `new` in factory lambdas). `*ServiceCollectionExtensions` and `*EndpointRouteBuilderExtensions` are composition roots — exempt. `context.RequestServices` resolution (middleware/endpoint activation) and dynamic resolutions (runtime `Type` args, open-generic type parameters) are exempt from KAL0007 — they are the container's dispatch seam. So is resolution from a scope created in the same method (`using var scope = scopeFactory.CreateScope(); scope.ServiceProvider.Get…`): a child scope's services can never be constructor-injected (injection yields the parent scope's instance), so that scope is a composition seam. Resolution from an injected `IServiceProvider` or `IServiceScope` is still reported. Tests are exempt via `.editorconfig`.
-
-### HTTP endpoint notes
-
-Endpoint names are declared as `const string` fields or name-factory methods on a `*EndpointNames` class in `Kaleido.Http.Abstractions` (`ProcessEndpointNames`, `RegistryEndpointNames`) or `Kaleido.Http` (`QueryableEndpointNames`). All names follow one pattern, `Kaleido` + area + action with `_` before any variable part (`KaleidoProcessExecute`, `KaleidoProcessStepExecute_{step}`, `KaleidoQueryableQuery_{context}`, `KaleidoQueryableViewQuery_{context}_{view}`, `KaleidoRegistry`); the prefix keeps them from colliding with the host app's own endpoint names. KAL0020 enforces where the names come from: an inline literal or a constant from any other type passed to `WithName()` is reported. Endpoint names are link targets and OpenAPI operation ids, and an unenforced literal let the `KaleidoProcessStepREgistry` typo ship (HP-015, [#62](https://github.com/no1ross/Kaleido/issues/62)).
-
-### API design rules notes (KAL0018–KAL0019)
-
-KAL0018 applies to all `src/` projects (suppressed for `Kaleido.Provider.SQLite` where EF Core entity navigation properties conventionally use `ICollection<T>`). Overrides and explicit interface implementations are exempt — the collection type is fixed at the interface/base. KAL0019 applies to all `src/` projects. Overrides, explicit interface implementations, and the ASP.NET Core middleware `InvokeAsync(HttpContext)` convention are exempt from KAL0019.
-
-## Security-relevant analyzers
-
-For code generators: these rules exist because the bypass they prevent is a
-security or correctness hazard, not a style preference. Generate compliant
-code on the first pass — do not suppress.
+### What the security-relevant rules prevent
 
 | Rule | What it prevents |
 |---|---|
@@ -85,16 +89,27 @@ code on the first pass — do not suppress.
 | KAL0019 | Async methods without `CancellationToken` — cancellations stop propagating |
 | KAL0020 | Ad-hoc endpoint names — typos break link generation and OpenAPI operation ids silently |
 | KAL0021 | Cancellations recorded as failures in observability catch-alls — inflated error metrics, false alerts |
-| KAL2001–2003 | Step/context/view attributes missing required metadata — startup failures ship as runtime 500s |
-| KAL2004 | Swallowed `OperationCanceledException` in step handlers — canceled steps recorded as failures, false alerts |
-| KAL2005 | Invalid `ServiceName` literals — route-prefix corruption (path separators, casing) |
-| KAL2008 | `IProcessStep` with no handler — step is registered but can never execute |
-| KAL2009 | `AddKaleido` without an explicit assembly list — deterministic startup validation rejects missing or empty discovery inputs |
-| KAL2010–2011 | Step identity and metadata out of sync (`[ProcessStep]` without `IProcessStep`, or the reverse) — startup failures ship as runtime 500s |
+
+### Scope notes
+
+**DI rules (KAL0005–KAL0014).** The registered-service model is harvested from `*ServiceCollectionExtensions` classes in the same compilation (generic args, `typeof()` args, returned `new` in factory lambdas). `*ServiceCollectionExtensions` and `*EndpointRouteBuilderExtensions` are composition roots — exempt. `context.RequestServices` resolution (middleware/endpoint activation) and dynamic resolutions (runtime `Type` args, open-generic type parameters) are exempt from KAL0007 — they are the container's dispatch seam. So is resolution from a scope created in the same method (`using var scope = scopeFactory.CreateScope(); scope.ServiceProvider.Get…`): a child scope's services can never be constructor-injected (injection yields the parent scope's instance), so that scope is a composition seam. Resolution from an injected `IServiceProvider` or `IServiceScope` is still reported. Tests are exempt via `.editorconfig`.
+
+**API design rules (KAL0018–KAL0019).** KAL0018 applies to all `src/` projects (suppressed for `Kaleido.Provider.SQLite` where EF Core entity navigation properties conventionally use `ICollection<T>`). Overrides and explicit interface implementations are exempt — the collection type is fixed at the interface/base. KAL0019 applies to all `src/` projects. Overrides, explicit interface implementations, and the ASP.NET Core middleware `InvokeAsync(HttpContext)` convention are exempt from KAL0019.
+
+**Endpoint names (KAL0020).** Endpoint names are declared as `const string` fields or name-factory methods on a `*EndpointNames` class in `Kaleido.Http.Abstractions` (`ProcessEndpointNames`, `RegistryEndpointNames`) or `Kaleido.Http` (`QueryableEndpointNames`). All names follow one pattern, `Kaleido` + area + action with `_` before any variable part (`KaleidoProcessExecute`, `KaleidoProcessStepExecute_{step}`, `KaleidoQueryableQuery_{source}`, `KaleidoQueryableViewQuery_{source}_{view}`, `KaleidoRegistry`); the prefix keeps them from colliding with the host app's own endpoint names. An inline literal or a constant from any other type passed to `WithName()` is reported. Endpoint names are link targets and OpenAPI operation ids, and an unenforced literal let the `KaleidoProcessStepREgistry` typo ship (HP-015, [#62](https://github.com/no1ross/Kaleido/issues/62)).
+
+### Examples
+
+- **KAL0003 — make null assumptions visible.** `typeof(Widget).GetMethod("Run")!` hides a missing-reflection-member failure; `typeof(Widget).GetMethod("Run") ?? throw new KaleidoFrameworkException(FrameworkErrorCodes.ReflectionError, "Run was not found.")` handles it explicitly. Test code legitimately uses `!` in assertion/stub setups and is exempted in `.editorconfig`. [Implementation](../tools/analyzers/Kaleido.Analyzers.Source/Design/NullForgivingOperatorAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Source.UnitTests/Design/NullForgivingOperatorAnalyzerTests.cs).
+- **KAL0015 — keep a local interface with its implementation.** If `IWidgetService` and its same-named `WidgetService` implementation live in one assembly, declare both in `WidgetService.cs` instead of a separate `IWidgetService.cs`. Provider contracts such as `IProcessorContextStore`, which have no same-named implementation in that assembly, are exempt. This is a repository layout convention, not a runtime correctness check. [Implementation](../tools/analyzers/Kaleido.Analyzers.Source/Structure/InterfaceCoLocationAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Source.UnitTests/Structure/InterfaceCoLocationAnalyzerTests.cs).
+
+For the remaining rules, see their implementations under [`Kaleido.Analyzers.Source`](../tools/analyzers/Kaleido.Analyzers.Source/) when changing a convention.
+
+---
 
 ## Test rules — `KAL1xxx`
 
-`Kaleido.Analyzers.Testing` is referenced by all test projects through `tests/Directory.Build.props`. Individual fixture rules have their own applicability checks and `.editorconfig` exemptions: KAL1006 is disabled for functional/integration tests, KAL1009 runs only in `*.UnitTests` assemblies, and KAL1010/KAL1011 apply wherever their matching test-project code occurs.
+**Audience:** contributors writing tests. **Project:** [`Kaleido.Analyzers.Testing`](../tools/analyzers/Kaleido.Analyzers.Testing/), referenced by every test project through `tests/Directory.Build.props`; never shipped. Individual rules have their own applicability checks and `.editorconfig` exemptions: KAL1006 is disabled for functional/integration tests, KAL1009 runs only in `*.UnitTests` assemblies, and KAL1010/KAL1011 apply wherever their matching test-project code occurs.
 
 | ID | Rule | Diagnostic message |
 |---|---|---|
@@ -112,32 +127,13 @@ code on the first pass — do not suppress.
 | KAL1012 | Fixtures may not `new` a framework collaborator — a testable Kaleido type implementing a service interface; mock it instead | `'{0}' is a collaborator, not the SUT — mock it instead of new-ing a real instance` |
 | KAL1013 | A unit-test fixture is declared in its SUT's namespace with `.UnitTests` appended (`Kaleido.Queryable.Query.QueryContextEngine` → `Kaleido.Queryable.Query.UnitTests`); `*.UnitTests` assemblies only | `Test fixture '{0}' tests '{1}' — declare it in namespace '{2}'` |
 
-KAL1009 is configured as a warning — it flags types missing a fixture without breaking the build; see `.editorconfig` `[tests/**]` section.
+KAL1009 is configured as a warning — it flags types missing a fixture without breaking the build; see the `.editorconfig` `[tests/**]` section.
 
 ### SutFixture notes (KAL1006–KAL1009)
 
 `SutFixture<TSut>` lives in `Kaleido.UnitTests` (the base test project — other `*.UnitTests` projects reference it). Testable means public or internal class, non-static, non-abstract, with at least one ordinary method; records, exceptions, attributes, DTO-suffix types, and static `*Extensions` classes are exempt. KAL1009 runs only in `*.UnitTests` assemblies; KAL1006 is disabled for functional/integration projects in `.editorconfig`. Those suites are scenario-scoped and do not normally use `SutFixture`, while the other fixture-shape rules activate only when their specific fixture pattern occurs.
 
-## Rationale, examples, and implementation
+### Examples
 
-### Consumer checks
-
-- **KAL2004 — preserve cancellation.** A step handler's `ExecuteAsync` with a bare `catch (Exception)` can turn `OperationCanceledException` into a false execution failure. Use `catch (Exception ex) when (ex is not OperationCanceledException)` or handle cancellation in an earlier catch. The rule targets Process step-handler `ExecuteAsync` bodies, not every catch in an application. [Implementation](../tools/analyzers/Kaleido.Analyzers/Process/StepHandlerOceAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Process/StepHandlerOceAnalyzerTests.cs).
-- **KAL2009 — explicit discovery.** `AddKaleido(config, o => o.ServiceName = "app")` omits `Assemblies`; set `o.Assemblies = [typeof(Program).Assembly]` in the options lambda. The warning is a syntax-level hint for lambdas; `AddKaleido()` itself rejects missing or empty lists with `missing_assembly`, including when no lambda is supplied. [Implementation](../tools/analyzers/Kaleido.Analyzers/Bootstrap/AddKaleidoAssembliesAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Bootstrap/AddKaleidoAssembliesAnalyzerTests.cs).
-
-- **KAL2010/KAL2011 — interface is identity, attribute is metadata.** A process step is identified by `IProcessStep`; `[ProcessStep]` only describes it. KAL2010 flags the attribute on a type without the interface; KAL2011 flags a concrete `IProcessStep` type without the attribute. Both mirror startup validation (`pro_invalid_registration`, `pro_missing_attribute`). [Implementation](../tools/analyzers/Kaleido.Analyzers/Process/ProcessStepIdentityAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Process/ProcessStepIdentityAnalyzerTests.cs).
-
-The KAL2001–KAL2003 attribute rules catch missing required metadata before startup (for steps: `Version`, `DisplayName`, `Description` — the step name is the type name), and KAL2008 detects a missing same-compilation step handler; the table above distinguishes warnings from errors. These are consumer checks bundled with the main Kaleido package, unlike the contributor checks below.
-
-### Contributor conventions
-
-- **KAL0003 — make null assumptions visible.** `typeof(Widget).GetMethod("Run")!` hides a missing-reflection-member failure; `typeof(Widget).GetMethod("Run") ?? throw new KaleidoFrameworkException(FrameworkErrorCodes.ReflectionError, "Run was not found.")` handles it explicitly. Test code legitimately uses `!` in assertion/stub setups and is exempted in `.editorconfig`. [Implementation](../tools/analyzers/Kaleido.Analyzers.Source/Design/NullForgivingOperatorAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Source.UnitTests/Design/NullForgivingOperatorAnalyzerTests.cs).
-- **KAL0015 — keep a local interface with its implementation.** If `IWidgetService` and its same-named `WidgetService` implementation live in one assembly, declare both in `WidgetService.cs` instead of a separate `IWidgetService.cs`. Provider contracts such as `IProcessorContextStore`, which have no same-named implementation in that assembly, are exempt. This is a repository layout convention, not a runtime correctness check. [Implementation](../tools/analyzers/Kaleido.Analyzers.Source/Structure/InterfaceCoLocationAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Source.UnitTests/Structure/InterfaceCoLocationAnalyzerTests.cs).
-
-The DI and API-design tables above state the remaining source rules' immediate failure modes and scoped exemptions; see their implementations under [`Kaleido.Analyzers.Source`](../tools/analyzers/Kaleido.Analyzers.Source/) when changing a convention.
-
-### Test-fixture safeguards
-
-**KAL1010** prevents a helper-only `*Tests` class from looking like coverage. For example, a concrete `WidgetTests : SutFixture<Widget>` with `CreateSut()` and only helper methods, but no `[Fact]` or `[Theory]`, reports KAL1010; add a real test rather than an empty assertion. A `*Tests` class with **no ordinary methods at all** is intentionally skipped by KAL1010, as are abstract/static or differently named classes. KAL1009 independently looks for an actual `[Fact]`/`[Theory]` fixture for a testable source type in a matching `*.UnitTests` assembly. [Implementation](../tools/analyzers/Kaleido.Analyzers.Testing/Fixtures/FixtureEmptyAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Testing.UnitTests/Fixtures/FixtureEmptyAnalyzerTests.cs).
-
-**KAL1011** rejects a record inheriting from `System.Exception`; synthesized record equality and copy behavior do not belong on an exception. `record WidgetException : System.Exception` is already invalid C# today, so this diagnostic is a **secondary safeguard**, not a claim to detect an otherwise compiling bug. Use `class WidgetException : System.Exception` instead; a record that is not an exception (for example `record WidgetResult(bool Success)`) is exempt. The analyzer test suppresses the compiler's own errors to assert the rule independently. [Implementation](../tools/analyzers/Kaleido.Analyzers.Testing/Design/ExceptionRecordAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Testing.UnitTests/Design/ExceptionRecordAnalyzerTests.cs).
+- **KAL1010 — no helper-only fixtures.** A concrete `WidgetTests : SutFixture<Widget>` with `CreateSut()` and only helper methods, but no `[Fact]` or `[Theory]`, reports KAL1010; add a real test rather than an empty assertion. A `*Tests` class with **no ordinary methods at all** is intentionally skipped, as are abstract/static or differently named classes. KAL1009 independently looks for an actual `[Fact]`/`[Theory]` fixture for a testable source type in a matching `*.UnitTests` assembly. [Implementation](../tools/analyzers/Kaleido.Analyzers.Testing/Fixtures/FixtureEmptyAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Testing.UnitTests/Fixtures/FixtureEmptyAnalyzerTests.cs).
+- **KAL1011 — exceptions are classes.** `record WidgetException : System.Exception` is already invalid C# today, so this diagnostic is a **secondary safeguard**, not a claim to detect an otherwise compiling bug. Use `class WidgetException : System.Exception` instead; a record that is not an exception (for example `record WidgetResult(bool Success)`) is exempt. The analyzer test suppresses the compiler's own errors to assert the rule independently. [Implementation](../tools/analyzers/Kaleido.Analyzers.Testing/Design/ExceptionRecordAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Testing.UnitTests/Design/ExceptionRecordAnalyzerTests.cs).

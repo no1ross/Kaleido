@@ -1,3 +1,4 @@
+using Kaleido.Samples.ECommerce.Data.QueryContextSources;
 using Kaleido.Queryable;
 
 using Kaleido.Samples.ECommerce.Data.QueryContexts;
@@ -7,13 +8,12 @@ using Kaleido.Samples.ECommerce.Data.QueryViewSources.Views;
 namespace Kaleido.Samples.ECommerce.Data.QueryViewSources;
 
 [QueryView(
-    Name = "order-details",
     DisplayName = "Order Details",
     Version = "1.0.0",
     Description = "Detailed order information.")]
 internal sealed class OrderDetailsViewSource
     : IQueryViewSource<
-        OrderQueryContext,
+        OrderQueryContextSource, OrderQueryContext,
         OrderDetailsView,
         OrderDetailsViewParameters>
 {

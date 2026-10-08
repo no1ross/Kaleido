@@ -57,7 +57,7 @@ public sealed class KaleidoQueryableClientTests
     // Helpers
     // ---------------------------------------------------------------------------
 
-    private static readonly QueryableRecordResponse FakeContext = new()
+    private static readonly QueryableSourceResponse FakeContext = new()
     {
         ServiceName = "test-svc",
         Name = "my-context",
@@ -65,7 +65,6 @@ public sealed class KaleidoQueryableClientTests
         Description = "Test context.",
         Version = "1.0.0",
         Source = "test",
-        Kind = QueryContextKind.Direct,
         QueryUrl = "/queryable/my-context/query",
         Fields = [],
         Views =
@@ -256,11 +255,11 @@ public sealed class KaleidoQueryableClientTests
     }
 
     // ---------------------------------------------------------------------------
-    // QueryContextAsync
+    // QuerySourceAsync
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public async Task QueryContextAsync_PostsToContextQueryUrl_AndReturnsResult()
+    public async Task QuerySourceAsync_PostsToSourceQueryUrl_AndReturnsResult()
     {
         var expectedResult = new QueryResult<FakeView>(2, 0, 2, [new FakeView { Id = 1 }, new FakeView { Id = 2 }]);
 
@@ -280,7 +279,7 @@ public sealed class KaleidoQueryableClientTests
         correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext());
         var client = CreateSut(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
 
-        var result = await client.QueryContextAsync<FakeView>(
+        var result = await client.QuerySourceAsync<FakeView>(
             "my-context",
             new QueryApiRequest(new QueryApiBody()));
 
@@ -288,17 +287,47 @@ public sealed class KaleidoQueryableClientTests
     }
 
     [Fact]
-    public async Task QueryContextAsync_WhenContextHasNoQueryUrl_Throws()
+    public async Task QuerySourceAsync_WithParameters_PostsParametersToSourceQueryUrl()
     {
-        var noQueryContext = FakeContext with { QueryUrl = null };
-        var (client, _) = CreateClient(respond: _ => JsonOk(new AggregatedRegistryResponse { Queryables = [noQueryContext] }));
+        string? postedUrl = null;
+        string? postedBody = null;
+        var callCount = 0;
+        var handler = HandlerThatReturns(req =>
+        {
+            callCount++;
+            if (callCount == 1)
+            {
+                return JsonOk(FakeRegistry);
+            }
+
+            postedUrl = req.RequestUri!.PathAndQuery;
+            postedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return JsonOk(new QueryResult<FakeView>(1, 0, 1, [new FakeView { Id = 7 }]));
+        });
+        var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
+        var client = CreateSut(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
+
+        var result = await client.QuerySourceAsync<FakeSearchParams, FakeView>(
+            "my-context",
+            new QueryApiRequest<FakeSearchParams>(new FakeSearchParams { ProcessId = "p-1" }, new QueryApiBody()));
+
+        Assert.Equal("/queryable/my-context/query", postedUrl);
+        Assert.Contains("p-1", postedBody);
+        Assert.Equal(7, Assert.Single(result.Results).Id);
+    }
+
+    [Fact]
+    public async Task QuerySourceAsync_WhenSourceHasNoQueryUrlForCaller_Throws()
+    {
+        var noQuerySource = FakeContext with { QueryUrl = null };
+        var (client, _) = CreateClient(respond: _ => JsonOk(new AggregatedRegistryResponse { Queryables = [noQuerySource] }));
 
         var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.QueryContextAsync<FakeView>(
+            () => client.QuerySourceAsync<FakeView>(
                 "my-context",
                 new QueryApiRequest(new QueryApiBody())));
 
-        Assert.Contains("direct", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("query URL", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     // ---------------------------------------------------------------------------
@@ -340,7 +369,7 @@ public sealed class KaleidoQueryableClientTests
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public async Task QueryContextAsync_StampsCorrelationHeadersOnRequest()
+    public async Task QuerySourceAsync_StampsCorrelationHeadersOnRequest()
     {
         var expectedResult = new QueryResult<FakeView>(0, 0, 0, []);
         var callCount = 0;
@@ -356,7 +385,7 @@ public sealed class KaleidoQueryableClientTests
         var stamper = new Mock<ICorrelationHeaderStamper>();
 
         var client = CreateSut(httpClient, stamper.Object);
-        await client.QueryContextAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()));
+        await client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()));
 
         stamper.Verify(x => x.Stamp(It.IsAny<HttpRequestMessage>()), Times.AtLeastOnce);
     }
@@ -366,6 +395,7 @@ public sealed class KaleidoQueryableClientTests
     // ---------------------------------------------------------------------------
 
     private sealed class FakeParams { }
+    private sealed class FakeSearchParams { public string ProcessId { get; init; } = string.Empty; }
     private sealed class FakeView { public int Id { get; init; } }
 }
 

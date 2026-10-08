@@ -6,9 +6,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.ECommerce.Data.QueryContextSources;
 
+[QuerySource(
+    Version = "1.0",
+    DisplayName = "Orders",
+    Description = "Customer orders with their status and totals.",
+    Source = "E-Commerce Orders")]
 internal sealed class OrderQueryContextSource(
     ECommerceDbContext dbContext)
-    : IQueryContextSource<OrderQueryContext>
+    : IQuerySource<OrderQueryContext>
 {
     public IQueryable<OrderQueryContext> CreateQuery(
         QueryExecutionContext executionContext)

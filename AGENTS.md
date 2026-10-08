@@ -43,7 +43,7 @@ Owns shared substrate concerns and capability runtimes:
 - bootstrap and builder state (`AddKaleido()`, `IKaleidoBuilder`, `KaleidoServiceOptions`)
 - shared metadata primitives (`DataTypeMapper`, `ConstraintMapper`)
 - shared eventing abstractions and correlation context
-- Queryable runtime: context/view registration, validation, dispatch, execution, observability
+- Queryable runtime: source/view registration, validation, dispatch, execution, observability
 - Process runtime: step registration, planning, execution, state mutation, observability
 - Providers abstraction (`IProcessorContextStore`)
 
@@ -63,7 +63,7 @@ Owns shared HTTP contract types and HTTP-specific correlation primitives:
 - `KaleidoCorrelationHeaders` — canonical `X-Kaleido-*` header name constants
 - `HttpHeaderSanitizer` — RFC 7230-compliant sanitization of HTTP header values
 - Process HTTP request/response contracts (`ExecuteProcessRequest`, `ProcessExecutionResponse`, etc.)
-- Queryable HTTP request/response contracts (`QueryApiRequest`, `QueryableRecordResponse`, etc.)
+- Queryable HTTP request/response contracts (`QueryApiRequest`, `QueryableSourceResponse`, etc.)
 - Shared contract types used by both server-side and client-side projects
 
 ### Kaleido.Http.Client
@@ -148,7 +148,7 @@ Never record `OperationCanceledException` as an execution failure — it inflate
 The rule is: **one observability signal per cancellation, at the lowest level that has full context.**
 
 - **Process:** `ProcessExecutor` is the single recording point (`stepObservation.Canceled()`). It has step name, version, and processor name, and is where state is saved on cancellation. All layers above (`ProcessStepInvoker`, `ProcessRuntime`) use `when (exception is not OperationCanceledException)` on their `catch (Exception)` blocks so OCE propagates cleanly without triggering `ExecutionFailed` or `HandlerFailed`.
-- **Queryable:** `QueryContextEngine` and `DelegatedQueryViewEngine` each call `observation.Canceled()` in an explicit `catch (OperationCanceledException)` block placed before `catch (Exception)`. These are mutually exclusive code paths (dispatched by `QueryableService`), so only one signal fires per request.
+- **Queryable:** `QueryContextEngine` and `DelegatedQuerySourceEngine` each call `observation.Canceled()` in an explicit `catch (OperationCanceledException)` block placed before `catch (Exception)`. These are mutually exclusive code paths (dispatched by `QueryableService`), so only one signal fires per request.
 - Do **not** add `Canceled()` calls at higher levels (`ProcessRuntime`, `ProcessStepInvoker`) — you will get duplicate signals for the same cancellation event.
 - KAL0021 enforces the "exclude OCE" half: a catch-all that calls an observability member without a `when (… is not OperationCanceledException)` filter or an earlier `catch (OperationCanceledException)` is reported. The one-signal-per-cancellation placement is still a review responsibility.
 
@@ -174,8 +174,13 @@ The rule is: **one observability signal per cancellation, at the lowest level th
   snapshots, exceptions, DI, correlation).
 - The vocabulary is: **Processor** = owns/executes steps; **Process** = one
   executing instance. See `src/ARCHITECTURE.md` → Terminology.
-- `docs/ANALYZERS.md` → *Security-relevant analyzers* lists every rule and
-  the bypass it prevents — generate compliant code, never suppress KAL rules.
+- `docs/ANALYZERS.md` has one section per audience, each listing its rules
+  and what they prevent:
+  - consumer `KAL2xxx` rules, for code that uses Kaleido (services, samples);
+  - source `KAL0xxx` rules, for framework code in `src/`;
+  - test `KAL1xxx` rules, for `tests/`.
+
+  Generate compliant code; never suppress KAL rules.
 - Correlation invariants (one RequestId per request, echo-or-generate,
   automatic outbound propagation) are in `src/ARCHITECTURE.md`.
 

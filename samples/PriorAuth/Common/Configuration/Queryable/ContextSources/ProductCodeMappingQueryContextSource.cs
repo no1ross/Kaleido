@@ -5,9 +5,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.ContextSources;
 
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Product Code Mappings",
+    Description = "Maps procedure and service codes to the product processor that handles them.",
+    Source = "Prior Authorization Configuration")]
 internal sealed class ProductCodeMappingQueryContextSource(
     ConfigurationDbContext dbContext)
-    : IQueryContextSource<ProductCodeMappingQueryContext>
+    : IQuerySource<ProductCodeMappingQueryContext>
 {
     public IQueryable<ProductCodeMappingQueryContext> CreateQuery(
         QueryExecutionContext executionContext)

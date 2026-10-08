@@ -120,7 +120,7 @@ export class CategoryList implements OnInit, OnDestroy {
 
       this.queryableService
           .query<CategoryCatalogView>(
-              'categories',
+              'CategoryListQueryViewSource',
               request)
           .subscribe({
               next: result => {

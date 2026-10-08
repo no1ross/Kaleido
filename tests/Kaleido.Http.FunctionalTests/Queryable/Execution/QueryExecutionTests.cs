@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -180,7 +180,7 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
     }
 
     private Task<HttpResponseMessage> PostContextQueryAsync(QueryRequest request) =>
-        PostJsonAsync("/kaleido/queryable/functional-records/query", request);
+        PostJsonAsync("/kaleido/queryable/functionalrecordcontextsource/query", request);
 
     private async Task<JsonElement[]> PostContextQueryForRecordsAsync(QueryRequest request)
     {
@@ -190,7 +190,7 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
     }
 
     private Task<HttpResponseMessage> PostViewQueryAsync(QueryRequest<FunctionalRecordViewParameters> request) =>
-        PostJsonAsync("/kaleido/queryable/functional-records/grid/query", request);
+        PostJsonAsync("/kaleido/queryable/functionalrecordcontextsource/functionalrecordgridview/query", request);
 
     private Task<HttpResponseMessage> PostJsonAsync<T>(string url, T request) where T : class =>
         _client.PostAsJsonAsync(url, request, JsonOptions);
@@ -198,7 +198,7 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
     private async Task<HttpResponseMessage> PostRawContextQueryAsync(string json)
     {
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
-        return await _client.PostAsync("/kaleido/queryable/functional-records/query", content);
+        return await _client.PostAsync("/kaleido/queryable/functionalrecordcontextsource/query", content);
     }
 
     private static async Task AssertStatusCodeAsync(HttpStatusCode expected, HttpResponseMessage response)

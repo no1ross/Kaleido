@@ -3,12 +3,7 @@ using Kaleido.Queryable;
 
 namespace Kaleido.Samples.ECommerce.Data.QueryContexts;
 
-[QueryContext(
-    Name = "customers",
-    DisplayName = "Customers",
-    Version = "1.0.0",
-    Source = "E-Commerce Catalog")]
-public sealed record CustomerQueryContext
+public sealed record CustomerQueryContext : IQueryContext
 {
     public Guid CustomerId
     {

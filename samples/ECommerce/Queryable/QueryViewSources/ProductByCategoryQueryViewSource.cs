@@ -1,3 +1,4 @@
+using Kaleido.Samples.ECommerce.Data.QueryContexttSources;
 using Kaleido.Queryable;
 using Kaleido.Samples.ECommerce.Data.QueryContexts;
 using Kaleido.Samples.ECommerce.Data.QueryViewSources.Parameters;
@@ -6,14 +7,13 @@ using Kaleido.Samples.ECommerce.Data.QueryViewSources.Views;
 namespace Kaleido.Samples.ECommerce.Data.QueryViewSources;
 
 [QueryView(
-    Name = "product-by-category",
     DisplayName = "Products By Category",
     Version = "1.0.0",
     Description = "Product catalog results.",
     DefaultSortField = nameof(ProductCatalogQueryContext.ProductName))]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class ProductByCategoryQueryViewSource
-    : IQueryViewSource<ProductCatalogQueryContext, ProductCatalogView, ProductByCategoryParameters>
+    : IQueryViewSource<ProductCatalogContextSource, ProductCatalogQueryContext, ProductCatalogView, ProductByCategoryParameters>
 {
     private readonly ECommerceDbContext _dbContext;
 

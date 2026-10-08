@@ -5,9 +5,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.Provider.Queryable.ContextSources;
 
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Provider Locations",
+    Description = "Provider locations, searchable by provider and location details.",
+    Source = "Prior Authorization Provider Search")]
+[Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class ProviderLocationQueryContextSource(
     ProviderSearchDbContext dbContext)
-    : IQueryContextSource<ProviderLocationQueryContext>
+    : IQuerySource<ProviderLocationQueryContext>
 {
     public IQueryable<ProviderLocationQueryContext> CreateQuery(
         QueryExecutionContext executionContext)

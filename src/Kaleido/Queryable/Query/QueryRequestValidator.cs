@@ -21,46 +21,23 @@ namespace Kaleido.Queryable.Query;
 /// </summary>
 internal interface IQueryContextValidator
 {
-    void Validate(IQueryRequest request, QueryContextRegistration registration, QueryViewRegistration viewRegistration);
-
-    void Validate(IQueryRequest request, QueryContextRegistration registration);
+    /// <summary>
+    /// Validates a request against a source's query context fields and the paging that applies
+    /// (the view's for a view query, the source's for a direct or delegated query).
+    /// </summary>
+    void Validate(IQueryRequest request, QuerySourceMetadata metadata, PageableMetadata? pageable);
 }
 
 internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQueryContextValidator
 {
     public void Validate(
         IQueryRequest request,
-        QueryContextRegistration registration,
-        QueryViewRegistration viewRegistration)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(registration);
-        ArgumentNullException.ThrowIfNull(viewRegistration);
-
-        ValidateInternal(
-            request,
-            registration.Metadata,
-            viewRegistration.Metadata.Pageable);
-    }
-
-    public void Validate(
-        IQueryRequest request,
-        QueryContextRegistration registration)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(registration);
-
-        ValidateInternal(
-            request,
-            registration.Metadata,
-            registration.Metadata.Pageable);
-    }
-
-    private void ValidateInternal(
-        IQueryRequest request,
-        QueryContextMetadata metadata,
+        QuerySourceMetadata metadata,
         PageableMetadata? pageable)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(metadata);
+
         ValidateFilter(
             request.Query?.Filter,
             metadata);
@@ -117,7 +94,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
 
     private void ValidateFilter(
         QueryFilterNode? node,
-        QueryContextMetadata metadata,
+        QuerySourceMetadata metadata,
         int depth = 0)
     {
         if (node is null)
@@ -166,7 +143,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
 
     private void ValidateFilterGroup(
         QueryFilterGroup group,
-        QueryContextMetadata metadata,
+        QuerySourceMetadata metadata,
         int depth)
     {
         if (group.Filters.Count == 0)
@@ -187,7 +164,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
 
     private void ValidateFilterCondition(
         QueryFilterCondition condition,
-        QueryContextMetadata metadata)
+        QuerySourceMetadata metadata)
     {
         if (string.IsNullOrWhiteSpace(condition.Field))
         {
@@ -219,7 +196,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
 
     private static void ValidateSearch(
         string? searchText,
-        QueryContextMetadata metadata)
+        QuerySourceMetadata metadata)
     {
         if (string.IsNullOrWhiteSpace(
                 searchText))
@@ -238,7 +215,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
 
     private static void ValidateSort(
         IReadOnlyList<QuerySort>? sorts,
-        QueryContextMetadata metadata)
+        QuerySourceMetadata metadata)
     {
         if (sorts is null)
         {
@@ -289,7 +266,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         {
             throw new KaleidoValidationException(
                 QueryableErrorCodes.PagingNotSupported,
-                "Paging is not supported for this record.");
+                "Paging is not supported for this query.");
         }
 
         if (page.Size is <= 0)

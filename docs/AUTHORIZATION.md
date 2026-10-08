@@ -4,7 +4,7 @@ Kaleido never authenticates callers itself — the host owns authentication
 (`AddAuthentication`/`UseAuthentication`, JWT, cookies, whatever). Kaleido consumes the
 resulting principal via the transport and enforces two orthogonal gates:
 
-- **Capability authorization** — `KaleidoAuthorizationAttribute` on steps, contexts,
+- **Capability authorization** — `KaleidoAuthorizationAttribute` on steps, query sources,
   and views narrows access with `Roles` / `Policy`, or opens it with `AllowAnonymous`.
 - **Process ownership** — `ProcessorContext.Owner`/`OwnerRoles` records who created a
   process; resumable access is restricted to the owner and role-mates.
@@ -66,7 +66,7 @@ public sealed record AddItemToCartStep : IProcessStep;           // no login nee
 
 When enforcing (`Authenticated` or `ZeroTrust`), requirements are applied to:
 
-- per-step execute endpoints (`/processes/steps/{step}`) and per-context/view query
+- per-step execute endpoints (`/processes/steps/{step}`) and per-source/view query
   endpoints, as endpoint metadata enforced by the host's auth middleware
 - the multi-step `POST /processes/execute` handler: the route carries no auth of its
   own; every submitted step is checked against its own declaration **before anything

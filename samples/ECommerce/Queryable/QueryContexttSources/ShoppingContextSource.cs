@@ -3,9 +3,14 @@ using Kaleido.Samples.ECommerce.Data.QueryContexts;
 
 namespace Kaleido.Samples.ECommerce.Data.QueryContexttSources;
 
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Shopping Carts",
+    Description = "Shopping carts and their items.",
+    Source = "E-Commerce Catalog")]
 internal sealed class ShoppingCartContextSource(
     ECommerceDbContext dbContext)
-    : IQueryContextSource<ShoppingCartQueryContext>
+    : IQuerySource<ShoppingCartQueryContext>
 {
     public IQueryable<ShoppingCartQueryContext> CreateQuery(
         QueryExecutionContext executionContext)

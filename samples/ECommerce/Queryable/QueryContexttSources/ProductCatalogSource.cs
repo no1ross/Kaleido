@@ -3,8 +3,13 @@ using Kaleido.Samples.ECommerce.Data.QueryContexts;
 
 namespace Kaleido.Samples.ECommerce.Data.QueryContexttSources;
 
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Products",
+    Description = "Products in the catalog, searchable by name and category.",
+    Source = "E-Commerce Catalog")]
 internal sealed class ProductCatalogContextSource
-    : IQueryContextSource<ProductCatalogQueryContext>
+    : IQuerySource<ProductCatalogQueryContext>
 {
     private readonly ECommerceDbContext _dbContext;
 

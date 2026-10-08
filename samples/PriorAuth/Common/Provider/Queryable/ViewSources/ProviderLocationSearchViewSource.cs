@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Provider.Queryable.ContextSources;
 using Kaleido.Queryable;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Contexts;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.ViewSources.Views;
@@ -5,14 +6,13 @@ using Kaleido.Samples.PriorAuth.Provider.Queryable.ViewSources.Views;
 namespace Kaleido.Samples.PriorAuth.Provider.Queryable.ViewSources;
 
 [QueryView(
-    Name = "provider-search",
     DisplayName = "Provider Search",
     Version = "1.0.0",
     Description = "Searchable provider location results.",
     DefaultSortField = nameof(ProviderLocationQueryContext.ProviderName))]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class ProviderLocationSearchViewSource
-    : IQueryViewSource<ProviderLocationQueryContext, ProviderLocationSearchView>
+    : IQueryViewSource<ProviderLocationQueryContextSource, ProviderLocationQueryContext, ProviderLocationSearchView>
 {
     public IQueryable<ProviderLocationSearchView> CreateView(
         IQueryable<ProviderLocationQueryContext> query,

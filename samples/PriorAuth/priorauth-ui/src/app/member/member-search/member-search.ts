@@ -12,7 +12,7 @@ import {
 import {
     QueryableEnumValue,
     QueryableField,
-    QueryableRecord,
+    QueryableSource,
     QueryableViewRegistration
 } from '../../kaleido/models/queryable-registry';
 import { QueryableRegistry } from '../../kaleido/services/queryable-registry';
@@ -54,7 +54,7 @@ export class MemberSearch {
         inject(RegistryCatalog);
 
     readonly searchViewName =
-        'member-search';
+        'MemberSearchViewSource';
 
     readonly request: QueryRequest = {
         query: {
@@ -90,7 +90,7 @@ export class MemberSearch {
         return this.queryableRegistry.tryGetViewRegistration(this.searchViewName);
     }
 
-    get context(): QueryableRecord | undefined {
+    get context(): QueryableSource | undefined {
         return this.registration?.context;
     }
 
@@ -206,7 +206,7 @@ export class MemberSearch {
         this.stateOptionsError.set(undefined);
 
         this.queryableService
-            .queryContext<StateOption>('states', {
+            .queryContext<StateOption>('StateQueryContextSource', {
                 query: {
                     page: {
                         size: 100,

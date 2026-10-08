@@ -1,3 +1,4 @@
+using Kaleido.Samples.ECommerce.Data.QueryContexttSources;
 using Kaleido.Queryable;
 using Kaleido.Samples.ECommerce.Data.QueryContexts;
 using Kaleido.Samples.ECommerce.Data.QueryViewSources.Parameters;
@@ -6,13 +7,12 @@ using Kaleido.Samples.ECommerce.Data.QueryViewSources.Views;
 namespace Kaleido.Samples.ECommerce.Data.QueryViewSources;
 
 [QueryView(
-    Name = "shopping-cart-summary",
     DisplayName = "Shopping Cart Summary",
     Version = "1.0.0",
     Description = "Summary of items in the shopping cart.")]
 internal sealed class ShoppingCartSummaryQueryViewSource
     : IQueryViewSource<
-        ShoppingCartQueryContext,
+        ShoppingCartContextSource, ShoppingCartQueryContext,
         ShoppingCartSummaryView,
         ShoppingCartViewParameters>
 {

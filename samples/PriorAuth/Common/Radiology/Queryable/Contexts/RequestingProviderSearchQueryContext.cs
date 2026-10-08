@@ -1,17 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Queryable;
-using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Queryable.Contexts;
 
-[QueryContext(
-    Name = "requesting-provider-searches",
-    DisplayName = "Requesting Provider Searches",
-    Version = "1.0.0",
-    Source = "Prior Authorization Radiology",
-    Kind = QueryContextKind.Delegated)]
-[Pageable(DefaultSize = 25, MaxSize = 250)]
-public sealed class RequestingProviderSearchQueryContext
+// The public query contract of the RequestingProviderSearchSource delegated source: what a
+// consumer may search, filter and sort on.
+public sealed class RequestingProviderSearchQueryContext : IQueryContext
 {
     [Key]
     public Guid ProviderLocationId { get; init; }

@@ -30,13 +30,13 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
     }
 
     [Fact]
-    public void MapQueryable_RegistersContextEndpoints()
+    public void MapQueryable_RegistersSourceAndViewEndpoints()
     {
         var endpoints = CreateEndpoints();
 
         endpoints.MapQueryable();
 
-        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryContextEndpointName("test-context")));
+        Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QuerySourceEndpointName("test-context")));
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryViewEndpointName("test-context", "test-view")));
     }
 
@@ -99,15 +99,17 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
     {
         var registry = new Mock<IQueryableRegistry>();
         registry.Setup(x => x.Registrations).Returns([
-            new QueryableContextRegistryItem
+            new QueryableSourceRegistryItem
             {
-                ContextType = typeof(TestContext),
+                SourceType = typeof(TestSource),
+                QueryContextType = typeof(TestContext),
+                ResultType = typeof(TestContext),
+                ParametersType = typeof(EmptyQueryViewParameters),
                 Name = "Test-Context",
                 Description = "Test Context",
                 DisplayName = "Test Context",
                 Version = "1.0.0",
                 Source = "Unit Test",
-                Kind = QueryContextKind.Direct,
                 Views = [
                     new QueryableViewRegistryItem
                     {

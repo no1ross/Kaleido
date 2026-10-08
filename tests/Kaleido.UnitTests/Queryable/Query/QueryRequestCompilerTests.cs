@@ -1,3 +1,4 @@
+using Kaleido.Registry;
 using Kaleido.Exceptions;
 
 namespace Kaleido.Queryable.Query.UnitTests;
@@ -17,7 +18,7 @@ public sealed class QueryRequestCompilerTests
     [Fact]
     public void Compile_UsesContextPageableDefaults()
     {
-        var result = Sut.Compile(new QueryRequest(), CreateContextMetadata());
+        var result = Compile(new QueryRequest(), CreateContextMetadata());
 
         Assert.Equal(25, result.Page.Size);
         Assert.Equal(0, result.Page.Offset);
@@ -26,7 +27,7 @@ public sealed class QueryRequestCompilerTests
     [Fact]
     public void Compile_UsesViewPageableDefaults()
     {
-        var result = Sut.Compile(new QueryRequest(), CreateContextMetadataWithoutPageable(), CreateViewMetadata());
+        var result = Sut.Compile(new QueryRequest(), CreateContextMetadataWithoutPageable(), CreateViewMetadata().Pageable);
 
         Assert.Equal(10, result.Page.Size);
         Assert.Equal(0, result.Page.Offset);
@@ -35,7 +36,7 @@ public sealed class QueryRequestCompilerTests
     [Fact]
     public void Compile_UsesFallbackPageSizeWhenNoPageableIsDefined()
     {
-        var result = Sut.Compile(new QueryRequest(), CreateContextMetadataWithoutPageable());
+        var result = Compile(new QueryRequest(), CreateContextMetadataWithoutPageable());
 
         Assert.Equal(50, result.Page.Size);
         Assert.Equal(0, result.Page.Offset);
@@ -46,7 +47,7 @@ public sealed class QueryRequestCompilerTests
     {
         var request = new QueryRequest(new QueryBody(Page: new QueryPage(500, 3)));
 
-        var result = Sut.Compile(request, CreateContextMetadata());
+        var result = Compile(request, CreateContextMetadata());
 
         Assert.Equal(100, result.Page.Size);
         Assert.Equal(3, result.Page.Offset);
@@ -57,7 +58,7 @@ public sealed class QueryRequestCompilerTests
     {
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition(nameof(TestRecord.Code), FilterOperator.Equals, "A")));
 
-        var result = Sut.Compile(request, CreateContextMetadata());
+        var result = Compile(request, CreateContextMetadata());
 
         var condition = Assert.IsType<CompiledFilterCondition>(result.Filter);
         Assert.Equal(nameof(TestRecord.Code), condition.Field.Name);
@@ -77,7 +78,7 @@ public sealed class QueryRequestCompilerTests
                         LogicalOperator.Or,
                         QueryFilterNode.CreateCondition(nameof(TestRecord.Name), FilterOperator.Contains, "A")))));
 
-        var result = Sut.Compile(request, CreateContextMetadata());
+        var result = Compile(request, CreateContextMetadata());
 
         var group = Assert.IsType<CompiledFilterGroup>(result.Filter);
         Assert.Equal(LogicalOperator.And, group.Operator);
@@ -89,7 +90,7 @@ public sealed class QueryRequestCompilerTests
     {
         var request = new QueryRequest(new QueryBody(SearchText: "abc"));
 
-        var result = Sut.Compile(request, CreateContextMetadata());
+        var result = Compile(request, CreateContextMetadata());
 
         var search = Assert.IsType<CompiledSearch>(result.Search);
         Assert.Equal("abc", search.SearchText);
@@ -107,7 +108,7 @@ public sealed class QueryRequestCompilerTests
                     new QuerySort(nameof(TestRecord.Code), SortDirection.Ascending, 1)
                 ]));
 
-        var result = Sut.Compile(request, CreateContextMetadata());
+        var result = Compile(request, CreateContextMetadata());
 
         Assert.Equal([nameof(TestRecord.Code), nameof(TestRecord.Region)], result.Sort.Select(x => x.Field.Name));
         Assert.Equal([0, 1], result.Sort.Select(x => x.Sequence));
@@ -118,28 +119,34 @@ public sealed class QueryRequestCompilerTests
     {
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Missing", FilterOperator.Equals, "A")));
 
-        var exception = Assert.Throws<KaleidoValidationException>(() => Sut.Compile(request, CreateContextMetadata()));
+        var exception = Assert.Throws<KaleidoValidationException>(() => Compile(request, CreateContextMetadata()));
 
         Assert.Equal(QueryableErrorCodes.InvalidField, exception.Code);
         Assert.Contains("Field 'Missing' does not exist", exception.Message);
     }
 
-    private static QueryContextMetadata CreateContextMetadata() =>
+    private CompiledQuery Compile(IQueryRequest request, QuerySourceMetadata metadata) =>
+        Sut.Compile(request, metadata, metadata.Pageable);
+
+    private static QuerySourceMetadata CreateContextMetadata() =>
         new(
-            "test-record",
+            "TestSource",
             "Test Record",
             "Test Record",
             "1.0.0",
             "Unit Test",
-            QueryContextKind.Direct,
+            QuerySourceKind.Local,
             new PageableMetadata(25, 100),
             [
                 new FieldMetadata(nameof(TestRecord.Code), null, typeof(string), TestDataType, true, [FilterOperator.Equals], false, null, null, true),
                 new FieldMetadata(nameof(TestRecord.Name), null, typeof(string), TestDataType, false, [], true, 1, MatchMode.Contains, false),
                 new FieldMetadata(nameof(TestRecord.Region), null, typeof(string), TestDataType, false, [], true, 2, MatchMode.Contains, true)
-            ]);
+            ],
+            [],
+            [],
+            AuthorizationMetadata.Unspecified);
 
-    private static QueryContextMetadata CreateContextMetadataWithoutPageable() =>
+    private static QuerySourceMetadata CreateContextMetadataWithoutPageable() =>
         CreateContextMetadata() with { Pageable = null };
 
     private static QueryViewMetadata CreateViewMetadata() =>

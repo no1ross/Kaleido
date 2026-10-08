@@ -9,19 +9,26 @@ public static class QueryableErrorCodes
 {
     // Startup registration
 
-    /// <summary>A query context or view type is missing a required attribute ([QueryContext] or [QueryView]).</summary>
+    /// <summary>
+    /// A query source or view is missing its required attribute ([QuerySource] or [QueryView]),
+    /// or the attribute has an empty Version, DisplayName or Description.
+    /// </summary>
     public const string MissingAttribute = "qry_missing_attribute";
 
-    /// <summary>A query context has no registered IQueryContextSource or IQueryContextSourceAsync.</summary>
+    /// <summary>A query view references a source that is not a registered local query source.</summary>
     public const string MissingSource = "qry_missing_source";
 
-    /// <summary>A query context has multiple registered sources.</summary>
-    public const string DuplicateSource = "qry_duplicate_source";
-
-    /// <summary>Duplicate query context or view names were detected across the registered assemblies.</summary>
+    /// <summary>
+    /// Duplicate names were detected: two query sources share a type name, or two views of the
+    /// same source share a type name.
+    /// </summary>
     public const string DuplicateRegistration = "qry_duplicate_registration";
 
-    /// <summary>A query context or view registration is structurally invalid (e.g. bad sort field, unregistered context reference, invalid contract type).</summary>
+    /// <summary>
+    /// A query source or view registration is structurally invalid (e.g. both sync and async
+    /// shapes, more than one source/view interface, both a source and a view, a bad default sort
+    /// field, or a failing TypeFilter).
+    /// </summary>
     public const string InvalidRegistration = "qry_invalid_registration";
 
     // Request validation

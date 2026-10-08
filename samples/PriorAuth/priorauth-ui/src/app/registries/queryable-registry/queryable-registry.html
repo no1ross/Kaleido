@@ -94,7 +94,7 @@
                                 <tr><th>Name</th><td>{{ selectedContext.name }}</td></tr>
                                 <tr><th>Version</th><td>{{ selectedContext.version }}</td></tr>
                                 <tr><th>Source</th><td>{{ selectedContext.source }}</td></tr>
-                                <tr><th>Query Url</th><td>{{ selectedContext.queryUrl ?? 'Direct query not supported' }}</td></tr>
+                                <tr><th>Query Url</th><td>{{ selectedContext.queryUrl ?? 'Not available to this caller' }}</td></tr>
                                 <tr><th>Field Count</th><td>{{ selectedContext.fields.length }}</td></tr>
                                 <tr><th>View Count</th><td>{{ selectedContext.views.length }}</td></tr>
                             </table>

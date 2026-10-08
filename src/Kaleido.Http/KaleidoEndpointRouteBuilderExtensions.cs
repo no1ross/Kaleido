@@ -142,9 +142,9 @@ public static class KaleidoEndpointRouteBuilderExtensions
         }
     }
 
-    // Every capability that gets an endpoint: process steps, direct query
-    // contexts, and query views (views already carry their effective rule:
-    // their own declaration, else their context's).
+    // Every capability that gets an endpoint: process steps, query sources,
+    // and query views (views already carry their effective rule: their own
+    // declaration, else their source's).
     private static IReadOnlyList<(string Name, AuthorizationMetadata Authorization)> ExposedCapabilities(
         IServiceProvider services)
     {
@@ -159,16 +159,13 @@ public static class KaleidoEndpointRouteBuilderExtensions
 
         if (services.GetService<IQueryableRegistry>() is { } queryables)
         {
-            foreach (var context in queryables.Registrations)
+            foreach (var source in queryables.Registrations)
             {
-                if (context.Kind == QueryContextKind.Direct)
-                {
-                    capabilities.Add(($"context '{context.Name}'", context.Authorization));
-                }
+                capabilities.Add(($"source '{source.Name}'", source.Authorization));
 
                 capabilities.AddRange(
-                    context.Views.Select(v =>
-                        ($"view '{context.Name}/{v.Name}'", v.Authorization)));
+                    source.Views.Select(v =>
+                        ($"view '{source.Name}/{v.Name}'", v.Authorization)));
             }
         }
 

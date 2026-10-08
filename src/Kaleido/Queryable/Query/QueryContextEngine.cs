@@ -8,19 +8,22 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Queryable.Query;
 
+/// <summary>
+/// Executes queries against a local source: direct source queries and local view queries.
+/// </summary>
 internal interface IQueryContextEngine<TQueryContext, TView>
-        where TQueryContext : class
+        where TQueryContext : class, IQueryContext
         where TView : class
 {
     Task<QueryResult<TView>> ExecuteAsync(
         IQueryRequest request,
-        QueryContextRegistration registration,
+        QuerySourceRegistration source,
         QueryViewRegistration viewRegistration,
         CancellationToken cancellationToken = default);
 
     Task<QueryResult<TView>> ExecuteAsync(
         IQueryRequest request,
-        QueryContextRegistration registration,
+        QuerySourceRegistration source,
         CancellationToken cancellationToken = default);
 }
 
@@ -35,19 +38,19 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
     IQueryableObservability observability,
     IServiceProvider serviceProvider,
     ILogger<QueryContextEngine<TQueryContext, TView>> logger) : IQueryContextEngine<TQueryContext, TView>
-    where TQueryContext : class
+    where TQueryContext : class, IQueryContext
     where TView : class
 {
 
     public async Task<QueryResult<TView>> ExecuteAsync(
         IQueryRequest request,
-        QueryContextRegistration registration,
+        QuerySourceRegistration source,
         QueryViewRegistration viewRegistration,
         CancellationToken cancellationToken = default)
     {
         var details =
             new QueryObservationDetails(
-                registration.Metadata.Name,
+                source.Metadata.Name,
                 viewRegistration.Metadata.Name,
                 false,
                 QueryExecutionMode.LocalView);
@@ -58,40 +61,22 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
         try
         {
-            var metadata = registration.Metadata;
-            validator.Validate(request, registration, viewRegistration);
+            var metadata = source.Metadata;
+            var pageable = viewRegistration.Metadata.Pageable;
+            validator.Validate(request, metadata, pageable);
 
             var executionContext = new QueryExecutionContext(metadata, request);
-            var compiled = compiler.Compile(request, metadata, viewRegistration.Metadata);
-            var query = await CreateQueryAsync(executionContext, compiled, observation, cancellationToken);
+            var compiled = compiler.Compile(request, metadata, pageable);
+            var query = await CreateQueryAsync(source, executionContext, compiled, observation, cancellationToken);
             var view = await CreateViewAsync(viewRegistration, query, executionContext, observation, cancellationToken);
             var result = await MaterializeAsync(
                 view,
                 compiled.Page,
-                viewRegistration.Metadata.Pageable is not null,
+                pageable is not null,
                 observation,
                 cancellationToken);
 
-            if (eventPublisher is not EventPublisher)
-            {
-                try
-                {
-                    _ = eventPublisher.PublishAsync(
-                        eventFactory.CreateQueryExecuted(
-                            correlationAccessor.Current,
-                            details,
-                            request,
-                            result),
-                        cancellationToken);
-                }
-                catch (Exception publishException) when (publishException is not OperationCanceledException)
-                {
-                    logger.LogWarning(
-                        publishException,
-                        "Event publish failed for QueryExecuted on context {QueryContextName}. Event delivery is best-effort.",
-                        details.QueryContextName);
-                }
-            }
+            PublishExecuted(details, request, result, cancellationToken);
 
             return result;
         }
@@ -114,15 +99,15 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
     public async Task<QueryResult<TView>> ExecuteAsync(
         IQueryRequest request,
-        QueryContextRegistration registration,
+        QuerySourceRegistration source,
         CancellationToken cancellationToken = default)
     {
         var details =
             new QueryObservationDetails(
-                registration.Metadata.Name,
+                source.Metadata.Name,
                 null,
                 true,
-                QueryExecutionMode.DirectContext);
+                QueryExecutionMode.DirectSource);
 
         using var observation =
             observability.BeginExecution(
@@ -130,18 +115,18 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
         try
         {
-            var metadata = registration.Metadata;
-            validator.Validate(request, registration);
+            var metadata = source.Metadata;
+            validator.Validate(request, metadata, metadata.Pageable);
 
             var executionContext = new QueryExecutionContext(metadata, request);
-            var compiled = compiler.Compile(request, metadata);
-            var query = await CreateQueryAsync(executionContext, compiled, observation, cancellationToken);
+            var compiled = compiler.Compile(request, metadata, metadata.Pageable);
+            var query = await CreateQueryAsync(source, executionContext, compiled, observation, cancellationToken);
 
             if (query is not IQueryable<TView> typedQuery)
             {
                 throw new KaleidoFrameworkException(
                     FrameworkErrorCodes.TypeMismatch,
-                    $"Direct query for context '{typeof(TQueryContext).FullName}' requires result type '{typeof(TView).FullName}' to match the query context type.");
+                    $"Direct query for source '{source.SourceType.FullName}' requires result type '{typeof(TView).FullName}' to match the query context type '{typeof(TQueryContext).FullName}'.");
             }
 
             var result = await MaterializeAsync(
@@ -151,26 +136,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
                 observation,
                 cancellationToken);
 
-            if (eventPublisher is not EventPublisher)
-            {
-                try
-                {
-                    _ = eventPublisher.PublishAsync(
-                        eventFactory.CreateQueryExecuted(
-                            correlationAccessor.Current,
-                            details,
-                            request,
-                            result),
-                        cancellationToken);
-                }
-                catch (Exception publishException) when (publishException is not OperationCanceledException)
-                {
-                    logger.LogWarning(
-                        publishException,
-                        "Event publish failed for QueryExecuted on context {QueryContextName}. Event delivery is best-effort.",
-                        details.QueryContextName);
-                }
-            }
+            PublishExecuted(details, request, result, cancellationToken);
 
             return result;
         }
@@ -191,24 +157,61 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         }
     }
 
+    private void PublishExecuted(
+        QueryObservationDetails details,
+        IQueryRequest request,
+        QueryResult<TView> result,
+        CancellationToken cancellationToken)
+    {
+        if (eventPublisher is EventPublisher)
+        {
+            return;
+        }
+
+        try
+        {
+            _ = eventPublisher.PublishAsync(
+                eventFactory.CreateQueryExecuted(
+                    correlationAccessor.Current,
+                    details,
+                    request,
+                    result),
+                cancellationToken);
+        }
+        catch (Exception publishException) when (publishException is not OperationCanceledException)
+        {
+            logger.LogWarning(
+                publishException,
+                "Event publish failed for QueryExecuted on source {QuerySourceName}. Event delivery is best-effort.",
+                details.QuerySourceName);
+        }
+    }
+
     private async Task<IQueryable<TQueryContext>> CreateQueryAsync(
+        QuerySourceRegistration source,
         QueryExecutionContext executionContext,
-        CompiledRecordQuery compiled,
+        CompiledQuery compiled,
         IQueryExecutionObservation observation,
         CancellationToken cancellationToken)
     {
         using var scope =
             observation.BeginSource();
 
-        var syncSource = serviceProvider.GetService<IQueryContextSource<TQueryContext>>();
-        var asyncSource = serviceProvider.GetService<IQueryContextSourceAsync<TQueryContext>>();
+        var instance =
+            serviceProvider.GetRequiredService(
+                source.SourceType);
 
-        var query = asyncSource is not null
-            ? await asyncSource.CreateQueryAsync(executionContext, cancellationToken)
-            : syncSource?.CreateQuery(executionContext)
-            ?? throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.MissingRegistration,
-                $"No IQueryContextSource<{typeof(TQueryContext).Name}> or IQueryContextSourceAsync<{typeof(TQueryContext).Name}> registered.");
+        var query = instance switch
+        {
+            IQuerySourceAsync<TQueryContext> asyncSource =>
+                await asyncSource.CreateQueryAsync(executionContext, cancellationToken),
+            IQuerySource<TQueryContext> syncSource =>
+                syncSource.CreateQuery(executionContext),
+            _ => throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.TypeMismatch,
+                $"Query source '{source.SourceType.FullName}' must implement " +
+                $"IQuerySource<{typeof(TQueryContext).Name}> or IQuerySourceAsync<{typeof(TQueryContext).Name}>.")
+        };
 
         query = applier.ApplySearch(query, compiled.Search);
         query = applier.ApplyFilter(query, compiled.Filter);
@@ -274,8 +277,8 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
         var typedMethod =
             ClosedViewMethods.GetOrAdd(
-                viewRegistration.ViewParametersType,
-                key => CreateViewAsyncTypedMethod.MakeGenericMethod(key));
+                (viewRegistration.SourceType, viewRegistration.ViewParametersType),
+                key => CreateViewAsyncTypedMethod.MakeGenericMethod(key.Source, key.Parameters));
 
         var task = (Task<IQueryable<TView>>)(typedMethod.Invoke(
             this,
@@ -287,20 +290,21 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         return await task;
     }
 
-    private static async Task<IQueryable<TView>> CreateViewAsyncTyped<TViewParameters>(
+    private static async Task<IQueryable<TView>> CreateViewAsyncTyped<TSource, TViewParameters>(
         object queryView,
         IQueryable<TQueryContext> query,
         QueryExecutionContext executionContext,
         QueryViewRegistration viewRegistration,
         CancellationToken cancellationToken)
-        where TViewParameters : class
+        where TSource : class, ILocalQuerySource<TQueryContext>
+        where TViewParameters : class, IQueryParameters
     {
-        if (queryView is IQueryViewSourceAsync<TQueryContext, TView, TViewParameters> asyncView)
+        if (queryView is IQueryViewSourceAsync<TSource, TQueryContext, TView, TViewParameters> asyncView)
         {
             return await asyncView.CreateViewAsync(query, executionContext, cancellationToken);
         }
 
-        if (queryView is IQueryViewSource<TQueryContext, TView, TViewParameters> syncView)
+        if (queryView is IQueryViewSource<TSource, TQueryContext, TView, TViewParameters> syncView)
         {
             return syncView.CreateView(query, executionContext);
         }
@@ -308,13 +312,13 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         throw new KaleidoFrameworkException(
             FrameworkErrorCodes.TypeMismatch,
             $"Query view '{viewRegistration.QueryViewType.FullName}' must implement " +
-            $"'{typeof(IQueryViewSource<TQueryContext, TView, TViewParameters>).FullName}' or " +
-            $"'{typeof(IQueryViewSourceAsync<TQueryContext, TView, TViewParameters>).FullName}'.");
+            $"'{typeof(IQueryViewSource<TSource, TQueryContext, TView, TViewParameters>).FullName}' or " +
+            $"'{typeof(IQueryViewSourceAsync<TSource, TQueryContext, TView, TViewParameters>).FullName}'.");
     }
 
     // Closed-generic cache — MakeGenericMethod allocates per call and this
     // executes once per query request.
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, MethodInfo> ClosedViewMethods =
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Type Source, Type Parameters), MethodInfo> ClosedViewMethods =
         new();
 
     private static readonly MethodInfo CreateViewAsyncTypedMethod =

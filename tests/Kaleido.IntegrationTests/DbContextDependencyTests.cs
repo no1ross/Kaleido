@@ -28,14 +28,15 @@ public sealed class DbContextDependencyTests
         });
 
         // This should NOT throw - the service provider should be able to construct
-        // the QueryContextSource with its DbContext dependency
+        // the query source with its DbContext dependency
         using var provider = services.BuildServiceProvider();
 
         // Assert
         var dbContext = provider.GetService<TestDbContext>();
         Assert.NotNull(dbContext);
 
-        var source = provider.GetService<IQueryContextSource<TestQueryContext>>();
+        // Sources are registered by their concrete type: a query context may back several sources.
+        var source = provider.GetService<TestQueryContextSource>();
         Assert.NotNull(source);
     }
 

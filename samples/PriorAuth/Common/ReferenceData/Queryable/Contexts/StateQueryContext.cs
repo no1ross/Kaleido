@@ -4,16 +4,7 @@ using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Samples.PriorAuth.ReferenceData.Queryable.Contexts;
 
-[QueryContext(
-    Name = "states",
-    DisplayName = "States",
-    Version = "1.0.0",
-    Source = "Prior Authorization Reference Data",
-    Kind = QueryContextKind.Direct)]
-[Pageable(
-    DefaultSize = 25,
-    MaxSize = 100)]
-public sealed class StateQueryContext
+public sealed class StateQueryContext : IQueryContext
 {
     [Key]
     [Searchable(

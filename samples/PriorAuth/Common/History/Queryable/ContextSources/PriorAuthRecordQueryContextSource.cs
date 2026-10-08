@@ -5,9 +5,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.History.Queryable.ContextSources;
 
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Prior Auth Records",
+    Description = "Prior authorization history records.",
+    Source = "Prior Auth History Service")]
 internal sealed class PriorAuthRecordQueryContextSource(
     HistoryDbContext dbContext)
-    : IQueryContextSource<PriorAuthRecordQueryContext>
+    : IQuerySource<PriorAuthRecordQueryContext>
 {
     public IQueryable<PriorAuthRecordQueryContext> CreateQuery(
         QueryExecutionContext executionContext)

@@ -19,8 +19,8 @@ public sealed class ProcedureModalityClient(
 
         var result = await queryableClientFactory
             .GetClient("Configuration")
-            .QueryContextAsync<ProcedureModalityRuleQueryContext>(
-                "procedure-modality-rules",
+            .QuerySourceAsync<ProcedureModalityRuleQueryContext>(
+                "ProcedureModalityRuleQueryContextSource",
                 new QueryApiRequest
                 {
                     Query = new QueryApiBody

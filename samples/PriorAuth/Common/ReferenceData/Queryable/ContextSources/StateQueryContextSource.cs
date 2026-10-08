@@ -5,9 +5,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.ReferenceData.Queryable.ContextSources;
 
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "States",
+    Description = "States (reference data).",
+    Source = "Prior Authorization Reference Data")]
+[Pageable(
+    DefaultSize = 25,
+    MaxSize = 100)]
 internal sealed class StateQueryContextSource(
     ReferenceDataDbContext dbContext)
-    : IQueryContextSource<StateQueryContext>
+    : IQuerySource<StateQueryContext>
 {
     public IQueryable<StateQueryContext> CreateQuery(
         QueryExecutionContext executionContext)

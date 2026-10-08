@@ -18,43 +18,26 @@ namespace Kaleido.Queryable
     [System.AttributeUsage(System.AttributeTargets.Class)]
     public class QueryViewAttribute : System.Attribute
     {
-        public required string Name { get; init; }
         public required string Version { get; init; }
+        public required string DisplayName { get; init; }
+        public required string Description { get; init; }
+        public string DefaultSortField { get; init; }
     }
 }";
 
     private static readonly DiagnosticResult Expected =
         new("KAL2003", DiagnosticSeverity.Error);
 
-    [Fact]
-    public async Task Name_Empty_Reports()
+    [Theory]
+    [InlineData(@"Version = """", DisplayName = ""Member search"", Description = ""Searchable members.""")]
+    [InlineData(@"Version = ""1.0.0"", DisplayName = """", Description = ""Searchable members.""")]
+    [InlineData(@"Version = ""1.0.0"", DisplayName = ""Member search"", Description = """"")]
+    public async Task EmptyRequiredMetadata_Reports(string arguments)
     {
         await RunAsync(@"
 using Kaleido.Queryable;
-[{|#0:QueryView(Name = """", Version = ""1.0.0"")|}]
-public class MyView { }
-" + QueryViewStub,
-            Expected.WithLocation(0).WithArguments("QueryViewAttribute"));
-    }
-
-    [Fact]
-    public async Task Version_Empty_Reports()
-    {
-        await RunAsync(@"
-using Kaleido.Queryable;
-[{|#0:QueryView(Name = ""Foo"", Version = """")|}]
-public class MyView { }
-" + QueryViewStub,
-            Expected.WithLocation(0).WithArguments("QueryViewAttribute"));
-    }
-
-    [Fact]
-    public async Task Both_Empty_Reports()
-    {
-        await RunAsync(@"
-using Kaleido.Queryable;
-[{|#0:QueryView(Name = """", Version = """")|}]
-public class MyView { }
+[{|#0:QueryView(" + arguments + @")|}]
+public class MemberSearchView { }
 " + QueryViewStub,
             Expected.WithLocation(0).WithArguments("QueryViewAttribute"));
     }
@@ -64,8 +47,8 @@ public class MyView { }
     {
         await RunAsync(@"
 using Kaleido.Queryable;
-[QueryView(Name = ""Foo"", Version = ""1.0.0"")]
-public class MyView { }
+[QueryView(Version = ""1.0.0"", DisplayName = ""Member search"", Description = ""Searchable members."", DefaultSortField = ""LastName"")]
+public class MemberSearchView { }
 " + QueryViewStub);
     }
 }

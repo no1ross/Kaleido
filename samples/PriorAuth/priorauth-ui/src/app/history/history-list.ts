@@ -42,7 +42,7 @@ export class HistoryList implements OnInit {
         this.errorMessage.set(undefined);
 
         this.queryableService
-            .queryView<PriorAuthRecordView>('prior-auth-records', {
+            .queryView<PriorAuthRecordView>('PriorAuthRecordViewSource', {
                 query: {
                     sort: [
                         {

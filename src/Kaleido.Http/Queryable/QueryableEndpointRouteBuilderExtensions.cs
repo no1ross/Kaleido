@@ -18,6 +18,11 @@ public static class QueryableEndpointRouteBuilderExtensions
     /// Maps all Kaleido Queryable endpoints and returns the route group so hosts can
     /// compose conventions (e.g. <c>.RequireAuthorization()</c>) onto every endpoint.
     /// </summary>
+    /// <remarks>
+    /// Every query source gets <c>{source}/query</c>; every local view gets
+    /// <c>{source}/{view}/query</c>. All sources are mapped the same way — how a source fulfils
+    /// the query is not visible to the caller.
+    /// </remarks>
     internal static RouteGroupBuilder MapQueryable(
         this IEndpointRouteBuilder endpoints)
     {
@@ -52,29 +57,28 @@ public static class QueryableEndpointRouteBuilderExtensions
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
             .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 
-        var viewCount = queryableRegistry.Registrations.Sum(c => c.Views.Count);
+        var viewCount = queryableRegistry.Registrations.Sum(s => s.Views.Count);
 
         logger.LogInformation(
-            "Queryable mapped at route prefix {RoutePrefix} with {QueryContextCount} query contexts and {QueryViewCount} views.",
+            "Queryable mapped at route prefix {RoutePrefix} with {QuerySourceCount} query sources and {QueryViewCount} views.",
             QueryableContractUrls.QueryablePrefix(serviceName),
             queryableRegistry.Registrations.Count,
             viewCount);
 
-        foreach (var context in queryableRegistry.Registrations)
+        foreach (var source in queryableRegistry.Registrations)
         {
-            if (context.Kind == QueryContextKind.Direct
-                && (serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
-                    || context.Authorization.IsExplicit()))
+            if (serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
+                || source.Authorization.IsExplicit())
             {
-                group.MapDirectQueryContext(context, serviceOptions);
+                group.MapQuerySource(source, serviceOptions);
             }
 
-            foreach (var view in context.Views)
+            foreach (var view in source.Views)
             {
                 if (serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
                     || view.Authorization.IsExplicit())
                 {
-                    group.MapQueryView(context, view, serviceOptions);
+                    group.MapQueryView(source, view, serviceOptions);
                 }
             }
         }
@@ -84,50 +88,8 @@ public static class QueryableEndpointRouteBuilderExtensions
 
     private static void MapQueryView(
         this IEndpointRouteBuilder endpoints,
-        QueryableContextRegistryItem context,
+        QueryableSourceRegistryItem source,
         QueryableViewRegistryItem view,
-        KaleidoServiceOptions options)
-    {
-        var contextName = context.Name.ToLowerInvariant();
-        var viewName = view.Name.ToLowerInvariant();
-
-        endpoints.MapQueryEndpoint(
-            context,
-            view,
-            QueryableRoutePaths.QueryViewQuery(contextName, viewName),
-            options);
-    }
-
-    private static void MapDirectQueryContext(
-        this IEndpointRouteBuilder endpoints,
-        QueryableContextRegistryItem context,
-        KaleidoServiceOptions options)
-    {
-        var method = typeof(QueryableEndpointRouteBuilderExtensions)
-            .GetMethod(
-                nameof(MapTypedDirectQueryEndpoint),
-                BindingFlags.Static | BindingFlags.NonPublic)
-            ?? throw new KaleidoFrameworkException(
-                FrameworkErrorCodes.ReflectionError,
-                $"Method '{nameof(MapTypedDirectQueryEndpoint)}' not found.");
-
-        method
-            .MakeGenericMethod(context.ContextType)
-            .Invoke(
-                null,
-                [
-                    endpoints,
-                    QueryableRoutePaths.QueryContextQuery(context.Name.ToLowerInvariant()),
-                    context,
-                    options
-                ]);
-    }
-
-    private static void MapQueryEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        QueryableContextRegistryItem context,
-        QueryableViewRegistryItem view,
-        string route,
         KaleidoServiceOptions options)
     {
         var method = typeof(QueryableEndpointRouteBuilderExtensions)
@@ -145,20 +107,56 @@ public static class QueryableEndpointRouteBuilderExtensions
                 view.ViewParametersType)
             .Invoke(
                 null,
-                [endpoints, route, context, view, options]);
+                [
+                    endpoints,
+                    QueryableRoutePaths.QueryViewQuery(
+                        source.Name.ToLowerInvariant(),
+                        view.Name.ToLowerInvariant()),
+                    source,
+                    view,
+                    options
+                ]);
+    }
+
+    private static void MapQuerySource(
+        this IEndpointRouteBuilder endpoints,
+        QueryableSourceRegistryItem source,
+        KaleidoServiceOptions options)
+    {
+        var method = typeof(QueryableEndpointRouteBuilderExtensions)
+            .GetMethod(
+                nameof(MapTypedSourceEndpoint),
+                BindingFlags.Static | BindingFlags.NonPublic)
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.ReflectionError,
+                $"Method '{nameof(MapTypedSourceEndpoint)}' not found.");
+
+        method
+            .MakeGenericMethod(
+                source.SourceType,
+                source.ResultType,
+                source.ParametersType)
+            .Invoke(
+                null,
+                [
+                    endpoints,
+                    QueryableRoutePaths.QuerySourceQuery(source.Name.ToLowerInvariant()),
+                    source,
+                    options
+                ]);
     }
 
     private static void MapTypedQueryEndpoint<TQueryView, TView, TViewParameters>(
         IEndpointRouteBuilder endpoints,
         string route,
-        QueryableContextRegistryItem context,
+        QueryableSourceRegistryItem source,
         QueryableViewRegistryItem view,
         KaleidoServiceOptions options)
         where TQueryView : class
         where TView : class
         where TViewParameters : class
     {
-        var fields = context.Fields;
+        var fields = source.Fields;
 
         endpoints.MapPost(
                 route,
@@ -175,10 +173,10 @@ public static class QueryableEndpointRouteBuilderExtensions
             .WithKaleidoAuthorization(view.Authorization, options)
             .WithName(
                 QueryableEndpointNames.QueryViewEndpointName(
-                    context.Name.ToLowerInvariant(),
+                    source.Name.ToLowerInvariant(),
                     view.Name.ToLowerInvariant()))
             .WithTags(
-                $"{context.DisplayName} - {view.DisplayName}")
+                $"{source.DisplayName} - {view.DisplayName}")
             .WithSummary(
                 $"Query {view.DisplayName}.")
             .WithDescription(
@@ -189,40 +187,42 @@ public static class QueryableEndpointRouteBuilderExtensions
             .Produces<KaleidoErrorResponse>(400);
     }
 
-    private static void MapTypedDirectQueryEndpoint<TQueryContext>(
+    private static void MapTypedSourceEndpoint<TSource, TResult, TParameters>(
         IEndpointRouteBuilder endpoints,
         string route,
-        QueryableContextRegistryItem context,
+        QueryableSourceRegistryItem source,
         KaleidoServiceOptions options)
-        where TQueryContext : class
+        where TSource : class
+        where TResult : class
+        where TParameters : class
     {
-        var fields = context.Fields;
+        var fields = source.Fields;
 
         endpoints.MapPost(
                 route,
                 async (
-                    QueryApiRequest<EmptyQueryViewParameters> request,
+                    QueryApiRequest<TParameters> request,
                     IQueryableService queryable,
                     CancellationToken cancellationToken) =>
                     Results.Ok(
-                        await queryable.QueryAsync<TQueryContext, TQueryContext>(
-                            new QueryRequest<EmptyQueryViewParameters>(
+                        await queryable.QueryAsync<TSource, TResult>(
+                            new QueryRequest<TParameters>(
                                 Query: request.Query.ToQueryBody(fields),
                                 ViewParameters: request.Parameters),
                             cancellationToken)))
-            .WithKaleidoAuthorization(context.Authorization, options)
+            .WithKaleidoAuthorization(source.Authorization, options)
             .WithName(
-                QueryableEndpointNames.QueryContextEndpointName(
-                    context.Name.ToLowerInvariant()))
+                QueryableEndpointNames.QuerySourceEndpointName(
+                    source.Name.ToLowerInvariant()))
             .WithTags(
-                context.DisplayName ?? context.Name)
+                source.DisplayName ?? source.Name)
             .WithSummary(
-                $"Query {context.DisplayName ?? context.Name}.")
+                $"Query {source.DisplayName ?? source.Name}.")
             .WithDescription(
-                $"Executes a query directly against the '{context.DisplayName ?? context.Name}' query context.")
+                $"Executes a query against the '{source.DisplayName ?? source.Name}' query source.")
             .Accepts<QueryApiRequest>(
                 "application/json")
-            .Produces<QueryResult<TQueryContext>>()
+            .Produces<QueryResult<TResult>>()
             .Produces<KaleidoErrorResponse>(400);
     }
 
