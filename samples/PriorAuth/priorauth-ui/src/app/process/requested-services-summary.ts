@@ -92,7 +92,7 @@ export class RequestedServicesSummary {
                 next: result => {
                     this.removingServiceId.set(undefined);
 
-                    if (result.requiredStep !== 'CaptureRequestedServiceStep') {
+                    if (result.requiredStep?.name !== 'CaptureRequestedServiceStep') {
                         this.loadRequestedServices();
                     }
                 },

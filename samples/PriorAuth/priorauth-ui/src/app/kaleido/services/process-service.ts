@@ -6,10 +6,9 @@ import { Observable, catchError, map, switchMap, throwError } from 'rxjs';
 import {
     ProcessExecutionResponse,
     ProcessMessage,
-    ProcessStepSummary
+    ProcessRequiredStep
 } from '../models/processor-process-result';
 import { ProcessStateResponse } from '../models/process-state-response';
-import { CaptureRequestedServiceResponse } from '../models/questionnaire';
 import { ExecuteStepRequest } from '../models/processor-process-request';
 
 import { ProcessRegistry } from './process-registry';
@@ -88,7 +87,7 @@ export class ProcessService {
                     if (result.targetProcessorName) {
                         // Cross-processor handoff — fetch the target processor's
                         // state to get the authoritative requiredStep, available
-                        // steps, and questionnaire data before navigating.
+                        // steps, and any pending information request before navigating.
                         // This also switches currentProcessorName in state so
                         // subsequent steps go to the right processor automatically.
                         return this.fetchTargetProcessorState(
@@ -96,26 +95,19 @@ export class ProcessService {
                             result.processId)
                             .pipe(
                                 map(targetState => {
-                                    this.processState.setProcessFlow(
+                                    this.applyNextSteps(
                                         result.targetProcessorName!,
                                         targetState.requiredStep,
                                         targetState.availableSteps);
-                                    this.captureQuestionnaireState(
-                                        targetState.requiredStep,
-                                        result.result);
-                                    this.navigateToRequiredStep(
-                                        targetState.requiredStep);
                                     return result;
                                 }));
                     }
 
                     // Local step — use the response directly.
-                    this.processState.setProcessFlow(
+                    this.applyNextSteps(
                         processorName,
                         result.requiredStep,
                         result.availableSteps);
-                    this.captureQuestionnaireState(result.requiredStep, result.result);
-                    this.navigateToRequiredStep(result.requiredStep);
 
                     if (
                         result.outcome === 'Failed' ||
@@ -182,16 +174,21 @@ export class ProcessService {
             ?? { key: serviceName, baseUrl: '' };
     }
 
-    private captureQuestionnaireState(
-        requiredStep: string | undefined,
-        result: unknown
+    // The required step is an object: its name drives navigation, and an information step
+    // carries the questions to present (requiredStep.informationRequest).
+    private applyNextSteps(
+        processorName: string,
+        requiredStep: ProcessRequiredStep | undefined,
+        availableSteps: ProcessExecutionResponse<unknown>['availableSteps']
     ): void {
-        const questionnaireResponse =
-            result as CaptureRequestedServiceResponse | undefined;
-
-        this.processState.setQuestionnaire(
-            requiredStep,
-            questionnaireResponse?.questionnaire);
+        this.processState.setProcessFlow(
+            processorName,
+            requiredStep?.name,
+            availableSteps);
+        this.processState.setInformationRequest(
+            requiredStep?.name,
+            requiredStep?.informationRequest);
+        this.navigateToRequiredStep(requiredStep?.name);
     }
 
     private logStepOutcome(
@@ -209,7 +206,7 @@ export class ProcessService {
         }
 
         if (result.requiredStep) {
-            console.log('Required Step', result.requiredStep);
+            console.log('Required Step', result.requiredStep.name, result.requiredStep.informationRequest);
         }
 
         if (result.availableSteps.length > 0) {

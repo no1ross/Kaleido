@@ -1,5 +1,4 @@
 using Kaleido.Processor;
-using Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Views;
 using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources.Views;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Messages;
@@ -99,7 +98,7 @@ public sealed class MemberEligibilityService(
     /// <summary>
     /// Determines the modality of the first requested service on the prior
     /// authorization for <paramref name="processId"/> and returns the
-    /// appropriate next step name and questionnaire.
+    /// next information step with the questions it presents.
     /// </summary>
     public async Task<ModalityRoutingResult> RouteByModalityAsync(
         Guid processId,
@@ -128,22 +127,21 @@ public sealed class MemberEligibilityService(
         return modality switch
         {
             ProcedureModality.Mri =>
-                await BuildModalityResultAsync(
+                await questionnaireDefinitionClient.CreateMriInfoRequestAsync(
                     processId,
-                    ModalityRoute.CaptureMriInfo,
-                    nameof(CaptureMriInfoStep),
-                    ProcedureModality.Mri,
                     requestedService.ResolvedCodeValue,
-                    cancellationToken),
+                    cancellationToken) is { } mriRequest
+                    ? ModalityRoutingResult.Ok(ModalityRoute.CaptureMriInfo, mriRequest)
+                    : ModalityRoutingResult.Fail(
+                        RadiologyProcessMessages.InformationRequestNotConfigured(
+                            nameof(CaptureMriInfoStep),
+                            ProcedureModality.Mri)),
 
             ProcedureModality.Ct =>
-                await BuildModalityResultAsync(
-                    processId,
+                ModalityRoutingResult.Ok(
                     ModalityRoute.ConfirmCtInsteadOfMri,
-                    nameof(ConfirmCtInsteadOfMriStep),
-                    ProcedureModality.Mri,
-                    requestedService.ResolvedCodeValue,
-                    cancellationToken),
+                    questionnaireDefinitionClient.CreateCtConfirmationRequest(
+                        requestedService.ResolvedCodeValue)),
 
             _ =>
                 ModalityRoutingResult.Fail(
@@ -153,27 +151,7 @@ public sealed class MemberEligibilityService(
                         modality))
         };
     }
-
-    private async Task<ModalityRoutingResult> BuildModalityResultAsync(
-        Guid processId,
-        ModalityRoute route,
-        string stepName,
-        ProcedureModality modality,
-        string procedureCodeValue,
-        CancellationToken cancellationToken)
-    {
-        var questionnaire =
-            await questionnaireDefinitionClient.ResolveAsync(
-                processId,
-                stepName,
-                modality,
-                procedureCodeValue,
-                cancellationToken);
-
-        return ModalityRoutingResult.Ok(route, questionnaire);
-    }
 }
-
 public sealed record MemberEligibilityResult
 {
     public bool Succeeded { get; init; }
@@ -197,13 +175,13 @@ public sealed record ModalityRoutingResult
 {
     public bool Succeeded { get; init; }
     public ModalityRoute? Route { get; init; }
-    public QuestionnaireDefinitionView? Questionnaire { get; init; }
+    public InformationRequest? InformationRequest { get; init; }
     public ProcessMessage? FailureMessage { get; init; }
 
     public static ModalityRoutingResult Ok(
         ModalityRoute route,
-        QuestionnaireDefinitionView? questionnaire) =>
-        new() { Succeeded = true, Route = route, Questionnaire = questionnaire };
+        InformationRequest informationRequest) =>
+        new() { Succeeded = true, Route = route, InformationRequest = informationRequest };
 
     public static ModalityRoutingResult Fail(ProcessMessage message) =>
         new() { Succeeded = false, FailureMessage = message };

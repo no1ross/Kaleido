@@ -1,3 +1,5 @@
+import { InformationRequest } from './information-request';
+
 export interface ParticipantProcessResult {
     processId: string;
     state: string;
@@ -19,7 +21,7 @@ export interface ProcessExecutionResponse<TResponse> {
     stepName: string;
     outcome: StepExecutionOutcome;
     result: TResponse;
-    requiredStep?: string;
+    requiredStep?: ProcessRequiredStep;
     targetProcessorName?: string;
     availableSteps: ProcessStepSummary[];
     businessMessages: ProcessMessage[];
@@ -32,7 +34,13 @@ export interface ProcessStepSummary {
     displayName?: string;
     description?: string;
     repeatable: boolean;
+    isInformationStep?: boolean;
     executeUrl: string;
+}
+
+/** The step a process requires next; carries the pending questions for an information step. */
+export interface ProcessRequiredStep extends ProcessStepSummary {
+    informationRequest?: InformationRequest;
 }
 
 export interface ProcessMessage {

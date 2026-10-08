@@ -143,7 +143,7 @@ private readonly processRequestValidator =
 
             console.log(
                 'Required Step',
-                result.requiredStep);
+                result.requiredStep.name);
         }
 
         if (result.availableSteps.length > 0) {

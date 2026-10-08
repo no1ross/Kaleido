@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Kaleido.Http.Queryable;
 using Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
-using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 
@@ -11,7 +10,9 @@ public sealed class MriProcedureCodeResolverClient(
     public async Task<MriProcedureCodeRuleQueryContext?> ResolveAsync(
         string selectedCodeValue,
         ProcedureCodeSystem selectedCodeSystem,
-        CaptureMriInfoStep processStep,
+        MriBodyPart bodyPart,
+        Laterality laterality,
+        ContrastOption contrast,
         CancellationToken cancellationToken = default)
     {
         var result = await queryableClientFactory
@@ -53,7 +54,7 @@ public sealed class MriProcedureCodeResolverClient(
                                         {
                                             Field = "BodyPart",
                                             Operator = "equals",
-                                            Values = [JsonSerializer.SerializeToElement(processStep.BodyPart.ToString())]
+                                            Values = [JsonSerializer.SerializeToElement(bodyPart.ToString())]
                                         }
                                     },
                                     new QueryApiFilterNode
@@ -62,7 +63,7 @@ public sealed class MriProcedureCodeResolverClient(
                                         {
                                             Field = "Laterality",
                                             Operator = "equals",
-                                            Values = [JsonSerializer.SerializeToElement(processStep.Laterality.ToString())]
+                                            Values = [JsonSerializer.SerializeToElement(laterality.ToString())]
                                         }
                                     },
                                     new QueryApiFilterNode
@@ -71,7 +72,7 @@ public sealed class MriProcedureCodeResolverClient(
                                         {
                                             Field = "Contrast",
                                             Operator = "equals",
-                                            Values = [JsonSerializer.SerializeToElement(processStep.Contrast.ToString())]
+                                            Values = [JsonSerializer.SerializeToElement(contrast.ToString())]
                                         }
                                     }
                                 ]

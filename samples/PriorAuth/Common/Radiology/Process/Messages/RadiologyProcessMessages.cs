@@ -124,4 +124,31 @@ public static class RadiologyProcessMessages
             Type = MessageType.Error,
             Message = $"Procedure code '{codeSystem}:{codeValue}' has modality '{modality}' which is not supported by the Radiology processor."
         };
-}
+
+    public static ProcessMessage InformationRequestNotConfigured(
+        string stepName,
+        ProcedureModality modality) =>
+        new()
+        {
+            Code = "INFORMATION_REQUEST_NOT_CONFIGURED",
+            Type = MessageType.Error,
+            Message = $"No questionnaire is configured for step '{stepName}' and modality '{modality}', so the next questions cannot be asked."
+        };
+
+    public static ProcessMessage UnexpectedAnswer(
+        string itemId,
+        string? value) =>
+        new()
+        {
+            Code = "UNEXPECTED_ANSWER",
+            Type = MessageType.Error,
+            Message = $"The answer '{value}' to '{itemId}' could not be used."
+        };
+
+    public static ProcessMessage CtNotConfirmed() =>
+        new()
+        {
+            Code = "CT_NOT_CONFIRMED",
+            Type = MessageType.Error,
+            Message = "The CT request was not confirmed. Remove the requested service and request the intended procedure instead."
+        };}
