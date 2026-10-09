@@ -22,7 +22,6 @@ builder.Services.AddDbContext<ProviderSearchDbContext>(
 
 builder.Services.AddScoped<PlanNetworkClient>();
 
-builder.Services.AddControllers();
 
 // Dev-token auth (sample stand-in for a real IdP) + outbound token forwarding.
 builder.Services.AddDevAuth();
@@ -74,6 +73,5 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapControllers();
 
 app.Run();

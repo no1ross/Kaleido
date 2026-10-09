@@ -112,7 +112,28 @@ app.UseDevAuth();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+
+    // One Swagger UI for every service: the router's own spec plus each
+    // service's spec, proxied by the ReverseProxy routes
+    // /swagger/services/{name}/swagger.json. The services are the router's
+    // Kaleido clients (the same list the aggregate registry uses). "Try it
+    // out" calls the router, which forwards to the service with the caller's
+    // token; authorize once and it persists across definitions.
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "router");
+
+        foreach (var name in builder.Configuration
+                     .GetSection("Kaleido:Clients")
+                     .GetChildren()
+                     .Select(client => client.Key)
+                     .Order(StringComparer.OrdinalIgnoreCase))
+        {
+            options.SwaggerEndpoint($"/swagger/services/{name}/swagger.json", name);
+        }
+
+        options.EnablePersistAuthorization();
+    });
 }
 
 app.MapKaleidoHttp(o => o.AggregateRegistry = true);
