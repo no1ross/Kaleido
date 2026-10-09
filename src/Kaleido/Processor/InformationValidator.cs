@@ -158,12 +158,9 @@ internal sealed class InformationValidator : IInformationValidator
                 errors.Add(AnswerError($"Question '{question.Id}' takes one answer but received {item.Answers.Count}."));
             }
 
-            foreach (var answer in item.Answers)
+            foreach (var answer in item.Answers.Where(answer => !Fits(question, answer?.Value)))
             {
-                if (!Fits(question, answer?.Value))
-                {
-                    errors.Add(AnswerError($"Answer '{answer?.Value}' does not fit question '{question.Id}' ({Describe(question)})."));
-                }
+                errors.Add(AnswerError($"Answer '{answer?.Value}' does not fit question '{question.Id}' ({Describe(question)})."));
             }
         }
 
