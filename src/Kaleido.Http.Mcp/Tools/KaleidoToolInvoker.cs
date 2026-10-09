@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Kaleido.Http.Mcp.Http;
 using Kaleido.Processor;
+using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -50,17 +51,37 @@ internal sealed record KaleidoToolCall
 /// </remarks>
 internal interface IKaleidoToolInvoker
 {
-    Task<CallToolResult> InvokeAsync(
+    /// <summary>
+    /// Runs the tool. Always a well-formed answer: a tool result (failures are results with
+    /// <c>isError: true</c>), or "input required" when the user must answer questions first.
+    /// </summary>
+    Task<ToolOutcome> InvokeAsync(
         KaleidoTool tool,
         KaleidoToolCall call,
         ToolCatalog catalog,
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// A tool's answer: a finished <see cref="CallToolResult"/>, or an <see cref="InputRequiredResult"/>
+/// (MRTR) asking the client to collect the user's answers and call the tool again. Both are
+/// successful protocol responses.
+/// </summary>
+[ExcludeFromCodeCoverage]
+internal sealed record ToolOutcome
+{
+    public CallToolResult? Result { get; init; }
+
+    public InputRequiredResult? InputRequired { get; init; }
+
+    public static implicit operator ToolOutcome(CallToolResult result) => new() { Result = result };
+}
+
 internal sealed class KaleidoToolInvoker(
     IKaleidoApiClient apiClient,
     IInformationRequestElicitor elicitor,
-    KaleidoMcpOptions options)
+    KaleidoMcpOptions options,
+    ILogger<KaleidoToolInvoker> logger)
     : IKaleidoToolInvoker
 {
     // The MRTR input-request key and the prefix of the adapter's opaque continuation state.
@@ -68,7 +89,7 @@ internal sealed class KaleidoToolInvoker(
     private const string StatePrefix = "kaleido-mcp:";
     private const string ClientCapabilitiesMetaKey = "io.modelcontextprotocol/clientCapabilities";
 
-    public Task<CallToolResult> InvokeAsync(
+    public async Task<ToolOutcome> InvokeAsync(
         KaleidoTool tool,
         KaleidoToolCall call,
         ToolCatalog catalog,
@@ -78,20 +99,33 @@ internal sealed class KaleidoToolInvoker(
         ArgumentNullException.ThrowIfNull(call);
         ArgumentNullException.ThrowIfNull(catalog);
 
-        // An MRTR retry: the user answered the form returned with the previous round.
-        if (call.RequestState?.StartsWith(StatePrefix, StringComparison.Ordinal) == true)
+        try
         {
-            return ContinueAsync(call, catalog, cancellationToken);
-        }
+            // An MRTR retry: the user answered the form returned with the previous round.
+            if (call.RequestState?.StartsWith(StatePrefix, StringComparison.Ordinal) == true)
+            {
+                return await ContinueAsync(call, catalog, cancellationToken);
+            }
 
-        return tool.Kind switch
+            return tool.Kind switch
+            {
+                KaleidoToolKind.Query => await QueryAsync(tool, call.Arguments, cancellationToken),
+                KaleidoToolKind.Step => await StepAsync(tool, call, catalog, cancellationToken),
+                KaleidoToolKind.AnswerInformationRequest => await AnswerAsync(call, catalog, cancellationToken),
+                KaleidoToolKind.GetProcessState => await StateAsync(call.Arguments, catalog, cancellationToken),
+                _ => Error(McpErrorCodes.UnknownTool, $"Tool '{tool.Definition.Name}' has no handler.")
+            };
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            KaleidoToolKind.Query => QueryAsync(tool, call.Arguments, cancellationToken),
-            KaleidoToolKind.Step => StepAsync(tool, call, catalog, cancellationToken),
-            KaleidoToolKind.AnswerInformationRequest => AnswerAsync(call, catalog, cancellationToken),
-            KaleidoToolKind.GetProcessState => StateAsync(call.Arguments, catalog, cancellationToken),
-            _ => Task.FromResult(Error(McpErrorCodes.UnknownTool, $"Tool '{tool.Definition.Name}' has no handler."))
-        };
+            // Never a protocol error: the agent gets a result it can report. A cancelled call has
+            // nobody waiting for an answer, so cancellation still propagates.
+            logger.LogError(exception, "Kaleido MCP tool {Tool} failed unexpectedly.", tool.Definition.Name);
+
+            return Error(
+                McpErrorCodes.InternalError,
+                $"{tool.Definition.Name} did not complete because of an unexpected error in the MCP adapter. If it was a step, check the process with get_process_state before trying again.");
+        }
     }
 
     // ── Queries ──────────────────────────────────────────────────────────────
@@ -143,7 +177,7 @@ internal sealed class KaleidoToolInvoker(
 
     // ── Steps ────────────────────────────────────────────────────────────────
 
-    private async Task<CallToolResult> StepAsync(
+    private async Task<ToolOutcome> StepAsync(
         KaleidoTool tool,
         KaleidoToolCall call,
         ToolCatalog catalog,
@@ -184,7 +218,7 @@ internal sealed class KaleidoToolInvoker(
         return await FollowUpAsync(tool.Service, response, catalog, call, [], round: 0, cancellationToken);
     }
 
-    private async Task<CallToolResult> AnswerAsync(
+    private async Task<ToolOutcome> AnswerAsync(
         KaleidoToolCall call,
         ToolCatalog catalog,
         CancellationToken cancellationToken)
@@ -240,7 +274,7 @@ internal sealed class KaleidoToolInvoker(
     }
 
     // The MRTR retry: submit the form answers to the process's pending request and carry on.
-    private async Task<CallToolResult> ContinueAsync(
+    private async Task<ToolOutcome> ContinueAsync(
         KaleidoToolCall call,
         ToolCatalog catalog,
         CancellationToken cancellationToken)
@@ -362,7 +396,7 @@ internal sealed class KaleidoToolInvoker(
 
     // After a step: follow a handoff to the target's state, put questions to the user while the
     // client can show forms, and summarize where the process stands.
-    private async Task<CallToolResult> FollowUpAsync(
+    private async Task<ToolOutcome> FollowUpAsync(
         string service,
         KaleidoApiResponse response,
         ToolCatalog catalog,
@@ -413,17 +447,22 @@ internal sealed class KaleidoToolInvoker(
                 else if (mode == Elicitation.Mrtr)
                 {
                     // Return the form; the client shows it and calls this tool again with the answers.
-                    throw new InputRequiredException(
-                        new Dictionary<string, InputRequest>(StringComparer.Ordinal)
+                    return new ToolOutcome
+                    {
+                        InputRequired = new InputRequiredResult
                         {
-                            [AnswersInputKey] = InputRequest.ForElicitation(elicitor.ToElicitation(pending))
-                        },
-                        EncodeState(new ContinuationState(
-                            pendingService,
-                            step.ProcessId,
-                            pending.InformationRequestId,
-                            round,
-                            answered.Select(x => x?.GetValue<string>()).OfType<string>().ToArray())));
+                            InputRequests = new Dictionary<string, InputRequest>(StringComparer.Ordinal)
+                            {
+                                [AnswersInputKey] = InputRequest.ForElicitation(elicitor.ToElicitation(pending))
+                            },
+                            RequestState = EncodeState(new ContinuationState(
+                                pendingService,
+                                step.ProcessId,
+                                pending.InformationRequestId,
+                                round,
+                                answered.Select(x => x?.GetValue<string>()).OfType<string>().ToArray()))
+                        }
+                    };
                 }
                 else
                 {

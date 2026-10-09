@@ -17,9 +17,21 @@ namespace Kaleido.Http.Mcp.FunctionalTests.Infrastructure;
 /// (base URL = the server itself), the same shape as the PriorAuth router. MCP clients are the
 /// SDK's own <see cref="McpClient"/>, so the protocol is exercised end to end.
 /// </summary>
-public sealed class McpClinicFixture : IAsyncLifetime
+public class McpClinicFixture : IAsyncLifetime
 {
+    private readonly string registryPath;
+
     private IHost? host;
+
+    public McpClinicFixture()
+        : this("/clinic/registry")
+    {
+    }
+
+    protected McpClinicFixture(string registryPath)
+    {
+        this.registryPath = registryPath;
+    }
 
     private TestServer Server =>
         host?.GetTestServer() ?? throw new InvalidOperationException("The host has not started.");
@@ -43,7 +55,7 @@ public sealed class McpClinicFixture : IAsyncLifetime
                             .AddInMemoryCollection(new Dictionary<string, string?>
                             {
                                 ["Kaleido:Mcp:BaseUrl"] = "http://localhost/",
-                                ["Kaleido:Mcp:RegistryPath"] = "/clinic/registry",
+                                ["Kaleido:Mcp:RegistryPath"] = registryPath,
                                 ["Kaleido:Mcp:RegistryCacheDuration"] = "00:00:00",
                                 ["Kaleido:Mcp:AdditionalInstructions"] = "A visit starts with a patient search."
                             })
@@ -87,13 +99,19 @@ public sealed class McpClinicFixture : IAsyncLifetime
     /// </summary>
     public async Task<McpClient> ConnectAsync(
         string? authorization,
-        Func<ElicitRequestParams?, CancellationToken, ValueTask<ElicitResult>>? elicitation = null)
+        Func<ElicitRequestParams?, CancellationToken, ValueTask<ElicitResult>>? elicitation = null,
+        string? requestId = null)
     {
         var headers = new Dictionary<string, string>(StringComparer.Ordinal);
 
         if (authorization is not null)
         {
             headers["Authorization"] = authorization;
+        }
+
+        if (requestId is not null)
+        {
+            headers[KaleidoCorrelationHeaders.RequestId] = requestId;
         }
 
         var transport = new HttpClientTransport(
@@ -124,5 +142,7 @@ public sealed class McpClinicFixture : IAsyncLifetime
             await host.StopAsync();
             host.Dispose();
         }
+
+        GC.SuppressFinalize(this);
     }
 }

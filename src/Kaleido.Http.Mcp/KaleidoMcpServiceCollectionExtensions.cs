@@ -1,4 +1,5 @@
 using Kaleido.Http.Mcp.Http;
+using Kaleido.Http.Mcp.Observability;
 using Kaleido.Http.Mcp.Tools;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,6 +39,8 @@ public static class KaleidoMcpServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.TryAddSingleton(TimeProvider.System);
 
+        services.AddSingleton<IMcpRequestIdAccessor, McpRequestIdAccessor>();
+        services.AddSingleton<IMcpObservability, McpObservability>();
         services.AddTransient<KaleidoForwardingHandler>();
         services
             .AddHttpClient(KaleidoApiClient.HttpClientName, client => client.BaseAddress = options.BaseUrl)
@@ -62,7 +65,8 @@ public static class KaleidoMcpServiceCollectionExtensions
                 };
                 server.ServerInstructions = options.Instructions;
             })
-            // Stateful (the default): elicitation needs the server to call back to the client.
+            // Stateless (the SDK default for the 2026-07-28 revision): no session affinity, so the
+            // adapter can be load-balanced. Questions use MRTR rather than server-to-client calls.
             .WithHttpTransport()
             .WithListToolsHandler((request, cancellationToken) =>
                 Handler(request.Services).ListToolsAsync(request, cancellationToken))
