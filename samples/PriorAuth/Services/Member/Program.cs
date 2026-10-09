@@ -15,7 +15,6 @@ var memberConnectionString =
 builder.Services.AddDbContext<MemberDbContext>(
     options => options.UseSqlite(memberConnectionString));
 
-builder.Services.AddControllers();
 
 // Dev-token auth (sample stand-in for a real IdP).
 builder.Services.AddDevAuth();
@@ -65,6 +64,5 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapControllers();
 
 app.Run();

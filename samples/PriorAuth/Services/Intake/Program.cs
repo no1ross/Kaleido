@@ -32,7 +32,6 @@ builder.Services.AddScoped<ProcedureCodeClient>();
 builder.Services.AddScoped<ProductCodeMappingClient>();
 builder.Services.AddScoped<HistoryClient>();
 
-builder.Services.AddControllers();
 
 // Dev-token auth (sample stand-in for a real IdP) + outbound token forwarding
 // so downstream Kaleido calls carry an on-behalf-of token (the user + this
@@ -100,6 +99,5 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapControllers();
 
 app.Run();
