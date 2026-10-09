@@ -177,10 +177,17 @@ internal sealed class StepExecutionEvaluator(
                 nextCandidate);
         }
 
-        if (availableSteps.Count > 0)
+        // Offered steps never include information steps: they are only reachable as the
+        // required step, with an information request (RequireInformation).
+        var offeredSteps =
+            availableSteps
+                .Where(x => registry.Find(x)?.IsInformationStep != true)
+                .ToArray();
+
+        if (offeredSteps.Length > 0)
         {
             return ExecutionDecision.AwaitingStepSelection(
-                availableSteps);
+                offeredSteps);
         }
 
         return ExecutionDecision.Complete();

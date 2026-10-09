@@ -21,6 +21,17 @@ public sealed class StepAvailabilityResolverTests
     }
 
     [Fact]
+    public void ResolveCurrent_NeverOffersAnInformationStep()
+    {
+        var resolver =
+            CreateSut(
+                CreateRegistration<TestStepA>("step-a"),
+                CreateRegistration<TestInformationStep>("info-step", repeatable: true));
+
+        Assert.Equal(["step-a"], resolver.ResolveCurrent(CreateContext()));
+    }
+
+    [Fact]
     public void ResolveCurrent_KeepsAFailedStepAvailableForRetry()
     {
         var resolver = CreateSut(CreateRegistration<TestStepA>("step-a"));
@@ -823,6 +834,13 @@ public sealed class StepAvailabilityResolverTests
 
     private sealed class TestStepE
     {
+    }
+
+    private sealed class TestInformationStep : IInformationStep
+    {
+        public required string InformationRequestId { get; init; }
+
+        public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
     }
 
     private sealed class TestStepResponse

@@ -81,6 +81,10 @@ execute. Any other step is rejected with `pro_step_not_available`, so a question
 bypassed. When nothing is required, a request may start with any step available under the
 process rules.
 
+**Information steps are never offered.** They don't appear in `availableSteps` or as a
+processor's initial steps, and can't be submitted on their own. They are reached only as the
+required step, with their request (`RequireInformation`).
+
 ## Contracts
 
 The contracts are modelled on the **structure** of the FHIR R4 Questionnaire /
