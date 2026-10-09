@@ -119,7 +119,7 @@ if (app.Environment.IsDevelopment())
     // Kaleido clients (the same list the aggregate registry uses). "Try it
     // out" calls the router, which forwards to the service with the caller's
     // token; authorize once and it persists across definitions.
-    app.UseSwaggerUI(options =>
+    app.UseDevSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "router");
 
@@ -131,8 +131,6 @@ if (app.Environment.IsDevelopment())
         {
             options.SwaggerEndpoint($"/swagger/services/{name}/swagger.json", name);
         }
-
-        options.EnablePersistAuthorization();
     });
 }
 
