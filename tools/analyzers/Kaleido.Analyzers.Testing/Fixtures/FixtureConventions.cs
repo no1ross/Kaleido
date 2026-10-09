@@ -125,10 +125,13 @@ internal static class FixtureConventions
     /// </summary>
     public static bool IsTestable(INamedTypeSymbol type)
     {
+        // CanBeReferencedByName: compiler-generated types (e.g. <PrivateImplementationDetails>)
+        // read from a compiled reference are not flagged IsImplicitlyDeclared.
         if (type.TypeKind != TypeKind.Class ||
             type.IsAbstract ||
             type.IsStatic ||
             type.IsImplicitlyDeclared ||
+            !type.CanBeReferencedByName ||
             type.IsRecord ||
             type.ContainingType is not null ||
             type.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal))
