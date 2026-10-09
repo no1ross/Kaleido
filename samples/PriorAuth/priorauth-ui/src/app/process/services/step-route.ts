@@ -6,8 +6,8 @@ export function getRouteForStep(
             return 'capture-mri-info';
         case 'ConfirmCtInsteadOfMriStep':
             return 'confirm-ct-instead-of-mri';
-        case 'RequestedServices':
-            return 'requested-services';
+        case 'CaptureRequestedServiceStep':
+            return 'requested-service';
         case 'CaptureServicingProviderStep':
             return 'servicing-provider';
         case 'ValidateMemberStep':
