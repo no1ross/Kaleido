@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido MCP adapter: publishes Kaleido capabilities to AI agents as Model Context Protocol tools over HTTP.</Description>
+		<PackageTags>mcp;model-context-protocol;ai;agents;kaleido</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="ModelContextProtocol.AspNetCore" />
+		<PackageReference Include="Microsoft.Extensions.Http" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Kaleido.Http.Abstractions\Kaleido.Http.Abstractions.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Default agent instructions: Markdown, overridable or extendable through Kaleido:Mcp. -->
+		<EmbeddedResource Include="Instructions\DefaultInstructions.md" LogicalName="Kaleido.Http.Mcp.Instructions.DefaultInstructions.md" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Kaleido.Http.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+	</ItemGroup>
+
+</Project>
