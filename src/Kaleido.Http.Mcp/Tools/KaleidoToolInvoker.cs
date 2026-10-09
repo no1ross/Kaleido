@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Kaleido.Http.Mcp.Http;
@@ -6,6 +7,25 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace Kaleido.Http.Mcp.Tools;
+
+/// <summary>One tool call: the arguments, and what the MCP client sent along with them.</summary>
+[ExcludeFromCodeCoverage]
+internal sealed record KaleidoToolCall
+{
+    public required IReadOnlyDictionary<string, JsonElement> Arguments { get; init; }
+
+    /// <summary>The request-scoped MCP server (client capabilities, elicitation).</summary>
+    public required McpServer Server { get; init; }
+
+    /// <summary>The request's <c>_meta</c> (per-request client capabilities on newer protocol revisions).</summary>
+    public JsonObject? Meta { get; init; }
+
+    /// <summary>MRTR: the client's answers to the input requests of the previous round.</summary>
+    public IReadOnlyDictionary<string, InputResponse>? InputResponses { get; init; }
+
+    /// <summary>MRTR: the opaque state the adapter returned with the previous round.</summary>
+    public string? RequestState { get; init; }
+}
 
 /// <summary>
 /// Runs a tool call against Kaleido and turns the outcome into what the model reads.
@@ -16,18 +36,24 @@ namespace Kaleido.Http.Mcp.Tools;
 /// The result is summarized for the model: the outcome, the business messages (verbatim), and
 /// <c>next</c>: the required tool, or the available tools, of the service the process continues on.
 /// After a handoff the target service's state is read, so <c>next</c> names that service's tools.</para>
-/// <para><b>Questions</b> (a required information step): when the client supports elicitation, the
-/// user answers them in a form and the answers are submitted directly, round after round. Otherwise
-/// the questions are returned in <c>next.informationRequest</c> for the agent to ask the user and
-/// submit with <c>answer_information_request</c>.</para>
+/// <para><b>Questions</b> (a required information step) go to the <b>user</b> when the client can
+/// show forms:</para>
+/// <list type="bullet">
+/// <item><description>Clients on the stateless MCP revisions (2026-07-28+) use MRTR: the call
+/// returns "input required" with the form; the client shows it, then calls the same tool again with
+/// the answers, which the adapter submits. Nothing is held between the calls.</description></item>
+/// <item><description>Clients with a session (older revisions) get a classic elicitation request
+/// during the call.</description></item>
+/// <item><description>Otherwise the questions are returned in <c>next.informationRequest</c>, for the
+/// agent to ask the user and submit with <c>answer_information_request</c>.</description></item>
+/// </list>
 /// </remarks>
 internal interface IKaleidoToolInvoker
 {
     Task<CallToolResult> InvokeAsync(
         KaleidoTool tool,
-        IReadOnlyDictionary<string, JsonElement> arguments,
+        KaleidoToolCall call,
         ToolCatalog catalog,
-        McpServer server,
         CancellationToken cancellationToken = default);
 }
 
@@ -37,24 +63,33 @@ internal sealed class KaleidoToolInvoker(
     KaleidoMcpOptions options)
     : IKaleidoToolInvoker
 {
+    // The MRTR input-request key and the prefix of the adapter's opaque continuation state.
+    private const string AnswersInputKey = "kaleido-answers";
+    private const string StatePrefix = "kaleido-mcp:";
+    private const string ClientCapabilitiesMetaKey = "io.modelcontextprotocol/clientCapabilities";
+
     public Task<CallToolResult> InvokeAsync(
         KaleidoTool tool,
-        IReadOnlyDictionary<string, JsonElement> arguments,
+        KaleidoToolCall call,
         ToolCatalog catalog,
-        McpServer server,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(tool);
-        ArgumentNullException.ThrowIfNull(arguments);
+        ArgumentNullException.ThrowIfNull(call);
         ArgumentNullException.ThrowIfNull(catalog);
-        ArgumentNullException.ThrowIfNull(server);
+
+        // An MRTR retry: the user answered the form returned with the previous round.
+        if (call.RequestState?.StartsWith(StatePrefix, StringComparison.Ordinal) == true)
+        {
+            return ContinueAsync(call, catalog, cancellationToken);
+        }
 
         return tool.Kind switch
         {
-            KaleidoToolKind.Query => QueryAsync(tool, arguments, cancellationToken),
-            KaleidoToolKind.Step => StepAsync(tool, arguments, catalog, server, cancellationToken),
-            KaleidoToolKind.AnswerInformationRequest => AnswerAsync(arguments, catalog, server, cancellationToken),
-            KaleidoToolKind.GetProcessState => StateAsync(arguments, catalog, cancellationToken),
+            KaleidoToolKind.Query => QueryAsync(tool, call.Arguments, cancellationToken),
+            KaleidoToolKind.Step => StepAsync(tool, call, catalog, cancellationToken),
+            KaleidoToolKind.AnswerInformationRequest => AnswerAsync(call, catalog, cancellationToken),
+            KaleidoToolKind.GetProcessState => StateAsync(call.Arguments, catalog, cancellationToken),
             _ => Task.FromResult(Error(McpErrorCodes.UnknownTool, $"Tool '{tool.Definition.Name}' has no handler."))
         };
     }
@@ -110,14 +145,13 @@ internal sealed class KaleidoToolInvoker(
 
     private async Task<CallToolResult> StepAsync(
         KaleidoTool tool,
-        IReadOnlyDictionary<string, JsonElement> arguments,
+        KaleidoToolCall call,
         ToolCatalog catalog,
-        McpServer server,
         CancellationToken cancellationToken)
     {
         Guid? processId = null;
 
-        if (Text(arguments, "processId") is { } text)
+        if (Text(call.Arguments, "processId") is { } text)
         {
             if (!Guid.TryParse(text, out var parsed))
             {
@@ -135,7 +169,7 @@ internal sealed class KaleidoToolInvoker(
 
         var step = new JsonObject();
 
-        foreach (var (name, value) in arguments.Where(x => !string.Equals(x.Key, "processId", StringComparison.OrdinalIgnoreCase)))
+        foreach (var (name, value) in call.Arguments.Where(x => !string.Equals(x.Key, "processId", StringComparison.OrdinalIgnoreCase)))
         {
             step[name] = JsonNode.Parse(value.GetRawText());
         }
@@ -147,15 +181,16 @@ internal sealed class KaleidoToolInvoker(
                 processId,
                 cancellationToken);
 
-        return await FollowUpAsync(tool.Service, response, catalog, server, cancellationToken);
+        return await FollowUpAsync(tool.Service, response, catalog, call, [], round: 0, cancellationToken);
     }
 
     private async Task<CallToolResult> AnswerAsync(
-        IReadOnlyDictionary<string, JsonElement> arguments,
+        KaleidoToolCall call,
         ToolCatalog catalog,
-        McpServer server,
         CancellationToken cancellationToken)
     {
+        var arguments = call.Arguments;
+
         if (Text(arguments, "service") is not { } service ||
             !Guid.TryParse(Text(arguments, "processId"), out var processId) ||
             Text(arguments, "informationRequestId") is not { } informationRequestId)
@@ -163,61 +198,108 @@ internal sealed class KaleidoToolInvoker(
             return Error(McpErrorCodes.InvalidArguments, "Pass service, processId, informationRequestId and answers.");
         }
 
-        var state = await apiClient.GetAsync(StatePath(service, processId), cancellationToken);
+        var pending = await PendingAsync(service, processId, cancellationToken);
 
-        if (!state.IsSuccess)
+        if (pending.Error is { } error)
         {
-            return ServiceError(ToolCatalogBuilder.AnswerInformationRequestTool, state);
+            return error;
         }
 
-        if (Deserialize<ProcessStateResponse>(state.Body)?.RequiredStep is not { InformationRequest: { } pending } required)
-        {
-            return Error(
-                McpErrorCodes.NoPendingInformationRequest,
-                $"Process {processId} on '{service}' is not waiting for answers. Use get_process_state to see what it needs.");
-        }
-
-        if (!string.Equals(pending.InformationRequestId, informationRequestId, StringComparison.Ordinal))
+        if (!string.Equals(pending.Request.InformationRequestId, informationRequestId, StringComparison.Ordinal))
         {
             return Error(
                 McpErrorCodes.InvalidArguments,
-                $"The process is waiting for answers to '{pending.InformationRequestId}', not '{informationRequestId}'. Ask the user the current questions.",
-                Serialize(pending));
+                $"The process is waiting for answers to '{pending.Request.InformationRequestId}', not '{informationRequestId}'. Ask the user the current questions.",
+                Serialize(pending.Request));
         }
 
-        var items = new JsonArray();
+        var items = new List<InformationResponseItem>();
 
         if (arguments.TryGetValue("answers", out var answers) && answers.ValueKind == JsonValueKind.Array)
         {
             foreach (var answer in answers.EnumerateArray())
             {
                 var values = answer.TryGetProperty("values", out var given) && given.ValueKind == JsonValueKind.Array
-                    ? given.EnumerateArray().Select(x => (JsonNode?)new JsonObject { ["value"] = x.ValueKind == JsonValueKind.String ? x.GetString() : x.GetRawText() }).ToArray()
+                    ? given.EnumerateArray()
+                        .Select(x => x.ValueKind == JsonValueKind.String ? x.GetString() ?? string.Empty : x.GetRawText())
+                        .Select(x => new InformationAnswer { Value = x })
+                        .ToArray()
                     : [];
 
-                items.Add(new JsonObject
+                items.Add(new InformationResponseItem
                 {
-                    ["itemId"] = answer.TryGetProperty("itemId", out var itemId) ? itemId.GetString() : null,
-                    ["answers"] = new JsonArray(values)
+                    ItemId = answer.TryGetProperty("itemId", out var itemId) ? itemId.GetString() ?? string.Empty : string.Empty,
+                    Answers = values
                 });
             }
         }
 
-        var response =
-            await apiClient.PostAsync(
-                required.ExecuteUrl,
-                new JsonObject
-                {
-                    ["processStep"] = new JsonObject
-                    {
-                        ["informationRequestId"] = informationRequestId,
-                        ["items"] = items
-                    }
-                },
-                processId,
-                cancellationToken);
+        var response = await SubmitAsync(pending.Step, pending.Request, items, processId, cancellationToken);
 
-        return await FollowUpAsync(service, response, catalog, server, cancellationToken);
+        return await FollowUpAsync(service, response, catalog, call, [], round: 0, cancellationToken);
+    }
+
+    // The MRTR retry: submit the form answers to the process's pending request and carry on.
+    private async Task<CallToolResult> ContinueAsync(
+        KaleidoToolCall call,
+        ToolCatalog catalog,
+        CancellationToken cancellationToken)
+    {
+        if (DecodeState(call.RequestState) is not { } state)
+        {
+            return Error(McpErrorCodes.InvalidArguments, "The continuation state is not readable; call the tool again.");
+        }
+
+        var answered = new JsonArray(state.Answered.Select(x => (JsonNode?)JsonValue.Create(x)).ToArray());
+
+        ElicitResult? elicited = null;
+
+        if (call.InputResponses?.TryGetValue(AnswersInputKey, out var input) == true)
+        {
+            elicited = input.Deserialize(InputResponse.ElicitResultJsonTypeInfo);
+        }
+
+        if (elicited is not { IsAccepted: true, Content: { } content })
+        {
+            return await StateAsync(
+                state.Service,
+                state.ProcessId,
+                catalog,
+                $"The user did not answer the questions ({elicited?.Action ?? "no answer"}). Nothing was submitted; the process is still waiting for them.",
+                cancellationToken);
+        }
+
+        var pending = await PendingAsync(state.Service, state.ProcessId, cancellationToken);
+
+        if (pending.Error is { } error)
+        {
+            return error;
+        }
+
+        // The answers belong to the round the form showed; a stale form is not submitted.
+        if (!string.Equals(pending.Request.InformationRequestId, state.InformationRequestId, StringComparison.Ordinal))
+        {
+            return await StateAsync(
+                state.Service,
+                state.ProcessId,
+                catalog,
+                "The process is now asking different questions; the answered form was not submitted.",
+                cancellationToken);
+        }
+
+        var items = elicitor.ToAnswers(pending.Request, content.ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal));
+        var response = await SubmitAsync(pending.Step, pending.Request, items, state.ProcessId, cancellationToken);
+
+        answered.Add(state.InformationRequestId);
+
+        return await FollowUpAsync(
+            state.Service,
+            response,
+            catalog,
+            call with { InputResponses = null, RequestState = null },
+            answered,
+            state.Round + 1,
+            cancellationToken);
     }
 
     private async Task<CallToolResult> StateAsync(
@@ -231,6 +313,16 @@ internal sealed class KaleidoToolInvoker(
             return Error(McpErrorCodes.InvalidArguments, "Pass service and processId.");
         }
 
+        return await StateAsync(service, processId, catalog, note: null, cancellationToken);
+    }
+
+    private async Task<CallToolResult> StateAsync(
+        string service,
+        Guid processId,
+        ToolCatalog catalog,
+        string? note,
+        CancellationToken cancellationToken)
+    {
         var response = await apiClient.GetAsync(StatePath(service, processId), cancellationToken);
 
         if (!response.IsSuccess)
@@ -238,23 +330,14 @@ internal sealed class KaleidoToolInvoker(
             return ServiceError(ToolCatalogBuilder.GetProcessStateTool, response);
         }
 
-        var state = Deserialize<ProcessStateResponse>(response.Body);
-
-        if (state is null)
+        if (Deserialize<ProcessStateResponse>(response.Body) is not { } state)
         {
             return Error(McpErrorCodes.ServiceError, $"The state of process {processId} could not be read.");
         }
 
         if (!string.IsNullOrWhiteSpace(state.TargetProcessorName))
         {
-            return await StateAsync(
-                new Dictionary<string, JsonElement>(StringComparer.Ordinal)
-                {
-                    ["service"] = JsonSerializer.SerializeToElement(state.TargetProcessorName),
-                    ["processId"] = JsonSerializer.SerializeToElement(processId)
-                },
-                catalog,
-                cancellationToken);
+            return await StateAsync(state.TargetProcessorName, processId, catalog, note, cancellationToken);
         }
 
         var summary = new JsonObject
@@ -265,36 +348,39 @@ internal sealed class KaleidoToolInvoker(
             ["completedSteps"] = new JsonArray(state.Steps
                 .Where(x => x.Status == StepExecutionStatus.Completed)
                 .Select(x => (JsonNode?)x.StepName)
-                .ToArray())
+                .ToArray()),
+            ["next"] = Next(service, state.RequiredStep, state.AvailableSteps, catalog, elicited: false)
         };
 
-        summary["next"] = Next(service, state.RequiredStep, state.AvailableSteps, catalog, elicited: false);
+        if (note is not null)
+        {
+            summary["note"] = note;
+        }
 
         return Success(summary);
     }
 
-    // After a step: follow a handoff to the target's state, answer questions through
-    // elicitation while the client supports it, and summarize where the process stands.
+    // After a step: follow a handoff to the target's state, put questions to the user while the
+    // client can show forms, and summarize where the process stands.
     private async Task<CallToolResult> FollowUpAsync(
         string service,
         KaleidoApiResponse response,
         ToolCatalog catalog,
-        McpServer server,
+        KaleidoToolCall call,
+        JsonArray answered,
+        int round,
         CancellationToken cancellationToken)
     {
-        var answered = new JsonArray();
         string? note = null;
 
-        for (var round = 0; ; round++)
+        for (; ; round++)
         {
             if (!response.IsSuccess)
             {
                 return ServiceError(service, response);
             }
 
-            var step = Deserialize<StepExecutionResponse<JsonElement>>(response.Body);
-
-            if (step is null)
+            if (Deserialize<StepExecutionResponse<JsonElement>>(response.Body) is not { } step)
             {
                 return Error(McpErrorCodes.ServiceError, "The step response could not be read.", response.Body);
             }
@@ -314,38 +400,42 @@ internal sealed class KaleidoToolInvoker(
                 available = targetState?.AvailableSteps ?? [];
             }
 
+            var mode = ElicitationMode(call);
+
             if (required?.InformationRequest is { } pending &&
-                server.ClientCapabilities?.Elicitation is not null &&
-                step.Outcome == StepExecutionOutcome.Completed)
+                step.Outcome == StepExecutionOutcome.Completed &&
+                mode != Elicitation.None)
             {
                 if (round >= options.MaxElicitationRounds)
                 {
-                    note = "The process asked more rounds of questions than are answered automatically; ask the user the remaining questions.";
+                    note = "The process asked more rounds of questions than are put to the user automatically; ask the user the remaining questions.";
+                }
+                else if (mode == Elicitation.Mrtr)
+                {
+                    // Return the form; the client shows it and calls this tool again with the answers.
+                    throw new InputRequiredException(
+                        new Dictionary<string, InputRequest>(StringComparer.Ordinal)
+                        {
+                            [AnswersInputKey] = InputRequest.ForElicitation(elicitor.ToElicitation(pending))
+                        },
+                        EncodeState(new ContinuationState(
+                            pendingService,
+                            step.ProcessId,
+                            pending.InformationRequestId,
+                            round,
+                            answered.Select(x => x?.GetValue<string>()).OfType<string>().ToArray())));
                 }
                 else
                 {
-                    var elicited = await server.ElicitAsync(elicitor.ToElicitation(pending), cancellationToken);
+                    var elicited = await call.Server.ElicitAsync(elicitor.ToElicitation(pending), cancellationToken);
 
                     if (elicited.IsAccepted && elicited.Content is { } content)
                     {
                         var items = elicitor.ToAnswers(pending, content.ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal));
 
-                        answered.Add(new JsonObject
-                        {
-                            ["step"] = required.Name,
-                            ["informationRequestId"] = pending.InformationRequestId
-                        });
-
+                        answered.Add(pending.InformationRequestId);
                         service = pendingService;
-                        response =
-                            await apiClient.PostAsync(
-                                required.ExecuteUrl,
-                                new JsonObject
-                                {
-                                    ["processStep"] = Serialize(new { pending.InformationRequestId, Items = items })
-                                },
-                                step.ProcessId,
-                                cancellationToken);
+                        response = await SubmitAsync(required, pending, items, step.ProcessId, cancellationToken);
 
                         continue;
                     }
@@ -356,6 +446,59 @@ internal sealed class KaleidoToolInvoker(
 
             return Success(Summary(service, pendingService, step, required, available, answered, note, catalog));
         }
+    }
+
+    private Task<KaleidoApiResponse> SubmitAsync(
+        ProcessRequiredStep step,
+        InformationRequest request,
+        IReadOnlyList<InformationResponseItem> items,
+        Guid processId,
+        CancellationToken cancellationToken) =>
+        apiClient.PostAsync(
+            step.ExecuteUrl,
+            new JsonObject
+            {
+                ["processStep"] = new JsonObject
+                {
+                    ["informationRequestId"] = request.InformationRequestId,
+                    ["items"] = Serialize(items)
+                }
+            },
+            processId,
+            cancellationToken);
+
+    // The questions a process is waiting for, read fresh from Kaleido (never from the client).
+    private async Task<PendingQuestions> PendingAsync(
+        string service,
+        Guid processId,
+        CancellationToken cancellationToken)
+    {
+        var response = await apiClient.GetAsync(StatePath(service, processId), cancellationToken);
+
+        if (!response.IsSuccess)
+        {
+            return PendingQuestions.Failed(ServiceError(ToolCatalogBuilder.AnswerInformationRequestTool, response));
+        }
+
+        return Deserialize<ProcessStateResponse>(response.Body)?.RequiredStep is { InformationRequest: { } request } step
+            ? new PendingQuestions(step, request, null)
+            : PendingQuestions.Failed(Error(
+                McpErrorCodes.NoPendingInformationRequest,
+                $"Process {processId} on '{service}' is not waiting for answers. Use get_process_state to see what it needs."));
+    }
+
+    private static Elicitation ElicitationMode(KaleidoToolCall call)
+    {
+        var supportsForms =
+            call.Server.ClientCapabilities?.Elicitation is not null ||
+            call.Meta?[ClientCapabilitiesMetaKey]?["elicitation"] is not null;
+
+        if (!supportsForms)
+        {
+            return Elicitation.None;
+        }
+
+        return call.Server.IsMrtrSupported ? Elicitation.Mrtr : Elicitation.Session;
     }
 
     // ── Summaries ────────────────────────────────────────────────────────────
@@ -392,7 +535,7 @@ internal sealed class KaleidoToolInvoker(
 
         if (answered.Count > 0)
         {
-            summary["answered"] = answered;
+            summary["answered"] = answered.DeepClone();
         }
 
         if (!string.IsNullOrWhiteSpace(step.TargetProcessorName))
@@ -454,6 +597,32 @@ internal sealed class KaleidoToolInvoker(
         }
 
         return next;
+    }
+
+    // ── Continuation state (MRTR) ────────────────────────────────────────────
+
+    // Opaque to the client. It only says which process and round the form belongs to; the pending
+    // questions and the URL to submit to are always read fresh from Kaleido, never trusted from here.
+    private static string EncodeState(ContinuationState state) =>
+        StatePrefix + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(state, KaleidoJsonOptions.Options));
+
+    private static ContinuationState? DecodeState(string? value)
+    {
+        if (value is null || !value.StartsWith(StatePrefix, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<ContinuationState>(
+                Encoding.UTF8.GetString(Convert.FromBase64String(value[StatePrefix.Length..])),
+                KaleidoJsonOptions.Options);
+        }
+        catch (Exception exception) when (exception is FormatException or JsonException)
+        {
+            return null;
+        }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -523,5 +692,28 @@ internal sealed class KaleidoToolInvoker(
             IsError = true,
             Content = [new TextContentBlock { Text = body.ToJsonString(KaleidoJsonOptions.Options) }]
         };
+    }
+
+    private enum Elicitation
+    {
+        None,
+        Mrtr,
+        Session
+    }
+
+    private sealed record ContinuationState(
+        string Service,
+        Guid ProcessId,
+        string InformationRequestId,
+        int Round,
+        IReadOnlyList<string> Answered);
+
+    private sealed record PendingQuestions(
+        ProcessRequiredStep Step,
+        InformationRequest Request,
+        CallToolResult? Error)
+    {
+        public static PendingQuestions Failed(CallToolResult error) =>
+            new(new ProcessRequiredStep { Name = string.Empty }, new InformationRequest { InformationRequestId = string.Empty }, error);
     }
 }
