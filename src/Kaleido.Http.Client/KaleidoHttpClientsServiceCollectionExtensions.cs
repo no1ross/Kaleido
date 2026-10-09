@@ -1,6 +1,7 @@
 using Kaleido.Exceptions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Kaleido.Http.Client;
 
@@ -56,6 +57,14 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
                 o.RegistryTtl = registryTtl;
                 o.StrictRegistryProbe = strictProbe;
             });
+        }
+
+        // An aggregating host merges these clients' registries into its own (AddHttp() registers
+        // a "no downstream" default; with clients configured, this replaces it).
+        if (config.Clients.Count > 0)
+        {
+            builder.Services.Replace(
+                ServiceDescriptor.Scoped<IKaleidoDownstreamRegistries, ClientDownstreamRegistries>());
         }
 
         return builder;

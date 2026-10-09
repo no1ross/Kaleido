@@ -2,6 +2,7 @@ using Kaleido.Http;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,8 @@ namespace Kaleido.Http.FunctionalTests.Authorization;
 public sealed class AuthorizationAspNetCoreFixture
     : IAsyncLifetime
 {
+    internal const string InProcessRegistryUrl = "/test/in-process-registry";
+
     private IHost? _host;
 
     public HttpClient Client { get; private set; } = null!;
@@ -101,6 +104,13 @@ public sealed class AuthorizationAspNetCoreFixture
                         app.UseEndpoints(endpoints =>
                         {
                             endpoints.MapKaleidoHttp();
+
+                            // An in-host consumer of the registry (as the MCP adapter is): it calls
+                            // IKaleidoRegistryService directly instead of the registry endpoint.
+                            endpoints.MapGet(
+                                InProcessRegistryUrl,
+                                async (Kaleido.Http.Registry.IKaleidoRegistryService registry, CancellationToken cancellationToken) =>
+                                    Results.Json(await registry.GetForCallerAsync(cancellationToken: cancellationToken), KaleidoJsonOptions.Options));
                         });
                     });
                 })
