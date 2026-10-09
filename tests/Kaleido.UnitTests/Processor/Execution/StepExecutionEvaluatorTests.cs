@@ -544,7 +544,7 @@ public sealed class StepExecutionEvaluatorTests
         return new StepExecutionEvaluator(
             resolver.Object,
             registry.Object,
-            informationValidator ?? Mock.Of<IInformationValidator>(x => x.ValidateRequest(It.IsAny<InformationRequest>()) == Array.Empty<StepProcessingMessage>()),
+            informationValidator ?? Mock.Of<IInformationValidator>(x => !x.ValidateRequest(It.IsAny<InformationRequest>()).Any()),
             new KaleidoServiceOptions { ServiceName = LocalProcessorName });
     }
 
