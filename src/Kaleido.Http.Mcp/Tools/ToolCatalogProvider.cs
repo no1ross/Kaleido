@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using Kaleido.Http.Mcp.Http;
+using Kaleido.Http.Mcp.Observability;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
@@ -26,6 +27,7 @@ internal sealed class ToolCatalogProvider(
     IHttpContextAccessor httpContextAccessor,
     KaleidoMcpOptions options,
     TimeProvider timeProvider,
+    IMcpObservability observability,
     ILogger<ToolCatalogProvider> logger)
     : IToolCatalogProvider
 {
@@ -44,16 +46,30 @@ internal sealed class ToolCatalogProvider(
 
         if (Cache.TryGetValue(key, out var cached) && cached.ExpiresAt > now)
         {
+            observability.RegistryRead(McpTelemetry.RegistryHit, cached.Catalog.Revision);
+
             return cached.Catalog;
         }
 
         var read = await apiClient.GetRegistryAsync(cached?.Catalog.Revision, cancellationToken);
+
+        if (read.Error is { } error)
+        {
+            observability.RegistryRead(McpTelemetry.RegistryFailed, cached?.Catalog.Revision);
+            logger.LogWarning("Kaleido MCP: {Error}", error);
+
+            // Keep serving the caller's last known tools rather than none; retry on the next call.
+            return cached?.Catalog is { Unavailable: null } previous
+                ? previous
+                : new ToolCatalog { Unavailable = error };
+        }
 
         ToolCatalog catalog;
 
         if (read.NotModified && cached is not null)
         {
             catalog = cached.Catalog;
+            observability.RegistryRead(McpTelemetry.RegistryNotModified, catalog.Revision);
         }
         else
         {
@@ -61,6 +77,7 @@ internal sealed class ToolCatalogProvider(
                 ? catalogBuilder.Build(registry)
                 : ToolCatalog.Empty;
 
+            observability.RegistryRead(McpTelemetry.RegistryFetched, catalog.Revision);
             Report(catalog);
         }
 

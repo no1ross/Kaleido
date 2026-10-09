@@ -20,7 +20,8 @@ public sealed class BclExceptionBanAnalyzer : DiagnosticAnalyzer
     //   FormatException        — ValueConverter parse-failure contract
     //   BadHttpRequestException— ASP.NET Core maps it to a 400 by design
     //   InputRequiredException — the MCP SDK's way for a tool to return "input required"
-    //                            (MRTR: ask the user, then the client retries the call)
+    //                            (MRTR: ask the user, then the client retries the call); the
+    //                            SDK answers it as a normal successful result, never an error
     private static readonly string[] AllowedBases =
     {
         "System.ArgumentException",

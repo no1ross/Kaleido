@@ -16,13 +16,16 @@ internal sealed record KaleidoApiResponse(
 }
 
 /// <summary>
-/// A registry read: the caller-filtered registry, or <see cref="NotModified"/> when the revision
-/// the adapter already holds is still current (the registry answered 304).
+/// A registry read: the caller-filtered registry, <see cref="NotModified"/> when the revision the
+/// adapter already holds is still current (the registry answered 304), or an
+/// <see cref="Error"/> when the registry could not be read (never an exception: the adapter
+/// answers every MCP request with a well-formed result).
 /// </summary>
 [ExcludeFromCodeCoverage]
 internal sealed record KaleidoRegistryRead(
     AggregatedRegistryResponse? Registry,
-    bool NotModified);
+    bool NotModified,
+    string? Error = null);
 
 /// <summary>
 /// The adapter's only way to reach Kaleido: plain HTTP against the configured base URL with the
@@ -78,26 +81,37 @@ internal sealed class KaleidoApiClient(
             request.Headers.IfNoneMatch.Add(new EntityTagHeaderValue($"\"{knownRevision}\""));
         }
 
-        using var response = await client.SendAsync(request, cancellationToken);
-
-        if (response.StatusCode == HttpStatusCode.NotModified)
+        try
         {
-            return new KaleidoRegistryRead(null, NotModified: true);
-        }
+            using var response = await client.SendAsync(request, cancellationToken);
 
-        if (!response.IsSuccessStatusCode)
+            if (response.StatusCode == HttpStatusCode.NotModified)
+            {
+                return new KaleidoRegistryRead(null, NotModified: true);
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new KaleidoRegistryRead(
+                    null,
+                    NotModified: false,
+                    $"Reading the Kaleido registry at '{options.RegistryPath}' returned HTTP {(int)response.StatusCode}.");
+            }
+
+            var registry =
+                await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(
+                    KaleidoJsonOptions.Options,
+                    cancellationToken);
+
+            return new KaleidoRegistryRead(registry, NotModified: false);
+        }
+        catch (Exception exception) when (IsTransportFailure(exception, cancellationToken))
         {
-            throw new KaleidoFrameworkException(
-                McpErrorCodes.ServiceError,
-                $"Reading the Kaleido registry at '{options.RegistryPath}' returned HTTP {(int)response.StatusCode}.");
+            return new KaleidoRegistryRead(
+                null,
+                NotModified: false,
+                $"The Kaleido registry at '{options.BaseUrl}{options.RegistryPath.TrimStart('/')}' could not be read: {exception.Message}");
         }
-
-        var registry =
-            await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(
-                KaleidoJsonOptions.Options,
-                cancellationToken);
-
-        return new KaleidoRegistryRead(registry, NotModified: false);
     }
 
     public async Task<KaleidoApiResponse> GetAsync(
@@ -106,12 +120,19 @@ internal sealed class KaleidoApiClient(
     {
         var client = httpClientFactory.CreateClient(HttpClientName);
 
-        using var response =
-            await client.GetAsync(
-                new Uri(path, UriKind.Relative),
-                cancellationToken);
+        try
+        {
+            using var response =
+                await client.GetAsync(
+                    new Uri(path, UriKind.Relative),
+                    cancellationToken);
 
-        return await ReadAsync(response, cancellationToken);
+            return await ReadAsync(response, cancellationToken);
+        }
+        catch (Exception exception) when (IsTransportFailure(exception, cancellationToken))
+        {
+            return Unreachable(path, exception);
+        }
     }
 
     public async Task<KaleidoApiResponse> PostAsync(
@@ -135,10 +156,36 @@ internal sealed class KaleidoApiClient(
             request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, id.ToString());
         }
 
-        using var response = await client.SendAsync(request, cancellationToken);
+        try
+        {
+            using var response = await client.SendAsync(request, cancellationToken);
 
-        return await ReadAsync(response, cancellationToken);
+            return await ReadAsync(response, cancellationToken);
+        }
+        catch (Exception exception) when (IsTransportFailure(exception, cancellationToken))
+        {
+            return Unreachable(path, exception);
+        }
     }
+
+    // The service could not be reached (refused, DNS, TLS, timeout) or answered something that is
+    // not a Kaleido response. The caller's own cancellation is not a failure and still propagates.
+    private static bool IsTransportFailure(
+        Exception exception,
+        CancellationToken cancellationToken) =>
+        exception is HttpRequestException or JsonException ||
+        (exception is TaskCanceledException && !cancellationToken.IsCancellationRequested);
+
+    private static KaleidoApiResponse Unreachable(
+        string path,
+        Exception exception) =>
+        new(
+            (int)HttpStatusCode.ServiceUnavailable,
+            new JsonObject
+            {
+                ["code"] = McpErrorCodes.ServiceUnavailable,
+                ["message"] = $"The Kaleido service at '{path}' could not be reached: {exception.Message}"
+            });
 
     private static async Task<KaleidoApiResponse> ReadAsync(
         HttpResponseMessage response,

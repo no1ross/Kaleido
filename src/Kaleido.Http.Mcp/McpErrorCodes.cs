@@ -2,8 +2,9 @@ namespace Kaleido.Http.Mcp;
 
 /// <summary>
 /// Error codes owned by the Kaleido MCP adapter (<c>mcp_*</c>). Startup codes surface through
-/// <see cref="KaleidoConfigurationException"/>; tool-call codes are returned to the agent in the
-/// tool result (never as HTTP errors), so the model can explain or recover.
+/// <see cref="KaleidoConfigurationException"/>. At request time every answer is a well-formed
+/// result: tool-call problems come back as a tool result with <c>isError: true</c> and one of these
+/// codes (never as an HTTP or protocol error), so the agent can explain or recover.
 /// </summary>
 public static class McpErrorCodes
 {
@@ -24,6 +25,12 @@ public static class McpErrorCodes
 
     /// <summary>The Kaleido service returned a non-success HTTP status.</summary>
     public const string ServiceError = "mcp_service_error";
+
+    /// <summary>The Kaleido service (or its registry) could not be reached.</summary>
+    public const string ServiceUnavailable = "mcp_service_unavailable";
+
+    /// <summary>The adapter failed unexpectedly while running a tool; the tool did not complete.</summary>
+    public const string InternalError = "mcp_internal_error";
 
     /// <summary>An answer was submitted but the process has no pending information request.</summary>
     public const string NoPendingInformationRequest = "mcp_no_pending_information_request";

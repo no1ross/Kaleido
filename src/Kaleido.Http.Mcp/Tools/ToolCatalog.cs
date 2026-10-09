@@ -55,6 +55,12 @@ internal sealed record ToolCatalog
     /// <summary>The registry revision the catalog was built from.</summary>
     public string? Revision { get; init; }
 
+    /// <summary>
+    /// Why there are no tools when the registry could not be read (and no earlier tools could be
+    /// reused); null when the catalog is current.
+    /// </summary>
+    public string? Unavailable { get; init; }
+
     /// <summary>The registry was partial (a downstream service failed): some tools are missing.</summary>
     public bool IsPartial { get; init; }
 
