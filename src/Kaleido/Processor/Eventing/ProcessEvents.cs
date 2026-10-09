@@ -55,6 +55,9 @@ public sealed record PlanBuilt : ProcessEventBase
 
     public string? RequiredStep { get; init; }
 
+    /// <summary>The information request presented for <see cref="RequiredStep"/>, if any.</summary>
+    public InformationRequest? RequiredInformationRequest { get; init; }
+
     public string? TargetProcessorName { get; init; }
 
     public IReadOnlyCollection<string> AvailableSteps { get; init; } = [];
@@ -95,6 +98,9 @@ public sealed record StepCompleted : ProcessEventBase
 
     public string? RequiredStep { get; init; }
 
+    /// <summary>The information request presented for <see cref="RequiredStep"/>, if any.</summary>
+    public InformationRequest? RequiredInformationRequest { get; init; }
+
     public string? TargetProcessorName { get; init; }
 
     public IReadOnlyCollection<string> AvailableSteps { get; init; } = [];
@@ -110,6 +116,9 @@ public sealed record ExecutionCompleted : ProcessEventBase
     public required ProcessExecutionState State { get; init; }
 
     public string? RequiredStep { get; init; }
+
+    /// <summary>The information request presented for <see cref="RequiredStep"/>, if any.</summary>
+    public InformationRequest? RequiredInformationRequest { get; init; }
 
     public string? TargetProcessorName { get; init; }
 

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -73,6 +74,7 @@ public static class DevAuthExtensions
         this IServiceCollection services)
     {
         services.AddEndpointsApiExplorer();
+        services.AddHttpContextAccessor();
         services.AddSwaggerGen(options =>
         {
             options.AddSecurityDefinition(
@@ -84,18 +86,59 @@ public static class DevAuthExtensions
                     Scheme = "bearer",
                     In = Microsoft.OpenApi.ParameterLocation.Header,
                     Description =
-                        "Dev persona token — get one from POST /auth/login on the router."
+                        "Dev persona token — get one from POST /auth/login on the router. " +
+                        "The document lists only the operations the authorized caller may call: " +
+                        "reload the page after authorizing."
                 });
 
-            // Security definition stays (Authorize button works), but the
-            // per-operation requirement/401/403 noise Kaleido's
-            // RequireAuthorization metadata produces is stripped.
+            // One document-wide requirement: Swagger UI only sends the
+            // Authorization header for operations that declare a requirement,
+            // so without it the Authorize token is stored but never sent.
+            options.AddSecurityRequirement(document =>
+                new Microsoft.OpenApi.OpenApiSecurityRequirement
+                {
+                    [new Microsoft.OpenApi.OpenApiSecuritySchemeReference("Bearer", document)] = []
+                });
+
+            // The per-operation requirement/401/403 noise Kaleido's
+            // RequireAuthorization metadata produces is stripped; operations
+            // inherit the document-wide requirement above.
             options.OperationFilter<DevSwaggerOperationFilter>();
             options.DocumentFilter<DevSwaggerDocumentFilter>();
+
+            // Per caller: drop the operations the caller may not call, judged by
+            // the same endpoint authorization metadata the server enforces.
+            options.OperationAsyncFilter<DevSwaggerCallerOperationFilter>();
+            options.DocumentFilter<DevSwaggerCallerDocumentFilter>();
         });
 
         return services;
     }
+
+    /// <summary>
+    /// Swagger UI for a dev-auth host: persists the Authorize token and sends it
+    /// on every request, including the spec request itself, so the
+    /// per-caller document (<see cref="AddDevSwagger"/>) matches the
+    /// authorized persona. Reload the page after authorizing.
+    /// </summary>
+    public static IApplicationBuilder UseDevSwaggerUI(
+        this IApplicationBuilder app,
+        Action<Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIOptions>? configure = null) =>
+        app.UseSwaggerUI(options =>
+        {
+            configure?.Invoke(options);
+
+            options.EnablePersistAuthorization();
+
+            // Swagger UI stores persisted authorizations in localStorage under
+            // "authorized"; attach the Bearer value when a request has none
+            // (the spec fetch never carries it on its own). Keep the function
+            // on ONE line: Swashbuckle embeds it as JSON inside a JS string in
+            // index.js, where line breaks become raw newlines and JSON.parse
+            // fails, leaving a blank page.
+            options.UseRequestInterceptor(
+                "(request) => { try { var authorized = JSON.parse(window.localStorage.getItem('authorized') || 'null'); var token = authorized && authorized.Bearer && authorized.Bearer.value; if (token && !request.headers.Authorization) { request.headers.Authorization = 'Bearer ' + token; } } catch (e) { } return request; }");
+        });
 
     /// <summary>
     /// Registers <see cref="DevTokenForwardingHandler"/> for the given named
@@ -130,9 +173,137 @@ internal sealed class DevSwaggerOperationFilter : Swashbuckle.AspNetCore.Swagger
         Microsoft.OpenApi.OpenApiOperation operation,
         Swashbuckle.AspNetCore.SwaggerGen.OperationFilterContext context)
     {
-        operation.Security?.Clear();
+        // Null (not an empty list): an empty `security: []` on an operation
+        // means "no auth" and would stop Swagger UI sending the token.
+        operation.Security = null;
         operation.Responses?.Remove("401");
         operation.Responses?.Remove("403");
+    }
+}
+
+/// <summary>
+/// Marks the operations the current caller may not call, evaluating the
+/// endpoint's own authorization metadata (<c>[AllowAnonymous]</c>,
+/// <c>RequireAuthorization</c> policies, roles) against the caller with
+/// ASP.NET's <see cref="Microsoft.AspNetCore.Authorization.IAuthorizationService"/>.
+/// Hiding is a view, not a boundary: the server still enforces every call.
+/// </summary>
+internal sealed class DevSwaggerCallerOperationFilter(
+    Microsoft.AspNetCore.Http.IHttpContextAccessor httpContextAccessor,
+    Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider policyProvider)
+    : Swashbuckle.AspNetCore.SwaggerGen.IOperationAsyncFilter
+{
+    internal const string HiddenOperationsKey = "DevSwagger.HiddenOperations";
+
+    public async Task ApplyAsync(
+        Microsoft.OpenApi.OpenApiOperation operation,
+        Swashbuckle.AspNetCore.SwaggerGen.OperationFilterContext context,
+        CancellationToken cancellationToken)
+    {
+        if (httpContextAccessor.HttpContext is not { } httpContext)
+        {
+            return;
+        }
+
+        var metadata = context.ApiDescription.ActionDescriptor.EndpointMetadata;
+
+        if (metadata.OfType<Microsoft.AspNetCore.Authorization.IAllowAnonymous>().Any())
+        {
+            return;
+        }
+
+        var policy =
+            await Microsoft.AspNetCore.Authorization.AuthorizationPolicy.CombineAsync(
+                policyProvider,
+                metadata.OfType<Microsoft.AspNetCore.Authorization.IAuthorizeData>(),
+                metadata.OfType<Microsoft.AspNetCore.Authorization.AuthorizationPolicy>());
+
+        if (policy is null)
+        {
+            return;
+        }
+
+        var authorizationService =
+            httpContext.RequestServices.GetRequiredService<Microsoft.AspNetCore.Authorization.IAuthorizationService>();
+
+        var result = await authorizationService.AuthorizeAsync(httpContext.User, policy);
+
+        if (!result.Succeeded)
+        {
+            Hidden(httpContext).Add(operation);
+        }
+    }
+
+    internal static HashSet<Microsoft.OpenApi.OpenApiOperation> Hidden(
+        Microsoft.AspNetCore.Http.HttpContext httpContext)
+    {
+        if (httpContext.Items[HiddenOperationsKey] is not HashSet<Microsoft.OpenApi.OpenApiOperation> hidden)
+        {
+            hidden = [];
+            httpContext.Items[HiddenOperationsKey] = hidden;
+        }
+
+        return hidden;
+    }
+}
+
+/// <summary>
+/// Removes the operations <see cref="DevSwaggerCallerOperationFilter"/> marked,
+/// then any path or tag left without operations.
+/// </summary>
+internal sealed class DevSwaggerCallerDocumentFilter(
+    Microsoft.AspNetCore.Http.IHttpContextAccessor httpContextAccessor)
+    : Swashbuckle.AspNetCore.SwaggerGen.IDocumentFilter
+{
+    public void Apply(
+        Microsoft.OpenApi.OpenApiDocument document,
+        Swashbuckle.AspNetCore.SwaggerGen.DocumentFilterContext context)
+    {
+        if (httpContextAccessor.HttpContext is not { } httpContext ||
+            document.Paths is null)
+        {
+            return;
+        }
+
+        var hidden = DevSwaggerCallerOperationFilter.Hidden(httpContext);
+
+        foreach (var (path, item) in document.Paths.ToArray())
+        {
+            if (item.Operations is not { } operations)
+            {
+                continue;
+            }
+
+            foreach (var (method, operation) in operations.ToArray())
+            {
+                if (hidden.Contains(operation))
+                {
+                    operations.Remove(method);
+                }
+            }
+
+            if (operations.Count == 0)
+            {
+                document.Paths.Remove(path);
+            }
+        }
+
+        if (document.Tags is null)
+        {
+            return;
+        }
+
+        var usedTags =
+            document.Paths.Values
+                .SelectMany(item => item.Operations?.Values ?? Enumerable.Empty<Microsoft.OpenApi.OpenApiOperation>())
+                .SelectMany(operation => operation.Tags ?? Enumerable.Empty<Microsoft.OpenApi.OpenApiTagReference>())
+                .Select(tag => tag.Name)
+                .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var tag in document.Tags.Where(tag => !usedTags.Contains(tag.Name)).ToArray())
+        {
+            document.Tags.Remove(tag);
+        }
     }
 }
 

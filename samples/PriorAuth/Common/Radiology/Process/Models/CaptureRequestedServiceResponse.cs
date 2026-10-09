@@ -1,12 +1,7 @@
-﻿using Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Views;
+﻿namespace Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 
-namespace Kaleido.Samples.PriorAuth.Radiology.Process.Models;
-
-public sealed record CaptureRequestedServiceResponse
-{
-    public string? QuestionnaireId { get; init; }
-
-    public string? QuestionnaireVersion { get; init; }
-
-    public QuestionnaireDefinitionView? Questionnaire { get; init; }
-}
+/// <summary>
+/// The questions for the next step travel on the response's required step
+/// (<c>requiredStep.informationRequest</c>), not in this payload.
+/// </summary>
+public sealed record CaptureRequestedServiceResponse;

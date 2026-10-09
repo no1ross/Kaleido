@@ -22,6 +22,12 @@ internal sealed record ExecutionDecision
         init;
     }
 
+    public InformationRequest? InformationRequest
+    {
+        get;
+        init;
+    }
+
     public string? TargetProcessorName
     {
         get;
@@ -86,6 +92,16 @@ internal sealed record ExecutionDecision
         {
             Type = ExecutionDecisionType.AwaitingStepSelection,
             AvailableSteps = availableSteps
+        };
+
+    public static ExecutionDecision AwaitingInformation(
+        string requiredStep,
+        InformationRequest informationRequest)
+        => new()
+        {
+            Type = ExecutionDecisionType.AwaitingInformation,
+            RequiredStep = requiredStep,
+            InformationRequest = informationRequest
         };
 
     public static ExecutionDecision HandOff(string targetProcessorName)

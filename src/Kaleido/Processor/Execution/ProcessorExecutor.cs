@@ -50,6 +50,9 @@ internal sealed class ProcessorExecutor(
                 RequiredStep =
                     context.RequiredStep,
 
+                RequiredInformationRequest =
+                    context.RequiredInformationRequest,
+
                 TargetProcessorName =
                     context.TargetProcessorName,
 
@@ -88,7 +91,8 @@ internal sealed class ProcessorExecutor(
                 observability.BeginStep(
                     new ProcessorStepObservationDetails(
                         candidate.StepName,
-                        candidate.Registration?.Metadata.Version));
+                        candidate.Registration?.Metadata.Version,
+                        candidate.Registration?.IsInformationStep == true));
 
             try
             {
@@ -149,6 +153,12 @@ internal sealed class ProcessorExecutor(
                 stepObservation.DecisionRecorded(
                     decision.Type.ToString(),
                     executionStatus.ToString());
+
+                if (decision.InformationRequest is { } informationRequest)
+                {
+                    stepObservation.InformationRequested(
+                        informationRequest.InformationRequestId);
+                }
 
                 var outcome =
                     CreateOutcome(
@@ -316,6 +326,9 @@ internal sealed class ProcessorExecutor(
 
             RequiredStep =
                 context.RequiredStep,
+
+            RequiredInformationRequest =
+                context.RequiredInformationRequest,
 
             TargetProcessorName =
                 context.TargetProcessorName,

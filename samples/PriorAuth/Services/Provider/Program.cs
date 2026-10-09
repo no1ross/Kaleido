@@ -22,7 +22,6 @@ builder.Services.AddDbContext<ProviderSearchDbContext>(
 
 builder.Services.AddScoped<PlanNetworkClient>();
 
-builder.Services.AddControllers();
 
 // Dev-token auth (sample stand-in for a real IdP) + outbound token forwarding.
 builder.Services.AddDevAuth();
@@ -55,7 +54,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.DefaultAuthorization = new(DevAuthPolicies.InternalCaller, []);
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp()
+    // Sample: return framework diagnostics (e.g. pro_step_not_available) in frameworkMessages.
+    .AddHttp(o => o.IncludeFrameworkMessages = true)
     .AddHttpClients()
     .AddOpenTelemetry();
 
@@ -71,9 +71,8 @@ app.MapKaleidoHttp();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseDevSwaggerUI();
 }
 
-app.MapControllers();
 
 app.Run();

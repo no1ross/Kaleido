@@ -11,7 +11,8 @@ internal sealed class ProcessorPlanner(
     IStepCandidateBuilder candidateBuilder,
     IStepCandidateValidator candidateValidator,
     IStepCandidateConsistencyChecker candidateConsistencyChecker,
-    IStepCandidatePlanner stepCandidatePlanner)
+    IStepCandidatePlanner stepCandidatePlanner,
+    IStepCandidateNextStepChecker nextStepChecker)
     : IProcessorPlanner
 {
 
@@ -33,6 +34,10 @@ internal sealed class ProcessorPlanner(
 
         var orderedCandidates =
             stepCandidatePlanner.Build(candidates);
+
+        nextStepChecker.Check(
+            orderedCandidates,
+            context);
 
         return new ExecutionPlanResult
         {

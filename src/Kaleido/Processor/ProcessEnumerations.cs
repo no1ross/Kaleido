@@ -136,7 +136,14 @@ public enum ExecutionDecisionType
     /// was supplied. The consumer must select one of the available
     /// next steps returned by the process.
     /// </summary>
-    AwaitingStepSelection
+    AwaitingStepSelection,
+
+    /// <summary>
+    /// Execution cannot continue until the questions of the required
+    /// step's information request are answered, by submitting that
+    /// information step with the answers.
+    /// </summary>
+    AwaitingInformation
 }
 
 public enum ProcessExecutionState
@@ -149,7 +156,12 @@ public enum ProcessExecutionState
     AwaitingRequiredStep,
     AwaitingStepSelection,
     Exception,
-    Canceled
+    Canceled,
+
+    /// <summary>
+    /// The process waits for the answers to the required step's information request.
+    /// </summary>
+    AwaitingInformation
 }
 
 /// <summary>

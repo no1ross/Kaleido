@@ -364,9 +364,144 @@ public sealed class StepExecutionEvaluatorTests
             decision.Messages.Single());
     }
 
+    private static readonly InformationRequest Request =
+        new()
+        {
+            InformationRequestId = "out-of-network",
+            Items = [new InformationItem { Id = "q1", Text = "Proceed?", Type = InformationItemType.Boolean }]
+        };
+
+    [Fact]
+    public void Evaluate_WhenInformationStepRequiredWithRequest_ReturnsAwaitingInformation()
+    {
+        var evaluator = CreateSut(["info-step"]);
+
+        var decision =
+            evaluator.Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true, RequiredStep = typeof(InfoStep), InformationRequest = Request },
+                [],
+                CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.AwaitingInformation, decision.Type);
+        Assert.Equal("info-step", decision.RequiredStep);
+        Assert.Same(Request, decision.InformationRequest);
+    }
+
+    [Fact]
+    public void Evaluate_WhenInformationStepRequired_NeverContinuesIntoASubmittedCandidate()
+    {
+        var evaluator = CreateSut(["info-step"]);
+
+        var decision =
+            evaluator.Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true, RequiredStep = typeof(InfoStep), InformationRequest = Request },
+                [CreateInfoCandidate()],
+                CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.AwaitingInformation, decision.Type);
+        Assert.Null(decision.NextCandidate);
+    }
+
+    [Fact]
+    public void Evaluate_WhenInformationStepRequiredWithoutRequest_ReturnsProcessViolation()
+    {
+        var evaluator = CreateSut(["info-step"]);
+
+        var decision =
+            evaluator.Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true, RequiredStep = typeof(InfoStep) },
+                [],
+                CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.ProcessViolation, decision.Type);
+        Assert.Equal(ProcessorErrorCodes.InformationRequestMissing, Assert.Single(decision.Messages).Code);
+    }
+
+    [Fact]
+    public void Evaluate_WhenInformationRequestIsNotWellFormed_ReturnsProcessViolation()
+    {
+        var validator = new Mock<IInformationValidator>();
+        validator
+            .Setup(x => x.ValidateRequest(Request))
+            .Returns([StepProcessingMessage.Error(ProcessorErrorCodes.InformationRequestInvalid, "Item 'q1' has no text.")]);
+
+        var evaluator = CreateSut(["info-step"], informationValidator: validator.Object);
+
+        var decision =
+            evaluator.Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true, RequiredStep = typeof(InfoStep), InformationRequest = Request },
+                [],
+                CreateContext());
+
+        var message = Assert.Single(decision.Messages);
+        Assert.Equal(ExecutionDecisionType.ProcessViolation, decision.Type);
+        Assert.Equal(ProcessorErrorCodes.InformationRequestInvalid, message.Code);
+        Assert.Contains("Item 'q1' has no text.", message.Message);
+    }
+
+    [Fact]
+    public void Evaluate_WhenInformationStepIsNotAValidNextStep_ReturnsProcessViolation()
+    {
+        var evaluator = CreateSut(["step-b"]);
+
+        var decision =
+            evaluator.Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true, RequiredStep = typeof(InfoStep), InformationRequest = Request },
+                [],
+                CreateContext());
+
+        Assert.Equal(ProcessorErrorCodes.RequiredStepNotAllowed, Assert.Single(decision.Messages).Code);
+    }
+
+    [Fact]
+    public void Evaluate_WhenNothingRequired_DoesNotContinueIntoAnInformationStep()
+    {
+        var evaluator = CreateSut(["step-b", "info-step"]);
+
+        var decision =
+            evaluator.Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true },
+                [CreateInfoCandidate()],
+                CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.AwaitingStepSelection, decision.Type);
+    }
+
+    [Fact]
+    public void Evaluate_WhenNothingRequired_NeverOffersAnInformationStep()
+    {
+        var evaluator = CreateSut(["step-b", "info-step"]);
+
+        var decision =
+            evaluator.Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true },
+                [],
+                CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.AwaitingStepSelection, decision.Type);
+        Assert.Equal(["step-b"], decision.AvailableSteps);
+    }
+
+    private static StepCandidate CreateInfoCandidate() =>
+        new()
+        {
+            StepName = "info-step",
+            Registration = CreateRegistration<InfoStep>("info-step"),
+            Status = StepCandidateStatus.Built,
+            Step = new InfoStep { InformationRequestId = "out-of-network" }
+        };
+
     private static StepExecutionEvaluator CreateSut(
         IReadOnlyCollection<string>? availableSteps = null,
-        IReadOnlyDictionary<Type, string>? registeredNames = null)
+        IReadOnlyDictionary<Type, string>? registeredNames = null,
+        IInformationValidator? informationValidator = null)
     {
         var resolver =
             new Mock<IStepAvailabilityResolver>();
@@ -385,7 +520,8 @@ public sealed class StepExecutionEvaluatorTests
             {
                 [typeof(StepA)] = "step-a",
                 [typeof(StepB)] = "step-b",
-                [typeof(StepC)] = "step-c"
+                [typeof(StepC)] = "step-c",
+                [typeof(InfoStep)] = "info-step"
             };
 
         var registry =
@@ -398,10 +534,32 @@ public sealed class StepExecutionEvaluatorTests
                     ? CreateRegistration(type, name)
                     : null);
 
+        registry
+            .Setup(x => x.Find(It.IsAny<string>()))
+            .Returns((string stepName) =>
+                names.FirstOrDefault(x => string.Equals(x.Value, stepName, StringComparison.OrdinalIgnoreCase)) is { Key: { } type, Value: { } name }
+                    ? CreateRegistration(type, name)
+                    : null);
+
         return new StepExecutionEvaluator(
             resolver.Object,
             registry.Object,
+            informationValidator ?? CreateValidValidator(),
             new KaleidoServiceOptions { ServiceName = LocalProcessorName });
+    }
+
+    // An explicit setup (not Mock.Of with a LINQ predicate): Moq can only translate a direct
+    // method == value comparison, so rewrites like "!...Any()" throw NotSupportedException.
+    private static IInformationValidator CreateValidValidator()
+    {
+        var validator =
+            new Mock<IInformationValidator>();
+
+        validator
+            .Setup(x => x.ValidateRequest(It.IsAny<InformationRequest>()))
+            .Returns([]);
+
+        return validator.Object;
     }
 
     private static ProcessorContext CreateContext()
@@ -463,4 +621,11 @@ public sealed class StepExecutionEvaluatorTests
     private sealed class StepC : IProcessStep;
 
     private sealed class UnregisteredStep : IProcessStep;
+
+    private sealed class InfoStep : IInformationStep
+    {
+        public string InformationRequestId { get; init; } = string.Empty;
+
+        public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
+    }
 }

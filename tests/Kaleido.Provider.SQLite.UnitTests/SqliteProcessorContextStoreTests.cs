@@ -124,6 +124,85 @@ public sealed class SqliteProcessorContextStoreTests
     }
 
     [Fact]
+    public async Task SaveAsync_ThenLoadAsync_RoundTripsThePendingInformationRequest()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var expected =
+            CreateContext(Guid.NewGuid(), ProcessExecutionState.AwaitingInformation) with
+            {
+                RequiredStep = "StepB",
+                TargetProcessorName = null,
+                RequiredInformationRequest = new InformationRequest
+                {
+                    InformationRequestId = "out-of-network",
+                    Title = "Out-of-network attestation",
+                    Items =
+                    [
+                        new InformationItem
+                        {
+                            Id = "reason",
+                            Text = "Why?",
+                            Type = InformationItemType.Choice,
+                            Options = [new InformationOption { Value = "continuity", Display = "Continuity of care" }]
+                        },
+                        new InformationItem
+                        {
+                            Id = "details",
+                            Text = "Details",
+                            Type = InformationItemType.Group,
+                            Items = [new InformationItem { Id = "visits", Text = "Visits", Type = InformationItemType.WholeNumber, Repeats = true }]
+                        }
+                    ]
+                }
+            };
+
+        await sut.SaveAsync(expected);
+
+        var loaded = await sut.LoadAsync(expected.ProcessId);
+
+        Assert.NotNull(loaded?.RequiredInformationRequest);
+        var request = loaded.RequiredInformationRequest;
+        Assert.Equal("out-of-network", request.InformationRequestId);
+        Assert.Equal("Out-of-network attestation", request.Title);
+        Assert.Equal(InformationItemType.Choice, request.Items[0].Type);
+        Assert.Equal("Continuity of care", Assert.Single(request.Items[0].Options).Display);
+        var nested = Assert.Single(request.Items[1].Items);
+        Assert.Equal(InformationItemType.WholeNumber, nested.Type);
+        Assert.True(nested.Repeats);
+    }
+
+    [Fact]
+    public async Task SaveAsync_WhenTheRequestIsAnswered_ClearsThePendingInformationRequest()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var processId = Guid.NewGuid();
+
+        await sut.SaveAsync(
+            CreateContext(processId) with
+            {
+                RequiredStep = "StepB",
+                TargetProcessorName = null,
+                RequiredInformationRequest = new InformationRequest { InformationRequestId = "out-of-network" }
+            });
+
+        await sut.SaveAsync(
+            CreateContext(processId) with
+            {
+                RequiredStep = "StepB",
+                TargetProcessorName = null,
+                RequiredInformationRequest = null
+            });
+
+        var loaded = await sut.LoadAsync(processId);
+
+        Assert.NotNull(loaded);
+        Assert.Equal("StepB", loaded.RequiredStep);
+        Assert.Null(loaded.RequiredInformationRequest);
+    }
+
+    [Fact]
     public async Task SaveAsync_WhenSavedTwice_SecondSaveWins()
     {
         using var dbContext = CreateDbContext();

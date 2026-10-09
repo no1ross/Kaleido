@@ -61,6 +61,16 @@ public static class ProcessorTelemetry
     public const string TagExecutionStatus =
         "kaleido.processor.execution_status";
 
+    /// <summary><c>properties</c> or <c>information</c> (the step's input is an information response).</summary>
+    public const string TagStepKind =
+        "kaleido.processor.step_kind";
+
+    public const string TagInformationRequestId =
+        "kaleido.processor.information_request_id";
+
+    public const string TagRejectionCode =
+        "kaleido.processor.rejection_code";
+
     // ── Metric names ──────────────────────────────────────────────────────────
 
     public const string ExecutionsCounterName =
@@ -98,6 +108,15 @@ public static class ProcessorTelemetry
 
     public const string HandlerFailuresCounterName =
         "kaleido.processor.handler_failures";
+
+    public const string InformationRequestsCounterName =
+        "kaleido.processor.information_requests";
+
+    public const string InformationResponsesRejectedCounterName =
+        "kaleido.processor.information_responses_rejected";
+
+    public const string InformationRequestedEventName =
+        "kaleido.processor.information_requested";
 
     public const string ExecutionDurationHistogramName =
         "kaleido.processor.execution.duration";

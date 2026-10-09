@@ -15,7 +15,6 @@ var codeSetConnectionString =
 builder.Services.AddDbContext<CodeSetDbContext>(
     options => options.UseSqlite(codeSetConnectionString));
 
-builder.Services.AddControllers();
 
 // Dev-token auth (sample stand-in for a real IdP).
 builder.Services.AddDevAuth();
@@ -47,7 +46,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.DefaultAuthorization = new(DevAuthPolicies.AuthenticatedUser, []);
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp()
+    // Sample: return framework diagnostics (e.g. pro_step_not_available) in frameworkMessages.
+    .AddHttp(o => o.IncludeFrameworkMessages = true)
     .AddOpenTelemetry();
 
 var app = builder.Build();
@@ -62,9 +62,8 @@ app.MapKaleidoHttp();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseDevSwaggerUI();
 }
 
-app.MapControllers();
 
 app.Run();

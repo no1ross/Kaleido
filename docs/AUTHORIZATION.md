@@ -68,11 +68,14 @@ When enforcing (`Authenticated` or `ZeroTrust`), requirements are applied to:
 
 - per-step execute endpoints (`/processes/steps/{step}`) and per-source/view query
   endpoints, as endpoint metadata enforced by the host's auth middleware
-- the multi-step `POST /processes/execute` handler: the route carries no auth of its
-  own; every submitted step is checked against its own declaration **before anything
-  runs**, and the first denial rejects the whole request. Unknown step names and empty
-  requests are checked as undeclared (authenticated caller in `Authenticated`, denied in
-  `ZeroTrust`).
+- the multi-step `POST /processes/execute` handler: every submitted step is checked
+  against its own declaration **before anything runs**, and the first denial rejects
+  the whole request. Unknown step names and empty requests are checked as undeclared
+  (authenticated caller in `Authenticated`, denied in `ZeroTrust`).
+- the generic `POST /processes/execute` and `GET /processes/{id}` routes require an
+  authenticated caller, unless the processor has an `AllowAnonymous` step (then they
+  stay open for anonymous callers and the per-step checks above decide). Anonymous
+  callers therefore don't see or reach them on a processor that needs a login
 - `POST /processes/{id}/transfer`: authenticated caller
 - discovery filtering: `/{service}/registry` (local and aggregate modes) returns only
   capabilities the caller may access; processors whose steps are all filtered out are

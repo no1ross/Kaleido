@@ -36,7 +36,6 @@ builder.Services.AddScoped<QuestionnaireDefinitionClient>();
 builder.Services.AddScoped<RequestingProviderSearchClient>();
 builder.Services.AddScoped<HistoryClient>();
 
-builder.Services.AddControllers();
 
 // Dev-token auth (sample stand-in for a real IdP) + outbound token forwarding
 // so downstream Kaleido calls carry an on-behalf-of token (the user + this
@@ -73,7 +72,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.DefaultAuthorization = new(null, ["radiology"]);
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp()
+    // Sample: return framework diagnostics (e.g. pro_step_not_available) in frameworkMessages.
+    .AddHttp(o => o.IncludeFrameworkMessages = true)
     .UseSqliteProcessorContextStore(processConnectionString)
     .AddHttpClients()
     .AddOpenTelemetry();
@@ -102,9 +102,8 @@ await using (var scope = app.Services.CreateAsyncScope())
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseDevSwaggerUI();
 }
 
-app.MapControllers();
 
 app.Run();

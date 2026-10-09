@@ -9,6 +9,14 @@ internal interface IStepAvailabilityResolver
         StepCandidate currentCandidate,
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context);
+
+    /// <summary>
+    /// The steps that may run now, before anything in the current request executes: the
+    /// process rules applied to the steps already completed. Information steps are never
+    /// included (they only run as the required step).
+    /// </summary>
+    IReadOnlyCollection<string> ResolveCurrent(
+        ProcessorContext context);
 }
 
 internal sealed class StepAvailabilityResolver(
@@ -25,12 +33,35 @@ internal sealed class StepAvailabilityResolver(
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(context);
 
-        var registrations = registry.Registrations;
-
         var completedSteps =
             GetCompletedStepNames(
-                currentCandidate,
                 context);
+
+        completedSteps.Add(
+            currentCandidate.StepName);
+
+        return Resolve(
+            completedSteps);
+    }
+
+    public IReadOnlyCollection<string> ResolveCurrent(
+        ProcessorContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        // An information step can't be submitted on its own: it only runs as the
+        // required step, against the pending information request.
+        return Resolve(
+                GetCompletedStepNames(
+                    context))
+            .Where(x => registry.Find(x)?.IsInformationStep != true)
+            .ToArray();
+    }
+
+    private IReadOnlyCollection<string> Resolve(
+        IReadOnlySet<string> completedSteps)
+    {
+        var registrations = registry.Registrations;
 
         var filtered =
             registrations
@@ -70,23 +101,16 @@ internal sealed class StepAvailabilityResolver(
             .ToArray();
     }
 
-    private static IReadOnlySet<string> GetCompletedStepNames(
-        StepCandidate currentCandidate,
+    private static HashSet<string> GetCompletedStepNames(
         ProcessorContext context)
     {
-        var completedSteps =
-            context.Steps
-                .Where(x =>
-                    x.Status == StepExecutionStatus.Completed)
-                .Select(x =>
-                    x.StepName)
-                .ToHashSet(
-                    StringComparer.OrdinalIgnoreCase);
-
-        completedSteps.Add(
-            currentCandidate.StepName);
-
-        return completedSteps;
+        return context.Steps
+            .Where(x =>
+                x.Status == StepExecutionStatus.Completed)
+            .Select(x =>
+                x.StepName)
+            .ToHashSet(
+                StringComparer.OrdinalIgnoreCase);
     }
 
     private static bool DependenciesSatisfied(

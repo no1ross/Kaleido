@@ -20,6 +20,8 @@ internal sealed record StepInvocationResult
 
     public Type? RequiredStep { get; init; }
 
+    public InformationRequest? InformationRequest { get; init; }
+
     public string? TargetProcessorName { get; init; }
 
     public object? Response { get; init; }
@@ -129,6 +131,7 @@ internal sealed class ProcessorStepInvoker(
         {
             Succeeded = handlerResult.Succeeded,
             RequiredStep = handlerResult.RequiredStep,
+            InformationRequest = handlerResult.InformationRequest,
             TargetProcessorName = handlerResult.TargetProcessorName,
             Response = handlerResult.Response,
             Messages = handlerResult.Messages

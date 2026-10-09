@@ -24,7 +24,8 @@ public interface IProcessorStepRegistry
     /// <summary>
     /// The subset of registered steps that have no <c>DependsOn</c> or
     /// <c>AvailableAfter</c> constraints — i.e., the steps that are valid
-    /// entry points for a new process execution.
+    /// entry points for a new process execution. Information steps are never
+    /// initial (they need a pending information request).
     /// </summary>
     IReadOnlyCollection<ProcessStepRegistration> InitialRegistrations { get; }
 
@@ -133,9 +134,12 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
             registrations.ToDictionary(
                 x => x.StepType);
 
+        // An information step can never start a process: it is only reachable
+        // as the required step, with a pending information request.
         _initialRegistrations =
             registrations
                 .Where(x =>
+                    !x.IsInformationStep &&
                     x.Dependencies.Count == 0 &&
                     x.AvailableAfter.Count == 0)
                 .ToArray();

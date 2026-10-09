@@ -32,7 +32,7 @@ export interface ProcessExecutionResponse<TResponse> {
 
     result: TResponse;
 
-    requiredStep?: string;
+    requiredStep?: ProcessRequiredStep;
 
     availableSteps: ProcessStepSummary[];
 
@@ -53,7 +53,15 @@ export interface ProcessStepSummary {
 
     repeatable: boolean;
 
+    isInformationStep?: boolean;
+
     executeUrl: string;
+}
+
+/** The step a process requires next (the same shape as an available step, plus any pending questions). */
+export interface ProcessRequiredStep extends ProcessStepSummary {
+
+    informationRequest?: unknown;
 }
 
 export interface ProcessMessage {
