@@ -67,6 +67,19 @@ internal sealed class KaleidoMcpToolHandler(
                 ? new Dictionary<string, JsonElement>(given, StringComparer.Ordinal)
                 : new Dictionary<string, JsonElement>(StringComparer.Ordinal);
 
-        return await invoker.InvokeAsync(tool, arguments, catalog, request.Server, cancellationToken);
+        return await invoker.InvokeAsync(
+            tool,
+            new KaleidoToolCall
+            {
+                Arguments = arguments,
+                Server = request.Server,
+                Meta = request.Params?.Meta,
+                InputResponses = request.Params?.InputResponses is { } responses
+                    ? new Dictionary<string, InputResponse>(responses, StringComparer.Ordinal)
+                    : null,
+                RequestState = request.Params?.RequestState
+            },
+            catalog,
+            cancellationToken);
     }
 }
