@@ -49,9 +49,10 @@ export interface ProcessMessage {
     code: string;
 }
 
+// Kaleido serializes enums as camelCase strings.
 export type StepExecutionOutcome =
-    'Pending'
-    | 'Completed'
-    | 'Failed'
-    | 'Blocked'
-    | 'Cancelled';
+    'pending'
+    | 'completed'
+    | 'failed'
+    | 'blocked'
+    | 'canceled';

@@ -109,14 +109,16 @@ export class ProcessService {
                         result.requiredStep,
                         result.availableSteps);
 
-                    if (
-                        result.outcome === 'Failed' ||
-                        result.outcome === 'Blocked' ||
-                        result.outcome === 'Cancelled'
-                    ) {
+                    // Anything but "completed" means the step did not finish:
+                    // "pending" = rejected before it ran (e.g. not a next step,
+                    // answers that don't fit); the reason is in frameworkMessages.
+                    if (result.outcome !== 'completed') {
                         throw {
                             outcome: result.outcome,
-                            messages: result.businessMessages
+                            messages: [
+                                ...result.businessMessages,
+                                ...result.frameworkMessages
+                            ]
                         } satisfies ProcessErrorResponse;
                     }
 
@@ -259,16 +261,16 @@ export class ProcessService {
     private logMessage(
         message: ProcessMessage
     ): void {
-        switch (message.type) {
-            case 'Information':
+        switch (message.type?.toLowerCase()) {
+            case 'information':
                 console.info(`[${message.code}] ${message.message}`);
                 return;
 
-            case 'Warning':
+            case 'warning':
                 console.warn(`[${message.code}] ${message.message}`);
                 return;
 
-            case 'Error':
+            case 'error':
                 console.error(`[${message.code}] ${message.message}`);
                 return;
 
