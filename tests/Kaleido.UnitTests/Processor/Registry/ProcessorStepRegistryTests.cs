@@ -350,7 +350,8 @@ public sealed class ProcessorStepRegistryTests
     }
 
     private static ProcessorStepRegistry CreateSut(
-        IEnumerable<Type> stepTypes,        IReadOnlyDictionary<Type, Type> handlerTypes) =>
+        IEnumerable<Type> stepTypes,
+        IReadOnlyDictionary<Type, Type> handlerTypes) =>
         new(stepTypes, handlerTypes);
 
     private static ProcessorStepRegistry CreateSut(
