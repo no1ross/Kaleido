@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -106,13 +107,13 @@ public sealed class InformationStepAnalyzer : DiagnosticAnalyzer
     {
         for (var current = type; current is not null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
         {
-            foreach (var member in current.GetMembers())
+            foreach (var property in current.GetMembers()
+                .OfType<IPropertySymbol>()
+                .Where(property => !property.IsStatic &&
+                                   property.DeclaredAccessibility == Accessibility.Public &&
+                                   property.Name != "EqualityContract"))
             {
-                if (member is IPropertySymbol { IsStatic: false, DeclaredAccessibility: Accessibility.Public } property &&
-                    property.Name != "EqualityContract")
-                {
-                    yield return property;
-                }
+                yield return property;
             }
         }
     }
