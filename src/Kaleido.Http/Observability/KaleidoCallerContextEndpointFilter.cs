@@ -19,39 +19,55 @@ internal sealed class KaleidoCallerContextEndpointFilter
         EndpointFilterInvocationContext context,
         EndpointFilterDelegate next)
     {
+        context.HttpContext.InitializeKaleidoCaller();
+
+        return await next(context);
+    }
+}
+
+internal static class KaleidoCallerContextHttpContextExtensions
+{
+    /// <summary>
+    /// Sets the caller (name and roles) on the request's <see cref="KaleidoCorrelationContext"/>
+    /// from the authenticated <c>HttpContext.User</c>. Kaleido's endpoints do this through
+    /// <see cref="KaleidoCallerContextEndpointFilter"/>; in-host consumers reached through other
+    /// endpoints (e.g. the registry service called by the MCP adapter) do it before authorizing.
+    /// </summary>
+    public static void InitializeKaleidoCaller(this HttpContext httpContext)
+    {
         var initializer =
-            context.HttpContext.RequestServices
+            httpContext.RequestServices
                 .GetService<IKaleidoCorrelationContextInitializer>();
 
         var accessor =
-            context.HttpContext.RequestServices
+            httpContext.RequestServices
                 .GetService<IKaleidoCorrelationContextAccessor>();
 
-        if (initializer is not null && accessor is not null)
+        if (initializer is null || accessor is null)
         {
-            var user = context.HttpContext.User;
-            var callerName =
-                user.Identity?.IsAuthenticated == true
-                    ? user.Identity.Name
-                    : null;
-
-            initializer.Initialize(
-                accessor.Current with
-                {
-                    CallerName = callerName,
-                    CallerRoles =
-                        callerName is null
-                            ? []
-                            : user.Claims
-                                .Where(x => string.Equals(
-                                    x.Type,
-                                    ClaimTypes.Role,
-                                    StringComparison.Ordinal))
-                                .Select(x => x.Value)
-                                .ToArray()
-                });
+            return;
         }
 
-        return await next(context);
+        var user = httpContext.User;
+        var callerName =
+            user.Identity?.IsAuthenticated == true
+                ? user.Identity.Name
+                : null;
+
+        initializer.Initialize(
+            accessor.Current with
+            {
+                CallerName = callerName,
+                CallerRoles =
+                    callerName is null
+                        ? []
+                        : user.Claims
+                            .Where(x => string.Equals(
+                                x.Type,
+                                ClaimTypes.Role,
+                                StringComparison.Ordinal))
+                            .Select(x => x.Value)
+                            .ToArray()
+            });
     }
 }

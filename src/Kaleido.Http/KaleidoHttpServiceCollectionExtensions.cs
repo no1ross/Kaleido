@@ -1,4 +1,5 @@
 using Kaleido.Http.Authorization;
+using Kaleido.Http.Registry;
 using Kaleido.Http.Startup;
 using Kaleido.Processor.Registry;
 using Microsoft.AspNetCore.Hosting;
@@ -47,6 +48,14 @@ public static class KaleidoHttpServiceCollectionExtensions
         builder.Services.TryAddSingleton<Registry.IRegistrySnapshotStore, Registry.InMemoryRegistrySnapshotStore>();
         builder.Services.TryAddSingleton<IProcessorResponseFactory, ProcessorResponseFactory>();
         builder.Services.TryAddSingleton<IProcessExecutionResponseFactory, ProcessExecutionResponseFactory>();
+
+        // The unified registry, in process: the registry endpoint and in-host consumers (e.g. the
+        // MCP adapter) both use IKaleidoRegistryService. Downstream registries come from
+        // AddHttpClients(), which replaces the "no downstream" default when clients are configured.
+        builder.Services.TryAddSingleton<RegistrySnapshot>();
+        builder.Services.TryAddSingleton<LocalRegistrations>();
+        builder.Services.TryAddScoped<IKaleidoDownstreamRegistries, NoDownstreamRegistries>();
+        builder.Services.TryAddScoped<IKaleidoRegistryService, KaleidoRegistryService>();
 
         return builder;
     }
