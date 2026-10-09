@@ -300,12 +300,9 @@ internal sealed class DevSwaggerCallerDocumentFilter(
                 .Select(tag => tag.Name)
                 .ToHashSet(StringComparer.Ordinal);
 
-        foreach (var tag in document.Tags.ToArray())
+        foreach (var tag in document.Tags.Where(tag => !usedTags.Contains(tag.Name)).ToArray())
         {
-            if (!usedTags.Contains(tag.Name))
-            {
-                document.Tags.Remove(tag);
-            }
+            document.Tags.Remove(tag);
         }
     }
 }
