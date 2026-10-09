@@ -58,9 +58,16 @@ public static class ProcessorEndpointRouteBuilderExtensions
             registry.Registrations.Count,
             registry.InitialRegistrations.Count);
 
-        group.MapExecuteEndpoint();
+        // When enforcing, the generic execute and state endpoints require an
+        // authenticated caller unless an anonymous caller could legitimately
+        // use them, i.e. the processor has an AllowAnonymous step. Per-step
+        // checks inside the handlers still apply either way.
+        var requireCaller =
+            !registry.Registrations.Any(step => step.Metadata.Authorization.AllowAnonymous);
 
-        group.MapProcessStateEndpoint();
+        group.MapExecuteEndpoint(serviceOptions, requireCaller);
+
+        group.MapProcessStateEndpoint(serviceOptions, requireCaller);
 
         group.MapProcessTransferEndpoint(serviceOptions);
 
@@ -77,13 +84,16 @@ public static class ProcessorEndpointRouteBuilderExtensions
     }
 
     private static void MapExecuteEndpoint(
-        this IEndpointRouteBuilder endpoints)
+        this IEndpointRouteBuilder endpoints,
+        KaleidoServiceOptions options,
+        bool requireCaller)
     {
-        // No route-level auth: a request can carry any mix of steps, so
-        // ProcessExecutionService checks every submitted step against its own
-        // [KaleidoAuthorization] before anything runs and rejects the whole
-        // request if any check fails.
-        endpoints.MapPost(
+        // A request can carry any mix of steps, so ProcessExecutionService
+        // checks every submitted step against its own [KaleidoAuthorization]
+        // before anything runs and rejects the whole request if any check
+        // fails. Route level adds only "authenticated caller" when no step
+        // allows anonymous callers (and only when enforcing).
+        var builder = endpoints.MapPost(
                 ProcessRoutePaths.Execute,
                 async (
                     ExecuteProcessRequest request,
@@ -105,12 +115,19 @@ public static class ProcessorEndpointRouteBuilderExtensions
             .WithDescription(
                 "Executes one or more process steps from a single request. " +
                 "This endpoint is useful when a consumer wants to submit all information currently available and let the process determine what can happen next.");
+
+        if (requireCaller)
+        {
+            builder.RequireKaleidoAuthorization(options);
+        }
     }
 
     private static void MapProcessStateEndpoint(
-        this IEndpointRouteBuilder endpoints)
+        this IEndpointRouteBuilder endpoints,
+        KaleidoServiceOptions options,
+        bool requireCaller)
     {
-        endpoints.MapGet(
+        var builder = endpoints.MapGet(
                 ProcessRoutePaths.Process,
                 async (
                     Guid processId,
@@ -134,6 +151,11 @@ public static class ProcessorEndpointRouteBuilderExtensions
             .WithDescription(
                 "Returns the current state of a processor process, including executed steps and currently available next steps. " +
                 "This endpoint does not execute any process step.");
+
+        if (requireCaller)
+        {
+            builder.RequireKaleidoAuthorization(options);
+        }
     }
 
     private static void MapProcessTransferEndpoint(
