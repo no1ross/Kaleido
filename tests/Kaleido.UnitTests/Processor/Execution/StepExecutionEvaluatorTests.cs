@@ -544,8 +544,22 @@ public sealed class StepExecutionEvaluatorTests
         return new StepExecutionEvaluator(
             resolver.Object,
             registry.Object,
-            informationValidator ?? Mock.Of<IInformationValidator>(x => !x.ValidateRequest(It.IsAny<InformationRequest>()).Any()),
+            informationValidator ?? CreateValidValidator(),
             new KaleidoServiceOptions { ServiceName = LocalProcessorName });
+    }
+
+    // An explicit setup (not Mock.Of with a LINQ predicate): Moq can only translate a direct
+    // method == value comparison, so rewrites like "!...Any()" throw NotSupportedException.
+    private static IInformationValidator CreateValidValidator()
+    {
+        var validator =
+            new Mock<IInformationValidator>();
+
+        validator
+            .Setup(x => x.ValidateRequest(It.IsAny<InformationRequest>()))
+            .Returns([]);
+
+        return validator.Object;
     }
 
     private static ProcessorContext CreateContext()
