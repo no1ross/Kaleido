@@ -1,3 +1,4 @@
+using System.Text.Json;
 namespace Kaleido.Http.Processor;
 
 public interface IKaleidoProcessorClient
@@ -61,4 +62,28 @@ public interface IKaleidoProcessorClient
         TStep processStep,
         CancellationToken cancellationToken = default)
         where TStep : class;
+
+    /// <summary>
+    /// Executes a process step by its published name with a JSON payload — for callers that
+    /// discover steps at runtime and have no compile-time step type (gateways, AI-tool adapters).
+    /// The step URL is resolved from the remote registry by name, exactly as for the typed
+    /// overloads.
+    /// </summary>
+    /// <param name="stepName">The step's published name (case-insensitive).</param>
+    /// <param name="processStep">The step input, as the step's JSON object.</param>
+    /// <param name="processId">
+    /// The process to continue, sent as <c>X-Kaleido-Process-Id</c>; it takes precedence over the
+    /// ambient correlation process id. Null keeps today's behavior (the ambient id, if any, or a
+    /// new process for an initial step).
+    /// </param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The step execution response, with the step's result as JSON.</returns>
+    /// <remarks>
+    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the step name is not in the remote registry or the remote call fails.
+    /// </remarks>
+    Task<StepExecutionResponse<JsonElement>> ExecuteStepAsync(
+        string stepName,
+        JsonElement processStep,
+        Guid? processId = null,
+        CancellationToken cancellationToken = default);
 }
