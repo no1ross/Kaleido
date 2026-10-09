@@ -164,6 +164,108 @@ public sealed class KaleidoProcessorClientTests
     }
 
     // ---------------------------------------------------------------------------
+    // ExecuteStepAsync by name (untyped)
+    // ---------------------------------------------------------------------------
+
+    private static (KaleidoProcessorClient Client, List<(HttpRequestMessage Request, string? Body)> Sent) CreateStepClient(
+        Mock<ICorrelationHeaderStamper>? stamper = null,
+        HttpStatusCode stepStatus = HttpStatusCode.OK)
+    {
+        var sent = new List<(HttpRequestMessage, string?)>();
+        var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        handler.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync((HttpRequestMessage req, CancellationToken _) =>
+            {
+                if (req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal))
+                {
+                    return JsonOk(FakeRegistry);
+                }
+
+                sent.Add((req, req.Content?.ReadAsStringAsync(CancellationToken.None).GetAwaiter().GetResult()));
+
+                return stepStatus == HttpStatusCode.OK
+                    ? JsonOk(new StepExecutionResponse<object>
+                    {
+                        ProcessId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                        StepName = "MyStep",
+                        Result = new { visitId = "V-1" }
+                    })
+                    : new HttpResponseMessage(stepStatus);
+            });
+
+        var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
+        var client = CreateSut(httpClient, (stamper ?? new Mock<ICorrelationHeaderStamper>()).Object);
+        return (client, sent);
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_ByName_PostsTheJsonPayload_ToTheStepsRegistryUrl()
+    {
+        var (client, sent) = CreateStepClient();
+        var step = System.Text.Json.JsonSerializer.SerializeToElement(new { memberId = "M1" });
+
+        var response = await client.ExecuteStepAsync("mystep", step);
+
+        var (request, body) = Assert.Single(sent);
+        Assert.Equal("/processes/steps/mystep", request.RequestUri!.AbsolutePath);
+        Assert.Contains("\"processStep\":{\"memberId\":\"M1\"}", body, StringComparison.Ordinal);
+        Assert.Equal("MyStep", response.StepName);
+        Assert.Equal("V-1", response.Result.GetProperty("visitId").GetString());
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_ByName_AnExplicitProcessId_WinsOverTheAmbientOne()
+    {
+        var explicitId = Guid.NewGuid();
+        var stamper = new Mock<ICorrelationHeaderStamper>();
+        stamper.Setup(x => x.Stamp(It.IsAny<HttpRequestMessage>()))
+            .Callback((HttpRequestMessage r) => r.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, Guid.NewGuid().ToString()));
+        var (client, sent) = CreateStepClient(stamper);
+
+        await client.ExecuteStepAsync("MyStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }), explicitId);
+
+        Assert.Equal(explicitId.ToString(), Assert.Single(Assert.Single(sent).Request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId)));
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_ByName_WithoutAProcessId_KeepsTheAmbientOne()
+    {
+        var ambient = Guid.NewGuid().ToString();
+        var stamper = new Mock<ICorrelationHeaderStamper>();
+        stamper.Setup(x => x.Stamp(It.IsAny<HttpRequestMessage>()))
+            .Callback((HttpRequestMessage r) => r.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, ambient));
+        var (client, sent) = CreateStepClient(stamper);
+
+        await client.ExecuteStepAsync("MyStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }));
+
+        Assert.Equal(ambient, Assert.Single(Assert.Single(sent).Request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId)));
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_ByName_AnUnknownStep_Throws_NotFound()
+    {
+        var (client, _) = CreateStepClient();
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
+            () => client.ExecuteStepAsync("NoSuchStep", System.Text.Json.JsonSerializer.SerializeToElement(new { })));
+
+        Assert.Equal(HttpClientErrorCodes.NotFound, exception.Code);
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_ByName_AFailedCall_Throws_RequestFailed()
+    {
+        var (client, _) = CreateStepClient(stepStatus: HttpStatusCode.Conflict);
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
+            () => client.ExecuteStepAsync("MyStep", System.Text.Json.JsonSerializer.SerializeToElement(new { })));
+
+        Assert.Equal(HttpClientErrorCodes.RequestFailed, exception.Code);
+        Assert.Equal(HttpStatusCode.Conflict, exception.StatusCode);
+    }
+
+    // ---------------------------------------------------------------------------
     // GetProcessStateAsync
     // ---------------------------------------------------------------------------
 
