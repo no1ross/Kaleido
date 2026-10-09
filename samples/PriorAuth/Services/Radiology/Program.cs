@@ -72,7 +72,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.DefaultAuthorization = new(null, ["radiology"]);
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp()
+    // Sample: return framework diagnostics (e.g. pro_step_not_available) in frameworkMessages.
+    .AddHttp(o => o.IncludeFrameworkMessages = true)
     .UseSqliteProcessorContextStore(processConnectionString)
     .AddHttpClients()
     .AddOpenTelemetry();

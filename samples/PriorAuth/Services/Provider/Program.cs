@@ -54,7 +54,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.DefaultAuthorization = new(DevAuthPolicies.InternalCaller, []);
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp()
+    // Sample: return framework diagnostics (e.g. pro_step_not_available) in frameworkMessages.
+    .AddHttp(o => o.IncludeFrameworkMessages = true)
     .AddHttpClients()
     .AddOpenTelemetry();
 
