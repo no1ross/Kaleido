@@ -23,12 +23,13 @@ export class ProcessMessages {
     getMessageClass(
         type: string
     ): string {
-        switch (type) {
-            case 'Error':
+        // Kaleido serializes MessageType as camelCase ("error"); compare case-insensitively.
+        switch (type?.toLowerCase()) {
+            case 'error':
                 return 'process-messages__item--error';
-            case 'Warning':
+            case 'warning':
                 return 'process-messages__item--warning';
-            case 'Information':
+            case 'information':
                 return 'process-messages__item--information';
             default:
                 return 'process-messages__item--default';

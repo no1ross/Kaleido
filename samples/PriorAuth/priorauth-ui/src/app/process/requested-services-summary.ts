@@ -6,6 +6,7 @@ import { QueryErrorResponse } from '../kaleido/models/query-error-response';
 import { QueryRequest } from '../kaleido/models/queryable-request';
 import { ProcessErrorResponse, ProcessService } from '../kaleido/services/process-service';
 import { QueryableService } from '../kaleido/services/queryable-service';
+import { QueryableRequestValidationError } from '../kaleido/services/queryable-request-validator';
 import { buildProcessRoute } from './services/process-navigation';
 import { ProcessStateService } from './services/process-state-service';
 
@@ -92,7 +93,7 @@ export class RequestedServicesSummary {
                 next: result => {
                     this.removingServiceId.set(undefined);
 
-                    if (result.requiredStep !== 'CaptureRequestedServiceStep') {
+                    if (result.requiredStep?.name !== 'CaptureRequestedServiceStep') {
                         this.loadRequestedServices();
                     }
                 },
@@ -119,6 +120,7 @@ export class RequestedServicesSummary {
         this.isLoading.set(true);
         this.errorMessage.set(undefined);
 
+        // All services on this prior authorization (the source is not pageable).
         const request: QueryRequest = {
             query: {
                 filter: {
@@ -127,10 +129,6 @@ export class RequestedServicesSummary {
                         operator: FilterOperator.Equals,
                         values: [processId]
                     }
-                },
-                page: {
-                    size: 50,
-                    offset: 0
                 }
             }
         };
@@ -155,6 +153,12 @@ export class RequestedServicesSummary {
     ): string {
         if (this.isQueryErrorResponse(error)) {
             return error.errors
+                .map(message => message.message)
+                .join(' ');
+        }
+
+        if (error instanceof QueryableRequestValidationError) {
+            return error.messages
                 .map(message => message.message)
                 .join(' ');
         }

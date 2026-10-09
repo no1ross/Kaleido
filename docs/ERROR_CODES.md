@@ -66,7 +66,7 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `MissingHandler` | `pro_missing_handler` | Step has no registered handler |
 | `InvalidHandler` | `pro_invalid_handler` | Handler signature is invalid |
 | `DuplicateStep` | `pro_duplicate_step` | Two step types share a type name (step names are type names) |
-| `InvalidRegistration` | `pro_invalid_registration` | Step registration is structurally invalid (including `[ProcessStep]` on a type that does not implement `IProcessStep`) |
+| `InvalidRegistration` | `pro_invalid_registration` | Step registration is structurally invalid (including `[ProcessStep]` on a type that does not implement `IProcessStep`, and an `IInformationStep` declaring properties other than `InformationRequestId` and `Items`) |
 | `UnknownStep` | `pro_unknown_step` | Requested step is not registered |
 | `InvalidRequest` | `pro_invalid_request` | Step request cannot be hydrated or processed |
 | `PropertyNotFound` | `pro_property_not_found` | Requested step property was not found |
@@ -89,6 +89,14 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `ProcessMessage` | `pro_process_message` | Process diagnostic message was produced |
 | `RepeatableStep` | `pro_repeatable_step` | Repeatable step remains eligible after prior execution |
 | `MissingStepResult` | `missing_step_result` | A process execution result had no entry for the executed step (raised as `KaleidoFrameworkException`) |
+| `StepNotAvailable` | `pro_step_not_available` | The submitted step is not a next step: not the pending required step, or not available under the process rules (the initial steps for a new process) |
+| `InformationRequestInvalid` | `pro_information_request_invalid` | A handler returned an information request that is not well-formed (no id or items, duplicate item ids, an item without text, a choice without options, a group without items, nesting outside a group) |
+| `InformationRequestMissing` | `pro_information_request_missing` | An information step was required without an information request (use `RequireInformation<TNext>`) |
+| `InformationResponseMismatch` | `pro_information_response_mismatch` | Answers were submitted for a request that is not pending: another `informationRequestId`, another step, or nothing was asked |
+| `InformationResponseUnanswered` | `pro_information_response_unanswered` | A presented question has no answer (every question must be answered) |
+| `InformationResponseInvalidAnswer` | `pro_information_response_invalid_answer` | An answer does not fit its question: unknown item, wrong value for the item type, a choice that was not offered, or several answers to a question that does not repeat |
+
+Information-request validation is structural only; see [`INFORMATION_REQUESTS.md`](./INFORMATION_REQUESTS.md#validation).
 
 ---
 

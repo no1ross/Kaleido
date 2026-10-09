@@ -81,6 +81,13 @@ public interface IProcessStepHandlerResult
     Type? RequiredStep { get; }
 
     /// <summary>
+    /// The questions <see cref="RequiredStep"/> needs answered, or <see langword="null"/>.
+    /// Only set together with a required <see cref="IInformationStep"/>, through
+    /// <c>RequireInformation&lt;TNext&gt;</c>.
+    /// </summary>
+    InformationRequest? InformationRequest { get; }
+
+    /// <summary>
     /// The processor this step hands off to, or <see langword="null"/> when the
     /// process stays in the current processor.
     /// </summary>
@@ -111,6 +118,9 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
 
     /// <inheritdoc />
     public Type? RequiredStep { get; init; }
+
+    /// <inheritdoc />
+    public InformationRequest? InformationRequest { get; init; }
 
     /// <inheritdoc />
     public string? TargetProcessorName { get; init; }
@@ -169,6 +179,37 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
     }
 
     /// <summary>
+    /// Signals a successful step that requires the information step <typeparamref name="TNext"/>
+    /// next, with the questions it needs answered. The process waits in
+    /// <c>AwaitingInformation</c> until the answers are submitted as <typeparamref name="TNext"/>'s payload.
+    /// </summary>
+    /// <typeparam name="TNext">
+    /// The information step that receives the answers. It must be a legal next step under the
+    /// process rules; to loop, a <see cref="RepeatableAttribute">[Repeatable]</see> information
+    /// step can require itself with the next request.
+    /// </typeparam>
+    /// <param name="response">The typed response payload.</param>
+    /// <param name="request">The questions; the content is the implementer's, the shape is Kaleido's.</param>
+    /// <param name="messages">Business messages returned to the caller.</param>
+    public static ProcessStepHandlerResult<TProcessStepResult> RequireInformation<TNext>(
+        TProcessStepResult response,
+        InformationRequest request,
+        params ProcessMessage[] messages)
+        where TNext : IInformationStep
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return new()
+        {
+            Succeeded = true,
+            RequiredStep = typeof(TNext),
+            InformationRequest = request,
+            Messages = messages,
+            Response = response
+        };
+    }
+
+    /// <summary>
     /// Signals a business failure.
     /// </summary>
     /// <param name="response">The typed response payload.</param>
@@ -218,6 +259,9 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
     public Type? RequiredStep { get; init; }
 
     /// <inheritdoc />
+    public InformationRequest? InformationRequest { get; init; }
+
+    /// <inheritdoc />
     public string? TargetProcessorName { get; init; }
 
     /// <inheritdoc />
@@ -259,6 +303,34 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
         {
             Succeeded = true,
             RequiredStep = typeof(TNext),
+            Messages = messages
+        };
+    }
+
+    /// <summary>
+    /// Signals a successful step that requires the information step <typeparamref name="TNext"/>
+    /// next, with the questions it needs answered. The process waits in
+    /// <c>AwaitingInformation</c> until the answers are submitted as <typeparamref name="TNext"/>'s payload.
+    /// </summary>
+    /// <typeparam name="TNext">
+    /// The information step that receives the answers. It must be a legal next step under the
+    /// process rules; to loop, a <see cref="RepeatableAttribute">[Repeatable]</see> information
+    /// step can require itself with the next request.
+    /// </typeparam>
+    /// <param name="request">The questions; the content is the implementer's, the shape is Kaleido's.</param>
+    /// <param name="messages">Business messages returned to the caller.</param>
+    public static ProcessStepHandlerResult RequireInformation<TNext>(
+        InformationRequest request,
+        params ProcessMessage[] messages)
+        where TNext : IInformationStep
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return new()
+        {
+            Succeeded = true,
+            RequiredStep = typeof(TNext),
+            InformationRequest = request,
             Messages = messages
         };
     }

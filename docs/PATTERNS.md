@@ -49,6 +49,58 @@ Rules:
 - Every step needs exactly one handler (KAL2008); the handler must not swallow
   `OperationCanceledException` in `catch (Exception)` — filter it or let the
   executor own cancellation (KAL2004).
+- **Describe inputs** with `[Description("…")]` or `[Display(Description = "…")]`
+  (KAL2017); `[Display(Name, Prompt)]` are optional hints. The registry publishes
+  them — UIs and AI agents use them to know what to ask for.
+- **Only next steps run:** a request may start with the pending required step or,
+  when nothing is required, a step available under the process rules
+  (`pro_step_not_available` otherwise).
+
+## Information step (runtime-decided questions)
+
+Known inputs are step properties. Questions decided at runtime (by rules engines,
+configuration, clinical systems…) are an **information request**, answered by an
+information step. Kaleido owns the schema, never the content.
+
+```csharp
+// The step whose handler learns there are questions requires the information step with them.
+return ProcessStepHandlerResult.RequireInformation<CaptureOutOfNetworkResponseStep>(
+    new InformationRequest
+    {
+        InformationRequestId = "out-of-network-attestation",   // required, set by you
+        Title = "Out-of-network attestation",
+        Items =
+        [
+            new InformationItem
+            {
+                Id = "reason",
+                Text = "Why is an out-of-network provider needed?",
+                Type = InformationItemType.Choice,
+                Options = [new InformationOption { Value = "no-in-network", Display = "No in-network provider available" }]
+            }
+        ]
+    });
+
+// The information step: its payload is the answers; nothing else (KAL2015).
+[ProcessStep(Version = "1.0", DisplayName = "Out-of-network responses", Description = "Answers the out-of-network attestation.")]
+public sealed record CaptureOutOfNetworkResponseStep : IInformationStep
+{
+    public required string InformationRequestId { get; init; }
+    public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
+}
+```
+
+Rules:
+- Require an information step only with `RequireInformation<TNext>(request)` — never
+  `Success<TNext>()` (KAL2016).
+- Kaleido validates the answers structurally against the pending request before the
+  handler runs; the handler translates them into domain values.
+- To ask again (adaptive rounds), make the information step `[Repeatable]` and have its
+  handler require itself with the next request.
+- Kaleido stores only the pending request; recording questions and answers over time is
+  yours (`StepCompleted` carries each step's payload).
+
+Full model: [`INFORMATION_REQUESTS.md`](./INFORMATION_REQUESTS.md).
 
 ## Process authoring
 

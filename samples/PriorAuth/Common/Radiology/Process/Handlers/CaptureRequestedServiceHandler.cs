@@ -127,65 +127,28 @@ public sealed class CaptureRequestedServiceHandler(
             return modality switch
             {
                 ProcedureModality.Mri =>
-                    await CreateMriResponseAsync(
+                    await questionnaireDefinitionClient.CreateMriInfoRequestAsync(
                         context.ProcessId,
                         procedureCode.CodeValue,
-                        cancellationToken),
+                        cancellationToken) is { } mriRequest
+                        ? ProcessStepHandlerResult<CaptureRequestedServiceResponse>.RequireInformation<CaptureMriInfoStep>(
+                            new CaptureRequestedServiceResponse(),
+                            mriRequest)
+                        : ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
+                            new CaptureRequestedServiceResponse(),
+                            RadiologyProcessMessages.InformationRequestNotConfigured(
+                                nameof(CaptureMriInfoStep),
+                                ProcedureModality.Mri)),
                 ProcedureModality.Ct =>
-                    await CreateCtResponseAsync(
-                        context.ProcessId,
-                        procedureCode.CodeValue,
-                        cancellationToken),
+                    ProcessStepHandlerResult<CaptureRequestedServiceResponse>.RequireInformation<ConfirmCtInsteadOfMriStep>(
+                        new CaptureRequestedServiceResponse(),
+                        questionnaireDefinitionClient.CreateCtConfirmationRequest(
+                            procedureCode.CodeValue)),
                 _ =>
                     ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success(
                         new CaptureRequestedServiceResponse())
             };
-
-            async Task<ProcessStepHandlerResult<CaptureRequestedServiceResponse>> CreateMriResponseAsync(
-                Guid processId,
-                string procedureCodeValue,
-                CancellationToken ct)
-            {
-                var questionnaire =
-                    await questionnaireDefinitionClient.ResolveAsync(
-                        processId,
-                        nameof(CaptureMriInfoStep),
-                        ProcedureModality.Mri,
-                        procedureCodeValue,
-                        ct);
-
-                return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success<CaptureMriInfoStep>(
-                    new CaptureRequestedServiceResponse
-                    {
-                        QuestionnaireId = questionnaire?.QuestionnaireId,
-                        QuestionnaireVersion = questionnaire?.Version,
-                        Questionnaire = questionnaire
-                    });
-            }
-
-            async Task<ProcessStepHandlerResult<CaptureRequestedServiceResponse>> CreateCtResponseAsync(
-                Guid processId,
-                string procedureCodeValue,
-                CancellationToken ct)
-            {
-                var questionnaire =
-                    await questionnaireDefinitionClient.ResolveAsync(
-                        processId,
-                        nameof(CaptureMriInfoStep),
-                        ProcedureModality.Mri,
-                        procedureCodeValue,
-                        ct);
-
-                return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success<ConfirmCtInsteadOfMriStep>(
-                    new CaptureRequestedServiceResponse
-                    {
-                        QuestionnaireId = questionnaire?.QuestionnaireId,
-                        QuestionnaireVersion = questionnaire?.Version,
-                        Questionnaire = questionnaire
-                    });
-            }
-        }
-        catch (KaleidoHttpClientException ex)
+        }        catch (KaleidoHttpClientException ex)
         {
             return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
                 new CaptureRequestedServiceResponse(),

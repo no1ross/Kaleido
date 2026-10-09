@@ -35,6 +35,8 @@ Kaleido publishes metadata describing those capabilities—including their input
 - **Strongly typed** — business contracts remain ordinary .NET types with familiar validation attributes.
 - **Stateful when needed** — Process tracks long-running, multi-step work through an explicit process identifier.
 - **Transport-aware, not transport-bound** — the core runtime is separated from HTTP, clients, persistence, and observability providers.
+- **Asks for information in a standard shape** — when a step needs answers only known at runtime, a process returns an [information request](docs/INFORMATION_REQUESTS.md) with its next step, and any client (portal, IVR, AI agent) answers it the same way.
+- **A process engine, not a decision maker** — Kaleido applies the rules you declare and carries your questions; what to ask and which path to take stay in your code ([ADR 0001](docs/decisions/0001-process-engine-not-decision-maker.md)).
 - **Built for consumers** — the framework standardizes common behavior so clients do not need custom integration rules for every capability.
 
 ## Quick start

@@ -18,7 +18,6 @@ var historyConnectionString =
 builder.Services.AddDbContext<HistoryDbContext>(
     options => options.UseSqlite(historyConnectionString));
 
-builder.Services.AddControllers();
 
 // Dev-token auth (sample stand-in for a real IdP).
 builder.Services.AddDevAuth();
@@ -50,7 +49,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.DefaultAuthorization = new(DevAuthPolicies.AuthenticatedUser, []);
     })
     .AddEventPublisher<HttpEventPublisher>()
-    .AddHttp()
+    // Sample: return framework diagnostics (e.g. pro_step_not_available) in frameworkMessages.
+    .AddHttp(o => o.IncludeFrameworkMessages = true)
     .AddOpenTelemetry();
 
 var app = builder.Build();
@@ -74,9 +74,8 @@ await using (var scope = app.Services.CreateAsyncScope())
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseDevSwaggerUI();
 }
 
-app.MapControllers();
 
 app.Run();

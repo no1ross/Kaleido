@@ -237,7 +237,11 @@ export class QueryableRequestValidator {
                     });
                 }
 
-                if (!field.filterOperators.includes(node.condition.operator)) {
+                // The registry publishes operators as camelCase strings ("equals");
+                // compare case-insensitively, as the server does.
+                const operator = `${node.condition.operator}`.toLowerCase();
+
+                if (!field.filterOperators.some(x => `${x}`.toLowerCase() === operator)) {
                     messages.push({
                         parameter: field.name,
                         message: `${field.name} does not support the ${node.condition.operator} filter operator.`
@@ -304,6 +308,17 @@ export class QueryableRequestValidator {
     ): QueryableRequestValidationMessage[] {
         const messages: QueryableRequestValidationMessage[] = [];
 
+        // Mirrors the server (qry_paging_not_supported): an explicit page is only
+        // accepted by a [Pageable] source or view.
+        if (!pageable) {
+            messages.push({
+                parameter: 'page',
+                message: 'Paging is not supported for this query.'
+            });
+
+            return messages;
+        }
+
         if (size < 0) {
             messages.push({
                 parameter: 'page.size',
@@ -318,7 +333,7 @@ export class QueryableRequestValidator {
             });
         }
 
-        if (pageable && size > pageable.maxSize) {
+        if (size > pageable.maxSize) {
             messages.push({
                 parameter: 'page.size',
                 message: `Page size cannot exceed ${pageable.maxSize}.`

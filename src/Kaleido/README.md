@@ -40,10 +40,11 @@ For the full repository model, see:
 ### Process runtime
 - `ProcessorServiceCollectionExtensions` — `AddProcessor(...)` (internal, auto-invoked by `AddKaleido()`)
 - `ExecutionProcessor` — main step execution loop
-- `StepCandidateBuilder` / `StepCandidateValidator` / `StepCandidateConsistencyChecker` / `StepCandidatePlanner` — planning pipeline
+- `StepCandidateBuilder` / `StepCandidateValidator` / `StepCandidateConsistencyChecker` / `StepCandidatePlanner` / `StepCandidateNextStepChecker` — planning pipeline
 - `ProcessorStepRegistry` / `ProcessorRegistry` — runtime registries
 - `ProcessorObservability` — observability
 - `IProcessStepHandler<TStep>` / `IProcessStepHandler<TStep, TResult>` — handler contracts
+- `IInformationStep` / `InformationRequest` / `RequireInformation<TNext>` — information requests: runtime-decided questions answered by an information step (see [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md))
 - `IProcessorContextStore` / `ProcessorContextStore` — state store abstraction and default implementation
 
 ---

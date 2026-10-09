@@ -192,7 +192,7 @@ export class RequestingProvider {
                         next: result => {
                             this.isSubmitting.set(false);
 
-                            if (result.requiredStep !== 'CaptureServicingProviderStep') {
+                            if (result.requiredStep?.name !== 'CaptureServicingProviderStep') {
                                 void this.router.navigate(
                                     buildProcessRoute(
                                         this.processState.state().processId,

@@ -8,7 +8,6 @@ import { QueryableService } from '../kaleido/services/queryable-service';
 import { ProcessStateService } from './services/process-state-service';
 import { QueryRequest } from '../kaleido/models/queryable-request';
 import { QueryErrorResponse } from '../kaleido/models/query-error-response';
-import { CaptureRequestedServiceResponse } from '../kaleido/models/questionnaire';
 
 interface ProcedureCodeSearchResult {
     procedureCodeId: string;
@@ -89,7 +88,7 @@ export class RequestedService {
         this.errorMessage.set(undefined);
 
         this.processService
-            .executeStep<CaptureRequestedServiceStep, CaptureRequestedServiceResponse>('CaptureRequestedServiceStep', {
+            .executeStep<CaptureRequestedServiceStep, object>('CaptureRequestedServiceStep', {
                 processId: this.processState.state().processId,
                 processStep: {
                     codeValue: record.codeValue,

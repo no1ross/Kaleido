@@ -112,6 +112,8 @@ A step whose handler returns a typed result has this response shape (values are 
 }
 ```
 
+`requiredStep` is an object with the same fields as an `availableSteps` entry (`name`, `displayName`, `description`, `version`, `repeatable`, `isInformationStep`, `authorization`, `executeUrl`), plus `informationRequest` when the process is `AwaitingInformation`. The questions arrive there; submit the answers as that step's payload. See [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md). The state endpoint (`GET /{service}/processes/{processId}`) returns the same `requiredStep` with the pending request. A step that isn't a next step of the process is rejected (`pro_step_not_available`).
+
 Steps without a typed handler result return the same fields without `result`. Handler-authored `businessMessages` remain available; `frameworkMessages` is an empty collection unless `AddHttp(o => o.IncludeFrameworkMessages = true)` enables diagnostics. Inspect `outcome` rather than interpreting HTTP 200 alone as step completion. Kaleido's HTTP JSON options use camelCase property names and string enum values; see the [JSON enum contract](../Kaleido.Http.Abstractions/README.md#json-enum-values) for canonical names and numeric-input rules.
 
 ---
@@ -149,7 +151,7 @@ Enforcement works on two layers:
 **Route-level gate** — `MapProcessor()`/`MapQueryable()` attach metadata to each capability's execute/query endpoint at map time: `AllowAnonymous` → `AllowAnonymous()`; otherwise `RequireAuthorization()` plus a role requirement for declared `Roles` and the named ASP.NET policy for a declared `Policy` (ANDed). The transfer endpoint requires an authenticated caller. Evaluation is done by the host's `UseAuthorization()` middleware — the host must wire `AddAuthentication()`/`AddAuthorization()` and `app.UseAuthentication(); app.UseAuthorization();`. `MapKaleidoHttp()` throws `authentication_not_configured` at startup when enforcing without any authentication scheme.
 
 **In-handler evaluation** — `IKaleidoAuthorizer` (registered scoped by `AddHttp()`) covers what per-route metadata cannot express:
-- *Multi-step execute* — `POST /processes/execute` has no route-level auth; `ProcessExecutionService` checks every submitted step against its own declaration before anything runs, and the first denial rejects the whole request (401/403). Unknown step names and empty requests are checked as undeclared.
+- *Multi-step execute* — `ProcessExecutionService` checks every submitted step against its own declaration before anything runs, and the first denial rejects the whole request (401/403). Unknown step names and empty requests are checked as undeclared. At route level, `POST /processes/execute` and `GET /processes/{processId}` require an authenticated caller when enforcing, unless the processor has an `AllowAnonymous` step (then they stay open and the per-step checks decide).
 - *Process ownership* — resuming or reading an owned process requires the owner or a role-mate.
 - *Filtered discovery* — the `/{service}/registry` endpoint stays open but scopes its payload to the caller: `FilterAsync` drops capabilities the caller can't access (including views inside sources and steps inside processors) and omits processors whose steps are all filtered out. The registry cache holds the unfiltered union; filtering is per-request with this host's `AuthorizationMode`, so routers must use `ZeroTrust` too.
 

@@ -12,11 +12,25 @@ public sealed class CaptureMriInfoHandler(
     MriProcedureCodeResolverClient mriProcedureCodeResolverClient)
     : IProcessStepHandler<CaptureMriInfoStep>
 {
+    // Item ids of the configured MRI questionnaire (Configuration seed assets).
+    private const string BodyPartItem = "body-part";
+    private const string LateralityItem = "laterality";
+    private const string ContrastItem = "contrast";
+
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         CaptureMriInfoStep processStep,
         ProcessStepContext context,
         CancellationToken cancellationToken = default)
     {
+        // Kaleido has already checked the answers fit the presented questions; translating them
+        // into the domain's own values is the handler's job.
+        if (!TryRead(processStep, BodyPartItem, out MriBodyPart bodyPart, out var failure) ||
+            !TryRead(processStep, LateralityItem, out Laterality laterality, out failure) ||
+            !TryRead(processStep, ContrastItem, out ContrastOption contrast, out failure))
+        {
+            return ProcessStepHandlerResult.Failure(failure!);
+        }
+
         try
         {
             var requestedService =
@@ -38,7 +52,9 @@ public sealed class CaptureMriInfoHandler(
                 await mriProcedureCodeResolverClient.ResolveAsync(
                     requestedService.UserEnteredCodeValue,
                     requestedService.UserEnteredCodeSystem,
-                    processStep,
+                    bodyPart,
+                    laterality,
+                    contrast,
                     cancellationToken);
 
             if (resolvedRule is null)
@@ -48,7 +64,7 @@ public sealed class CaptureMriInfoHandler(
 
             requestedService.ResolvedCodeValue = resolvedRule.ResolvedCodeValue;
             requestedService.ResolvedCodeSystem = resolvedRule.ResolvedCodeSystem;
-            requestedService.Description = $"MRI {processStep.BodyPart}";
+            requestedService.Description = $"MRI {bodyPart}";
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -71,5 +87,27 @@ public sealed class CaptureMriInfoHandler(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));
         }
+    }
+
+    private static bool TryRead<TEnum>(
+        CaptureMriInfoStep answers,
+        string itemId,
+        out TEnum value,
+        out ProcessMessage? failure)
+        where TEnum : struct, Enum
+    {
+        var answer =
+            answers.Items
+                .FirstOrDefault(x => x.ItemId == itemId)?
+                .Answers
+                .FirstOrDefault()?
+                .Value;
+
+        failure =
+            Enum.TryParse(answer, ignoreCase: true, out value)
+                ? null
+                : RadiologyProcessMessages.UnexpectedAnswer(itemId, answer);
+
+        return failure is null;
     }
 }

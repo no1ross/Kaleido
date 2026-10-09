@@ -9,6 +9,37 @@ public sealed class StepAvailabilityResolverTests
     : SutFixture
 {
     [Fact]
+    public void ResolveCurrent_UsesOnlyCompletedSteps()
+    {
+        var initial = CreateRegistration<TestStepA>("step-a");
+        var after = CreateRegistration<TestStepB>("step-b", dependencies: [initial]);
+
+        var resolver = CreateSut(initial, after);
+
+        Assert.Equal(["step-a"], resolver.ResolveCurrent(CreateContext()));
+        Assert.Equal(["step-b"], resolver.ResolveCurrent(CreateContext(("step-a", StepExecutionStatus.Completed))));
+    }
+
+    [Fact]
+    public void ResolveCurrent_NeverOffersAnInformationStep()
+    {
+        var resolver =
+            CreateSut(
+                CreateRegistration<TestStepA>("step-a"),
+                CreateRegistration<TestInformationStep>("info-step", repeatable: true));
+
+        Assert.Equal(["step-a"], resolver.ResolveCurrent(CreateContext()));
+    }
+
+    [Fact]
+    public void ResolveCurrent_KeepsAFailedStepAvailableForRetry()
+    {
+        var resolver = CreateSut(CreateRegistration<TestStepA>("step-a"));
+
+        Assert.Equal(["step-a"], resolver.ResolveCurrent(CreateContext(("step-a", StepExecutionStatus.Exception))));
+    }
+
+    [Fact]
     public void Resolve_WhenCandidateHasNoDependencies_ReturnsCandidate()
     {
         var currentRegistration =
@@ -803,6 +834,13 @@ public sealed class StepAvailabilityResolverTests
 
     private sealed class TestStepE
     {
+    }
+
+    private sealed class TestInformationStep : IInformationStep
+    {
+        public required string InformationRequestId { get; init; }
+
+        public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
     }
 
     private sealed class TestStepResponse

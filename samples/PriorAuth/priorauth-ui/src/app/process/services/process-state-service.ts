@@ -4,7 +4,7 @@ import {
     ProcessMessage,
     ProcessStepSummary
 } from '../../kaleido/models/processor-process-result';
-import { QuestionnaireDefinition } from '../../kaleido/models/questionnaire';
+import { InformationRequest } from '../../kaleido/models/information-request';
 
 export interface ProcessSelectedMemberSummary {
     memberId: string;
@@ -27,8 +27,9 @@ export interface ProcessState {
     processMessages: ProcessMessage[];
     requiredStep?: string;
     availableSteps: ProcessStepSummary[];
-    questionnaireStepName?: string;
-    questionnaire?: QuestionnaireDefinition;
+    /** The step the pending information request belongs to (the required step). */
+    informationStepName?: string;
+    informationRequest?: InformationRequest;
 }
 
 @Injectable({
@@ -101,14 +102,14 @@ export class ProcessStateService {
         }));
     }
 
-    setQuestionnaire(
+    setInformationRequest(
         stepName: string | undefined,
-        questionnaire: QuestionnaireDefinition | undefined
+        informationRequest: InformationRequest | undefined
     ): void {
         this.state.update(state => ({
             ...state,
-            questionnaireStepName: stepName,
-            questionnaire
+            informationStepName: stepName,
+            informationRequest
         }));
     }
 

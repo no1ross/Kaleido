@@ -68,9 +68,8 @@ The handler itself returns no typed response — the downstream processor is the
 - `RequiredStep` = null — it is intentionally absent; only the target processor knows its own required step
 
 **Consumer pattern**: When `StepExecutionResponse.TargetProcessorName` is set, call `GET /{targetProcessorName}/processes/{processId}` on the **target processor** to obtain authoritative state. That response will contain:
-- `RequiredStep` — the next step to execute on the target processor
+- `RequiredStep` — the next step to execute on the target processor (an object; for an information step it carries the pending `informationRequest`, e.g. the MRI questions)
 - `AvailableSteps` — other steps currently available on the target processor
-- Per-step results already produced (e.g. questionnaire definitions)
 
 **UI pattern** (priorauth-ui): `ProcessService.executeStep()` handles this automatically. When `targetProcessorName` is present in the response, it fetches the target processor's state, updates `currentProcessorName` in `ProcessState`, and navigates to the required step — all transparently to call sites. Subsequent `executeStep()` calls will automatically route to the new processor.
 

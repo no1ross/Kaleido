@@ -86,4 +86,31 @@ public static class ProcessorErrorCodes
 
     /// <summary>A process execution result contained no entry for the step that was executed.</summary>
     public const string MissingStepResult = "missing_step_result";
+
+    /// <summary>
+    /// The submitted step is not a next step of the process: not the pending required step,
+    /// or not available under the process rules.
+    /// </summary>
+    public const string StepNotAvailable = "pro_step_not_available";
+
+    /// <summary>A handler returned an information request that is not well-formed.</summary>
+    public const string InformationRequestInvalid = "pro_information_request_invalid";
+
+    /// <summary>An information step was required without an information request.</summary>
+    public const string InformationRequestMissing = "pro_information_request_missing";
+
+    /// <summary>
+    /// Answers were submitted for an information request that is not pending (another step,
+    /// another request, or nothing was requested).
+    /// </summary>
+    public const string InformationResponseMismatch = "pro_information_response_mismatch";
+
+    /// <summary>A presented question has no answer.</summary>
+    public const string InformationResponseUnanswered = "pro_information_response_unanswered";
+
+    /// <summary>
+    /// An answer doesn't fit its question: unknown item, wrong value for the item type, a choice
+    /// that wasn't offered, or several answers to a question that doesn't repeat.
+    /// </summary>
+    public const string InformationResponseInvalidAnswer = "pro_information_response_invalid_answer";
 }

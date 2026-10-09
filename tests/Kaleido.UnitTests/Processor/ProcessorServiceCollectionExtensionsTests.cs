@@ -164,6 +164,21 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         });
     }
 
+    [Fact]
+    public void AddProcessor_WhenInformationStepDeclaresOtherProperties_Throws()
+    {
+        var assembly =
+            BuildAssembly(module =>
+                DefineInformationStep(module, "Steps.MixedInformationStep", extraProperty: "MemberId"));
+
+        var ex =
+            Assert.Throws<KaleidoConfigurationException>(() =>
+                AddKaleido(assembly));
+
+        Assert.Equal(ProcessorErrorCodes.InvalidRegistration, ex.Code);
+        Assert.Contains("MemberId", ex.Message);
+    }
+
     private static void AddKaleido(
         System.Reflection.Assembly assembly)
     {
@@ -228,6 +243,94 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         }
 
         typeBuilder.CreateType();
+    }
+
+    // Emits an IInformationStep (with the interface's init-only properties) plus an extra property.
+    private static void DefineInformationStep(
+        System.Reflection.Emit.ModuleBuilder module,
+        string fullName,
+        string extraProperty)
+    {
+        var typeBuilder =
+            module.DefineType(
+                fullName,
+                System.Reflection.TypeAttributes.Public |
+                System.Reflection.TypeAttributes.Class |
+                System.Reflection.TypeAttributes.Sealed);
+
+        typeBuilder.AddInterfaceImplementation(typeof(IInformationStep));
+        typeBuilder.DefineDefaultConstructor(System.Reflection.MethodAttributes.Public);
+
+        DefineProperty(typeBuilder, nameof(IInformationStep.InformationRequestId), typeof(string), implementsInterface: true);
+        DefineProperty(typeBuilder, nameof(IInformationStep.Items), typeof(IReadOnlyList<InformationResponseItem>), implementsInterface: true);
+        DefineProperty(typeBuilder, extraProperty, typeof(string), implementsInterface: false);
+
+        var attributeType = typeof(ProcessStepAttribute);
+
+        typeBuilder.SetCustomAttribute(
+            new System.Reflection.Emit.CustomAttributeBuilder(
+                attributeType.GetConstructor(Type.EmptyTypes)
+                    ?? throw new InvalidOperationException("ProcessStepAttribute constructor not found."),
+                [],
+                [
+                    attributeType.GetProperty(nameof(ProcessStepAttribute.Version))!,
+                    attributeType.GetProperty(nameof(ProcessStepAttribute.DisplayName))!,
+                    attributeType.GetProperty(nameof(ProcessStepAttribute.Description))!
+                ],
+                ["1.0", "Dynamic information step", "Dynamically defined information step."]));
+
+        typeBuilder.CreateType();
+    }
+
+    private static void DefineProperty(
+        System.Reflection.Emit.TypeBuilder typeBuilder,
+        string name,
+        Type type,
+        bool implementsInterface)
+    {
+        const System.Reflection.MethodAttributes accessorAttributes =
+            System.Reflection.MethodAttributes.Public |
+            System.Reflection.MethodAttributes.Virtual |
+            System.Reflection.MethodAttributes.Final |
+            System.Reflection.MethodAttributes.NewSlot |
+            System.Reflection.MethodAttributes.HideBySig |
+            System.Reflection.MethodAttributes.SpecialName;
+
+        var field = typeBuilder.DefineField($"_{name}", type, System.Reflection.FieldAttributes.Private);
+        var property = typeBuilder.DefineProperty(name, System.Reflection.PropertyAttributes.None, type, null);
+
+        var getter = typeBuilder.DefineMethod($"get_{name}", accessorAttributes, type, Type.EmptyTypes);
+        var getIl = getter.GetILGenerator();
+        getIl.Emit(System.Reflection.Emit.OpCodes.Ldarg_0);
+        getIl.Emit(System.Reflection.Emit.OpCodes.Ldfld, field);
+        getIl.Emit(System.Reflection.Emit.OpCodes.Ret);
+
+        var setter =
+            typeBuilder.DefineMethod(
+                $"set_{name}",
+                accessorAttributes,
+                System.Reflection.CallingConventions.HasThis,
+                typeof(void),
+                [typeof(System.Runtime.CompilerServices.IsExternalInit)],
+                null,
+                [type],
+                null,
+                null);
+        var setIl = setter.GetILGenerator();
+        setIl.Emit(System.Reflection.Emit.OpCodes.Ldarg_0);
+        setIl.Emit(System.Reflection.Emit.OpCodes.Ldarg_1);
+        setIl.Emit(System.Reflection.Emit.OpCodes.Stfld, field);
+        setIl.Emit(System.Reflection.Emit.OpCodes.Ret);
+
+        property.SetGetMethod(getter);
+        property.SetSetMethod(setter);
+
+        if (implementsInterface)
+        {
+            var interfaceProperty = typeof(IInformationStep).GetProperty(name)!;
+            typeBuilder.DefineMethodOverride(getter, interfaceProperty.GetMethod!);
+            typeBuilder.DefineMethodOverride(setter, interfaceProperty.SetMethod!);
+        }
     }
 
     [ProcessStep(

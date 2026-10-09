@@ -1,9 +1,9 @@
-import { ProcessStepSummary } from './processor-process-result';
+import { ProcessRequiredStep, ProcessStepSummary } from './processor-process-result';
 
 export interface ProcessStateResponse {
     processId: string;
     state: string;
-    requiredStep?: string;
+    requiredStep?: ProcessRequiredStep;
     targetProcessorName?: string;
     availableSteps: ProcessStepSummary[];
 }

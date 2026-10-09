@@ -1,0 +1,75 @@
+<div class="information-request">
+  @for (entry of items(); track entry.item.id) {
+    <div class="information-request__item" [style.margin-left.rem]="entry.depth * 1.25">
+      @switch (entry.item.type) {
+        @case ('group') {
+          <h3 class="information-request__group">{{ entry.item.text }}</h3>
+        }
+        @case ('display') {
+          <p class="information-request__display">{{ entry.item.text }}</p>
+        }
+        @case ('choice') {
+          <fieldset class="information-request__field">
+            <legend>{{ entry.item.text }}</legend>
+            @for (option of entry.item.options; track option.value) {
+              <label class="information-request__option">
+                @if (entry.item.repeats) {
+                  <input
+                    type="checkbox"
+                    [checked]="isSelected(entry.item, option.value)"
+                    (change)="toggle(entry.item, option.value, $any($event.target).checked)" />
+                } @else {
+                  <input
+                    type="radio"
+                    [name]="entry.item.id"
+                    [checked]="isSelected(entry.item, option.value)"
+                    (change)="setValue(entry.item, option.value)" />
+                }
+                <span>{{ option.display ?? option.value }}</span>
+              </label>
+            }
+          </fieldset>
+        }
+        @case ('boolean') {
+          <fieldset class="information-request__field">
+            <legend>{{ entry.item.text }}</legend>
+            <label class="information-request__option">
+              <input type="radio" [name]="entry.item.id" [checked]="valueOf(entry.item) === 'true'" (change)="setValue(entry.item, 'true')" />
+              <span>Yes</span>
+            </label>
+            <label class="information-request__option">
+              <input type="radio" [name]="entry.item.id" [checked]="valueOf(entry.item) === 'false'" (change)="setValue(entry.item, 'false')" />
+              <span>No</span>
+            </label>
+          </fieldset>
+        }
+        @case ('longText') {
+          <label class="information-request__field">
+            <span>{{ entry.item.text }}</span>
+            <textarea rows="4" [ngModel]="valueOf(entry.item)" (ngModelChange)="setValue(entry.item, $event)"></textarea>
+          </label>
+        }
+        @default {
+          <label class="information-request__field">
+            <span>{{ entry.item.text }}</span>
+            <input
+              [type]="entry.item.type === 'wholeNumber' || entry.item.type === 'number'
+                ? 'number'
+                : entry.item.type === 'date'
+                  ? 'date'
+                  : entry.item.type === 'dateTime' ? 'datetime-local' : 'text'"
+              [step]="entry.item.type === 'wholeNumber' ? 1 : 'any'"
+              [ngModel]="valueOf(entry.item)"
+              (ngModelChange)="setValue(entry.item, '' + $event)" />
+          </label>
+        }
+      }
+    </div>
+  }
+
+  <div class="information-request__actions">
+    <button type="button" class="primary-button" (click)="submit()" [disabled]="!isComplete() || isSubmitting()">
+      {{ submitLabel() }}
+    </button>
+  </div>
+</div>

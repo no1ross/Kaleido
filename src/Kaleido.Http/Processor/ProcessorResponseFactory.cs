@@ -1,3 +1,4 @@
+using Kaleido.Processor;
 using Kaleido.Http.Registry;
 using Kaleido.Processor.Registry;
 
@@ -19,6 +20,11 @@ public interface IProcessorResponseFactory
 
     ProcessStepSummary CreateStepSummary(
         ProcessorStepSummary registration,
+        string serviceName);
+
+    ProcessRequiredStep CreateRequiredStep(
+        ProcessorStepSummary registration,
+        InformationRequest? informationRequest,
         string serviceName);
 }
 
@@ -49,6 +55,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
                     DisplayName = x.DisplayName,
                     Version = x.Version,
                     Repeatable = x.Repeatable,
+                    IsInformationStep = x.IsInformationStep,
                     Authorization = x.Authorization,
                     ExecuteUrl = string.Empty
                 })
@@ -75,6 +82,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             DisplayName = registration.DisplayName,
             Version = registration.Version,
             Repeatable = registration.Repeatable,
+            IsInformationStep = registration.IsInformationStep,
             IsInitial =
                 registration.Dependencies.Count == 0 &&
                 registration.AvailableAfter.Count == 0,
@@ -117,8 +125,33 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             DisplayName = registration.DisplayName,
             Version = registration.Version,
             Repeatable = registration.Repeatable,
+            IsInformationStep = registration.IsInformationStep,
             Authorization = registration.Authorization,
             ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName)
+        };
+    }
+
+    public ProcessRequiredStep CreateRequiredStep(
+        ProcessorStepSummary registration,
+        InformationRequest? informationRequest,
+        string serviceName)
+    {
+        var summary =
+            CreateStepSummary(
+                registration,
+                serviceName);
+
+        return new ProcessRequiredStep
+        {
+            Name = summary.Name,
+            Description = summary.Description,
+            DisplayName = summary.DisplayName,
+            Version = summary.Version,
+            Repeatable = summary.Repeatable,
+            IsInformationStep = summary.IsInformationStep,
+            Authorization = summary.Authorization,
+            ExecuteUrl = summary.ExecuteUrl,
+            InformationRequest = informationRequest
         };
     }
 
@@ -128,6 +161,8 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
         return new ProcessFieldMetadata
         {
             Name = item.Name,
+            DisplayName = item.DisplayName,
+            Prompt = item.Prompt,
             Description = item.Description,
             DataType = item.DataType,
             Constraints = item.Constraints

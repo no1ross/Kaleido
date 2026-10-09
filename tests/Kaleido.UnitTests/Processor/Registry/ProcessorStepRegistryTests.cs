@@ -336,6 +336,19 @@ public sealed class ProcessorStepRegistryTests
             registration.Repeatable.Enabled);
     }
 
+    [Fact]
+    public void InitialRegistrations_ExcludeInformationSteps()
+    {
+        var registry =
+            CreateSut(
+                typeof(StepA),
+                typeof(InformationStep));
+
+        Assert.Equal(
+            [nameof(StepA)],
+            registry.InitialRegistrations.Select(x => x.Metadata.Name));
+    }
+
     private static ProcessorStepRegistry CreateSut(
         IEnumerable<Type> stepTypes,
         IReadOnlyDictionary<Type, Type> handlerTypes) =>
@@ -359,7 +372,8 @@ public sealed class ProcessorStepRegistryTests
             { typeof(StepAfter), typeof(StepAfterHandler) },
             { typeof(StepUntil), typeof(StepUntilHandler) },
             { typeof(StepMultiAvailability), typeof(StepMultiAvailabilityHandler) },
-            { typeof(SecuredStep), typeof(SecuredStepHandler) }
+            { typeof(SecuredStep), typeof(SecuredStepHandler) },
+            { typeof(InformationStep), typeof(InformationStepHandler) }
         };
 
         return new ProcessorStepRegistry(
@@ -403,6 +417,17 @@ public sealed class ProcessorStepRegistryTests
     [ProcessStep(DisplayName = nameof(SecuredStep), Description = "secured-step description", Version = "1.0")]
     [KaleidoAuthorization(Policy = "step-policy", Roles = "internal")]
     private sealed class SecuredStep : IProcessStep;
+
+    [ProcessStep(DisplayName = nameof(InformationStep), Description = "information-step description", Version = "1.0")]
+    private sealed class InformationStep : IInformationStep
+    {
+        public required string InformationRequestId { get; init; }
+
+        public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
+    }
+
+    private sealed class InformationStepHandler
+        : BaseHandler<InformationStep, TestResponse>;
 
     private sealed class MissingStep;
 

@@ -2,53 +2,23 @@
   <header class="process-step-card__header">
     <div>
       <div class="process-step-card__eyebrow">MRI Information</div>
-      <h2>{{ title() }}</h2>
-      @if (description()) {
-        <p>{{ description() }}</p>
-      }
+      <h2>{{ informationRequest()?.title ?? 'Capture MRI details' }}</h2>
     </div>
   </header>
 
-  @if (!questionnaire()) {
-    <div class="process-step-card__body">
-      <p class="process-step-card__error">MRI questionnaire content is not available for this process.</p>
-    </div>
-  } @else {
-    <div class="process-step-card__body">
-      <label class="process-step-card__field">
-        <span>{{ bodyPartQuestion()?.text ?? 'Body part' }}</span>
-        <select [(ngModel)]="bodyPart">
-          @for (option of bodyPartQuestion()?.answerOptions ?? []; track trackOption($index, option)) {
-            <option [ngValue]="option.value">{{ option.displayText }}</option>
-          }
-        </select>
-      </label>
+  <div class="process-step-card__body">
+    @if (informationRequest(); as request) {
+      <priorauth-information-request-form
+        [request]="request"
+        submitLabel="Submit MRI Information"
+        [isSubmitting]="isSubmitting()"
+        (submitted)="submit($event)" />
+    } @else {
+      <p class="process-step-card__error">There are no MRI questions pending for this process.</p>
+    }
 
-      <label class="process-step-card__field">
-        <span>{{ lateralityQuestion()?.text ?? 'Laterality' }}</span>
-        <select [(ngModel)]="laterality" [disabled]="!isQuestionEnabled(lateralityQuestion())">
-          @for (option of lateralityQuestion()?.answerOptions ?? []; track trackOption($index, option)) {
-            <option [ngValue]="option.value">{{ option.displayText }}</option>
-          }
-        </select>
-      </label>
-
-      <label class="process-step-card__field">
-        <span>{{ contrastQuestion()?.text ?? 'Contrast' }}</span>
-        <select [(ngModel)]="contrast">
-          @for (option of contrastQuestion()?.answerOptions ?? []; track trackOption($index, option)) {
-            <option [ngValue]="option.value">{{ option.displayText }}</option>
-          }
-        </select>
-      </label>
-
-      <div class="process-step-card__actions">
-        <button type="button" class="primary-button" (click)="submit()" [disabled]="isSubmitting()">Submit MRI Information</button>
-      </div>
-
-      @if (errorMessage()) {
-        <p class="process-step-card__error">{{ errorMessage() }}</p>
-      }
-    </div>
-  }
+    @if (errorMessage()) {
+      <p class="process-step-card__error">{{ errorMessage() }}</p>
+    }
+  </div>
 </section>

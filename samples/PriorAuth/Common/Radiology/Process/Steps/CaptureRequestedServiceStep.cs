@@ -7,7 +7,9 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
     DisplayName = "Capture Requested Service",
     Description = "Adds a requested service to the current prior authorization.",
     Version = "1.0.0")]
-[AvailableAfter<CaptureMemberStep>]
+// Radiology is entered through StartRadiologyIntake (the member may have been
+// captured in Intake), so adding services opens once the intake has started.
+[AvailableAfter<StartRadiologyIntakeStep>]
 [AvailableUntil<CaptureRequestingProviderStep>]
 [Repeatable]
 public sealed record CaptureRequestedServiceStep : IProcessStep
