@@ -461,7 +461,7 @@ public sealed class StepExecutionEvaluatorTests
     [Fact]
     public void Evaluate_WhenNothingRequired_DoesNotContinueIntoAnInformationStep()
     {
-        var evaluator = CreateSut(["info-step"]);
+        var evaluator = CreateSut(["step-b", "info-step"]);
 
         var decision =
             evaluator.Evaluate(
@@ -471,6 +471,22 @@ public sealed class StepExecutionEvaluatorTests
                 CreateContext());
 
         Assert.Equal(ExecutionDecisionType.AwaitingStepSelection, decision.Type);
+    }
+
+    [Fact]
+    public void Evaluate_WhenNothingRequired_NeverOffersAnInformationStep()
+    {
+        var evaluator = CreateSut(["step-b", "info-step"]);
+
+        var decision =
+            evaluator.Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true },
+                [],
+                CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.AwaitingStepSelection, decision.Type);
+        Assert.Equal(["step-b"], decision.AvailableSteps);
     }
 
     private static StepCandidate CreateInfoCandidate() =>
@@ -515,6 +531,13 @@ public sealed class StepExecutionEvaluatorTests
             .Setup(x => x.Find(It.IsAny<Type>()))
             .Returns((Type type) =>
                 names.TryGetValue(type, out var name)
+                    ? CreateRegistration(type, name)
+                    : null);
+
+        registry
+            .Setup(x => x.Find(It.IsAny<string>()))
+            .Returns((string stepName) =>
+                names.FirstOrDefault(x => string.Equals(x.Value, stepName, StringComparison.OrdinalIgnoreCase)) is { Key: { } type, Value: { } name }
                     ? CreateRegistration(type, name)
                     : null);
 
