@@ -18,3 +18,5 @@ KAL2015 | Kaleido.Usage | Error | An information step declares only InformationR
 KAL2016 | Kaleido.Usage | Error | Information steps are required with RequireInformation, not Success
 KAL2017 | Kaleido.Usage | Warning | Process step input property has no description
 KAL2018 | Kaleido.Usage | Warning | Query context or parameters property has no description
+KAL2019 | Kaleido.Usage | Warning | Capability type name is too long for an MCP tool name
+KAL2020 | Kaleido.Usage | Warning | ServiceName is too long for MCP tool names
