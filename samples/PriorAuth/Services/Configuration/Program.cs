@@ -61,7 +61,7 @@ app.MapKaleidoHttp();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseDevSwaggerUI();
 }
 
 
