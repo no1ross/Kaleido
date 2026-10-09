@@ -1,4 +1,5 @@
 using Kaleido.Http.Processor;
+using Kaleido.Registry;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Metadata;
@@ -74,6 +75,57 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         Assert.Contains("Test Step", executionTags!.Tags);
     }
 
+    [Theory]
+    [InlineData(KaleidoAuthorizationMode.Authenticated)]
+    [InlineData(KaleidoAuthorizationMode.ZeroTrust)]
+    public void MapProcessor_WhenEnforcing_AndNoStepAllowsAnonymous_ExecuteAndStateRequireACaller(
+        KaleidoAuthorizationMode mode)
+    {
+        var endpoints =
+            CreateEndpoints(
+                mode: mode,
+                stepAuthorization: new AuthorizationMetadata(null, ["clerk"]));
+
+        endpoints.MapProcessor();
+
+        Assert.NotEmpty(AuthorizeData(endpoints, ProcessEndpointNames.ExecuteEndpointName));
+        Assert.NotEmpty(AuthorizeData(endpoints, ProcessEndpointNames.ProcessEndpointName));
+    }
+
+    [Fact]
+    public void MapProcessor_WhenAStepAllowsAnonymous_ExecuteAndStateStayOpen()
+    {
+        var endpoints =
+            CreateEndpoints(
+                mode: KaleidoAuthorizationMode.ZeroTrust,
+                stepAuthorization: AuthorizationMetadata.Unspecified with { AllowAnonymous = true });
+
+        endpoints.MapProcessor();
+
+        Assert.Empty(AuthorizeData(endpoints, ProcessEndpointNames.ExecuteEndpointName));
+        Assert.Empty(AuthorizeData(endpoints, ProcessEndpointNames.ProcessEndpointName));
+    }
+
+    [Fact]
+    public void MapProcessor_WhenNotEnforcing_ExecuteAndStateAttachNoAuthorization()
+    {
+        var endpoints =
+            CreateEndpoints(
+                mode: KaleidoAuthorizationMode.None);
+
+        endpoints.MapProcessor();
+
+        Assert.Empty(AuthorizeData(endpoints, ProcessEndpointNames.ExecuteEndpointName));
+        Assert.Empty(AuthorizeData(endpoints, ProcessEndpointNames.ProcessEndpointName));
+    }
+
+    private static IReadOnlyCollection<Microsoft.AspNetCore.Authorization.IAuthorizeData> AuthorizeData(
+        IEndpointRouteBuilder endpoints,
+        string name) =>
+        FindEndpoint(endpoints, name)!
+            .Metadata
+            .GetOrderedMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>();
+
     private static RouteEndpoint? FindEndpoint(
         IEndpointRouteBuilder endpoints,
         string name) =>
@@ -107,7 +159,9 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
             .Trim('/');
 
     private static WebApplication CreateEndpoints(
-        string serviceName = "test-processor")
+        string serviceName = "test-processor",
+        KaleidoAuthorizationMode mode = KaleidoAuthorizationMode.None,
+        AuthorizationMetadata? stepAuthorization = null)
     {
         var builder =
             WebApplication.CreateBuilder();
@@ -116,14 +170,15 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
-        builder.Services.AddSingleton<IProcessorStepRegistry>(CreateRegistry());
+        builder.Services.AddSingleton<IProcessorStepRegistry>(CreateRegistry(stepAuthorization ?? AuthorizationMetadata.Unspecified));
         builder.Services.AddSingleton<IProcessorRegistry>(CreateProcessorRegistry());
-        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, DisplayName = "Test Processor" });
+        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, DisplayName = "Test Processor", AuthorizationMode = mode });
 
         return builder.Build();
     }
 
-    private static IProcessorStepRegistry CreateRegistry()
+    private static IProcessorStepRegistry CreateRegistry(
+        AuthorizationMetadata authorization)
     {
         var registration =
             new ProcessStepRegistration(
@@ -141,7 +196,8 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
                     "Test-Step",
                     "Test step",
                     "1.0.0",
-                    "Test Step"));
+                    "Test Step",
+                    authorization));
 
         var registry =
             new Mock<IProcessorStepRegistry>();
