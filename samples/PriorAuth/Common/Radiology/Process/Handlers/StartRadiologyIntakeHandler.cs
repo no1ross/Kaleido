@@ -52,11 +52,10 @@ public sealed class StartRadiologyIntakeHandler(
             if (processStep.MemberId.HasValue && processStep.MemberEnrollmentId.HasValue)
             {
                 eligibility =
-                    await memberEligibilityService.ValidateAsync(
+                    await memberEligibilityService.CheckEligibilityAsync(
                         processStep.MemberId.Value,
                         processStep.MemberEnrollmentId.Value,
                         processStep.DateOfService ?? DateOnly.FromDateTime(DateTime.UtcNow),
-                        context.ProcessId,
                         cancellationToken);
 
                 if (!eligibility.Succeeded)

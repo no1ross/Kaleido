@@ -16,6 +16,13 @@ public interface IMemberEligibilityService
         Guid processId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>The member's eligibility on the date of service only, for a request that is not recorded yet.</summary>
+    Task<MemberEligibilityResult> CheckEligibilityAsync(
+        Guid memberId,
+        Guid memberEnrollmentId,
+        DateOnly dateOfService,
+        CancellationToken cancellationToken = default);
+
     Task<ModalityRoutingResult> RouteByModalityAsync(
         Guid processId,
         MemberDetailsView memberDetails,
@@ -61,6 +68,19 @@ public sealed class MemberEligibilityService(
                 RadiologyProcessMessages.PriorAuthorizationNotFound(processId));
         }
 
+        return await CheckEligibilityAsync(memberId, memberEnrollmentId, dateOfService, cancellationToken);
+    }
+
+    /// <summary>
+    /// The member (resolved with the enrollment, so a pair that does not belong together is not
+    /// found) and coverage on the date of service, without requiring the request to be recorded.
+    /// </summary>
+    public async Task<MemberEligibilityResult> CheckEligibilityAsync(
+        Guid memberId,
+        Guid memberEnrollmentId,
+        DateOnly dateOfService,
+        CancellationToken cancellationToken = default)
+    {
         var memberDetails =
             await memberDetailsClient.GetMemberDetailsAsync(
                 memberId,
