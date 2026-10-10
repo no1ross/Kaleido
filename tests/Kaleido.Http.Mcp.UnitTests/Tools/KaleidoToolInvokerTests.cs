@@ -446,6 +446,22 @@ public sealed class KaleidoToolInvokerTests
     }
 
     [Fact]
+    public async Task Questions_WithProposedAnswers_AreReturned_WithAnInstructionToConfirmThem()
+    {
+        var proposing = QuestionsRequired with
+        {
+            InformationRequest = Questions with { Items = [Questions.Items[0] with { ProposedAnswers = [new InformationAnswer { Value = "true" }] }] }
+        };
+        StepReturns(StepResponse(required: proposing));
+
+        var next = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel))["next"];
+
+        Assert.Equal("true", next?["informationRequest"]?["items"]?[0]?["proposedAnswers"]?[0]?["value"]?.GetValue<string>());
+        Assert.Contains("confirm or correct", next?["instruction"]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Contains("never submit a proposed answer the user has not confirmed", next?["instruction"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Questions_WithMrtrForms_ReturnInputRequired_WithTheFormAndAnOpaqueState()
     {
         ClientShowsForms();

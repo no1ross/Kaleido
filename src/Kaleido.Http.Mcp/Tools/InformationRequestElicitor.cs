@@ -18,7 +18,8 @@ namespace Kaleido.Http.Mcp.Tools;
 /// <c>wholeNumber</c>/<c>number</c> → a number; <c>date</c>/<c>dateTime</c> → a formatted string;
 /// <c>text</c>/<c>longText</c> → a string. <c>group</c> headings and <c>display</c> text become part
 /// of the message and of the question titles. Every question is required (Kaleido has no
-/// optional questions).
+/// optional questions). An item's proposed answers become the field's default: the form opens
+/// pre-filled, and the user confirms or corrects it before submitting.
 /// </remarks>
 internal interface IInformationRequestElicitor
 {
@@ -32,6 +33,9 @@ internal interface IInformationRequestElicitor
 
 internal sealed class InformationRequestElicitor : IInformationRequestElicitor
 {
+    /// <summary>Shown with a form that opens pre-filled.</summary>
+    public const string ProposedNote = "Some answers are pre-filled from what was said earlier. Check each one and correct it if needed before you submit.";
+
     public ElicitRequestParams ToElicitation(InformationRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -50,6 +54,11 @@ internal sealed class InformationRequestElicitor : IInformationRequestElicitor
         {
             properties[item.Id] = Schema(item, heading);
             required.Add(item.Id);
+        }
+
+        if (Questions(request.Items, heading: null, message: null).Any(x => x.Item.ProposedAnswers.Count > 0))
+        {
+            message.AppendLine().AppendLine(ProposedNote);
         }
 
         return new ElicitRequestParams
@@ -131,6 +140,8 @@ internal sealed class InformationRequestElicitor : IInformationRequestElicitor
     {
         var title = item.Text.Trim();
         var description = heading is null ? null : $"Part of: {heading}";
+        var proposed = item.ProposedAnswers.Select(x => x.Value).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
+        var first = proposed.FirstOrDefault();
 
         return item.Type switch
         {
@@ -143,7 +154,8 @@ internal sealed class InformationRequestElicitor : IInformationRequestElicitor
                     Items = new ElicitRequestParams.TitledEnumItemsSchema
                     {
                         AnyOf = item.Options.Select(Option).ToList()
-                    }
+                    },
+                    Default = proposed.Length > 0 ? proposed : null
                 },
 
             InformationItemType.Choice =>
@@ -151,28 +163,37 @@ internal sealed class InformationRequestElicitor : IInformationRequestElicitor
                 {
                     Title = title,
                     Description = description,
-                    OneOf = item.Options.Select(Option).ToList()
+                    OneOf = item.Options.Select(Option).ToList(),
+                    Default = first
                 },
 
             InformationItemType.Boolean =>
-                new ElicitRequestParams.BooleanSchema { Title = title, Description = description },
+                new ElicitRequestParams.BooleanSchema
+                {
+                    Title = title,
+                    Description = description,
+                    Default = bool.TryParse(first, out var flag) ? flag : null
+                },
 
             InformationItemType.WholeNumber =>
-                new ElicitRequestParams.NumberSchema { Type = "integer", Title = title, Description = description },
+                new ElicitRequestParams.NumberSchema { Type = "integer", Title = title, Description = description, Default = Number(first) },
 
             InformationItemType.Number =>
-                new ElicitRequestParams.NumberSchema { Title = title, Description = description },
+                new ElicitRequestParams.NumberSchema { Title = title, Description = description, Default = Number(first) },
 
             InformationItemType.Date =>
-                new ElicitRequestParams.StringSchema { Title = title, Description = description, Format = "date" },
+                new ElicitRequestParams.StringSchema { Title = title, Description = description, Format = "date", Default = first },
 
             InformationItemType.DateTime =>
-                new ElicitRequestParams.StringSchema { Title = title, Description = description, Format = "date-time" },
+                new ElicitRequestParams.StringSchema { Title = title, Description = description, Format = "date-time", Default = first },
 
             _ =>
-                new ElicitRequestParams.StringSchema { Title = title, Description = description, MinLength = 1 }
+                new ElicitRequestParams.StringSchema { Title = title, Description = description, MinLength = 1, Default = first }
         };
     }
+
+    private static double? Number(string? value) =>
+        double.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var number) ? number : null;
 
     private static ElicitRequestParams.EnumSchemaOption Option(InformationOption option) =>
         new()
