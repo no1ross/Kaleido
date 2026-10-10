@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Kaleido.Http.Mcp.Tools;
 
@@ -27,7 +29,7 @@ internal interface IToolNameBuilder
 [ExcludeFromCodeCoverage]
 internal sealed record ToolName(string Value, bool Truncated);
 
-internal sealed class ToolNameBuilder : IToolNameBuilder
+internal sealed partial class ToolNameBuilder : IToolNameBuilder
 {
     /// <summary>MCP's limit on tool names.</summary>
     public const int MaxLength = 64;
@@ -72,49 +74,15 @@ internal sealed class ToolNameBuilder : IToolNameBuilder
         return typeName;
     }
 
-    // "CaptureMriInfo" -> "capture_mri_info"; "MRIInfo" -> "mri_info"; anything outside
-    // [a-z0-9] becomes "_" and runs of "_" collapse.
-    private static string ToSnakeCase(string value)
-    {
-        var builder = new StringBuilder(value.Length + 8);
+    // The framework's snake_case ("CaptureMriInfo" -> "capture_mri_info", "MRIInfo" -> "mri_info"),
+    // then MCP's character rule: anything outside [a-z0-9_] becomes one "_".
+    private static string ToSnakeCase(string value) =>
+        InvalidCharacters()
+            .Replace(JsonNamingPolicy.SnakeCaseLower.ConvertName(value), "_")
+            .Trim('_');
 
-        for (var i = 0; i < value.Length; i++)
-        {
-            var current = value[i];
-
-            if (char.IsAsciiLetterUpper(current))
-            {
-                var previous = i > 0 ? value[i - 1] : '\0';
-                var next = i + 1 < value.Length ? value[i + 1] : '\0';
-
-                if (i > 0 &&
-                    (char.IsAsciiLetterLower(previous) || char.IsAsciiDigit(previous) ||
-                     (char.IsAsciiLetterUpper(previous) && char.IsAsciiLetterLower(next))))
-                {
-                    builder.Append('_');
-                }
-
-                builder.Append(char.ToLowerInvariant(current));
-            }
-            else if (char.IsAsciiLetterOrDigit(current))
-            {
-                builder.Append(current);
-            }
-            else
-            {
-                builder.Append('_');
-            }
-        }
-
-        var snake = builder.ToString();
-
-        while (snake.Contains("__", StringComparison.Ordinal))
-        {
-            snake = snake.Replace("__", "_", StringComparison.Ordinal);
-        }
-
-        return snake.Trim('_');
-    }
+    [GeneratedRegex("[^a-z0-9_]+", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex InvalidCharacters();
 
     private static string Hash(string value) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)))[..8].ToLowerInvariant();
