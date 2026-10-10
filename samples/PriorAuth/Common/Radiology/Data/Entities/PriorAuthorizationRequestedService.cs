@@ -20,5 +20,14 @@ public sealed class PriorAuthorizationRequestedService
 
     public string Description { get; set; } = string.Empty;
 
+    public DateTimeOffset CreatedUtc { get; set; }
+
+    /// <summary>
+    /// What the caller stated about this service up front, by binding key (e.g. <c>Laterality</c> →
+    /// <c>Left</c>), as JSON. Configured questions with the same binding key propose these values for
+    /// this service; the caller confirms them.
+    /// </summary>
+    public string? StatedDetailsJson { get; set; }
+
     public PriorAuthorization PriorAuthorization { get; set; } = null!;
 }

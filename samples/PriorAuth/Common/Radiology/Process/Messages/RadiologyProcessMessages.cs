@@ -151,4 +151,21 @@ public static class RadiologyProcessMessages
             Code = "CT_NOT_CONFIRMED",
             Type = MessageType.Error,
             Message = "The CT request was not confirmed. Remove the requested service and request the intended procedure instead."
-        };}
+        };
+
+    public static ProcessMessage AttestationRequired() =>
+        new()
+        {
+            Code = "ATTESTATION_REQUIRED",
+            Type = MessageType.Error,
+            Message = "The request was not submitted: the attestation was not confirmed. Review the request and confirm the attestation to submit it."
+        };
+
+    public static ProcessMessage Submitted(Guid processId) =>
+        new()
+        {
+            Code = "PRIOR_AUTHORIZATION_SUBMITTED",
+            Type = MessageType.Information,
+            Message = $"Prior authorization request {processId} was submitted for review."
+        };
+}

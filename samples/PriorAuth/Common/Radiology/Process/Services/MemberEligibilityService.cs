@@ -31,7 +31,7 @@ public sealed class MemberEligibilityService(
     RadiologyDbContext dbContext,
     MemberDetailsClient memberDetailsClient,
     ProcedureModalityClient procedureModalityClient,
-    QuestionnaireDefinitionClient questionnaireDefinitionClient)
+    ConfiguredInformationRequests informationRequests)
     : IMemberEligibilityService
 {
     /// <summary>
@@ -127,8 +127,10 @@ public sealed class MemberEligibilityService(
         return modality switch
         {
             ProcedureModality.Mri =>
-                await questionnaireDefinitionClient.CreateMriInfoRequestAsync(
+                await informationRequests.CreateAsync(
                     processId,
+                    nameof(CaptureMriInfoStep),
+                    modality,
                     requestedService.ResolvedCodeValue,
                     cancellationToken) is { } mriRequest
                     ? ModalityRoutingResult.Ok(ModalityRoute.CaptureMriInfo, mriRequest)
@@ -138,10 +140,17 @@ public sealed class MemberEligibilityService(
                             ProcedureModality.Mri)),
 
             ProcedureModality.Ct =>
-                ModalityRoutingResult.Ok(
-                    ModalityRoute.ConfirmCtInsteadOfMri,
-                    questionnaireDefinitionClient.CreateCtConfirmationRequest(
-                        requestedService.ResolvedCodeValue)),
+                await informationRequests.CreateAsync(
+                    processId,
+                    nameof(ConfirmCtInsteadOfMriStep),
+                    modality,
+                    requestedService.ResolvedCodeValue,
+                    cancellationToken) is { } ctRequest
+                    ? ModalityRoutingResult.Ok(ModalityRoute.ConfirmCtInsteadOfMri, ctRequest)
+                    : ModalityRoutingResult.Fail(
+                        RadiologyProcessMessages.InformationRequestNotConfigured(
+                            nameof(ConfirmCtInsteadOfMriStep),
+                            ProcedureModality.Ct)),
 
             _ =>
                 ModalityRoutingResult.Fail(

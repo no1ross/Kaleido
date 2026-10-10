@@ -111,7 +111,10 @@ public sealed class CaptureRequestedServiceHandler(
                             MemberEnrollmentId = session.Member?.MemberEnrollmentId,
                             DateOfService = session.Member?.DateOfService,
                             CodeValue = procedureCode.CodeValue,
-                            CodeSystem = procedureCode.CodeSystem
+                            CodeSystem = procedureCode.CodeSystem,
+                            BodyPart = processStep.BodyPart,
+                            Laterality = processStep.Laterality,
+                            Contrast = processStep.Contrast
                         },
                         cancellationToken);
 

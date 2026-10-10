@@ -136,5 +136,201 @@
         "IsActive": true
       }
     ]
+  },
+  {
+    "QuestionnaireDefinitionId": "f0f8aae0-1288-42d4-8896-9a0e9be621eb",
+    "QuestionnaireId": "priorauth-ct-confirmation",
+    "Version": "1.0.0",
+    "Name": "ct-confirmation",
+    "Title": "Confirm CT",
+    "Description": "Confirms that a CT, not an MRI, is being requested.",
+    "IsActive": true,
+    "Items": [
+      {
+        "QuestionnaireDefinitionItemId": "05dd7fdb-eaef-4cad-8ae6-76a15dbc8478",
+        "QuestionnaireDefinitionId": "f0f8aae0-1288-42d4-8896-9a0e9be621eb",
+        "LinkId": "confirm-ct",
+        "Text": "Procedure {ProcedureCode} is a CT scan. Confirm that a CT, not an MRI, is being requested.",
+        "Type": "boolean",
+        "BindingKey": "ConfirmCt",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 1,
+        "AnswerOptions": []
+      }
+    ],
+    "MappingRules": [
+      {
+        "QuestionnaireMappingRuleId": "b7d2e300-6bcf-45e7-b7f8-4dd0315029c6",
+        "QuestionnaireDefinitionId": "f0f8aae0-1288-42d4-8896-9a0e9be621eb",
+        "StepName": "ConfirmCtInsteadOfMriStep",
+        "PlanId": null,
+        "LineOfBusiness": null,
+        "ProcedureModality": "Ct",
+        "ProcedureCodeValue": null,
+        "Priority": 100,
+        "IsActive": true
+      }
+    ]
+  },
+  {
+    "QuestionnaireDefinitionId": "e8d54091-14cc-4b8f-bf61-348badbc6065",
+    "QuestionnaireId": "priorauth-mri-clinical",
+    "Version": "1.0.0",
+    "Name": "mri-clinical",
+    "Title": "MRI clinical information",
+    "Description": "Clinical information for an MRI request.",
+    "IsActive": true,
+    "Items": [
+      {
+        "QuestionnaireDefinitionItemId": "caec8967-19b7-4379-bc05-3081c2d77dfe",
+        "QuestionnaireDefinitionId": "e8d54091-14cc-4b8f-bf61-348badbc6065",
+        "LinkId": "indication",
+        "Text": "What is the primary reason for the MRI?",
+        "Type": "choice",
+        "BindingKey": "ClinicalIndication",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 1,
+        "AnswerOptions": [
+            { "QuestionnaireDefinitionItemAnswerOptionId": "0e24aa3a-50bc-4fea-9bcb-898c78e92216", "QuestionnaireDefinitionItemId": "caec8967-19b7-4379-bc05-3081c2d77dfe", "Value": "Injury", "DisplayText": "Injury or trauma", "Order": 1 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "31387dd2-ea30-4de4-b938-9dbe2fbd8e33", "QuestionnaireDefinitionItemId": "caec8967-19b7-4379-bc05-3081c2d77dfe", "Value": "PersistentPain", "DisplayText": "Persistent pain", "Order": 2 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "6d3c1033-3175-4986-8bf5-84c02b80a12e", "QuestionnaireDefinitionItemId": "caec8967-19b7-4379-bc05-3081c2d77dfe", "Value": "SuspectedTear", "DisplayText": "Suspected meniscal or ligament tear", "Order": 3 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "be9ed684-01f3-47d1-88fe-ba8bfe200f68", "QuestionnaireDefinitionItemId": "caec8967-19b7-4379-bc05-3081c2d77dfe", "Value": "Mass", "DisplayText": "Mass or suspected tumor", "Order": 4 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "61d2f5fb-7da5-49d1-a1e5-3aaa05788a1f", "QuestionnaireDefinitionItemId": "caec8967-19b7-4379-bc05-3081c2d77dfe", "Value": "PostSurgical", "DisplayText": "Post-surgical evaluation", "Order": 5 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "8996c367-01c5-41d9-8675-5766b12d882d", "QuestionnaireDefinitionItemId": "caec8967-19b7-4379-bc05-3081c2d77dfe", "Value": "Other", "DisplayText": "Other", "Order": 6 }
+        ]
+      },
+      {
+        "QuestionnaireDefinitionItemId": "ecef15ba-9c1b-4b4a-b935-8a9a9c4ce155",
+        "QuestionnaireDefinitionId": "e8d54091-14cc-4b8f-bf61-348badbc6065",
+        "LinkId": "symptom-weeks",
+        "Text": "How many weeks has the patient had symptoms?",
+        "Type": "integer",
+        "BindingKey": "SymptomWeeks",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 2,
+        "AnswerOptions": []
+      },
+      {
+        "QuestionnaireDefinitionItemId": "c2e3ce4c-b70a-477e-b5fe-ba6db3cfca89",
+        "QuestionnaireDefinitionId": "e8d54091-14cc-4b8f-bf61-348badbc6065",
+        "LinkId": "conservative-therapy",
+        "Text": "Which conservative treatments has the patient tried?",
+        "Type": "choice",
+        "BindingKey": "ConservativeTherapy",
+        "Required": true,
+        "Repeats": true,
+        "DefaultValue": null,
+        "Order": 3,
+        "AnswerOptions": [
+            { "QuestionnaireDefinitionItemAnswerOptionId": "7978426d-4780-48a0-aa93-a284c1e3d78b", "QuestionnaireDefinitionItemId": "c2e3ce4c-b70a-477e-b5fe-ba6db3cfca89", "Value": "PhysicalTherapy", "DisplayText": "Physical therapy", "Order": 1 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "510c4365-d3fc-4d2e-b2d2-cd4d5f03020d", "QuestionnaireDefinitionItemId": "c2e3ce4c-b70a-477e-b5fe-ba6db3cfca89", "Value": "AntiInflammatory", "DisplayText": "Anti-inflammatory medication", "Order": 2 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "4e9a4017-4cbd-4d33-9c56-ecf4e08fdf19", "QuestionnaireDefinitionItemId": "c2e3ce4c-b70a-477e-b5fe-ba6db3cfca89", "Value": "Rest", "DisplayText": "Rest or activity modification", "Order": 3 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "879a1135-24bf-4953-b96c-73627d659bf1", "QuestionnaireDefinitionItemId": "c2e3ce4c-b70a-477e-b5fe-ba6db3cfca89", "Value": "Bracing", "DisplayText": "Bracing", "Order": 4 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "3c8b15e4-0616-4b71-9283-7875568e03ef", "QuestionnaireDefinitionItemId": "c2e3ce4c-b70a-477e-b5fe-ba6db3cfca89", "Value": "Injection", "DisplayText": "Injection", "Order": 5 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "ecc5e125-0f26-492f-a0b4-95d60ade6058", "QuestionnaireDefinitionItemId": "c2e3ce4c-b70a-477e-b5fe-ba6db3cfca89", "Value": "None", "DisplayText": "None", "Order": 6 }
+        ]
+      },
+      {
+        "QuestionnaireDefinitionItemId": "20f9f88d-e5fc-4130-b758-defd623aca5e",
+        "QuestionnaireDefinitionId": "e8d54091-14cc-4b8f-bf61-348badbc6065",
+        "LinkId": "conservative-weeks",
+        "Text": "For how many weeks was conservative treatment tried? Enter 0 if none.",
+        "Type": "integer",
+        "BindingKey": "ConservativeTherapyWeeks",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 4,
+        "AnswerOptions": []
+      },
+      {
+        "QuestionnaireDefinitionItemId": "e9889ebe-d967-49d2-ab94-a19c7b6a3ac5",
+        "QuestionnaireDefinitionId": "e8d54091-14cc-4b8f-bf61-348badbc6065",
+        "LinkId": "xray",
+        "Text": "Has an X-ray of the affected area been completed?",
+        "Type": "boolean",
+        "BindingKey": "XrayCompleted",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 5,
+        "AnswerOptions": []
+      },
+      {
+        "QuestionnaireDefinitionItemId": "d684e2c5-1e1e-4d34-a3aa-534876d0d3de",
+        "QuestionnaireDefinitionId": "e8d54091-14cc-4b8f-bf61-348badbc6065",
+        "LinkId": "red-flags",
+        "Text": "Are any of the following present?",
+        "Type": "choice",
+        "BindingKey": "RedFlags",
+        "Required": true,
+        "Repeats": true,
+        "DefaultValue": null,
+        "Order": 6,
+        "AnswerOptions": [
+            { "QuestionnaireDefinitionItemAnswerOptionId": "df9d2a2e-df70-4795-9ef9-3fe229a81887", "QuestionnaireDefinitionItemId": "d684e2c5-1e1e-4d34-a3aa-534876d0d3de", "Value": "Locking", "DisplayText": "Locking or giving way", "Order": 1 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "0ce14c87-3212-4f30-aa0b-d234aab5070c", "QuestionnaireDefinitionItemId": "d684e2c5-1e1e-4d34-a3aa-534876d0d3de", "Value": "Swelling", "DisplayText": "Severe swelling", "Order": 2 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "2df5d856-04ee-4ae6-8cb0-8179baae6369", "QuestionnaireDefinitionItemId": "d684e2c5-1e1e-4d34-a3aa-534876d0d3de", "Value": "CannotBearWeight", "DisplayText": "Unable to bear weight", "Order": 3 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "8a707371-ac83-4fe3-8ef2-be6b722f81e6", "QuestionnaireDefinitionItemId": "d684e2c5-1e1e-4d34-a3aa-534876d0d3de", "Value": "Infection", "DisplayText": "Suspected infection", "Order": 4 },
+            { "QuestionnaireDefinitionItemAnswerOptionId": "2b221cba-96d9-4aaf-b39c-2fe8dbe7a9d1", "QuestionnaireDefinitionItemId": "d684e2c5-1e1e-4d34-a3aa-534876d0d3de", "Value": "None", "DisplayText": "None of these", "Order": 5 }
+        ]
+      }
+    ],
+    "MappingRules": [
+      {
+        "QuestionnaireMappingRuleId": "c13f2384-9eb0-4824-aa0c-6d739ae85b74",
+        "QuestionnaireDefinitionId": "e8d54091-14cc-4b8f-bf61-348badbc6065",
+        "StepName": "CaptureClinicalInfoStep",
+        "PlanId": null,
+        "LineOfBusiness": null,
+        "ProcedureModality": "Mri",
+        "ProcedureCodeValue": null,
+        "Priority": 100,
+        "IsActive": true
+      }
+    ]
+  },
+  {
+    "QuestionnaireDefinitionId": "97c096d7-0674-41c1-9940-ec9a17cddfff",
+    "QuestionnaireId": "priorauth-submit-attestation",
+    "Version": "1.0.0",
+    "Name": "submit-attestation",
+    "Title": "Submit prior authorization",
+    "Description": "Attestation the caller confirms before the request is submitted.",
+    "IsActive": true,
+    "Items": [
+      {
+        "QuestionnaireDefinitionItemId": "6a541e7b-8dff-4f21-9039-793d771f0375",
+        "QuestionnaireDefinitionId": "97c096d7-0674-41c1-9940-ec9a17cddfff",
+        "LinkId": "attested",
+        "Text": "I confirm that the information in this prior authorization request is accurate and complete, and I want to submit it.",
+        "Type": "boolean",
+        "BindingKey": "Attested",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 1,
+        "AnswerOptions": []
+      }
+    ],
+    "MappingRules": [
+      {
+        "QuestionnaireMappingRuleId": "b64b2e7b-eb7c-433b-881d-0b3e5d761286",
+        "QuestionnaireDefinitionId": "97c096d7-0674-41c1-9940-ec9a17cddfff",
+        "StepName": "SubmitPriorAuthorizationStep",
+        "PlanId": null,
+        "LineOfBusiness": null,
+        "ProcedureModality": null,
+        "ProcedureCodeValue": null,
+        "Priority": 100,
+        "IsActive": true
+      }
+    ]
   }
 ]

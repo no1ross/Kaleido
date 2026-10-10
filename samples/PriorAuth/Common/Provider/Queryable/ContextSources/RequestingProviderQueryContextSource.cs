@@ -9,8 +9,8 @@ namespace Kaleido.Samples.PriorAuth.Provider.Queryable.ContextSources;
 
 [QuerySource(
     Version = "1.0.0",
-    DisplayName = "Requesting Providers",
-    Description = "Providers that can request a prior authorization, with their locations.",
+    DisplayName = "Network Providers",
+    Description = "Requesting providers or servicing facilities, with their locations and network status for a plan.",
     Source = "Prior Authorization Provider Search")]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class RequestingProviderQueryContextSource(
@@ -39,7 +39,7 @@ internal sealed class RequestingProviderQueryContextSource(
 
         return
             from location in dbContext.ProviderLocations.AsNoTracking()
-            where location.Provider.ProviderType == ProviderType.RequestingProvider
+            where location.Provider.ProviderType == parameters.ProviderType
             let isInNetwork = dbContext.ProviderLocationNetworks
                 .Any(network =>
                     network.ProviderLocationId == location.ProviderLocationId

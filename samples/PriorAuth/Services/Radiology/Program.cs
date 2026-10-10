@@ -32,7 +32,7 @@ builder.Services.AddScoped<MemberDetailsClient>();
 builder.Services.AddScoped<ProcedureCodeClient>();
 builder.Services.AddScoped<ProcedureModalityClient>();
 builder.Services.AddScoped<MriProcedureCodeResolverClient>();
-builder.Services.AddScoped<QuestionnaireDefinitionClient>();
+builder.Services.AddScoped<ConfiguredInformationRequests>();
 builder.Services.AddScoped<RequestingProviderSearchClient>();
 builder.Services.AddScoped<HistoryClient>();
 
