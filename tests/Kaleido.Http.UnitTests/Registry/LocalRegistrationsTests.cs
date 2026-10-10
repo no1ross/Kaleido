@@ -8,6 +8,10 @@ public sealed class LocalRegistrationsTests
 {
     private static readonly KaleidoServiceOptions ServiceOptions = new() { ServiceName = "intake" };
 
+    // No Process or Queryable registry at all: a host that only aggregates.
+    private static LocalRegistrations CreateSut() =>
+        new([], [], Mock.Of<IProcessorResponseFactory>(), ServiceOptions);
+
     private static LocalRegistrations CreateSut(
         IReadOnlyCollection<ProcessorRegistryItem> processors,
         IReadOnlyCollection<QueryableSourceRegistryItem> queryables)
@@ -22,7 +26,7 @@ public sealed class LocalRegistrationsTests
         responses.Setup(x => x.CreateRegistryResponse(It.IsAny<ProcessorRegistryItem>(), ServiceOptions))
             .Returns((ProcessorRegistryItem _, KaleidoServiceOptions options) => new ProcessorRegistryResponse { Name = options.ServiceName, ServiceName = options.ServiceName });
 
-        return new LocalRegistrations(processorRegistry.Object, queryableRegistry.Object, responses.Object, ServiceOptions);
+        return new LocalRegistrations([processorRegistry.Object], [queryableRegistry.Object], responses.Object, ServiceOptions);
     }
 
     [Fact]
@@ -39,6 +43,15 @@ public sealed class LocalRegistrationsTests
     public void WithNothingRegistered_BothAreEmpty()
     {
         var sut = CreateSut([], []);
+
+        Assert.Empty(sut.Processes());
+        Assert.Empty(sut.Queryables());
+    }
+
+    [Fact]
+    public void AHostWithNoCapabilitiesOfItsOwn_LikeARouter_PublishesNothingLocally()
+    {
+        var sut = CreateSut();
 
         Assert.Empty(sut.Processes());
         Assert.Empty(sut.Queryables());

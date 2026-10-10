@@ -65,7 +65,7 @@ public sealed class KaleidoRegistryServiceTests
         var queryables = new Mock<IQueryableRegistry>();
         queryables.Setup(x => x.Registrations).Returns([]);
 
-        var local = new LocalRegistrations(processors.Object, queryables.Object, responses.Object, serviceOptions);
+        var local = new LocalRegistrations([processors.Object], [queryables.Object], responses.Object, serviceOptions);
 
         return (
             new KaleidoRegistryService(snapshot, local, downstream.Object, authorizer.Object, Mock.Of<Microsoft.AspNetCore.Http.IHttpContextAccessor>(), NullLogger<KaleidoRegistryService>.Instance),
