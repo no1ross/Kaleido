@@ -83,6 +83,14 @@ internal sealed class ToolCatalogProvider(
                 string.Join(", ", catalog.TruncatedNames));
         }
 
+        if (catalog.NameCollisions.Count > 0)
+        {
+            logger.LogWarning(
+                "Kaleido MCP: {Count} capability name(s) collide, so their tools carry a kind suffix; rename the capability types so each name says what it is: {Collisions}.",
+                catalog.NameCollisions.Count,
+                string.Join(", ", catalog.NameCollisions));
+        }
+
         if (catalog.UnresolvedLookups.Count > 0)
         {
             logger.LogWarning(

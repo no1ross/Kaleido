@@ -122,6 +122,9 @@ internal sealed record ToolCatalog
     /// <summary>Step inputs whose lookup names no query tool of this caller ("tool.argument -> service/source[/view]").</summary>
     public IReadOnlyList<string> UnresolvedLookups { get; init; } = [];
 
+    /// <summary>Capabilities whose derived tool names collided, and the names they got instead.</summary>
+    public IReadOnlyList<string> NameCollisions { get; init; } = [];
+
     private IReadOnlyDictionary<string, KaleidoTool>? byName;
     private IReadOnlyDictionary<string, KaleidoTool>? byUrl;
 
@@ -141,6 +144,7 @@ internal sealed record ToolCatalog
         MissingDescriptions = original.MissingDescriptions;
         TruncatedNames = original.TruncatedNames;
         UnresolvedLookups = original.UnresolvedLookups;
+        NameCollisions = original.NameCollisions;
     }
 
     public KaleidoTool? Find(string toolName)

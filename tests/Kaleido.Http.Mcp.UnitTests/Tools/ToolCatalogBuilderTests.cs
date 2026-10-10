@@ -226,8 +226,20 @@ public sealed class ToolCatalogBuilderTests
 
         Assert.Equal(names.Length, names.Distinct(StringComparer.Ordinal).Count());
         Assert.Contains("same", names);
-        Assert.Contains("same_2", names);
+        Assert.Contains("same_step", names);
         Assert.Contains(catalog.TruncatedNames, x => x.Contains("CloseVisitStep", StringComparison.Ordinal));
+        Assert.Single(catalog.NameCollisions);
+    }
+
+    [Fact]
+    public void Build_ASourceAndItsViewWithTheSameName_TheViewSaysItIsAView()
+    {
+        var sut = CreateSut((service, type) => new ToolName("clinic_patient", false));
+
+        var catalog = sut.Build(new AggregatedRegistryResponse { Queryables = [Patients()] });
+
+        Assert.Equal(["clinic_patient", "clinic_patient_view"], catalog.Tools.Select(x => x.Definition.Name));
+        Assert.Contains(catalog.NameCollisions, x => x.Contains("PatientCardViewSource -> clinic_patient_view", StringComparison.Ordinal));
     }
 
     [Fact]
