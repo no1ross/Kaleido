@@ -50,6 +50,7 @@ public sealed class ReviewPriorAuthorizationHandler(
                 ServicingProvider = priorAuthorization.ServicingProvider is { } servicing
                     ? new ReviewedProvider(servicing.ProviderName, servicing.LocationName, servicing.IsInNetwork)
                     : null,
+                ClinicalDetermination = priorAuthorization.ClinicalDetermination,
                 Answers = await informationRequests.AnswersAsync(context.ProcessId, cancellationToken)
             };
 

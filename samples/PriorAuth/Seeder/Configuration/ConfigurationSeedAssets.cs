@@ -11,4 +11,6 @@ internal sealed class ConfigurationSeedAssets
     public required List<MriProcedureCodeRule> MriProcedureCodeRules { get; init; }
 
     public required List<QuestionnaireDefinition> QuestionnaireDefinitions { get; init; }
+
+    public required List<ClinicalPathwayTransition> ClinicalPathwayTransitions { get; init; }
 }

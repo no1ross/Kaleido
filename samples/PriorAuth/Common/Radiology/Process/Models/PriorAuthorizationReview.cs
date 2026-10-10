@@ -21,7 +21,10 @@ public sealed record PriorAuthorizationReview
     [Description("The servicing provider (facility), with network status.")]
     public ReviewedProvider? ServicingProvider { get; init; }
 
-    [Description("Every answered questionnaire: the questions as asked and the caller's answers.")]
+    [Description("The clinical question provider's determination when the clinical review finished (recorded, not decided by Radiology), e.g. CriteriaMet or ClinicalReviewRequired.")]
+    public string? ClinicalDetermination { get; init; }
+
+    [Description("Every answered questionnaire, clinical rounds included: the questions as asked and the caller's answers.")]
     public IReadOnlyList<RecordedQuestionnaire> Answers { get; init; } = [];
 }
 

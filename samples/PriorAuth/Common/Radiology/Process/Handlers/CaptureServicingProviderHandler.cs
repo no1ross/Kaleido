@@ -10,13 +10,12 @@ using Microsoft.EntityFrameworkCore;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 
 /// <summary>
-/// Records the servicing provider, then asks the clinical questions configured for the request
-/// (or moves to review when none are configured).
+/// Records the servicing provider, then starts the clinical review: the clinical question provider's
+/// first round (or review, when no clinical review applies).
 /// </summary>
 public sealed class CaptureServicingProviderHandler(
     RadiologyDbContext dbContext,
-    ProcedureModalityClient procedureModalityClient,
-    ConfiguredInformationRequests informationRequests,
+    RadiologyClinicalReview clinicalReview,
     HistoryClient historyClient)
     : IProcessStepHandler<CaptureServicingProviderStep>
 {
@@ -30,7 +29,6 @@ public sealed class CaptureServicingProviderHandler(
             var priorAuthorization =
                 await dbContext.PriorAuthorizations
                     .Include(x => x.ServicingProvider)
-                    .Include(x => x.RequestedServices)
                     .SingleAsync(x => x.ProcessId == context.ProcessId, cancellationToken);
 
             priorAuthorization.ServicingProvider ??=
@@ -49,19 +47,7 @@ public sealed class CaptureServicingProviderHandler(
                 context.ProcessId,
                 cancellationToken);
 
-            // The clinical questions are selected for the primary (first) requested service.
-            var primaryService = priorAuthorization.RequestedServices.MinBy(x => x.CreatedUtc);
-
-            var modality = primaryService is null
-                ? ProcedureModality.Unknown
-                : await procedureModalityClient.DetermineModalityAsync(primaryService.ResolvedCodeValue, primaryService.ResolvedCodeSystem, cancellationToken);
-
-            return await informationRequests.CreateAsync(
-                    context.ProcessId,
-                    nameof(CaptureClinicalInfoStep),
-                    modality,
-                    primaryService?.ResolvedCodeValue,
-                    cancellationToken) is { } clinical
+            return await clinicalReview.StartAsync(context.ProcessId, cancellationToken) is { } clinical
                 ? ProcessStepHandlerResult.RequireInformation<CaptureClinicalInfoStep>(clinical)
                 : ProcessStepHandlerResult.Success<ReviewPriorAuthorizationStep>();
         }

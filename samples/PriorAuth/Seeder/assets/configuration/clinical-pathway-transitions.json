@@ -1,0 +1,82 @@
+[
+  {
+    "ClinicalPathwayTransitionId": "c4a5a1d8-03f1-4d9a-bb6d-2cc06e02dbfd",
+    "FromQuestionnaireId": "priorauth-mri-clinical-indication",
+    "WhenBindingKey": "ClinicalIndication",
+    "Operator": "Equals",
+    "AnswerValue": "Injury",
+    "ToQuestionnaireId": "priorauth-mri-clinical-injury",
+    "Determination": null,
+    "Priority": 20
+  },
+  {
+    "ClinicalPathwayTransitionId": "441a017c-a354-4532-8476-d46dfb900253",
+    "FromQuestionnaireId": "priorauth-mri-clinical-indication",
+    "WhenBindingKey": "ClinicalIndication",
+    "Operator": "Equals",
+    "AnswerValue": "PersistentPain",
+    "ToQuestionnaireId": "priorauth-mri-clinical-pain",
+    "Determination": null,
+    "Priority": 20
+  },
+  {
+    "ClinicalPathwayTransitionId": "e61a25c0-b5b4-4529-9857-77a056e3760d",
+    "FromQuestionnaireId": "priorauth-mri-clinical-indication",
+    "WhenBindingKey": null,
+    "Operator": "Equals",
+    "AnswerValue": null,
+    "ToQuestionnaireId": "priorauth-mri-clinical-imaging",
+    "Determination": null,
+    "Priority": 0
+  },
+  {
+    "ClinicalPathwayTransitionId": "865abaf8-61ce-459a-9e20-f268c0e94636",
+    "FromQuestionnaireId": "priorauth-mri-clinical-injury",
+    "WhenBindingKey": null,
+    "Operator": "Equals",
+    "AnswerValue": null,
+    "ToQuestionnaireId": "priorauth-mri-clinical-imaging",
+    "Determination": null,
+    "Priority": 0
+  },
+  {
+    "ClinicalPathwayTransitionId": "d08f7919-767e-46b9-ba30-aec96784a6b3",
+    "FromQuestionnaireId": "priorauth-mri-clinical-pain",
+    "WhenBindingKey": null,
+    "Operator": "Equals",
+    "AnswerValue": null,
+    "ToQuestionnaireId": "priorauth-mri-clinical-imaging",
+    "Determination": null,
+    "Priority": 0
+  },
+  {
+    "ClinicalPathwayTransitionId": "e697a174-35e9-4a08-8f02-87a549946443",
+    "FromQuestionnaireId": "priorauth-mri-clinical-imaging",
+    "WhenBindingKey": "RedFlags",
+    "Operator": "NotEquals",
+    "AnswerValue": "None",
+    "ToQuestionnaireId": null,
+    "Determination": "UrgentClinicalReview",
+    "Priority": 30
+  },
+  {
+    "ClinicalPathwayTransitionId": "b17d329c-2fd6-46e9-b518-2872df91d0c2",
+    "FromQuestionnaireId": "priorauth-mri-clinical-imaging",
+    "WhenBindingKey": "XrayCompleted",
+    "Operator": "Equals",
+    "AnswerValue": "true",
+    "ToQuestionnaireId": null,
+    "Determination": "CriteriaMet",
+    "Priority": 20
+  },
+  {
+    "ClinicalPathwayTransitionId": "cbc34f8a-46a3-4cdf-b1b6-a125b5baf157",
+    "FromQuestionnaireId": "priorauth-mri-clinical-imaging",
+    "WhenBindingKey": null,
+    "Operator": "Equals",
+    "AnswerValue": null,
+    "ToQuestionnaireId": null,
+    "Determination": "ClinicalReviewRequired",
+    "Priority": 0
+  }
+]
