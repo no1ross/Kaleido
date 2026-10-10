@@ -45,7 +45,7 @@ public sealed class ReviewPriorAuthorizationHandler(
                     .Select(x => new ReviewedService(x.ResolvedCodeValue, x.ResolvedCodeSystem, x.Description))
                     .ToArray(),
                 RequestingProvider = priorAuthorization.RequestingProvider is { } requesting
-                    ? new ReviewedProvider(requesting.ProviderName, requesting.LocationName, null)
+                    ? new ReviewedProvider(requesting.ProviderName, requesting.LocationName, requesting.IsInNetwork)
                     : null,
                 ServicingProvider = priorAuthorization.ServicingProvider is { } servicing
                     ? new ReviewedProvider(servicing.ProviderName, servicing.LocationName, servicing.IsInNetwork)

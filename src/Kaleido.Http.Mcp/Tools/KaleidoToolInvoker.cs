@@ -79,7 +79,7 @@ internal sealed record ToolOutcome
     public static implicit operator ToolOutcome(CallToolResult result) => new() { Result = result };
 }
 
-internal sealed class KaleidoToolInvoker(
+internal sealed partial class KaleidoToolInvoker(
     IKaleidoProcessorClientFactory processors,
     IKaleidoQueryableClientFactory queryables,
     IInformationRequestElicitor elicitor,
@@ -104,6 +104,12 @@ internal sealed class KaleidoToolInvoker(
 
         try
         {
+            // An MRTR retry of a guided lookup: the user searched, or picked a result.
+            if (call.RequestState?.StartsWith(LookupStatePrefix, StringComparison.Ordinal) == true)
+            {
+                return await ContinueLookupAsync(call, catalog, cancellationToken);
+            }
+
             // An MRTR retry: the user answered the form returned with the previous round.
             if (call.RequestState?.StartsWith(StatePrefix, StringComparison.Ordinal) == true)
             {
@@ -247,9 +253,27 @@ internal sealed class KaleidoToolInvoker(
                 $"{tool.Definition.Name} continues an existing process: pass the processId returned by an earlier step.");
         }
 
+        // A lookup the agent did not fill: when the client shows forms, the user searches and picks
+        // the result, and the adapter fills the inputs from it, so the ids never pass through the model.
+        if (ElicitationMode(call) != Elicitation.None && MissingLookup(tool, call.Arguments) is { } lookup)
+        {
+            return await GuideLookupAsync(tool, lookup, call, catalog, processId, cancellationToken);
+        }
+
+        return await RunStepAsync(tool, call.Arguments, processId, call, catalog, cancellationToken);
+    }
+
+    private async Task<ToolOutcome> RunStepAsync(
+        KaleidoTool tool,
+        IReadOnlyDictionary<string, JsonElement> arguments,
+        Guid? processId,
+        KaleidoToolCall call,
+        ToolCatalog catalog,
+        CancellationToken cancellationToken)
+    {
         var step = new JsonObject();
 
-        foreach (var (name, value) in call.Arguments.Where(x => !string.Equals(x.Key, "processId", StringComparison.OrdinalIgnoreCase)))
+        foreach (var (name, value) in arguments.Where(x => !string.Equals(x.Key, "processId", StringComparison.OrdinalIgnoreCase)))
         {
             step[name] = JsonNode.Parse(value.GetRawText());
         }
