@@ -36,17 +36,14 @@ public sealed class CaptureMriInfoHandler(
         {
             await informationRequests.RecordAnswersAsync(context.ProcessId, nameof(CaptureMriInfoStep), processStep, cancellationToken);
 
+            // The questions were about the service captured last. Ordered in memory: SQLite cannot
+            // order by DateTimeOffset, and a request has only a few services.
             var requestedService =
-                await dbContext.PriorAuthorizationRequestedServices
-                    .Join(
-                        dbContext.PriorAuthorizations,
-                        requestedService => requestedService.PriorAuthorizationId,
-                        priorAuthorization => priorAuthorization.PriorAuthorizationId,
-                        (requestedService, priorAuthorization) => new { requestedService, priorAuthorization.ProcessId })
-                    .Where(x => x.ProcessId == context.ProcessId)
-                    .Select(x => x.requestedService)
-                    .OrderByDescending(x => x.CreatedUtc)
-                    .FirstAsync(cancellationToken);
+                (await dbContext.PriorAuthorizationRequestedServices
+                    .Where(x => x.PriorAuthorization.ProcessId == context.ProcessId)
+                    .ToListAsync(cancellationToken))
+                .MaxBy(x => x.CreatedUtc)
+                ?? throw new InvalidOperationException($"Process {context.ProcessId} has no requested service.");
 
             var originalCodeValue = requestedService.ResolvedCodeValue;
             var originalCodeSystem = requestedService.ResolvedCodeSystem;
