@@ -24,6 +24,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0006](./0006-structural-validation-and-next-step-gate.md) | Structural-only answer validation; only next steps run | Accepted | #142 |
 | [0007](./0007-input-metadata-for-ai.md) | Input metadata is a published hint, nudged by analyzer warnings; verbatim text; AI safeguards live in the adapter | Accepted | #142, #140 |
 | [0008](./0008-rejected-outcome-and-retryable-exceptions.md) | Correctable input is rejected without changing the process; unexpected errors are retryable | Accepted | #237, #238 |
+| [0009](./0009-unknown-process-id-only-on-handoff.md) | An unknown process id starts a process only on a handoff | Accepted | #140 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are

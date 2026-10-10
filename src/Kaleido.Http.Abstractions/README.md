@@ -23,7 +23,7 @@ See also:
 - `ProcessorRegistryResponse` — full processor registry record (all step metadata)
 - `ProcessStepResponse` — detailed step metadata record
 
-For `POST /{service}/processes/steps/{step}`, the JSON request is an `ExecuteStepRequest<TStep>` envelope such as `{"processStep":{"field":"value"}}`. The route selects the step, and an existing process id is supplied in the optional `X-Kaleido-Process-Id` header, not the body. See the [per-step HTTP contract](../Kaleido.Http/README.md#per-step-process-execution-contract) for the typed and untyped response shapes.
+For `POST /{service}/processes/steps/{step}`, the JSON request is an `ExecuteStepRequest<TStep>` envelope such as `{"processStep":{"field":"value"}}`. The route selects the step, and an existing process id is supplied in the optional `X-Kaleido-Process-Id` header, not the body. Omit it to start a new process; an id that does not exist is rejected (`pro_process_not_found`) unless the call is a handoff from another processor (ADR 0009). See the [per-step HTTP contract](../Kaleido.Http/README.md#per-step-process-execution-contract) for the typed and untyped response shapes.
 
 ### Queryable HTTP contracts
 - `QueryApiRequest` / `QueryApiRequest<TParameters>` — query request body (search, filter, sort, page, optional view parameters)
