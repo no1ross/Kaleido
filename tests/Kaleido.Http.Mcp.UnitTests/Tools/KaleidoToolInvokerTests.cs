@@ -415,6 +415,34 @@ public sealed class KaleidoToolInvokerTests
     }
 
     [Fact]
+    public async Task RejectedStep_SaysNothingChanged_AndKeepsTheNextSteps()
+    {
+        StepReturns(StepResponse(available: [new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }]) with
+        {
+            Outcome = StepExecutionOutcome.Rejected
+        });
+
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        Assert.Equal("rejected", body["outcome"]?.GetValue<string>());
+        Assert.Contains("nothing was changed", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Single(body["next"]?["available"]?.AsArray() ?? []);
+    }
+
+    [Fact]
+    public async Task FailedStepWithNextSteps_SaysNothingWasRecorded()
+    {
+        StepReturns(StepResponse(available: [new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }]) with
+        {
+            Outcome = StepExecutionOutcome.Failed
+        });
+
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        Assert.Contains("nothing was recorded", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task FrameworkMessages_AreShownOnlyWhenTheyMatter_BusinessMessagesAlways()
     {
         StepReturns(StepResponse() with

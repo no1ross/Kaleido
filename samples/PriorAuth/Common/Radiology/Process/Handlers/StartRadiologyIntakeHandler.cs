@@ -40,11 +40,30 @@ public sealed class StartRadiologyIntakeHandler(
 
             if (procedureCode is null)
             {
-                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
-                    new StartRadiologyIntakeResponse(),
-                    RadiologyProcessMessages.ProcedureCodeNotFound(
+                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Reject(RadiologyProcessMessages.ProcedureCodeNotFound(
                         processStep.CodeSystem,
                         processStep.CodeValue));
+            }
+
+            // --- Eligibility, before anything is written, so a rejected start leaves nothing behind ---
+
+            MemberEligibilityResult? eligibility = null;
+
+            if (processStep.MemberId.HasValue && processStep.MemberEnrollmentId.HasValue)
+            {
+                eligibility =
+                    await memberEligibilityService.ValidateAsync(
+                        processStep.MemberId.Value,
+                        processStep.MemberEnrollmentId.Value,
+                        processStep.DateOfService ?? DateOnly.FromDateTime(DateTime.UtcNow),
+                        context.ProcessId,
+                        cancellationToken);
+
+                if (!eligibility.Succeeded)
+                {
+                    return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Reject(
+                        eligibility.FailureMessage!);
+                }
             }
 
             // --- Upsert PriorAuthorization ---
@@ -52,6 +71,7 @@ public sealed class StartRadiologyIntakeHandler(
             var priorAuthorization =
                 await dbContext.PriorAuthorizations
                     .Include(x => x.Member)
+                    .Include(x => x.RequestedServices)
                     .SingleOrDefaultAsync(
                         x => x.ProcessId == context.ProcessId,
                         cancellationToken);
@@ -70,8 +90,12 @@ public sealed class StartRadiologyIntakeHandler(
                 dbContext.PriorAuthorizations.Add(priorAuthorization);
             }
 
-            // --- Add requested service ---
+            // --- Add requested service (once: a retried start does not add it again) ---
 
+            if (!priorAuthorization.RequestedServices.Any(x =>
+                    x.ResolvedCodeValue == procedureCode.CodeValue &&
+                    x.ResolvedCodeSystem == procedureCode.CodeSystem))
+            {
             dbContext.PriorAuthorizationRequestedServices.Add(
                 new PriorAuthorizationRequestedService
                 {
@@ -87,6 +111,7 @@ public sealed class StartRadiologyIntakeHandler(
                     CreatedUtc = DateTimeOffset.UtcNow,
                     StatedDetailsJson = StatedServiceDetails.ToJson(processStep.BodyPart, processStep.Laterality, processStep.Contrast)
                 });
+            }
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -108,7 +133,7 @@ public sealed class StartRadiologyIntakeHandler(
 
             // --- Route based on member presence ---
 
-            if (!processStep.MemberId.HasValue || !processStep.MemberEnrollmentId.HasValue)
+            if (eligibility is null)
             {
                 // No member provided — require ValidateMember next
                 return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success<ValidateMemberStep>(
@@ -116,21 +141,7 @@ public sealed class StartRadiologyIntakeHandler(
                     RadiologyProcessMessages.MemberInfoNotProvided());
             }
 
-            // Member provided — validate eligibility and route by modality
-            var eligibility =
-                await memberEligibilityService.ValidateAsync(
-                    processStep.MemberId.Value,
-                    processStep.MemberEnrollmentId.Value,
-                    processStep.DateOfService ?? DateOnly.FromDateTime(DateTime.UtcNow),
-                    context.ProcessId,
-                    cancellationToken);
-
-            if (!eligibility.Succeeded)
-            {
-                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
-                    new StartRadiologyIntakeResponse(),
-                    eligibility.FailureMessage!);
-            }
+            // Member provided and eligible (checked before anything was written): record it and route by modality
 
             // Persist member onto the PriorAuthorization
             if (priorAuthorization.Member is null)
@@ -161,9 +172,7 @@ public sealed class StartRadiologyIntakeHandler(
 
             if (!routing.Succeeded)
             {
-                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
-                    new StartRadiologyIntakeResponse(),
-                    routing.FailureMessage!);
+                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Reject(routing.FailureMessage!);
             }
 
             var response =
@@ -176,9 +185,7 @@ public sealed class StartRadiologyIntakeHandler(
         catch (KaleidoHttpClientException ex)
         {
             Console.WriteLine($"[Radiology StartRadiologyIntake] KaleidoHttpClientException caught for process {context.ProcessId}: {ex.Message}");
-            return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Failure(
-                new StartRadiologyIntakeResponse(),
-                RadiologyProcessMessages.QueryableRequestFailed(
+            return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Reject(RadiologyProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));
         }

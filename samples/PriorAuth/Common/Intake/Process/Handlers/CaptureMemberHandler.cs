@@ -31,7 +31,7 @@ public sealed class CaptureMemberHandler(
 
             if (memberDetails is null)
             {
-                return ProcessStepHandlerResult.Failure(
+                return ProcessStepHandlerResult.Reject(
                     IntakeProcessMessages.MemberNotFound(
                         processStep.MemberId,
                         processStep.MemberEnrollmentId));
@@ -90,7 +90,7 @@ public sealed class CaptureMemberHandler(
         }
         catch (KaleidoHttpClientException ex)
         {
-            return ProcessStepHandlerResult.Failure(
+            return ProcessStepHandlerResult.Reject(
                 IntakeProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));
