@@ -21,4 +21,32 @@ public sealed class ProcessorResponseFactoryTests
         Assert.Empty(result.Steps ?? []);
     }
 
+    [Fact]
+    public void CreateRegistryResponse_PublishesAStepInputsLookup()
+    {
+        var lookup = new LookupMetadata
+        {
+            Service = "member",
+            Source = "Member",
+            View = "MemberSearch",
+            Field = "MemberId",
+            Group = "member/Member/MemberSearch",
+            Display = ["DisplayName"]
+        };
+        var registration = new ProcessorRegistryItem
+        {
+            Steps =
+            [
+                new ProcessorStepRegistryItem
+                {
+                    Name = "ValidateMemberStep",
+                    Fields = [new ProcessorInputFieldDescriptor { Name = "MemberId", DataType = new DataTypeDescriptor("string"), Lookup = lookup }]
+                }
+            ]
+        };
+
+        var result = CreateSut().CreateRegistryResponse(registration, new KaleidoServiceOptions { ServiceName = "intake" });
+
+        Assert.Equal(lookup, Assert.Single(Assert.Single(result.Steps ?? []).Fields).Lookup);
+    }
 }

@@ -47,6 +47,37 @@ internal sealed record KaleidoTool
 
     /// <summary>For a step: it may start a new process (no processId needed).</summary>
     public bool IsInitial { get; init; }
+
+    /// <summary>For a step: its inputs that take their values from one result of a query.</summary>
+    public IReadOnlyList<ToolLookup> Lookups { get; init; } = [];
+}
+
+/// <summary>
+/// A step's lookup, resolved against the caller's tools: the step inputs filled from one result of
+/// a query, and the query tool that finds it (null when the caller has no such tool).
+/// </summary>
+[ExcludeFromCodeCoverage]
+internal sealed record ToolLookup
+{
+    public required string Group { get; init; }
+
+    public required string Service { get; init; }
+
+    public required string Source { get; init; }
+
+    public string? View { get; init; }
+
+    /// <summary>The query tool that finds the result; null when the caller may not use it or it is not published.</summary>
+    public string? QueryTool { get; init; }
+
+    /// <summary>The query tool's title (the source's or view's display name).</summary>
+    public string? QueryTitle { get; init; }
+
+    /// <summary>Step argument -> result field, for every input of the group.</summary>
+    public required IReadOnlyList<(string Argument, string Field)> Inputs { get; init; }
+
+    /// <summary>The result fields that identify a result to a person.</summary>
+    public IReadOnlyList<string> Display { get; init; } = [];
 }
 
 /// <summary>
@@ -84,6 +115,9 @@ internal sealed record ToolCatalog
 
     /// <summary>Tool names that were shortened to fit MCP's 64-character limit.</summary>
     public IReadOnlyList<string> TruncatedNames { get; init; } = [];
+
+    /// <summary>Step inputs whose lookup names no query tool of this caller ("tool.argument -> service/source[/view]").</summary>
+    public IReadOnlyList<string> UnresolvedLookups { get; init; } = [];
 
     private IReadOnlyDictionary<string, KaleidoTool>? byName;
     private IReadOnlyDictionary<string, KaleidoTool>? byUrl;

@@ -83,6 +83,14 @@ internal sealed class ToolCatalogProvider(
                 string.Join(", ", catalog.TruncatedNames));
         }
 
+        if (catalog.UnresolvedLookups.Count > 0)
+        {
+            logger.LogWarning(
+                "Kaleido MCP: {Count} step input lookup(s) name a query that is not published or not visible to this caller, so agents must ask for the value: {Lookups}.",
+                catalog.UnresolvedLookups.Count,
+                string.Join(", ", catalog.UnresolvedLookups));
+        }
+
         if (catalog.IsPartial)
         {
             logger.LogWarning(
