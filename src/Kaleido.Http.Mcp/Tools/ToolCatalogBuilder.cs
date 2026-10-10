@@ -81,7 +81,8 @@ internal sealed class ToolCatalogBuilder(
             UnavailableServices = registry.ClientErrors.Select(x => x.ClientName).ToArray(),
             ProcessServices = processServices,
             MissingDescriptions = context.MissingDescriptions,
-            TruncatedNames = context.TruncatedNames
+            TruncatedNames = context.TruncatedNames,
+            UnresolvedLookups = context.UnresolvedLookups
         };
     }
 
@@ -332,6 +333,8 @@ internal sealed class ToolCatalogBuilder(
             required.Add("processId");
         }
 
+        var lookups = Lookups(context, name, step.Fields);
+
         foreach (var field in step.Fields)
         {
             var argument = Camel(field.Name);
@@ -341,7 +344,9 @@ internal sealed class ToolCatalogBuilder(
                 context.MissingDescriptions.Add($"{name}.{argument}");
             }
 
-            properties[argument] = schemaBuilder.ForValue(field.DataType, FieldDescription(field), field.Constraints);
+            var lookup = lookups.FirstOrDefault(x => x.Inputs.Any(i => string.Equals(i.Argument, argument, StringComparison.Ordinal)));
+
+            properties[argument] = schemaBuilder.ForValue(field.DataType, FieldDescription(field, argument, lookup), field.Constraints);
 
             if (schemaBuilder.IsRequired(field.Constraints))
             {
@@ -361,6 +366,7 @@ internal sealed class ToolCatalogBuilder(
             (step.IsInitial
                 ? " Can start a new process (call without processId) or continue one."
                 : " Continues an existing process: pass its processId.") +
+            LookupSummary(lookups) +
             Returns(step.Result?.OutputFields) +
             " Changes state.";
 
@@ -383,15 +389,87 @@ internal sealed class ToolCatalogBuilder(
             Service = processor.ServiceName,
             CapabilityName = step.Name,
             Url = step.ExecuteUrl,
-            IsInitial = step.IsInitial
+            IsInitial = step.IsInitial,
+            Lookups = lookups
         });
     }
 
+    // A step's lookups, by group, resolved to the caller's query tools (already in the context:
+    // query tools are built before step tools).
+    private static IReadOnlyList<ToolLookup> Lookups(
+        BuildContext context,
+        string toolName,
+        IReadOnlyCollection<ProcessFieldMetadata> fields)
+    {
+        var lookups = new List<ToolLookup>();
+
+        foreach (var group in fields.Where(x => x.Lookup is not null).GroupBy(x => x.Lookup?.Group ?? string.Empty, StringComparer.Ordinal))
+        {
+            var first = group.Select(x => x.Lookup).OfType<Kaleido.Processor.Registry.LookupMetadata>().First();
+
+            var query = context.Tools.FirstOrDefault(x =>
+                x.Kind == KaleidoToolKind.Query &&
+                string.Equals(x.Service, first.Service, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(x.SourceName, first.Source, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(x.ViewName, first.View, StringComparison.OrdinalIgnoreCase));
+
+            var inputs = group
+                .Select(x => (Argument: Camel(x.Name), Field: x.Lookup?.Field ?? string.Empty))
+                .ToArray();
+
+            if (query is null)
+            {
+                context.UnresolvedLookups.AddRange(inputs.Select(x =>
+                    $"{toolName}.{x.Argument} -> {first.Service}/{first.Source}{(first.View is null ? string.Empty : "/" + first.View)}"));
+            }
+
+            lookups.Add(new ToolLookup
+            {
+                Group = group.Key,
+                Service = first.Service,
+                Source = first.Source,
+                View = first.View,
+                QueryTool = query?.Definition.Name,
+                QueryTitle = query?.Definition.Title,
+                Inputs = inputs,
+                Display = first.Display
+            });
+        }
+
+        return lookups;
+    }
+
+    // One sentence per lookup in the step's description, so an agent plans the searches first.
+    private static string LookupSummary(IReadOnlyList<ToolLookup> lookups) =>
+        string.Concat(lookups.Select(x =>
+            x.QueryTool is { } tool
+                ? $" Before calling, find {string.Join(" and ", x.Inputs.Select(i => i.Argument))} with {tool}: the user identifies the record and picks one result."
+                : $" {string.Join(" and ", x.Inputs.Select(i => i.Argument))} come from {x.View ?? x.Source} on {x.Service}, which you cannot search: ask the user."));
+
     // Step fields carry [Display] hints next to the description; agents may phrase questions
-    // their own way, so they are offered as hints.
-    private static string? FieldDescription(ProcessFieldMetadata field)
+    // their own way, so they are offered as hints. A lookup says exactly where the value comes from.
+    private static string? FieldDescription(
+        ProcessFieldMetadata field,
+        string argument,
+        ToolLookup? lookup)
     {
         var hints = new List<string>();
+
+        if (lookup is { QueryTool: { } tool })
+        {
+            var resultField = lookup.Inputs.First(x => string.Equals(x.Argument, argument, StringComparison.Ordinal)).Field;
+            var siblings = lookup.Inputs.Where(x => !string.Equals(x.Argument, argument, StringComparison.Ordinal)).Select(x => x.Argument).ToArray();
+
+            hints.Add(
+                $"Value: the {resultField} of one {lookup.QueryTitle ?? tool} result. Ask the user for details that identify the record, search with {tool}, show the matches" +
+                (lookup.Display.Count > 0 ? $" ({string.Join(", ", lookup.Display)})" : string.Empty) +
+                " and let the user pick one; never guess or invent it." +
+                (siblings.Length > 0 ? $" Take {string.Join(" and ", siblings)} from the same result." : string.Empty));
+        }
+        else if (lookup is not null)
+        {
+            hints.Add($"Value: a {lookup.View ?? lookup.Source} result's {lookup.Inputs.First(x => string.Equals(x.Argument, argument, StringComparison.Ordinal)).Field} on {lookup.Service}, which you cannot search: ask the user.");
+        }
 
         if (!string.IsNullOrWhiteSpace(field.DisplayName))
         {
@@ -586,6 +664,8 @@ internal sealed class ToolCatalogBuilder(
         public List<string> MissingDescriptions { get; } = [];
 
         public List<string> TruncatedNames { get; } = [];
+
+        public List<string> UnresolvedLookups { get; } = [];
 
         public void Add(KaleidoTool tool)
         {

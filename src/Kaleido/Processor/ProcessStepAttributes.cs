@@ -150,3 +150,60 @@ public sealed class AvailableUntilAttribute<TStep> : Attribute, IStepRelationshi
     /// </summary>
     public Type StepType => typeof(TStep);
 }
+
+/// <summary>
+/// Declares where a step input's value comes from: a field of <b>one result</b> of a query
+/// (a source, or one of its views), possibly on another service. Users describe what they know
+/// (a name, a date of birth); the input takes an id they cannot type.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Kaleido publishes the link in the registry and never chooses the record (ADR 0001, ADR 0008):
+/// a UI can render a lookup, and the MCP adapter tells an agent which query tool fills the input,
+/// so it asks the user to identify the record, searches, and lets the user pick the result.
+/// </para>
+/// <para>
+/// Inputs that share a <see cref="Group"/> are filled from the <b>same</b> result (for example a
+/// member's id and enrollment id). The query is named by its published names because it may live
+/// on another service; the names are checked where the registries meet (the MCP adapter reports a
+/// lookup it cannot resolve), not at startup.
+/// </para>
+/// </remarks>
+/// <example>
+/// <code>
+/// [Lookup(Service = "member", Source = "Member", View = "MemberSearch", Field = "MemberId",
+///     Display = ["DisplayName", "DateOfBirth", "MemberNumber", "PlanName"])]
+/// public Guid MemberId { get; init; }
+///
+/// [Lookup(Service = "member", Source = "Member", View = "MemberSearch", Field = "MemberEnrollmentId")]
+/// public Guid MemberEnrollmentId { get; init; }
+/// </code>
+/// </example>
+[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+public sealed class LookupAttribute : Attribute
+{
+    /// <summary>The service that publishes the query (its route prefix, as in the registry's <c>serviceName</c>).</summary>
+    public required string Service { get; init; }
+
+    /// <summary>The query source's published name (its type name).</summary>
+    public required string Source { get; init; }
+
+    /// <summary>The view of <see cref="Source"/> to query, or null to query the source directly.</summary>
+    public string? View { get; init; }
+
+    /// <summary>The result field whose value the input takes.</summary>
+    public required string Field { get; init; }
+
+    /// <summary>
+    /// Inputs with the same group are filled from the same result. Defaults to one group per query
+    /// (<c>{Service}/{Source}[/{View}]</c>); name groups explicitly when a step looks up the same
+    /// query twice (for example a requesting and a servicing provider).
+    /// </summary>
+    public string? Group { get; init; }
+
+    /// <summary>
+    /// The result fields that identify a result to a person (for example name, date of birth and
+    /// member number), in display order. Declaring them on any input of the group is enough.
+    /// </summary>
+    public string[] Display { get; init; } = [];
+}

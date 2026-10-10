@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using Kaleido.Samples.PriorAuth.CodeSet.Queryable.ContextSources;
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Processor;
 
@@ -16,8 +18,20 @@ public sealed record CaptureRequestedServiceStep : IProcessStep
 {
     [Required]
     [StringLength(50)]
+    [Description("The procedure code of the service that needs to be rendered, found with Procedure Codes from what the caller describes or the code they give.")]
+    [Display(Name = "Requested service", Prompt = "What service needs to be rendered?")]
+    [Lookup(
+        Service = "codeset",
+        Source = nameof(ProcedureCodeQueryContextSource),
+        Field = "CodeValue",
+        Display = ["CodeValue", "ShortDescription", "CodeSystem", "RequiresAuthorization"])]
     public string CodeValue { get; init; } = string.Empty;
 
     [Required]
+    [Description("The code system (CPT, HCPCS) of the same Procedure Codes result.")]
+    [Lookup(
+        Service = "codeset",
+        Source = nameof(ProcedureCodeQueryContextSource),
+        Field = "CodeSystem")]
     public ProcedureCodeSystem CodeSystem { get; init; }
 }

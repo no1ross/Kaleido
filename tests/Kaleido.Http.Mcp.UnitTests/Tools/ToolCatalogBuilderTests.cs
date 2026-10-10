@@ -250,4 +250,84 @@ public sealed class ToolCatalogBuilderTests
         Assert.Equal("clinic_closevisitstep", catalog.FindByUrl("/CLINIC/processes/steps/CloseVisitStep")?.Definition.Name);
         Assert.Null(catalog.FindByUrl(null));
     }
+
+    // ── Lookups ──────────────────────────────────────────────────────────────
+
+    private static ProcessorRegistryResponse Referrals(string viewName = "PatientCardViewSource") => new()
+    {
+        ServiceName = "referrals",
+        Name = "referrals",
+        Steps =
+        [
+            new ProcessStepResponse
+            {
+                Name = "ReferPatientStep",
+                Description = "Refers a patient",
+                IsInitial = true,
+                ExecuteUrl = "/referrals/processes/steps/ReferPatientStep",
+                Fields =
+                [
+                    new ProcessFieldMetadata
+                    {
+                        Name = "PatientId",
+                        Description = "The patient.",
+                        DataType = Text,
+                        Lookup = new Kaleido.Processor.Registry.LookupMetadata { Service = "clinic", Source = "PatientSource", View = viewName, Field = "Id", Group = "patient", Display = ["Name", "DateOfBirth"] }
+                    },
+                    new ProcessFieldMetadata
+                    {
+                        Name = "PatientName",
+                        Description = "The patient's name.",
+                        DataType = Text,
+                        Lookup = new Kaleido.Processor.Registry.LookupMetadata { Service = "clinic", Source = "PatientSource", View = viewName, Field = "Name", Group = "patient" }
+                    },
+                    new ProcessFieldMetadata { Name = "Reason", Description = "Why.", DataType = Text }
+                ]
+            }
+        ]
+    };
+
+    private static string ArgumentDescription(KaleidoTool tool, string argument) =>
+        tool.Definition.InputSchema.GetProperty("properties").GetProperty(argument).GetProperty("description").GetString() ?? string.Empty;
+
+    [Fact]
+    public void StepTool_ALookup_NamesTheQueryTool_TheResultField_AndTheInputsFromTheSameResult()
+    {
+        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Referrals()] }), "referrals_referpatientstep");
+
+        var patientId = ArgumentDescription(tool, "patientId");
+
+        Assert.StartsWith("The patient.", patientId, StringComparison.Ordinal);
+        Assert.Contains("the Id of one Patient card result", patientId, StringComparison.Ordinal);
+        Assert.Contains("search with clinic_patientcardviewsource", patientId, StringComparison.Ordinal);
+        Assert.Contains("(Name, DateOfBirth)", patientId, StringComparison.Ordinal);
+        Assert.Contains("never guess", patientId, StringComparison.Ordinal);
+        Assert.Contains("Take patientName from the same result.", patientId, StringComparison.Ordinal);
+        Assert.DoesNotContain("Value:", ArgumentDescription(tool, "reason"), StringComparison.Ordinal);
+        Assert.Contains("Before calling, find patientId and patientName with clinic_patientcardviewsource", tool.Definition.Description, StringComparison.Ordinal);
+
+        var lookup = Assert.Single(tool.Lookups);
+        Assert.Equal("clinic_patientcardviewsource", lookup.QueryTool);
+        Assert.Equal([("patientId", "Id"), ("patientName", "Name")], lookup.Inputs);
+    }
+
+    [Fact]
+    public void StepTool_ALookupTheCallerCannotSearch_SaysToAskTheUser_AndIsReported()
+    {
+        // No clinic queryables: the caller cannot see the lookup's query.
+        var catalog = Build(new AggregatedRegistryResponse { Processes = [Referrals()] });
+        var tool = Tool(catalog, "referrals_referpatientstep");
+
+        Assert.Contains("which you cannot search: ask the user", ArgumentDescription(tool, "patientId"), StringComparison.Ordinal);
+        Assert.Null(Assert.Single(tool.Lookups).QueryTool);
+        Assert.Contains("referrals_referpatientstep.patientId -> clinic/PatientSource/PatientCardViewSource", catalog.UnresolvedLookups);
+    }
+
+    [Fact]
+    public void StepTool_ALookupOfAnUnknownView_IsUnresolved()
+    {
+        var catalog = Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Referrals("NoSuchView")] });
+
+        Assert.Equal(2, catalog.UnresolvedLookups.Count);
+    }
 }

@@ -163,6 +163,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Name = item.Name,
             DisplayName = item.DisplayName,
             Prompt = item.Prompt,
+            Lookup = item.Lookup,
             Description = item.Description,
             DataType = item.DataType,
             Constraints = item.Constraints
