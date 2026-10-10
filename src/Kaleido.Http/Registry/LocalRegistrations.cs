@@ -7,15 +7,25 @@ namespace Kaleido.Http.Registry;
 /// This service's own registrations in their published (registry) shape: its process steps and its
 /// query sources with their views.
 /// </summary>
+/// <remarks>
+/// A host may have no capabilities of one kind, or none at all (a router only aggregates), so the
+/// Process and Queryable registries are optional: a missing one contributes nothing.
+/// </remarks>
 internal sealed class LocalRegistrations(
-    IProcessorRegistry processorRegistry,
-    IQueryableRegistry queryableRegistry,
+    IEnumerable<IProcessorRegistry> processorRegistries,
+    IEnumerable<IQueryableRegistry> queryableRegistries,
     IProcessorResponseFactory responseFactory,
     KaleidoServiceOptions serviceOptions)
 {
     public IEnumerable<ProcessorRegistryResponse> Processes() =>
-        processorRegistry.Registrations.Select(r => responseFactory.CreateRegistryResponse(r, serviceOptions));
+        processorRegistries
+            .Take(1)
+            .SelectMany(x => x.Registrations)
+            .Select(r => responseFactory.CreateRegistryResponse(r, serviceOptions));
 
     public IEnumerable<QueryableSourceResponse> Queryables() =>
-        queryableRegistry.Registrations.Select(r => QueryableSourceResponse.FromRegistryItem(r, serviceOptions.ServiceName));
+        queryableRegistries
+            .Take(1)
+            .SelectMany(x => x.Registrations)
+            .Select(r => QueryableSourceResponse.FromRegistryItem(r, serviceOptions.ServiceName));
 }
