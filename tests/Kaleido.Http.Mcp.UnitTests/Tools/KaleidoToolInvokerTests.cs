@@ -134,6 +134,13 @@ public sealed class KaleidoToolInvokerTests
 
         StepReturns(StepResponse());
 
+        // By default the process a step continues exists; tests that need otherwise say so.
+        foreach (var client in services.Values)
+        {
+            client.Setup(x => x.GetProcessStateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(StateResponse(null, state: ProcessExecutionState.AwaitingStepSelection));
+        }
+
         elicitor.Setup(x => x.ToElicitation(It.IsAny<InformationRequest>()))
             .Returns(new ElicitRequestParams { Message = "Visit intake", RequestedSchema = new ElicitRequestParams.RequestSchema() });
         elicitor.Setup(x => x.ToAnswers(It.IsAny<InformationRequest>(), It.IsAny<IReadOnlyDictionary<string, JsonElement>>()))
@@ -412,6 +419,28 @@ public sealed class KaleidoToolInvokerTests
         var next = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel))["next"];
 
         Assert.Null(next?["choice"]);
+    }
+
+    [Fact]
+    public async Task ContinuingAProcessThatDoesNotExist_RunsNothing_AndSaysSo()
+    {
+        services["clinic"].Setup(x => x.GetProcessStateAsync(ProcessId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ProcessStateResponse?)null);
+
+        var outcome = await CreateSut().InvokeAsync(Close, Call(new { processId = ProcessId }), Catalog, Cancel);
+
+        Assert.True(outcome.Result?.IsError);
+        Assert.Equal(McpErrorCodes.ProcessNotFound, Body(outcome)["code"]?.GetValue<string>());
+        Assert.Empty(posts);
+    }
+
+    [Fact]
+    public async Task StartingANewProcess_DoesNotLookForOne()
+    {
+        await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel);
+
+        services["clinic"].Verify(x => x.GetProcessStateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Single(posts);
     }
 
     [Fact]

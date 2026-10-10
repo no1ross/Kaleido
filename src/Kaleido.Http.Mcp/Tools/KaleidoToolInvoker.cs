@@ -245,6 +245,16 @@ internal sealed partial class KaleidoToolInvoker(
             }
 
             processId = parsed;
+
+            // Continuing a process: it must exist. Kaleido starts a process for an unknown id when the
+            // step may start one (handoffs rely on that), which would silently replace a lost request
+            // with an empty one.
+            if (await Processor(tool.Service).GetProcessStateAsync(parsed, cancellationToken) is null)
+            {
+                return Error(
+                    McpErrorCodes.ProcessNotFound,
+                    $"Process {parsed} was not found on '{tool.Service}' (it may have been removed, or the id is wrong), or you may not see it. Nothing was run. Tell the user; to begin again, start a new request.");
+            }
         }
         else if (!tool.IsInitial)
         {

@@ -34,4 +34,10 @@ public static class McpErrorCodes
 
     /// <summary>An answer was submitted but the process has no pending information request.</summary>
     public const string NoPendingInformationRequest = "mcp_no_pending_information_request";
+
+    /// <summary>
+    /// A step was called to continue a process that does not exist on its service (removed, reset,
+    /// or a wrong id); nothing was run, so a new process is never started silently in its place.
+    /// </summary>
+    public const string ProcessNotFound = "mcp_process_not_found";
 }
