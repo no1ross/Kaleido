@@ -1,3 +1,5 @@
+using Kaleido.Samples.PriorAuth.Clinical;
+using Kaleido.Samples.PriorAuth.Questionnaires;
 using Kaleido;
 using Kaleido.Exceptions;
 using Kaleido.Http;
@@ -33,6 +35,19 @@ builder.Services.AddScoped<ProcedureCodeClient>();
 builder.Services.AddScoped<ProcedureModalityClient>();
 builder.Services.AddScoped<MriProcedureCodeResolverClient>();
 builder.Services.AddScoped<ConfiguredInformationRequests>();
+builder.Services.AddScoped<ConfiguredQuestionnaireClient>();
+builder.Services.AddScoped<RadiologyClinicalReview>();
+
+// Who decides the clinical questions is configuration: the business's pathways in the
+// Configuration service (default) or a third-party criteria service (simulated here).
+if (string.Equals(builder.Configuration["Clinical:Provider"], "SimulatedCriteriaService", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddScoped<IClinicalQuestionProvider, SimulatedCriteriaServiceProvider>();
+}
+else
+{
+    builder.Services.AddScoped<IClinicalQuestionProvider, ConfiguredClinicalPathwayProvider>();
+}
 builder.Services.AddScoped<RequestingProviderSearchClient>();
 builder.Services.AddScoped<HistoryClient>();
 

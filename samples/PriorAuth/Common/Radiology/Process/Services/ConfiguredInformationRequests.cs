@@ -1,7 +1,6 @@
 using System.Text.Json;
-using Kaleido.Http.Queryable;
 using Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Parameters;
-using Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Views;
+using Kaleido.Samples.PriorAuth.Questionnaires;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -9,30 +8,22 @@ using Microsoft.EntityFrameworkCore;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 
 /// <summary>
-/// Builds every radiology information request from the Configuration service: the questionnaire
-/// is selected by step name and the request's plan, line of business, modality and procedure, and
-/// translated generically into Kaleido's information request. Radiology owns no question, no item
-/// id and no wording; the business configures them.
+/// Radiology's information requests from the Configuration service: the questionnaire is selected
+/// by step name and the request's plan, line of business, modality and procedure, and translated
+/// generically (<see cref="QuestionnaireTranslation"/>). Radiology owns no question, no item id and
+/// no wording; the business configures them.
 /// </summary>
 /// <remarks>
-/// <list type="bullet">
-/// <item><description><b>Ids are binding keys.</b> An item's id is its configured <c>BindingKey</c>
-/// (its <c>LinkId</c> when it has none), so handlers read answers by the business's keys.</description></item>
-/// <item><description><b>Proposed answers.</b> A question whose binding key matches a detail the
-/// caller stated up front about the service being asked about
-/// (<see cref="PriorAuthorizationRequestedService.StatedDetailsJson"/>) proposes that value when it
-/// fits; the caller still confirms it. Configured defaults are never proposed.</description></item>
-/// <item><description><b>Tokens.</b> Question and title text may contain tokens filled from the
-/// request (e.g. <c>{ProcedureCode}</c>).</description></item>
-/// <item><description><b>Answers are kept</b> with the questions (text and option display) per process
-/// and step, for review.</description></item>
-/// </list>
+/// A question whose binding key matches a detail the caller stated up front about the service being
+/// asked about (<see cref="PriorAuthorizationRequestedService.StatedDetailsJson"/>) proposes that
+/// value; the caller still confirms it. Every presented request and its answers are kept per process
+/// and key (a step name, or a step and clinical round) for review.
 /// </remarks>
 public sealed class ConfiguredInformationRequests(
-    IKaleidoQueryableClientFactory queryableClientFactory,
+    ConfiguredQuestionnaireClient questionnaires,
     RadiologyDbContext dbContext)
 {
-    private const string ConfigurationClient = "Configuration";
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>The configured request for <paramref name="stepName"/> on this process, or null when none is configured.</summary>
     public async Task<InformationRequest?> CreateAsync(
@@ -42,61 +33,86 @@ public sealed class ConfiguredInformationRequests(
         string? procedureCodeValue,
         CancellationToken cancellationToken = default)
     {
-        var priorAuthorization =
-            await dbContext.PriorAuthorizations
-                .AsNoTracking()
-                .Include(x => x.Member)
-                .Include(x => x.RequestedServices)
-                .SingleOrDefaultAsync(x => x.ProcessId == processId, cancellationToken);
+        var priorAuthorization = await LoadAsync(processId, cancellationToken);
 
-        // The questions are about the service captured last; what the caller stated about it is proposed.
-        var latestService = priorAuthorization?.RequestedServices.MaxBy(x => x.CreatedUtc);
+        var questionnaire = await questionnaires.FindAsync(
+            new QuestionnaireDefinitionViewParameters
+            {
+                StepName = stepName,
+                PlanId = priorAuthorization?.Member?.PlanId,
+                LineOfBusiness = priorAuthorization?.Member?.LineOfBusiness.ToString(),
+                ProcedureModality = procedureModality,
+                ProcedureCodeValue = procedureCodeValue
+            },
+            cancellationToken);
 
-        var result = await queryableClientFactory
-            .GetClient(ConfigurationClient)
-            .QueryViewAsync<QuestionnaireDefinitionViewParameters, QuestionnaireDefinitionView>(
-                "QuestionnaireDefinitionQueryContextSource",
-                "QuestionnaireDefinitionViewSource",
-                new QueryApiRequest<QuestionnaireDefinitionViewParameters>
-                {
-                    Parameters = new QuestionnaireDefinitionViewParameters
-                    {
-                        StepName = stepName,
-                        PlanId = priorAuthorization?.Member?.PlanId,
-                        LineOfBusiness = priorAuthorization?.Member?.LineOfBusiness.ToString(),
-                        ProcedureModality = procedureModality,
-                        ProcedureCodeValue = procedureCodeValue
-                    }
-                },
-                cancellationToken);
-
-        if (result.Results.SingleOrDefault() is not { } questionnaire)
+        if (questionnaire is null)
         {
             return null;
         }
 
-        var tokens = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["ProcedureCode"] = procedureCodeValue ?? string.Empty
-        };
+        var request = QuestionnaireTranslation.ToInformationRequest(
+            questionnaire,
+            StatedDetails(priorAuthorization),
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["ProcedureCode"] = procedureCodeValue ?? string.Empty });
 
-        var request = ToInformationRequest(questionnaire, StatedDetails(latestService?.StatedDetailsJson), tokens);
-
-        await AssignAsync(processId, stepName, questionnaire, request, cancellationToken);
+        await RecordRequestAsync(processId, stepName, questionnaire.QuestionnaireId, questionnaire.Version, request, cancellationToken);
 
         return request;
+    }
+
+    /// <summary>What the caller stated about the service captured last (binding key → value).</summary>
+    public async Task<IReadOnlyDictionary<string, string>> StatedDetailsAsync(
+        Guid processId,
+        CancellationToken cancellationToken = default) =>
+        StatedDetails(await LoadAsync(processId, cancellationToken));
+
+    /// <summary>Keeps a presented request under <paramref name="key"/> (clearing earlier answers).</summary>
+    public async Task RecordRequestAsync(
+        Guid processId,
+        string key,
+        string questionnaireId,
+        string version,
+        InformationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var assignment =
+            await dbContext.PriorAuthorizationQuestionnaireAssignments
+                .SingleOrDefaultAsync(x => x.ProcessId == processId && x.StepName == key, cancellationToken);
+
+        if (assignment is null)
+        {
+            assignment = new PriorAuthorizationQuestionnaireAssignment
+            {
+                PriorAuthorizationQuestionnaireAssignmentId = Guid.NewGuid(),
+                ProcessId = processId,
+                StepName = key
+            };
+
+            dbContext.PriorAuthorizationQuestionnaireAssignments.Add(assignment);
+        }
+
+        assignment.QuestionnaireId = questionnaireId;
+        assignment.QuestionnaireVersion = version;
+        assignment.Title = request.Title;
+        assignment.AssignedUtc = DateTimeOffset.UtcNow;
+        assignment.RequestJson = JsonSerializer.Serialize(request, JsonOptions);
+        assignment.AnswersJson = null;
+        assignment.AnsweredUtc = null;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>Keeps the caller's answers with the questions they answer, for review.</summary>
     public async Task RecordAnswersAsync(
         Guid processId,
-        string stepName,
+        string key,
         IInformationStep answers,
         CancellationToken cancellationToken = default)
     {
         var assignment =
             await dbContext.PriorAuthorizationQuestionnaireAssignments
-                .SingleOrDefaultAsync(x => x.ProcessId == processId && x.StepName == stepName, cancellationToken);
+                .SingleOrDefaultAsync(x => x.ProcessId == processId && x.StepName == key, cancellationToken);
 
         if (assignment is null)
         {
@@ -105,12 +121,12 @@ public sealed class ConfiguredInformationRequests(
 
         var questions = assignment.RequestJson is null
             ? []
-            : JsonSerializer.Deserialize<InformationRequest>(assignment.RequestJson, JsonOptions)?.Items ?? [];
+            : Flatten(JsonSerializer.Deserialize<InformationRequest>(assignment.RequestJson, JsonOptions)?.Items ?? []).ToArray();
 
         var answered = answers.Items
             .Select(item =>
             {
-                var question = Flatten(questions).FirstOrDefault(x => string.Equals(x.Id, item.ItemId, StringComparison.Ordinal));
+                var question = questions.FirstOrDefault(x => string.Equals(x.Id, item.ItemId, StringComparison.Ordinal));
 
                 return new RecordedAnswer(
                     item.ItemId,
@@ -127,7 +143,7 @@ public sealed class ConfiguredInformationRequests(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    /// <summary>The recorded answers of every answered step of the process, in the order they were asked.</summary>
+    /// <summary>Every answered questionnaire of the process, in the order it was answered.</summary>
     public async Task<IReadOnlyList<RecordedQuestionnaire>> AnswersAsync(
         Guid processId,
         CancellationToken cancellationToken = default)
@@ -151,13 +167,9 @@ public sealed class ConfiguredInformationRequests(
     public static string? Answer(
         IInformationStep answers,
         string bindingKey) =>
-        answers.Items
-            .FirstOrDefault(x => string.Equals(x.ItemId, bindingKey, StringComparison.OrdinalIgnoreCase))?
-            .Answers
-            .FirstOrDefault()?
-            .Value;
+        QuestionnaireTranslation.Answer(answers, bindingKey);
 
-    /// <summary>Stated details as stored on the request (binding key → value).</summary>
+    /// <summary>Stated details as stored with a requested service (binding key → value).</summary>
     public static string? SerializeStatedDetails(
         IReadOnlyDictionary<string, string?> details)
     {
@@ -168,136 +180,31 @@ public sealed class ConfiguredInformationRequests(
         return stated.Count == 0 ? null : JsonSerializer.Serialize(stated, JsonOptions);
     }
 
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
-    private async Task AssignAsync(
+    private Task<PriorAuthorization?> LoadAsync(
         Guid processId,
-        string stepName,
-        QuestionnaireDefinitionView questionnaire,
-        InformationRequest request,
-        CancellationToken cancellationToken)
-    {
-        var assignment =
-            await dbContext.PriorAuthorizationQuestionnaireAssignments
-                .SingleOrDefaultAsync(x => x.ProcessId == processId && x.StepName == stepName, cancellationToken);
+        CancellationToken cancellationToken) =>
+        dbContext.PriorAuthorizations
+            .AsNoTracking()
+            .Include(x => x.Member)
+            .Include(x => x.RequestedServices)
+            .SingleOrDefaultAsync(x => x.ProcessId == processId, cancellationToken);
 
-        if (assignment is null)
-        {
-            assignment = new PriorAuthorizationQuestionnaireAssignment
-            {
-                PriorAuthorizationQuestionnaireAssignmentId = Guid.NewGuid(),
-                ProcessId = processId,
-                StepName = stepName
-            };
-
-            dbContext.PriorAuthorizationQuestionnaireAssignments.Add(assignment);
-        }
-
-        assignment.QuestionnaireId = questionnaire.QuestionnaireId;
-        assignment.QuestionnaireVersion = questionnaire.Version;
-        assignment.Title = questionnaire.Title;
-        assignment.AssignedUtc = DateTimeOffset.UtcNow;
-        assignment.RequestJson = JsonSerializer.Serialize(request, JsonOptions);
-        assignment.AnswersJson = null;
-        assignment.AnsweredUtc = null;
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    // The configuration's format (FHIR-like, with bindings and enableWhen) translated into Kaleido's
-    // information request. Conditions are not carried yet (#235).
-    private static InformationRequest ToInformationRequest(
-        QuestionnaireDefinitionView questionnaire,
-        IReadOnlyDictionary<string, string> stated,
-        IReadOnlyDictionary<string, string> tokens) =>
-        new()
-        {
-            InformationRequestId = $"{questionnaire.QuestionnaireId}|{questionnaire.Version}",
-            Title = Fill(questionnaire.Title, tokens),
-            Items =
-                questionnaire.Items
-                    .OrderBy(x => x.Order)
-                    .Select(item => ToItem(item, stated, tokens))
-                    .ToArray()
-        };
-
-    private static InformationItem ToItem(
-        QuestionnaireItemView item,
-        IReadOnlyDictionary<string, string> stated,
-        IReadOnlyDictionary<string, string> tokens)
-    {
-        var type = ToItemType(item.Type);
-
-        var options = item.AnswerOptions
-            .OrderBy(x => x.Order)
-            .Select(option => new InformationOption { Value = option.Value, Display = option.DisplayText })
-            .ToArray();
-
-        var proposal =
-            !string.IsNullOrWhiteSpace(item.BindingKey) &&
-            stated.TryGetValue(item.BindingKey, out var value) &&
-            Fits(type, options, value)
-                ? value
-                : null;
-
-        return new InformationItem
-        {
-            Id = string.IsNullOrWhiteSpace(item.BindingKey) ? item.LinkId : item.BindingKey,
-            Text = Fill(item.Text, tokens),
-            Type = type,
-            Repeats = item.Repeats,
-            Options = options,
-            ProposedAnswers = proposal is null ? [] : [new InformationAnswer { Value = proposal }]
-        };
-    }
-
-    // Only a value the caller could submit unchanged is proposed.
-    private static bool Fits(
-        InformationItemType type,
-        IReadOnlyList<InformationOption> options,
-        string value) =>
-        type switch
-        {
-            InformationItemType.Choice => options.Any(x => string.Equals(x.Value, value, StringComparison.Ordinal)),
-            InformationItemType.Boolean => bool.TryParse(value, out _),
-            InformationItemType.Display or InformationItemType.Group => false,
-            _ => !string.IsNullOrWhiteSpace(value)
-        };
-
-    private static string Fill(
-        string? text,
-        IReadOnlyDictionary<string, string> tokens) =>
-        tokens.Aggregate(
-            text ?? string.Empty,
-            (current, token) => current.Replace($"{{{token.Key}}}", token.Value, StringComparison.OrdinalIgnoreCase));
-
+    // The questions are about the service captured last; what the caller stated about it is proposed.
     private static IReadOnlyDictionary<string, string> StatedDetails(
-        string? json) =>
-        string.IsNullOrWhiteSpace(json)
+        PriorAuthorization? priorAuthorization)
+    {
+        var json = priorAuthorization?.RequestedServices.MaxBy(x => x.CreatedUtc)?.StatedDetailsJson;
+
+        return string.IsNullOrWhiteSpace(json)
             ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, string>(
                 JsonSerializer.Deserialize<Dictionary<string, string>>(json, JsonOptions) ?? [],
                 StringComparer.OrdinalIgnoreCase);
+    }
 
     private static IEnumerable<InformationItem> Flatten(
         IEnumerable<InformationItem> items) =>
         items.SelectMany(x => new[] { x }.Concat(Flatten(x.Items)));
-
-    private static InformationItemType ToItemType(
-        string type) =>
-        type.ToLowerInvariant() switch
-        {
-            "choice" => InformationItemType.Choice,
-            "boolean" => InformationItemType.Boolean,
-            "integer" => InformationItemType.WholeNumber,
-            "decimal" => InformationItemType.Number,
-            "date" => InformationItemType.Date,
-            "datetime" => InformationItemType.DateTime,
-            "text" => InformationItemType.LongText,
-            "display" => InformationItemType.Display,
-            "group" => InformationItemType.Group,
-            _ => InformationItemType.Text
-        };
 }
 
 /// <summary>One answered question, as kept for review.</summary>
@@ -306,8 +213,8 @@ public sealed record RecordedAnswer(
     string Question,
     IReadOnlyList<string> Answers);
 
-/// <summary>The answers given to one step's questionnaire.</summary>
+/// <summary>The answers given to one presented questionnaire (a step, or a clinical round).</summary>
 public sealed record RecordedQuestionnaire(
-    string StepName,
+    string Key,
     string Title,
     IReadOnlyList<RecordedAnswer> Answers);
