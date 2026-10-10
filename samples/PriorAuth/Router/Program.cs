@@ -1,6 +1,7 @@
 using Kaleido;
 using Kaleido.Http;
 using Kaleido.Http.Client;
+using Kaleido.Http.Mcp;
 using Kaleido.Samples.PriorAuth.Auth;
 using Kaleido.Observability.OpenTelemetry;
 using Microsoft.Net.Http.Headers;
@@ -57,6 +58,9 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     // Observability middleware so errors render as Kaleido error JSON.
     .AddHttp()
     .AddHttpClients()
+    // AI agents (MCP clients) get the aggregate as tools at /mcp, filtered per caller, and every
+    // tool runs as the agent's user — the router's service token is never used for them.
+    .AddMcp(o => o.ServerName = "priorauth")
     .AddOpenTelemetry();
 
 // Registry aggregation is a service-to-service call: always stamp the
@@ -135,6 +139,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapKaleidoHttp(o => o.AggregateRegistry = true);
+app.MapKaleidoMcp("/mcp");
 app.MapReverseProxy();
 
 app.Run();
