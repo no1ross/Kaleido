@@ -50,6 +50,9 @@ internal sealed record KaleidoTool
 
     /// <summary>For a step: its inputs that take their values from one result of a query.</summary>
     public IReadOnlyList<ToolLookup> Lookups { get; init; } = [];
+
+    /// <summary>For a step: the steps whose completion closes it (its published <c>availableUntil</c>).</summary>
+    public IReadOnlyList<string> ClosedBy { get; init; } = [];
 }
 
 /// <summary>
@@ -121,6 +124,24 @@ internal sealed record ToolCatalog
 
     private IReadOnlyDictionary<string, KaleidoTool>? byName;
     private IReadOnlyDictionary<string, KaleidoTool>? byUrl;
+
+    public ToolCatalog()
+    {
+    }
+
+    // A 'with' copy may change the tools: it must not keep the original's lookups.
+    private ToolCatalog(ToolCatalog original)
+    {
+        Tools = original.Tools;
+        Revision = original.Revision;
+        Unavailable = original.Unavailable;
+        IsPartial = original.IsPartial;
+        UnavailableServices = original.UnavailableServices;
+        ProcessServices = original.ProcessServices;
+        MissingDescriptions = original.MissingDescriptions;
+        TruncatedNames = original.TruncatedNames;
+        UnresolvedLookups = original.UnresolvedLookups;
+    }
 
     public KaleidoTool? Find(string toolName)
     {

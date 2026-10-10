@@ -390,7 +390,8 @@ internal sealed class ToolCatalogBuilder(
             CapabilityName = step.Name,
             Url = step.ExecuteUrl,
             IsInitial = step.IsInitial,
-            Lookups = lookups
+            Lookups = lookups,
+            ClosedBy = step.AvailableUntil.Select(x => x.Name).ToArray()
         });
     }
 

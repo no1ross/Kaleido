@@ -648,14 +648,38 @@ internal sealed class KaleidoToolInvoker(
                 : new JsonObject { ["step"] = required.Name, ["displayName"] = required.DisplayName, ["note"] = "You are not allowed to run this step." };
         }
 
-        var tools = available
-            .Select(x => catalog.FindByUrl(x.ExecuteUrl) is { } tool
-                ? (JsonNode?)new JsonObject { ["tool"] = tool.Definition.Name, ["displayName"] = x.DisplayName ?? x.Name }
-                : null)
-            .OfType<JsonNode>()
+        var offered = available
+            .Select(x => (Step: x, Tool: catalog.FindByUrl(x.ExecuteUrl)))
+            .Where(x => x.Tool is not null)
+            .ToArray();
+
+        // Which of the offered steps a step closes, from the published availableUntil: the user
+        // decides in which order to go, knowing what each choice ends.
+        var tools = offered
+            .Select(x =>
+            {
+                var entry = new JsonObject { ["tool"] = x.Tool?.Definition.Name, ["displayName"] = x.Step.DisplayName ?? x.Step.Name };
+
+                var closes = offered
+                    .Where(other => other.Tool?.ClosedBy.Contains(x.Step.Name, StringComparer.Ordinal) == true)
+                    .Select(other => (JsonNode?)other.Tool?.Definition.Name)
+                    .ToArray();
+
+                if (closes.Length > 0)
+                {
+                    entry["closes"] = new JsonArray(closes);
+                }
+
+                return (JsonNode)entry;
+            })
             .ToArray();
 
         next["available"] = new JsonArray(tools);
+
+        if (tools.Length > 1)
+        {
+            next["choice"] = "Several steps are available: offer them to the user and let the user choose; do not pick one yourself. A step's 'closes' lists the steps it ends.";
+        }
 
         if (required is null && tools.Length == 0)
         {
