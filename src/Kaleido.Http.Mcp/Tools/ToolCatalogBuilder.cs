@@ -82,7 +82,8 @@ internal sealed class ToolCatalogBuilder(
             ProcessServices = processServices,
             MissingDescriptions = context.MissingDescriptions,
             TruncatedNames = context.TruncatedNames,
-            UnresolvedLookups = context.UnresolvedLookups
+            UnresolvedLookups = context.UnresolvedLookups,
+            NameCollisions = context.NameCollisions
         };
     }
 
@@ -92,7 +93,7 @@ internal sealed class ToolCatalogBuilder(
         BuildContext context,
         QueryableSourceResponse source)
     {
-        var name = Name(context, source.ServiceName, source.Name);
+        var name = Name(context, source.ServiceName, source.Name, "source");
 
         var description =
             Describe(context, name, source.DisplayName, source.Description) +
@@ -120,7 +121,7 @@ internal sealed class ToolCatalogBuilder(
         QueryableSourceResponse source,
         QueryableViewResponse view)
     {
-        var name = Name(context, source.ServiceName, view.Name);
+        var name = Name(context, source.ServiceName, view.Name, "view");
 
         var description =
             Describe(context, name, view.DisplayName, view.Description) +
@@ -312,7 +313,7 @@ internal sealed class ToolCatalogBuilder(
         ProcessorRegistryResponse processor,
         ProcessStepResponse step)
     {
-        var name = Name(context, processor.ServiceName, step.Name);
+        var name = Name(context, processor.ServiceName, step.Name, "step");
 
         var properties = new JsonObject
         {
@@ -579,27 +580,39 @@ internal sealed class ToolCatalogBuilder(
     private string Name(
         BuildContext context,
         string service,
-        string capabilityTypeName)
+        string capabilityTypeName,
+        string kind)
     {
         var built = nameBuilder.Build(service, capabilityTypeName);
-        var name = built.Value;
 
         if (built.Truncated)
         {
-            context.TruncatedNames.Add($"{service}/{capabilityTypeName} -> {name}");
+            context.TruncatedNames.Add($"{service}/{capabilityTypeName} -> {built.Value}");
         }
 
-        // Two capabilities that derive the same name (e.g. a source and a view) stay distinct.
+        if (!context.Names.Contains(built.Value))
+        {
+            return built.Value;
+        }
+
+        // Two capabilities derive the same name (e.g. a source and its view): the name says what
+        // differs - its kind - and a number is the last resort. Owners are told to rename.
+        var name = WithTail(built.Value, $"_{kind}");
+
         for (var suffix = 2; context.Names.Contains(name); suffix++)
         {
-            var tail = $"_{suffix}";
-            name = (built.Value.Length + tail.Length > ToolNameBuilder.MaxLength
-                ? built.Value[..(ToolNameBuilder.MaxLength - tail.Length)]
-                : built.Value) + tail;
+            name = WithTail(built.Value, $"_{kind}_{suffix}");
         }
+
+        context.NameCollisions.Add($"{service}/{capabilityTypeName} -> {name} (derives {built.Value}, already used)");
 
         return name;
     }
+
+    private static string WithTail(string name, string tail) =>
+        (name.Length + tail.Length > ToolNameBuilder.MaxLength
+            ? name[..(ToolNameBuilder.MaxLength - tail.Length)]
+            : name) + tail;
 
     private static string Describe(
         BuildContext context,
@@ -667,6 +680,8 @@ internal sealed class ToolCatalogBuilder(
         public List<string> TruncatedNames { get; } = [];
 
         public List<string> UnresolvedLookups { get; } = [];
+
+        public List<string> NameCollisions { get; } = [];
 
         public void Add(KaleidoTool tool)
         {

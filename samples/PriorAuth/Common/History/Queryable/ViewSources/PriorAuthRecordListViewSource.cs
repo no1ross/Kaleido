@@ -6,12 +6,12 @@ using Kaleido.Samples.PriorAuth.History.Queryable.ViewSources.Views;
 namespace Kaleido.Samples.PriorAuth.History.Queryable.ViewSources;
 
 [QueryView(
-    DisplayName = "Prior Auth Records",
+    DisplayName = "Prior Auth Record List",
     Version = "1.0.0",
     Description = "Prior authorization history records for grid display.",
     DefaultSortField = nameof(PriorAuthRecordQueryContext.LastUpdatedUtc))]
 [Pageable(DefaultSize = 25, MaxSize = 100)]
-internal sealed class PriorAuthRecordViewSource
+internal sealed class PriorAuthRecordListViewSource
     : IQueryViewSource<PriorAuthRecordQueryContextSource, PriorAuthRecordQueryContext, PriorAuthRecordView>
 {
     public IQueryable<PriorAuthRecordView> CreateView(
