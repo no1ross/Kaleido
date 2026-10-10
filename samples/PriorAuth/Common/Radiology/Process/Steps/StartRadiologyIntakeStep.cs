@@ -26,4 +26,10 @@ public sealed record StartRadiologyIntakeStep : IProcessStep
 
     [Required]
     public ProcedureCodeSystem CodeSystem { get; init; }
-}
+
+    // What the caller stated about the service at intake (see Intake's CaptureRequestedServiceStep).
+    public MriBodyPart? BodyPart { get; init; }
+
+    public Laterality? Laterality { get; init; }
+
+    public ContrastOption? Contrast { get; init; }}

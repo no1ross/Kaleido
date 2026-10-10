@@ -9,13 +9,14 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 
 public sealed class CaptureMriInfoHandler(
     RadiologyDbContext dbContext,
-    MriProcedureCodeResolverClient mriProcedureCodeResolverClient)
+    MriProcedureCodeResolverClient mriProcedureCodeResolverClient,
+    ConfiguredInformationRequests informationRequests)
     : IProcessStepHandler<CaptureMriInfoStep>
 {
-    // Item ids of the configured MRI questionnaire (Configuration seed assets).
-    private const string BodyPartItem = "body-part";
-    private const string LateralityItem = "laterality";
-    private const string ContrastItem = "contrast";
+    // The binding keys the business configures on the MRI questionnaire; answers are read by them.
+    private const string BodyPartItem = "BodyPart";
+    private const string LateralityItem = "Laterality";
+    private const string ContrastItem = "Contrast";
 
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         CaptureMriInfoStep processStep,
@@ -33,6 +34,8 @@ public sealed class CaptureMriInfoHandler(
 
         try
         {
+            await informationRequests.RecordAnswersAsync(context.ProcessId, nameof(CaptureMriInfoStep), processStep, cancellationToken);
+
             var requestedService =
                 await dbContext.PriorAuthorizationRequestedServices
                     .Join(
@@ -42,7 +45,7 @@ public sealed class CaptureMriInfoHandler(
                         (requestedService, priorAuthorization) => new { requestedService, priorAuthorization.ProcessId })
                     .Where(x => x.ProcessId == context.ProcessId)
                     .Select(x => x.requestedService)
-                    .OrderByDescending(x => x.PriorAuthorizationRequestedServiceId)
+                    .OrderByDescending(x => x.CreatedUtc)
                     .FirstAsync(cancellationToken);
 
             var originalCodeValue = requestedService.ResolvedCodeValue;
@@ -96,12 +99,7 @@ public sealed class CaptureMriInfoHandler(
         out ProcessMessage? failure)
         where TEnum : struct, Enum
     {
-        var answer =
-            answers.Items
-                .FirstOrDefault(x => x.ItemId == itemId)?
-                .Answers
-                .FirstOrDefault()?
-                .Value;
+        var answer = ConfiguredInformationRequests.Answer(answers, itemId);
 
         failure =
             Enum.TryParse(answer, ignoreCase: true, out value)

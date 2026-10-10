@@ -83,7 +83,9 @@ public sealed class StartRadiologyIntakeHandler(
                     ResolvedProcedureCodeId = procedureCode.ProcedureCodeId,
                     ResolvedCodeValue = procedureCode.CodeValue,
                     ResolvedCodeSystem = procedureCode.CodeSystem,
-                    Description = procedureCode.ShortDescription
+                    Description = procedureCode.ShortDescription,
+                    CreatedUtc = DateTimeOffset.UtcNow,
+                    StatedDetailsJson = StatedServiceDetails.ToJson(processStep.BodyPart, processStep.Laterality, processStep.Contrast)
                 });
 
             await dbContext.SaveChangesAsync(cancellationToken);

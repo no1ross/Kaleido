@@ -10,9 +10,13 @@ public sealed class PriorAuthorization
 
     public DateTimeOffset CreatedUtc { get; set; }
 
+    public DateTimeOffset? SubmittedUtc { get; set; }
+
     public PriorAuthorizationMember? Member { get; set; }
 
     public PriorAuthorizationRequestingProvider? RequestingProvider { get; set; }
+
+    public PriorAuthorizationServicingProvider? ServicingProvider { get; set; }
 
     public ICollection<PriorAuthorizationRequestedService> RequestedServices { get; set; } = new List<PriorAuthorizationRequestedService>();
 }

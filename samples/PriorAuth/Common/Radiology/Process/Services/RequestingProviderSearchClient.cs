@@ -14,6 +14,7 @@ public sealed class RequestingProviderSearchClient(
     public async Task<QueryResult<RequestingProviderSearchView>> SearchAsync(
         Guid processId,
         QueryBody? query,
+        ProviderType providerType = ProviderType.RequestingProvider,
         CancellationToken cancellationToken = default)
     {
         var planId =
@@ -25,7 +26,7 @@ public sealed class RequestingProviderSearchClient(
 
         if (string.IsNullOrWhiteSpace(planId))
         {
-            throw new InvalidOperationException("A captured member plan is required before requesting provider search can run.");
+            throw new InvalidOperationException("A captured member plan is required before a provider search can run.");
         }
 
         return await queryableClientFactory
@@ -37,7 +38,8 @@ public sealed class RequestingProviderSearchClient(
                 {
                     Parameters = new RequestingProviderSearchParameters
                     {
-                        PlanId = planId
+                        PlanId = planId,
+                        ProviderType = providerType
                     },
                     Query = query.ToApiBody()
                 },
