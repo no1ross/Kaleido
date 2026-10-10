@@ -1,8 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Kaleido.Http.Mcp.Http;
+using Kaleido.Http.Client;
 using Kaleido.Http.Mcp.Observability;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Net.Http.Headers;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -16,9 +18,11 @@ namespace Kaleido.Http.Mcp.Tools;
 /// <remarks>
 /// Every request gets a well-formed, successful answer, never a protocol error: a tool result
 /// (problems are results with <c>isError: true</c> and an <c>mcp_*</c> code), the "input required"
-/// result when the user must answer questions, or an empty tool list when Kaleido cannot be
-/// reached. Only the caller's own cancellation propagates (nobody is waiting). Every tool result
+/// result when the user must answer questions, or an empty tool list when the tools cannot be
+/// read. Only the caller's own cancellation propagates (nobody is waiting). Every tool result
 /// carries the call's <c>requestId</c>, the same <c>X-Kaleido-Request-Id</c> sent to Kaleido.
+/// Tools run as the caller: the calls they make carry the caller's own <c>Authorization</c>,
+/// whatever credentials the host configured on its Kaleido clients.
 /// </remarks>
 internal interface IKaleidoMcpToolHandler
 {
@@ -35,7 +39,9 @@ internal sealed class KaleidoMcpToolHandler(
     IToolCatalogProvider catalogProvider,
     IKaleidoToolInvoker invoker,
     IMcpObservability observability,
-    IMcpRequestIdAccessor requestIdAccessor,
+    IKaleidoCorrelationContextAccessor correlation,
+    IKaleidoCallerForwarding callerForwarding,
+    IHttpContextAccessor httpContextAccessor,
     ILogger<KaleidoMcpToolHandler> logger)
     : IKaleidoMcpToolHandler
 {
@@ -141,6 +147,10 @@ internal sealed class KaleidoMcpToolHandler(
                 ? new Dictionary<string, JsonElement>(given, StringComparer.Ordinal)
                 : new Dictionary<string, JsonElement>(StringComparer.Ordinal);
 
+        // A front door calls services as the caller, never with the host's own credentials.
+        using var asCaller = callerForwarding.ForwardCaller(
+            httpContextAccessor.HttpContext?.Request.Headers[HeaderNames.Authorization].ToString());
+
         return await invoker.InvokeAsync(
             tool,
             new KaleidoToolCall
@@ -161,7 +171,7 @@ internal sealed class KaleidoMcpToolHandler(
     // can find the call in every service's logs and traces.
     private CallToolResult WithRequestId(CallToolResult result)
     {
-        var requestId = requestIdAccessor.Current;
+        var requestId = correlation.Current.RequestId;
 
         foreach (var block in result.Content.OfType<TextContentBlock>())
         {

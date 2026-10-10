@@ -2,29 +2,19 @@ namespace Kaleido.Http.Mcp;
 
 /// <summary>
 /// Immutable settings of the Kaleido MCP adapter, built by <see cref="KaleidoMcpOptionsBuilder"/>
-/// from the <c>Kaleido:Mcp</c> configuration section and the <c>AddKaleidoMcp</c> configure delegate.
+/// from the <c>Kaleido:Mcp</c> configuration section and the <c>AddMcp</c> configure delegate.
 /// </summary>
 /// <remarks>
-/// The adapter is a pure HTTP consumer of Kaleido: it reads the registry at
-/// <see cref="BaseUrl"/> + <see cref="RegistryPath"/> and calls the capability URLs it lists,
-/// forwarding the MCP caller's <c>Authorization</c> header. It can therefore run inside a router
-/// (base URL = the router itself) or as its own deployable pointed at a router or a service.
+/// The adapter is a layer on top of the Kaleido HTTP stack: the caller's tools come from the host's
+/// registry (<c>IKaleidoRegistryService</c>, filtered per caller), and tool calls go through the
+/// Kaleido clients (<c>AddHttpClients()</c>) with the caller's own token. It runs in any Kaleido host
+/// that aggregates the services it publishes — a router, or a dedicated MCP host.
 /// </remarks>
 [ExcludeFromCodeCoverage]
 public sealed record KaleidoMcpOptions
 {
-    /// <summary>The configuration section bound by <c>AddKaleidoMcp</c>.</summary>
+    /// <summary>The configuration section bound by <c>AddMcp</c>.</summary>
     public const string SectionName = "Kaleido:Mcp";
-
-    /// <summary>The Kaleido HTTP endpoint the adapter talks to (a router or a single service).</summary>
-    public required Uri BaseUrl { get; init; }
-
-    /// <summary>
-    /// The registry path on <see cref="BaseUrl"/>, e.g. <c>/router/registry</c> for an aggregating
-    /// router or <c>/intake/registry</c> for one service. The registry is filtered per caller, so
-    /// each agent sees only the tools its token may use.
-    /// </summary>
-    public required string RegistryPath { get; init; }
 
     /// <summary>The MCP server name reported to clients.</summary>
     public string ServerName { get; init; } = "kaleido";
@@ -42,32 +32,20 @@ public sealed record KaleidoMcpOptions
     public required string Instructions { get; init; }
 
     /// <summary>
-    /// How long a caller's tool list is reused before the registry is read again. Tools change
-    /// when capabilities are deployed or a caller's access changes; keep this short.
-    /// </summary>
-    public TimeSpan RegistryCacheDuration { get; init; } = TimeSpan.FromSeconds(30);
-
-    /// <summary>
-    /// The maximum number of information-request rounds answered through elicitation in one tool
-    /// call before the remaining questions are returned to the agent.
+    /// The maximum number of information-request rounds put to the user in one tool call before
+    /// the remaining questions are returned to the agent.
     /// </summary>
     public int MaxElicitationRounds { get; init; } = 5;
 }
 
 /// <summary>
 /// Mutable bind/configure target for <see cref="KaleidoMcpOptions"/>: configuration binding needs
-/// settable properties; <c>AddKaleidoMcp</c> binds it, applies the configure delegate, validates,
-/// and registers the immutable snapshot.
+/// settable properties; <c>AddMcp</c> binds it, applies the configure delegate, validates, and
+/// registers the immutable snapshot.
 /// </summary>
 public sealed class KaleidoMcpOptionsBuilder
 {
     private const string DefaultInstructionsResource = "Kaleido.Http.Mcp.Instructions.DefaultInstructions.md";
-
-    /// <inheritdoc cref="KaleidoMcpOptions.BaseUrl"/>
-    public string? BaseUrl { get; set; }
-
-    /// <inheritdoc cref="KaleidoMcpOptions.RegistryPath"/>
-    public string? RegistryPath { get; set; }
 
     /// <inheritdoc cref="KaleidoMcpOptions.ServerName"/>
     public string ServerName { get; set; } = "kaleido";
@@ -94,41 +72,17 @@ public sealed class KaleidoMcpOptionsBuilder
     /// </summary>
     public string? AdditionalInstructions { get; set; }
 
-    /// <inheritdoc cref="KaleidoMcpOptions.RegistryCacheDuration"/>
-    public TimeSpan RegistryCacheDuration { get; set; } = TimeSpan.FromSeconds(30);
-
     /// <inheritdoc cref="KaleidoMcpOptions.MaxElicitationRounds"/>
     public int MaxElicitationRounds { get; set; } = 5;
 
-    internal KaleidoMcpOptions Build()
-    {
-        if (!Uri.TryCreate(BaseUrl, UriKind.Absolute, out var baseUrl) ||
-            !(string.Equals(baseUrl.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
-              string.Equals(baseUrl.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+    internal KaleidoMcpOptions Build() =>
+        new()
         {
-            throw new KaleidoConfigurationException(
-                McpErrorCodes.MissingBaseUrl,
-                $"Kaleido MCP needs an absolute http(s) BaseUrl ({KaleidoMcpOptions.SectionName}:BaseUrl), e.g. http://localhost:8080.");
-        }
-
-        if (string.IsNullOrWhiteSpace(RegistryPath))
-        {
-            throw new KaleidoConfigurationException(
-                McpErrorCodes.MissingRegistryPath,
-                $"Kaleido MCP needs a RegistryPath ({KaleidoMcpOptions.SectionName}:RegistryPath), e.g. /router/registry.");
-        }
-
-        return new KaleidoMcpOptions
-        {
-            BaseUrl = baseUrl,
-            RegistryPath = "/" + RegistryPath.Trim().TrimStart('/'),
             ServerName = string.IsNullOrWhiteSpace(ServerName) ? "kaleido" : ServerName.Trim(),
             ServerVersion = string.IsNullOrWhiteSpace(ServerVersion) ? "1.0.0" : ServerVersion.Trim(),
             Instructions = ResolveInstructions(),
-            RegistryCacheDuration = RegistryCacheDuration < TimeSpan.Zero ? TimeSpan.Zero : RegistryCacheDuration,
             MaxElicitationRounds = Math.Max(0, MaxElicitationRounds)
         };
-    }
 
     private string ResolveInstructions()
     {

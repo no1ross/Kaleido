@@ -8,11 +8,11 @@ namespace Kaleido.Http.Mcp;
 /// </summary>
 public static class McpErrorCodes
 {
-    /// <summary><c>Kaleido:Mcp:BaseUrl</c> is missing or not an absolute http(s) URL.</summary>
-    public const string MissingBaseUrl = "mcp_missing_base_url";
+    /// <summary><c>AddMcp()</c> needs <c>AddHttp()</c> (the registry) on the same Kaleido builder.</summary>
+    public const string MissingHttp = "mcp_missing_http";
 
-    /// <summary><c>Kaleido:Mcp:RegistryPath</c> is missing.</summary>
-    public const string MissingRegistryPath = "mcp_missing_registry_path";
+    /// <summary><c>AddMcp()</c> needs Kaleido clients (<c>Kaleido:Clients</c> + <c>AddHttpClients()</c>) to call services.</summary>
+    public const string MissingClients = "mcp_missing_clients";
 
     /// <summary><c>Kaleido:Mcp:InstructionsFile</c> points at a file that does not exist.</summary>
     public const string MissingInstructionsFile = "mcp_missing_instructions_file";
@@ -23,10 +23,10 @@ public static class McpErrorCodes
     /// <summary>The tool arguments are missing a required value or have the wrong shape.</summary>
     public const string InvalidArguments = "mcp_invalid_arguments";
 
-    /// <summary>The Kaleido service returned a non-success HTTP status.</summary>
+    /// <summary>The Kaleido service refused or failed the call (its status and errors are included).</summary>
     public const string ServiceError = "mcp_service_error";
 
-    /// <summary>The Kaleido service (or its registry) could not be reached.</summary>
+    /// <summary>The Kaleido service could not be reached, or no Kaleido client is configured for it.</summary>
     public const string ServiceUnavailable = "mcp_service_unavailable";
 
     /// <summary>The adapter failed unexpectedly while running a tool; the tool did not complete.</summary>

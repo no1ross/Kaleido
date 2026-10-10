@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Kaleido.Http.Mcp.Http;
+using Kaleido.Http.Client;
 using Kaleido.Processor;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
@@ -32,8 +32,10 @@ internal sealed record KaleidoToolCall
 /// Runs a tool call against Kaleido and turns the outcome into what the model reads.
 /// </summary>
 /// <remarks>
-/// <para><b>Queries</b> post the query body to the source or view and return its result.</para>
-/// <para><b>Steps</b> post the step to its execute URL (process id in <c>X-Kaleido-Process-Id</c>).
+/// <para>Every call goes through the Kaleido clients (<c>AddHttpClients()</c>) of the tool's service,
+/// by capability name, as the MCP caller (the handler opens the caller-forwarding scope).</para>
+/// <para><b>Queries</b> run the source or view query and return its result.</para>
+/// <para><b>Steps</b> execute the step by name, continuing the given process.
 /// The result is summarized for the model: the outcome, the business messages (verbatim), and
 /// <c>next</c>: the required tool, or the available tools, of the service the process continues on.
 /// After a handoff the target service's state is read, so <c>next</c> names that service's tools.</para>
@@ -78,7 +80,8 @@ internal sealed record ToolOutcome
 }
 
 internal sealed class KaleidoToolInvoker(
-    IKaleidoApiClient apiClient,
+    IKaleidoProcessorClientFactory processors,
+    IKaleidoQueryableClientFactory queryables,
     IInformationRequestElicitor elicitor,
     KaleidoMcpOptions options,
     ILogger<KaleidoToolInvoker> logger)
@@ -115,6 +118,32 @@ internal sealed class KaleidoToolInvoker(
                 KaleidoToolKind.GetProcessState => await StateAsync(call.Arguments, catalog, cancellationToken),
                 _ => Error(McpErrorCodes.UnknownTool, $"Tool '{tool.Definition.Name}' has no handler.")
             };
+        }
+        catch (KaleidoHttpClientException exception)
+        {
+            // The service refused or failed the call: its status and errors, for the agent to explain.
+            logger.LogWarning(
+                "Kaleido MCP tool {Tool}: the service answered {StatusCode} ({Code}).",
+                tool.Definition.Name,
+                (int)exception.StatusCode,
+                exception.Code);
+
+            return Error(
+                McpErrorCodes.ServiceError,
+                $"{tool.Definition.Name}: {exception.Message}",
+                Serialize(new { status = (int)exception.StatusCode, errors = exception.Errors }));
+        }
+        catch (MissingClientException exception)
+        {
+            return Error(McpErrorCodes.ServiceUnavailable, exception.Message);
+        }
+        catch (HttpRequestException exception)
+        {
+            logger.LogWarning(exception, "Kaleido MCP tool {Tool}: the service could not be reached.", tool.Definition.Name);
+
+            return Error(
+                McpErrorCodes.ServiceUnavailable,
+                $"{tool.Definition.Name}: the Kaleido service could not be reached. If it was a step, check the process with get_process_state before trying again.");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -164,15 +193,32 @@ internal sealed class KaleidoToolInvoker(
         CopyArgument(arguments, "sort", query);
         CopyArgument(arguments, "page", query);
 
-        var body = new JsonObject { ["query"] = query };
+        QueryApiBody? body;
+        JsonObject? parameters = null;
 
-        CopyArgument(arguments, "parameters", body);
+        try
+        {
+            body = query.Deserialize<QueryApiBody>(KaleidoJsonOptions.Options);
 
-        var response = await apiClient.PostAsync(tool.Url, body, cancellationToken: cancellationToken);
+            if (arguments.TryGetValue("parameters", out var given) && given.ValueKind == JsonValueKind.Object)
+            {
+                parameters = JsonNode.Parse(given.GetRawText())?.AsObject();
+            }
+        }
+        catch (JsonException exception)
+        {
+            return Error(McpErrorCodes.InvalidArguments, $"The query arguments have the wrong shape: {exception.Message}");
+        }
 
-        return response.IsSuccess
-            ? Success(response.Body ?? new JsonObject())
-            : ServiceError(tool.Definition.Name, response);
+        var client = Queryable(tool.Service);
+        var request = new QueryApiRequest<JsonObject>(parameters, body);
+        var source = tool.SourceName ?? tool.CapabilityName;
+
+        var result = tool.ViewName is { } view
+            ? await client.QueryViewAsync<JsonObject, JsonObject>(source, view, request, cancellationToken)
+            : await client.QuerySourceAsync<JsonObject, JsonObject>(source, request, cancellationToken);
+
+        return Success(Serialize(result) ?? new JsonObject());
     }
 
     // ── Steps ────────────────────────────────────────────────────────────────
@@ -209,9 +255,9 @@ internal sealed class KaleidoToolInvoker(
         }
 
         var response =
-            await apiClient.PostAsync(
-                tool.Url,
-                new JsonObject { ["processStep"] = step },
+            await Processor(tool.Service).ExecuteStepAsync(
+                tool.CapabilityName,
+                JsonSerializer.SerializeToElement(step, KaleidoJsonOptions.Options),
                 processId,
                 cancellationToken);
 
@@ -268,7 +314,7 @@ internal sealed class KaleidoToolInvoker(
             }
         }
 
-        var response = await SubmitAsync(pending.Step, pending.Request, items, processId, cancellationToken);
+        var response = await SubmitAsync(service, pending.Step, pending.Request, items, processId, cancellationToken);
 
         return await FollowUpAsync(service, response, catalog, call, [], round: 0, cancellationToken);
     }
@@ -322,7 +368,7 @@ internal sealed class KaleidoToolInvoker(
         }
 
         var items = elicitor.ToAnswers(pending.Request, content.ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal));
-        var response = await SubmitAsync(pending.Step, pending.Request, items, state.ProcessId, cancellationToken);
+        var response = await SubmitAsync(state.Service, pending.Step, pending.Request, items, state.ProcessId, cancellationToken);
 
         answered.Add(state.InformationRequestId);
 
@@ -357,16 +403,9 @@ internal sealed class KaleidoToolInvoker(
         string? note,
         CancellationToken cancellationToken)
     {
-        var response = await apiClient.GetAsync(StatePath(service, processId), cancellationToken);
-
-        if (!response.IsSuccess)
+        if (await Processor(service).GetProcessStateAsync(processId, cancellationToken) is not { } state)
         {
-            return ServiceError(ToolCatalogBuilder.GetProcessStateTool, response);
-        }
-
-        if (Deserialize<ProcessStateResponse>(response.Body) is not { } state)
-        {
-            return Error(McpErrorCodes.ServiceError, $"The state of process {processId} could not be read.");
+            return Error(McpErrorCodes.ServiceError, $"Process {processId} was not found on '{service}', or you may not see it.");
         }
 
         if (!string.IsNullOrWhiteSpace(state.TargetProcessorName))
@@ -398,7 +437,7 @@ internal sealed class KaleidoToolInvoker(
     // client can show forms, and summarize where the process stands.
     private async Task<ToolOutcome> FollowUpAsync(
         string service,
-        KaleidoApiResponse response,
+        StepExecutionResponse<JsonElement> step,
         ToolCatalog catalog,
         KaleidoToolCall call,
         JsonArray answered,
@@ -409,16 +448,6 @@ internal sealed class KaleidoToolInvoker(
 
         for (; ; round++)
         {
-            if (!response.IsSuccess)
-            {
-                return ServiceError(service, response);
-            }
-
-            if (Deserialize<StepExecutionResponse<JsonElement>>(response.Body) is not { } step)
-            {
-                return Error(McpErrorCodes.ServiceError, "The step response could not be read.", response.Body);
-            }
-
             var pendingService = service;
             var required = step.RequiredStep;
             IReadOnlyCollection<ProcessStepSummary> available = step.AvailableSteps;
@@ -427,8 +456,7 @@ internal sealed class KaleidoToolInvoker(
             {
                 pendingService = step.TargetProcessorName;
 
-                var target = await apiClient.GetAsync(StatePath(pendingService, step.ProcessId), cancellationToken);
-                var targetState = target.IsSuccess ? Deserialize<ProcessStateResponse>(target.Body) : null;
+                var targetState = await Processor(pendingService).GetProcessStateAsync(step.ProcessId, cancellationToken);
 
                 required = targetState?.RequiredStep;
                 available = targetState?.AvailableSteps ?? [];
@@ -474,7 +502,7 @@ internal sealed class KaleidoToolInvoker(
 
                         answered.Add(pending.InformationRequestId);
                         service = pendingService;
-                        response = await SubmitAsync(required, pending, items, step.ProcessId, cancellationToken);
+                        step = await SubmitAsync(pendingService, required, pending, items, step.ProcessId, cancellationToken);
 
                         continue;
                     }
@@ -487,22 +515,22 @@ internal sealed class KaleidoToolInvoker(
         }
     }
 
-    private Task<KaleidoApiResponse> SubmitAsync(
+    private Task<StepExecutionResponse<JsonElement>> SubmitAsync(
+        string service,
         ProcessRequiredStep step,
         InformationRequest request,
         IReadOnlyList<InformationResponseItem> items,
         Guid processId,
         CancellationToken cancellationToken) =>
-        apiClient.PostAsync(
-            step.ExecuteUrl,
-            new JsonObject
-            {
-                ["processStep"] = new JsonObject
+        Processor(service).ExecuteStepAsync(
+            step.Name,
+            JsonSerializer.SerializeToElement(
+                new JsonObject
                 {
                     ["informationRequestId"] = request.InformationRequestId,
                     ["items"] = Serialize(items)
-                }
-            },
+                },
+                KaleidoJsonOptions.Options),
             processId,
             cancellationToken);
 
@@ -512,14 +540,9 @@ internal sealed class KaleidoToolInvoker(
         Guid processId,
         CancellationToken cancellationToken)
     {
-        var response = await apiClient.GetAsync(StatePath(service, processId), cancellationToken);
+        var state = await Processor(service).GetProcessStateAsync(processId, cancellationToken);
 
-        if (!response.IsSuccess)
-        {
-            return PendingQuestions.Failed(ServiceError(ToolCatalogBuilder.AnswerInformationRequestTool, response));
-        }
-
-        return Deserialize<ProcessStateResponse>(response.Body)?.RequiredStep is { InformationRequest: { } request } step
+        return state?.RequiredStep is { InformationRequest: { } request } step
             ? new PendingQuestions(step, request, null)
             : PendingQuestions.Failed(Error(
                 McpErrorCodes.NoPendingInformationRequest,
@@ -666,8 +689,18 @@ internal sealed class KaleidoToolInvoker(
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private static string StatePath(string service, Guid processId) =>
-        $"/{service.Trim().Trim('/')}/processes/{processId}";
+    // The service's Kaleido clients. A tool's service always comes from the registry, so a missing
+    // client means the host publishes capabilities it cannot call (e.g. its own, without a client
+    // for itself).
+    private IKaleidoProcessorClient Processor(string service) =>
+        processors.TryGetClientForService(service, out var client)
+            ? client
+            : throw new MissingClientException(service);
+
+    private IKaleidoQueryableClient Queryable(string service) =>
+        queryables.TryGetClientForService(service, out var client)
+            ? client
+            : throw new MissingClientException(service);
 
     private static string? Text(
         IReadOnlyDictionary<string, JsonElement> arguments,
@@ -690,10 +723,6 @@ internal sealed class KaleidoToolInvoker(
         }
     }
 
-    private static T? Deserialize<T>(JsonNode? body)
-        where T : class =>
-        body?.Deserialize<T>(KaleidoJsonOptions.Options);
-
     private static JsonNode? Serialize<T>(T value) =>
         JsonSerializer.SerializeToNode(value, KaleidoJsonOptions.Options);
 
@@ -705,14 +734,6 @@ internal sealed class KaleidoToolInvoker(
         {
             Content = [new TextContentBlock { Text = body.ToJsonString(KaleidoJsonOptions.Options) }]
         };
-
-    private static CallToolResult ServiceError(
-        string source,
-        KaleidoApiResponse response) =>
-        Error(
-            McpErrorCodes.ServiceError,
-            $"{source}: the Kaleido service answered HTTP {response.StatusCode}.",
-            response.Body);
 
     private static CallToolResult Error(
         string code,
@@ -732,6 +753,9 @@ internal sealed class KaleidoToolInvoker(
             Content = [new TextContentBlock { Text = body.ToJsonString(KaleidoJsonOptions.Options) }]
         };
     }
+
+    private sealed class MissingClientException(string service)
+        : Exception($"No Kaleido client is configured for service '{service}' on this host, so its tools cannot be called. Add it under Kaleido:Clients.");
 
     private enum Elicitation
     {

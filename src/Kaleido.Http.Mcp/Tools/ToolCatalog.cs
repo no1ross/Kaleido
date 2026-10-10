@@ -33,7 +33,16 @@ internal sealed record KaleidoTool
     /// <summary>The capability name in the registry (source, view or step type name).</summary>
     public string CapabilityName { get; init; } = string.Empty;
 
-    /// <summary>The Kaleido URL the tool calls (<c>queryUrl</c> or <c>executeUrl</c>).</summary>
+    /// <summary>For a query tool: the source's published name.</summary>
+    public string? SourceName { get; init; }
+
+    /// <summary>For a view's query tool: the view's published name (null for a direct source query).</summary>
+    public string? ViewName { get; init; }
+
+    /// <summary>
+    /// The capability's URL as published (<c>queryUrl</c> or <c>executeUrl</c>); used to map a
+    /// process's next steps back to tool names. Calls go through the Kaleido clients by name.
+    /// </summary>
     public string Url { get; init; } = string.Empty;
 
     /// <summary>For a step: it may start a new process (no processId needed).</summary>

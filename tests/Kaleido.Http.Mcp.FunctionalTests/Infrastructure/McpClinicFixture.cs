@@ -1,4 +1,4 @@
-using Kaleido.Http.Mcp.Http;
+using Kaleido.Http.Client;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -13,24 +13,31 @@ using ModelContextProtocol.Protocol;
 namespace Kaleido.Http.Mcp.FunctionalTests.Infrastructure;
 
 /// <summary>
-/// One TestServer hosting the "clinic" Kaleido service and the MCP adapter pointed back at it
-/// (base URL = the server itself), the same shape as the PriorAuth router. MCP clients are the
-/// SDK's own <see cref="McpClient"/>, so the protocol is exercised end to end.
+/// One TestServer hosting the "clinic" Kaleido service with the MCP adapter on top: the tools come
+/// from the host's registry, and tool calls go through a Kaleido client for "clinic" (pointing back
+/// at this server) as the MCP caller. MCP clients are the SDK's own <see cref="McpClient"/>, so
+/// the protocol is exercised end to end.
 /// </summary>
 public class McpClinicFixture : IAsyncLifetime
 {
-    private readonly string registryPath;
+    // The host's own clients carry a service credential, as a router's do; tools must never use it.
+    public const string HostServiceToken = "Bearer svc-host|doctor";
+
+    private readonly bool withDownstreamThatIsDown;
 
     private IHost? host;
 
+    /// <summary>The Authorization header of every request the clinic service received (path, header).</summary>
+    public System.Collections.Concurrent.ConcurrentQueue<(string Path, string Authorization)> ServiceRequests { get; } = new();
+
     public McpClinicFixture()
-        : this("/clinic/registry")
+        : this(withDownstreamThatIsDown: false)
     {
     }
 
-    protected McpClinicFixture(string registryPath)
+    protected McpClinicFixture(bool withDownstreamThatIsDown)
     {
-        this.registryPath = registryPath;
+        this.withDownstreamThatIsDown = withDownstreamThatIsDown;
     }
 
     private TestServer Server =>
@@ -51,15 +58,20 @@ public class McpClinicFixture : IAsyncLifetime
                             .AddScheme<AuthenticationSchemeOptions, BearerTestAuthHandler>(BearerTestAuthHandler.SchemeName, _ => { });
                         services.AddAuthorization();
 
-                        var configuration = new ConfigurationBuilder()
-                            .AddInMemoryCollection(new Dictionary<string, string?>
-                            {
-                                ["Kaleido:Mcp:BaseUrl"] = "http://localhost/",
-                                ["Kaleido:Mcp:RegistryPath"] = registryPath,
-                                ["Kaleido:Mcp:RegistryCacheDuration"] = "00:00:00",
-                                ["Kaleido:Mcp:AdditionalInstructions"] = "A visit starts with a patient search."
-                            })
-                            .Build();
+                        var settings = new Dictionary<string, string?>
+                        {
+                            ["Kaleido:Clients:clinic:BaseUrl"] = "http://localhost/",
+                            ["Kaleido:Clients:clinic:RoutePrefix"] = "clinic",
+                            ["Kaleido:Mcp:AdditionalInstructions"] = "A visit starts with a patient search."
+                        };
+
+                        if (withDownstreamThatIsDown)
+                        {
+                            settings["Kaleido:Clients:radiology:BaseUrl"] = "http://radiology.test/";
+                            settings["Kaleido:Clients:radiology:RoutePrefix"] = "radiology";
+                        }
+
+                        var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
 
                         services.AddKaleido(configuration, o =>
                             {
@@ -68,24 +80,40 @@ public class McpClinicFixture : IAsyncLifetime
                                 o.Assemblies = [typeof(McpClinicFixture).Assembly];
                                 o.AuthorizationMode = KaleidoAuthorizationMode.Authenticated;
                             })
-                            .AddHttp();
+                            .AddHttp()
+                            .AddHttpClients()
+                            .AddMcp();
 
-                        services.AddKaleidoMcp(configuration);
-
-                        // The adapter's calls go to this TestServer (in production: the network).
-                        services.AddHttpClient(KaleidoApiClient.HttpClientName)
+                        // The clinic client calls this TestServer (in production: the network),
+                        // with the host's service credential on every call.
+                        services.AddHttpClient("clinic", client => client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", HostServiceToken))
                             .ConfigurePrimaryHttpMessageHandler(sp =>
                                 ((TestServer)sp.GetRequiredService<IServer>()).CreateHandler());
+
+                        if (withDownstreamThatIsDown)
+                        {
+                            services.AddHttpClient("radiology")
+                                .ConfigurePrimaryHttpMessageHandler(() => new UnreachableHandler());
+                        }
                     });
 
                     web.Configure(app =>
                     {
+                        app.Use(async (context, next) =>
+                        {
+                            if (context.Request.Path.StartsWithSegments("/clinic"))
+                            {
+                                ServiceRequests.Enqueue((context.Request.Path, context.Request.Headers.Authorization.ToString()));
+                            }
+
+                            await next(context);
+                        });
                         app.UseRouting();
                         app.UseAuthentication();
                         app.UseAuthorization();
                         app.UseEndpoints(endpoints =>
                         {
-                            endpoints.MapKaleidoHttp();
+                            endpoints.MapKaleidoHttp(o => o.AggregateRegistry = withDownstreamThatIsDown);
                             endpoints.MapKaleidoMcp("/mcp");
                         });
                     });
@@ -133,6 +161,12 @@ public class McpClinicFixture : IAsyncLifetime
         }
 
         return await McpClient.CreateAsync(transport, options, cancellationToken: TestContext.Current.CancellationToken);
+    }
+
+    private sealed class UnreachableHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            throw new HttpRequestException("Connection refused (radiology.test).");
     }
 
     public async ValueTask DisposeAsync()

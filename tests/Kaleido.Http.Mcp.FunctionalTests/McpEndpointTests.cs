@@ -220,4 +220,20 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
     private static JsonNode Body(CallToolResult result) =>
         JsonNode.Parse(result.Content.OfType<TextContentBlock>().Single().Text)
         ?? throw new InvalidOperationException("The tool returned no JSON.");
+
+    [Fact]
+    public async Task Tools_CallTheServiceAsTheCaller_NeverWithTheHostsCredentials()
+    {
+        var nurse = BearerTestAuthHandler.Token($"nurse-{Guid.NewGuid():N}");
+        await using var client = await fixture.ConnectAsync(nurse);
+
+        await client.CallToolAsync("clinic_patient", new Dictionary<string, object?>(), cancellationToken: Cancel);
+        await client.CallToolAsync("clinic_start_visit", new Dictionary<string, object?> { ["patientId"] = 1 }, cancellationToken: Cancel);
+
+        var calls = fixture.ServiceRequests.Where(x => x.Authorization == nurse).ToArray();
+
+        Assert.Contains(calls, x => x.Path.Contains("/queryable/", StringComparison.Ordinal));
+        Assert.Contains(calls, x => x.Path.Contains("/processes/steps/", StringComparison.Ordinal));
+        Assert.DoesNotContain(fixture.ServiceRequests, x => x.Authorization == McpClinicFixture.HostServiceToken);
+    }
 }

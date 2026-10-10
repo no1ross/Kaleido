@@ -29,7 +29,7 @@ public static class McpTelemetry
     /// <summary>Tool call duration in seconds, by kind, service and outcome.</summary>
     public const string ToolCallDurationHistogramName = "kaleido.mcp.tool_call.duration";
 
-    /// <summary>Registry reads, by result: <c>hit</c>, <c>not_modified</c>, <c>fetched</c>, <c>failed</c>.</summary>
+    /// <summary>Registry reads, by result: <c>hit</c> (the caller's registry revision was already translated into tools) or <c>fetched</c> (translated now).</summary>
     public const string RegistryReadsCounterName = "kaleido.mcp.registry_reads";
 
     // ── Tag names ────────────────────────────────────────────────────────────
@@ -72,9 +72,5 @@ public static class McpTelemetry
 
     public const string RegistryHit = "hit";
 
-    public const string RegistryNotModified = "not_modified";
-
     public const string RegistryFetched = "fetched";
-
-    public const string RegistryFailed = "failed";
 }

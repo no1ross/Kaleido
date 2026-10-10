@@ -1,9 +1,9 @@
-using Kaleido.Http.Mcp.Http;
+using Kaleido.Http.Client;
 using Kaleido.Http.Mcp.Observability;
 using Kaleido.Http.Mcp.Tools;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using ModelContextProtocol.Protocol;
 
 namespace Kaleido.Http.Mcp;
@@ -11,46 +11,70 @@ namespace Kaleido.Http.Mcp;
 public static class KaleidoMcpServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the Kaleido MCP adapter: an MCP server whose tools are generated, per caller, from
-    /// a Kaleido registry. Bind <c>Kaleido:Mcp</c> (<c>BaseUrl</c>, <c>RegistryPath</c>, optional
-    /// <c>Instructions</c>/<c>InstructionsFile</c>/<c>AdditionalInstructions</c>,
-    /// <c>RegistryCacheDuration</c>), then map the endpoint with <c>MapKaleidoMcp()</c>.
+    /// Adds the Kaleido MCP adapter to a Kaleido host: an MCP server whose tools are the host's
+    /// registry as each caller may see it, called through the host's Kaleido clients as that
+    /// caller. Map the endpoint with <c>MapKaleidoMcp()</c>.
     /// </summary>
+    /// <param name="builder">The Kaleido builder, after <c>AddHttp()</c> and <c>AddHttpClients()</c>.</param>
+    /// <param name="configure">
+    /// Adjusts the settings bound from <c>Kaleido:Mcp</c> (server name and version, instructions,
+    /// elicitation rounds).
+    /// </param>
+    /// <returns>The builder, for chaining.</returns>
     /// <remarks>
-    /// The adapter talks to Kaleido over HTTP only and forwards the MCP caller's
-    /// <c>Authorization</c> header, so it can run in the same host as a router or on its own
-    /// server. It needs no <c>AddKaleido()</c>.
+    /// <para>The adapter reuses the HTTP stack instead of reimplementing it:</para>
+    /// <list type="bullet">
+    /// <item><description><b>Tools</b> come from <see cref="IKaleidoRegistryService"/> — the same
+    /// snapshot and per-caller filtering as <c>GET /{service}/registry</c>. Map the registry with
+    /// aggregation (<c>MapKaleidoHttp(o =&gt; o.AggregateRegistry = true)</c>) to publish the
+    /// downstream services' capabilities.</description></item>
+    /// <item><description><b>Calls</b> go through the Kaleido clients of each tool's service, inside
+    /// a caller-forwarding scope: services see the MCP caller's own token and authorize the real
+    /// user, never the host's service credentials.</description></item>
+    /// <item><description><b>Correlation</b> is the host's: the MCP request's
+    /// <c>X-Kaleido-Request-Id</c> flows to every call and is returned in each tool result.</description></item>
+    /// </list>
     /// </remarks>
-    public static IServiceCollection AddKaleidoMcp(
-        this IServiceCollection services,
-        IConfiguration configuration,
+    /// <exception cref="KaleidoConfigurationException">
+    /// <c>AddHttp()</c> was not called first (<see cref="McpErrorCodes.MissingHttp"/>), no Kaleido
+    /// client is configured (<see cref="McpErrorCodes.MissingClients"/>), or the instructions file
+    /// is missing (<see cref="McpErrorCodes.MissingInstructionsFile"/>).
+    /// </exception>
+    public static IKaleidoBuilder AddMcp(
+        this IKaleidoBuilder builder,
         Action<KaleidoMcpOptionsBuilder>? configure = null)
     {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(builder);
 
-        var builder = new KaleidoMcpOptionsBuilder();
-        configuration.GetSection(KaleidoMcpOptions.SectionName).Bind(builder);
-        configure?.Invoke(builder);
+        var services = builder.Services;
 
-        var options = builder.Build();
+        if (!services.Any(x => x.ServiceType == typeof(IKaleidoRegistryService)))
+        {
+            throw new KaleidoConfigurationException(
+                McpErrorCodes.MissingHttp,
+                "AddMcp() needs the Kaleido HTTP stack: call AddHttp() before AddMcp().");
+        }
+
+        if (!services.Any(x => x.ServiceType == typeof(IKaleidoCallerForwarding)))
+        {
+            throw new KaleidoConfigurationException(
+                McpErrorCodes.MissingClients,
+                "AddMcp() calls services through the Kaleido clients: configure Kaleido:Clients and call AddHttpClients() before AddMcp().");
+        }
+
+        var optionsBuilder = new KaleidoMcpOptionsBuilder();
+        builder.Configuration.GetSection(KaleidoMcpOptions.SectionName).Bind(optionsBuilder);
+        configure?.Invoke(optionsBuilder);
+
+        var options = optionsBuilder.Build();
 
         services.AddSingleton(options);
-        services.AddHttpContextAccessor();
-        services.TryAddSingleton(TimeProvider.System);
-
-        services.AddSingleton<IMcpRequestIdAccessor, McpRequestIdAccessor>();
-        services.AddSingleton<IMcpObservability, McpObservability>();
-        services.AddTransient<KaleidoForwardingHandler>();
-        services
-            .AddHttpClient(KaleidoApiClient.HttpClientName, client => client.BaseAddress = options.BaseUrl)
-            .AddHttpMessageHandler<KaleidoForwardingHandler>();
 
         services.AddSingleton<IToolNameBuilder, ToolNameBuilder>();
         services.AddSingleton<IToolSchemaBuilder, ToolSchemaBuilder>();
         services.AddSingleton<IToolCatalogBuilder, ToolCatalogBuilder>();
         services.AddSingleton<IInformationRequestElicitor, InformationRequestElicitor>();
-        services.AddScoped<IKaleidoApiClient, KaleidoApiClient>();
+        services.AddScoped<IMcpObservability, McpObservability>();
         services.AddScoped<IToolCatalogProvider, ToolCatalogProvider>();
         services.AddScoped<IKaleidoToolInvoker, KaleidoToolInvoker>();
         services.AddScoped<IKaleidoMcpToolHandler, KaleidoMcpToolHandler>();
@@ -73,13 +97,21 @@ public static class KaleidoMcpServiceCollectionExtensions
             .WithCallToolHandler((request, cancellationToken) =>
                 Handler(request.Services).CallToolAsync(request, cancellationToken));
 
-        return services;
+        return builder;
     }
 
-    // The SDK runs each request in its own scope; resolve the scoped handler from it.
-    private static IKaleidoMcpToolHandler Handler(IServiceProvider? services) =>
-        services?.GetRequiredService<IKaleidoMcpToolHandler>()
-        ?? throw new KaleidoFrameworkException(
-            FrameworkErrorCodes.MissingRegistration,
-            "The MCP request has no service provider; AddKaleidoMcp() must register the server.");
+    // Resolve the handler from the HTTP request's own scope (not the SDK's per-message scope), so
+    // it shares the request's correlation context that Kaleido's middleware set — the request id
+    // the agent sent is the one every call carries and every result returns.
+    private static IKaleidoMcpToolHandler Handler(IServiceProvider? services)
+    {
+        var provider =
+            services?.GetService<IHttpContextAccessor>()?.HttpContext?.RequestServices
+            ?? services
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
+                "The MCP request has no service provider; AddMcp() must register the server.");
+
+        return provider.GetRequiredService<IKaleidoMcpToolHandler>();
+    }
 }

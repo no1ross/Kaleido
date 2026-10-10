@@ -38,4 +38,29 @@ public sealed class KaleidoQueryableClientFactoryTests
 
         Assert.NotNull(client);
     }
+
+    [Fact]
+    public void TryGetClientForService_FindsTheClientByItsRoutePrefix()
+    {
+        var routeMap = new KaleidoQueryableClientRouteOptionsMap();
+        routeMap.Options["MemberService"] = "member";
+
+        var httpClientFactory = new Mock<IHttpClientFactory>();
+        httpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(new System.Net.Http.HttpClient());
+
+        var factory = CreateSut(httpClientFactory.Object, routeMap);
+
+        Assert.True(factory.TryGetClientForService("member", out var client));
+        Assert.NotNull(client);
+        httpClientFactory.Verify(f => f.CreateClient("MemberService"));
+    }
+
+    [Fact]
+    public void TryGetClientForService_ForAServiceWithoutAClient_ReturnsFalse()
+    {
+        var factory = CreateSut(Mock.Of<IHttpClientFactory>(), new KaleidoQueryableClientRouteOptionsMap());
+
+        Assert.False(factory.TryGetClientForService("codeset", out var client));
+        Assert.Null(client);
+    }
 }
