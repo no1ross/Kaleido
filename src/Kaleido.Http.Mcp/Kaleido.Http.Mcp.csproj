@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<Description>Kaleido MCP adapter: publishes Kaleido capabilities to AI agents as Model Context Protocol tools over HTTP.</Description>
+		<Description>Kaleido MCP adapter: publishes a Kaleido host's capabilities to AI agents as Model Context Protocol tools, on top of the Kaleido HTTP stack.</Description>
 		<PackageTags>mcp;model-context-protocol;ai;agents;kaleido</PackageTags>
 	</PropertyGroup>
 
@@ -11,11 +11,11 @@
 
 	<ItemGroup>
 		<PackageReference Include="ModelContextProtocol.AspNetCore" />
-		<PackageReference Include="Microsoft.Extensions.Http" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Kaleido.Http.Abstractions\Kaleido.Http.Abstractions.csproj" />
+		<ProjectReference Include="..\Kaleido.Http\Kaleido.Http.csproj" />
+		<ProjectReference Include="..\Kaleido.Http.Client\Kaleido.Http.Client.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

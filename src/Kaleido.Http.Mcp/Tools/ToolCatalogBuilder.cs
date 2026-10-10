@@ -109,6 +109,7 @@ internal sealed class ToolCatalogBuilder(
             Kind = KaleidoToolKind.Query,
             Service = source.ServiceName,
             CapabilityName = source.Name,
+            SourceName = source.Name,
             Url = source.QueryUrl ?? string.Empty
         });
     }
@@ -136,6 +137,8 @@ internal sealed class ToolCatalogBuilder(
             Kind = KaleidoToolKind.Query,
             Service = source.ServiceName,
             CapabilityName = view.Name,
+            SourceName = source.Name,
+            ViewName = view.Name,
             Url = view.QueryUrl
         });
     }

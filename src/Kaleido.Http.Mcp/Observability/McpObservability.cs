@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Text.Json.Nodes;
-using Kaleido.Http.Mcp.Http;
 using Kaleido.Http.Mcp.Tools;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
@@ -43,7 +42,7 @@ internal interface IMcpToolsListObservation : IDisposable
 }
 
 internal sealed class McpObservability(
-    IMcpRequestIdAccessor requestIdAccessor,
+    IKaleidoCorrelationContextAccessor correlation,
     ILogger<McpObservability> logger)
     : IMcpObservability
 {
@@ -67,11 +66,11 @@ internal sealed class McpObservability(
     private static readonly Counter<long> RegistryReadsCounter =
         Meter.CreateCounter<long>(
             McpTelemetry.RegistryReadsCounterName,
-            description: "Registry reads by result (hit, not_modified, fetched, failed).");
+            description: "Registry reads by result (hit: the caller's tools were already translated for this registry revision; fetched: translated now).");
 
     public IMcpToolCallObservation BeginToolCall(string toolName)
     {
-        var requestId = requestIdAccessor.Current;
+        var requestId = correlation.Current.RequestId;
         var activity = ActivitySource.StartActivity(McpTelemetry.ToolCallActivityName, ActivityKind.Server);
 
         activity?.SetTag(McpTelemetry.TagTool, toolName);
@@ -86,7 +85,7 @@ internal sealed class McpObservability(
     {
         var activity = ActivitySource.StartActivity(McpTelemetry.ToolsListActivityName, ActivityKind.Server);
 
-        activity?.SetTag(KaleidoTelemetryTags.RequestId, requestIdAccessor.Current);
+        activity?.SetTag(KaleidoTelemetryTags.RequestId, correlation.Current.RequestId);
 
         return new ToolsListObservation(activity, logger);
     }

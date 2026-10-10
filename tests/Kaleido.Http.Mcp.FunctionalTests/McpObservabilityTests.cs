@@ -7,8 +7,10 @@ using ModelContextProtocol.Protocol;
 namespace Kaleido.Http.Mcp.FunctionalTests;
 
 /// <summary>
-/// Every tool call is correlated and traced: one request id (the client's, or a generated one) in
-/// the result and on the tool-call span, which carries the tool, its kind, service and outcome.
+/// Every tool call is correlated and traced with the host's request id — the one Kaleido's
+/// middleware assigned to the MCP request (an end user's own X-Kaleido-Request-Id is not trusted by
+/// an authenticated host) — in the result and on the tool-call span, which carries the tool, its
+/// kind, service and outcome.
 /// </summary>
 public sealed class McpObservabilityTests(McpClinicFixture fixture)
     : IClassFixture<McpClinicFixture>, IDisposable
@@ -21,18 +23,26 @@ public sealed class McpObservabilityTests(McpClinicFixture fixture)
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task TheClientsRequestId_IsReturnedInTheResult()
+    public async Task TheResult_ReturnsTheHostsRequestId_TheSameOneOnTheSpan()
     {
-        var requestId = $"mcp-test-{Guid.NewGuid():N}";
+        Listen();
+        var untrusted = $"mcp-test-{Guid.NewGuid():N}";
 
-        await using var client = await fixture.ConnectAsync(Nurse, requestId: requestId);
+        await using var client = await fixture.ConnectAsync(Nurse, requestId: untrusted);
 
         var body = Body(await client.CallToolAsync(
             "clinic_patient",
             new Dictionary<string, object?> { ["searchText"] = "Ben" },
             cancellationToken: Cancel));
 
-        Assert.Equal(requestId, body["requestId"]?.GetValue<string>());
+        var requestId = body["requestId"]?.GetValue<string>();
+        Assert.False(string.IsNullOrWhiteSpace(requestId));
+        Assert.NotEqual(untrusted, requestId);
+        Assert.Contains(
+            activities,
+            x => x.OperationName == McpTelemetry.ToolCallActivityName &&
+                 Equals(x.GetTagItem(McpTelemetry.TagTool), "clinic_patient") &&
+                 Equals(x.GetTagItem(KaleidoTelemetryTags.RequestId), requestId));
     }
 
     [Fact]
@@ -52,14 +62,13 @@ public sealed class McpObservabilityTests(McpClinicFixture fixture)
     public async Task AToolCall_EmitsASpan_WithTheToolAndItsOutcome()
     {
         Listen();
-        var requestId = $"mcp-span-{Guid.NewGuid():N}";
 
-        await using var client = await fixture.ConnectAsync(Nurse, requestId: requestId);
+        await using var client = await fixture.ConnectAsync(Nurse);
 
-        await client.CallToolAsync(
+        var requestId = Body(await client.CallToolAsync(
             "clinic_close_visit",
             new Dictionary<string, object?> { ["note"] = "no process" },
-            cancellationToken: Cancel);
+            cancellationToken: Cancel))["requestId"]?.GetValue<string>();
 
         var span = Assert.Single(
             activities,
