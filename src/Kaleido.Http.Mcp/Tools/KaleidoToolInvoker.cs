@@ -635,7 +635,11 @@ internal sealed class KaleidoToolInvoker(
             next["informationRequest"] = Serialize(pending);
             next["instruction"] =
                 (elicited ? "More questions followed. " : string.Empty) +
-                "Ask the user every question exactly as written and submit only the user's answers with answer_information_request (service, processId, informationRequestId, answers). Never answer for the user.";
+                "Ask the user every question exactly as written and submit only the user's answers with answer_information_request (service, processId, informationRequestId, answers). " +
+                (HasProposals(pending.Items)
+                    ? "Questions with proposedAnswers were pre-filled from what was said earlier: read each one back with its proposed answer and have the user confirm or correct it. " 
+                    : string.Empty) +
+                "If the user already answered a question earlier in this conversation, read that answer back for confirmation instead of asking again. Never answer for the user, and never submit a proposed answer the user has not confirmed.";
         }
         else if (required is not null)
         {
@@ -660,6 +664,9 @@ internal sealed class KaleidoToolInvoker(
 
         return next;
     }
+
+    private static bool HasProposals(IEnumerable<InformationItem> items) =>
+        items.Any(x => x.ProposedAnswers.Count > 0 || HasProposals(x.Items));
 
     // ── Continuation state (MRTR) ────────────────────────────────────────────
 

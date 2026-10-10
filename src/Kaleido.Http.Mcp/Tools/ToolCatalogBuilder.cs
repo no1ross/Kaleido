@@ -514,7 +514,7 @@ internal sealed class ToolCatalogBuilder(
                 Title = "Answer information request",
                 Description =
                     "Submits the user's answers to the questions a process asked (an informationRequest in a step result). " +
-                    "Ask the user each question exactly as written and pass only the user's answers; never answer on the user's behalf. Changes state.",
+                    "Ask the user each question exactly as written and pass only the user's answers; a proposed answer, or one the user gave earlier in the conversation, counts only after the user confirms it. Never answer on the user's behalf. Changes state.",
                 InputSchema = JsonSerializer.SerializeToElement(new JsonObject
                 {
                     ["type"] = "object",

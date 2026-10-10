@@ -59,6 +59,20 @@ public sealed record InformationItem
 
     /// <summary>Nested items (for a <see cref="InformationItemType.Group"/>).</summary>
     public IReadOnlyList<InformationItem> Items { get; init; } = [];
+
+    /// <summary>
+    /// Answers the implementer proposes for this question, for example from what the user already
+    /// stated earlier in the process. Clients show them pre-filled; the user confirms or corrects
+    /// them, and only what the user submits is an answer. A proposal is never submitted on the
+    /// user's behalf.
+    /// </summary>
+    /// <remarks>
+    /// Checked like answers when the request is created: each must fit the question (an offered
+    /// option of a choice, a date for a date…), and there is at most one unless the question
+    /// <see cref="Repeats"/>. Groups and display text take none. Which answers to propose, and from
+    /// what, is the implementer's decision (ADR 0001).
+    /// </remarks>
+    public IReadOnlyList<InformationAnswer> ProposedAnswers { get; init; } = [];
 }
 
 /// <summary>An allowed answer of a choice question.</summary>

@@ -202,7 +202,8 @@ public sealed class ToolCatalogBuilderTests
             Assert.Equal(["clinic"], service.GetProperty("enum").EnumerateArray().Select(x => x.GetString()));
         }
 
-        Assert.Contains("never answer on the user's behalf", Tool(catalog, ToolCatalogBuilder.AnswerInformationRequestTool).Definition.Description, StringComparison.Ordinal);
+        Assert.Contains("Never answer on the user's behalf", Tool(catalog, ToolCatalogBuilder.AnswerInformationRequestTool).Definition.Description, StringComparison.Ordinal);
+        Assert.Contains("counts only after the user confirms it", Tool(catalog, ToolCatalogBuilder.AnswerInformationRequestTool).Definition.Description, StringComparison.Ordinal);
     }
 
     [Fact]

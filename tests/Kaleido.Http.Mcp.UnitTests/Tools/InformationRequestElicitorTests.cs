@@ -141,4 +141,41 @@ public sealed class InformationRequestElicitorTests
         Assert.Equal("notes", notes.ItemId);
         Assert.Empty(notes.Answers);
     }
+
+    private static InformationRequest WithProposals() => Request with
+    {
+        Items = Request.Items.Select(item => item.Id switch
+        {
+            "contrast" => item with { ProposedAnswers = [new InformationAnswer { Value = "without" }] },
+            "sites" => item with { ProposedAnswers = [new InformationAnswer { Value = "knee" }] },
+            "implant" => item with { ProposedAnswers = [new InformationAnswer { Value = "false" }] },
+            "onset" => item with { ProposedAnswers = [new InformationAnswer { Value = "2026-10-01" }] },
+            "history" => item with { Items = [item.Items.First() with { ProposedAnswers = [new InformationAnswer { Value = "6" }] }, item.Items.Last()] },
+            _ => item
+        }).ToArray()
+    };
+
+    [Fact]
+    public void ToElicitation_ProposedAnswers_PreFillTheForm_AndTheMessageSaysToCheckThem()
+    {
+        var elicitation = CreateSut().ToElicitation(WithProposals());
+        var fields = Assert.IsType<ElicitRequestParams.RequestSchema>(elicitation.RequestedSchema).Properties;
+
+        Assert.Equal("without", Assert.IsType<ElicitRequestParams.TitledSingleSelectEnumSchema>(fields["contrast"]).Default);
+        Assert.Equal(["knee"], Assert.IsType<ElicitRequestParams.TitledMultiSelectEnumSchema>(fields["sites"]).Default);
+        Assert.False(Assert.IsType<ElicitRequestParams.BooleanSchema>(fields["implant"]).Default);
+        Assert.Equal("2026-10-01", Assert.IsType<ElicitRequestParams.StringSchema>(fields["onset"]).Default);
+        Assert.Equal(6d, Assert.IsType<ElicitRequestParams.NumberSchema>(fields["weeks"]).Default);
+        Assert.Null(Assert.IsType<ElicitRequestParams.StringSchema>(fields["notes"]).Default);
+        Assert.Contains(InformationRequestElicitor.ProposedNote, elicitation.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ToElicitation_WithoutProposals_OpensEmpty_AndSaysNothingAboutThem()
+    {
+        var elicitation = CreateSut().ToElicitation(Request);
+
+        Assert.Null(Assert.IsType<ElicitRequestParams.TitledSingleSelectEnumSchema>(Assert.IsType<ElicitRequestParams.RequestSchema>(elicitation.RequestedSchema).Properties["contrast"]).Default);
+        Assert.DoesNotContain(InformationRequestElicitor.ProposedNote, elicitation.Message, StringComparison.Ordinal);
+    }
 }
