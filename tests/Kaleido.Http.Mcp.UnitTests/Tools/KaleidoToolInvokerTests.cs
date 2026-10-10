@@ -415,6 +415,25 @@ public sealed class KaleidoToolInvokerTests
     }
 
     [Fact]
+    public async Task FrameworkMessages_AreShownOnlyWhenTheyMatter_BusinessMessagesAlways()
+    {
+        StepReturns(StepResponse() with
+        {
+            FrameworkMessages =
+            [
+                new ProcessMessage { Type = MessageType.Information, Code = "pro_repeatable_step", Message = "Step is repeatable." },
+                new ProcessMessage { Type = MessageType.Warning, Code = "pro_something", Message = "Check this." }
+            ]
+        });
+
+        var messages = (Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel))["messages"]?.AsArray() ?? [])
+            .Select(x => x?["code"]?.GetValue<string>())
+            .ToArray();
+
+        Assert.Equal(["visit_opened", "pro_something"], messages);
+    }
+
+    [Fact]
     public async Task AStepResult_WithARequiredStepTheCallerCannotRun_SaysSo()
     {
         StepReturns(StepResponse(required: new ProcessRequiredStep { Name = "ApproveStep", ExecuteUrl = "/clinic/processes/steps/ApproveStep" }));

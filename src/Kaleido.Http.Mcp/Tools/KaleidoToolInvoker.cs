@@ -588,7 +588,11 @@ internal sealed class KaleidoToolInvoker(
             summary["result"] = JsonNode.Parse(step.Result.GetRawText());
         }
 
-        var messages = step.BusinessMessages.Concat(step.FrameworkMessages).ToArray();
+        // Business messages are the implementer's and always shown; framework messages only when they
+        // matter to the caller (warnings and errors), not informational notes such as a repeatable step.
+        var messages = step.BusinessMessages
+            .Concat(step.FrameworkMessages.Where(x => x.Type != MessageType.Information))
+            .ToArray();
 
         if (messages.Length > 0)
         {
