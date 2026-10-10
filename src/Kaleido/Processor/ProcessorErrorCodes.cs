@@ -24,6 +24,12 @@ public static class ProcessorErrorCodes
     /// <summary>The requested step is not registered.</summary>
     public const string UnknownStep = "pro_unknown_step";
 
+    /// <summary>
+    /// The request names a process that does not exist, and is not a handoff from another
+    /// processor: a new process is never started under an unknown id by mistake.
+    /// </summary>
+    public const string ProcessNotFound = "pro_process_not_found";
+
     /// <summary>The supplied step request is invalid.</summary>
     public const string InvalidRequest = "pro_invalid_request";
 

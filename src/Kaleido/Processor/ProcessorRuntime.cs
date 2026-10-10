@@ -175,6 +175,7 @@ internal sealed class ProcessorRuntime(
     IEventPublisher eventPublisher,
     IProcessorObservability observability,
     IKaleidoCorrelationContextAccessor correlationAccessor,
+    KaleidoServiceOptions serviceOptions,
     ILogger<ProcessorRuntime> logger)
     : IProcessorRuntime
 {
@@ -279,6 +280,10 @@ internal sealed class ProcessorRuntime(
         }
     }
 
+    private bool IsHandOff() =>
+        correlationAccessor.Current.CallingProcessorName is { Length: > 0 } calling &&
+        !string.Equals(calling, serviceOptions.ServiceName, StringComparison.OrdinalIgnoreCase);
+
     private async Task<ProcessorContext> LoadOrCreateContextAsync(
         ProcessRequest request,
         IProcessorExecutionObservation observation,
@@ -329,6 +334,17 @@ internal sealed class ProcessorRuntime(
             await contextStore.LoadAsync(
                 request.ProcessId.Value,
                 cancellationToken);
+
+        // An unknown process id starts a process only on a handoff: a step of another processor
+        // continuing the same process here (it stamps itself as the calling processor). Any other
+        // unknown id is a mistake (a wrong, removed or reset process) and must not silently start
+        // an empty process in its place.
+        if (context is null && !IsHandOff())
+        {
+            throw new KaleidoValidationException(
+                ProcessorErrorCodes.ProcessNotFound,
+                $"Process '{request.ProcessId.Value}' was not found. To start a new process, omit the process id; an unknown process id only starts a process when another processor hands it off.");
+        }
 
         if (context is null)
         {
