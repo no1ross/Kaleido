@@ -46,5 +46,11 @@
     "CodeValue": "70551",
     "CodeSystem": "Cpt",
     "ProcessorName": "radiology"
+  },
+  {
+    "ProductCodeMappingId": "303e1b62-90f0-4582-82ad-12a4b74652c3",
+    "CodeValue": "73722",
+    "CodeSystem": "Cpt",
+    "ProcessorName": "radiology"
   }
 ]
