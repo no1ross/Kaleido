@@ -33,7 +33,7 @@ public sealed class CaptureMemberHandler(
 
             if (!eligibility.Succeeded)
             {
-                return ProcessStepHandlerResult.Failure(eligibility.FailureMessage!);
+                return ProcessStepHandlerResult.Reject(eligibility.FailureMessage!);
             }
 
             var memberDetails = eligibility.MemberDetails!;
@@ -86,7 +86,7 @@ public sealed class CaptureMemberHandler(
 
             if (!routing.Succeeded)
             {
-                return ProcessStepHandlerResult.Failure(routing.FailureMessage!);
+                return ProcessStepHandlerResult.Reject(routing.FailureMessage!);
             }
 
             return routing.Route == ModalityRoute.CaptureMriInfo
@@ -95,7 +95,7 @@ public sealed class CaptureMemberHandler(
         }
         catch (KaleidoHttpClientException ex)
         {
-            return ProcessStepHandlerResult.Failure(
+            return ProcessStepHandlerResult.Reject(
                 RadiologyProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));

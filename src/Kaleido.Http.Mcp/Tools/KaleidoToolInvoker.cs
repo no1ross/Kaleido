@@ -422,6 +422,10 @@ internal sealed class KaleidoToolInvoker(
                 .Where(x => x.Status == StepExecutionStatus.Completed)
                 .Select(x => (JsonNode?)x.StepName)
                 .ToArray()),
+            ["failedSteps"] = new JsonArray(state.Steps
+                .Where(x => x.Status is StepExecutionStatus.Failed or StepExecutionStatus.Exception)
+                .Select(x => (JsonNode?)x.StepName)
+                .ToArray()),
             ["next"] = Next(service, state.RequiredStep, state.AvailableSteps, catalog, elicited: false)
         };
 
@@ -610,6 +614,17 @@ internal sealed class KaleidoToolInvoker(
         }
 
         summary["next"] = Next(pendingService, required, available, catalog, elicited: answered.Count > 0);
+
+        // A rejected step, or one that failed unexpectedly, changed nothing: the process is where it
+        // was, so the user can correct the input and retry, or choose another step.
+        note ??= step.Outcome switch
+        {
+            StepExecutionOutcome.Rejected =>
+                "The step was rejected and nothing was changed. Tell the user why (messages); they can correct it and try again, or choose another step.",
+            StepExecutionOutcome.Failed when required is not null || available.Count > 0 =>
+                "The step did not complete and nothing was recorded; the process is where it was. The user can try again or choose another step.",
+            _ => null
+        };
 
         if (note is not null)
         {

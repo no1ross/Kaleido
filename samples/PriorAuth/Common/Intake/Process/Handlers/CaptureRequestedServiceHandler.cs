@@ -33,7 +33,7 @@ public sealed class CaptureRequestedServiceHandler(
 
             if (procedureCode is null)
             {
-                return ProcessStepHandlerResult.Failure(
+                return ProcessStepHandlerResult.Reject(
                     IntakeProcessMessages.ProcedureCodeNotFound(
                         processStep.CodeSystem,
                         processStep.CodeValue));
@@ -47,7 +47,7 @@ public sealed class CaptureRequestedServiceHandler(
 
             if (string.IsNullOrWhiteSpace(processorName))
             {
-                return ProcessStepHandlerResult.Failure(
+                return ProcessStepHandlerResult.Reject(
                     IntakeProcessMessages.ProcessorNotFoundForCode(
                         procedureCode.CodeSystem,
                         procedureCode.CodeValue));
@@ -118,9 +118,9 @@ public sealed class CaptureRequestedServiceHandler(
                         },
                         cancellationToken);
 
-            if (downstreamResult.Outcome == StepExecutionOutcome.Failed)
+            if (downstreamResult.Outcome is StepExecutionOutcome.Failed or StepExecutionOutcome.Rejected)
             {
-                return ProcessStepHandlerResult.Failure(
+                return ProcessStepHandlerResult.Reject(
                     downstreamResult.BusinessMessages.ToArray());
             }
 
@@ -129,11 +129,11 @@ public sealed class CaptureRequestedServiceHandler(
         catch (KaleidoHttpClientException ex)
         {
             return ex.Code == HttpClientErrorCodes.ValidationFailed
-                ? ProcessStepHandlerResult.Failure(
+                ? ProcessStepHandlerResult.Reject(
                     IntakeProcessMessages.QueryableRequestFailed(
                         ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                         ex.Message))
-                : ProcessStepHandlerResult.Failure(
+                : ProcessStepHandlerResult.Reject(
                     IntakeProcessMessages.DownstreamProcessorRequestFailed(ex.Message));
         }
     }

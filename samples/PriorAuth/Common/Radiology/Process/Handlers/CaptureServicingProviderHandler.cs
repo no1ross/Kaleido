@@ -53,7 +53,7 @@ public sealed class CaptureServicingProviderHandler(
         }
         catch (KaleidoHttpClientException ex)
         {
-            return ProcessStepHandlerResult.Failure(
+            return ProcessStepHandlerResult.Reject(
                 RadiologyProcessMessages.QueryableRequestFailed(ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED", ex.Message));
         }
     }

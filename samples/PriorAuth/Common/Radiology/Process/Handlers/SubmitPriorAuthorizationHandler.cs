@@ -29,7 +29,7 @@ public sealed class SubmitPriorAuthorizationHandler(
 
         if (!bool.TryParse(ConfiguredInformationRequests.Answer(processStep, AttestedItem), out var attested) || !attested)
         {
-            return ProcessStepHandlerResult.Failure(RadiologyProcessMessages.AttestationRequired());
+            return ProcessStepHandlerResult.Reject(RadiologyProcessMessages.AttestationRequired());
         }
 
         var priorAuthorization =

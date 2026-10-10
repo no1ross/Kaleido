@@ -55,4 +55,5 @@ export type StepExecutionOutcome =
     | 'completed'
     | 'failed'
     | 'blocked'
-    | 'canceled';
+    | 'canceled'
+    | 'rejected';

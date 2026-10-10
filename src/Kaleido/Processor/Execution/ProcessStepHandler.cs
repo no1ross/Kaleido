@@ -70,9 +70,15 @@ public interface IProcessStepHandlerResult
 {
     /// <summary>
     /// <see langword="true"/> when the step succeeded; <see langword="false"/> for a
-    /// business failure.
+    /// business failure or a rejection.
     /// </summary>
     bool Succeeded { get; }
+
+    /// <summary>
+    /// <see langword="true"/> when the handler rejected the step's input as correctable: the step
+    /// is not completed and the process is left exactly as it was (see <c>Rejected(...)</c>).
+    /// </summary>
+    bool Rejected { get; }
 
     /// <summary>
     /// The <see cref="IProcessStep"/> type that must execute next, or
@@ -115,6 +121,9 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
 
     /// <inheritdoc />
     public bool Succeeded { get; init; }
+
+    /// <inheritdoc />
+    public bool Rejected { get; init; }
 
     /// <inheritdoc />
     public Type? RequiredStep { get; init; }
@@ -210,7 +219,8 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
     }
 
     /// <summary>
-    /// Signals a business failure.
+    /// Signals a business failure: the request cannot proceed, and the process ends in
+    /// <c>BusinessFailure</c>. For input the caller can correct, use <see cref="Reject"/>.
     /// </summary>
     /// <param name="response">The typed response payload.</param>
     /// <param name="messages">Business messages explaining the failure.</param>
@@ -223,6 +233,24 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
             Succeeded = false,
             Messages = messages,
             Response = response
+        };
+    }
+
+    /// <summary>
+    /// Rejects the step's input as correctable (an unknown code, a duplicate, an ineligible date):
+    /// the step is not completed and the process is left exactly as it was, so the caller can
+    /// correct the input and retry, or choose another available step. The handler must not have
+    /// changed anything it would need to undo.
+    /// </summary>
+    /// <param name="messages">Business messages explaining what to correct.</param>
+    public static ProcessStepHandlerResult<TProcessStepResult> Reject(
+        params ProcessMessage[] messages)
+    {
+        return new()
+        {
+            Succeeded = false,
+            Rejected = true,
+            Messages = messages
         };
     }
 
@@ -254,6 +282,9 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
 
     /// <inheritdoc />
     public bool Succeeded { get; init; }
+
+    /// <inheritdoc />
+    public bool Rejected { get; init; }
 
     /// <inheritdoc />
     public Type? RequiredStep { get; init; }
@@ -336,7 +367,8 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
     }
 
     /// <summary>
-    /// Signals a business failure.
+    /// Signals a business failure: the request cannot proceed, and the process ends in
+    /// <c>BusinessFailure</c>. For input the caller can correct, use <see cref="Reject"/>.
     /// </summary>
     /// <param name="messages">Business messages explaining the failure.</param>
     public static ProcessStepHandlerResult Failure(
@@ -345,6 +377,24 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
         return new()
         {
             Succeeded = false,
+            Messages = messages
+        };
+    }
+
+    /// <summary>
+    /// Rejects the step's input as correctable (an unknown code, a duplicate, an ineligible date):
+    /// the step is not completed and the process is left exactly as it was, so the caller can
+    /// correct the input and retry, or choose another available step. The handler must not have
+    /// changed anything it would need to undo.
+    /// </summary>
+    /// <param name="messages">Business messages explaining what to correct.</param>
+    public static ProcessStepHandlerResult Reject(
+        params ProcessMessage[] messages)
+    {
+        return new()
+        {
+            Succeeded = false,
+            Rejected = true,
             Messages = messages
         };
     }

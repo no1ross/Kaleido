@@ -29,7 +29,7 @@ public sealed class CaptureMriInfoHandler(
             !TryRead(processStep, LateralityItem, out Laterality laterality, out failure) ||
             !TryRead(processStep, ContrastItem, out ContrastOption contrast, out failure))
         {
-            return ProcessStepHandlerResult.Failure(failure!);
+            return ProcessStepHandlerResult.Reject(failure!);
         }
 
         try
@@ -82,7 +82,7 @@ public sealed class CaptureMriInfoHandler(
         }
         catch (KaleidoHttpClientException ex)
         {
-            return ProcessStepHandlerResult.Failure(
+            return ProcessStepHandlerResult.Reject(
                 RadiologyProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));

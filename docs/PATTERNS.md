@@ -44,6 +44,12 @@ Rules:
 - **The next step is named by type**: `Success<TNext>()` (or
   `ProcessStepHandlerResult<T>.Success<TNext>(response)`); `Success()` lets the
   process rules decide. Cross-processor routing uses `HandOff(targetProcessorName)`.
+- **Saying no** ([ADR 0008](./decisions/0008-rejected-outcome-and-retryable-exceptions.md)):
+  `Reject(messages)` for input the caller can correct, or a call that can be retried
+  (unknown code, ineligible date, downstream unavailable). The step is not completed and the
+  process is left exactly as it was. Reject before writing anything, or make the handler safe
+  to run again. `Failure(messages)` only when the request cannot proceed: it ends the process.
+  An unexpected exception leaves the process as it was, so the step can be retried.
 - Relationships are typed: `[DependsOn<T>]`, `[AvailableAfter<T>]`,
   `[AvailableUntil<T>]`, constrained to `IProcessStep`.
 - Every step needs exactly one handler (KAL2008); the handler must not swallow
