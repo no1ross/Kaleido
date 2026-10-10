@@ -4,6 +4,16 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Messages;
 
 public static class RadiologyProcessMessages
 {
+    public static ProcessMessage ProviderLocationNotOffered(
+        Guid providerId,
+        Guid providerLocationId) =>
+        new()
+        {
+            Code = "PROVIDER_LOCATION_NOT_OFFERED",
+            Type = MessageType.Error,
+            Message = $"Location '{providerLocationId}' of provider '{providerId}' is not one of the providers offered for this request. Search again and choose a provider from the results."
+        };
+
     public static ProcessMessage MemberNotFound(
         Guid memberId,
         Guid memberEnrollmentId) =>
@@ -11,7 +21,7 @@ public static class RadiologyProcessMessages
         {
             Code = "MEMBER_NOT_FOUND",
             Type = MessageType.Error,
-            Message = $"No member details were found for member '{memberId}' and enrollment '{memberEnrollmentId}'."
+            Message = $"Member '{memberId}' has no enrollment '{memberEnrollmentId}': the member and the enrollment must come from the same Member Search result. Search the member again and choose one result."
         };
 
     public static ProcessMessage CoverageNotYetEffective(

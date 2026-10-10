@@ -566,6 +566,123 @@ public sealed class KaleidoToolInvokerTests
         Assert.Null(outcome.InputRequired);
     }
 
+    // ── Guided lookups ──────────────────────────────────────────────────────
+
+    private static readonly KaleidoTool PickPatient = new()
+    {
+        Definition = new Tool { Name = "clinic_pick_patient" },
+        Kind = KaleidoToolKind.Step,
+        Service = "clinic",
+        CapabilityName = "PickPatientStep",
+        Url = "/clinic/processes/steps/PickPatientStep",
+        Lookups =
+        [
+            new ToolLookup
+            {
+                Group = "patient",
+                Service = "clinic",
+                Source = "Patient",
+                QueryTool = "clinic_patient",
+                QueryTitle = "Patient Search",
+                Inputs = [("patientId", "PatientId"), ("enrollmentId", "EnrollmentId")],
+                Display = ["Name"]
+            }
+        ]
+    };
+
+    private static readonly ToolCatalog LookupCatalog = Catalog with { Tools = [.. Catalog.Tools, PickPatient] };
+
+    private void LookupForms()
+    {
+        ClientShowsForms();
+        server.Setup(x => x.IsMrtrSupported).Returns(true);
+
+        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryApiRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
+            .Callback((string source, QueryApiRequest<JsonObject> request, CancellationToken _) => queries.Add((source, null, request)))
+            .ReturnsAsync(new QueryResult<JsonObject>(1, 0, 10, [new JsonObject { ["patientId"] = "P-1", ["enrollmentId"] = "E-1", ["name"] = "Ava Carter" }]));
+
+        // The search form is answered with a search text, the pick form with the first result.
+        elicitor.Setup(x => x.ToAnswers(It.IsAny<InformationRequest>(), It.IsAny<IReadOnlyDictionary<string, JsonElement>>()))
+            .Returns((InformationRequest request, IReadOnlyDictionary<string, JsonElement> _) =>
+                request.InformationRequestId.StartsWith("lookup-search", StringComparison.Ordinal)
+                    ? [new InformationResponseItem { ItemId = "search", Answers = [new InformationAnswer { Value = "Ava" }] }]
+                    : [new InformationResponseItem { ItemId = "result", Answers = [new InformationAnswer { Value = "0" }] }]);
+    }
+
+    private static IReadOnlyDictionary<string, InputResponse> LookupAnswered() =>
+        new Dictionary<string, InputResponse>(StringComparer.Ordinal)
+        {
+            ["kaleido-lookup"] = new()
+            {
+                RawValue = JsonSerializer.SerializeToElement(
+                    new ElicitResult { Action = "accept", Content = new Dictionary<string, JsonElement> { ["x"] = JsonSerializer.SerializeToElement("x") } },
+                    McpJsonUtilities.DefaultOptions)
+            }
+        };
+
+    [Fact]
+    public async Task LookupStep_WithForms_AndMissingLookupInputs_AsksTheUserToSearch_WithoutRunningTheStep()
+    {
+        LookupForms();
+
+        var outcome = await CreateSut().InvokeAsync(PickPatient, Call(new { processId = ProcessId }), LookupCatalog, Cancel);
+
+        var inputRequired = Assert.IsType<InputRequiredResult>(outcome.InputRequired);
+        Assert.StartsWith("kaleido-mcp-lookup:", inputRequired.RequestState, StringComparison.Ordinal);
+        Assert.Empty(posts);
+        Assert.Empty(queries);
+    }
+
+    [Fact]
+    public async Task TheSearchRetry_RunsTheLookupQuery_AndOffersTheResultsToPick()
+    {
+        LookupForms();
+        var searchState = (await CreateSut().InvokeAsync(PickPatient, Call(new { processId = ProcessId }), LookupCatalog, Cancel)).InputRequired?.RequestState;
+
+        var outcome = await CreateSut().InvokeAsync(PickPatient, Call(requestState: searchState, inputResponses: LookupAnswered()), LookupCatalog, Cancel);
+
+        var (source, _, request) = Assert.Single(queries);
+        Assert.Equal("Patient", source);
+        Assert.Equal("Ava", request.Query?.SearchText);
+        Assert.StartsWith("kaleido-mcp-lookup:", outcome.InputRequired?.RequestState, StringComparison.Ordinal);
+        Assert.Empty(posts);
+    }
+
+    [Fact]
+    public async Task ThePickRetry_FillsTheInputsFromTheChosenResult_AndRunsTheStep()
+    {
+        LookupForms();
+        var searchState = (await CreateSut().InvokeAsync(PickPatient, Call(new { processId = ProcessId }), LookupCatalog, Cancel)).InputRequired?.RequestState;
+        var pickState = (await CreateSut().InvokeAsync(PickPatient, Call(requestState: searchState, inputResponses: LookupAnswered()), LookupCatalog, Cancel)).InputRequired?.RequestState;
+
+        await CreateSut().InvokeAsync(PickPatient, Call(requestState: pickState, inputResponses: LookupAnswered()), LookupCatalog, Cancel);
+
+        var (_, step, body, processId) = Assert.Single(posts);
+        Assert.Equal("PickPatientStep", step);
+        Assert.Equal(ProcessId, processId);
+        Assert.Equal("P-1", body["patientId"]?.GetValue<string>());
+        Assert.Equal("E-1", body["enrollmentId"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task LookupStep_WithoutForms_RunsTheStepAsCalled()
+    {
+        await CreateSut().InvokeAsync(PickPatient, Call(new { processId = ProcessId }), LookupCatalog, Cancel);
+
+        Assert.Single(posts);
+        Assert.Empty(queries);
+    }
+
+    [Fact]
+    public async Task LookupStep_WithItsInputsGiven_IsNotGuided()
+    {
+        LookupForms();
+
+        await CreateSut().InvokeAsync(PickPatient, Call(new { processId = ProcessId, patientId = "P-2", enrollmentId = "E-2" }), LookupCatalog, Cancel);
+
+        Assert.Equal("P-2", Assert.Single(posts).Body["patientId"]?.GetValue<string>());
+    }
+
     private async Task<string> MrtrStateAsync()
     {
         ClientShowsForms();

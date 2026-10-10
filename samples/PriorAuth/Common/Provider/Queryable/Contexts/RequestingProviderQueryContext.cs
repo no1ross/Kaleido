@@ -7,6 +7,7 @@ namespace Kaleido.Samples.PriorAuth.Provider.Queryable.Contexts;
 public sealed class RequestingProviderQueryContext : IQueryContext
 {
     [Key]
+    [Filterable(FilterOperator.Equals)]
     public Guid ProviderLocationId { get; init; }
 
     public Guid ProviderId { get; init; }

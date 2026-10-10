@@ -183,9 +183,7 @@ export class RequestingProvider {
                         processId: this.processState.state().processId,
                         processStep: {
                             providerId: selectedRecord.providerId,
-                            providerLocationId: selectedRecord.providerLocationId,
-                            providerName: selectedRecord.providerName,
-                            locationName: selectedRecord.locationName
+                            providerLocationId: selectedRecord.providerLocationId
                         }
                     })
                     .subscribe({
