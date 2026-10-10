@@ -384,6 +384,37 @@ public sealed class KaleidoToolInvokerTests
     }
 
     [Fact]
+    public async Task SeveralAvailableSteps_AreOfferedAsAChoice_WithWhatEachOneCloses()
+    {
+        // Capturing the scan closes closing the visit (CloseVisitStep is available until CaptureScanStep).
+        // A 'with' copy of a used catalog must find the new tools, not the original's.
+        Assert.NotNull(Catalog.FindByUrl(Close.Url));
+        var catalog = Catalog with { Tools = [Search, SearchView, Start, Close with { ClosedBy = ["CaptureScanStep"] }, Scan, Answer, State] };
+        StepReturns(StepResponse(available:
+        [
+            new ProcessStepSummary { Name = "CloseVisitStep", ExecuteUrl = Close.Url },
+            new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }
+        ]));
+
+        var next = Body(await CreateSut().InvokeAsync(Start, Call(), catalog, Cancel))["next"];
+
+        var scan = next?["available"]?.AsArray().Single(x => x?["tool"]?.GetValue<string>() == "radiology_capture_scan");
+        Assert.Equal("clinic_close_visit", scan?["closes"]?[0]?.GetValue<string>());
+        Assert.Null(next?["available"]?.AsArray().Single(x => x?["tool"]?.GetValue<string>() == "clinic_close_visit")?["closes"]);
+        Assert.Contains("let the user choose", next?["choice"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task OneAvailableStep_IsNotPresentedAsAChoice()
+    {
+        StepReturns(StepResponse(available: [new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }]));
+
+        var next = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel))["next"];
+
+        Assert.Null(next?["choice"]);
+    }
+
+    [Fact]
     public async Task AStepResult_WithARequiredStepTheCallerCannotRun_SaysSo()
     {
         StepReturns(StepResponse(required: new ProcessRequiredStep { Name = "ApproveStep", ExecuteUrl = "/clinic/processes/steps/ApproveStep" }));
