@@ -12,5 +12,8 @@ public sealed class PriorAuthorizationRequestingProvider
 
     public string? LocationName { get; set; }
 
+    /// <summary>Whether the provider is in the member's network, from the search result chosen.</summary>
+    public bool? IsInNetwork { get; set; }
+
     public PriorAuthorization PriorAuthorization { get; set; } = null!;
 }

@@ -24,7 +24,7 @@ public sealed class ProcessorRuntimeTests
         Microsoft.Extensions.Logging.ILogger<ProcessorRuntime> logger) =>
         new(contextStore, stateUpdater, planner, processor,
             eventFactory, eventPublisher, observability,
-            correlationAccessor, logger);
+            correlationAccessor, new KaleidoServiceOptions { ServiceName = "radiology" }, logger);
 
     [Fact]
     public async Task ExecuteAsync_WhenInitialRequestContainsMultipleStepsWithoutProcessId_InitializesContextAndExecutes()
@@ -130,7 +130,7 @@ public sealed class ProcessorRuntimeTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenContextDoesNotExist_InitializesContext()
+    public async Task ExecuteAsync_WhenContextDoesNotExist_OnAHandOff_InitializesContext()
     {
         var request =
             CreateRequest();
@@ -197,7 +197,7 @@ public sealed class ProcessorRuntimeTests
                 CreateProcessEventFactory().Object,
                 CreateEventPublisher().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor(),
+                CreateCorrelationAccessor(callingProcessor: "intake"),
                 NullLogger<ProcessorRuntime>.Instance);
 
         await runtime.ExecuteAsync(request);
@@ -213,6 +213,38 @@ public sealed class ProcessorRuntimeTests
                 x.Reconcile(
                     It.IsAny<ProcessorContext>()),
             Times.Never);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("radiology")]
+    public async Task ExecuteAsync_WhenContextDoesNotExist_AndItIsNotAHandOff_StartsNothing(string? callingProcessor)
+    {
+        var request = CreateRequest();
+        var processId = Assert.IsType<Guid>(request.ProcessId);
+
+        var contextStore = new Mock<IProcessorContextStore>();
+        contextStore.Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>())).ReturnsAsync(default(ProcessorContext));
+
+        var stateUpdater = new Mock<IProcessorStateUpdater>(MockBehavior.Strict);
+        var processor = new Mock<IProcessorExecutor>(MockBehavior.Strict);
+
+        var runtime =
+            CreateSut(
+                contextStore.Object,
+                stateUpdater.Object,
+                new Mock<IProcessorPlanner>(MockBehavior.Strict).Object,
+                processor.Object,
+                CreateProcessEventFactory().Object,
+                CreateEventPublisher().Object,
+                CreateObservability().Object,
+                CreateCorrelationAccessor(callingProcessor: callingProcessor),
+                NullLogger<ProcessorRuntime>.Instance);
+
+        var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoValidationException>(() => runtime.ExecuteAsync(request, TestContext.Current.CancellationToken));
+
+        Assert.Equal(ProcessorErrorCodes.ProcessNotFound, exception.Code);
+        contextStore.Verify(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -779,7 +811,8 @@ public sealed class ProcessorRuntimeTests
     }
 
     private static IKaleidoCorrelationContextAccessor CreateCorrelationAccessor(
-        string requestId = "REQ-001")
+        string requestId = "REQ-001",
+        string? callingProcessor = null)
     {
         var accessor = new Mock<IKaleidoCorrelationContextAccessor>();
 
@@ -787,7 +820,8 @@ public sealed class ProcessorRuntimeTests
             .SetupGet(x => x.Current)
             .Returns(new KaleidoCorrelationContext
             {
-                RequestId = requestId
+                RequestId = requestId,
+                CallingProcessorName = callingProcessor
             });
 
         return accessor.Object;

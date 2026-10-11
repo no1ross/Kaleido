@@ -4,24 +4,22 @@ using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 
-public sealed class ConfirmCtInsteadOfMriHandler
+public sealed class ConfirmCtInsteadOfMriHandler(
+    ConfiguredInformationRequests informationRequests)
     : IProcessStepHandler<ConfirmCtInsteadOfMriStep>
 {
-    public Task<ProcessStepHandlerResult> ExecuteAsync(
+    // The binding key the business configures on the CT confirmation questionnaire.
+    private const string ConfirmCtItem = "ConfirmCt";
+
+    public async Task<ProcessStepHandlerResult> ExecuteAsync(
         ConfirmCtInsteadOfMriStep processStep,
         ProcessStepContext context,
         CancellationToken cancellationToken = default)
     {
-        var confirmed =
-            processStep.Items
-                .FirstOrDefault(x => x.ItemId == QuestionnaireDefinitionClient.CtConfirmationItemId)?
-                .Answers
-                .FirstOrDefault()?
-                .Value;
+        await informationRequests.RecordAnswersAsync(context.ProcessId, nameof(ConfirmCtInsteadOfMriStep), processStep, cancellationToken);
 
-        return Task.FromResult(
-            bool.TryParse(confirmed, out var value) && value
-                ? ProcessStepHandlerResult.Success()
-                : ProcessStepHandlerResult.Failure(RadiologyProcessMessages.CtNotConfirmed()));
+        return bool.TryParse(ConfiguredInformationRequests.Answer(processStep, ConfirmCtItem), out var confirmed) && confirmed
+            ? ProcessStepHandlerResult.Success()
+            : ProcessStepHandlerResult.Failure(RadiologyProcessMessages.CtNotConfirmed());
     }
 }

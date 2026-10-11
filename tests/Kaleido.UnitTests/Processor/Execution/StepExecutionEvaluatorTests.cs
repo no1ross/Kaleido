@@ -11,6 +11,19 @@ public sealed class StepExecutionEvaluatorTests
     private const string LocalProcessorName = "test-processor";
 
     [Fact]
+    public void Evaluate_WhenTheHandlerRejects_ReturnsRejected()
+    {
+        var decision =
+            CreateSut().Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = false, Rejected = true },
+                [],
+                CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.Rejected, decision.Type);
+    }
+
+    [Fact]
     public void Evaluate_WhenExecutionFails_ReturnsBusinessFailure()
     {
         var evaluator =

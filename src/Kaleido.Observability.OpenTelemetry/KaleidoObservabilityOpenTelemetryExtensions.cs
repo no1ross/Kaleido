@@ -91,7 +91,8 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
         return builder
             .AddKaleidoProcessorInstrumentation()
             .AddKaleidoQueryableInstrumentation()
-            .AddKaleidoSqliteInstrumentation();
+            .AddKaleidoSqliteInstrumentation()
+            .AddKaleidoMcpInstrumentation();
     }
 
     /// <summary>
@@ -135,6 +136,7 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
             .AddKaleidoProcessorInstrumentation()
             .AddKaleidoQueryableInstrumentation()
             .AddKaleidoHttpInstrumentation()
-            .AddKaleidoSqliteInstrumentation();
+            .AddKaleidoSqliteInstrumentation()
+            .AddKaleidoMcpInstrumentation();
     }
 }

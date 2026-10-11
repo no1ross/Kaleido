@@ -65,25 +65,22 @@ public sealed record ProcessorContext
     /// <summary>
     /// Name of the caller that created this process, captured from
     /// <see cref="KaleidoCorrelationContext.CallerName"/> at creation.
-    /// <c>null</c> means the process is unowned (created anonymously or on a
-    /// transport without an authenticated caller) — open to any caller.
+    /// <c>null</c> when the process was created anonymously or on a transport
+    /// without an authenticated caller.
     /// </summary>
+    /// <remarks>
+    /// A tag only (created by), never enforced. Kaleido has no case-level
+    /// guardrails: whether a caller may open or continue a particular process
+    /// is a business/data-level concern of the underlying systems, and a
+    /// process may be continued by different callers (e.g. started through an
+    /// IVR, taken over by a phone rep, finished by the provider in a portal),
+    /// subject only to each step's declared roles/policies (ADR 0010).
+    /// </remarks>
     public string? Owner
     {
         get;
         init;
     }
-
-    /// <summary>
-    /// Snapshot of the creator's roles at creation. Callers who share a role
-    /// (teammates) may resume or claim the process alongside the owner.
-    /// </summary>
-    public IReadOnlyCollection<string> OwnerRoles
-    {
-        get;
-        init;
-    }
-        = [];
 
     /// <summary>
     /// Current process execution state.

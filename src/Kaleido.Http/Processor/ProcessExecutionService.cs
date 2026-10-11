@@ -1,5 +1,4 @@
 using Kaleido.Http.Authorization;
-using Kaleido.Processor.Context;
 using Kaleido.Processor;
 using Kaleido.Processor.Registry;
 using Microsoft.AspNetCore.Http;
@@ -26,7 +25,6 @@ internal sealed class ProcessExecutionService(
     IHttpContextAccessor httpContextAccessor,
     IProcessorStepRegistry registry,
     IProcessorRuntime runtime,
-    IProcessorContextStore contextStore,
     KaleidoServiceOptions serviceOptions,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     IProcessExecutionResponseFactory responseFactory,
@@ -64,10 +62,8 @@ internal sealed class ProcessExecutionService(
                 cancellationToken);
         }
 
-        await AuthorizeProcessAccessAsync(
-            correlationAccessor.Current,
-            cancellationToken);
-
+        // No case-level guardrail (ADR 0010): any caller admitted by the
+        // steps' declared roles/policies may create or resume the process.
         logger.LogDebug(
             "Executing process for processor {ProcessorName} with {StepCount} submitted step(s).",
             serviceOptions.ServiceName,
@@ -132,11 +128,9 @@ internal sealed class ProcessExecutionService(
             ExecuteStepRequest<TProcessStep> request,
             CancellationToken cancellationToken)
     {
+        // Authorization is the step endpoint's declared roles/policies only;
+        // there is no case-level guardrail on resume (ADR 0010).
         var stepName = registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
-
-        await AuthorizeProcessAccessAsync(
-            correlationAccessor.Current,
-            cancellationToken);
 
         logger.LogDebug(
             "Executing step {StepName} for processor {ProcessorName}.",
@@ -168,36 +162,6 @@ internal sealed class ProcessExecutionService(
             processResult.ProcessId);
 
         return (processResult, stepResult);
-    }
-
-    /// <summary>
-    /// Process ownership: resuming an owned process requires the owner or a
-    /// caller sharing an <c>OwnerRoles</c> entry (only when
-    /// <see cref="KaleidoServiceOptions.AuthorizationMode"/> is not <c>None</c>).
-    /// Creation needs no separate check — when enforcing, step authorization
-    /// already requires an authenticated caller unless the step is
-    /// <c>AllowAnonymous</c>, which creates an unowned process.
-    /// </summary>
-    private async Task AuthorizeProcessAccessAsync(
-        KaleidoCorrelationContext caller,
-        CancellationToken cancellationToken)
-    {
-        if (!authorizer.IsEnforced || caller.ProcessId is null)
-        {
-            return;
-        }
-
-        var existing =
-            await contextStore.LoadAsync(
-                caller.ProcessId.Value,
-                cancellationToken);
-
-        // Unknown process ids fall through to runtime validation, which
-        // creates a new instance under that id.
-        if (existing is not null)
-        {
-            authorizer.AuthorizeProcess(existing);
-        }
     }
 
     private void WriteResponseHeaders(

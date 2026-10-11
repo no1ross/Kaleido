@@ -30,6 +30,11 @@ internal sealed class PriorAuthorizationConfiguration : IEntityTypeConfiguration
             .HasForeignKey<PriorAuthorizationRequestingProvider>(x => x.PriorAuthorizationId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(x => x.ServicingProvider)
+            .WithOne(x => x.PriorAuthorization)
+            .HasForeignKey<PriorAuthorizationServicingProvider>(x => x.PriorAuthorizationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasMany(x => x.RequestedServices)
             .WithOne(x => x.PriorAuthorization)
             .HasForeignKey(x => x.PriorAuthorizationId)

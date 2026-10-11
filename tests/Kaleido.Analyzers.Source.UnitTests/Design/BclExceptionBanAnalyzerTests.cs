@@ -52,6 +52,24 @@ public class C
     }
 
     [Fact]
+    public async Task Throw_McpInputRequiredException_NoDiagnostic()
+    {
+        await RunAsync(@"
+namespace ModelContextProtocol.Protocol
+{
+    public class InputRequiredException : System.Exception { }
+}
+
+public class C
+{
+    public void M()
+    {
+        throw new ModelContextProtocol.Protocol.InputRequiredException();
+    }
+}");
+    }
+
+    [Fact]
     public async Task Throw_FormatException_NoDiagnostic()
     {
         await RunAsync(@"

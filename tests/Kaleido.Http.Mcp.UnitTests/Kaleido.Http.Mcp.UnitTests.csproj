@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+		<PackageReference Include="ModelContextProtocol.AspNetCore" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\Kaleido.Http.Mcp\Kaleido.Http.Mcp.csproj" />
+		<ProjectReference Include="..\..\src\Kaleido.Http.Abstractions\Kaleido.Http.Abstractions.csproj" />
+		<ProjectReference Include="..\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+	</ItemGroup>
+</Project>

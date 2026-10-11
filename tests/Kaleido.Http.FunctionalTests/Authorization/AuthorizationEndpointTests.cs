@@ -29,9 +29,6 @@ public sealed class AuthorizationEndpointTests(
     private static string ProcessStateUrl(Guid processId) =>
         $"/kaleido/processes/{processId}";
 
-    private static string ProcessTransferUrl(Guid processId) =>
-        $"/kaleido/processes/{processId}/transfer";
-
     private const string SecuredContextQueryUrl =
         "/kaleido/queryable/securedrecordcontextsource/query";
 
@@ -186,37 +183,6 @@ public sealed class AuthorizationEndpointTests(
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Fact]
-    public async Task AnonymousProcess_ClaimedAfterLogin_DeniesOtherUsers()
-    {
-        var created = await fixture.Client.PostAsJsonAsync(
-            AnonymousStepExecuteUrl,
-            StepBody);
-
-        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
-
-        var processId = Guid.Parse(
-            created.Headers.GetValues("X-Kaleido-Process-Id").Single());
-
-        var claim = await fixture.Client.SendAsync(
-            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
-                HttpMethod.Post,
-                ProcessTransferUrl(processId),
-                "carol",
-                "shopper"));
-
-        Assert.Equal(HttpStatusCode.OK, claim.StatusCode);
-
-        var other = await fixture.Client.SendAsync(
-            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
-                HttpMethod.Get,
-                ProcessStateUrl(processId),
-                "dave",
-                "viewer"));
-
-        Assert.Equal(HttpStatusCode.Forbidden, other.StatusCode);
-    }
-
     private static object ExecuteBody(params string[] stepNames) =>
         new
         {
@@ -336,7 +302,7 @@ public sealed class AuthorizationEndpointTests(
         Assert.DoesNotContain(secured.Views, v => v.Name == "SecuredAdminView");
     }
 
-    // -- process ownership ---------------------------------------------------
+    // -- no case-level guardrails (ADR 0010): only the step's roles/policies --
 
     private async Task<Guid> CreateProcessAsync(
         string user,
@@ -356,7 +322,7 @@ public sealed class AuthorizationEndpointTests(
     }
 
     [Fact]
-    public async Task ProcessState_WhenDifferentOwnerAndNoSharedRole_Returns403()
+    public async Task ProcessState_ForAnotherUserWithNoneOfTheCreatorsRoles_Returns200()
     {
         var processId = await CreateProcessAsync("alice", "internal");
 
@@ -367,7 +333,7 @@ public sealed class AuthorizationEndpointTests(
                 "bob",
                 "viewer"));
 
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -401,82 +367,31 @@ public sealed class AuthorizationEndpointTests(
     }
 
     [Fact]
-    public async Task ProcessTransfer_WhenUnrelatedCaller_Returns403()
-    {
-        var processId = await CreateProcessAsync("alice", "internal");
-
-        var response = await fixture.Client.SendAsync(
-            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
-                HttpMethod.Post,
-                ProcessTransferUrl(processId),
-                "bob",
-                "viewer"));
-
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task ProcessTransfer_WhenRoleMate_TransfersOwnership()
-    {
-        var processId = await CreateProcessAsync("alice", "internal");
-
-        var transfer = await fixture.Client.SendAsync(
-            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
-                HttpMethod.Post,
-                ProcessTransferUrl(processId),
-                "bob",
-                "internal"));
-
-        Assert.Equal(HttpStatusCode.OK, transfer.StatusCode);
-
-        // bob now owns the process — alice keeps access as a role-mate.
-        var state = await fixture.Client.SendAsync(
-            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
-                HttpMethod.Get,
-                ProcessStateUrl(processId),
-                "bob",
-                "internal"));
-
-        Assert.Equal(HttpStatusCode.OK, state.StatusCode);
-    }
-
-    [Fact]
-    public async Task ProcessTransfer_ThenNewOwnerDeniesOriginalOwner()
-    {
-        var processId = await CreateProcessAsync("alice", "internal");
-
-        // bob shares "internal" so he may transfer, but his "admin" role
-        // snapshot drops "internal" — alice loses access.
-        var transfer = await fixture.Client.SendAsync(
-            AuthorizationAspNetCoreFixture.AuthenticatedRequest(
-                HttpMethod.Post,
-                ProcessTransferUrl(processId),
-                "bob",
-                "internal", "admin"));
-
-        Assert.Equal(HttpStatusCode.OK, transfer.StatusCode);
-    }
-
-    [Fact]
-    public async Task ProcessTransfer_WhenUnauthenticated_Returns401()
-    {
-        var processId = await CreateProcessAsync("alice", "internal");
-
-        var response = await fixture.Client.PostAsync(
-            ProcessTransferUrl(processId),
-            null);
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Execute_WhenResumingOtherOwnersProcess_Returns403()
+    public async Task Execute_WhenAnotherUserResumes_AndTheStepAllowsThem_Succeeds()
     {
         var processId = await CreateProcessAsync("alice", "internal");
 
         var request =
             AuthorizationAspNetCoreFixture.AuthenticatedJson(
                 OpenStepExecuteUrl,
+                StepBody,
+                "bob",
+                "viewer");
+        request.Headers.Add("X-Kaleido-Process-Id", processId.ToString());
+
+        var response = await fixture.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Execute_WhenAnotherUserResumes_ButTheStepRefusesThem_Returns403()
+    {
+        var processId = await CreateProcessAsync("alice", "internal");
+
+        var request =
+            AuthorizationAspNetCoreFixture.AuthenticatedJson(
+                InternalStepExecuteUrl,
                 StepBody,
                 "bob",
                 "viewer");

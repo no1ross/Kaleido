@@ -68,6 +68,7 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `DuplicateStep` | `pro_duplicate_step` | Two step types share a type name (step names are type names) |
 | `InvalidRegistration` | `pro_invalid_registration` | Step registration is structurally invalid (including `[ProcessStep]` on a type that does not implement `IProcessStep`, and an `IInformationStep` declaring properties other than `InformationRequestId` and `Items`) |
 | `UnknownStep` | `pro_unknown_step` | Requested step is not registered |
+| `ProcessNotFound` | `pro_process_not_found` | The request names a process that does not exist and is not a handoff from another processor; nothing is started (400, ADR 0009) |
 | `InvalidRequest` | `pro_invalid_request` | Step request cannot be hydrated or processed |
 | `PropertyNotFound` | `pro_property_not_found` | Requested step property was not found |
 | `ConversionFailed` | `pro_conversion_failed` | Request value could not be converted |

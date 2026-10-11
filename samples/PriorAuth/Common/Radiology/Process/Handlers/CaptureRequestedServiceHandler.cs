@@ -14,7 +14,7 @@ public sealed class CaptureRequestedServiceHandler(
     RadiologyDbContext dbContext,
     ProcedureCodeClient procedureCodeClient,
     ProcedureModalityClient procedureModalityClient,
-    QuestionnaireDefinitionClient questionnaireDefinitionClient,
+    ConfiguredInformationRequests informationRequests,
     HistoryClient historyClient)
     : IProcessStepHandler<CaptureRequestedServiceStep, CaptureRequestedServiceResponse>
 {
@@ -33,9 +33,7 @@ public sealed class CaptureRequestedServiceHandler(
 
             if (procedureCode is null)
             {
-                return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
-                    new CaptureRequestedServiceResponse(),
-                    RadiologyProcessMessages.ProcedureCodeNotFound(
+                return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Reject(RadiologyProcessMessages.ProcedureCodeNotFound(
                         processStep.CodeSystem,
                         processStep.CodeValue));
             }
@@ -72,9 +70,7 @@ public sealed class CaptureRequestedServiceHandler(
                         procedureCode.CodeValue,
                         StringComparison.OrdinalIgnoreCase))
                 {
-                    return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
-                        new CaptureRequestedServiceResponse(),
-                        RadiologyProcessMessages.DuplicateRequestedServiceNotAllowed(
+                    return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Reject(RadiologyProcessMessages.DuplicateRequestedServiceNotAllowed(
                             procedureCode.CodeSystem,
                             procedureCode.CodeValue));
                 }
@@ -89,9 +85,7 @@ public sealed class CaptureRequestedServiceHandler(
                     && modality != ProcedureModality.Unknown
                     && existingModality != modality)
                 {
-                    return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
-                        new CaptureRequestedServiceResponse(),
-                        RadiologyProcessMessages.MixedRequestedServiceModalitiesNotAllowed(
+                    return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Reject(RadiologyProcessMessages.MixedRequestedServiceModalitiesNotAllowed(
                             existingModality,
                             modality));
                 }
@@ -108,7 +102,9 @@ public sealed class CaptureRequestedServiceHandler(
                     ResolvedProcedureCodeId = procedureCode.ProcedureCodeId,
                     ResolvedCodeValue = procedureCode.CodeValue,
                     ResolvedCodeSystem = procedureCode.CodeSystem,
-                    Description = procedureCode.ShortDescription
+                    Description = procedureCode.ShortDescription,
+                    CreatedUtc = DateTimeOffset.UtcNow,
+                    StatedDetailsJson = StatedServiceDetails.ToJson(processStep.BodyPart, processStep.Laterality, processStep.Contrast)
                 });
 
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -124,35 +120,25 @@ public sealed class CaptureRequestedServiceHandler(
                 context.ProcessId,
                 cancellationToken);
 
+            var response = new CaptureRequestedServiceResponse();
+
             return modality switch
             {
                 ProcedureModality.Mri =>
-                    await questionnaireDefinitionClient.CreateMriInfoRequestAsync(
-                        context.ProcessId,
-                        procedureCode.CodeValue,
-                        cancellationToken) is { } mriRequest
-                        ? ProcessStepHandlerResult<CaptureRequestedServiceResponse>.RequireInformation<CaptureMriInfoStep>(
-                            new CaptureRequestedServiceResponse(),
-                            mriRequest)
-                        : ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
-                            new CaptureRequestedServiceResponse(),
-                            RadiologyProcessMessages.InformationRequestNotConfigured(
-                                nameof(CaptureMriInfoStep),
-                                ProcedureModality.Mri)),
+                    await informationRequests.CreateAsync(context.ProcessId, nameof(CaptureMriInfoStep), modality, procedureCode.CodeValue, cancellationToken) is { } mriRequest
+                        ? ProcessStepHandlerResult<CaptureRequestedServiceResponse>.RequireInformation<CaptureMriInfoStep>(response, mriRequest)
+                        : ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Reject(RadiologyProcessMessages.InformationRequestNotConfigured(nameof(CaptureMriInfoStep), modality)),
                 ProcedureModality.Ct =>
-                    ProcessStepHandlerResult<CaptureRequestedServiceResponse>.RequireInformation<ConfirmCtInsteadOfMriStep>(
-                        new CaptureRequestedServiceResponse(),
-                        questionnaireDefinitionClient.CreateCtConfirmationRequest(
-                            procedureCode.CodeValue)),
+                    await informationRequests.CreateAsync(context.ProcessId, nameof(ConfirmCtInsteadOfMriStep), modality, procedureCode.CodeValue, cancellationToken) is { } ctRequest
+                        ? ProcessStepHandlerResult<CaptureRequestedServiceResponse>.RequireInformation<ConfirmCtInsteadOfMriStep>(response, ctRequest)
+                        : ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Reject(RadiologyProcessMessages.InformationRequestNotConfigured(nameof(ConfirmCtInsteadOfMriStep), modality)),
                 _ =>
-                    ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success(
-                        new CaptureRequestedServiceResponse())
+                    ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success(response)
             };
-        }        catch (KaleidoHttpClientException ex)
+        }
+        catch (KaleidoHttpClientException ex)
         {
-            return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Failure(
-                new CaptureRequestedServiceResponse(),
-                RadiologyProcessMessages.QueryableRequestFailed(
+            return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Reject(RadiologyProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));
         }

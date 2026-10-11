@@ -46,7 +46,6 @@ public sealed class ProcessExecutionServiceTests
             new HttpContextAccessor { HttpContext = new DefaultHttpContext() },
             registry,
             runtime,
-            Mock.Of<IProcessorContextStore>(),
             new KaleidoServiceOptions { ServiceName = "test-processor" },
             correlation.Object,
             responseFactory,

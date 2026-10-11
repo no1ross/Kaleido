@@ -11,9 +11,31 @@ public sealed class RequestingProviderSearchClient(
     IKaleidoQueryableClientFactory queryableClientFactory,
     RadiologyDbContext dbContext)
 {
+    /// <summary>
+    /// The search result for one provider location, as the caller would see it for this request
+    /// (scoped to the member's plan), or null when no such location is offered. Steps take the
+    /// ids from a search result; this is how a handler checks them and reads the rest of the row
+    /// (names, network status) instead of trusting values the caller sent.
+    /// </summary>
+    public async Task<RequestingProviderSearchView?> FindAsync(
+        Guid processId,
+        Guid providerLocationId,
+        ProviderType providerType,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await SearchAsync(
+            processId,
+            new QueryBody(Filter: QueryFilterNode.CreateCondition(nameof(RequestingProviderSearchView.ProviderLocationId), FilterOperator.Equals, providerLocationId)),
+            providerType,
+            cancellationToken);
+
+        return result.Results.SingleOrDefault();
+    }
+
     public async Task<QueryResult<RequestingProviderSearchView>> SearchAsync(
         Guid processId,
         QueryBody? query,
+        ProviderType providerType = ProviderType.RequestingProvider,
         CancellationToken cancellationToken = default)
     {
         var planId =
@@ -25,7 +47,7 @@ public sealed class RequestingProviderSearchClient(
 
         if (string.IsNullOrWhiteSpace(planId))
         {
-            throw new InvalidOperationException("A captured member plan is required before requesting provider search can run.");
+            throw new InvalidOperationException("A captured member plan is required before a provider search can run.");
         }
 
         return await queryableClientFactory
@@ -37,7 +59,8 @@ public sealed class RequestingProviderSearchClient(
                 {
                     Parameters = new RequestingProviderSearchParameters
                     {
-                        PlanId = planId
+                        PlanId = planId,
+                        ProviderType = providerType
                     },
                     Query = query.ToApiBody()
                 },

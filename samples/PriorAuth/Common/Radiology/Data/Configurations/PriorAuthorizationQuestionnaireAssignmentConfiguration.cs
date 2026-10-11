@@ -22,6 +22,9 @@ internal sealed class PriorAuthorizationQuestionnaireAssignmentConfiguration : I
             .HasMaxLength(50)
             .IsRequired();
 
+        builder.Property(x => x.Title)
+            .HasMaxLength(200);
+
         builder.HasIndex(x => new { x.ProcessId, x.StepName })
             .IsUnique();
 

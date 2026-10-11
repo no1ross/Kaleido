@@ -289,29 +289,16 @@ public sealed record ProcessStateResponse
     }
 
     /// <summary>
-    /// Name of the caller that owns this process, captured from the
-    /// authenticated principal at creation. <c>null</c> for unowned
-    /// (anonymously created) processes.
+    /// Name of the caller that created this process, captured from the
+    /// authenticated principal at creation. <c>null</c> when the process was
+    /// created anonymously.
     /// </summary>
+    /// <remarks>
+    /// A tag only (created by), never an access rule: Kaleido has no
+    /// case-level guardrails, so any caller admitted by a step's declared
+    /// roles/policies may read or continue the process (ADR 0010).
+    /// </remarks>
     public string? Owner
-    {
-        get;
-        init;
-    }
-}
-
-/// <summary>Response for POST /{serviceName}/processes/{processId}/transfer.</summary>
-[ExcludeFromCodeCoverage]
-public sealed record ProcessTransferResponse
-{
-    public required Guid ProcessId
-    {
-        get;
-        init;
-    }
-
-    /// <summary>Caller name that now owns the process.</summary>
-    public required string Owner
     {
         get;
         init;

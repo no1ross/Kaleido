@@ -25,14 +25,14 @@ public sealed class ValidateMemberHandler(
 
             if (!eligibility.Succeeded)
             {
-                return ProcessStepHandlerResult.Failure(eligibility.FailureMessage!);
+                return ProcessStepHandlerResult.Reject(eligibility.FailureMessage!);
             }
 
             return ProcessStepHandlerResult.Success<CaptureMemberStep>();
         }
         catch (KaleidoHttpClientException ex)
         {
-            return ProcessStepHandlerResult.Failure(
+            return ProcessStepHandlerResult.Reject(
                 Process.Messages.RadiologyProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));

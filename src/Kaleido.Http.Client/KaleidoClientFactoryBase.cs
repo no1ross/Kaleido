@@ -29,6 +29,20 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
         return CreateClient(httpClient, HeaderStamper, registeredName, serviceName, registryTtl);
     }
 
+    public bool TryGetClientForService(
+        string serviceName,
+        [NotNullWhen(true)] out TClient? client)
+    {
+        var name =
+            RouteOptionsMap.Options
+                .FirstOrDefault(x => string.Equals(x.Value, serviceName, StringComparison.OrdinalIgnoreCase))
+                .Key;
+
+        client = name is null ? null : GetClient(name);
+
+        return client is not null;
+    }
+
     private TimeSpan? GetRegistryTtl(string name) =>
         RouteOptionsMap.RegistryTtls.TryGetValue(name, out var ttl)
             ? ttl

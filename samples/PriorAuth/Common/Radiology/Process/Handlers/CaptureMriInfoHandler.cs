@@ -9,13 +9,14 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 
 public sealed class CaptureMriInfoHandler(
     RadiologyDbContext dbContext,
-    MriProcedureCodeResolverClient mriProcedureCodeResolverClient)
+    MriProcedureCodeResolverClient mriProcedureCodeResolverClient,
+    ConfiguredInformationRequests informationRequests)
     : IProcessStepHandler<CaptureMriInfoStep>
 {
-    // Item ids of the configured MRI questionnaire (Configuration seed assets).
-    private const string BodyPartItem = "body-part";
-    private const string LateralityItem = "laterality";
-    private const string ContrastItem = "contrast";
+    // The binding keys the business configures on the MRI questionnaire; answers are read by them.
+    private const string BodyPartItem = "BodyPart";
+    private const string LateralityItem = "Laterality";
+    private const string ContrastItem = "Contrast";
 
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         CaptureMriInfoStep processStep,
@@ -28,22 +29,21 @@ public sealed class CaptureMriInfoHandler(
             !TryRead(processStep, LateralityItem, out Laterality laterality, out failure) ||
             !TryRead(processStep, ContrastItem, out ContrastOption contrast, out failure))
         {
-            return ProcessStepHandlerResult.Failure(failure!);
+            return ProcessStepHandlerResult.Reject(failure!);
         }
 
         try
         {
+            await informationRequests.RecordAnswersAsync(context.ProcessId, nameof(CaptureMriInfoStep), processStep, cancellationToken);
+
+            // The questions were about the service captured last. Ordered in memory: SQLite cannot
+            // order by DateTimeOffset, and a request has only a few services.
             var requestedService =
-                await dbContext.PriorAuthorizationRequestedServices
-                    .Join(
-                        dbContext.PriorAuthorizations,
-                        requestedService => requestedService.PriorAuthorizationId,
-                        priorAuthorization => priorAuthorization.PriorAuthorizationId,
-                        (requestedService, priorAuthorization) => new { requestedService, priorAuthorization.ProcessId })
-                    .Where(x => x.ProcessId == context.ProcessId)
-                    .Select(x => x.requestedService)
-                    .OrderByDescending(x => x.PriorAuthorizationRequestedServiceId)
-                    .FirstAsync(cancellationToken);
+                (await dbContext.PriorAuthorizationRequestedServices
+                    .Where(x => x.PriorAuthorization.ProcessId == context.ProcessId)
+                    .ToListAsync(cancellationToken))
+                .MaxBy(x => x.CreatedUtc)
+                ?? throw new InvalidOperationException($"Process {context.ProcessId} has no requested service.");
 
             var originalCodeValue = requestedService.ResolvedCodeValue;
             var originalCodeSystem = requestedService.ResolvedCodeSystem;
@@ -82,7 +82,7 @@ public sealed class CaptureMriInfoHandler(
         }
         catch (KaleidoHttpClientException ex)
         {
-            return ProcessStepHandlerResult.Failure(
+            return ProcessStepHandlerResult.Reject(
                 RadiologyProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));
@@ -96,12 +96,7 @@ public sealed class CaptureMriInfoHandler(
         out ProcessMessage? failure)
         where TEnum : struct, Enum
     {
-        var answer =
-            answers.Items
-                .FirstOrDefault(x => x.ItemId == itemId)?
-                .Answers
-                .FirstOrDefault()?
-                .Value;
+        var answer = ConfiguredInformationRequests.Answer(answers, itemId);
 
         failure =
             Enum.TryParse(answer, ignoreCase: true, out value)

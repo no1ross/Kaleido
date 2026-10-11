@@ -27,6 +27,13 @@ internal sealed class QuestionnaireDefinitionViewSource(
             executionContext.TryGetViewParameters<QuestionnaireDefinitionViewParameters>()
             ?? new QuestionnaireDefinitionViewParameters();
 
+        if (!string.IsNullOrWhiteSpace(parameters.QuestionnaireId))
+        {
+            return Project(dbContext.QuestionnaireDefinitions
+                .AsNoTracking()
+                .Where(definition => definition.IsActive && definition.QuestionnaireId == parameters.QuestionnaireId));
+        }
+
         if (string.IsNullOrWhiteSpace(parameters.StepName))
         {
             return Enumerable.Empty<QuestionnaireDefinitionView>().AsQueryable();
@@ -51,11 +58,16 @@ internal sealed class QuestionnaireDefinitionViewSource(
                 .Select(rule => rule.QuestionnaireDefinitionId)
                 .Take(1);
 
-        return dbContext.QuestionnaireDefinitions
+        return Project(dbContext.QuestionnaireDefinitions
             .AsNoTracking()
             .Where(definition =>
                 definition.IsActive
-                && matchedDefinitionIds.Contains(definition.QuestionnaireDefinitionId))
+                && matchedDefinitionIds.Contains(definition.QuestionnaireDefinitionId)));
+    }
+
+    private static IQueryable<QuestionnaireDefinitionView> Project(
+        IQueryable<Data.Entities.QuestionnaireDefinition> definitions) =>
+        definitions
             .Select(definition =>
                 new QuestionnaireDefinitionView
                 {
@@ -99,5 +111,4 @@ internal sealed class QuestionnaireDefinitionViewSource(
                             })
                         .ToArray()
                 });
-    }
 }

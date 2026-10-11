@@ -1,6 +1,8 @@
 using Kaleido.Exceptions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http;
 
 namespace Kaleido.Http.Client;
 
@@ -56,6 +58,21 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
                 o.RegistryTtl = registryTtl;
                 o.StrictRegistryProbe = strictProbe;
             });
+        }
+
+        // An aggregating host merges these clients' registries into its own (AddHttp() registers
+        // a "no downstream" default; with clients configured, this replaces it).
+        if (config.Clients.Count > 0)
+        {
+            builder.Services.Replace(
+                ServiceDescriptor.Scoped<IKaleidoDownstreamRegistries, ClientDownstreamRegistries>());
+
+            // Front doors (MCP adapter) call services as the caller: inside a ForwardCaller() scope
+            // the caller's Authorization replaces whatever the host configured on these clients.
+            // Outside a scope nothing changes.
+            builder.Services.TryAddSingleton<IKaleidoCallerForwarding, KaleidoCallerForwarding>();
+            builder.Services.TryAddEnumerable(
+                ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, CallerForwardingHandlerFilter>());
         }
 
         return builder;

@@ -16,6 +16,13 @@ public interface IMemberEligibilityService
         Guid processId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>The member's eligibility on the date of service only, for a request that is not recorded yet.</summary>
+    Task<MemberEligibilityResult> CheckEligibilityAsync(
+        Guid memberId,
+        Guid memberEnrollmentId,
+        DateOnly dateOfService,
+        CancellationToken cancellationToken = default);
+
     Task<ModalityRoutingResult> RouteByModalityAsync(
         Guid processId,
         MemberDetailsView memberDetails,
@@ -31,7 +38,7 @@ public sealed class MemberEligibilityService(
     RadiologyDbContext dbContext,
     MemberDetailsClient memberDetailsClient,
     ProcedureModalityClient procedureModalityClient,
-    QuestionnaireDefinitionClient questionnaireDefinitionClient)
+    ConfiguredInformationRequests informationRequests)
     : IMemberEligibilityService
 {
     /// <summary>
@@ -61,6 +68,19 @@ public sealed class MemberEligibilityService(
                 RadiologyProcessMessages.PriorAuthorizationNotFound(processId));
         }
 
+        return await CheckEligibilityAsync(memberId, memberEnrollmentId, dateOfService, cancellationToken);
+    }
+
+    /// <summary>
+    /// The member (resolved with the enrollment, so a pair that does not belong together is not
+    /// found) and coverage on the date of service, without requiring the request to be recorded.
+    /// </summary>
+    public async Task<MemberEligibilityResult> CheckEligibilityAsync(
+        Guid memberId,
+        Guid memberEnrollmentId,
+        DateOnly dateOfService,
+        CancellationToken cancellationToken = default)
+    {
         var memberDetails =
             await memberDetailsClient.GetMemberDetailsAsync(
                 memberId,
@@ -127,8 +147,10 @@ public sealed class MemberEligibilityService(
         return modality switch
         {
             ProcedureModality.Mri =>
-                await questionnaireDefinitionClient.CreateMriInfoRequestAsync(
+                await informationRequests.CreateAsync(
                     processId,
+                    nameof(CaptureMriInfoStep),
+                    modality,
                     requestedService.ResolvedCodeValue,
                     cancellationToken) is { } mriRequest
                     ? ModalityRoutingResult.Ok(ModalityRoute.CaptureMriInfo, mriRequest)
@@ -138,10 +160,17 @@ public sealed class MemberEligibilityService(
                             ProcedureModality.Mri)),
 
             ProcedureModality.Ct =>
-                ModalityRoutingResult.Ok(
-                    ModalityRoute.ConfirmCtInsteadOfMri,
-                    questionnaireDefinitionClient.CreateCtConfirmationRequest(
-                        requestedService.ResolvedCodeValue)),
+                await informationRequests.CreateAsync(
+                    processId,
+                    nameof(ConfirmCtInsteadOfMriStep),
+                    modality,
+                    requestedService.ResolvedCodeValue,
+                    cancellationToken) is { } ctRequest
+                    ? ModalityRoutingResult.Ok(ModalityRoute.ConfirmCtInsteadOfMri, ctRequest)
+                    : ModalityRoutingResult.Fail(
+                        RadiologyProcessMessages.InformationRequestNotConfigured(
+                            nameof(ConfirmCtInsteadOfMriStep),
+                            ProcedureModality.Ct)),
 
             _ =>
                 ModalityRoutingResult.Fail(

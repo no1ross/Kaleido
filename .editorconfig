@@ -305,6 +305,11 @@ dotnet_diagnostic.MA0016.severity = suggestion
 ; single SUT — the SutFixture contract is for unit-test fixtures only
 dotnet_diagnostic.KAL1006.severity = none
 
+[tests/Kaleido.Http.Mcp.FunctionalTests/{*.cs,**/*.cs}]
+
+; KAL1006: functional tests drive the MCP endpoint through TestServer, not a single SUT
+dotnet_diagnostic.KAL1006.severity = none
+
 [tests/Kaleido.IntegrationTests/*.cs]
 
 ; KAL1006: integration tests exercise composed subsystems, not a single SUT

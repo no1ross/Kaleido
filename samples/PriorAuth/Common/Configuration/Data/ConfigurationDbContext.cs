@@ -22,6 +22,8 @@ public sealed class ConfigurationDbContext(
 
     public DbSet<QuestionnaireMappingRule> QuestionnaireMappingRules => Set<QuestionnaireMappingRule>();
 
+    public DbSet<ClinicalPathwayTransition> ClinicalPathwayTransitions => Set<ClinicalPathwayTransition>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
