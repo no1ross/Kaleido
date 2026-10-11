@@ -71,9 +71,6 @@ public sealed class AddItemToCartHandler(
             }
         }
 
-        var cartCreated =
-            shoppingCart is null;
-
         if (shoppingCart is null)
         {
             shoppingCart = new ShoppingCart

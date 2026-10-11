@@ -29,32 +29,32 @@ internal sealed class ReferenceDataSeeder(
 
         var states =
             JsonAssetLoader.Load<List<State>>(
-                Path.Combine(
+                Path.Join(
                     "referencedata",
                     "states.json"));
 
         var zipCodes =
             JsonAssetLoader.Load<List<ZipCode>>(
-                Path.Combine(
+                Path.Join(
                     "referencedata",
                     "zipcodes.json"));
 
         var plans =
             JsonAssetLoader.Load<List<Plan>>(
-                Path.Combine(
+                Path.Join(
                     "referencedata",
                     "plans.json"),
                 JsonAssetLoader.CreateEnumJsonOptions());
 
         var networks =
             JsonAssetLoader.Load<List<Network>>(
-                Path.Combine(
+                Path.Join(
                     "referencedata",
                     "networks.json"));
 
         var planNetworks =
             JsonAssetLoader.Load<List<PlanNetwork>>(
-                Path.Combine(
+                Path.Join(
                     "referencedata",
                     "plan-networks.json"));
 

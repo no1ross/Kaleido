@@ -1,4 +1,4 @@
-﻿using Kaleido.Samples.ECommerce.Data.Entities;
+using Kaleido.Samples.ECommerce.Data.Entities;
 
 namespace Kaleido.Samples.ECommerce.Data.Seed.Seeders;
 
@@ -23,11 +23,8 @@ internal sealed class ProductSeeder
         var products =
             new List<Product>();
 
-        foreach (var supplierDefinition in suppliers)
+        foreach (var supplierName in suppliers.Select(x => x.SupplierName))
         {
-            var supplierName =
-                supplierDefinition.SupplierName;
-
             var supplier =
                 supplierLookup[supplierName];
 

@@ -10,7 +10,7 @@ internal static class JsonAssetLoader
         JsonSerializerOptions? options = null)
     {
         var path =
-            Path.Combine(
+            Path.Join(
                 AppContext.BaseDirectory,
                 "assets",
                 relativeAssetPath);

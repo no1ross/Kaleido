@@ -78,13 +78,13 @@ internal static class PathResolver
 {
     public static string ResolveDataFile(string fileName)
     {
-        var output = Path.Combine(AppContext.BaseDirectory, "data", fileName);
+        var output = Path.Join(AppContext.BaseDirectory, "data", fileName);
         if (File.Exists(output))
         {
             return output;
         }
 
-        var source = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "data", fileName));
+        var source = Path.GetFullPath(Path.Join(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "data", fileName));
         if (File.Exists(source))
         {
             return source;
@@ -95,13 +95,13 @@ internal static class PathResolver
 
     public static string ResolveRequestFile(string fileName)
     {
-        var output = Path.Combine(AppContext.BaseDirectory, "requests", fileName);
+        var output = Path.Join(AppContext.BaseDirectory, "requests", fileName);
         if (File.Exists(output))
         {
             return output;
         }
 
-        var source = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "requests", fileName));
+        var source = Path.GetFullPath(Path.Join(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "requests", fileName));
         if (File.Exists(source))
         {
             return source;

@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
@@ -54,14 +55,12 @@ public sealed class ProcessStepHandlerAnalyzer : DiagnosticAnalyzer
                 }
 
                 // Collect types handled by IProcessStepHandler<TStep> or <TStep, TResult>
-                foreach (var iface in type.AllInterfaces)
+                foreach (var stepArg in type.AllInterfaces
+                             .Where(iface => iface.Name == HandlerInterfaceName && iface.TypeArguments.Length >= 1)
+                             .Select(iface => iface.TypeArguments[0])
+                             .OfType<INamedTypeSymbol>())
                 {
-                    if (iface.Name == HandlerInterfaceName &&
-                        iface.TypeArguments.Length >= 1 &&
-                        iface.TypeArguments[0] is INamedTypeSymbol stepArg)
-                    {
-                        handledTypes.Add(stepArg);
-                    }
+                    handledTypes.Add(stepArg);
                 }
             },
             SymbolKind.NamedType);

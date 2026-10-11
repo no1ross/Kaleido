@@ -70,13 +70,12 @@ public static class ProcessorEndpointRouteBuilderExtensions
 
         group.MapProcessStateEndpoint(serviceOptions, requireCaller);
 
-        foreach (var step in registry.Registrations)
+        // ZeroTrust maps only capabilities with an explicit rule.
+        foreach (var step in registry.Registrations.Where(x =>
+                     serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
+                     || x.Metadata.Authorization.IsExplicit()))
         {
-            if (serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
-                || step.Metadata.Authorization.IsExplicit())
-            {
-                group.MapProcessStep(step, serviceOptions);
-            }
+            group.MapProcessStep(step, serviceOptions);
         }
 
         return group;

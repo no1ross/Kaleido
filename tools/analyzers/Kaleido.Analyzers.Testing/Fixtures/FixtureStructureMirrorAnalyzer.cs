@@ -90,7 +90,7 @@ public sealed class FixtureStructureMirrorAnalyzer : DiagnosticAnalyzer
                     Rule,
                     type.Locations[0],
                     type.Name,
-                    sutDir is null ? expectedFile : Path.Combine(sutDir, expectedFile),
+                    string.IsNullOrEmpty(sutDir) ? expectedFile : sutDir + Path.DirectorySeparatorChar + expectedFile,
                     sutRel));
         }
     }

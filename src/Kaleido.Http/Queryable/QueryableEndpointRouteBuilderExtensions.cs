@@ -73,13 +73,12 @@ public static class QueryableEndpointRouteBuilderExtensions
                 group.MapQuerySource(source, serviceOptions);
             }
 
-            foreach (var view in source.Views)
+            // ZeroTrust maps only capabilities with an explicit rule.
+            foreach (var view in source.Views.Where(x =>
+                         serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
+                         || x.Authorization.IsExplicit()))
             {
-                if (serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
-                    || view.Authorization.IsExplicit())
-                {
-                    group.MapQueryView(source, view, serviceOptions);
-                }
+                group.MapQueryView(source, view, serviceOptions);
             }
         }
 

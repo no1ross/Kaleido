@@ -149,9 +149,8 @@ internal sealed class ProcessCartHandler(
             dbContext.OrderItems.RemoveRange(order.Items);
         }
 
-        foreach (var cartItem in shoppingCart.Items)
-        {
-            var orderItem =
+        dbContext.OrderItems.AddRange(
+            shoppingCart.Items.Select(cartItem =>
                 new OrderItem
                 {
                     OrderItemId =
@@ -174,10 +173,7 @@ internal sealed class ProcessCartHandler(
 
                     UnitPrice =
                         cartItem.UnitPrice
-                };
-
-            dbContext.OrderItems.Add(orderItem);
-        }
+                }));
 
         await dbContext.SaveChangesAsync(
             cancellationToken);
