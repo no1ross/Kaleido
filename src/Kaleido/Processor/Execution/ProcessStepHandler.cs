@@ -233,9 +233,9 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
             {
                 null => default,
                 TProcessStepResult response => response,
-                var other => throw new KaleidoFrameworkException(
+                _ => throw new KaleidoFrameworkException(
                     ProcessorErrorCodes.InvalidRequiredStep,
-                    $"A result with a '{other.GetType().Name}' response cannot be returned as ProcessStepHandlerResult<{typeof(TProcessStepResult).Name}>."),
+                    $"A result with a '{result.Response.GetType().Name}' response cannot be returned as ProcessStepHandlerResult<{typeof(TProcessStepResult).Name}>."),
             },
         };
     }
