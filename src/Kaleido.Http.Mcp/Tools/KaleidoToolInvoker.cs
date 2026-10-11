@@ -128,11 +128,7 @@ internal sealed partial class KaleidoToolInvoker(
         catch (KaleidoHttpClientException exception)
         {
             // The service refused or failed the call: its status and errors, for the agent to explain.
-            logger.LogWarning(
-                "Kaleido MCP tool {Tool}: the service answered {StatusCode} ({Code}).",
-                tool.Definition.Name,
-                (int)exception.StatusCode,
-                exception.Code);
+            LogServiceAnswered(logger, tool.Definition.Name, (int)exception.StatusCode, exception.Code);
 
             return Error(
                 McpErrorCodes.ServiceError,
@@ -145,7 +141,7 @@ internal sealed partial class KaleidoToolInvoker(
         }
         catch (HttpRequestException exception)
         {
-            logger.LogWarning(exception, "Kaleido MCP tool {Tool}: the service could not be reached.", tool.Definition.Name);
+            LogServiceUnreachable(logger, exception, tool.Definition.Name);
 
             return Error(
                 McpErrorCodes.ServiceUnavailable,
@@ -155,7 +151,7 @@ internal sealed partial class KaleidoToolInvoker(
         {
             // Never a protocol error: the agent gets a result it can report. A cancelled call has
             // nobody waiting for an answer, so cancellation still propagates.
-            logger.LogError(exception, "Kaleido MCP tool {Tool} failed unexpectedly.", tool.Definition.Name);
+            LogToolFailed(logger, exception, tool.Definition.Name);
 
             return Error(
                 McpErrorCodes.InternalError,
@@ -853,4 +849,13 @@ internal sealed partial class KaleidoToolInvoker(
         public static PendingQuestions Failed(CallToolResult error) =>
             new(new ProcessRequiredStep { Name = string.Empty }, new InformationRequest { InformationRequestId = string.Empty }, error);
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP tool {Tool}: the service answered {StatusCode} ({Code}).")]
+    private static partial void LogServiceAnswered(ILogger logger, string tool, int statusCode, string code);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP tool {Tool}: the service could not be reached.")]
+    private static partial void LogServiceUnreachable(ILogger logger, Exception exception, string tool);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Kaleido MCP tool {Tool} failed unexpectedly.")]
+    private static partial void LogToolFailed(ILogger logger, Exception exception, string tool);
 }
