@@ -1,6 +1,7 @@
 name: CodeQL
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [master]
   push:
@@ -19,26 +20,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # NBGV needs full history for version height
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         global-json-file: global.json
 
+    # build-mode none: CodeQL reads the C# sources directly - no restore/build (the Build workflow
+    # builds), no generated obj/ output, and paths-ignore in the config applies (it does not when a
+    # full build is analyzed).
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
       with:
         languages: csharp
+        build-mode: none
         queries: security-and-quality
         config-file: ./.github/codeql/codeql-config.yml
-
-    - name: Restore
-      run: dotnet restore --locked-mode
-
-    - name: Build
-      run: dotnet build --configuration Release --no-restore
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
