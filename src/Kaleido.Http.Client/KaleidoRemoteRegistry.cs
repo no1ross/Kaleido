@@ -12,7 +12,7 @@ namespace Kaleido.Http.Client;
 /// <see cref="AggregatedRegistryResponse"/> carries both process and queryable
 /// registrations, cached once per client name.
 /// </summary>
-internal sealed class KaleidoRemoteRegistry(
+internal sealed partial class KaleidoRemoteRegistry(
     IHttpClientFactory httpClientFactory,
     IRegistrySnapshotStore snapshotStore,
     ILogger<KaleidoRemoteRegistry> logger)
@@ -73,11 +73,7 @@ internal sealed class KaleidoRemoteRegistry(
 
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning(
-                "Registry fetch from client '{ClientName}' failed with status code {StatusCode} ({StatusName}).",
-                clientName,
-                (int)response.StatusCode,
-                response.StatusCode);
+            LogRegistryFetchFailed(logger, clientName, (int)response.StatusCode, response.StatusCode);
 
             throw new KaleidoHttpClientException(
                 HttpClientErrorCodes.RequestFailed,
@@ -93,4 +89,7 @@ internal sealed class KaleidoRemoteRegistry(
                    $"Registry request to client '{clientName}' succeeded but returned no payload.",
                    HttpStatusCode.InternalServerError);
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Registry fetch from client '{ClientName}' failed with status code {StatusCode} ({StatusName}).")]
+    private static partial void LogRegistryFetchFailed(ILogger logger, string clientName, int statusCode, HttpStatusCode statusName);
 }

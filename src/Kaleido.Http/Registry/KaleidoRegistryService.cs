@@ -38,7 +38,7 @@ public interface IKaleidoRegistryService
 /// Builds the registry (local + downstream when aggregating), serves it from the shared snapshot,
 /// and filters it for the caller.
 /// </summary>
-internal sealed class KaleidoRegistryService(
+internal sealed partial class KaleidoRegistryService(
     RegistrySnapshot snapshot,
     LocalRegistrations local,
     IKaleidoDownstreamRegistries downstream,
@@ -118,22 +118,16 @@ internal sealed class KaleidoRegistryService(
 
         if (refresh)
         {
-            logger.LogDebug("Registry rebuilt via force refresh.");
+            LogRegistryRebuilt(logger);
         }
 
         if (result.ClientErrors.Count > 0)
         {
-            logger.LogWarning(
-                "Registry response is partial — {ErrorCount} downstream client(s) failed: {ClientNames}.",
-                result.ClientErrors.Count,
-                string.Join(", ", result.ClientErrors.Select(e => e.ClientName)));
+            LogRegistryPartial(logger, result.ClientErrors.Count, string.Join(", ", result.ClientErrors.Select(e => e.ClientName)));
         }
         else
         {
-            logger.LogDebug(
-                "Registry response built: {ProcessCount} process(es), {QueryableCount} queryable(s).",
-                result.Processes.Count,
-                result.Queryables.Count);
+            LogRegistryBuilt(logger, result.Processes.Count, result.Queryables.Count);
         }
 
         return result;
@@ -222,4 +216,13 @@ internal sealed class KaleidoRegistryService(
         return Convert.ToHexString(
             System.Security.Cryptography.SHA256.HashData(payload)).ToLowerInvariant();
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Registry rebuilt via force refresh.")]
+    private static partial void LogRegistryRebuilt(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Registry response is partial — {ErrorCount} downstream client(s) failed: {ClientNames}.")]
+    private static partial void LogRegistryPartial(ILogger logger, int errorCount, string clientNames);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Registry response built: {ProcessCount} process(es), {QueryableCount} queryable(s).")]
+    private static partial void LogRegistryBuilt(ILogger logger, int processCount, int queryableCount);
 }
