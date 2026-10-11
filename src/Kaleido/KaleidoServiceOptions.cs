@@ -201,6 +201,6 @@ public sealed class KaleidoServiceOptionsBuilder
                 ? declaration with { Roles = [.. declaration.Roles] }
                 : throw new KaleidoConfigurationException(
                     ConfigurationErrorCodes.ConflictingAuthorization,
-                    "DefaultAuthorization and its Roles must not be null.")
+                    "DefaultAuthorization and its Roles must not be null."),
         };
 }

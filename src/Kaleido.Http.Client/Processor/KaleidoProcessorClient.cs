@@ -64,7 +64,7 @@ internal sealed class KaleidoProcessorClient(
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
         {
-            Content = JsonContent.Create(request, options: KaleidoJsonOptions.Options)
+            Content = JsonContent.Create(request, options: KaleidoJsonOptions.Options),
         };
 
         headerStamper.Stamp(httpRequest);
@@ -96,12 +96,12 @@ internal sealed class KaleidoProcessorClient(
 
         var body = new ExecuteStepRequest<TStep>
         {
-            ProcessStep = processStep
+            ProcessStep = processStep,
         };
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
         {
-            Content = JsonContent.Create(body, options: KaleidoJsonOptions.Options)
+            Content = JsonContent.Create(body, options: KaleidoJsonOptions.Options),
         };
 
         headerStamper.Stamp(httpRequest);
@@ -133,12 +133,12 @@ internal sealed class KaleidoProcessorClient(
 
         var body = new ExecuteStepRequest<TStep>
         {
-            ProcessStep = processStep
+            ProcessStep = processStep,
         };
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
         {
-            Content = JsonContent.Create(body, options: KaleidoJsonOptions.Options)
+            Content = JsonContent.Create(body, options: KaleidoJsonOptions.Options),
         };
 
         headerStamper.Stamp(httpRequest);
@@ -173,12 +173,12 @@ internal sealed class KaleidoProcessorClient(
 
         var body = new ExecuteStepRequest<JsonElement>
         {
-            ProcessStep = processStep
+            ProcessStep = processStep,
         };
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
         {
-            Content = JsonContent.Create(body, options: KaleidoJsonOptions.Options)
+            Content = JsonContent.Create(body, options: KaleidoJsonOptions.Options),
         };
 
         headerStamper.Stamp(httpRequest);

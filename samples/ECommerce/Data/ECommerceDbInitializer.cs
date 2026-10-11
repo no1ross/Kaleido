@@ -1,4 +1,4 @@
-﻿using Kaleido.Samples.ECommerce.Data.Seed;
+using Kaleido.Samples.ECommerce.Data.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 

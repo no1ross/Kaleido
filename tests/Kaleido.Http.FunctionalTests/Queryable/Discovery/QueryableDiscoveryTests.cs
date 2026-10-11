@@ -1,7 +1,7 @@
 using System.Net;
+using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
 using Kaleido.Http.Queryable;
 using Kaleido.Http.Registry;
-using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
 
 namespace Kaleido.Http.FunctionalTests.Queryable.Discovery;
 

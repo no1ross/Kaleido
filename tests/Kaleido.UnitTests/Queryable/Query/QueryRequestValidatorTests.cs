@@ -1,5 +1,5 @@
-using Kaleido.Registry;
 using Kaleido.Exceptions;
+using Kaleido.Registry;
 
 namespace Kaleido.Queryable.Query.UnitTests;
 

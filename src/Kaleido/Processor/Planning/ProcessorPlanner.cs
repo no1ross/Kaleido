@@ -41,7 +41,7 @@ internal sealed class ProcessorPlanner(
 
         return new ExecutionPlanResult
         {
-            Candidates = orderedCandidates
+            Candidates = orderedCandidates,
         };
     }
 }

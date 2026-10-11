@@ -117,7 +117,7 @@ public enum InformationItemType
     Display,
 
     /// <summary>A container for nested items, with no answer of its own.</summary>
-    Group
+    Group,
 }
 
 /// <summary>

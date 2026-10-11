@@ -60,9 +60,9 @@ internal sealed class ProcessorStateUpdater(
                                     registration.Metadata.Version,
 
                                 Status =
-                                    StepExecutionStatus.Pending
+                                    StepExecutionStatus.Pending,
                             })
-                    .ToArray()
+                    .ToArray(),
         };
     }
 
@@ -103,7 +103,7 @@ internal sealed class ProcessorStateUpdater(
                             registration.Metadata.Version,
 
                         Status =
-                            StepExecutionStatus.Pending
+                            StepExecutionStatus.Pending,
                     });
 
                 continue;
@@ -113,14 +113,14 @@ internal sealed class ProcessorStateUpdater(
                 steps[index] with
                 {
                     Version =
-                        registration.Metadata.Version
+                        registration.Metadata.Version,
                 };
         }
 
         return context with
         {
             UpdatedUtc = DateTime.UtcNow,
-            Steps = steps
+            Steps = steps,
         };
     }
 
@@ -151,7 +151,7 @@ internal sealed class ProcessorStateUpdater(
                     context.LatestRequestId,
 
                 LastExecuted =
-                    DateTimeOffset.UtcNow
+                    DateTimeOffset.UtcNow,
             };
 
         var steps =
@@ -182,7 +182,7 @@ internal sealed class ProcessorStateUpdater(
             UpdatedUtc = DateTime.UtcNow,
 
             Steps =
-                steps
+                steps,
         };
     }
 
@@ -208,7 +208,7 @@ internal sealed class ProcessorStateUpdater(
                     context.LatestRequestId,
 
                 LastExecuted =
-                    DateTimeOffset.UtcNow
+                    DateTimeOffset.UtcNow,
             };
 
         var steps =
@@ -225,7 +225,7 @@ internal sealed class ProcessorStateUpdater(
         {
             UpdatedUtc = DateTime.UtcNow,
 
-            Steps = steps
+            Steps = steps,
         };
     }
 
@@ -251,7 +251,7 @@ internal sealed class ProcessorStateUpdater(
                     context.LatestRequestId,
 
                 LastExecuted =
-                    DateTimeOffset.UtcNow
+                    DateTimeOffset.UtcNow,
             };
 
         var steps =
@@ -274,7 +274,7 @@ internal sealed class ProcessorStateUpdater(
 
             AvailableSteps = [],
 
-            Steps = steps
+            Steps = steps,
         };
     }
 
@@ -341,7 +341,7 @@ internal sealed class ProcessorStateUpdater(
 
             _ => throw new KaleidoFrameworkException(
                 FrameworkErrorCodes.TypeMismatch,
-                $"Unsupported execution decision '{decision.Type}'.")
+                $"Unsupported execution decision '{decision.Type}'."),
         };
     }
 }

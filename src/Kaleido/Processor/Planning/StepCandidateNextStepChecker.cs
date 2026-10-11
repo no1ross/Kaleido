@@ -75,7 +75,7 @@ internal sealed class StepCandidateNextStepChecker(
             [
                 StepProcessingMessage.Error(
                     ProcessorErrorCodes.InformationResponseMismatch,
-                    $"Information step '{candidate.StepName}' has no pending information request to answer.")
+                    $"Information step '{candidate.StepName}' has no pending information request to answer."),
             ];
         }
 

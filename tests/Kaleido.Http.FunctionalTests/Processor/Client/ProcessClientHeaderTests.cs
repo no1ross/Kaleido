@@ -1,7 +1,7 @@
 using Kaleido.Http.Client;
+using Kaleido.Http.FunctionalTests.Processor.Fixtures;
 using Kaleido.Http.Processor;
 using Kaleido.Observability;
-using Kaleido.Http.FunctionalTests.Processor.Fixtures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -49,11 +49,11 @@ public sealed class ProcessClientHeaderTests : IClassFixture<ProcessorAspNetCore
         var processId = Guid.NewGuid();
         var ctx = new KaleidoCorrelationContext
         {
-            RequestId            = "req-process-header-test",
-            ProcessId            = processId,
+            RequestId = "req-process-header-test",
+            ProcessId = processId,
             CallingProcessorName = "upstream",
-            CallingStepName      = "upstream-step",
-            ExecutingStepName    = "validate",
+            CallingStepName = "upstream-step",
+            ExecutingStepName = "validate",
         };
 
         var (factory, captured) = BuildClientFactory(ctx);
@@ -77,9 +77,9 @@ public sealed class ProcessClientHeaderTests : IClassFixture<ProcessorAspNetCore
     {
         var ctx = new KaleidoCorrelationContext
         {
-            RequestId            = "req-process-header-test",
+            RequestId = "req-process-header-test",
             CallingProcessorName = "upstream",
-            CallingStepName      = "upstream-step",
+            CallingStepName = "upstream-step",
         };
 
         var (factory, captured) = BuildClientFactory(ctx);
@@ -134,7 +134,7 @@ public sealed class ProcessClientHeaderTests : IClassFixture<ProcessorAspNetCore
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Kaleido:Clients:test:BaseUrl"]     = "http://localhost/",
+                ["Kaleido:Clients:test:BaseUrl"] = "http://localhost/",
                 ["Kaleido:Clients:test:RoutePrefix"] = "kaleido",
             })
             .Build();

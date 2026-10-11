@@ -1,7 +1,7 @@
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using Kaleido.Samples.PriorAuth.Member.Queryable.ContextSources;
 using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources;
-using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 

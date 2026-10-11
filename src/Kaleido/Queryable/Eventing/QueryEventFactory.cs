@@ -44,7 +44,7 @@ internal sealed class QueryEventFactory(
             SearchText = request.Query?.SearchText,
             SortCount = request.Query?.Sort?.Count ?? 0,
             FilterProvided = request.Query?.Filter is not null,
-            ViewParameters = request.ViewParameters
+            ViewParameters = request.ViewParameters,
         };
 
         var context = new QueryableEventContext
@@ -56,14 +56,14 @@ internal sealed class QueryEventFactory(
             QuerySourceName = details.QuerySourceName,
             QueryViewName = details.QueryViewName,
             ProcessorInstanceId = serviceOptions.InstanceId.ToString(),
-            CallingProcessorName = correlation.CallingProcessorName
+            CallingProcessorName = correlation.CallingProcessorName,
         };
 
         return new KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>
         {
             EventType = KaleidoEventTypes.QueryExecuted,
             Context = context,
-            Event = @event
+            Event = @event,
         };
     }
 }

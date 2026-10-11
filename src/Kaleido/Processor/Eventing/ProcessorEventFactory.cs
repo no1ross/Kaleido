@@ -42,7 +42,7 @@ internal sealed class ProcessorEventFactory(
             StepName = stepName,
             ProcessorInstanceId = serviceOptions.InstanceId.ToString(),
             CallingProcessorName = correlation.CallingProcessorName,
-            CallingStepName = correlation.CallingStepName
+            CallingStepName = correlation.CallingStepName,
         };
 
     public KaleidoEventEnvelope<ProcessCreated, ProcessEventContext> CreateProcessCreated(
@@ -63,14 +63,14 @@ internal sealed class ProcessorEventFactory(
             CreatedUtc = context.CreatedUtc,
             UpdatedUtc = context.UpdatedUtc,
             SubmittedStepNames = submittedStepNames,
-            SubmittedStepCount = submittedStepNames.Length
+            SubmittedStepCount = submittedStepNames.Length,
         };
 
         return new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
         {
             EventType = KaleidoEventTypes.ProcessCreated,
             Context = CreateContext(correlation, submittedStepNames.FirstOrDefault() ?? string.Empty, context.ProcessId),
-            Event = @event
+            Event = @event,
         };
     }
 
@@ -116,18 +116,18 @@ internal sealed class ProcessorEventFactory(
                                         {
                                             Type = message.Type,
                                             Code = message.Code,
-                                            Message = message.Message
+                                            Message = message.Message,
                                         })
-                                    .ToArray()
+                                    .ToArray(),
                         })
-                    .ToArray()
+                    .ToArray(),
         };
 
         return new KaleidoEventEnvelope<PlanBuilt, ProcessEventContext>
         {
             EventType = KaleidoEventTypes.ProcessPlanBuilt,
             Context = CreateContext(correlation, submittedStepNames.FirstOrDefault() ?? string.Empty, context.ProcessId),
-            Event = @event
+            Event = @event,
         };
     }
 
@@ -164,14 +164,14 @@ internal sealed class ProcessorEventFactory(
             TargetProcessorName = context.TargetProcessorName,
             AvailableSteps = context.AvailableSteps,
             StepLatestRequestId = stepContext?.LatestRequestId,
-            StepLastExecuted = stepContext?.LastExecuted
+            StepLastExecuted = stepContext?.LastExecuted,
         };
 
         return new KaleidoEventEnvelope<StepCompleted, ProcessEventContext>
         {
             EventType = KaleidoEventTypes.ProcessStepCompleted,
             Context = CreateContext(correlation, candidate.StepName, context.ProcessId),
-            Event = @event
+            Event = @event,
         };
     }
 
@@ -191,14 +191,14 @@ internal sealed class ProcessorEventFactory(
             RequiredInformationRequest = executionResult.RequiredInformationRequest,
             TargetProcessorName = executionResult.TargetProcessorName,
             AvailableSteps = executionResult.AvailableSteps,
-            ExecutedStepCount = executionResult.Outcomes.Count
+            ExecutedStepCount = executionResult.Outcomes.Count,
         };
 
         return new KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext>
         {
             EventType = KaleidoEventTypes.ProcessExecutionCompleted,
             Context = CreateContext(correlation, string.Empty, executionResult.ProcessId),
-            Event = @event
+            Event = @event,
         };
     }
 }

@@ -1,3 +1,4 @@
+global using System.Net;
 global using System.Text.Json;
 global using System.Text.Json.Nodes;
 global using Kaleido.Http;
@@ -9,4 +10,3 @@ global using Kaleido.Queryable;
 global using Kaleido.Queryable.Metadata;
 global using Moq;
 global using Moq.Protected;
-global using System.Net;

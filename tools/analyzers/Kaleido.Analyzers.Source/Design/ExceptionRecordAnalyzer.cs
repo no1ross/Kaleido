@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
+using Kaleido.Analyzers.Source;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-using Kaleido.Analyzers.Source;
 
 namespace Kaleido.Analyzers.Source.Design;
 

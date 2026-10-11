@@ -16,6 +16,6 @@ internal static class ActivityExceptionExtensions
                 {
                     ["exception.type"] = exception.GetType().FullName,
                     ["exception.message"] = exception.Message,
-                    ["exception.stacktrace"] = exception.ToString()
+                    ["exception.stacktrace"] = exception.ToString(),
                 }));
 }

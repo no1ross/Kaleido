@@ -1,5 +1,5 @@
-using Microsoft.CodeAnalysis;
 using Kaleido.Testing;
+using Microsoft.CodeAnalysis;
 using Xunit;
 using static Kaleido.Analyzers.Source.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Source.Design.EndpointNameConstantAnalyzer>;

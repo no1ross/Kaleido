@@ -1,4 +1,4 @@
-﻿namespace Kaleido.Samples.ECommerce.Data.QueryViewSources.Views;
+namespace Kaleido.Samples.ECommerce.Data.QueryViewSources.Views;
 
 public sealed record OrderDetailsView
 {

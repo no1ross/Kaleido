@@ -18,7 +18,7 @@ internal sealed class ProcessorStepContextEntityConfiguration
             x => new
             {
                 x.ProcessId,
-                x.StepName
+                x.StepName,
             });
 
         builder.Property(

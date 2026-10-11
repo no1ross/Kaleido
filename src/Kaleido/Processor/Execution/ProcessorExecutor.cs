@@ -60,7 +60,7 @@ internal sealed class ProcessorExecutor(
                     context.AvailableSteps,
 
                 Outcomes =
-                    []
+                    [],
             };
         }
 
@@ -144,7 +144,7 @@ internal sealed class ProcessorExecutor(
                 {
                     stepObservation.DecisionRecorded(
                         decision.Type.ToString(),
-                        StepExecutionStatus.Rejected.ToString());
+                        nameof(StepExecutionStatus.Rejected));
 
                     outcomes.Add(
                         CreateOutcome(
@@ -244,10 +244,10 @@ internal sealed class ProcessorExecutor(
                         [
                             StepProcessingMessage.Error(
                             ProcessorErrorCodes.ExecutionCanceled,
-                            "Step execution was cancelled.")
+                            "Step execution was cancelled."),
                         ],
 
-                        Response = null
+                        Response = null,
                     });
 
                 break;
@@ -284,10 +284,10 @@ internal sealed class ProcessorExecutor(
                         [
                             StepProcessingMessage.Error(
                             exception.Code,
-                            exception.Message)
+                            exception.Message),
                         ],
 
-                        Response = null
+                        Response = null,
                     });
 
                 break;
@@ -325,10 +325,10 @@ internal sealed class ProcessorExecutor(
                         [
                             StepProcessingMessage.Error(
                             ProcessorErrorCodes.FrameworkException,
-                            $"An unexpected error occurred while executing step '{candidate.StepName}'.")
+                            $"An unexpected error occurred while executing step '{candidate.StepName}'."),
                         ],
 
-                        Response = null
+                        Response = null,
                     });
 
                 break;
@@ -356,7 +356,7 @@ internal sealed class ProcessorExecutor(
                 context.AvailableSteps,
 
             Outcomes =
-                outcomes
+                outcomes,
         };
     }
 
@@ -400,7 +400,7 @@ internal sealed class ProcessorExecutor(
                 StepExecutionOutcome.Rejected,
 
             _ =>
-                StepExecutionOutcome.Pending
+                StepExecutionOutcome.Pending,
         };
     }
 
@@ -433,7 +433,7 @@ internal sealed class ProcessorExecutor(
 
             BusinessMessages = result.Messages,
 
-            Response = result.Response
+            Response = result.Response,
         };
     }
 

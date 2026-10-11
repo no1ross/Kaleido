@@ -1,4 +1,4 @@
-﻿namespace Kaleido.Http.Queryable;
+namespace Kaleido.Http.Queryable;
 
 #pragma warning disable KAL0001 // Pure route/endpoint wiring — no state, intentional static
 

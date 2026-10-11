@@ -77,7 +77,7 @@ internal sealed class ProcessStateService(
                                     DisplayName = registration.Metadata.DisplayName,
                                     Version = registration.Metadata.Version,
                                     Repeatable = registration.Repeatable.Enabled,
-                                    IsInformationStep = registration.IsInformationStep
+                                    IsInformationStep = registration.IsInformationStep,
                                 },
                                 serviceOptions.ServiceName);
                         })
@@ -92,7 +92,7 @@ internal sealed class ProcessStateService(
                             StepName = x.StepName,
                             Version = x.Version,
                             Status = x.Status,
-                            LastExecuted = x.LastExecuted
+                            LastExecuted = x.LastExecuted,
                         })
                     .ToArray(),
 
@@ -127,7 +127,7 @@ internal sealed class ProcessStateService(
                 DisplayName = registration.Metadata.DisplayName,
                 Version = registration.Metadata.Version,
                 Repeatable = registration.Repeatable.Enabled,
-                IsInformationStep = registration.IsInformationStep
+                IsInformationStep = registration.IsInformationStep,
             },
             context.RequiredInformationRequest,
             serviceOptions.ServiceName);

@@ -1,4 +1,4 @@
-﻿using Kaleido.Samples.ECommerce.Data.Entities;
+using Kaleido.Samples.ECommerce.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

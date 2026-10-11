@@ -112,7 +112,7 @@ public static class KaleidoEndpointRouteBuilderExtensions
                 .GetAwaiter()
                 .GetResult();
 
-        if (schemes is null || !schemes.Any())
+        if (schemes?.Any() != true)
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.AuthenticationNotConfigured,

@@ -67,7 +67,7 @@ internal static class KaleidoCallerContextHttpContextExtensions
                                 ClaimTypes.Role,
                                 StringComparison.Ordinal))
                             .Select(x => x.Value)
-                            .ToArray()
+                            .ToArray(),
             });
     }
 }

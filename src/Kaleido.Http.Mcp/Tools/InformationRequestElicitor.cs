@@ -69,8 +69,8 @@ internal sealed class InformationRequestElicitor : IInformationRequestElicitor
             RequestedSchema = new ElicitRequestParams.RequestSchema
             {
                 Properties = properties,
-                Required = required
-            }
+                Required = required,
+            },
         };
     }
 
@@ -96,7 +96,7 @@ internal sealed class InformationRequestElicitor : IInformationRequestElicitor
                 Answers = Values(value)
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .Select(x => new InformationAnswer { Value = x })
-                    .ToArray()
+                    .ToArray(),
             });
         }
 
@@ -153,9 +153,9 @@ internal sealed class InformationRequestElicitor : IInformationRequestElicitor
                     MinItems = 1,
                     Items = new ElicitRequestParams.TitledEnumItemsSchema
                     {
-                        AnyOf = item.Options.Select(Option).ToList()
+                        AnyOf = item.Options.Select(Option).ToList(),
                     },
-                    Default = proposed.Length > 0 ? proposed : null
+                    Default = proposed.Length > 0 ? proposed : null,
                 },
 
             InformationItemType.Choice =>
@@ -164,7 +164,7 @@ internal sealed class InformationRequestElicitor : IInformationRequestElicitor
                     Title = title,
                     Description = description,
                     OneOf = item.Options.Select(Option).ToList(),
-                    Default = first
+                    Default = first,
                 },
 
             InformationItemType.Boolean =>
@@ -172,7 +172,7 @@ internal sealed class InformationRequestElicitor : IInformationRequestElicitor
                 {
                     Title = title,
                     Description = description,
-                    Default = bool.TryParse(first, out var flag) ? flag : null
+                    Default = bool.TryParse(first, out var flag) ? flag : null,
                 },
 
             InformationItemType.WholeNumber =>
@@ -188,7 +188,7 @@ internal sealed class InformationRequestElicitor : IInformationRequestElicitor
                 new ElicitRequestParams.StringSchema { Title = title, Description = description, Format = "date-time", Default = first },
 
             _ =>
-                new ElicitRequestParams.StringSchema { Title = title, Description = description, MinLength = 1, Default = first }
+                new ElicitRequestParams.StringSchema { Title = title, Description = description, MinLength = 1, Default = first },
         };
     }
 
@@ -199,7 +199,7 @@ internal sealed class InformationRequestElicitor : IInformationRequestElicitor
         new()
         {
             Const = option.Value,
-            Title = string.IsNullOrWhiteSpace(option.Display) ? option.Value : option.Display
+            Title = string.IsNullOrWhiteSpace(option.Display) ? option.Value : option.Display,
         };
 
     // Form values back to Kaleido's invariant text: true/false, numbers with '.', text as given.
@@ -213,6 +213,6 @@ internal sealed class InformationRequestElicitor : IInformationRequestElicitor
                 ? whole.ToString(CultureInfo.InvariantCulture)
                 : value.GetDecimal().ToString(CultureInfo.InvariantCulture)],
             JsonValueKind.String => [value.GetString() ?? string.Empty],
-            _ => []
+            _ => [],
         };
 }

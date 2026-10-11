@@ -81,7 +81,7 @@ public sealed class KaleidoMcpOptionsBuilder
             ServerName = string.IsNullOrWhiteSpace(ServerName) ? "kaleido" : ServerName.Trim(),
             ServerVersion = string.IsNullOrWhiteSpace(ServerVersion) ? "1.0.0" : ServerVersion.Trim(),
             Instructions = ResolveInstructions(),
-            MaxElicitationRounds = Math.Max(0, MaxElicitationRounds)
+            MaxElicitationRounds = Math.Max(0, MaxElicitationRounds),
         };
 
     private string ResolveInstructions()

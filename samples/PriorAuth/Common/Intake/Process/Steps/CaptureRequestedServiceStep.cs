@@ -41,4 +41,5 @@ public sealed record CaptureRequestedServiceStep : IProcessStep
 
     [Description("Whether contrast was ordered, only if the caller said it (e.g. \"without contrast\"); leave it out otherwise and never infer it from the procedure code. Proposed back to the caller for confirmation.")]
     [Display(Name = "Contrast")]
-    public ContrastOption? Contrast { get; init; }}
+    public ContrastOption? Contrast { get; init; }
+}
