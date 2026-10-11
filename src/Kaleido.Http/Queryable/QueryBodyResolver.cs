@@ -252,7 +252,7 @@ internal static class QueryBodyResolver
         if (targetType.IsEnum)
         {
             return Enum.TryParse(targetType, raw, ignoreCase: true, out var enumVal)
-                ? enumVal ?? throw InvalidValue(raw, $"a valid '{targetType.Name}' value")
+                ? enumVal
                 : throw InvalidValue(raw, $"a valid '{targetType.Name}' value");
         }
 
