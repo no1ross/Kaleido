@@ -74,12 +74,11 @@ public sealed class SingleFixturePerSutAnalyzer : DiagnosticAnalyzer
                 var grouped =
                     fixtures.GroupBy(f => f.Sut, SymbolEqualityComparer.Default);
 
-                foreach (var group in grouped)
+                foreach (var members in grouped.Select(group =>
+                             group
+                                 .OrderBy(f => f.Fixture.Locations[0].SourceSpan.Start)
+                                 .ToList()))
                 {
-                    var members =
-                        group
-                            .OrderBy(f => f.Fixture.Locations[0].SourceSpan.Start)
-                            .ToList();
 
                     foreach (var extra in members.Skip(1))
                     {

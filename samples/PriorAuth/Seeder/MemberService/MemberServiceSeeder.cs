@@ -104,7 +104,7 @@ internal sealed class MemberServiceSeeder(
             StreetNames = LoadRequiredStringList(memberServicePath, "street-names.json"),
             StreetSuffixes = LoadRequiredStringList(memberServicePath, "street-suffixes.json"),
             AddressLine2Patterns = LoadRequiredStringList(memberServicePath, "address-line2-patterns.json"),
-            Settings = JsonAssetLoader.Load<MemberSeedSettings>(Path.Combine(memberServicePath, "seed-settings.json"))
+            Settings = JsonAssetLoader.Load<MemberSeedSettings>(Path.Join(memberServicePath, "seed-settings.json"))
         };
 
         ValidateSettings(assets.Settings);
@@ -115,7 +115,7 @@ internal sealed class MemberServiceSeeder(
         string basePath,
         string fileName)
     {
-        var values = JsonAssetLoader.Load<List<string>>(Path.Combine(basePath, fileName));
+        var values = JsonAssetLoader.Load<List<string>>(Path.Join(basePath, fileName));
 
         if (values.Count == 0)
         {
@@ -157,7 +157,7 @@ internal sealed class MemberServiceSeeder(
     {
         var zipCodes =
             JsonAssetLoader.Load<List<ZipCode>>(
-                Path.Combine("referencedata", "zipcodes.json"));
+                Path.Join("referencedata", "zipcodes.json"));
 
         return zipCodes
             .Where(x => allowedStates.Contains(x.StateCode, StringComparer.OrdinalIgnoreCase))
@@ -170,7 +170,7 @@ internal sealed class MemberServiceSeeder(
     {
         var plans =
             JsonAssetLoader.Load<List<Plan>>(
-                Path.Combine("referencedata", "plans.json"),
+                Path.Join("referencedata", "plans.json"),
                 JsonAssetLoader.CreateEnumJsonOptions());
 
         return plans

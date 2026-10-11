@@ -77,7 +77,7 @@ public sealed class InjectedDisposalAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var targetType = (target as ISymbol) switch
+        var targetType = target switch
         {
             IFieldSymbol field => field.Type,
             IParameterSymbol parameter => parameter.Type,

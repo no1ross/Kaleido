@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Kaleido.Samples.ECommerce.Data.Seed.Seeders;
 
 namespace Kaleido.Samples.ECommerce.Data.Seed;
@@ -66,7 +66,7 @@ internal sealed class ECommerceSeeder
         try
         {
             var path =
-                Path.Combine(
+                Path.Join(
                     AppContext.BaseDirectory,
                     "assets",
                     fileName);

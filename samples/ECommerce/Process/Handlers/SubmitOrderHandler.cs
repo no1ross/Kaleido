@@ -111,8 +111,6 @@ internal sealed class SubmitOrderHandler(
         await dbContext.SaveChangesAsync(
             cancellationToken);
 
-        var cart = dbContext.ShoppingCarts.FirstOrDefault(x => x.ShoppingCartId == order.ShoppingCartId);
-
         return ProcessStepHandlerResult.Success(
             ProcessStpMessages.OrderSubmitted(
                 order.OrderNumber));
