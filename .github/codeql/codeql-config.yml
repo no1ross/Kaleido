@@ -1,6 +1,6 @@
 name: Kaleido CodeQL
 
-# What is analyzed is decided by the build in codeql.yml: only what ships (src, tools, samples) is
+# What is analyzed is decided by the build in codeql.yml: only what ships (src, tools) is
 # built, so test code and the xUnit-generated entry points are never analyzed. paths-ignore does not
 # filter a full build of a compiled language; it is kept for anything CodeQL extracts without the
 # build (and documents the intent).

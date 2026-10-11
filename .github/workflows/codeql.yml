@@ -29,8 +29,10 @@ jobs:
         global-json-file: global.json
 
     # A real build gives CodeQL full type information (build-mode none produced false positives). Only
-    # what ships is built - src, tools, samples - so test code and the xUnit-generated entry points are
-    # never analyzed (paths-ignore cannot filter a full build of a compiled language).
+    # what ships is built - src and tools - so test code and the xUnit-generated entry points are never
+    # analyzed (paths-ignore cannot filter a full build of a compiled language). samples/ is excluded for
+    # now: the full sample implementations move to their own repositories before release (#250); the
+    # slim examples that replace them are analyzed again (add samples back to the grep below).
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
       with:
@@ -42,10 +44,10 @@ jobs:
     - name: Restore
       run: dotnet restore --locked-mode
 
-    - name: Build what ships (src, tools, samples)
+    - name: Build what ships (src, tools)
       run: |
         dotnet new sln --name CodeQL --format sln --output "$RUNNER_TEMP"
-        git ls-files '*.csproj' | grep -E '^(src|tools|samples)/' |
+        git ls-files '*.csproj' | grep -E '^(src|tools)/' |
           xargs dotnet sln "$RUNNER_TEMP/CodeQL.sln" add
         dotnet build "$RUNNER_TEMP/CodeQL.sln" --configuration Release --no-restore
 
