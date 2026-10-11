@@ -274,6 +274,7 @@ dotnet_diagnostic.MA0179.severity = warning    ; Attribute.IsDefined
 dotnet_diagnostic.RCS1085.severity = warning   ; Auto-implemented property
 dotnet_diagnostic.RCS1205.severity = warning   ; Named arguments in parameter order
 dotnet_diagnostic.RCS1226.severity = warning   ; Paragraphs in documentation comments
+dotnet_diagnostic.RCS1247.severity = warning   ; Documentation tags: <code> on its own lines, <c> inline
 dotnet_diagnostic.MA0182.severity = warning    ; Unused internal type (off in Kaleido.Http.Abstractions, below)
 ; Off, with the reason
 dotnet_diagnostic.MA0190.severity = none       ; Partial property for GeneratedRegex - the net8.0 regex generator supports partial methods only
@@ -366,6 +367,7 @@ dotnet_diagnostic.KAL1006.severity = none
 ; samples/ - kept as they are until they move to their own repositories (#250): the rules
 ; enforced by #257 after samples were excluded from analysis stay suggestions here
 [samples/**/*.cs]
+dotnet_diagnostic.RCS1247.severity = suggestion
 dotnet_diagnostic.CA1000.severity = suggestion
 dotnet_diagnostic.CA1859.severity = suggestion
 dotnet_diagnostic.CA1826.severity = suggestion
