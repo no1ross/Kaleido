@@ -14,6 +14,11 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    # SonarQube Cloud (CI-based analysis). The Sonar steps run only when the token is available, so
+    # pull requests from forks or Dependabot (no secrets) still build and test.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
     steps:
 
     - uses: actions/checkout@v4
@@ -27,6 +32,30 @@ jobs:
 
     - name: Restore
       run: dotnet restore --locked-mode
+
+    - name: Set up Java (Sonar scanner)
+      if: ${{ env.SONAR_TOKEN != '' }}
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+
+    # Analysis scope: C# in src, tools and samples (tests are test code, generated obj/ excluded).
+    # Coverage is measured on src only, like the coverage report below. The quality gate (zero new
+    # issues, 90% coverage on new code) is evaluated by the end step, which fails the build.
+    - name: Sonar begin
+      if: ${{ env.SONAR_TOKEN != '' }}
+      run: |
+        dotnet tool install --global dotnet-sonarscanner --version 11.3.0
+        dotnet sonarscanner begin \
+          /k:"no1ross_Kaleido" \
+          /o:"no1ross" \
+          /d:sonar.host.url="https://sonarcloud.io" \
+          /d:sonar.token="$SONAR_TOKEN" \
+          /d:sonar.coverageReportPaths="coverage/SonarQube.xml" \
+          /d:sonar.coverage.exclusions="samples/**,tools/**,tests/**" \
+          /d:sonar.exclusions="**/obj/**,**/bin/**,samples/PriorAuth/priorauth-ui/**,samples/kaleido-sample-ecommerce-ui/**" \
+          /d:sonar.qualitygate.wait=true
 
     - name: Build
       run: dotnet build --configuration Release --no-restore
@@ -46,9 +75,13 @@ jobs:
         reportgenerator \
           "-reports:TestResults/*.cobertura.xml" \
           "-targetdir:coverage" \
-          "-reporttypes:lcov;HtmlSummary" \
+          "-reporttypes:lcov;HtmlSummary;SonarQube" \
           "-assemblyfilters:-*Tests*;-*FunctionalTests*;-*IntegrationTests*" \
           "-filefilters:-*/tests/*;-*/tools/*;-*/samples/*"
+
+    - name: Sonar end (upload, quality gate)
+      if: ${{ env.SONAR_TOKEN != '' }}
+      run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
 
     # ADVISORY: reports merged line coverage vs the 90% target and emits a
     # warning annotation. Not enforced yet - flip continue-on-error to hard-gate
