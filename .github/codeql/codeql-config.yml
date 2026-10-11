@@ -1,11 +1,9 @@
 name: Kaleido CodeQL
 
-# Analyze what ships and what developers copy: the framework (src), the analyzers (tools) and the
-# samples.
-#  - **/obj/**: compiler- and generator-produced files (xUnit entry points, Regex source
-#    generator output) that nobody edits.
-#  - tests/**: test code; its findings (mostly Dispose on test-local mocks) are not actionable
-#    and "fixing" them has broken tests (strict mocks).
+# What is analyzed is decided by the build in codeql.yml: only what ships (src, tools, samples) is
+# built, so test code and the xUnit-generated entry points are never analyzed. paths-ignore does not
+# filter a full build of a compiled language; it is kept for anything CodeQL extracts without the
+# build (and documents the intent).
 paths-ignore:
   - '**/obj/**'
   - 'tests/**'

@@ -20,22 +20,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # NBGV needs full history for version height
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         global-json-file: global.json
 
-    # build-mode none: CodeQL reads the C# sources directly - no restore/build (the Build workflow
-    # builds), no generated obj/ output, and paths-ignore in the config applies (it does not when a
-    # full build is analyzed).
+    # A real build gives CodeQL full type information (build-mode none produced false positives). Only
+    # what ships is built - src, tools, samples - so test code and the xUnit-generated entry points are
+    # never analyzed (paths-ignore cannot filter a full build of a compiled language).
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
       with:
         languages: csharp
-        build-mode: none
+        build-mode: manual
         queries: security-and-quality
         config-file: ./.github/codeql/codeql-config.yml
+
+    - name: Restore
+      run: dotnet restore --locked-mode
+
+    - name: Build what ships (src, tools, samples)
+      run: |
+        dotnet new sln --name CodeQL --format sln --output "$RUNNER_TEMP"
+        git ls-files '*.csproj' | grep -E '^(src|tools|samples)/' |
+          xargs dotnet sln "$RUNNER_TEMP/CodeQL.sln" add
+        dotnet build "$RUNNER_TEMP/CodeQL.sln" --configuration Release --no-restore
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
