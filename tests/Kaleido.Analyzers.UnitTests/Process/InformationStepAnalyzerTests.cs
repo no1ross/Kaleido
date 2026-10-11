@@ -38,12 +38,15 @@ namespace Kaleido.Processor.Execution
         public static ProcessStepHandlerResult Success<TNext>() where TNext : Kaleido.Processor.IProcessStep => new();
         public static ProcessStepHandlerResult RequireInformation<TNext>(Kaleido.Processor.InformationRequest request)
             where TNext : Kaleido.Processor.IInformationStep => new();
+        public static ProcessStepHandlerResult<TProcessStepResult> Success<TProcessStepResult>(TProcessStepResult response) => new();
     }
 
     public sealed class ProcessStepHandlerResult<TProcessStepResult>
     {
-        public static ProcessStepHandlerResult<TProcessStepResult> Success<TNext>(TProcessStepResult response)
-            where TNext : Kaleido.Processor.IProcessStep => new();
+        public ProcessStepHandlerResult<TProcessStepResult> Next<TNext>()
+            where TNext : Kaleido.Processor.IProcessStep => this;
+        public ProcessStepHandlerResult<TProcessStepResult> RequireInformation<TNext>(Kaleido.Processor.InformationRequest request)
+            where TNext : Kaleido.Processor.IInformationStep => this;
     }
 }";
 
@@ -111,7 +114,7 @@ public static class Handler
 public static class Handler
 {
     public static object Run() =>
-        {|#0:Kaleido.Processor.Execution.ProcessStepHandlerResult<string>.Success<AnswerStep>(""done"")|};
+        {|#0:Kaleido.Processor.Execution.ProcessStepHandlerResult.Success(""done"").Next<AnswerStep>()|};
 }
 " + KaleidoStubs,
             SuccessWithInformationStep.WithLocation(0).WithArguments("AnswerStep"));
@@ -128,6 +131,12 @@ public static class Handler
 
     public static object Ask() =>
         Kaleido.Processor.Execution.ProcessStepHandlerResult.RequireInformation<AnswerStep>(new Kaleido.Processor.InformationRequest());
+
+    public static object TypedNext() =>
+        Kaleido.Processor.Execution.ProcessStepHandlerResult.Success(""done"").Next<CaptureStep>();
+
+    public static object TypedAsk() =>
+        Kaleido.Processor.Execution.ProcessStepHandlerResult.Success(""done"").RequireInformation<AnswerStep>(new Kaleido.Processor.InformationRequest());
 }
 " + KaleidoStubs);
     }

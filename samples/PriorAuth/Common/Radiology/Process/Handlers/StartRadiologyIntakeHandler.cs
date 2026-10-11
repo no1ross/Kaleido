@@ -40,7 +40,7 @@ public sealed class StartRadiologyIntakeHandler(
 
             if (procedureCode is null)
             {
-                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Reject(RadiologyProcessMessages.ProcedureCodeNotFound(
+                return ProcessStepHandlerResult.Reject(RadiologyProcessMessages.ProcedureCodeNotFound(
                         processStep.CodeSystem,
                         processStep.CodeValue));
             }
@@ -60,7 +60,7 @@ public sealed class StartRadiologyIntakeHandler(
 
                 if (!eligibility.Succeeded)
                 {
-                    return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Reject(
+                    return ProcessStepHandlerResult.Reject(
                         eligibility.FailureMessage!);
                 }
             }
@@ -135,9 +135,9 @@ public sealed class StartRadiologyIntakeHandler(
             if (eligibility is null)
             {
                 // No member provided — require ValidateMember next
-                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Success<ValidateMemberStep>(
+                return ProcessStepHandlerResult.Success(
                     new StartRadiologyIntakeResponse(),
-                    RadiologyProcessMessages.MemberInfoNotProvided());
+                    RadiologyProcessMessages.MemberInfoNotProvided()).Next<ValidateMemberStep>();
             }
 
             // Member provided and eligible (checked before anything was written): record it and route by modality
@@ -171,20 +171,20 @@ public sealed class StartRadiologyIntakeHandler(
 
             if (!routing.Succeeded)
             {
-                return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Reject(routing.FailureMessage!);
+                return ProcessStepHandlerResult.Reject(routing.FailureMessage!);
             }
 
             var response =
                 new StartRadiologyIntakeResponse();
 
             return routing.Route == ModalityRoute.CaptureMriInfo
-                ? ProcessStepHandlerResult<StartRadiologyIntakeResponse>.RequireInformation<CaptureMriInfoStep>(response, routing.InformationRequest!)
-                : ProcessStepHandlerResult<StartRadiologyIntakeResponse>.RequireInformation<ConfirmCtInsteadOfMriStep>(response, routing.InformationRequest!);
+                ? ProcessStepHandlerResult.Success(response).RequireInformation<CaptureMriInfoStep>(routing.InformationRequest!)
+                : ProcessStepHandlerResult.Success(response).RequireInformation<ConfirmCtInsteadOfMriStep>(routing.InformationRequest!);
         }
         catch (KaleidoHttpClientException ex)
         {
             Console.WriteLine($"[Radiology StartRadiologyIntake] KaleidoHttpClientException caught for process {context.ProcessId}: {ex.Message}");
-            return ProcessStepHandlerResult<StartRadiologyIntakeResponse>.Reject(RadiologyProcessMessages.QueryableRequestFailed(
+            return ProcessStepHandlerResult.Reject(RadiologyProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));
         }
