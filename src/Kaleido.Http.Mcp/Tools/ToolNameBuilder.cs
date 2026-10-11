@@ -81,6 +81,10 @@ internal sealed partial class ToolNameBuilder : IToolNameBuilder
             .Replace(JsonNamingPolicy.SnakeCaseLower.ConvertName(value), "_")
             .Trim('_');
 
+    // Source-generated (no runtime regex parsing, no backtracking: a character-class run). Findings that
+    // scanners report in the generator's output under obj/ (e.g. CodeQL "useless assignment" in
+    // RegexGenerator.g.cs) are in generated code, not in this repository's code: dismiss them as
+    // generated rather than replacing this line with hand-written matching.
     [GeneratedRegex("[^a-z0-9_]+", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex InvalidCharacters();
 

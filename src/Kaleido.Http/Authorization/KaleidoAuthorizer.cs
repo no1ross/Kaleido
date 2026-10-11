@@ -98,6 +98,10 @@ internal sealed class KaleidoAuthorizer(
 
         var allowed = new List<T>();
 
+        // Deliberately a loop, not LINQ (scanners suggest .Where, e.g. CodeQL cs/linq/missed-where):
+        // the condition awaits a policy check per item, which Where cannot express, and checks run
+        // one after another on purpose - policy handlers may use scoped services that are not
+        // thread-safe, so no Task.WhenAll either.
         foreach (var item in items)
         {
             if (await evaluator.CanAccessAsync(
