@@ -190,7 +190,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         });
     }
 
-    private static System.Reflection.Assembly BuildAssembly(
+    private static System.Reflection.Emit.AssemblyBuilder BuildAssembly(
         Action<System.Reflection.Emit.ModuleBuilder> define)
     {
         var assemblyBuilder =

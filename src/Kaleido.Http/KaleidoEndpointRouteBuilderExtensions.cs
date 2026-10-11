@@ -145,7 +145,7 @@ public static class KaleidoEndpointRouteBuilderExtensions
     // Every capability that gets an endpoint: process steps, query sources,
     // and query views (views already carry their effective rule: their own
     // declaration, else their source's).
-    private static IReadOnlyList<(string Name, AuthorizationMetadata Authorization)> ExposedCapabilities(
+    private static List<(string Name, AuthorizationMetadata Authorization)> ExposedCapabilities(
         IServiceProvider services)
     {
         var capabilities = new List<(string Name, AuthorizationMetadata Authorization)>();

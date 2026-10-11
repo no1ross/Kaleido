@@ -99,7 +99,7 @@ internal static class QueryBodyResolver
 
     // ── Sort / Page ──────────────────────────────────────────────────────────
 
-    private static IReadOnlyList<QuerySort>? ResolveSort(
+    private static QuerySort[]? ResolveSort(
         IReadOnlyList<QueryApiSort>? sort) =>
         sort?
             .Select(x => new QuerySort(

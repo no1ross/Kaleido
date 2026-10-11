@@ -234,9 +234,9 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
 
     private static Expression BuildGroup(
         LogicalOperator op,
-        IReadOnlyList<Expression> expressions)
+        Expression[] expressions)
     {
-        if (expressions.Count == 0)
+        if (expressions.Length == 0)
         {
             return Expression.Constant(true);
         }
@@ -683,7 +683,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
             : between;
     }
 
-    private static Expression BooleanCall(
+    private static BinaryExpression BooleanCall(
         Expression member,
         bool expected)
     {
@@ -705,7 +705,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 expected));
     }
 
-    private static object CreateTypedArray(
+    private static Array CreateTypedArray(
         Type memberType,
         IReadOnlyList<object?> values)
     {
@@ -824,7 +824,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
             $"Value '{value}' is not valid for field '{expectedType.Name}'. Expected a value of type '{expectedType.Name}'.");
     }
 
-    private static Expression ToLower(
+    private static MethodCallExpression ToLower(
         Expression expression)
     {
         return Expression.Call(
