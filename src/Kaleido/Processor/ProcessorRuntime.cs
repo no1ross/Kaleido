@@ -166,7 +166,7 @@ public sealed record ProcessStepResult
 = [];
 }
 
-internal sealed class ProcessorRuntime(
+internal sealed partial class ProcessorRuntime(
     IProcessorContextStore contextStore,
     IProcessorStateUpdater stateUpdater,
     IProcessorPlanner planner,
@@ -228,10 +228,7 @@ internal sealed class ProcessorRuntime(
             }
             catch (Exception publishException) when (publishException is not OperationCanceledException)
             {
-                logger.LogWarning(
-                    publishException,
-                    "Event publish failed for PlanBuilt on process {ProcessId}. Event delivery is best-effort.",
-                    context.ProcessId);
+                LogPlanBuiltPublishFailed(logger, publishException, context.ProcessId);
             }
 
             var executionResult =
@@ -257,10 +254,7 @@ internal sealed class ProcessorRuntime(
             }
             catch (Exception publishException) when (publishException is not OperationCanceledException)
             {
-                logger.LogWarning(
-                    publishException,
-                    "Event publish failed for ExecutionCompleted on process {ProcessId}. Event delivery is best-effort.",
-                    context.ProcessId);
+                LogExecutionCompletedPublishFailed(logger, publishException, context.ProcessId);
             }
 
             observation.ExecutionCompleted(
@@ -320,10 +314,7 @@ internal sealed class ProcessorRuntime(
             }
             catch (Exception publishException) when (publishException is not OperationCanceledException)
             {
-                logger.LogWarning(
-                    publishException,
-                    "Event publish failed for ProcessCreated on process {ProcessId}. Event delivery is best-effort.",
-                    initializedContext.ProcessId);
+                LogProcessCreatedPublishFailed(logger, publishException, initializedContext.ProcessId);
             }
 
             return initializedContext;
@@ -370,10 +361,7 @@ internal sealed class ProcessorRuntime(
             }
             catch (Exception publishException) when (publishException is not OperationCanceledException)
             {
-                logger.LogWarning(
-                    publishException,
-                    "Event publish failed for ProcessCreated on process {ProcessId}. Event delivery is best-effort.",
-                    initializedContext.ProcessId);
+                LogProcessCreatedPublishFailedOnResume(logger, publishException, initializedContext.ProcessId);
             }
 
             return initializedContext;
@@ -508,4 +496,16 @@ internal sealed class ProcessorRuntime(
 
         return messages;
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for PlanBuilt on process {ProcessId}. Event delivery is best-effort.")]
+    private static partial void LogPlanBuiltPublishFailed(ILogger logger, Exception exception, Guid processId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for ExecutionCompleted on process {ProcessId}. Event delivery is best-effort.")]
+    private static partial void LogExecutionCompletedPublishFailed(ILogger logger, Exception exception, Guid processId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for ProcessCreated on process {ProcessId}. Event delivery is best-effort.")]
+    private static partial void LogProcessCreatedPublishFailed(ILogger logger, Exception exception, Guid processId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for ProcessCreated on process {ProcessId}. Event delivery is best-effort.")]
+    private static partial void LogProcessCreatedPublishFailedOnResume(ILogger logger, Exception exception, Guid processId);
 }

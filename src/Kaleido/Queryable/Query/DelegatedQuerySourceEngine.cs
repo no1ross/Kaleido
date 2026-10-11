@@ -21,7 +21,7 @@ internal interface IDelegatedQuerySourceEngine<TQueryContext, TResult>
         CancellationToken cancellationToken = default);
 }
 
-internal sealed class DelegatedQuerySourceEngine<TQueryContext, TResult>(
+internal sealed partial class DelegatedQuerySourceEngine<TQueryContext, TResult>(
     IQueryContextValidator validator,
     IQueryEventFactory eventFactory,
     IEventPublisher eventPublisher,
@@ -115,10 +115,7 @@ internal sealed class DelegatedQuerySourceEngine<TQueryContext, TResult>(
                 }
                 catch (Exception publishException) when (publishException is not OperationCanceledException)
                 {
-                    logger.LogWarning(
-                        publishException,
-                        "Event publish failed for QueryExecuted on source {QuerySourceName}. Event delivery is best-effort.",
-                        details.QuerySourceName);
+                    LogEventPublishFailed(logger, publishException, details.QuerySourceName);
                 }
             }
 
@@ -166,4 +163,7 @@ internal sealed class DelegatedQuerySourceEngine<TQueryContext, TResult>(
             typedRequest,
             cancellationToken);
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for QueryExecuted on source {QuerySourceName}. Event delivery is best-effort.")]
+    private static partial void LogEventPublishFailed(ILogger logger, Exception exception, string querySourceName);
 }
