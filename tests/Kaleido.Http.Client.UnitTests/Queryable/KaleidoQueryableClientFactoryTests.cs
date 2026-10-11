@@ -45,8 +45,9 @@ public sealed class KaleidoQueryableClientFactoryTests
         var routeMap = new KaleidoQueryableClientRouteOptionsMap();
         routeMap.Options["MemberService"] = "member";
 
+        using var httpClient = new System.Net.Http.HttpClient();
         var httpClientFactory = new Mock<IHttpClientFactory>();
-        httpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(new System.Net.Http.HttpClient());
+        httpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
         var factory = CreateSut(httpClientFactory.Object, routeMap);
 
