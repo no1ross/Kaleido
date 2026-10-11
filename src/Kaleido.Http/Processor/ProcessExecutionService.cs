@@ -21,7 +21,7 @@ internal interface IProcessExecutionService
         CancellationToken cancellationToken);
 }
 
-internal sealed class ProcessExecutionService(
+internal sealed partial class ProcessExecutionService(
     IHttpContextAccessor httpContextAccessor,
     IProcessorStepRegistry registry,
     IProcessorRuntime runtime,
@@ -64,10 +64,7 @@ internal sealed class ProcessExecutionService(
 
         // No case-level guardrail (ADR 0010): any caller admitted by the
         // steps' declared roles/policies may create or resume the process.
-        logger.LogDebug(
-            "Executing process for processor {ProcessorName} with {StepCount} submitted step(s).",
-            serviceOptions.ServiceName,
-            request.Steps.Count);
+        LogExecutingProcess(logger, serviceOptions.ServiceName, request.Steps.Count);
 
         var processRequest =
             new ProcessRequest
@@ -132,10 +129,7 @@ internal sealed class ProcessExecutionService(
         // there is no case-level guardrail on resume (ADR 0010).
         var stepName = registry.GetRegistration(typeof(TProcessStep)).Metadata.Name;
 
-        logger.LogDebug(
-            "Executing step {StepName} for processor {ProcessorName}.",
-            stepName,
-            serviceOptions.ServiceName);
+        LogExecutingStep(logger, stepName, serviceOptions.ServiceName);
 
         var processRequest =
             request.ToProcessRequest(
@@ -178,4 +172,10 @@ internal sealed class ProcessExecutionService(
         headers[KaleidoCorrelationHeaders.ProcessId] =
             processId.ToString();
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Executing process for processor {ProcessorName} with {StepCount} submitted step(s).")]
+    private static partial void LogExecutingProcess(ILogger logger, string processorName, int stepCount);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Executing step {StepName} for processor {ProcessorName}.")]
+    private static partial void LogExecutingStep(ILogger logger, string stepName, string processorName);
 }

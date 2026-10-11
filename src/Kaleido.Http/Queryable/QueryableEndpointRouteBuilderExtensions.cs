@@ -12,7 +12,7 @@ namespace Kaleido.Http.Queryable;
 /// <summary>
 /// Provides endpoint registration extensions for Kaleido Queryable.
 /// </summary>
-public static class QueryableEndpointRouteBuilderExtensions
+public static partial class QueryableEndpointRouteBuilderExtensions
 {
     /// <summary>
     /// Maps all Kaleido Queryable endpoints and returns the route group so hosts can
@@ -51,19 +51,17 @@ public static class QueryableEndpointRouteBuilderExtensions
                 .GetRequiredService<ILoggerFactory>()
                 .CreateLogger("Kaleido.Queryable.Startup");
 
+        var routePrefix = QueryableContractUrls.QueryablePrefix(serviceName);
+
         var group =
             endpoints.MapGroup(
-                QueryableContractUrls.QueryablePrefix(serviceName))
+                routePrefix)
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
             .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 
         var viewCount = queryableRegistry.Registrations.Sum(s => s.Views.Count);
 
-        logger.LogInformation(
-            "Queryable mapped at route prefix {RoutePrefix} with {QuerySourceCount} query sources and {QueryViewCount} views.",
-            QueryableContractUrls.QueryablePrefix(serviceName),
-            queryableRegistry.Registrations.Count,
-            viewCount);
+        LogQueryableMapped(logger, routePrefix, queryableRegistry.Registrations.Count, viewCount);
 
         foreach (var source in queryableRegistry.Registrations)
         {
@@ -225,4 +223,6 @@ public static class QueryableEndpointRouteBuilderExtensions
             .Produces<KaleidoErrorResponse>(400);
     }
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Queryable mapped at route prefix {RoutePrefix} with {QuerySourceCount} query sources and {QueryViewCount} views.")]
+    private static partial void LogQueryableMapped(ILogger logger, string routePrefix, int querySourceCount, int queryViewCount);
 }
