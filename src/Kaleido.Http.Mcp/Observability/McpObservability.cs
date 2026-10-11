@@ -41,7 +41,7 @@ internal interface IMcpToolsListObservation : IDisposable
     void Completed(ToolCatalog catalog);
 }
 
-internal sealed class McpObservability(
+internal sealed partial class McpObservability(
     IKaleidoCorrelationContextAccessor correlation,
     ILogger<McpObservability> logger)
     : IMcpObservability
@@ -76,7 +76,7 @@ internal sealed class McpObservability(
         activity?.SetTag(McpTelemetry.TagTool, toolName);
         activity?.SetTag(KaleidoTelemetryTags.RequestId, requestId);
 
-        logger.LogDebug("Kaleido MCP tool {Tool} called (request {RequestId}).", toolName, requestId);
+        LogToolCalled(logger, toolName, requestId);
 
         return new ToolCallObservation(activity, toolName, requestId, logger);
     }
@@ -97,10 +97,10 @@ internal sealed class McpObservability(
         Activity.Current?.SetTag(McpTelemetry.TagRegistryResult, result);
         Activity.Current?.SetTag(McpTelemetry.TagRegistryRevision, revision);
 
-        logger.LogDebug("Kaleido MCP registry read: {Result} (revision {Revision}).", result, revision);
+        LogRegistryRead(logger, result, revision);
     }
 
-    private sealed class ToolCallObservation(
+    private sealed partial class ToolCallObservation(
         Activity? activity,
         string toolName,
         string requestId,
@@ -147,57 +147,43 @@ internal sealed class McpObservability(
                 activity?.SetStatus(ActivityStatusCode.Error, code);
                 activity?.SetTag(McpTelemetry.TagErrorCode, code);
 
-                Record(McpTelemetry.OutcomeError, code);
+                var elapsedMs = Record(McpTelemetry.OutcomeError, code);
 
-                logger.LogInformation(
-                    "Kaleido MCP tool {Tool} returned {ErrorCode} in {ElapsedMs} ms (request {RequestId}).",
-                    toolName,
-                    code,
-                    ElapsedMilliseconds(),
-                    requestId);
+                LogToolReturnedError(logger, toolName, code, elapsedMs, requestId);
 
                 return;
             }
 
-            Record(McpTelemetry.OutcomeCompleted, errorCode: null);
+            var completedMs = Record(McpTelemetry.OutcomeCompleted, errorCode: null);
 
-            logger.LogInformation(
-                "Kaleido MCP tool {Tool} completed in {ElapsedMs} ms (request {RequestId}, process {ProcessId}).",
-                toolName,
-                ElapsedMilliseconds(),
-                requestId,
-                processId);
+            LogToolCompleted(logger, toolName, completedMs, requestId, processId);
         }
 
         public void InputRequired()
         {
-            Record(McpTelemetry.OutcomeInputRequired, errorCode: null);
+            var elapsedMs = Record(McpTelemetry.OutcomeInputRequired, errorCode: null);
 
-            logger.LogInformation(
-                "Kaleido MCP tool {Tool} asked the user for input in {ElapsedMs} ms (request {RequestId}).",
-                toolName,
-                ElapsedMilliseconds(),
-                requestId);
+            LogToolAskedForInput(logger, toolName, elapsedMs, requestId);
         }
 
         public void Canceled()
         {
-            Record(McpTelemetry.OutcomeCanceled, errorCode: null);
+            var elapsedMs = Record(McpTelemetry.OutcomeCanceled, errorCode: null);
 
-            logger.LogWarning(
-                "Kaleido MCP tool {Tool} was canceled by the caller after {ElapsedMs} ms (request {RequestId}).",
-                toolName,
-                ElapsedMilliseconds(),
-                requestId);
+            LogToolCanceled(logger, toolName, elapsedMs, requestId);
         }
 
         public void Dispose() => activity?.Dispose();
 
-        private void Record(string outcome, string? errorCode)
+        // Records the outcome metrics once and returns the call's duration in milliseconds, so the
+        // log reports the same measurement as the duration histogram.
+        private long Record(string outcome, string? errorCode)
         {
+            var elapsed = Stopwatch.GetElapsedTime(started);
+
             if (recorded)
             {
-                return;
+                return (long)elapsed.TotalMilliseconds;
             }
 
             recorded = true;
@@ -217,11 +203,10 @@ internal sealed class McpObservability(
             }
 
             ToolCallsCounter.Add(1, tags);
-            ToolCallDurationHistogram.Record(Stopwatch.GetElapsedTime(started).TotalSeconds, tags);
-        }
+            ToolCallDurationHistogram.Record(elapsed.TotalSeconds, tags);
 
-        private long ElapsedMilliseconds() =>
-            (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            return (long)elapsed.TotalMilliseconds;
+        }
 
         private static JsonObject? Body(CallToolResult result)
         {
@@ -241,9 +226,21 @@ internal sealed class McpObservability(
                 return null;
             }
         }
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Kaleido MCP tool {Tool} returned {ErrorCode} in {ElapsedMs} ms (request {RequestId}).")]
+        private static partial void LogToolReturnedError(ILogger logger, string tool, string errorCode, long elapsedMs, string requestId);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Kaleido MCP tool {Tool} completed in {ElapsedMs} ms (request {RequestId}, process {ProcessId}).")]
+        private static partial void LogToolCompleted(ILogger logger, string tool, long elapsedMs, string requestId, string? processId);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Kaleido MCP tool {Tool} asked the user for input in {ElapsedMs} ms (request {RequestId}).")]
+        private static partial void LogToolAskedForInput(ILogger logger, string tool, long elapsedMs, string requestId);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP tool {Tool} was canceled by the caller after {ElapsedMs} ms (request {RequestId}).")]
+        private static partial void LogToolCanceled(ILogger logger, string tool, long elapsedMs, string requestId);
     }
 
-    private sealed class ToolsListObservation(
+    private sealed partial class ToolsListObservation(
         Activity? activity,
         ILogger logger)
         : IMcpToolsListObservation
@@ -259,14 +256,26 @@ internal sealed class McpObservability(
                 activity?.SetStatus(ActivityStatusCode.Error, McpErrorCodes.ServiceUnavailable);
                 activity?.SetTag(McpTelemetry.TagErrorCode, McpErrorCodes.ServiceUnavailable);
 
-                logger.LogDebug("Kaleido MCP listed no tools: {Reason}", reason);
+                LogNoTools(logger, reason);
 
                 return;
             }
 
-            logger.LogDebug("Kaleido MCP listed {Count} tool(s) (revision {Revision}).", catalog.Tools.Count, catalog.Revision);
+            LogToolsListed(logger, catalog.Tools.Count, catalog.Revision);
         }
 
         public void Dispose() => activity?.Dispose();
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "Kaleido MCP listed no tools: {Reason}")]
+        private static partial void LogNoTools(ILogger logger, string reason);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "Kaleido MCP listed {Count} tool(s) (revision {Revision}).")]
+        private static partial void LogToolsListed(ILogger logger, int count, string? revision);
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Kaleido MCP tool {Tool} called (request {RequestId}).")]
+    private static partial void LogToolCalled(ILogger logger, string tool, string requestId);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Kaleido MCP registry read: {Result} (revision {Revision}).")]
+    private static partial void LogRegistryRead(ILogger logger, string result, string? revision);
 }

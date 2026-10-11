@@ -35,7 +35,7 @@ internal interface IKaleidoMcpToolHandler
         CancellationToken cancellationToken = default);
 }
 
-internal sealed class KaleidoMcpToolHandler(
+internal sealed partial class KaleidoMcpToolHandler(
     IToolCatalogProvider catalogProvider,
     IKaleidoToolInvoker invoker,
     IMcpObservability observability,
@@ -64,7 +64,7 @@ internal sealed class KaleidoMcpToolHandler(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            logger.LogError(exception, "Kaleido MCP: listing tools failed unexpectedly; returning no tools.");
+            LogListToolsFailed(logger, exception);
 
             return new ListToolsResult { Tools = [] };
         }
@@ -123,7 +123,7 @@ internal sealed class KaleidoMcpToolHandler(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            logger.LogError(exception, "Kaleido MCP: reading the tools failed unexpectedly for {Tool}.", name);
+            LogReadToolsFailed(logger, exception, name);
 
             return Error(McpErrorCodes.InternalError, $"{name} did not run: the tools could not be read.");
         }
@@ -209,4 +209,10 @@ internal sealed class KaleidoMcpToolHandler(
                 },
             ],
         };
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Kaleido MCP: listing tools failed unexpectedly; returning no tools.")]
+    private static partial void LogListToolsFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Kaleido MCP: reading the tools failed unexpectedly for {Tool}.")]
+    private static partial void LogReadToolsFailed(ILogger logger, Exception exception, string tool);
 }
