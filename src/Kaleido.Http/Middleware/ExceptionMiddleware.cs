@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Middleware;
 
-internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
+internal sealed partial class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
 {
     private static readonly Meter Meter =
         new(KaleidoHttpTelemetry.MeterName);
@@ -28,17 +28,13 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
         catch (OperationCanceledException)
         {
             // Client disconnected mid-request — not an error, log at Debug to avoid noise.
-            logger.LogDebug("Request was canceled by the client.");
+            LogRequestCanceled(logger);
         }
         catch (KaleidoAuthorizationException exception)
         {
             Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
 
-            logger.LogWarning(
-                exception,
-                "Authorization denied (caller authenticated: {CallerIsAuthenticated}): {Message}",
-                exception.CallerIsAuthenticated,
-                exception.Message);
+            LogAuthorizationDenied(logger, exception, exception.CallerIsAuthenticated, exception.Message);
 
             if (context.RequestServices.GetService<IAuthenticationService>() is null)
             {
@@ -60,11 +56,7 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
         {
             Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
 
-            logger.LogWarning(
-                exception,
-                "Validation failed [{Code}]: {Message}",
-                exception.Code,
-                exception.Message);
+            LogValidationFailed(logger, exception, exception.Code, exception.Message);
 
             context.Response.StatusCode =
                 StatusCodes.Status400BadRequest;
@@ -84,10 +76,7 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
         {
             Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
 
-            logger.LogWarning(
-                exception,
-                "Malformed request: {Message}",
-                exception.Message);
+            LogMalformedRequest(logger, exception, exception.Message);
 
             context.Response.StatusCode = exception.StatusCode;
 
@@ -106,9 +95,7 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
         {
             Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
 
-            logger.LogWarning(
-                exception,
-                "Invalid argument in request.");
+            LogInvalidArgument(logger, exception);
 
             context.Response.StatusCode =
                 StatusCodes.Status400BadRequest;
@@ -128,11 +115,7 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
         {
             Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
 
-            logger.LogError(
-                exception,
-                "Kaleido configuration error [{Code}]: {Message}",
-                exception.Code,
-                exception.Message);
+            LogConfigurationError(logger, exception, exception.Code, exception.Message);
 
             context.Response.StatusCode =
                 StatusCodes.Status500InternalServerError;
@@ -152,11 +135,7 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
         {
             Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
 
-            logger.LogError(
-                exception,
-                "Kaleido framework integrity violation [{Code}]: {Message}",
-                exception.Code,
-                exception.Message);
+            LogFrameworkError(logger, exception, exception.Code, exception.Message);
 
             context.Response.StatusCode =
                 StatusCodes.Status500InternalServerError;
@@ -177,9 +156,7 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
         {
             Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
 
-            logger.LogError(
-                exception,
-                "Unhandled exception processing request.");
+            LogUnhandled(logger, exception);
 
             RecordEndpointError(
                 KaleidoErrorCodes.FrameworkError,
@@ -210,4 +187,28 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
                 { KaleidoHttpTelemetry.TagErrorCode, errorCode },
                 { KaleidoHttpTelemetry.TagHttpStatusCode, statusCode },
             });
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Request was canceled by the client.")]
+    private static partial void LogRequestCanceled(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Authorization denied (caller authenticated: {CallerIsAuthenticated}): {Message}")]
+    private static partial void LogAuthorizationDenied(ILogger logger, Exception exception, bool callerIsAuthenticated, string message);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Validation failed [{Code}]: {Message}")]
+    private static partial void LogValidationFailed(ILogger logger, Exception exception, string code, string message);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Malformed request: {Message}")]
+    private static partial void LogMalformedRequest(ILogger logger, Exception exception, string message);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid argument in request.")]
+    private static partial void LogInvalidArgument(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Kaleido configuration error [{Code}]: {Message}")]
+    private static partial void LogConfigurationError(ILogger logger, Exception exception, string code, string message);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Kaleido framework integrity violation [{Code}]: {Message}")]
+    private static partial void LogFrameworkError(ILogger logger, Exception exception, string code, string message);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception processing request.")]
+    private static partial void LogUnhandled(ILogger logger, Exception exception);
 }
