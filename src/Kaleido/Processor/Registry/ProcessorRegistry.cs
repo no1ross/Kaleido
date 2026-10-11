@@ -164,7 +164,7 @@ public interface IProcessorRegistry
     IReadOnlyCollection<ProcessorRegistryItem> Registrations { get; }
 }
 
-internal sealed class ProcessorRegistry : IProcessorRegistry
+internal sealed partial class ProcessorRegistry : IProcessorRegistry
 {
 
     public ProcessorRegistry(
@@ -199,12 +199,11 @@ internal sealed class ProcessorRegistry : IProcessorRegistry
             },
         ];
 
-        logger.LogInformation(
-            "Process registry built for processor {ServiceName} with {StepCount} steps ({InitialCount} initial).",
-            serviceOptions.ServiceName,
-            stepRegistry.Registrations.Count,
-            stepRegistry.InitialRegistrations.Count);
+        LogRegistryBuilt(logger, serviceOptions.ServiceName, stepRegistry.Registrations.Count, stepRegistry.InitialRegistrations.Count);
     }
 
     public IReadOnlyCollection<ProcessorRegistryItem> Registrations { get; }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Process registry built for processor {ServiceName} with {StepCount} steps ({InitialCount} initial).")]
+    private static partial void LogRegistryBuilt(ILogger logger, string serviceName, int stepCount, int initialCount);
 }
