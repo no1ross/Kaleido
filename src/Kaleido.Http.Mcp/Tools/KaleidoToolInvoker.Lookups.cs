@@ -128,7 +128,7 @@ internal sealed partial class KaleidoToolInvoker
 
             if (Answer(pickRequest, content, PickItemId) is { } choice &&
                 int.TryParse(choice, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var index) &&
-                index >= 0 && index < state.Candidates.Count)
+                index >= 0 && index < state.Candidates.Length)
             {
                 var row = state.Candidates[index].Values;
 
@@ -372,7 +372,7 @@ internal sealed partial class KaleidoToolInvoker
         Guid? ProcessId,
         string Arguments,
         string? SearchText,
-        IReadOnlyList<LookupCandidate> Candidates);
+        LookupCandidate[] Candidates);
 
     private sealed record LookupCandidate(
         string Label,

@@ -39,7 +39,7 @@ internal sealed class StepCandidatePlanner : IStepCandidatePlanner
                StepCandidateStatus.Built;
     }
 
-    private static IReadOnlyCollection<StepCandidate> OrderByDependencies(
+    private static List<StepCandidate> OrderByDependencies(
         IReadOnlyCollection<StepCandidate> candidates)
     {
         var candidatesByType =

@@ -209,7 +209,7 @@ internal sealed class ProcessorRuntime(
 
             observation.PlanBuilt(
                 plan.Candidates.Count,
-                executionCandidates.Count);
+                executionCandidates.Length);
 
             RecordRejectedInformationResponses(
                 plan,
@@ -223,7 +223,7 @@ internal sealed class ProcessorRuntime(
                         context,
                         request,
                         plan,
-                        executionCandidates.Count),
+                        executionCandidates.Length),
                     cancellationToken);
             }
             catch (Exception publishException) when (publishException is not OperationCanceledException)
@@ -407,7 +407,7 @@ internal sealed class ProcessorRuntime(
         }
     }
 
-    private static IReadOnlyCollection<StepCandidate> GetExecutionCandidates(
+    private static StepCandidate[] GetExecutionCandidates(
         ExecutionPlanResult plan)
     {
         return plan.Candidates
@@ -490,7 +490,7 @@ internal sealed class ProcessorRuntime(
         };
     }
 
-    private static IReadOnlyCollection<StepProcessingMessage> MergeMessages(
+    private static List<StepProcessingMessage> MergeMessages(
         StepCandidate candidate,
         ProcessExecutionOutcome? outcome)
     {

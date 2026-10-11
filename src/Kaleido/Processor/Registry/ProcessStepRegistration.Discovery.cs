@@ -149,7 +149,7 @@ public sealed partial record ProcessStepRegistration
         };
     }
 
-    private static IReadOnlyCollection<PropertyInfo> GetResultProperties(
+    private static PropertyInfo[] GetResultProperties(
         Type resultType)
     {
         if (resultType == typeof(string)

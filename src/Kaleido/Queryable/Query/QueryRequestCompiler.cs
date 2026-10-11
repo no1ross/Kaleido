@@ -146,7 +146,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
             searchableFields);
     }
 
-    private static IReadOnlyList<CompiledSort> CompileSort(
+    private static CompiledSort[] CompileSort(
         IReadOnlyList<QuerySort>? sorts,
         QuerySourceMetadata metadata)
     {

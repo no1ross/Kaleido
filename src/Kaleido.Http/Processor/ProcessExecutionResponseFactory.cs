@@ -219,7 +219,7 @@ internal sealed class ProcessExecutionResponseFactory(
             IsInformationStep = registration.IsInformationStep,
         };
 
-    private IReadOnlyCollection<ProcessMessage> ToFrameworkMessages(
+    private ProcessMessage[] ToFrameworkMessages(
         ProcessStepResult stepResult) =>
         options.IncludeFrameworkMessages
             ? stepResult.RuntimeMessages
