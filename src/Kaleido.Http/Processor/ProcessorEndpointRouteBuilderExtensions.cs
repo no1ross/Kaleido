@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Processor;
 
-public static class ProcessorEndpointRouteBuilderExtensions
+public static partial class ProcessorEndpointRouteBuilderExtensions
 {
     /// <summary>
     /// Maps all Kaleido Process endpoints and returns the route group so hosts can
@@ -44,20 +44,18 @@ public static class ProcessorEndpointRouteBuilderExtensions
                 .GetRequiredService<ILoggerFactory>()
                 .CreateLogger("Kaleido.Processor.Startup");
 
+        var routePrefix = ProcessContractUrls.ProcessesPrefix(serviceName);
+
         var group =
             endpoints.MapGroup(
-                ProcessContractUrls.ProcessesPrefix(serviceName))
+                routePrefix)
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
             // Post-auth: stamps CallerName/CallerRoles onto the ambient
             // correlation context for per-step checks inside handlers and the
             // runtime's created-by (Owner) tag.
             .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 
-        logger.LogInformation(
-            "Process endpoints mapped at route prefix {RoutePrefix} with {ProcessStepCount} process steps and {InitialStepCount} initial steps.",
-            ProcessContractUrls.ProcessesPrefix(serviceName),
-            registry.Registrations.Count,
-            registry.InitialRegistrations.Count);
+        LogEndpointsMapped(logger, routePrefix, registry.Registrations.Count, registry.InitialRegistrations.Count);
 
         // When enforcing, the generic execute and state endpoints require an
         // authenticated caller unless an anonymous caller could legitimately
@@ -297,4 +295,7 @@ public static class ProcessorEndpointRouteBuilderExtensions
                 "application/json")
             .Produces<StepExecutionResponse>();
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Process endpoints mapped at route prefix {RoutePrefix} with {ProcessStepCount} process steps and {InitialStepCount} initial steps.")]
+    private static partial void LogEndpointsMapped(ILogger logger, string routePrefix, int processStepCount, int initialStepCount);
 }

@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http;
 
-public static class KaleidoEndpointRouteBuilderExtensions
+public static partial class KaleidoEndpointRouteBuilderExtensions
 {
     /// <summary>
     /// Maps all registered Kaleido endpoints in one call.
@@ -55,11 +55,7 @@ public static class KaleidoEndpointRouteBuilderExtensions
             viewCount = registrations.Sum(c => c.Views.Count);
         }
 
-        logger.LogInformation(
-                "Kaleido started: {StepCount} process step(s), {ContextCount} query context(s), {ViewCount} query view(s).",
-                stepCount,
-                contextCount,
-                viewCount);
+        LogStarted(logger, stepCount, contextCount, viewCount);
 
         var builders = new List<IEndpointConventionBuilder>();
 
@@ -100,9 +96,7 @@ public static class KaleidoEndpointRouteBuilderExtensions
 
         if (mode == KaleidoAuthorizationMode.None)
         {
-            logger.LogWarning(
-                "AuthorizationMode is None: Kaleido capability authorization, registry filtering, and process ownership are disabled. " +
-                "Set AuthorizationMode to Authenticated or ZeroTrust for enforcement.");
+            LogAuthorizationDisabled(logger);
             return;
         }
 
@@ -134,11 +128,7 @@ public static class KaleidoEndpointRouteBuilderExtensions
 
         if (undeclared.Length > 0)
         {
-            logger.LogWarning(
-                "ZeroTrust omits {OmittedCount} capability(ies) without an explicit authorization rule: {Capabilities}. " +
-                "Declare a service default or a capability rule to publish them.",
-                undeclared.Length,
-                string.Join(", ", undeclared));
+            LogZeroTrustOmits(logger, undeclared.Length, string.Join(", ", undeclared));
         }
     }
 
@@ -171,4 +161,13 @@ public static class KaleidoEndpointRouteBuilderExtensions
 
         return capabilities;
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Kaleido started: {StepCount} process step(s), {ContextCount} query context(s), {ViewCount} query view(s).")]
+    private static partial void LogStarted(ILogger logger, int stepCount, int contextCount, int viewCount);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "AuthorizationMode is None: Kaleido capability authorization, registry filtering, and process ownership are disabled. Set AuthorizationMode to Authenticated or ZeroTrust for enforcement.")]
+    private static partial void LogAuthorizationDisabled(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "ZeroTrust omits {OmittedCount} capability(ies) without an explicit authorization rule: {Capabilities}. Declare a service default or a capability rule to publish them.")]
+    private static partial void LogZeroTrustOmits(ILogger logger, int omittedCount, string capabilities);
 }

@@ -151,7 +151,9 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     [Fact]
     public void MapKaleidoHttp_None_WithDeclaredCapabilities_LogsOneWarning()
     {
+        // Source-generated log methods check IsEnabled first; a real logger has Warning enabled.
         var logger = new Mock<ILogger>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
         var endpoints = CreateProcessOnlyEndpoints(
             authorization: new AuthorizationMetadata(null, ["radiology"]),
             startupLogger: logger);
