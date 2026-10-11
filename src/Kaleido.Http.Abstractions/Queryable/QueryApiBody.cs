@@ -30,12 +30,12 @@ public static class QueryApiBodyExtensions
                 {
                     Field = x.Field,
                     Direction = x.Direction.ToString(),
-                    Sequence = x.Sequence
+                    Sequence = x.Sequence,
                 })
                 .ToArray(),
             Page = body.Page is null
                 ? null
-                : new QueryApiPage { Size = body.Page.Size, Offset = body.Page.Offset }
+                : new QueryApiPage { Size = body.Page.Size, Offset = body.Page.Offset },
         };
     }
 
@@ -56,8 +56,8 @@ public static class QueryApiBodyExtensions
                     Operator = node.Condition.Operator.ToString(),
                     Values = node.Condition.Values?
                         .Select(v => JsonSerializer.SerializeToElement(v))
-                        .ToArray()
-                }
+                        .ToArray(),
+                },
             };
         }
 
@@ -71,8 +71,8 @@ public static class QueryApiBodyExtensions
                     Filters = node.Group.Filters?
                         .Select(ToApiFilterNode)
                         .OfType<QueryApiFilterNode>()
-                        .ToArray()
-                }
+                        .ToArray(),
+                },
             };
         }
 

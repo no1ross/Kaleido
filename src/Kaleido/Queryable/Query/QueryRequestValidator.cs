@@ -276,8 +276,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
                 $"Page size '{page.Size.Value}' must be greater than zero.");
         }
 
-        if (page.Size.HasValue &&
-            page.Size.Value > pageable.MaxSize)
+        if (page.Size > pageable.MaxSize)
         {
             throw new KaleidoValidationException(
                 QueryableErrorCodes.InvalidPageSize,

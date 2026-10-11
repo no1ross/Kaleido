@@ -1,5 +1,5 @@
-using Kaleido.Processor;
 using Kaleido.Http.Registry;
+using Kaleido.Processor;
 using Kaleido.Processor.Registry;
 
 namespace Kaleido.Http.Processor;
@@ -57,12 +57,12 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
                     Repeatable = x.Repeatable,
                     IsInformationStep = x.IsInformationStep,
                     Authorization = x.Authorization,
-                    ExecuteUrl = string.Empty
+                    ExecuteUrl = string.Empty,
                 })
                 .ToArray(),
             Steps = registration.Steps
                 .Select(x => CreateStepResponse(x, serviceName))
-                .ToArray()
+                .ToArray(),
         };
     }
 
@@ -105,7 +105,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Result = registration.Result is null
                 ? null
                 : CreateResultMetadata(registration.Result),
-            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName)
+            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName),
         };
     }
 
@@ -127,7 +127,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Repeatable = registration.Repeatable,
             IsInformationStep = registration.IsInformationStep,
             Authorization = registration.Authorization,
-            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName)
+            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName),
         };
     }
 
@@ -151,7 +151,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             IsInformationStep = summary.IsInformationStep,
             Authorization = summary.Authorization,
             ExecuteUrl = summary.ExecuteUrl,
-            InformationRequest = informationRequest
+            InformationRequest = informationRequest,
         };
     }
 
@@ -166,7 +166,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Lookup = item.Lookup,
             Description = item.Description,
             DataType = item.DataType,
-            Constraints = item.Constraints
+            Constraints = item.Constraints,
         };
     }
 
@@ -177,7 +177,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
         {
             OutputFields = item.OutputFields
                 .Select(CreateOutputFieldMetadata)
-                .ToArray()
+                .ToArray(),
         };
     }
 
@@ -188,7 +188,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
         {
             Name = item.Name,
             Description = item.Description,
-            DataType = item.DataType
+            DataType = item.DataType,
         };
     }
 }

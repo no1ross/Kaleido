@@ -1,6 +1,6 @@
-using Kaleido.Http.Queryable;
 using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
 using Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
+using Kaleido.Http.Queryable;
 
 namespace Kaleido.Http.FunctionalTests.Queryable.Client;
 

@@ -94,7 +94,7 @@ internal sealed class SqliteProcessorContextStore(
                     new ProcessorContextEntity
                     {
                         ProcessId =
-                            context.ProcessId
+                            context.ProcessId,
                     };
 
                 dbContext.ProcessContexts.Add(
@@ -189,7 +189,7 @@ internal sealed class SqliteProcessorContextStore(
                     Version = step.Version,
                     Status = step.Status,
                     LatestRequestId = step.LatestRequestId,
-                    LastExecuted = step.LastExecuted
+                    LastExecuted = step.LastExecuted,
                 });
         }
     }
@@ -224,7 +224,7 @@ internal sealed class SqliteProcessorContextStore(
                 {
                     ProcessId = context.ProcessId,
                     StepName = stepName,
-                    Sequence = index
+                    Sequence = index,
                 });
         }
     }
@@ -267,13 +267,13 @@ internal sealed class SqliteProcessorContextStore(
             ProcessId = context.ProcessId,
             ProcessorName = processorName,
             StepName = context.RequiredStep,
-            InformationRequestJson = informationRequestJson
+            InformationRequestJson = informationRequestJson,
         };
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
     private static ProcessorContext ToProcessorContext(
@@ -349,9 +349,9 @@ internal sealed class SqliteProcessorContextStore(
                                 step.LatestRequestId,
 
                             LastExecuted =
-                                step.LastExecuted
+                                step.LastExecuted,
                         })
-                    .ToArray()
+                    .ToArray(),
         };
     }
 }

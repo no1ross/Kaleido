@@ -139,7 +139,7 @@ dotnet_diagnostic.IDE0038.severity = warning   ; Pattern matching (is + cast, no
 dotnet_diagnostic.IDE0043.severity = warning   ; Invalid format string placeholder
 dotnet_diagnostic.IDE0044.severity = warning   ; Make field readonly
 dotnet_diagnostic.IDE0051.severity = warning   ; Remove unused private members
-dotnet_diagnostic.IDE0055.severity = suggestion ; All formatting rules
+dotnet_diagnostic.IDE0055.severity = warning ; All formatting rules (enforced, #257)
 dotnet_diagnostic.IDE0059.severity = warning   ; Unnecessary assignment
 dotnet_diagnostic.IDE0060.severity = warning   ; Remove unused parameter
 dotnet_code_quality_unused_parameters = non_public
@@ -234,13 +234,28 @@ dotnet_diagnostic.MA0002.severity = warning   ; Use IEqualityComparer/IComparer 
 dotnet_diagnostic.MA0004.severity = none      ; StringComparison — CA1862 covers the real cases
 dotnet_diagnostic.MA0006.severity = warning   ; Use string.Equals for ordinal comparisons
 dotnet_diagnostic.MA0016.severity = warning   ; Prefer collection abstraction over concrete type
-dotnet_diagnostic.MA0037.severity = suggestion ; Remove empty statements
+dotnet_diagnostic.MA0037.severity = warning    ; Remove empty statements (enforced, #257)
 dotnet_diagnostic.MA0048.severity = none ; File name must match type name - off: small related types (records, an interface and its implementation) share a file on purpose
 dotnet_diagnostic.MA0051.severity = suggestion ; Method is too long (known tech debt, not quick fix)
 
 ; RCS1194: Kaleido exceptions require a 'code' parameter by design — the BCL
 ; ctor triad would allow Code-less instances, breaking the hierarchy's invariant
 dotnet_diagnostic.RCS1194.severity = none
+
+; Enforced after every finding was fixed (#257) - the build blocks them from returning
+dotnet_diagnostic.MA0007.severity = warning    ; Trailing comma after the last value (multi-line)
+dotnet_diagnostic.MA0029.severity = warning    ; Combine Where with Where
+dotnet_diagnostic.MA0052.severity = warning    ; nameof instead of a constant Enum.ToString
+dotnet_diagnostic.MA0206.severity = warning    ; No unnecessary braces in a type declaration
+dotnet_diagnostic.RCS1015.severity = warning   ; nameof operator
+dotnet_diagnostic.RCS1021.severity = warning   ; Expression-bodied lambda
+dotnet_diagnostic.RCS1037.severity = warning   ; No trailing white-space
+dotnet_diagnostic.RCS1112.severity = warning   ; Combine Enumerable.Where chains
+dotnet_diagnostic.RCS1146.severity = warning   ; Conditional access
+dotnet_diagnostic.RCS1199.severity = warning   ; No unnecessary null check
+dotnet_diagnostic.RCS1214.severity = warning   ; No unnecessary interpolated string
+dotnet_diagnostic.RCS1251.severity = warning   ; No unnecessary braces
+dotnet_diagnostic.RCS1259.severity = warning   ; No empty statement
 
 ; EF Core entity navigation properties use ICollection<T> by convention
 [src/Kaleido.Provider.SQLite/**/*.cs]

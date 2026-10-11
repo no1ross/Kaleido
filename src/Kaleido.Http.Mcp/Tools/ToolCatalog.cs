@@ -15,7 +15,7 @@ internal enum KaleidoToolKind
     AnswerInformationRequest,
 
     /// <summary>Reads a process's state, next steps and pending questions.</summary>
-    GetProcessState
+    GetProcessState,
 }
 
 /// <summary>An MCP tool and what it maps to in Kaleido.</summary>

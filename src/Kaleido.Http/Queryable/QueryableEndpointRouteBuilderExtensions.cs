@@ -113,7 +113,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                         view.Name.ToLowerInvariant()),
                     source,
                     view,
-                    options
+                    options,
                 ]);
     }
 
@@ -141,7 +141,7 @@ public static class QueryableEndpointRouteBuilderExtensions
                     endpoints,
                     QueryableRoutePaths.QuerySourceQuery(source.Name.ToLowerInvariant()),
                     source,
-                    options
+                    options,
                 ]);
     }
 

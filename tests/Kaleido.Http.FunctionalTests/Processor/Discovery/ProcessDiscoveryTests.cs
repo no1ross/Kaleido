@@ -1,7 +1,7 @@
 using System.Net;
-using Kaleido.Http.Registry;
 using Kaleido.Http.FunctionalTests.Processor.Fixtures;
 using Kaleido.Http.FunctionalTests.Processor.Infrastructure;
+using Kaleido.Http.Registry;
 
 namespace Kaleido.Http.FunctionalTests.Processor.Discovery;
 

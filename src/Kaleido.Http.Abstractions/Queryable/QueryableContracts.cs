@@ -29,7 +29,7 @@ public sealed record PageableContract
         return new PageableContract
         {
             DefaultSize = metadata.DefaultSize,
-            MaxSize = metadata.MaxSize
+            MaxSize = metadata.MaxSize,
         };
     }
 }
@@ -71,7 +71,7 @@ public sealed record QueryableFieldMetadata
             IsSearchable = item.IsSearchable,
             SearchPriority = item.SearchPriority,
             MatchMode = item.MatchMode,
-            IsSortable = item.IsSortable
+            IsSortable = item.IsSortable,
         };
     }
 }
@@ -98,7 +98,7 @@ public sealed record QueryableQueryParameter
             Name = item.Name,
             Description = item.Description,
             DataType = item.DataType,
-            Constraints = item.Constraints
+            Constraints = item.Constraints,
         };
     }
 }
@@ -121,7 +121,7 @@ public sealed record QueryableQueryProperty
         {
             Name = item.Name,
             Description = item.Description,
-            DataType = item.DataType
+            DataType = item.DataType,
         };
     }
 }
@@ -178,7 +178,7 @@ public sealed record QueryableViewResponse
                 .ToArray(),
             OutputFields = item.OutputFields
                 .Select(QueryableQueryProperty.FromRegistryItem)
-                .ToArray()
+                .ToArray(),
         };
     }
 }
@@ -278,7 +278,7 @@ public sealed record QueryableSourceResponse
                 .ToArray(),
             Views = item.Views
                 .Select(view => QueryableViewResponse.FromRegistryItem(view, sourceName, serviceName))
-                .ToArray()
+                .ToArray(),
         };
     }
 }

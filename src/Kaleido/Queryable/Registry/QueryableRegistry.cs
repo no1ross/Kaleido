@@ -77,7 +77,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             Views = views
                 .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(view => Project(view, metadata.Authorization))
-                .ToArray()
+                .ToArray(),
         };
     }
 
@@ -97,7 +97,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             IsSearchable = metadata.IsSearchable,
             SearchPriority = metadata.SearchPriority,
             MatchMode = metadata.MatchMode,
-            IsSortable = metadata.IsSortable
+            IsSortable = metadata.IsSortable,
         };
     }
 
@@ -126,7 +126,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             OutputFields = registration.Metadata.OutputFields?
                 .Select(Project)
                 .ToArray()
-                ?? []
+                ?? [],
         };
     }
 
@@ -141,7 +141,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             Description = metadata.Description,
             FieldType = metadata.Type,
             DataType = metadata.DataType,
-            Constraints = metadata.Constraints
+            Constraints = metadata.Constraints,
         };
     }
 
@@ -155,7 +155,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             Name = metadata.Name,
             Description = metadata.Description,
             FieldType = metadata.Type,
-            DataType = metadata.DataType
+            DataType = metadata.DataType,
         };
     }
 }

@@ -224,7 +224,7 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
                 StepType = stepType,
                 StepResultType = resultType,
                 HandlerType = handlerType,
-                Metadata = metadata
+                Metadata = metadata,
             };
 
         foreach (var dependency in
@@ -330,7 +330,7 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
             Enabled =
                 stepType.IsDefined(
                     typeof(RepeatableAttribute),
-                    inherit: false)
+                    inherit: false),
         };
     }
 

@@ -56,7 +56,7 @@ internal sealed class HttpRegistryCache(
             result = result with
             {
                 GeneratedAt = DateTimeOffset.UtcNow,
-                IsPartial = result.ClientErrors.Count > 0
+                IsPartial = result.ClientErrors.Count > 0,
             };
 
             if (result.ClientErrors.Count == 0)

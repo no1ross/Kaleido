@@ -68,7 +68,7 @@ internal sealed class ProcessorStepInvoker(
                 correlationAccessor.Current with
                 {
                     ProcessId = context.ProcessId,
-                    ExecutingStepName = registration.Metadata.Name
+                    ExecutingStepName = registration.Metadata.Name,
                 });
 
         var handler =
@@ -137,7 +137,7 @@ internal sealed class ProcessorStepInvoker(
             InformationRequest = handlerResult.InformationRequest,
             TargetProcessorName = handlerResult.TargetProcessorName,
             Response = handlerResult.Response,
-            Messages = handlerResult.Messages
+            Messages = handlerResult.Messages,
         };
     }
 }

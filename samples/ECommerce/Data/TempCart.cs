@@ -1,4 +1,4 @@
-﻿//using Kaleido.Samples.ECommerce.Data.Entities;
+//using Kaleido.Samples.ECommerce.Data.Entities;
 
 //namespace Kaleido.Samples.ECommerce.Data;
 

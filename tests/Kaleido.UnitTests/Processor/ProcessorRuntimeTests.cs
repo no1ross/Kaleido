@@ -3,9 +3,8 @@ using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
-using Microsoft.Extensions.Logging.Abstractions;
-
 using Kaleido.UnitTests;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Processor.UnitTests;
 

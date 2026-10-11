@@ -109,19 +109,19 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
         // Default OTel boundaries (up to 10,000) produce meaningless percentiles for these.
         var smallCountBoundaries = new ExplicitBucketHistogramConfiguration
         {
-            Boundaries = [1, 2, 3, 5, 8, 13, 21]
+            Boundaries = [1, 2, 3, 5, 8, 13, 21],
         };
 
         // Record-count histograms: queryable result sizes can be larger.
         var recordCountBoundaries = new ExplicitBucketHistogramConfiguration
         {
-            Boundaries = [0, 10, 25, 50, 100, 250, 500, 1000]
+            Boundaries = [0, 10, 25, 50, 100, 250, 500, 1000],
         };
 
         // Page size: bounded by typical API page size conventions.
         var pageSizeBoundaries = new ExplicitBucketHistogramConfiguration
         {
-            Boundaries = [10, 25, 50, 100, 250, 500]
+            Boundaries = [10, 25, 50, 100, 250, 500],
         };
 
         // Views must be registered before adding the meter to take effect.

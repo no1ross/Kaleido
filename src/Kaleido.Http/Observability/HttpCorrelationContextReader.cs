@@ -46,7 +46,7 @@ internal static class HttpCorrelationContextReader
             CallingStepName =
                 trustIdentity
                     ? ReadString(context, KaleidoCorrelationHeaders.CallingStep)
-                    : null
+                    : null,
         };
     }
 

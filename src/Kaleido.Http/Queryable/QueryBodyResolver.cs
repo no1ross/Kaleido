@@ -164,7 +164,7 @@ internal static class QueryBodyResolver
                 targetType),
             _ => throw new KaleidoValidationException(
                 QueryableErrorCodes.InvalidFilterValue,
-                $"Unsupported JSON value kind '{element.ValueKind}' for field type '{targetType.Name}'.")
+                $"Unsupported JSON value kind '{element.ValueKind}' for field type '{targetType.Name}'."),
         };
     }
 

@@ -1,6 +1,6 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
-using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Client;

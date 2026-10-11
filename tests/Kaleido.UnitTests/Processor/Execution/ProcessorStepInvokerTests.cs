@@ -3,9 +3,8 @@ using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Observability;
 using Kaleido.Processor.Registry;
-using Microsoft.Extensions.DependencyInjection;
-
 using Kaleido.UnitTests;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Processor.Execution.UnitTests;
 

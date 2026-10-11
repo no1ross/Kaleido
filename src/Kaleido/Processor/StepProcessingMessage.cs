@@ -17,7 +17,7 @@ public sealed record StepProcessingMessage
         {
             Type = MessageType.Information,
             Code = code,
-            Message = message
+            Message = message,
         };
     }
 
@@ -29,7 +29,7 @@ public sealed record StepProcessingMessage
         {
             Type = MessageType.Warning,
             Code = code,
-            Message = message
+            Message = message,
         };
     }
 
@@ -41,7 +41,7 @@ public sealed record StepProcessingMessage
         {
             Type = MessageType.Error,
             Code = code,
-            Message = message
+            Message = message,
         };
     }
 }

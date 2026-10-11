@@ -1,2 +1,2 @@
-﻿namespace Kaleido.Samples.PriorAuth.Provider;
+namespace Kaleido.Samples.PriorAuth.Provider;
 

@@ -67,7 +67,7 @@ internal sealed class ToolSchemaBuilder : IToolSchemaBuilder
             var schema = new JsonObject
             {
                 ["type"] = "string",
-                ["enum"] = new JsonArray(values.Select(x => (JsonNode?)JsonNamingPolicy.CamelCase.ConvertName(x.Name)).ToArray())
+                ["enum"] = new JsonArray(values.Select(x => (JsonNode?)JsonNamingPolicy.CamelCase.ConvertName(x.Name)).ToArray()),
             };
 
             var described = values.Where(x => !string.IsNullOrWhiteSpace(x.Description)).ToArray();
@@ -88,7 +88,7 @@ internal sealed class ToolSchemaBuilder : IToolSchemaBuilder
                 return new JsonObject
                 {
                     ["type"] = "array",
-                    ["items"] = dataType.ItemType is { } item ? TypeSchema(item) : new JsonObject()
+                    ["items"] = dataType.ItemType is { } item ? TypeSchema(item) : new JsonObject(),
                 };
 
             case "integer":
@@ -197,7 +197,7 @@ internal sealed class ToolSchemaBuilder : IToolSchemaBuilder
             JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
             JsonElement element => element.GetRawText(),
             IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
-            _ => value.ToString()
+            _ => value.ToString(),
         };
     }
 

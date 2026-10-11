@@ -163,7 +163,7 @@ internal sealed partial class KaleidoToolInvoker
             state with
             {
                 SearchText = searchText,
-                Candidates = candidates.Labels.Select((label, i) => new LookupCandidate(label, candidates.Rows[i])).ToArray()
+                Candidates = candidates.Labels.Select((label, i) => new LookupCandidate(label, candidates.Rows[i])).ToArray(),
             });
     }
 
@@ -226,7 +226,7 @@ internal sealed partial class KaleidoToolInvoker
                 {
                     JsonValueKind.True => Humanize(x.Field),
                     JsonValueKind.False => $"not {Humanize(x.Field).ToLowerInvariant()}",
-                    _ => x.Value.ToString()
+                    _ => x.Value.ToString(),
                 })
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .OfType<string>();
@@ -266,9 +266,9 @@ internal sealed partial class KaleidoToolInvoker
                     Text = (note is null ? string.Empty : note + " ") +
                         $"Search {lookup.QueryTitle ?? lookup.Source}: enter details that identify the record" +
                         (lookup.Display.Count > 0 ? $" (e.g. {string.Join(", ", lookup.Display.Take(3).Select(Humanize))})." : "."),
-                    Type = InformationItemType.Text
-                }
-            ]
+                    Type = InformationItemType.Text,
+                },
+            ],
         };
 
     private static InformationRequest PickRequest(ToolLookup lookup, LookupCandidates candidates) =>
@@ -288,9 +288,9 @@ internal sealed partial class KaleidoToolInvoker
                     Options = candidates.Labels
                         .Select((label, i) => new InformationOption { Value = i.ToString(System.Globalization.CultureInfo.InvariantCulture), Display = label })
                         .Append(new InformationOption { Value = SearchAgainValue, Display = "None of these: search again" })
-                        .ToArray()
-                }
-            ]
+                        .ToArray(),
+                },
+            ],
         };
 
     private static Dictionary<string, JsonElement> Filled(
@@ -330,15 +330,15 @@ internal sealed partial class KaleidoToolInvoker
             {
                 InputRequests = new Dictionary<string, InputRequest>(StringComparer.Ordinal)
                 {
-                    [LookupInputKey] = InputRequest.ForElicitation(elicitor.ToElicitation(request))
+                    [LookupInputKey] = InputRequest.ForElicitation(elicitor.ToElicitation(request)),
                 },
-                RequestState = LookupStatePrefix + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(state, KaleidoJsonOptions.Options))
-            }
+                RequestState = LookupStatePrefix + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(state, KaleidoJsonOptions.Options)),
+            },
         };
 
     private static LookupState? DecodeLookupState(string? value)
     {
-        if (value is null || !value.StartsWith(LookupStatePrefix, StringComparison.Ordinal))
+        if (value?.StartsWith(LookupStatePrefix, StringComparison.Ordinal) != true)
         {
             return null;
         }
@@ -360,7 +360,7 @@ internal sealed partial class KaleidoToolInvoker
         {
             ["step"] = tool.CapabilityName,
             ["outcome"] = "notRun",
-            ["note"] = $"{note} {tool.Definition.Name} needs {string.Join(" and ", lookup.Inputs.Select(x => x.Argument))} from one {lookup.QueryTitle ?? lookup.Source} result."
+            ["note"] = $"{note} {tool.Definition.Name} needs {string.Join(" and ", lookup.Inputs.Select(x => x.Argument))} from one {lookup.QueryTitle ?? lookup.Source} result.",
         });
 
     // Opaque to the client but not trusted: the step's service checks the values it receives.

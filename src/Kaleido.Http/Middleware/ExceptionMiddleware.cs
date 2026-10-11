@@ -76,7 +76,7 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             await context.Response.WriteAsJsonAsync(
                 new KaleidoErrorResponse(
                 [
-                    new KaleidoError(exception.Code, exception.Message)
+                    new KaleidoError(exception.Code, exception.Message),
                 ]),
                 CancellationToken.None);
         }
@@ -98,7 +98,7 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             await context.Response.WriteAsJsonAsync(
                 new KaleidoErrorResponse(
                 [
-                    new KaleidoError(KaleidoErrorCodes.ArgumentError, exception.Message)
+                    new KaleidoError(KaleidoErrorCodes.ArgumentError, exception.Message),
                 ]),
                 CancellationToken.None);
         }
@@ -120,7 +120,7 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             await context.Response.WriteAsJsonAsync(
                 new KaleidoErrorResponse(
                 [
-                    new KaleidoError(KaleidoErrorCodes.ArgumentError, "An invalid argument was provided.")
+                    new KaleidoError(KaleidoErrorCodes.ArgumentError, "An invalid argument was provided."),
                 ]),
                 CancellationToken.None);
         }
@@ -144,7 +144,7 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             await context.Response.WriteAsJsonAsync(
                 new KaleidoErrorResponse(
                 [
-                    new KaleidoError(exception.Code, exception.Message)
+                    new KaleidoError(exception.Code, exception.Message),
                 ]),
                 CancellationToken.None);
         }
@@ -168,7 +168,7 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             await context.Response.WriteAsJsonAsync(
                 new KaleidoErrorResponse(
                 [
-                    new KaleidoError(exception.Code, exception.Message)
+                    new KaleidoError(exception.Code, exception.Message),
                 ]),
                 CancellationToken.None);
         }
@@ -193,7 +193,7 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
                 await context.Response.WriteAsJsonAsync(
                     new KaleidoErrorResponse(
                     [
-                        new KaleidoError(KaleidoErrorCodes.FrameworkError, "An unexpected error occurred.")
+                        new KaleidoError(KaleidoErrorCodes.FrameworkError, "An unexpected error occurred."),
                     ]),
                     CancellationToken.None);
             }
@@ -208,6 +208,6 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
             new TagList
             {
                 { KaleidoHttpTelemetry.TagErrorCode, errorCode },
-                { KaleidoHttpTelemetry.TagHttpStatusCode, statusCode }
+                { KaleidoHttpTelemetry.TagHttpStatusCode, statusCode },
             });
 }

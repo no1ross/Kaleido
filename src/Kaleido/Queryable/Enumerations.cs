@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 
 namespace Kaleido.Queryable;
 /// <summary>Defines the filter operations supported by the framework query model.</summary>
@@ -51,7 +51,7 @@ public enum FilterOperator
     [Description("Is True")]
     IsTrue,
     [Description("Is False")]
-    IsFalse
+    IsFalse,
 }
 
 public enum MatchMode
@@ -63,7 +63,7 @@ public enum MatchMode
     [Description("Ends With")]
     EndsWith,
     [Description("Contains")]
-    Contains
+    Contains,
 }
 
 public enum SortDirection
@@ -71,7 +71,7 @@ public enum SortDirection
     [Description("Ascending")]
     Ascending,
     [Description("Descending")]
-    Descending
+    Descending,
 }
 
 public enum LogicalOperator
@@ -79,5 +79,5 @@ public enum LogicalOperator
     [Description("And")]
     And,
     [Description("Or")]
-    Or
+    Or,
 }

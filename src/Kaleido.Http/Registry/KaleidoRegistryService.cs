@@ -113,7 +113,7 @@ internal sealed class KaleidoRegistryService(
                 .Concat(remote.Queryables)
                 .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
-            ClientErrors = remote.Errors
+            ClientErrors = remote.Errors,
         };
 
         if (refresh)
@@ -176,7 +176,7 @@ internal sealed class KaleidoRegistryService(
                 processor with
                 {
                     InitialSteps = initialSteps,
-                    Steps = steps
+                    Steps = steps,
                 });
         }
 
@@ -201,14 +201,14 @@ internal sealed class KaleidoRegistryService(
                 queryable with
                 {
                     QueryUrl = sourceAllowed ? queryable.QueryUrl : null,
-                    Views = views
+                    Views = views,
                 });
         }
 
         return response with
         {
             Processes = processes,
-            Queryables = queryables
+            Queryables = queryables,
         };
     }
 

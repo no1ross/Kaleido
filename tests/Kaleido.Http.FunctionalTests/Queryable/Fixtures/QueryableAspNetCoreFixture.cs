@@ -1,8 +1,8 @@
 using Kaleido.Http;
 using Kaleido.Http.Client;
+using Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
 using Kaleido.Http.Queryable;
 using Kaleido.Observability;
-using Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;

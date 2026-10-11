@@ -1,8 +1,6 @@
 namespace Kaleido.Queryable.Eventing;
 
-public interface IQueryEvent : IKaleidoEvent
-{
-}
+public interface IQueryEvent : IKaleidoEvent;
 
 [ExcludeFromCodeCoverage]
 public sealed record QueryExecuted : IQueryEvent
