@@ -64,9 +64,7 @@ internal sealed class InformationValidator : IInformationValidator
                     errors.Add(RequestError($"Choice item '{item.Id}' has no options."));
                     break;
 
-                case InformationItemType.Choice
-                    when item.Options.Select(x => x.Value).Distinct(StringComparer.Ordinal).Take(item.Options.Count + 1).Count() != item.Options.Count
-                        || item.Options.Any(x => string.IsNullOrWhiteSpace(x.Value)):
+                case InformationItemType.Choice when !HasUniqueNonEmptyValues(item.Options):
                     errors.Add(RequestError($"Choice item '{item.Id}' has empty or duplicate option values."));
                     break;
 
@@ -252,4 +250,12 @@ internal sealed class InformationValidator : IInformationValidator
         StepProcessingMessage.Error(
             ProcessorErrorCodes.InformationResponseInvalidAnswer,
             message);
+
+    // Every option value is set and used once (ordinal: values are machine identifiers).
+    private static bool HasUniqueNonEmptyValues(IReadOnlyList<InformationOption> options)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        return options.All(x => !string.IsNullOrWhiteSpace(x.Value) && seen.Add(x.Value));
+    }
 }
