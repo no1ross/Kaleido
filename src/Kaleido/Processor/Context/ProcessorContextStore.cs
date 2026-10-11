@@ -244,7 +244,7 @@ public sealed record StepContext
     }
 }
 
-internal sealed class ProcessorContextStore : IProcessorContextStore
+internal sealed partial class ProcessorContextStore : IProcessorContextStore
 {
     private readonly ILogger<ProcessorContextStore> _logger;
     private readonly ConcurrentDictionary<Guid, ProcessorContext> _contexts = new();
@@ -254,10 +254,7 @@ internal sealed class ProcessorContextStore : IProcessorContextStore
     {
         _logger = logger;
 
-        logger.LogWarning(
-            "ProcessorContextStore is active. This store has no eviction policy and will grow " +
-            "without bound in long-running processes. Register a durable IProcessorContextStore " +
-            "(e.g. UseSqliteProcessorContextStore) before deploying to production.");
+        LogInMemoryStoreActive(logger);
     }
 
     public Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default)
@@ -276,11 +273,14 @@ internal sealed class ProcessorContextStore : IProcessorContextStore
 
         _contexts[context.ProcessId] = context;
 
-        _logger.LogDebug(
-            "Process context saved for process {ProcessId} ({StepCount} steps).",
-            context.ProcessId,
-            context.Steps.Count);
+        LogSaved(_logger, context.ProcessId, context.Steps.Count);
 
         return Task.CompletedTask;
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "ProcessorContextStore is active. This store has no eviction policy and will grow without bound in long-running processes. Register a durable IProcessorContextStore (e.g. UseSqliteProcessorContextStore) before deploying to production.")]
+    private static partial void LogInMemoryStoreActive(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Process context saved for process {ProcessId} ({StepCount} steps).")]
+    private static partial void LogSaved(ILogger logger, Guid processId, int stepCount);
 }
