@@ -34,12 +34,12 @@ public sealed class KaleidoClientOptions
     /// <see cref="KaleidoClientEntry.BaseUrl"/> falls back to <see cref="BaseUrl"/>
     /// when not explicitly set on the entry.
     /// </summary>
-    // KAL0018: IDictionary is required here — the Options binder writes entries
-    // into this dictionary during startup configuration binding; a read-only
-    // interface would prevent binding entirely.
-#pragma warning disable KAL0018
-    public IDictionary<string, KaleidoClientEntry> Clients { get; set; } = new Dictionary<string, KaleidoClientEntry>(StringComparer.OrdinalIgnoreCase);
-#pragma warning restore KAL0018
+    /// <remarks>
+    /// Bound from configuration (<c>Kaleido:Clients</c>); the configuration binder populates
+    /// read-only dictionary properties, so the options stay read-only to the code that consumes them.
+    /// </remarks>
+    public IReadOnlyDictionary<string, KaleidoClientEntry> Clients { get; set; } =
+        new Dictionary<string, KaleidoClientEntry>(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>

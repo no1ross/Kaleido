@@ -29,6 +29,19 @@ public class Api
     }
 
     [Fact]
+    public async Task Property_FrozenCollections_NoDiagnostic()
+    {
+        await RunAsync(@"
+using System.Collections.Frozen;
+public class Api
+{
+    public FrozenDictionary<string, int> Map { get; }
+    public FrozenSet<string> Names { get; }
+    public FrozenSet<string> Find(FrozenDictionary<string, int> map) => null;
+}");
+    }
+
+    [Fact]
     public async Task Property_IReadOnlyCollection_NoDiagnostic()
     {
         await RunAsync(@"

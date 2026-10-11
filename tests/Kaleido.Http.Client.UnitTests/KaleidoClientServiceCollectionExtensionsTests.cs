@@ -116,6 +116,65 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddProcessClient_WithRegistryTtl_StoresTheTtlInMap()
+    {
+        var services = new ServiceCollection();
+        var builder = new FakeKaleidoBuilder(services);
+
+        builder.AddProcessorClient(o =>
+        {
+            o.Name = "Radiology";
+            o.BaseUrl = "http://localhost";
+            o.RegistryTtl = TimeSpan.FromMinutes(5);
+        });
+
+        var map = (KaleidoProcessorClientRouteOptionsMap)services
+            .First(d => d.ServiceType == typeof(KaleidoProcessorClientRouteOptionsMap))
+            .ImplementationInstance!;
+
+        Assert.Equal(TimeSpan.FromMinutes(5), map.RegistryTtls["radiology"]);
+    }
+
+    [Fact]
+    public void AddProcessClient_WithoutRegistryTtl_StoresNoTtl()
+    {
+        var services = new ServiceCollection();
+        var builder = new FakeKaleidoBuilder(services);
+
+        builder.AddProcessorClient(o =>
+        {
+            o.Name = "Radiology";
+            o.BaseUrl = "http://localhost";
+        });
+
+        var map = (KaleidoProcessorClientRouteOptionsMap)services
+            .First(d => d.ServiceType == typeof(KaleidoProcessorClientRouteOptionsMap))
+            .ImplementationInstance!;
+
+        Assert.Empty(map.RegistryTtls);
+    }
+
+    [Fact]
+    public void AddQueryableClient_WithRegistryTtl_StoresTheTtlInMap()
+    {
+        var services = new ServiceCollection();
+        var builder = new FakeKaleidoBuilder(services);
+
+        builder.AddQueryableClient(o =>
+        {
+            o.Name = "Member";
+            o.BaseUrl = "http://localhost";
+            o.RegistryTtl = TimeSpan.FromSeconds(30);
+        });
+
+        var map = (KaleidoQueryableClientRouteOptionsMap)services
+            .First(d => d.ServiceType == typeof(KaleidoQueryableClientRouteOptionsMap))
+            .ImplementationInstance!;
+
+        Assert.Equal(TimeSpan.FromSeconds(30), map.RegistryTtls["member"]);
+    }
+
+    [Fact]
     public void AddProcessClient_MultipleCalls_AccumulateInSingleMap()
     {
         var services = new ServiceCollection();
