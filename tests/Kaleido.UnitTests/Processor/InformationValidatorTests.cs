@@ -148,6 +148,29 @@ public sealed class InformationValidatorTests
         Assert.Contains(CreateSut().ValidateRequest(request), x => x.Message.Contains(expected));
     }
 
+    [Theory]
+    [InlineData("same", "same")]
+    [InlineData("a", " ")]
+    public void ValidateRequest_ChoiceWithDuplicateOrEmptyOptionValues_IsInvalid(string first, string second)
+    {
+        var request =
+            Request with
+            {
+                Items =
+                [
+                    new InformationItem
+                    {
+                        Id = "x",
+                        Text = "X",
+                        Type = InformationItemType.Choice,
+                        Options = [new InformationOption { Value = first }, new InformationOption { Value = second }],
+                    },
+                ],
+            };
+
+        Assert.Contains(CreateSut().ValidateRequest(request), x => x.Message.Contains("has empty or duplicate option values"));
+    }
+
     [Fact]
     public void ValidateRequest_NestedItemsOnANonGroup_IsInvalid()
     {
