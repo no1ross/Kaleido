@@ -45,9 +45,9 @@ jobs:
     # (#250); the slim examples that replace them are analyzed again (remove samples/** below).
     # Coverage is measured on src only, like the coverage report below. The quality gate (zero new
     # issues, 90% coverage on new code) is evaluated by the end step, which fails the build.
-    # .editorconfig is the single source of truth for the .NET analyzers (Meziantou, Roslynator, CA,
-    # IDE): rules at warning or above already fail the build, rules set to suggestion are deliberate.
-    # Sonar does not re-judge them (roslyn.ignoreIssues); it reports its own rules on top.
+    # The .NET analyzers' findings (Meziantou, Roslynator, CA, IDE) are imported into Sonar, including
+    # suggestion-level ones: every finding is visible and fixed, and each fixed rule becomes a warning
+    # in .editorconfig (which fails the build). A rule that is off is 'none' there, with the reason.
     - name: Sonar begin
       if: ${{ env.SONAR_TOKEN != '' }}
       run: |
@@ -60,7 +60,6 @@ jobs:
           /d:sonar.coverageReportPaths="coverage/SonarQube.xml" \
           /d:sonar.coverage.exclusions="samples/**,tools/**,tests/**" \
           /d:sonar.exclusions="**/obj/**,**/bin/**,samples/**" \
-          /d:sonar.cs.roslyn.ignoreIssues=true \
           /d:sonar.qualitygate.wait=true
 
     - name: Build
