@@ -43,6 +43,9 @@ jobs:
     # Analysis scope: C# in src, tools and samples (tests are test code, generated obj/ excluded).
     # Coverage is measured on src only, like the coverage report below. The quality gate (zero new
     # issues, 90% coverage on new code) is evaluated by the end step, which fails the build.
+    # .editorconfig is the single source of truth for the .NET analyzers (Meziantou, Roslynator, CA,
+    # IDE): rules at warning or above already fail the build, rules set to suggestion are deliberate.
+    # Sonar does not re-judge them (roslyn.ignoreIssues); it reports its own rules on top.
     - name: Sonar begin
       if: ${{ env.SONAR_TOKEN != '' }}
       run: |
@@ -55,6 +58,7 @@ jobs:
           /d:sonar.coverageReportPaths="coverage/SonarQube.xml" \
           /d:sonar.coverage.exclusions="samples/**,tools/**,tests/**" \
           /d:sonar.exclusions="**/obj/**,**/bin/**,samples/PriorAuth/priorauth-ui/**,samples/kaleido-sample-ecommerce-ui/**" \
+          /d:sonar.cs.roslyn.ignoreIssues=true \
           /d:sonar.qualitygate.wait=true
 
     - name: Build
