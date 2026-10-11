@@ -73,7 +73,9 @@ jobs:
 
     # Merge per-project cobertura into a union report. Summing hits across files
     # would double-count shared src assemblies; reportgenerator merges hits.
-    # Scope is shipped src/ assemblies only - tests/, tools/, samples/ excluded.
+    # Scope is shipped src/ assemblies only - tests, analyzers (tools/) and samples are excluded by
+    # assembly. Not by path: reportgenerator's file filters are case-insensitive, and '*/tools/*' also
+    # matched src/Kaleido.Http.Mcp/Tools/ (#260).
     - name: Merge coverage
       run: |
         dotnet tool install --global dotnet-reportgenerator-globaltool
@@ -81,8 +83,7 @@ jobs:
           "-reports:TestResults/*.cobertura.xml" \
           "-targetdir:coverage" \
           "-reporttypes:lcov;HtmlSummary;SonarQube" \
-          "-assemblyfilters:-*Tests*;-*FunctionalTests*;-*IntegrationTests*" \
-          "-filefilters:-*/tests/*;-*/tools/*;-*/samples/*"
+          "-assemblyfilters:-*Tests*;-*FunctionalTests*;-*IntegrationTests*;-Kaleido.Analyzers*;-Kaleido.Samples*"
 
     - name: Sonar end (upload, quality gate)
       if: ${{ env.SONAR_TOKEN != '' }}
