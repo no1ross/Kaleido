@@ -28,15 +28,16 @@ public sealed class CallerForwardingTests
 
     private sealed class CaptureHandler : HttpMessageHandler
     {
-        private static readonly HttpResponseMessage OkResponse = new(HttpStatusCode.OK);
-
         public List<HttpRequestMessage> Sent { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Sent.Add(request);
 
-            return Task.FromResult(OkResponse);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new ProcessStateResponse { ProcessId = Guid.Empty }, options: KaleidoJsonOptions.Options)
+            });
         }
     }
 
