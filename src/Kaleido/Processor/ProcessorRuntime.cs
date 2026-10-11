@@ -292,8 +292,8 @@ internal sealed class ProcessorRuntime(
         var requestId =
             correlationAccessor.Current.RequestId;
 
+        // Owner is a tag only (created by), never enforced (ADR 0010).
         var callerName = correlationAccessor.Current.CallerName;
-        var callerRoles = correlationAccessor.Current.CallerRoles;
 
         if (request.ProcessId is null)
         {
@@ -303,8 +303,7 @@ internal sealed class ProcessorRuntime(
                     with
                 {
                     LatestRequestId = requestId,
-                    Owner = callerName,
-                    OwnerRoles = callerRoles
+                    Owner = callerName
                 };
 
             observation.ContextInitialized(
@@ -354,8 +353,7 @@ internal sealed class ProcessorRuntime(
                     with
                 {
                     LatestRequestId = requestId,
-                    Owner = callerName,
-                    OwnerRoles = callerRoles
+                    Owner = callerName
                 };
 
             observation.ContextInitialized(

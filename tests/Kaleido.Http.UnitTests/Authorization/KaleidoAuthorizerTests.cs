@@ -153,28 +153,6 @@ public sealed class KaleidoAuthorizerTests
     }
 
     [Fact]
-    public void AuthorizeProcess_DelegatesToEvaluator()
-    {
-        var evaluator = Evaluator();
-        evaluator
-            .Setup(x => x.AuthorizeProcess(
-                It.IsAny<ProcessorContext>(),
-                It.IsAny<KaleidoCorrelationContext>()))
-            .Throws(new KaleidoAuthorizationException("proc", false));
-
-        var sut = CreateSut(evaluator);
-
-        Assert.Throws<KaleidoAuthorizationException>(
-            () => sut.AuthorizeProcess(
-                new ProcessorContext
-                {
-                    ProcessId = Guid.NewGuid(),
-                    ProcessorName = "test",
-                    Owner = "alice"
-                }));
-    }
-
-    [Fact]
     public async Task CanAccessAsync_WhenAuthorizationServicePresent_SuppliesPolicyEvaluator()
     {
         var authz = new Mock<IAuthorizationService>();

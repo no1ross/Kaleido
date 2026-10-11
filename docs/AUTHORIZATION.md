@@ -2,12 +2,13 @@
 
 Kaleido never authenticates callers itself — the host owns authentication
 (`AddAuthentication`/`UseAuthentication`, JWT, cookies, whatever). Kaleido consumes the
-resulting principal via the transport and enforces two orthogonal gates:
+resulting principal via the transport and enforces one gate:
 
 - **Capability authorization** — `KaleidoAuthorizationAttribute` on steps, query sources,
   and views narrows access with `Roles` / `Policy`, or opens it with `AllowAnonymous`.
-- **Process ownership** — `ProcessorContext.Owner`/`OwnerRoles` records who created a
-  process; resumable access is restricted to the owner and role-mates.
+
+Kaleido has **no case-level guardrails** ([ADR 0010](./decisions/0010-no-case-level-guardrails.md)):
+see [Who may continue a process](#who-may-continue-a-process).
 
 ## The mode: `AuthorizationMode`
 
@@ -29,7 +30,6 @@ Both can also be bound from configuration (`Kaleido:AuthorizationMode`,
 | `Policy = "p"` | not enforced | authenticated + policy | authenticated + policy |
 | `Roles` + `Policy` | not enforced | both (AND) | both (AND) |
 | `AllowAnonymous = true` | open | open to anonymous callers | open to anonymous callers |
-| process ownership | not enforced | enforced | enforced |
 | registry filtering | none (full registry) | per caller, same rules | per caller, same rules |
 | route auth metadata | none (hosts without auth keep working) | attached | attached |
 | no authentication scheme registered | not checked | startup error (`authentication_not_configured`) | startup error (`authentication_not_configured`) |
@@ -76,7 +76,6 @@ When enforcing (`Authenticated` or `ZeroTrust`), requirements are applied to:
   authenticated caller, unless the processor has an `AllowAnonymous` step (then they
   stay open for anonymous callers and the per-step checks above decide). Anonymous
   callers therefore don't see or reach them on a processor that needs a login
-- `POST /processes/{id}/transfer`: authenticated caller
 - discovery filtering: `/{service}/registry` (local and aggregate modes) returns only
   capabilities the caller may access; processors whose steps are all filtered out are
   omitted
@@ -89,32 +88,33 @@ turned into `HttpContext.ChallengeAsync()` (**401**, unauthenticated) or `Forbid
 `WWW-Authenticate`, a cookie scheme redirects, and so on. Kaleido does not replace the
 host's authorization result handler and writes no Kaleido body for 401/403.
 
-## Process ownership
+## Who may continue a process
 
-`ProcessorContext.Owner`/`OwnerRoles` are captured at process creation from
-`KaleidoCorrelationContext.CallerName`/`CallerRoles` (transport-supplied, post-auth —
-see [`CORRELATION.md`](./CORRELATION.md)).
+Kaleido has no case-level guardrails. Whether a user may open or continue a particular
+case is a business/data-level authorization concern of the underlying systems. Kaleido's
+security role is limited to:
 
-Rules (when enforcing):
+- knowing the caller's identity;
+- checking the roles and policies declared on the step or query being called.
 
-- **Unowned** (`Owner == null`, created by an `AllowAnonymous` step): any caller holding
-  the process id may resume/read until it is claimed.
-- **Owned**: the owner (name match) or any caller sharing an `OwnerRoles` entry
-  (role-mate) may resume, read state, or transfer.
+So a process may be continued by a different caller than the one who started it — e.g. a
+case started through an IVR, taken over by a rep on the phone, finished by the provider in
+a portal — subject only to each step's declared roles/policies. A caller the next step does
+not admit is still refused (401/403).
 
-`POST /{service}/processes/{processId}/transfer` transfers ownership to the caller —
-allowed for unowned processes (any authenticated caller) or owned ones (owner /
-role-mate). The new `OwnerRoles` snapshot is the caller's current roles. This is how an
-anonymous flow (e.g. a cart) is claimed after login.
+`ProcessorContext.Owner` is captured at process creation from
+`KaleidoCorrelationContext.CallerName` (transport-supplied, post-auth — see
+[`CORRELATION.md`](./CORRELATION.md)) as a **tag only** (created by); it is never
+enforced. There is no transfer endpoint.
 
-Because `OwnerRoles` grants role-mate access, keep call identity out of user roles:
-a service-to-service hop should identify the calling service with a separate claim
-(evaluated by a policy), not by adding a role to the forwarded user.
+Keep call identity out of user roles: a service-to-service hop should identify the calling
+service with a separate claim (evaluated by a policy), not by adding a role to the
+forwarded user.
 
 ## Evaluation
 
 `IKaleidoAuthorizationEvaluator` (core, transport-agnostic) evaluates
-`AuthorizationMetadata` and ownership against the caller fields on
+`AuthorizationMetadata` against the caller fields on
 `KaleidoCorrelationContext`, using `KaleidoServiceOptions.AuthorizationMode`.
 Declared `Policy` names resolve via a transport-supplied evaluator — HTTP bridges to
 `IAuthorizationService`. Transports supply caller identity + policy evaluation; core

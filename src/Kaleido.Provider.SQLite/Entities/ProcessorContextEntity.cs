@@ -14,19 +14,12 @@ internal sealed class ProcessorContextEntity
         set;
     }
 
-    /// <summary>Owner name captured at process creation; null when unowned.</summary>
+    /// <summary>The caller that created the process (a tag only, never enforced); null when created anonymously.</summary>
     public string? Owner
     {
         get;
         set;
     }
-
-    /// <summary>Owner roles, comma-delimited.</summary>
-    public string OwnerRoles
-    {
-        get;
-        set;
-    } = string.Empty;
 
     public ProcessExecutionState State
     {

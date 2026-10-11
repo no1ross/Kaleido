@@ -13,15 +13,12 @@ public sealed class ProcessStateServiceTests
     private static ProcessStateService CreateSut(
         IProcessorContextStore contextStore,
         IProcessorStepRegistry registry,
-        IProcessorResponseFactory responseFactory,
-        IKaleidoAuthorizer? authorizer = null) =>
+        IProcessorResponseFactory responseFactory) =>
         new(
             contextStore,
             registry,
             new KaleidoServiceOptions { ServiceName = "test-processor" },
             responseFactory,
-            authorizer ?? Mock.Of<IKaleidoAuthorizer>(),
-            Mock.Of<IKaleidoCorrelationContextAccessor>(),
             NullLogger<ProcessStateService>.Instance);
 
     [Fact]
