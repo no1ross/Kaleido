@@ -340,19 +340,33 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
     {
         foreach (var dependency in definition.DependencyTypes)
         {
-            definition.AddDependency(definitions[dependency]);
+            definition.AddDependency(Target(definition, dependency, "DependsOn", definitions));
         }
 
         foreach (var availableAfter in definition.AvailableAfterTypes)
         {
-            definition.AddAvailableAfter(definitions[availableAfter]);
+            definition.AddAvailableAfter(Target(definition, availableAfter, "AvailableAfter", definitions));
         }
 
         foreach (var availableUntil in definition.AvailableUntilTypes)
         {
-            definition.AddAvailableUntil(definitions[availableUntil]);
+            definition.AddAvailableUntil(Target(definition, availableUntil, "AvailableUntil", definitions));
         }
     }
+
+    // A relationship may name a step this processor does not register (its assembly is not scanned,
+    // or TypeFilter excludes it): a clear startup error instead of a KeyNotFoundException.
+    private static ProcessStepDefinition Target(
+        ProcessStepDefinition definition,
+        Type target,
+        string relationship,
+        IReadOnlyDictionary<Type, ProcessStepDefinition> definitions) =>
+        definitions.TryGetValue(target, out var found)
+            ? found
+            : throw new KaleidoConfigurationException(
+                ProcessorErrorCodes.InvalidRegistration,
+                $"Step '{definition.StepType.FullName}' declares [{relationship}<{target.Name}>], but '{target.FullName}' is not a registered process step of this processor. "
+                + "Register its assembly, or check that TypeFilter does not exclude it.");
 
     private static ProcessStepMetadata BuildStepMetadata(
         Type stepType,

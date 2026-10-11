@@ -179,6 +179,17 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PostDirectQuery_WithAPage_OnASourceThatDoesNotPage_Returns400_PagingNotSupported()
+    {
+        using var content = new StringContent("{\"query\":{\"page\":{\"size\":50,\"offset\":0}}}", Encoding.UTF8, "application/json");
+
+        var response = await _client.PostAsync("/kaleido/queryable/functionalunpagedrecordsource/query", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("qry_paging_not_supported", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
     private Task<HttpResponseMessage> PostContextQueryAsync(QueryRequest request) =>
         PostJsonAsync("/kaleido/queryable/functionalrecordcontextsource/query", request);
 

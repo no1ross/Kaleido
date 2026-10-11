@@ -387,6 +387,34 @@ public sealed class ProcessorStepRegistryTests
             registry.InitialRegistrations.Select(x => x.Metadata.Name));
     }
 
+    // -- startup validation of relationships --------------------------------
+
+    [Fact]
+    public void Constructor_WhenARelationshipNamesAStepThatIsNotRegistered_ThrowsInvalidRegistration()
+    {
+        // StepB depends on StepA, which this processor does not register.
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => CreateSut(typeof(StepB)));
+
+        Assert.Equal(ProcessorErrorCodes.InvalidRegistration, exception.Code);
+        Assert.Contains(nameof(StepA), exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Constructor_WhenAStepDependsOnItself_ThrowsInvalidRegistration()
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => CreateSut(typeof(SelfDependentStep)));
+
+        Assert.Equal(ProcessorErrorCodes.InvalidRegistration, exception.Code);
+    }
+
+    [Fact]
+    public void Constructor_WhenDependenciesAreCircular_ThrowsInvalidRegistration()
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => CreateSut(typeof(CycleStepA), typeof(CycleStepB)));
+
+        Assert.Equal(ProcessorErrorCodes.InvalidRegistration, exception.Code);
+    }
+
     private static ProcessorStepRegistry CreateSut(
         IEnumerable<Type> stepTypes,
         IReadOnlyDictionary<Type, Type> handlerTypes) =>
@@ -412,7 +440,10 @@ public sealed class ProcessorStepRegistryTests
             { typeof(StepMultiAvailability), typeof(StepMultiAvailabilityHandler) },
             { typeof(SecuredStep), typeof(SecuredStepHandler) },
             { typeof(InformationStep), typeof(InformationStepHandler) },
-            { typeof(LookupStep), typeof(LookupStepHandler) }
+            { typeof(LookupStep), typeof(LookupStepHandler) },
+            { typeof(SelfDependentStep), typeof(SelfDependentStepHandler) },
+            { typeof(CycleStepA), typeof(CycleStepAHandler) },
+            { typeof(CycleStepB), typeof(CycleStepBHandler) }
         };
 
         return new ProcessorStepRegistry(
@@ -452,6 +483,24 @@ public sealed class ProcessorStepRegistryTests
     [AvailableUntil<StepC>]
     [AvailableUntil<StepD>]
     private sealed class StepMultiAvailability : IProcessStep;
+
+    [ProcessStep(DisplayName = nameof(SelfDependentStep), Description = "self-dependent description", Version = "1.0")]
+    [DependsOn<SelfDependentStep>]
+    private sealed class SelfDependentStep : IProcessStep;
+
+    [ProcessStep(DisplayName = nameof(CycleStepA), Description = "cycle-a description", Version = "1.0")]
+    [DependsOn<CycleStepB>]
+    private sealed class CycleStepA : IProcessStep;
+
+    [ProcessStep(DisplayName = nameof(CycleStepB), Description = "cycle-b description", Version = "1.0")]
+    [DependsOn<CycleStepA>]
+    private sealed class CycleStepB : IProcessStep;
+
+    private sealed class SelfDependentStepHandler : BaseHandler<SelfDependentStep, TestResponse>;
+
+    private sealed class CycleStepAHandler : BaseHandler<CycleStepA, TestResponse>;
+
+    private sealed class CycleStepBHandler : BaseHandler<CycleStepB, TestResponse>;
 
     [ProcessStep(DisplayName = nameof(SecuredStep), Description = "secured-step description", Version = "1.0")]
     [KaleidoAuthorization(Policy = "step-policy", Roles = "internal")]
