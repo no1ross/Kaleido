@@ -10,10 +10,10 @@ public sealed class CallerForwardingHandlerFilterTests
     private static CallerForwardingHandlerFilter CreateSut()
     {
         var processMap = new KaleidoProcessorClientRouteOptionsMap();
-        processMap.Options["Intake"] = "intake";
+        processMap.SetRoutePrefix("Intake", "intake");
 
         var queryableMap = new KaleidoQueryableClientRouteOptionsMap();
-        queryableMap.Options["Member"] = "member";
+        queryableMap.SetRoutePrefix("Member", "member");
 
         return new CallerForwardingHandlerFilter(processMap, queryableMap, Mock.Of<IKaleidoCallerForwarding>());
     }
