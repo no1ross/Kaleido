@@ -126,6 +126,17 @@ public sealed class FunctionalRecordContextSource : IQuerySource<FunctionalRecor
         _data.Records.AsQueryable();
 }
 
+/// <summary>The same records without [Pageable]: an explicit page is a request error (#210).</summary>
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Functional Unpaged Records",
+    Description = "Functional records from a source that does not page.")]
+public sealed class FunctionalUnpagedRecordSource(FunctionalRecordData data) : IQuerySource<FunctionalRecordContext>
+{
+    public IQueryable<FunctionalRecordContext> CreateQuery(QueryExecutionContext executionContext) =>
+        data.Records.AsQueryable();
+}
+
 /// <summary>
 /// A delegated source over the same query context as <see cref="FunctionalRecordContextSource"/>
 /// (a context may back several sources). It stands in for a facade that calls a downstream service:
