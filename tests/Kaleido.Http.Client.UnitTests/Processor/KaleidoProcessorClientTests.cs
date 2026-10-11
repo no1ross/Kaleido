@@ -167,7 +167,7 @@ public sealed class KaleidoProcessorClientTests
     // ExecuteStepAsync by name (untyped)
     // ---------------------------------------------------------------------------
 
-    private static (KaleidoProcessorClient Client, List<(HttpRequestMessage Request, string? Body)> Sent) CreateStepClient(
+    private static (KaleidoProcessorClient Client, List<(HttpRequestMessage Request, string? Body)> Sent, HttpClient HttpClient) CreateStepClient(
         Mock<ICorrelationHeaderStamper>? stamper = null,
         HttpStatusCode stepStatus = HttpStatusCode.OK)
     {
@@ -196,13 +196,14 @@ public sealed class KaleidoProcessorClientTests
 
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
         var client = CreateSut(httpClient, (stamper ?? new Mock<ICorrelationHeaderStamper>()).Object);
-        return (client, sent);
+        return (client, sent, httpClient);
     }
 
     [Fact]
     public async Task ExecuteStepAsync_ByName_PostsTheJsonPayload_ToTheStepsRegistryUrl()
     {
-        var (client, sent) = CreateStepClient();
+        var (client, sent, httpClient) = CreateStepClient();
+        using var _ = httpClient;
         var step = System.Text.Json.JsonSerializer.SerializeToElement(new { memberId = "M1" });
 
         var response = await client.ExecuteStepAsync("mystep", step);
