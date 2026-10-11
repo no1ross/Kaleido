@@ -27,7 +27,7 @@ internal interface IQueryContextEngine<TQueryContext, TView>
         CancellationToken cancellationToken = default);
 }
 
-internal sealed class QueryContextEngine<TQueryContext, TView>(
+internal sealed partial class QueryContextEngine<TQueryContext, TView>(
     IQueryContextValidator validator,
     IQueryContextCompiler compiler,
     ICompiledQueryApplier<TQueryContext> applier,
@@ -180,10 +180,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         }
         catch (Exception publishException) when (publishException is not OperationCanceledException)
         {
-            logger.LogWarning(
-                publishException,
-                "Event publish failed for QueryExecuted on source {QuerySourceName}. Event delivery is best-effort.",
-                details.QuerySourceName);
+            LogEventPublishFailed(logger, publishException, details.QuerySourceName);
         }
     }
 
@@ -330,4 +327,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         ?? throw new KaleidoFrameworkException(
             FrameworkErrorCodes.ReflectionError,
             $"Unable to locate method '{nameof(CreateViewAsyncTyped)}'.");
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for QueryExecuted on source {QuerySourceName}. Event delivery is best-effort.")]
+    private static partial void LogEventPublishFailed(ILogger logger, Exception exception, string querySourceName);
 }
