@@ -63,7 +63,22 @@ internal sealed class ClientDownstreamRegistries(
                 {
                     throw;
                 }
-                catch (Exception ex)
+                catch (HttpRequestException ex)
+                {
+                    logger.LogWarning(
+                        ex,
+                        "Registry client {ClientName} failed: {Reason}.",
+                        name,
+                        ex.Message);
+
+                    errors.Add(new RegistryClientError
+                    {
+                        ClientName = name,
+                        ClientType = "Registry",
+                        Reason = "Registry fetch failed. See server logs for details."
+                    });
+                }
+                catch (TaskCanceledException ex)
                 {
                     logger.LogWarning(
                         ex,
