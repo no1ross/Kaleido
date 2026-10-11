@@ -87,7 +87,7 @@ jobs:
           dotnet pack "$project" --configuration Release --no-build -o artifacts
         done
         packages=(artifacts/*.nupkg)
-        test "${#packages[@]}" -eq 6
+        test "${#packages[@]}" -eq 7
         unzip -Z1 artifacts/Kaleido.[0-9]*.nupkg |
           awk '$0 == "analyzers/dotnet/cs/Kaleido.Analyzers.dll" { found=1 } END { exit !found }'
 
