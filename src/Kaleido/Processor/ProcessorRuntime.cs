@@ -44,7 +44,7 @@ public sealed record ProcessRequest
     /// <param name="step">The step instance containing the input data.</param>
     /// <param name="processId">
     /// Optional process correlation identifier. Pass the same value on each submission
-    /// to resume an existing process instance. Omit (or pass <c>null</c>) to start a new one.
+    /// to resume an existing process instance. Omit (or pass <see langword="null"/>) to start a new one.
     /// </param>
     public static ProcessRequest ForStep<TStep>(TStep step, Guid? processId = null)
         where TStep : class, IProcessStep

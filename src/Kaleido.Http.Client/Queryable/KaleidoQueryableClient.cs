@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
@@ -63,7 +64,7 @@ internal sealed class KaleidoQueryableClient(
         CancellationToken cancellationToken)
         where TResult : class
     {
-        var sourceEntry = await FindSourceAsync(source, null, cancellationToken);
+        var sourceEntry = await FindSourceAsync(source, view: null, cancellationToken);
 
         if (string.IsNullOrEmpty(sourceEntry.QueryUrl))
         {
@@ -73,7 +74,7 @@ internal sealed class KaleidoQueryableClient(
                 HttpStatusCode.NotFound);
         }
 
-        return await SendQueryAsync<TResult>(sourceEntry.QueryUrl, request, cancellationToken, source, null);
+        return await SendQueryAsync<TResult>(sourceEntry.QueryUrl, request, cancellationToken, source, view: null);
     }
 
     private async Task<QueryableSourceResponse> FindSourceAsync(
@@ -132,14 +133,14 @@ internal sealed class KaleidoQueryableClient(
         {
             throw new KaleidoHttpClientException(
                 HttpClientErrorCodes.ValidationFailed,
-                $"{callerServiceName} tried to call {FormatTarget(source, view)}, but the request failed: {string.Join(" ", errorResponse.Errors.Select(e => e.Message))}",
+                $"{callerServiceName} tried to call {FormatTarget(source, view)}, but the request failed: {string.Join(' ', errorResponse.Errors.Select(e => e.Message))}",
                 response.StatusCode,
                 errorResponse.Errors);
         }
 
         throw new KaleidoHttpClientException(
             HttpClientErrorCodes.RequestFailed,
-            $"{callerServiceName} tried to call {FormatTarget(source, view)}, but the request failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
+            string.Create(CultureInfo.InvariantCulture, $"{callerServiceName} tried to call {FormatTarget(source, view)}, but the request failed with status code {(int)response.StatusCode} ({response.StatusCode})."),
             response.StatusCode);
     }
 

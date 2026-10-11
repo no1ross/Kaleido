@@ -36,7 +36,7 @@ public sealed record AggregatedRegistryResponse
         = [];
 
     /// <summary>
-    /// Convenience flag — <c>true</c> when <see cref="ClientErrors"/> is non-empty,
+    /// Convenience flag — <see langword="true"/> when <see cref="ClientErrors"/> is non-empty,
     /// i.e. one or more downstream services failed during aggregation and their
     /// registrations are absent. Lets agents detect degradation without parsing
     /// the error list.

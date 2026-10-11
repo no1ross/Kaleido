@@ -13,7 +13,6 @@ public interface IQueryableRegistry
 
 internal sealed class QueryableRegistry : IQueryableRegistry
 {
-    private readonly IReadOnlyCollection<QueryableSourceRegistryItem> _registrations;
 
     public QueryableRegistry(
         IQuerySourceRegistry sourceRegistry,
@@ -24,7 +23,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
         ArgumentNullException.ThrowIfNull(viewRegistry);
         ArgumentNullException.ThrowIfNull(logger);
 
-        _registrations =
+        Registrations =
             sourceRegistry.Registrations
                 .Select(source =>
                     Project(
@@ -37,11 +36,10 @@ internal sealed class QueryableRegistry : IQueryableRegistry
 
         logger.LogInformation(
             "Queryable registry built with {SourceCount} sources.",
-            _registrations.Count);
+            Registrations.Count);
     }
 
-    public IReadOnlyCollection<QueryableSourceRegistryItem> Registrations =>
-        _registrations;
+    public IReadOnlyCollection<QueryableSourceRegistryItem> Registrations { get; }
 
     private static QueryableSourceRegistryItem Project(
         QuerySourceRegistration registration,

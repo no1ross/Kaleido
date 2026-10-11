@@ -95,7 +95,7 @@ public enum InformationItemType
     /// <summary>Free text that may span lines; any non-empty answer.</summary>
     LongText,
 
-    /// <summary>Yes/no; the answer is <c>true</c> or <c>false</c>.</summary>
+    /// <summary>Yes/no; the answer is <see langword="true"/> or <see langword="false"/>.</summary>
     Boolean,
 
     /// <summary>A whole number, for example <c>42</c>.</summary>
@@ -140,7 +140,7 @@ public sealed record InformationResponseItem
 /// <summary>One answer to a question.</summary>
 /// <remarks>
 /// Answers are text, interpreted by the question's <see cref="InformationItemType"/>:
-/// <c>true</c>/<c>false</c>, <c>42</c>, <c>12.5</c>, <c>2024-05-01</c>, an ISO 8601 date-time,
+/// <see langword="true"/>/<see langword="false"/>, <c>42</c>, <c>12.5</c>, <c>2024-05-01</c>, an ISO 8601 date-time,
 /// an option value, or free text. Kaleido checks the shape only; converting answers into
 /// internal representations is the handler's job.
 /// </remarks>

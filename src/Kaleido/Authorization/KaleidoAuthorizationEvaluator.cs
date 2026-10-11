@@ -22,7 +22,7 @@ namespace Kaleido.Authorization;
 public interface IKaleidoAuthorizationEvaluator
 {
     /// <summary>
-    /// <c>true</c> when <see cref="KaleidoServiceOptions.AuthorizationMode"/> is
+    /// <see langword="true"/> when <see cref="KaleidoServiceOptions.AuthorizationMode"/> is
     /// not <see cref="KaleidoAuthorizationMode.None"/>.
     /// </summary>
     bool IsEnforced { get; }
@@ -36,7 +36,7 @@ public interface IKaleidoAuthorizationEvaluator
     /// mode, denied in <see cref="KaleidoAuthorizationMode.ZeroTrust"/> mode.
     /// <paramref name="policyEvaluator"/> resolves a declared policy name
     /// for the caller — supplied by the transport (HTTP: ASP.NET
-    /// <c>IAuthorizationService</c>). <c>null</c> when the transport has no
+    /// <c>IAuthorizationService</c>). <see langword="null"/> when the transport has no
     /// policy infrastructure; policy-declaring capabilities fail closed with
     /// a warning.
     /// </summary>

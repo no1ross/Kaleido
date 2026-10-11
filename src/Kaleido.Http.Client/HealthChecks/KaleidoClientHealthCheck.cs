@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 
@@ -27,7 +28,7 @@ internal sealed class KaleidoClientHealthCheck(
             if (response.IsSuccessStatusCode)
             {
                 return HealthCheckResult.Healthy(
-                    $"Kaleido remote '{clientName}' is reachable ({(int)response.StatusCode}).");
+                    string.Create(CultureInfo.InvariantCulture, $"Kaleido remote '{clientName}' is reachable ({(int)response.StatusCode})."));
             }
 
             logger.LogWarning(
@@ -36,7 +37,7 @@ internal sealed class KaleidoClientHealthCheck(
                 (int)response.StatusCode);
 
             return HealthCheckResult.Unhealthy(
-                $"Kaleido remote '{clientName}' returned {(int)response.StatusCode}.");
+                string.Create(CultureInfo.InvariantCulture, $"Kaleido remote '{clientName}' returned {(int)response.StatusCode}."));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

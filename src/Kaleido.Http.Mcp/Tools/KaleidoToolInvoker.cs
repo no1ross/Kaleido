@@ -478,7 +478,7 @@ internal sealed partial class KaleidoToolInvoker(
         {
             var pendingService = service;
             var required = step.RequiredStep;
-            IReadOnlyCollection<ProcessStepSummary> available = step.AvailableSteps;
+            var available = step.AvailableSteps;
 
             if (!string.IsNullOrWhiteSpace(step.TargetProcessorName))
             {
@@ -571,7 +571,7 @@ internal sealed partial class KaleidoToolInvoker(
         var state = await Processor(service).GetProcessStateAsync(processId, cancellationToken);
 
         return state?.RequiredStep is { InformationRequest: { } request } step
-            ? new PendingQuestions(step, request, null)
+            ? new PendingQuestions(step, request, Error: null)
             : PendingQuestions.Failed(Error(
                 McpErrorCodes.NoPendingInformationRequest,
                 $"Process {processId} on '{service}' is not waiting for answers. Use get_process_state to see what it needs."));

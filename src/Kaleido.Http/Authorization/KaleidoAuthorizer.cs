@@ -17,7 +17,7 @@ namespace Kaleido.Http.Authorization;
 internal interface IKaleidoAuthorizer
 {
     /// <summary>
-    /// <c>true</c> when <see cref="KaleidoServiceOptions.AuthorizationMode"/> is not <c>None</c>.
+    /// <see langword="true"/> when <see cref="KaleidoServiceOptions.AuthorizationMode"/> is not <c>None</c>.
     /// </summary>
     bool IsEnforced { get; }
 
@@ -136,7 +136,7 @@ internal sealed class KaleidoAuthorizer(
             : async (policy, _) =>
                 (await authorizationService.AuthorizeAsync(
                     httpContext.User,
-                    null,
+                    resource: null,
                     policy)).Succeeded;
     }
 }

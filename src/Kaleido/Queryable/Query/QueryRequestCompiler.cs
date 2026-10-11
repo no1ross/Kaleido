@@ -3,17 +3,20 @@ using Kaleido.Queryable.Metadata;
 namespace Kaleido.Queryable.Query;
 
 /// <summary>
+/// <para>
 /// Converts a validated QueryRequest into an optimized
 /// provider-neutral CompiledQuery.
-///
+/// </para>
+/// <para>
 /// Compilation resolves field references, operators,
 /// search modes, paging definitions, and named query
 /// metadata into runtime structures suitable for execution.
-///
+/// </para>
+/// <para>
 /// The resulting compiled query may be reused across
 /// multiple providers.
-///
-/// This interface exists to separate validation from execution.
+/// </para>
+/// <para>This interface exists to separate validation from execution.</para>
 /// </summary>
 internal interface IQueryContextCompiler
 {

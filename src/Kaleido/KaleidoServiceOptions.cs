@@ -119,7 +119,7 @@ public class KaleidoServiceOptions
                 "or via the Kaleido:ServiceName configuration key.");
         }
 
-        if (options.ServiceName.Contains('/') || options.ServiceName.Contains('\\'))
+        if (options.ServiceName.Contains('/', StringComparison.Ordinal) || options.ServiceName.Contains('\\', StringComparison.Ordinal))
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidServiceName,
@@ -184,7 +184,7 @@ public sealed class KaleidoServiceOptionsBuilder
     /// <inheritdoc cref="KaleidoServiceOptions.AuthorizationMode"/>
     public KaleidoAuthorizationMode AuthorizationMode { get; set; }
 
-    public AuthorizationMetadata DefaultAuthorization { get; set; } = new(null, []);
+    public AuthorizationMetadata DefaultAuthorization { get; set; } = new(Policy: null, []);
 
     internal KaleidoServiceOptions Build() =>
         new()

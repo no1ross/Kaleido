@@ -34,16 +34,13 @@ public interface IKaleidoBuilder
 [ExcludeFromCodeCoverage]
 internal sealed class KaleidoBuilder : IKaleidoBuilder
 {
-    private readonly IServiceCollection services;
-    private readonly IConfiguration configuration;
-    private readonly KaleidoServiceOptions serviceOptions;
     private readonly Dictionary<string, Assembly> _assemblies = [];
 
     public KaleidoBuilder(IServiceCollection services, IConfiguration configuration, KaleidoServiceOptions serviceOptions)
     {
-        this.services = services;
-        this.configuration = configuration;
-        this.serviceOptions = serviceOptions;
+        this.Services = services;
+        this.Configuration = configuration;
+        this.ServiceOptions = serviceOptions;
 
         foreach (var assembly in serviceOptions.Assemblies
             ?? throw new KaleidoConfigurationException(
@@ -54,11 +51,11 @@ internal sealed class KaleidoBuilder : IKaleidoBuilder
         }
     }
 
-    public IServiceCollection Services => services;
+    public IServiceCollection Services { get; }
 
-    public IConfiguration Configuration => configuration;
+    public IConfiguration Configuration { get; }
 
-    public KaleidoServiceOptions ServiceOptions => serviceOptions;
+    public KaleidoServiceOptions ServiceOptions { get; }
 
     public IReadOnlyCollection<Assembly> Assemblies => _assemblies.Values;
 

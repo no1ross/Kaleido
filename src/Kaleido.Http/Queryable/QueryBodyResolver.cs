@@ -47,13 +47,13 @@ internal static class QueryBodyResolver
         {
             return new QueryFilterNode(
                 ResolveCondition(node.Condition, fields),
-                null);
+                Group: null);
         }
 
         if (node.Group is not null)
         {
             return new QueryFilterNode(
-                null,
+            Condition: null,
                 ResolveGroup(node.Group, fields));
         }
 

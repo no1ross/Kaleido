@@ -158,7 +158,7 @@ internal static class QueryMetadataExtensions
                 $"Query view '{queryViewType.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' which does not exist on query context '{contextType.Name}'.");
         }
 
-        if (property.GetCustomAttribute<SortableAttribute>() is null)
+        if (!Attribute.IsDefined(property, typeof(SortableAttribute)))
         {
             throw new KaleidoConfigurationException(
                 QueryableErrorCodes.InvalidRegistration,

@@ -49,7 +49,7 @@ public sealed class AddKaleidoAssembliesAnalyzer : DiagnosticAnalyzer
         }
 
         var secondArg = arguments[1].Expression;
-        CSharpSyntaxNode? lambdaBody = secondArg switch
+        var lambdaBody = secondArg switch
         {
             SimpleLambdaExpressionSyntax simple => simple.Body,
             ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized.Body,

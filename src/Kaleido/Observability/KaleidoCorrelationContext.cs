@@ -27,7 +27,7 @@ public sealed record KaleidoCorrelationContext
     }
 
     /// <summary>
-    /// The processor whose step made this call (per-hop, inbound). <c>null</c> when the
+    /// The processor whose step made this call (per-hop, inbound). <see langword="null"/> when the
     /// call was not made from inside a processor step — e.g. routed or registry calls.
     /// </summary>
     public string? CallingProcessorName
@@ -46,7 +46,7 @@ public sealed record KaleidoCorrelationContext
     /// <summary>
     /// The step this service is currently executing. Set by the runtime for a step
     /// handler's scope; outbound calls made from that scope stamp it, with this
-    /// service's name, as the calling processor and step. <c>null</c> outside a step.
+    /// service's name, as the calling processor and step. <see langword="null"/> outside a step.
     /// </summary>
     public string? ExecutingStepName
     {
@@ -57,7 +57,7 @@ public sealed record KaleidoCorrelationContext
     /// <summary>
     /// Name of the authenticated caller, populated by the transport from the
     /// request principal — <b>never</b> from caller-supplied headers.
-    /// <c>null</c> for anonymous requests.
+    /// <see langword="null"/> for anonymous requests.
     /// </summary>
     public string? CallerName
     {
@@ -76,7 +76,7 @@ public sealed record KaleidoCorrelationContext
     } = [];
 
     /// <summary>
-    /// Returns <c>true</c> when the correlation context has no meaningful correlation fields set —
+    /// Returns <see langword="true"/> when the correlation context has no meaningful correlation fields set —
     /// indicating no correlation context has been established for the current request.
     /// </summary>
     public bool IsEmpty =>
