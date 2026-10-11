@@ -59,7 +59,7 @@ public interface IKaleidoAuthorizationEvaluator
 }
 
 /// <inheritdoc cref="IKaleidoAuthorizationEvaluator"/>
-internal sealed class KaleidoAuthorizationEvaluator(
+internal sealed partial class KaleidoAuthorizationEvaluator(
     KaleidoServiceOptions serviceOptions,
     ILogger<KaleidoAuthorizationEvaluator> logger)
     : IKaleidoAuthorizationEvaluator
@@ -109,9 +109,7 @@ internal sealed class KaleidoAuthorizationEvaluator(
             {
                 // No policy infrastructure — the requirement can never be
                 // satisfied. Fail closed rather than poison discovery.
-                logger.LogWarning(
-                    "Capability authorization requires policy '{Policy}' but no policy evaluator was supplied — denying access.",
-                    authorization.Policy);
+                LogNoPolicyEvaluator(logger, authorization.Policy);
 
                 return false;
             }
@@ -146,4 +144,7 @@ internal sealed class KaleidoAuthorizationEvaluator(
                 IsAuthenticated(caller));
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Capability authorization requires policy '{Policy}' but no policy evaluator was supplied — denying access.")]
+    private static partial void LogNoPolicyEvaluator(ILogger logger, string? policy);
 }

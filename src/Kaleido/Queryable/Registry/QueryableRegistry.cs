@@ -11,7 +11,7 @@ public interface IQueryableRegistry
     IReadOnlyCollection<QueryableSourceRegistryItem> Registrations { get; }
 }
 
-internal sealed class QueryableRegistry : IQueryableRegistry
+internal sealed partial class QueryableRegistry : IQueryableRegistry
 {
 
     public QueryableRegistry(
@@ -34,9 +34,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
                 .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
-        logger.LogInformation(
-            "Queryable registry built with {SourceCount} sources.",
-            Registrations.Count);
+        LogRegistryBuilt(logger, Registrations.Count);
     }
 
     public IReadOnlyCollection<QueryableSourceRegistryItem> Registrations { get; }
@@ -156,4 +154,7 @@ internal sealed class QueryableRegistry : IQueryableRegistry
             DataType = metadata.DataType,
         };
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Queryable registry built with {SourceCount} sources.")]
+    private static partial void LogRegistryBuilt(ILogger logger, int sourceCount);
 }

@@ -62,15 +62,11 @@ public interface IKaleidoEvent
 /// Discards all events and logs a warning at startup. Replace with a real
 /// implementation — see <see cref="IEventPublisher"/> remarks.
 /// </summary>
-internal sealed class EventPublisher : IEventPublisher
+internal sealed partial class EventPublisher : IEventPublisher
 {
     public EventPublisher(ILogger<EventPublisher> logger)
     {
-        logger.LogWarning(
-            "No IEventPublisher has been registered. Kaleido events are being silently discarded. " +
-            "Events carry the complete audit trail of process and query activity — " +
-            "without a real publisher you will have no data warehouse feed, audit trail, analytics, or replay capability. " +
-            "Call AddEventPublisher<TPublisher>() on the IKaleidoBuilder to register a real implementation.");
+        LogNoPublisher(logger);
     }
 
     public Task PublishAsync<TEvent, TContext>(
@@ -78,4 +74,7 @@ internal sealed class EventPublisher : IEventPublisher
         CancellationToken cancellationToken = default)
         where TEvent : IKaleidoEvent
         => Task.CompletedTask;
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "No IEventPublisher has been registered. Kaleido events are being silently discarded. Events carry the complete audit trail of process and query activity — without a real publisher you will have no data warehouse feed, audit trail, analytics, or replay capability. Call AddEventPublisher<TPublisher>() on the IKaleidoBuilder to register a real implementation.")]
+    private static partial void LogNoPublisher(ILogger logger);
 }
