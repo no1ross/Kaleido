@@ -9,8 +9,15 @@
 <p align="center">
   <img alt=".NET" src="https://img.shields.io/badge/.NET-framework-512BD4?style=flat-square" />
   <img alt="Status: preview" src="https://img.shields.io/badge/status-preview-8B5CF6?style=flat-square" />
-  <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-19A974?style=flat-square" />
+  <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-19A974?style=flat-square" /></a>
   <img alt="Machine discoverable" src="https://img.shields.io/badge/capabilities-machine--discoverable-3182F6?style=flat-square" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/no1ross/Kaleido/actions/workflows/build.yml"><img alt="Build" src="https://github.com/no1ross/Kaleido/actions/workflows/build.yml/badge.svg?branch=master" /></a>
+  <a href="https://github.com/no1ross/Kaleido/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/no1ross/Kaleido/actions/workflows/codeql.yml/badge.svg?branch=master" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=no1ross_Kaleido"><img alt="Quality gate" src="https://sonarcloud.io/api/project_badges/measure?project=no1ross_Kaleido&amp;metric=alert_status" /></a>
+  <a href="https://sonarcloud.io/component_measures?id=no1ross_Kaleido&amp;metric=coverage"><img alt="Coverage" src="https://sonarcloud.io/api/project_badges/measure?project=no1ross_Kaleido&amp;metric=coverage" /></a>
 </p>
 
 > [!IMPORTANT]
@@ -136,4 +143,4 @@ Issues, design feedback, and focused pull requests are welcome. Start with [AGEN
 
 ## License
 
-Kaleido is available under the MIT License.
+Kaleido is licensed under the [Apache License 2.0](LICENSE).
