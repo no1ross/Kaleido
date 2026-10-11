@@ -324,7 +324,7 @@ internal sealed class ToolCatalogBuilder(
             }
         };
 
-        var required = new JsonArray();
+        var required = new List<string>();
 
         if (!step.IsInitial)
         {
@@ -356,7 +356,7 @@ internal sealed class ToolCatalogBuilder(
 
         if (required.Count > 0)
         {
-            schema["required"] = required;
+            schema["required"] = new JsonArray([.. required.Select(x => (JsonNode)x)]);
         }
 
         var description =
