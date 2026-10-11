@@ -224,7 +224,7 @@ public sealed class ProcessorRuntimeTests
         var processId = Assert.IsType<Guid>(request.ProcessId);
 
         var contextStore = new Mock<IProcessorContextStore>();
-        contextStore.Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>())).ReturnsAsync(null);
+        contextStore.Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>())).ReturnsAsync(default(ProcessorContext));
 
         var stateUpdater = new Mock<IProcessorStateUpdater>(MockBehavior.Strict);
         var processor = new Mock<IProcessorExecutor>(MockBehavior.Strict);

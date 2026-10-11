@@ -139,7 +139,7 @@ public sealed class KaleidoToolInvokerTests
         elicitor.Setup(x => x.ToAnswers(It.IsAny<InformationRequest>(), It.IsAny<IReadOnlyDictionary<string, JsonElement>>()))
             .Returns([new InformationResponseItem { ItemId = "urgent", Answers = [new InformationAnswer { Value = "true" }] }]);
 
-        server.Setup(x => x.ClientCapabilities).Returns(null);
+        server.Setup(x => x.ClientCapabilities).Returns(default(ClientCapabilities));
     }
 
     private KaleidoToolInvoker CreateSut() =>

@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Net.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Client;
@@ -104,21 +103,11 @@ internal sealed class ClientDownstreamRegistries(
                     queryableClientFactory.GetClient(name).InvalidateRegistry();
                 }
             }
-            catch (HttpRequestException ex)
+            // Best effort per client: one client that cannot be resolved (e.g. misconfigured) must not
+            // stop the others from being invalidated. Invalidation is local and synchronous.
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogWarning(ex, "Failed to invalidate registry cache for client {ClientName}.", name);
-            }
-            catch (TaskCanceledException ex)
-            {
-                logger.LogWarning(ex, "Failed to invalidate registry cache for client {ClientName}.", name);
-            }
-            catch (OperationCanceledException ex)
-            {
-                logger.LogWarning(ex, "Failed to invalidate registry cache for client {ClientName}.", name);
-            }
-            catch (Exception)
-            {
-                throw;
             }
         }
     }
