@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -123,7 +124,7 @@ internal sealed partial class KaleidoToolInvoker
         // Picked: fill the inputs from the chosen row and run the step.
         if (state.SearchText is not null)
         {
-            var pickRequest = PickRequest(lookup, new LookupCandidates(state.Candidates.Select(x => x.Label).ToArray(), state.Candidates.Select(x => x.Values).ToArray(), null));
+            var pickRequest = PickRequest(lookup, new LookupCandidates(state.Candidates.Select(x => x.Label).ToArray(), state.Candidates.Select(x => x.Values).ToArray(), More: null));
 
             if (Answer(pickRequest, content, PickItemId) is { } choice &&
                 int.TryParse(choice, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var index) &&
@@ -282,7 +283,8 @@ internal sealed partial class KaleidoToolInvoker
                 {
                     Id = PickItemId,
                     Text = candidates.More is { } total
-                        ? $"Showing the first {candidates.Rows.Count} of {total} results. Pick one, or search again with more details."
+                        ? string.Create(CultureInfo.InvariantCulture, $"Showing the first {candidates.Rows.Count} of {total} results. Pick one, or search again with more details."
+)
                         : "Pick the result that is the right record, or search again.",
                     Type = InformationItemType.Choice,
                     Options = candidates.Labels
@@ -319,7 +321,7 @@ internal sealed partial class KaleidoToolInvoker
             ? null
             : elicitor.ToAnswers(request, content.ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal))
                 .FirstOrDefault(x => string.Equals(x.ItemId, itemId, StringComparison.Ordinal))?
-                .Answers.FirstOrDefault()?.Value is { Length: > 0 } value
+                .Answers is [{ Value: { Length: > 0 } value }, ..]
                 ? value
                 : null;
 

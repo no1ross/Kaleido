@@ -25,7 +25,6 @@ internal sealed class QuerySourceRegistry : IQuerySourceRegistry
 {
     private readonly IReadOnlyDictionary<string, QuerySourceRegistration> _byName;
     private readonly IReadOnlyDictionary<Type, QuerySourceRegistration> _byType;
-    private readonly IReadOnlyCollection<QuerySourceRegistration> _registrations;
 
     private readonly ITypeDescriber _typeDescriber;
     private readonly IConstraintMapper _constraintMapper;
@@ -54,7 +53,7 @@ internal sealed class QuerySourceRegistry : IQuerySourceRegistry
                 .Concat(delegatedSourceTypes.Select(BuildDelegatedRegistration))
                 .ToArray();
 
-        _registrations = registrations;
+        Registrations = registrations;
 
         _byName =
             registrations.ToDictionary(
@@ -66,8 +65,7 @@ internal sealed class QuerySourceRegistry : IQuerySourceRegistry
                 x => x.SourceType);
     }
 
-    public IReadOnlyCollection<QuerySourceRegistration> Registrations =>
-        _registrations;
+    public IReadOnlyCollection<QuerySourceRegistration> Registrations { get; }
 
     public QuerySourceRegistration? Find(string name)
     {

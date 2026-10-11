@@ -224,7 +224,7 @@ public sealed record QueryableSourceResponse
         = string.Empty;
 
     /// <summary>
-    /// The URL to query this source directly. Every source has one; it is <c>null</c> only in a
+    /// The URL to query this source directly. Every source has one; it is <see langword="null"/> only in a
     /// caller-filtered registry when the caller may use some of the source's views but is not
     /// authorized to query the source itself.
     /// </summary>

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using ModelContextProtocol.Protocol;
@@ -241,7 +242,7 @@ internal sealed class ToolCatalogBuilder(
             properties["page"] = new JsonObject
             {
                 ["type"] = "object",
-                ["description"] = $"Paging. Default size {pageable.DefaultSize}; at most {pageable.MaxSize} results per page.",
+                ["description"] = string.Create(CultureInfo.InvariantCulture, $"Paging. Default size {pageable.DefaultSize}; at most {pageable.MaxSize} results per page."),
                 ["properties"] = new JsonObject
                 {
                     ["size"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = pageable.MaxSize },
@@ -406,7 +407,7 @@ internal sealed class ToolCatalogBuilder(
         {
             var first = group.Select(x => x.Lookup).OfType<Kaleido.Processor.Registry.LookupMetadata>().First();
 
-            var query = context.Tools.FirstOrDefault(x =>
+            var query = context.Tools.Find(x =>
                 x.Kind == KaleidoToolKind.Query &&
                 string.Equals(x.Service, first.Service, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(x.SourceName, first.Source, StringComparison.OrdinalIgnoreCase) &&
@@ -482,7 +483,7 @@ internal sealed class ToolCatalogBuilder(
 
         var parts = new[] { field.Description?.Trim() }.Concat(hints).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
 
-        return parts.Length == 0 ? null : string.Join(" ", parts);
+        return parts.Length == 0 ? null : string.Join(' ', parts);
     }
 
     // ── Built-in tools ───────────────────────────────────────────────────────
@@ -598,7 +599,7 @@ internal sealed class ToolCatalogBuilder(
 
         for (var suffix = 2; context.Names.Contains(name); suffix++)
         {
-            name = WithTail(built.Value, $"_{kind}_{suffix}");
+            name = WithTail(built.Value, string.Create(CultureInfo.InvariantCulture, $"_{kind}_{suffix}"));
         }
 
         context.NameCollisions.Add($"{service}/{capabilityTypeName} -> {name} (derives {built.Value}, already used)");
@@ -654,7 +655,7 @@ internal sealed class ToolCatalogBuilder(
 
     private static string DescribeType(DataTypeDescriptor type) =>
         type.EnumValues is { Count: > 0 } values
-            ? string.Join("|", values.Select(x => Camel(x.Name)))
+            ? string.Join('|', values.Select(x => Camel(x.Name)))
             : type.Format ?? type.Type;
 
     private static string Explain(string? description) =>
@@ -664,7 +665,7 @@ internal sealed class ToolCatalogBuilder(
         JsonNamingPolicy.CamelCase.ConvertName(value);
 
     private static JsonArray Strings(IEnumerable<string> values) =>
-        new(values.Select(x => (JsonNode?)x).ToArray());
+        [.. values.Select(x => (JsonNode?)x)];
 
     private sealed class BuildContext
     {

@@ -65,7 +65,8 @@ internal sealed class InformationValidator : IInformationValidator
                     break;
 
                 case InformationItemType.Choice
-                    when item.Options.Select(x => x.Value).Distinct(StringComparer.Ordinal).Count() != item.Options.Count
+                    when item.Options.Select(x => x.Value).Distinct(StringComparer.Ordinal).Take(item.Options.Count
++ 1).Count() != item.Options.Count
                         || item.Options.Any(x => string.IsNullOrWhiteSpace(x.Value)):
                     errors.Add(RequestError($"Choice item '{item.Id}' has empty or duplicate option values."));
                     break;

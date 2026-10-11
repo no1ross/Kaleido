@@ -50,7 +50,7 @@ internal sealed partial class ProcessorStepRegistry
         {
             ValidateCircularDependency(
                 definition,
-                new HashSet<Type>(),
+                [],
                 new Stack<Type>());
         }
     }

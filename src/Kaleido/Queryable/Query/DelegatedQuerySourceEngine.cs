@@ -55,8 +55,8 @@ internal sealed class DelegatedQuerySourceEngine<TQueryContext, TResult>(
         var details =
             new QueryObservationDetails(
                 source.Metadata.Name,
-                null,
-                true,
+                QueryViewName: null,
+                IsDirectQuery: true,
                 QueryExecutionMode.DelegatedSource);
 
         using var observation =

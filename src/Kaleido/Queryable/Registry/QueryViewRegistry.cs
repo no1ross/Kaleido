@@ -20,7 +20,6 @@ internal sealed class QueryViewRegistry
     : IQueryViewRegistry
 {
     private readonly IReadOnlyDictionary<Type, QueryViewRegistration> _byType;
-    private readonly IReadOnlyCollection<QueryViewRegistration> _registrations;
 
     private readonly ITypeDescriber _typeDescriber;
     private readonly IConstraintMapper _constraintMapper;
@@ -42,7 +41,7 @@ internal sealed class QueryViewRegistry
                 .Select(BuildRegistration)
                 .ToArray();
 
-        _registrations =
+        Registrations =
             registrations;
 
         _byType =
@@ -50,8 +49,7 @@ internal sealed class QueryViewRegistry
                 x => x.QueryViewType);
     }
 
-    public IReadOnlyCollection<QueryViewRegistration> Registrations =>
-        _registrations;
+    public IReadOnlyCollection<QueryViewRegistration> Registrations { get; }
 
     public QueryViewRegistration? Find(Type queryViewType)
     {

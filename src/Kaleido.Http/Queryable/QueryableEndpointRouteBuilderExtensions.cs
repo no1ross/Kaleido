@@ -166,8 +166,8 @@ public static class QueryableEndpointRouteBuilderExtensions
                     Results.Ok(
                         await queryable.QueryAsync<TQueryView, TView>(
                             new QueryRequest<TViewParameters>(
-                                Query: request.Query.ToQueryBody(fields),
-                                ViewParameters: request.Parameters),
+                                ViewParameters: request.Parameters,
+                                Query: request.Query.ToQueryBody(fields)),
                             cancellationToken)))
             .WithKaleidoAuthorization(view.Authorization, options)
             .WithName(
@@ -206,8 +206,8 @@ public static class QueryableEndpointRouteBuilderExtensions
                     Results.Ok(
                         await queryable.QueryAsync<TSource, TResult>(
                             new QueryRequest<TParameters>(
-                                Query: request.Query.ToQueryBody(fields),
-                                ViewParameters: request.Parameters),
+                                ViewParameters: request.Parameters,
+                                Query: request.Query.ToQueryBody(fields)),
                             cancellationToken)))
             .WithKaleidoAuthorization(source.Authorization, options)
             .WithName(

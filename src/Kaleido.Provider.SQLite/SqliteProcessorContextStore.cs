@@ -112,12 +112,12 @@ internal sealed class SqliteProcessorContextStore(
 
             entity.CreatedUtc =
                 context.CreatedUtc == default
-                    ? DateTime.UtcNow
+                    ? DateTimeOffset.UtcNow
                     : context.CreatedUtc;
 
             entity.UpdatedUtc =
                 context.UpdatedUtc == default
-                    ? DateTime.UtcNow
+                    ? DateTimeOffset.UtcNow
                     : context.UpdatedUtc;
 
             SyncSteps(entity, context);

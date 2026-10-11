@@ -28,12 +28,15 @@ public interface IProcessorContextStore
 }
 
 /// <summary>
+/// <para>
 /// Represents the current durable state of a process instance.
 /// This object contains only the information required to continue
 /// processing future requests.
-///
+/// </para>
+/// <para>
 /// Historical activity and operational evidence are emitted as
 /// process events and should not be stored here.
+/// </para>
 /// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record ProcessorContext
@@ -65,7 +68,7 @@ public sealed record ProcessorContext
     /// <summary>
     /// Name of the caller that created this process, captured from
     /// <see cref="KaleidoCorrelationContext.CallerName"/> at creation.
-    /// <c>null</c> when the process was created anonymously or on a transport
+    /// <see langword="null"/> when the process was created anonymously or on a transport
     /// without an authenticated caller.
     /// </summary>
     /// <remarks>
@@ -182,11 +185,12 @@ public sealed record ProcessorContext
 }
 
 /// <summary>
-/// Represents the current state of an individual process step.
-///
+/// <para>Represents the current state of an individual process step.</para>
+/// <para>
 /// This is intentionally a lightweight summary and should not
 /// contain historical information. Operational history is emitted
 /// through process events.
+/// </para>
 /// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record StepContext

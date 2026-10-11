@@ -18,7 +18,7 @@ namespace Kaleido.Http.Registry;
 /// </remarks>
 public interface IRegistrySnapshotStore
 {
-    /// <summary>Returns the snapshot for <paramref name="key"/>, or <c>null</c> when absent.</summary>
+    /// <summary>Returns the snapshot for <paramref name="key"/>, or <see langword="null"/> when absent.</summary>
     ValueTask<AggregatedRegistryResponse?> GetAsync(
         string key,
         CancellationToken cancellationToken = default);

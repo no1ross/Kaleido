@@ -52,7 +52,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             new QueryObservationDetails(
                 source.Metadata.Name,
                 viewRegistration.Metadata.Name,
-                false,
+                IsDirectQuery: false,
                 QueryExecutionMode.LocalView);
 
         using var observation =
@@ -105,8 +105,8 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         var details =
             new QueryObservationDetails(
                 source.Metadata.Name,
-                null,
-                true,
+                QueryViewName: null,
+                IsDirectQuery: true,
                 QueryExecutionMode.DirectSource);
 
         using var observation =
