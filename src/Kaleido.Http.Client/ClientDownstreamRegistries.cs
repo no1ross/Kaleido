@@ -63,22 +63,11 @@ internal sealed class ClientDownstreamRegistries(
                 {
                     throw;
                 }
-                catch (HttpRequestException ex)
-                {
-                    logger.LogWarning(
-                        ex,
-                        "Registry client {ClientName} failed: {Reason}.",
-                        name,
-                        ex.Message);
-
-                    errors.Add(new RegistryClientError
-                    {
-                        ClientName = name,
-                        ClientType = "Registry",
-                        Reason = "Registry fetch failed. See server logs for details."
-                    });
-                }
-                catch (TaskCanceledException ex)
+                // Best effort per downstream: any failure of one client (unreachable, an error status
+                // - KaleidoHttpClientException -, an unreadable body, a timeout) is reported in the
+                // aggregate's errors and the others still load. The caller's own cancellation is
+                // rethrown above.
+                catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                 {
                     logger.LogWarning(
                         ex,
