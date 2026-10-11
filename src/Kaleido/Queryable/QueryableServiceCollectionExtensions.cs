@@ -100,13 +100,17 @@ public static class QueryableServiceCollectionExtensions
     internal static (Type[] LocalSources, Type[] DelegatedSources, Type[] Views) DiscoverQueryableCapabilities(
         this IEnumerable<Type> types)
     {
+        var scanned = types.ToArray();
+
         var candidateTypes =
-            types
+            scanned
                 .Where(x =>
                     x.IsLocalQuerySource() ||
                     x.IsDelegatedQuerySource() ||
                     x.IsQueryView())
                 .ToArray();
+
+        ValidateAttributesHaveInterface(scanned.Except(candidateTypes));
 
         var localSourceTypes = candidateTypes.Where(x => x.IsLocalQuerySource()).ToArray();
         var delegatedSourceTypes = candidateTypes.Where(x => x.IsDelegatedQuerySource()).ToArray();
@@ -116,6 +120,29 @@ public static class QueryableServiceCollectionExtensions
         ValidateViews(viewTypes, localSourceTypes);
 
         return (localSourceTypes, delegatedSourceTypes, viewTypes);
+    }
+
+    // [QuerySource]/[QueryView] on a type that is no source or view would otherwise be silently
+    // ignored. Analyzers report it at compile time, but they can be switched off: registration
+    // enforces it at startup, on purpose (#204).
+    private static void ValidateAttributesHaveInterface(
+        IEnumerable<Type> nonCapabilityTypes)
+    {
+        var invalid =
+            nonCapabilityTypes
+                .Where(x =>
+                    x.GetCustomAttribute<QuerySourceAttribute>() is not null ||
+                    x.GetCustomAttribute<QueryViewAttribute>() is not null)
+                .Select(x => x.FullName)
+                .ToArray();
+
+        if (invalid.Length > 0)
+        {
+            throw new KaleidoConfigurationException(
+                QueryableErrorCodes.InvalidRegistration,
+                $"[QuerySource] or [QueryView] is applied to types that implement no query source or view interface: {string.Join(", ", invalid)}. " +
+                "A source is identified by IQuerySource<T>, IQuerySourceAsync<T> or IDelegatedQuerySource<...>, a view by IQueryViewSource<...> or IQueryViewSourceAsync<...>; the attribute only describes it.");
+        }
     }
 
     private static void ValidateSources(
