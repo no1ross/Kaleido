@@ -9,7 +9,7 @@ namespace Kaleido.Http.Client.HealthChecks;
 /// Reports <see cref="HealthStatus.Unhealthy"/> if the remote service cannot be reached or returns
 /// a non-success status code, and <see cref="HealthStatus.Healthy"/> otherwise.
 /// </summary>
-internal sealed class KaleidoClientHealthCheck(
+internal sealed partial class KaleidoClientHealthCheck(
     IHttpClientFactory httpClientFactory,
     string clientName,
     string registryPath,
@@ -31,24 +31,24 @@ internal sealed class KaleidoClientHealthCheck(
                     string.Create(CultureInfo.InvariantCulture, $"Kaleido remote '{clientName}' is reachable ({(int)response.StatusCode})."));
             }
 
-            logger.LogWarning(
-                "Kaleido client health check for '{ClientName}' received non-success status {StatusCode}.",
-                clientName,
-                (int)response.StatusCode);
+            LogHealthCheckNonSuccess(logger, clientName, (int)response.StatusCode);
 
             return HealthCheckResult.Unhealthy(
                 string.Create(CultureInfo.InvariantCulture, $"Kaleido remote '{clientName}' returned {(int)response.StatusCode}."));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(
-                ex,
-                "Kaleido client health check for '{ClientName}' failed.",
-                clientName);
+            LogHealthCheckFailed(logger, ex, clientName);
 
             return HealthCheckResult.Unhealthy(
                 $"Kaleido remote '{clientName}' is unreachable: {ex.Message}",
                 ex);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido client health check for '{ClientName}' received non-success status {StatusCode}.")]
+    private static partial void LogHealthCheckNonSuccess(ILogger logger, string clientName, int statusCode);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido client health check for '{ClientName}' failed.")]
+    private static partial void LogHealthCheckFailed(ILogger logger, Exception exception, string clientName);
 }
