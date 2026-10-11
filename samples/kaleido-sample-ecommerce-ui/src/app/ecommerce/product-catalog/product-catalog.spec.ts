@@ -7,9 +7,13 @@ describe('ProductCatalog', () => {
   let fixture: ComponentFixture<ProductCatalog>;
 
   beforeEach(async () => {
+    // Shallow: the child query components read the Kaleido registry, which a unit test does not
+    // load (no backend); this test covers the catalog component itself.
     await TestBed.configureTestingModule({
       imports: [ProductCatalog],
-    }).compileComponents();
+    })
+      .overrideComponent(ProductCatalog, { set: { imports: [], template: '' } })
+      .compileComponents();
 
     fixture = TestBed.createComponent(ProductCatalog);
     component = fixture.componentInstance;

@@ -51,7 +51,20 @@ Rules:
   to run again. `Failure(messages)` only when the request cannot proceed: it ends the process.
   An unexpected exception leaves the process as it was, so the step can be retried.
 - Relationships are typed: `[DependsOn<T>]`, `[AvailableAfter<T>]`,
-  `[AvailableUntil<T>]`, constrained to `IProcessStep`.
+  `[AvailableUntil<T>]`, constrained to `IProcessStep`. What they mean:
+  - `[DependsOn<T>]`: the step runs only after `T` completed, in the process history or
+    earlier in the same request (`T` is then ordered first). It is not offered as available
+    until then. Several: all of them.
+  - `[AvailableAfter<T>]`: the step becomes available once `T` has completed (at any point
+    in the process, not only right after it) and stays available. Several: all of them.
+  - `[AvailableUntil<T>]`: the step stops being available once `T` completes. Several: the
+    first one completed closes it.
+  - `[Repeatable]`: without it, a completed step is not offered again; submitting it again is
+    skipped (`pro_already_processed`), not an error.
+  - A step with no `[DependsOn]` and no `[AvailableAfter]` (and not an information step) is
+    an **initial step**: available when a process starts.
+  - At startup: a relationship to itself, a circular `[DependsOn]` graph, or a relationship to a
+    step the processor does not register fails with `pro_invalid_registration`.
 - Every step needs exactly one handler (KAL2008); the handler must not swallow
   `OperationCanceledException` in `catch (Exception)` — filter it or let the
   executor own cancellation (KAL2004).

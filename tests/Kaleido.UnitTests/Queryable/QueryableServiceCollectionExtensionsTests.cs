@@ -25,17 +25,14 @@ public sealed class QueryableServiceCollectionExtensionsTests
         Assert.Equal([typeof(MemberSearch)], views);
     }
 
+    // The analyzer reports it at compile time; registration still enforces it (#204).
     [Fact]
-    public void Discover_IgnoresAttributeWithoutInterface()
-    {
-        var (localSources, delegatedSources, views) =
-            new[] { typeof(AttributeOnlySource), typeof(AttributeOnlyView) }
-                .DiscoverQueryableCapabilities();
+    public void Discover_WhenQuerySourceAttributeIsOnATypeWithoutTheInterface_Throws() =>
+        AssertThrows(QueryableErrorCodes.InvalidRegistration, nameof(AttributeOnlySource), typeof(AttributeOnlySource));
 
-        Assert.Empty(localSources);
-        Assert.Empty(delegatedSources);
-        Assert.Empty(views);
-    }
+    [Fact]
+    public void Discover_WhenQueryViewAttributeIsOnATypeWithoutTheInterface_Throws() =>
+        AssertThrows(QueryableErrorCodes.InvalidRegistration, nameof(AttributeOnlyView), typeof(AttributeOnlyView));
 
     [Fact]
     public void Discover_WhenSourceHasNoAttribute_Throws() =>
