@@ -11,7 +11,7 @@ internal interface IProcessStateService
         CancellationToken cancellationToken);
 }
 
-internal sealed class ProcessStateService(
+internal sealed partial class ProcessStateService(
     IProcessorContextStore contextStore,
     IProcessorStepRegistry registry,
     KaleidoServiceOptions serviceOptions,
@@ -21,30 +21,20 @@ internal sealed class ProcessStateService(
 {
     public async Task<ProcessStateResponse?> GetCurrentState(Guid processId, CancellationToken cancellationToken)
     {
-        logger.LogDebug(
-            "Loading process state for processor {ProcessorName} process {ProcessId}.",
-            serviceOptions.ServiceName,
-            processId);
+        LogLoadingState(logger, serviceOptions.ServiceName, processId);
 
         var context = await contextStore.LoadAsync(processId, cancellationToken);
 
         if (context == null)
         {
-            logger.LogDebug(
-                "Process state not found for processor {ProcessorName} process {ProcessId}.",
-                serviceOptions.ServiceName,
-                processId);
+            LogStateNotFound(logger, serviceOptions.ServiceName, processId);
 
             return null;
         }
 
         // No case-level guardrail (ADR 0010): any caller admitted by the
         // endpoint may read the state; Owner is returned as a tag only.
-        logger.LogDebug(
-            "Process state loaded for processor {ProcessorName} process {ProcessId} state {State}.",
-            serviceOptions.ServiceName,
-            processId,
-            context.State);
+        LogStateLoaded(logger, serviceOptions.ServiceName, processId, context.State);
 
         return new ProcessStateResponse
         {
@@ -132,4 +122,13 @@ internal sealed class ProcessStateService(
             context.RequiredInformationRequest,
             serviceOptions.ServiceName);
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Loading process state for processor {ProcessorName} process {ProcessId}.")]
+    private static partial void LogLoadingState(ILogger logger, string processorName, Guid processId);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Process state not found for processor {ProcessorName} process {ProcessId}.")]
+    private static partial void LogStateNotFound(ILogger logger, string processorName, Guid processId);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Process state loaded for processor {ProcessorName} process {ProcessId} state {State}.")]
+    private static partial void LogStateLoaded(ILogger logger, string processorName, Guid processId, Kaleido.Processor.ProcessExecutionState state);
 }
