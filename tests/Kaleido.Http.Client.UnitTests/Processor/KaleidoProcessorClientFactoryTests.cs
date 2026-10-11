@@ -23,7 +23,7 @@ public sealed class KaleidoProcessorClientFactoryTests
     public void GetClient_WhenNamedClientIsRegistered_ReturnsClient()
     {
         var routeMap = new KaleidoProcessorClientRouteOptionsMap();
-        routeMap.Options["remote-svc"] = "remote-svc";
+        routeMap.SetRoutePrefix("remote-svc", "remote-svc");
 
         var httpClientFactory = new Mock<IHttpClientFactory>();
         httpClientFactory
@@ -41,7 +41,7 @@ public sealed class KaleidoProcessorClientFactoryTests
     public void TryGetClientForService_FindsTheClientByItsRoutePrefix()
     {
         var routeMap = new KaleidoProcessorClientRouteOptionsMap();
-        routeMap.Options["IntakeService"] = "intake";
+        routeMap.SetRoutePrefix("IntakeService", "intake");
 
         var httpClientFactory = new Mock<IHttpClientFactory>();
         httpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(new System.Net.Http.HttpClient());
