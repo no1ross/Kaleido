@@ -26,10 +26,7 @@ internal static class KaleidoClientServiceCollectionExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(options.Name, nameof(configure));
         ArgumentException.ThrowIfNullOrWhiteSpace(options.BaseUrl, nameof(configure));
 
-        var httpClientBuilder = services.AddHttpClient(options.Name, client =>
-        {
-            client.BaseAddress = new Uri(options.BaseUrl);
-        });
+        var httpClientBuilder = services.AddHttpClient(options.Name, client => client.BaseAddress = new Uri(options.BaseUrl));
 
         configureClient?.Invoke(httpClientBuilder);
 

@@ -1,7 +1,7 @@
 using Kaleido.Observability;
-using Kaleido.UnitTests;
 using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Observability;
+using Kaleido.UnitTests;
 
 namespace Kaleido.Queryable.Eventing.UnitTests;
 

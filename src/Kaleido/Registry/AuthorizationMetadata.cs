@@ -71,7 +71,7 @@ public sealed record AuthorizationMetadata(
 
         return new AuthorizationMetadata(attribute.Policy, roles)
         {
-            AllowAnonymous = attribute.AllowAnonymous
+            AllowAnonymous = attribute.AllowAnonymous,
         };
     }
 }

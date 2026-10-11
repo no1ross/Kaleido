@@ -120,7 +120,7 @@ internal sealed class McpObservability(
                 KaleidoToolKind.Step => "step",
                 KaleidoToolKind.AnswerInformationRequest => "answer",
                 KaleidoToolKind.GetProcessState => "state",
-                _ => "unknown"
+                _ => "unknown",
             };
 
             service = tool.Service;
@@ -208,7 +208,7 @@ internal sealed class McpObservability(
             [
                 new(McpTelemetry.TagToolKind, kind),
                 new(McpTelemetry.TagService, service),
-                new(McpTelemetry.TagOutcome, outcome)
+                new(McpTelemetry.TagOutcome, outcome),
             ];
 
             if (errorCode is not null)

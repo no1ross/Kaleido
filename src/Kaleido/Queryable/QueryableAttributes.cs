@@ -97,6 +97,4 @@ public sealed class SearchableAttribute : Attribute
 
 /// <summary>Declares an <see cref="IQueryContext"/> property as sortable.</summary>
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-public sealed class SortableAttribute : Attribute
-{
-}
+public sealed class SortableAttribute : Attribute;

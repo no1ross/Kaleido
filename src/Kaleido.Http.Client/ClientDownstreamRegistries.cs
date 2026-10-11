@@ -79,7 +79,7 @@ internal sealed class ClientDownstreamRegistries(
                     {
                         ClientName = name,
                         ClientType = "Registry",
-                        Reason = "Registry fetch failed. See server logs for details."
+                        Reason = "Registry fetch failed. See server logs for details.",
                     });
                 }
                 finally

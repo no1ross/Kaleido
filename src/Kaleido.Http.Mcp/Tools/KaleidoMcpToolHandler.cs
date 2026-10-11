@@ -59,7 +59,7 @@ internal sealed class KaleidoMcpToolHandler(
 
             return new ListToolsResult
             {
-                Tools = catalog.Tools.Select(x => x.Definition).ToList()
+                Tools = catalog.Tools.Select(x => x.Definition).ToList(),
             };
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -161,7 +161,7 @@ internal sealed class KaleidoMcpToolHandler(
                 InputResponses = request.Params?.InputResponses is { } responses
                     ? new Dictionary<string, InputResponse>(responses, StringComparer.Ordinal)
                     : null,
-                RequestState = request.Params?.RequestState
+                RequestState = request.Params?.RequestState,
             },
             catalog,
             cancellationToken);
@@ -205,8 +205,8 @@ internal sealed class KaleidoMcpToolHandler(
             [
                 new TextContentBlock
                 {
-                    Text = new JsonObject { ["code"] = code, ["message"] = message }.ToJsonString(KaleidoJsonOptions.Options)
-                }
-            ]
+                    Text = new JsonObject { ["code"] = code, ["message"] = message }.ToJsonString(KaleidoJsonOptions.Options),
+                },
+            ],
         };
 }

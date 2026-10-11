@@ -51,20 +51,20 @@ public sealed class KaleidoHttpClientException : Exception
 public static class HttpClientErrorCodes
 {
     /// <summary>A required registration (context, view, or step) was not found in the remote registry.</summary>
-    public const string NotFound             = "httpclient_not_found";
+    public const string NotFound = "httpclient_not_found";
 
     /// <summary>A remote request succeeded but returned an empty payload.</summary>
-    public const string EmptyResponse        = "httpclient_empty_response";
+    public const string EmptyResponse = "httpclient_empty_response";
 
     /// <summary>A remote request failed with a non-success HTTP status code.</summary>
-    public const string RequestFailed        = "httpclient_request_failed";
+    public const string RequestFailed = "httpclient_request_failed";
 
     /// <summary>A remote queryable request failed with structured validation errors.</summary>
-    public const string ValidationFailed     = "httpclient_validation_failed";
+    public const string ValidationFailed = "httpclient_validation_failed";
 
     /// <summary>A URL returned by a remote registry was not a valid absolute http(s) URL.</summary>
-    public const string InvalidRegistryUrl   = "httpclient_invalid_registry_url";
+    public const string InvalidRegistryUrl = "httpclient_invalid_registry_url";
 
     /// <summary>A configured Kaleido client is missing a BaseUrl (neither client-level nor shared Kaleido:BaseUrl). Raised at startup as a configuration error.</summary>
-    public const string MissingBaseUrl       = "missing_base_url";
+    public const string MissingBaseUrl = "missing_base_url";
 }

@@ -1,8 +1,7 @@
 using Kaleido.Eventing;
 using Kaleido.Processor.Eventing;
-using Microsoft.Extensions.Logging.Abstractions;
-
 using Kaleido.UnitTests;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Eventing.UnitTests;
 

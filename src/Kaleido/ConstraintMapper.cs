@@ -84,7 +84,7 @@ internal sealed class ConstraintMapper : IConstraintMapper
             _ =>
                 Create(
                     GetConstraintName(
-                        attribute.GetType()))
+                        attribute.GetType())),
         };
     }
 
@@ -111,9 +111,9 @@ internal sealed class ConstraintMapper : IConstraintMapper
                     new ConstraintParameterContract
                     {
                         Name = x.Name,
-                        Value = x.Value
+                        Value = x.Value,
                     })
-                .ToArray()
+                .ToArray(),
         };
     }
 

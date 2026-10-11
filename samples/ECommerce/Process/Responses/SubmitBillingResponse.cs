@@ -1,4 +1,4 @@
-﻿namespace Kaleido.Samples.ECommerce.Process.Responses;
+namespace Kaleido.Samples.ECommerce.Process.Responses;
 
 public sealed record SubmitBillingResponse
 {

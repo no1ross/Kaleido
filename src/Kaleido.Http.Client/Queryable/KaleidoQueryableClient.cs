@@ -103,7 +103,7 @@ internal sealed class KaleidoQueryableClient(
             HttpMethod.Post,
             url.RequireValidRegistryUrl(nameof(url), httpClient.BaseAddress))
         {
-            Content = JsonContent.Create(request, options: KaleidoJsonOptions.Options)
+            Content = JsonContent.Create(request, options: KaleidoJsonOptions.Options),
         };
 
         headerStamper.Stamp(httpRequest);

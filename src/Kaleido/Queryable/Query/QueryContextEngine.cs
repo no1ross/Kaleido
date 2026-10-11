@@ -210,7 +210,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             _ => throw new KaleidoFrameworkException(
                 FrameworkErrorCodes.TypeMismatch,
                 $"Query source '{source.SourceType.FullName}' must implement " +
-                $"IQuerySource<{typeof(TQueryContext).Name}> or IQuerySourceAsync<{typeof(TQueryContext).Name}>.")
+                $"IQuerySource<{typeof(TQueryContext).Name}> or IQuerySourceAsync<{typeof(TQueryContext).Name}>."),
         };
 
         query = applier.ApplySearch(query, compiled.Search);

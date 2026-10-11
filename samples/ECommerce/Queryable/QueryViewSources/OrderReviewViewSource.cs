@@ -1,6 +1,6 @@
-using Kaleido.Samples.ECommerce.Data.QueryContextSources;
 using Kaleido.Queryable;
 using Kaleido.Samples.ECommerce.Data.QueryContexts;
+using Kaleido.Samples.ECommerce.Data.QueryContextSources;
 using Kaleido.Samples.ECommerce.Data.QueryViewSources.Parameters;
 using Kaleido.Samples.ECommerce.Data.QueryViewSources.Views;
 

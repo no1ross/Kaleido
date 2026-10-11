@@ -1,7 +1,6 @@
+using Kaleido.UnitTests;
 using NetArchTest.Rules;
 using TestResult = NetArchTest.Rules.TestResult;
-
-using Kaleido.UnitTests;
 
 namespace System.Runtime.InteropServices.UnitTests;
 

@@ -101,7 +101,7 @@ internal sealed class InformationValidator : IInformationValidator
             [
                 StepProcessingMessage.Error(
                     ProcessorErrorCodes.InformationResponseMismatch,
-                    $"The answers are for information request '{response.InformationRequestId}', but the pending request is '{request.InformationRequestId}'.")
+                    $"The answers are for information request '{response.InformationRequestId}', but the pending request is '{request.InformationRequestId}'."),
             ];
         }
 
@@ -216,7 +216,7 @@ internal sealed class InformationValidator : IInformationValidator
             InformationItemType.Date => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _),
             InformationItemType.DateTime => DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out _),
             InformationItemType.Choice => question.Options.Any(x => string.Equals(x.Value, value, StringComparison.Ordinal)),
-            _ => false
+            _ => false,
         };
     }
 
@@ -230,7 +230,7 @@ internal sealed class InformationValidator : IInformationValidator
             InformationItemType.Date => "expects a date, yyyy-MM-dd",
             InformationItemType.DateTime => "expects an ISO 8601 date and time",
             InformationItemType.Choice => $"expects one of: {string.Join(", ", question.Options.Select(x => x.Value))}",
-            _ => "expects non-empty text"
+            _ => "expects non-empty text",
         };
 
     private static IEnumerable<InformationItem> Flatten(

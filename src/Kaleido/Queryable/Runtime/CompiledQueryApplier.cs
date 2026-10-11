@@ -161,7 +161,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
 
             _ => throw new KaleidoValidationException(
                 QueryableErrorCodes.InvalidFilterNode,
-                $"Unsupported compiled filter type '{expression.GetType().Name}'.")
+                $"Unsupported compiled filter type '{expression.GetType().Name}'."),
         };
     }
 
@@ -228,7 +228,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
 
             _ => throw new KaleidoValidationException(
                 QueryableErrorCodes.UnsupportedMatchMode,
-                $"Field '{field.Field.Name}' does not support match mode '{field.MatchMode}'.")
+                $"Field '{field.Field.Name}' does not support match mode '{field.MatchMode}'."),
         };
     }
 
@@ -375,7 +375,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
 
             _ => throw new KaleidoValidationException(
                 QueryableErrorCodes.UnsupportedOperator,
-                $"Field '{condition.Field.Name}' does not support operator '{condition.Operator}'.")
+                $"Field '{condition.Field.Name}' does not support operator '{condition.Operator}'."),
         };
     }
 
@@ -482,7 +482,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 (true, SortDirection.Descending) => QueryableThenByDescendingOpenMethod,
                 _ => throw new KaleidoFrameworkException(
                     FrameworkErrorCodes.TypeMismatch,
-                    $"Sort direction '{sort.Direction}' is not a recognised SortDirection value.")
+                    $"Sort direction '{sort.Direction}' is not a recognised SortDirection value."),
             };
 
         var method =
@@ -526,7 +526,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 nameof(string.EndsWith) => StringEndsWithMethod,
                 _ => throw new KaleidoFrameworkException(
                     FrameworkErrorCodes.TypeMismatch,
-                    $"Unsupported string method '{methodName}'.")
+                    $"Unsupported string method '{methodName}'."),
             };
 
         var notNull =

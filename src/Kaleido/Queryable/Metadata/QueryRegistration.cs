@@ -24,7 +24,7 @@ public enum QuerySourceKind
     /// A delegated source (<see cref="IDelegatedQuerySource{TQueryContext,TResult,TParameters}"/>):
     /// the source executes the query downstream and returns its own mapped results. It has no views.
     /// </summary>
-    Delegated
+    Delegated,
 }
 
 /// <summary>A discovered query source and its metadata.</summary>

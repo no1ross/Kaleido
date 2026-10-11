@@ -1,2 +1,2 @@
-﻿namespace Kaleido.Samples.PriorAuth.ReferenceData;
+namespace Kaleido.Samples.PriorAuth.ReferenceData;
 

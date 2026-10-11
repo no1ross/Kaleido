@@ -1,8 +1,6 @@
 namespace Kaleido.Processor.Eventing;
 
-public interface IProcessEvent : IKaleidoEvent
-{
-}
+public interface IProcessEvent : IKaleidoEvent;
 
 [ExcludeFromCodeCoverage]
 public abstract record ProcessEventBase : IProcessEvent

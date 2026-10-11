@@ -1,6 +1,6 @@
-using Kaleido.Samples.PriorAuth.History.Queryable.ContextSources;
 using Kaleido.Queryable;
 using Kaleido.Samples.PriorAuth.History.Queryable.Contexts;
+using Kaleido.Samples.PriorAuth.History.Queryable.ContextSources;
 using Kaleido.Samples.PriorAuth.History.Queryable.ViewSources.Views;
 
 namespace Kaleido.Samples.PriorAuth.History.Queryable.ViewSources;

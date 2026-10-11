@@ -32,4 +32,5 @@ public sealed record StartRadiologyIntakeStep : IProcessStep
 
     public Laterality? Laterality { get; init; }
 
-    public ContrastOption? Contrast { get; init; }}
+    public ContrastOption? Contrast { get; init; }
+}

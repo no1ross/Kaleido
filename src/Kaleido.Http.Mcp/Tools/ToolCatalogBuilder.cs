@@ -83,7 +83,7 @@ internal sealed class ToolCatalogBuilder(
             MissingDescriptions = context.MissingDescriptions,
             TruncatedNames = context.TruncatedNames,
             UnresolvedLookups = context.UnresolvedLookups,
-            NameCollisions = context.NameCollisions
+            NameCollisions = context.NameCollisions,
         };
     }
 
@@ -112,7 +112,7 @@ internal sealed class ToolCatalogBuilder(
             Service = source.ServiceName,
             CapabilityName = source.Name,
             SourceName = source.Name,
-            Url = source.QueryUrl ?? string.Empty
+            Url = source.QueryUrl ?? string.Empty,
         });
     }
 
@@ -141,7 +141,7 @@ internal sealed class ToolCatalogBuilder(
             CapabilityName = view.Name,
             SourceName = source.Name,
             ViewName = view.Name,
-            Url = view.QueryUrl
+            Url = view.QueryUrl,
         });
     }
 
@@ -162,8 +162,8 @@ internal sealed class ToolCatalogBuilder(
                 ReadOnlyHint = true,
                 IdempotentHint = true,
                 DestructiveHint = false,
-                OpenWorldHint = false
-            }
+                OpenWorldHint = false,
+            },
         };
 
     // { searchText?, filters?, sort?, page?, parameters? } — only what the source supports.
@@ -186,7 +186,7 @@ internal sealed class ToolCatalogBuilder(
                 ["type"] = "string",
                 ["description"] =
                     "Free-text search. Matches: " +
-                    string.Join(", ", searchable.Select(x => $"{x.Name} ({Camel(x.MatchMode?.ToString() ?? "contains")})")) + "."
+                    string.Join(", ", searchable.Select(x => $"{x.Name} ({Camel(x.MatchMode?.ToString() ?? "contains")})")) + ".",
             };
         }
 
@@ -208,10 +208,10 @@ internal sealed class ToolCatalogBuilder(
                     {
                         ["field"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.Select(x => x.Name)) },
                         ["operator"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.SelectMany(x => x.FilterOperators).Select(x => Camel(x.ToString())).Distinct(StringComparer.Ordinal)) },
-                        ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject() }
+                        ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject() },
                     },
-                    ["required"] = new JsonArray("field", "operator")
-                }
+                    ["required"] = new JsonArray("field", "operator"),
+                },
             };
         }
 
@@ -229,10 +229,10 @@ internal sealed class ToolCatalogBuilder(
                     ["properties"] = new JsonObject
                     {
                         ["field"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(sortable.Select(x => x.Name)) },
-                        ["direction"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray("ascending", "descending") }
+                        ["direction"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray("ascending", "descending") },
                     },
-                    ["required"] = new JsonArray("field", "direction")
-                }
+                    ["required"] = new JsonArray("field", "direction"),
+                },
             };
         }
 
@@ -245,8 +245,8 @@ internal sealed class ToolCatalogBuilder(
                 ["properties"] = new JsonObject
                 {
                     ["size"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = pageable.MaxSize },
-                    ["offset"] = new JsonObject { ["type"] = "integer", ["minimum"] = 0 }
-                }
+                    ["offset"] = new JsonObject { ["type"] = "integer", ["minimum"] = 0 },
+                },
             };
         }
 
@@ -276,7 +276,7 @@ internal sealed class ToolCatalogBuilder(
             {
                 ["type"] = "object",
                 ["description"] = "The query's parameters.",
-                ["properties"] = parameterProperties
+                ["properties"] = parameterProperties,
             };
 
             if (requiredParameters.Count > 0)
@@ -320,8 +320,8 @@ internal sealed class ToolCatalogBuilder(
                 ["format"] = "uuid",
                 ["description"] = step.IsInitial
                     ? "The process to continue. Omit it to start a new process."
-                    : "The process to continue (returned by an earlier step)."
-            }
+                    : "The process to continue (returned by an earlier step).",
+            },
         };
 
         var required = new List<string>();
@@ -380,8 +380,8 @@ internal sealed class ToolCatalogBuilder(
                 {
                     Title = step.DisplayName ?? step.Name,
                     ReadOnlyHint = false,
-                    OpenWorldHint = false
-                }
+                    OpenWorldHint = false,
+                },
             },
             Kind = KaleidoToolKind.Step,
             Service = processor.ServiceName,
@@ -389,7 +389,7 @@ internal sealed class ToolCatalogBuilder(
             Url = step.ExecuteUrl,
             IsInitial = step.IsInitial,
             Lookups = lookups,
-            ClosedBy = step.AvailableUntil.Select(x => x.Name).ToArray()
+            ClosedBy = step.AvailableUntil.Select(x => x.Name).ToArray(),
         });
     }
 
@@ -431,7 +431,7 @@ internal sealed class ToolCatalogBuilder(
                 QueryTool = query?.Definition.Name,
                 QueryTitle = query?.Definition.Title,
                 Inputs = inputs,
-                Display = first.Display
+                Display = first.Display,
             });
         }
 
@@ -495,14 +495,14 @@ internal sealed class ToolCatalogBuilder(
         {
             ["type"] = "string",
             ["enum"] = Strings(processServices),
-            ["description"] = "The service that owns the process step (the `service` reported by the last step result)."
+            ["description"] = "The service that owns the process step (the `service` reported by the last step result).",
         };
 
         var processIdSchema = new JsonObject
         {
             ["type"] = "string",
             ["format"] = "uuid",
-            ["description"] = "The process id."
+            ["description"] = "The process id.",
         };
 
         context.Add(new KaleidoTool
@@ -524,7 +524,7 @@ internal sealed class ToolCatalogBuilder(
                         ["informationRequestId"] = new JsonObject
                         {
                             ["type"] = "string",
-                            ["description"] = "The informationRequestId of the questions being answered."
+                            ["description"] = "The informationRequestId of the questions being answered.",
                         },
                         ["answers"] = new JsonObject
                         {
@@ -536,17 +536,17 @@ internal sealed class ToolCatalogBuilder(
                                 ["properties"] = new JsonObject
                                 {
                                     ["itemId"] = new JsonObject { ["type"] = "string" },
-                                    ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["type"] = "string" } }
+                                    ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["type"] = "string" } },
                                 },
-                                ["required"] = new JsonArray("itemId", "values")
-                            }
-                        }
+                                ["required"] = new JsonArray("itemId", "values"),
+                            },
+                        },
                     },
-                    ["required"] = new JsonArray("service", "processId", "informationRequestId", "answers")
+                    ["required"] = new JsonArray("service", "processId", "informationRequestId", "answers"),
                 }),
-                Annotations = new ToolAnnotations { ReadOnlyHint = false, OpenWorldHint = false }
+                Annotations = new ToolAnnotations { ReadOnlyHint = false, OpenWorldHint = false },
             },
-            Kind = KaleidoToolKind.AnswerInformationRequest
+            Kind = KaleidoToolKind.AnswerInformationRequest,
         });
 
         context.Add(new KaleidoTool
@@ -562,13 +562,13 @@ internal sealed class ToolCatalogBuilder(
                     ["properties"] = new JsonObject
                     {
                         ["service"] = serviceSchema.DeepClone(),
-                        ["processId"] = processIdSchema.DeepClone()
+                        ["processId"] = processIdSchema.DeepClone(),
                     },
-                    ["required"] = new JsonArray("service", "processId")
+                    ["required"] = new JsonArray("service", "processId"),
                 }),
-                Annotations = new ToolAnnotations { ReadOnlyHint = true, IdempotentHint = true, OpenWorldHint = false }
+                Annotations = new ToolAnnotations { ReadOnlyHint = true, IdempotentHint = true, OpenWorldHint = false },
             },
-            Kind = KaleidoToolKind.GetProcessState
+            Kind = KaleidoToolKind.GetProcessState,
         });
     }
 
@@ -637,7 +637,7 @@ internal sealed class ToolCatalogBuilder(
             {
                 QueryableQueryProperty p => p.Name,
                 ProcessOutputFieldMetadata p => p.Name,
-                _ => null
+                _ => null,
             })
             .OfType<string>()
             .ToArray() ?? [];

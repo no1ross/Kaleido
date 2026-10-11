@@ -34,7 +34,7 @@ public sealed partial record ProcessStepRegistration
                 .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(x => x.ToSummary())
                 .ToArray(),
-            Result = ToResultDescriptor(TypeDescriber)
+            Result = ToResultDescriptor(TypeDescriber),
         };
     }
 
@@ -48,7 +48,7 @@ public sealed partial record ProcessStepRegistration
             Version = Metadata.Version,
             Repeatable = Repeatable.Enabled,
             IsInformationStep = IsInformationStep,
-            Authorization = Metadata.Authorization
+            Authorization = Metadata.Authorization,
         };
     }
 
@@ -83,7 +83,7 @@ public sealed partial record ProcessStepRegistration
                             View = string.IsNullOrWhiteSpace(lookup.View) ? null : lookup.View,
                             Field = lookup.Field,
                             Group = LookupGroup(lookup),
-                            Display = displays[LookupGroup(lookup)]
+                            Display = displays[LookupGroup(lookup)],
                         }
                         : null))
             .ToArray();
@@ -114,7 +114,7 @@ public sealed partial record ProcessStepRegistration
                 ?? display?.GetDescription(),
             DataType = TypeDescriber.GetDescriptor(property),
             Lookup = lookup,
-            Constraints = constraintMapper.Map(property)
+            Constraints = constraintMapper.Map(property),
         };
     }
 
@@ -133,7 +133,7 @@ public sealed partial record ProcessStepRegistration
                     ToOutputDescriptor(
                         property,
                         TypeDescriber))
-                .ToArray()
+                .ToArray(),
         };
     }
 
@@ -145,7 +145,7 @@ public sealed partial record ProcessStepRegistration
         {
             Name = property.Name,
             Description = property.GetCustomAttribute<DescriptionAttribute>()?.Description,
-            DataType = TypeDescriber.GetDescriptor(property)
+            DataType = TypeDescriber.GetDescriptor(property),
         };
     }
 

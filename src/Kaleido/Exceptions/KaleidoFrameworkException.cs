@@ -33,10 +33,10 @@ public sealed class KaleidoFrameworkException : Exception
 public static class FrameworkErrorCodes
 {
     /// <summary>A required method or property could not be located via reflection.</summary>
-    public const string ReflectionError     = "reflection_error";
+    public const string ReflectionError = "reflection_error";
 
     /// <summary>A registered or resolved type does not match the expected type at runtime.</summary>
-    public const string TypeMismatch        = "type_mismatch";
+    public const string TypeMismatch = "type_mismatch";
 
     /// <summary>A required entry was not found in an internal registry at runtime.</summary>
     public const string MissingRegistration = "missing_registration";

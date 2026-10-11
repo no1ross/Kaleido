@@ -159,7 +159,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
         {
             Succeeded = true,
             Messages = messages,
-            Response = response
+            Response = response,
         };
     }
 
@@ -183,7 +183,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
             Succeeded = true,
             RequiredStep = typeof(TNext),
             Messages = messages,
-            Response = response
+            Response = response,
         };
     }
 
@@ -214,7 +214,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
             RequiredStep = typeof(TNext),
             InformationRequest = request,
             Messages = messages,
-            Response = response
+            Response = response,
         };
     }
 
@@ -232,7 +232,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
         {
             Succeeded = false,
             Messages = messages,
-            Response = response
+            Response = response,
         };
     }
 
@@ -250,7 +250,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
         {
             Succeeded = false,
             Rejected = true,
-            Messages = messages
+            Messages = messages,
         };
     }
 
@@ -267,7 +267,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
         {
             Succeeded = true,
             TargetProcessorName = targetProcessorName,
-            Messages = messages
+            Messages = messages,
         };
     }
 }
@@ -313,7 +313,7 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
         return new()
         {
             Succeeded = true,
-            Messages = messages
+            Messages = messages,
         };
     }
 
@@ -334,7 +334,7 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
         {
             Succeeded = true,
             RequiredStep = typeof(TNext),
-            Messages = messages
+            Messages = messages,
         };
     }
 
@@ -362,7 +362,7 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
             Succeeded = true,
             RequiredStep = typeof(TNext),
             InformationRequest = request,
-            Messages = messages
+            Messages = messages,
         };
     }
 
@@ -377,7 +377,7 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
         return new()
         {
             Succeeded = false,
-            Messages = messages
+            Messages = messages,
         };
     }
 
@@ -395,7 +395,7 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
         {
             Succeeded = false,
             Rejected = true,
-            Messages = messages
+            Messages = messages,
         };
     }
 
@@ -412,7 +412,7 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
         {
             Succeeded = true,
             TargetProcessorName = targetProcessorName,
-            Messages = messages
+            Messages = messages,
         };
     }
 }

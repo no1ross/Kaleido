@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Kaleido.Http.Queryable;
 using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
+using Kaleido.Http.Queryable;
 
 namespace Kaleido.Http.FunctionalTests.Queryable.Observability;
 

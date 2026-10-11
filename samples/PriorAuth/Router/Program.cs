@@ -2,11 +2,11 @@ using Kaleido;
 using Kaleido.Http;
 using Kaleido.Http.Client;
 using Kaleido.Http.Mcp;
-using Kaleido.Samples.PriorAuth.Auth;
 using Kaleido.Observability.OpenTelemetry;
+using Kaleido.Samples.PriorAuth.Auth;
+using Kaleido.Samples.PriorAuth.Router;
 using Microsoft.Net.Http.Headers;
 using Yarp.ReverseProxy.Transforms;
-using Kaleido.Samples.PriorAuth.Router;
 
 var builder = WebApplication.CreateBuilder(args);
 

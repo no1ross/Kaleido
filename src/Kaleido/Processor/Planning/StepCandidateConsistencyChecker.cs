@@ -120,7 +120,7 @@ internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistenc
                 ProcessorErrorCodes.DependencyNotSatisfied,
                 $"Process step '{candidate.Registration.Metadata.Name}' " +
                 $"requires process step '{dependency.Metadata.Name}' " +
-                $"to be completed before it can execute.");
+                "to be completed before it can execute.");
         }
     }
 

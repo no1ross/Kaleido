@@ -1,4 +1,4 @@
-﻿namespace Kaleido.Samples.PriorAuth.Radiology.Process.Models;
+namespace Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 
 /// <summary>
 /// The questions for the next step travel on the response's required step

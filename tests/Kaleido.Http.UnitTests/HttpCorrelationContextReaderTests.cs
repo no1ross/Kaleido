@@ -17,10 +17,10 @@ public sealed class HttpCorrelationContextReaderTests
     [Fact]
     public void HeaderConstants_UseExpectedNames()
     {
-        Assert.Equal("X-Kaleido-Request-Id",           KaleidoCorrelationHeaders.RequestId);
-        Assert.Equal("X-Kaleido-Process-Id",           KaleidoCorrelationHeaders.ProcessId);
-        Assert.Equal("X-Kaleido-Calling-Processor",    KaleidoCorrelationHeaders.CallingProcessor);
-        Assert.Equal("X-Kaleido-Calling-Step",         KaleidoCorrelationHeaders.CallingStep);
+        Assert.Equal("X-Kaleido-Request-Id", KaleidoCorrelationHeaders.RequestId);
+        Assert.Equal("X-Kaleido-Process-Id", KaleidoCorrelationHeaders.ProcessId);
+        Assert.Equal("X-Kaleido-Calling-Processor", KaleidoCorrelationHeaders.CallingProcessor);
+        Assert.Equal("X-Kaleido-Calling-Step", KaleidoCorrelationHeaders.CallingStep);
     }
 
     [Fact]
@@ -29,18 +29,18 @@ public sealed class HttpCorrelationContextReaderTests
         var processId = Guid.NewGuid();
 
         var context = new DefaultHttpContext();
-        context.Request.Headers[KaleidoCorrelationHeaders.RequestId]           = "REQ-001";
-        context.Request.Headers[KaleidoCorrelationHeaders.ProcessId]           = processId.ToString();
+        context.Request.Headers[KaleidoCorrelationHeaders.RequestId] = "REQ-001";
+        context.Request.Headers[KaleidoCorrelationHeaders.ProcessId] = processId.ToString();
         // the instance id is no longer read from the wire: an invalid value is not an error
-        context.Request.Headers["X-Kaleido-Processor-Instance-Id"]       = "not-a-guid";
-        context.Request.Headers[KaleidoCorrelationHeaders.CallingProcessor]    = "intake";
-        context.Request.Headers[KaleidoCorrelationHeaders.CallingStep]         = "validate";
+        context.Request.Headers["X-Kaleido-Processor-Instance-Id"] = "not-a-guid";
+        context.Request.Headers[KaleidoCorrelationHeaders.CallingProcessor] = "intake";
+        context.Request.Headers[KaleidoCorrelationHeaders.CallingStep] = "validate";
 
         var result = context.ReadCorrelationContext();
 
-        Assert.Equal("REQ-001",  result.RequestId);
-        Assert.Equal(processId,  result.ProcessId);
-        Assert.Equal("intake",   result.CallingProcessorName);
+        Assert.Equal("REQ-001", result.RequestId);
+        Assert.Equal(processId, result.ProcessId);
+        Assert.Equal("intake", result.CallingProcessorName);
         Assert.Equal("validate", result.CallingStepName);
     }
 
@@ -48,10 +48,10 @@ public sealed class HttpCorrelationContextReaderTests
     public void Read_WhenHeadersAreBlank_GeneratesRequestIdAndReturnsNullForOthers()
     {
         var context = new DefaultHttpContext();
-        context.Request.Headers[KaleidoCorrelationHeaders.RequestId]           = " ";
-        context.Request.Headers[KaleidoCorrelationHeaders.ProcessId]           = " ";
-                context.Request.Headers[KaleidoCorrelationHeaders.CallingProcessor]    = " ";
-        context.Request.Headers[KaleidoCorrelationHeaders.CallingStep]         = " ";
+        context.Request.Headers[KaleidoCorrelationHeaders.RequestId] = " ";
+        context.Request.Headers[KaleidoCorrelationHeaders.ProcessId] = " ";
+        context.Request.Headers[KaleidoCorrelationHeaders.CallingProcessor] = " ";
+        context.Request.Headers[KaleidoCorrelationHeaders.CallingStep] = " ";
 
         var result = context.ReadCorrelationContext();
 
@@ -91,10 +91,10 @@ public sealed class HttpCorrelationContextReaderTests
         var processId = Guid.NewGuid();
 
         var context = new DefaultHttpContext();
-        context.Request.Headers[KaleidoCorrelationHeaders.RequestId]           = "REQ-001";
-        context.Request.Headers[KaleidoCorrelationHeaders.ProcessId]           = processId.ToString();
-        context.Request.Headers[KaleidoCorrelationHeaders.CallingProcessor]    = "intake";
-        context.Request.Headers[KaleidoCorrelationHeaders.CallingStep]         = "validate";
+        context.Request.Headers[KaleidoCorrelationHeaders.RequestId] = "REQ-001";
+        context.Request.Headers[KaleidoCorrelationHeaders.ProcessId] = processId.ToString();
+        context.Request.Headers[KaleidoCorrelationHeaders.CallingProcessor] = "intake";
+        context.Request.Headers[KaleidoCorrelationHeaders.CallingStep] = "validate";
 
         var result = context.ReadCorrelationContext(trustIdentity: false);
 
@@ -112,14 +112,14 @@ public sealed class HttpCorrelationContextReaderTests
     public void Read_StripsSanitizableCharsFromStringFields()
     {
         var context = new DefaultHttpContext();
-        context.Request.Headers[KaleidoCorrelationHeaders.RequestId]       = "REQ" + (char)0x00 + "001";
+        context.Request.Headers[KaleidoCorrelationHeaders.RequestId] = "REQ" + (char)0x00 + "001";
         context.Request.Headers[KaleidoCorrelationHeaders.CallingProcessor] = "in" + (char)0x1f + "take";
-        context.Request.Headers[KaleidoCorrelationHeaders.CallingStep]      = "vali" + (char)0x7f + "date";
+        context.Request.Headers[KaleidoCorrelationHeaders.CallingStep] = "vali" + (char)0x7f + "date";
 
         var result = context.ReadCorrelationContext();
 
-        Assert.Equal("REQ001",   result.RequestId);
-        Assert.Equal("intake",   result.CallingProcessorName);
+        Assert.Equal("REQ001", result.RequestId);
+        Assert.Equal("intake", result.CallingProcessorName);
         Assert.Equal("validate", result.CallingStepName);
     }
 }

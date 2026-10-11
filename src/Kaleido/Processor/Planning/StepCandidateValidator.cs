@@ -77,7 +77,7 @@ internal sealed class StepCandidateValidator : IStepCandidateValidator
 
         var context = new ValidationContext(step)
         {
-            MemberName = members[0]
+            MemberName = members[0],
         };
 
         var value = property.GetValue(step);

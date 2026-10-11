@@ -79,8 +79,8 @@ internal sealed class ProcessExecutionService(
                         Steps = request.Steps.ToDictionary(
                             x => x.StepName,
                             x => (object?)x.Request,
-                            StringComparer.OrdinalIgnoreCase)
-                    }
+                            StringComparer.OrdinalIgnoreCase),
+                    },
             };
 
         var processResult =

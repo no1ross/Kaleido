@@ -30,5 +30,5 @@ public enum KaleidoAuthorizationMode
     /// Capabilities with no applicable rule are omitted from discovery and
     /// endpoint mapping, and denied if submitted through a generic execute request.
     /// </summary>
-    ZeroTrust = 2
+    ZeroTrust = 2,
 }
