@@ -11,7 +11,10 @@ namespace Kaleido.Analyzers.Source.Design;
 /// method parameters) must not expose mutable collection types.
 /// Use IReadOnlyCollection&lt;T&gt;, IReadOnlyList&lt;T&gt;, IReadOnlyDictionary&lt;K,V&gt;,
 /// or IEnumerable&lt;T&gt; instead of List&lt;T&gt;, IList&lt;T&gt;, Dictionary&lt;K,V&gt;,
-/// IDictionary&lt;K,V&gt;, HashSet&lt;T&gt;, ISet&lt;T&gt;, or ICollection&lt;T&gt;.
+/// IDictionary&lt;K,V&gt;, HashSet&lt;T&gt;, ISet&lt;T&gt;, or ICollection&lt;T&gt; - and
+/// FrozenDictionary&lt;K,V&gt; / FrozenSet&lt;T&gt; (immutable, fast lookups) for collections
+/// built once and only read. A collection that is filled after construction is written through
+/// methods, not exposed mutable.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class MutableCollectionAnalyzer : DiagnosticAnalyzer
@@ -20,7 +23,7 @@ public sealed class MutableCollectionAnalyzer : DiagnosticAnalyzer
         new(
             DiagnosticIds.MutableCollectionInPublicApi,
             "Do not expose mutable collections in public APIs",
-            "'{0}' is a mutable collection type — use IReadOnlyCollection<T>, IReadOnlyList<T>, IReadOnlyDictionary<K,V>, or IEnumerable<T> instead",
+            "'{0}' is a mutable collection type — use IReadOnlyCollection<T>, IReadOnlyList<T>, IReadOnlyDictionary<K,V> or IEnumerable<T>, or FrozenDictionary<K,V>/FrozenSet<T> for a collection built once and only read",
             "Kaleido.Design",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true);

@@ -31,11 +31,11 @@ internal static class KaleidoClientServiceCollectionExtensions
         configureClient?.Invoke(httpClientBuilder);
 
         var routeOptions = GetOrAddRouteOptions<TMap>(services);
-        routeOptions.Options[options.Name] = options.RoutePrefix;
+        routeOptions.SetRoutePrefix(options.Name, options.RoutePrefix);
 
         if (options.RegistryTtl.HasValue)
         {
-            routeOptions.RegistryTtls[options.Name] = options.RegistryTtl.Value;
+            routeOptions.SetRegistryTtl(options.Name, options.RegistryTtl.Value);
         }
 
         services.TryAddSingleton<Registry.IRegistrySnapshotStore, Registry.InMemoryRegistrySnapshotStore>();

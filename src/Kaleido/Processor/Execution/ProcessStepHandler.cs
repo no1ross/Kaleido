@@ -171,7 +171,9 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
     /// This result is not a success in the current processor (a failure, a rejection, or a hand-off).
     /// </exception>
     /// <example>
-    /// <code>return ProcessStepHandlerResult.Success(response).Next&lt;ShipOrder&gt;();</code>
+    /// <code>
+    /// return ProcessStepHandlerResult.Success(response).Next&lt;ShipOrder&gt;();
+    /// </code>
     /// </example>
     public ProcessStepHandlerResult<TProcessStepResult> Next<TNext>()
         where TNext : IProcessStep
@@ -197,7 +199,9 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
     /// This result is not a success in the current processor (a failure, a rejection, or a hand-off).
     /// </exception>
     /// <example>
-    /// <code>return ProcessStepHandlerResult.Success(response).RequireInformation&lt;AnswerQuestions&gt;(request);</code>
+    /// <code>
+    /// return ProcessStepHandlerResult.Success(response).RequireInformation&lt;AnswerQuestions&gt;(request);
+    /// </code>
     /// </example>
     public ProcessStepHandlerResult<TProcessStepResult> RequireInformation<TNext>(InformationRequest request)
         where TNext : IInformationStep
@@ -405,7 +409,9 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
     /// <param name="response">The typed response payload.</param>
     /// <param name="messages">Business messages returned to the caller.</param>
     /// <example>
-    /// <code>return ProcessStepHandlerResult.Success(response);</code>
+    /// <code>
+    /// return ProcessStepHandlerResult.Success(response);
+    /// </code>
     /// </example>
     public static ProcessStepHandlerResult<TProcessStepResult> Success<TProcessStepResult>(
         TProcessStepResult response,

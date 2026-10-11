@@ -14,8 +14,8 @@ public sealed class ClientDownstreamRegistriesTests
 
     private void Client(string name, string routePrefix, Exception? failure = null)
     {
-        processMap.Options[name] = routePrefix;
-        queryableMap.Options[name] = routePrefix;
+        processMap.SetRoutePrefix(name, routePrefix);
+        queryableMap.SetRoutePrefix(name, routePrefix);
 
         var process = new Mock<IKaleidoProcessorClient>();
         var queryable = new Mock<IKaleidoQueryableClient>();
