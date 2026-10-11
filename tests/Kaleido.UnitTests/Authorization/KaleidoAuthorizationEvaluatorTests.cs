@@ -31,17 +31,6 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             CallerRoles = roles
         };
 
-    private static ProcessorContext OwnedContext(
-        string? owner,
-        params string[] ownerRoles) =>
-        new()
-        {
-            ProcessId = Guid.NewGuid(),
-            ProcessorName = "test",
-            Owner = owner,
-            OwnerRoles = ownerRoles
-        };
-
     private static readonly AuthorizationMetadata Anonymous =
         new(null, []) { AllowAnonymous = true };
 
@@ -247,73 +236,5 @@ public sealed class KaleidoAuthorizationEvaluatorTests
                 policyEvaluator: null));
 
         Assert.True(authenticated.CallerIsAuthenticated);
-    }
-
-    // -- AuthorizeProcess ----------------------------------------------------
-
-    [Fact]
-    public void AuthorizeProcess_NotEnforced_PassesForOtherOwner()
-    {
-        var sut = CreateSut(KaleidoAuthorizationMode.None);
-
-        sut.AuthorizeProcess(
-            OwnedContext("alice", "radiology"),
-            Caller());
-    }
-
-    [Fact]
-    public void AuthorizeProcess_WhenUnowned_PassesForAnonymous()
-    {
-        var sut = CreateSut();
-
-        sut.AuthorizeProcess(
-            OwnedContext(owner: null),
-            Caller());
-    }
-
-    [Fact]
-    public void AuthorizeProcess_WhenOwnedByCaller_Passes()
-    {
-        var sut = CreateSut();
-
-        sut.AuthorizeProcess(
-            OwnedContext("alice", "radiology"),
-            Caller("alice"));
-    }
-
-    [Fact]
-    public void AuthorizeProcess_WhenCallerSharesOwnerRole_Passes()
-    {
-        var sut = CreateSut();
-
-        sut.AuthorizeProcess(
-            OwnedContext("alice", "radiology"),
-            Caller("bob", "radiology"));
-    }
-
-    [Fact]
-    public void AuthorizeProcess_WhenOtherOwnerAndNoSharedRole_Throws403()
-    {
-        var sut = CreateSut();
-
-        var exception = Assert.Throws<KaleidoAuthorizationException>(
-            () => sut.AuthorizeProcess(
-                OwnedContext("alice", "radiology"),
-                Caller("bob", "viewer")));
-
-        Assert.True(exception.CallerIsAuthenticated);
-    }
-
-    [Fact]
-    public void AuthorizeProcess_WhenOwnedAndAnonymous_Throws401()
-    {
-        var sut = CreateSut();
-
-        var exception = Assert.Throws<KaleidoAuthorizationException>(
-            () => sut.AuthorizeProcess(
-                OwnedContext("alice"),
-                Caller()));
-
-        Assert.False(exception.CallerIsAuthenticated);
     }
 }

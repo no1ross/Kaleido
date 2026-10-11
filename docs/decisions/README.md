@@ -25,6 +25,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0007](./0007-input-metadata-for-ai.md) | Input metadata is a published hint, nudged by analyzer warnings; verbatim text; AI safeguards live in the adapter | Accepted | #142, #140 |
 | [0008](./0008-rejected-outcome-and-retryable-exceptions.md) | Correctable input is rejected without changing the process; unexpected errors are retryable | Accepted | #237, #238 |
 | [0009](./0009-unknown-process-id-only-on-handoff.md) | An unknown process id starts a process only on a handoff | Accepted | #140 |
+| [0010](./0010-no-case-level-guardrails.md) | Kaleido has no case-level guardrails: no process ownership, no transfer | Accepted | #194 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are

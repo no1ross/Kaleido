@@ -1,4 +1,3 @@
-using Kaleido.Http.Authorization;
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Registry;
 using Microsoft.Extensions.Logging;
@@ -10,16 +9,6 @@ internal interface IProcessStateService
     Task<ProcessStateResponse?> GetCurrentState(
         Guid processId,
         CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Transfers process ownership to the authenticated caller. Returns
-    /// <c>null</c> when the process does not exist (404); throws
-    /// <see cref="KaleidoAuthorizationException"/> when the caller may not
-    /// take it (unowned processes and role-mates of the owner may).
-    /// </summary>
-    Task<ProcessorContext?> TransferOwnershipAsync(
-        Guid processId,
-        CancellationToken cancellationToken);
 }
 
 internal sealed class ProcessStateService(
@@ -27,8 +16,6 @@ internal sealed class ProcessStateService(
     IProcessorStepRegistry registry,
     KaleidoServiceOptions serviceOptions,
     IProcessorResponseFactory responseFactory,
-    IKaleidoAuthorizer authorizer,
-    IKaleidoCorrelationContextAccessor correlationAccessor,
     ILogger<ProcessStateService> logger)
     : IProcessStateService
 {
@@ -51,10 +38,8 @@ internal sealed class ProcessStateService(
             return null;
         }
 
-        // Owned processes are visible only to the owner and role-mates.
-        // Unowned processes pass through.
-        authorizer.AuthorizeProcess(context);
-
+        // No case-level guardrail (ADR 0010): any caller admitted by the
+        // endpoint may read the state; Owner is returned as a tag only.
         logger.LogDebug(
             "Process state loaded for processor {ProcessorName} process {ProcessId} state {State}.",
             serviceOptions.ServiceName,
@@ -146,49 +131,5 @@ internal sealed class ProcessStateService(
             },
             context.RequiredInformationRequest,
             serviceOptions.ServiceName);
-    }
-
-    public async Task<ProcessorContext?> TransferOwnershipAsync(
-        Guid processId,
-        CancellationToken cancellationToken)
-    {
-        var context = await contextStore.LoadAsync(processId, cancellationToken);
-
-        if (context is null)
-        {
-            return null;
-        }
-
-        var correlation = correlationAccessor.Current;
-
-        if (correlation.CallerName is null)
-        {
-            throw new KaleidoAuthorizationException(
-                $"process '{processId}'",
-                callerIsAuthenticated: false);
-        }
-
-        // Owned processes transfer only to the owner or a role-mate;
-        // unowned processes may be taken by any authenticated caller.
-        if (context.Owner is not null)
-        {
-            authorizer.AuthorizeProcess(context);
-        }
-
-        var transferred =
-            context with
-            {
-                Owner = correlation.CallerName,
-                OwnerRoles = correlation.CallerRoles
-            };
-
-        await contextStore.SaveAsync(transferred, cancellationToken);
-
-        logger.LogDebug(
-            "Process {ProcessId} ownership transferred to {Owner}.",
-            processId,
-            correlation.CallerName);
-
-        return transferred;
     }
 }
