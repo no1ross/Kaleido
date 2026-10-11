@@ -40,7 +40,7 @@ public sealed class KaleidoMcpOptionsBuilderTests
     [Fact]
     public void Build_InstructionsFile_ReplacesTheDefaults()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"kaleido-mcp-{Guid.NewGuid():N}.md");
+        var path = Path.Join(Path.GetTempPath(), $"kaleido-mcp-{Guid.NewGuid():N}.md");
         File.WriteAllText(path, "From the file.\n");
 
         try
