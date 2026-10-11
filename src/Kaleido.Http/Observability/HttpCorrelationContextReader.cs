@@ -15,7 +15,7 @@ internal static class HttpCorrelationContextReader
     /// </summary>
     /// <param name="context">The current HTTP request context.</param>
     /// <param name="trustIdentity">
-    /// When <c>false</c>, identity-bearing headers are not honored — a fresh
+    /// When <see langword="false"/>, identity-bearing headers are not honored — a fresh
     /// <see cref="KaleidoCorrelationContext.RequestId"/> is generated and the
     /// calling-processor/calling-step headers are ignored.
     /// <c>X-Kaleido-Process-Id</c> is always read — it is a resumable process

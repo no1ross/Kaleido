@@ -12,7 +12,7 @@ public static class HttpHeaderSanitizerExtensions
 
     /// <summary>
     /// Strips non-printable-ASCII characters, trims whitespace, truncates to
-    /// <see cref="MaxLength"/> characters, and returns <c>null</c> if the result is empty.
+    /// <see cref="MaxLength"/> characters, and returns <see langword="null"/> if the result is empty.
     /// </summary>
     public static string? Sanitize(this string? value)
     {
@@ -27,7 +27,7 @@ public static class HttpHeaderSanitizerExtensions
         }
 
         var sanitized = new string(
-            value.Where(c => c >= 0x20 && c <= 0x7E).ToArray())
+            value.Where(c => c is >= (char)0x20 and <= (char)0x7E).ToArray())
             .Trim();
 
         if (string.IsNullOrWhiteSpace(sanitized))
@@ -49,7 +49,7 @@ public static class HttpHeaderSanitizerExtensions
 
         foreach (var c in value)
         {
-            if (c < 0x20 || c > 0x7E)
+            if (c is < (char)0x20 or > (char)0x7E)
             {
                 return false;
             }

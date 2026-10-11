@@ -28,7 +28,7 @@ public static class ProcessorServiceCollectionExtensions
             types
                 .Where(x =>
                     (IsProcessStepType(x) ||
-                    x.GetCustomAttribute<ProcessStepAttribute>() is not null) && x.PassesTypeFilter(
+                    Attribute.IsDefined(x, typeof(ProcessStepAttribute))) && x.PassesTypeFilter(
                         builder.ServiceOptions.TypeFilter,
                         ProcessorErrorCodes.InvalidRegistration,
                         "process step"))
@@ -105,12 +105,12 @@ public static class ProcessorServiceCollectionExtensions
                 .Select(x => new
                 {
                     StepType = x,
-                    Name = x.Name,
+                    x.Name,
                 })
                 .GroupBy(
                     x => x.Name,
                     StringComparer.OrdinalIgnoreCase)
-                .Where(x => x.Count() > 1)
+                .Where(x => x.Skip(1).Any())
                 .ToArray();
 
         if (duplicateNames.Length == 0)
@@ -180,7 +180,7 @@ public static class ProcessorServiceCollectionExtensions
         var invalid =
             types
                 .Where(x =>
-                    x.GetCustomAttribute<ProcessStepAttribute>() is not null &&
+                    Attribute.IsDefined(x, typeof(ProcessStepAttribute)) &&
                     !typeof(IProcessStep).IsAssignableFrom(x))
                 .Select(x => x.FullName)
                 .ToArray();

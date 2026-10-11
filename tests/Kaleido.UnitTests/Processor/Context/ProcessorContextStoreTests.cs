@@ -60,15 +60,15 @@ public sealed class ProcessorContextStoreTests
             ProcessId = Guid.NewGuid(),
             ProcessorName = "test-processor",
             State = ProcessExecutionState.Complete,
-            Steps = new List<StepContext>
-            {
+            Steps =
+            [
                 new StepContext
                 {
                     StepName = "test-step",
                     Version = "1.0",
-                    Status = StepExecutionStatus.Completed
-                }
-            }
+                    Status = StepExecutionStatus.Completed,
+                },
+            ],
         };
 
         await store.SaveAsync(context, CancellationToken.None);

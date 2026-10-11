@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
@@ -30,7 +31,8 @@ internal sealed class KaleidoRemoteRegistry(
                 // Canonical per-service key — matches the key the downstream
                 // writes its own snapshot under (kaleido:{ServiceName}), since
                 // RoutePrefix equals ServiceName by contract.
-                _ => new HttpClientRegistryCache(snapshotStore, $"kaleido:{routePrefix}"))
+                static (_, state) => new HttpClientRegistryCache(state.SnapshotStore, $"kaleido:{state.RoutePrefix}"),
+                (SnapshotStore: snapshotStore, RoutePrefix: routePrefix))
             .GetOrFetchAsync(
                 registryTtl,
                 ct => FetchAsync(clientName, routePrefix, stamper, ct),
@@ -79,7 +81,7 @@ internal sealed class KaleidoRemoteRegistry(
 
             throw new KaleidoHttpClientException(
                 HttpClientErrorCodes.RequestFailed,
-                $"Registry request to client '{clientName}' failed with status code {(int)response.StatusCode} ({response.StatusCode}).",
+                string.Create(CultureInfo.InvariantCulture, $"Registry request to client '{clientName}' failed with status code {(int)response.StatusCode} ({response.StatusCode})."),
                 response.StatusCode);
         }
 

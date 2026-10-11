@@ -51,7 +51,7 @@ public sealed record QuerySourceRegistration(
 /// <param name="Version">The source's version.</param>
 /// <param name="Source">Optional description of where the data comes from.</param>
 /// <param name="Kind">Local or delegated (derived).</param>
-/// <param name="Pageable">Paging for direct queries of this source; <c>null</c> when not pageable.</param>
+/// <param name="Pageable">Paging for direct queries of this source; <see langword="null"/> when not pageable.</param>
 /// <param name="Fields">The query context fields and their query rules.</param>
 /// <param name="Parameters">The source's parameters (delegated sources only; empty otherwise).</param>
 /// <param name="OutputFields">The fields of the record a direct query returns.</param>

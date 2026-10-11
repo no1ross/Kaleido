@@ -54,7 +54,7 @@ public sealed class BclExceptionBanAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeThrow(SyntaxNodeAnalysisContext context)
     {
-        ExpressionSyntax? thrown =
+        var thrown =
             context.Node switch
             {
                 ThrowStatementSyntax statement => statement.Expression,
@@ -62,8 +62,7 @@ public sealed class BclExceptionBanAnalyzer : DiagnosticAnalyzer
                 _ => null
             };
 
-        if (thrown is not ObjectCreationExpressionSyntax creation &&
-            thrown is not ImplicitObjectCreationExpressionSyntax)
+        if (thrown is not (ObjectCreationExpressionSyntax or ImplicitObjectCreationExpressionSyntax))
         {
             return;
         }

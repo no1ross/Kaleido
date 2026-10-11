@@ -1,3 +1,4 @@
+using System.Globalization;
 using Kaleido.Http.Registry.Contracts;
 using Kaleido.Processor;
 using Microsoft.AspNetCore.Builder;
@@ -90,7 +91,8 @@ public static class RegistryEndpointRouteBuilderExtensions
                     httpContext.Response.Headers.ETag = etag;
                     httpContext.Response.Headers.CacheControl =
                         mapOptions.RegistryCacheTtl is { } ttl
-                            ? $"public, max-age={(int)ttl.TotalSeconds}"
+                            ? string.Create(CultureInfo.InvariantCulture, $"public, max-age={(int)ttl.TotalSeconds}"
+)
                             : "no-cache";
 
                     if (httpContext.Request.Headers.IfNoneMatch.Any(

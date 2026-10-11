@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -259,14 +260,14 @@ internal sealed class KaleidoProcessorClient(
         {
             return new KaleidoHttpClientException(
                 HttpClientErrorCodes.ValidationFailed,
-                $"{description}: {string.Join(" ", errorResponse.Errors.Select(e => e.Message))}",
+                $"{description}: {string.Join(' ', errorResponse.Errors.Select(e => e.Message))}",
                 response.StatusCode,
                 errorResponse.Errors);
         }
 
         return new KaleidoHttpClientException(
             HttpClientErrorCodes.RequestFailed,
-            $"{description} with status code {(int)response.StatusCode} ({response.StatusCode}).",
+            string.Create(CultureInfo.InvariantCulture, $"{description} with status code {(int)response.StatusCode} ({response.StatusCode})."),
             response.StatusCode);
     }
 

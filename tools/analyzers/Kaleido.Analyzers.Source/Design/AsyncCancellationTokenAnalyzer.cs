@@ -96,7 +96,7 @@ public sealed class AsyncCancellationTokenAnalyzer : DiagnosticAnalyzer
         var original = named.OriginalDefinition.ToDisplayString();
 
         // Task (non-generic) or Task<T> (generic).
-        return original == TaskTypeName ||
-               original == TaskTypeName + "<TResult>";
+        return original is TaskTypeName or
+               (TaskTypeName + "<TResult>");
     }
 }

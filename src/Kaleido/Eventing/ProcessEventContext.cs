@@ -32,7 +32,7 @@ public sealed record ProcessEventContext
 
     /// <summary>
     /// The processor whose step called this service (<c>X-Kaleido-Calling-Processor</c>).
-    /// <c>null</c> when the request did not come from another processor's step.
+    /// <see langword="null"/> when the request did not come from another processor's step.
     /// </summary>
     public string? CallingProcessorName { get; init; }
 

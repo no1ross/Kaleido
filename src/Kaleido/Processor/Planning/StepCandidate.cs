@@ -21,7 +21,7 @@ internal sealed class StepCandidate
         _messages;
 
     public bool HasErrors =>
-        _messages.Any(x => x.Type == MessageType.Error);
+        _messages.Exists(x => x.Type == MessageType.Error);
 
     public TStep GetStep<TStep>()
         where TStep : class

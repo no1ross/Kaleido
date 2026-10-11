@@ -4,12 +4,15 @@ using System.Text.Json.Serialization;
 namespace Kaleido.Http;
 
 /// <summary>
+/// <para>
 /// The canonical <see cref="JsonSerializerOptions"/> used by all Kaleido HTTP
 /// transport code — server response serialization and client-side read/write.
 /// Ensures a consistent wire format everywhere.
-///
+/// </para>
+/// <para>
 /// Foreign-language consumers (Java, Python, etc.) do not need these options —
 /// they interact purely via the JSON wire contract documented in README.md.
+/// </para>
 /// </summary>
 public static class KaleidoJsonOptions
 {

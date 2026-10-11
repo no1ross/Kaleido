@@ -10,10 +10,10 @@ namespace Kaleido.Http.Mcp.Tools;
 /// </summary>
 /// <remarks>
 /// <list type="bullet">
-/// <item><description><c>dataType</c> → <c>type</c> / <c>format</c> / <c>enum</c> / <c>items</c>
+/// <item><description><c>dataType</c> → <c>"type"</c> / <c>"format"</c> / <c>"enum"</c> / <c>"items"</c>
 /// (so the model sends valid values: a uuid, an ISO date, one of the enum names).</description></item>
-/// <item><description><c>constraints</c> → <c>required</c>, <c>minLength</c>/<c>maxLength</c>,
-/// <c>minimum</c>/<c>maximum</c>, <c>pattern</c>, <c>format</c> (so the model fills what is needed and
+/// <item><description><c>constraints</c> → <c>"required"</c>, <c>"minLength"</c>/<c>"maxLength"</c>,
+/// <c>"minimum"</c>/<c>"maximum"</c>, <c>"pattern"</c>, <c>"format"</c> (so the model fills what is needed and
 /// stays inside the limits the service validates).</description></item>
 /// <item><description><c>description</c> (and step field <c>displayName</c>/<c>prompt</c> hints) →
 /// <c>description</c>: what the argument means. Undescribed inputs leave the model guessing from the
@@ -88,7 +88,7 @@ internal sealed class ToolSchemaBuilder : IToolSchemaBuilder
                 return new JsonObject
                 {
                     ["type"] = "array",
-                    ["items"] = dataType.ItemType is { } item ? TypeSchema(item) : new JsonObject(),
+                    ["items"] = dataType.ItemType is { } item ? TypeSchema(item) : AnyValueSchema(),
                 };
 
             case "integer":
@@ -102,10 +102,13 @@ internal sealed class ToolSchemaBuilder : IToolSchemaBuilder
             default:
                 // object or anything unknown: accept any JSON value of that shape.
                 return string.IsNullOrWhiteSpace(dataType.Type)
-                    ? new JsonObject()
+                    ? AnyValueSchema()
                     : new JsonObject { ["type"] = dataType.Type };
         }
     }
+
+    // The empty JSON Schema object: it accepts any value.
+    private static JsonObject AnyValueSchema() => [];
 
     private static JsonObject StringSchema(string? format)
     {
@@ -196,7 +199,7 @@ internal sealed class ToolSchemaBuilder : IToolSchemaBuilder
             JsonElement { ValueKind: JsonValueKind.Null or JsonValueKind.Undefined } => null,
             JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
             JsonElement element => element.GetRawText(),
-            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+            IFormattable formattable => formattable.ToString(format: null, CultureInfo.InvariantCulture),
             _ => value.ToString(),
         };
     }

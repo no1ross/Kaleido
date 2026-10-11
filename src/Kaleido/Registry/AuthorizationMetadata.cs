@@ -11,7 +11,7 @@ public sealed record AuthorizationMetadata(
     string? Policy,
     IReadOnlyList<string> Roles)
 {
-    public static AuthorizationMetadata Unspecified { get; } = new(null, []);
+    public static AuthorizationMetadata Unspecified { get; } = new(Policy: null, []);
 
     /// <summary>
     /// The capability is open to unauthenticated callers when authorization is
@@ -32,7 +32,7 @@ public sealed record AuthorizationMetadata(
     /// <summary>
     /// Reads <see cref="KaleidoAuthorizationAttribute"/> from a capability type
     /// and projects it to <see cref="AuthorizationMetadata"/>.
-    /// Returns <c>null</c> when the type does not declare the attribute.
+    /// Returns <see langword="null"/> when the type does not declare the attribute.
     /// </summary>
     /// <exception cref="KaleidoConfigurationException">
     /// <c>AllowAnonymous</c> is declared together with roles or a policy.

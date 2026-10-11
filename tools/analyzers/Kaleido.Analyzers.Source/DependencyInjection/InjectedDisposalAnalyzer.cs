@@ -72,7 +72,7 @@ public sealed class InjectedDisposalAnalyzer : DiagnosticAnalyzer
                 .Symbol;
 
         // fields and parameters only — locals created in-scope are self-owned
-        if (target is not IFieldSymbol && target is not IParameterSymbol)
+        if (target is not IFieldSymbol and not IParameterSymbol)
         {
             return;
         }
