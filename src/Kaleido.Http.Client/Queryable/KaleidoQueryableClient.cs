@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Client.Queryable;
 
-internal sealed class KaleidoQueryableClient(
+internal sealed partial class KaleidoQueryableClient(
     HttpClient httpClient,
     ICorrelationHeaderStamper headerStamper,
     ILogger<KaleidoQueryableClient> logger,
@@ -158,23 +158,13 @@ internal sealed class KaleidoQueryableClient(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        logger.LogDebug(
-            "Sending {Method} {Url} to remote queryable '{ServiceName}'.",
-            request.Method,
-            request.RequestUri,
-            callerServiceName);
+        LogSending(logger, request.Method, request.RequestUri, callerServiceName);
 
         var response = await httpClient.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning(
-                "Remote queryable '{ServiceName}' returned {StatusCode} ({StatusName}) for {Method} {Url}.",
-                callerServiceName,
-                (int)response.StatusCode,
-                response.StatusCode,
-                request.Method,
-                request.RequestUri);
+            LogRemoteNonSuccess(logger, callerServiceName, (int)response.StatusCode, response.StatusCode, request.Method, request.RequestUri);
         }
 
         return response;
@@ -183,4 +173,10 @@ internal sealed class KaleidoQueryableClient(
     private async Task<IReadOnlyList<QueryableSourceResponse>> EnsureRegistryAsync(
         CancellationToken cancellationToken) =>
         [.. (await remoteRegistry.GetAsync(clientName, callerServiceName, registryTtl, headerStamper, cancellationToken)).Queryables];
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Sending {Method} {Url} to remote queryable '{ServiceName}'.")]
+    private static partial void LogSending(ILogger logger, HttpMethod method, Uri? url, string serviceName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Remote queryable '{ServiceName}' returned {StatusCode} ({StatusName}) for {Method} {Url}.")]
+    private static partial void LogRemoteNonSuccess(ILogger logger, string serviceName, int statusCode, HttpStatusCode statusName, HttpMethod method, Uri? url);
 }
