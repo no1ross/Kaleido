@@ -609,7 +609,7 @@ public sealed class KaleidoToolInvokerTests
                     : [new InformationResponseItem { ItemId = "result", Answers = [new InformationAnswer { Value = "0" }] }]);
     }
 
-    private static IReadOnlyDictionary<string, InputResponse> LookupAnswered() =>
+    private static Dictionary<string, InputResponse> LookupAnswered() =>
         new Dictionary<string, InputResponse>(StringComparer.Ordinal)
         {
             ["kaleido-lookup"] = new()
@@ -695,7 +695,7 @@ public sealed class KaleidoToolInvokerTests
         return outcome.InputRequired?.RequestState ?? throw new Xunit.Sdk.XunitException("No state.");
     }
 
-    private static IReadOnlyDictionary<string, InputResponse> Answered(string action) =>
+    private static Dictionary<string, InputResponse> Answered(string action) =>
         new Dictionary<string, InputResponse>(StringComparer.Ordinal)
         {
             ["kaleido-answers"] = new()

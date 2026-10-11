@@ -116,7 +116,7 @@ internal sealed class ClientDownstreamRegistries(
         }
     }
 
-    private IReadOnlyCollection<string> ClientNames() =>
+    private string[] ClientNames() =>
         processClientMap.Options
             .Concat(queryableClientMap.Options)
             .Where(x => !string.Equals(x.Value, serviceOptions.ServiceName, StringComparison.OrdinalIgnoreCase))

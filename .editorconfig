@@ -203,7 +203,7 @@ dotnet_diagnostic.CA1855.severity = warning   ; Prefer Clear over Fill
 dotnet_diagnostic.CA1856.severity = error     ; Incorrect usage of ConstantExpected attribute
 dotnet_diagnostic.CA1857.severity = warning   ; Constant expected for parameter
 dotnet_diagnostic.CA1858.severity = warning   ; Use StartsWith instead of IndexOf
-dotnet_diagnostic.CA1859.severity = suggestion ; Use concrete types for performance (micro-opt)
+dotnet_diagnostic.CA1859.severity = warning ; Use concrete types for non-public members (enforced, #257; lookups are FrozenDictionary)
 dotnet_diagnostic.CA1873.severity = suggestion ; Avoid allocations in guarded logging calls
 dotnet_diagnostic.CA2007.severity = silent    ; ConfigureAwait — not applicable in ASP.NET Core
 dotnet_diagnostic.CA2008.severity = warning   ; Do not create tasks without TaskScheduler
@@ -277,6 +277,8 @@ dotnet_diagnostic.RCS1226.severity = warning   ; Paragraphs in documentation com
 dotnet_diagnostic.MA0182.severity = warning    ; Unused internal type (off in Kaleido.Http.Abstractions, below)
 ; Off, with the reason
 dotnet_diagnostic.MA0190.severity = none       ; Partial property for GeneratedRegex - the net8.0 regex generator supports partial methods only
+dotnet_diagnostic.MA0038.severity = none       ; Deprecated duplicate of CA1822 (enforced above); misreports primary-constructor members as static
+dotnet_diagnostic.MA0018.severity = none       ; Deprecated duplicate of CA1000
 
 ; Internal types here are used by Kaleido.Http and Kaleido.Http.Client through InternalsVisibleTo,
 ; which MA0182 cannot see - every finding is a false positive
@@ -364,6 +366,7 @@ dotnet_diagnostic.KAL1006.severity = none
 ; samples/ - kept as they are until they move to their own repositories (#250): the rules
 ; enforced by #257 after samples were excluded from analysis stay suggestions here
 [samples/**/*.cs]
+dotnet_diagnostic.CA1859.severity = suggestion
 dotnet_diagnostic.CA1826.severity = suggestion
 dotnet_diagnostic.IDE0007.severity = suggestion
 dotnet_diagnostic.IDE0028.severity = suggestion

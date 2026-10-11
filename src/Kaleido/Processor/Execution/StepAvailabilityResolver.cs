@@ -58,8 +58,8 @@ internal sealed class StepAvailabilityResolver(
             .ToArray();
     }
 
-    private IReadOnlyCollection<string> Resolve(
-        IReadOnlySet<string> completedSteps)
+    private string[] Resolve(
+        HashSet<string> completedSteps)
     {
         var registrations = registry.Registrations;
 
@@ -115,7 +115,7 @@ internal sealed class StepAvailabilityResolver(
 
     private static bool DependenciesSatisfied(
         ProcessStepRegistration registration,
-        IReadOnlySet<string> completedSteps)
+        HashSet<string> completedSteps)
     {
         return registration.Dependencies.All(
             x => completedSteps.Contains(
@@ -124,7 +124,7 @@ internal sealed class StepAvailabilityResolver(
 
     private static bool AvailableAfterSatisfied(
         ProcessStepRegistration registration,
-        IReadOnlySet<string> completedSteps)
+        HashSet<string> completedSteps)
     {
         return registration.AvailableAfter.All(
             x => completedSteps.Contains(
@@ -133,7 +133,7 @@ internal sealed class StepAvailabilityResolver(
 
     private static bool AvailableUntilSatisfied(
         ProcessStepRegistration registration,
-        IReadOnlySet<string> completedSteps)
+        HashSet<string> completedSteps)
     {
         return registration.AvailableUntil.All(
             x => !completedSteps.Contains(

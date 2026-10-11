@@ -290,7 +290,7 @@ internal sealed class ProcessorStateUpdater(
     }
 
     private static void ReplaceStep(
-        IList<StepContext> steps,
+        List<StepContext> steps,
         StepContext updated)
     {
         for (var index = 0; index < steps.Count; index++)

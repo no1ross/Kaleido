@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Reflection;
 using Kaleido.Registry;
 
@@ -62,9 +63,9 @@ public interface IProcessorStepRegistry
 
 internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
 {
-    private readonly IReadOnlyDictionary<string, ProcessStepRegistration> _byName;
+    private readonly FrozenDictionary<string, ProcessStepRegistration> _byName;
 
-    private readonly IReadOnlyDictionary<Type, ProcessStepRegistration> _byType;
+    private readonly FrozenDictionary<Type, ProcessStepRegistration> _byType;
 
     private readonly IReadOnlyCollection<ProcessStepRegistration> _registrations;
 
@@ -126,12 +127,12 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
             registrations;
 
         _byName =
-            registrations.ToDictionary(
+            registrations.ToFrozenDictionary(
                 x => x.Metadata.Name,
                 StringComparer.OrdinalIgnoreCase);
 
         _byType =
-            registrations.ToDictionary(
+            registrations.ToFrozenDictionary(
                 x => x.StepType);
 
         // An information step can never start a process: it is only reachable
@@ -285,7 +286,7 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
     // Create one registration slot per definition, then wire each slot's
     // direct relationships by lookup. Two phases are required: a registration
     // can only reference slots that already exist.
-    private static IReadOnlyCollection<ProcessStepRegistration> BuildRegistrations(
+    private static ProcessStepRegistration[] BuildRegistrations(
         IReadOnlyCollection<ProcessStepDefinition> definitions)
     {
         ArgumentNullException.ThrowIfNull(definitions);

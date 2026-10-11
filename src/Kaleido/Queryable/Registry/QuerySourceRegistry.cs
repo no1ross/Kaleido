@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Reflection;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Registry;
@@ -23,8 +24,8 @@ internal interface IQuerySourceRegistry
 /// </summary>
 internal sealed class QuerySourceRegistry : IQuerySourceRegistry
 {
-    private readonly IReadOnlyDictionary<string, QuerySourceRegistration> _byName;
-    private readonly IReadOnlyDictionary<Type, QuerySourceRegistration> _byType;
+    private readonly FrozenDictionary<string, QuerySourceRegistration> _byName;
+    private readonly FrozenDictionary<Type, QuerySourceRegistration> _byType;
 
     private readonly ITypeDescriber _typeDescriber;
     private readonly IConstraintMapper _constraintMapper;
@@ -56,12 +57,12 @@ internal sealed class QuerySourceRegistry : IQuerySourceRegistry
         Registrations = registrations;
 
         _byName =
-            registrations.ToDictionary(
+            registrations.ToFrozenDictionary(
                 x => x.Metadata.Name,
                 StringComparer.OrdinalIgnoreCase);
 
         _byType =
-            registrations.ToDictionary(
+            registrations.ToFrozenDictionary(
                 x => x.SourceType);
     }
 

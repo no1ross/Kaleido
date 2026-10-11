@@ -140,7 +140,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
                         name,
                         StringComparison.Ordinal)));
 
-    private static IReadOnlyCollection<RouteEndpoint> FindEndpointsByRoute(
+    private static RouteEndpoint[] FindEndpointsByRoute(
         IEndpointRouteBuilder endpoints,
         string route) =>
         endpoints.DataSources
