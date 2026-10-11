@@ -20,10 +20,11 @@ var requestedDomains =
 
 var projectContextFactory =
     new ServiceProjectContextFactory(
+        // An absolute DataRoot is used as is; a relative one is under the seeder's folder.
         dataRoot: Path.GetFullPath(
-            Path.Combine(
-                AppContext.BaseDirectory,
-                seedSettings.DataRoot)));
+            Path.IsPathRooted(seedSettings.DataRoot)
+                ? seedSettings.DataRoot
+                : Path.Join(AppContext.BaseDirectory, seedSettings.DataRoot)));
 
 var runner =
     new SeedRunner(

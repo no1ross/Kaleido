@@ -220,13 +220,14 @@ internal sealed partial class KaleidoToolInvoker
 
         var parts = fields
             .Select(field => (Field: field, Value: row[Camel(field)]))
-            .Select(x => x.Value switch
-            {
-                null => null,
-                var value when value.GetValueKind() == JsonValueKind.True => Humanize(x.Field),
-                var value when value.GetValueKind() == JsonValueKind.False => $"not {Humanize(x.Field).ToLowerInvariant()}",
-                var value => value.ToString()
-            })
+            .Select(x => x.Value is null
+                ? null
+                : x.Value.GetValueKind() switch
+                {
+                    JsonValueKind.True => Humanize(x.Field),
+                    JsonValueKind.False => $"not {Humanize(x.Field).ToLowerInvariant()}",
+                    _ => x.Value.ToString()
+                })
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .OfType<string>();
 
@@ -299,12 +300,12 @@ internal sealed partial class KaleidoToolInvoker
     {
         var filled = new Dictionary<string, JsonElement>(arguments, StringComparer.Ordinal);
 
-        foreach (var input in lookup.Inputs)
+        foreach (var (argument, value) in lookup.Inputs
+                     .Select(input => (input.Argument, Found: row.TryGetValue(input.Argument, out var value), Value: value))
+                     .Where(x => x.Found && x.Value.ValueKind is not JsonValueKind.Undefined)
+                     .Select(x => (x.Argument, x.Value)))
         {
-            if (row.TryGetValue(input.Argument, out var value) && value.ValueKind is not JsonValueKind.Undefined)
-            {
-                filled[input.Argument] = value;
-            }
+            filled[argument] = value;
         }
 
         return filled;

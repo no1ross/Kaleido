@@ -288,12 +288,9 @@ internal sealed class ToolCatalogBuilder(
             properties["parameters"] = parametersSchema;
         }
 
-        foreach (var field in filterable.Concat(searchable).Concat(sortable).Distinct())
+        foreach (var field in filterable.Concat(searchable).Concat(sortable).Distinct().Where(x => string.IsNullOrWhiteSpace(x.Description)))
         {
-            if (string.IsNullOrWhiteSpace(field.Description))
-            {
-                context.MissingDescriptions.Add($"{toolName}.{field.Name}");
-            }
+            context.MissingDescriptions.Add($"{toolName}.{field.Name}");
         }
 
         var schema = new JsonObject { ["type"] = "object", ["properties"] = properties };

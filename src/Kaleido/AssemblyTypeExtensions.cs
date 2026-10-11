@@ -39,7 +39,8 @@ internal static class AssemblyTypeExtensions
         {
             return typeFilter?.Invoke(type) ?? true;
         }
-        catch (Exception exception)
+        // Any failure of the consumer's filter is a configuration error, reported with the type.
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             throw new KaleidoConfigurationException(
                 errorCode,

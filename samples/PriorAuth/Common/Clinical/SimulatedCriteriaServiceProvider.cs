@@ -35,7 +35,7 @@ public sealed class SimulatedCriteriaServiceProvider : IClinicalQuestionProvider
         var answer = answers.Items.FirstOrDefault()?.Answers.FirstOrDefault()?.Value;
 
         // The vendor's decision tree.
-        var next = (round.RoundId, answer) switch
+        (string? Next, string? Determination) next = (round.RoundId, answer) switch
         {
             ("reason", "trauma") => ("trauma-weight", null),
             ("reason", "chronic") => ("chronic-therapy", null),
@@ -45,12 +45,12 @@ public sealed class SimulatedCriteriaServiceProvider : IClinicalQuestionProvider
             ("chronic-therapy", var weeks) when int.TryParse(weeks, out var w) && w < 6 => (null, "CriteriaNotMet"),
             ("chronic-therapy", _) => ("xray", null),
             ("xray", "true") => (null, "CriteriaMet"),
-            _ => ((string?)null, "ClinicalReviewRequired")
+            _ => (null, "ClinicalReviewRequired")
         };
 
-        return Task.FromResult(next.Item1 is { } key
+        return Task.FromResult(next.Next is { } key
             ? new ClinicalNext(Round(key, round.SessionId))
-            : ClinicalNext.Done(next.Item2));
+            : ClinicalNext.Done(next.Determination));
     }
 
     private static ClinicalRound Round(string key, string? sessionId)
