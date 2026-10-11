@@ -1,5 +1,3 @@
-using Kaleido.Samples.PriorAuth.Clinical;
-using Kaleido.Samples.PriorAuth.Questionnaires;
 using Kaleido;
 using Kaleido.Exceptions;
 using Kaleido.Http;
@@ -8,6 +6,8 @@ using Kaleido.Observability.OpenTelemetry;
 using Kaleido.Provider.SQLite;
 using Kaleido.Samples.PriorAuth;
 using Kaleido.Samples.PriorAuth.Auth;
+using Kaleido.Samples.PriorAuth.Clinical;
+using Kaleido.Samples.PriorAuth.Questionnaires;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 using Microsoft.EntityFrameworkCore;

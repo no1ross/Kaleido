@@ -156,7 +156,7 @@ internal sealed class StepExecutionEvaluator(
                 serviceOptions.ServiceName,
                 StringComparison.OrdinalIgnoreCase))
         {
-            return ExecutionDecision.HandOff(targetProcessorName); ;
+            return ExecutionDecision.HandOff(targetProcessorName);
         }
 
         var availableSteps =

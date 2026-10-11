@@ -1,4 +1,4 @@
-﻿using Kaleido.Samples.PriorAuth.ReferenceData.Data.Entities;
+using Kaleido.Samples.PriorAuth.ReferenceData.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.ReferenceData.Data;

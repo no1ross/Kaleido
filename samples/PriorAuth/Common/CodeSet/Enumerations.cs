@@ -1,2 +1,2 @@
-﻿namespace Kaleido.Samples.PriorAuth.CodeSet;
+namespace Kaleido.Samples.PriorAuth.CodeSet;
 

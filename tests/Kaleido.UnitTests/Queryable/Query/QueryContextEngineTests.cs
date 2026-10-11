@@ -1,9 +1,9 @@
-using Kaleido.Registry;
 using Kaleido.Eventing;
 using Kaleido.Observability;
 using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Runtime;
+using Kaleido.Registry;
 
 namespace Kaleido.Queryable.Query.UnitTests;
 

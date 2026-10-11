@@ -95,21 +95,21 @@ public sealed class StartRadiologyIntakeHandler(
                     x.ResolvedCodeValue == procedureCode.CodeValue &&
                     x.ResolvedCodeSystem == procedureCode.CodeSystem))
             {
-            dbContext.PriorAuthorizationRequestedServices.Add(
-                new PriorAuthorizationRequestedService
-                {
-                    PriorAuthorizationRequestedServiceId = Guid.NewGuid(),
-                    PriorAuthorizationId = priorAuthorization.PriorAuthorizationId,
-                    UserEnteredProcedureCodeId = procedureCode.ProcedureCodeId,
-                    UserEnteredCodeValue = processStep.CodeValue,
-                    UserEnteredCodeSystem = processStep.CodeSystem,
-                    ResolvedProcedureCodeId = procedureCode.ProcedureCodeId,
-                    ResolvedCodeValue = procedureCode.CodeValue,
-                    ResolvedCodeSystem = procedureCode.CodeSystem,
-                    Description = procedureCode.ShortDescription,
-                    CreatedUtc = DateTimeOffset.UtcNow,
-                    StatedDetailsJson = StatedServiceDetails.ToJson(processStep.BodyPart, processStep.Laterality, processStep.Contrast)
-                });
+                dbContext.PriorAuthorizationRequestedServices.Add(
+                    new PriorAuthorizationRequestedService
+                    {
+                        PriorAuthorizationRequestedServiceId = Guid.NewGuid(),
+                        PriorAuthorizationId = priorAuthorization.PriorAuthorizationId,
+                        UserEnteredProcedureCodeId = procedureCode.ProcedureCodeId,
+                        UserEnteredCodeValue = processStep.CodeValue,
+                        UserEnteredCodeSystem = processStep.CodeSystem,
+                        ResolvedProcedureCodeId = procedureCode.ProcedureCodeId,
+                        ResolvedCodeValue = procedureCode.CodeValue,
+                        ResolvedCodeSystem = procedureCode.CodeSystem,
+                        Description = procedureCode.ShortDescription,
+                        CreatedUtc = DateTimeOffset.UtcNow,
+                        StatedDetailsJson = StatedServiceDetails.ToJson(processStep.BodyPart, processStep.Laterality, processStep.Contrast)
+                    });
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);

@@ -196,8 +196,8 @@ internal sealed class ProcessorRegistry : IProcessorRegistry
                         x.ToRegistryItem(
                             typeDescriber,
                             constraintMapper))
-                    .ToArray()
-            }
+                    .ToArray(),
+            },
         ];
 
         logger.LogInformation(

@@ -77,7 +77,7 @@ internal sealed class ProcessExecutionResponseFactory(
                         x.RuntimeMessages.Count > 0 ||
                         x.BusinessMessages.Count > 0)
                     .Select(CreateStepResult)
-                    .ToArray()
+                    .ToArray(),
         };
     }
 
@@ -126,7 +126,7 @@ internal sealed class ProcessExecutionResponseFactory(
                 stepResult.BusinessMessages.ToArray(),
 
             FrameworkMessages =
-                ToFrameworkMessages(stepResult)
+                ToFrameworkMessages(stepResult),
         };
     }
 
@@ -170,7 +170,7 @@ internal sealed class ProcessExecutionResponseFactory(
                 response.FrameworkMessages,
 
             Result =
-                (TResponse?)stepResult.Response
+                (TResponse?)stepResult.Response,
         };
     }
 
@@ -182,7 +182,7 @@ internal sealed class ProcessExecutionResponseFactory(
             StepName = stepResult.StepName,
             Response = stepResult.Response ?? new { },
             BusinessMessages = stepResult.BusinessMessages.ToArray(),
-            FrameworkMessages = ToFrameworkMessages(stepResult)
+            FrameworkMessages = ToFrameworkMessages(stepResult),
         };
     }
 
@@ -216,7 +216,7 @@ internal sealed class ProcessExecutionResponseFactory(
             DisplayName = registration.Metadata.DisplayName,
             Version = registration.Metadata.Version,
             Repeatable = registration.Repeatable.Enabled,
-            IsInformationStep = registration.IsInformationStep
+            IsInformationStep = registration.IsInformationStep,
         };
 
     private IReadOnlyCollection<ProcessMessage> ToFrameworkMessages(
@@ -228,7 +228,7 @@ internal sealed class ProcessExecutionResponseFactory(
                     {
                         Type = message.Type,
                         Message = message.Message,
-                        Code = message.Code
+                        Code = message.Code,
                     })
                 .ToArray()
             : [];

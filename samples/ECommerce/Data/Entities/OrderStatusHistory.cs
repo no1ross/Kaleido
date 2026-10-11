@@ -1,4 +1,4 @@
-﻿namespace Kaleido.Samples.ECommerce.Data.Entities;
+namespace Kaleido.Samples.ECommerce.Data.Entities;
 
 public sealed class OrderStatusHistory
 {

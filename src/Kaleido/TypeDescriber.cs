@@ -64,7 +64,7 @@ internal sealed class TypeDescriber : ITypeDescriber
 
                 [typeof(DateTimeOffset)] = new("string", "date-time-offset"),
 
-                [typeof(TimeSpan)] = new("string", "duration")
+                [typeof(TimeSpan)] = new("string", "duration"),
             };
 
     public bool IsSupportedType(Type type)
@@ -96,7 +96,7 @@ internal sealed class TypeDescriber : ITypeDescriber
         return descriptor with
         {
             Nullable = descriptor.Nullable
-                || nullability.ReadState == NullabilityState.Nullable
+                || nullability.ReadState == NullabilityState.Nullable,
         };
     }
 
@@ -116,7 +116,7 @@ internal sealed class TypeDescriber : ITypeDescriber
 
         return descriptor with
         {
-            Nullable = nullable is not null
+            Nullable = nullable is not null,
         };
     }
 

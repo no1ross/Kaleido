@@ -122,7 +122,7 @@ internal sealed partial class KaleidoToolInvoker(
                 KaleidoToolKind.Step => await StepAsync(tool, call, catalog, cancellationToken),
                 KaleidoToolKind.AnswerInformationRequest => await AnswerAsync(call, catalog, cancellationToken),
                 KaleidoToolKind.GetProcessState => await StateAsync(call.Arguments, catalog, cancellationToken),
-                _ => Error(McpErrorCodes.UnknownTool, $"Tool '{tool.Definition.Name}' has no handler.")
+                _ => Error(McpErrorCodes.UnknownTool, $"Tool '{tool.Definition.Name}' has no handler."),
             };
         }
         catch (KaleidoHttpClientException exception)
@@ -191,7 +191,7 @@ internal sealed partial class KaleidoToolInvoker(
             {
                 query["filter"] = new JsonObject
                 {
-                    ["group"] = new JsonObject { ["operator"] = "and", ["filters"] = new JsonArray(conditions) }
+                    ["group"] = new JsonObject { ["operator"] = "and", ["filters"] = new JsonArray(conditions) },
                 };
             }
         }
@@ -333,7 +333,7 @@ internal sealed partial class KaleidoToolInvoker(
                 items.Add(new InformationResponseItem
                 {
                     ItemId = answer.TryGetProperty("itemId", out var itemId) ? itemId.GetString() ?? string.Empty : string.Empty,
-                    Answers = values
+                    Answers = values,
                 });
             }
         }
@@ -450,7 +450,7 @@ internal sealed partial class KaleidoToolInvoker(
                 .Where(x => x.Status is StepExecutionStatus.Failed or StepExecutionStatus.Exception)
                 .Select(x => (JsonNode?)x.StepName)
                 .ToArray()),
-            ["next"] = Next(service, state.RequiredStep, state.AvailableSteps, catalog, elicited: false)
+            ["next"] = Next(service, state.RequiredStep, state.AvailableSteps, catalog, elicited: false),
         };
 
         if (note is not null)
@@ -509,15 +509,15 @@ internal sealed partial class KaleidoToolInvoker(
                         {
                             InputRequests = new Dictionary<string, InputRequest>(StringComparer.Ordinal)
                             {
-                                [AnswersInputKey] = InputRequest.ForElicitation(elicitor.ToElicitation(pending))
+                                [AnswersInputKey] = InputRequest.ForElicitation(elicitor.ToElicitation(pending)),
                             },
                             RequestState = EncodeState(new ContinuationState(
                                 pendingService,
                                 step.ProcessId,
                                 pending.InformationRequestId,
                                 round,
-                                answered.Select(x => x?.GetValue<string>()).OfType<string>().ToArray()))
-                        }
+                                answered.Select(x => x?.GetValue<string>()).OfType<string>().ToArray())),
+                        },
                     };
                 }
                 else
@@ -556,7 +556,7 @@ internal sealed partial class KaleidoToolInvoker(
                 new JsonObject
                 {
                     ["informationRequestId"] = request.InformationRequestId,
-                    ["items"] = Serialize(items)
+                    ["items"] = Serialize(items),
                 },
                 KaleidoJsonOptions.Options),
             processId,
@@ -608,7 +608,7 @@ internal sealed partial class KaleidoToolInvoker(
             ["processId"] = step.ProcessId.ToString(),
             ["service"] = service,
             ["step"] = step.StepName,
-            ["outcome"] = Camel(step.Outcome.ToString())
+            ["outcome"] = Camel(step.Outcome.ToString()),
         };
 
         if (step.Result.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Null))
@@ -647,7 +647,7 @@ internal sealed partial class KaleidoToolInvoker(
                 "The step was rejected and nothing was changed. Tell the user why (messages); they can correct it and try again, or choose another step.",
             StepExecutionOutcome.Failed when required is not null || available.Count > 0 =>
                 "The step did not complete and nothing was recorded; the process is where it was. The user can try again or choose another step.",
-            _ => null
+            _ => null,
         };
 
         if (note is not null)
@@ -673,14 +673,14 @@ internal sealed partial class KaleidoToolInvoker(
             {
                 ["tool"] = ToolCatalogBuilder.AnswerInformationRequestTool,
                 ["step"] = required.Name,
-                ["displayName"] = required.DisplayName
+                ["displayName"] = required.DisplayName,
             };
             next["informationRequest"] = Serialize(pending);
             next["instruction"] =
                 (elicited ? "More questions followed. " : string.Empty) +
                 "Ask the user every question exactly as written and submit only the user's answers with answer_information_request (service, processId, informationRequestId, answers). " +
                 (HasProposals(pending.Items)
-                    ? "Questions with proposedAnswers were pre-filled from what was said earlier: read each one back with its proposed answer and have the user confirm or correct it. " 
+                    ? "Questions with proposedAnswers were pre-filled from what was said earlier: read each one back with its proposed answer and have the user confirm or correct it. "
                     : string.Empty) +
                 "If the user already answered a question earlier in this conversation, read that answer back for confirmation instead of asking again. Never answer for the user, and never submit a proposed answer the user has not confirmed.";
         }
@@ -744,7 +744,7 @@ internal sealed partial class KaleidoToolInvoker(
 
     private static ContinuationState? DecodeState(string? value)
     {
-        if (value is null || !value.StartsWith(StatePrefix, StringComparison.Ordinal))
+        if (value?.StartsWith(StatePrefix, StringComparison.Ordinal) != true)
         {
             return null;
         }
@@ -806,7 +806,7 @@ internal sealed partial class KaleidoToolInvoker(
     private static CallToolResult Success(JsonNode body) =>
         new()
         {
-            Content = [new TextContentBlock { Text = body.ToJsonString(KaleidoJsonOptions.Options) }]
+            Content = [new TextContentBlock { Text = body.ToJsonString(KaleidoJsonOptions.Options) }],
         };
 
     private static CallToolResult Error(
@@ -824,7 +824,7 @@ internal sealed partial class KaleidoToolInvoker(
         return new CallToolResult
         {
             IsError = true,
-            Content = [new TextContentBlock { Text = body.ToJsonString(KaleidoJsonOptions.Options) }]
+            Content = [new TextContentBlock { Text = body.ToJsonString(KaleidoJsonOptions.Options) }],
         };
     }
 
@@ -835,7 +835,7 @@ internal sealed partial class KaleidoToolInvoker(
     {
         None,
         Mrtr,
-        Session
+        Session,
     }
 
     private sealed record ContinuationState(

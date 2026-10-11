@@ -85,7 +85,7 @@ public static class KaleidoMcpServiceCollectionExtensions
                 server.ServerInfo = new Implementation
                 {
                     Name = options.ServerName,
-                    Version = options.ServerVersion
+                    Version = options.ServerVersion,
                 };
                 server.ServerInstructions = options.Instructions;
             })

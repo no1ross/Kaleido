@@ -41,7 +41,7 @@ internal enum QueryExecutionMode
 {
     LocalView = 0,
     DirectSource = 1,
-    DelegatedSource = 2
+    DelegatedSource = 2,
 }
 
 [ExcludeFromCodeCoverage]
@@ -148,7 +148,7 @@ internal sealed class QueryableObservability(
         [
             new(QueryableTelemetry.TagQuerySource, details.QuerySourceName),
             new(QueryableTelemetry.TagQueryDirect, details.IsDirectQuery),
-            new(QueryableTelemetry.TagQueryExecutionMode, details.ExecutionMode.ToString())
+            new(QueryableTelemetry.TagQueryExecutionMode, details.ExecutionMode.ToString()),
         ];
 
         if (!string.IsNullOrWhiteSpace(details.QueryViewName))

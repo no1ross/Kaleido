@@ -60,9 +60,9 @@ public sealed record ProcessRequest
             {
                 Steps = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
                 {
-                    [name] = step
-                }
-            }
+                    [name] = step,
+                },
+            },
         };
     }
 }
@@ -303,7 +303,7 @@ internal sealed class ProcessorRuntime(
                     with
                 {
                     LatestRequestId = requestId,
-                    Owner = callerName
+                    Owner = callerName,
                 };
 
             observation.ContextInitialized(
@@ -353,7 +353,7 @@ internal sealed class ProcessorRuntime(
                     with
                 {
                     LatestRequestId = requestId,
-                    Owner = callerName
+                    Owner = callerName,
                 };
 
             observation.ContextInitialized(
@@ -386,7 +386,7 @@ internal sealed class ProcessorRuntime(
             context)
             with
         {
-            LatestRequestId = requestId
+            LatestRequestId = requestId,
         };
     }
 
@@ -460,7 +460,7 @@ internal sealed class ProcessorRuntime(
                                     candidate,
                                     outcome),
 
-                            BusinessMessages = outcome?.BusinessMessages ?? Array.Empty<ProcessMessage>()
+                            BusinessMessages = outcome?.BusinessMessages ?? Array.Empty<ProcessMessage>(),
                         };
                     })
                 .ToArray();
@@ -486,7 +486,7 @@ internal sealed class ProcessorRuntime(
                 executionResult.AvailableSteps,
 
             Steps =
-                steps
+                steps,
         };
     }
 

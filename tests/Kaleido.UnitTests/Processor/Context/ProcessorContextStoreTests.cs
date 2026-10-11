@@ -1,7 +1,6 @@
 using Kaleido.Processor.Context;
-using Microsoft.Extensions.Logging;
-
 using Kaleido.UnitTests;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Processor.Context.UnitTests;
 

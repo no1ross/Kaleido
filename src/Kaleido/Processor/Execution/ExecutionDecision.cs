@@ -53,25 +53,25 @@ internal sealed record ExecutionDecision
         => new()
         {
             Type = ExecutionDecisionType.Continue,
-            NextCandidate = nextCandidate
+            NextCandidate = nextCandidate,
         };
 
     public static ExecutionDecision Complete()
         => new()
         {
-            Type = ExecutionDecisionType.Complete
+            Type = ExecutionDecisionType.Complete,
         };
 
     public static ExecutionDecision BusinessFailure()
         => new()
         {
-            Type = ExecutionDecisionType.BusinessFailure
+            Type = ExecutionDecisionType.BusinessFailure,
         };
 
     public static ExecutionDecision Rejected()
         => new()
         {
-            Type = ExecutionDecisionType.Rejected
+            Type = ExecutionDecisionType.Rejected,
         };
 
     public static ExecutionDecision ProcessViolation(
@@ -79,7 +79,7 @@ internal sealed record ExecutionDecision
         => new()
         {
             Type = ExecutionDecisionType.ProcessViolation,
-            Messages = [message]
+            Messages = [message],
         };
 
     public static ExecutionDecision AwaitingRequiredStep(
@@ -89,7 +89,7 @@ internal sealed record ExecutionDecision
         {
             Type = ExecutionDecisionType.AwaitingRequiredStep,
             RequiredStep = requiredStep,
-            TargetProcessorName = targetProcessorName
+            TargetProcessorName = targetProcessorName,
         };
 
     public static ExecutionDecision AwaitingStepSelection(
@@ -97,7 +97,7 @@ internal sealed record ExecutionDecision
         => new()
         {
             Type = ExecutionDecisionType.AwaitingStepSelection,
-            AvailableSteps = availableSteps
+            AvailableSteps = availableSteps,
         };
 
     public static ExecutionDecision AwaitingInformation(
@@ -107,13 +107,13 @@ internal sealed record ExecutionDecision
         {
             Type = ExecutionDecisionType.AwaitingInformation,
             RequiredStep = requiredStep,
-            InformationRequest = informationRequest
+            InformationRequest = informationRequest,
         };
 
     public static ExecutionDecision HandOff(string targetProcessorName)
         => new()
         {
             Type = ExecutionDecisionType.HandOff,
-            TargetProcessorName = targetProcessorName
+            TargetProcessorName = targetProcessorName,
         };
 }

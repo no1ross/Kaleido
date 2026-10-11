@@ -269,7 +269,7 @@ internal sealed class ProcessorObservability(
     {
         TagList tags =
         [
-            new(KaleidoTelemetryTags.ProcessorName, processorName)
+            new(KaleidoTelemetryTags.ProcessorName, processorName),
         ];
 
         if (!string.IsNullOrWhiteSpace(callingProcessorName))
@@ -288,7 +288,7 @@ internal sealed class ProcessorObservability(
         TagList tags =
         [
             new(KaleidoTelemetryTags.ProcessorName, processorName),
-            new(ProcessorTelemetry.TagStepName, stepName)
+            new(ProcessorTelemetry.TagStepName, stepName),
         ];
 
         if (!string.IsNullOrWhiteSpace(stepVersion))
@@ -391,7 +391,7 @@ internal sealed class ProcessorObservability(
                 {
                     new(KaleidoTelemetryTags.ProcessorName, processorName),
                     new(ProcessorTelemetry.TagStepName, stepName),
-                    new(ProcessorTelemetry.TagRejectionCode, code)
+                    new(ProcessorTelemetry.TagRejectionCode, code),
                 });
 
             logger.LogDebug(

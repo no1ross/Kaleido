@@ -79,7 +79,7 @@ internal sealed class StepCandidate
         var candidate =
             new StepCandidate
             {
-                StepName = stepName
+                StepName = stepName,
             };
 
         candidate.MarkInvalid(

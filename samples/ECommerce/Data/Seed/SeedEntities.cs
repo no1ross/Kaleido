@@ -1,4 +1,4 @@
-﻿namespace Kaleido.Samples.ECommerce.Data.Seed;
+namespace Kaleido.Samples.ECommerce.Data.Seed;
 
 public class TaxonomyDefinition : Dictionary<string, TaxonomyNode>
 {

@@ -1,9 +1,8 @@
 using System.Diagnostics.Metrics;
 using Kaleido.Observability;
 using Kaleido.Processor.Observability;
-using Microsoft.Extensions.Logging;
-
 using Kaleido.UnitTests;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Processor.Observability.UnitTests;
 

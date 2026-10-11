@@ -1,10 +1,9 @@
 using Kaleido.Exceptions;
 using Kaleido.Processor;
 using Kaleido.Processor.Registry;
+using Kaleido.UnitTests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
-using Kaleido.UnitTests;
 
 namespace Kaleido.Processor.UnitTests;
 

@@ -91,7 +91,7 @@ internal sealed class KaleidoAuthorizationEvaluator(
         // Undeclared (or an empty declaration): any authenticated caller in
         // Authenticated mode; denied in ZeroTrust (fail closed — the startup
         // check normally prevents undeclared capabilities from being mapped).
-        if (authorization is null || !authorization.IsExplicit())
+        if (authorization?.IsExplicit() != true)
         {
             return serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust;
         }

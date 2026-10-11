@@ -38,7 +38,7 @@ internal sealed class StepCandidateBuilder(
                 new StepCandidate
                 {
                     StepName = step.Key,
-                    Registration = registration
+                    Registration = registration,
                 };
 
             var instance =
@@ -82,7 +82,7 @@ internal sealed class StepCandidateBuilder(
                     _ => JsonSerializer.Deserialize(
                         JsonSerializer.Serialize(values, SerializerOptions),
                         stepType,
-                        SerializerOptions)
+                        SerializerOptions),
                 };
 
             if (instance is null)
@@ -110,8 +110,8 @@ internal sealed class StepCandidateBuilder(
         NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString,
         Converters =
         {
-            new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase)
-        }
+            new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase),
+        },
     };
 }
 

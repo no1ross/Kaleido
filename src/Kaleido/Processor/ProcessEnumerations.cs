@@ -37,7 +37,7 @@ public enum StepExecutionOutcome
     /// recorded, and the process is exactly as it was before, so the caller can correct the input
     /// and retry, or choose another step.
     /// </summary>
-    Rejected
+    Rejected,
 }
 
 /// <summary>
@@ -80,7 +80,7 @@ public enum StepExecutionStatus
     /// The handler rejected the step's input as correctable; the step was not completed and the
     /// process was not changed.
     /// </summary>
-    Rejected
+    Rejected,
 }
 
 /// <summary>
@@ -105,7 +105,7 @@ public enum MessageType
     /// Error message indicating a condition that prevents
     /// the candidate from being included in the execution plan.
     /// </summary>
-    Error
+    Error,
 }
 
 /// <summary>
@@ -169,7 +169,7 @@ public enum ExecutionDecisionType
     /// The handler rejected the step's input as correctable. The process is not changed: its
     /// state, required step and available steps stay as they were before the step.
     /// </summary>
-    Rejected
+    Rejected,
 }
 
 public enum ProcessExecutionState
@@ -193,7 +193,7 @@ public enum ProcessExecutionState
     /// <summary>
     /// The process waits for the answers to the required step's information request.
     /// </summary>
-    AwaitingInformation
+    AwaitingInformation,
 }
 
 /// <summary>
@@ -222,5 +222,5 @@ public enum StepCandidateStatus
     /// The step has already been completed for the processor
     /// and does not need to be included in the execution plan.
     /// </summary>
-    Satisfied
+    Satisfied,
 }

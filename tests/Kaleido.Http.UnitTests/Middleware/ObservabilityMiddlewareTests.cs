@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.Security.Claims;
 using Kaleido.Observability;
-using Microsoft.AspNetCore.Authentication;
 using Kaleido.Processor.Observability;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
