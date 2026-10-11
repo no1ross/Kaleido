@@ -30,11 +30,11 @@ with the next request (adaptive rounds).
 
    ```csharp
    return ProcessStepHandlerResult.RequireInformation<CaptureOutOfNetworkResponseStep>(request);
-   // or ProcessStepHandlerResult<TResult>.RequireInformation<TNext>(response, request)
+   // or, with a typed response: ProcessStepHandlerResult.Success(response).RequireInformation<TNext>(request)
    ```
 
    `TNext` must be an `IInformationStep` (a compile-time constraint). A request only ever
-   travels with the **required** step. An information step required with `Success<TNext>()`
+   travels with the **required** step. An information step required with `Success<TNext>()` or `Next<TNext>()`
    fails with `pro_information_request_missing` (and KAL2016 at compile time).
 2. **Wait.** The process state becomes `AwaitingInformation`. The response's `requiredStep` is
    an object carrying the request:

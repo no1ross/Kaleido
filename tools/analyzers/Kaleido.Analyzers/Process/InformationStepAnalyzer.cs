@@ -10,7 +10,7 @@ namespace Kaleido.Analyzers.Process;
 
 /// <summary>
 /// KAL2015 — an IInformationStep declares a property other than InformationRequestId and Items.
-/// KAL2016 — Success&lt;TNext&gt;() names an information step, which needs a request to answer.
+/// KAL2016 — Success&lt;TNext&gt;() or Next&lt;TNext&gt;() names an information step, which needs a request to answer.
 /// Both fail at runtime (pro_invalid_registration at startup, pro_information_request_missing
 /// when the step completes), so they are reported at compile time.
 /// </summary>
@@ -18,6 +18,8 @@ namespace Kaleido.Analyzers.Process;
 public sealed class InformationStepAnalyzer : DiagnosticAnalyzer
 {
     private const string InformationStepInterfaceFullName = "Kaleido.Processor.IInformationStep";
+
+    private const string ProcessStepInterfaceFullName = "Kaleido.Processor.IProcessStep";
 
     private static readonly string[] HandlerResultTypes =
     [
@@ -85,9 +87,12 @@ public sealed class InformationStepAnalyzer : DiagnosticAnalyzer
     {
         var method = ((IInvocationOperation)context.Operation).TargetMethod;
 
-        if (method.Name != "Success" ||
+        // The next-step methods: the untyped Success<TNext>() and the typed result's Next<TNext>(),
+        // both constrained to IProcessStep (the typed Success<TResult>(response) is not).
+        if (method.Name is not ("Success" or "Next") ||
             method.TypeArguments.Length != 1 ||
             Array.IndexOf(HandlerResultTypes, method.ContainingType.OriginalDefinition.ToDisplayString()) < 0 ||
+            !method.OriginalDefinition.TypeParameters[0].ConstraintTypes.Any(x => x.ToDisplayString() == ProcessStepInterfaceFullName) ||
             method.TypeArguments[0] is not INamedTypeSymbol next ||
             !IsInformationStep(next))
         {

@@ -98,7 +98,7 @@ public sealed class RuntimeRootStepHandler :
         CancellationToken cancellationToken)
     {
         return Task.FromResult(
-            ProcessStepHandlerResult<RuntimeRootStepResponse>.Success(
+            ProcessStepHandlerResult.Success(
                 new RuntimeRootStepResponse()));
     }
 }
@@ -112,7 +112,7 @@ public sealed class RuntimeStepAHandler :
         CancellationToken cancellationToken)
     {
         return Task.FromResult(
-            ProcessStepHandlerResult<RuntimeStepAResponse>.Success(
+            ProcessStepHandlerResult.Success(
                 new RuntimeStepAResponse()));
     }
 }
@@ -126,7 +126,7 @@ public sealed class RuntimeStepBHandler :
         CancellationToken cancellationToken)
     {
         return Task.FromResult(
-            ProcessStepHandlerResult<RuntimeStepBResponse>.Success(
+            ProcessStepHandlerResult.Success(
                 new RuntimeStepBResponse()));
     }
 }
@@ -140,7 +140,7 @@ public sealed class RuntimeMergeStepHandler :
         CancellationToken cancellationToken)
     {
         return Task.FromResult(
-            ProcessStepHandlerResult<RuntimeMergeStepResponse>.Success(
+            ProcessStepHandlerResult.Success(
                 new RuntimeMergeStepResponse()));
     }
 }
@@ -154,8 +154,8 @@ public sealed class RuntimeRequiredRootStepHandler :
         CancellationToken cancellationToken)
     {
         return Task.FromResult(
-            ProcessStepHandlerResult<RuntimeRequiredRootStepResponse>.Success<RuntimeRequiredStep>(
-                new RuntimeRequiredRootStepResponse()));
+            ProcessStepHandlerResult.Success(
+                new RuntimeRequiredRootStepResponse()).Next<RuntimeRequiredStep>());
     }
 }
 
@@ -168,7 +168,7 @@ public sealed class RuntimeRequiredStepHandler :
         CancellationToken cancellationToken)
     {
         return Task.FromResult(
-            ProcessStepHandlerResult<RuntimeRequiredStepResponse>.Success(
+            ProcessStepHandlerResult.Success(
                 new RuntimeRequiredStepResponse()));
     }
 }
@@ -182,8 +182,8 @@ public sealed class RuntimeInvalidRequiredRootStepHandler :
         CancellationToken cancellationToken)
     {
         return Task.FromResult(
-            ProcessStepHandlerResult<RuntimeInvalidRequiredRootStepResponse>.Success<RuntimeMergeStep>(
-                new RuntimeInvalidRequiredRootStepResponse()));
+            ProcessStepHandlerResult.Success(
+                new RuntimeInvalidRequiredRootStepResponse()).Next<RuntimeMergeStep>());
     }
 }
 
@@ -196,7 +196,7 @@ public sealed class RuntimeAllowedStepHandler :
         CancellationToken cancellationToken)
     {
         return Task.FromResult(
-            ProcessStepHandlerResult<RuntimeAllowedStepResponse>.Success(
+            ProcessStepHandlerResult.Success(
                 new RuntimeAllowedStepResponse()));
     }
 }
@@ -210,7 +210,7 @@ public sealed class RuntimeFailingStepHandler :
         CancellationToken cancellationToken)
     {
         return Task.FromResult(
-            ProcessStepHandlerResult<RuntimeFailingStepResponse>.Failure(
+            ProcessStepHandlerResult.Failure(
                 new RuntimeFailingStepResponse(),
                 new ProcessMessage
                 {

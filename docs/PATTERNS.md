@@ -41,9 +41,11 @@ Rules:
 - `[ProcessStep]` declares non-empty `Version`, `DisplayName`, and `Description`
   (KAL2001). `DisplayName`/`Description` are what UIs and AI agents read — write
   them for that audience.
-- **The next step is named by type**: `Success<TNext>()` (or
-  `ProcessStepHandlerResult<T>.Success<TNext>(response)`); `Success()` lets the
-  process rules decide. Cross-processor routing uses `HandOff(targetProcessorName)`.
+- **The next step is named by type**: `Success<TNext>()`, or with a typed response
+  `ProcessStepHandlerResult.Success(response).Next<TNext>()` (the response type is inferred);
+  `Success()` / `Success(response)` let the process rules decide. Cross-processor routing uses
+  `HandOff(targetProcessorName)`. `Reject`, `HandOff` and untyped results are returned as they
+  are from a typed handler (they convert to `ProcessStepHandlerResult<T>`).
 - **Saying no** ([ADR 0008](./decisions/0008-rejected-outcome-and-retryable-exceptions.md)):
   `Reject(messages)` for input the caller can correct, or a call that can be retried
   (unknown code, ineligible date, downstream unavailable). The step is not completed and the

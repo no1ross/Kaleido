@@ -129,7 +129,7 @@ Process is step-centric:
 4. let the runtime build a registry and manage state
 5. submit one or more steps through `IProcessorRuntime` or the HTTP transport layer
 
-A step's public name is its type name (`Type.Name`, unmodified) — in the registry, on the wire, in persisted state, and in events. Handlers name the next step by type (`ProcessStepHandlerResult.Success<TNext>()`); names are only produced at the boundary.
+A step's public name is its type name (`Type.Name`, unmodified) — in the registry, on the wire, in persisted state, and in events. Handlers name the next step by type (`ProcessStepHandlerResult.Success<TNext>()`, or `ProcessStepHandlerResult.Success(response).Next<TNext>()` with a typed response); names are only produced at the boundary.
 
 The runtime:
 - builds and validates submitted step candidates
