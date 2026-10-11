@@ -40,7 +40,9 @@ jobs:
         distribution: temurin
         java-version: '17'
 
-    # Analysis scope: C# in src, tools and samples (tests are test code, generated obj/ excluded).
+    # Analysis scope: C# in src and tools (tests are test code, generated obj/ excluded). samples/ is
+    # excluded for now: the full sample implementations move to their own repositories before release
+    # (#250); the slim examples that replace them are analyzed again (remove samples/** below).
     # Coverage is measured on src only, like the coverage report below. The quality gate (zero new
     # issues, 90% coverage on new code) is evaluated by the end step, which fails the build.
     # .editorconfig is the single source of truth for the .NET analyzers (Meziantou, Roslynator, CA,
@@ -57,7 +59,7 @@ jobs:
           /d:sonar.token="$SONAR_TOKEN" \
           /d:sonar.coverageReportPaths="coverage/SonarQube.xml" \
           /d:sonar.coverage.exclusions="samples/**,tools/**,tests/**" \
-          /d:sonar.exclusions="**/obj/**,**/bin/**,samples/PriorAuth/priorauth-ui/**,samples/kaleido-sample-ecommerce-ui/**" \
+          /d:sonar.exclusions="**/obj/**,**/bin/**,samples/**" \
           /d:sonar.cs.roslyn.ignoreIssues=true \
           /d:sonar.qualitygate.wait=true
 
