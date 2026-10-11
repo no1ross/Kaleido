@@ -138,11 +138,14 @@ internal sealed class ProcessorStateUpdater(
                 context,
                 candidate);
 
+        // A business failure ends the process; the failed step is recorded as failed, not completed.
         var updatedStep =
             step with
             {
                 Status =
-                    StepExecutionStatus.Completed,
+                    decision.Type == ExecutionDecisionType.BusinessFailure
+                        ? StepExecutionStatus.Failed
+                        : StepExecutionStatus.Completed,
 
                 LatestRequestId =
                     context.LatestRequestId,
@@ -215,18 +218,12 @@ internal sealed class ProcessorStateUpdater(
             steps,
             updatedStep);
 
+        // An unexpected error is a defect, not a business outcome: the process keeps the state,
+        // required step and available steps it had before the step, so the step can be retried
+        // once the defect is fixed. Only the step's status records what happened.
         return context with
         {
-            State =
-                ProcessExecutionState.Exception,
-
-            RequiredStep = null,
-
-            RequiredInformationRequest = null,
-
-            TargetProcessorName = null,
-
-            AvailableSteps = [],
+            UpdatedUtc = DateTime.UtcNow,
 
             Steps = steps
         };

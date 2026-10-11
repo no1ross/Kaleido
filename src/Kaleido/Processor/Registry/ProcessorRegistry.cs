@@ -109,8 +109,44 @@ public record ProcessorInputFieldDescriptor : ProcessorPropertyDescriptor
     /// </summary>
     public string? Prompt { get; init; }
 
+    /// <summary>
+    /// Where the input's value comes from, from <c>[Lookup]</c>: a field of one result of a query.
+    /// Null when the user supplies the value directly.
+    /// </summary>
+    public LookupMetadata? Lookup { get; init; }
+
     public IReadOnlyCollection<ConstraintContract> Constraints { get; init; }
         = [];
+}
+
+/// <summary>
+/// A step input's lookup, as published in the registry: the input takes <see cref="Field"/> of
+/// one result of the query <see cref="Service"/>/<see cref="Source"/>[/<see cref="View"/>];
+/// the inputs of a step with the same <see cref="Group"/> are filled from the same result.
+/// </summary>
+/// <remarks>
+/// A published link, never a choice: the user identifies and picks the result (ADR 0008).
+/// </remarks>
+[ExcludeFromCodeCoverage]
+public sealed record LookupMetadata
+{
+    /// <summary>The service that publishes the query.</summary>
+    public required string Service { get; init; }
+
+    /// <summary>The query source's published name.</summary>
+    public required string Source { get; init; }
+
+    /// <summary>The view of <see cref="Source"/>, or null for a direct source query.</summary>
+    public string? View { get; init; }
+
+    /// <summary>The result field the input takes.</summary>
+    public required string Field { get; init; }
+
+    /// <summary>The step's inputs with the same group are filled from the same result.</summary>
+    public required string Group { get; init; }
+
+    /// <summary>The result fields that identify a result to a person, in display order (may be empty).</summary>
+    public IReadOnlyList<string> Display { get; init; } = [];
 }
 
 [ExcludeFromCodeCoverage]

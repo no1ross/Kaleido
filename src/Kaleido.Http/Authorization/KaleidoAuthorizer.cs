@@ -1,5 +1,4 @@
 using Kaleido.Authorization;
-using Kaleido.Processor.Context;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,8 +11,8 @@ namespace Kaleido.Http.Authorization;
 /// and bridges declared policies to ASP.NET's <c>IAuthorizationService</c>.
 /// Used on dynamic code paths where endpoint-level
 /// <c>RequireAuthorization</c> cannot express the requirement
-/// (multi-step execute, process ownership) and to filter discovery payloads
-/// per caller.
+/// (multi-step execute, resume of a stored step) and to filter discovery
+/// payloads per caller.
 /// </summary>
 internal interface IKaleidoAuthorizer
 {
@@ -51,14 +50,6 @@ internal interface IKaleidoAuthorizer
         IEnumerable<T> items,
         Func<T, AuthorizationMetadata?> authorization,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Enforces process ownership on a loaded <see cref="ProcessorContext"/> —
-    /// unowned processes pass; owned processes require the owner or a caller
-    /// sharing an <c>OwnerRoles</c> entry.
-    /// </summary>
-    void AuthorizeProcess(
-        ProcessorContext processContext);
 }
 
 internal sealed class KaleidoAuthorizer(
@@ -121,12 +112,6 @@ internal sealed class KaleidoAuthorizer(
 
         return allowed;
     }
-
-    public void AuthorizeProcess(
-        ProcessorContext processContext) =>
-        evaluator.AuthorizeProcess(
-            processContext,
-            correlationAccessor.Current);
 
     // The policy bridge stays in the transport — ASP.NET policies evaluate
     // against the live ClaimsPrincipal, which core cannot reconstruct.

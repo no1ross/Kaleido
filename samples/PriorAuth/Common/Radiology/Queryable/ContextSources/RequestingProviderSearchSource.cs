@@ -31,6 +31,6 @@ internal sealed class RequestingProviderSearchSource(
         return await requestingProviderSearchClient.SearchAsync(
             parameters.ProcessId,
             request.Query,
-            cancellationToken);
+            cancellationToken: cancellationToken);
     }
 }

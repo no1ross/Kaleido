@@ -138,6 +138,24 @@ internal sealed class ProcessorExecutor(
                         remainingCandidates,
                         context);
 
+                // A rejection leaves the process exactly as it was: nothing is saved, the step is
+                // not completed, and no later candidate of this request runs.
+                if (decision.Type == ExecutionDecisionType.Rejected)
+                {
+                    stepObservation.DecisionRecorded(
+                        decision.Type.ToString(),
+                        StepExecutionStatus.Rejected.ToString());
+
+                    outcomes.Add(
+                        CreateOutcome(
+                            candidate,
+                            result,
+                            decision,
+                            StepExecutionStatus.Rejected));
+
+                    break;
+                }
+
                 context =
                     stateUpdater.ApplyExecution(
                         context,
@@ -374,6 +392,12 @@ internal sealed class ProcessorExecutor(
             StepExecutionStatus.Canceled =>
                 StepExecutionOutcome.Blocked,
 
+            StepExecutionStatus.Failed =>
+                StepExecutionOutcome.Failed,
+
+            StepExecutionStatus.Rejected =>
+                StepExecutionOutcome.Rejected,
+
             _ =>
                 StepExecutionOutcome.Pending
         };
@@ -439,7 +463,7 @@ internal sealed class ProcessorExecutor(
 
         return result.Succeeded
             ? StepExecutionStatus.Completed
-            : StepExecutionStatus.Exception;
+            : StepExecutionStatus.Failed;
     }
 
 }

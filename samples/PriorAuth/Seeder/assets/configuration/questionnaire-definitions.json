@@ -136,5 +136,282 @@
         "IsActive": true
       }
     ]
+  },
+  {
+    "QuestionnaireDefinitionId": "f0f8aae0-1288-42d4-8896-9a0e9be621eb",
+    "QuestionnaireId": "priorauth-ct-confirmation",
+    "Version": "1.0.0",
+    "Name": "ct-confirmation",
+    "Title": "Confirm CT",
+    "Description": "Confirms that a CT, not an MRI, is being requested.",
+    "IsActive": true,
+    "Items": [
+      {
+        "QuestionnaireDefinitionItemId": "05dd7fdb-eaef-4cad-8ae6-76a15dbc8478",
+        "QuestionnaireDefinitionId": "f0f8aae0-1288-42d4-8896-9a0e9be621eb",
+        "LinkId": "confirm-ct",
+        "Text": "Procedure {ProcedureCode} is a CT scan. Confirm that a CT, not an MRI, is being requested.",
+        "Type": "boolean",
+        "BindingKey": "ConfirmCt",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 1,
+        "AnswerOptions": []
+      }
+    ],
+    "MappingRules": [
+      {
+        "QuestionnaireMappingRuleId": "b7d2e300-6bcf-45e7-b7f8-4dd0315029c6",
+        "QuestionnaireDefinitionId": "f0f8aae0-1288-42d4-8896-9a0e9be621eb",
+        "StepName": "ConfirmCtInsteadOfMriStep",
+        "PlanId": null,
+        "LineOfBusiness": null,
+        "ProcedureModality": "Ct",
+        "ProcedureCodeValue": null,
+        "Priority": 100,
+        "IsActive": true
+      }
+    ]
+  },
+  {
+    "QuestionnaireDefinitionId": "97c096d7-0674-41c1-9940-ec9a17cddfff",
+    "QuestionnaireId": "priorauth-submit-attestation",
+    "Version": "1.0.0",
+    "Name": "submit-attestation",
+    "Title": "Submit prior authorization",
+    "Description": "Attestation the caller confirms before the request is submitted.",
+    "IsActive": true,
+    "Items": [
+      {
+        "QuestionnaireDefinitionItemId": "6a541e7b-8dff-4f21-9039-793d771f0375",
+        "QuestionnaireDefinitionId": "97c096d7-0674-41c1-9940-ec9a17cddfff",
+        "LinkId": "attested",
+        "Text": "I confirm that the information in this prior authorization request is accurate and complete, and I want to submit it.",
+        "Type": "boolean",
+        "BindingKey": "Attested",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 1,
+        "AnswerOptions": []
+      }
+    ],
+    "MappingRules": [
+      {
+        "QuestionnaireMappingRuleId": "b64b2e7b-eb7c-433b-881d-0b3e5d761286",
+        "QuestionnaireDefinitionId": "97c096d7-0674-41c1-9940-ec9a17cddfff",
+        "StepName": "SubmitPriorAuthorizationStep",
+        "PlanId": null,
+        "LineOfBusiness": null,
+        "ProcedureModality": null,
+        "ProcedureCodeValue": null,
+        "Priority": 100,
+        "IsActive": true
+      }
+    ]
+  },
+  {
+    "QuestionnaireDefinitionId": "930bd0c2-f669-4e4e-99ef-93796cd68dc6",
+    "QuestionnaireId": "priorauth-mri-clinical-indication",
+    "Version": "1.0.0",
+    "Name": "mri-clinical-indication",
+    "Title": "Clinical information: reason for the MRI",
+    "Description": "First round of the MRI clinical pathway.",
+    "IsActive": true,
+    "Items": [
+      {
+        "QuestionnaireDefinitionItemId": "db6cbdcb-9252-4200-b582-6657d9cdd7c3",
+        "QuestionnaireDefinitionId": "930bd0c2-f669-4e4e-99ef-93796cd68dc6",
+        "LinkId": "indication",
+        "Text": "What is the primary reason for the MRI?",
+        "Type": "choice",
+        "BindingKey": "ClinicalIndication",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 1,
+        "AnswerOptions": [
+          { "QuestionnaireDefinitionItemAnswerOptionId": "2c068586-8a71-4475-80a3-1c1dc889a5a7", "QuestionnaireDefinitionItemId": "db6cbdcb-9252-4200-b582-6657d9cdd7c3", "Value": "Injury", "DisplayText": "Injury or trauma", "Order": 1 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "2d510f44-e7e7-4645-91c1-bab88cf07a51", "QuestionnaireDefinitionItemId": "db6cbdcb-9252-4200-b582-6657d9cdd7c3", "Value": "PersistentPain", "DisplayText": "Persistent pain", "Order": 2 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "e69ad4c2-6545-49f3-bdeb-7b15d07d6e6c", "QuestionnaireDefinitionItemId": "db6cbdcb-9252-4200-b582-6657d9cdd7c3", "Value": "SuspectedTear", "DisplayText": "Suspected meniscal or ligament tear", "Order": 3 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "6be783b4-b084-4117-91b2-1baa597ad21d", "QuestionnaireDefinitionItemId": "db6cbdcb-9252-4200-b582-6657d9cdd7c3", "Value": "Mass", "DisplayText": "Mass or suspected tumor", "Order": 4 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "efd2629e-7c46-4c72-9228-0495661f746a", "QuestionnaireDefinitionItemId": "db6cbdcb-9252-4200-b582-6657d9cdd7c3", "Value": "PostSurgical", "DisplayText": "Post-surgical evaluation", "Order": 5 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "40a28515-6e2f-40a4-bafb-2c570f816b2b", "QuestionnaireDefinitionItemId": "db6cbdcb-9252-4200-b582-6657d9cdd7c3", "Value": "Other", "DisplayText": "Other", "Order": 6 }
+        ]
+      }
+    ],
+    "MappingRules": [
+      {
+        "QuestionnaireMappingRuleId": "149eaf99-8a9c-4059-9adc-fefdc222c312",
+        "QuestionnaireDefinitionId": "930bd0c2-f669-4e4e-99ef-93796cd68dc6",
+        "StepName": "CaptureClinicalInfoStep",
+        "PlanId": null,
+        "LineOfBusiness": null,
+        "ProcedureModality": "Mri",
+        "ProcedureCodeValue": null,
+        "Priority": 100,
+        "IsActive": true
+      }
+    ]
+  },
+  {
+    "QuestionnaireDefinitionId": "3ce1f617-b608-41d3-a8f7-0672940e7ec9",
+    "QuestionnaireId": "priorauth-mri-clinical-injury",
+    "Version": "1.0.0",
+    "Name": "mri-clinical-injury",
+    "Title": "Clinical information: the injury",
+    "Description": "Asked when the MRI is for an injury.",
+    "IsActive": true,
+    "Items": [
+      {
+        "QuestionnaireDefinitionItemId": "117c35cc-a806-4fa7-8c37-4ed9b4808634",
+        "QuestionnaireDefinitionId": "3ce1f617-b608-41d3-a8f7-0672940e7ec9",
+        "LinkId": "injury-date",
+        "Text": "On what date did the injury happen?",
+        "Type": "date",
+        "BindingKey": "InjuryDate",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 1,
+        "AnswerOptions": []
+      },
+      {
+        "QuestionnaireDefinitionItemId": "e9c24b61-ca5d-431f-aec2-4cc0d80e59e2",
+        "QuestionnaireDefinitionId": "3ce1f617-b608-41d3-a8f7-0672940e7ec9",
+        "LinkId": "injury-mechanism",
+        "Text": "How did the injury happen?",
+        "Type": "choice",
+        "BindingKey": "InjuryMechanism",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 2,
+        "AnswerOptions": [
+          { "QuestionnaireDefinitionItemAnswerOptionId": "bd79bc7d-ebde-4247-bb81-8fe8271dedfe", "QuestionnaireDefinitionItemId": "e9c24b61-ca5d-431f-aec2-4cc0d80e59e2", "Value": "Fall", "DisplayText": "Fall", "Order": 1 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "def9ca24-93ac-4534-b87c-186306a267fd", "QuestionnaireDefinitionItemId": "e9c24b61-ca5d-431f-aec2-4cc0d80e59e2", "Value": "Twisting", "DisplayText": "Twisting or pivoting", "Order": 2 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "c92fdee7-8cf8-4c6b-98be-23e3be394ad2", "QuestionnaireDefinitionItemId": "e9c24b61-ca5d-431f-aec2-4cc0d80e59e2", "Value": "Sports", "DisplayText": "Sports injury", "Order": 3 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "e5b86b16-904c-44e8-b080-94407e527c56", "QuestionnaireDefinitionItemId": "e9c24b61-ca5d-431f-aec2-4cc0d80e59e2", "Value": "MotorVehicle", "DisplayText": "Motor vehicle accident", "Order": 4 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "70f4bb1b-226f-408a-82c8-a86b1cbcf537", "QuestionnaireDefinitionItemId": "e9c24b61-ca5d-431f-aec2-4cc0d80e59e2", "Value": "Other", "DisplayText": "Other", "Order": 5 }
+        ]
+      },
+      {
+        "QuestionnaireDefinitionItemId": "dc0b44e9-378a-4e34-b928-73031af31763",
+        "QuestionnaireDefinitionId": "3ce1f617-b608-41d3-a8f7-0672940e7ec9",
+        "LinkId": "cannot-bear-weight",
+        "Text": "Is the patient unable to bear weight on the affected side?",
+        "Type": "boolean",
+        "BindingKey": "CannotBearWeight",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 3,
+        "AnswerOptions": []
+      }
+    ],
+    "MappingRules": []
+  },
+  {
+    "QuestionnaireDefinitionId": "3949b20a-659a-4ad1-aaf5-4194dcb3e1af",
+    "QuestionnaireId": "priorauth-mri-clinical-pain",
+    "Version": "1.0.0",
+    "Name": "mri-clinical-pain",
+    "Title": "Clinical information: persistent pain",
+    "Description": "Asked when the MRI is for persistent pain.",
+    "IsActive": true,
+    "Items": [
+      {
+        "QuestionnaireDefinitionItemId": "c8379a9e-6707-4418-818e-e3928ff3ec49",
+        "QuestionnaireDefinitionId": "3949b20a-659a-4ad1-aaf5-4194dcb3e1af",
+        "LinkId": "symptom-weeks",
+        "Text": "How many weeks has the patient had symptoms?",
+        "Type": "integer",
+        "BindingKey": "SymptomWeeks",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 1,
+        "AnswerOptions": []
+      },
+      {
+        "QuestionnaireDefinitionItemId": "5b0a5803-3601-4947-a23e-cde0b2eb25fc",
+        "QuestionnaireDefinitionId": "3949b20a-659a-4ad1-aaf5-4194dcb3e1af",
+        "LinkId": "conservative-therapy",
+        "Text": "Which conservative treatments has the patient tried?",
+        "Type": "choice",
+        "BindingKey": "ConservativeTherapy",
+        "Required": true,
+        "Repeats": true,
+        "DefaultValue": null,
+        "Order": 2,
+        "AnswerOptions": [
+          { "QuestionnaireDefinitionItemAnswerOptionId": "37126b59-ffb6-4e73-8c38-8ef4e99f99e8", "QuestionnaireDefinitionItemId": "5b0a5803-3601-4947-a23e-cde0b2eb25fc", "Value": "PhysicalTherapy", "DisplayText": "Physical therapy", "Order": 1 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "246035d0-f047-4cc3-918c-abafd15712ab", "QuestionnaireDefinitionItemId": "5b0a5803-3601-4947-a23e-cde0b2eb25fc", "Value": "AntiInflammatory", "DisplayText": "Anti-inflammatory medication", "Order": 2 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "ce9e4a7e-4a29-449b-97d2-84fb57f0f04c", "QuestionnaireDefinitionItemId": "5b0a5803-3601-4947-a23e-cde0b2eb25fc", "Value": "Rest", "DisplayText": "Rest or activity modification", "Order": 3 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "aad5d882-f4ca-45fc-ab32-db00a9f13644", "QuestionnaireDefinitionItemId": "5b0a5803-3601-4947-a23e-cde0b2eb25fc", "Value": "Bracing", "DisplayText": "Bracing", "Order": 4 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "2c90cde3-80e7-4acd-9cd6-e86309bc2654", "QuestionnaireDefinitionItemId": "5b0a5803-3601-4947-a23e-cde0b2eb25fc", "Value": "Injection", "DisplayText": "Injection", "Order": 5 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "2e182240-b607-41e4-abf8-4c7ce8b60784", "QuestionnaireDefinitionItemId": "5b0a5803-3601-4947-a23e-cde0b2eb25fc", "Value": "None", "DisplayText": "None", "Order": 6 }
+        ]
+      },
+      {
+        "QuestionnaireDefinitionItemId": "7de63260-9637-463d-ab2b-7cfee36c2d94",
+        "QuestionnaireDefinitionId": "3949b20a-659a-4ad1-aaf5-4194dcb3e1af",
+        "LinkId": "conservative-weeks",
+        "Text": "For how many weeks was conservative treatment tried? Enter 0 if none.",
+        "Type": "integer",
+        "BindingKey": "ConservativeTherapyWeeks",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 3,
+        "AnswerOptions": []
+      }
+    ],
+    "MappingRules": []
+  },
+  {
+    "QuestionnaireDefinitionId": "44c91895-50c0-49ee-9414-a73b03428c14",
+    "QuestionnaireId": "priorauth-mri-clinical-imaging",
+    "Version": "1.0.0",
+    "Name": "mri-clinical-imaging",
+    "Title": "Clinical information: imaging and red flags",
+    "Description": "Last round of the MRI clinical pathway.",
+    "IsActive": true,
+    "Items": [
+      {
+        "QuestionnaireDefinitionItemId": "0eb9117b-4cbf-466b-9aaa-1c16263489d5",
+        "QuestionnaireDefinitionId": "44c91895-50c0-49ee-9414-a73b03428c14",
+        "LinkId": "xray",
+        "Text": "Has an X-ray of the affected area been completed?",
+        "Type": "boolean",
+        "BindingKey": "XrayCompleted",
+        "Required": true,
+        "Repeats": false,
+        "DefaultValue": null,
+        "Order": 1,
+        "AnswerOptions": []
+      },
+      {
+        "QuestionnaireDefinitionItemId": "a5373768-a4b5-4e74-b812-ec05fe2351e9",
+        "QuestionnaireDefinitionId": "44c91895-50c0-49ee-9414-a73b03428c14",
+        "LinkId": "red-flags",
+        "Text": "Are any of the following present?",
+        "Type": "choice",
+        "BindingKey": "RedFlags",
+        "Required": true,
+        "Repeats": true,
+        "DefaultValue": null,
+        "Order": 2,
+        "AnswerOptions": [
+          { "QuestionnaireDefinitionItemAnswerOptionId": "3a60710f-a1cb-410c-b923-62d73593aac0", "QuestionnaireDefinitionItemId": "a5373768-a4b5-4e74-b812-ec05fe2351e9", "Value": "Locking", "DisplayText": "Locking or giving way", "Order": 1 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "b89c6855-a159-4c66-9103-d47f91b9f071", "QuestionnaireDefinitionItemId": "a5373768-a4b5-4e74-b812-ec05fe2351e9", "Value": "Swelling", "DisplayText": "Severe swelling", "Order": 2 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "aa1891ef-9c1e-4894-8732-4617ba3fb8d2", "QuestionnaireDefinitionItemId": "a5373768-a4b5-4e74-b812-ec05fe2351e9", "Value": "CannotBearWeight", "DisplayText": "Unable to bear weight", "Order": 3 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "a4c43e6b-8977-405d-abc3-ad6da47cfdcf", "QuestionnaireDefinitionItemId": "a5373768-a4b5-4e74-b812-ec05fe2351e9", "Value": "Infection", "DisplayText": "Suspected infection", "Order": 4 },
+          { "QuestionnaireDefinitionItemAnswerOptionId": "d90fee0c-7a84-403b-a8fb-72ae5e0455d8", "QuestionnaireDefinitionItemId": "a5373768-a4b5-4e74-b812-ec05fe2351e9", "Value": "None", "DisplayText": "None of these", "Order": 5 }
+        ]
+      }
+    ],
+    "MappingRules": []
   }
 ]

@@ -30,7 +30,14 @@ public enum StepExecutionOutcome
     /// <summary>
     /// The step was intentionally stopped and will not continue.
     /// </summary>
-    Canceled
+    Canceled,
+
+    /// <summary>
+    /// The handler rejected the step's input as correctable (e.g. an unknown code): nothing was
+    /// recorded, and the process is exactly as it was before, so the caller can correct the input
+    /// and retry, or choose another step.
+    /// </summary>
+    Rejected
 }
 
 /// <summary>
@@ -55,12 +62,25 @@ public enum StepExecutionStatus
     ValidationFailed,
 
     /// <summary>
-    /// An unexpected exception occurred while processing the request.
+    /// An unexpected exception occurred while processing the request. The process keeps the
+    /// state it had before the step, so the step can be retried.
     /// </summary>
     Exception,
 
     Skipped,
-    Canceled
+    Canceled,
+
+    /// <summary>
+    /// The step executed and its handler returned a business failure: the process has ended in
+    /// <see cref="ProcessExecutionState.BusinessFailure"/>. The step did not complete.
+    /// </summary>
+    Failed,
+
+    /// <summary>
+    /// The handler rejected the step's input as correctable; the step was not completed and the
+    /// process was not changed.
+    /// </summary>
+    Rejected
 }
 
 /// <summary>
@@ -143,7 +163,13 @@ public enum ExecutionDecisionType
     /// step's information request are answered, by submitting that
     /// information step with the answers.
     /// </summary>
-    AwaitingInformation
+    AwaitingInformation,
+
+    /// <summary>
+    /// The handler rejected the step's input as correctable. The process is not changed: its
+    /// state, required step and available steps stay as they were before the step.
+    /// </summary>
+    Rejected
 }
 
 public enum ProcessExecutionState
@@ -155,7 +181,13 @@ public enum ProcessExecutionState
     HandOff,
     AwaitingRequiredStep,
     AwaitingStepSelection,
+
+    /// <summary>
+    /// Not set by the runtime: an unexpected error leaves the process in the state it had before
+    /// the step, so the step can be retried (ADR 0008). Kept for state written by earlier versions.
+    /// </summary>
     Exception,
+
     Canceled,
 
     /// <summary>

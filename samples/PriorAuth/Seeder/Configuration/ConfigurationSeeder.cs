@@ -33,6 +33,7 @@ internal sealed class ConfigurationSeeder(
         dbContext.ProductCodeMappings.AddRange(assets.ProductCodeMappings);
         dbContext.MriProcedureCodeRules.AddRange(assets.MriProcedureCodeRules);
         dbContext.QuestionnaireDefinitions.AddRange(assets.QuestionnaireDefinitions);
+        dbContext.ClinicalPathwayTransitions.AddRange(assets.ClinicalPathwayTransitions);
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -44,10 +45,11 @@ internal sealed class ConfigurationSeeder(
 
         return new ConfigurationSeedAssets
         {
-            ProcedureModalityRules = JsonAssetLoader.Load<List<ProcedureModalityRule>>(Path.Combine(basePath, "procedure-modality-rules.json"), enumOptions),
-            ProductCodeMappings = JsonAssetLoader.Load<List<ProductCodeMapping>>(Path.Combine(basePath, "product-code-mappings.json"), enumOptions),
-            MriProcedureCodeRules = JsonAssetLoader.Load<List<MriProcedureCodeRule>>(Path.Combine(basePath, "mri-procedure-code-rules.json"), enumOptions),
-            QuestionnaireDefinitions = JsonAssetLoader.Load<List<QuestionnaireDefinition>>(Path.Combine(basePath, "questionnaire-definitions.json"), enumOptions)
+            ProcedureModalityRules = JsonAssetLoader.Load<List<ProcedureModalityRule>>(Path.Join(basePath, "procedure-modality-rules.json"), enumOptions),
+            ProductCodeMappings = JsonAssetLoader.Load<List<ProductCodeMapping>>(Path.Join(basePath, "product-code-mappings.json"), enumOptions),
+            MriProcedureCodeRules = JsonAssetLoader.Load<List<MriProcedureCodeRule>>(Path.Join(basePath, "mri-procedure-code-rules.json"), enumOptions),
+            QuestionnaireDefinitions = JsonAssetLoader.Load<List<QuestionnaireDefinition>>(Path.Join(basePath, "questionnaire-definitions.json"), enumOptions),
+            ClinicalPathwayTransitions = JsonAssetLoader.Load<List<ClinicalPathwayTransition>>(Path.Join(basePath, "clinical-pathway-transitions.json"), enumOptions)
         };
     }
 }

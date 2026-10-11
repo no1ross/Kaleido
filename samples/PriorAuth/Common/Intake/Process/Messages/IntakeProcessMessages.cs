@@ -11,7 +11,7 @@ public static class IntakeProcessMessages
         {
             Code = "MEMBER_NOT_FOUND",
             Type = MessageType.Error,
-            Message = $"No member details were found for member '{memberId}' and enrollment '{memberEnrollmentId}'."
+            Message = $"Member '{memberId}' has no enrollment '{memberEnrollmentId}': the member and the enrollment must come from the same Member Search result. Search the member again and choose one result."
         };
 
     public static ProcessMessage CoverageNotYetEffective(

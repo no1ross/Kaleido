@@ -78,6 +78,8 @@ internal sealed class InformationValidator : IInformationValidator
                     errors.Add(RequestError($"Item '{item.Id}' is a {item.Type} but has nested items; only groups nest."));
                     break;
             }
+
+            errors.AddRange(ValidateProposedAnswers(item));
         }
 
         return errors;
@@ -165,6 +167,34 @@ internal sealed class InformationValidator : IInformationValidator
         }
 
         return errors;
+    }
+
+    // A proposal must be something the user could submit unchanged.
+    private static IEnumerable<StepProcessingMessage> ValidateProposedAnswers(
+        InformationItem item)
+    {
+        var proposed = item.ProposedAnswers ?? [];
+
+        if (proposed.Count == 0)
+        {
+            yield break;
+        }
+
+        if (item.Type is InformationItemType.Group or InformationItemType.Display)
+        {
+            yield return RequestError($"Item '{item.Id}' is a {item.Type} and takes no proposed answer.");
+            yield break;
+        }
+
+        if (proposed.Count > 1 && !item.Repeats)
+        {
+            yield return RequestError($"Question '{item.Id}' takes one answer but proposes {proposed.Count}.");
+        }
+
+        foreach (var answer in proposed.Where(answer => !Fits(item, answer?.Value)))
+        {
+            yield return RequestError($"Proposed answer '{answer?.Value}' does not fit question '{item.Id}' ({Describe(item)}).");
+        }
     }
 
     // One table of what each item type accepts; the shape only, never the meaning.

@@ -277,6 +277,39 @@ public sealed class ProcessorExecutorTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WhenTheStepIsRejected_LeavesTheProcessUnchangedAndReturnsTheMessages()
+    {
+        var registration = CreateRegistration<TestStepA>("step-a");
+        var candidate = CreateCandidate<TestStepA>("step-a", registration);
+        var context = CreateContext("step-a") with { State = ProcessExecutionState.AwaitingStepSelection, AvailableSteps = ["step-a", "step-b"] };
+        var message = new ProcessMessage { Code = "UNKNOWN_CODE", Type = MessageType.Error, Message = "No processor is configured for the code." };
+
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessStepRegistration>(), It.IsAny<object>(), It.IsAny<ProcessStepContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new StepInvocationResult { Succeeded = false, Rejected = true, Messages = [message] });
+
+        var evaluator = new Mock<IStepExecutionEvaluator>();
+        evaluator
+            .Setup(x => x.Evaluate(It.IsAny<StepCandidate>(), It.IsAny<StepInvocationResult>(), It.IsAny<IReadOnlyCollection<StepCandidate>>(), It.IsAny<ProcessorContext>()))
+            .Returns(ExecutionDecision.Rejected());
+
+        var stateUpdater = new Mock<IProcessorStateUpdater>(MockBehavior.Strict);
+        var saved = new List<ProcessorContext>();
+
+        var result = await CreateSut(invoker, evaluator: evaluator, stateUpdater: stateUpdater, store: CreateStore(saved))
+            .ExecuteAsync([candidate], context, new ProcessorRequest());
+
+        var outcome = Assert.Single(result.Outcomes);
+        Assert.Equal(StepExecutionStatus.Rejected, outcome.Status);
+        Assert.Equal(StepExecutionOutcome.Rejected, outcome.Outcome);
+        Assert.Equal([message], outcome.BusinessMessages);
+        Assert.Empty(saved);
+        Assert.Equal(ProcessExecutionState.AwaitingStepSelection, result.State);
+        Assert.Equal(["step-a", "step-b"], result.AvailableSteps);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WhenDecisionIsComplete_ReturnsSingleCompletedOutcome()
     {
         var registration =

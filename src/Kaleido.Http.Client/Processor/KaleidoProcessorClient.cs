@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Client.Processor;
@@ -157,6 +158,53 @@ internal sealed class KaleidoProcessorClient(
         throw await CreateFailureAsync(
             response,
             "Process step request failed",
+            cancellationToken);
+    }
+
+    public async Task<StepExecutionResponse<JsonElement>> ExecuteStepAsync(
+        string stepName,
+        JsonElement processStep,
+        Guid? processId = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(stepName);
+
+        var url = await ResolveExecuteUrlAsync(stepName, cancellationToken);
+
+        var body = new ExecuteStepRequest<JsonElement>
+        {
+            ProcessStep = processStep
+        };
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = JsonContent.Create(body, options: KaleidoJsonOptions.Options)
+        };
+
+        headerStamper.Stamp(httpRequest);
+
+        // An explicit process id wins over the ambient correlation one.
+        if (processId is { } id)
+        {
+            httpRequest.Headers.Remove(KaleidoCorrelationHeaders.ProcessId);
+            httpRequest.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, id.ToString());
+        }
+
+        using var response = await SendAsync(httpRequest, cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<StepExecutionResponse<JsonElement>>(
+                       KaleidoJsonOptions.Options, cancellationToken)
+                   ?? throw new KaleidoHttpClientException(
+                       HttpClientErrorCodes.EmptyResponse,
+                       $"Process step request for '{stepName}' succeeded but returned no payload.",
+                       response.StatusCode);
+        }
+
+        throw await CreateFailureAsync(
+            response,
+            $"Process step request for '{stepName}' failed",
             cancellationToken);
     }
 

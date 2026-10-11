@@ -17,9 +17,8 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
     [Fact]
     public async Task RequireInformation_ReturnsTheRequestOnTheRequiredStep_AndPersistsIt()
     {
-        var processId = Guid.NewGuid();
-
-        var asked = await PostAsync(AskUrl, new RuntimeAskStep(), processId);
+        var asked = await PostAsync(AskUrl, new RuntimeAskStep(), processId: null);
+        var processId = asked.ProcessId;
 
         Assert.NotNull(asked.RequiredStep);
         Assert.Equal(RuntimeStepNames.Answer, asked.RequiredStep.Name);
@@ -37,8 +36,7 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
     [Fact]
     public async Task InformationRequest_UsesCamelCaseNamesAndEnumValues_OnTheWire()
     {
-        var processId = Guid.NewGuid();
-        using var request = CreateRequest(AskUrl, new RuntimeAskStep(), processId);
+        using var request = CreateRequest(AskUrl, new RuntimeAskStep(), processId: null);
 
         using var response = await fixture.Client.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
@@ -51,8 +49,7 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
     [Fact]
     public async Task Answers_ThatFit_CompleteTheStep_AndClearThePendingRequest()
     {
-        var processId = Guid.NewGuid();
-        await PostAsync(AskUrl, new RuntimeAskStep(), processId);
+        var processId = await StartAskingAsync();
 
         var answered = await PostAsync(AnswerUrl, Answers(RuntimeInformationRequests.FirstRound, more: false), processId);
 
@@ -67,8 +64,7 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
     [Fact]
     public async Task ARepeatableInformationStep_LoopsWithANewRequest_AndRejectsAnswersToTheOldOne()
     {
-        var processId = Guid.NewGuid();
-        await PostAsync(AskUrl, new RuntimeAskStep(), processId);
+        var processId = await StartAskingAsync();
 
         var firstRound = await PostAsync(AnswerUrl, Answers(RuntimeInformationRequests.FirstRound, more: true), processId);
 
@@ -89,8 +85,7 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
     [Fact]
     public async Task Answers_ThatDoNotFit_AreRejected_AndTheRequestStaysPending()
     {
-        var processId = Guid.NewGuid();
-        await PostAsync(AskUrl, new RuntimeAskStep(), processId);
+        var processId = await StartAskingAsync();
 
         var round = RuntimeInformationRequests.FirstRound;
         var rejected =
@@ -113,8 +108,7 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
     [Fact]
     public async Task AnotherStep_CannotBypassThePendingRequest()
     {
-        var processId = Guid.NewGuid();
-        await PostAsync(AskUrl, new RuntimeAskStep(), processId);
+        var processId = await StartAskingAsync();
 
         var bypass = await PostAsync(AskUrl, new RuntimeAskStep(), processId);
 
@@ -126,9 +120,17 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
     [Fact]
     public async Task AnInformationStep_WithoutAPendingRequest_IsRejected()
     {
-        var answered = await PostAsync(AnswerUrl, Answers(RuntimeInformationRequests.FirstRound, more: false), Guid.NewGuid());
+        // A real process whose request has been answered: the repeatable information step is still
+        // available, but nothing is pending, so a further answer must be rejected.
+        var processId = await StartAskingAsync();
+        var completed = await PostAsync(AnswerUrl, Answers(RuntimeInformationRequests.FirstRound, more: false), processId);
+        Assert.Equal(StepExecutionOutcome.Completed, completed.Outcome);
+        Assert.Null((await GetStateAsync(processId)).RequiredStep);
+
+        var answered = await PostAsync(AnswerUrl, Answers(RuntimeInformationRequests.FirstRound, more: false), processId);
 
         Assert.NotEqual(StepExecutionOutcome.Completed, answered.Outcome);
+        Assert.Null((await GetStateAsync(processId)).RequiredStep);
     }
 
     [Fact]
@@ -170,7 +172,18 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
             ?? throw new InvalidOperationException("Empty state response.");
     }
 
-    private async Task<StepExecutionResponse> PostAsync<TStep>(string url, TStep step, Guid processId)
+    // Starts a new process (no process id; the runtime generates one) awaiting the first round.
+    private async Task<Guid> StartAskingAsync()
+    {
+        var asked = await PostAsync(AskUrl, new RuntimeAskStep(), processId: null);
+
+        Assert.NotEqual(Guid.Empty, asked.ProcessId);
+        Assert.Equal(RuntimeInformationRequests.FirstRound, asked.RequiredStep?.InformationRequest?.InformationRequestId);
+
+        return asked.ProcessId;
+    }
+
+    private async Task<StepExecutionResponse> PostAsync<TStep>(string url, TStep step, Guid? processId)
         where TStep : IProcessStep
     {
         using var request = CreateRequest(url, step, processId);
@@ -182,14 +195,17 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
             ?? throw new InvalidOperationException("Empty step response.");
     }
 
-    private static HttpRequestMessage CreateRequest<TStep>(string url, TStep step, Guid processId)
+    private static HttpRequestMessage CreateRequest<TStep>(string url, TStep step, Guid? processId)
         where TStep : IProcessStep
     {
         var request = new HttpRequestMessage(HttpMethod.Post, url)
         {
             Content = JsonContent.Create(new ExecuteStepRequest<TStep> { ProcessStep = step })
         };
-        request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, processId.ToString());
+        if (processId is { } id)
+        {
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, id.ToString());
+        }
 
         return request;
     }

@@ -7,6 +7,7 @@ namespace Kaleido.Samples.PriorAuth.Provider.Queryable.Contexts;
 public sealed class RequestingProviderQueryContext : IQueryContext
 {
     [Key]
+    [Filterable(FilterOperator.Equals)]
     public Guid ProviderLocationId { get; init; }
 
     public Guid ProviderId { get; init; }
@@ -27,12 +28,24 @@ public sealed class RequestingProviderQueryContext : IQueryContext
     [Sortable]
     public string PostalCode { get; init; } = string.Empty;
 
+    [Searchable(Priority = 8, MatchMode = MatchMode.Contains)]
+
+    [Filterable(FilterOperator.Equals, FilterOperator.In)]
+
     [Sortable]
     public string City { get; init; } = string.Empty;
 
     public string? PhoneNumber { get; init; }
 
+    [Searchable(Priority = 9, MatchMode = MatchMode.Exact)]
+
+    [Filterable(FilterOperator.Equals)]
+
     public string? PrimaryTin { get; init; }
+
+    [Searchable(Priority = 7, MatchMode = MatchMode.Exact)]
+
+    [Filterable(FilterOperator.Equals)]
 
     public string? PrimaryNpi { get; init; }
 

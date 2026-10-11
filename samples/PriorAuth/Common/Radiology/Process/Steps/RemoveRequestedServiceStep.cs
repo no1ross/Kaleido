@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using Kaleido.Samples.PriorAuth.Radiology.Queryable.ContextSources;
 using System.ComponentModel.DataAnnotations;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
@@ -12,5 +14,12 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 public sealed record RemoveRequestedServiceStep : IProcessStep
 {
     [Required]
+    [Description("The requested service to remove, found with Requested Services for this request.")]
+    [Display(Name = "Requested service", Prompt = "Which requested service should be removed?")]
+    [Lookup(
+        Service = "radiology",
+        Source = nameof(RequestedServiceQueryContextSource),
+        Field = "PriorAuthorizationRequestedServiceId",
+        Display = ["ResolvedCodeValue", "Description"])]
     public Guid PriorAuthorizationRequestedServiceId { get; init; }
 }

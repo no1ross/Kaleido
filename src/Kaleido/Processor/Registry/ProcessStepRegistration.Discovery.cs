@@ -21,14 +21,7 @@ public sealed partial record ProcessStepRegistration
             Authorization = Metadata.Authorization,
             // An information step's input is described by its pending InformationRequest,
             // not by its fixed InformationRequestId/Items shape.
-            Fields = IsInformationStep ? [] : StepType
-                .GetProperties()
-                .Select(property =>
-                    ToInputDescriptor(
-                        property,
-                        TypeDescriber,
-                        constraintMapper))
-                .ToArray(),
+            Fields = IsInformationStep ? [] : ToInputDescriptors(TypeDescriber, constraintMapper),
             Dependencies = Dependencies
                 .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(x => x.ToSummary())
@@ -59,10 +52,55 @@ public sealed partial record ProcessStepRegistration
         };
     }
 
+    private ProcessorInputFieldDescriptor[] ToInputDescriptors(
+        ITypeDescriber TypeDescriber,
+        IConstraintMapper constraintMapper)
+    {
+        var properties = StepType.GetProperties();
+
+        // A group's display fields may be declared on any of its inputs; every input of the group
+        // publishes them all, in declaration order.
+        var displays = properties
+            .Select(property => property.GetCustomAttribute<LookupAttribute>())
+            .OfType<LookupAttribute>()
+            .GroupBy(LookupGroup, StringComparer.Ordinal)
+            .ToDictionary(
+                x => x.Key,
+                x => (IReadOnlyList<string>)x.SelectMany(l => l.Display).Distinct(StringComparer.Ordinal).ToArray(),
+                StringComparer.Ordinal);
+
+        return properties
+            .Select(property =>
+                ToInputDescriptor(
+                    property,
+                    TypeDescriber,
+                    constraintMapper,
+                    property.GetCustomAttribute<LookupAttribute>() is { } lookup
+                        ? new LookupMetadata
+                        {
+                            Service = lookup.Service,
+                            Source = lookup.Source,
+                            View = string.IsNullOrWhiteSpace(lookup.View) ? null : lookup.View,
+                            Field = lookup.Field,
+                            Group = LookupGroup(lookup),
+                            Display = displays[LookupGroup(lookup)]
+                        }
+                        : null))
+            .ToArray();
+    }
+
+    private static string LookupGroup(LookupAttribute lookup) =>
+        !string.IsNullOrWhiteSpace(lookup.Group)
+            ? lookup.Group
+            : string.IsNullOrWhiteSpace(lookup.View)
+                ? $"{lookup.Service}/{lookup.Source}"
+                : $"{lookup.Service}/{lookup.Source}/{lookup.View}";
+
     private static ProcessorInputFieldDescriptor ToInputDescriptor(
         PropertyInfo property,
         ITypeDescriber TypeDescriber,
-        IConstraintMapper constraintMapper)
+        IConstraintMapper constraintMapper,
+        LookupMetadata? lookup)
     {
         var display = property.GetCustomAttribute<DisplayAttribute>();
 
@@ -75,6 +113,7 @@ public sealed partial record ProcessStepRegistration
                 property.GetCustomAttribute<DescriptionAttribute>()?.Description
                 ?? display?.GetDescription(),
             DataType = TypeDescriber.GetDescriptor(property),
+            Lookup = lookup,
             Constraints = constraintMapper.Map(property)
         };
     }

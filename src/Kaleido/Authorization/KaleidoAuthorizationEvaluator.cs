@@ -1,12 +1,11 @@
-using Kaleido.Processor.Context;
 using Kaleido.Registry;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Authorization;
 
 /// <summary>
-/// Evaluates <see cref="AuthorizationMetadata"/> and process ownership against
-/// the caller fields on <see cref="KaleidoCorrelationContext"/>
+/// Evaluates the <see cref="AuthorizationMetadata"/> declared on a step or
+/// query source against the caller fields on <see cref="KaleidoCorrelationContext"/>
 /// (<see cref="KaleidoCorrelationContext.CallerName"/> /
 /// <see cref="KaleidoCorrelationContext.CallerRoles"/> — populated by the
 /// transport from the authenticated principal, never headers). An
@@ -14,6 +13,12 @@ namespace Kaleido.Authorization;
 /// Nothing is enforced when <see cref="KaleidoServiceOptions.AuthorizationMode"/>
 /// is <see cref="KaleidoAuthorizationMode.None"/>.
 /// </summary>
+/// <remarks>
+/// Kaleido has no case-level guardrails: whether a caller may open or continue
+/// a particular process is a business/data-level concern of the underlying
+/// systems (ADR 0010). The evaluator only checks the caller's identity and the
+/// roles/policies declared on the capability being called.
+/// </remarks>
 public interface IKaleidoAuthorizationEvaluator
 {
     /// <summary>
@@ -51,15 +56,6 @@ public interface IKaleidoAuthorizationEvaluator
         KaleidoCorrelationContext caller,
         Func<string, CancellationToken, Task<bool>>? policyEvaluator,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Enforces process ownership on a loaded <see cref="ProcessorContext"/> —
-    /// unowned processes pass; owned processes require the owner or a caller
-    /// sharing an <c>OwnerRoles</c> entry. No-op when not enforced.
-    /// </summary>
-    void AuthorizeProcess(
-        ProcessorContext processContext,
-        KaleidoCorrelationContext caller);
 }
 
 /// <inheritdoc cref="IKaleidoAuthorizationEvaluator"/>
@@ -149,34 +145,5 @@ internal sealed class KaleidoAuthorizationEvaluator(
                 capabilityName,
                 IsAuthenticated(caller));
         }
-    }
-
-    public void AuthorizeProcess(
-        ProcessorContext processContext,
-        KaleidoCorrelationContext caller)
-    {
-        ArgumentNullException.ThrowIfNull(processContext);
-        ArgumentNullException.ThrowIfNull(caller);
-
-        if (!IsEnforced || processContext.Owner is null)
-        {
-            return;
-        }
-
-        if (IsAuthenticated(caller)
-            && (string.Equals(
-                    caller.CallerName,
-                    processContext.Owner,
-                    StringComparison.Ordinal)
-                || (processContext.OwnerRoles.Count > 0
-                    && processContext.OwnerRoles.Any(r =>
-                        caller.CallerRoles.Contains(r, StringComparer.OrdinalIgnoreCase)))))
-        {
-            return;
-        }
-
-        throw new KaleidoAuthorizationException(
-            $"process '{processContext.ProcessId}'",
-            IsAuthenticated(caller));
     }
 }

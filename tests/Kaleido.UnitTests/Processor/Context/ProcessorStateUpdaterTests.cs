@@ -301,7 +301,7 @@ public sealed class ProcessorStateUpdaterTests
     }
 
     [Fact]
-    public void ApplyException_ClearsThePendingRequest()
+    public void ApplyException_KeepsThePendingRequest()
     {
         var context = new ProcessorContext
         {
@@ -314,7 +314,7 @@ public sealed class ProcessorStateUpdaterTests
 
         var result = Sut.ApplyException(context, new StepCandidate { StepName = "info-step" });
 
-        Assert.Null(result.RequiredInformationRequest);
+        Assert.Equal("out-of-network", result.RequiredInformationRequest?.InformationRequestId);
     }
 
     [Fact]
@@ -393,12 +393,13 @@ public sealed class ProcessorStateUpdaterTests
     }
 
     [Fact]
-    public void ApplyException_SetsStateToException()
+    public void ApplyException_KeepsTheProcessState()
     {
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
             ProcessorName = "test",
+            State = ProcessExecutionState.AwaitingStepSelection,
             Steps =
             [
                 new StepContext { StepName = "test-step", Version = "1.0" }
@@ -408,11 +409,11 @@ public sealed class ProcessorStateUpdaterTests
 
         var result = Sut.ApplyException(context, candidate);
 
-        Assert.Equal(ProcessExecutionState.Exception, result.State);
+        Assert.Equal(ProcessExecutionState.AwaitingStepSelection, result.State);
     }
 
     [Fact]
-    public void ApplyException_ClearsStateProperties()
+    public void ApplyException_KeepsTheNextSteps()
     {
         var context = new ProcessorContext
         {
@@ -430,9 +431,25 @@ public sealed class ProcessorStateUpdaterTests
 
         var result = Sut.ApplyException(context, candidate);
 
-        Assert.Null(result.RequiredStep);
-        Assert.Null(result.TargetProcessorName);
-        Assert.Empty(result.AvailableSteps);
+        Assert.Equal("required", result.RequiredStep);
+        Assert.Equal("target", result.TargetProcessorName);
+        Assert.Equal(["step1"], result.AvailableSteps);
+    }
+
+    [Fact]
+    public void ApplyExecution_BusinessFailure_RecordsTheStepAsFailed()
+    {
+        var context = new ProcessorContext
+        {
+            ProcessId = Guid.NewGuid(),
+            ProcessorName = "test",
+            Steps = [new StepContext { StepName = "test-step", Version = "1.0" }]
+        };
+
+        var result = Sut.ApplyExecution(context, new StepCandidate { StepName = "test-step" }, ExecutionDecision.BusinessFailure());
+
+        Assert.Equal(StepExecutionStatus.Failed, result.Steps.Single().Status);
+        Assert.Equal(ProcessExecutionState.BusinessFailure, result.State);
     }
 
     [Fact]

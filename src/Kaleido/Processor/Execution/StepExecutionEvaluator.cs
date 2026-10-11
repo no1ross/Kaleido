@@ -31,6 +31,11 @@ internal sealed class StepExecutionEvaluator(
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(context);
 
+        if (result.Rejected)
+        {
+            return ExecutionDecision.Rejected();
+        }
+
         if (!result.Succeeded)
         {
             return ExecutionDecision.BusinessFailure();

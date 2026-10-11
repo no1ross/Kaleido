@@ -105,9 +105,6 @@ internal sealed class SqliteProcessorContextStore(
             entity.Owner =
                 context.Owner;
 
-            entity.OwnerRoles =
-                string.Join(",", context.OwnerRoles);
-
             entity.State =
                 context.State;
 
@@ -301,14 +298,6 @@ internal sealed class SqliteProcessorContextStore(
 
             Owner =
                 entity.Owner,
-
-            OwnerRoles =
-                string.IsNullOrWhiteSpace(entity.OwnerRoles)
-                    ? []
-                    : entity.OwnerRoles.Split(
-                        ',',
-                        StringSplitOptions.RemoveEmptyEntries |
-                        StringSplitOptions.TrimEntries),
 
             State =
                 entity.State,

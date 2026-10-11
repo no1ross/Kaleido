@@ -14,6 +14,8 @@ public sealed class RadiologyDbContext(
 
     public DbSet<PriorAuthorizationRequestingProvider> PriorAuthorizationRequestingProviders => Set<PriorAuthorizationRequestingProvider>();
 
+    public DbSet<PriorAuthorizationServicingProvider> PriorAuthorizationServicingProviders => Set<PriorAuthorizationServicingProvider>();
+
     public DbSet<PriorAuthorizationQuestionnaireAssignment> PriorAuthorizationQuestionnaireAssignments => Set<PriorAuthorizationQuestionnaireAssignment>();
 
     protected override void OnModelCreating(

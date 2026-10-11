@@ -25,7 +25,7 @@ public sealed class ProcessExecutionEndpointTests(ProcessorAspNetCoreFixture fix
             };
 
         var response =
-            await PostWithProcessIdAsync("/kaleido/processes/execute", request, Guid.NewGuid());
+            await PostExecuteAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -52,7 +52,7 @@ public sealed class ProcessExecutionEndpointTests(ProcessorAspNetCoreFixture fix
             };
 
         var response =
-            await PostWithProcessIdAsync("/kaleido/processes/execute", request, Guid.NewGuid());
+            await PostExecuteAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -81,7 +81,7 @@ public sealed class ProcessExecutionEndpointTests(ProcessorAspNetCoreFixture fix
             };
 
         var response =
-            await PostWithProcessIdAsync("/kaleido/processes/execute", request, Guid.NewGuid());
+            await PostExecuteAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -109,7 +109,7 @@ public sealed class ProcessExecutionEndpointTests(ProcessorAspNetCoreFixture fix
             };
 
         var response =
-            await PostWithProcessIdAsync("/kaleido/processes/execute", request, Guid.NewGuid());
+            await PostExecuteAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -129,15 +129,9 @@ public sealed class ProcessExecutionEndpointTests(ProcessorAspNetCoreFixture fix
                  && x.Type == MessageType.Error);
     }
 
-    private Task<HttpResponseMessage> PostWithProcessIdAsync<T>(string url, T body, Guid processId)
-    {
-        var request = new HttpRequestMessage(HttpMethod.Post, url)
-        {
-            Content = JsonContent.Create(body)
-        };
-        request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, processId.ToString());
-        return fixture.Client.SendAsync(request);
-    }
+    // No process id: each test starts a new process, whose id the runtime generates.
+    private Task<HttpResponseMessage> PostExecuteAsync(ExecuteProcessRequest body) =>
+        fixture.Client.PostAsJsonAsync("/kaleido/processes/execute", body, KaleidoJsonOptions.Options);
 
     private static ProcessStepRequest CreateStep(string stepName) =>
         new()

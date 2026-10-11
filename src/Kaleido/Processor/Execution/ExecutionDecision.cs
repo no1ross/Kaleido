@@ -68,6 +68,12 @@ internal sealed record ExecutionDecision
             Type = ExecutionDecisionType.BusinessFailure
         };
 
+    public static ExecutionDecision Rejected()
+        => new()
+        {
+            Type = ExecutionDecisionType.Rejected
+        };
+
     public static ExecutionDecision ProcessViolation(
         StepProcessingMessage message)
         => new()

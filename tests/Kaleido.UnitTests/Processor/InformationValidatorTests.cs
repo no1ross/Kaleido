@@ -51,6 +51,66 @@ public sealed class InformationValidatorTests
         Assert.Empty(CreateSut().ValidateRequest(Request));
     }
 
+    private static InformationRequest Proposing(params InformationItem[] items) =>
+        new() { InformationRequestId = "mri", Items = items };
+
+    private static InformationItem Side(params string[] proposed) =>
+        new()
+        {
+            Id = "laterality",
+            Text = "Which side is affected?",
+            Type = InformationItemType.Choice,
+            Options = [new InformationOption { Value = "Left" }, new InformationOption { Value = "Right" }],
+            ProposedAnswers = proposed.Select(x => new InformationAnswer { Value = x }).ToArray()
+        };
+
+    [Fact]
+    public void ValidateRequest_ProposedAnswersThatFit_AreWellFormed()
+    {
+        Assert.Empty(CreateSut().ValidateRequest(Proposing(
+            Side("Left"),
+            new InformationItem { Id = "date", Text = "When?", Type = InformationItemType.Date, ProposedAnswers = [new InformationAnswer { Value = "2026-10-10" }] })));
+    }
+
+    [Theory]
+    [InlineData("Top")]
+    [InlineData("")]
+    public void ValidateRequest_AProposedAnswerTheUserCouldNotSubmit_IsInvalid(string value)
+    {
+        var problem = Assert.Single(CreateSut().ValidateRequest(Proposing(Side(value))));
+
+        Assert.Equal(ProcessorErrorCodes.InformationRequestInvalid, problem.Code);
+        Assert.Contains("Proposed answer", problem.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ValidateRequest_SeveralProposedAnswers_ForAQuestionThatDoesNotRepeat_IsInvalid()
+    {
+        Assert.Contains(
+            CreateSut().ValidateRequest(Proposing(Side("Left", "Right"))),
+            x => x.Message.Contains("proposes 2", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ValidateRequest_AProposedAnswerOnDisplayText_IsInvalid()
+    {
+        Assert.Contains(
+            CreateSut().ValidateRequest(Proposing(
+                Side(),
+                new InformationItem { Id = "note", Text = "Note", Type = InformationItemType.Display, ProposedAnswers = [new InformationAnswer { Value = "x" }] })),
+            x => x.Message.Contains("takes no proposed answer", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ValidateResponse_AProposalIsNotAnAnswer_TheQuestionMustStillBeAnswered()
+    {
+        var problems = CreateSut().ValidateResponse(
+            Proposing(Side("Left")),
+            new Answers { InformationRequestId = "mri" });
+
+        Assert.Contains(problems, x => x.Code == ProcessorErrorCodes.InformationResponseUnanswered);
+    }
+
     [Fact]
     public void ValidateRequest_WithoutId_IsInvalid()
     {

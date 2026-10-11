@@ -96,8 +96,8 @@ authenticated request principal. The `ObservabilityMiddleware` runs before the h
 (runs inside endpoint execution, always after auth middleware) on all Kaleido endpoint
 groups. Anonymous requests get `CallerName = null`, `CallerRoles = []`.
 
-These fields feed process ownership (`ProcessorContext.Owner`/`OwnerRoles`) and
-capability authorization — see [`AUTHORIZATION.md`](./AUTHORIZATION.md). They are
+These fields feed capability authorization and the `ProcessorContext.Owner` tag
+(created by; never enforced) — see [`AUTHORIZATION.md`](./AUTHORIZATION.md). They are
 **not** propagated outbound: each hop derives its own caller identity from its own
 authenticated principal. Service-to-service calls must carry credentials the next hop
 can authenticate (e.g. a bearer token) — the transport's job, not Kaleido's.
