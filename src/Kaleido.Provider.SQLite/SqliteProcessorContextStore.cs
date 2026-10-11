@@ -31,6 +31,7 @@ internal sealed class SqliteProcessorContextStore(
                     .Include(x => x.Steps)
                     .Include(x => x.AvailableSteps)
                     .Include(x => x.RequiredStep)
+                    .AsSplitQuery()
                     .FirstOrDefaultAsync(
                         x => x.ProcessId ==
                              processId,
@@ -81,6 +82,7 @@ internal sealed class SqliteProcessorContextStore(
                     .Include(x => x.Steps)
                     .Include(x => x.AvailableSteps)
                     .Include(x => x.RequiredStep)
+                    .AsSplitQuery()
                     .FirstOrDefaultAsync(
                         x => x.ProcessId ==
                              context.ProcessId,
