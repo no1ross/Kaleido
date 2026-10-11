@@ -43,13 +43,13 @@ internal sealed class ProcessorContextEntity
     {
         get;
         set;
-    } = new List<ProcessorStepContextEntity>();
+    } = [];
 
     public ICollection<ProcessorAvailableStepEntity> AvailableSteps
     {
         get;
         set;
-    } = new List<ProcessorAvailableStepEntity>();
+    } = [];
 
     /// <summary>
     /// Zero or one rows — present when the process is awaiting a specific required step.

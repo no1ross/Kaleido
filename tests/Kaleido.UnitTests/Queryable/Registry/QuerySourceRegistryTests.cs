@@ -98,7 +98,7 @@ public sealed class QuerySourceRegistryTests
         Assert.Equal(typeof(TestParameters), registration.ParametersType);
         Assert.Equal(nameof(TestParameters.ProcessId), Assert.Single(registration.Metadata.Parameters).Name);
         Assert.Equal(nameof(TestResult.ProviderName), Assert.Single(registration.Metadata.OutputFields).Name);
-        Assert.Equal(nameof(TestContext.Code), registration.Metadata.Fields.First().Name);
+        Assert.Equal(nameof(TestContext.Code), registration.Metadata.Fields[0].Name);
     }
 
     [Fact]

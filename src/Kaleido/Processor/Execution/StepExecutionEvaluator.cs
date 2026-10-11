@@ -102,7 +102,7 @@ internal sealed class StepExecutionEvaluator(
             return ExecutionDecision.ProcessViolation(
                 StepProcessingMessage.Error(
                     ProcessorErrorCodes.InformationRequestInvalid,
-                    $"The information request from '{currentCandidate.StepName}' for '{requiredStep}' is not well-formed: {string.Join(" ", problems.Select(x => x.Message))}"));
+                    $"The information request from '{currentCandidate.StepName}' for '{requiredStep}' is not well-formed: {string.Join(' ', problems.Select(x => x.Message))}"));
         }
 
         return IsAvailable(currentCandidate, requiredStep, candidates, context)

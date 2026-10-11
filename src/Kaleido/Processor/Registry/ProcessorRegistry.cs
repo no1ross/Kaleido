@@ -166,7 +166,6 @@ public interface IProcessorRegistry
 
 internal sealed class ProcessorRegistry : IProcessorRegistry
 {
-    private readonly IReadOnlyCollection<ProcessorRegistryItem> _registrations;
 
     public ProcessorRegistry(
         ITypeDescriber typeDescriber,
@@ -181,7 +180,7 @@ internal sealed class ProcessorRegistry : IProcessorRegistry
         ArgumentNullException.ThrowIfNull(stepRegistry);
         ArgumentNullException.ThrowIfNull(logger);
 
-        _registrations =
+        Registrations =
         [
             new ProcessorRegistryItem
             {
@@ -207,6 +206,5 @@ internal sealed class ProcessorRegistry : IProcessorRegistry
             stepRegistry.InitialRegistrations.Count);
     }
 
-    public IReadOnlyCollection<ProcessorRegistryItem> Registrations =>
-        _registrations;
+    public IReadOnlyCollection<ProcessorRegistryItem> Registrations { get; }
 }

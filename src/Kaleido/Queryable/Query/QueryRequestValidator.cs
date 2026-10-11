@@ -1,13 +1,15 @@
+using System.Globalization;
 using Kaleido.Queryable.Metadata;
 
 namespace Kaleido.Queryable.Query;
 
 /// <summary>
+/// <para>
 /// Validates incoming QueryRequest instances against
 /// record metadata.
-///
-/// Validation occurs before query compilation and execution.
-///
+/// </para>
+/// <para>Validation occurs before query compilation and execution.</para>
+/// <para>
 /// Responsibilities:
 ///   - Field existence validation
 ///   - Operator support validation
@@ -15,9 +17,11 @@ namespace Kaleido.Queryable.Query;
 ///   - Sort validation
 ///   - Named query parameter validation
 ///   - Paging validation
-///
+/// </para>
+/// <para>
 /// This component must not execute queries or perform
 /// provider-specific logic.
+/// </para>
 /// </summary>
 internal interface IQueryContextValidator
 {
@@ -227,7 +231,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
                 .GroupBy(
                     x => x.Field,
                     StringComparer.OrdinalIgnoreCase)
-                .Where(x => x.Count() > 1)
+                .Where(x => x.Skip(1).Any())
                 .Select(x => x.Key)
                 .ToArray();
 
@@ -273,21 +277,21 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         {
             throw new KaleidoValidationException(
                 QueryableErrorCodes.InvalidPageSize,
-                $"Page size '{page.Size.Value}' must be greater than zero.");
+                string.Create(CultureInfo.InvariantCulture, $"Page size '{page.Size.Value}' must be greater than zero."));
         }
 
         if (page.Size > pageable.MaxSize)
         {
             throw new KaleidoValidationException(
                 QueryableErrorCodes.InvalidPageSize,
-                $"Page size '{page.Size.Value}' exceeds maximum page size '{pageable.MaxSize}'.");
+                string.Create(CultureInfo.InvariantCulture, $"Page size '{page.Size.Value}' exceeds maximum page size '{pageable.MaxSize}'."));
         }
 
         if (page.Offset is < 0)
         {
             throw new KaleidoValidationException(
                 QueryableErrorCodes.InvalidPageOffset,
-                $"Page offset '{page.Offset.Value}' must not be negative.");
+                string.Create(CultureInfo.InvariantCulture, $"Page offset '{page.Offset.Value}' must not be negative."));
         }
     }
 

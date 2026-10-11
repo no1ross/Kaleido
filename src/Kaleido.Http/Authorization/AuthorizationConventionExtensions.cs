@@ -14,7 +14,7 @@ internal static class AuthorizationConventionExtensions
         this TBuilder builder,
         KaleidoServiceOptions options)
         where TBuilder : IEndpointConventionBuilder =>
-        builder.WithKaleidoAuthorization(null, options);
+        builder.WithKaleidoAuthorization(authorization: null, options);
 
     /// <summary>
     /// Attaches a capability's <see cref="AuthorizationMetadata"/> requirement

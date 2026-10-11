@@ -62,7 +62,7 @@ public sealed record QueryFilterNode
                 field,
                 @operator,
                 values),
-            null);
+                Group: null);
     }
 
     public static QueryFilterNode CreateGroup(
@@ -70,7 +70,7 @@ public sealed record QueryFilterNode
         params QueryFilterNode[] filters)
     {
         return new(
-            null,
+        Condition: null,
             new QueryFilterGroup(
                 @operator,
                 filters.ToList()));

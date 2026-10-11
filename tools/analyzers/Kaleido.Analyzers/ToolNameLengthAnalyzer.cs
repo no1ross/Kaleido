@@ -100,7 +100,7 @@ public sealed class ToolNameLengthAnalyzer : DiagnosticAnalyzer
         {
             var current = value[i];
 
-            if (current >= 'A' && current <= 'Z')
+            if (current is >= 'A' and <= 'Z')
             {
                 var previous = i > 0 ? value[i - 1] : '\0';
                 var next = i + 1 < value.Length ? value[i + 1] : '\0';
@@ -133,9 +133,9 @@ public sealed class ToolNameLengthAnalyzer : DiagnosticAnalyzer
         return snake.Trim('_');
     }
 
-    private static bool IsLower(char c) => c >= 'a' && c <= 'z';
+    private static bool IsLower(char c) => c is >= 'a' and <= 'z';
 
-    private static bool IsUpper(char c) => c >= 'A' && c <= 'Z';
+    private static bool IsUpper(char c) => c is >= 'A' and <= 'Z';
 
-    private static bool IsDigit(char c) => c >= '0' && c <= '9';
+    private static bool IsDigit(char c) => c is >= '0' and <= '9';
 }

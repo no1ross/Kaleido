@@ -216,7 +216,7 @@ internal static class ServiceConventions
         ServiceRegistrationModel.ServiceLifetime lifetime,
         System.Threading.CancellationToken cancellationToken)
     {
-        ExpressionSyntax? returned =
+        var returned =
             body as ExpressionSyntax ??
             (body as BlockSyntax)?.Statements
                 .OfType<ReturnStatementSyntax>()

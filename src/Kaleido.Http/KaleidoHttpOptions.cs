@@ -17,7 +17,7 @@ public sealed class KaleidoHttpOptions
     /// are honored for a request. <c>X-Kaleido-Process-Id</c> is always
     /// honored — it is a resumable process handle, not an identity claim.
     /// <para>
-    /// When <c>null</c> (default): trusted when the host has no
+    /// When <see langword="null"/> (default): trusted when the host has no
     /// authentication infrastructure registered (nothing to check
     /// against — preserves pre-auth behavior), otherwise requires an
     /// authenticated caller.

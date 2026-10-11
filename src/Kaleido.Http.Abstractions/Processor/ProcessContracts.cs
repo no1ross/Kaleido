@@ -290,7 +290,7 @@ public sealed record ProcessStateResponse
 
     /// <summary>
     /// Name of the caller that created this process, captured from the
-    /// authenticated principal at creation. <c>null</c> when the process was
+    /// authenticated principal at creation. <see langword="null"/> when the process was
     /// created anonymously.
     /// </summary>
     /// <remarks>

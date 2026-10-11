@@ -35,7 +35,7 @@ internal sealed record DiagnosticResult(
 /// <summary>Additional sources compiled alongside <see cref="AnalyzerTest{TAnalyzer}.TestCode"/>.</summary>
 internal sealed class TestStateCollection
 {
-    public List<(string FileName, string Source)> Sources { get; } = new();
+    public List<(string FileName, string Source)> Sources { get; } = [];
 
     /// <summary>
     /// Sources compiled into a separate in-memory assembly and added as a
@@ -43,7 +43,7 @@ internal sealed class TestStateCollection
     /// (production) assemblies from types in the test compilation. Grouped by
     /// assembly name; one compilation is emitted per distinct name.
     /// </summary>
-    public List<(string AssemblyName, string Source)> ReferenceSources { get; } = new();
+    public List<(string AssemblyName, string Source)> ReferenceSources { get; } = [];
 }
 
 /// <summary>
@@ -62,7 +62,7 @@ internal sealed class AnalyzerTest<TAnalyzer>
 
     public TestStateCollection TestState { get; } = new();
 
-    public List<DiagnosticResult> ExpectedDiagnostics { get; } = new();
+    public List<DiagnosticResult> ExpectedDiagnostics { get; } = [];
 
     public async Task RunAsync()
     {

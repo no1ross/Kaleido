@@ -42,9 +42,9 @@ internal sealed class ProcessorStateUpdater(
 
             State = ProcessExecutionState.Active,
 
-            CreatedUtc = DateTime.UtcNow,
+            CreatedUtc = DateTimeOffset.UtcNow,
 
-            UpdatedUtc = DateTime.UtcNow,
+            UpdatedUtc = DateTimeOffset.UtcNow,
 
             Steps =
                 registry
@@ -119,7 +119,7 @@ internal sealed class ProcessorStateUpdater(
 
         return context with
         {
-            UpdatedUtc = DateTime.UtcNow,
+            UpdatedUtc = DateTimeOffset.UtcNow,
             Steps = steps,
         };
     }
@@ -179,7 +179,7 @@ internal sealed class ProcessorStateUpdater(
             AvailableSteps =
                 decision.AvailableSteps,
 
-            UpdatedUtc = DateTime.UtcNow,
+            UpdatedUtc = DateTimeOffset.UtcNow,
 
             Steps =
                 steps,
@@ -223,7 +223,7 @@ internal sealed class ProcessorStateUpdater(
         // once the defect is fixed. Only the step's status records what happened.
         return context with
         {
-            UpdatedUtc = DateTime.UtcNow,
+            UpdatedUtc = DateTimeOffset.UtcNow,
 
             Steps = steps,
         };

@@ -92,7 +92,7 @@ csharp_preferred_modifier_order = public,private,protected,internal,static,exter
 ; C# 12+ style (see AGENTS.md coding patterns)
 csharp_style_prefer_primary_constructors = true:suggestion
 csharp_style_implicit_object_creation_when_type_is_apparent = true:suggestion
-csharp_style_prefer_collection_expression = when_types_loosely_match:suggestion
+csharp_style_prefer_collection_expression = when_types_exactly_match:suggestion
 csharp_style_prefer_pattern_matching = true:suggestion
 
 ; Naming conventions
@@ -256,6 +256,32 @@ dotnet_diagnostic.RCS1199.severity = warning   ; No unnecessary null check
 dotnet_diagnostic.RCS1214.severity = warning   ; No unnecessary interpolated string
 dotnet_diagnostic.RCS1251.severity = warning   ; No unnecessary braces
 dotnet_diagnostic.RCS1259.severity = warning   ; No empty statement
+dotnet_diagnostic.CA1826.severity = warning    ; Indexer instead of Enumerable methods on indexable collections
+dotnet_diagnostic.IDE0007.severity = warning   ; var
+dotnet_diagnostic.IDE0028.severity = warning   ; Collection initializer / expression (exact target types only, see csharp_style_prefer_collection_expression)
+dotnet_diagnostic.IDE0037.severity = warning   ; Inferred member names
+dotnet_diagnostic.IDE0078.severity = warning   ; Pattern matching
+dotnet_diagnostic.MA0001.severity = warning    ; StringComparison on string methods
+dotnet_diagnostic.MA0003.severity = warning    ; Name boolean/null arguments
+dotnet_diagnostic.MA0020.severity = warning    ; Find instead of FirstOrDefault on List
+dotnet_diagnostic.MA0031.severity = warning    ; Count() comparisons without enumerating everything
+dotnet_diagnostic.MA0076.severity = warning    ; No implicit culture-sensitive ToString in interpolated strings
+dotnet_diagnostic.MA0089.severity = warning    ; char overloads
+dotnet_diagnostic.MA0106.severity = warning    ; No closure where a factory-argument overload exists
+dotnet_diagnostic.MA0133.severity = warning    ; DateTimeOffset instead of implicit DateTime conversion
+dotnet_diagnostic.MA0154.severity = warning    ; langword in XML comments
+dotnet_diagnostic.MA0179.severity = warning    ; Attribute.IsDefined
+dotnet_diagnostic.RCS1085.severity = warning   ; Auto-implemented property
+dotnet_diagnostic.RCS1205.severity = warning   ; Named arguments in parameter order
+dotnet_diagnostic.RCS1226.severity = warning   ; Paragraphs in documentation comments
+dotnet_diagnostic.MA0182.severity = warning    ; Unused internal type (off in Kaleido.Http.Abstractions, below)
+; Off, with the reason
+dotnet_diagnostic.MA0190.severity = none       ; Partial property for GeneratedRegex - the net8.0 regex generator supports partial methods only
+
+; Internal types here are used by Kaleido.Http and Kaleido.Http.Client through InternalsVisibleTo,
+; which MA0182 cannot see - every finding is a false positive
+[src/Kaleido.Http.Abstractions/**/*.cs]
+dotnet_diagnostic.MA0182.severity = none
 
 ; EF Core entity navigation properties use ICollection<T> by convention
 [src/Kaleido.Provider.SQLite/**/*.cs]
@@ -335,3 +361,25 @@ dotnet_diagnostic.KAL1006.severity = none
 ; (root-level files covered by the section above)
 dotnet_diagnostic.KAL1006.severity = none
 
+; samples/ - kept as they are until they move to their own repositories (#250): the rules
+; enforced by #257 after samples were excluded from analysis stay suggestions here
+[samples/**/*.cs]
+dotnet_diagnostic.CA1826.severity = suggestion
+dotnet_diagnostic.IDE0007.severity = suggestion
+dotnet_diagnostic.IDE0028.severity = suggestion
+dotnet_diagnostic.IDE0037.severity = suggestion
+dotnet_diagnostic.IDE0078.severity = suggestion
+dotnet_diagnostic.MA0001.severity = suggestion
+dotnet_diagnostic.MA0003.severity = suggestion
+dotnet_diagnostic.MA0020.severity = suggestion
+dotnet_diagnostic.MA0031.severity = suggestion
+dotnet_diagnostic.MA0076.severity = suggestion
+dotnet_diagnostic.MA0089.severity = suggestion
+dotnet_diagnostic.MA0106.severity = suggestion
+dotnet_diagnostic.MA0133.severity = suggestion
+dotnet_diagnostic.MA0154.severity = suggestion
+dotnet_diagnostic.MA0179.severity = suggestion
+dotnet_diagnostic.MA0182.severity = suggestion
+dotnet_diagnostic.RCS1085.severity = suggestion
+dotnet_diagnostic.RCS1205.severity = suggestion
+dotnet_diagnostic.RCS1226.severity = suggestion

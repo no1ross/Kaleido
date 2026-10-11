@@ -49,7 +49,7 @@ internal sealed class ProcessExecutionService(
         if (request.Steps.Count == 0)
         {
             await authorizer.AuthorizeAsync(
-                null,
+            authorization: null,
                 "process execution",
                 cancellationToken);
         }

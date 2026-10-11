@@ -488,7 +488,8 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         var method =
             SortMethodCache.GetOrAdd(
                 (openMethod.Name, typeof(TQueryContext), member.Type),
-                _ => openMethod.MakeGenericMethod(typeof(TQueryContext), member.Type));
+                static (_, state) => state.OpenMethod.MakeGenericMethod(typeof(TQueryContext), state.Type),
+                (OpenMethod: openMethod, member.Type));
 
         return (IQueryable<TQueryContext>)(
             method.Invoke(
@@ -733,7 +734,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         {
             throw new KaleidoValidationException(
                 QueryableErrorCodes.InvalidFilterNode,
-                $"Filter operator '{condition.Operator}' requires a value at index {index}.");
+                string.Create(CultureInfo.InvariantCulture, $"Filter operator '{condition.Operator}' requires a value at index {index}."));
         }
 
         return condition.Values[index];

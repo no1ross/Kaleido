@@ -26,7 +26,7 @@ public sealed record QueryableEventContext
 
     /// <summary>
     /// The step that called this query (<c>X-Kaleido-Calling-Step</c>), in
-    /// <see cref="CallingProcessorName"/>. <c>null</c> when not called from a processor step.
+    /// <see cref="CallingProcessorName"/>. <see langword="null"/> when not called from a processor step.
     /// </summary>
     public string? CallingStepName { get; init; }
 
@@ -44,7 +44,7 @@ public sealed record QueryableEventContext
 
     /// <summary>
     /// The processor whose step called this query (<c>X-Kaleido-Calling-Processor</c>).
-    /// <c>null</c> when not called from a processor step.
+    /// <see langword="null"/> when not called from a processor step.
     /// </summary>
     public string? CallingProcessorName { get; init; }
 }

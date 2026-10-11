@@ -131,8 +131,8 @@ public static class QueryableServiceCollectionExtensions
         var invalid =
             nonCapabilityTypes
                 .Where(x =>
-                    x.GetCustomAttribute<QuerySourceAttribute>() is not null ||
-                    x.GetCustomAttribute<QueryViewAttribute>() is not null)
+                    Attribute.IsDefined(x, typeof(QuerySourceAttribute)) ||
+                    Attribute.IsDefined(x, typeof(QueryViewAttribute)))
                 .Select(x => x.FullName)
                 .ToArray();
 
@@ -215,7 +215,7 @@ public static class QueryableServiceCollectionExtensions
         var duplicates =
             sourceTypes
                 .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-                .Where(x => x.Count() > 1)
+                .Where(x => x.Skip(1).Any())
                 .ToArray();
 
         if (duplicates.Length > 0)
@@ -275,7 +275,7 @@ public static class QueryableServiceCollectionExtensions
         var duplicates =
             viewTypes
                 .GroupBy(x => (Source: x.GetViewInterfaces()[0].GenericTypeArguments[0], Name: x.Name.ToUpperInvariant()))
-                .Where(x => x.Count() > 1)
+                .Where(x => x.Skip(1).Any())
                 .ToArray();
 
         if (duplicates.Length > 0)

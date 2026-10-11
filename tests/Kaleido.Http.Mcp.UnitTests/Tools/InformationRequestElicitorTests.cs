@@ -150,7 +150,7 @@ public sealed class InformationRequestElicitorTests
             "sites" => item with { ProposedAnswers = [new InformationAnswer { Value = "knee" }] },
             "implant" => item with { ProposedAnswers = [new InformationAnswer { Value = "false" }] },
             "onset" => item with { ProposedAnswers = [new InformationAnswer { Value = "2026-10-01" }] },
-            "history" => item with { Items = [item.Items.First() with { ProposedAnswers = [new InformationAnswer { Value = "6" }] }, item.Items.Last()] },
+            "history" => item with { Items = [item.Items[0] with { ProposedAnswers = [new InformationAnswer { Value = "6" }] }, item.Items[^1]] },
             _ => item
         }).ToArray()
     };
