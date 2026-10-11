@@ -1,0 +1,11 @@
+name: Kaleido CodeQL
+
+# Analyze what ships and what developers copy: the framework (src), the analyzers (tools) and the
+# samples.
+#  - **/obj/**: compiler- and generator-produced files (xUnit entry points, Regex source
+#    generator output) that nobody edits.
+#  - tests/**: test code; its findings (mostly Dispose on test-local mocks) are not actionable
+#    and "fixing" them has broken tests (strict mocks).
+paths-ignore:
+  - '**/obj/**'
+  - 'tests/**'
