@@ -67,7 +67,11 @@ internal sealed class QuestionnaireDefinitionViewSource(
 
     private static IQueryable<QuestionnaireDefinitionView> Project(
         IQueryable<Data.Entities.QuestionnaireDefinition> definitions) =>
+        // Items, and per item its answer options and enable-when conditions: sibling collections
+        // in one projection (EF MultipleCollectionIncludeWarning, #98). Split into one query per
+        // collection instead of a cartesian join; scoped to this query only.
         definitions
+            .AsSplitQuery()
             .Select(definition =>
                 new QuestionnaireDefinitionView
                 {
