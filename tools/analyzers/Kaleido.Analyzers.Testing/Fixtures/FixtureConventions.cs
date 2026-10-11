@@ -202,9 +202,11 @@ internal static class FixtureConventions
         INamespaceSymbol ns,
         string name)
     {
-        foreach (var member in ns.GetTypeMembers(name))
+        var members = ns.GetTypeMembers(name);
+
+        if (members.Length > 0)
         {
-            return member;
+            return members[0];
         }
 
         foreach (var hit in ns.GetNamespaceMembers().Select(child => FindType(child, name)))

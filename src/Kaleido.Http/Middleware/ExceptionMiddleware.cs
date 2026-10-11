@@ -18,6 +18,9 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
 
     public async Task InvokeAsync(HttpContext context)
     {
+        // The error responses below are written with CancellationToken.None on purpose: they run in
+        // catch blocks, and a canceled request is already handled by the OperationCanceledException
+        // clause - passing RequestAborted would throw a new cancellation out of a catch block.
         try
         {
             await next(context);
@@ -74,7 +77,8 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
                 new KaleidoErrorResponse(
                 [
                     new KaleidoError(exception.Code, exception.Message)
-                ]));
+                ]),
+                CancellationToken.None);
         }
         catch (BadHttpRequestException exception)
         {
@@ -95,7 +99,8 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
                 new KaleidoErrorResponse(
                 [
                     new KaleidoError(KaleidoErrorCodes.ArgumentError, exception.Message)
-                ]));
+                ]),
+                CancellationToken.None);
         }
         catch (ArgumentException exception)
         {
@@ -116,7 +121,8 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
                 new KaleidoErrorResponse(
                 [
                     new KaleidoError(KaleidoErrorCodes.ArgumentError, "An invalid argument was provided.")
-                ]));
+                ]),
+                CancellationToken.None);
         }
         catch (KaleidoConfigurationException exception)
         {
@@ -139,7 +145,8 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
                 new KaleidoErrorResponse(
                 [
                     new KaleidoError(exception.Code, exception.Message)
-                ]));
+                ]),
+                CancellationToken.None);
         }
         catch (KaleidoFrameworkException exception)
         {
@@ -162,7 +169,8 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
                 new KaleidoErrorResponse(
                 [
                     new KaleidoError(exception.Code, exception.Message)
-                ]));
+                ]),
+                CancellationToken.None);
         }
         // Last resort: any other failure becomes a 500 with no details (cancellation is handled above).
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -186,7 +194,8 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
                     new KaleidoErrorResponse(
                     [
                         new KaleidoError(KaleidoErrorCodes.FrameworkError, "An unexpected error occurred.")
-                    ]));
+                    ]),
+                    CancellationToken.None);
             }
         }
     }
