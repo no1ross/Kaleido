@@ -19,7 +19,7 @@ internal sealed class ServiceProjectContextFactory(
         {
             builder.DataSource =
                 Path.GetFullPath(
-                    Path.Combine(
+                    Path.Join(
                         dataRoot,
                         builder.DataSource));
         }

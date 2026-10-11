@@ -127,17 +127,17 @@ internal sealed class ProviderSearchSeeder(
             StreetNames = LoadRequiredStringList(basePath, "street-names.json"),
             StreetSuffixes = LoadRequiredStringList(basePath, "street-suffixes.json"),
             LocationQualifiers = LoadRequiredStringList(basePath, "location-qualifiers.json"),
-            Settings = JsonAssetLoader.Load<ProviderSearchSeedSettings>(Path.Combine(basePath, "seed-settings.json")),
-            PlanNetworks = JsonAssetLoader.Load<List<PlanNetworkSeedRecord>>(Path.Combine("referencedata", "plan-networks.json")),
-            ZipCodes = JsonAssetLoader.Load<List<ZipCode>>(Path.Combine("referencedata", "zipcodes.json")),
-            Specialties = JsonAssetLoader.Load<List<MedicalSpecialty>>(Path.Combine("codeset", "specialties.json"))
+            Settings = JsonAssetLoader.Load<ProviderSearchSeedSettings>(Path.Join(basePath, "seed-settings.json")),
+            PlanNetworks = JsonAssetLoader.Load<List<PlanNetworkSeedRecord>>(Path.Join("referencedata", "plan-networks.json")),
+            ZipCodes = JsonAssetLoader.Load<List<ZipCode>>(Path.Join("referencedata", "zipcodes.json")),
+            Specialties = JsonAssetLoader.Load<List<MedicalSpecialty>>(Path.Join("codeset", "specialties.json"))
         };
     }
 
     private static List<Plan> LoadPlans()
     {
         return JsonAssetLoader.Load<List<Plan>>(
-            Path.Combine("referencedata", "plans.json"),
+            Path.Join("referencedata", "plans.json"),
             JsonAssetLoader.CreateEnumJsonOptions());
     }
 
@@ -145,7 +145,7 @@ internal sealed class ProviderSearchSeeder(
         string basePath,
         string fileName)
     {
-        var values = JsonAssetLoader.Load<List<string>>(Path.Combine(basePath, fileName));
+        var values = JsonAssetLoader.Load<List<string>>(Path.Join(basePath, fileName));
 
         if (values.Count == 0)
         {

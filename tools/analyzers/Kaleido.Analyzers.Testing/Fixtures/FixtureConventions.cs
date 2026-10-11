@@ -207,10 +207,8 @@ internal static class FixtureConventions
             return member;
         }
 
-        foreach (var child in ns.GetNamespaceMembers())
+        foreach (var hit in ns.GetNamespaceMembers().Select(child => FindType(child, name)))
         {
-            var hit = FindType(child, name);
-
             if (hit is not null)
             {
                 return hit;

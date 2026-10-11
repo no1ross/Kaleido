@@ -82,12 +82,12 @@ internal sealed class CodeSetSeeder(
 
         return new CodeSetSeedAssets
         {
-            ProcedureCodes = JsonAssetLoader.Load<List<ProcedureCode>>(Path.Combine(basePath, "procedure-codes.json"), enumOptions),
-            DiagnosisCodes = JsonAssetLoader.Load<List<DiagnosisCode>>(Path.Combine(basePath, "diagnosis-codes.json"), enumOptions),
-            Specialties = JsonAssetLoader.Load<List<MedicalSpecialty>>(Path.Combine(basePath, "specialties.json")),
-            Groupers = JsonAssetLoader.Load<List<CodeGrouper>>(Path.Combine(basePath, "groupers.json"), enumOptions),
-            ProcedureCodeSpecialtyAssignments = JsonAssetLoader.Load<List<ProcedureCodeSpecialtyAssignmentAsset>>(Path.Combine(basePath, "procedure-code-specialty-assignments.json"), enumOptions),
-            ProcedureCodeGrouperAssignments = JsonAssetLoader.Load<List<ProcedureCodeGrouperAssignmentAsset>>(Path.Combine(basePath, "procedure-code-grouper-assignments.json"), enumOptions)
+            ProcedureCodes = JsonAssetLoader.Load<List<ProcedureCode>>(Path.Join(basePath, "procedure-codes.json"), enumOptions),
+            DiagnosisCodes = JsonAssetLoader.Load<List<DiagnosisCode>>(Path.Join(basePath, "diagnosis-codes.json"), enumOptions),
+            Specialties = JsonAssetLoader.Load<List<MedicalSpecialty>>(Path.Join(basePath, "specialties.json")),
+            Groupers = JsonAssetLoader.Load<List<CodeGrouper>>(Path.Join(basePath, "groupers.json"), enumOptions),
+            ProcedureCodeSpecialtyAssignments = JsonAssetLoader.Load<List<ProcedureCodeSpecialtyAssignmentAsset>>(Path.Join(basePath, "procedure-code-specialty-assignments.json"), enumOptions),
+            ProcedureCodeGrouperAssignments = JsonAssetLoader.Load<List<ProcedureCodeGrouperAssignmentAsset>>(Path.Join(basePath, "procedure-code-grouper-assignments.json"), enumOptions)
         };
     }
 

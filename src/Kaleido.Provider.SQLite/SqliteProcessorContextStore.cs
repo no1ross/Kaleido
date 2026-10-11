@@ -199,17 +199,10 @@ internal sealed class SqliteProcessorContextStore(
         var incoming = context.AvailableSteps
             .ToHashSet(StringComparer.Ordinal);
 
-        foreach (var row in entity.AvailableSteps.ToArray())
+        foreach (var row in entity.AvailableSteps.Where(x => !incoming.Contains(x.StepName)).ToArray())
         {
-            if (!incoming.Contains(row.StepName))
-            {
-                entity.AvailableSteps.Remove(row);
-            }
+            entity.AvailableSteps.Remove(row);
         }
-
-        var existing = entity.AvailableSteps
-            .Select(x => x.StepName)
-            .ToHashSet(StringComparer.Ordinal);
 
         foreach (var (stepName, index) in context.AvailableSteps
                      .Select((name, i) => (name, i)))

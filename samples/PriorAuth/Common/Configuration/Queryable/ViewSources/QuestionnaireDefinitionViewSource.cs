@@ -42,13 +42,12 @@ internal sealed class QuestionnaireDefinitionViewSource(
         var matchedDefinitionIds =
             dbContext.QuestionnaireMappingRules
                 .AsNoTracking()
-                .Where(rule =>
-                    rule.IsActive
-                    && rule.StepName == parameters.StepName
-                    && (rule.PlanId == null || rule.PlanId == parameters.PlanId)
-                    && (rule.LineOfBusiness == null || rule.LineOfBusiness == parameters.LineOfBusiness)
-                    && (rule.ProcedureModality == null || rule.ProcedureModality == parameters.ProcedureModality)
-                    && (rule.ProcedureCodeValue == null || rule.ProcedureCodeValue == parameters.ProcedureCodeValue))
+                // A rule matches the step, and each criterion it sets (unset criteria match anything).
+                .Where(rule => rule.IsActive && rule.StepName == parameters.StepName)
+                .Where(rule => rule.PlanId == null || rule.PlanId == parameters.PlanId)
+                .Where(rule => rule.LineOfBusiness == null || rule.LineOfBusiness == parameters.LineOfBusiness)
+                .Where(rule => rule.ProcedureModality == null || rule.ProcedureModality == parameters.ProcedureModality)
+                .Where(rule => rule.ProcedureCodeValue == null || rule.ProcedureCodeValue == parameters.ProcedureCodeValue)
                 .OrderByDescending(rule =>
                     (rule.PlanId != null ? 8 : 0)
                     + (rule.LineOfBusiness != null ? 4 : 0)

@@ -102,7 +102,7 @@ public sealed class KaleidoMcpOptionsBuilder
     {
         var fullPath = Path.IsPathRooted(path)
             ? path
-            : Path.Combine(AppContext.BaseDirectory, path);
+            : Path.Join(AppContext.BaseDirectory, path);
 
         return File.Exists(fullPath)
             ? File.ReadAllText(fullPath).Trim()

@@ -164,7 +164,8 @@ internal sealed class ExceptionMiddleware(RequestDelegate next, ILogger<Exceptio
                     new KaleidoError(exception.Code, exception.Message)
                 ]));
         }
-        catch (Exception exception)
+        // Last resort: any other failure becomes a 500 with no details (cancellation is handled above).
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
 

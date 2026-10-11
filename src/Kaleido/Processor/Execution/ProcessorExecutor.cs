@@ -292,7 +292,8 @@ internal sealed class ProcessorExecutor(
 
                 break;
             }
-            catch (Exception exception)
+            // Any other failure of the step (cancellation and validation are handled above).
+            catch (Exception exception) when (exception is not OperationCanceledException)
             {
                 stepObservation.StepFailed(exception);
 
