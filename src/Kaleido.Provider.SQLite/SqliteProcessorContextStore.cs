@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Provider.SQLite;
 
-internal sealed class SqliteProcessorContextStore(
+internal sealed partial class SqliteProcessorContextStore(
     SqliteProcessorContextDbContext dbContext,
     KaleidoServiceOptions serviceOptions,
     ILogger<SqliteProcessorContextStore> logger)
@@ -50,10 +50,7 @@ internal sealed class SqliteProcessorContextStore(
         {
             SqliteTelemetry.LoadFailuresCounter.Add(1);
             activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
-            logger.LogError(
-                exception,
-                "Failed to load process context for process {ProcessId}.",
-                processId);
+            LogLoadFailed(logger, exception, processId);
             throw;
         }
     }
@@ -130,19 +127,13 @@ internal sealed class SqliteProcessorContextStore(
             await transaction.CommitAsync(
                 cancellationToken);
 
-            logger.LogDebug(
-                "Process context saved for process {ProcessId} ({StepCount} steps).",
-                context.ProcessId,
-                context.Steps.Count);
+            LogSaved(logger, context.ProcessId, context.Steps.Count);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             SqliteTelemetry.SaveFailuresCounter.Add(1);
             activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
-            logger.LogError(
-                exception,
-                "Failed to save process context for process {ProcessId}.",
-                context.ProcessId);
+            LogSaveFailed(logger, exception, context.ProcessId);
             throw;
         }
     }
@@ -354,4 +345,13 @@ internal sealed class SqliteProcessorContextStore(
                     .ToArray(),
         };
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to load process context for process {ProcessId}.")]
+    private static partial void LogLoadFailed(ILogger logger, Exception exception, Guid processId);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Process context saved for process {ProcessId} ({StepCount} steps).")]
+    private static partial void LogSaved(ILogger logger, Guid processId, int stepCount);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to save process context for process {ProcessId}.")]
+    private static partial void LogSaveFailed(ILogger logger, Exception exception, Guid processId);
 }

@@ -10,7 +10,7 @@ namespace Kaleido.Http.Client;
 /// route prefix is this service's own name are skipped — an aggregator must never fetch its own
 /// registry, or the request would recurse through its own endpoint.
 /// </summary>
-internal sealed class ClientDownstreamRegistries(
+internal sealed partial class ClientDownstreamRegistries(
     KaleidoProcessorClientRouteOptionsMap processClientMap,
     KaleidoQueryableClientRouteOptionsMap queryableClientMap,
     IKaleidoProcessorClientFactory processClientFactory,
@@ -69,11 +69,7 @@ internal sealed class ClientDownstreamRegistries(
                 // rethrown above.
                 catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                 {
-                    logger.LogWarning(
-                        ex,
-                        "Registry client {ClientName} failed: {Reason}.",
-                        name,
-                        ex.Message);
+                    LogRegistryClientFailed(logger, ex, name, ex.Message);
 
                     errors.Add(new RegistryClientError
                     {
@@ -111,7 +107,7 @@ internal sealed class ClientDownstreamRegistries(
             // stop the others from being invalidated. Invalidation is local and synchronous.
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogWarning(ex, "Failed to invalidate registry cache for client {ClientName}.", name);
+                LogInvalidateFailed(logger, ex, name);
             }
         }
     }
@@ -123,4 +119,10 @@ internal sealed class ClientDownstreamRegistries(
             .Select(x => x.Key)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Registry client {ClientName} failed: {Reason}.")]
+    private static partial void LogRegistryClientFailed(ILogger logger, Exception exception, string clientName, string reason);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to invalidate registry cache for client {ClientName}.")]
+    private static partial void LogInvalidateFailed(ILogger logger, Exception exception, string clientName);
 }

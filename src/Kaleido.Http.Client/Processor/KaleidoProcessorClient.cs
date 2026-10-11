@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Client.Processor;
 
-internal sealed class KaleidoProcessorClient(
+internal sealed partial class KaleidoProcessorClient(
     HttpClient httpClient,
     ICorrelationHeaderStamper headerStamper,
     ILogger<KaleidoProcessorClient> logger,
@@ -275,23 +275,13 @@ internal sealed class KaleidoProcessorClient(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        logger.LogDebug(
-            "Sending {Method} {Url} to remote processor '{ServiceName}'.",
-            request.Method,
-            request.RequestUri,
-            serviceName);
+        LogSending(logger, request.Method, request.RequestUri, serviceName);
 
         var response = await httpClient.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning(
-                "Remote processor '{ServiceName}' returned {StatusCode} ({StatusName}) for {Method} {Url}.",
-                serviceName,
-                (int)response.StatusCode,
-                response.StatusCode,
-                request.Method,
-                request.RequestUri);
+            LogRemoteNonSuccess(logger, serviceName, (int)response.StatusCode, response.StatusCode, request.Method, request.RequestUri);
         }
 
         return response;
@@ -300,4 +290,10 @@ internal sealed class KaleidoProcessorClient(
     private async Task<IReadOnlyList<ProcessorRegistryResponse>> EnsureRegistryAsync(
         CancellationToken cancellationToken) =>
         [.. (await remoteRegistry.GetAsync(clientName, serviceName, registryTtl, headerStamper, cancellationToken)).Processes];
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Sending {Method} {Url} to remote processor '{ServiceName}'.")]
+    private static partial void LogSending(ILogger logger, HttpMethod method, Uri? url, string serviceName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Remote processor '{ServiceName}' returned {StatusCode} ({StatusName}) for {Method} {Url}.")]
+    private static partial void LogRemoteNonSuccess(ILogger logger, string serviceName, int statusCode, HttpStatusCode statusName, HttpMethod method, Uri? url);
 }

@@ -14,7 +14,7 @@ internal interface IProcessorExecutor
         CancellationToken cancellationToken = default);
 }
 
-internal sealed class ProcessorExecutor(
+internal sealed partial class ProcessorExecutor(
     IProcessStepInvoker invoker,
     IStepExecutionEvaluator evaluator,
     IProcessorStateUpdater stateUpdater,
@@ -201,11 +201,7 @@ internal sealed class ProcessorExecutor(
                 }
                 catch (Exception publishException) when (publishException is not OperationCanceledException)
                 {
-                    logger.LogWarning(
-                        publishException,
-                        "Event publish failed for step {StepName} on process {ProcessId}. State was saved; event delivery is best-effort.",
-                        candidate.StepName,
-                        context.ProcessId);
+                    LogStepEventPublishFailed(logger, publishException, candidate.StepName, context.ProcessId);
                 }
 
                 currentCandidate =
@@ -467,4 +463,6 @@ internal sealed class ProcessorExecutor(
             : StepExecutionStatus.Failed;
     }
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for step {StepName} on process {ProcessId}. State was saved; event delivery is best-effort.")]
+    private static partial void LogStepEventPublishFailed(ILogger logger, Exception exception, string stepName, Guid processId);
 }
