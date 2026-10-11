@@ -48,7 +48,7 @@ jobs:
       run: |
         dotnet tool install --global dotnet-sonarscanner --version 11.3.0
         dotnet sonarscanner begin \
-          /k:"Kaleido" \
+          /k:"no1ross_Kaleido" \
           /o:"no1ross" \
           /d:sonar.host.url="https://sonarcloud.io" \
           /d:sonar.token="$SONAR_TOKEN" \
