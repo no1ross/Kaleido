@@ -33,7 +33,7 @@ All three are build diagnostics, not runtime error codes (runtime codes are in [
 | KAL2013 | Error | A concrete query source or view without its `[QuerySource]` / `[QueryView]` attribute | Startup failure `qry_missing_attribute` |
 | KAL2014 | Warning | `[Filterable]`, `[Searchable]` or `[Sortable]` on a property of a type that is not an `IQueryContext` | Query rules that silently have no effect |
 | KAL2015 | Error | An `IInformationStep` declares a property other than `InformationRequestId` and `Items` | Startup failure `pro_invalid_registration`; the same data in two places |
-| KAL2016 | Error | `Success<TNext>()` names an information step | A step with nothing to answer (runtime `pro_information_request_missing`); use `RequireInformation<TNext>(request)` |
+| KAL2016 | Error | `Success<TNext>()` or `Next<TNext>()` names an information step | A step with nothing to answer (runtime `pro_information_request_missing`); use `RequireInformation<TNext>(request)` |
 | KAL2017 | Warning | A process step input property has no description (`[Description]` or `[Display(Description = …)]`) | Inputs UIs and AI agents can't explain or ask for |
 | KAL2018 | Warning | An `IQueryContext` or `IQueryParameters` property has no description | Query fields UIs and AI agents (MCP tool schemas) can't explain |
 

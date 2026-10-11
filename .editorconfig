@@ -222,9 +222,9 @@ dotnet_diagnostic.CA2246.severity = warning   ; Assigning symbol and its member 
 dotnet_diagnostic.CA2249.severity = warning   ; Use string.Contains instead of IndexOf
 dotnet_diagnostic.CA2263.severity = warning   ; Prefer generic overload (non-generic exercises Type args)
 
-; CA1000: static factory methods on generic result types are an intended API pattern
-; (e.g. ProcessStepHandlerResult<T>.Success) — changing them would break the API
-dotnet_diagnostic.CA1000.severity = suggestion
+; CA1000: no static members on generic types - typed step results are created through the non-generic
+; ProcessStepHandlerResult factories, which infer the response type (#264)
+dotnet_diagnostic.CA1000.severity = warning
 
 ; SYSLIB1054: Use LibraryImportAttribute instead of DllImportAttribute
 dotnet_diagnostic.SYSLIB1054.severity = warning
@@ -366,6 +366,7 @@ dotnet_diagnostic.KAL1006.severity = none
 ; samples/ - kept as they are until they move to their own repositories (#250): the rules
 ; enforced by #257 after samples were excluded from analysis stay suggestions here
 [samples/**/*.cs]
+dotnet_diagnostic.CA1000.severity = suggestion
 dotnet_diagnostic.CA1859.severity = suggestion
 dotnet_diagnostic.CA1826.severity = suggestion
 dotnet_diagnostic.IDE0007.severity = suggestion
