@@ -60,10 +60,11 @@ public interface IProcessStepHandler<in TProcessStep>
 /// The outcome a step handler returns to the runtime.
 /// </summary>
 /// <remarks>
-/// Create instances through the factory methods on
-/// <see cref="ProcessStepHandlerResult"/> and
-/// <see cref="ProcessStepHandlerResult{TProcessStepResult}"/>. The next step is
-/// always identified by type; its public name is resolved by the runtime only when
+/// Create instances through the factory methods on <see cref="ProcessStepHandlerResult"/>;
+/// with a typed response, the response type is inferred and the next step is added with
+/// <see cref="ProcessStepHandlerResult{TProcessStepResult}.Next{TNext}"/> or
+/// <see cref="ProcessStepHandlerResult{TProcessStepResult}.RequireInformation{TNext}"/>. The next
+/// step is always identified by type; its public name is resolved by the runtime only when
 /// state, events, and responses are written.
 /// </remarks>
 public interface IProcessStepHandlerResult
@@ -113,6 +114,18 @@ public interface IProcessStepHandlerResult
 /// <summary>
 /// The outcome of a step handler that returns a typed response.
 /// </summary>
+/// <remarks>
+/// Created with <see cref="ProcessStepHandlerResult.Success{TProcessStepResult}(TProcessStepResult, ProcessMessage[])"/>
+/// or <see cref="ProcessStepHandlerResult.Failure{TProcessStepResult}(TProcessStepResult, ProcessMessage[])"/>;
+/// results without a response (<see cref="ProcessStepHandlerResult.Reject"/>,
+/// <see cref="ProcessStepHandlerResult.HandOff"/>) convert to it implicitly.
+/// </remarks>
+/// <example>
+/// <code>
+/// return ProcessStepHandlerResult.Success(response).Next&lt;ShipOrder&gt;();
+/// return ProcessStepHandlerResult.Reject(messages);
+/// </code>
+/// </example>
 /// <typeparam name="TProcessStepResult">The typed response returned to the caller.</typeparam>
 [ExcludeFromCodeCoverage]
 public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStepHandlerResult
@@ -146,129 +159,95 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
         = [];
 
     /// <summary>
-    /// Signals a successful step with no specific next step required; the runtime
-    /// continues with the steps the process rules make available.
-    /// </summary>
-    /// <param name="response">The typed response payload.</param>
-    /// <param name="messages">Business messages returned to the caller.</param>
-    public static ProcessStepHandlerResult<TProcessStepResult> Success(
-        TProcessStepResult response,
-        params ProcessMessage[] messages)
-    {
-        return new()
-        {
-            Succeeded = true,
-            Messages = messages,
-            Response = response,
-        };
-    }
-
-    /// <summary>
-    /// Signals a successful step and requires <typeparamref name="TNext"/> to
-    /// execute next.
+    /// Requires <typeparamref name="TNext"/> to execute next after this successful step.
     /// </summary>
     /// <typeparam name="TNext">
-    /// The step that must execute next. It must be a legal next step under the
-    /// process rules; otherwise the runtime reports a process violation.
+    /// The step that must execute next. It must be a legal next step under the process rules;
+    /// otherwise the runtime reports a process violation. An information step is required with
+    /// <see cref="RequireInformation{TNext}"/>, so there are questions to answer.
     /// </typeparam>
-    /// <param name="response">The typed response payload.</param>
-    /// <param name="messages">Business messages returned to the caller.</param>
-    public static ProcessStepHandlerResult<TProcessStepResult> Success<TNext>(
-        TProcessStepResult response,
-        params ProcessMessage[] messages)
+    /// <returns>A copy of this result with the required next step.</returns>
+    /// <exception cref="KaleidoFrameworkException">
+    /// This result is not a success in the current processor (a failure, a rejection, or a hand-off).
+    /// </exception>
+    /// <example>
+    /// <code>return ProcessStepHandlerResult.Success(response).Next&lt;ShipOrder&gt;();</code>
+    /// </example>
+    public ProcessStepHandlerResult<TProcessStepResult> Next<TNext>()
         where TNext : IProcessStep
     {
-        return new()
-        {
-            Succeeded = true,
-            RequiredStep = typeof(TNext),
-            Messages = messages,
-            Response = response,
-        };
+        EnsureCanRequireNextStep(typeof(TNext));
+
+        return this with { RequiredStep = typeof(TNext) };
     }
 
     /// <summary>
-    /// Signals a successful step that requires the information step <typeparamref name="TNext"/>
-    /// next, with the questions it needs answered. The process waits in
-    /// <c>AwaitingInformation</c> until the answers are submitted as <typeparamref name="TNext"/>'s payload.
+    /// Requires the information step <typeparamref name="TNext"/> next, with the questions it needs
+    /// answered. The process waits in <c>AwaitingInformation</c> until the answers are submitted as
+    /// <typeparamref name="TNext"/>'s payload.
     /// </summary>
     /// <typeparam name="TNext">
     /// The information step that receives the answers. It must be a legal next step under the
     /// process rules; to loop, a <see cref="RepeatableAttribute">[Repeatable]</see> information
     /// step can require itself with the next request.
     /// </typeparam>
-    /// <param name="response">The typed response payload.</param>
     /// <param name="request">The questions; the content is the implementer's, the shape is Kaleido's.</param>
-    /// <param name="messages">Business messages returned to the caller.</param>
-    public static ProcessStepHandlerResult<TProcessStepResult> RequireInformation<TNext>(
-        TProcessStepResult response,
-        InformationRequest request,
-        params ProcessMessage[] messages)
+    /// <returns>A copy of this result with the required information step and its request.</returns>
+    /// <exception cref="KaleidoFrameworkException">
+    /// This result is not a success in the current processor (a failure, a rejection, or a hand-off).
+    /// </exception>
+    /// <example>
+    /// <code>return ProcessStepHandlerResult.Success(response).RequireInformation&lt;AnswerQuestions&gt;(request);</code>
+    /// </example>
+    public ProcessStepHandlerResult<TProcessStepResult> RequireInformation<TNext>(InformationRequest request)
         where TNext : IInformationStep
     {
         ArgumentNullException.ThrowIfNull(request);
+        EnsureCanRequireNextStep(typeof(TNext));
 
-        return new()
-        {
-            Succeeded = true,
-            RequiredStep = typeof(TNext),
-            InformationRequest = request,
-            Messages = messages,
-            Response = response,
-        };
+        return this with { RequiredStep = typeof(TNext), InformationRequest = request };
     }
 
     /// <summary>
-    /// Signals a business failure: the request cannot proceed, and the process ends in
-    /// <c>BusinessFailure</c>. For input the caller can correct, use <see cref="Reject"/>.
+    /// Uses a result without a response - <see cref="ProcessStepHandlerResult.Reject"/>,
+    /// <see cref="ProcessStepHandlerResult.HandOff"/>, or an untyped success or failure - where a
+    /// typed result is returned.
     /// </summary>
-    /// <param name="response">The typed response payload.</param>
-    /// <param name="messages">Business messages explaining the failure.</param>
-    public static ProcessStepHandlerResult<TProcessStepResult> Failure(
-        TProcessStepResult response,
-        params ProcessMessage[] messages)
+    /// <param name="result">The untyped result.</param>
+    /// <exception cref="KaleidoFrameworkException">
+    /// <paramref name="result"/> carries a response that is not a <typeparamref name="TProcessStepResult"/>.
+    /// </exception>
+    public static implicit operator ProcessStepHandlerResult<TProcessStepResult>(ProcessStepHandlerResult result)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return new()
         {
-            Succeeded = false,
-            Messages = messages,
-            Response = response,
+            Succeeded = result.Succeeded,
+            Rejected = result.Rejected,
+            RequiredStep = result.RequiredStep,
+            InformationRequest = result.InformationRequest,
+            TargetProcessorName = result.TargetProcessorName,
+            Messages = result.Messages,
+            Response = result.Response switch
+            {
+                null => default,
+                TProcessStepResult response => response,
+                _ => throw new KaleidoFrameworkException(
+                    ProcessorErrorCodes.InvalidRequiredStep,
+                    $"A result with a '{result.Response.GetType().Name}' response cannot be returned as ProcessStepHandlerResult<{typeof(TProcessStepResult).Name}>."),
+            },
         };
     }
 
-    /// <summary>
-    /// Rejects the step's input as correctable (an unknown code, a duplicate, an ineligible date):
-    /// the step is not completed and the process is left exactly as it was, so the caller can
-    /// correct the input and retry, or choose another available step. The handler must not have
-    /// changed anything it would need to undo.
-    /// </summary>
-    /// <param name="messages">Business messages explaining what to correct.</param>
-    public static ProcessStepHandlerResult<TProcessStepResult> Reject(
-        params ProcessMessage[] messages)
+    private void EnsureCanRequireNextStep(Type next)
     {
-        return new()
+        if (!Succeeded || Rejected || TargetProcessorName is not null)
         {
-            Succeeded = false,
-            Rejected = true,
-            Messages = messages,
-        };
-    }
-
-    /// <summary>
-    /// Signals a successful step that hands off to a different processor.
-    /// The framework will propagate <paramref name="targetProcessorName"/> to the
-    /// HTTP response so the consumer can fetch authoritative state from the target.
-    /// </summary>
-    public static ProcessStepHandlerResult<TProcessStepResult> HandOff(
-        string targetProcessorName,
-        params ProcessMessage[] messages)
-    {
-        return new()
-        {
-            Succeeded = true,
-            TargetProcessorName = targetProcessorName,
-            Messages = messages,
-        };
+            throw new KaleidoFrameworkException(
+                ProcessorErrorCodes.InvalidRequiredStep,
+                $"Only a successful result in the current processor can require '{next.Name}' next.");
+        }
     }
 }
 
@@ -413,6 +392,49 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
             Succeeded = true,
             TargetProcessorName = targetProcessorName,
             Messages = messages,
+        };
+    }
+    /// <summary>
+    /// Signals a successful step with a typed response and no specific next step required; the
+    /// runtime continues with the steps the process rules make available. Chain
+    /// <see cref="ProcessStepHandlerResult{TProcessStepResult}.Next{TNext}"/> or
+    /// <see cref="ProcessStepHandlerResult{TProcessStepResult}.RequireInformation{TNext}"/> to require
+    /// the next step.
+    /// </summary>
+    /// <typeparam name="TProcessStepResult">The typed response, inferred from <paramref name="response"/>.</typeparam>
+    /// <param name="response">The typed response payload.</param>
+    /// <param name="messages">Business messages returned to the caller.</param>
+    /// <example>
+    /// <code>return ProcessStepHandlerResult.Success(response);</code>
+    /// </example>
+    public static ProcessStepHandlerResult<TProcessStepResult> Success<TProcessStepResult>(
+        TProcessStepResult response,
+        params ProcessMessage[] messages)
+    {
+        return new()
+        {
+            Succeeded = true,
+            Messages = messages,
+            Response = response,
+        };
+    }
+
+    /// <summary>
+    /// Signals a business failure with a typed response: the request cannot proceed, and the process
+    /// ends in <c>BusinessFailure</c>. For input the caller can correct, use <see cref="Reject"/>.
+    /// </summary>
+    /// <typeparam name="TProcessStepResult">The typed response, inferred from <paramref name="response"/>.</typeparam>
+    /// <param name="response">The typed response payload.</param>
+    /// <param name="messages">Business messages explaining the failure.</param>
+    public static ProcessStepHandlerResult<TProcessStepResult> Failure<TProcessStepResult>(
+        TProcessStepResult response,
+        params ProcessMessage[] messages)
+    {
+        return new()
+        {
+            Succeeded = false,
+            Messages = messages,
+            Response = response,
         };
     }
 }

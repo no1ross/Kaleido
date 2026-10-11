@@ -20,7 +20,7 @@ public sealed class AuthorizedAnonymousStepHandler
         ProcessStepContext context,
         CancellationToken cancellationToken) =>
         Task.FromResult(
-            ProcessStepHandlerResult<AuthorizedStepResponse>.Success(
+            ProcessStepHandlerResult.Success(
                 new AuthorizedStepResponse()));
 }
 
@@ -45,7 +45,7 @@ public sealed class AuthorizedInternalStepHandler
         ProcessStepContext context,
         CancellationToken cancellationToken) =>
         Task.FromResult(
-            ProcessStepHandlerResult<AuthorizedStepResponse>.Success(
+            ProcessStepHandlerResult.Success(
                 new AuthorizedStepResponse()));
 }
 
@@ -57,7 +57,7 @@ public sealed class AuthorizedPolicyStepHandler
         ProcessStepContext context,
         CancellationToken cancellationToken) =>
         Task.FromResult(
-            ProcessStepHandlerResult<AuthorizedStepResponse>.Success(
+            ProcessStepHandlerResult.Success(
                 new AuthorizedStepResponse()));
 }
 
@@ -69,7 +69,7 @@ public sealed class AuthorizedOpenStepHandler
         ProcessStepContext context,
         CancellationToken cancellationToken) =>
         Task.FromResult(
-            ProcessStepHandlerResult<AuthorizedStepResponse>.Success(
+            ProcessStepHandlerResult.Success(
                 new AuthorizedStepResponse()));
 }
 

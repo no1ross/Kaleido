@@ -33,7 +33,7 @@ public sealed class CaptureRequestedServiceHandler(
 
             if (procedureCode is null)
             {
-                return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Reject(RadiologyProcessMessages.ProcedureCodeNotFound(
+                return ProcessStepHandlerResult.Reject(RadiologyProcessMessages.ProcedureCodeNotFound(
                         processStep.CodeSystem,
                         processStep.CodeValue));
             }
@@ -70,7 +70,7 @@ public sealed class CaptureRequestedServiceHandler(
                         procedureCode.CodeValue,
                         StringComparison.OrdinalIgnoreCase))
                 {
-                    return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Reject(RadiologyProcessMessages.DuplicateRequestedServiceNotAllowed(
+                    return ProcessStepHandlerResult.Reject(RadiologyProcessMessages.DuplicateRequestedServiceNotAllowed(
                             procedureCode.CodeSystem,
                             procedureCode.CodeValue));
                 }
@@ -85,7 +85,7 @@ public sealed class CaptureRequestedServiceHandler(
                     && modality != ProcedureModality.Unknown
                     && existingModality != modality)
                 {
-                    return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Reject(RadiologyProcessMessages.MixedRequestedServiceModalitiesNotAllowed(
+                    return ProcessStepHandlerResult.Reject(RadiologyProcessMessages.MixedRequestedServiceModalitiesNotAllowed(
                             existingModality,
                             modality));
                 }
@@ -126,19 +126,19 @@ public sealed class CaptureRequestedServiceHandler(
             {
                 ProcedureModality.Mri =>
                     await informationRequests.CreateAsync(context.ProcessId, nameof(CaptureMriInfoStep), modality, procedureCode.CodeValue, cancellationToken) is { } mriRequest
-                        ? ProcessStepHandlerResult<CaptureRequestedServiceResponse>.RequireInformation<CaptureMriInfoStep>(response, mriRequest)
-                        : ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Reject(RadiologyProcessMessages.InformationRequestNotConfigured(nameof(CaptureMriInfoStep), modality)),
+                        ? ProcessStepHandlerResult.Success(response).RequireInformation<CaptureMriInfoStep>(mriRequest)
+                        : ProcessStepHandlerResult.Reject(RadiologyProcessMessages.InformationRequestNotConfigured(nameof(CaptureMriInfoStep), modality)),
                 ProcedureModality.Ct =>
                     await informationRequests.CreateAsync(context.ProcessId, nameof(ConfirmCtInsteadOfMriStep), modality, procedureCode.CodeValue, cancellationToken) is { } ctRequest
-                        ? ProcessStepHandlerResult<CaptureRequestedServiceResponse>.RequireInformation<ConfirmCtInsteadOfMriStep>(response, ctRequest)
-                        : ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Reject(RadiologyProcessMessages.InformationRequestNotConfigured(nameof(ConfirmCtInsteadOfMriStep), modality)),
+                        ? ProcessStepHandlerResult.Success(response).RequireInformation<ConfirmCtInsteadOfMriStep>(ctRequest)
+                        : ProcessStepHandlerResult.Reject(RadiologyProcessMessages.InformationRequestNotConfigured(nameof(ConfirmCtInsteadOfMriStep), modality)),
                 _ =>
-                    ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Success(response)
+                    ProcessStepHandlerResult.Success(response)
             };
         }
         catch (KaleidoHttpClientException ex)
         {
-            return ProcessStepHandlerResult<CaptureRequestedServiceResponse>.Reject(RadiologyProcessMessages.QueryableRequestFailed(
+            return ProcessStepHandlerResult.Reject(RadiologyProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));
         }

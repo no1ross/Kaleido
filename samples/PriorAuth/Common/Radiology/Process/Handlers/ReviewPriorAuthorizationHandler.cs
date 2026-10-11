@@ -66,12 +66,12 @@ public sealed class ReviewPriorAuthorizationHandler(
                     modality,
                     primaryService?.ResolvedCodeValue,
                     cancellationToken) is { } attestation
-                ? ProcessStepHandlerResult<PriorAuthorizationReview>.RequireInformation<SubmitPriorAuthorizationStep>(review, attestation)
-                : ProcessStepHandlerResult<PriorAuthorizationReview>.Reject(RadiologyProcessMessages.InformationRequestNotConfigured(nameof(SubmitPriorAuthorizationStep), modality));
+                ? ProcessStepHandlerResult.Success(review).RequireInformation<SubmitPriorAuthorizationStep>(attestation)
+                : ProcessStepHandlerResult.Reject(RadiologyProcessMessages.InformationRequestNotConfigured(nameof(SubmitPriorAuthorizationStep), modality));
         }
         catch (KaleidoHttpClientException ex)
         {
-            return ProcessStepHandlerResult<PriorAuthorizationReview>.Reject(RadiologyProcessMessages.QueryableRequestFailed(ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED", ex.Message));
+            return ProcessStepHandlerResult.Reject(RadiologyProcessMessages.QueryableRequestFailed(ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED", ex.Message));
         }
     }
 }
