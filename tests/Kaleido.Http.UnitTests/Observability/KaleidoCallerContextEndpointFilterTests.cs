@@ -13,7 +13,7 @@ public sealed class KaleidoCallerContextEndpointFilterTests
     private static KaleidoCallerContextEndpointFilter CreateSut() =>
         new();
 
-    private static EndpointFilterInvocationContext CreateInvocation(
+    private static DefaultEndpointFilterInvocationContext CreateInvocation(
         Mock<IKaleidoCorrelationContextAccessor> accessor,
         Mock<IKaleidoCorrelationContextInitializer> initializer,
         ClaimsPrincipal? user = null)

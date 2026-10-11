@@ -81,9 +81,9 @@ public static class ProcessorServiceCollectionExtensions
     }
 
     private static void ValidateProcessSteps(
-        IReadOnlyCollection<Type> stepTypes)
+        Type[] stepTypes)
     {
-        if (stepTypes.Count == 0)
+        if (stepTypes.Length == 0)
         {
             // No process steps to register - this is valid for Queryable-only services
             return;

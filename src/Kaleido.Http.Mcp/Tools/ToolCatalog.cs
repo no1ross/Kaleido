@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using ModelContextProtocol.Protocol;
 
 namespace Kaleido.Http.Mcp.Tools;
@@ -125,8 +126,8 @@ internal sealed record ToolCatalog
     /// <summary>Capabilities whose derived tool names collided, and the names they got instead.</summary>
     public IReadOnlyList<string> NameCollisions { get; init; } = [];
 
-    private IReadOnlyDictionary<string, KaleidoTool>? byName;
-    private IReadOnlyDictionary<string, KaleidoTool>? byUrl;
+    private FrozenDictionary<string, KaleidoTool>? byName;
+    private FrozenDictionary<string, KaleidoTool>? byUrl;
 
     public ToolCatalog()
     {
@@ -149,7 +150,7 @@ internal sealed record ToolCatalog
 
     public KaleidoTool? Find(string toolName)
     {
-        byName ??= Tools.ToDictionary(x => x.Definition.Name, StringComparer.Ordinal);
+        byName ??= Tools.ToFrozenDictionary(x => x.Definition.Name, StringComparer.Ordinal);
 
         return byName.TryGetValue(toolName, out var tool) ? tool : null;
     }
@@ -165,7 +166,7 @@ internal sealed record ToolCatalog
         byUrl ??= Tools
             .Where(x => !string.IsNullOrWhiteSpace(x.Url))
             .GroupBy(x => x.Url, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+            .ToFrozenDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
 
         return byUrl.TryGetValue(url, out var tool) ? tool : null;
     }

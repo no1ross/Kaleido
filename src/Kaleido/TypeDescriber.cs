@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Globalization;
@@ -33,7 +34,7 @@ public interface ITypeDescriber
 
 internal sealed class TypeDescriber : ITypeDescriber
 {
-    private static readonly IReadOnlyDictionary<Type, DataTypeDescriptor> TypeMappings =
+    private static readonly FrozenDictionary<Type, DataTypeDescriptor> TypeMappings =
             new Dictionary<Type, DataTypeDescriptor>
             {
                 [typeof(string)] = new("string"),
@@ -65,7 +66,7 @@ internal sealed class TypeDescriber : ITypeDescriber
                 [typeof(DateTimeOffset)] = new("string", "date-time-offset"),
 
                 [typeof(TimeSpan)] = new("string", "duration"),
-            };
+            }.ToFrozenDictionary();
 
     public bool IsSupportedType(Type type)
     {

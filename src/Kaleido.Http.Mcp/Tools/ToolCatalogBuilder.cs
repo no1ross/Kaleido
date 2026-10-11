@@ -343,7 +343,7 @@ internal sealed class ToolCatalogBuilder(
                 context.MissingDescriptions.Add($"{name}.{argument}");
             }
 
-            var lookup = lookups.FirstOrDefault(x => x.Inputs.Any(i => string.Equals(i.Argument, argument, StringComparison.Ordinal)));
+            var lookup = lookups.Find(x => x.Inputs.Any(i => string.Equals(i.Argument, argument, StringComparison.Ordinal)));
 
             properties[argument] = schemaBuilder.ForValue(field.DataType, FieldDescription(field, argument, lookup), field.Constraints);
 
@@ -396,7 +396,7 @@ internal sealed class ToolCatalogBuilder(
 
     // A step's lookups, by group, resolved to the caller's query tools (already in the context:
     // query tools are built before step tools).
-    private static IReadOnlyList<ToolLookup> Lookups(
+    private static List<ToolLookup> Lookups(
         BuildContext context,
         string toolName,
         IReadOnlyCollection<ProcessFieldMetadata> fields)

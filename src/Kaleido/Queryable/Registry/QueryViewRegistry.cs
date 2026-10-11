@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Reflection;
 using Kaleido.Queryable.Metadata;
 
@@ -19,7 +20,7 @@ internal interface IQueryViewRegistry
 internal sealed class QueryViewRegistry
     : IQueryViewRegistry
 {
-    private readonly IReadOnlyDictionary<Type, QueryViewRegistration> _byType;
+    private readonly FrozenDictionary<Type, QueryViewRegistration> _byType;
 
     private readonly ITypeDescriber _typeDescriber;
     private readonly IConstraintMapper _constraintMapper;
@@ -45,7 +46,7 @@ internal sealed class QueryViewRegistry
             registrations;
 
         _byType =
-            registrations.ToDictionary(
+            registrations.ToFrozenDictionary(
                 x => x.QueryViewType);
     }
 
