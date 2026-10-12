@@ -86,6 +86,20 @@ public class KaleidoServiceOptions
     {
         ArgumentNullException.ThrowIfNull(options);
 
+        ValidateAuthorization(options);
+        ValidateServiceName(options.ServiceName);
+
+        if (options.Assemblies is null || options.Assemblies.Length == 0)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.MissingAssembly,
+                "KaleidoServiceOptions.Assemblies must contain at least one assembly. " +
+                "Set o.Assemblies in the AddKaleido configure callback.");
+        }
+    }
+
+    private static void ValidateAuthorization(KaleidoServiceOptions options)
+    {
         if (!Enum.IsDefined(options.AuthorizationMode))
         {
             throw new KaleidoConfigurationException(
@@ -109,8 +123,13 @@ public class KaleidoServiceOptions
                 ConfigurationErrorCodes.ConflictingAuthorization,
                 "DefaultAuthorization cannot combine AllowAnonymous with Roles or Policy.");
         }
+    }
 
-        if (string.IsNullOrWhiteSpace(options.ServiceName))
+    // The service name is a route segment and the registry identity: non-empty, lowercase, no
+    // whitespace or path separators.
+    private static void ValidateServiceName(string serviceName)
+    {
+        if (string.IsNullOrWhiteSpace(serviceName))
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidServiceName,
@@ -119,34 +138,26 @@ public class KaleidoServiceOptions
                 "or via the Kaleido:ServiceName configuration key.");
         }
 
-        if (options.ServiceName.Contains('/', StringComparison.Ordinal) || options.ServiceName.Contains('\\', StringComparison.Ordinal))
+        if (serviceName.Contains('/', StringComparison.Ordinal) || serviceName.Contains('\\', StringComparison.Ordinal))
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidServiceName,
-                $"KaleidoServiceOptions.ServiceName '{options.ServiceName}' must not contain path separators.");
+                $"KaleidoServiceOptions.ServiceName '{serviceName}' must not contain path separators.");
         }
 
-        if (options.ServiceName.Any(char.IsWhiteSpace))
+        if (serviceName.Any(char.IsWhiteSpace))
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidServiceName,
-                $"KaleidoServiceOptions.ServiceName '{options.ServiceName}' must not contain whitespace.");
+                $"KaleidoServiceOptions.ServiceName '{serviceName}' must not contain whitespace.");
         }
 
-        if (options.ServiceName.Any(char.IsUpper))
+        if (serviceName.Any(char.IsUpper))
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidServiceName,
-                $"KaleidoServiceOptions.ServiceName '{options.ServiceName}' must be lowercase. " +
-                $"Use '{options.ServiceName.ToLowerInvariant()}' instead.");
-        }
-
-        if (options.Assemblies is null || options.Assemblies.Length == 0)
-        {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.MissingAssembly,
-                "KaleidoServiceOptions.Assemblies must contain at least one assembly. " +
-                "Set o.Assemblies in the AddKaleido configure callback.");
+                $"KaleidoServiceOptions.ServiceName '{serviceName}' must be lowercase. " +
+                $"Use '{serviceName.ToLowerInvariant()}' instead.");
         }
     }
 }

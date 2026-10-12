@@ -191,6 +191,12 @@ GitHub Issues in `no1ross/Kaleido` are the system of record for active and histo
 
 **Write done criteria in the Issue before starting work.** Anything outside those criteria is a discovered item.
 
+**PR size: few, large PRs.** Each PR has a full CI, Sonar and CodeQL cycle and a review, so many small PRs cost more time than they save. Group a work package (for example, a whole analyzer rule family across all projects, or a feature with its docs and tests) into one PR:
+- One PR per work package, not one per project, file or rule. One PR may resolve several Issues (`Fixes #A`, `Fixes #B`).
+- No stacked PRs that must merge in a set order; branch from `master`.
+- Keep a large PR reviewable: separate commits per step, and a PR description with one section per topic (what changed and why).
+- Verification does not shrink with the PR count: build with 0 warnings and all tests before every commit, Sonar and CodeQL green on the PR.
+
 When something new surfaces while working an Issue:
 - Create a separate Issue **before** discussing a fix, and link it to the discovery Issue. Record its context, done criteria and relation rather than silently widening the current PR.
 - Classify the relation; never dismiss it as "unrelated":

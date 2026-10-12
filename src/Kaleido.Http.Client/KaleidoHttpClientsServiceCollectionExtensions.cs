@@ -23,41 +23,7 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
 
         foreach (var (name, entry) in config.Clients)
         {
-            var baseUrl = !string.IsNullOrWhiteSpace(entry?.BaseUrl)
-                ? entry.BaseUrl
-                : config.BaseUrl;
-
-            if (string.IsNullOrWhiteSpace(baseUrl))
-            {
-                throw new KaleidoConfigurationException(
-                    HttpClientErrorCodes.MissingBaseUrl,
-                    $"Kaleido client '{name}' has no BaseUrl configured. " +
-                    $"Set 'Kaleido:Clients:{name}:BaseUrl' or the shared 'Kaleido:BaseUrl' fallback.");
-            }
-
-            var prefix = entry?.RoutePrefix ?? name.ToLowerInvariant();
-            var registryTtl = entry?.RegistryTtl ?? config.RegistryTtl;
-            var strictProbe = entry?.StrictRegistryProbe ?? config.StrictRegistryProbe;
-
-            // Register Process client
-            builder.AddProcessorClient(o =>
-            {
-                o.Name = name;
-                o.BaseUrl = baseUrl;
-                o.RoutePrefix = prefix;
-                o.RegistryTtl = registryTtl;
-                o.StrictRegistryProbe = strictProbe;
-            });
-
-            // Register Queryable client
-            builder.AddQueryableClient(o =>
-            {
-                o.Name = name;
-                o.BaseUrl = baseUrl;
-                o.RoutePrefix = prefix;
-                o.RegistryTtl = registryTtl;
-                o.StrictRegistryProbe = strictProbe;
-            });
+            AddClients(builder, config, name, entry);
         }
 
         // An aggregating host merges these clients' registries into its own (AddHttp() registers
@@ -76,5 +42,44 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
         }
 
         return builder;
+    }
+
+    // One configured client: a process client and a queryable client for the same service; the
+    // entry's settings fall back to the shared ones.
+    private static void AddClients(IKaleidoBuilder builder, KaleidoClientOptions config, string name, KaleidoClientEntry? entry)
+    {
+        var baseUrl = !string.IsNullOrWhiteSpace(entry?.BaseUrl)
+            ? entry.BaseUrl
+            : config.BaseUrl;
+
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            throw new KaleidoConfigurationException(
+                HttpClientErrorCodes.MissingBaseUrl,
+                $"Kaleido client '{name}' has no BaseUrl configured. " +
+                $"Set 'Kaleido:Clients:{name}:BaseUrl' or the shared 'Kaleido:BaseUrl' fallback.");
+        }
+
+        var prefix = entry?.RoutePrefix ?? name.ToLowerInvariant();
+        var registryTtl = entry?.RegistryTtl ?? config.RegistryTtl;
+        var strictProbe = entry?.StrictRegistryProbe ?? config.StrictRegistryProbe;
+
+        builder.AddProcessorClient(o =>
+        {
+            o.Name = name;
+            o.BaseUrl = baseUrl;
+            o.RoutePrefix = prefix;
+            o.RegistryTtl = registryTtl;
+            o.StrictRegistryProbe = strictProbe;
+        });
+
+        builder.AddQueryableClient(o =>
+        {
+            o.Name = name;
+            o.BaseUrl = baseUrl;
+            o.RoutePrefix = prefix;
+            o.RegistryTtl = registryTtl;
+            o.StrictRegistryProbe = strictProbe;
+        });
     }
 }
