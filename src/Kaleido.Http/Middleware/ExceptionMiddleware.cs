@@ -32,151 +32,90 @@ internal sealed partial class ExceptionMiddleware(RequestDelegate next, ILogger<
         }
         catch (KaleidoAuthorizationException exception)
         {
-            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
-
+            MarkFailed(exception);
             LogAuthorizationDenied(logger, exception, exception.CallerIsAuthenticated, exception.Message);
-
-            if (context.RequestServices.GetService<IAuthenticationService>() is null)
-            {
-                context.Response.StatusCode =
-                    exception.CallerIsAuthenticated
-                        ? StatusCodes.Status403Forbidden
-                        : StatusCodes.Status401Unauthorized;
-            }
-            else if (exception.CallerIsAuthenticated)
-            {
-                await context.ForbidAsync();
-            }
-            else
-            {
-                await context.ChallengeAsync();
-            }
+            await DenyAsync(context, exception);
         }
         catch (KaleidoValidationException exception)
         {
-            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
-
+            MarkFailed(exception);
             LogValidationFailed(logger, exception, exception.Code, exception.Message);
-
-            context.Response.StatusCode =
-                StatusCodes.Status400BadRequest;
-
-            RecordEndpointError(
-                exception.Code,
-                StatusCodes.Status400BadRequest);
-
-            await context.Response.WriteAsJsonAsync(
-                new KaleidoErrorResponse(
-                [
-                    new KaleidoError(exception.Code, exception.Message),
-                ]),
-                CancellationToken.None);
+            await WriteErrorAsync(context, StatusCodes.Status400BadRequest, exception.Code, exception.Message);
         }
         catch (BadHttpRequestException exception)
         {
-            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
-
+            MarkFailed(exception);
             LogMalformedRequest(logger, exception, exception.Message);
-
-            context.Response.StatusCode = exception.StatusCode;
-
-            RecordEndpointError(
-                KaleidoErrorCodes.ArgumentError,
-                exception.StatusCode);
-
-            await context.Response.WriteAsJsonAsync(
-                new KaleidoErrorResponse(
-                [
-                    new KaleidoError(KaleidoErrorCodes.ArgumentError, exception.Message),
-                ]),
-                CancellationToken.None);
+            await WriteErrorAsync(context, exception.StatusCode, KaleidoErrorCodes.ArgumentError, exception.Message);
         }
         catch (ArgumentException exception)
         {
-            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
-
+            MarkFailed(exception);
             LogInvalidArgument(logger, exception);
-
-            context.Response.StatusCode =
-                StatusCodes.Status400BadRequest;
-
-            RecordEndpointError(
-                KaleidoErrorCodes.ArgumentError,
-                StatusCodes.Status400BadRequest);
-
-            await context.Response.WriteAsJsonAsync(
-                new KaleidoErrorResponse(
-                [
-                    new KaleidoError(KaleidoErrorCodes.ArgumentError, "An invalid argument was provided."),
-                ]),
-                CancellationToken.None);
+            await WriteErrorAsync(context, StatusCodes.Status400BadRequest, KaleidoErrorCodes.ArgumentError, "An invalid argument was provided.");
         }
         catch (KaleidoConfigurationException exception)
         {
-            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
-
+            MarkFailed(exception);
             LogConfigurationError(logger, exception, exception.Code, exception.Message);
-
-            context.Response.StatusCode =
-                StatusCodes.Status500InternalServerError;
-
-            RecordEndpointError(
-                exception.Code,
-                StatusCodes.Status500InternalServerError);
-
-            await context.Response.WriteAsJsonAsync(
-                new KaleidoErrorResponse(
-                [
-                    new KaleidoError(exception.Code, exception.Message),
-                ]),
-                CancellationToken.None);
+            await WriteErrorAsync(context, StatusCodes.Status500InternalServerError, exception.Code, exception.Message);
         }
         catch (KaleidoFrameworkException exception)
         {
-            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
-
+            MarkFailed(exception);
             LogFrameworkError(logger, exception, exception.Code, exception.Message);
-
-            context.Response.StatusCode =
-                StatusCodes.Status500InternalServerError;
-
-            RecordEndpointError(
-                exception.Code,
-                StatusCodes.Status500InternalServerError);
-
-            await context.Response.WriteAsJsonAsync(
-                new KaleidoErrorResponse(
-                [
-                    new KaleidoError(exception.Code, exception.Message),
-                ]),
-                CancellationToken.None);
+            await WriteErrorAsync(context, StatusCodes.Status500InternalServerError, exception.Code, exception.Message);
         }
         // Last resort: any other failure becomes a 500 with no details (cancellation is handled above).
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
-
+            MarkFailed(exception);
             LogUnhandled(logger, exception);
 
-            RecordEndpointError(
-                KaleidoErrorCodes.FrameworkError,
-                StatusCodes.Status500InternalServerError);
-
-            if (!context.Response.HasStarted)
+            if (context.Response.HasStarted)
             {
-                context.Response.StatusCode =
-                    StatusCodes.Status500InternalServerError;
-
-                await context.Response.WriteAsJsonAsync(
-                    new KaleidoErrorResponse(
-                    [
-                        new KaleidoError(KaleidoErrorCodes.FrameworkError, "An unexpected error occurred."),
-                    ]),
-                    CancellationToken.None);
+                RecordEndpointError(KaleidoErrorCodes.FrameworkError, StatusCodes.Status500InternalServerError);
+                return;
             }
+
+            await WriteErrorAsync(context, StatusCodes.Status500InternalServerError, KaleidoErrorCodes.FrameworkError, "An unexpected error occurred.");
         }
     }
 
+    private static void MarkFailed(Exception exception) =>
+        Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
+
+    // Without an authentication handler the status code is set directly; with one, the handler
+    // answers (a challenge for an anonymous caller, forbid for an authenticated one).
+    private static async Task DenyAsync(HttpContext context, KaleidoAuthorizationException exception)
+    {
+        if (context.RequestServices.GetService<IAuthenticationService>() is null)
+        {
+            context.Response.StatusCode =
+                exception.CallerIsAuthenticated
+                    ? StatusCodes.Status403Forbidden
+                    : StatusCodes.Status401Unauthorized;
+        }
+        else if (exception.CallerIsAuthenticated)
+        {
+            await context.ForbidAsync();
+        }
+        else
+        {
+            await context.ChallengeAsync();
+        }
+    }
+
+    private static async Task WriteErrorAsync(HttpContext context, int statusCode, string code, string message)
+    {
+        context.Response.StatusCode = statusCode;
+
+        RecordEndpointError(code, statusCode);
+
+        await context.Response.WriteAsJsonAsync(
+            new KaleidoErrorResponse([new KaleidoError(code, message)]),
+            CancellationToken.None);
+    }
     private static void RecordEndpointError(
         string errorCode,
         int statusCode) =>
