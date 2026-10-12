@@ -49,6 +49,7 @@ public static partial class ProcessorEndpointRouteBuilderExtensions
         var group =
             endpoints.MapGroup(
                 routePrefix)
+            .AddEndpointFilter<KaleidoExceptionEndpointFilter>()
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
             // Post-auth: stamps CallerName/CallerRoles onto the ambient
             // correlation context for per-step checks inside handlers and the
@@ -103,6 +104,7 @@ public static partial class ProcessorEndpointRouteBuilderExtensions
 
                     return Results.Ok(result);
                 })
+            .AddEndpointFilter<KaleidoIdempotencyEndpointFilter>()
             .WithName(ProcessEndpointNames.ExecuteEndpointName)
             .Accepts<ExecuteProcessRequest>("application/json")
             .WithTags("Processes")
@@ -235,6 +237,7 @@ public static partial class ProcessorEndpointRouteBuilderExtensions
 
                     return Results.Ok(result);
                 })
+            .AddEndpointFilter<KaleidoIdempotencyEndpointFilter>()
             .WithKaleidoAuthorization(step.Metadata.Authorization, options)
             .WithName(
                 ProcessEndpointNames.StepExecutionEndpointName(
@@ -277,6 +280,7 @@ public static partial class ProcessorEndpointRouteBuilderExtensions
 
                     return Results.Ok(result);
                 })
+            .AddEndpointFilter<KaleidoIdempotencyEndpointFilter>()
             .WithKaleidoAuthorization(step.Metadata.Authorization, options)
             .WithName(
                 ProcessEndpointNames.StepExecutionEndpointName(

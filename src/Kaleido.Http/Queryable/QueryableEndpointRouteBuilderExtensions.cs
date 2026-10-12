@@ -56,6 +56,7 @@ public static partial class QueryableEndpointRouteBuilderExtensions
         var group =
             endpoints.MapGroup(
                 routePrefix)
+            .AddEndpointFilter<KaleidoExceptionEndpointFilter>()
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
             .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 

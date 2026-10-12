@@ -34,7 +34,7 @@ internal sealed partial class KaleidoProcessorClient(
 
         headerStamper.Stamp(httpRequest);
 
-        using var response = await SendAsync(httpRequest, cancellationToken);
+        using var response = await SendAsync(httpRequest, cancellationToken, capabilityCall: false);
 
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -243,7 +243,7 @@ internal sealed partial class KaleidoProcessorClient(
     {
         KaleidoErrorResponse? errorResponse = null;
 
-        if (response.StatusCode == HttpStatusCode.BadRequest)
+        if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict)
         {
             try
             {
@@ -259,7 +259,7 @@ internal sealed partial class KaleidoProcessorClient(
         if (errorResponse?.Errors.Count > 0)
         {
             return new KaleidoHttpClientException(
-                HttpClientErrorCodes.ValidationFailed,
+                response.StatusCode == HttpStatusCode.Conflict ? HttpClientErrorCodes.Conflict : HttpClientErrorCodes.ValidationFailed,
                 $"{description}: {string.Join(' ', errorResponse.Errors.Select(e => e.Message))}",
                 response.StatusCode,
                 errorResponse.Errors);
@@ -271,10 +271,22 @@ internal sealed partial class KaleidoProcessorClient(
             response.StatusCode);
     }
 
+    // A capability call answered 404 means the service no longer has that step (it was deployed
+    // without it): the registry snapshot is dropped so the next read loads the current one. The process
+    // state call answers 404 for an unknown process, which says nothing about the registry.
     private async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool capabilityCall = true)
     {
+        // Every execute call is idempotent: one key per call, so a retry of this request (the
+        // resilience pipeline re-sends the same message) gets the stored answer instead of running the
+        // step a second time.
+        if (request.Method == HttpMethod.Post && !request.Headers.Contains(KaleidoIdempotencyHeaders.IdempotencyKey))
+        {
+            request.Headers.Add(KaleidoIdempotencyHeaders.IdempotencyKey, Guid.NewGuid().ToString("N"));
+        }
+
         LogSending(logger, request.Method, request.RequestUri, serviceName);
 
         var response = await httpClient.SendAsync(request, cancellationToken);
@@ -282,6 +294,11 @@ internal sealed partial class KaleidoProcessorClient(
         if (!response.IsSuccessStatusCode)
         {
             LogRemoteNonSuccess(logger, serviceName, (int)response.StatusCode, response.StatusCode, request.Method, request.RequestUri);
+        }
+
+        if (capabilityCall && response.StatusCode == HttpStatusCode.NotFound)
+        {
+            remoteRegistry.Invalidate(clientName);
         }
 
         return response;

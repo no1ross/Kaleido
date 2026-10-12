@@ -31,4 +31,10 @@ public sealed class KaleidoHttpOptions
     /// <c>BusinessMessages</c> is always returned.
     /// </summary>
     public bool IncludeFrameworkMessages { get; set; }
+
+    /// <summary>
+    /// How long the answer to an execute request sent with an <c>Idempotency-Key</c> is kept, so a retry
+    /// with the same key gets it again instead of running the step a second time. Default 24 hours.
+    /// </summary>
+    public TimeSpan IdempotencyRetention { get; set; } = TimeSpan.FromHours(24);
 }

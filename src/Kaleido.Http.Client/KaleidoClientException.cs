@@ -62,6 +62,13 @@ public static class HttpClientErrorCodes
     /// <summary>A remote queryable request failed with structured validation errors.</summary>
     public const string ValidationFailed = "httpclient_validation_failed";
 
+    /// <summary>
+    /// The remote process was changed by another request since this one read it (HTTP 409,
+    /// <c>pro_process_conflict</c> in the errors): nothing was saved. Read the process state again and
+    /// decide on the next step instead of repeating the call.
+    /// </summary>
+    public const string Conflict = "httpclient_conflict";
+
     /// <summary>A URL returned by a remote registry was not a valid absolute http(s) URL.</summary>
     public const string InvalidRegistryUrl = "httpclient_invalid_registry_url";
 

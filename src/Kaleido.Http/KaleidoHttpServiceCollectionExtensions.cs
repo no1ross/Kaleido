@@ -37,6 +37,7 @@ public static class KaleidoHttpServiceCollectionExtensions
 
         // Register Kaleido middleware pipeline via startup filter.
         builder.Services.AddSingleton<IStartupFilter, KaleidoStartupFilter>();
+        builder.Services.TryAddSingleton<Middleware.IKaleidoExceptionHandler, Middleware.KaleidoExceptionHandler>();
 
         // Register HTTP-specific execution services — only when Process runtime is present
         if (builder.Services.Any(d => d.ServiceType == typeof(IProcessorRegistry)))

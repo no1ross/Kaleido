@@ -163,6 +163,16 @@ have the same empty-collection meaning in a gRPC consumer. Adapters decide
 which messages to populate; serializer-specific omission does not define the
 contract or belong in core runtime types.
 
+## Concurrency, idempotency and retries
+
+What Kaleido guarantees, and what stays with the step handler:
+
+- **Concurrent calls cannot overwrite a process.** Every save is conditional on the version the state was loaded with; the second of two concurrent calls gets **409** `pro_process_conflict` and nothing of it is saved. Consumers read the state again and decide; they never repeat the call blindly.
+- **Retried calls do not run a step twice.** An execute request with an `Idempotency-Key` (the Kaleido clients send one with every execute call) is answered from the stored result when it arrives again. Third-party callers send their own key per logical call.
+- **Client calls are resilient by default:** timeouts, retries of safe requests (reads and requests with an idempotency key), a circuit breaker - configured under `Kaleido:Resilience`, per client in `Kaleido:Clients:{name}:Resilience` ([`Kaleido.Http.Client`](../src/Kaleido.Http.Client/README.md#resilience)).
+- **A handler's own side effects are the handler's concern.** On a 409 the handler has already run; only the process state was not saved. A handler that writes to another system or calls one should make that write idempotent (an upsert, a business key, the process id as a reference) so running the step again for the same process is harmless - Kaleido cannot make a handler's external write atomic with its state.
+- **Custom process stores** implement the conditional save and the idempotent-result methods ([store contract](../src/Kaleido.Provider.SQLite/README.md#implementing-your-own-store)).
+
 ## Queryable: sources, views and query contexts
 
 The **source is the identity**; the **query context** describes how it is queried.

@@ -50,6 +50,12 @@ public sealed class KaleidoQueryableClientTests
                 data[k] = v;
                 return ValueTask.CompletedTask;
             });
+        store.Setup(s => s.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns((string k, CancellationToken _) =>
+            {
+                data.TryRemove(k, out var _);
+                return ValueTask.CompletedTask;
+            });
         return store.Object;
     }
 
@@ -397,5 +403,28 @@ public sealed class KaleidoQueryableClientTests
     private sealed class FakeParams { }
     private sealed class FakeSearchParams { public string ProcessId { get; init; } = string.Empty; }
     private sealed class FakeView { public int Id { get; init; } }
-}
 
+    // A 404 from a query means the service was deployed without that source: the registry is loaded again.
+    [Fact]
+    public async Task QuerySourceAsync_WhenTheServiceAnswers404_DropsTheRegistrySnapshot()
+    {
+        var registryReads = 0;
+        var (client, _) = CreateClient(respond: req =>
+        {
+            if (req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal))
+            {
+                registryReads++;
+                return JsonOk(FakeRegistry);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        await client.GetRegistryAsync();
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
+            client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest()));
+        await client.GetRegistryAsync();
+
+        Assert.Equal(2, registryReads);
+    }
+}

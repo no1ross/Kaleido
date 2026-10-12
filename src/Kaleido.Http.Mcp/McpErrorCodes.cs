@@ -26,6 +26,12 @@ public static class McpErrorCodes
     /// <summary>The Kaleido service refused or failed the call (its status and errors are included).</summary>
     public const string ServiceError = "mcp_service_error";
 
+    /// <summary>
+    /// The process was changed by another call (409): nothing was saved. The agent reads the process
+    /// state again and decides with the user instead of repeating the call.
+    /// </summary>
+    public const string ProcessConflict = "mcp_process_conflict";
+
     /// <summary>The Kaleido service could not be reached, or no Kaleido client is configured for it.</summary>
     public const string ServiceUnavailable = "mcp_service_unavailable";
 
