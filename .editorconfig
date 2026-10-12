@@ -197,6 +197,7 @@ dotnet_diagnostic.CA1845.severity = warning   ; Use span-based string.Concat
 dotnet_diagnostic.CA1846.severity = warning   ; Prefer AsSpan over Substring
 dotnet_diagnostic.CA1847.severity = warning   ; Use string.Contains(char) for single chars
 dotnet_diagnostic.CA1848.severity = warning    ; Log through [LoggerMessage] methods (static partial Log<Event> on the class)
+dotnet_diagnostic.IDE0090.severity = warning    ; 'new()' when the type is apparent
 dotnet_diagnostic.CA1852.severity = warning   ; Seal internal types
 dotnet_diagnostic.CA1854.severity = warning   ; Prefer TryGetValue over ContainsKey+indexer
 dotnet_diagnostic.CA1855.severity = warning   ; Prefer Clear over Fill
@@ -367,6 +368,7 @@ dotnet_diagnostic.KAL1006.severity = none
 ; samples/ - kept as they are until they move to their own repositories (#250): the rules
 ; enforced by #257 after samples were excluded from analysis stay suggestions here
 [samples/**/*.cs]
+dotnet_diagnostic.IDE0090.severity = suggestion
 dotnet_diagnostic.CA1848.severity = suggestion
 dotnet_diagnostic.CA1873.severity = suggestion
 dotnet_diagnostic.MA0051.severity = suggestion
