@@ -19,7 +19,7 @@ Owns the core runtime:
 - shared JSON/value-conversion helpers
 - Queryable runtime: context/view registration, validation, dispatch, execution, observability
 - Process runtime: step registration, planning, execution, state mutation, observability
-- Default in-memory `IProcessorContextStore`
+- Default in-memory `IKaleidoContextStore`
 
 Does **not** own HTTP endpoints, ASP.NET Core DI, HTTP contracts, remote client consumption, or SQLite persistence.
 
@@ -65,9 +65,9 @@ Owns the OpenTelemetry observability provider (opt-in, no OTel dependency in cor
 Future observability providers follow the same pattern: `Kaleido.Observability.<Technology>`.
 
 ### `src/Kaleido.Provider.SQLite`
-Owns the reference `IProcessorContextStore` implementation (SQLite):
-- `UseSqliteProcessorContextStore(...)` extension
-- SQLite-backed `IProcessorContextStore` — a worked example only; consumers implement `IProcessorContextStore` against their own durable infrastructure
+Owns the reference `IKaleidoContextStore` implementation (SQLite):
+- `UseSqliteKaleidoContextStore(...)` extension
+- SQLite-backed `IKaleidoContextStore` — a worked example only; consumers implement `IKaleidoContextStore` against their own durable infrastructure
 
 ---
 

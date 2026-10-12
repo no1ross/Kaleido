@@ -1,10 +1,10 @@
 using Kaleido.Eventing;
 using Kaleido.Observability;
 using Kaleido.Processor.Context;
+using Kaleido.Storage;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
 using Kaleido.UnitTests;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Processor.UnitTests;
 
@@ -12,18 +12,17 @@ public sealed class ProcessorRuntimeTests
     : SutFixture
 {
     private static ProcessorRuntime CreateSut(
-        IProcessorContextStore contextStore,
+        IKaleidoContextStore contextStore,
         IProcessorStateUpdater stateUpdater,
         IProcessorPlanner planner,
         IProcessorExecutor processor,
         IProcessorEventFactory eventFactory,
-        IEventPublisher eventPublisher,
+        IKaleidoEventOutbox eventOutbox,
         IProcessorObservability observability,
-        IKaleidoCorrelationContextAccessor correlationAccessor,
-        Microsoft.Extensions.Logging.ILogger<ProcessorRuntime> logger) =>
+        IKaleidoCorrelationContextAccessor correlationAccessor) =>
         new(contextStore, stateUpdater, planner, processor,
-            eventFactory, eventPublisher, observability,
-            correlationAccessor, new KaleidoServiceOptions { ServiceName = "radiology" }, logger);
+            eventFactory, eventOutbox, observability,
+            correlationAccessor, new KaleidoServiceOptions { ServiceName = "radiology" });
 
     [Fact]
     public async Task ExecuteAsync_WhenInitialRequestContainsMultipleStepsWithoutProcessId_InitializesContextAndExecutes()
@@ -48,7 +47,8 @@ public sealed class ProcessorRuntimeTests
                 "REQ-INITIAL-MULTI");
 
         var contextStore =
-            new Mock<IProcessorContextStore>(MockBehavior.Strict);
+            new Mock<IKaleidoContextStore>(MockBehavior.Strict);
+        SetupSave(contextStore);
 
         var stateUpdater =
             new Mock<IProcessorStateUpdater>(MockBehavior.Strict);
@@ -104,10 +104,9 @@ public sealed class ProcessorRuntimeTests
                 planner.Object,
                 processor.Object,
                 CreateProcessEventFactory().Object,
-                CreateEventPublisher().Object,
+                new Mock<IKaleidoEventOutbox>().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor("REQ-INITIAL-MULTI"),
-                NullLogger<ProcessorRuntime>.Instance);
+                CreateCorrelationAccessor("REQ-INITIAL-MULTI"));
 
         var result =
             await runtime.ExecuteAsync(request);
@@ -144,7 +143,8 @@ public sealed class ProcessorRuntimeTests
                 "REQ-001");
 
         var contextStore =
-            new Mock<IProcessorContextStore>();
+            new Mock<IKaleidoContextStore>();
+        SetupSave(contextStore);
 
         contextStore
             .Setup(x =>
@@ -194,10 +194,9 @@ public sealed class ProcessorRuntimeTests
                 planner.Object,
                 processor.Object,
                 CreateProcessEventFactory().Object,
-                CreateEventPublisher().Object,
+                new Mock<IKaleidoEventOutbox>().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor(callingProcessor: "intake"),
-                NullLogger<ProcessorRuntime>.Instance);
+                CreateCorrelationAccessor(callingProcessor: "intake"));
 
         await runtime.ExecuteAsync(request);
 
@@ -222,7 +221,7 @@ public sealed class ProcessorRuntimeTests
         var request = CreateRequest();
         var processId = Assert.IsType<Guid>(request.ProcessId);
 
-        var contextStore = new Mock<IProcessorContextStore>();
+        var contextStore = new Mock<IKaleidoContextStore>();
         contextStore.Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>())).ReturnsAsync(default(ProcessorContext));
 
         var stateUpdater = new Mock<IProcessorStateUpdater>(MockBehavior.Strict);
@@ -235,15 +234,14 @@ public sealed class ProcessorRuntimeTests
                 new Mock<IProcessorPlanner>(MockBehavior.Strict).Object,
                 processor.Object,
                 CreateProcessEventFactory().Object,
-                CreateEventPublisher().Object,
+                new Mock<IKaleidoEventOutbox>().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor(callingProcessor: callingProcessor),
-                NullLogger<ProcessorRuntime>.Instance);
+                CreateCorrelationAccessor(callingProcessor: callingProcessor));
 
         var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoValidationException>(() => runtime.ExecuteAsync(request, TestContext.Current.CancellationToken));
 
         Assert.Equal(ProcessorErrorCodes.ProcessNotFound, exception.Code);
-        contextStore.Verify(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<CancellationToken>()), Times.Never);
+        contextStore.Verify(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -267,7 +265,7 @@ public sealed class ProcessorRuntimeTests
                 "REQ-001");
 
         var contextStore =
-            new Mock<IProcessorContextStore>();
+            new Mock<IKaleidoContextStore>();
 
         contextStore
             .Setup(x =>
@@ -314,10 +312,9 @@ public sealed class ProcessorRuntimeTests
                 planner.Object,
                 processor.Object,
                 CreateProcessEventFactory().Object,
-                CreateEventPublisher().Object,
+                new Mock<IKaleidoEventOutbox>().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor(),
-                NullLogger<ProcessorRuntime>.Instance);
+                CreateCorrelationAccessor());
 
         await runtime.ExecuteAsync(request);
 
@@ -366,7 +363,7 @@ public sealed class ProcessorRuntimeTests
             null;
 
         var contextStore =
-            new Mock<IProcessorContextStore>();
+            new Mock<IKaleidoContextStore>();
 
         contextStore
             .Setup(x =>
@@ -423,10 +420,9 @@ public sealed class ProcessorRuntimeTests
                 planner.Object,
                 processor.Object,
                 CreateProcessEventFactory().Object,
-                CreateEventPublisher().Object,
+                new Mock<IKaleidoEventOutbox>().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor(),
-                NullLogger<ProcessorRuntime>.Instance);
+                CreateCorrelationAccessor());
 
         await runtime.ExecuteAsync(request);
 
@@ -496,7 +492,7 @@ public sealed class ProcessorRuntimeTests
             };
 
         var contextStore =
-            new Mock<IProcessorContextStore>();
+            new Mock<IKaleidoContextStore>();
 
         contextStore
             .Setup(x =>
@@ -546,10 +542,9 @@ public sealed class ProcessorRuntimeTests
                 planner.Object,
                 processor.Object,
                 CreateProcessEventFactory().Object,
-                CreateEventPublisher().Object,
+                new Mock<IKaleidoEventOutbox>().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor(),
-                NullLogger<ProcessorRuntime>.Instance);
+                CreateCorrelationAccessor());
 
         var result =
             await runtime.ExecuteAsync(request);
@@ -595,7 +590,7 @@ public sealed class ProcessorRuntimeTests
             new MockSequence();
 
         var contextStore =
-            new Mock<IProcessorContextStore>(MockBehavior.Strict);
+            new Mock<IKaleidoContextStore>(MockBehavior.Strict);
 
         contextStore
             .InSequence(sequence)
@@ -645,10 +640,9 @@ public sealed class ProcessorRuntimeTests
                 planner.Object,
                 processor.Object,
                 CreateProcessEventFactory().Object,
-                CreateEventPublisher().Object,
+                new Mock<IKaleidoEventOutbox>().Object,
                 CreateObservability().Object,
-                CreateCorrelationAccessor(),
-                NullLogger<ProcessorRuntime>.Instance);
+                CreateCorrelationAccessor());
 
         await runtime.ExecuteAsync(request);
 
@@ -678,33 +672,94 @@ public sealed class ProcessorRuntimeTests
         return observability;
     }
 
-    private static Mock<IEventPublisher> CreateEventPublisher()
+    private static void SetupSave(Mock<IKaleidoContextStore> store, List<IReadOnlyCollection<KaleidoOutboxEvent>>? savedEvents = null) =>
+        store
+            .Setup(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>()))
+            .Callback<ProcessorContext, IReadOnlyCollection<KaleidoOutboxEvent>, CancellationToken>((_, events, _) => savedEvents?.Add(events))
+            .ReturnsAsync((ProcessorContext saved, IReadOnlyCollection<KaleidoOutboxEvent> _, CancellationToken _) => saved with { Version = saved.Version + 1 });
+
+    private static ProcessorRuntime CreateNewProcessSut(Mock<IKaleidoContextStore> store, Mock<IKaleidoEventOutbox> outbox, Mock<IProcessorExecutor> processor)
     {
-        var publisher =
-            new Mock<IEventPublisher>(MockBehavior.Strict);
+        var stateUpdater = new Mock<IProcessorStateUpdater>();
+        stateUpdater.Setup(x => x.Initialize(It.IsAny<Guid>())).Returns<Guid>(id => CreateContext(id, "REQ-001"));
 
-        publisher
-            .Setup(x =>
-                x.PublishAsync(
-                    It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>(),
-                    It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        var planner = new Mock<IProcessorPlanner>();
+        planner.Setup(x => x.BuildPlan(It.IsAny<ProcessorRequest>(), It.IsAny<ProcessorContext>())).Returns(new ExecutionPlanResult { Candidates = [] });
 
-        publisher
-            .Setup(x =>
-                x.PublishAsync(
-                    It.IsAny<KaleidoEventEnvelope<PlanBuilt, ProcessEventContext>>(),
-                    It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        return CreateSut(
+            store.Object,
+            stateUpdater.Object,
+            planner.Object,
+            processor.Object,
+            CreateProcessEventFactory().Object,
+            outbox.Object,
+            CreateObservability().Object,
+            CreateCorrelationAccessor());
+    }
 
-        publisher
-            .Setup(x =>
-                x.PublishAsync(
-                    It.IsAny<KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext>>(),
-                    It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+    private static Mock<IProcessorExecutor> ProcessorReturning(Func<ProcessorContext, ProcessExecutionResult> result)
+    {
+        var processor = new Mock<IProcessorExecutor>();
+        processor
+            .Setup(x => x.ExecuteAsync(It.IsAny<IReadOnlyCollection<StepCandidate>>(), It.IsAny<ProcessorContext>(), It.IsAny<ProcessorRequest>(), It.IsAny<CancellationToken>()))
+            .Returns<IReadOnlyCollection<StepCandidate>, ProcessorContext, ProcessorRequest, CancellationToken>((_, context, _, _) => Task.FromResult(result(context)));
 
-        return publisher;
+        return processor;
+    }
+
+    private static KaleidoOutboxEvent OutboxEvent(string eventType) =>
+        new() { EventId = Guid.NewGuid(), EventType = eventType, Payload = "{}", OccurredUtc = DateTimeOffset.UtcNow };
+
+    [Fact]
+    public async Task ExecuteAsync_ForANewProcess_SavesItRightAwayWithItsProcessCreatedEvent()
+    {
+        var created = OutboxEvent(KaleidoEventTypes.ProcessCreated);
+        var outbox = new Mock<IKaleidoEventOutbox>();
+        outbox.Setup(x => x.Prepare(It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>())).Returns(created);
+        var store = new Mock<IKaleidoContextStore>();
+        var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
+        SetupSave(store, savedEvents);
+        ProcessorContext? executedWith = null;
+        var processor = ProcessorReturning(context =>
+        {
+            executedWith = context;
+            return CreateExecutionResult(context.ProcessId);
+        });
+
+        await CreateNewProcessSut(store, outbox, processor).ExecuteAsync(new ProcessRequest { Processor = new ProcessorRequest() });
+
+        Assert.Equal(created, Assert.Single(Assert.Single(savedEvents)));
+        outbox.Verify(x => x.Saved(), Times.Once);
+        Assert.Equal(1, executedWith!.Version);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ForANewProcess_WithoutAPublisher_StillSavesTheProcess()
+    {
+        var store = new Mock<IKaleidoContextStore>();
+        var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
+        SetupSave(store, savedEvents);
+        var outbox = new Mock<IKaleidoEventOutbox>();
+
+        await CreateNewProcessSut(store, outbox, ProcessorReturning(context => CreateExecutionResult(context.ProcessId)))
+            .ExecuteAsync(new ProcessRequest { Processor = new ProcessorRequest() });
+
+        Assert.Empty(Assert.Single(savedEvents));
+        outbox.Verify(x => x.Saved(), Times.Never);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_EnqueuesPlanBuiltAndExecutionCompletedIndependentOfTheRequestCancellation()
+    {
+        var store = new Mock<IKaleidoContextStore>();
+        SetupSave(store);
+        var outbox = new Mock<IKaleidoEventOutbox>();
+
+        await CreateNewProcessSut(store, outbox, ProcessorReturning(context => CreateExecutionResult(context.ProcessId)))
+            .ExecuteAsync(new ProcessRequest { Processor = new ProcessorRequest() }, TestContext.Current.CancellationToken);
+
+        outbox.Verify(x => x.EnqueueAsync(It.IsAny<KaleidoEventEnvelope<PlanBuilt, ProcessEventContext>>(), CancellationToken.None), Times.Once);
+        outbox.Verify(x => x.EnqueueAsync(It.IsAny<KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext>>(), CancellationToken.None), Times.Once);
     }
 
     private static ProcessEventContext CreateStubContext(Guid processId) =>

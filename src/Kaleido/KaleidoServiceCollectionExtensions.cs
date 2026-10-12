@@ -37,6 +37,13 @@ public static class KaleidoServiceCollectionExtensions
         services.TryAddScoped<IKaleidoCorrelationContextInitializer>(
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
         services.TryAddSingleton<IEventPublisher, EventPublisher>();
+
+        // One store per service (process state, idempotent results, event outbox) and the relay
+        // that hands outbox entries to the publisher.
+        services.TryAddSingleton<IKaleidoContextStore, InMemoryKaleidoContextStore>();
+        services.TryAddSingleton<IKaleidoEventSignal, KaleidoEventSignal>();
+        services.TryAddScoped<IKaleidoEventOutbox, KaleidoEventOutbox>();
+        services.AddHostedService<KaleidoEventRelay>();
         services.TryAddSingleton<IKaleidoAuthorizationEvaluator, KaleidoAuthorizationEvaluator>();
         services.TryAddSingleton<ITypeDescriber, TypeDescriber>();
         services.TryAddSingleton<IConstraintMapper, ConstraintMapper>();

@@ -84,7 +84,7 @@ builder.Services
         options.Assemblies = new[] { typeof(Program).Assembly };
     })
     .AddHttp()
-    .UseSqliteProcessorContextStore("Data Source=kaleido-process.db");
+    .UseSqliteKaleidoContextStore("Data Source=kaleido-process.db");
 ```
 
 ## The capability model

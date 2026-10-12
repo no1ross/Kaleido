@@ -21,38 +21,19 @@ namespace Kaleido.Http.Client;
 /// the idempotency key stay the same. The client health check is never retried and has its own short
 /// timeout (<see cref="HealthCheckTimeout"/>).
 /// </para>
+/// <para>
+/// The timeout, retry and circuit-breaker settings come from <see cref="KaleidoResilienceSettings"/>
+/// (defaults: 10 s per attempt, 3 retries of transient failures - 5xx, 408, 429, timeouts, connection
+/// errors - from 500 ms with jitter, circuit breaker 0.5 / 10 / 30 s / 15 s).
+/// </para>
 /// </remarks>
-public sealed class KaleidoResilienceOptions
+public sealed class KaleidoResilienceOptions : KaleidoResilienceSettings
 {
     /// <summary>False turns resilience off (for the client, or shared for all clients). Default true.</summary>
     public bool Enabled { get; set; } = true;
 
     /// <summary>The time for a whole call, all attempts and delays included. Default 30 seconds.</summary>
     public TimeSpan TotalTimeout { get; set; } = TimeSpan.FromSeconds(30);
-
-    /// <summary>The time for one attempt. Default 10 seconds.</summary>
-    public TimeSpan AttemptTimeout { get; set; } = TimeSpan.FromSeconds(10);
-
-    /// <summary>
-    /// How often a failed safe request is retried (transient failures: 5xx, 408, 429, timeouts, connection
-    /// errors). Default 3; 0 = no retries.
-    /// </summary>
-    public int MaxRetryAttempts { get; set; } = 3;
-
-    /// <summary>The base delay before the first retry; it grows exponentially, with jitter. Default 500 ms.</summary>
-    public TimeSpan RetryDelay { get; set; } = TimeSpan.FromMilliseconds(500);
-
-    /// <summary>The share of failed calls (within <see cref="CircuitBreakerSamplingDuration"/>) that opens the circuit. Default 0.5.</summary>
-    public double CircuitBreakerFailureRatio { get; set; } = 0.5;
-
-    /// <summary>The number of calls within the sampling duration before the circuit can open. Default 10.</summary>
-    public int CircuitBreakerMinimumThroughput { get; set; } = 10;
-
-    /// <summary>The window the failure ratio is measured over. Default 30 seconds.</summary>
-    public TimeSpan CircuitBreakerSamplingDuration { get; set; } = TimeSpan.FromSeconds(30);
-
-    /// <summary>How long an open circuit fails calls immediately before it tries again. Default 15 seconds.</summary>
-    public TimeSpan CircuitBreakerBreakDuration { get; set; } = TimeSpan.FromSeconds(15);
 
     /// <summary>The timeout of the client health check (which is never retried). Default 5 seconds.</summary>
     public TimeSpan HealthCheckTimeout { get; set; } = TimeSpan.FromSeconds(5);

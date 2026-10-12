@@ -18,7 +18,7 @@ process state into an audit system.
 - Kaleido keeps **no history** of questions or answers. Recording them is the implementer's
   concern. `StepCompleted` carries each step's payload (the answers) and the presented
   request.
-- Store contract change: every `IProcessorContextStore` persists the new field. The SQLite
+- Store contract change: every `IKaleidoContextStore` persists the new field. The SQLite
   reference store uses a JSON column on the required-step row.
 
 ## Alternatives considered

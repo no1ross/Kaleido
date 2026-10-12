@@ -29,6 +29,7 @@
 - Shared SQLite files live under `samples/PriorAuth/data/`
 - Compose mounts that host directory into service containers as `/app/data`
 - Runtime-created DBs like `eventcollector.db`, `intake.db`, `intake-process.db`, `radiology.db`, and `radiology-process.db` may appear in `samples/PriorAuth/data/` after services start
+- The `*-process.db` files are the Kaleido context stores (process state, idempotent results, event outbox). They are created with `EnsureCreated`, which never adds tables to an existing file: after a store schema change (e.g. the `OutboxEvents` table) delete them; they are recreated at startup
 
 ## Environment assumptions
 - Assume `ASPNETCORE_ENVIRONMENT=Development` for local work unless told otherwise

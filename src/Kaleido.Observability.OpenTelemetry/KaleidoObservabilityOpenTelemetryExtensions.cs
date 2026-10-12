@@ -1,3 +1,4 @@
+using Kaleido.Eventing;
 using Kaleido.Processor.Observability;
 using Kaleido.Queryable.Observability;
 using Microsoft.Extensions.DependencyInjection;
@@ -96,7 +97,7 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
     }
 
     /// <summary>
-    /// Registers all Kaleido <see cref="System.Diagnostics.Metrics.Meter"/>s (Process + Queryable)
+    /// Registers all Kaleido <see cref="System.Diagnostics.Metrics.Meter"/>s (Process, Queryable, events)
     /// with the <see cref="MeterProviderBuilder"/>, including tuned histogram bucket boundaries.
     /// Use this when managing your own OpenTelemetry setup instead of <see cref="AddOpenTelemetry"/>.
     /// </summary>
@@ -137,6 +138,7 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
             .AddKaleidoQueryableInstrumentation()
             .AddKaleidoHttpInstrumentation()
             .AddKaleidoSqliteInstrumentation()
-            .AddKaleidoMcpInstrumentation();
+            .AddKaleidoMcpInstrumentation()
+            .AddMeter(KaleidoEventTelemetry.MeterName);
     }
 }
