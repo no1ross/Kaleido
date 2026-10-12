@@ -100,8 +100,8 @@ public sealed class ProcessorContextStoreTests
             State = ProcessExecutionState.Complete
         };
 
-        await store.SaveAsync(context1, CancellationToken.None);
-        await store.SaveAsync(context2, CancellationToken.None);
+        var saved = await store.SaveAsync(context1, CancellationToken.None);
+        await store.SaveAsync(context2 with { Version = saved.Version }, CancellationToken.None);
 
         var loaded = await store.LoadAsync(processId, CancellationToken.None);
 
@@ -135,5 +135,86 @@ public sealed class ProcessorContextStoreTests
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             store.LoadAsync(Guid.NewGuid(), cts.Token));
+    }
+
+    [Fact]
+    public async Task SaveAsync_ReturnsTheContextWithTheNextVersion()
+    {
+        var store = CreateSut();
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" };
+
+        var first = await store.SaveAsync(context, CancellationToken.None);
+        var second = await store.SaveAsync(first, CancellationToken.None);
+
+        Assert.Equal(1, first.Version);
+        Assert.Equal(2, second.Version);
+        Assert.Equal(2, (await store.LoadAsync(context.ProcessId, CancellationToken.None))!.Version);
+    }
+
+    [Fact]
+    public async Task SaveAsync_WithAStaleVersion_ThrowsAConflictAndKeepsTheStoredState()
+    {
+        var store = CreateSut();
+        var loaded = await store.SaveAsync(
+            new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor", State = ProcessExecutionState.Active },
+            CancellationToken.None);
+
+        await store.SaveAsync(loaded with { State = ProcessExecutionState.Complete }, CancellationToken.None);
+
+        var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
+            store.SaveAsync(loaded with { State = ProcessExecutionState.Exception }, CancellationToken.None));
+
+        Assert.Equal(loaded.ProcessId, exception.ProcessId);
+        Assert.Equal(ProcessorErrorCodes.ProcessConflict, exception.Code);
+        Assert.Equal(ProcessExecutionState.Complete, (await store.LoadAsync(loaded.ProcessId, CancellationToken.None))!.State);
+    }
+
+    [Fact]
+    public async Task SaveAsync_ANewProcessWhoseIdAlreadyExists_ThrowsAConflict()
+    {
+        var store = CreateSut();
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" };
+        await store.SaveAsync(context, CancellationToken.None);
+
+        await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
+            store.SaveAsync(context, CancellationToken.None));
+    }
+
+    private static IdempotentResult Result(string key, DateTimeOffset expiresUtc, string response = "{}") =>
+        new() { Key = key, RequestHash = "hash", StatusCode = 200, Response = response, ExpiresUtc = expiresUtc };
+
+    [Fact]
+    public async Task SaveResultAsync_ThenFindResultAsync_ReturnsTheStoredAnswer()
+    {
+        var sut = CreateSut();
+        var stored = Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), """{"processId":"p"}""");
+
+        await sut.SaveResultAsync(stored);
+
+        var found = await sut.FindResultAsync("svc:alice:k1");
+        Assert.NotNull(found);
+        Assert.Equal(stored.RequestHash, found.RequestHash);
+        Assert.Equal(stored.StatusCode, found.StatusCode);
+        Assert.Equal(stored.Response, found.Response);
+    }
+
+    [Fact]
+    public async Task FindResultAsync_ForAnExpiredOrUnknownKey_ReturnsNull()
+    {
+        var sut = CreateSut();
+        await sut.SaveResultAsync(Result("svc:alice:old", DateTimeOffset.UtcNow.AddMinutes(-1)));
+
+        Assert.Null(await sut.FindResultAsync("svc:alice:old"));
+        Assert.Null(await sut.FindResultAsync("svc:alice:unknown"));
+    }
+
+    [Fact]
+    public async Task SaveResultAsync_ForAnExistingKey_ReplacesTheAnswer()
+    {
+        var sut = CreateSut();
+        await sut.SaveResultAsync(Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), "first"));
+        await sut.SaveResultAsync(Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), "second"));
+
+        Assert.Equal("second", (await sut.FindResultAsync("svc:alice:k1"))!.Response);
     }
 }

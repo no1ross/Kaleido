@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Kaleido.Exceptions;
 using Kaleido.Processor.Context;
 using Kaleido.Provider.SQLite.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -55,7 +56,7 @@ internal sealed partial class SqliteProcessorContextStore(
         }
     }
 
-    public async Task SaveAsync(
+    public async Task<ProcessorContext> SaveAsync(
         ProcessorContext context,
         CancellationToken cancellationToken = default)
     {
@@ -75,7 +76,14 @@ internal sealed partial class SqliteProcessorContextStore(
                     cancellationToken);
 
             var entity = await LoadOrAddEntityAsync(context.ProcessId, cancellationToken);
+            var storedVersion = dbContext.Entry(entity).State == EntityState.Added ? 0 : entity.Version;
 
+            if (storedVersion != context.Version)
+            {
+                throw new KaleidoConcurrencyException(context.ProcessId);
+            }
+
+            entity.Version = context.Version + 1;
             entity.LatestRequestId = context.LatestRequestId;
             entity.Owner = context.Owner;
             entity.State = context.State;
@@ -86,20 +94,84 @@ internal sealed partial class SqliteProcessorContextStore(
             SyncAvailableSteps(entity, context);
             SyncRequiredStep(entity, context, serviceOptions.ServiceName);
 
-            await dbContext.SaveChangesAsync(
-                cancellationToken);
+            await SaveChangesAsync(context, cancellationToken);
 
             await transaction.CommitAsync(
                 cancellationToken);
 
             LogSaved(logger, context.ProcessId, context.Steps.Count);
+
+            return context with { Version = entity.Version };
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        // A conflict is not a store failure: the request lost the race and the caller rereads (409).
+        catch (Exception exception) when (exception is not OperationCanceledException and not KaleidoConcurrencyException)
         {
             SqliteTelemetry.SaveFailuresCounter.Add(1);
             activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
             LogSaveFailed(logger, exception, context.ProcessId);
             throw;
+        }
+    }
+
+    public async Task<IdempotentResult?> FindResultAsync(string key, CancellationToken cancellationToken = default)
+    {
+        var entity = await dbContext.IdempotentResults
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Key == key, cancellationToken);
+
+        return entity is null || entity.ExpiresUtc <= DateTimeOffset.UtcNow
+            ? null
+            : new IdempotentResult
+            {
+                Key = entity.Key,
+                RequestHash = entity.RequestHash,
+                StatusCode = entity.StatusCode,
+                Response = entity.Response,
+                ExpiresUtc = entity.ExpiresUtc,
+            };
+    }
+
+    public async Task SaveResultAsync(IdempotentResult result, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        // Expired answers are deleted as new ones arrive, so the table does not grow without bound.
+        var nowTicks = DateTimeOffset.UtcNow.UtcTicks;
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"DELETE FROM IdempotentResults WHERE ExpiresUtc <= {nowTicks}",
+            cancellationToken);
+
+        var entity = await dbContext.IdempotentResults.FirstOrDefaultAsync(x => x.Key == result.Key, cancellationToken);
+
+        if (entity is null)
+        {
+            entity = new IdempotentResultEntity { Key = result.Key };
+            dbContext.IdempotentResults.Add(entity);
+        }
+
+        entity.RequestHash = result.RequestHash;
+        entity.StatusCode = result.StatusCode;
+        entity.Response = result.Response;
+        entity.ExpiresUtc = result.ExpiresUtc;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    // Another instance saved the row since it was read (the version no longer matches), or created
+    // the same process at the same time (duplicate key): either way this save lost the race.
+    private async Task SaveChangesAsync(ProcessorContext context, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            throw new KaleidoConcurrencyException(context.ProcessId, exception);
+        }
+        catch (DbUpdateException exception) when (context.Version == 0)
+        {
+            throw new KaleidoConcurrencyException(context.ProcessId, exception);
         }
     }
 
@@ -265,6 +337,7 @@ internal sealed partial class SqliteProcessorContextStore(
         {
             ProcessId = entity.ProcessId,
             ProcessorName = localProcessorName,
+            Version = entity.Version,
             LatestRequestId = entity.LatestRequestId,
             Owner = entity.Owner,
             State = entity.State,

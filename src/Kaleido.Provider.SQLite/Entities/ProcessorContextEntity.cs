@@ -14,6 +14,13 @@ internal sealed class ProcessorContextEntity
         set;
     }
 
+    // Optimistic concurrency token: incremented by every save.
+    public long Version
+    {
+        get;
+        set;
+    }
+
     /// <summary>The caller that created the process (a tag only, never enforced); null when created anonymously.</summary>
     public string? Owner
     {

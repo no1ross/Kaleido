@@ -15,13 +15,17 @@ public sealed class KaleidoHttpMapOptions
     public bool AggregateRegistry { get; set; }
 
     /// <summary>
-    /// Maximum age of the server-side registry snapshot. A cached response
-    /// older than this is rebuilt on the next request — this also bounds how
-    /// long a clean snapshot can mask a downstream that started failing.
-    /// When null (default), the snapshot never expires on its own; use the
-    /// <c>?refresh</c> query parameter to force a rebuild.
+    /// How long the server-side registry snapshot is served before it is rebuilt on the next request.
+    /// Default 30 seconds.
     /// </summary>
-    public TimeSpan? RegistryCacheTtl { get; set; }
+    /// <remarks>
+    /// On an aggregating host (a router) the rebuild checks every downstream with its ETag, so an
+    /// unchanged downstream costs one small request with an empty 304 answer; a deployed one is picked
+    /// up. This is how a router, and the MCP tool list built from it, learn about deployments without a
+    /// restart. It also bounds how long a clean snapshot can mask a downstream that started failing.
+    /// Null means the snapshot never expires on its own; use <c>?refresh</c> to force a rebuild.
+    /// </remarks>
+    public TimeSpan? RegistryCacheTtl { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// Minimum interval between honored <c>?refresh</c> requests, measured from

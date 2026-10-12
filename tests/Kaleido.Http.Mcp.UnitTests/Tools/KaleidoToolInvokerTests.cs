@@ -507,6 +507,23 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal(McpErrorCodes.ServiceError, Body(outcome)["code"]?.GetValue<string>());
     }
 
+    // Another call changed the process: the agent rereads the state instead of repeating the call.
+    [Fact]
+    public async Task AStepThatConflicted_IsAProcessConflict_ThatSaysToReadTheStateAgain()
+    {
+        StepThrows(new KaleidoHttpClientException(
+            HttpClientErrorCodes.Conflict,
+            "Process step request for 'CloseVisitStep' failed",
+            HttpStatusCode.Conflict,
+            [new KaleidoError("pro_process_conflict", "Changed by another request.")]));
+
+        var outcome = await CreateSut().InvokeAsync(Close, Call(new { processId = ProcessId }), Catalog, Cancel);
+
+        Assert.True(outcome.Result?.IsError);
+        Assert.Equal(McpErrorCodes.ProcessConflict, Body(outcome)["code"]?.GetValue<string>());
+        Assert.Contains("get_process_state", Body(outcome)["message"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
     // ── Questions ────────────────────────────────────────────────────────────
 
     [Fact]

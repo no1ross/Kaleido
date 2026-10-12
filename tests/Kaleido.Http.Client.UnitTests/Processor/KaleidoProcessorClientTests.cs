@@ -52,6 +52,12 @@ public sealed class KaleidoProcessorClientTests
                 data[k] = v;
                 return ValueTask.CompletedTask;
             });
+        store.Setup(s => s.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns((string k, CancellationToken _) =>
+            {
+                data.TryRemove(k, out var _);
+                return ValueTask.CompletedTask;
+            });
         return store.Object;
     }
 
@@ -503,4 +509,104 @@ public sealed class KaleidoProcessorClientTests
     private sealed class UnknownTypeForTest { }
 
     private sealed class MyStepResponse { public string Value { get; init; } = ""; }
+
+    // A 404 from a step means the service was deployed without it: the registry is loaded again.
+    [Fact]
+    public async Task ExecuteAsync_WhenTheServiceAnswers404_DropsTheRegistrySnapshot()
+    {
+        var registryReads = 0;
+        var (client, _) = CreateClient(respond: req =>
+        {
+            if (req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal))
+            {
+                registryReads++;
+                return JsonOk(FakeRegistry);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        await client.GetRegistryAsync();
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.ExecuteAsync(new ExecuteProcessRequest()));
+        await client.GetRegistryAsync();
+
+        Assert.Equal(2, registryReads);
+    }
+
+    // The state endpoint answers 404 for an unknown process, which says nothing about the registry.
+    [Fact]
+    public async Task GetProcessStateAsync_WhenNotFound_KeepsTheRegistrySnapshot()
+    {
+        var registryReads = 0;
+        var (client, _) = CreateClient(respond: req =>
+        {
+            if (req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal))
+            {
+                registryReads++;
+                return JsonOk(FakeRegistry);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        await client.GetRegistryAsync();
+        await client.GetProcessStateAsync(Guid.NewGuid());
+        await client.GetRegistryAsync();
+
+        Assert.Equal(1, registryReads);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenTheProcessWasChangedConcurrently_ThrowsAConflictWithTheServiceErrors()
+    {
+        var (client, _) = CreateClient(respond: req =>
+            req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal)
+                ? JsonOk(FakeRegistry)
+                : new HttpResponseMessage(HttpStatusCode.Conflict)
+                {
+                    Content = JsonContent.Create(
+                        new KaleidoErrorResponse([new KaleidoError("pro_process_conflict", "Changed by another request.")]),
+                        options: KaleidoJsonOptions.Options),
+                });
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.ExecuteAsync(new ExecuteProcessRequest()));
+
+        Assert.Equal(HttpClientErrorCodes.Conflict, exception.Code);
+        Assert.Equal(HttpStatusCode.Conflict, exception.StatusCode);
+        Assert.Equal("pro_process_conflict", Assert.Single(exception.Errors).Code);
+    }
+
+    // One key per execute call: a retry of the same request carries the same key, a new call a new one.
+    [Fact]
+    public async Task ExecuteAsync_SendsANewIdempotencyKeyWithEveryCall()
+    {
+        var keys = new List<string>();
+        var (client, _) = CreateClient(respond: req =>
+        {
+            keys.Add(req.Headers.GetValues(KaleidoIdempotencyHeaders.IdempotencyKey).Single());
+            return JsonOk(new ProcessExecutionResponse { ProcessId = Guid.NewGuid() });
+        });
+
+        await client.ExecuteAsync(new ExecuteProcessRequest());
+        await client.ExecuteAsync(new ExecuteProcessRequest());
+
+        Assert.Equal(2, keys.Count);
+        Assert.All(keys, key => Assert.False(string.IsNullOrWhiteSpace(key)));
+        Assert.NotEqual(keys[0], keys[1]);
+    }
+
+    [Fact]
+    public async Task GetProcessStateAsync_SendsNoIdempotencyKey()
+    {
+        var hasKey = true;
+        var (client, _) = CreateClient(respond: req =>
+        {
+            hasKey = req.Headers.Contains(KaleidoIdempotencyHeaders.IdempotencyKey);
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        await client.GetProcessStateAsync(Guid.NewGuid());
+
+        Assert.False(hasKey);
+    }
 }

@@ -47,6 +47,7 @@ public static class RegistryEndpointRouteBuilderExtensions
 
         var group =
             endpoints.MapGroup("")
+            .AddEndpointFilter<KaleidoExceptionEndpointFilter>()
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
             .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 
@@ -103,13 +104,14 @@ public static class RegistryEndpointRouteBuilderExtensions
         var response = await registry.GetForCallerAsync(forceRefresh, cancellationToken);
 
         // Freshness contract: Revision hashes the per-caller filtered payload (same
-        // content → same ETag); Cache-Control advertises the configured staleness window.
+        // content → same ETag); Cache-Control advertises the configured staleness window. Private:
+        // the registry is filtered per caller, so a shared cache must never serve it to another one.
         var etag = $"\"{response.Revision}\"";
         httpContext.Response.Headers.ETag = etag;
         httpContext.Response.Headers.CacheControl =
             mapOptions.RegistryCacheTtl is { } ttl
-                ? string.Create(CultureInfo.InvariantCulture, $"public, max-age={(int)ttl.TotalSeconds}")
-                : "no-cache";
+                ? string.Create(CultureInfo.InvariantCulture, $"private, max-age={(int)ttl.TotalSeconds}")
+                : "private, no-cache";
 
         if (httpContext.Request.Headers.IfNoneMatch.Any(
                 value => string.Equals(value, etag, StringComparison.Ordinal)

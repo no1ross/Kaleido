@@ -179,7 +179,7 @@ public sealed class SqliteProcessorContextStoreTests
         var sut = CreateSut(dbContext);
         var processId = Guid.NewGuid();
 
-        await sut.SaveAsync(
+        var saved = await sut.SaveAsync(
             CreateContext(processId) with
             {
                 RequiredStep = "StepB",
@@ -190,6 +190,7 @@ public sealed class SqliteProcessorContextStoreTests
         await sut.SaveAsync(
             CreateContext(processId) with
             {
+                Version = saved.Version,
                 RequiredStep = "StepB",
                 TargetProcessorName = null,
                 RequiredInformationRequest = null
@@ -209,10 +210,11 @@ public sealed class SqliteProcessorContextStoreTests
         var sut = CreateSut(dbContext);
         var processId = Guid.NewGuid();
 
-        await sut.SaveAsync(CreateContext(processId, ProcessExecutionState.Active));
+        var saved = await sut.SaveAsync(CreateContext(processId, ProcessExecutionState.Active));
 
         var updated = CreateContext(processId, ProcessExecutionState.Complete) with
         {
+            Version = saved.Version,
             RequiredStep = null,
             AvailableSteps = [],
             Steps = []
@@ -245,5 +247,120 @@ public sealed class SqliteProcessorContextStoreTests
         Assert.NotNull(loaded);
         Assert.Equal(first.ProcessId, loaded.ProcessId);
         Assert.Equal(ProcessExecutionState.Active, loaded.State);
+    }
+
+    [Fact]
+    public async Task SaveAsync_ReturnsTheContextWithTheNextVersion_AndLoadReturnsIt()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var processId = Guid.NewGuid();
+
+        var first = await sut.SaveAsync(CreateContext(processId));
+        var second = await sut.SaveAsync(first with { State = ProcessExecutionState.Complete });
+
+        Assert.Equal(1, first.Version);
+        Assert.Equal(2, second.Version);
+        Assert.Equal(2, (await sut.LoadAsync(processId))!.Version);
+    }
+
+    [Fact]
+    public async Task SaveAsync_WithAStaleVersion_ThrowsAConflictAndKeepsTheStoredState()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var loaded = await sut.SaveAsync(CreateContext(Guid.NewGuid()));
+
+        await sut.SaveAsync(loaded with { State = ProcessExecutionState.Complete });
+
+        var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
+            sut.SaveAsync(loaded with { State = ProcessExecutionState.Exception }));
+
+        Assert.Equal(loaded.ProcessId, exception.ProcessId);
+        Assert.Equal(ProcessExecutionState.Complete, (await sut.LoadAsync(loaded.ProcessId))!.State);
+    }
+
+    [Fact]
+    public async Task SaveAsync_ANewProcessWhoseIdAlreadyExists_ThrowsAConflict()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var context = CreateContext(Guid.NewGuid());
+        await sut.SaveAsync(context);
+
+        await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(context));
+    }
+
+    // Two service instances (separate DbContexts) on one database: both read version 1, the first
+    // save wins, the second is refused instead of overwriting it.
+    [Fact]
+    public async Task SaveAsync_FromTwoInstancesOnOneDatabase_TheSecondIsRefused()
+    {
+        var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
+        using var first = CreateSharedDbContext(connectionString);
+        using var second = CreateSharedDbContext(connectionString);
+        var processId = Guid.NewGuid();
+
+        await CreateSut(first).SaveAsync(CreateContext(processId));
+        var loadedByFirst = await CreateSut(first).LoadAsync(processId);
+        var loadedBySecond = await CreateSut(second).LoadAsync(processId);
+
+        await CreateSut(first).SaveAsync(loadedByFirst! with { State = ProcessExecutionState.Complete });
+
+        await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
+            CreateSut(second).SaveAsync(loadedBySecond! with { State = ProcessExecutionState.Exception }));
+    }
+
+    private static SqliteProcessorContextDbContext CreateSharedDbContext(string connectionString)
+    {
+        var options = new DbContextOptionsBuilder<SqliteProcessorContextDbContext>()
+            .UseSqlite(connectionString)
+            .Options;
+
+        var context = new SqliteProcessorContextDbContext(options);
+        context.Database.OpenConnection();
+        context.Database.EnsureCreated();
+        return context;
+    }
+
+    private static IdempotentResult Result(string key, DateTimeOffset expiresUtc, string response = "{}") =>
+        new() { Key = key, RequestHash = "hash", StatusCode = 200, Response = response, ExpiresUtc = expiresUtc };
+
+    [Fact]
+    public async Task SaveResultAsync_ThenFindResultAsync_ReturnsTheStoredAnswer()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var stored = Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), """{"processId":"p"}""");
+
+        await sut.SaveResultAsync(stored);
+
+        var found = await sut.FindResultAsync("svc:alice:k1");
+        Assert.NotNull(found);
+        Assert.Equal(stored.RequestHash, found.RequestHash);
+        Assert.Equal(stored.StatusCode, found.StatusCode);
+        Assert.Equal(stored.Response, found.Response);
+    }
+
+    [Fact]
+    public async Task FindResultAsync_ForAnExpiredOrUnknownKey_ReturnsNull()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        await sut.SaveResultAsync(Result("svc:alice:old", DateTimeOffset.UtcNow.AddMinutes(-1)));
+
+        Assert.Null(await sut.FindResultAsync("svc:alice:old"));
+        Assert.Null(await sut.FindResultAsync("svc:alice:unknown"));
+    }
+
+    [Fact]
+    public async Task SaveResultAsync_ForAnExistingKey_ReplacesTheAnswer()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        await sut.SaveResultAsync(Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), "first"));
+        await sut.SaveResultAsync(Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), "second"));
+
+        Assert.Equal("second", (await sut.FindResultAsync("svc:alice:k1"))!.Response);
     }
 }

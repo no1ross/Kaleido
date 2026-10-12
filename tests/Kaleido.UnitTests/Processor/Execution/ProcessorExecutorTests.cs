@@ -815,7 +815,7 @@ public sealed class ProcessorExecutorTests
                     It.IsAny<CancellationToken>()))
             .Callback<ProcessorContext, CancellationToken>(
                 (saved, _) => savedContexts.Add(saved))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync((ProcessorContext saved, CancellationToken _) => saved with { Version = saved.Version + 1 });
 
         return store;
     }
@@ -1071,5 +1071,59 @@ public sealed class ProcessorExecutorTests
 
     private sealed class TestStepHandler
     {
+    }
+
+    // A conflict is not a step failure: nothing was saved, so no failure state is saved over it and
+    // the conflict reaches the caller (409).
+    [Fact]
+    public async Task ExecuteAsync_WhenTheSaveConflicts_LetsTheConflictThroughWithoutSavingAFailure()
+    {
+        var registration = CreateRegistration<TestStepA>("step-a");
+        var candidate = CreateCandidate<TestStepA>("step-a", registration);
+        var context = CreateContext("step-a");
+
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(
+                It.IsAny<ProcessStepRegistration>(),
+                It.IsAny<object>(),
+                It.IsAny<ProcessStepContext>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateInvokerResult());
+
+        var store = new Mock<IProcessorContextStore>();
+        store
+            .Setup(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KaleidoConcurrencyException(context.ProcessId));
+
+        await Assert.ThrowsAsync<KaleidoConcurrencyException>(() =>
+            CreateSut(invoker, store: store).ExecuteAsync([candidate], context, new ProcessorRequest()));
+
+        store.Verify(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_SavesWithTheVersionTheContextWasLoadedWith()
+    {
+        var registration = CreateRegistration<TestStepA>("step-a");
+        var candidate = CreateCandidate<TestStepA>("step-a", registration);
+        var context = CreateContext("step-a");
+
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(
+                It.IsAny<ProcessStepRegistration>(),
+                It.IsAny<object>(),
+                It.IsAny<ProcessStepContext>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("boom"));
+
+        var saved = new List<ProcessorContext>();
+
+        var result = await CreateSut(invoker, store: CreateStore(saved))
+            .ExecuteAsync([candidate], context, new ProcessorRequest());
+
+        Assert.Equal(context.Version, Assert.Single(saved).Version);
+        Assert.Equal(context.ProcessId, result.ProcessId);
     }
 }

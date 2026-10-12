@@ -14,17 +14,38 @@ namespace Kaleido.Processor.Context;
 /// <c>UseSqliteProcessorContextStore</c> or a custom store).
 /// </para>
 /// <para>
-/// <strong>Concurrency:</strong> This interface provides no optimistic concurrency or idempotency
-/// guarantees. Two concurrent requests for the same process can overwrite each other's state.
-/// Consumer implementations should enforce concurrency control (e.g. row versioning, etags)
-/// appropriate to their storage backend.
+/// <strong>Concurrency (optimistic):</strong> every save is conditional on
+/// <see cref="ProcessorContext.Version"/>. Two concurrent requests for the same process cannot
+/// overwrite each other: the second save is refused with <see cref="KaleidoConcurrencyException"/>
+/// and the caller gets 409 <c>pro_process_conflict</c>.
 /// </para>
 /// </remarks>
 public interface IProcessorContextStore
 {
+    /// <summary>The process state, or null when no process with that id exists (never throws for a missing one).</summary>
     Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default);
 
-    Task SaveAsync(ProcessorContext context, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Saves <paramref name="context"/> when the stored version still equals
+    /// <see cref="ProcessorContext.Version"/> (0: the process must not exist yet), stores it with the
+    /// version incremented and returns the saved context (with the new version).
+    /// </summary>
+    /// <exception cref="KaleidoConcurrencyException">
+    /// The stored version differs - another request saved the process since it was loaded, or a process
+    /// with that id already exists for a context with version 0. Nothing is saved.
+    /// </exception>
+    Task<ProcessorContext> SaveAsync(ProcessorContext context, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The stored answer for an idempotency key, or null when there is none or it has expired.
+    /// </summary>
+    Task<IdempotentResult?> FindResultAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Stores the answer for an idempotency key (replacing an earlier one for the same key). A store
+    /// may delete expired answers here.
+    /// </summary>
+    Task SaveResultAsync(IdempotentResult result, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -60,6 +81,17 @@ public sealed record ProcessorContext
     }
 
     public string? LatestRequestId
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The stored version of this process state (optimistic concurrency): 0 for a process that has
+    /// never been saved, incremented by every save. A store saves a context only when its stored
+    /// version still equals this value, and returns the saved context with the new version.
+    /// </summary>
+    public long Version
     {
         get;
         init;
@@ -248,6 +280,8 @@ internal sealed partial class ProcessorContextStore : IProcessorContextStore
 {
     private readonly ILogger<ProcessorContextStore> _logger;
     private readonly ConcurrentDictionary<Guid, ProcessorContext> _contexts = new();
+    private readonly ConcurrentDictionary<string, IdempotentResult> _results = new(StringComparer.Ordinal);
+    private readonly object _saveLock = new();
 
     public ProcessorContextStore(
         ILogger<ProcessorContextStore> logger)
@@ -265,15 +299,58 @@ internal sealed partial class ProcessorContextStore : IProcessorContextStore
         return Task.FromResult(context);
     }
 
-    public Task SaveAsync(ProcessorContext context, CancellationToken cancellationToken = default)
+    public Task<ProcessorContext> SaveAsync(ProcessorContext context, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        _contexts[context.ProcessId] = context;
+        ProcessorContext saved;
+
+        // Compare and write as one step: two saves for the same process must not both pass the check.
+        lock (_saveLock)
+        {
+            var storedVersion = _contexts.TryGetValue(context.ProcessId, out var stored) ? stored.Version : 0;
+
+            if (storedVersion != context.Version)
+            {
+                throw new KaleidoConcurrencyException(context.ProcessId);
+            }
+
+            saved = context with { Version = context.Version + 1 };
+            _contexts[context.ProcessId] = saved;
+        }
 
         LogSaved(_logger, context.ProcessId, context.Steps.Count);
+
+        return Task.FromResult(saved);
+    }
+
+    public Task<IdempotentResult?> FindResultAsync(string key, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.FromResult(
+            _results.TryGetValue(key, out var result) && result.ExpiresUtc > DateTimeOffset.UtcNow
+                ? result
+                : null);
+    }
+
+    public Task SaveResultAsync(IdempotentResult result, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        _results[result.Key] = result;
+
+        // Expired answers are dropped as new ones arrive, so the dictionary does not grow without bound.
+        var now = DateTimeOffset.UtcNow;
+
+        foreach (var expired in _results.Where(x => x.Value.ExpiresUtc <= now).Select(x => x.Key).ToList())
+        {
+            _results.TryRemove(expired, out _);
+        }
 
         return Task.CompletedTask;
     }
