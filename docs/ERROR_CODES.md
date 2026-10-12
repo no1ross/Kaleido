@@ -116,6 +116,7 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 | `ConflictingAuthorization` | `conflicting_authorization` | `[KaleidoAuthorization]` declares `AllowAnonymous` together with `Roles`/`Policy` |
 | `AuthenticationNotConfigured` | `authentication_not_configured` | `AuthorizationMode` enforces authorization but no authentication scheme is registered |
 | `InvalidAuthorizationMode` | `invalid_authorization_mode` | `AuthorizationMode` is not a defined value |
+| `InvalidEventOptions` | `invalid_event_options` | a `Kaleido:Events` setting is out of range (e.g. a non-positive `BatchSize` or `Resilience:AttemptTimeout`) |
 
 ---
 

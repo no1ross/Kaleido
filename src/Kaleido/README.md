@@ -45,7 +45,7 @@ For the full repository model, see:
 - `ProcessorObservability` — observability
 - `IProcessStepHandler<TStep>` / `IProcessStepHandler<TStep, TResult>` — handler contracts
 - `IInformationStep` / `InformationRequest` / `RequireInformation<TNext>` — information requests: runtime-decided questions answered by an information step (see [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md))
-- `IProcessorContextStore` / `ProcessorContextStore` — state store abstraction and default implementation
+- `IKaleidoContextStore` / `InMemoryKaleidoContextStore` — state store abstraction and default implementation
 
 ---
 
@@ -87,7 +87,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
 `AddKaleido()`:
 - validates the `IServiceCollection`
 - registers the scoped correlation accessor (using `TryAddScoped` so a pre-existing registration wins)
-- registers the default no-op event publisher
+- registers the default no-op event publisher, the in-memory `IKaleidoContextStore` (process state, idempotent results, event outbox) and the event relay (a hosted background service that hands outbox entries to the publisher - see `KaleidoEventOptions`, `Kaleido:Events`)
 - automatically invokes `AddQueryable()` and `AddProcessor()` to register both runtimes
 - returns an `IKaleidoBuilder`
 

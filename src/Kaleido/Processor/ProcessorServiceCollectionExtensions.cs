@@ -236,7 +236,6 @@ public static class ProcessorServiceCollectionExtensions
         services.TryAddSingleton<IStepExecutionEvaluator, StepExecutionEvaluator>();
         services.TryAddSingleton<IProcessorStateUpdater, ProcessorStateUpdater>();
         services.TryAddSingleton<IStepAvailabilityResolver, StepAvailabilityResolver>();
-        services.TryAddSingleton<IProcessorContextStore, ProcessorContextStore>();
 
         services.TryAddSingleton<IProcessorEventFactory, ProcessorEventFactory>();
         services.TryAddScoped<IProcessorObservability, ProcessorObservability>();

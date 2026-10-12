@@ -47,11 +47,10 @@ public sealed class DelegatedQuerySourceEngineTests
         return new(
             validator,
             Mock.Of<IQueryEventFactory>(),
-            Mock.Of<IEventPublisher>(),
+            Mock.Of<IKaleidoEventOutbox>(),
             Mock.Of<IKaleidoCorrelationContextAccessor>(),
             observability.Object,
-            serviceProvider,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<DelegatedQuerySourceEngine<FakeContext, FakeResult>>.Instance);
+            serviceProvider);
     }
 
     [Fact]

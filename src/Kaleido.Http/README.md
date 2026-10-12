@@ -130,7 +130,7 @@ A process execute request - `POST /{service}/processes/execute` or a step call -
 
 Details:
 - Keys are **scoped per service and caller**: two callers cannot see each other's answers, and the same key at two services is two keys.
-- Answers are kept for `KaleidoHttpOptions.IdempotencyRetention` (default **24 hours**: `AddHttp(o => o.IdempotencyRetention = TimeSpan.FromHours(4))`) and stored by the process store (`IProcessorContextStore.FindResultAsync`/`SaveResultAsync`) - the SQLite reference store keeps them in its own `IdempotentResults` table in the same database, so there is nothing extra to set up.
+- Answers are kept for `KaleidoHttpOptions.IdempotencyRetention` (default **24 hours**: `AddHttp(o => o.IdempotencyRetention = TimeSpan.FromHours(4))`) and stored by the process store (`IKaleidoContextStore.FindResultAsync`/`SaveResultAsync`) - the SQLite reference store keeps them in its own `IdempotentResults` table in the same database, so there is nothing extra to set up.
 - Only successful answers are stored: a request that failed may be retried with the same key.
 - Two requests with the same key **at the same time** both run; optimistic concurrency (below) lets only one of them save, the other gets 409.
 - The Kaleido clients send a key with every execute call automatically ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#idempotent-execute-calls)).

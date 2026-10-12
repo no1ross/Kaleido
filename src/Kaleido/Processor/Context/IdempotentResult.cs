@@ -5,7 +5,7 @@ namespace Kaleido.Processor.Context;
 /// answer again instead of running the step a second time.
 /// </summary>
 /// <remarks>
-/// Kept by the <see cref="IProcessorContextStore"/> next to the process state (the SQLite reference
+/// Kept by the <see cref="IKaleidoContextStore"/> next to the process state (the SQLite reference
 /// store: its own table in the same database) until <see cref="ExpiresUtc"/>. The transport decides
 /// what the key's scope is and what the answer looks like; the store only keeps it.
 /// </remarks>

@@ -74,6 +74,12 @@ public class KaleidoServiceOptions
     public AuthorizationMetadata DefaultAuthorization { get; init; } = AuthorizationMetadata.Unspecified;
 
     /// <summary>
+    /// How the event relay hands outbox entries to the event publisher (<c>Kaleido:Events</c>):
+    /// batch size, parallelism and resilience. See <see cref="KaleidoEventOptions"/>.
+    /// </summary>
+    public KaleidoEventOptions Events { get; init; } = new();
+
+    /// <summary>
     /// Validates a <see cref="KaleidoServiceOptions"/> instance.
     /// Throws <see cref="KaleidoConfigurationException"/> if <see cref="ServiceName"/> is invalid
     /// or <see cref="Assemblies"/> is null or empty.
@@ -88,6 +94,7 @@ public class KaleidoServiceOptions
 
         ValidateAuthorization(options);
         ValidateServiceName(options.ServiceName);
+        KaleidoEventOptions.Validate(options.Events);
 
         if (options.Assemblies is null || options.Assemblies.Length == 0)
         {
@@ -197,6 +204,9 @@ public sealed class KaleidoServiceOptionsBuilder
 
     public AuthorizationMetadata DefaultAuthorization { get; set; } = new(Policy: null, []);
 
+    /// <inheritdoc cref="KaleidoServiceOptions.Events"/>
+    public KaleidoEventOptions Events { get; set; } = new();
+
     internal KaleidoServiceOptions Build() =>
         new()
         {
@@ -208,6 +218,9 @@ public sealed class KaleidoServiceOptionsBuilder
             IsEntryProcessor = IsEntryProcessor,
             TypeFilter = TypeFilter,
             AuthorizationMode = AuthorizationMode,
+            Events = Events?.Copy() ?? throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.InvalidEventOptions,
+                "Kaleido:Events must not be null."),
             DefaultAuthorization = DefaultAuthorization is { Roles: not null } declaration
                 ? declaration with { Roles = [.. declaration.Roles] }
                 : throw new KaleidoConfigurationException(

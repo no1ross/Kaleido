@@ -1,14 +1,15 @@
+using Kaleido.Eventing;
 using Kaleido.Processor.Context;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Processor.Context.UnitTests;
+namespace Kaleido.Storage.UnitTests;
 
-public sealed class ProcessorContextStoreTests
+public sealed class InMemoryKaleidoContextStoreTests
     : SutFixture
 {
-    private static ProcessorContextStore CreateSut() =>
-        new(new Mock<ILogger<ProcessorContextStore>>().Object);
+    private static InMemoryKaleidoContextStore CreateSut() =>
+        new(new Mock<ILogger<InMemoryKaleidoContextStore>>().Object);
 
     [Fact]
     public async Task SaveAsync_WhenContextIsNull_Throws()
@@ -16,7 +17,7 @@ public sealed class ProcessorContextStoreTests
         var store = CreateSut();
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            store.SaveAsync(null!));
+            store.SaveAsync(null!, []));
     }
 
     [Fact]
@@ -30,7 +31,7 @@ public sealed class ProcessorContextStoreTests
             State = ProcessExecutionState.Active
         };
 
-        await store.SaveAsync(context, CancellationToken.None);
+        await store.SaveAsync(context, [], CancellationToken.None);
 
         var loaded = await store.LoadAsync(context.ProcessId, CancellationToken.None);
 
@@ -71,7 +72,7 @@ public sealed class ProcessorContextStoreTests
             ],
         };
 
-        await store.SaveAsync(context, CancellationToken.None);
+        await store.SaveAsync(context, [], CancellationToken.None);
         var loaded = await store.LoadAsync(context.ProcessId, CancellationToken.None);
 
         Assert.NotNull(loaded);
@@ -100,8 +101,8 @@ public sealed class ProcessorContextStoreTests
             State = ProcessExecutionState.Complete
         };
 
-        var saved = await store.SaveAsync(context1, CancellationToken.None);
-        await store.SaveAsync(context2 with { Version = saved.Version }, CancellationToken.None);
+        var saved = await store.SaveAsync(context1, [], CancellationToken.None);
+        await store.SaveAsync(context2 with { Version = saved.Version }, [], CancellationToken.None);
 
         var loaded = await store.LoadAsync(processId, CancellationToken.None);
 
@@ -123,7 +124,7 @@ public sealed class ProcessorContextStoreTests
         cts.Cancel();
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            store.SaveAsync(context, cts.Token));
+            store.SaveAsync(context, [], cts.Token));
     }
 
     [Fact]
@@ -143,8 +144,8 @@ public sealed class ProcessorContextStoreTests
         var store = CreateSut();
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" };
 
-        var first = await store.SaveAsync(context, CancellationToken.None);
-        var second = await store.SaveAsync(first, CancellationToken.None);
+        var first = await store.SaveAsync(context, [], CancellationToken.None);
+        var second = await store.SaveAsync(first, [], CancellationToken.None);
 
         Assert.Equal(1, first.Version);
         Assert.Equal(2, second.Version);
@@ -157,12 +158,13 @@ public sealed class ProcessorContextStoreTests
         var store = CreateSut();
         var loaded = await store.SaveAsync(
             new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor", State = ProcessExecutionState.Active },
+            [],
             CancellationToken.None);
 
-        await store.SaveAsync(loaded with { State = ProcessExecutionState.Complete }, CancellationToken.None);
+        await store.SaveAsync(loaded with { State = ProcessExecutionState.Complete }, [], CancellationToken.None);
 
         var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
-            store.SaveAsync(loaded with { State = ProcessExecutionState.Exception }, CancellationToken.None));
+            store.SaveAsync(loaded with { State = ProcessExecutionState.Exception }, [], CancellationToken.None));
 
         Assert.Equal(loaded.ProcessId, exception.ProcessId);
         Assert.Equal(ProcessorErrorCodes.ProcessConflict, exception.Code);
@@ -174,10 +176,10 @@ public sealed class ProcessorContextStoreTests
     {
         var store = CreateSut();
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" };
-        await store.SaveAsync(context, CancellationToken.None);
+        await store.SaveAsync(context, [], CancellationToken.None);
 
         await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
-            store.SaveAsync(context, CancellationToken.None));
+            store.SaveAsync(context, [], CancellationToken.None));
     }
 
     private static IdempotentResult Result(string key, DateTimeOffset expiresUtc, string response = "{}") =>
@@ -216,5 +218,136 @@ public sealed class ProcessorContextStoreTests
         await sut.SaveResultAsync(Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), "second"));
 
         Assert.Equal("second", (await sut.FindResultAsync("svc:alice:k1"))!.Response);
+    }
+
+    private static KaleidoOutboxEvent Event(DateTimeOffset? occurredUtc = null) =>
+        new()
+        {
+            EventId = Guid.NewGuid(),
+            EventType = KaleidoEventTypes.ProcessStepCompleted,
+            Payload = "{}",
+            OccurredUtc = occurredUtc ?? DateTimeOffset.UtcNow.AddSeconds(-1),
+            NextAttemptUtc = occurredUtc ?? DateTimeOffset.UtcNow.AddSeconds(-1),
+        };
+
+    private static ProcessorContext NewProcess() =>
+        new() { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" };
+
+    [Fact]
+    public async Task SaveAsync_WithEvents_AddsThemToTheOutbox()
+    {
+        var sut = CreateSut();
+        var @event = Event();
+
+        await sut.SaveAsync(NewProcess(), [@event]);
+
+        var claimed = await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
+        Assert.Equal(@event.EventId, Assert.Single(claimed).EventId);
+    }
+
+    [Fact]
+    public async Task SaveAsync_WhenItConflicts_AddsNoEvents()
+    {
+        var sut = CreateSut();
+        var context = NewProcess();
+        await sut.SaveAsync(context, []);
+
+        await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(context, [Event()]));
+
+        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+    }
+
+    [Fact]
+    public async Task ClaimEventsAsync_TakesAtMostTheBatchOldestFirstAndNeverTwice()
+    {
+        var sut = CreateSut();
+        var now = DateTimeOffset.UtcNow;
+        var oldest = Event(now.AddSeconds(-3));
+        var middle = Event(now.AddSeconds(-2));
+        await sut.EnqueueEventsAsync([Event(now.AddSeconds(-1)), middle, oldest]);
+
+        var first = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
+        var second = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
+
+        Assert.Equal([oldest.EventId, middle.EventId], first.Select(x => x.EventId));
+        Assert.Single(second);
+        Assert.Empty(await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1)));
+    }
+
+    [Fact]
+    public async Task ClaimEventsAsync_SkipsEntriesThatAreNotDueYet()
+    {
+        var sut = CreateSut();
+        await sut.EnqueueEventsAsync([Event() with { NextAttemptUtc = DateTimeOffset.UtcNow.AddMinutes(1) }]);
+
+        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+    }
+
+    [Fact]
+    public async Task ClaimEventsAsync_AfterTheLeaseExpired_ClaimsTheEntryAgain()
+    {
+        var sut = CreateSut();
+        await sut.EnqueueEventsAsync([Event()]);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1));
+        await Task.Delay(20);
+
+        Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+    }
+
+    [Fact]
+    public async Task CompleteEventAsync_RemovesTheLeasedEntry()
+    {
+        var sut = CreateSut();
+        var @event = Event();
+        await sut.EnqueueEventsAsync([@event]);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(200));
+
+        await sut.CompleteEventAsync(@event.EventId);
+        await Task.Delay(250);
+
+        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+    }
+
+    [Fact]
+    public async Task CompleteEventAsync_AfterTheLeaseExpired_KeepsTheEntry()
+    {
+        var sut = CreateSut();
+        var @event = Event();
+        await sut.EnqueueEventsAsync([@event]);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1));
+        await Task.Delay(20);
+
+        await sut.CompleteEventAsync(@event.EventId);
+
+        Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+    }
+
+    [Fact]
+    public async Task FailEventAsync_CountsTheAttemptAndReleasesTheEntryForTheRetry()
+    {
+        var sut = CreateSut();
+        var @event = Event();
+        await sut.EnqueueEventsAsync([@event]);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
+
+        await sut.FailEventAsync(@event.EventId, DateTimeOffset.UtcNow.AddSeconds(-1), "broker down");
+
+        var retried = Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+        Assert.Equal(1, retried.Attempts);
+        Assert.Equal("broker down", retried.LastError);
+        Assert.False(retried.IsParked);
+    }
+
+    [Fact]
+    public async Task FailEventAsync_WithoutARetryTime_ParksTheEntry()
+    {
+        var sut = CreateSut();
+        var @event = Event();
+        await sut.EnqueueEventsAsync([@event]);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
+
+        await sut.FailEventAsync(@event.EventId, retryAtUtc: null, "gave up");
+
+        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
     }
 }

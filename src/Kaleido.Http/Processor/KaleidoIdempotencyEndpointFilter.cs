@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Kaleido.Processor;
 using Kaleido.Processor.Context;
+using Kaleido.Storage;
 using Microsoft.AspNetCore.Http;
 
 namespace Kaleido.Http.Processor;
@@ -20,7 +21,7 @@ namespace Kaleido.Http.Processor;
 /// header nothing changes. ASP.NET creates the filter per request, so a scoped store (e.g. the SQLite store) is fine.
 /// </remarks>
 internal sealed class KaleidoIdempotencyEndpointFilter(
-    IProcessorContextStore store,
+    IKaleidoContextStore store,
     KaleidoHttpOptions httpOptions,
     KaleidoServiceOptions serviceOptions,
     IKaleidoCorrelationContextAccessor correlationAccessor)

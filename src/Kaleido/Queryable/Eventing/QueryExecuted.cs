@@ -5,6 +5,9 @@ public interface IQueryEvent : IKaleidoEvent;
 [ExcludeFromCodeCoverage]
 public sealed record QueryExecuted : IQueryEvent
 {
+    /// <inheritdoc/>
+    public Guid EventId { get; init; } = Guid.NewGuid();
+
     public required DateTimeOffset OccurredOn { get; init; }
 
     public required string QuerySourceName { get; init; }

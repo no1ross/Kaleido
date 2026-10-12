@@ -1,7 +1,6 @@
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
-using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Processor;
 
@@ -166,17 +165,16 @@ public sealed record ProcessStepResult
 = [];
 }
 
-internal sealed partial class ProcessorRuntime(
-    IProcessorContextStore contextStore,
+internal sealed class ProcessorRuntime(
+    IKaleidoContextStore contextStore,
     IProcessorStateUpdater stateUpdater,
     IProcessorPlanner planner,
     IProcessorExecutor processor,
     IProcessorEventFactory eventFactory,
-    IEventPublisher eventPublisher,
+    IKaleidoEventOutbox eventOutbox,
     IProcessorObservability observability,
     IKaleidoCorrelationContextAccessor correlationAccessor,
-    KaleidoServiceOptions serviceOptions,
-    ILogger<ProcessorRuntime> logger)
+    KaleidoServiceOptions serviceOptions)
     : IProcessorRuntime
 {
 
@@ -199,7 +197,9 @@ internal sealed partial class ProcessorRuntime(
 
             observation.PlanBuilt(plan.Candidates.Count, executionCandidates.Length);
             RecordRejectedInformationResponses(plan, observation);
-            PublishPlanBuilt(context, request, plan, executionCandidates.Length, cancellationToken);
+            await eventOutbox.EnqueueAsync(
+                eventFactory.CreatePlanBuilt(correlationAccessor.Current, context, request, plan, executionCandidates.Length),
+                CancellationToken.None);
 
             var executionResult =
                 await processor.ExecuteAsync(
@@ -210,14 +210,16 @@ internal sealed partial class ProcessorRuntime(
 
             var result = CreateResult(plan, executionResult);
 
-            PublishExecutionCompleted(context, executionResult, cancellationToken);
+            await eventOutbox.EnqueueAsync(
+                eventFactory.CreateExecutionCompleted(correlationAccessor.Current, context, executionResult),
+                CancellationToken.None);
             observation.ExecutionCompleted(executionResult.State);
 
             return result;
         }
         // OperationCanceledException intentionally propagates unrecorded here.
         // Invariant: ONE cancellation signal per event, recorded at the lowest
-        // level with full context — that is ProcessorExecutor (stepObservation.Canceled(),
+        // level with full context - that is ProcessorExecutor (stepObservation.Canceled(),
         // where state is saved). Do NOT add an observation.Canceled() catch block at
         // this level; it would double-record every cancellation. See AGENTS.md.
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -227,42 +229,6 @@ internal sealed partial class ProcessorRuntime(
         }
     }
 
-    // Event delivery is best-effort: a publish failure is logged, never fails the request.
-    private void PublishPlanBuilt(
-        ProcessorContext context,
-        ProcessRequest request,
-        ExecutionPlanResult plan,
-        int executionCandidateCount,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            _ = eventPublisher.PublishAsync(
-                eventFactory.CreatePlanBuilt(correlationAccessor.Current, context, request, plan, executionCandidateCount),
-                cancellationToken);
-        }
-        catch (Exception publishException) when (publishException is not OperationCanceledException)
-        {
-            LogPlanBuiltPublishFailed(logger, publishException, context.ProcessId);
-        }
-    }
-
-    private void PublishExecutionCompleted(
-        ProcessorContext context,
-        ProcessExecutionResult executionResult,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            _ = eventPublisher.PublishAsync(
-                eventFactory.CreateExecutionCompleted(correlationAccessor.Current, context, executionResult),
-                cancellationToken);
-        }
-        catch (Exception publishException) when (publishException is not OperationCanceledException)
-        {
-            LogExecutionCompletedPublishFailed(logger, publishException, context.ProcessId);
-        }
-    }
     private bool IsHandOff() =>
         correlationAccessor.Current.CallingProcessorName is { Length: > 0 } calling &&
         !string.Equals(calling, serviceOptions.ServiceName, StringComparison.OrdinalIgnoreCase);
@@ -274,7 +240,7 @@ internal sealed partial class ProcessorRuntime(
     {
         if (request.ProcessId is null)
         {
-            return CreateContext(Guid.NewGuid(), request, observation, handedOff: false, cancellationToken);
+            return await CreateContextAsync(Guid.NewGuid(), request, observation, cancellationToken);
         }
 
         var context =
@@ -295,7 +261,7 @@ internal sealed partial class ProcessorRuntime(
 
         if (context is null)
         {
-            return CreateContext(request.ProcessId.Value, request, observation, handedOff: true, cancellationToken);
+            return await CreateContextAsync(request.ProcessId.Value, request, observation, cancellationToken);
         }
 
         observation.ContextLoaded(
@@ -309,13 +275,14 @@ internal sealed partial class ProcessorRuntime(
         };
     }
 
-    // A new process (or one handed off from another processor): initialized, observed, and
-    // announced with a ProcessCreated event (best-effort).
-    private ProcessorContext CreateContext(
+    // A new process (or one handed off from another processor): initialized, observed, and saved
+    // right away together with its ProcessCreated event - every created process exists and is
+    // announced, whether or not a step of this request runs. Two creations of the same id (two
+    // handoffs at once) conflict: the second gets 409.
+    private async Task<ProcessorContext> CreateContextAsync(
         Guid processId,
         ProcessRequest request,
         IProcessorExecutionObservation observation,
-        bool handedOff,
         CancellationToken cancellationToken)
     {
         var initializedContext =
@@ -331,25 +298,21 @@ internal sealed partial class ProcessorRuntime(
         observation.ContextInitialized(
             initializedContext.ProcessId);
 
-        try
+        var processCreated =
+            eventOutbox.Prepare(
+                eventFactory.CreateProcessCreated(correlationAccessor.Current, initializedContext, request));
+
+        var saved = await contextStore.SaveAsync(
+            initializedContext,
+            processCreated is null ? [] : [processCreated],
+            cancellationToken);
+
+        if (processCreated is not null)
         {
-            _ = eventPublisher.PublishAsync(
-                eventFactory.CreateProcessCreated(correlationAccessor.Current, initializedContext, request),
-                cancellationToken);
-        }
-        catch (Exception publishException) when (publishException is not OperationCanceledException)
-        {
-            if (handedOff)
-            {
-                LogProcessCreatedPublishFailedOnResume(logger, publishException, initializedContext.ProcessId);
-            }
-            else
-            {
-                LogProcessCreatedPublishFailed(logger, publishException, initializedContext.ProcessId);
-            }
+            eventOutbox.Saved();
         }
 
-        return initializedContext;
+        return saved;
     }
     private static void RecordRejectedInformationResponses(
         ExecutionPlanResult plan,
@@ -437,16 +400,4 @@ internal sealed partial class ProcessorRuntime(
 
         return messages;
     }
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for PlanBuilt on process {ProcessId}. Event delivery is best-effort.")]
-    private static partial void LogPlanBuiltPublishFailed(ILogger logger, Exception exception, Guid processId);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for ExecutionCompleted on process {ProcessId}. Event delivery is best-effort.")]
-    private static partial void LogExecutionCompletedPublishFailed(ILogger logger, Exception exception, Guid processId);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for ProcessCreated on process {ProcessId}. Event delivery is best-effort.")]
-    private static partial void LogProcessCreatedPublishFailed(ILogger logger, Exception exception, Guid processId);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for ProcessCreated on process {ProcessId}. Event delivery is best-effort.")]
-    private static partial void LogProcessCreatedPublishFailedOnResume(ILogger logger, Exception exception, Guid processId);
 }

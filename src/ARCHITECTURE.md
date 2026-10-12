@@ -13,7 +13,7 @@ Canonical vocabulary — type names, namespaces, and docs must follow it:
 | Term | Meaning |
 |---|---|
 | **Service** | A deployed Kaleido host — `Kaleido:ServiceName`, route prefix `/{service}` |
-| **Processor** | The unit a service hosts that owns and executes Steps — the runtime/DI identity (`Kaleido.Processor` namespace, `IProcessorRuntime`, `ProcessorContext`, `IProcessorContextStore`, `AddProcessor`/`MapProcessor`, `kaleido.processor.*` telemetry) |
+| **Processor** | The unit a service hosts that owns and executes Steps — the runtime/DI identity (`Kaleido.Processor` namespace, `IProcessorRuntime`, `ProcessorContext`, `IKaleidoContextStore`, `AddProcessor`/`MapProcessor`, `kaleido.processor.*` telemetry) |
 | **Process** | One executing workflow instance — the wire/transport domain (`/processes` routes, `ProcessId`, `ProcessExecutionState`, `ProcessStateResponse`, `ExecuteProcessRequest`, process events) |
 | **Step** | A unit of work inside a Processor — identified by `IProcessStep`, described by `[ProcessStep]`, named by its type name (it marks the work, not the executor) |
 | **Source / View / Query context** | Queryable-side (`Queryable` is the feature namespace). Names are type names. <br>- **Query source** (`IQuerySource<T>`, described by `[QuerySource]`): the published capability. <br>- **Query view** (`IQueryViewSource<TSource, …>`, `[QueryView]`): projects a source. <br>- **Query context** (`IQueryContext`): the record that describes how a source is queried. |
@@ -72,7 +72,7 @@ The core project is organized into two main namespaces:
 - Registration: `ProcessorServiceCollectionExtensions`
 - Runtime: `ExecutionProcessor`
 - Planning: `StepCandidateBuilder`, `StepCandidateValidator`, `StepCandidateConsistencyChecker`, `StepCandidatePlanner`, `StepCandidateNextStepChecker` (only next steps run; answers checked against the pending information request)
-- State: `IProcessorContextStore`, `ProcessorContextStore`, `ProcessorContext`
+- State: `IKaleidoContextStore`, `InMemoryKaleidoContextStore`, `ProcessorContext`
 - Registries: `ProcessorStepRegistry`, `ProcessorRegistry`
 - Observability: `ProcessorObservability`
 
@@ -82,8 +82,8 @@ Public seams consumers are expected to implement or replace:
 
 | Seam | Register via | Notes |
 |------|--------------|-------|
-| `IProcessorContextStore` | `UseSqliteProcessorContextStore(...)` or your own `services.AddScoped` after `AddKaleido()` | Production deployments implement against their own durable store; SQLite provider is a reference impl |
-| `IEventPublisher` | `services.AddSingleton` before `AddKaleido()` | Default is no-op `NullEventPublisher`; replace for real event delivery |
+| `IKaleidoContextStore` | `UseSqliteKaleidoContextStore(...)` or your own `services.AddScoped` after `AddKaleido()` | Production deployments implement against their own durable store; SQLite provider is a reference impl |
+| `IEventPublisher` | `AddEventPublisher<TPublisher>()` on the builder | Default is no-op `NullEventPublisher` (nothing is written to the outbox); replace for real event delivery - the relay hands it every event at least once |
 | `IQueryContextExecutor<TView>` | `services.AddScoped<IQueryContextExecutor<TView>, ...>` | Provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`) instead of sync fallback |
 | Observability provider | `AddOpenTelemetry()` (Kaleido.Observability.OpenTelemetry) or custom `AddKaleidoInstrumentation()` calls | Core stays provider-agnostic on BCL `ActivitySource`/`Meter` |
 | Delegated query sources | implement `IDelegatedQuerySource<TQueryContext, TResult[, TParameters]>` and add `[QuerySource]` | A facade: translates the consumer's query (validated against `TQueryContext`), calls a downstream source or view, and maps to `TResult` |
@@ -210,11 +210,11 @@ Public seams consumers are expected to implement or replace:
 ## 6. Kaleido.Provider.SQLite
 
 ### Internal structure
-- `SqliteProcessorContextStore` — implements `IProcessorContextStore` using SQLite via EF Core
-- `SqliteProcessorContextStoreServiceCollectionExtensions` — `UseSqliteProcessorContextStore(connectionString)` extension; replaces the default in-memory store
+- `SqliteKaleidoContextStore` — implements `IKaleidoContextStore` using SQLite via EF Core
+- `SqliteKaleidoContextStoreServiceCollectionExtensions` — `UseSqliteKaleidoContextStore(connectionString)` extension; replaces the default in-memory store
 
 ### Key design invariants
-- Calling `UseSqliteProcessorContextStore(...)` replaces the in-memory `IProcessorContextStore` registered by `AddProcessor(...)`.
+- Calling `UseSqliteKaleidoContextStore(...)` replaces the in-memory `IKaleidoContextStore` registered by `AddKaleido()`: process state, idempotent results and the event outbox share one database.
 - The store must correctly implement state reconciliation so that existing saved contexts remain valid when the step registry changes.
 
 ---
@@ -259,9 +259,12 @@ Both Queryable and Process publish observability through activity sources and me
 - Process: `Kaleido.Processor` activity source and meter (names defined in `ProcessorTelemetry`)
 
 ### Event publishing
-`IEventPublisher` is registered by `AddKaleido()` as a no-op `NullEventPublisher` by default. Replace it before calling `AddKaleido()` to install real event infrastructure.
+`IEventPublisher` is registered by `AddKaleido()` as a no-op publisher by default. Replace it with `AddEventPublisher<TPublisher>()` to install real event infrastructure.
 
-Publishing is fire-and-forget in both Process and Queryable: the runtime persists process state first, then calls `IEventPublisher.PublishAsync` without awaiting it. An exception from the call is logged at Warning and never fails the request or rolls back state; delivery, ordering and retries are owned by the consumer's publisher. A transactional outbox is deliberately out of framework scope — consumers needing exactly-once delivery implement their own outbox (e.g. Debezium/WAL tailing against their durable store) since topologies differ per deployment.
+Events are handed to `IEventPublisher` **at least once, never on the request path** ([ADR 0012](../docs/decisions/0012-events-at-least-once-through-the-store.md)):
+- **Outbox in the store.** The runtime writes every event to the outbox of `IKaleidoContextStore`. Events that describe a save go in the same transaction as the state: `ProcessCreated` (a new process is saved right away) and `StepCompleted`. `PlanBuilt`, `ExecutionCompleted` and `QueryExecuted` are enqueued right after; an enqueue failure is logged and counted, never fails the request. Without a registered publisher nothing is written.
+- **Relay.** `KaleidoEventRelay`, a hosted background service registered by `AddKaleido()` (one per instance), claims a batch (`Kaleido:Events:BatchSize`), publishes each entry through a Polly pipeline (timeout + circuit breaker, no Polly retries; `Kaleido:Events:Resilience`) and removes it on success. A failure is retried with exponential backoff (the durable schedule lives in the outbox, so it survives restarts); after `MaxRetryAttempts` the entry is parked. A write wakes the local relay at once; otherwise it polls, backing off to 10 s while the outbox is empty.
+- **Several instances.** Claims are leased, so an entry is in one instance's hands at a time; when an instance stops, its leases expire and another takes over. A crash between a successful publish and its removal publishes the event again - consumers drop duplicates by `IKaleidoEvent.EventId`.
 
 ### Discoverability
 Metadata is derived from CLR types at startup:

@@ -26,10 +26,24 @@ namespace Kaleido.Eventing;
 /// you will have no data warehouse feed, no audit trail, no analytics, and no replay capability.
 /// </para>
 /// <para>
-/// <strong>Fire-and-forget:</strong> Kaleido calls <see cref="PublishAsync"/> and does not await it.
-/// An exception thrown by the call is logged at Warning and never fails the request. Delivery,
-/// ordering, retries and error handling after the call are owned by the implementation; it may
-/// still be running after the response is sent, so it must not depend on request-scoped services.
+/// <strong>At least once, never on the request path:</strong> Kaleido writes every event to the
+/// outbox of <see cref="Storage.IKaleidoContextStore"/> (process events that describe a save in the
+/// same transaction as the state) and a background relay calls <see cref="PublishAsync"/>, awaiting
+/// it. A call that throws or times out is retried later with backoff; after the configured maximum
+/// attempts the event is parked (kept, logged at Error), never dropped. A publisher never slows down
+/// or fails a request. Kaleido guarantees the hand-off to this publisher, not the receipt by the
+/// final receiver - that, and any broker-side retries, are owned by the implementation.
+/// </para>
+/// <para>
+/// <strong>Duplicates and order:</strong> after a crash between a successful publish and its
+/// bookkeeping the same event is published again; use <see cref="IKaleidoEvent.EventId"/> to drop
+/// duplicates. Retries can reorder events; use <see cref="IKaleidoEvent.OccurredOn"/>.
+/// </para>
+/// <para>
+/// <strong>Payload shape:</strong> the relay publishes the stored (JSON) form of the envelope, so
+/// <see cref="object"/>-typed members (a step's request and response, query records) arrive as
+/// <see cref="System.Text.Json.JsonElement"/>. The publisher is a singleton called outside any
+/// request scope; it must not depend on request-scoped services.
 /// </para>
 /// <para>
 /// Register a real publisher before calling <c>AddKaleido()</c>, or use
@@ -51,18 +65,30 @@ public interface IEventPublisher
         where TEvent : IKaleidoEvent;
 }
 
-/// <summary>Marker interface for all Kaleido domain events.</summary>
+/// <summary>A Kaleido domain event: identified, and stamped with when it occurred.</summary>
 public interface IKaleidoEvent
 {
+    /// <summary>
+    /// Uniquely identifies this event. Events are handed to <see cref="IEventPublisher"/> at least
+    /// once: after a crash between a successful publish and its bookkeeping the same event is
+    /// published again with the same id, so consumers use it to drop duplicates.
+    /// </summary>
+    Guid EventId { get; }
+
+    /// <summary>When the event occurred (UTC).</summary>
     DateTimeOffset OccurredOn { get; }
 }
+
+// Marks a publisher that discards every event (the default when none is registered): Kaleido then
+// writes nothing to the outbox and the relay stays idle.
+internal interface INoOpEventPublisher : IEventPublisher;
 
 /// <summary>
 /// Default no-op event publisher registered by <c>AddKaleido()</c>.
 /// Discards all events and logs a warning at startup. Replace with a real
 /// implementation — see <see cref="IEventPublisher"/> remarks.
 /// </summary>
-internal sealed partial class EventPublisher : IEventPublisher
+internal sealed partial class EventPublisher : INoOpEventPublisher
 {
     public EventPublisher(ILogger<EventPublisher> logger)
     {

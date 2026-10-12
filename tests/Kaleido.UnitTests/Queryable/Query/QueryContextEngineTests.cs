@@ -90,11 +90,10 @@ public sealed class QueryContextEngineTests
             applier.Object,
             executor.Object,
             Mock.Of<IQueryEventFactory>(),
-            Mock.Of<IEventPublisher>(),
+            Mock.Of<IKaleidoEventOutbox>(),
             Mock.Of<IKaleidoCorrelationContextAccessor>(),
             observability.Object,
-            serviceProvider,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<QueryContextEngine<FakeContext, TView>>.Instance);
+            serviceProvider);
     }
 
     [Fact]
