@@ -49,18 +49,19 @@ public static class ProcessorServiceCollectionExtensions
 
         ValidateProcessSteps(recordTypes);
 
-        var handlerTypes = new Dictionary<Type, Type>();
+        var handlerTypes = recordTypes.ToDictionary(x => x, x => RegisterHandler(builder.Services, x, types));
 
-        foreach (var recordType in recordTypes)
-        {
-            var handlerType = RegisterHandler(
-                builder.Services,
-                recordType,
-                types);
+        RegisterRegistries(builder, recordTypes, handlerTypes);
+        RegisterFrameworkServices(builder.Services);
 
-            handlerTypes[recordType] = handlerType;
-        }
+        return builder;
+    }
 
+    private static void RegisterRegistries(
+        IKaleidoBuilder builder,
+        Type[] recordTypes,
+        Dictionary<Type, Type> handlerTypes)
+    {
         builder.Services.TryAddSingleton<IProcessorStepRegistry>(
             _ => new ProcessorStepRegistry(
                 recordTypes,
@@ -74,10 +75,6 @@ public static class ProcessorServiceCollectionExtensions
                 builder.ServiceOptions,
                 sp.GetRequiredService<IProcessorStepRegistry>(),
                 sp.GetRequiredService<ILogger<ProcessorRegistry>>()));
-
-        RegisterFrameworkServices(builder.Services);
-
-        return builder;
     }
 
     private static void ValidateProcessSteps(

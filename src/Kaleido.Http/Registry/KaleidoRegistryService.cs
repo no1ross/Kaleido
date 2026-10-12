@@ -137,9 +137,20 @@ internal sealed partial class KaleidoRegistryService(
         AggregatedRegistryResponse response,
         CancellationToken cancellationToken)
     {
+        return response with
+        {
+            Processes = await FilterProcessesAsync(response.Processes, cancellationToken),
+            Queryables = await FilterQueryablesAsync(response.Queryables, cancellationToken),
+        };
+    }
+
+    private async Task<List<ProcessorRegistryResponse>> FilterProcessesAsync(
+        IEnumerable<ProcessorRegistryResponse> processors,
+        CancellationToken cancellationToken)
+    {
         var processes = new List<ProcessorRegistryResponse>();
 
-        foreach (var processor in response.Processes)
+        foreach (var processor in processors)
         {
             var initialSteps =
                 await authorizer.FilterAsync(processor.InitialSteps,
@@ -174,9 +185,18 @@ internal sealed partial class KaleidoRegistryService(
                 });
         }
 
+        return processes;
+    }
+
+    // A source the caller may not query directly stays listed (without its URL) while it has
+    // views the caller may use.
+    private async Task<List<QueryableSourceResponse>> FilterQueryablesAsync(
+        IEnumerable<QueryableSourceResponse> sources,
+        CancellationToken cancellationToken)
+    {
         var queryables = new List<QueryableSourceResponse>();
 
-        foreach (var queryable in response.Queryables)
+        foreach (var queryable in sources)
         {
             var sourceAllowed =
                 await authorizer.CanAccessAsync(queryable.Authorization, cancellationToken);
@@ -199,11 +219,7 @@ internal sealed partial class KaleidoRegistryService(
                 });
         }
 
-        return response with
-        {
-            Processes = processes,
-            Queryables = queryables,
-        };
+        return queryables;
     }
 
     // SHA-256 over the filtered payload — same content always produces the same revision.

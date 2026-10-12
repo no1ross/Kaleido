@@ -176,117 +176,35 @@ internal sealed class ToolCatalogBuilder(
         PageableMetadata? pageable)
     {
         var properties = new JsonObject();
-        var required = new JsonArray();
+        var parametersRequired = false;
 
         var searchable = fields.Where(x => x.IsSearchable).OrderBy(x => x.SearchPriority ?? int.MaxValue).ToArray();
+        var filterable = fields.Where(x => x.IsFilterable && x.FilterOperators.Count > 0).ToArray();
+        var sortable = fields.Where(x => x.IsSortable).ToArray();
 
         if (searchable.Length > 0)
         {
-            properties["searchText"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] =
-                    "Free-text search. Matches: " +
-                    string.Join(", ", searchable.Select(x => $"{x.Name} ({Camel(x.MatchMode?.ToString() ?? "contains")})")) + ".",
-            };
+            properties["searchText"] = SearchTextSchema(searchable);
         }
-
-        var filterable = fields.Where(x => x.IsFilterable && x.FilterOperators.Count > 0).ToArray();
 
         if (filterable.Length > 0)
         {
-            properties["filters"] = new JsonObject
-            {
-                ["type"] = "array",
-                ["description"] =
-                    "Conditions, all of which must match. Fields and their operators: " +
-                    string.Join("; ", filterable.Select(x => $"{x.Name} ({DescribeType(x.DataType)}{Explain(x.Description)}): {string.Join(", ", x.FilterOperators.Select(o => Camel(o.ToString())))}")) +
-                    ". Pass values typed like the field (in/between take several values; isNull/isTrue take none).",
-                ["items"] = new JsonObject
-                {
-                    ["type"] = "object",
-                    ["properties"] = new JsonObject
-                    {
-                        ["field"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.Select(x => x.Name)) },
-                        ["operator"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.SelectMany(x => x.FilterOperators).Select(x => Camel(x.ToString())).Distinct(StringComparer.Ordinal)) },
-                        ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject() },
-                    },
-                    ["required"] = new JsonArray("field", "operator"),
-                },
-            };
+            properties["filters"] = FiltersSchema(filterable);
         }
-
-        var sortable = fields.Where(x => x.IsSortable).ToArray();
 
         if (sortable.Length > 0)
         {
-            properties["sort"] = new JsonObject
-            {
-                ["type"] = "array",
-                ["description"] = "Sort order, first entry first.",
-                ["items"] = new JsonObject
-                {
-                    ["type"] = "object",
-                    ["properties"] = new JsonObject
-                    {
-                        ["field"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(sortable.Select(x => x.Name)) },
-                        ["direction"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray("ascending", "descending") },
-                    },
-                    ["required"] = new JsonArray("field", "direction"),
-                },
-            };
+            properties["sort"] = SortSchema(sortable);
         }
 
         if (pageable is not null)
         {
-            properties["page"] = new JsonObject
-            {
-                ["type"] = "object",
-                ["description"] = string.Create(CultureInfo.InvariantCulture, $"Paging. Default size {pageable.DefaultSize}; at most {pageable.MaxSize} results per page."),
-                ["properties"] = new JsonObject
-                {
-                    ["size"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = pageable.MaxSize },
-                    ["offset"] = new JsonObject { ["type"] = "integer", ["minimum"] = 0 },
-                },
-            };
+            properties["page"] = PageSchema(pageable);
         }
 
         if (parameters.Count > 0)
         {
-            var parameterProperties = new JsonObject();
-            var requiredParameters = new JsonArray();
-
-            foreach (var parameter in parameters)
-            {
-                var argument = Camel(parameter.Name);
-
-                if (string.IsNullOrWhiteSpace(parameter.Description))
-                {
-                    context.MissingDescriptions.Add($"{toolName}.parameters.{argument}");
-                }
-
-                parameterProperties[argument] = schemaBuilder.ForValue(parameter.DataType, parameter.Description, parameter.Constraints);
-
-                if (schemaBuilder.IsRequired(parameter.Constraints))
-                {
-                    requiredParameters.Add(argument);
-                }
-            }
-
-            var parametersSchema = new JsonObject
-            {
-                ["type"] = "object",
-                ["description"] = "The query's parameters.",
-                ["properties"] = parameterProperties,
-            };
-
-            if (requiredParameters.Count > 0)
-            {
-                parametersSchema["required"] = requiredParameters;
-                required.Add("parameters");
-            }
-
-            properties["parameters"] = parametersSchema;
+            (properties["parameters"], parametersRequired) = ParametersSchema(context, toolName, parameters);
         }
 
         foreach (var field in filterable.Concat(searchable).Concat(sortable).Distinct().Where(x => string.IsNullOrWhiteSpace(x.Description)))
@@ -296,12 +214,112 @@ internal sealed class ToolCatalogBuilder(
 
         var schema = new JsonObject { ["type"] = "object", ["properties"] = properties };
 
-        if (required.Count > 0)
+        if (parametersRequired)
         {
-            schema["required"] = required;
+            schema["required"] = new JsonArray("parameters");
         }
 
         return schema;
+    }
+
+    private static JsonObject SearchTextSchema(IEnumerable<QueryableFieldMetadata> searchable) =>
+        new()
+        {
+            ["type"] = "string",
+            ["description"] =
+                "Free-text search. Matches: " +
+                string.Join(", ", searchable.Select(x => $"{x.Name} ({Camel(x.MatchMode?.ToString() ?? "contains")})")) + ".",
+        };
+
+    private static JsonObject FiltersSchema(QueryableFieldMetadata[] filterable) =>
+        new()
+        {
+            ["type"] = "array",
+            ["description"] =
+                "Conditions, all of which must match. Fields and their operators: " +
+                string.Join("; ", filterable.Select(x => $"{x.Name} ({DescribeType(x.DataType)}{Explain(x.Description)}): {string.Join(", ", x.FilterOperators.Select(o => Camel(o.ToString())))}")) +
+                ". Pass values typed like the field (in/between take several values; isNull/isTrue take none).",
+            ["items"] = new JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["field"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.Select(x => x.Name)) },
+                    ["operator"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.SelectMany(x => x.FilterOperators).Select(x => Camel(x.ToString())).Distinct(StringComparer.Ordinal)) },
+                    ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject() },
+                },
+                ["required"] = new JsonArray("field", "operator"),
+            },
+        };
+
+    private static JsonObject SortSchema(IEnumerable<QueryableFieldMetadata> sortable) =>
+        new()
+        {
+            ["type"] = "array",
+            ["description"] = "Sort order, first entry first.",
+            ["items"] = new JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["field"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(sortable.Select(x => x.Name)) },
+                    ["direction"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray("ascending", "descending") },
+                },
+                ["required"] = new JsonArray("field", "direction"),
+            },
+        };
+
+    private static JsonObject PageSchema(PageableMetadata pageable) =>
+        new()
+        {
+            ["type"] = "object",
+            ["description"] = string.Create(CultureInfo.InvariantCulture, $"Paging. Default size {pageable.DefaultSize}; at most {pageable.MaxSize} results per page."),
+            ["properties"] = new JsonObject
+            {
+                ["size"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = pageable.MaxSize },
+                ["offset"] = new JsonObject { ["type"] = "integer", ["minimum"] = 0 },
+            },
+        };
+
+    // The view's parameters, and whether any of them is required.
+    private (JsonObject Schema, bool HasRequired) ParametersSchema(
+        BuildContext context,
+        string toolName,
+        IReadOnlyCollection<QueryableQueryParameter> parameters)
+    {
+        var parameterProperties = new JsonObject();
+        var requiredParameters = new List<string>();
+
+        foreach (var parameter in parameters)
+        {
+            var argument = Camel(parameter.Name);
+
+            if (string.IsNullOrWhiteSpace(parameter.Description))
+            {
+                context.MissingDescriptions.Add($"{toolName}.parameters.{argument}");
+            }
+
+            parameterProperties[argument] = schemaBuilder.ForValue(parameter.DataType, parameter.Description, parameter.Constraints);
+
+            if (schemaBuilder.IsRequired(parameter.Constraints))
+            {
+                requiredParameters.Add(argument);
+            }
+        }
+
+        var parametersSchema = new JsonObject
+        {
+            ["type"] = "object",
+            ["description"] = "The query's parameters.",
+            ["properties"] = parameterProperties,
+        };
+
+        if (requiredParameters.Count > 0)
+        {
+            parametersSchema["required"] = new JsonArray([.. requiredParameters.Select(x => (JsonNode)x)]);
+        }
+
+        return (parametersSchema, requiredParameters.Count > 0);
     }
 
     // ── Step tools ───────────────────────────────────────────────────────────
@@ -313,52 +331,8 @@ internal sealed class ToolCatalogBuilder(
     {
         var name = Name(context, processor.ServiceName, step.Name, "step");
 
-        var properties = new JsonObject
-        {
-            ["processId"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["format"] = "uuid",
-                ["description"] = step.IsInitial
-                    ? "The process to continue. Omit it to start a new process."
-                    : "The process to continue (returned by an earlier step).",
-            },
-        };
-
-        var required = new List<string>();
-
-        if (!step.IsInitial)
-        {
-            required.Add("processId");
-        }
-
         var lookups = Lookups(context, name, step.Fields);
-
-        foreach (var field in step.Fields)
-        {
-            var argument = Camel(field.Name);
-
-            if (string.IsNullOrWhiteSpace(field.Description))
-            {
-                context.MissingDescriptions.Add($"{name}.{argument}");
-            }
-
-            var lookup = lookups.Find(x => x.Inputs.Any(i => string.Equals(i.Argument, argument, StringComparison.Ordinal)));
-
-            properties[argument] = schemaBuilder.ForValue(field.DataType, FieldDescription(field, argument, lookup), field.Constraints);
-
-            if (schemaBuilder.IsRequired(field.Constraints))
-            {
-                required.Add(argument);
-            }
-        }
-
-        var schema = new JsonObject { ["type"] = "object", ["properties"] = properties };
-
-        if (required.Count > 0)
-        {
-            schema["required"] = new JsonArray([.. required.Select(x => (JsonNode)x)]);
-        }
+        var schema = StepInputSchema(context, name, step, lookups);
 
         var description =
             Describe(context, name, step.DisplayName, step.Description) +
@@ -488,6 +462,57 @@ internal sealed class ToolCatalogBuilder(
 
     // ── Built-in tools ───────────────────────────────────────────────────────
 
+    // The step's arguments: processId (required unless the step can start a process) and its fields.
+    private JsonObject StepInputSchema(BuildContext context, string name, ProcessStepResponse step, List<ToolLookup> lookups)
+    {
+        var properties = new JsonObject
+        {
+            ["processId"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["format"] = "uuid",
+                ["description"] = step.IsInitial
+                    ? "The process to continue. Omit it to start a new process."
+                    : "The process to continue (returned by an earlier step).",
+            },
+        };
+
+        var required = new List<string>();
+
+        if (!step.IsInitial)
+        {
+            required.Add("processId");
+        }
+
+        foreach (var field in step.Fields)
+        {
+            var argument = Camel(field.Name);
+
+            if (string.IsNullOrWhiteSpace(field.Description))
+            {
+                context.MissingDescriptions.Add($"{name}.{argument}");
+            }
+
+            var lookup = lookups.Find(x => x.Inputs.Any(i => string.Equals(i.Argument, argument, StringComparison.Ordinal)));
+
+            properties[argument] = schemaBuilder.ForValue(field.DataType, FieldDescription(field, argument, lookup), field.Constraints);
+
+            if (schemaBuilder.IsRequired(field.Constraints))
+            {
+                required.Add(argument);
+            }
+        }
+
+        var schema = new JsonObject { ["type"] = "object", ["properties"] = properties };
+
+        if (required.Count > 0)
+        {
+            schema["required"] = new JsonArray([.. required.Select(x => (JsonNode)x)]);
+        }
+
+        return schema;
+    }
+
     private static void AddBuiltInTools(
         BuildContext context,
         IReadOnlyCollection<string> processServices)
@@ -515,36 +540,7 @@ internal sealed class ToolCatalogBuilder(
                 Description =
                     "Submits the user's answers to the questions a process asked (an informationRequest in a step result). " +
                     "Ask the user each question exactly as written and pass only the user's answers; a proposed answer, or one the user gave earlier in the conversation, counts only after the user confirms it. Never answer on the user's behalf. Changes state.",
-                InputSchema = JsonSerializer.SerializeToElement(new JsonObject
-                {
-                    ["type"] = "object",
-                    ["properties"] = new JsonObject
-                    {
-                        ["service"] = serviceSchema.DeepClone(),
-                        ["processId"] = processIdSchema.DeepClone(),
-                        ["informationRequestId"] = new JsonObject
-                        {
-                            ["type"] = "string",
-                            ["description"] = "The informationRequestId of the questions being answered.",
-                        },
-                        ["answers"] = new JsonObject
-                        {
-                            ["type"] = "array",
-                            ["description"] = "One entry per question: the question's id and the user's answer(s). Choices use the option values; booleans true/false; dates yyyy-MM-dd.",
-                            ["items"] = new JsonObject
-                            {
-                                ["type"] = "object",
-                                ["properties"] = new JsonObject
-                                {
-                                    ["itemId"] = new JsonObject { ["type"] = "string" },
-                                    ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["type"] = "string" } },
-                                },
-                                ["required"] = new JsonArray("itemId", "values"),
-                            },
-                        },
-                    },
-                    ["required"] = new JsonArray("service", "processId", "informationRequestId", "answers"),
-                }),
+                InputSchema = JsonSerializer.SerializeToElement(AnswerInformationRequestSchema(serviceSchema, processIdSchema)),
                 Annotations = new ToolAnnotations { ReadOnlyHint = false, OpenWorldHint = false },
             },
             Kind = KaleidoToolKind.AnswerInformationRequest,
@@ -572,6 +568,38 @@ internal sealed class ToolCatalogBuilder(
             Kind = KaleidoToolKind.GetProcessState,
         });
     }
+
+    private static JsonObject AnswerInformationRequestSchema(JsonObject serviceSchema, JsonObject processIdSchema) =>
+        new()
+        {
+            ["type"] = "object",
+            ["properties"] = new JsonObject
+            {
+                ["service"] = serviceSchema.DeepClone(),
+                ["processId"] = processIdSchema.DeepClone(),
+                ["informationRequestId"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "The informationRequestId of the questions being answered.",
+                },
+                ["answers"] = new JsonObject
+                {
+                    ["type"] = "array",
+                    ["description"] = "One entry per question: the question's id and the user's answer(s). Choices use the option values; booleans true/false; dates yyyy-MM-dd.",
+                    ["items"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["properties"] = new JsonObject
+                        {
+                            ["itemId"] = new JsonObject { ["type"] = "string" },
+                            ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["type"] = "string" } },
+                        },
+                        ["required"] = new JsonArray("itemId", "values"),
+                    },
+                },
+            },
+            ["required"] = new JsonArray("service", "processId", "informationRequestId", "answers"),
+        };
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 

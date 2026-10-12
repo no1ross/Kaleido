@@ -250,129 +250,28 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         ParameterExpression parameter,
         CompiledFilterCondition condition)
     {
-        var member =
-            Expression.PropertyOrField(
-                parameter,
-                condition.Field.Name);
+        var member = Expression.PropertyOrField(parameter, condition.Field.Name);
 
         return condition.Operator switch
         {
-            FilterOperator.Equals =>
-                EqualityCall(
-                    member,
-                    GetValue(condition, 0),
-                    negate: false),
-
-            FilterOperator.NotEquals =>
-                EqualityCall(
-                    member,
-                    GetValue(condition, 0),
-                    negate: true),
-
-            FilterOperator.GreaterThan =>
-                Expression.GreaterThan(
-                    member,
-                    Constant(
-                        member.Type,
-                        GetValue(condition, 0))),
-
-            FilterOperator.GreaterThanOrEqual =>
-                Expression.GreaterThanOrEqual(
-                    member,
-                    Constant(
-                        member.Type,
-                        GetValue(condition, 0))),
-
-            FilterOperator.LessThan =>
-                Expression.LessThan(
-                    member,
-                    Constant(
-                        member.Type,
-                        GetValue(condition, 0))),
-
-            FilterOperator.LessThanOrEqual =>
-                Expression.LessThanOrEqual(
-                    member,
-                    Constant(
-                        member.Type,
-                        GetValue(condition, 0))),
-
-            FilterOperator.Contains =>
-                StringCall(
-                    member,
-                    nameof(string.Contains),
-                    GetValue(condition, 0),
-                    negate: false),
-
-            FilterOperator.NotContains =>
-                StringCall(
-                    member,
-                    nameof(string.Contains),
-                    GetValue(condition, 0),
-                    negate: true),
-
-            FilterOperator.StartsWith =>
-                StringCall(
-                    member,
-                    nameof(string.StartsWith),
-                    GetValue(condition, 0),
-                    negate: false),
-
-            FilterOperator.EndsWith =>
-                StringCall(
-                    member,
-                    nameof(string.EndsWith),
-                    GetValue(condition, 0),
-                    negate: false),
-
-            FilterOperator.In =>
-                InCall(
-                    member,
-                    condition.Values,
-                    negate: false),
-
-            FilterOperator.NotIn =>
-                InCall(
-                    member,
-                    condition.Values,
-                    negate: true),
-
-            FilterOperator.Between =>
-                BetweenCall(
-                    member,
-                    condition.Values,
-                    negate: false),
-
-            FilterOperator.NotBetween =>
-                BetweenCall(
-                    member,
-                    condition.Values,
-                    negate: true),
-
-            FilterOperator.IsNull =>
-                Expression.Equal(
-                    member,
-                    Expression.Constant(
-                        null,
-                        member.Type)),
-
-            FilterOperator.IsNotNull =>
-                Expression.NotEqual(
-                    member,
-                    Expression.Constant(
-                        null,
-                        member.Type)),
-
-            FilterOperator.IsTrue =>
-                BooleanCall(
-                    member,
-                    expected: true),
-
-            FilterOperator.IsFalse =>
-                BooleanCall(
-                    member,
-                    expected: false),
-
+            FilterOperator.Equals => EqualityCall(member, GetValue(condition, 0), negate: false),
+            FilterOperator.NotEquals => EqualityCall(member, GetValue(condition, 0), negate: true),
+            FilterOperator.GreaterThan => Expression.GreaterThan(member, Constant(member.Type, GetValue(condition, 0))),
+            FilterOperator.GreaterThanOrEqual => Expression.GreaterThanOrEqual(member, Constant(member.Type, GetValue(condition, 0))),
+            FilterOperator.LessThan => Expression.LessThan(member, Constant(member.Type, GetValue(condition, 0))),
+            FilterOperator.LessThanOrEqual => Expression.LessThanOrEqual(member, Constant(member.Type, GetValue(condition, 0))),
+            FilterOperator.Contains => StringCall(member, nameof(string.Contains), GetValue(condition, 0), negate: false),
+            FilterOperator.NotContains => StringCall(member, nameof(string.Contains), GetValue(condition, 0), negate: true),
+            FilterOperator.StartsWith => StringCall(member, nameof(string.StartsWith), GetValue(condition, 0), negate: false),
+            FilterOperator.EndsWith => StringCall(member, nameof(string.EndsWith), GetValue(condition, 0), negate: false),
+            FilterOperator.In => InCall(member, condition.Values, negate: false),
+            FilterOperator.NotIn => InCall(member, condition.Values, negate: true),
+            FilterOperator.Between => BetweenCall(member, condition.Values, negate: false),
+            FilterOperator.NotBetween => BetweenCall(member, condition.Values, negate: true),
+            FilterOperator.IsNull => Expression.Equal(member, Expression.Constant(null, member.Type)),
+            FilterOperator.IsNotNull => Expression.NotEqual(member, Expression.Constant(null, member.Type)),
+            FilterOperator.IsTrue => BooleanCall(member, expected: true),
+            FilterOperator.IsFalse => BooleanCall(member, expected: false),
             _ => throw new KaleidoValidationException(
                 QueryableErrorCodes.UnsupportedOperator,
                 $"Field '{condition.Field.Name}' does not support operator '{condition.Operator}'."),
@@ -386,71 +285,27 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
     {
         if (member.Type != typeof(string))
         {
-            var expression1 =
-                negate
-                    ? Expression.NotEqual(
-                        member,
-                        Constant(
-                            member.Type,
-                            value))
-                    : Expression.Equal(
-                        member,
-                        Constant(
-                            member.Type,
-                            value));
-
-            return expression1;
+            return negate
+                ? Expression.NotEqual(member, Constant(member.Type, value))
+                : Expression.Equal(member, Constant(member.Type, value));
         }
 
         if (value is null)
         {
             return negate
-                ? Expression.NotEqual(
-                    member,
-                    Expression.Constant(
-                        null,
-                        typeof(string)))
-                : Expression.Equal(
-                    member,
-                    Expression.Constant(
-                        null,
-                        typeof(string)));
+                ? Expression.NotEqual(member, Expression.Constant(null, typeof(string)))
+                : Expression.Equal(member, Expression.Constant(null, typeof(string)));
         }
 
-        var stringValue =
-            ValidateValue(
-                value,
-                typeof(string)) as string
-            ?? string.Empty;
+        var stringValue = ValidateValue(value, typeof(string)) as string ?? string.Empty;
 
-        var notNull =
-            Expression.NotEqual(
-                member,
-                Expression.Constant(
-                    null,
-                    typeof(string)));
-
-        var normalizedMember =
-            ToLower(member);
-
-        var normalizedValue =
-            Expression.Constant(
-                stringValue.ToLowerInvariant(),
-                typeof(string));
-
+        // Case-insensitive: both sides lower-cased, a null member never matches.
         var equals =
             Expression.Equal(
-                normalizedMember,
-                normalizedValue);
+                ToLower(member),
+                Expression.Constant(stringValue.ToLowerInvariant(), typeof(string)));
 
-        var expression =
-            Expression.AndAlso(
-                notNull,
-                equals);
-
-        return negate
-            ? Expression.Not(expression)
-            : expression;
+        return Negate(Expression.AndAlso(NotNull(member), equals), negate);
     }
 
     private static IQueryable<TQueryContext> ApplySortItem(
@@ -568,78 +423,35 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
     {
         if (values.Count == 0)
         {
-            var emptyResult =
-                Expression.Constant(false);
-
-            return negate
-                ? Expression.Not(emptyResult)
-                : emptyResult;
+            return Negate(Expression.Constant(false), negate);
         }
 
         if (member.Type == typeof(string))
         {
+            // Case-insensitive: the values and the member lower-cased, a null member never matches.
             var normalizedValues =
                 values
-                    .Select(value =>
-                        ValidateValue(
-                            value,
-                            typeof(string)) as string
-                        ?? string.Empty)
-                    .Select(value =>
-                        value.ToLowerInvariant())
+                    .Select(value => ValidateValue(value, typeof(string)) as string ?? string.Empty)
+                    .Select(value => value.ToLowerInvariant())
                     .ToArray();
 
-            var method =
-                EnumerableContainsCache.GetOrAdd(
-                    typeof(string),
-                    t => EnumerableContainsOpenMethod.MakeGenericMethod(t));
+            var method = EnumerableContainsCache.GetOrAdd(typeof(string), t => EnumerableContainsOpenMethod.MakeGenericMethod(t));
+            var call = Expression.Call(method, Expression.Constant(normalizedValues), ToLower(member));
 
-            var notNull =
-                Expression.NotEqual(
-                    member,
-                    Expression.Constant(
-                        null,
-                        typeof(string)));
-
-            var normalizedMember =
-                ToLower(member);
-
-            var call =
-                Expression.Call(
-                    method,
-                    Expression.Constant(normalizedValues),
-                    normalizedMember);
-
-            var expression =
-                Expression.AndAlso(
-                    notNull,
-                    call);
-
-            return negate
-                ? Expression.Not(expression)
-                : expression;
+            return Negate(Expression.AndAlso(NotNull(member), call), negate);
         }
 
-        var array =
-            CreateTypedArray(
-                member.Type,
-                values);
+        var array = CreateTypedArray(member.Type, values);
+        var containsMethod = EnumerableContainsCache.GetOrAdd(member.Type, t => EnumerableContainsOpenMethod.MakeGenericMethod(t));
 
-        var containsMethod =
-            EnumerableContainsCache.GetOrAdd(
-                member.Type,
-                t => EnumerableContainsOpenMethod.MakeGenericMethod(t));
-
-        var containsCall =
-            Expression.Call(
-                containsMethod,
-                Expression.Constant(array),
-                member);
-
-        return negate
-            ? Expression.Not(containsCall)
-            : containsCall;
+        return Negate(Expression.Call(containsMethod, Expression.Constant(array), member), negate);
     }
+
+    private static BinaryExpression NotNull(Expression member) =>
+        Expression.NotEqual(member, Expression.Constant(null, typeof(string)));
+
+    private static Expression Negate(Expression expression, bool negate) =>
+        negate ? Expression.Not(expression) : expression;
 
     private static Expression BetweenCall(
         Expression member,

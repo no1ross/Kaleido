@@ -147,34 +147,7 @@ internal sealed class TypeDescriber : ITypeDescriber
     {
         if (type.IsEnum)
         {
-            var values =
-                Enum.GetValues(type)
-                    .Cast<Enum>()
-                    .Select(x =>
-                    {
-                        var members = type.GetMember(x.ToString());
-                        var member = members.Length > 0
-                            ? members[0]
-                            : throw new KaleidoFrameworkException(
-                                FrameworkErrorCodes.ReflectionError,
-                                $"Enum member '{x}' not found in type '{type.FullName}'.");
-
-                        var description =
-                            member
-                                .GetCustomAttribute<DescriptionAttribute>()
-                                ?.Description;
-
-                        return new EnumValueDescriptor(
-                            Value: Convert.ToInt32(x, CultureInfo.InvariantCulture),
-                            Name: x.ToString(),
-                            Description: description);
-                    })
-                    .ToArray();
-
-            return new DataTypeDescriptor(
-                "string",
-                "enum",
-                EnumValues: values);
+            return EnumDescriptor(type);
         }
 
         if (type.IsArray)
@@ -209,6 +182,39 @@ internal sealed class TypeDescriber : ITypeDescriber
 
         return new DataTypeDescriptor(
             "object");
+    }
+
+    // An enum is a string with its members as values, each with its [Description].
+    private static DataTypeDescriptor EnumDescriptor(Type type)
+    {
+        var values =
+            Enum.GetValues(type)
+                .Cast<Enum>()
+                .Select(x =>
+                {
+                    var members = type.GetMember(x.ToString());
+                    var member = members.Length > 0
+                        ? members[0]
+                        : throw new KaleidoFrameworkException(
+                            FrameworkErrorCodes.ReflectionError,
+                            $"Enum member '{x}' not found in type '{type.FullName}'.");
+
+                    var description =
+                        member
+                            .GetCustomAttribute<DescriptionAttribute>()
+                            ?.Description;
+
+                    return new EnumValueDescriptor(
+                        Value: Convert.ToInt32(x, CultureInfo.InvariantCulture),
+                        Name: x.ToString(),
+                        Description: description);
+                })
+                .ToArray();
+
+        return new DataTypeDescriptor(
+            "string",
+            "enum",
+            EnumValues: values);
     }
 
 }
