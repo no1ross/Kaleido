@@ -91,7 +91,7 @@ internal sealed partial class ProcessorExecutor(
             }
 
             context = stateUpdater.ApplyExecution(context, candidate, decision);
-            await stateRepository.SaveAsync(context, cancellationToken);
+            context = await stateRepository.SaveAsync(context, cancellationToken);
             outcomes.Add(Complete(candidate, result, decision, context, stepObservation, cancellationToken));
 
             return (context, GetNextCandidate(decision));
@@ -114,8 +114,9 @@ internal sealed partial class ProcessorExecutor(
                 outcomes,
                 FailedOutcome(candidate, StepExecutionStatus.ValidationFailed, exception.Code, exception.Message)), null);
         }
-        // Any other failure of the step (cancellation and validation are handled above).
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        // Any other failure of the step (cancellation and validation are handled above). A concurrency
+        // conflict is not a step failure: nothing was saved, and the caller rereads the process (409).
+        catch (Exception exception) when (exception is not OperationCanceledException and not KaleidoConcurrencyException)
         {
             stepObservation.StepFailed(exception);
 
@@ -242,13 +243,13 @@ internal sealed partial class ProcessorExecutor(
         List<ProcessExecutionOutcome> outcomes,
         ProcessExecutionOutcome outcome)
     {
-        await stateRepository.SaveAsync(
+        var saved = await stateRepository.SaveAsync(
             context,
             CancellationToken.None);
 
         outcomes.Add(outcome);
 
-        return context;
+        return saved;
     }
     private static ProcessExecutionOutcome FailedOutcome(
         StepCandidate candidate,

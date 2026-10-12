@@ -62,6 +62,12 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
                 await WriteErrorAsync(context, StatusCodes.Status400BadRequest, validation.Code, validation.Message, cancellationToken);
                 break;
 
+            case KaleidoConcurrencyException conflict:
+                MarkFailed(conflict);
+                LogConflict(logger, conflict.ProcessId);
+                await WriteErrorAsync(context, StatusCodes.Status409Conflict, conflict.Code, conflict.Message, cancellationToken);
+                break;
+
             case BadHttpRequestException badRequest:
                 MarkFailed(badRequest);
                 LogMalformedRequest(logger, badRequest, badRequest.Message);
@@ -173,6 +179,9 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Validation failed [{Code}]: {Message}")]
     private static partial void LogValidationFailed(ILogger logger, Exception exception, string code, string message);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Process {ProcessId} was changed by another request; nothing was saved (409).")]
+    private static partial void LogConflict(ILogger logger, Guid processId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Malformed request: {Message}")]
     private static partial void LogMalformedRequest(ILogger logger, Exception exception, string message);

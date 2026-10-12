@@ -92,6 +92,26 @@ internal sealed partial class KaleidoToolInvoker(
     private const string StatePrefix = "kaleido-mcp:";
     private const string ClientCapabilitiesMetaKey = "io.modelcontextprotocol/clientCapabilities";
 
+    // The service refused or failed the call: its status and errors, for the agent to explain. A
+    // conflict (409) means another call changed the process and nothing was saved: the agent rereads
+    // the state instead of repeating the call.
+    private ToolOutcome ServiceAnswered(KaleidoTool tool, KaleidoHttpClientException exception)
+    {
+        LogServiceAnswered(logger, tool.Definition.Name, (int)exception.StatusCode, exception.Code);
+
+        if (string.Equals(exception.Code, HttpClientErrorCodes.Conflict, StringComparison.Ordinal))
+        {
+            return Error(
+                McpErrorCodes.ProcessConflict,
+                $"{tool.Definition.Name}: the process was changed by another call, so nothing was saved. Read its state with {ToolCatalogBuilder.GetProcessStateTool} and decide with the user what to do next; do not repeat the call.");
+        }
+
+        return Error(
+            McpErrorCodes.ServiceError,
+            $"{tool.Definition.Name}: {exception.Message}",
+            Serialize(new { status = (int)exception.StatusCode, errors = exception.Errors }));
+    }
+
     public async Task<ToolOutcome> InvokeAsync(
         KaleidoTool tool,
         KaleidoToolCall call,
@@ -127,13 +147,7 @@ internal sealed partial class KaleidoToolInvoker(
         }
         catch (KaleidoHttpClientException exception)
         {
-            // The service refused or failed the call: its status and errors, for the agent to explain.
-            LogServiceAnswered(logger, tool.Definition.Name, (int)exception.StatusCode, exception.Code);
-
-            return Error(
-                McpErrorCodes.ServiceError,
-                $"{tool.Definition.Name}: {exception.Message}",
-                Serialize(new { status = (int)exception.StatusCode, errors = exception.Errors }));
+            return ServiceAnswered(tool, exception);
         }
         catch (MissingClientException exception)
         {

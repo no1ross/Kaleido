@@ -13,6 +13,8 @@ public sealed class KaleidoExceptionHandlerTests
 {
     private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
 
+    private static readonly Guid ConflictedProcess = Guid.Parse("6f1c2a9e-5d3b-4f7a-9c1e-2b8d4e6a0f13");
+
     private Mock<ILogger<KaleidoExceptionHandler>> Logger { get; } = new();
 
     private KaleidoExceptionHandler CreateSut() =>
@@ -26,6 +28,7 @@ public sealed class KaleidoExceptionHandlerTests
             { nameof(BadHttpRequestException), StatusCodes.Status400BadRequest, "argument_error", "bad request" },
             { nameof(KaleidoConfigurationException), StatusCodes.Status500InternalServerError, "pro_missing_handler", "no handler" },
             { nameof(KaleidoFrameworkException), StatusCodes.Status500InternalServerError, "type_mismatch", "bad type" },
+            { nameof(KaleidoConcurrencyException), StatusCodes.Status409Conflict, "pro_process_conflict", $"Process '{ConflictedProcess}' was changed by another request. Read its state again and decide on the next step." },
             { nameof(Exception), StatusCodes.Status500InternalServerError, "framework_error", "An unexpected error occurred." },
         };
 
@@ -111,6 +114,7 @@ public sealed class KaleidoExceptionHandlerTests
             nameof(BadHttpRequestException) => new BadHttpRequestException("bad request"),
             nameof(KaleidoConfigurationException) => new KaleidoConfigurationException("pro_missing_handler", "no handler"),
             nameof(KaleidoFrameworkException) => new KaleidoFrameworkException("type_mismatch", "bad type"),
+            nameof(KaleidoConcurrencyException) => new KaleidoConcurrencyException(ConflictedProcess),
             _ => new InvalidOperationException("boom"),
         };
 

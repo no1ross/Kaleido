@@ -30,6 +30,13 @@ public static class ProcessorErrorCodes
     /// </summary>
     public const string ProcessNotFound = "pro_process_not_found";
 
+    /// <summary>
+    /// The process was changed by another request since this one loaded it (optimistic
+    /// concurrency): nothing was saved. Read the process state again and decide on the next step.
+    /// HTTP 409.
+    /// </summary>
+    public const string ProcessConflict = "pro_process_conflict";
+
     /// <summary>The supplied step request is invalid.</summary>
     public const string InvalidRequest = "pro_invalid_request";
 
