@@ -243,7 +243,7 @@ internal sealed partial class KaleidoProcessorClient(
     {
         KaleidoErrorResponse? errorResponse = null;
 
-        if (response.StatusCode == HttpStatusCode.BadRequest)
+        if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict)
         {
             try
             {
@@ -259,7 +259,7 @@ internal sealed partial class KaleidoProcessorClient(
         if (errorResponse?.Errors.Count > 0)
         {
             return new KaleidoHttpClientException(
-                HttpClientErrorCodes.ValidationFailed,
+                response.StatusCode == HttpStatusCode.Conflict ? HttpClientErrorCodes.Conflict : HttpClientErrorCodes.ValidationFailed,
                 $"{description}: {string.Join(' ', errorResponse.Errors.Select(e => e.Message))}",
                 response.StatusCode,
                 errorResponse.Errors);

@@ -11,63 +11,35 @@ internal sealed class ProcessorContextEntityConfiguration
     public void Configure(
         EntityTypeBuilder<ProcessorContextEntity> builder)
     {
-        builder.ToTable(
-            "ProcessContexts");
+        builder.ToTable("ProcessContexts");
+        builder.HasKey(x => x.ProcessId);
+        builder.Property(x => x.LatestRequestId).HasMaxLength(100);
 
-        builder.HasKey(
-            x => x.ProcessId);
+        // The UPDATE is conditional on the version the row was read with, so a concurrent save by
+        // another instance fails instead of overwriting.
+        builder.Property(x => x.Version).IsConcurrencyToken();
 
-        builder.Property(
-                x => x.LatestRequestId)
-            .HasMaxLength(100);
+        builder.Property(x => x.State).HasConversion<string>().IsRequired();
+        builder.Property(x => x.CreatedUtc).IsRequired();
+        builder.Property(x => x.UpdatedUtc).IsRequired();
 
-        builder.Property(
-                x => x.State)
-            .HasConversion<string>()
-            .IsRequired();
+        builder.HasMany(x => x.Steps)
+            .WithOne(x => x.Context)
+            .HasForeignKey(x => x.ProcessId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Property(
-                x => x.CreatedUtc)
-            .IsRequired();
+        builder.HasMany(x => x.AvailableSteps)
+            .WithOne(x => x.Context)
+            .HasForeignKey(x => x.ProcessId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Property(
-                x => x.UpdatedUtc)
-            .IsRequired();
+        builder.HasOne(x => x.RequiredStep)
+            .WithOne(x => x.Context)
+            .HasForeignKey<ProcessorRequiredStepEntity>(x => x.ProcessId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasMany(
-                x => x.Steps)
-            .WithOne(
-                x => x.Context)
-            .HasForeignKey(
-                x => x.ProcessId)
-            .OnDelete(
-                DeleteBehavior.Cascade);
-
-        builder.HasMany(
-                x => x.AvailableSteps)
-            .WithOne(
-                x => x.Context)
-            .HasForeignKey(
-                x => x.ProcessId)
-            .OnDelete(
-                DeleteBehavior.Cascade);
-
-        builder.HasOne(
-                x => x.RequiredStep)
-            .WithOne(
-                x => x.Context)
-            .HasForeignKey<ProcessorRequiredStepEntity>(
-                x => x.ProcessId)
-            .OnDelete(
-                DeleteBehavior.Cascade);
-
-        builder.HasIndex(
-            x => x.State);
-
-        builder.HasIndex(
-            x => x.CreatedUtc);
-
-        builder.HasIndex(
-            x => x.UpdatedUtc);
+        builder.HasIndex(x => x.State);
+        builder.HasIndex(x => x.CreatedUtc);
+        builder.HasIndex(x => x.UpdatedUtc);
     }
 }

@@ -555,4 +555,24 @@ public sealed class KaleidoProcessorClientTests
 
         Assert.Equal(1, registryReads);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenTheProcessWasChangedConcurrently_ThrowsAConflictWithTheServiceErrors()
+    {
+        var (client, _) = CreateClient(respond: req =>
+            req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal)
+                ? JsonOk(FakeRegistry)
+                : new HttpResponseMessage(HttpStatusCode.Conflict)
+                {
+                    Content = JsonContent.Create(
+                        new KaleidoErrorResponse([new KaleidoError("pro_process_conflict", "Changed by another request.")]),
+                        options: KaleidoJsonOptions.Options),
+                });
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.ExecuteAsync(new ExecuteProcessRequest()));
+
+        Assert.Equal(HttpClientErrorCodes.Conflict, exception.Code);
+        Assert.Equal(HttpStatusCode.Conflict, exception.StatusCode);
+        Assert.Equal("pro_process_conflict", Assert.Single(exception.Errors).Code);
+    }
 }
