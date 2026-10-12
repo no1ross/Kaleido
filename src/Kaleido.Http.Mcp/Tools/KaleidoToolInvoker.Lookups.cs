@@ -95,6 +95,37 @@ internal sealed partial class KaleidoToolInvoker
     }
 
     // The MRTR retry of a guided lookup: the user searched (show the results) or picked one (run the step).
+    // Picked: fill the inputs from the chosen row and run the step; without a valid choice, search again.
+    private async Task<ToolOutcome> PickAsync(
+        KaleidoToolCall call,
+        ToolCatalog catalog,
+        KaleidoTool tool,
+        ToolLookup lookup,
+        LookupState state,
+        Dictionary<string, JsonElement> arguments,
+        IDictionary<string, JsonElement> content,
+        CancellationToken cancellationToken)
+    {
+        var pickRequest = PickRequest(lookup, new LookupCandidates(state.Candidates.Select(x => x.Label).ToArray(), state.Candidates.Select(x => x.Values).ToArray(), More: null));
+
+        if (Answer(pickRequest, content, PickItemId) is { } choice &&
+            int.TryParse(choice, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var index) &&
+            index >= 0 && index < state.Candidates.Length)
+        {
+            var row = state.Candidates[index].Values;
+
+            return await RunStepAsync(
+                tool,
+                Filled(arguments, lookup, row),
+                state.ProcessId,
+                call with { InputResponses = null, RequestState = null },
+                catalog,
+                cancellationToken);
+        }
+
+        return AskLookup(SearchRequest(lookup, note: null), state with { SearchText = null, Candidates = [] });
+    }
+
     private async Task<ToolOutcome> ContinueLookupAsync(
         KaleidoToolCall call,
         ToolCatalog catalog,
@@ -121,27 +152,9 @@ internal sealed partial class KaleidoToolInvoker
             return LookupNotDone(tool, lookup, $"The user did not finish the lookup ({elicited?.Action ?? "no answer"}). Nothing was run.");
         }
 
-        // Picked: fill the inputs from the chosen row and run the step.
         if (state.SearchText is not null)
         {
-            var pickRequest = PickRequest(lookup, new LookupCandidates(state.Candidates.Select(x => x.Label).ToArray(), state.Candidates.Select(x => x.Values).ToArray(), More: null));
-
-            if (Answer(pickRequest, content, PickItemId) is { } choice &&
-                int.TryParse(choice, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var index) &&
-                index >= 0 && index < state.Candidates.Length)
-            {
-                var row = state.Candidates[index].Values;
-
-                return await RunStepAsync(
-                    tool,
-                    Filled(arguments, lookup, row),
-                    state.ProcessId,
-                    call with { InputResponses = null, RequestState = null },
-                    catalog,
-                    cancellationToken);
-            }
-
-            return AskLookup(SearchRequest(lookup, note: null), state with { SearchText = null, Candidates = [] });
+            return await PickAsync(call, catalog, tool, lookup, state, arguments, content, cancellationToken);
         }
 
         // Searched: show the results to pick from.

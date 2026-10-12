@@ -499,22 +499,7 @@ internal sealed partial class KaleidoToolInvoker(
                 else if (mode == Elicitation.Mrtr)
                 {
                     // Return the form; the client shows it and calls this tool again with the answers.
-                    return new ToolOutcome
-                    {
-                        InputRequired = new InputRequiredResult
-                        {
-                            InputRequests = new Dictionary<string, InputRequest>(StringComparer.Ordinal)
-                            {
-                                [AnswersInputKey] = InputRequest.ForElicitation(elicitor.ToElicitation(pending)),
-                            },
-                            RequestState = EncodeState(new ContinuationState(
-                                pendingService,
-                                step.ProcessId,
-                                pending.InformationRequestId,
-                                round,
-                                answered.Select(x => x?.GetValue<string>()).OfType<string>().ToArray())),
-                        },
-                    };
+                    return AskForAnswers(pendingService, step.ProcessId, pending, round, answered);
                 }
                 else
                 {
@@ -654,6 +639,24 @@ internal sealed partial class KaleidoToolInvoker(
         return summary;
     }
 
+    private ToolOutcome AskForAnswers(string service, Guid processId, InformationRequest pending, int round, JsonArray answered) =>
+        new()
+        {
+            InputRequired = new InputRequiredResult
+            {
+                InputRequests = new Dictionary<string, InputRequest>(StringComparer.Ordinal)
+                {
+                    [AnswersInputKey] = InputRequest.ForElicitation(elicitor.ToElicitation(pending)),
+                },
+                RequestState = EncodeState(new ContinuationState(
+                    service,
+                    processId,
+                    pending.InformationRequestId,
+                    round,
+                    answered.Select(x => x?.GetValue<string>()).OfType<string>().ToArray())),
+            },
+        };
+
     private static JsonObject Next(
         string service,
         ProcessRequiredStep? required,
@@ -687,14 +690,33 @@ internal sealed partial class KaleidoToolInvoker(
                 : new JsonObject { ["step"] = required.Name, ["displayName"] = required.DisplayName, ["note"] = "You are not allowed to run this step." };
         }
 
+        var tools = OfferedTools(available, catalog);
+
+        next["available"] = new JsonArray(tools);
+
+        if (tools.Length > 1)
+        {
+            next["choice"] = "Several steps are available: offer them to the user and let the user choose; do not pick one yourself. A step's 'closes' lists the steps it ends.";
+        }
+
+        if (required is null && tools.Length == 0)
+        {
+            next["note"] = "No further steps: the process is complete here.";
+        }
+
+        return next;
+    }
+
+    // The available steps the caller may run, each with the steps it closes - from the published
+    // availableUntil - so the user decides in which order to go, knowing what each choice ends.
+    private static JsonNode[] OfferedTools(IReadOnlyCollection<ProcessStepSummary> available, ToolCatalog catalog)
+    {
         var offered = available
             .Select(x => (Step: x, Tool: catalog.FindByUrl(x.ExecuteUrl)))
             .Where(x => x.Tool is not null)
             .ToArray();
 
-        // Which of the offered steps a step closes, from the published availableUntil: the user
-        // decides in which order to go, knowing what each choice ends.
-        var tools = offered
+        return offered
             .Select(x =>
             {
                 var entry = new JsonObject { ["tool"] = x.Tool?.Definition.Name, ["displayName"] = x.Step.DisplayName ?? x.Step.Name };
@@ -712,20 +734,6 @@ internal sealed partial class KaleidoToolInvoker(
                 return (JsonNode)entry;
             })
             .ToArray();
-
-        next["available"] = new JsonArray(tools);
-
-        if (tools.Length > 1)
-        {
-            next["choice"] = "Several steps are available: offer them to the user and let the user choose; do not pick one yourself. A step's 'closes' lists the steps it ends.";
-        }
-
-        if (required is null && tools.Length == 0)
-        {
-            next["note"] = "No further steps: the process is complete here.";
-        }
-
-        return next;
     }
 
     private static bool HasProposals(IEnumerable<InformationItem> items) =>

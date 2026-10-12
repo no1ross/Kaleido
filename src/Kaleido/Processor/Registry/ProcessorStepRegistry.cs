@@ -87,53 +87,30 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
         ArgumentNullException.ThrowIfNull(handlerTypes);
         ArgumentNullException.ThrowIfNull(defaultAuthorization);
 
-        var stepTypeArray =
-            stepTypes
-                .Distinct()
-                .ToArray();
-
         // Materialize one definition per step — relationship attributes are
         // collected as Type references (all steps may not exist yet).
         var definitions =
-            stepTypeArray
-                .Select(stepType =>
-                    BuildDefinition(
-                        handlerTypes,
-                        stepType,
-                        defaultAuthorization))
+            stepTypes
+                .Distinct()
+                .Select(stepType => BuildDefinition(handlerTypes, stepType, defaultAuthorization))
                 .ToArray();
 
-        var definitionsByType =
-            definitions.ToDictionary(
-                x => x.StepType);
+        var definitionsByType = definitions.ToDictionary(x => x.StepType);
 
         // Hydrate the Type references into definition references — requires
         // every definition to exist first.
         foreach (var definition in definitions)
         {
-            HydrateDefinition(
-                definition,
-                definitionsByType);
+            HydrateDefinition(definition, definitionsByType);
         }
 
-        ValidateDefinitions(
-            definitions);
+        ValidateDefinitions(definitions);
 
-        var registrations =
-            BuildRegistrations(
-                definitions);
+        var registrations = BuildRegistrations(definitions);
 
-        _registrations =
-            registrations;
-
-        _byName =
-            registrations.ToFrozenDictionary(
-                x => x.Metadata.Name,
-                StringComparer.OrdinalIgnoreCase);
-
-        _byType =
-            registrations.ToFrozenDictionary(
-                x => x.StepType);
+        _registrations = registrations;
+        _byName = registrations.ToFrozenDictionary(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase);
+        _byType = registrations.ToFrozenDictionary(x => x.StepType);
 
         // An information step can never start a process: it is only reachable
         // as the required step, with a pending information request.
