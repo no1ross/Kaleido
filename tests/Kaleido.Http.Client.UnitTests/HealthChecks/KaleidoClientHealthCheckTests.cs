@@ -8,12 +8,61 @@ public sealed class KaleidoClientHealthCheckTests
     : Kaleido.UnitTests.SutFixture
 {
     private static KaleidoClientHealthCheck CreateSut(
-        IHttpClientFactory httpClientFactory) =>
+        IHttpClientFactory httpClientFactory,
+        TimeSpan? timeout = null) =>
         new(
             httpClientFactory,
             "test-client",
             "/test-client/registry",
+            timeout ?? TimeSpan.FromSeconds(5),
             NullLogger<KaleidoClientHealthCheck>.Instance);
+
+    // The health check must report quickly and honestly: never retried by the resilience pipeline.
+    [Fact]
+    public async Task CheckHealthAsync_MarksItsRequestAsNeverRetried()
+    {
+        HttpRequestMessage? sent = null;
+        var check = CreateSut(FactoryFor((request, _) =>
+        {
+            sent = request;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        }));
+
+        await check.CheckHealthAsync(CreateContext());
+
+        Assert.NotNull(sent);
+        Assert.True(sent.Options.TryGetValue(KaleidoResilienceOptions.NoRetry, out var noRetry) && noRetry);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_WhenTheRemoteDoesNotAnswerWithinItsTimeout_ReturnsUnhealthy()
+    {
+        var check = CreateSut(
+            FactoryFor(async (_, cancellationToken) =>
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }),
+            TimeSpan.FromMilliseconds(50));
+
+        var result = await check.CheckHealthAsync(CreateContext());
+
+        Assert.Equal(HealthStatus.Unhealthy, result.Status);
+        Assert.Contains("did not answer within", result.Description, StringComparison.Ordinal);
+    }
+
+    private static IHttpClientFactory FactoryFor(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond)
+    {
+        var handler = new Mock<HttpMessageHandler>();
+        handler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .Returns(respond);
+
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost/") });
+        return factory.Object;
+    }
 
     // -------------------------------------------------------------------------
     // Healthy — remote returns 2xx
