@@ -150,45 +150,8 @@ public static class QueryableServiceCollectionExtensions
         IReadOnlyCollection<Type> delegatedSourceTypes,
         IReadOnlyCollection<Type> viewTypes)
     {
-        foreach (var type in localSourceTypes)
-        {
-            var sourceInterfaceCount =
-                type.GetSyncSourceInterfaces().Length +
-                type.GetAsyncSourceInterfaces().Length;
-
-            if (sourceInterfaceCount == 0)
-            {
-                throw new KaleidoConfigurationException(
-                    QueryableErrorCodes.InvalidRegistration,
-                    $"Query source '{type.FullName}' implements ILocalQuerySource<T> only. " +
-                    "Implement exactly one of IQuerySource<TQueryContext> or IQuerySourceAsync<TQueryContext>.");
-            }
-
-            if (sourceInterfaceCount > 1)
-            {
-                throw new KaleidoConfigurationException(
-                    QueryableErrorCodes.InvalidRegistration,
-                    $"Query source '{type.FullName}' implements more than one source interface. " +
-                    "Implement exactly one of IQuerySource<TQueryContext> or IQuerySourceAsync<TQueryContext>, for one query context.");
-            }
-        }
-
-        foreach (var type in delegatedSourceTypes)
-        {
-            if (type.IsLocalQuerySource())
-            {
-                throw new KaleidoConfigurationException(
-                    QueryableErrorCodes.InvalidRegistration,
-                    $"Query source '{type.FullName}' is both a local and a delegated source. Implement exactly one.");
-            }
-
-            if (type.GetDelegatedSourceInterfaces().Length > 1)
-            {
-                throw new KaleidoConfigurationException(
-                    QueryableErrorCodes.InvalidRegistration,
-                    $"Delegated query source '{type.FullName}' implements more than one IDelegatedQuerySource interface. Implement exactly one.");
-            }
-        }
+        ValidateLocalSourceShapes(localSourceTypes);
+        ValidateDelegatedSourceShapes(delegatedSourceTypes);
 
         var sourceTypes = localSourceTypes.Concat(delegatedSourceTypes).ToArray();
 
@@ -224,6 +187,54 @@ public static class QueryableServiceCollectionExtensions
                 QueryableErrorCodes.DuplicateRegistration,
                 "Duplicate query source names detected (a source's name is its type name): " +
                 string.Join("; ", duplicates.Select(g => $"'{g.Key}' ({string.Join(", ", g.Select(t => t.FullName))})")));
+        }
+    }
+
+    // A local source implements exactly one of IQuerySource<T> / IQuerySourceAsync<T>.
+    private static void ValidateLocalSourceShapes(IReadOnlyCollection<Type> localSourceTypes)
+    {
+        foreach (var type in localSourceTypes)
+        {
+            var sourceInterfaceCount =
+                type.GetSyncSourceInterfaces().Length +
+                type.GetAsyncSourceInterfaces().Length;
+
+            if (sourceInterfaceCount == 0)
+            {
+                throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.InvalidRegistration,
+                    $"Query source '{type.FullName}' implements ILocalQuerySource<T> only. " +
+                    "Implement exactly one of IQuerySource<TQueryContext> or IQuerySourceAsync<TQueryContext>.");
+            }
+
+            if (sourceInterfaceCount > 1)
+            {
+                throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.InvalidRegistration,
+                    $"Query source '{type.FullName}' implements more than one source interface. " +
+                    "Implement exactly one of IQuerySource<TQueryContext> or IQuerySourceAsync<TQueryContext>, for one query context.");
+            }
+        }
+    }
+
+    // A delegated source is not also local, and implements exactly one IDelegatedQuerySource.
+    private static void ValidateDelegatedSourceShapes(IReadOnlyCollection<Type> delegatedSourceTypes)
+    {
+        foreach (var type in delegatedSourceTypes)
+        {
+            if (type.IsLocalQuerySource())
+            {
+                throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.InvalidRegistration,
+                    $"Query source '{type.FullName}' is both a local and a delegated source. Implement exactly one.");
+            }
+
+            if (type.GetDelegatedSourceInterfaces().Length > 1)
+            {
+                throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.InvalidRegistration,
+                    $"Delegated query source '{type.FullName}' implements more than one IDelegatedQuerySource interface. Implement exactly one.");
+            }
         }
     }
 
