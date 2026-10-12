@@ -193,43 +193,13 @@ internal sealed partial class ProcessorRuntime(
 
         try
         {
-            var context =
-                await LoadOrCreateContextAsync(
-                    request,
-                    observation,
-                    cancellationToken);
+            var context = await LoadOrCreateContextAsync(request, observation, cancellationToken);
+            var plan = planner.BuildPlan(request.Processor, context);
+            var executionCandidates = GetExecutionCandidates(plan);
 
-            var plan =
-                planner.BuildPlan(
-                    request.Processor,
-                    context);
-
-            var executionCandidates =
-                GetExecutionCandidates(plan);
-
-            observation.PlanBuilt(
-                plan.Candidates.Count,
-                executionCandidates.Length);
-
-            RecordRejectedInformationResponses(
-                plan,
-                observation);
-
-            try
-            {
-                _ = eventPublisher.PublishAsync(
-                    eventFactory.CreatePlanBuilt(
-                        correlationAccessor.Current,
-                        context,
-                        request,
-                        plan,
-                        executionCandidates.Length),
-                    cancellationToken);
-            }
-            catch (Exception publishException) when (publishException is not OperationCanceledException)
-            {
-                LogPlanBuiltPublishFailed(logger, publishException, context.ProcessId);
-            }
+            observation.PlanBuilt(plan.Candidates.Count, executionCandidates.Length);
+            RecordRejectedInformationResponses(plan, observation);
+            PublishPlanBuilt(context, request, plan, executionCandidates.Length, cancellationToken);
 
             var executionResult =
                 await processor.ExecuteAsync(
@@ -238,27 +208,10 @@ internal sealed partial class ProcessorRuntime(
                     request.Processor,
                     cancellationToken);
 
-            var result =
-                CreateResult(
-                    plan,
-                    executionResult);
+            var result = CreateResult(plan, executionResult);
 
-            try
-            {
-                _ = eventPublisher.PublishAsync(
-                    eventFactory.CreateExecutionCompleted(
-                        correlationAccessor.Current,
-                        context,
-                        executionResult),
-                    cancellationToken);
-            }
-            catch (Exception publishException) when (publishException is not OperationCanceledException)
-            {
-                LogExecutionCompletedPublishFailed(logger, publishException, context.ProcessId);
-            }
-
-            observation.ExecutionCompleted(
-                executionResult.State);
+            PublishExecutionCompleted(context, executionResult, cancellationToken);
+            observation.ExecutionCompleted(executionResult.State);
 
             return result;
         }
@@ -274,6 +227,42 @@ internal sealed partial class ProcessorRuntime(
         }
     }
 
+    // Event delivery is best-effort: a publish failure is logged, never fails the request.
+    private void PublishPlanBuilt(
+        ProcessorContext context,
+        ProcessRequest request,
+        ExecutionPlanResult plan,
+        int executionCandidateCount,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _ = eventPublisher.PublishAsync(
+                eventFactory.CreatePlanBuilt(correlationAccessor.Current, context, request, plan, executionCandidateCount),
+                cancellationToken);
+        }
+        catch (Exception publishException) when (publishException is not OperationCanceledException)
+        {
+            LogPlanBuiltPublishFailed(logger, publishException, context.ProcessId);
+        }
+    }
+
+    private void PublishExecutionCompleted(
+        ProcessorContext context,
+        ProcessExecutionResult executionResult,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _ = eventPublisher.PublishAsync(
+                eventFactory.CreateExecutionCompleted(correlationAccessor.Current, context, executionResult),
+                cancellationToken);
+        }
+        catch (Exception publishException) when (publishException is not OperationCanceledException)
+        {
+            LogExecutionCompletedPublishFailed(logger, publishException, context.ProcessId);
+        }
+    }
     private bool IsHandOff() =>
         correlationAccessor.Current.CallingProcessorName is { Length: > 0 } calling &&
         !string.Equals(calling, serviceOptions.ServiceName, StringComparison.OrdinalIgnoreCase);
@@ -283,41 +272,9 @@ internal sealed partial class ProcessorRuntime(
         IProcessorExecutionObservation observation,
         CancellationToken cancellationToken)
     {
-        var requestId =
-            correlationAccessor.Current.RequestId;
-
-        // Owner is a tag only (created by), never enforced (ADR 0010).
-        var callerName = correlationAccessor.Current.CallerName;
-
         if (request.ProcessId is null)
         {
-            var initializedContext =
-                stateUpdater.Initialize(
-                    Guid.NewGuid())
-                    with
-                {
-                    LatestRequestId = requestId,
-                    Owner = callerName,
-                };
-
-            observation.ContextInitialized(
-                initializedContext.ProcessId);
-
-            try
-            {
-                _ = eventPublisher.PublishAsync(
-                    eventFactory.CreateProcessCreated(
-                        correlationAccessor.Current,
-                        initializedContext,
-                        request),
-                    cancellationToken);
-            }
-            catch (Exception publishException) when (publishException is not OperationCanceledException)
-            {
-                LogProcessCreatedPublishFailed(logger, publishException, initializedContext.ProcessId);
-            }
-
-            return initializedContext;
+            return CreateContext(Guid.NewGuid(), request, observation, handedOff: false, cancellationToken);
         }
 
         var context =
@@ -338,33 +295,7 @@ internal sealed partial class ProcessorRuntime(
 
         if (context is null)
         {
-            var initializedContext =
-                stateUpdater.Initialize(
-                    request.ProcessId.Value)
-                    with
-                {
-                    LatestRequestId = requestId,
-                    Owner = callerName,
-                };
-
-            observation.ContextInitialized(
-                initializedContext.ProcessId);
-
-            try
-            {
-                _ = eventPublisher.PublishAsync(
-                    eventFactory.CreateProcessCreated(
-                        correlationAccessor.Current,
-                        initializedContext,
-                        request),
-                    cancellationToken);
-            }
-            catch (Exception publishException) when (publishException is not OperationCanceledException)
-            {
-                LogProcessCreatedPublishFailedOnResume(logger, publishException, initializedContext.ProcessId);
-            }
-
-            return initializedContext;
+            return CreateContext(request.ProcessId.Value, request, observation, handedOff: true, cancellationToken);
         }
 
         observation.ContextLoaded(
@@ -374,10 +305,52 @@ internal sealed partial class ProcessorRuntime(
             context)
             with
         {
-            LatestRequestId = requestId,
+            LatestRequestId = correlationAccessor.Current.RequestId,
         };
     }
 
+    // A new process (or one handed off from another processor): initialized, observed, and
+    // announced with a ProcessCreated event (best-effort).
+    private ProcessorContext CreateContext(
+        Guid processId,
+        ProcessRequest request,
+        IProcessorExecutionObservation observation,
+        bool handedOff,
+        CancellationToken cancellationToken)
+    {
+        var initializedContext =
+            stateUpdater.Initialize(processId)
+                with
+            {
+                LatestRequestId = correlationAccessor.Current.RequestId,
+
+                // Owner is a tag only (created by), never enforced (ADR 0010).
+                Owner = correlationAccessor.Current.CallerName,
+            };
+
+        observation.ContextInitialized(
+            initializedContext.ProcessId);
+
+        try
+        {
+            _ = eventPublisher.PublishAsync(
+                eventFactory.CreateProcessCreated(correlationAccessor.Current, initializedContext, request),
+                cancellationToken);
+        }
+        catch (Exception publishException) when (publishException is not OperationCanceledException)
+        {
+            if (handedOff)
+            {
+                LogProcessCreatedPublishFailedOnResume(logger, publishException, initializedContext.ProcessId);
+            }
+            else
+            {
+                LogProcessCreatedPublishFailed(logger, publishException, initializedContext.ProcessId);
+            }
+        }
+
+        return initializedContext;
+    }
     private static void RecordRejectedInformationResponses(
         ExecutionPlanResult plan,
         IProcessorExecutionObservation observation)
@@ -415,69 +388,37 @@ internal sealed partial class ProcessorRuntime(
                     x => x,
                     StringComparer.OrdinalIgnoreCase);
 
-        var steps =
-            plan.Candidates
-                .Select(
-                    candidate =>
-                    {
-                        outcomes.TryGetValue(
-                            candidate.StepName,
-                            out var outcome);
-
-                        return new ProcessStepResult
-                        {
-                            StepName =
-                                candidate.StepName,
-
-                            CandidateStatus =
-                                candidate.Status,
-
-                            IncludedInExecutionPlan =
-                                candidate.IncludedInExecutionPlan,
-
-                            Response = outcome?.Response,
-
-                            ExecutionStatus =
-                                outcome?.Status ?? StepExecutionStatus.Pending,
-
-                            Outcome =
-                                outcome?.Outcome ?? StepExecutionOutcome.Pending,
-
-                            RuntimeMessages =
-                                MergeMessages(
-                                    candidate,
-                                    outcome),
-
-                            BusinessMessages = outcome?.BusinessMessages ?? Array.Empty<ProcessMessage>(),
-                        };
-                    })
-                .ToArray();
-
         return new ProcessResult
         {
-            ProcessId =
-                executionResult.ProcessId,
-
-            State =
-                executionResult.State,
-
-            RequiredStep =
-                executionResult.RequiredStep,
-
-            RequiredInformationRequest =
-                executionResult.RequiredInformationRequest,
-
-            TargetProcessorName =
-                executionResult.TargetProcessorName,
-
-            AvailableSteps =
-                executionResult.AvailableSteps,
-
-            Steps =
-                steps,
+            ProcessId = executionResult.ProcessId,
+            State = executionResult.State,
+            RequiredStep = executionResult.RequiredStep,
+            RequiredInformationRequest = executionResult.RequiredInformationRequest,
+            TargetProcessorName = executionResult.TargetProcessorName,
+            AvailableSteps = executionResult.AvailableSteps,
+            Steps = [.. plan.Candidates.Select(candidate => StepResult(candidate, outcomes))],
         };
     }
 
+    // A planned step and, when it ran, its outcome.
+    private static ProcessStepResult StepResult(
+        StepCandidate candidate,
+        Dictionary<string, ProcessExecutionOutcome> outcomes)
+    {
+        outcomes.TryGetValue(candidate.StepName, out var outcome);
+
+        return new ProcessStepResult
+        {
+            StepName = candidate.StepName,
+            CandidateStatus = candidate.Status,
+            IncludedInExecutionPlan = candidate.IncludedInExecutionPlan,
+            Response = outcome?.Response,
+            ExecutionStatus = outcome?.Status ?? StepExecutionStatus.Pending,
+            Outcome = outcome?.Outcome ?? StepExecutionOutcome.Pending,
+            RuntimeMessages = MergeMessages(candidate, outcome),
+            BusinessMessages = outcome?.BusinessMessages ?? Array.Empty<ProcessMessage>(),
+        };
+    }
     private static List<StepProcessingMessage> MergeMessages(
         StepCandidate candidate,
         ProcessExecutionOutcome? outcome)

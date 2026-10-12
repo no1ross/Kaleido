@@ -64,14 +64,7 @@ internal sealed partial class DelegatedQuerySourceEngine<TQueryContext, TResult>
 
         try
         {
-            if (request.ViewParametersType != source.ParametersType)
-            {
-                throw new KaleidoFrameworkException(
-                    FrameworkErrorCodes.TypeMismatch,
-                    $"Delegated query source '{source.SourceType.FullName}' expected parameters '{source.ParametersType.FullName}', but request used '{request.ViewParametersType.FullName}'.");
-            }
-
-            validator.Validate(request, source.Metadata, source.Metadata.Pageable);
+            Validate(request, source);
 
             var instance =
                 serviceProvider.GetRequiredService(
@@ -84,16 +77,7 @@ internal sealed partial class DelegatedQuerySourceEngine<TQueryContext, TResult>
 
             using var scope = observation.BeginDelegate();
 
-            var invocation = typedMethod.Invoke(this, [instance, request, source, cancellationToken]);
-
-            if (invocation is not Task<QueryResult<TResult>> typedTask)
-            {
-                throw new KaleidoFrameworkException(
-                    FrameworkErrorCodes.TypeMismatch,
-                    $"Delegated query execution for source '{source.SourceType.FullName}' did not return '{typeof(QueryResult<TResult>).FullName}'.");
-            }
-
-            var result = await typedTask;
+            var result = await InvokeAsync(typedMethod, instance, request, source, cancellationToken);
 
             observation.Materialized(
                 result.TotalCount,
@@ -101,23 +85,7 @@ internal sealed partial class DelegatedQuerySourceEngine<TQueryContext, TResult>
                 result.PageSize,
                 result.Offset);
 
-            if (eventPublisher is not EventPublisher)
-            {
-                try
-                {
-                    _ = eventPublisher.PublishAsync(
-                        eventFactory.CreateQueryExecuted(
-                            correlationAccessor.Current,
-                            details,
-                            request,
-                            result),
-                        cancellationToken);
-                }
-                catch (Exception publishException) when (publishException is not OperationCanceledException)
-                {
-                    LogEventPublishFailed(logger, publishException, details.QuerySourceName);
-                }
-            }
+            PublishExecuted(details, request, result, cancellationToken);
 
             return result;
         }
@@ -138,6 +106,53 @@ internal sealed partial class DelegatedQuerySourceEngine<TQueryContext, TResult>
         }
     }
 
+    // The request is validated against the delegated source's query context, like a local source's.
+    private void Validate(IQueryRequest request, QuerySourceRegistration source)
+    {
+        if (request.ViewParametersType != source.ParametersType)
+        {
+            throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.TypeMismatch,
+                $"Delegated query source '{source.SourceType.FullName}' expected parameters '{source.ParametersType.FullName}', but request used '{request.ViewParametersType.FullName}'.");
+        }
+
+        validator.Validate(request, source.Metadata, source.Metadata.Pageable);
+    }
+
+    private Task<QueryResult<TResult>> InvokeAsync(
+        System.Reflection.MethodInfo typedMethod,
+        object instance,
+        IQueryRequest request,
+        QuerySourceRegistration source,
+        CancellationToken cancellationToken) =>
+        typedMethod.Invoke(this, [instance, request, source, cancellationToken]) as Task<QueryResult<TResult>>
+        ?? throw new KaleidoFrameworkException(
+            FrameworkErrorCodes.TypeMismatch,
+            $"Delegated query execution for source '{source.SourceType.FullName}' did not return '{typeof(QueryResult<TResult>).FullName}'.");
+
+    // Event delivery is best-effort; without a registered publisher nothing is published.
+    private void PublishExecuted(
+        QueryObservationDetails details,
+        IQueryRequest request,
+        QueryResult<TResult> result,
+        CancellationToken cancellationToken)
+    {
+        if (eventPublisher is EventPublisher)
+        {
+            return;
+        }
+
+        try
+        {
+            _ = eventPublisher.PublishAsync(
+                eventFactory.CreateQueryExecuted(correlationAccessor.Current, details, request, result),
+                cancellationToken);
+        }
+        catch (Exception publishException) when (publishException is not OperationCanceledException)
+        {
+            LogEventPublishFailed(logger, publishException, details.QuerySourceName);
+        }
+    }
     private static Task<QueryResult<TResult>> ExecuteTypedAsync<TParameters>(
         object instance,
         IQueryRequest request,

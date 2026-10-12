@@ -74,48 +74,13 @@ internal sealed partial class SqliteProcessorContextStore(
                 await dbContext.Database.BeginTransactionAsync(
                     cancellationToken);
 
-            var entity =
-                await dbContext.ProcessContexts
-                    .Include(x => x.Steps)
-                    .Include(x => x.AvailableSteps)
-                    .Include(x => x.RequiredStep)
-                    .AsSplitQuery()
-                    .FirstOrDefaultAsync(
-                        x => x.ProcessId ==
-                             context.ProcessId,
-                        cancellationToken);
+            var entity = await LoadOrAddEntityAsync(context.ProcessId, cancellationToken);
 
-            if (entity is null)
-            {
-                entity =
-                    new ProcessorContextEntity
-                    {
-                        ProcessId =
-                            context.ProcessId,
-                    };
-
-                dbContext.ProcessContexts.Add(
-                    entity);
-            }
-
-            entity.LatestRequestId =
-                context.LatestRequestId;
-
-            entity.Owner =
-                context.Owner;
-
-            entity.State =
-                context.State;
-
-            entity.CreatedUtc =
-                context.CreatedUtc == default
-                    ? DateTimeOffset.UtcNow
-                    : context.CreatedUtc;
-
-            entity.UpdatedUtc =
-                context.UpdatedUtc == default
-                    ? DateTimeOffset.UtcNow
-                    : context.UpdatedUtc;
+            entity.LatestRequestId = context.LatestRequestId;
+            entity.Owner = context.Owner;
+            entity.State = context.State;
+            entity.CreatedUtc = context.CreatedUtc == default ? DateTimeOffset.UtcNow : context.CreatedUtc;
+            entity.UpdatedUtc = context.UpdatedUtc == default ? DateTimeOffset.UtcNow : context.UpdatedUtc;
 
             SyncSteps(entity, context);
             SyncAvailableSteps(entity, context);
@@ -136,6 +101,31 @@ internal sealed partial class SqliteProcessorContextStore(
             LogSaveFailed(logger, exception, context.ProcessId);
             throw;
         }
+    }
+
+    // The tracked entity with its children, or a new one added to the context.
+    private async Task<ProcessorContextEntity> LoadOrAddEntityAsync(
+        Guid processId,
+        CancellationToken cancellationToken)
+    {
+        var entity =
+            await dbContext.ProcessContexts
+                .Include(x => x.Steps)
+                .Include(x => x.AvailableSteps)
+                .Include(x => x.RequiredStep)
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(
+                    x => x.ProcessId ==
+                         processId,
+                    cancellationToken);
+
+        if (entity is null)
+        {
+            entity = new ProcessorContextEntity { ProcessId = processId };
+            dbContext.ProcessContexts.Add(entity);
+        }
+
+        return entity;
     }
 
     // Update children in place so EF generates only the delta — no
@@ -273,24 +263,12 @@ internal sealed partial class SqliteProcessorContextStore(
     {
         return new ProcessorContext
         {
-            ProcessId =
-                entity.ProcessId,
-
-            ProcessorName =
-                localProcessorName,
-
-            LatestRequestId =
-                entity.LatestRequestId,
-
-            Owner =
-                entity.Owner,
-
-            State =
-                entity.State,
-
-            RequiredStep =
-                entity.RequiredStep?.StepName,
-
+            ProcessId = entity.ProcessId,
+            ProcessorName = localProcessorName,
+            LatestRequestId = entity.LatestRequestId,
+            Owner = entity.Owner,
+            State = entity.State,
+            RequiredStep = entity.RequiredStep?.StepName,
             RequiredInformationRequest =
                 entity.RequiredStep?.InformationRequestJson is { } json
                     ? JsonSerializer.Deserialize<InformationRequest>(json, JsonOptions)
@@ -308,11 +286,8 @@ internal sealed partial class SqliteProcessorContextStore(
                         ? null
                         : entity.RequiredStep.ProcessorName,
 
-            CreatedUtc =
-                entity.CreatedUtc,
-
-            UpdatedUtc =
-                entity.UpdatedUtc,
+            CreatedUtc = entity.CreatedUtc,
+            UpdatedUtc = entity.UpdatedUtc,
 
             // Available steps are always local step names.
             AvailableSteps =
@@ -327,20 +302,11 @@ internal sealed partial class SqliteProcessorContextStore(
                     .Select(step =>
                         new StepContext
                         {
-                            StepName =
-                                step.StepName,
-
-                            Version =
-                                step.Version,
-
-                            Status =
-                                step.Status,
-
-                            LatestRequestId =
-                                step.LatestRequestId,
-
-                            LastExecuted =
-                                step.LastExecuted,
+                            StepName = step.StepName,
+                            Version = step.Version,
+                            Status = step.Status,
+                            LatestRequestId = step.LatestRequestId,
+                            LastExecuted = step.LastExecuted,
                         })
                     .ToArray(),
         };

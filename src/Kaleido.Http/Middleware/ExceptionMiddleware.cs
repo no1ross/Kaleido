@@ -71,15 +71,20 @@ internal sealed partial class ExceptionMiddleware(RequestDelegate next, ILogger<
         {
             MarkFailed(exception);
             LogUnhandled(logger, exception);
-
-            if (context.Response.HasStarted)
-            {
-                RecordEndpointError(KaleidoErrorCodes.FrameworkError, StatusCodes.Status500InternalServerError);
-                return;
-            }
-
-            await WriteErrorAsync(context, StatusCodes.Status500InternalServerError, KaleidoErrorCodes.FrameworkError, "An unexpected error occurred.");
+            await WriteUnexpectedErrorAsync(context);
         }
+    }
+
+    // A 500 without details - unless the response has started, then only the error is counted.
+    private static async Task WriteUnexpectedErrorAsync(HttpContext context)
+    {
+        if (context.Response.HasStarted)
+        {
+            RecordEndpointError(KaleidoErrorCodes.FrameworkError, StatusCodes.Status500InternalServerError);
+            return;
+        }
+
+        await WriteErrorAsync(context, StatusCodes.Status500InternalServerError, KaleidoErrorCodes.FrameworkError, "An unexpected error occurred.");
     }
 
     private static void MarkFailed(Exception exception) =>

@@ -31,25 +31,9 @@ public static class RegistryEndpointRouteBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
-        // Resolved once at map-time — these do not change after startup.
-        var processClientMap = endpoints.ServiceProvider
-            .GetService<KaleidoProcessorClientRouteOptionsMap>();
-
-        var queryableClientMap = endpoints.ServiceProvider
-            .GetService<KaleidoQueryableClientRouteOptionsMap>();
-
         var aggregate = mapOptions.AggregateRegistry;
 
-        // Guard — aggregation requires AddHttpClients() with at least one
-        // configured client. The route-options maps are singletons registered
-        // per client; neither present means no client infrastructure exists.
-        if (aggregate && processClientMap is null && queryableClientMap is null)
-        {
-            throw new KaleidoConfigurationException(
-                ProcessorErrorCodes.InvalidRegistration,
-                "Cannot aggregate the Registry endpoint: no Kaleido clients are registered. " +
-                "Call AddHttpClients() on the IKaleidoBuilder before mapping an aggregated registry.");
-        }
+        EnsureClientsForAggregation(endpoints.ServiceProvider, aggregate);
 
         // Required — AddKaleido() must be called before MapRegistry().
         var localServiceOptions = endpoints.ServiceProvider
@@ -68,67 +52,13 @@ public static class RegistryEndpointRouteBuilderExtensions
 
         var endpoint = group.MapGet(
                 RegistryContractUrls.Registry(localServiceOptions.ServiceName),
-                async (
-                    HttpContext httpContext,
-                    CancellationToken cancellationToken) =>
-                {
-                    // Fail closed: the registry is filtered per caller, which needs AddHttp()'s
-                    // authorizer — never serve it unfiltered.
-                    var registry =
-                        httpContext.RequestServices.GetService<IKaleidoRegistryService>()
-                        ?? throw new KaleidoConfigurationException(
-                            ConfigurationErrorCodes.AuthenticationNotConfigured,
-                            "Registry filtering requires AddHttp() to register the Kaleido HTTP authorizer.");
-
-                    var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
-                    var strict = httpContext.Request.Query.ContainsKey("strict");
-
-                    var response = await registry.GetForCallerAsync(forceRefresh, cancellationToken);
-
-                    // Freshness contract: Revision hashes the per-caller filtered payload (same
-                    // content → same ETag); Cache-Control advertises the configured staleness window.
-                    var etag = $"\"{response.Revision}\"";
-                    httpContext.Response.Headers.ETag = etag;
-                    httpContext.Response.Headers.CacheControl =
-                        mapOptions.RegistryCacheTtl is { } ttl
-                            ? string.Create(CultureInfo.InvariantCulture, $"public, max-age={(int)ttl.TotalSeconds}"
-)
-                            : "no-cache";
-
-                    if (httpContext.Request.Headers.IfNoneMatch.Any(
-                            value => string.Equals(value, etag, StringComparison.Ordinal)
-                                || string.Equals(value, "*", StringComparison.Ordinal)))
-                    {
-                        return Results.StatusCode(StatusCodes.Status304NotModified);
-                    }
-
-                    // ?strict — agents/gateways get a real failure signal when
-                    // the aggregate is partial; the full body is still included.
-                    if (strict && response.ClientErrors.Count > 0)
-                    {
-                        return Results.Json(
-                            response,
-                            KaleidoJsonOptions.Options,
-                            statusCode: StatusCodes.Status502BadGateway);
-                    }
-
-                    return Results.Ok(response);
-                })
+                (HttpContext httpContext, CancellationToken cancellationToken) =>
+                    GetRegistryAsync(httpContext, mapOptions, cancellationToken))
             .WithName(RegistryEndpointNames.RegistryEndpointName)
             .WithTags("Registry")
             .Produces<AggregatedRegistryResponse>()
             .WithSummary("Get unified registry.")
-            .WithDescription(
-                "Returns process and queryable registrations from this service" +
-                (aggregate ? " and configured downstream clients. " : ". ") +
-                (aggregate
-                    ? "A partial aggregate returns HTTP 200 by default with isPartial and clientErrors; " +
-                      "?strict returns HTTP 502 with the same body. Partial results are not cached. "
-                    : "A successful local-only registry request returns HTTP 200. ") +
-                "Process steps carry fully-resolved executeUrl values. " +
-                (aggregate
-                    ? "Configured downstream clients are registered via AddHttpClients()."
-                    : "To include downstream clients, enable AggregateRegistry and call AddHttpClients()."));
+            .WithDescription(Description(aggregate));
 
         if (aggregate)
         {
@@ -137,4 +67,79 @@ public static class RegistryEndpointRouteBuilderExtensions
 
         return group;
     }
+
+    // Guard — aggregation requires AddHttpClients() with at least one configured client. The
+    // route-options maps are singletons registered per client; neither present means no client
+    // infrastructure exists. Resolved once at map-time — these do not change after startup.
+    private static void EnsureClientsForAggregation(IServiceProvider services, bool aggregate)
+    {
+        if (aggregate &&
+            services.GetService<KaleidoProcessorClientRouteOptionsMap>() is null &&
+            services.GetService<KaleidoQueryableClientRouteOptionsMap>() is null)
+        {
+            throw new KaleidoConfigurationException(
+                ProcessorErrorCodes.InvalidRegistration,
+                "Cannot aggregate the Registry endpoint: no Kaleido clients are registered. " +
+                "Call AddHttpClients() on the IKaleidoBuilder before mapping an aggregated registry.");
+        }
+    }
+
+    private static async Task<IResult> GetRegistryAsync(
+        HttpContext httpContext,
+        KaleidoHttpMapOptions mapOptions,
+        CancellationToken cancellationToken)
+    {
+        // Fail closed: the registry is filtered per caller, which needs AddHttp()'s
+        // authorizer — never serve it unfiltered.
+        var registry =
+            httpContext.RequestServices.GetService<IKaleidoRegistryService>()
+            ?? throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.AuthenticationNotConfigured,
+                "Registry filtering requires AddHttp() to register the Kaleido HTTP authorizer.");
+
+        var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
+        var strict = httpContext.Request.Query.ContainsKey("strict");
+
+        var response = await registry.GetForCallerAsync(forceRefresh, cancellationToken);
+
+        // Freshness contract: Revision hashes the per-caller filtered payload (same
+        // content → same ETag); Cache-Control advertises the configured staleness window.
+        var etag = $"\"{response.Revision}\"";
+        httpContext.Response.Headers.ETag = etag;
+        httpContext.Response.Headers.CacheControl =
+            mapOptions.RegistryCacheTtl is { } ttl
+                ? string.Create(CultureInfo.InvariantCulture, $"public, max-age={(int)ttl.TotalSeconds}")
+                : "no-cache";
+
+        if (httpContext.Request.Headers.IfNoneMatch.Any(
+                value => string.Equals(value, etag, StringComparison.Ordinal)
+                    || string.Equals(value, "*", StringComparison.Ordinal)))
+        {
+            return Results.StatusCode(StatusCodes.Status304NotModified);
+        }
+
+        // ?strict — agents/gateways get a real failure signal when
+        // the aggregate is partial; the full body is still included.
+        if (strict && response.ClientErrors.Count > 0)
+        {
+            return Results.Json(
+                response,
+                KaleidoJsonOptions.Options,
+                statusCode: StatusCodes.Status502BadGateway);
+        }
+
+        return Results.Ok(response);
+    }
+
+    private static string Description(bool aggregate) =>
+        "Returns process and queryable registrations from this service" +
+        (aggregate ? " and configured downstream clients. " : ". ") +
+        (aggregate
+            ? "A partial aggregate returns HTTP 200 by default with isPartial and clientErrors; " +
+              "?strict returns HTTP 502 with the same body. Partial results are not cached. "
+            : "A successful local-only registry request returns HTTP 200. ") +
+        "Process steps carry fully-resolved executeUrl values. " +
+        (aggregate
+            ? "Configured downstream clients are registered via AddHttpClients()."
+            : "To include downstream clients, enable AggregateRegistry and call AddHttpClients().");
 }
