@@ -104,6 +104,7 @@ public static partial class ProcessorEndpointRouteBuilderExtensions
 
                     return Results.Ok(result);
                 })
+            .AddEndpointFilter<KaleidoIdempotencyEndpointFilter>()
             .WithName(ProcessEndpointNames.ExecuteEndpointName)
             .Accepts<ExecuteProcessRequest>("application/json")
             .WithTags("Processes")
@@ -236,6 +237,7 @@ public static partial class ProcessorEndpointRouteBuilderExtensions
 
                     return Results.Ok(result);
                 })
+            .AddEndpointFilter<KaleidoIdempotencyEndpointFilter>()
             .WithKaleidoAuthorization(step.Metadata.Authorization, options)
             .WithName(
                 ProcessEndpointNames.StepExecutionEndpointName(
@@ -278,6 +280,7 @@ public static partial class ProcessorEndpointRouteBuilderExtensions
 
                     return Results.Ok(result);
                 })
+            .AddEndpointFilter<KaleidoIdempotencyEndpointFilter>()
             .WithKaleidoAuthorization(step.Metadata.Authorization, options)
             .WithName(
                 ProcessEndpointNames.StepExecutionEndpointName(

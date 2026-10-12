@@ -22,6 +22,9 @@ public sealed class SqliteProcessorContextDbContext(
     internal DbSet<ProcessorRequiredStepEntity> ProcessRequiredSteps =>
         Set<ProcessorRequiredStepEntity>();
 
+    internal DbSet<IdempotentResultEntity> IdempotentResults =>
+        Set<IdempotentResultEntity>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
@@ -36,5 +39,8 @@ public sealed class SqliteProcessorContextDbContext(
 
         modelBuilder.ApplyConfiguration(
             new ProcessorRequiredStepEntityConfiguration());
+
+        modelBuilder.ApplyConfiguration(
+            new IdempotentResultEntityConfiguration());
     }
 }

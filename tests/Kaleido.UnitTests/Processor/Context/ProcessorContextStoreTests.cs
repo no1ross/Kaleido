@@ -179,4 +179,42 @@ public sealed class ProcessorContextStoreTests
         await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
             store.SaveAsync(context, CancellationToken.None));
     }
+
+    private static IdempotentResult Result(string key, DateTimeOffset expiresUtc, string response = "{}") =>
+        new() { Key = key, RequestHash = "hash", StatusCode = 200, Response = response, ExpiresUtc = expiresUtc };
+
+    [Fact]
+    public async Task SaveResultAsync_ThenFindResultAsync_ReturnsTheStoredAnswer()
+    {
+        var sut = CreateSut();
+        var stored = Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), """{"processId":"p"}""");
+
+        await sut.SaveResultAsync(stored);
+
+        var found = await sut.FindResultAsync("svc:alice:k1");
+        Assert.NotNull(found);
+        Assert.Equal(stored.RequestHash, found.RequestHash);
+        Assert.Equal(stored.StatusCode, found.StatusCode);
+        Assert.Equal(stored.Response, found.Response);
+    }
+
+    [Fact]
+    public async Task FindResultAsync_ForAnExpiredOrUnknownKey_ReturnsNull()
+    {
+        var sut = CreateSut();
+        await sut.SaveResultAsync(Result("svc:alice:old", DateTimeOffset.UtcNow.AddMinutes(-1)));
+
+        Assert.Null(await sut.FindResultAsync("svc:alice:old"));
+        Assert.Null(await sut.FindResultAsync("svc:alice:unknown"));
+    }
+
+    [Fact]
+    public async Task SaveResultAsync_ForAnExistingKey_ReplacesTheAnswer()
+    {
+        var sut = CreateSut();
+        await sut.SaveResultAsync(Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), "first"));
+        await sut.SaveResultAsync(Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), "second"));
+
+        Assert.Equal("second", (await sut.FindResultAsync("svc:alice:k1"))!.Response);
+    }
 }

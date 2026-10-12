@@ -279,6 +279,14 @@ internal sealed partial class KaleidoProcessorClient(
         CancellationToken cancellationToken,
         bool capabilityCall = true)
     {
+        // Every execute call is idempotent: one key per call, so a retry of this request (the
+        // resilience pipeline re-sends the same message) gets the stored answer instead of running the
+        // step a second time.
+        if (request.Method == HttpMethod.Post && !request.Headers.Contains(KaleidoIdempotencyHeaders.IdempotencyKey))
+        {
+            request.Headers.Add(KaleidoIdempotencyHeaders.IdempotencyKey, Guid.NewGuid().ToString("N"));
+        }
+
         LogSending(logger, request.Method, request.RequestUri, serviceName);
 
         var response = await httpClient.SendAsync(request, cancellationToken);

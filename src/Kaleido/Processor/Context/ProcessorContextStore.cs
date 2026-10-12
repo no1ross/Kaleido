@@ -35,6 +35,17 @@ public interface IProcessorContextStore
     /// with that id already exists for a context with version 0. Nothing is saved.
     /// </exception>
     Task<ProcessorContext> SaveAsync(ProcessorContext context, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The stored answer for an idempotency key, or null when there is none or it has expired.
+    /// </summary>
+    Task<IdempotentResult?> FindResultAsync(string key, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Stores the answer for an idempotency key (replacing an earlier one for the same key). A store
+    /// may delete expired answers here.
+    /// </summary>
+    Task SaveResultAsync(IdempotentResult result, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -269,6 +280,7 @@ internal sealed partial class ProcessorContextStore : IProcessorContextStore
 {
     private readonly ILogger<ProcessorContextStore> _logger;
     private readonly ConcurrentDictionary<Guid, ProcessorContext> _contexts = new();
+    private readonly ConcurrentDictionary<string, IdempotentResult> _results = new(StringComparer.Ordinal);
     private readonly object _saveLock = new();
 
     public ProcessorContextStore(
@@ -312,6 +324,35 @@ internal sealed partial class ProcessorContextStore : IProcessorContextStore
         LogSaved(_logger, context.ProcessId, context.Steps.Count);
 
         return Task.FromResult(saved);
+    }
+
+    public Task<IdempotentResult?> FindResultAsync(string key, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.FromResult(
+            _results.TryGetValue(key, out var result) && result.ExpiresUtc > DateTimeOffset.UtcNow
+                ? result
+                : null);
+    }
+
+    public Task SaveResultAsync(IdempotentResult result, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        _results[result.Key] = result;
+
+        // Expired answers are dropped as new ones arrive, so the dictionary does not grow without bound.
+        var now = DateTimeOffset.UtcNow;
+
+        foreach (var expired in _results.Where(x => x.Value.ExpiresUtc <= now).Select(x => x.Key).ToList())
+        {
+            _results.TryRemove(expired, out _);
+        }
+
+        return Task.CompletedTask;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "ProcessorContextStore is active. This store has no eviction policy and will grow without bound in long-running processes. Register a durable IProcessorContextStore (e.g. UseSqliteProcessorContextStore) before deploying to production.")]

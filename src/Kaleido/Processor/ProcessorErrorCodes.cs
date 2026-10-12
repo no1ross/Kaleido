@@ -37,6 +37,15 @@ public static class ProcessorErrorCodes
     /// </summary>
     public const string ProcessConflict = "pro_process_conflict";
 
+    /// <summary>
+    /// An idempotency key was sent again with a different request: the key identifies one logical call
+    /// and its stored answer belongs to the first request. Use a new key for a new call. HTTP 422.
+    /// </summary>
+    public const string IdempotencyKeyReused = "pro_idempotency_key_reused";
+
+    /// <summary>The idempotency key is longer than 200 characters. HTTP 400.</summary>
+    public const string InvalidIdempotencyKey = "pro_invalid_idempotency_key";
+
     /// <summary>The supplied step request is invalid.</summary>
     public const string InvalidRequest = "pro_invalid_request";
 
