@@ -47,6 +47,7 @@ public static class RegistryEndpointRouteBuilderExtensions
 
         var group =
             endpoints.MapGroup("")
+            .AddEndpointFilter<KaleidoExceptionEndpointFilter>()
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
             .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 

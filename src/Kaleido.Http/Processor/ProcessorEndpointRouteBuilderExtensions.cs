@@ -49,6 +49,7 @@ public static partial class ProcessorEndpointRouteBuilderExtensions
         var group =
             endpoints.MapGroup(
                 routePrefix)
+            .AddEndpointFilter<KaleidoExceptionEndpointFilter>()
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
             // Post-auth: stamps CallerName/CallerRoles onto the ambient
             // correlation context for per-step checks inside handlers and the
