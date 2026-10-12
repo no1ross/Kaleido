@@ -39,42 +39,16 @@ internal sealed partial class ProcessStateService(
         return new ProcessStateResponse
         {
             ProcessId = context.ProcessId,
-
             State = context.State,
 
             // RequiredStep is null when TargetProcessorName is set —
             // consumer must call the target processor's state endpoint instead.
-            RequiredStep =
-                CreateRequiredStep(
-                    context),
-
-            TargetProcessorName =
-                context.TargetProcessorName,
-
-            AvailableSteps =
-                context.AvailableSteps
-                    .Select(stepName =>
-                        {
-                            var registration = registry.Find(stepName)
-                                ?? throw new KaleidoFrameworkException(
-                                    FrameworkErrorCodes.MissingRegistration,
-                                    $"Available step '{stepName}' was not found in the local registry.");
-                            return responseFactory.CreateStepSummary(
-                                new ProcessorStepSummary
-                                {
-                                    Name = registration.Metadata.Name,
-                                    Description = registration.Metadata.Description,
-                                    DisplayName = registration.Metadata.DisplayName,
-                                    Version = registration.Metadata.Version,
-                                    Repeatable = registration.Repeatable.Enabled,
-                                    IsInformationStep = registration.IsInformationStep,
-                                },
-                                serviceOptions.ServiceName);
-                        })
-                    .ToArray(),
-
+            RequiredStep = CreateRequiredStep(context),
+            TargetProcessorName = context.TargetProcessorName,
+            AvailableSteps = [.. context.AvailableSteps.Select(AvailableStep)],
             Steps =
-                context.Steps
+            [
+                .. context.Steps
                     .OrderBy(x => x.StepName, StringComparer.OrdinalIgnoreCase)
                     .Select(x =>
                         new ProcessStepHistory
@@ -83,15 +57,33 @@ internal sealed partial class ProcessStateService(
                             Version = x.Version,
                             Status = x.Status,
                             LastExecuted = x.LastExecuted,
-                        })
-                    .ToArray(),
-
+                        }),
+            ],
             CreatedUtc = context.CreatedUtc,
-
             UpdatedUtc = context.UpdatedUtc,
-
             Owner = context.Owner,
         };
+    }
+
+    // An available step as the caller sees it; every available step is registered locally.
+    private ProcessStepSummary AvailableStep(string stepName)
+    {
+        var registration = registry.Find(stepName)
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
+                $"Available step '{stepName}' was not found in the local registry.");
+
+        return responseFactory.CreateStepSummary(
+            new ProcessorStepSummary
+            {
+                Name = registration.Metadata.Name,
+                Description = registration.Metadata.Description,
+                DisplayName = registration.Metadata.DisplayName,
+                Version = registration.Metadata.Version,
+                Repeatable = registration.Repeatable.Enabled,
+                IsInformationStep = registration.IsInformationStep,
+            },
+            serviceOptions.ServiceName);
     }
 
     // Never builds an information request: it returns the pending one stored with the state.

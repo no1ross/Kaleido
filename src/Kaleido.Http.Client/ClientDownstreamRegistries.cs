@@ -43,40 +43,7 @@ internal sealed partial class ClientDownstreamRegistries(
 
                 try
                 {
-                    if (processClientMap.Options.ContainsKey(name))
-                    {
-                        foreach (var registry in await processClientFactory.GetClient(name).GetRegistryAsync(cancellationToken))
-                        {
-                            processes.Add(registry);
-                        }
-                    }
-
-                    if (queryableClientMap.Options.ContainsKey(name))
-                    {
-                        foreach (var registry in await queryableClientFactory.GetClient(name).GetRegistryAsync(cancellationToken))
-                        {
-                            queryables.Add(registry);
-                        }
-                    }
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    throw;
-                }
-                // Best effort per downstream: any failure of one client (unreachable, an error status
-                // - KaleidoHttpClientException -, an unreadable body, a timeout) is reported in the
-                // aggregate's errors and the others still load. The caller's own cancellation is
-                // rethrown above.
-                catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
-                {
-                    LogRegistryClientFailed(logger, ex, name, ex.Message);
-
-                    errors.Add(new RegistryClientError
-                    {
-                        ClientName = name,
-                        ClientType = "Registry",
-                        Reason = "Registry fetch failed. See server logs for details.",
-                    });
+                    await LoadClientAsync(name, processes, queryables, errors, cancellationToken);
                 }
                 finally
                 {
@@ -85,6 +52,52 @@ internal sealed partial class ClientDownstreamRegistries(
             }));
 
         return new DownstreamRegistries(processes.ToArray(), queryables.ToArray(), errors.ToArray());
+    }
+
+    private async Task LoadClientAsync(
+        string name,
+        ConcurrentBag<ProcessorRegistryResponse> processes,
+        ConcurrentBag<QueryableSourceResponse> queryables,
+        ConcurrentBag<RegistryClientError> errors,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (processClientMap.Options.ContainsKey(name))
+            {
+                foreach (var registry in await processClientFactory.GetClient(name).GetRegistryAsync(cancellationToken))
+                {
+                    processes.Add(registry);
+                }
+            }
+
+            if (queryableClientMap.Options.ContainsKey(name))
+            {
+                foreach (var registry in await queryableClientFactory.GetClient(name).GetRegistryAsync(cancellationToken))
+                {
+                    queryables.Add(registry);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        // Best effort per downstream: any failure of one client (unreachable, an error status
+        // - KaleidoHttpClientException -, an unreadable body, a timeout) is reported in the
+        // aggregate's errors and the others still load. The caller's own cancellation is
+        // rethrown above.
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            LogRegistryClientFailed(logger, ex, name, ex.Message);
+
+            errors.Add(new RegistryClientError
+            {
+                ClientName = name,
+                ClientType = "Registry",
+                Reason = "Registry fetch failed. See server logs for details.",
+            });
+        }
     }
 
     public void Invalidate()
