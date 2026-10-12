@@ -109,6 +109,21 @@ internal sealed class InformationValidator : IInformationValidator
             Flatten(request.Items)
                 .ToDictionary(x => x.Id, StringComparer.Ordinal);
 
+        var answered = MatchAnswers(request, response, questions, errors);
+
+        CheckAnswers(questions.Values, answered, errors);
+
+        return errors;
+    }
+
+    // Each answer item matched to its question: unknown items, answers to groups or display items,
+    // and items answered twice are errors.
+    private static Dictionary<string, InformationResponseItem> MatchAnswers(
+        InformationRequest request,
+        IInformationStep response,
+        Dictionary<string, InformationItem> questions,
+        List<StepProcessingMessage> errors)
+    {
         var answered =
             new Dictionary<string, InformationResponseItem>(StringComparer.Ordinal);
 
@@ -136,7 +151,16 @@ internal sealed class InformationValidator : IInformationValidator
             }
         }
 
-        foreach (var question in questions.Values)
+        return answered;
+    }
+
+    // Every question has an answer, as many as it takes, each fitting the question's type.
+    private static void CheckAnswers(
+        IEnumerable<InformationItem> questions,
+        Dictionary<string, InformationResponseItem> answered,
+        List<StepProcessingMessage> errors)
+    {
+        foreach (var question in questions)
         {
             if (question.Type is InformationItemType.Group or InformationItemType.Display)
             {
@@ -163,8 +187,6 @@ internal sealed class InformationValidator : IInformationValidator
                 errors.Add(AnswerError($"Answer '{answer?.Value}' does not fit question '{question.Id}' ({Describe(question)})."));
             }
         }
-
-        return errors;
     }
 
     // A proposal must be something the user could submit unchanged.

@@ -338,52 +338,8 @@ internal sealed class ToolCatalogBuilder(
     {
         var name = Name(context, processor.ServiceName, step.Name, "step");
 
-        var properties = new JsonObject
-        {
-            ["processId"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["format"] = "uuid",
-                ["description"] = step.IsInitial
-                    ? "The process to continue. Omit it to start a new process."
-                    : "The process to continue (returned by an earlier step).",
-            },
-        };
-
-        var required = new List<string>();
-
-        if (!step.IsInitial)
-        {
-            required.Add("processId");
-        }
-
         var lookups = Lookups(context, name, step.Fields);
-
-        foreach (var field in step.Fields)
-        {
-            var argument = Camel(field.Name);
-
-            if (string.IsNullOrWhiteSpace(field.Description))
-            {
-                context.MissingDescriptions.Add($"{name}.{argument}");
-            }
-
-            var lookup = lookups.Find(x => x.Inputs.Any(i => string.Equals(i.Argument, argument, StringComparison.Ordinal)));
-
-            properties[argument] = schemaBuilder.ForValue(field.DataType, FieldDescription(field, argument, lookup), field.Constraints);
-
-            if (schemaBuilder.IsRequired(field.Constraints))
-            {
-                required.Add(argument);
-            }
-        }
-
-        var schema = new JsonObject { ["type"] = "object", ["properties"] = properties };
-
-        if (required.Count > 0)
-        {
-            schema["required"] = new JsonArray([.. required.Select(x => (JsonNode)x)]);
-        }
+        var schema = StepInputSchema(context, name, step, lookups);
 
         var description =
             Describe(context, name, step.DisplayName, step.Description) +
@@ -513,6 +469,57 @@ internal sealed class ToolCatalogBuilder(
 
     // ── Built-in tools ───────────────────────────────────────────────────────
 
+    // The step's arguments: processId (required unless the step can start a process) and its fields.
+    private JsonObject StepInputSchema(BuildContext context, string name, ProcessStepResponse step, List<ToolLookup> lookups)
+    {
+        var properties = new JsonObject
+        {
+            ["processId"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["format"] = "uuid",
+                ["description"] = step.IsInitial
+                    ? "The process to continue. Omit it to start a new process."
+                    : "The process to continue (returned by an earlier step).",
+            },
+        };
+
+        var required = new List<string>();
+
+        if (!step.IsInitial)
+        {
+            required.Add("processId");
+        }
+
+        foreach (var field in step.Fields)
+        {
+            var argument = Camel(field.Name);
+
+            if (string.IsNullOrWhiteSpace(field.Description))
+            {
+                context.MissingDescriptions.Add($"{name}.{argument}");
+            }
+
+            var lookup = lookups.Find(x => x.Inputs.Any(i => string.Equals(i.Argument, argument, StringComparison.Ordinal)));
+
+            properties[argument] = schemaBuilder.ForValue(field.DataType, FieldDescription(field, argument, lookup), field.Constraints);
+
+            if (schemaBuilder.IsRequired(field.Constraints))
+            {
+                required.Add(argument);
+            }
+        }
+
+        var schema = new JsonObject { ["type"] = "object", ["properties"] = properties };
+
+        if (required.Count > 0)
+        {
+            schema["required"] = new JsonArray([.. required.Select(x => (JsonNode)x)]);
+        }
+
+        return schema;
+    }
+
     private static void AddBuiltInTools(
         BuildContext context,
         IReadOnlyCollection<string> processServices)
@@ -540,36 +547,7 @@ internal sealed class ToolCatalogBuilder(
                 Description =
                     "Submits the user's answers to the questions a process asked (an informationRequest in a step result). " +
                     "Ask the user each question exactly as written and pass only the user's answers; a proposed answer, or one the user gave earlier in the conversation, counts only after the user confirms it. Never answer on the user's behalf. Changes state.",
-                InputSchema = JsonSerializer.SerializeToElement(new JsonObject
-                {
-                    ["type"] = "object",
-                    ["properties"] = new JsonObject
-                    {
-                        ["service"] = serviceSchema.DeepClone(),
-                        ["processId"] = processIdSchema.DeepClone(),
-                        ["informationRequestId"] = new JsonObject
-                        {
-                            ["type"] = "string",
-                            ["description"] = "The informationRequestId of the questions being answered.",
-                        },
-                        ["answers"] = new JsonObject
-                        {
-                            ["type"] = "array",
-                            ["description"] = "One entry per question: the question's id and the user's answer(s). Choices use the option values; booleans true/false; dates yyyy-MM-dd.",
-                            ["items"] = new JsonObject
-                            {
-                                ["type"] = "object",
-                                ["properties"] = new JsonObject
-                                {
-                                    ["itemId"] = new JsonObject { ["type"] = "string" },
-                                    ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["type"] = "string" } },
-                                },
-                                ["required"] = new JsonArray("itemId", "values"),
-                            },
-                        },
-                    },
-                    ["required"] = new JsonArray("service", "processId", "informationRequestId", "answers"),
-                }),
+                InputSchema = JsonSerializer.SerializeToElement(AnswerInformationRequestSchema(serviceSchema, processIdSchema)),
                 Annotations = new ToolAnnotations { ReadOnlyHint = false, OpenWorldHint = false },
             },
             Kind = KaleidoToolKind.AnswerInformationRequest,
@@ -597,6 +575,38 @@ internal sealed class ToolCatalogBuilder(
             Kind = KaleidoToolKind.GetProcessState,
         });
     }
+
+    private static JsonObject AnswerInformationRequestSchema(JsonObject serviceSchema, JsonObject processIdSchema) =>
+        new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = new JsonObject
+            {
+                ["service"] = serviceSchema.DeepClone(),
+                ["processId"] = processIdSchema.DeepClone(),
+                ["informationRequestId"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "The informationRequestId of the questions being answered.",
+                },
+                ["answers"] = new JsonObject
+                {
+                    ["type"] = "array",
+                    ["description"] = "One entry per question: the question's id and the user's answer(s). Choices use the option values; booleans true/false; dates yyyy-MM-dd.",
+                    ["items"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["properties"] = new JsonObject
+                        {
+                            ["itemId"] = new JsonObject { ["type"] = "string" },
+                            ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["type"] = "string" } },
+                        },
+                        ["required"] = new JsonArray("itemId", "values"),
+                    },
+                },
+            },
+            ["required"] = new JsonArray("service", "processId", "informationRequestId", "answers"),
+        };
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
