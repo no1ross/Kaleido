@@ -176,7 +176,7 @@ internal sealed class ToolCatalogBuilder(
         PageableMetadata? pageable)
     {
         var properties = new JsonObject();
-        var required = new JsonArray();
+        var parametersRequired = false;
 
         var searchable = fields.Where(x => x.IsSearchable).OrderBy(x => x.SearchPriority ?? int.MaxValue).ToArray();
         var filterable = fields.Where(x => x.IsFilterable && x.FilterOperators.Count > 0).ToArray();
@@ -204,14 +204,7 @@ internal sealed class ToolCatalogBuilder(
 
         if (parameters.Count > 0)
         {
-            var (parametersSchema, hasRequired) = ParametersSchema(context, toolName, parameters);
-
-            properties["parameters"] = parametersSchema;
-
-            if (hasRequired)
-            {
-                required.Add("parameters");
-            }
+            (properties["parameters"], parametersRequired) = ParametersSchema(context, toolName, parameters);
         }
 
         foreach (var field in filterable.Concat(searchable).Concat(sortable).Distinct().Where(x => string.IsNullOrWhiteSpace(x.Description)))
@@ -221,9 +214,9 @@ internal sealed class ToolCatalogBuilder(
 
         var schema = new JsonObject { ["type"] = "object", ["properties"] = properties };
 
-        if (required.Count > 0)
+        if (parametersRequired)
         {
-            schema["required"] = required;
+            schema["required"] = new JsonArray("parameters");
         }
 
         return schema;
@@ -295,7 +288,7 @@ internal sealed class ToolCatalogBuilder(
         IReadOnlyCollection<QueryableQueryParameter> parameters)
     {
         var parameterProperties = new JsonObject();
-        var requiredParameters = new JsonArray();
+        var requiredParameters = new List<string>();
 
         foreach (var parameter in parameters)
         {
@@ -323,7 +316,7 @@ internal sealed class ToolCatalogBuilder(
 
         if (requiredParameters.Count > 0)
         {
-            parametersSchema["required"] = requiredParameters;
+            parametersSchema["required"] = new JsonArray([.. requiredParameters.Select(x => (JsonNode)x)]);
         }
 
         return (parametersSchema, requiredParameters.Count > 0);
@@ -577,7 +570,7 @@ internal sealed class ToolCatalogBuilder(
     }
 
     private static JsonObject AnswerInformationRequestSchema(JsonObject serviceSchema, JsonObject processIdSchema) =>
-        new JsonObject
+        new()
         {
             ["type"] = "object",
             ["properties"] = new JsonObject

@@ -610,7 +610,7 @@ public sealed class KaleidoToolInvokerTests
     }
 
     private static Dictionary<string, InputResponse> LookupAnswered() =>
-        new Dictionary<string, InputResponse>(StringComparer.Ordinal)
+        new(StringComparer.Ordinal)
         {
             ["kaleido-lookup"] = new()
             {
@@ -696,7 +696,7 @@ public sealed class KaleidoToolInvokerTests
     }
 
     private static Dictionary<string, InputResponse> Answered(string action) =>
-        new Dictionary<string, InputResponse>(StringComparer.Ordinal)
+        new(StringComparer.Ordinal)
         {
             ["kaleido-answers"] = new()
             {
