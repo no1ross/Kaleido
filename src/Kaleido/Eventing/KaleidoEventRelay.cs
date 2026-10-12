@@ -152,11 +152,9 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
             // Not an attempt: the circuit refused it.
             return;
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception exception)
+        // Any failure of the publisher (foreign code: it may throw anything) or a timed-out attempt is a
+        // failed attempt - except the host stopping, which is not the publisher's fault.
+        catch (Exception exception) when (!(exception is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
             await WithGateAsync(storeGate, () => FailAsync(store, entry, exception));
             return;
