@@ -15,11 +15,17 @@ public sealed class KaleidoClientOptions
     public string? BaseUrl { get; set; }
 
     /// <summary>
-    /// Shared default for <see cref="KaleidoClientEntry.RegistryTtl"/> applied
-    /// to every client that does not set its own. Null (default) means the
-    /// remote registry is cached until explicitly invalidated.
+    /// How often a client checks whether the remote registry changed - the shared default for
+    /// <see cref="KaleidoClientEntry.RegistryTtl"/>. Default 30 seconds.
     /// </summary>
-    public TimeSpan? RegistryTtl { get; set; }
+    /// <remarks>
+    /// A registry changes only with a deployment, but nothing tells a router (or an MCP adapter) that a
+    /// downstream was deployed; the check is how it finds out. A check sends the known revision as an
+    /// ETag and an unchanged registry answers an empty 304, so a short interval is cheap. Null means
+    /// the registry is never checked again until it is invalidated (a 404 from the service, or
+    /// <c>InvalidateRegistry()</c>).
+    /// </remarks>
+    public TimeSpan? RegistryTtl { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// Shared default for <see cref="KaleidoClientEntry.StrictRegistryProbe"/>.
@@ -60,9 +66,9 @@ public sealed class KaleidoClientEntry
     public string? RoutePrefix { get; set; }
 
     /// <summary>
-    /// Maximum age of this client's cached registry snapshot. Overrides
-    /// <see cref="KaleidoClientOptions.RegistryTtl"/>; null means the registry
-    /// is cached until explicitly invalidated.
+    /// How often this client checks whether the remote registry changed (ETag check, an unchanged
+    /// registry answers 304). Overrides <see cref="KaleidoClientOptions.RegistryTtl"/>; null (unset)
+    /// uses the shared value.
     /// </summary>
     public TimeSpan? RegistryTtl { get; set; }
 

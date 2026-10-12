@@ -34,7 +34,7 @@ internal sealed partial class KaleidoProcessorClient(
 
         headerStamper.Stamp(httpRequest);
 
-        using var response = await SendAsync(httpRequest, cancellationToken);
+        using var response = await SendAsync(httpRequest, cancellationToken, capabilityCall: false);
 
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -271,9 +271,13 @@ internal sealed partial class KaleidoProcessorClient(
             response.StatusCode);
     }
 
+    // A capability call answered 404 means the service no longer has that step (it was deployed
+    // without it): the registry snapshot is dropped so the next read loads the current one. The process
+    // state call answers 404 for an unknown process, which says nothing about the registry.
     private async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool capabilityCall = true)
     {
         LogSending(logger, request.Method, request.RequestUri, serviceName);
 
@@ -282,6 +286,11 @@ internal sealed partial class KaleidoProcessorClient(
         if (!response.IsSuccessStatusCode)
         {
             LogRemoteNonSuccess(logger, serviceName, (int)response.StatusCode, response.StatusCode, request.Method, request.RequestUri);
+        }
+
+        if (capabilityCall && response.StatusCode == HttpStatusCode.NotFound)
+        {
+            remoteRegistry.Invalidate(clientName);
         }
 
         return response;

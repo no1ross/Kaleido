@@ -84,6 +84,21 @@ public sealed class KaleidoRegistryServiceTests
         Assert.False(string.IsNullOrWhiteSpace(registry.Revision));
     }
 
+    // The revision is the ETag a client checks with: a rebuild (a new GeneratedAt) with the same
+    // content must keep it, or every check would download the registry again.
+    [Fact]
+    public async Task GetForCaller_WhenRebuiltWithTheSameContent_KeepsTheRevision()
+    {
+        var sut = CreateSut(cooldown: TimeSpan.Zero).Sut;
+
+        var first = await sut.GetForCallerAsync(cancellationToken: Cancel);
+        await Task.Delay(TimeSpan.FromMilliseconds(20), Cancel);
+        var rebuilt = await sut.GetForCallerAsync(refresh: true, cancellationToken: Cancel);
+
+        Assert.NotEqual(first.GeneratedAt, rebuilt.GeneratedAt);
+        Assert.Equal(first.Revision, rebuilt.Revision);
+    }
+
     [Fact]
     public async Task GetForCaller_WithoutAggregation_ServesOnlyLocalRegistrations()
     {

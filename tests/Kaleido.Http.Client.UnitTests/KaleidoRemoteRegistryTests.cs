@@ -223,4 +223,37 @@ public sealed class KaleidoRemoteRegistryTests
 
         Assert.Equal(2, callCount);
     }
+
+    [Fact]
+    public async Task GetAsync_WhenTheSnapshotIsDue_ChecksWithItsRevisionAndKeepsItOn304()
+    {
+        var requests = new List<string?>();
+        var (sut, _) = CreateSutWithHandler(req =>
+        {
+            requests.Add(req.Headers.IfNoneMatch.FirstOrDefault()?.Tag);
+
+            return requests.Count == 1
+                ? JsonOk(FakeRegistry with { Revision = "rev-1" })
+                : new HttpResponseMessage(HttpStatusCode.NotModified);
+        });
+
+        // A zero check interval makes every read due, so the second read checks the revision.
+        var first = await sut.GetAsync("remote", "remote-svc", TimeSpan.Zero, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
+        var second = await sut.GetAsync("remote", "remote-svc", TimeSpan.Zero, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
+
+        Assert.Equal([null, "\"rev-1\""], requests);
+        Assert.Equal("rev-1", second.Revision);
+        Assert.Equal(first.Processes.Count, second.Processes.Count);
+    }
+
+    [Fact]
+    public async Task GetAsync_WhenThereIsNoKnownRevision_A304IsAFailure()
+    {
+        var (sut, _) = CreateSutWithHandler(_ => new HttpResponseMessage(HttpStatusCode.NotModified));
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
+            sut.GetAsync("remote", "remote-svc", TimeSpan.FromSeconds(30), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
+
+        Assert.Equal(HttpStatusCode.NotModified, exception.StatusCode);
+    }
 }

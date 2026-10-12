@@ -222,11 +222,13 @@ internal sealed partial class KaleidoRegistryService(
         return queryables;
     }
 
-    // SHA-256 over the filtered payload — same content always produces the same revision.
+    // SHA-256 over the filtered payload — same content always produces the same revision. The build
+    // time is not content: a rebuilt but unchanged registry keeps its revision, so a client checking it
+    // with its ETag gets 304.
     private static string ComputeRevision(AggregatedRegistryResponse response)
     {
         var payload = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
-            response with { Revision = null },
+            response with { Revision = null, GeneratedAt = default },
             KaleidoJsonOptions.Options);
 
         return Convert.ToHexString(

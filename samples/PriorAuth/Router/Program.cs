@@ -138,7 +138,13 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.MapKaleidoHttp(o => o.AggregateRegistry = true);
+// The router learns about downstream deployments by checking each downstream's registry (ETag,
+// an unchanged one answers 304) at most every 30 seconds; the MCP tool list follows within that time.
+app.MapKaleidoHttp(o =>
+{
+    o.AggregateRegistry = true;
+    o.RegistryCacheTtl = TimeSpan.FromSeconds(30);
+});
 app.MapKaleidoMcp("/mcp");
 app.MapReverseProxy();
 
