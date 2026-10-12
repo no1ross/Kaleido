@@ -37,46 +37,13 @@ internal sealed partial class ProcessorExecutor(
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(context);
 
-        if (candidates.Count == 0)
-        {
-            return new ProcessExecutionResult
-            {
-                ProcessId =
-                    context.ProcessId,
-
-                State =
-                    context.State,
-
-                RequiredStep =
-                    context.RequiredStep,
-
-                RequiredInformationRequest =
-                    context.RequiredInformationRequest,
-
-                TargetProcessorName =
-                    context.TargetProcessorName,
-
-                AvailableSteps =
-                    context.AvailableSteps,
-
-                Outcomes =
-                    [],
-            };
-        }
-
-        var outcomes =
-            new List<ProcessExecutionOutcome>();
-
-        var remainingCandidates =
-            candidates.ToList();
-
-        var currentCandidate =
-            remainingCandidates.FirstOrDefault();
+        var outcomes = new List<ProcessExecutionOutcome>();
+        var remainingCandidates = candidates.ToList();
+        var currentCandidate = remainingCandidates.FirstOrDefault();
 
         while (currentCandidate is not null)
         {
-            var candidate =
-                currentCandidate;
+            var candidate = currentCandidate;
 
             //
             // Important:
@@ -84,254 +51,238 @@ internal sealed partial class ProcessorExecutor(
             // this request. Even if the step is repeatable, this specific
             // submitted candidate should not be selected again.
             //
-            remainingCandidates.Remove(
-                candidate);
+            remainingCandidates.Remove(candidate);
 
-            using var stepObservation =
-                observability.BeginStep(
-                    new ProcessorStepObservationDetails(
-                        candidate.StepName,
-                        candidate.Registration?.Metadata.Version,
-                        candidate.Registration?.IsInformationStep == true));
-
-            try
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var stepContext =
-                    context.FindStep(
-                        candidate.StepName)
-                    ?? throw new KaleidoFrameworkException(
-                        FrameworkErrorCodes.MissingRegistration,
-                        $"Step '{candidate.StepName}' was not found in processor state.");
-
-                var initialAvailableSteps =
-                    availabilityResolver.Resolve(
-                        candidate,
-                        candidates,
-                        context);
-
-                var processStepContext =
-                    new ProcessStepContext(
-                        context.ProcessId,
-                        stepContext,
-                        initialAvailableSteps,
-                        originalRequest);
-
-                var result =
-                    await invoker.ExecuteAsync(
-                        candidate.Registration
-                        ?? throw new KaleidoFrameworkException(
-                            FrameworkErrorCodes.MissingRegistration,
-                            $"Step '{candidate.StepName}' does not contain registration metadata."),
-                        candidate.Step
-                        ?? throw new KaleidoFrameworkException(
-                            FrameworkErrorCodes.MissingRegistration,
-                            $"Step '{candidate.StepName}' does not contain a step instance."),
-                        processStepContext,
-                        cancellationToken);
-
-                var decision =
-                    evaluator.Evaluate(
-                        candidate,
-                        result,
-                        remainingCandidates,
-                        context);
-
-                // A rejection leaves the process exactly as it was: nothing is saved, the step is
-                // not completed, and no later candidate of this request runs.
-                if (decision.Type == ExecutionDecisionType.Rejected)
-                {
-                    stepObservation.DecisionRecorded(
-                        decision.Type.ToString(),
-                        nameof(StepExecutionStatus.Rejected));
-
-                    outcomes.Add(
-                        CreateOutcome(
-                            candidate,
-                            result,
-                            decision,
-                            StepExecutionStatus.Rejected));
-
-                    break;
-                }
-
-                context =
-                    stateUpdater.ApplyExecution(
-                        context,
-                        candidate,
-                        decision);
-
-                await stateRepository.SaveAsync(
-                    context,
-                    cancellationToken);
-
-                var executionStatus = MapStatus(candidate, result, decision);
-
-                stepObservation.DecisionRecorded(
-                    decision.Type.ToString(),
-                    executionStatus.ToString());
-
-                if (decision.InformationRequest is { } informationRequest)
-                {
-                    stepObservation.InformationRequested(
-                        informationRequest.InformationRequestId);
-                }
-
-                var outcome =
-                    CreateOutcome(
-                        candidate,
-                        result,
-                        decision,
-                        executionStatus);
-
-                outcomes.Add(
-                    outcome);
-
-                try
-                {
-                    _ = eventPublisher.PublishAsync(
-                        eventFactory.CreateStepCompleted(
-                            correlationAccessor.Current,
-                            context,
-                            candidate,
-                            outcome,
-                            result),
-                        cancellationToken);
-                }
-                catch (Exception publishException) when (publishException is not OperationCanceledException)
-                {
-                    LogStepEventPublishFailed(logger, publishException, candidate.StepName, context.ProcessId);
-                }
-
-                currentCandidate =
-                    GetNextCandidate(
-                        decision);
-            }
-            catch (OperationCanceledException)
-            {
-                stepObservation.Canceled();
-
-                context =
-                    stateUpdater.ApplyCancellation(
-                        context,
-                        candidate);
-
-                await stateRepository.SaveAsync(
-                    context,
-                    CancellationToken.None);
-
-                outcomes.Add(
-                    new ProcessExecutionOutcome
-                    {
-                        StepName =
-                            candidate.StepName,
-
-                        Status =
-                            StepExecutionStatus.Canceled,
-
-                        Outcome =
-                            GetStepOutcome(StepExecutionStatus.Canceled),
-
-                        Decision =
-                            ExecutionDecisionType.ProcessViolation,
-
-                        RuntimeMessages =
-                        [
-                            StepProcessingMessage.Error(
-                            ProcessorErrorCodes.ExecutionCanceled,
-                            "Step execution was cancelled."),
-                        ],
-
-                        Response = null,
-                    });
-
-                break;
-            }
-            catch (KaleidoValidationException exception)
-            {
-                stepObservation.StepFailed(exception);
-
-                context =
-                    stateUpdater.ApplyException(
-                        context,
-                        candidate);
-
-                await stateRepository.SaveAsync(
-                    context,
-                    CancellationToken.None);
-
-                outcomes.Add(
-                    new ProcessExecutionOutcome
-                    {
-                        StepName =
-                            candidate.StepName,
-
-                        Status =
-                            StepExecutionStatus.ValidationFailed,
-
-                        Outcome =
-                            GetStepOutcome(StepExecutionStatus.ValidationFailed),
-
-                        Decision =
-                            ExecutionDecisionType.ProcessViolation,
-
-                        RuntimeMessages =
-                        [
-                            StepProcessingMessage.Error(
-                            exception.Code,
-                            exception.Message),
-                        ],
-
-                        Response = null,
-                    });
-
-                break;
-            }
-            // Any other failure of the step (cancellation and validation are handled above).
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                stepObservation.StepFailed(exception);
-
-                context =
-                    stateUpdater.ApplyException(
-                        context,
-                        candidate);
-
-                await stateRepository.SaveAsync(
-                    context,
-                    CancellationToken.None);
-
-                outcomes.Add(
-                    new ProcessExecutionOutcome
-                    {
-                        StepName =
-                            candidate.StepName,
-
-                        Status =
-                            StepExecutionStatus.Exception,
-
-                        Outcome =
-                            GetStepOutcome(StepExecutionStatus.Exception),
-
-                        Decision =
-                            ExecutionDecisionType.ProcessViolation,
-
-                        RuntimeMessages =
-                        [
-                            StepProcessingMessage.Error(
-                            ProcessorErrorCodes.FrameworkException,
-                            $"An unexpected error occurred while executing step '{candidate.StepName}'."),
-                        ],
-
-                        Response = null,
-                    });
-
-                break;
-            }
+            (context, currentCandidate) =
+                await RunAsync(candidate, candidates, remainingCandidates, context, originalRequest, outcomes, cancellationToken);
         }
 
-        return new ProcessExecutionResult
+        return ToResult(context, outcomes);
+    }
+
+    // Runs one candidate and records its outcome. Returns the process state afterwards and the
+    // candidate to run next (null when this request stops here).
+    private async Task<(ProcessorContext Context, StepCandidate? Next)> RunAsync(
+        StepCandidate candidate,
+        IReadOnlyCollection<StepCandidate> candidates,
+        List<StepCandidate> remainingCandidates,
+        ProcessorContext context,
+        ProcessorRequest originalRequest,
+        List<ProcessExecutionOutcome> outcomes,
+        CancellationToken cancellationToken)
+    {
+        using var stepObservation = BeginStep(candidate);
+
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var (result, decision) =
+                await InvokeAsync(candidate, candidates, remainingCandidates, context, originalRequest, cancellationToken);
+
+            // A rejection leaves the process exactly as it was: nothing is saved, the step is
+            // not completed, and no later candidate of this request runs.
+            if (decision.Type == ExecutionDecisionType.Rejected)
+            {
+                stepObservation.DecisionRecorded(decision.Type.ToString(), nameof(StepExecutionStatus.Rejected));
+                outcomes.Add(CreateOutcome(candidate, result, decision, StepExecutionStatus.Rejected));
+
+                return (context, null);
+            }
+
+            context = stateUpdater.ApplyExecution(context, candidate, decision);
+            await stateRepository.SaveAsync(context, cancellationToken);
+            outcomes.Add(Complete(candidate, result, decision, context, stepObservation, cancellationToken));
+
+            return (context, GetNextCandidate(decision));
+        }
+        catch (OperationCanceledException)
+        {
+            stepObservation.Canceled();
+
+            return (await FailAsync(
+                stateUpdater.ApplyCancellation(context, candidate),
+                outcomes,
+                FailedOutcome(candidate, StepExecutionStatus.Canceled, ProcessorErrorCodes.ExecutionCanceled, "Step execution was cancelled.")), null);
+        }
+        catch (KaleidoValidationException exception)
+        {
+            stepObservation.StepFailed(exception);
+
+            return (await FailAsync(
+                stateUpdater.ApplyException(context, candidate),
+                outcomes,
+                FailedOutcome(candidate, StepExecutionStatus.ValidationFailed, exception.Code, exception.Message)), null);
+        }
+        // Any other failure of the step (cancellation and validation are handled above).
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            stepObservation.StepFailed(exception);
+
+            return (await FailAsync(
+                stateUpdater.ApplyException(context, candidate),
+                outcomes,
+                FailedOutcome(
+                    candidate,
+                    StepExecutionStatus.Exception,
+                    ProcessorErrorCodes.FrameworkException,
+                    $"An unexpected error occurred while executing step '{candidate.StepName}'.")), null);
+        }
+    }
+    private IProcessorStepObservation BeginStep(StepCandidate candidate) =>
+        observability.BeginStep(
+            new ProcessorStepObservationDetails(
+                candidate.StepName,
+                candidate.Registration?.Metadata.Version,
+                candidate.Registration?.IsInformationStep == true));
+
+    // Invokes the step's handler and evaluates its result against the process rules.
+    private async Task<(StepInvocationResult Result, ExecutionDecision Decision)> InvokeAsync(
+        StepCandidate candidate,
+        IReadOnlyCollection<StepCandidate> candidates,
+        IReadOnlyCollection<StepCandidate> remainingCandidates,
+        ProcessorContext context,
+        ProcessorRequest originalRequest,
+        CancellationToken cancellationToken)
+    {
+        var stepContext =
+            context.FindStep(
+                candidate.StepName)
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
+                $"Step '{candidate.StepName}' was not found in processor state.");
+
+        var initialAvailableSteps =
+            availabilityResolver.Resolve(
+                candidate,
+                candidates,
+                context);
+
+        var processStepContext =
+            new ProcessStepContext(
+                context.ProcessId,
+                stepContext,
+                initialAvailableSteps,
+                originalRequest);
+
+        var result =
+            await invoker.ExecuteAsync(
+                candidate.Registration
+                ?? throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.MissingRegistration,
+                    $"Step '{candidate.StepName}' does not contain registration metadata."),
+                candidate.Step
+                ?? throw new KaleidoFrameworkException(
+                    FrameworkErrorCodes.MissingRegistration,
+                    $"Step '{candidate.StepName}' does not contain a step instance."),
+                processStepContext,
+                cancellationToken);
+
+        var decision =
+            evaluator.Evaluate(
+                candidate,
+                result,
+                remainingCandidates,
+                context);
+
+        return (result, decision);
+    }
+
+    // A saved step: records the decision, builds the outcome and publishes the step-completed event
+    // (best-effort - the state is already saved).
+    private ProcessExecutionOutcome Complete(
+        StepCandidate candidate,
+        StepInvocationResult result,
+        ExecutionDecision decision,
+        ProcessorContext context,
+        IProcessorStepObservation stepObservation,
+        CancellationToken cancellationToken)
+    {
+        var executionStatus = MapStatus(candidate, result, decision);
+
+        stepObservation.DecisionRecorded(
+            decision.Type.ToString(),
+            executionStatus.ToString());
+
+        if (decision.InformationRequest is { } informationRequest)
+        {
+            stepObservation.InformationRequested(
+                informationRequest.InformationRequestId);
+        }
+
+        var outcome =
+            CreateOutcome(
+                candidate,
+                result,
+                decision,
+                executionStatus);
+
+        try
+        {
+            _ = eventPublisher.PublishAsync(
+                eventFactory.CreateStepCompleted(
+                    correlationAccessor.Current,
+                    context,
+                    candidate,
+                    outcome,
+                    result),
+                cancellationToken);
+        }
+        catch (Exception publishException) when (publishException is not OperationCanceledException)
+        {
+            LogStepEventPublishFailed(logger, publishException, candidate.StepName, context.ProcessId);
+        }
+
+        return outcome;
+    }
+
+    // A failed step's state is saved even when the request was cancelled.
+    private async Task<ProcessorContext> FailAsync(
+        ProcessorContext context,
+        List<ProcessExecutionOutcome> outcomes,
+        ProcessExecutionOutcome outcome)
+    {
+        await stateRepository.SaveAsync(
+            context,
+            CancellationToken.None);
+
+        outcomes.Add(outcome);
+
+        return context;
+    }
+    private static ProcessExecutionOutcome FailedOutcome(
+        StepCandidate candidate,
+        StepExecutionStatus status,
+        string code,
+        string message) =>
+        new()
+        {
+            StepName =
+                candidate.StepName,
+
+            Status =
+                status,
+
+            Outcome =
+                GetStepOutcome(status),
+
+            Decision =
+                ExecutionDecisionType.ProcessViolation,
+
+            RuntimeMessages =
+            [
+                StepProcessingMessage.Error(
+                    code,
+                    message),
+            ],
+
+            Response = null,
+        };
+
+    private static ProcessExecutionResult ToResult(
+        ProcessorContext context,
+        List<ProcessExecutionOutcome> outcomes) =>
+        new()
         {
             ProcessId =
                 context.ProcessId,
@@ -354,7 +305,6 @@ internal sealed partial class ProcessorExecutor(
             Outcomes =
                 outcomes,
         };
-    }
 
     private static StepCandidate? GetNextCandidate(
         ExecutionDecision decision)

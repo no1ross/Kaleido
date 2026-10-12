@@ -179,114 +179,39 @@ internal sealed class ToolCatalogBuilder(
         var required = new JsonArray();
 
         var searchable = fields.Where(x => x.IsSearchable).OrderBy(x => x.SearchPriority ?? int.MaxValue).ToArray();
+        var filterable = fields.Where(x => x.IsFilterable && x.FilterOperators.Count > 0).ToArray();
+        var sortable = fields.Where(x => x.IsSortable).ToArray();
 
         if (searchable.Length > 0)
         {
-            properties["searchText"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] =
-                    "Free-text search. Matches: " +
-                    string.Join(", ", searchable.Select(x => $"{x.Name} ({Camel(x.MatchMode?.ToString() ?? "contains")})")) + ".",
-            };
+            properties["searchText"] = SearchTextSchema(searchable);
         }
-
-        var filterable = fields.Where(x => x.IsFilterable && x.FilterOperators.Count > 0).ToArray();
 
         if (filterable.Length > 0)
         {
-            properties["filters"] = new JsonObject
-            {
-                ["type"] = "array",
-                ["description"] =
-                    "Conditions, all of which must match. Fields and their operators: " +
-                    string.Join("; ", filterable.Select(x => $"{x.Name} ({DescribeType(x.DataType)}{Explain(x.Description)}): {string.Join(", ", x.FilterOperators.Select(o => Camel(o.ToString())))}")) +
-                    ". Pass values typed like the field (in/between take several values; isNull/isTrue take none).",
-                ["items"] = new JsonObject
-                {
-                    ["type"] = "object",
-                    ["properties"] = new JsonObject
-                    {
-                        ["field"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.Select(x => x.Name)) },
-                        ["operator"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.SelectMany(x => x.FilterOperators).Select(x => Camel(x.ToString())).Distinct(StringComparer.Ordinal)) },
-                        ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject() },
-                    },
-                    ["required"] = new JsonArray("field", "operator"),
-                },
-            };
+            properties["filters"] = FiltersSchema(filterable);
         }
-
-        var sortable = fields.Where(x => x.IsSortable).ToArray();
 
         if (sortable.Length > 0)
         {
-            properties["sort"] = new JsonObject
-            {
-                ["type"] = "array",
-                ["description"] = "Sort order, first entry first.",
-                ["items"] = new JsonObject
-                {
-                    ["type"] = "object",
-                    ["properties"] = new JsonObject
-                    {
-                        ["field"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(sortable.Select(x => x.Name)) },
-                        ["direction"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray("ascending", "descending") },
-                    },
-                    ["required"] = new JsonArray("field", "direction"),
-                },
-            };
+            properties["sort"] = SortSchema(sortable);
         }
 
         if (pageable is not null)
         {
-            properties["page"] = new JsonObject
-            {
-                ["type"] = "object",
-                ["description"] = string.Create(CultureInfo.InvariantCulture, $"Paging. Default size {pageable.DefaultSize}; at most {pageable.MaxSize} results per page."),
-                ["properties"] = new JsonObject
-                {
-                    ["size"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = pageable.MaxSize },
-                    ["offset"] = new JsonObject { ["type"] = "integer", ["minimum"] = 0 },
-                },
-            };
+            properties["page"] = PageSchema(pageable);
         }
 
         if (parameters.Count > 0)
         {
-            var parameterProperties = new JsonObject();
-            var requiredParameters = new JsonArray();
-
-            foreach (var parameter in parameters)
-            {
-                var argument = Camel(parameter.Name);
-
-                if (string.IsNullOrWhiteSpace(parameter.Description))
-                {
-                    context.MissingDescriptions.Add($"{toolName}.parameters.{argument}");
-                }
-
-                parameterProperties[argument] = schemaBuilder.ForValue(parameter.DataType, parameter.Description, parameter.Constraints);
-
-                if (schemaBuilder.IsRequired(parameter.Constraints))
-                {
-                    requiredParameters.Add(argument);
-                }
-            }
-
-            var parametersSchema = new JsonObject
-            {
-                ["type"] = "object",
-                ["description"] = "The query's parameters.",
-                ["properties"] = parameterProperties,
-            };
-
-            if (requiredParameters.Count > 0)
-            {
-                parametersSchema["required"] = requiredParameters;
-                required.Add("parameters");
-            }
+            var (parametersSchema, hasRequired) = ParametersSchema(context, toolName, parameters);
 
             properties["parameters"] = parametersSchema;
+
+            if (hasRequired)
+            {
+                required.Add("parameters");
+            }
         }
 
         foreach (var field in filterable.Concat(searchable).Concat(sortable).Distinct().Where(x => string.IsNullOrWhiteSpace(x.Description)))
@@ -302,6 +227,106 @@ internal sealed class ToolCatalogBuilder(
         }
 
         return schema;
+    }
+
+    private static JsonObject SearchTextSchema(IEnumerable<QueryableFieldMetadata> searchable) =>
+        new()
+        {
+            ["type"] = "string",
+            ["description"] =
+                "Free-text search. Matches: " +
+                string.Join(", ", searchable.Select(x => $"{x.Name} ({Camel(x.MatchMode?.ToString() ?? "contains")})")) + ".",
+        };
+
+    private static JsonObject FiltersSchema(QueryableFieldMetadata[] filterable) =>
+        new()
+        {
+            ["type"] = "array",
+            ["description"] =
+                "Conditions, all of which must match. Fields and their operators: " +
+                string.Join("; ", filterable.Select(x => $"{x.Name} ({DescribeType(x.DataType)}{Explain(x.Description)}): {string.Join(", ", x.FilterOperators.Select(o => Camel(o.ToString())))}")) +
+                ". Pass values typed like the field (in/between take several values; isNull/isTrue take none).",
+            ["items"] = new JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["field"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.Select(x => x.Name)) },
+                    ["operator"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.SelectMany(x => x.FilterOperators).Select(x => Camel(x.ToString())).Distinct(StringComparer.Ordinal)) },
+                    ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject() },
+                },
+                ["required"] = new JsonArray("field", "operator"),
+            },
+        };
+
+    private static JsonObject SortSchema(IEnumerable<QueryableFieldMetadata> sortable) =>
+        new()
+        {
+            ["type"] = "array",
+            ["description"] = "Sort order, first entry first.",
+            ["items"] = new JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["field"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(sortable.Select(x => x.Name)) },
+                    ["direction"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray("ascending", "descending") },
+                },
+                ["required"] = new JsonArray("field", "direction"),
+            },
+        };
+
+    private static JsonObject PageSchema(PageableMetadata pageable) =>
+        new()
+        {
+            ["type"] = "object",
+            ["description"] = string.Create(CultureInfo.InvariantCulture, $"Paging. Default size {pageable.DefaultSize}; at most {pageable.MaxSize} results per page."),
+            ["properties"] = new JsonObject
+            {
+                ["size"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = pageable.MaxSize },
+                ["offset"] = new JsonObject { ["type"] = "integer", ["minimum"] = 0 },
+            },
+        };
+
+    // The view's parameters, and whether any of them is required.
+    private (JsonObject Schema, bool HasRequired) ParametersSchema(
+        BuildContext context,
+        string toolName,
+        IReadOnlyCollection<QueryableQueryParameter> parameters)
+    {
+        var parameterProperties = new JsonObject();
+        var requiredParameters = new JsonArray();
+
+        foreach (var parameter in parameters)
+        {
+            var argument = Camel(parameter.Name);
+
+            if (string.IsNullOrWhiteSpace(parameter.Description))
+            {
+                context.MissingDescriptions.Add($"{toolName}.parameters.{argument}");
+            }
+
+            parameterProperties[argument] = schemaBuilder.ForValue(parameter.DataType, parameter.Description, parameter.Constraints);
+
+            if (schemaBuilder.IsRequired(parameter.Constraints))
+            {
+                requiredParameters.Add(argument);
+            }
+        }
+
+        var parametersSchema = new JsonObject
+        {
+            ["type"] = "object",
+            ["description"] = "The query's parameters.",
+            ["properties"] = parameterProperties,
+        };
+
+        if (requiredParameters.Count > 0)
+        {
+            parametersSchema["required"] = requiredParameters;
+        }
+
+        return (parametersSchema, requiredParameters.Count > 0);
     }
 
     // ── Step tools ───────────────────────────────────────────────────────────
