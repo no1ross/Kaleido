@@ -9,7 +9,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Http.FunctionalTests` | `src/Kaleido.Http` and client contracts through TestServer |
 | `Kaleido.Http.Client.UnitTests` | `src/Kaleido.Http.Client` |
 | `Kaleido.Http.Abstractions.UnitTests` | `src/Kaleido.Http.Abstractions` (`HttpHeaderSanitizer` and contract types) |
-| `Kaleido.Provider.SQLite.UnitTests` | `src/Kaleido.Provider.SQLite` (`IProcessorContextStore` contract and SQLite fidelity) |
+| `Kaleido.Provider.SQLite.UnitTests` | `src/Kaleido.Provider.SQLite` (`IKaleidoContextStore` contract and SQLite fidelity) |
 | `Kaleido.Analyzers.UnitTests` | `tools/analyzers/Kaleido.Analyzers` (consumer `KAL2xxx` rules) |
 | `Kaleido.Analyzers.Source.UnitTests` | `tools/analyzers/Kaleido.Analyzers.Source` (contributor `KAL0xxx` rules) |
 | `Kaleido.Analyzers.Testing.UnitTests` | `tools/analyzers/Kaleido.Analyzers.Testing` (test `KAL1xxx` rules) |

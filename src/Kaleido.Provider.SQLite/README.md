@@ -2,11 +2,11 @@
 
 > **This project is a reference implementation, not a production provider.**
 >
-> - `IProcessorContextStore` is the **contract** your deployment must implement.
-> - `SqliteProcessorContextStore` is a **worked example** of that contract — a single-file embedded database that demonstrates correct `ProcessorContext` round-trip fidelity.
+> - `IKaleidoContextStore` is the **contract** your deployment must implement.
+> - `SqliteKaleidoContextStore` is a **worked example** of that contract — a single-file embedded database that demonstrates correct `ProcessorContext` round-trip fidelity.
 > - **Production deployments are expected to write their own implementation** against their real infrastructure (SQL Server, Postgres, Redis, document store, whatever the process actually needs).
 > - SQLite's single-writer file model is deliberately unsuitable for the multi-node, multi-instance scenarios durable process state is designed for. Shipping it to production is an anti-pattern.
-> - The `Kaleido.Provider.SQLite.UnitTests` suite is the **executable contract specification**: if your implementation passes equivalent round-trip fidelity, update, and multi-instance tests, it satisfies `IProcessorContextStore`.
+> - The `Kaleido.Provider.SQLite.UnitTests` suite is the **executable contract specification**: if your implementation passes equivalent round-trip fidelity, update, and multi-instance tests, it satisfies `IKaleidoContextStore`.
 
 See also:
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
@@ -16,23 +16,31 @@ See also:
 
 ## What lives here
 
-- `SqliteProcessorContextStore` — example SQLite-backed `IProcessorContextStore` implementation
-- `SqliteProcessorContextStoreServiceCollectionExtensions` — `UseSqliteProcessorContextStore(connectionString)` builder extension
+- `SqliteKaleidoContextStore` — example SQLite-backed `IKaleidoContextStore` implementation
+- `SqliteKaleidoContextStoreServiceCollectionExtensions` — `UseSqliteKaleidoContextStore(connectionString)` builder extension
 
 ---
 
 ## Implementing your own store
 
-The contract is four methods:
+`IKaleidoContextStore` is the one durable store of a Kaleido service: process state, idempotent results and the event outbox, all in the same database. `AddKaleido()` registers it for every service (an in-memory default), so a queryable-only service uses it too (for its query events).
 
 ```csharp
-public interface IProcessorContextStore
+public interface IKaleidoContextStore
 {
+    // Process state
     Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default);
-    Task<ProcessorContext> SaveAsync(ProcessorContext context, CancellationToken cancellationToken = default);
+    Task<ProcessorContext> SaveAsync(ProcessorContext context, IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default);
 
+    // Idempotent results
     Task<IdempotentResult?> FindResultAsync(string key, CancellationToken cancellationToken = default);
     Task SaveResultAsync(IdempotentResult result, CancellationToken cancellationToken = default);
+
+    // Event outbox
+    Task EnqueueEventsAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken = default);
+    Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken = default);
+    Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken = default);
 }
 ```
 
@@ -57,7 +65,8 @@ Your implementation must preserve, with full fidelity:
 
 - Save only when the stored version still equals `context.Version`. A `Version` of `0` means a new process: save only when no process with that id exists.
 - Store the context with `Version + 1` and **return the saved context** (with the new version) - the runtime continues with it.
-- Otherwise throw `KaleidoConcurrencyException(context.ProcessId)` and save nothing. The caller gets **409** `pro_process_conflict`.
+- Add `events` to the outbox **in the same transaction**: state and events are saved together or not at all (a step's `StepCompleted`, a new process's `ProcessCreated`).
+- Otherwise throw `KaleidoConcurrencyException(context.ProcessId)` and save nothing - no state, no event. The caller gets **409** `pro_process_conflict`.
 
 The compare and the write must be one step: a row version / ETag / `WHERE Version = @expected` in the `UPDATE`, a conditional put, or a lock - whatever your storage offers. The SQLite store uses an EF Core concurrency token on a `Version` column (the `UPDATE` is conditional on the version the row was read with) and turns a duplicate insert of a new process into a conflict too.
 
@@ -71,9 +80,20 @@ The compare and the write must be one step: a row version / ETag / `WHERE Versio
 
 The SQLite store keeps them in its own `IdempotentResults` table (`Key` primary key, an index on `ExpiresUtc`) and deletes expired rows whenever a new answer is saved.
 
+### Event outbox
+
+Kaleido never publishes an event directly: it writes it to the outbox, and a background relay in every instance hands it to `IEventPublisher`, retrying until it succeeds (at least once - [ADR 0012](../../docs/decisions/0012-events-at-least-once-through-the-store.md)). The store keeps the entries and makes sure **an entry is in one instance's hands at a time**:
+
+- `EnqueueEventsAsync` adds events that do not describe a save (`PlanBuilt`, `ExecutionCompleted`, `QueryExecuted`).
+- `ClaimEventsAsync(maxCount, lease)` leases up to `maxCount` entries that are due (not parked, `NextAttemptUtc` reached) and not leased, to **this instance** (the store knows its identity, e.g. `KaleidoServiceOptions.InstanceId`) until now + `lease`, oldest first, and returns exactly those. It must be an **atomic compare-and-set** - two instances claiming at once never get the same entry (a write transaction, a row lock, `UPDATE ... WHERE lease expired`, a conditional put). An entry whose lease expired (its instance stopped) can be claimed again: that is the failover.
+- `CompleteEventAsync` removes a published entry and `FailEventAsync` records a failed attempt (`Attempts` + 1, `LastError`, `NextAttemptUtc` = `retryAtUtc`; `null` parks it - kept, never claimed again) and releases the lease. **Both only while this instance still holds the lease**, so an instance whose lease expired cannot touch an entry another instance has taken over.
+- Keep every `KaleidoOutboxEvent` member as given and treat `Payload` as opaque text (it includes a step's request and response - plan for several KB).
+
+The SQLite store keeps them in an `OutboxEvents` table (`EventId` primary key, times as UTC ticks, `LeaseOwner`/`LeaseUntil` columns). A claim selects due entries and leases them with one `UPDATE` that re-checks the lease (SQLite serializes writers, so two claims cannot overlap); complete and fail are `DELETE`/`UPDATE ... WHERE LeaseOwner = @me AND LeaseUntil > @now`. Parked entries stay in the table: inspect them, fix the cause, and set `IsParked = 0, NextAttemptUtc = 0` to retry them.
+
 ### Schema changes
 
-The SQLite store creates its schema with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column and the `IdempotentResults` table existed (delete the file; it is recreated at startup). A production store manages its own schema migrations.
+The SQLite store creates its schema with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column and the `IdempotentResults` and `OutboxEvents` tables existed (delete the file; it is recreated at startup). A production store manages its own schema migrations.
 
 ---
 
@@ -87,10 +107,10 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     o.ServiceName = "my-service";
     o.Assemblies = new[] { typeof(Program).Assembly };
 })
-    .UseSqliteProcessorContextStore("Data Source=my-process.sqlite");
+    .UseSqliteKaleidoContextStore("Data Source=my-process.sqlite");
 ```
 
-This registers `SqliteProcessorContextStore` as `IProcessorContextStore`, replacing the default in-memory store.
+This registers `SqliteKaleidoContextStore` as `IKaleidoContextStore`, replacing the default in-memory store, and a health check (`kaleido-sqlite-context-store`).
 
 Malformed, non-blank connection strings fail at registration with `KaleidoConfigurationException` (`SqliteErrorCodes.InvalidConnectionString`, `invalid_connection_string`) before DI services are replaced. The parser checks connection-string syntax only: registration does **not** open or create a database, and reachability remains a separate health-check concern.
 
@@ -109,6 +129,6 @@ The default in-memory store is sufficient for tests and single-request processes
 
 ## Where to look
 
-- `SqliteProcessorContextStore.cs` — the reference `IProcessorContextStore` implementation
-- `SqliteProcessorContextStoreServiceCollectionExtensions.cs` — `UseSqliteProcessorContextStore(...)` registration
+- `SqliteKaleidoContextStore.cs` — the reference `IKaleidoContextStore` implementation
+- `SqliteKaleidoContextStoreServiceCollectionExtensions.cs` — `UseSqliteKaleidoContextStore(...)` registration
 - `tests/Kaleido.Provider.SQLite.UnitTests` — the executable contract specification to mirror for your own store

@@ -47,4 +47,7 @@ public static class ConfigurationErrorCodes
 
     /// <summary>KaleidoServiceOptions.AuthorizationMode is not a defined value.</summary>
     public const string InvalidAuthorizationMode = "invalid_authorization_mode";
+
+    /// <summary>A <c>Kaleido:Events</c> setting is out of range (e.g. a non-positive batch size or timeout).</summary>
+    public const string InvalidEventOptions = "invalid_event_options";
 }

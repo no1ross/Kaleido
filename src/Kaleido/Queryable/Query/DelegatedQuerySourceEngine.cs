@@ -2,7 +2,6 @@ using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Queryable.Query;
 
@@ -21,14 +20,13 @@ internal interface IDelegatedQuerySourceEngine<TQueryContext, TResult>
         CancellationToken cancellationToken = default);
 }
 
-internal sealed partial class DelegatedQuerySourceEngine<TQueryContext, TResult>(
+internal sealed class DelegatedQuerySourceEngine<TQueryContext, TResult>(
     IQueryContextValidator validator,
     IQueryEventFactory eventFactory,
-    IEventPublisher eventPublisher,
+    IKaleidoEventOutbox eventOutbox,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     IQueryableObservability observability,
-    IServiceProvider serviceProvider,
-    ILogger<DelegatedQuerySourceEngine<TQueryContext, TResult>> logger)
+    IServiceProvider serviceProvider)
     : IDelegatedQuerySourceEngine<TQueryContext, TResult>
     where TQueryContext : class, IQueryContext
     where TResult : class
@@ -85,7 +83,7 @@ internal sealed partial class DelegatedQuerySourceEngine<TQueryContext, TResult>
                 result.PageSize,
                 result.Offset);
 
-            PublishExecuted(details, request, result, cancellationToken);
+            await EnqueueExecutedAsync(details, request, result);
 
             return result;
         }
@@ -130,29 +128,14 @@ internal sealed partial class DelegatedQuerySourceEngine<TQueryContext, TResult>
             FrameworkErrorCodes.TypeMismatch,
             $"Delegated query execution for source '{source.SourceType.FullName}' did not return '{typeof(QueryResult<TResult>).FullName}'.");
 
-    // Event delivery is best-effort; without a registered publisher nothing is published.
-    private void PublishExecuted(
+    // QueryExecuted goes to the outbox (nothing is written without a registered publisher).
+    private Task EnqueueExecutedAsync(
         QueryObservationDetails details,
         IQueryRequest request,
-        QueryResult<TResult> result,
-        CancellationToken cancellationToken)
-    {
-        if (eventPublisher is EventPublisher)
-        {
-            return;
-        }
-
-        try
-        {
-            _ = eventPublisher.PublishAsync(
-                eventFactory.CreateQueryExecuted(correlationAccessor.Current, details, request, result),
-                cancellationToken);
-        }
-        catch (Exception publishException) when (publishException is not OperationCanceledException)
-        {
-            LogEventPublishFailed(logger, publishException, details.QuerySourceName);
-        }
-    }
+        QueryResult<TResult> result) =>
+        eventOutbox.EnqueueAsync(
+            eventFactory.CreateQueryExecuted(correlationAccessor.Current, details, request, result),
+            CancellationToken.None);
     private static Task<QueryResult<TResult>> ExecuteTypedAsync<TParameters>(
         object instance,
         IQueryRequest request,
@@ -178,7 +161,4 @@ internal sealed partial class DelegatedQuerySourceEngine<TQueryContext, TResult>
             typedRequest,
             cancellationToken);
     }
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for QueryExecuted on source {QuerySourceName}. Event delivery is best-effort.")]
-    private static partial void LogEventPublishFailed(ILogger logger, Exception exception, string querySourceName);
 }

@@ -89,7 +89,7 @@ public sealed class ArchitectureTests
     }
 
     /// <summary>
-    /// IProcessorContextStore is the provider seam — core ships the default
+    /// IKaleidoContextStore is the provider seam — core ships the default
     /// in-memory store and must never reference provider implementations.
     /// </summary>
     [Fact]

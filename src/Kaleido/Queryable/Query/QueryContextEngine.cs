@@ -4,7 +4,6 @@ using Kaleido.Queryable.Metadata;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Runtime;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Queryable.Query;
 
@@ -27,17 +26,16 @@ internal interface IQueryContextEngine<TQueryContext, TView>
         CancellationToken cancellationToken = default);
 }
 
-internal sealed partial class QueryContextEngine<TQueryContext, TView>(
+internal sealed class QueryContextEngine<TQueryContext, TView>(
     IQueryContextValidator validator,
     IQueryContextCompiler compiler,
     ICompiledQueryApplier<TQueryContext> applier,
     IQueryContextExecutor<TView> executor,
     IQueryEventFactory eventFactory,
-    IEventPublisher eventPublisher,
+    IKaleidoEventOutbox eventOutbox,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     IQueryableObservability observability,
-    IServiceProvider serviceProvider,
-    ILogger<QueryContextEngine<TQueryContext, TView>> logger) : IQueryContextEngine<TQueryContext, TView>
+    IServiceProvider serviceProvider) : IQueryContextEngine<TQueryContext, TView>
     where TQueryContext : class, IQueryContext
     where TView : class
 {
@@ -76,7 +74,7 @@ internal sealed partial class QueryContextEngine<TQueryContext, TView>(
                 observation,
                 cancellationToken);
 
-            PublishExecuted(details, request, result, cancellationToken);
+            await EnqueueExecutedAsync(details, request, result);
 
             return result;
         }
@@ -136,7 +134,7 @@ internal sealed partial class QueryContextEngine<TQueryContext, TView>(
                 observation,
                 cancellationToken);
 
-            PublishExecuted(details, request, result, cancellationToken);
+            await EnqueueExecutedAsync(details, request, result);
 
             return result;
         }
@@ -157,32 +155,14 @@ internal sealed partial class QueryContextEngine<TQueryContext, TView>(
         }
     }
 
-    private void PublishExecuted(
+    // QueryExecuted goes to the outbox (nothing is written without a registered publisher).
+    private Task EnqueueExecutedAsync(
         QueryObservationDetails details,
         IQueryRequest request,
-        QueryResult<TView> result,
-        CancellationToken cancellationToken)
-    {
-        if (eventPublisher is EventPublisher)
-        {
-            return;
-        }
-
-        try
-        {
-            _ = eventPublisher.PublishAsync(
-                eventFactory.CreateQueryExecuted(
-                    correlationAccessor.Current,
-                    details,
-                    request,
-                    result),
-                cancellationToken);
-        }
-        catch (Exception publishException) when (publishException is not OperationCanceledException)
-        {
-            LogEventPublishFailed(logger, publishException, details.QuerySourceName);
-        }
-    }
+        QueryResult<TView> result) =>
+        eventOutbox.EnqueueAsync(
+            eventFactory.CreateQueryExecuted(correlationAccessor.Current, details, request, result),
+            CancellationToken.None);
 
     private async Task<IQueryable<TQueryContext>> CreateQueryAsync(
         QuerySourceRegistration source,
@@ -327,7 +307,4 @@ internal sealed partial class QueryContextEngine<TQueryContext, TView>(
         ?? throw new KaleidoFrameworkException(
             FrameworkErrorCodes.ReflectionError,
             $"Unable to locate method '{nameof(CreateViewAsyncTyped)}'.");
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for QueryExecuted on source {QuerySourceName}. Event delivery is best-effort.")]
-    private static partial void LogEventPublishFailed(ILogger logger, Exception exception, string querySourceName);
 }

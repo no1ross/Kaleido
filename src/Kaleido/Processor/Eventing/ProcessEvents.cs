@@ -5,6 +5,9 @@ public interface IProcessEvent : IKaleidoEvent;
 [ExcludeFromCodeCoverage]
 public abstract record ProcessEventBase : IProcessEvent
 {
+    /// <inheritdoc/>
+    public Guid EventId { get; init; } = Guid.NewGuid();
+
     public required DateTimeOffset OccurredOn { get; init; }
 }
 

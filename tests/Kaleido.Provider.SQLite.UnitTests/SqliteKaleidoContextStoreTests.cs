@@ -1,4 +1,5 @@
 using Kaleido.Processor.Context;
+using Kaleido.Storage;
 using Kaleido.Provider.SQLite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -6,27 +7,27 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Kaleido.Provider.SQLite.UnitTests;
 
 // The reference implementation's fidelity tests double as the executable
-// IProcessorContextStore contract spec - a consumer-authored store should
+// IKaleidoContextStore contract spec - a consumer-authored store should
 // satisfy the same shape.
-public sealed class SqliteProcessorContextStoreTests
+public sealed class SqliteKaleidoContextStoreTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static SqliteProcessorContextDbContext CreateDbContext()
+    private static SqliteKaleidoContextDbContext CreateDbContext()
     {
-        var options = new DbContextOptionsBuilder<SqliteProcessorContextDbContext>()
+        var options = new DbContextOptionsBuilder<SqliteKaleidoContextDbContext>()
             .UseSqlite("DataSource=:memory:")
             .Options;
 
-        var context = new SqliteProcessorContextDbContext(options);
+        var context = new SqliteKaleidoContextDbContext(options);
         context.Database.OpenConnection();
         context.Database.EnsureCreated();
         return context;
     }
 
-    private static SqliteProcessorContextStore CreateSut(SqliteProcessorContextDbContext dbContext) =>
+    private static SqliteKaleidoContextStore CreateSut(SqliteKaleidoContextDbContext dbContext, Guid? instanceId = null) =>
         new(dbContext,
-            new KaleidoServiceOptions { ServiceName = "test-svc" },
-            NullLogger<SqliteProcessorContextStore>.Instance);
+            new KaleidoServiceOptions { ServiceName = "test-svc", InstanceId = instanceId ?? Guid.NewGuid() },
+            NullLogger<SqliteKaleidoContextStore>.Instance);
 
     private static ProcessorContext CreateContext(
         Guid processId,
@@ -79,7 +80,7 @@ public sealed class SqliteProcessorContextStoreTests
         var sut = CreateSut(dbContext);
         var expected = CreateContext(Guid.NewGuid());
 
-        await sut.SaveAsync(expected);
+        await sut.SaveAsync(expected, []);
 
         var loaded = await sut.LoadAsync(expected.ProcessId);
 
@@ -102,7 +103,7 @@ public sealed class SqliteProcessorContextStoreTests
         var sut = CreateSut(dbContext);
         var expected = CreateContext(Guid.NewGuid());
 
-        await sut.SaveAsync(expected);
+        await sut.SaveAsync(expected, []);
 
         var loaded = await sut.LoadAsync(expected.ProcessId);
 
@@ -157,7 +158,7 @@ public sealed class SqliteProcessorContextStoreTests
                 }
             };
 
-        await sut.SaveAsync(expected);
+        await sut.SaveAsync(expected, []);
 
         var loaded = await sut.LoadAsync(expected.ProcessId);
 
@@ -185,7 +186,7 @@ public sealed class SqliteProcessorContextStoreTests
                 RequiredStep = "StepB",
                 TargetProcessorName = null,
                 RequiredInformationRequest = new InformationRequest { InformationRequestId = "out-of-network" }
-            });
+            }, []);
 
         await sut.SaveAsync(
             CreateContext(processId) with
@@ -194,7 +195,7 @@ public sealed class SqliteProcessorContextStoreTests
                 RequiredStep = "StepB",
                 TargetProcessorName = null,
                 RequiredInformationRequest = null
-            });
+            }, []);
 
         var loaded = await sut.LoadAsync(processId);
 
@@ -210,7 +211,7 @@ public sealed class SqliteProcessorContextStoreTests
         var sut = CreateSut(dbContext);
         var processId = Guid.NewGuid();
 
-        var saved = await sut.SaveAsync(CreateContext(processId, ProcessExecutionState.Active));
+        var saved = await sut.SaveAsync(CreateContext(processId, ProcessExecutionState.Active), []);
 
         var updated = CreateContext(processId, ProcessExecutionState.Complete) with
         {
@@ -220,7 +221,7 @@ public sealed class SqliteProcessorContextStoreTests
             Steps = []
         };
 
-        await sut.SaveAsync(updated);
+        await sut.SaveAsync(updated, []);
 
         var loaded = await sut.LoadAsync(processId);
 
@@ -239,8 +240,8 @@ public sealed class SqliteProcessorContextStoreTests
         var first = CreateContext(Guid.NewGuid());
         var second = CreateContext(Guid.NewGuid(), ProcessExecutionState.Complete);
 
-        await sut.SaveAsync(first);
-        await sut.SaveAsync(second);
+        await sut.SaveAsync(first, []);
+        await sut.SaveAsync(second, []);
 
         var loaded = await sut.LoadAsync(first.ProcessId);
 
@@ -256,8 +257,8 @@ public sealed class SqliteProcessorContextStoreTests
         var sut = CreateSut(dbContext);
         var processId = Guid.NewGuid();
 
-        var first = await sut.SaveAsync(CreateContext(processId));
-        var second = await sut.SaveAsync(first with { State = ProcessExecutionState.Complete });
+        var first = await sut.SaveAsync(CreateContext(processId), []);
+        var second = await sut.SaveAsync(first with { State = ProcessExecutionState.Complete }, []);
 
         Assert.Equal(1, first.Version);
         Assert.Equal(2, second.Version);
@@ -269,12 +270,12 @@ public sealed class SqliteProcessorContextStoreTests
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        var loaded = await sut.SaveAsync(CreateContext(Guid.NewGuid()));
+        var loaded = await sut.SaveAsync(CreateContext(Guid.NewGuid()), []);
 
-        await sut.SaveAsync(loaded with { State = ProcessExecutionState.Complete });
+        await sut.SaveAsync(loaded with { State = ProcessExecutionState.Complete }, []);
 
         var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
-            sut.SaveAsync(loaded with { State = ProcessExecutionState.Exception }));
+            sut.SaveAsync(loaded with { State = ProcessExecutionState.Exception }, []));
 
         Assert.Equal(loaded.ProcessId, exception.ProcessId);
         Assert.Equal(ProcessExecutionState.Complete, (await sut.LoadAsync(loaded.ProcessId))!.State);
@@ -286,9 +287,9 @@ public sealed class SqliteProcessorContextStoreTests
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
         var context = CreateContext(Guid.NewGuid());
-        await sut.SaveAsync(context);
+        await sut.SaveAsync(context, []);
 
-        await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(context));
+        await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(context, []));
     }
 
     // Two service instances (separate DbContexts) on one database: both read version 1, the first
@@ -301,23 +302,23 @@ public sealed class SqliteProcessorContextStoreTests
         using var second = CreateSharedDbContext(connectionString);
         var processId = Guid.NewGuid();
 
-        await CreateSut(first).SaveAsync(CreateContext(processId));
+        await CreateSut(first).SaveAsync(CreateContext(processId), []);
         var loadedByFirst = await CreateSut(first).LoadAsync(processId);
         var loadedBySecond = await CreateSut(second).LoadAsync(processId);
 
-        await CreateSut(first).SaveAsync(loadedByFirst! with { State = ProcessExecutionState.Complete });
+        await CreateSut(first).SaveAsync(loadedByFirst! with { State = ProcessExecutionState.Complete }, []);
 
         await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
-            CreateSut(second).SaveAsync(loadedBySecond! with { State = ProcessExecutionState.Exception }));
+            CreateSut(second).SaveAsync(loadedBySecond! with { State = ProcessExecutionState.Exception }, []));
     }
 
-    private static SqliteProcessorContextDbContext CreateSharedDbContext(string connectionString)
+    private static SqliteKaleidoContextDbContext CreateSharedDbContext(string connectionString)
     {
-        var options = new DbContextOptionsBuilder<SqliteProcessorContextDbContext>()
+        var options = new DbContextOptionsBuilder<SqliteKaleidoContextDbContext>()
             .UseSqlite(connectionString)
             .Options;
 
-        var context = new SqliteProcessorContextDbContext(options);
+        var context = new SqliteKaleidoContextDbContext(options);
         context.Database.OpenConnection();
         context.Database.EnsureCreated();
         return context;
@@ -362,5 +363,175 @@ public sealed class SqliteProcessorContextStoreTests
         await sut.SaveResultAsync(Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), "second"));
 
         Assert.Equal("second", (await sut.FindResultAsync("svc:alice:k1"))!.Response);
+    }
+
+    private static KaleidoOutboxEvent Event(DateTimeOffset? occurredUtc = null)
+    {
+        var occurred = occurredUtc ?? DateTimeOffset.UtcNow.AddSeconds(-1);
+
+        return new KaleidoOutboxEvent
+        {
+            EventId = Guid.NewGuid(),
+            EventType = "process.step-completed.v1",
+            Payload = """{"eventType":"process.step-completed.v1"}""",
+            OccurredUtc = occurred,
+            NextAttemptUtc = occurred,
+        };
+    }
+
+    [Fact]
+    public async Task SaveAsync_WithEvents_StoresThemWithTheState()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var @event = Event();
+
+        await sut.SaveAsync(CreateContext(Guid.NewGuid()), [@event]);
+
+        var claimed = Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+        Assert.Equal(@event.EventId, claimed.EventId);
+        Assert.Equal(@event.EventType, claimed.EventType);
+        Assert.Equal(@event.Payload, claimed.Payload);
+        Assert.Equal(@event.OccurredUtc, claimed.OccurredUtc);
+    }
+
+    [Fact]
+    public async Task SaveAsync_WhenItConflicts_StoresNoEvents()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var context = CreateContext(Guid.NewGuid());
+        await sut.SaveAsync(context, []);
+
+        await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(context, [Event()]));
+
+        dbContext.ChangeTracker.Clear();
+        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+    }
+
+    [Fact]
+    public async Task ClaimEventsAsync_TakesAtMostTheBatchOldestFirstAndNeverTwice()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext, Guid.NewGuid());
+        var now = DateTimeOffset.UtcNow;
+        var oldest = Event(now.AddSeconds(-3));
+        var middle = Event(now.AddSeconds(-2));
+        await sut.EnqueueEventsAsync([Event(now.AddSeconds(-1)), middle, oldest]);
+
+        var first = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
+        var second = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
+
+        Assert.Equal([oldest.EventId, middle.EventId], first.Select(x => x.EventId));
+        Assert.Single(second);
+        Assert.Empty(await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1)));
+    }
+
+    [Fact]
+    public async Task ClaimEventsAsync_SkipsEntriesThatAreNotDueYet()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        await sut.EnqueueEventsAsync([Event() with { NextAttemptUtc = DateTimeOffset.UtcNow.AddMinutes(1) }]);
+
+        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+    }
+
+    // Two instances on one database claiming at the same time: each entry goes to exactly one.
+    [Fact]
+    public async Task ClaimEventsAsync_FromTwoInstancesOnOneDatabase_NeverClaimsAnEntryTwice()
+    {
+        var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
+        using var first = CreateSharedDbContext(connectionString);
+        using var second = CreateSharedDbContext(connectionString);
+        var events = Enumerable.Range(0, 30).Select(i => Event(DateTimeOffset.UtcNow.AddSeconds(-30 + i))).ToArray();
+        await CreateSut(first).EnqueueEventsAsync(events);
+        var a = CreateSut(first, Guid.NewGuid());
+        var b = CreateSut(second, Guid.NewGuid());
+
+        var claimedByA = new List<Guid>();
+        var claimedByB = new List<Guid>();
+
+        for (var round = 0; round < 4; round++)
+        {
+            var claims = await Task.WhenAll(a.ClaimEventsAsync(5, TimeSpan.FromMinutes(1)), b.ClaimEventsAsync(5, TimeSpan.FromMinutes(1)));
+            claimedByA.AddRange(claims[0].Select(x => x.EventId));
+            claimedByB.AddRange(claims[1].Select(x => x.EventId));
+        }
+
+        Assert.Empty(claimedByA.Intersect(claimedByB));
+        Assert.Equal(claimedByA.Count + claimedByB.Count, claimedByA.Concat(claimedByB).Distinct().Count());
+        Assert.Equal(30, claimedByA.Count + claimedByB.Count);
+    }
+
+    [Fact]
+    public async Task CompleteEventAsync_RemovesTheEntry()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext, Guid.NewGuid());
+        var @event = Event();
+        await sut.EnqueueEventsAsync([@event]);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
+
+        await sut.CompleteEventAsync(@event.EventId);
+
+        Assert.Empty(await dbContext.OutboxEvents.AsNoTracking().ToListAsync());
+    }
+
+    // An instance whose lease expired must not remove an entry another instance has claimed since.
+    [Fact]
+    public async Task CompleteEventAsync_ByAnInstanceWhoseLeaseExpired_KeepsTheEntryOfTheNewOwner()
+    {
+        var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
+        using var first = CreateSharedDbContext(connectionString);
+        using var second = CreateSharedDbContext(connectionString);
+        var stale = CreateSut(first, Guid.NewGuid());
+        var owner = CreateSut(second, Guid.NewGuid());
+        var @event = Event();
+        await stale.EnqueueEventsAsync([@event]);
+
+        await stale.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1));
+        await Task.Delay(20);
+        Assert.Single(await owner.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+
+        await stale.CompleteEventAsync(@event.EventId);
+        await stale.FailEventAsync(@event.EventId, retryAtUtc: null, "stale");
+
+        var entry = Assert.Single(await second.OutboxEvents.AsNoTracking().ToListAsync());
+        Assert.False(entry.IsParked);
+        Assert.Equal(0, entry.Attempts);
+    }
+
+    [Fact]
+    public async Task FailEventAsync_CountsTheAttemptAndReleasesTheEntryForTheRetry()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext, Guid.NewGuid());
+        var @event = Event();
+        await sut.EnqueueEventsAsync([@event]);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
+
+        await sut.FailEventAsync(@event.EventId, DateTimeOffset.UtcNow.AddSeconds(-1), "broker down");
+
+        var retried = Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+        Assert.Equal(1, retried.Attempts);
+        Assert.Equal("broker down", retried.LastError);
+    }
+
+    [Fact]
+    public async Task FailEventAsync_WithoutARetryTime_ParksTheEntryAndKeepsIt()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext, Guid.NewGuid());
+        var @event = Event();
+        await sut.EnqueueEventsAsync([@event]);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
+
+        await sut.FailEventAsync(@event.EventId, retryAtUtc: null, new string('x', 5000));
+
+        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+        var parked = Assert.Single(await dbContext.OutboxEvents.AsNoTracking().ToListAsync());
+        Assert.True(parked.IsParked);
+        Assert.Equal(SqliteKaleidoContextStore.MaxErrorLength, parked.LastError!.Length);
     }
 }

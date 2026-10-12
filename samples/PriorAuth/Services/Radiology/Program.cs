@@ -89,7 +89,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     .AddEventPublisher<HttpEventPublisher>()
     // Sample: return framework diagnostics (e.g. pro_step_not_available) in frameworkMessages.
     .AddHttp(o => o.IncludeFrameworkMessages = true)
-    .UseSqliteProcessorContextStore(processConnectionString)
+    .UseSqliteKaleidoContextStore(processConnectionString)
     .AddHttpClients()
     .AddOpenTelemetry();
 
@@ -108,7 +108,7 @@ await using (var scope = app.Services.CreateAsyncScope())
     var dbContext =
         scope.ServiceProvider.GetRequiredService<RadiologyDbContext>();
     var processDbContext =
-        scope.ServiceProvider.GetRequiredService<SqliteProcessorContextDbContext>();
+        scope.ServiceProvider.GetRequiredService<SqliteKaleidoContextDbContext>();
 
     await dbContext.Database.EnsureCreatedAsync();
     await processDbContext.Database.EnsureCreatedAsync();

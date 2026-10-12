@@ -144,7 +144,7 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
         var host = await BuildHostAsync();
 
         await using var scope = host.Services.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<SqliteProcessorContextDbContext>().Database.EnsureCreatedAsync(Cancel);
+        await scope.ServiceProvider.GetRequiredService<SqliteKaleidoContextDbContext>().Database.EnsureCreatedAsync(Cancel);
 
         return host;
     }
@@ -163,7 +163,7 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
                             o.Assemblies = [typeof(RuntimeRootStep).Assembly];
                         })
                         .AddHttp()
-                        .UseSqliteProcessorContextStore($"Data Source={_databasePath}");
+                        .UseSqliteKaleidoContextStore($"Data Source={_databasePath}");
                 });
                 webBuilder.Configure(app =>
                 {

@@ -141,7 +141,7 @@ job.
 - **State** holds only the pending request (`ProcessorContext.RequiredInformationRequest`). It
   sits next to `RequiredStep` and is tied to the execution that produced it by
   `LatestRequestId`. Stores persist it (the SQLite reference store keeps it as JSON on the
-  required-step row); a consumer `IProcessorContextStore` must persist it too.
+  required-step row); a consumer `IKaleidoContextStore` must persist it too.
 - **No history.** Kaleido doesn't keep past questions or answers. Recording them is yours.
   `StepCompleted` already carries each step's payload (the answers), and `PlanBuilt` /
   `StepCompleted` / `ExecutionCompleted` carry `RequiredInformationRequest`.

@@ -7,7 +7,7 @@ namespace Kaleido.Exceptions;
 /// </summary>
 /// <remarks>
 /// The caller reads the process state again and decides on the next step; retrying the same request
-/// blindly would act on a state it has not seen. Thrown by <see cref="Kaleido.Processor.Context.IProcessorContextStore"/>
+/// blindly would act on a state it has not seen. Thrown by <see cref="Kaleido.Storage.IKaleidoContextStore"/>
 /// implementations when the stored version is not the version the context was loaded with.
 /// </remarks>
 [ExcludeFromCodeCoverage]
