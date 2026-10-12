@@ -11,6 +11,7 @@ Every Kaleido exception carries a machine-readable `Code`. Framework-defined cod
 | `KaleidoValidationException` | `Kaleido.Exceptions` | 400 Bad Request, or a failed Process step outcome | `QueryableErrorCodes` (`qry_*`), `ProcessorErrorCodes` (`pro_*`), or a handler-supplied domain code |
 | `KaleidoConfigurationException` | `Kaleido.Exceptions` | 500 Internal Server Error | the owning area's codes: `ConfigurationErrorCodes` (core), `QueryableErrorCodes`, `ProcessorErrorCodes`, `HttpClientErrorCodes`, `SqliteErrorCodes` |
 | `KaleidoFrameworkException` | `Kaleido.Exceptions` | 500 Internal Server Error | `FrameworkErrorCodes` |
+| `KaleidoConcurrencyException` | `Kaleido.Exceptions` | 409 Conflict | `ProcessorErrorCodes.ProcessConflict` (`pro_process_conflict`) |
 | `KaleidoHttpClientException` | `Kaleido.Http.Client` | — (client-side) | `HttpClientErrorCodes` |
 
 Each area owns its codes; there is no single catalog. Code string values are stable regardless of which class declares them.
@@ -69,6 +70,9 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `InvalidRegistration` | `pro_invalid_registration` | Step registration is structurally invalid (including `[ProcessStep]` on a type that does not implement `IProcessStep`, and an `IInformationStep` declaring properties other than `InformationRequestId` and `Items`) |
 | `UnknownStep` | `pro_unknown_step` | Requested step is not registered |
 | `ProcessNotFound` | `pro_process_not_found` | The request names a process that does not exist and is not a handoff from another processor; nothing is started (400, ADR 0009) |
+| `ProcessConflict` | `pro_process_conflict` | Another request saved the process since this one loaded it (optimistic concurrency); nothing of this request was saved. Read the process state again and decide on the next step (409, `KaleidoConcurrencyException`) |
+| `IdempotencyKeyReused` | `pro_idempotency_key_reused` | An `Idempotency-Key` was sent again with a different request; a key identifies one call - use a new key for a new call (422) |
+| `InvalidIdempotencyKey` | `pro_invalid_idempotency_key` | The `Idempotency-Key` header is longer than 200 characters (400) |
 | `InvalidRequest` | `pro_invalid_request` | Step request cannot be hydrated or processed |
 | `PropertyNotFound` | `pro_property_not_found` | Requested step property was not found |
 | `ConversionFailed` | `pro_conversion_failed` | Request value could not be converted |
@@ -140,6 +144,7 @@ Runtime client codes are prefixed `httpclient_`; `missing_base_url` is a startup
 | `EmptyResponse` | `httpclient_empty_response` | Remote request succeeded but returned no payload |
 | `RequestFailed` | `httpclient_request_failed` | Remote request failed with a non-success HTTP status |
 | `ValidationFailed` | `httpclient_validation_failed` | Remote request failed with structured validation errors |
+| `Conflict` | `httpclient_conflict` | The remote process was changed by another request (409, `pro_process_conflict` in `Errors`); nothing was saved - read the state again instead of repeating the call |
 | `InvalidRegistryUrl` | `httpclient_invalid_registry_url` | A URL returned by a remote registry was not a valid absolute http(s) URL |
 | `MissingBaseUrl` | `missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
 

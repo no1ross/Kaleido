@@ -87,6 +87,21 @@ PriorAuth sample rejects an enrollment that is not the member's, and a provider 
 not the provider's or not offered for the request, and reads names and network status from the
 chosen result instead of taking them from the caller).
 
+## When a call fails
+
+A tool call never fails at the protocol level: a problem comes back as a tool result with `isError: true` and one of the `McpErrorCodes`, so the agent can explain it or recover.
+
+| Code | When | What the agent is told to do |
+|---|---|---|
+| `mcp_unknown_tool` | The tool is not (or no longer) offered to this caller. | Use the current tool list. |
+| `mcp_invalid_arguments` | A required argument is missing or has the wrong shape. | Fix the arguments. |
+| `mcp_service_error` | The service refused or failed the call; its status and errors are included. | Explain the errors to the user. |
+| `mcp_process_conflict` | Another call changed the process first (409); nothing was saved. | Read the process with `get_process_state` and decide with the user - never repeat the call blindly. |
+| `mcp_service_unavailable` | The service could not be reached, or no client is configured for it. | For a step, check the process with `get_process_state` before trying again. |
+| `mcp_internal_error` | An unexpected error in the adapter. | Same as above. |
+
+**Retries are safe.** Tool calls go through the Kaleido clients: transient failures are retried by their resilience pipeline, and every step call carries an `Idempotency-Key`, so a retry the service has already answered gets the stored answer instead of running the step twice ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#resilience)).
+
 ## Security
 
 - Tools are built from the registry **filtered for the caller**: a caller sees only what it may use.

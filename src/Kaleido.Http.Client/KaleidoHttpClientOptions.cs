@@ -38,4 +38,7 @@ public sealed class KaleidoHttpClientOptions
     /// healthy. Defaults to false.
     /// </summary>
     public bool StrictRegistryProbe { get; set; }
+
+    /// <summary>The client's resilience (null = none). <c>AddHttpClients()</c> sets it from the shared and the client's section.</summary>
+    public KaleidoResilienceOptions? Resilience { get; set; }
 }

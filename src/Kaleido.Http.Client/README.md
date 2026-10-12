@@ -79,7 +79,71 @@ The granular `AddProcessorClient`/`AddQueryableClient` builder extensions are in
 - `RegistryTtl` - how often the client checks whether the remote registry changed (default **30 seconds**). A check sends the known revision as `If-None-Match`; an unchanged registry answers an empty **304** and the snapshot is kept, so a short interval is cheap. A capability call answered **404** (the service was deployed without that step, source or view) drops the snapshot at once, so the next read loads the current registry. Null = never checked again until `InvalidateRegistry()` or a 404.
 - `StrictRegistryProbe` — the `kaleido-{name}` health check probes `/{prefix}/registry?strict` so a partially-degraded aggregating downstream reports `Unhealthy`.
 
-Failed fetches are never cached — the next call retries naturally. For in-request retry/backoff/circuit-breaking, attach `AddStandardResilienceHandler()` (or Polly) to the named client via `configureClient` — that's the seam for transient-failure policy.
+Failed fetches are never cached - the next call retries naturally.
+
+---
+
+## Resilience
+
+Every call a Kaleido client makes - registry reads, queries, process execution - runs through a resilience pipeline built on `Microsoft.Extensions.Http.Resilience` (Polly). **It is on by default**; nothing needs configuring.
+
+The pipeline, outermost first:
+
+| Stage | Default | What it does |
+|---|---|---|
+| Total timeout | 30 s | Bounds a whole call, all attempts and delays included. |
+| Retry | 3 retries, 500 ms base delay, exponential with jitter | Retries **safe** requests after a transient failure: 5xx, 408, 429, a timeout, a connection error. |
+| Circuit breaker | opens at 50 % failures (at least 10 calls within 30 s), stays open 15 s | Stops calling a service that keeps failing; calls fail at once until it tries again. |
+| Attempt timeout | 10 s | Bounds one attempt. |
+
+**Only safe requests are retried:**
+- reads (`GET`, `HEAD`): registry, process state, metadata;
+- requests with an `Idempotency-Key` header. The process client sends a new key with every execute call (see below), so execute calls are retried too: a retry the service has already answered gets the stored answer, the step does not run twice.
+
+A request with neither is never retried. Retries re-send the same request, so the correlation headers (the same `X-Kaleido-Request-Id`) and the idempotency key stay the same; the resilience events (retries, an opening circuit) appear in the logs and metrics of `Microsoft.Extensions.Resilience`.
+
+**Configuration - three layers.** The framework defaults; `Kaleido:Resilience` for all clients; `Kaleido:Clients:{name}:Resilience` for one client, overriding **only the settings it names** (the rest come from the shared section):
+
+```json
+{
+  "Kaleido": {
+    "Resilience": {
+      "MaxRetryAttempts": 2,
+      "AttemptTimeout": "00:00:05"
+    },
+    "Clients": {
+      "member":    { "BaseUrl": "http://member:8080" },
+      "radiology": { "BaseUrl": "http://radiology:8080", "Resilience": { "AttemptTimeout": "00:00:20" } },
+      "legacy":    { "BaseUrl": "http://legacy:8080",    "Resilience": { "Enabled": false } }
+    }
+  }
+}
+```
+
+Here `member` retries twice with 5 s per attempt (shared), `radiology` retries twice with 20 s per attempt (its own timeout), and `legacy` has no resilience at all.
+
+| Setting | Default | |
+|---|---|---|
+| `Enabled` | `true` | `false` turns resilience off. |
+| `TotalTimeout` | `00:00:30` | A whole call, all attempts included. |
+| `AttemptTimeout` | `00:00:10` | One attempt. |
+| `MaxRetryAttempts` | `3` | Retries of a safe request; `0` = none. |
+| `RetryDelay` | `00:00:00.5` | Base delay; grows exponentially, with jitter. |
+| `CircuitBreakerFailureRatio` | `0.5` | Share of failed calls that opens the circuit. |
+| `CircuitBreakerMinimumThroughput` | `10` | Calls needed within the sampling duration before the circuit can open. |
+| `CircuitBreakerSamplingDuration` | `00:00:30` | Window the failure ratio is measured over. |
+| `CircuitBreakerBreakDuration` | `00:00:15` | How long an open circuit fails calls at once. |
+| `HealthCheckTimeout` | `00:00:05` | Timeout of the client health check. |
+
+**Health checks** (`kaleido-{name}`) are never retried and have their own short timeout (`HealthCheckTimeout`), so health reporting stays fast and honest: a service that does not answer in time, or whose circuit is open, reports `Unhealthy` right away.
+
+---
+
+## Idempotent execute calls
+
+The process client sends an `Idempotency-Key` (a new GUID) with **every execute call** - the generic execute and every step call. A retry of that call (by the resilience pipeline) re-sends the same key, and the service answers it with the result it stored for the first attempt: the step never runs twice because a response was lost on the way back. The MCP adapter calls services through these clients, so its tool calls get the same protection. The service side is described in [`Kaleido.Http`](../Kaleido.Http/README.md#idempotent-execution-idempotency-key).
+
+**When another call changed the process first** (two calls for the same process at the same time - a double submit, two agents on one case), the service refuses the second save with **409** `pro_process_conflict`; the client throws `KaleidoHttpClientException` with `Code = httpclient_conflict` and the service's errors. Nothing of that call was saved. Read the process state again and decide on the next step - do not repeat the call blindly.
 
 ---
 
@@ -153,7 +217,9 @@ Both clients:
 - share `KaleidoRemoteRegistry` — one `GET /{routePrefix}/registry` call per named client, cached as `AggregatedRegistryResponse`; each client projects its half
 - a non-success registry response (including 404 — every Kaleido service is expected to publish `/{service}/registry`) throws `KaleidoHttpClientException`
 - automatically forward Kaleido correlation headers on outbound requests
-- throw their respective exception types (`KaleidoHttpClientException` / `KaleidoQueryableClientException`) on non-success HTTP responses
+- throw their respective exception types (`KaleidoHttpClientException` / `KaleidoQueryableClientException`) on non-success HTTP responses (a 409 conflict: `httpclient_conflict`)
+- drop the cached registry when a capability call answers **404** (the service was deployed without it), so the next read loads the current one
+- run every call through the resilience pipeline (see [Resilience](#resilience))
 
 `KaleidoHttpClientException` is also thrown when the requested step name is not found in the cached registry (returns `NotFound` status code).
 

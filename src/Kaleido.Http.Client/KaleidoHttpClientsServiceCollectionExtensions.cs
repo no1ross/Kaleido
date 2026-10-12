@@ -63,6 +63,7 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
         var prefix = entry?.RoutePrefix ?? name.ToLowerInvariant();
         var registryTtl = entry?.RegistryTtl ?? config.RegistryTtl;
         var strictProbe = entry?.StrictRegistryProbe ?? config.StrictRegistryProbe;
+        var resilience = config.Resilience.ForClient(builder.Configuration, name);
 
         builder.AddProcessorClient(o =>
         {
@@ -71,6 +72,7 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
             o.RoutePrefix = prefix;
             o.RegistryTtl = registryTtl;
             o.StrictRegistryProbe = strictProbe;
+            o.Resilience = resilience;
         });
 
         builder.AddQueryableClient(o =>
@@ -80,6 +82,7 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
             o.RoutePrefix = prefix;
             o.RegistryTtl = registryTtl;
             o.StrictRegistryProbe = strictProbe;
+            o.Resilience = resilience;
         });
     }
 }

@@ -15,7 +15,7 @@ See also:
 ### Registration and middleware
 - `KaleidoHttpServiceCollectionExtensions` — `AddHttp()` entry point; registers routing, `IHttpContextAccessor`, the middleware pipeline, and HTTP execution services
 - `KaleidoStartupFilter` — registers middlewares via `IStartupFilter` in the correct pipeline order
-- `ExceptionMiddleware` — outermost middleware; maps exceptions to JSON error responses
+- `ExceptionMiddleware` — outermost middleware; maps exceptions outside Kaleido's endpoints to JSON error responses (inside the endpoints `KaleidoExceptionEndpointFilter` does it; see [Error responses](#error-responses))
 - `ObservabilityMiddleware` — populates `IKaleidoCorrelationContextAccessor` from inbound headers and echoes correlation headers on the response
 - `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers
 
@@ -118,6 +118,31 @@ Steps without a typed handler result return the same fields without `result`. Ha
 
 ---
 
+## Idempotent execution (`Idempotency-Key`)
+
+A process execute request - `POST /{service}/processes/execute` or a step call - may carry an `Idempotency-Key` header: a caller-chosen key for one logical call (e.g. a GUID), the same on every retry of that call.
+
+- **First request:** the step runs as usual; a successful (2xx) answer is stored with the key.
+- **Retry with the same key and the same request:** the stored answer is returned again with `Idempotent-Replayed: true`. **The step does not run a second time** - a lost response or a timeout on the way back no longer creates a duplicate process or a second side effect.
+- **The same key with a different request** (other body, other route, other `X-Kaleido-Process-Id`): **422** `pro_idempotency_key_reused`. A key identifies one call; use a new key for a new call.
+- **A key longer than 200 characters:** **400** `pro_invalid_idempotency_key`.
+- **Without the header** nothing changes.
+
+Details:
+- Keys are **scoped per service and caller**: two callers cannot see each other's answers, and the same key at two services is two keys.
+- Answers are kept for `KaleidoHttpOptions.IdempotencyRetention` (default **24 hours**: `AddHttp(o => o.IdempotencyRetention = TimeSpan.FromHours(4))`) and stored by the process store (`IProcessorContextStore.FindResultAsync`/`SaveResultAsync`) - the SQLite reference store keeps them in its own `IdempotentResults` table in the same database, so there is nothing extra to set up.
+- Only successful answers are stored: a request that failed may be retried with the same key.
+- Two requests with the same key **at the same time** both run; optimistic concurrency (below) lets only one of them save, the other gets 409.
+- The Kaleido clients send a key with every execute call automatically ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#idempotent-execute-calls)).
+
+## Concurrent calls (`409 pro_process_conflict`)
+
+Every save of the process state is conditional on the version it was loaded with (optimistic concurrency, `ProcessorContext.Version`). When two requests for the same process run at the same time - a client retry after a timeout, a double submit, two agents on one case - the first save wins and the second is refused: **409** `pro_process_conflict`, and **nothing of the second request is saved**. The caller reads the process state again (`GET /{service}/processes/{processId}`) and decides on the next step; repeating the same call blindly would act on a state it has not seen.
+
+## Error responses
+
+Kaleido answers every error from its own endpoints itself, with `{ "errors": [{ "code", "message" }] }`: `KaleidoExceptionEndpointFilter` runs first on every Kaleido route group and maps the exception inside the endpoint (400 validation, 401/403 authorization, 409 conflict, 500 configuration/framework/unexpected). A host's own exception handling - the developer exception page `WebApplication` adds in Development, or `UseExceptionHandler` - therefore never turns a Kaleido validation error into a 500 or an HTML page. `ExceptionMiddleware` (outermost, via the startup filter) covers failures outside the endpoints, e.g. during correlation setup. When the client has gone, the error is still logged and counted, but no response is written.
+
 ## Authorization
 
 `MapKaleidoHttp()` returns an `IEndpointConventionBuilder` covering every mapped endpoint, so conventions compose directly. For per-surface conventions, `MapProcessor()` and `MapQueryable()` still return the `RouteGroupBuilder` they mapped:
@@ -155,7 +180,7 @@ Enforcement works on two layers:
 - *No case-level guardrails* (ADR 0010) - resuming or reading a process needs only what the step or route declares; `Owner` is a tag (created by), never enforced.
 - *Filtered discovery* — the `/{service}/registry` endpoint stays open but scopes its payload to the caller: `FilterAsync` drops capabilities the caller can't access (including views inside sources and steps inside processors) and omits processors whose steps are all filtered out. The registry cache holds the unfiltered union; filtering is per-request with this host's `AuthorizationMode`, so routers must use `ZeroTrust` too.
 
-Authorization failures are answered by the host's authentication scheme, as standard ASP.NET Core: endpoint-metadata denials use ASP.NET's default authorization result handler, and `ExceptionMiddleware` turns thrown `KaleidoAuthorizationException`s into `ChallengeAsync()` (401) or `ForbidAsync()` (403). Kaleido does not replace the host's authorization result handler, so consumer endpoints are unaffected.
+Authorization failures are answered by the host's authentication scheme, as standard ASP.NET Core: endpoint-metadata denials use ASP.NET's default authorization result handler, and Kaleido's exception handling (`KaleidoExceptionEndpointFilter` inside the endpoints, `ExceptionMiddleware` outside) turns thrown `KaleidoAuthorizationException`s into `ChallengeAsync()` (401) or `ForbidAsync()` (403). Kaleido does not replace the host's authorization result handler, so consumer endpoints are unaffected.
 
 A capability declaring `Policy` on a host with no `IAuthorizationService` fails closed — filtered out of discovery and denied at execution (with a warning log), rather than erroring the whole response.
 

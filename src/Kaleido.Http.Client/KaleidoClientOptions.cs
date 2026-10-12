@@ -28,6 +28,13 @@ public sealed class KaleidoClientOptions
     public TimeSpan? RegistryTtl { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
+    /// Resilience shared by all clients (<c>Kaleido:Resilience</c>): timeouts, retries of safe requests and
+    /// a circuit breaker, on by default. A client overrides single settings in
+    /// <c>Kaleido:Clients:{name}:Resilience</c>; see <see cref="KaleidoResilienceOptions"/>.
+    /// </summary>
+    public KaleidoResilienceOptions Resilience { get; set; } = new();
+
+    /// <summary>
     /// Shared default for <see cref="KaleidoClientEntry.StrictRegistryProbe"/>.
     /// </summary>
     public bool StrictRegistryProbe { get; set; }
