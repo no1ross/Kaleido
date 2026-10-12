@@ -122,6 +122,8 @@ A request with neither is never retried. Retries re-send the same request, so th
 
 Here `member` retries twice with 5 s per attempt (shared), `radiology` retries twice with 20 s per attempt (its own timeout), and `legacy` has no resilience at all.
 
+The timeout, retry and circuit-breaker settings are those of `KaleidoResilienceSettings` (core), the same vocabulary the event relay uses under `Kaleido:Events:Resilience`; the two sections are bound independently and have their own defaults, so a client's `MaxRetryAttempts` never changes how often events are retried.
+
 | Setting | Default | |
 |---|---|---|
 | `Enabled` | `true` | `false` turns resilience off. |

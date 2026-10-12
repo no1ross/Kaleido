@@ -1,6 +1,7 @@
 using Kaleido.Http.Authorization;
 using Kaleido.Observability;
 using Kaleido.Processor.Context;
+using Kaleido.Storage;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -11,7 +12,7 @@ public sealed class ProcessStateServiceTests
     : SutFixture
 {
     private static ProcessStateService CreateSut(
-        IProcessorContextStore contextStore,
+        IKaleidoContextStore contextStore,
         IProcessorStepRegistry registry,
         IProcessorResponseFactory responseFactory) =>
         new(
@@ -25,7 +26,7 @@ public sealed class ProcessStateServiceTests
     public async Task GetCurrentState_WhenContextDoesNotExist_ReturnsNull()
     {
         var contextStore =
-            new Mock<IProcessorContextStore>();
+            new Mock<IKaleidoContextStore>();
 
         contextStore
             .Setup(x =>
@@ -84,7 +85,7 @@ public sealed class ProcessStateServiceTests
             };
 
         var contextStore =
-            new Mock<IProcessorContextStore>();
+            new Mock<IKaleidoContextStore>();
 
         contextStore
             .Setup(x =>

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Kaleido.Processor.Context;
+using Kaleido.Storage;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -9,7 +10,7 @@ namespace Kaleido.Http.Processor.UnitTests;
 public sealed class KaleidoIdempotencyEndpointFilterTests
     : SutFixture
 {
-    private readonly Mock<IProcessorContextStore> store = new();
+    private readonly Mock<IKaleidoContextStore> store = new();
     private readonly Mock<IKaleidoCorrelationContextAccessor> correlation = new();
     private readonly List<IdempotentResult> saved = [];
     private int calls;

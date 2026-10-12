@@ -281,6 +281,7 @@ dotnet_diagnostic.MA0182.severity = warning    ; Unused internal type (off in Ka
 ; Off, with the reason
 dotnet_diagnostic.MA0190.severity = none       ; Partial property for GeneratedRegex - the net8.0 regex generator supports partial methods only
 dotnet_diagnostic.MA0038.severity = none       ; Deprecated duplicate of CA1822 (enforced above); misreports primary-constructor members as static
+dotnet_diagnostic.MA0041.severity = none       ; Deprecated duplicate of CA1822 (enforced above); flags members that are instance by design (an exception's Code)
 dotnet_diagnostic.MA0018.severity = none       ; Deprecated duplicate of CA1000
 
 ; Internal types here are used by Kaleido.Http and Kaleido.Http.Client through InternalsVisibleTo,

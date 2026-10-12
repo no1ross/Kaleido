@@ -2,11 +2,11 @@ using Kaleido.Eventing;
 using Kaleido.Exceptions;
 using Kaleido.Observability;
 using Kaleido.Processor.Context;
+using Kaleido.Storage;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
 using Kaleido.Processor.Registry;
 using Kaleido.UnitTests;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Processor.Execution.UnitTests;
 
@@ -802,20 +802,21 @@ public sealed class ProcessorExecutorTests
             x => x.Code == ProcessorErrorCodes.FrameworkException);
     }
 
-    private static Mock<IProcessorContextStore> CreateStore(
+    private static Mock<IKaleidoContextStore> CreateStore(
         List<ProcessorContext> savedContexts)
     {
         var store =
-            new Mock<IProcessorContextStore>();
+            new Mock<IKaleidoContextStore>();
 
         store
             .Setup(x =>
                 x.SaveAsync(
                     It.IsAny<ProcessorContext>(),
+                    It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(),
                     It.IsAny<CancellationToken>()))
-            .Callback<ProcessorContext, CancellationToken>(
-                (saved, _) => savedContexts.Add(saved))
-            .ReturnsAsync((ProcessorContext saved, CancellationToken _) => saved with { Version = saved.Version + 1 });
+            .Callback<ProcessorContext, IReadOnlyCollection<KaleidoOutboxEvent>, CancellationToken>(
+                (saved, _, _) => savedContexts.Add(saved))
+            .ReturnsAsync((ProcessorContext saved, IReadOnlyCollection<KaleidoOutboxEvent> _, CancellationToken _) => saved with { Version = saved.Version + 1 });
 
         return store;
     }
@@ -898,9 +899,9 @@ public sealed class ProcessorExecutorTests
         Mock<IStepAvailabilityResolver>? availabilityResolver = null,
         Mock<IStepExecutionEvaluator>? evaluator = null,
         Mock<IProcessorStateUpdater>? stateUpdater = null,
-        Mock<IProcessorContextStore>? store = null,
+        Mock<IKaleidoContextStore>? store = null,
         Mock<IProcessorEventFactory>? eventFactory = null,
-        Mock<IEventPublisher>? eventPublisher = null,
+        Mock<IKaleidoEventOutbox>? eventOutbox = null,
         Mock<IKaleidoCorrelationContextAccessor>? correlationAccessor = null)
     {
         var observability =
@@ -920,10 +921,9 @@ public sealed class ProcessorExecutorTests
             (store ?? CreateStore([])).Object,
             (availabilityResolver ?? CreateAvailabilityResolver()).Object,
             (eventFactory ?? new Mock<IProcessorEventFactory>()).Object,
-            (eventPublisher ?? new Mock<IEventPublisher>()).Object,
+            (eventOutbox ?? new Mock<IKaleidoEventOutbox>()).Object,
             observability,
-            accessor.Object,
-            NullLogger<ProcessorExecutor>.Instance);
+            accessor.Object);
     }
 
     private static Mock<IKaleidoCorrelationContextAccessor> CreateCorrelationAccessor()
@@ -1091,15 +1091,15 @@ public sealed class ProcessorExecutorTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateInvokerResult());
 
-        var store = new Mock<IProcessorContextStore>();
+        var store = new Mock<IKaleidoContextStore>();
         store
-            .Setup(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new KaleidoConcurrencyException(context.ProcessId));
 
         await Assert.ThrowsAsync<KaleidoConcurrencyException>(() =>
             CreateSut(invoker, store: store).ExecuteAsync([candidate], context, new ProcessorRequest()));
 
-        store.Verify(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<CancellationToken>()), Times.Once);
+        store.Verify(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -1125,5 +1125,111 @@ public sealed class ProcessorExecutorTests
 
         Assert.Equal(context.Version, Assert.Single(saved).Version);
         Assert.Equal(context.ProcessId, result.ProcessId);
+    }
+
+    private static Mock<IProcessStepInvoker> SucceedingInvoker()
+    {
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(
+                It.IsAny<ProcessStepRegistration>(),
+                It.IsAny<object>(),
+                It.IsAny<ProcessStepContext>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateInvokerResult());
+
+        return invoker;
+    }
+
+    private static KaleidoOutboxEvent OutboxEvent() =>
+        new() { EventId = Guid.NewGuid(), EventType = KaleidoEventTypes.ProcessStepCompleted, Payload = "{}", OccurredUtc = DateTimeOffset.UtcNow };
+
+    private static Mock<IKaleidoContextStore> RecordingStore(List<IReadOnlyCollection<KaleidoOutboxEvent>> savedEvents)
+    {
+        var store = new Mock<IKaleidoContextStore>();
+        store
+            .Setup(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>()))
+            .Callback<ProcessorContext, IReadOnlyCollection<KaleidoOutboxEvent>, CancellationToken>((_, events, _) => savedEvents.Add(events))
+            .ReturnsAsync((ProcessorContext saved, IReadOnlyCollection<KaleidoOutboxEvent> _, CancellationToken _) => saved with { Version = saved.Version + 1 });
+
+        return store;
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ACompletedStep_SavesItsEventInTheSameSaveAndWakesTheRelay()
+    {
+        var registration = CreateRegistration<TestStepA>("step-a");
+        var candidate = CreateCandidate<TestStepA>("step-a", registration);
+        var stepEvent = OutboxEvent();
+        var outbox = new Mock<IKaleidoEventOutbox>();
+        outbox
+            .Setup(x => x.Prepare(It.IsAny<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>>()))
+            .Returns(stepEvent);
+        var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
+
+        await CreateSut(SucceedingInvoker(), store: RecordingStore(savedEvents), eventOutbox: outbox)
+            .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest());
+
+        Assert.Equal(stepEvent, Assert.Single(Assert.Single(savedEvents)));
+        outbox.Verify(x => x.Saved(), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithoutAPublisher_SavesTheStateWithoutEvents()
+    {
+        var registration = CreateRegistration<TestStepA>("step-a");
+        var candidate = CreateCandidate<TestStepA>("step-a", registration);
+        var outbox = new Mock<IKaleidoEventOutbox>();
+        var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
+
+        await CreateSut(SucceedingInvoker(), store: RecordingStore(savedEvents), eventOutbox: outbox)
+            .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest());
+
+        Assert.Empty(Assert.Single(savedEvents));
+        outbox.Verify(x => x.Saved(), Times.Never);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ARejectedStep_SavesNothingAndWritesNoEvent()
+    {
+        var registration = CreateRegistration<TestStepA>("step-a");
+        var candidate = CreateCandidate<TestStepA>("step-a", registration);
+        var evaluator = new Mock<IStepExecutionEvaluator>();
+        evaluator
+            .Setup(x => x.Evaluate(
+                It.IsAny<StepCandidate>(),
+                It.IsAny<StepInvocationResult>(),
+                It.IsAny<IReadOnlyCollection<StepCandidate>>(),
+                It.IsAny<ProcessorContext>()))
+            .Returns(ExecutionDecision.Rejected());
+        var outbox = new Mock<IKaleidoEventOutbox>();
+        var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
+
+        await CreateSut(SucceedingInvoker(), evaluator: evaluator, store: RecordingStore(savedEvents), eventOutbox: outbox)
+            .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest());
+
+        Assert.Empty(savedEvents);
+        outbox.Verify(x => x.Prepare(It.IsAny<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_AFailedStep_SavesItsStateWithoutAStepEvent()
+    {
+        var registration = CreateRegistration<TestStepA>("step-a");
+        var candidate = CreateCandidate<TestStepA>("step-a", registration);
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(
+                It.IsAny<ProcessStepRegistration>(),
+                It.IsAny<object>(),
+                It.IsAny<ProcessStepContext>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("boom"));
+        var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
+
+        await CreateSut(invoker, store: RecordingStore(savedEvents))
+            .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest());
+
+        Assert.Empty(Assert.Single(savedEvents));
     }
 }

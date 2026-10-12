@@ -5,8 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Kaleido.Provider.SQLite;
 
 [ExcludeFromCodeCoverage]
-public sealed class SqliteProcessorContextDbContext(
-    DbContextOptions<SqliteProcessorContextDbContext> options)
+public sealed class SqliteKaleidoContextDbContext(
+    DbContextOptions<SqliteKaleidoContextDbContext> options)
     : DbContext(options)
 {
 
@@ -25,6 +25,9 @@ public sealed class SqliteProcessorContextDbContext(
     internal DbSet<IdempotentResultEntity> IdempotentResults =>
         Set<IdempotentResultEntity>();
 
+    internal DbSet<OutboxEventEntity> OutboxEvents =>
+        Set<OutboxEventEntity>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
@@ -42,5 +45,8 @@ public sealed class SqliteProcessorContextDbContext(
 
         modelBuilder.ApplyConfiguration(
             new IdempotentResultEntityConfiguration());
+
+        modelBuilder.ApplyConfiguration(
+            new OutboxEventEntityConfiguration());
     }
 }

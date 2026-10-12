@@ -1,4 +1,5 @@
 using Kaleido.Processor.Context;
+using Kaleido.Storage;
 using Kaleido.Processor.Registry;
 using Microsoft.Extensions.Logging;
 
@@ -12,7 +13,7 @@ internal interface IProcessStateService
 }
 
 internal sealed partial class ProcessStateService(
-    IProcessorContextStore contextStore,
+    IKaleidoContextStore contextStore,
     IProcessorStepRegistry registry,
     KaleidoServiceOptions serviceOptions,
     IProcessorResponseFactory responseFactory,

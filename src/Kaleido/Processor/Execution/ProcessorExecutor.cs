@@ -1,7 +1,6 @@
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
-using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Processor.Execution;
 
@@ -14,17 +13,16 @@ internal interface IProcessorExecutor
         CancellationToken cancellationToken = default);
 }
 
-internal sealed partial class ProcessorExecutor(
+internal sealed class ProcessorExecutor(
     IProcessStepInvoker invoker,
     IStepExecutionEvaluator evaluator,
     IProcessorStateUpdater stateUpdater,
-    IProcessorContextStore stateRepository,
+    IKaleidoContextStore stateRepository,
     IStepAvailabilityResolver availabilityResolver,
     IProcessorEventFactory eventFactory,
-    IEventPublisher eventPublisher,
+    IKaleidoEventOutbox eventOutbox,
     IProcessorObservability observability,
-    IKaleidoCorrelationContextAccessor correlationAccessor,
-    ILogger<ProcessorExecutor> logger)
+    IKaleidoCorrelationContextAccessor correlationAccessor)
     : IProcessorExecutor
 {
 
@@ -37,9 +35,8 @@ internal sealed partial class ProcessorExecutor(
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(context);
 
-        var outcomes = new List<ProcessExecutionOutcome>();
-        var remainingCandidates = candidates.ToList();
-        var currentCandidate = remainingCandidates.FirstOrDefault();
+        var run = new ExecutionRun(candidates, originalRequest);
+        var currentCandidate = run.RemainingCandidates.FirstOrDefault();
 
         while (currentCandidate is not null)
         {
@@ -51,24 +48,21 @@ internal sealed partial class ProcessorExecutor(
             // this request. Even if the step is repeatable, this specific
             // submitted candidate should not be selected again.
             //
-            remainingCandidates.Remove(candidate);
+            run.RemainingCandidates.Remove(candidate);
 
             (context, currentCandidate) =
-                await RunAsync(candidate, candidates, remainingCandidates, context, originalRequest, outcomes, cancellationToken);
+                await RunAsync(candidate, run, context, cancellationToken);
         }
 
-        return ToResult(context, outcomes);
+        return ToResult(context, run.Outcomes);
     }
 
     // Runs one candidate and records its outcome. Returns the process state afterwards and the
     // candidate to run next (null when this request stops here).
     private async Task<(ProcessorContext Context, StepCandidate? Next)> RunAsync(
         StepCandidate candidate,
-        IReadOnlyCollection<StepCandidate> candidates,
-        List<StepCandidate> remainingCandidates,
+        ExecutionRun run,
         ProcessorContext context,
-        ProcessorRequest originalRequest,
-        List<ProcessExecutionOutcome> outcomes,
         CancellationToken cancellationToken)
     {
         using var stepObservation = BeginStep(candidate);
@@ -78,21 +72,19 @@ internal sealed partial class ProcessorExecutor(
             cancellationToken.ThrowIfCancellationRequested();
 
             var (result, decision) =
-                await InvokeAsync(candidate, candidates, remainingCandidates, context, originalRequest, cancellationToken);
+                await InvokeAsync(candidate, run, context, cancellationToken);
 
             // A rejection leaves the process exactly as it was: nothing is saved, the step is
             // not completed, and no later candidate of this request runs.
             if (decision.Type == ExecutionDecisionType.Rejected)
             {
                 stepObservation.DecisionRecorded(decision.Type.ToString(), nameof(StepExecutionStatus.Rejected));
-                outcomes.Add(CreateOutcome(candidate, result, decision, StepExecutionStatus.Rejected));
+                run.Outcomes.Add(CreateOutcome(candidate, result, decision, StepExecutionStatus.Rejected));
 
                 return (context, null);
             }
 
-            context = stateUpdater.ApplyExecution(context, candidate, decision);
-            context = await stateRepository.SaveAsync(context, cancellationToken);
-            outcomes.Add(Complete(candidate, result, decision, context, stepObservation, cancellationToken));
+            context = await SaveStepAsync(candidate, result, decision, run, context, stepObservation, cancellationToken);
 
             return (context, GetNextCandidate(decision));
         }
@@ -102,7 +94,7 @@ internal sealed partial class ProcessorExecutor(
 
             return (await FailAsync(
                 stateUpdater.ApplyCancellation(context, candidate),
-                outcomes,
+                run,
                 FailedOutcome(candidate, StepExecutionStatus.Canceled, ProcessorErrorCodes.ExecutionCanceled, "Step execution was cancelled.")), null);
         }
         catch (KaleidoValidationException exception)
@@ -111,7 +103,7 @@ internal sealed partial class ProcessorExecutor(
 
             return (await FailAsync(
                 stateUpdater.ApplyException(context, candidate),
-                outcomes,
+                run,
                 FailedOutcome(candidate, StepExecutionStatus.ValidationFailed, exception.Code, exception.Message)), null);
         }
         // Any other failure of the step (cancellation and validation are handled above). A concurrency
@@ -122,7 +114,7 @@ internal sealed partial class ProcessorExecutor(
 
             return (await FailAsync(
                 stateUpdater.ApplyException(context, candidate),
-                outcomes,
+                run,
                 FailedOutcome(
                     candidate,
                     StepExecutionStatus.Exception,
@@ -130,6 +122,45 @@ internal sealed partial class ProcessorExecutor(
                     $"An unexpected error occurred while executing step '{candidate.StepName}'.")), null);
         }
     }
+
+    // A step that ran: applies its decision, records its outcome, and saves the state together with
+    // the step-completed event - both or neither.
+    private async Task<ProcessorContext> SaveStepAsync(
+        StepCandidate candidate,
+        StepInvocationResult result,
+        ExecutionDecision decision,
+        ExecutionRun run,
+        ProcessorContext context,
+        IProcessorStepObservation stepObservation,
+        CancellationToken cancellationToken)
+    {
+        context = stateUpdater.ApplyExecution(context, candidate, decision);
+
+        var outcome = Complete(candidate, result, decision, stepObservation);
+        var stepCompleted = eventFactory.CreateStepCompleted(correlationAccessor.Current, context, candidate, outcome, result);
+
+        context = await SaveAsync(context, eventOutbox.Prepare(stepCompleted), cancellationToken);
+        run.Outcomes.Add(outcome);
+
+        return context;
+    }
+
+    // Saves the state, with the step-completed event when there is one.
+    private async Task<ProcessorContext> SaveAsync(
+        ProcessorContext context,
+        KaleidoOutboxEvent? stepEvent,
+        CancellationToken cancellationToken)
+    {
+        var saved = await stateRepository.SaveAsync(context, stepEvent is null ? [] : [stepEvent], cancellationToken);
+
+        if (stepEvent is not null)
+        {
+            eventOutbox.Saved();
+        }
+
+        return saved;
+    }
+
     private IProcessorStepObservation BeginStep(StepCandidate candidate) =>
         observability.BeginStep(
             new ProcessorStepObservationDetails(
@@ -140,12 +171,14 @@ internal sealed partial class ProcessorExecutor(
     // Invokes the step's handler and evaluates its result against the process rules.
     private async Task<(StepInvocationResult Result, ExecutionDecision Decision)> InvokeAsync(
         StepCandidate candidate,
-        IReadOnlyCollection<StepCandidate> candidates,
-        IReadOnlyCollection<StepCandidate> remainingCandidates,
+        ExecutionRun run,
         ProcessorContext context,
-        ProcessorRequest originalRequest,
         CancellationToken cancellationToken)
     {
+        var candidates = run.Candidates;
+        var remainingCandidates = run.RemainingCandidates;
+        var originalRequest = run.OriginalRequest;
+
         var stepContext =
             context.FindStep(
                 candidate.StepName)
@@ -189,15 +222,12 @@ internal sealed partial class ProcessorExecutor(
         return (result, decision);
     }
 
-    // A saved step: records the decision, builds the outcome and publishes the step-completed event
-    // (best-effort - the state is already saved).
-    private ProcessExecutionOutcome Complete(
+    // A step about to be saved: records the decision and builds the outcome.
+    private static ProcessExecutionOutcome Complete(
         StepCandidate candidate,
         StepInvocationResult result,
         ExecutionDecision decision,
-        ProcessorContext context,
-        IProcessorStepObservation stepObservation,
-        CancellationToken cancellationToken)
+        IProcessorStepObservation stepObservation)
     {
         var executionStatus = MapStatus(candidate, result, decision);
 
@@ -211,43 +241,25 @@ internal sealed partial class ProcessorExecutor(
                 informationRequest.InformationRequestId);
         }
 
-        var outcome =
-            CreateOutcome(
-                candidate,
-                result,
-                decision,
-                executionStatus);
-
-        try
-        {
-            _ = eventPublisher.PublishAsync(
-                eventFactory.CreateStepCompleted(
-                    correlationAccessor.Current,
-                    context,
-                    candidate,
-                    outcome,
-                    result),
-                cancellationToken);
-        }
-        catch (Exception publishException) when (publishException is not OperationCanceledException)
-        {
-            LogStepEventPublishFailed(logger, publishException, candidate.StepName, context.ProcessId);
-        }
-
-        return outcome;
+        return CreateOutcome(
+            candidate,
+            result,
+            decision,
+            executionStatus);
     }
 
     // A failed step's state is saved even when the request was cancelled.
     private async Task<ProcessorContext> FailAsync(
         ProcessorContext context,
-        List<ProcessExecutionOutcome> outcomes,
+        ExecutionRun run,
         ProcessExecutionOutcome outcome)
     {
-        var saved = await stateRepository.SaveAsync(
+        var saved = await SaveAsync(
             context,
+            stepEvent: null,
             CancellationToken.None);
 
-        outcomes.Add(outcome);
+        run.Outcomes.Add(outcome);
 
         return saved;
     }
@@ -414,6 +426,17 @@ internal sealed partial class ProcessorExecutor(
             : StepExecutionStatus.Failed;
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Event publish failed for step {StepName} on process {ProcessId}. State was saved; event delivery is best-effort.")]
-    private static partial void LogStepEventPublishFailed(ILogger logger, Exception exception, string stepName, Guid processId);
+    // The state of one request's execution.
+    private sealed class ExecutionRun(
+        IReadOnlyCollection<StepCandidate> candidates,
+        ProcessorRequest originalRequest)
+    {
+        public IReadOnlyCollection<StepCandidate> Candidates { get; } = candidates;
+
+        public List<StepCandidate> RemainingCandidates { get; } = [.. candidates];
+
+        public ProcessorRequest OriginalRequest { get; } = originalRequest;
+
+        public List<ProcessExecutionOutcome> Outcomes { get; } = [];
+    }
 }
