@@ -113,6 +113,50 @@ internal sealed partial class SqliteProcessorContextStore(
         }
     }
 
+    public async Task<IdempotentResult?> FindResultAsync(string key, CancellationToken cancellationToken = default)
+    {
+        var entity = await dbContext.IdempotentResults
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Key == key, cancellationToken);
+
+        return entity is null || entity.ExpiresUtc <= DateTimeOffset.UtcNow
+            ? null
+            : new IdempotentResult
+            {
+                Key = entity.Key,
+                RequestHash = entity.RequestHash,
+                StatusCode = entity.StatusCode,
+                Response = entity.Response,
+                ExpiresUtc = entity.ExpiresUtc,
+            };
+    }
+
+    public async Task SaveResultAsync(IdempotentResult result, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        // Expired answers are deleted as new ones arrive, so the table does not grow without bound.
+        var nowTicks = DateTimeOffset.UtcNow.UtcTicks;
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"DELETE FROM IdempotentResults WHERE ExpiresUtc <= {nowTicks}",
+            cancellationToken);
+
+        var entity = await dbContext.IdempotentResults.FirstOrDefaultAsync(x => x.Key == result.Key, cancellationToken);
+
+        if (entity is null)
+        {
+            entity = new IdempotentResultEntity { Key = result.Key };
+            dbContext.IdempotentResults.Add(entity);
+        }
+
+        entity.RequestHash = result.RequestHash;
+        entity.StatusCode = result.StatusCode;
+        entity.Response = result.Response;
+        entity.ExpiresUtc = result.ExpiresUtc;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     // Another instance saved the row since it was read (the version no longer matches), or created
     // the same process at the same time (duplicate key): either way this save lost the race.
     private async Task SaveChangesAsync(ProcessorContext context, CancellationToken cancellationToken)

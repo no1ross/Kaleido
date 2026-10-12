@@ -575,4 +575,38 @@ public sealed class KaleidoProcessorClientTests
         Assert.Equal(HttpStatusCode.Conflict, exception.StatusCode);
         Assert.Equal("pro_process_conflict", Assert.Single(exception.Errors).Code);
     }
+
+    // One key per execute call: a retry of the same request carries the same key, a new call a new one.
+    [Fact]
+    public async Task ExecuteAsync_SendsANewIdempotencyKeyWithEveryCall()
+    {
+        var keys = new List<string>();
+        var (client, _) = CreateClient(respond: req =>
+        {
+            keys.Add(req.Headers.GetValues(KaleidoIdempotencyHeaders.IdempotencyKey).Single());
+            return JsonOk(new ProcessExecutionResponse { ProcessId = Guid.NewGuid() });
+        });
+
+        await client.ExecuteAsync(new ExecuteProcessRequest());
+        await client.ExecuteAsync(new ExecuteProcessRequest());
+
+        Assert.Equal(2, keys.Count);
+        Assert.All(keys, key => Assert.False(string.IsNullOrWhiteSpace(key)));
+        Assert.NotEqual(keys[0], keys[1]);
+    }
+
+    [Fact]
+    public async Task GetProcessStateAsync_SendsNoIdempotencyKey()
+    {
+        var hasKey = true;
+        var (client, _) = CreateClient(respond: req =>
+        {
+            hasKey = req.Headers.Contains(KaleidoIdempotencyHeaders.IdempotencyKey);
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        await client.GetProcessStateAsync(Guid.NewGuid());
+
+        Assert.False(hasKey);
+    }
 }
