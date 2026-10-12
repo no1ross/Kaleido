@@ -7,7 +7,7 @@ using Kaleido.UnitTests;
 
 namespace Kaleido.Eventing.UnitTests;
 
-public sealed class KaleidoEventSerializerTests
+public sealed class KaleidoOutboxEventExtensionsTests
     : SutFixture
 {
     private static ProcessEventContext Context() =>
@@ -36,7 +36,7 @@ public sealed class KaleidoEventSerializerTests
     {
         var envelope = StepCompletedEnvelope();
 
-        var entry = KaleidoEventSerializer.ToOutboxEvent(envelope);
+        var entry = envelope.ToOutboxEvent();
 
         Assert.Equal(envelope.Event.EventId, entry.EventId);
         Assert.Equal(KaleidoEventTypes.ProcessStepCompleted, entry.EventType);
@@ -57,7 +57,7 @@ public sealed class KaleidoEventSerializerTests
             .Callback<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>, CancellationToken>((e, _) => published = e)
             .Returns(Task.CompletedTask);
 
-        await KaleidoEventSerializer.PublishAsync(publisher.Object, KaleidoEventSerializer.ToOutboxEvent(envelope), CancellationToken.None);
+        await publisher.Object.PublishOutboxEventAsync(envelope.ToOutboxEvent(), CancellationToken.None);
 
         Assert.NotNull(published);
         Assert.Equal(envelope.Event.EventId, published.Event.EventId);
@@ -86,31 +86,31 @@ public sealed class KaleidoEventSerializerTests
 
         return eventType switch
         {
-            KaleidoEventTypes.ProcessCreated => KaleidoEventSerializer.ToOutboxEvent(new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
+            KaleidoEventTypes.ProcessCreated => (new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
             {
                 EventType = eventType,
                 Context = Context(),
                 Event = new ProcessCreated { OccurredOn = now, State = ProcessExecutionState.Active, CreatedUtc = now, UpdatedUtc = now, SubmittedStepCount = 1 },
-            }),
-            KaleidoEventTypes.ProcessPlanBuilt => KaleidoEventSerializer.ToOutboxEvent(new KaleidoEventEnvelope<PlanBuilt, ProcessEventContext>
+            }).ToOutboxEvent(),
+            KaleidoEventTypes.ProcessPlanBuilt => (new KaleidoEventEnvelope<PlanBuilt, ProcessEventContext>
             {
                 EventType = eventType,
                 Context = Context(),
                 Event = new PlanBuilt { OccurredOn = now, State = ProcessExecutionState.Active, SubmittedStepCount = 1, CandidateCount = 1, ExecutableCount = 1 },
-            }),
-            KaleidoEventTypes.ProcessStepCompleted => KaleidoEventSerializer.ToOutboxEvent(StepCompletedEnvelope()),
-            KaleidoEventTypes.ProcessExecutionCompleted => KaleidoEventSerializer.ToOutboxEvent(new KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext>
+            }).ToOutboxEvent(),
+            KaleidoEventTypes.ProcessStepCompleted => StepCompletedEnvelope().ToOutboxEvent(),
+            KaleidoEventTypes.ProcessExecutionCompleted => (new KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext>
             {
                 EventType = eventType,
                 Context = Context(),
                 Event = new ExecutionCompleted { OccurredOn = now, State = ProcessExecutionState.Complete },
-            }),
-            _ => KaleidoEventSerializer.ToOutboxEvent(new KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>
+            }).ToOutboxEvent(),
+            _ => (new KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>
             {
                 EventType = eventType,
                 Context = new QueryableEventContext { RequestId = "req-1", ServiceName = "svc", QuerySourceName = "Members" },
                 Event = new QueryExecuted { OccurredOn = now, QuerySourceName = "Members", IsDirectQuery = true, TotalCount = 2, ReturnedCount = 2, SortCount = 0, FilterProvided = false },
-            }),
+            }).ToOutboxEvent(),
         };
     }
 
@@ -121,7 +121,7 @@ public sealed class KaleidoEventSerializerTests
         var publisher = new Mock<IEventPublisher>();
         var entry = EntryOf(eventType);
 
-        await KaleidoEventSerializer.PublishAsync(publisher.Object, entry, CancellationToken.None);
+        await publisher.Object.PublishOutboxEventAsync(entry, CancellationToken.None);
 
         Assert.Single(publisher.Invocations);
     }
@@ -136,7 +136,7 @@ public sealed class KaleidoEventSerializerTests
             .Callback<KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>, CancellationToken>((e, _) => published = e)
             .Returns(Task.CompletedTask);
 
-        await KaleidoEventSerializer.PublishAsync(publisher.Object, EntryOf(KaleidoEventTypes.QueryExecuted), CancellationToken.None);
+        await publisher.Object.PublishOutboxEventAsync(EntryOf(KaleidoEventTypes.QueryExecuted), CancellationToken.None);
 
         Assert.Equal("Members", published!.Context.QuerySourceName);
         Assert.Equal(2, published.Event.TotalCount);
@@ -147,7 +147,7 @@ public sealed class KaleidoEventSerializerTests
         var entry = new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = "something.else.v1", Payload = "{}", OccurredUtc = DateTimeOffset.UtcNow };
 
         var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
-            KaleidoEventSerializer.PublishAsync(Mock.Of<IEventPublisher>(), entry, CancellationToken.None));
+            Mock.Of<IEventPublisher>().PublishOutboxEventAsync(entry, CancellationToken.None));
 
         Assert.Contains("something.else.v1", exception.Message, StringComparison.Ordinal);
     }
@@ -158,6 +158,6 @@ public sealed class KaleidoEventSerializerTests
         var entry = new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = KaleidoEventTypes.ProcessCreated, Payload = "null", OccurredUtc = DateTimeOffset.UtcNow };
 
         await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
-            KaleidoEventSerializer.PublishAsync(Mock.Of<IEventPublisher>(), entry, CancellationToken.None));
+            Mock.Of<IEventPublisher>().PublishOutboxEventAsync(entry, CancellationToken.None));
     }
 }
