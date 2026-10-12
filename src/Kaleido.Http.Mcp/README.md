@@ -1,4 +1,4 @@
-﻿# Kaleido.Http.Mcp
+# Kaleido.Http.Mcp
 
 Publishes a Kaleido host's capabilities to AI agents as [MCP](https://modelcontextprotocol.io)
 tools. The tools are generated from the registry (the host's own capabilities, or the aggregate
@@ -90,6 +90,7 @@ chosen result instead of taking them from the caller).
 ## Security
 
 - Tools are built from the registry **filtered for the caller**: a caller sees only what it may use.
+- **Tool changes follow deployments within the registry check interval:** the tool list is built from the host's registry snapshot, which an aggregating host rebuilds after `RegistryCacheTtl` (default 30 seconds), checking each downstream with its ETag. A removed step that is still called answers 404 and drops that downstream's snapshot at once.
 - Every call forwards the caller's token (`ForwardCaller`), so the services authorize the user,
   not the adapter.
 - Questions and lookups go to the user through forms where the client supports them; the model

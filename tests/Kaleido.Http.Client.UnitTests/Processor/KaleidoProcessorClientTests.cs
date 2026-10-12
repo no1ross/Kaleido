@@ -52,6 +52,12 @@ public sealed class KaleidoProcessorClientTests
                 data[k] = v;
                 return ValueTask.CompletedTask;
             });
+        store.Setup(s => s.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns((string k, CancellationToken _) =>
+            {
+                data.TryRemove(k, out var _);
+                return ValueTask.CompletedTask;
+            });
         return store.Object;
     }
 
@@ -503,4 +509,50 @@ public sealed class KaleidoProcessorClientTests
     private sealed class UnknownTypeForTest { }
 
     private sealed class MyStepResponse { public string Value { get; init; } = ""; }
+
+    // A 404 from a step means the service was deployed without it: the registry is loaded again.
+    [Fact]
+    public async Task ExecuteAsync_WhenTheServiceAnswers404_DropsTheRegistrySnapshot()
+    {
+        var registryReads = 0;
+        var (client, _) = CreateClient(respond: req =>
+        {
+            if (req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal))
+            {
+                registryReads++;
+                return JsonOk(FakeRegistry);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        await client.GetRegistryAsync();
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.ExecuteAsync(new ExecuteProcessRequest()));
+        await client.GetRegistryAsync();
+
+        Assert.Equal(2, registryReads);
+    }
+
+    // The state endpoint answers 404 for an unknown process, which says nothing about the registry.
+    [Fact]
+    public async Task GetProcessStateAsync_WhenNotFound_KeepsTheRegistrySnapshot()
+    {
+        var registryReads = 0;
+        var (client, _) = CreateClient(respond: req =>
+        {
+            if (req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal))
+            {
+                registryReads++;
+                return JsonOk(FakeRegistry);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        await client.GetRegistryAsync();
+        await client.GetProcessStateAsync(Guid.NewGuid());
+        await client.GetRegistryAsync();
+
+        Assert.Equal(1, registryReads);
+    }
 }

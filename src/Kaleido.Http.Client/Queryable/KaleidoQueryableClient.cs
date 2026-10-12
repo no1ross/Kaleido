@@ -167,6 +167,13 @@ internal sealed partial class KaleidoQueryableClient(
             LogRemoteNonSuccess(logger, callerServiceName, (int)response.StatusCode, response.StatusCode, request.Method, request.RequestUri);
         }
 
+        // 404: the service no longer has that source or view (it was deployed without it); the
+        // registry snapshot is dropped so the next read loads the current one.
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            remoteRegistry.Invalidate(clientName);
+        }
+
         return response;
     }
 

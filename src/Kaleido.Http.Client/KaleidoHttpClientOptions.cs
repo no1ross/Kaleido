@@ -23,11 +23,11 @@ public sealed class KaleidoHttpClientOptions
     public string RoutePrefix { get; set; } = string.Empty;
 
     /// <summary>
-    /// Maximum age of this client's cached registry snapshot. When null
-    /// (default) the registry is fetched once and held for the lifetime of the
-    /// process unless <c>InvalidateRegistry()</c> is called. Set this on
-    /// long-running consumers so downstream redeploys become visible without a
-    /// restart.
+    /// How often this client checks whether the remote registry changed: the known revision is sent
+    /// as an ETag and an unchanged registry answers 304. When null the registry is fetched once and
+    /// kept until it is invalidated (a 404 from the service, or <c>InvalidateRegistry()</c>).
+    /// <c>AddHttpClients()</c> sets it from <see cref="KaleidoClientOptions.RegistryTtl"/> (default
+    /// 30 seconds).
     /// </summary>
     public TimeSpan? RegistryTtl { get; set; }
 

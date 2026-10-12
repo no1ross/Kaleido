@@ -46,7 +46,9 @@ public sealed class RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotEmpty(response.Headers.ETag?.Tag ?? "");
-        Assert.Equal("no-cache", response.Headers.CacheControl?.ToString());
+        // Default check interval 30 s; private - the registry is filtered per caller.
+        Assert.True(response.Headers.CacheControl?.Private);
+        Assert.Equal(TimeSpan.FromSeconds(30), response.Headers.CacheControl?.MaxAge);
 
         var registry =
             await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(KaleidoJsonOptions.Options);

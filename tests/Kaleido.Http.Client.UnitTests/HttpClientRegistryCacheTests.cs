@@ -177,4 +177,82 @@ public sealed class HttpClientRegistryCacheTests
         Assert.True(fetchCalled);
         Assert.Same(Stale, result);
     }
+
+    private static readonly AggregatedRegistryResponse StaleWithRevision = new()
+    {
+        GeneratedAt = DateTimeOffset.UtcNow.AddHours(-1),
+        Revision = "abc123",
+    };
+
+    [Fact]
+    public async Task GetOrRevalidateAsync_WhenTheSnapshotIsDue_ChecksWithItsRevision()
+    {
+        var store = CreateStore();
+        await store.SetAsync(Key, StaleWithRevision);
+        using var sut = CreateSut(store);
+        string? sentRevision = null;
+
+        await sut.GetOrRevalidateAsync(
+            TimeSpan.FromSeconds(30),
+            (revision, _) =>
+            {
+                sentRevision = revision;
+                return Task.FromResult<AggregatedRegistryResponse?>(null);
+            },
+            CancellationToken.None);
+
+        Assert.Equal("abc123", sentRevision);
+    }
+
+    [Fact]
+    public async Task GetOrRevalidateAsync_WhenUnchanged_KeepsTheSnapshotAndCountsItAsChecked()
+    {
+        var store = CreateStore();
+        await store.SetAsync(Key, StaleWithRevision);
+        using var sut = CreateSut(store);
+        var checks = 0;
+
+        Task<AggregatedRegistryResponse?> Unchanged(string? revision, CancellationToken _)
+        {
+            checks++;
+            return Task.FromResult<AggregatedRegistryResponse?>(null);
+        }
+
+        var first = await sut.GetOrRevalidateAsync(TimeSpan.FromSeconds(30), Unchanged, CancellationToken.None);
+        var second = await sut.GetOrRevalidateAsync(TimeSpan.FromSeconds(30), Unchanged, CancellationToken.None);
+
+        Assert.Same(StaleWithRevision, first);
+        Assert.Same(StaleWithRevision, second);
+        Assert.Equal(1, checks);
+    }
+
+    [Fact]
+    public async Task GetOrRevalidateAsync_WhenChanged_StoresAndReturnsTheNewRegistry()
+    {
+        var store = CreateStore();
+        await store.SetAsync(Key, StaleWithRevision);
+        using var sut = CreateSut(store);
+
+        var result = await sut.GetOrRevalidateAsync(
+            TimeSpan.FromSeconds(30),
+            (_, _) => Task.FromResult<AggregatedRegistryResponse?>(Fresh),
+            CancellationToken.None);
+
+        Assert.Same(Fresh, result);
+        Assert.Same(Fresh, await store.GetAsync(Key));
+    }
+
+    [Fact]
+    public async Task GetOrRevalidateAsync_WhenReportedUnchangedWithoutASnapshot_Throws()
+    {
+        using var sut = CreateSut();
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
+            sut.GetOrRevalidateAsync(
+                TimeSpan.FromSeconds(30),
+                (_, _) => Task.FromResult<AggregatedRegistryResponse?>(null),
+                CancellationToken.None));
+
+        Assert.Equal(HttpClientErrorCodes.EmptyResponse, exception.Code);
+    }
 }
