@@ -40,7 +40,7 @@ internal sealed partial class KaleidoEventOutbox(
 
     public KaleidoOutboxEvent? Prepare<TEvent, TContext>(KaleidoEventEnvelope<TEvent, TContext> envelope)
         where TEvent : IKaleidoEvent =>
-        Enabled ? KaleidoEventSerializer.ToOutboxEvent(envelope) : null;
+        Enabled ? envelope.ToOutboxEvent() : null;
 
     public async Task EnqueueAsync<TEvent, TContext>(KaleidoEventEnvelope<TEvent, TContext> envelope, CancellationToken cancellationToken)
         where TEvent : IKaleidoEvent
@@ -52,7 +52,7 @@ internal sealed partial class KaleidoEventOutbox(
 
         try
         {
-            await store.EnqueueEventsAsync([KaleidoEventSerializer.ToOutboxEvent(envelope)], cancellationToken);
+            await store.EnqueueEventsAsync([envelope.ToOutboxEvent()], cancellationToken);
             signal.Notify();
         }
         catch (Exception exception) when (exception is not OperationCanceledException)

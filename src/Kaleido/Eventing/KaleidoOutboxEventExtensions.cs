@@ -5,13 +5,13 @@ using Kaleido.Queryable.Eventing;
 
 namespace Kaleido.Eventing;
 
-// Turns an event envelope into an outbox entry and back. The event and context types are looked
+// Turns an event envelope into an outbox entry, and an entry back into the envelope the publisher gets. The event and context types are looked
 // up by EventType in a fixed map - no CLR type name is ever read from the store.
-internal sealed class KaleidoEventSerializer
+internal static class KaleidoOutboxEventExtensions
 {
     private static readonly JsonSerializerOptions Options = CreateOptions();
 
-    public static KaleidoOutboxEvent ToOutboxEvent<TEvent, TContext>(KaleidoEventEnvelope<TEvent, TContext> envelope)
+    public static KaleidoOutboxEvent ToOutboxEvent<TEvent, TContext>(this KaleidoEventEnvelope<TEvent, TContext> envelope)
         where TEvent : IKaleidoEvent
     {
         ArgumentNullException.ThrowIfNull(envelope);
@@ -27,7 +27,7 @@ internal sealed class KaleidoEventSerializer
     }
 
     // Deserializes the entry into its envelope type and hands it to the publisher.
-    public static Task PublishAsync(IEventPublisher publisher, KaleidoOutboxEvent entry, CancellationToken cancellationToken) =>
+    public static Task PublishOutboxEventAsync(this IEventPublisher publisher, KaleidoOutboxEvent entry, CancellationToken cancellationToken) =>
         entry.EventType switch
         {
             KaleidoEventTypes.ProcessCreated => PublishAsync<ProcessCreated, ProcessEventContext>(publisher, entry, cancellationToken),

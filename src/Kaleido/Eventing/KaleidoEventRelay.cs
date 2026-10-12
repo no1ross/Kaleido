@@ -143,7 +143,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
         try
         {
             await _pipeline.ExecuteAsync(
-                static (state, token) => new ValueTask(KaleidoEventSerializer.PublishAsync(state.Publisher, state.Entry, token)),
+                static (state, token) => new ValueTask(state.Publisher.PublishOutboxEventAsync(state.Entry, token)),
                 (Publisher: _publisher, Entry: entry),
                 cancellationToken);
         }
