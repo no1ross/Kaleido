@@ -51,9 +51,9 @@ public static partial class ProcessorEndpointRouteBuilderExtensions
                 routePrefix)
             .AddEndpointFilter<KaleidoExceptionEndpointFilter>()
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
-            // Post-auth: stamps CallerName/CallerRoles onto the ambient
+            // Post-auth: stamps CallerName/CallerId/CallerRoles onto the ambient
             // correlation context for per-step checks inside handlers and the
-            // runtime's created-by (Owner) tag.
+            // runtime's created-by / updated-by tags.
             .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 
         LogEndpointsMapped(logger, routePrefix, registry.Registrations.Count, registry.InitialRegistrations.Count);

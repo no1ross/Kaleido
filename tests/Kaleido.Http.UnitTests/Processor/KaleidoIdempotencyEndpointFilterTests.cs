@@ -66,17 +66,30 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
 
         Assert.Equal(1, calls);
         var stored = Assert.Single(saved);
-        Assert.Equal("svc:alice:k1", stored.Key);
+        Assert.Equal("svc:name:alice:k1", stored.Key);
         Assert.Equal(StatusCodes.Status200OK, stored.StatusCode);
         Assert.Equal("""{"processId":"p-1"}""", stored.Response);
         Assert.InRange(stored.ExpiresUtc, DateTimeOffset.UtcNow.AddHours(1.9), DateTimeOffset.UtcNow.AddHours(2.1));
+    }
+
+    [Theory]
+    [InlineData("alice", "sub-42", "svc:id:sub-42:k1")]
+    [InlineData(null, "sub-42", "svc:id:sub-42:k1")]
+    [InlineData(null, null, "svc:anonymous:k1")]
+    public async Task TheKeyIsScopedToTheCallersSubjectId_ElseItsName_ElseAnonymous(string? name, string? id, string expected)
+    {
+        correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext { CallerName = name, CallerId = id });
+
+        await CreateSut().InvokeAsync(Context("k1"), Endpoint);
+
+        Assert.Equal(expected, Assert.Single(saved).Key);
     }
 
     [Fact]
     public async Task WithAStoredKeyAndTheSameRequest_ReplaysTheAnswerWithoutRunningTheEndpoint()
     {
         await CreateSut().InvokeAsync(Context("k1"), Endpoint);
-        store.Setup(x => x.FindResultAsync("svc:alice:k1", It.IsAny<CancellationToken>())).ReturnsAsync(saved[0]);
+        store.Setup(x => x.FindResultAsync("svc:name:alice:k1", It.IsAny<CancellationToken>())).ReturnsAsync(saved[0]);
         var retry = Context("k1");
 
         var result = await CreateSut().InvokeAsync(retry, Endpoint);
@@ -91,7 +104,7 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
     public async Task WithAStoredKeyAndADifferentRequest_Answers422WithoutRunningTheEndpoint()
     {
         await CreateSut().InvokeAsync(Context("k1"), Endpoint);
-        store.Setup(x => x.FindResultAsync("svc:alice:k1", It.IsAny<CancellationToken>())).ReturnsAsync(saved[0]);
+        store.Setup(x => x.FindResultAsync("svc:name:alice:k1", It.IsAny<CancellationToken>())).ReturnsAsync(saved[0]);
 
         var result = await CreateSut().InvokeAsync(Context("k1", new { step = "other" }), Endpoint);
 

@@ -1,4 +1,5 @@
 using Kaleido.Exceptions;
+using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Registry;
 
@@ -209,6 +210,68 @@ public sealed class ProcessorStateUpdaterTests
         var result = Sut.ApplyExecution(context, candidate, decision);
 
         Assert.Equal(StepExecutionStatus.Completed, result.Steps.First().Status);
+    }
+
+    private static readonly KaleidoCaller Alice = new() { Name = "alice", Id = "sub-alice" };
+    private static readonly KaleidoCaller Bob = new() { Name = "bob", Id = "sub-bob" };
+
+    private static ProcessorContext RanBy(KaleidoCaller? caller, StepContext? step = null) => new()
+    {
+        ProcessId = Guid.NewGuid(),
+        ProcessorName = "test",
+        UpdatedBy = caller,
+        Steps = [step ?? new StepContext { StepName = "test-step", Version = "1.0" }],
+    };
+
+    [Fact]
+    public void ApplyExecution_TheFirstAttempt_TagsStartedByAndLastUpdatedBy_WithBothTimes()
+    {
+        var result = Sut.ApplyExecution(RanBy(Alice), new StepCandidate { StepName = "test-step" }, new ExecutionDecision { Type = ExecutionDecisionType.Continue });
+
+        var step = result.Steps.Single();
+        Assert.Equal(Alice, step.StartedBy);
+        Assert.Equal(Alice, step.LastUpdatedBy);
+        Assert.NotNull(step.FirstExecuted);
+        Assert.Equal(step.FirstExecuted, step.LastExecuted);
+    }
+
+    [Fact]
+    public void ApplyExecution_ALaterAttempt_KeepsWhoStartedTheStepAndWhen()
+    {
+        var firstExecuted = DateTimeOffset.UtcNow.AddHours(-1);
+        var started = new StepContext { StepName = "test-step", Version = "1.0", FirstExecuted = firstExecuted, StartedBy = Alice, LastExecuted = firstExecuted, LastUpdatedBy = Alice };
+
+        var result = Sut.ApplyExecution(RanBy(Bob, started), new StepCandidate { StepName = "test-step" }, new ExecutionDecision { Type = ExecutionDecisionType.Continue });
+
+        var step = result.Steps.Single();
+        Assert.Equal(Alice, step.StartedBy);
+        Assert.Equal(firstExecuted, step.FirstExecuted);
+        Assert.Equal(Bob, step.LastUpdatedBy);
+        Assert.True(step.LastExecuted > firstExecuted);
+    }
+
+    [Fact]
+    public void ApplyExceptionAndCancellation_TagTheCallerToo()
+    {
+        var candidate = new StepCandidate { StepName = "test-step" };
+
+        var failed = Sut.ApplyException(RanBy(Alice), candidate).Steps.Single();
+        var canceled = Sut.ApplyCancellation(RanBy(Bob), candidate).Steps.Single();
+
+        Assert.Equal(Alice, failed.StartedBy);
+        Assert.Equal(Alice, failed.LastUpdatedBy);
+        Assert.Equal(Bob, canceled.StartedBy);
+        Assert.Equal(Bob, canceled.LastUpdatedBy);
+    }
+
+    [Fact]
+    public void ApplyExecution_ForAnAnonymousCaller_TagsNoCaller_ButRecordsTheTimes()
+    {
+        var step = Sut.ApplyExecution(RanBy(null), new StepCandidate { StepName = "test-step" }, new ExecutionDecision { Type = ExecutionDecisionType.Continue }).Steps.Single();
+
+        Assert.Null(step.StartedBy);
+        Assert.Null(step.LastUpdatedBy);
+        Assert.NotNull(step.FirstExecuted);
     }
 
     [Fact]

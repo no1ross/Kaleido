@@ -66,6 +66,26 @@ public sealed record KaleidoCorrelationContext
     }
 
     /// <summary>
+    /// Stable subject id of the authenticated caller (the <c>sub</c> claim, else
+    /// <c>ClaimTypes.NameIdentifier</c>), populated by the transport from the request principal -
+    /// <b>never</b> from caller-supplied headers. <see langword="null"/> for anonymous requests or a
+    /// principal without one.
+    /// </summary>
+    public string? CallerId
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The caller as Kaleido tags it on events and state: <see cref="CallerName"/> and
+    /// <see cref="CallerId"/>. <see langword="null"/> when neither is known (anonymous).
+    /// </summary>
+    public KaleidoCaller? Caller =>
+        CallerName is null && CallerId is null
+            ? null
+            : new KaleidoCaller { Name = CallerName, Id = CallerId };
+    /// <summary>
     /// Roles of the authenticated caller, populated alongside
     /// <see cref="CallerName"/>. Empty for anonymous requests.
     /// </summary>

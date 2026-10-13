@@ -90,18 +90,37 @@ Override the predicate to apply a custom policy (e.g. service-account-only trust
 
 ### Caller identity
 
-`CallerName` and `CallerRoles` are **never** read from headers — they come from the
+`CallerName`, `CallerId` and `CallerRoles` are **never** read from headers - they come from the
 authenticated request principal. The `ObservabilityMiddleware` runs before the host's
 `UseAuthentication`, so they are stamped later by `KaleidoCallerContextEndpointFilter`
 (runs inside endpoint execution, always after auth middleware) on all Kaleido endpoint
-groups. Anonymous requests get `CallerName = null`, `CallerRoles = []`.
+groups:
+- `CallerName` - `Identity.Name`;
+- `CallerId` - the stable subject id: the `sub` claim, else `ClaimTypes.NameIdentifier`;
+- `CallerRoles` - the role claims.
 
-These fields feed capability authorization and the `ProcessorContext.Owner` tag
-(created by; never enforced) — see [`AUTHORIZATION.md`](./AUTHORIZATION.md). They are
-**not** propagated outbound: each hop derives its own caller identity from its own
-authenticated principal. Service-to-service calls must carry credentials the next hop
-can authenticate (e.g. a bearer token) — the transport's job, not Kaleido's.
+Anonymous requests get `CallerName = null`, `CallerId = null`, `CallerRoles = []`.
+`KaleidoCorrelationContext.Caller` (`KaleidoCaller { Name, Id }`) is the caller as Kaleido tags it.
 
+These fields feed capability authorization and the **caller tags** - see
+[`AUTHORIZATION.md`](./AUTHORIZATION.md). They are **not** propagated outbound: each hop derives
+its own caller identity from its own authenticated principal. Service-to-service calls must carry
+credentials the next hop can authenticate (e.g. a bearer token) - the transport's job, not Kaleido's.
+
+### Caller tags (tagging only)
+
+Kaleido stamps `Caller` - exactly as the principal provides it, passed through, not interpreted -
+onto what it already produces:
+- **every published event**: `ProcessEventContext.Caller`, `QueryableEventContext.Caller`;
+- **process state**: `CreatedBy` (the creating request) and `UpdatedBy` (the latest request that
+  ran a step);
+- **step state** (and the state response's step history): `StartedBy` + `FirstExecuted` (the
+  first execution, kept), `LastUpdatedBy` next to `LastExecuted`.
+
+Kaleido **only tags**: no access decisions beyond the declared step and query rules, no "who did
+what" tracking, audit queries or history features - downstream systems build those from the tagged
+events. The caller is **personal data** in the event stream; it is published unclassified, and a
+consumer that must not publish it removes it in an `IKaleidoEventRedactor`.
 ## Step handlers
 
 Each step handler runs in its own DI scope. Before invoking it, `ProcessorStepInvoker`

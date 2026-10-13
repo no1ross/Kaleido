@@ -32,7 +32,38 @@ internal sealed class ProcessorStepContextEntity
         set;
     }
 
+    public DateTimeOffset? FirstExecuted
+    {
+        get;
+        set;
+    }
+
+    // Started-by / last-updated-by tags (KaleidoCaller).
+    public string? StartedByName
+    {
+        get;
+        set;
+    }
+
+    public string? StartedById
+    {
+        get;
+        set;
+    }
+
     public DateTimeOffset? LastExecuted
+    {
+        get;
+        set;
+    }
+
+    public string? LastUpdatedByName
+    {
+        get;
+        set;
+    }
+
+    public string? LastUpdatedById
     {
         get;
         set;

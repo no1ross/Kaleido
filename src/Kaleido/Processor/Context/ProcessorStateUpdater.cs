@@ -140,19 +140,12 @@ internal sealed class ProcessorStateUpdater(
 
         // A business failure ends the process; the failed step is recorded as failed, not completed.
         var updatedStep =
-            step with
-            {
-                Status =
-                    decision.Type == ExecutionDecisionType.BusinessFailure
-                        ? StepExecutionStatus.Failed
-                        : StepExecutionStatus.Completed,
-
-                LatestRequestId =
-                    context.LatestRequestId,
-
-                LastExecuted =
-                    DateTimeOffset.UtcNow,
-            };
+            Executed(
+                step,
+                context,
+                decision.Type == ExecutionDecisionType.BusinessFailure
+                    ? StepExecutionStatus.Failed
+                    : StepExecutionStatus.Completed);
 
         var steps =
             context.Steps.ToList();
@@ -199,17 +192,10 @@ internal sealed class ProcessorStateUpdater(
                 candidate);
 
         var updatedStep =
-            step with
-            {
-                Status =
-                    StepExecutionStatus.Exception,
-
-                LatestRequestId =
-                    context.LatestRequestId,
-
-                LastExecuted =
-                    DateTimeOffset.UtcNow,
-            };
+            Executed(
+                step,
+                context,
+                StepExecutionStatus.Exception);
 
         var steps =
             context.Steps.ToList();
@@ -242,17 +228,10 @@ internal sealed class ProcessorStateUpdater(
                 candidate);
 
         var updatedStep =
-            step with
-            {
-                Status =
-                    StepExecutionStatus.Canceled,
-
-                LatestRequestId =
-                    context.LatestRequestId,
-
-                LastExecuted =
-                    DateTimeOffset.UtcNow,
-            };
+            Executed(
+                step,
+                context,
+                StepExecutionStatus.Canceled);
 
         var steps =
             context.Steps.ToList();
@@ -275,6 +254,27 @@ internal sealed class ProcessorStateUpdater(
             AvailableSteps = [],
 
             Steps = steps,
+        };
+    }
+
+    // An execution attempt of the step in this request: its status, the request and caller that ran
+    // it (from the context, stamped per request by the runtime), and when. The first attempt's time
+    // and caller are kept.
+    private static StepContext Executed(
+        StepContext step,
+        ProcessorContext context,
+        StepExecutionStatus status)
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        return step with
+        {
+            Status = status,
+            LatestRequestId = context.LatestRequestId,
+            FirstExecuted = step.FirstExecuted ?? now,
+            StartedBy = step.FirstExecuted is null ? context.UpdatedBy : step.StartedBy,
+            LastExecuted = now,
+            LastUpdatedBy = context.UpdatedBy,
         };
     }
 

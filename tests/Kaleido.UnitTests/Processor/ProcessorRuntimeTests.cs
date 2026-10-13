@@ -678,7 +678,7 @@ public sealed class ProcessorRuntimeTests
             .Callback<ProcessorContext, IReadOnlyCollection<KaleidoOutboxEvent>, CancellationToken>((_, events, _) => savedEvents?.Add(events))
             .ReturnsAsync((ProcessorContext saved, IReadOnlyCollection<KaleidoOutboxEvent> _, CancellationToken _) => saved with { Version = saved.Version + 1 });
 
-    private static ProcessorRuntime CreateNewProcessSut(Mock<IKaleidoContextStore> store, Mock<IKaleidoEventOutbox> outbox, Mock<IProcessorExecutor> processor)
+    private static ProcessorRuntime CreateNewProcessSut(Mock<IKaleidoContextStore> store, Mock<IKaleidoEventOutbox> outbox, Mock<IProcessorExecutor> processor, KaleidoCaller? caller = null)
     {
         var stateUpdater = new Mock<IProcessorStateUpdater>();
         stateUpdater.Setup(x => x.Initialize(It.IsAny<Guid>())).Returns<Guid>(id => CreateContext(id, "REQ-001"));
@@ -694,7 +694,7 @@ public sealed class ProcessorRuntimeTests
             CreateProcessEventFactory().Object,
             outbox.Object,
             CreateObservability().Object,
-            CreateCorrelationAccessor());
+            CreateCorrelationAccessor(caller: caller));
     }
 
     private static Mock<IProcessorExecutor> ProcessorReturning(Func<ProcessorContext, ProcessExecutionResult> result)
@@ -709,6 +709,56 @@ public sealed class ProcessorRuntimeTests
 
     private static KaleidoOutboxEvent OutboxEvent(string eventType) =>
         new() { EventId = Guid.NewGuid(), EventType = eventType, Payload = "{}", OccurredUtc = DateTimeOffset.UtcNow };
+
+    private static readonly KaleidoCaller Alice = new() { Name = "alice", Id = "sub-alice" };
+
+    [Fact]
+    public async Task ExecuteAsync_ForANewProcess_TagsTheCallerAsCreatedByAndUpdatedBy()
+    {
+        var store = new Mock<IKaleidoContextStore>();
+        SetupSave(store);
+        ProcessorContext? executedWith = null;
+        var processor = ProcessorReturning(context =>
+        {
+            executedWith = context;
+            return CreateExecutionResult(context.ProcessId);
+        });
+
+        await CreateNewProcessSut(store, new Mock<IKaleidoEventOutbox>(), processor, Alice).ExecuteAsync(new ProcessRequest { Processor = new ProcessorRequest() });
+
+        Assert.Equal(Alice, executedWith!.CreatedBy);
+        Assert.Equal(Alice, executedWith.UpdatedBy);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ForAnExistingProcess_TagsTheCallerAsUpdatedBy_AndKeepsCreatedBy()
+    {
+        var request = CreateRequest();
+        var processId = Assert.IsType<Guid>(request.ProcessId);
+        var bob = new KaleidoCaller { Name = "bob" };
+        var existing = CreateContext(processId, "old-request") with { CreatedBy = bob, UpdatedBy = bob };
+        var store = new Mock<IKaleidoContextStore>();
+        store.Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+        var stateUpdater = new Mock<IProcessorStateUpdater>();
+        stateUpdater.Setup(x => x.Reconcile(existing)).Returns(existing);
+        var planner = new Mock<IProcessorPlanner>();
+        planner.Setup(x => x.BuildPlan(It.IsAny<ProcessorRequest>(), It.IsAny<ProcessorContext>())).Returns(new ExecutionPlanResult { Candidates = [] });
+        ProcessorContext? executedWith = null;
+        var processor = ProcessorReturning(context =>
+        {
+            executedWith = context;
+            return CreateExecutionResult(context.ProcessId);
+        });
+
+        await CreateSut(
+                store.Object, stateUpdater.Object, planner.Object, processor.Object,
+                CreateProcessEventFactory().Object, new Mock<IKaleidoEventOutbox>().Object, CreateObservability().Object,
+                CreateCorrelationAccessor(caller: Alice))
+            .ExecuteAsync(request);
+
+        Assert.Equal(bob, executedWith!.CreatedBy);
+        Assert.Equal(Alice, executedWith.UpdatedBy);
+    }
 
     [Fact]
     public async Task ExecuteAsync_ForANewProcess_SavesItRightAwayWithItsProcessCreatedEvent()
@@ -866,7 +916,8 @@ public sealed class ProcessorRuntimeTests
 
     private static IKaleidoCorrelationContextAccessor CreateCorrelationAccessor(
         string requestId = "REQ-001",
-        string? callingProcessor = null)
+        string? callingProcessor = null,
+        KaleidoCaller? caller = null)
     {
         var accessor = new Mock<IKaleidoCorrelationContextAccessor>();
 
@@ -875,7 +926,9 @@ public sealed class ProcessorRuntimeTests
             .Returns(new KaleidoCorrelationContext
             {
                 RequestId = requestId,
-                CallingProcessorName = callingProcessor
+                CallingProcessorName = callingProcessor,
+                CallerName = caller?.Name,
+                CallerId = caller?.Id,
             });
 
         return accessor.Object;

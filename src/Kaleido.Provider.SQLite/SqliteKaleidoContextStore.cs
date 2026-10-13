@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Kaleido.Exceptions;
+using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Storage;
 using Kaleido.Provider.SQLite.Entities;
@@ -89,7 +90,10 @@ internal sealed partial class SqliteKaleidoContextStore(
 
             entity.Version = context.Version + 1;
             entity.LatestRequestId = context.LatestRequestId;
-            entity.Owner = context.Owner;
+            entity.CreatedByName = context.CreatedBy?.Name;
+            entity.CreatedById = context.CreatedBy?.Id;
+            entity.UpdatedByName = context.UpdatedBy?.Name;
+            entity.UpdatedById = context.UpdatedBy?.Id;
             entity.State = context.State;
             entity.CreatedUtc = context.CreatedUtc == default ? DateTimeOffset.UtcNow : context.CreatedUtc;
             entity.UpdatedUtc = context.UpdatedUtc == default ? DateTimeOffset.UtcNow : context.UpdatedUtc;
@@ -335,7 +339,12 @@ internal sealed partial class SqliteKaleidoContextStore(
             row.Version = step.Version;
             row.Status = step.Status;
             row.LatestRequestId = step.LatestRequestId;
+            row.FirstExecuted = step.FirstExecuted;
+            row.StartedByName = step.StartedBy?.Name;
+            row.StartedById = step.StartedBy?.Id;
             row.LastExecuted = step.LastExecuted;
+            row.LastUpdatedByName = step.LastUpdatedBy?.Name;
+            row.LastUpdatedById = step.LastUpdatedBy?.Id;
         }
 
         var existing = entity.Steps
@@ -357,7 +366,12 @@ internal sealed partial class SqliteKaleidoContextStore(
                     Version = step.Version,
                     Status = step.Status,
                     LatestRequestId = step.LatestRequestId,
+                    FirstExecuted = step.FirstExecuted,
+                    StartedByName = step.StartedBy?.Name,
+                    StartedById = step.StartedBy?.Id,
                     LastExecuted = step.LastExecuted,
+                    LastUpdatedByName = step.LastUpdatedBy?.Name,
+                    LastUpdatedById = step.LastUpdatedBy?.Id,
                 });
         }
     }
@@ -454,7 +468,8 @@ internal sealed partial class SqliteKaleidoContextStore(
             ProcessorName = localProcessorName,
             Version = entity.Version,
             LatestRequestId = entity.LatestRequestId,
-            Owner = entity.Owner,
+            CreatedBy = Caller(entity.CreatedByName, entity.CreatedById),
+            UpdatedBy = Caller(entity.UpdatedByName, entity.UpdatedById),
             State = entity.State,
             RequiredStep = entity.RequiredStep?.StepName,
             RequiredInformationRequest =
@@ -494,11 +509,17 @@ internal sealed partial class SqliteKaleidoContextStore(
                             Version = step.Version,
                             Status = step.Status,
                             LatestRequestId = step.LatestRequestId,
+                            FirstExecuted = step.FirstExecuted,
+                            StartedBy = Caller(step.StartedByName, step.StartedById),
                             LastExecuted = step.LastExecuted,
+                            LastUpdatedBy = Caller(step.LastUpdatedByName, step.LastUpdatedById),
                         })
                     .ToArray(),
         };
     }
+
+    private static KaleidoCaller? Caller(string? name, string? id) =>
+        name is null && id is null ? null : new KaleidoCaller { Name = name, Id = id };
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to load process context for process {ProcessId}.")]
     private static partial void LogLoadFailed(ILogger logger, Exception exception, Guid processId);

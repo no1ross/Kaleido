@@ -60,6 +60,20 @@ public sealed class ProcessorEventFactoryTests
         Assert.Equal(ProcessExecutionState.Active, result.Event.State);
     }
 
+    [Theory]
+    [InlineData("alice", "sub-alice")]
+    [InlineData(null, null)]
+    public void CreateProcessCreated_TagsTheCaller_OrNoneWhenAnonymous(string? name, string? id)
+    {
+        var correlation = new KaleidoCorrelationContext { RequestId = "test-request", CallerName = name, CallerId = id };
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
+        var request = new ProcessRequest { Processor = new ProcessorRequest { Steps = new Dictionary<string, object?>() } };
+
+        var result = Sut.CreateProcessCreated(correlation, context, request);
+
+        Assert.Equal(name is null ? null : new KaleidoCaller { Name = name, Id = id }, result.Context.Caller);
+    }
+
     [Fact]
     public void CreateProcessCreated_ExtractsStepNamesFromRequest()
     {
