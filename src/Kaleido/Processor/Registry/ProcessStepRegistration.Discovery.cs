@@ -41,7 +41,12 @@ public sealed partial record ProcessStepRegistration
         };
     }
 
-    internal ProcessorStepSummary ToSummary()
+    /// <summary>
+    /// The step as a summary: how it is named from elsewhere (initial steps, relationships, next and
+    /// required steps), with its declared behavior and effective authorization.
+    /// </summary>
+    /// <returns>The step's <see cref="ProcessorStepSummary"/>.</returns>
+    public ProcessorStepSummary ToSummary()
     {
         return new ProcessorStepSummary
         {

@@ -75,18 +75,7 @@ internal sealed partial class ProcessStateService(
                 $"Available step '{stepName}' was not found in the local registry.");
 
         return responseFactory.CreateStepSummary(
-            new ProcessorStepSummary
-            {
-                Name = registration.Metadata.Name,
-                Description = registration.Metadata.Description,
-                DisplayName = registration.Metadata.DisplayName,
-                Version = registration.Metadata.Version,
-                Repeatable = registration.Repeatable.Enabled,
-                IsInformationStep = registration.IsInformationStep,
-                Destructive = registration.Metadata.Destructive,
-                External = registration.Metadata.External,
-                RequiresConfirmation = registration.Metadata.RequiresConfirmation,
-            },
+            registration.ToSummary(),
             serviceOptions.ServiceName);
     }
 
@@ -106,18 +95,7 @@ internal sealed partial class ProcessStateService(
                 $"Required step '{requiredStep}' was not found in the local registry.");
 
         return responseFactory.CreateRequiredStep(
-            new ProcessorStepSummary
-            {
-                Name = registration.Metadata.Name,
-                Description = registration.Metadata.Description,
-                DisplayName = registration.Metadata.DisplayName,
-                Version = registration.Metadata.Version,
-                Repeatable = registration.Repeatable.Enabled,
-                IsInformationStep = registration.IsInformationStep,
-                Destructive = registration.Metadata.Destructive,
-                External = registration.Metadata.External,
-                RequiresConfirmation = registration.Metadata.RequiresConfirmation,
-            },
+            registration.ToSummary(),
             context.RequiredInformationRequest,
             serviceOptions.ServiceName);
     }

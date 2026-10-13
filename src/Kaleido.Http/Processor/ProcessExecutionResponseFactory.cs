@@ -65,7 +65,7 @@ internal sealed class ProcessExecutionResponseFactory(
                                     FrameworkErrorCodes.MissingRegistration,
                                     $"Available step '{stepName}' was not found in the local registry.");
                             return responseFactory.CreateStepSummary(
-                                ToSummary(registration),
+                                registration.ToSummary(),
                                 serviceName);
                         })
                     .ToArray(),
@@ -117,7 +117,7 @@ internal sealed class ProcessExecutionResponseFactory(
                                     FrameworkErrorCodes.MissingRegistration,
                                     $"Available step '{stepName}' was not found in the local registry.");
                             return responseFactory.CreateStepSummary(
-                                ToSummary(registration),
+                                registration.ToSummary(),
                                 serviceName);
                         })
                     .ToList(),
@@ -203,24 +203,10 @@ internal sealed class ProcessExecutionResponseFactory(
                 $"Required step '{requiredStep}' was not found in the local registry.");
 
         return responseFactory.CreateRequiredStep(
-            ToSummary(registration),
+            registration.ToSummary(),
             processResult.RequiredInformationRequest,
             serviceName);
     }
-
-    private static ProcessorStepSummary ToSummary(ProcessStepRegistration registration) =>
-        new()
-        {
-            Name = registration.Metadata.Name,
-            Description = registration.Metadata.Description,
-            DisplayName = registration.Metadata.DisplayName,
-            Version = registration.Metadata.Version,
-            Repeatable = registration.Repeatable.Enabled,
-            IsInformationStep = registration.IsInformationStep,
-            Destructive = registration.Metadata.Destructive,
-            External = registration.Metadata.External,
-            RequiresConfirmation = registration.Metadata.RequiresConfirmation,
-        };
 
     private ProcessMessage[] ToFrameworkMessages(
         ProcessStepResult stepResult) =>
