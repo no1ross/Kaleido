@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Kaleido.Eventing;
 using Kaleido.Http.FunctionalTests.Processor.Infrastructure;
 using Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
@@ -9,6 +11,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Compliance.Classification;
+using Microsoft.Extensions.Compliance.Redaction;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -123,8 +127,66 @@ public sealed class EventOutboxTests : IAsyncLifetime
         Assert.Equal(0L, await OutboxCountAsync());
     }
 
+    // A value classified as sensitive is redacted before the outbox write: the outbox row and the
+    // publisher see the redactor's output, the caller's response the real value.
+    [Fact]
+    public async Task AClassifiedValue_IsRedactedInTheOutboxAndForThePublisher_ButNotInTheResponse()
+    {
+        var failing = new RecordingPublisher(alwaysFail: true);
+        var host = await StartHostAsync(failing, retryDelay: TimeSpan.FromMinutes(10), configureServices: AddMaskingRedaction);
+
+        var names = await QueryNamesAsync(host);
+
+        await WaitUntilAsync(async () => await ScalarAsync("SELECT COUNT(*) FROM OutboxEvents WHERE Attempts = 0") is 0L);
+        var payload = (string)(await ScalarAsync($"SELECT Payload FROM OutboxEvents WHERE EventType = '{KaleidoEventTypes.QueryExecuted}'"))!;
+        await host.StopAsync(Cancel);
+
+        Assert.NotEmpty(names);
+        Assert.All(names, name => Assert.DoesNotContain(name, payload, StringComparison.Ordinal));
+        Assert.Equal(names.Count, RecordNames(JsonNode.Parse(payload)!["event"]!).Count(x => x == "***"));
+
+        await ExecuteAsync("UPDATE OutboxEvents SET NextAttemptUtc = 0");
+        var publisher = new RecordingPublisher();
+        await StartHostAsync(publisher, configureServices: AddMaskingRedaction);
+
+        await WaitUntilAsync(() => Task.FromResult(publisher.Events.Any(x => x.EventType == KaleidoEventTypes.QueryExecuted)));
+        var published = publisher.Events.First(x => x.EventType == KaleidoEventTypes.QueryExecuted).Event;
+        Assert.All(RecordNames(published), name => Assert.Equal("***", name));
+    }
+
+    [Fact]
+    public async Task AClassifiedValue_WithoutARedactorRegistered_IsErased()
+    {
+        var publisher = new RecordingPublisher();
+        var host = await StartHostAsync(publisher);
+
+        var names = await QueryNamesAsync(host);
+
+        await WaitUntilAsync(() => Task.FromResult(publisher.Events.Any(x => x.EventType == KaleidoEventTypes.QueryExecuted)));
+        var published = publisher.Events.First(x => x.EventType == KaleidoEventTypes.QueryExecuted).Event;
+        Assert.NotEmpty(names);
+        Assert.All(RecordNames(published), name => Assert.Equal(string.Empty, name));
+    }
+
+    private static void AddMaskingRedaction(IServiceCollection services) =>
+        services.AddRedaction(redaction => redaction.SetRedactor<MaskingRedactor>(new DataClassificationSet(FunctionalSensitiveDataAttribute.Sensitive)));
+
+    // Runs the query and returns the names the caller got (the real values).
+    private static async Task<List<string>> QueryNamesAsync(IHost host)
+    {
+        using var content = new StringContent("""{ "query": {} }""", Encoding.UTF8, "application/json");
+        using var response = await host.GetTestClient().PostAsync("/kaleido/queryable/functionalrecordcontextsource/query", content, Cancel);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = JsonNode.Parse(await response.Content.ReadAsStringAsync(Cancel))!;
+        return [.. body["results"]!.AsArray().Select(x => x!["name"]!.GetValue<string>())];
+    }
+
+    private static List<string?> RecordNames(JsonNode queryExecuted) =>
+        [.. queryExecuted["records"]!.AsArray().Select(x => x!["name"]?.GetValue<string>())];
+
     // Like the PriorAuth services: the host creates the store's schema at startup.
-    private async Task<IHost> StartHostAsync(RecordingPublisher publisher, TimeSpan? retryDelay = null)
+    private async Task<IHost> StartHostAsync(RecordingPublisher publisher, TimeSpan? retryDelay = null, Action<IServiceCollection>? configureServices = null)
     {
         var host = await new HostBuilder()
             .ConfigureWebHost(webBuilder =>
@@ -144,6 +206,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
                         .UseSqliteKaleidoContextStore($"Data Source={_databasePath}");
                     services.RemoveAll<IEventPublisher>();
                     services.AddSingleton<IEventPublisher>(publisher);
+                    configureServices?.Invoke(services);
                 });
                 webBuilder.Configure(app =>
                 {
@@ -206,6 +269,8 @@ public sealed class EventOutboxTests : IAsyncLifetime
 
         public ConcurrentQueue<(Guid EventId, string EventType)> Published { get; } = new();
 
+        public ConcurrentQueue<(string EventType, JsonNode Event)> Events { get; } = new();
+
         public int Calls => Volatile.Read(ref _calls);
 
         public Task PublishAsync<TEvent, TContext>(KaleidoEventEnvelope<TEvent, TContext> envelope, CancellationToken cancellationToken = default)
@@ -219,7 +284,22 @@ public sealed class EventOutboxTests : IAsyncLifetime
             }
 
             Published.Enqueue((envelope.Event.EventId, envelope.EventType));
+            Events.Enqueue((envelope.EventType, JsonSerializer.SerializeToNode(envelope.Event, JsonOptions)!));
             return Task.CompletedTask;
+        }
+    }
+
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    // Replaces every classified value with ***.
+    private sealed class MaskingRedactor : Redactor
+    {
+        public override int GetRedactedLength(ReadOnlySpan<char> input) => 3;
+
+        public override int Redact(ReadOnlySpan<char> source, Span<char> destination)
+        {
+            "***".AsSpan().CopyTo(destination);
+            return 3;
         }
     }
 }

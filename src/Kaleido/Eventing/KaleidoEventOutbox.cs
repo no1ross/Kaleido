@@ -25,6 +25,7 @@ internal interface IKaleidoEventOutbox
 internal sealed partial class KaleidoEventOutbox(
     IKaleidoContextStore store,
     IEventPublisher publisher,
+    IKaleidoEventPayloadWriter payloadWriter,
     IKaleidoEventSignal signal,
     ILogger<KaleidoEventOutbox> logger)
     : IKaleidoEventOutbox
@@ -40,7 +41,7 @@ internal sealed partial class KaleidoEventOutbox(
 
     public KaleidoOutboxEvent? Prepare<TEvent, TContext>(KaleidoEventEnvelope<TEvent, TContext> envelope)
         where TEvent : IKaleidoEvent =>
-        Enabled ? envelope.ToOutboxEvent() : null;
+        Enabled ? payloadWriter.Write(envelope) : null;
 
     public async Task EnqueueAsync<TEvent, TContext>(KaleidoEventEnvelope<TEvent, TContext> envelope, CancellationToken cancellationToken)
         where TEvent : IKaleidoEvent
@@ -52,7 +53,7 @@ internal sealed partial class KaleidoEventOutbox(
 
         try
         {
-            await store.EnqueueEventsAsync([envelope.ToOutboxEvent()], cancellationToken);
+            await store.EnqueueEventsAsync([payloadWriter.Write(envelope)], cancellationToken);
             signal.Notify();
         }
         catch (Exception exception) when (exception is not OperationCanceledException)

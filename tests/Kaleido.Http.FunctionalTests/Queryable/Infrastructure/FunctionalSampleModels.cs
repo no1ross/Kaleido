@@ -29,6 +29,7 @@ public sealed class FunctionalRecordContext : IQueryContext
     [Filterable(FilterOperator.Equals, FilterOperator.Contains)]
     [Searchable(Priority = 2, MatchMode = MatchMode.Contains)]
     [Sortable]
+    [FunctionalSensitiveData]
     public string Name { get; init; } = string.Empty;
 
     [Filterable(FilterOperator.Equals, FilterOperator.In)]

@@ -20,7 +20,8 @@ For the full repository model, see:
 - `DataTypeMapper` — converts CLR types and properties into transport-friendly `DataTypeDescriptor` values
 - `ConstraintMapper` — converts `ValidationAttribute` usage into metadata constraint contracts
 - `KaleidoCorrelationContext` — shared ambient identity model for requests/workflows
-- `IEventPublisher` / `IKaleidoEvent` — infrastructure-agnostic event publication seam
+- `IEventPublisher` / `IKaleidoEvent` - infrastructure-agnostic event publication seam; events reach the publisher at least once through the outbox and the event relay (`KaleidoEventRelay`, `KaleidoEventOptions`, ADR 0012)
+- `IKaleidoEventRedactor` / `AddEventRedactor<T>()` - reduce events before the outbox write; properties marked with a `DataClassificationAttribute` are redacted with the host's `AddRedaction` redactors, or erased when none is registered (ADR 0013)
 - `ValidationException` / `ValidationError` — shared error shape for validation failures
 - `KaleidoEnumConverter` / `KaleidoEnumConverterFactory` — shared JSON enum conversion helpers
 - `ValueConverter` — shared runtime value conversion helper

@@ -31,6 +31,11 @@
 - Runtime-created DBs like `eventcollector.db`, `intake.db`, `intake-process.db`, `radiology.db`, and `radiology-process.db` may appear in `samples/PriorAuth/data/` after services start
 - The `*-process.db` files are the Kaleido context stores (process state, idempotent results, event outbox). They are created with `EnsureCreated`, which never adds tables to an existing file: after a store schema change (e.g. the `OutboxEvents` table) delete them; they are recreated at startup
 
+## Sensitive data in events
+- Member fields are classified with `[Phi]` (name, display name, date of birth) and `[Pii]` (email, phone, address) from `Common/Compliance/PriorAuthDataClassifications.cs`.
+- Kaleido redacts classified values in event payloads before the outbox write (ADR 0013); responses to callers keep the real values.
+- The sample registers no `AddRedaction`, so classified values are erased in events (a warning is logged once). To pseudonymize or encrypt instead, add `Microsoft.Extensions.Compliance.Redaction` to a host and call `services.AddRedaction(...)` per classification.
+
 ## Environment assumptions
 - Assume `ASPNETCORE_ENVIRONMENT=Development` for local work unless told otherwise
 - Use `npm` for the Angular app

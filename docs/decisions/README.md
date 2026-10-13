@@ -28,6 +28,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0010](./0010-no-case-level-guardrails.md) | Kaleido has no case-level guardrails: no process ownership, no transfer | Accepted | #194 |
 | [0011](./0011-mcp-lists-every-tool-the-caller-may-use.md) | The MCP adapter lists every tool the caller may use; the process stays the gate | Accepted | #230 |
 | [0012](./0012-events-at-least-once-through-the-store.md) | Events reach the publisher at least once, through an outbox in the store | Accepted | #240 |
+| [0013](./0013-event-payloads-classified-and-redacted.md) | Event payloads stay complete; classified values are redacted before the outbox | Accepted | #139 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are
