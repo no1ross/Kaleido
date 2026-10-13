@@ -299,7 +299,7 @@ internal sealed class ToolCatalogBuilder(
                 context.MissingDescriptions.Add($"{toolName}.parameters.{argument}");
             }
 
-            parameterProperties[argument] = schemaBuilder.ForValue(parameter.DataType, parameter.Description, parameter.Constraints);
+            parameterProperties[argument] = schemaBuilder.ForValue(parameter.DataType, WithSensitivity(parameter.Description, parameter.Classifications), parameter.Constraints);
 
             if (schemaBuilder.IsRequired(parameter.Constraints))
             {
@@ -341,7 +341,8 @@ internal sealed class ToolCatalogBuilder(
                 : " Continues an existing process: pass its processId.") +
             LookupSummary(lookups) +
             Returns(step.Result?.OutputFields) +
-            " Changes state.";
+            " Changes state." +
+            Behavior(step);
 
         context.Add(new KaleidoTool
         {
@@ -355,7 +356,12 @@ internal sealed class ToolCatalogBuilder(
                 {
                     Title = step.DisplayName ?? step.Name,
                     ReadOnlyHint = false,
-                    OpenWorldHint = false,
+
+                    // Declared by the implementer; idempotent because a non-repeatable step runs once
+                    // per process (a second call is refused).
+                    DestructiveHint = step.Destructive,
+                    OpenWorldHint = step.External,
+                    IdempotentHint = !step.Repeatable,
                 },
             },
             Kind = KaleidoToolKind.Step,
@@ -453,6 +459,11 @@ internal sealed class ToolCatalogBuilder(
         if (!string.IsNullOrWhiteSpace(field.Prompt))
         {
             hints.Add($"Ask: {field.Prompt}");
+        }
+
+        if (Sensitivity(field.Classifications) is { } sensitivity)
+        {
+            hints.Add(sensitivity);
         }
 
         var parts = new[] { field.Description?.Trim() }.Concat(hints).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
@@ -664,8 +675,8 @@ internal sealed class ToolCatalogBuilder(
         var names = fields?
             .Select(x => x switch
             {
-                QueryableQueryProperty p => p.Name,
-                ProcessOutputFieldMetadata p => p.Name,
+                QueryableQueryProperty p => Classified(p.Name, p.Classifications),
+                ProcessOutputFieldMetadata p => Classified(p.Name, p.Classifications),
                 _ => null,
             })
             .OfType<string>()
@@ -680,6 +691,32 @@ internal sealed class ToolCatalogBuilder(
 
         return $" Returns: {string.Join(", ", listed)}{(names.Length > listed.Length ? ", …" : string.Empty)}.";
     }
+
+    // What the implementer declared about the step's effects, for the agent deciding whether to call it.
+    private static string Behavior(ProcessStepResponse step) =>
+        (step.Destructive ? " Cannot be undone." : string.Empty) +
+        (step.External ? " Reaches outside systems." : string.Empty) +
+        (step.RequiresConfirmation ? " Ask the user to confirm before calling." : string.Empty);
+
+    // "Sensitive (PHI, PII)." for classified values (e.g. "PriorAuth:PHI"), so an agent does not repeat
+    // or store them carelessly; null when the value is not classified.
+    private static string? Sensitivity(IReadOnlyList<string> classifications) =>
+        classifications.Count == 0
+            ? null
+            : $"Sensitive ({string.Join(", ", classifications.Select(ClassificationValue))}).";
+
+    private static string? WithSensitivity(string? description, IReadOnlyList<string> classifications) =>
+        Sensitivity(classifications) is { } sensitivity
+            ? string.Join(' ', new[] { description?.Trim(), sensitivity }.Where(x => !string.IsNullOrWhiteSpace(x)))
+            : description;
+
+    private static string Classified(string name, IReadOnlyList<string> classifications) =>
+        classifications.Count == 0
+            ? name
+            : $"{name} ({string.Join(", ", classifications.Select(ClassificationValue))})";
+
+    private static string ClassificationValue(string classification) =>
+        classification[(classification.LastIndexOf(':') + 1)..];
 
     private static string DescribeType(DataTypeDescriptor type) =>
         type.EnumValues is { Count: > 0 } values

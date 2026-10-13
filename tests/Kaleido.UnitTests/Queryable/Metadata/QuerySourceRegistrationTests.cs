@@ -19,7 +19,7 @@ public sealed class QuerySourceRegistrationTests
     [Fact]
     public void QuerySourceRegistration_PreservesMetadataShape()
     {
-        var field = new FieldMetadata("Code", "Code description", typeof(string), TestDataType, true, [FilterOperator.Equals], true, 1, MatchMode.Contains, true);
+        var field = new FieldMetadata { Name = "Code", Description = "Code description", FieldType = typeof(string), DataType = TestDataType, IsFilterable = true, FilterOperators = [FilterOperator.Equals], IsSearchable = true, SearchPriority = 1, MatchMode = MatchMode.Contains, IsSortable = true };
         var pageable = new PageableMetadata(25, 100);
         var metadata = new QuerySourceMetadata("TestSource", "Source description", "Source", "1.0.0", "Unit Test", QuerySourceKind.Local, pageable, [field], [], [], AuthorizationMetadata.Unspecified);
         var registration = CreateSut(metadata);

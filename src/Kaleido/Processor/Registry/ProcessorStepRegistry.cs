@@ -356,12 +356,17 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
                 ProcessorErrorCodes.MissingAttribute,
                 $"Process step '{stepType.Name}' is missing ProcessStepAttribute.");
 
-        return new ProcessStepMetadata(
-            stepType.Name,
-            attribute.Description,
-            attribute.Version,
-            attribute.DisplayName,
-            AuthorizationMetadata.ForType(stepType, defaultAuthorization));
+        return new ProcessStepMetadata
+        {
+            Name = stepType.Name,
+            Description = attribute.Description,
+            Version = attribute.Version,
+            DisplayName = attribute.DisplayName,
+            Authorization = AuthorizationMetadata.ForType(stepType, defaultAuthorization),
+            Destructive = attribute.Destructive,
+            External = attribute.External,
+            RequiresConfirmation = attribute.RequiresConfirmation,
+        };
     }
 }
 

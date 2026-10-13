@@ -56,6 +56,9 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
                     Version = x.Version,
                     Repeatable = x.Repeatable,
                     IsInformationStep = x.IsInformationStep,
+                    Destructive = x.Destructive,
+                    External = x.External,
+                    RequiresConfirmation = x.RequiresConfirmation,
                     Authorization = x.Authorization,
                     ExecuteUrl = string.Empty,
                 })
@@ -83,6 +86,9 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Version = registration.Version,
             Repeatable = registration.Repeatable,
             IsInformationStep = registration.IsInformationStep,
+            Destructive = registration.Destructive,
+            External = registration.External,
+            RequiresConfirmation = registration.RequiresConfirmation,
             IsInitial =
                 registration.Dependencies.Count == 0 &&
                 registration.AvailableAfter.Count == 0,
@@ -126,6 +132,9 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Version = registration.Version,
             Repeatable = registration.Repeatable,
             IsInformationStep = registration.IsInformationStep,
+            Destructive = registration.Destructive,
+            External = registration.External,
+            RequiresConfirmation = registration.RequiresConfirmation,
             Authorization = registration.Authorization,
             ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName),
         };
@@ -149,6 +158,9 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Version = summary.Version,
             Repeatable = summary.Repeatable,
             IsInformationStep = summary.IsInformationStep,
+            Destructive = summary.Destructive,
+            External = summary.External,
+            RequiresConfirmation = summary.RequiresConfirmation,
             Authorization = summary.Authorization,
             ExecuteUrl = summary.ExecuteUrl,
             InformationRequest = informationRequest,
@@ -166,6 +178,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Lookup = item.Lookup,
             Description = item.Description,
             DataType = item.DataType,
+            Classifications = item.Classifications,
             Constraints = item.Constraints,
         };
     }
@@ -189,6 +202,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Name = item.Name,
             Description = item.Description,
             DataType = item.DataType,
+            Classifications = item.Classifications,
         };
     }
 }

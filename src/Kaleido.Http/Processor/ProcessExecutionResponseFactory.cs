@@ -217,6 +217,9 @@ internal sealed class ProcessExecutionResponseFactory(
             Version = registration.Metadata.Version,
             Repeatable = registration.Repeatable.Enabled,
             IsInformationStep = registration.IsInformationStep,
+            Destructive = registration.Metadata.Destructive,
+            External = registration.Metadata.External,
+            RequiresConfirmation = registration.Metadata.RequiresConfirmation,
         };
 
     private ProcessMessage[] ToFrameworkMessages(

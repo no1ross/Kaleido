@@ -29,16 +29,34 @@ public sealed record RepeatableOptions
     public bool Enabled { get; init; }
 }
 
+/// <summary>A step's published metadata, from its <see cref="ProcessStepAttribute"/>.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessStepMetadata(
-    string Name,
-    string Description,
-    string Version,
-    string DisplayName,
-    AuthorizationMetadata Authorization)
+public sealed record ProcessStepMetadata
 {
-    public ProcessStepMetadata(string name, string description, string version, string displayName)
-        : this(name, description, version, displayName, AuthorizationMetadata.Unspecified)
-    {
-    }
+    /// <summary>The step's name: its type name.</summary>
+    public required string Name { get; init; }
+
+    /// <inheritdoc cref="ProcessStepAttribute.Description"/>
+    public required string Description { get; init; }
+
+    /// <inheritdoc cref="ProcessStepAttribute.Version"/>
+    public required string Version { get; init; }
+
+    /// <inheritdoc cref="ProcessStepAttribute.DisplayName"/>
+    public required string DisplayName { get; init; }
+
+    /// <summary>
+    /// The effective authorization rule. <see cref="AuthorizationMetadata.Unspecified"/> means
+    /// neither the step nor its service declared a rule.
+    /// </summary>
+    public AuthorizationMetadata Authorization { get; init; } = AuthorizationMetadata.Unspecified;
+
+    /// <inheritdoc cref="ProcessStepAttribute.Destructive"/>
+    public bool Destructive { get; init; }
+
+    /// <inheritdoc cref="ProcessStepAttribute.External"/>
+    public bool External { get; init; }
+
+    /// <inheritdoc cref="ProcessStepAttribute.RequiresConfirmation"/>
+    public bool RequiresConfirmation { get; init; }
 }

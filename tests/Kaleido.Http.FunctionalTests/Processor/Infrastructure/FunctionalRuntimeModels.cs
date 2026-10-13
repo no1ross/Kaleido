@@ -37,7 +37,7 @@ public sealed record RuntimeStepA : IProcessStep;
 [DependsOn<RuntimeRootStep>]
 public sealed record RuntimeStepB : IProcessStep;
 
-[ProcessStep(DisplayName = RuntimeStepNames.Merge, Description = "Runtime merge step", Version = "1.0")]
+[ProcessStep(DisplayName = RuntimeStepNames.Merge, Description = "Runtime merge step", Version = "1.0", Destructive = true, External = true, RequiresConfirmation = true)]
 [DependsOn<RuntimeStepA>]
 [DependsOn<RuntimeStepB>]
 public sealed record RuntimeMergeStep : IProcessStep;

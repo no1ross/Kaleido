@@ -83,6 +83,9 @@ internal sealed partial class ProcessStateService(
                 Version = registration.Metadata.Version,
                 Repeatable = registration.Repeatable.Enabled,
                 IsInformationStep = registration.IsInformationStep,
+                Destructive = registration.Metadata.Destructive,
+                External = registration.Metadata.External,
+                RequiresConfirmation = registration.Metadata.RequiresConfirmation,
             },
             serviceOptions.ServiceName);
     }
@@ -111,6 +114,9 @@ internal sealed partial class ProcessStateService(
                 Version = registration.Metadata.Version,
                 Repeatable = registration.Repeatable.Enabled,
                 IsInformationStep = registration.IsInformationStep,
+                Destructive = registration.Metadata.Destructive,
+                External = registration.Metadata.External,
+                RequiresConfirmation = registration.Metadata.RequiresConfirmation,
             },
             context.RequiredInformationRequest,
             serviceOptions.ServiceName);

@@ -73,6 +73,18 @@ Rules:
 - **Describe inputs** with `[Description("…")]` or `[Display(Description = "…")]`
   (KAL2017); `[Display(Name, Prompt)]` are optional hints. The registry publishes
   them — UIs and AI agents use them to know what to ask for.
+- **Declare what only you know about the step's effects** ([ADR 0015](./decisions/0015-declared-step-behavior.md)) -
+  clients and AI agents read it from the registry, and the MCP adapter maps it onto tool hints:
+  - `Destructive = true`: irreversible or loss-causing (cancel, delete, withdraw, submit, pay).
+  - `External = true`: changes something outside the process state - another system's data, an
+    email or message, an order, a payment - wherever that system lives. Reading other systems and
+    handing off to another Kaleido processor do not count.
+  - `RequiresConfirmation = true`: the user should confirm before a client calls it (a hint).
+  - Nothing declared means an ordinary step that records into the process. Idempotence is derived:
+    a step without `[Repeatable]` runs once per process.
+- **Classify sensitive fields** with your own `DataClassificationAttribute` subclasses (`[PHI]`,
+  `[PII]`): the registry publishes them (`classifications`), MCP marks them "Sensitive", and event
+  payloads redact them ([ADR 0013](./decisions/0013-event-payloads-classified-and-redacted.md)).
 - **Only next steps run:** a request may start with the pending required step or,
   when nothing is required, a step available under the process rules
   (`pro_step_not_available` otherwise).

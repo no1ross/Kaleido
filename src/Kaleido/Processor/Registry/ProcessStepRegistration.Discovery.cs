@@ -18,6 +18,9 @@ public sealed partial record ProcessStepRegistration
             Version = Metadata.Version,
             Repeatable = Repeatable.Enabled,
             IsInformationStep = IsInformationStep,
+            Destructive = Metadata.Destructive,
+            External = Metadata.External,
+            RequiresConfirmation = Metadata.RequiresConfirmation,
             Authorization = Metadata.Authorization,
             // An information step's input is described by its pending InformationRequest,
             // not by its fixed InformationRequestId/Items shape.
@@ -48,6 +51,9 @@ public sealed partial record ProcessStepRegistration
             Version = Metadata.Version,
             Repeatable = Repeatable.Enabled,
             IsInformationStep = IsInformationStep,
+            Destructive = Metadata.Destructive,
+            External = Metadata.External,
+            RequiresConfirmation = Metadata.RequiresConfirmation,
             Authorization = Metadata.Authorization,
         };
     }
@@ -113,6 +119,7 @@ public sealed partial record ProcessStepRegistration
                 property.GetCustomAttribute<DescriptionAttribute>()?.Description
                 ?? display?.GetDescription(),
             DataType = TypeDescriber.GetDescriptor(property),
+            Classifications = property.GetDataClassificationNames(),
             Lookup = lookup,
             Constraints = constraintMapper.Map(property),
         };
@@ -146,6 +153,7 @@ public sealed partial record ProcessStepRegistration
             Name = property.Name,
             Description = property.GetCustomAttribute<DescriptionAttribute>()?.Description,
             DataType = TypeDescriber.GetDescriptor(property),
+            Classifications = property.GetDataClassificationNames(),
         };
     }
 

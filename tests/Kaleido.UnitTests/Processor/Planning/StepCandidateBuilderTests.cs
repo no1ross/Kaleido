@@ -54,7 +54,7 @@ public sealed class StepCandidateBuilderTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata("test-step", "desc", "1.0", "display"));
+            new ProcessStepMetadata { Name = "test-step", Description = "desc", Version = "1.0", DisplayName = "display" });
 
         _registry.Setup(r => r.Find("test-step")).Returns(registration);
 
@@ -85,7 +85,7 @@ public sealed class StepCandidateBuilderTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata("test-step", "desc", "1.0", "display"));
+            new ProcessStepMetadata { Name = "test-step", Description = "desc", Version = "1.0", DisplayName = "display" });
 
         _registry.Setup(r => r.Find("test-step")).Returns(registration);
 
@@ -116,7 +116,7 @@ public sealed class StepCandidateBuilderTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata("test-step", "desc", "1.0", "display"));
+            new ProcessStepMetadata { Name = "test-step", Description = "desc", Version = "1.0", DisplayName = "display" });
 
         _registry.Setup(r => r.Find("test-step")).Returns(registration);
 
@@ -147,7 +147,7 @@ public sealed class StepCandidateBuilderTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata("step-a", "desc", "1.0", "display"));
+            new ProcessStepMetadata { Name = "step-a", Description = "desc", Version = "1.0", DisplayName = "display" });
 
         var registrationB = new ProcessStepRegistration(
             typeof(TestStep),
@@ -157,7 +157,7 @@ public sealed class StepCandidateBuilderTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata("step-b", "desc", "1.0", "display"));
+            new ProcessStepMetadata { Name = "step-b", Description = "desc", Version = "1.0", DisplayName = "display" });
 
         _registry.Setup(r => r.Find("step-a")).Returns(registrationA);
         _registry.Setup(r => r.Find("step-b")).Returns(registrationB);

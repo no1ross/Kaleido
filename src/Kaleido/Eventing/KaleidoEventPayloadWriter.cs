@@ -83,16 +83,10 @@ internal sealed partial class KaleidoEventPayloadWriter : IKaleidoEventPayloadWr
     }
 
     // The property's classifications (union of its attributes), or null when it is not classified.
-    private static DataClassificationSet? Classifications(JsonPropertyInfo property)
-    {
-        var classifications = (property.AttributeProvider?.GetCustomAttributes(typeof(DataClassificationAttribute), inherit: true) ?? [])
-            .OfType<DataClassificationAttribute>()
-            .Select(x => x.Classification)
-            .Where(x => x != DataClassification.None)
-            .ToArray();
-
-        return classifications.Length == 0 ? null : new DataClassificationSet(classifications);
-    }
+    private static DataClassificationSet? Classifications(JsonPropertyInfo property) =>
+        property.AttributeProvider.GetDataClassifications() is { Length: > 0 } classifications
+            ? new DataClassificationSet(classifications)
+            : null;
 
     private Func<string, string> RedactorFor(DataClassificationSet classifications)
     {
