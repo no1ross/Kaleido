@@ -22,7 +22,26 @@ internal sealed class ProcessorContextEntity
     }
 
     /// <summary>The caller that created the process (a tag only, never enforced); null when created anonymously.</summary>
-    public string? Owner
+    // Created-by / updated-by tags (KaleidoCaller).
+    public string? CreatedByName
+    {
+        get;
+        set;
+    }
+
+    public string? CreatedById
+    {
+        get;
+        set;
+    }
+
+    public string? UpdatedByName
+    {
+        get;
+        set;
+    }
+
+    public string? UpdatedById
     {
         get;
         set;

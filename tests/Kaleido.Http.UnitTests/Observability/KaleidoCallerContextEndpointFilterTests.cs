@@ -96,6 +96,53 @@ public sealed class KaleidoCallerContextEndpointFilterTests
             Times.Once);
     }
 
+    private static async Task<KaleidoCorrelationContext> InitializedWith(ClaimsPrincipal user)
+    {
+        var accessor = new Mock<IKaleidoCorrelationContextAccessor>();
+        accessor.Setup(x => x.Current).Returns(new KaleidoCorrelationContext { RequestId = "req-1" });
+        var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
+        KaleidoCorrelationContext? initialized = null;
+        initializer.Setup(x => x.Initialize(It.IsAny<KaleidoCorrelationContext>())).Callback<KaleidoCorrelationContext>(c => initialized = c);
+
+        await CreateSut().InvokeAsync(CreateInvocation(accessor, initializer, user), _ => ValueTask.FromResult<object?>(null));
+
+        return initialized ?? throw new Xunit.Sdk.XunitException("The caller was not initialized.");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_StampsTheSubjectClaimAsTheCallerId()
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.Name, "alice"), new Claim("sub", "sub-42"), new Claim(ClaimTypes.NameIdentifier, "nid-7")],
+            authenticationType: "test"));
+
+        var context = await InitializedWith(user);
+
+        Assert.Equal("sub-42", context.CallerId);
+        Assert.Equal(new KaleidoCaller { Name = "alice", Id = "sub-42" }, context.Caller);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithoutASubjectClaim_UsesTheNameIdentifier()
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.Name, "alice"), new Claim(ClaimTypes.NameIdentifier, "nid-7")],
+            authenticationType: "test"));
+
+        Assert.Equal("nid-7", (await InitializedWith(user)).CallerId);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenAnonymous_HasNoCallerIdEvenWithClaims()
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "sub-42")]));
+
+        var context = await InitializedWith(user);
+
+        Assert.Null(context.CallerId);
+        Assert.Null(context.Caller);
+    }
+
     [Fact]
     public async Task InvokeAsync_WhenAccessorNotRegistered_CallsNext()
     {

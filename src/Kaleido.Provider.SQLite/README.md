@@ -48,13 +48,13 @@ public interface IKaleidoContextStore
 
 Your implementation must preserve, with full fidelity:
 
-- `ProcessId`, `ProcessorName`, `LatestRequestId`, `Owner`
+- `ProcessId`, `ProcessorName`, `LatestRequestId`, `CreatedBy`, `UpdatedBy` (caller tags: `KaleidoCaller` name and id; the SQLite store keeps them as `...Name`/`...Id` columns)
 - `Version` - the optimistic-concurrency version (see below)
 - `State` (`ProcessExecutionState` enum - Active, Complete, BusinessFailure, ProcessViolation, HandOff, AwaitingRequiredStep, AwaitingStepSelection, Exception, Canceled, AwaitingInformation)
 - `RequiredStep` and `TargetProcessorName` (mutually exclusive continuation markers)
 - `RequiredInformationRequest` - the pending information request for `RequiredStep`, stored whole (the SQLite store keeps it as JSON on the required-step row)
 - `AvailableSteps` (collection - order not significant)
-- `Steps` - every `StepContext` including `StepName`, `Version`, `Status`, `LatestRequestId`, `LastExecuted`
+- `Steps` - every `StepContext` including `StepName`, `Version`, `Status`, `LatestRequestId`, `FirstExecuted`, `StartedBy`, `LastExecuted`, `LastUpdatedBy`
 - `CreatedUtc` / `UpdatedUtc` timestamps
 
 `LoadAsync` returns `null` when no process exists - never throws for a missing instance.
@@ -93,7 +93,7 @@ The SQLite store keeps them in an `OutboxEvents` table (`EventId` primary key, t
 
 ### Schema changes
 
-The SQLite store creates its schema with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column and the `IdempotentResults` and `OutboxEvents` tables existed (delete the file; it is recreated at startup). A production store manages its own schema migrations.
+The SQLite store creates its schema with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column, the `IdempotentResults` and `OutboxEvents` tables, or the caller-tag columns (`CreatedBy*`/`UpdatedBy*`, which replaced `Owner`, and the step `FirstExecuted`/`StartedBy*`/`LastUpdatedBy*` columns) existed (delete the file; it is recreated at startup). A production store manages its own schema migrations.
 
 ---
 

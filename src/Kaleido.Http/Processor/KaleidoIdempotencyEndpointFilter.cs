@@ -14,7 +14,7 @@ namespace Kaleido.Http.Processor;
 /// answer again (with <c>Idempotent-Replayed: true</c>) instead of running the step a second time.
 /// </summary>
 /// <remarks>
-/// The key is scoped per service and caller. The same key with a different request is refused with
+/// The key is scoped per service and caller (the caller's stable subject id, else its name). The same key with a different request is refused with
 /// 422 <c>pro_idempotency_key_reused</c>. Only successful (2xx) answers are stored; a failed request
 /// may be retried with the same key. Two requests with the same key at the same time both run; the
 /// process store's optimistic concurrency lets only one of them save (the other gets 409). Without the
@@ -73,9 +73,16 @@ internal sealed class KaleidoIdempotencyEndpointFilter(
         return result;
     }
 
-    // Scoped per service and caller: two callers cannot see each other's answers.
+    // Scoped per service and caller: two callers cannot see each other's answers. The caller is its
+    // stable subject id when the principal has one (a renamed user keeps their keys; two users with the
+    // same display name stay apart), else its name; the prefix keeps an id and a name from colliding.
     private string Scope(string key) =>
-        $"{serviceOptions.ServiceName}:{correlationAccessor.Current.CallerName ?? "anonymous"}:{key}";
+        $"{serviceOptions.ServiceName}:{Caller(correlationAccessor.Current)}:{key}";
+
+    private static string Caller(KaleidoCorrelationContext caller) =>
+        caller.CallerId is { } id ? $"id:{id}"
+        : caller.CallerName is { } name ? $"name:{name}"
+        : "anonymous";
 
     // The request the key was used with: the route, the process it continues, and the bound body.
     private static string Hash(EndpointFilterInvocationContext context)

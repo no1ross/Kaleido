@@ -47,4 +47,12 @@ public sealed record QueryableEventContext
     /// <see langword="null"/> when not called from a processor step.
     /// </summary>
     public string? CallingProcessorName { get; init; }
+
+    /// <summary>
+    /// The authenticated caller of the request that produced this event, as the principal provides it
+    /// (<see cref="Kaleido.Observability.KaleidoCaller"/>); <see langword="null"/> for anonymous requests.
+    /// A tag only, and personal data: published unclassified - remove it in an <see cref="IKaleidoEventRedactor"/>
+    /// where the event stream must not carry it.
+    /// </summary>
+    public Kaleido.Observability.KaleidoCaller? Caller { get; init; }
 }

@@ -78,6 +78,17 @@ public sealed class QueryEventFactoryTests
     }
 
     [Fact]
+    public void CreateQueryExecuted_TagsTheCaller()
+    {
+        var correlation = new KaleidoCorrelationContext { RequestId = "test-request", CallerName = "alice", CallerId = "sub-alice" };
+        var details = new QueryObservationDetails("test-context", null, true, QueryExecutionMode.LocalView);
+
+        var envelope = Sut.CreateQueryExecuted<TestView>(correlation, details, new QueryRequest(), new QueryResult<TestView>(0, 0, 10, []));
+
+        Assert.Equal(new KaleidoCaller { Name = "alice", Id = "sub-alice" }, envelope.Context.Caller);
+    }
+
+    [Fact]
     public void CreateQueryExecuted_CreatesEventWithCorrectData()
     {
         var correlation = new KaleidoCorrelationContext { RequestId = "test-request" };

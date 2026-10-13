@@ -8,7 +8,8 @@ namespace Kaleido.Http.FunctionalTests.Authorization;
 
 /// <summary>
 /// Header-driven test authentication scheme. <c>X-Test-User</c> +
-/// comma-delimited <c>X-Test-Roles</c> produce an authenticated principal;
+/// comma-delimited <c>X-Test-Roles</c> (and an optional <c>X-Test-Subject</c>, the <c>sub</c> claim)
+/// produce an authenticated principal;
 /// no <c>X-Test-User</c> → anonymous.
 /// </summary>
 internal sealed class TestAuthHandler(
@@ -23,6 +24,7 @@ internal sealed class TestAuthHandler(
     internal const string SchemeName = "test";
     internal const string UserHeader = "X-Test-User";
     internal const string RolesHeader = "X-Test-Roles";
+    internal const string SubjectHeader = "X-Test-Subject";
     internal const string ChallengeHeaderValue = "Test realm=\"kaleido\"";
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
@@ -43,6 +45,11 @@ internal sealed class TestAuthHandler(
         {
             new(ClaimTypes.Name, user.ToString())
         };
+
+        if (Request.Headers.TryGetValue(SubjectHeader, out var subject))
+        {
+            claims.Add(new Claim("sub", subject.ToString()));
+        }
 
         if (Request.Headers.TryGetValue(RolesHeader, out var roles))
         {

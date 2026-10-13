@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Kaleido.Observability;
 
 namespace Kaleido.Http.Processor;
 
@@ -289,16 +290,25 @@ public sealed record ProcessStateResponse
     }
 
     /// <summary>
-    /// Name of the caller that created this process, captured from the
-    /// authenticated principal at creation. <see langword="null"/> when the process was
-    /// created anonymously.
+    /// The caller that created this process, captured from the authenticated principal at
+    /// creation. <see langword="null"/> when the process was created anonymously.
     /// </summary>
     /// <remarks>
     /// A tag only (created by), never an access rule: Kaleido has no
     /// case-level guardrails, so any caller admitted by a step's declared
     /// roles/policies may read or continue the process (ADR 0010).
     /// </remarks>
-    public string? Owner
+    public KaleidoCaller? CreatedBy
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The caller of the latest request that ran a step of this process (a tag, like
+    /// <see cref="CreatedBy"/>).
+    /// </summary>
+    public KaleidoCaller? UpdatedBy
     {
         get;
         init;
@@ -327,7 +337,29 @@ public sealed record ProcessStepHistory
         init;
     }
 
+    /// <summary>When the step was first executed; null when it never ran.</summary>
+    public DateTimeOffset? FirstExecuted
+    {
+        get;
+        init;
+    }
+
+    /// <summary>The caller of the step's first execution (a tag).</summary>
+    public KaleidoCaller? StartedBy
+    {
+        get;
+        init;
+    }
+
+    /// <summary>When the step was last executed; null when it never ran.</summary>
     public DateTimeOffset? LastExecuted
+    {
+        get;
+        init;
+    }
+
+    /// <summary>The caller of the step's most recent execution (a tag).</summary>
+    public KaleidoCaller? LastUpdatedBy
     {
         get;
         init;
