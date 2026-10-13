@@ -34,7 +34,7 @@ internal sealed partial class ProcessStateService(
         }
 
         // No case-level guardrail (ADR 0010): any caller admitted by the
-        // endpoint may read the state; Owner is returned as a tag only.
+        // endpoint may read the state; CreatedBy/UpdatedBy are returned as tags only.
         LogStateLoaded(logger, serviceOptions.ServiceName, processId, context.State);
 
         return new ProcessStateResponse
@@ -57,12 +57,16 @@ internal sealed partial class ProcessStateService(
                             StepName = x.StepName,
                             Version = x.Version,
                             Status = x.Status,
+                            FirstExecuted = x.FirstExecuted,
+                            StartedBy = x.StartedBy,
                             LastExecuted = x.LastExecuted,
+                            LastUpdatedBy = x.LastUpdatedBy,
                         }),
             ],
             CreatedUtc = context.CreatedUtc,
             UpdatedUtc = context.UpdatedUtc,
-            Owner = context.Owner,
+            CreatedBy = context.CreatedBy,
+            UpdatedBy = context.UpdatedBy,
         };
     }
 

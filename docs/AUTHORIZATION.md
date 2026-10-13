@@ -102,9 +102,9 @@ case started through an IVR, taken over by a rep on the phone, finished by the p
 a portal — subject only to each step's declared roles/policies. A caller the next step does
 not admit is still refused (401/403).
 
-`ProcessorContext.Owner` is captured at process creation from
-`KaleidoCorrelationContext.CallerName` (transport-supplied, post-auth — see
-[`CORRELATION.md`](./CORRELATION.md)) as a **tag only** (created by); it is never
+`ProcessorContext.CreatedBy` is captured at process creation from
+`KaleidoCorrelationContext.Caller` (transport-supplied, post-auth — see
+[`CORRELATION.md`](./CORRELATION.md)) as a **tag only** (created by), like `UpdatedBy` and the step tags ([caller tags](./CORRELATION.md#caller-tags-tagging-only)); none is ever
 enforced. There is no transfer endpoint.
 
 Keep call identity out of user roles: a service-to-service hop should identify the calling

@@ -27,8 +27,10 @@ internal sealed class KaleidoCallerContextEndpointFilter
 
 internal static class KaleidoCallerContextHttpContextExtensions
 {
+    private const string SubjectClaimType = "sub";
+
     /// <summary>
-    /// Sets the caller (name and roles) on the request's <see cref="KaleidoCorrelationContext"/>
+    /// Sets the caller (name, subject id and roles) on the request's <see cref="KaleidoCorrelationContext"/>
     /// from the authenticated <c>HttpContext.User</c>. Kaleido's endpoints do this through
     /// <see cref="KaleidoCallerContextEndpointFilter"/>; in-host consumers reached through other
     /// endpoints (e.g. the registry service called by the MCP adapter) do it before authorizing.
@@ -49,15 +51,24 @@ internal static class KaleidoCallerContextHttpContextExtensions
         }
 
         var user = httpContext.User;
+        var authenticated = user.Identity?.IsAuthenticated == true;
         var callerName =
-            user.Identity?.IsAuthenticated == true
-                ? user.Identity.Name
+            authenticated
+                ? user.Identity?.Name
+                : null;
+
+        // The stable subject id, passed through as the principal provides it: "sub" (as issued by
+        // OpenID Connect providers when the handler keeps the claim type), else NameIdentifier.
+        var callerId =
+            authenticated
+                ? (user.FindFirst(SubjectClaimType) ?? user.FindFirst(ClaimTypes.NameIdentifier))?.Value
                 : null;
 
         initializer.Initialize(
             accessor.Current with
             {
                 CallerName = callerName,
+                CallerId = callerId,
                 CallerRoles =
                     callerName is null
                         ? []

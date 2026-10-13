@@ -272,6 +272,9 @@ internal sealed class ProcessorRuntime(
             with
         {
             LatestRequestId = correlationAccessor.Current.RequestId,
+
+            // A tag only (ADR 0010): saved only when a step of this request runs.
+            UpdatedBy = correlationAccessor.Current.Caller,
         };
     }
 
@@ -291,8 +294,9 @@ internal sealed class ProcessorRuntime(
             {
                 LatestRequestId = correlationAccessor.Current.RequestId,
 
-                // Owner is a tag only (created by), never enforced (ADR 0010).
-                Owner = correlationAccessor.Current.CallerName,
+                // Tags only (created by / updated by), never enforced (ADR 0010).
+                CreatedBy = correlationAccessor.Current.Caller,
+                UpdatedBy = correlationAccessor.Current.Caller,
             };
 
         observation.ContextInitialized(
