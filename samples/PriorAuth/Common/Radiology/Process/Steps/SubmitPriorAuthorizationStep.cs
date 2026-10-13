@@ -8,7 +8,9 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 [ProcessStep(
     DisplayName = "Submit Prior Authorization",
     Description = "Submits the reviewed request once the caller confirms the configured attestation.",
-    Version = "1.0.0")]
+    Version = "1.0.0",
+    Destructive = true,
+    External = true)]
 [AvailableAfter<ReviewPriorAuthorizationStep>]
 public sealed record SubmitPriorAuthorizationStep : IInformationStep
 {

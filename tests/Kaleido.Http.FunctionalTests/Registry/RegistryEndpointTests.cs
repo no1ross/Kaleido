@@ -62,6 +62,28 @@ public sealed class RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
         Assert.Equal($"\"{registry.Revision}\"", response.Headers.ETag!.Tag);
     }
 
+    // The wire contract: what the implementer declared about a step, and the classifications of fields.
+    [Fact]
+    public async Task GetRegistry_PublishesTheDeclaredStepBehaviorAndFieldClassifications()
+    {
+        using var response = await _client.GetAsync("/kaleido/registry");
+        var registry = System.Text.Json.Nodes.JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
+
+        var steps = registry["processes"]!.AsArray().SelectMany(x => x!["steps"]!.AsArray()).ToArray();
+        var merge = steps.Single(x => x!["name"]!.GetValue<string>() == nameof(Processor.Infrastructure.RuntimeMergeStep))!;
+        var root = steps.Single(x => x!["name"]!.GetValue<string>() == nameof(Processor.Infrastructure.RuntimeRootStep))!;
+
+        Assert.True(merge["destructive"]!.GetValue<bool>());
+        Assert.True(merge["external"]!.GetValue<bool>());
+        Assert.True(merge["requiresConfirmation"]!.GetValue<bool>());
+        Assert.False(root["destructive"]!.GetValue<bool>());
+        Assert.False(root["requiresConfirmation"]!.GetValue<bool>());
+
+        var source = registry["queryables"]!.AsArray().Single(x => x!["name"]!.GetValue<string>() == "FunctionalRecordContextSource")!;
+        var name = source["fields"]!.AsArray().Single(x => x!["name"]!.GetValue<string>() == "Name")!;
+        Assert.Equal(["functional:sensitive"], name["classifications"]!.AsArray().Select(x => x!.GetValue<string>()));
+    }
+
     [Fact]
     public async Task GetRegistry_IfNoneMatch_Returns304()
     {

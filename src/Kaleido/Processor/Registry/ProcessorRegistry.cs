@@ -20,70 +20,77 @@ public sealed record ProcessorRegistryItem
         = [];
 }
 
+/// <summary>
+/// What every published description of a step carries: the full registry item and the summaries
+/// that name a step elsewhere (initial steps, relationships, next and required steps).
+/// </summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessorStepRegistryItem
+public abstract record ProcessorStepDescriptor
 {
+    /// <summary>The step's name: its type name.</summary>
     public required string Name { get; init; }
 
+    /// <inheritdoc cref="ProcessStepAttribute.Description"/>
     public string? Description { get; init; }
 
+    /// <inheritdoc cref="ProcessStepAttribute.DisplayName"/>
     public string? DisplayName { get; init; }
 
+    /// <inheritdoc cref="ProcessStepAttribute.Version"/>
     public string? Version { get; init; }
 
+    /// <summary><see langword="true"/> when the step may run again after it completed (<see cref="RepeatableAttribute"/>).</summary>
     public bool Repeatable { get; init; }
 
     /// <summary>
-    /// <see langword="true"/> when the step's input is the answers to an information request;
-    /// <see cref="Fields"/> is then empty and the pending request describes what to answer.
+    /// <see langword="true"/> when the step's input is the answers to an information request; its
+    /// fields are then empty and the pending request describes what to answer.
     /// </summary>
     public bool IsInformationStep { get; init; }
+
+    /// <inheritdoc cref="ProcessStepAttribute.Destructive"/>
+    public bool Destructive { get; init; }
+
+    /// <inheritdoc cref="ProcessStepAttribute.External"/>
+    public bool External { get; init; }
+
+    /// <inheritdoc cref="ProcessStepAttribute.RequiresConfirmation"/>
+    public bool RequiresConfirmation { get; init; }
 
     /// <summary>
     /// Effective authorization rule. <see cref="AuthorizationMetadata.Unspecified"/>
     /// means neither the capability nor its service declared a rule.
     /// </summary>
     public AuthorizationMetadata Authorization { get; init; } = AuthorizationMetadata.Unspecified;
+}
 
+/// <summary>A step as published in the processor registry: its description, inputs, relationships and result.</summary>
+[ExcludeFromCodeCoverage]
+public sealed record ProcessorStepRegistryItem : ProcessorStepDescriptor
+{
+    /// <summary>The step's input fields; empty for an information step.</summary>
     public IReadOnlyCollection<ProcessorInputFieldDescriptor> Fields { get; init; }
         = [];
 
+    /// <summary>The steps this step depends on (<c>[DependsOn]</c>).</summary>
     public IReadOnlyCollection<ProcessorStepSummary> Dependencies { get; init; }
         = [];
 
+    /// <summary>The steps after which this step becomes available (<c>[AvailableAfter]</c>).</summary>
     public IReadOnlyCollection<ProcessorStepSummary> AvailableAfter { get; init; }
         = [];
 
+    /// <summary>The steps that close this step (<c>[AvailableUntil]</c>).</summary>
     public IReadOnlyCollection<ProcessorStepSummary> AvailableUntil { get; init; }
         = [];
 
+    /// <summary>The step's result fields, when its handler returns a typed response.</summary>
     public ProcessorStepResultDescriptor? Result { get; init; }
 }
 
+/// <summary>A step named from elsewhere: an initial step, a relationship, a next or the required step.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessorStepSummary
-{
-    public required string Name { get; init; }
-
-    public string? Description { get; init; }
-
-    public string? DisplayName { get; init; }
-
-    public string? Version { get; init; }
-
-    public bool Repeatable { get; init; }
-
-    /// <summary>
-    /// <see langword="true"/> when the step's input is the answers to an information request.
-    /// </summary>
-    public bool IsInformationStep { get; init; }
-
-    /// <summary>
-    /// Effective authorization rule. <see cref="AuthorizationMetadata.Unspecified"/>
-    /// means neither the capability nor its service declared a rule.
-    /// </summary>
-    public AuthorizationMetadata Authorization { get; init; } = AuthorizationMetadata.Unspecified;
-}
+public sealed record ProcessorStepSummary : ProcessorStepDescriptor;
 
 [ExcludeFromCodeCoverage]
 public record ProcessorPropertyDescriptor
@@ -93,6 +100,12 @@ public record ProcessorPropertyDescriptor
     public string? Description { get; init; }
 
     public required DataTypeDescriptor DataType { get; init; }
+
+    /// <summary>
+    /// The field's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>),
+    /// so clients know which values are sensitive. Empty when the field is not classified.
+    /// </summary>
+    public IReadOnlyList<string> Classifications { get; init; } = [];
 }
 
 [ExcludeFromCodeCoverage]

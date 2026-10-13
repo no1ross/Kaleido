@@ -312,11 +312,7 @@ public sealed class StepCandidatePlannerTests
                     [],
                     [],
                     new RepeatableOptions(),
-                    new ProcessStepMetadata(
-                        typeof(TStep).Name,
-                        $"{typeof(TStep).Name} description.",
-                        "1.0",
-                        $"{typeof(TStep).Name} displayname"))
+                    new ProcessStepMetadata { Name = typeof(TStep).Name, Description = $"{typeof(TStep).Name} description.", Version = "1.0", DisplayName = $"{typeof(TStep).Name} displayname" })
         };
     }
 
@@ -332,11 +328,7 @@ public sealed class StepCandidatePlannerTests
             [],
             [],
             new RepeatableOptions(),
-            new ProcessStepMetadata(
-                name,
-                $"{name} description.",
-                "1.0",
-                $"{name} displayname"));
+            new ProcessStepMetadata { Name = name, Description = $"{name} description.", Version = "1.0", DisplayName = $"{name} displayname" });
     }
 
     private static StepCandidate CreateCandidate(

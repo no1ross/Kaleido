@@ -64,6 +64,37 @@ public sealed class ProcessStepAttribute : Attribute
     /// reading the registry. Must be non-empty.
     /// </summary>
     public required string Description { get; init; }
+
+    /// <summary>
+    /// The step is irreversible or loss-causing: it cancels, deletes, withdraws or pays. Clients
+    /// (and AI agents, via the MCP <c>destructiveHint</c>) treat it with extra care. Default false:
+    /// the step records or changes the process state in a way the process can continue from.
+    /// </summary>
+    /// <remarks>
+    /// A declaration: Kaleido publishes it but cannot verify it - only the implementer knows what the
+    /// handler does.
+    /// </remarks>
+    public bool Destructive { get; init; }
+
+    /// <summary>
+    /// The step changes something outside the process state Kaleido owns - wherever that system
+    /// lives: it writes to another service's data, sends an email or message, places an order,
+    /// charges a payment, or calls an API that changes data. Published as the MCP
+    /// <c>openWorldHint</c>. Default false.
+    /// </summary>
+    /// <remarks>
+    /// Reading from other systems (lookups, validation) does not count, and neither does a handoff to
+    /// another Kaleido processor (the same business process continuing; the result shows it as the
+    /// target processor). A step can be both <see cref="Destructive"/> and external (e.g. charging a card).
+    /// </remarks>
+    public bool External { get; init; }
+
+    /// <summary>
+    /// The user should confirm before a client calls this step. A hint: published in the registry
+    /// and in the MCP tool description ("ask the user to confirm before calling"); Kaleido does not
+    /// enforce it at call time. Default false.
+    /// </summary>
+    public bool RequiresConfirmation { get; init; }
 }
 
 /// <summary>

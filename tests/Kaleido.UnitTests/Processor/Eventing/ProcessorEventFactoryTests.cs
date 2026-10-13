@@ -136,7 +136,7 @@ public sealed class ProcessorEventFactoryTests
                 [],
                 [],
                 new RepeatableOptions { Enabled = false },
-                new ProcessStepMetadata("test-step", "desc", "1.0", "display")),
+                new ProcessStepMetadata { Name = "test-step", Description = "desc", Version = "1.0", DisplayName = "display" }),
             IncludedInExecutionPlan = true
         };
         candidate.AddError(ProcessorErrorCodes.Required, "Name is required.");

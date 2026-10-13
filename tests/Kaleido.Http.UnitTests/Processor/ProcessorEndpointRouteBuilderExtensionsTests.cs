@@ -192,12 +192,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
                 {
                     Enabled = false
                 },
-                new ProcessStepMetadata(
-                    "Test-Step",
-                    "Test step",
-                    "1.0.0",
-                    "Test Step",
-                    authorization));
+                new ProcessStepMetadata { Name = "Test-Step", Description = "Test step", Version = "1.0.0", DisplayName = "Test Step", Authorization = authorization });
 
         var registry =
             new Mock<IProcessorStepRegistry>();
