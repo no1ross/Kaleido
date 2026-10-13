@@ -124,7 +124,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
 ## Process execution model
 
 Process is step-centric:
-1. declare a step type that implements `IProcessStep` (its identity) and carries `[ProcessStep]` (its required metadata: `Version`, `DisplayName`, `Description`)
+1. declare a step type that implements `IProcessStep` (its identity) and carries `[ProcessStep]` (its required metadata: `Version`, `DisplayName`, `Description`) and, where it applies, what it does in the world: `Destructive`, `External`, `RequiresConfirmation` (ADR 0015)
 2. implement exactly one `IProcessStepHandler<TStep>` (or `<TStep, TResult>`)
 3. register the assemblies containing steps via `KaleidoServiceOptions.Assemblies`
 4. let the runtime build a registry and manage state

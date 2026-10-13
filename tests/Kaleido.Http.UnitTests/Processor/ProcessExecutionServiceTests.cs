@@ -399,7 +399,7 @@ public sealed class ProcessExecutionServiceTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata("Test-Step", "Test step", "1.0.0", "Test Step"));
+            new ProcessStepMetadata { Name = "Test-Step", Description = "Test step", Version = "1.0.0", DisplayName = "Test Step" });
 
     public sealed record TestStep : IProcessStep;
     public sealed record TestResponse;

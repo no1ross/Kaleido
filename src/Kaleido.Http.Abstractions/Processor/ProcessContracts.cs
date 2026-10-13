@@ -386,6 +386,15 @@ public sealed record ProcessStepResponse
     /// </summary>
     public bool IsInformationStep { get; init; }
 
+    /// <summary>The step is irreversible or loss-causing (cancel, delete, withdraw, pay); declared by the implementer.</summary>
+    public bool Destructive { get; init; }
+
+    /// <summary>The step changes something outside the process state (another system's data, a message, a payment); declared by the implementer.</summary>
+    public bool External { get; init; }
+
+    /// <summary>The user should confirm before a client calls the step (a hint; not enforced).</summary>
+    public bool RequiresConfirmation { get; init; }
+
     /// <summary>
     /// True when this step is an entry point — it has no dependencies and no
     /// availability preconditions, so it can start a new process instance.
@@ -431,6 +440,15 @@ public sealed record ProcessStepSummary
     /// <summary>True when the step's input is the answers to an information request.</summary>
     public bool IsInformationStep { get; init; }
 
+    /// <summary>The step is irreversible or loss-causing (cancel, delete, withdraw, pay); declared by the implementer.</summary>
+    public bool Destructive { get; init; }
+
+    /// <summary>The step changes something outside the process state (another system's data, a message, a payment); declared by the implementer.</summary>
+    public bool External { get; init; }
+
+    /// <summary>The user should confirm before a client calls the step (a hint; not enforced).</summary>
+    public bool RequiresConfirmation { get; init; }
+
     /// <summary>
     /// Authorization requirement for this step. Null means open.
     /// </summary>
@@ -459,6 +477,15 @@ public sealed record ProcessRequiredStep
 
     /// <summary>True when the step's input is the answers to <see cref="InformationRequest"/>.</summary>
     public bool IsInformationStep { get; init; }
+
+    /// <summary>The step is irreversible or loss-causing (cancel, delete, withdraw, pay); declared by the implementer.</summary>
+    public bool Destructive { get; init; }
+
+    /// <summary>The step changes something outside the process state (another system's data, a message, a payment); declared by the implementer.</summary>
+    public bool External { get; init; }
+
+    /// <summary>The user should confirm before a client calls the step (a hint; not enforced).</summary>
+    public bool RequiresConfirmation { get; init; }
 
     /// <summary>
     /// Authorization requirement for this step. Null means open.

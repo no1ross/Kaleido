@@ -415,6 +415,40 @@ public sealed class ProcessorStepRegistryTests
         Assert.Equal(ProcessorErrorCodes.InvalidRegistration, exception.Code);
     }
 
+    [Fact]
+    public void Registration_ByDefault_DeclaresAProcessOnlyStep()
+    {
+        var metadata = CreateSut(typeof(StepA)).GetRegistration(typeof(StepA)).Metadata;
+
+        Assert.False(metadata.Destructive);
+        Assert.False(metadata.External);
+        Assert.False(metadata.RequiresConfirmation);
+    }
+
+    [Fact]
+    public void Registration_MapsTheDeclaredBehavior_IntoTheMetadataTheRegistryItemAndTheSummary()
+    {
+        var registration = CreateSut(typeof(DeclaredStep)).GetRegistration(typeof(DeclaredStep));
+        var item = registration.ToRegistryItem(new Mock<ITypeDescriber>().Object, new Mock<IConstraintMapper>().Object);
+        var summary = registration.ToSummary();
+
+        Assert.True(registration.Metadata.Destructive);
+        Assert.True(registration.Metadata.External);
+        Assert.True(registration.Metadata.RequiresConfirmation);
+        Assert.True(item.Destructive && item.External && item.RequiresConfirmation);
+        Assert.True(summary.Destructive && summary.External && summary.RequiresConfirmation);
+    }
+
+    [Fact]
+    public void ToRegistryItem_PublishesTheClassificationsOfInputsAndOutputs()
+    {
+        var item = CreateSut(typeof(DeclaredStep)).GetRegistration(typeof(DeclaredStep))
+            .ToRegistryItem(new Mock<ITypeDescriber>().Object, new Mock<IConstraintMapper>().Object);
+
+        Assert.Equal(["Test:PHI"], item.Fields.Single(x => x.Name == nameof(DeclaredStep.MemberName)).Classifications);
+        Assert.Empty(item.Fields.Single(x => x.Name == nameof(DeclaredStep.Amount)).Classifications);
+        Assert.Equal(["Test:PHI"], item.Result!.OutputFields.Single(x => x.Name == nameof(DeclaredResponse.MemberName)).Classifications);
+    }
     private static ProcessorStepRegistry CreateSut(
         IEnumerable<Type> stepTypes,
         IReadOnlyDictionary<Type, Type> handlerTypes) =>
@@ -443,7 +477,8 @@ public sealed class ProcessorStepRegistryTests
             { typeof(LookupStep), typeof(LookupStepHandler) },
             { typeof(SelfDependentStep), typeof(SelfDependentStepHandler) },
             { typeof(CycleStepA), typeof(CycleStepAHandler) },
-            { typeof(CycleStepB), typeof(CycleStepBHandler) }
+            { typeof(CycleStepB), typeof(CycleStepBHandler) },
+            { typeof(DeclaredStep), typeof(DeclaredStepHandler) }
         };
 
         return new ProcessorStepRegistry(
@@ -581,4 +616,25 @@ public sealed class ProcessorStepRegistryTests
             throw new NotImplementedException();
         }
     }
+
+    private sealed class TestPhiAttribute() : Microsoft.Extensions.Compliance.Classification.DataClassificationAttribute(new("Test", "PHI"));
+
+    [ProcessStep(DisplayName = nameof(DeclaredStep), Description = "charges the member's card", Version = "1.0",
+        Destructive = true, External = true, RequiresConfirmation = true)]
+    private sealed class DeclaredStep : IProcessStep
+    {
+        [TestPhi]
+        public string MemberName { get; init; } = string.Empty;
+
+        public decimal Amount { get; init; }
+    }
+
+    private sealed record DeclaredResponse
+    {
+        [TestPhi]
+        public string MemberName { get; init; } = string.Empty;
+    }
+
+    private sealed class DeclaredStepHandler
+        : BaseHandler<DeclaredStep, DeclaredResponse>;
 }

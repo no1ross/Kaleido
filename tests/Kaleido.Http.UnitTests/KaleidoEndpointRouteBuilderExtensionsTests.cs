@@ -299,7 +299,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata("Test-Step", "Test step", "1.0.0", "Test Step", authorization ?? AuthorizationMetadata.Unspecified));
+            new ProcessStepMetadata { Name = "Test-Step", Description = "Test step", Version = "1.0.0", DisplayName = "Test Step", Authorization = authorization ?? AuthorizationMetadata.Unspecified });
 
         var registry = new Mock<IProcessorStepRegistry>();
         registry.Setup(x => x.Registrations).Returns([registration]);

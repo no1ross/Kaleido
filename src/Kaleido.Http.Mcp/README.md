@@ -35,6 +35,21 @@ the later one says what it is (`_view`, `_source`, `_step`), and the collision i
 Step and input descriptions are the published metadata (`[ProcessStep]`, `[Description]`,
 `[Display]`): they are the interface the agent reads (ADR 0007).
 
+**Tool hints** ([ADR 0015](../../docs/decisions/0015-declared-step-behavior.md)) - what the implementer declared on
+`[ProcessStep]`, so a client knows which calls need extra care:
+
+| MCP hint / description | Query tools | Step tools |
+|---|---|---|
+| `readOnlyHint` | `true` | `false` |
+| `destructiveHint` | `false` | `Destructive` (default `false`); description: "Cannot be undone." |
+| `openWorldHint` | `false` | `External` (default `false`); description: "Reaches outside systems." |
+| `idempotentHint` | `true` | `true` unless `[Repeatable]` (a non-repeatable step runs once per process) |
+| description | | `RequiresConfirmation`: "Ask the user to confirm before calling." (a hint, not enforced) |
+
+Classified fields (`DataClassificationAttribute`, e.g. `[PHI]`) are marked in input descriptions
+("Sensitive (PHI).") and in the "Returns:" list (`Name (PHI)`), so an agent does not repeat or store
+them carelessly.
+
 ## After a step
 
 A step's result is summarized for the agent: the outcome, the business messages (verbatim),

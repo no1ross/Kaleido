@@ -184,7 +184,7 @@ public sealed class StepCandidateNextStepCheckerTests
             [],
             [],
             new RepeatableOptions(),
-            new ProcessStepMetadata(name, $"{name} description.", "1.0", name));
+            new ProcessStepMetadata { Name = name, Description = $"{name} description.", Version = "1.0", DisplayName = name });
 
     private sealed class StepA : IProcessStep;
 

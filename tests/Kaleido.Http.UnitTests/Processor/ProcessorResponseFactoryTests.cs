@@ -49,4 +49,53 @@ public sealed class ProcessorResponseFactoryTests
 
         Assert.Equal(lookup, Assert.Single(Assert.Single(result.Steps ?? []).Fields).Lookup);
     }
+
+    private static ProcessorStepSummary DeclaredSummary() =>
+        new() { Name = "ChargeCardStep", Destructive = true, External = true, RequiresConfirmation = true };
+
+    [Fact]
+    public void CreateRegistryResponse_PublishesTheDeclaredBehaviorAndTheClassifications()
+    {
+        string[] phi = ["Test:PHI"];
+        var registration = new ProcessorRegistryItem
+        {
+            Steps =
+            [
+                new ProcessorStepRegistryItem
+                {
+                    Name = "ChargeCardStep",
+                    Destructive = true,
+                    External = true,
+                    RequiresConfirmation = true,
+                    Fields = [new ProcessorInputFieldDescriptor { Name = "MemberName", DataType = new DataTypeDescriptor("string"), Classifications = phi }],
+                    Result = new ProcessorStepResultDescriptor
+                    {
+                        OutputFields = [new ProcessorOutputFieldDescriptor { Name = "MemberName", DataType = new DataTypeDescriptor("string"), Classifications = phi }],
+                    },
+                },
+            ],
+            InitialSteps = [DeclaredSummary()],
+        };
+
+        var result = CreateSut().CreateRegistryResponse(registration, new KaleidoServiceOptions { ServiceName = "billing" });
+
+        var step = Assert.Single(result.Steps ?? []);
+        Assert.True(step.Destructive && step.External && step.RequiresConfirmation);
+        Assert.Equal(phi, Assert.Single(step.Fields).Classifications);
+        Assert.Equal(phi, Assert.Single(step.Result!.OutputFields).Classifications);
+        var initial = Assert.Single(result.InitialSteps ?? []);
+        Assert.True(initial.Destructive && initial.External && initial.RequiresConfirmation);
+    }
+
+    [Fact]
+    public void CreateStepSummaryAndRequiredStep_CarryTheDeclaredBehavior()
+    {
+        var sut = CreateSut();
+
+        var summary = sut.CreateStepSummary(DeclaredSummary(), "billing");
+        var required = sut.CreateRequiredStep(DeclaredSummary(), informationRequest: null, "billing");
+
+        Assert.True(summary.Destructive && summary.External && summary.RequiresConfirmation);
+        Assert.True(required.Destructive && required.External && required.RequiresConfirmation);
+    }
 }

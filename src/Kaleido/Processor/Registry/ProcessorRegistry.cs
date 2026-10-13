@@ -39,6 +39,15 @@ public sealed record ProcessorStepRegistryItem
     /// </summary>
     public bool IsInformationStep { get; init; }
 
+    /// <inheritdoc cref="ProcessStepAttribute.Destructive"/>
+    public bool Destructive { get; init; }
+
+    /// <inheritdoc cref="ProcessStepAttribute.External"/>
+    public bool External { get; init; }
+
+    /// <inheritdoc cref="ProcessStepAttribute.RequiresConfirmation"/>
+    public bool RequiresConfirmation { get; init; }
+
     /// <summary>
     /// Effective authorization rule. <see cref="AuthorizationMetadata.Unspecified"/>
     /// means neither the capability nor its service declared a rule.
@@ -78,6 +87,15 @@ public sealed record ProcessorStepSummary
     /// </summary>
     public bool IsInformationStep { get; init; }
 
+    /// <inheritdoc cref="ProcessStepAttribute.Destructive"/>
+    public bool Destructive { get; init; }
+
+    /// <inheritdoc cref="ProcessStepAttribute.External"/>
+    public bool External { get; init; }
+
+    /// <inheritdoc cref="ProcessStepAttribute.RequiresConfirmation"/>
+    public bool RequiresConfirmation { get; init; }
+
     /// <summary>
     /// Effective authorization rule. <see cref="AuthorizationMetadata.Unspecified"/>
     /// means neither the capability nor its service declared a rule.
@@ -93,6 +111,12 @@ public record ProcessorPropertyDescriptor
     public string? Description { get; init; }
 
     public required DataTypeDescriptor DataType { get; init; }
+
+    /// <summary>
+    /// The field's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>),
+    /// so clients know which values are sensitive. Empty when the field is not classified.
+    /// </summary>
+    public IReadOnlyList<string> Classifications { get; init; } = [];
 }
 
 [ExcludeFromCodeCoverage]
