@@ -43,6 +43,9 @@ public sealed record QueryableFieldMetadata
 
     public required DataTypeDescriptor DataType { get; init; }
 
+    /// <summary>The property's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>), so clients know which values are sensitive; empty when not classified.</summary>
+    public IReadOnlyList<string> Classifications { get; init; } = [];
+
     public bool IsFilterable { get; init; }
 
     public IReadOnlyCollection<FilterOperator> FilterOperators { get; init; }
@@ -66,6 +69,7 @@ public sealed record QueryableFieldMetadata
             Name = item.Name,
             Description = item.Description,
             DataType = item.DataType,
+            Classifications = item.Classifications,
             IsFilterable = item.IsFilterable,
             FilterOperators = item.FilterOperators,
             IsSearchable = item.IsSearchable,
@@ -88,6 +92,9 @@ public sealed record QueryableQueryParameter
     public IReadOnlyCollection<ConstraintContract> Constraints { get; init; }
         = [];
 
+    /// <summary>The property's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>), so clients know which values are sensitive; empty when not classified.</summary>
+    public IReadOnlyList<string> Classifications { get; init; } = [];
+
     public static QueryableQueryParameter FromRegistryItem(
         QueryableParameterDescriptor item)
     {
@@ -98,6 +105,7 @@ public sealed record QueryableQueryParameter
             Name = item.Name,
             Description = item.Description,
             DataType = item.DataType,
+            Classifications = item.Classifications,
             Constraints = item.Constraints,
         };
     }
@@ -112,6 +120,9 @@ public sealed record QueryableQueryProperty
 
     public required DataTypeDescriptor DataType { get; init; }
 
+    /// <summary>The property's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>), so clients know which values are sensitive; empty when not classified.</summary>
+    public IReadOnlyList<string> Classifications { get; init; } = [];
+
     public static QueryableQueryProperty FromRegistryItem(
         QueryableOutputFieldDescriptor item)
     {
@@ -122,6 +133,7 @@ public sealed record QueryableQueryProperty
             Name = item.Name,
             Description = item.Description,
             DataType = item.DataType,
+            Classifications = item.Classifications,
         };
     }
 }

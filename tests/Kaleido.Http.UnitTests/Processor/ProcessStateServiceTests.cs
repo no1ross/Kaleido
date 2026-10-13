@@ -173,7 +173,7 @@ public sealed class ProcessStateServiceTests
                 [],
                 [],
                 new RepeatableOptions { Enabled = false },
-                new ProcessStepMetadata(name, name, "1.0.0", name));
+                new ProcessStepMetadata { Name = name, Description = name, Version = "1.0.0", DisplayName = name });
 
             mock.Setup(x => x.Find(name))
                 .Returns(registration);

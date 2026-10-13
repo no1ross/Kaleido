@@ -127,7 +127,7 @@ public sealed class VisitQuestionsHandler : IProcessStepHandler<VisitQuestionsSt
         Task.FromResult(ProcessStepHandlerResult.Success<CloseVisitStep>());
 }
 
-[ProcessStep(Version = "1.0", DisplayName = "Close visit", Description = "Closes the visit.")]
+[ProcessStep(Version = "1.0", DisplayName = "Close visit", Description = "Closes the visit.", Destructive = true, RequiresConfirmation = true)]
 [AvailableAfter<VisitQuestionsStep>]
 public sealed record CloseVisitStep : IProcessStep
 {

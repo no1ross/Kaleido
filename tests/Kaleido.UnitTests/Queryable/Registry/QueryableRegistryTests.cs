@@ -148,6 +148,36 @@ public sealed class QueryableRegistryTests
         Assert.Equal(viewAuthorization, registry.Registrations.Single().Views.Single().Authorization);
     }
 
+    [Fact]
+    public void Registrations_PublishTheClassificationsOfFieldsParametersAndOutputs()
+    {
+        string[] phi = ["Test:PHI"];
+        var dataType = new DataTypeDescriptor("string");
+        var metadata = new QuerySourceMetadata(
+            "LocalSource", "desc", "display", "1.0", null, QuerySourceKind.Local, null,
+            [new FieldMetadata { Name = "Name", FieldType = typeof(string), DataType = dataType, Classifications = phi }],
+            [new QueryParameterMetadata { Name = "Ssn", Type = typeof(string), DataType = dataType, Classifications = phi }],
+            [new QueryOutputFieldMetadata { Name = "Name", Type = typeof(string), DataType = dataType, Classifications = phi }],
+            AuthorizationMetadata.Unspecified);
+        var view = new QueryViewRegistration(
+            typeof(string), typeof(object), typeof(EmptyQueryViewParameters), typeof(LocalSource), typeof(object),
+            new QueryViewMetadata(
+                "view1", "1.0", "View", "desc", null,
+                [new QueryParameterMetadata { Name = "Ssn", Type = typeof(string), DataType = dataType, Classifications = phi }],
+                [new QueryOutputFieldMetadata { Name = "Name", Type = typeof(string), DataType = dataType, Classifications = phi }]));
+
+        var item = CreateSut(
+                [new QuerySourceRegistration(typeof(LocalSource), typeof(object), typeof(object), typeof(EmptyQueryViewParameters), metadata)],
+                [view])
+            .Registrations.Single();
+
+        Assert.Equal(phi, item.Fields.Single().Classifications);
+        Assert.Equal(phi, item.Parameters.Single().Classifications);
+        Assert.Equal(phi, item.OutputFields.Single().Classifications);
+        Assert.Equal(phi, item.Views.Single().Parameters.Single().Classifications);
+        Assert.Equal(phi, item.Views.Single().OutputFields.Single().Classifications);
+    }
+
     private static QuerySourceRegistration Source(
         Type sourceType,
         string name,

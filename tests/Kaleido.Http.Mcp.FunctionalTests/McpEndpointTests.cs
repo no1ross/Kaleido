@@ -69,6 +69,13 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
         Assert.Equal("integer", patientId.GetProperty("type").GetString());
         Assert.Contains("Patients search", patientId.GetProperty("description").GetString(), StringComparison.Ordinal);
         Assert.Contains("patientId", start.InputSchema.GetProperty("required").EnumerateArray().Select(x => x.GetString()));
+
+        // Declared behavior: start is an ordinary step (non-repeatable, so idempotent), close is destructive and asks for confirmation.
+        Assert.False(start.Annotations?.DestructiveHint);
+        Assert.True(start.Annotations?.IdempotentHint);
+        var close = tools.Single(x => x.Name == "clinic_close_visit").ProtocolTool;
+        Assert.True(close.Annotations?.DestructiveHint);
+        Assert.Contains("Ask the user to confirm before calling.", close.Description, StringComparison.Ordinal);
     }
 
     [Fact]

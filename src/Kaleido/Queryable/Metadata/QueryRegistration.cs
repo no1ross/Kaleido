@@ -73,18 +73,39 @@ public sealed record QuerySourceMetadata(
 /// <summary>A query context field and its query rules.</summary>
 [ExcludeFromCodeCoverage]
 public sealed record FieldMetadata
-(
-    string Name,
-    string? Description,
-    Type FieldType,
-    DataTypeDescriptor DataType,
-    bool IsFilterable,
-    IReadOnlyList<FilterOperator> FilterOperators,
-    bool IsSearchable,
-    int? SearchPriority,
-    MatchMode? MatchMode,
-    bool IsSortable
-);
+{
+    /// <summary>The field's name.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>The field's description (<c>[Description]</c>), if any.</summary>
+    public string? Description { get; init; }
+
+    /// <summary>The field's CLR type.</summary>
+    public required Type FieldType { get; init; }
+
+    /// <summary>The field's published data type.</summary>
+    public required DataTypeDescriptor DataType { get; init; }
+
+    /// <summary>True when the field can be filtered (<c>[Filterable]</c>).</summary>
+    public bool IsFilterable { get; init; }
+
+    /// <summary>The filter operators the field allows.</summary>
+    public IReadOnlyList<FilterOperator> FilterOperators { get; init; } = [];
+
+    /// <summary>True when the field takes part in free-text search (<c>[Searchable]</c>).</summary>
+    public bool IsSearchable { get; init; }
+
+    /// <summary>The field's search priority, when searchable.</summary>
+    public int? SearchPriority { get; init; }
+
+    /// <summary>How search text matches the field, when searchable.</summary>
+    public MatchMode? MatchMode { get; init; }
+
+    /// <summary>True when results can be sorted by the field (<c>[Sortable]</c>).</summary>
+    public bool IsSortable { get; init; }
+    /// <summary>The field's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>); empty when not classified.</summary>
+    public IReadOnlyList<string> Classifications { get; init; } = [];
+}
 
 /// <summary>A discovered local query view and its metadata.</summary>
 /// <param name="QueryViewType">The view type (the capability's identity).</param>
@@ -128,20 +149,44 @@ public sealed record PageableMetadata
 
 /// <summary>A query parameter and its constraints.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record QueryParameterMetadata(
-    string Name,
-    Type Type,
-    DataTypeDescriptor DataType,
-    IReadOnlyCollection<ConstraintContract> Constraints,
-    string? Description);
+public sealed record QueryParameterMetadata
+{
+    /// <summary>The parameter's name.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>The parameter's CLR type.</summary>
+    public required Type Type { get; init; }
+
+    /// <summary>The parameter's published data type.</summary>
+    public required DataTypeDescriptor DataType { get; init; }
+
+    /// <summary>The parameter's validation constraints.</summary>
+    public IReadOnlyCollection<ConstraintContract> Constraints { get; init; } = [];
+
+    /// <summary>The parameter's description (<c>[Description]</c>), if any.</summary>
+    public string? Description { get; init; }
+    /// <summary>The field's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>); empty when not classified.</summary>
+    public IReadOnlyList<string> Classifications { get; init; } = [];
+}
 
 /// <summary>A field of a returned record.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record QueryOutputFieldMetadata(
-    string Name,
-    string? Description,
-    Type Type,
-    DataTypeDescriptor DataType);
+public sealed record QueryOutputFieldMetadata
+{
+    /// <summary>The field's name.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>The field's description (<c>[Description]</c>), if any.</summary>
+    public string? Description { get; init; }
+
+    /// <summary>The field's CLR type.</summary>
+    public required Type Type { get; init; }
+
+    /// <summary>The field's published data type.</summary>
+    public required DataTypeDescriptor DataType { get; init; }
+    /// <summary>The field's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>); empty when not classified.</summary>
+    public IReadOnlyList<string> Classifications { get; init; } = [];
+}
 
 /// <summary>
 /// A query source as published in the Queryable registry, with its views. Every source is
@@ -276,6 +321,9 @@ public record QueryablePropertyDescriptor
 
     /// <summary>The published data type.</summary>
     public required DataTypeDescriptor DataType { get; init; }
+
+    /// <summary>The property's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>), so clients know which values are sensitive; empty when not classified.</summary>
+    public IReadOnlyList<string> Classifications { get; init; } = [];
 }
 
 /// <summary>A published query context field with its query rules.</summary>

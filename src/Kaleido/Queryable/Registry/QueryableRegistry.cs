@@ -88,6 +88,7 @@ internal sealed partial class QueryableRegistry : IQueryableRegistry
             Description = metadata.Description,
             FieldType = metadata.FieldType,
             DataType = metadata.DataType,
+            Classifications = metadata.Classifications,
             IsFilterable = metadata.IsFilterable,
             FilterOperators = metadata.FilterOperators,
             IsSearchable = metadata.IsSearchable,
@@ -137,6 +138,7 @@ internal sealed partial class QueryableRegistry : IQueryableRegistry
             Description = metadata.Description,
             FieldType = metadata.Type,
             DataType = metadata.DataType,
+            Classifications = metadata.Classifications,
             Constraints = metadata.Constraints,
         };
     }
@@ -152,6 +154,7 @@ internal sealed partial class QueryableRegistry : IQueryableRegistry
             Description = metadata.Description,
             FieldType = metadata.Type,
             DataType = metadata.DataType,
+            Classifications = metadata.Classifications,
         };
     }
 

@@ -29,7 +29,7 @@ public sealed class ProcessorStateUpdaterTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata("test-step", "desc", "1.0", "display"));
+            new ProcessStepMetadata { Name = "test-step", Description = "desc", Version = "1.0", DisplayName = "display" });
 
         _registry.Setup(r => r.Registrations).Returns([registration]);
 
@@ -83,7 +83,7 @@ public sealed class ProcessorStateUpdaterTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata("new-step", "desc", "1.0", "display"));
+            new ProcessStepMetadata { Name = "new-step", Description = "desc", Version = "1.0", DisplayName = "display" });
 
         _registry.Setup(r => r.Registrations).Returns([newRegistration]);
 
@@ -115,7 +115,7 @@ public sealed class ProcessorStateUpdaterTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata("test-step", "desc", "2.0", "display"));
+            new ProcessStepMetadata { Name = "test-step", Description = "desc", Version = "2.0", DisplayName = "display" });
 
         _registry.Setup(r => r.Registrations).Returns([updatedRegistration]);
 

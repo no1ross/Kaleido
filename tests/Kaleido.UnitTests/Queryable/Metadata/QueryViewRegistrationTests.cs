@@ -18,8 +18,8 @@ public sealed class QueryViewRegistrationTests
     [Fact]
     public void QueryViewRegistration_PreservesMetadataShape()
     {
-        var parameter = new QueryParameterMetadata("Category", typeof(string), TestDataType, [], "Category description");
-        var outputField = new QueryOutputFieldMetadata("Code", "Code description", typeof(string), TestDataType);
+        var parameter = new QueryParameterMetadata { Name = "Category", Type = typeof(string), DataType = TestDataType, Constraints = [], Description = "Category description" };
+        var outputField = new QueryOutputFieldMetadata { Name = "Code", Description = "Code description", Type = typeof(string), DataType = TestDataType };
         var pageable = new PageableMetadata(10, 20);
         var metadata = new QueryViewMetadata("grid", "1.0.0", "Grid", "Grid description", pageable, [parameter], [outputField]);
         var registration = CreateSut(metadata);

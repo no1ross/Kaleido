@@ -138,9 +138,9 @@ public sealed class QueryRequestCompilerTests
             QuerySourceKind.Local,
             new PageableMetadata(25, 100),
             [
-                new FieldMetadata(nameof(TestRecord.Code), null, typeof(string), TestDataType, true, [FilterOperator.Equals], false, null, null, true),
-                new FieldMetadata(nameof(TestRecord.Name), null, typeof(string), TestDataType, false, [], true, 1, MatchMode.Contains, false),
-                new FieldMetadata(nameof(TestRecord.Region), null, typeof(string), TestDataType, false, [], true, 2, MatchMode.Contains, true)
+                new FieldMetadata { Name = nameof(TestRecord.Code), Description = null, FieldType = typeof(string), DataType = TestDataType, IsFilterable = true, FilterOperators = [FilterOperator.Equals], IsSearchable = false, SearchPriority = null, MatchMode = null, IsSortable = true },
+                new FieldMetadata { Name = nameof(TestRecord.Name), Description = null, FieldType = typeof(string), DataType = TestDataType, IsFilterable = false, FilterOperators = [], IsSearchable = true, SearchPriority = 1, MatchMode = MatchMode.Contains, IsSortable = false },
+                new FieldMetadata { Name = nameof(TestRecord.Region), Description = null, FieldType = typeof(string), DataType = TestDataType, IsFilterable = false, FilterOperators = [], IsSearchable = true, SearchPriority = 2, MatchMode = MatchMode.Contains, IsSortable = true }
             ],
             [],
             [],

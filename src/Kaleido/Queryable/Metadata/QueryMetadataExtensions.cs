@@ -27,17 +27,20 @@ internal static class QueryMetadataExtensions
         var description =
             property.GetCustomAttribute<DescriptionAttribute>();
 
-        return new FieldMetadata(
-            property.Name,
-            description?.Description,
-            property.PropertyType,
-            typeDescriber.GetDescriptor(property),
-            filterable is not null,
-            filterable?.Operators ?? [],
-            searchable is not null,
-            searchable?.Priority,
-            searchable?.MatchMode,
-            sortable is not null);
+        return new FieldMetadata
+        {
+            Name = property.Name,
+            Description = description?.Description,
+            FieldType = property.PropertyType,
+            DataType = typeDescriber.GetDescriptor(property),
+            IsFilterable = filterable is not null,
+            FilterOperators = filterable?.Operators ?? [],
+            IsSearchable = searchable is not null,
+            SearchPriority = searchable?.Priority,
+            MatchMode = searchable?.MatchMode,
+            IsSortable = sortable is not null,
+            Classifications = property.GetDataClassificationNames(),
+        };
     }
 
     /// <summary>
@@ -59,12 +62,15 @@ internal static class QueryMetadataExtensions
                 BindingFlags.Public |
                 BindingFlags.Instance)
             .Select(property =>
-                new QueryParameterMetadata(
-                    property.Name,
-                    property.PropertyType,
-                    typeDescriber.GetDescriptor(property),
-                    constraintMapper.Map(property),
-                    property.GetCustomAttribute<DescriptionAttribute>()?.Description))
+                new QueryParameterMetadata
+                {
+                    Name = property.Name,
+                    Type = property.PropertyType,
+                    DataType = typeDescriber.GetDescriptor(property),
+                    Constraints = constraintMapper.Map(property),
+                    Description = property.GetCustomAttribute<DescriptionAttribute>()?.Description,
+                    Classifications = property.GetDataClassificationNames(),
+                })
             .ToArray();
     }
 
@@ -79,11 +85,14 @@ internal static class QueryMetadataExtensions
                 BindingFlags.Public |
                 BindingFlags.Instance)
             .Select(property =>
-                new QueryOutputFieldMetadata(
-                    property.Name,
-                    property.GetCustomAttribute<DescriptionAttribute>()?.Description,
-                    property.PropertyType,
-                    typeDescriber.GetDescriptor(property)))
+                new QueryOutputFieldMetadata
+                {
+                    Name = property.Name,
+                    Description = property.GetCustomAttribute<DescriptionAttribute>()?.Description,
+                    Type = property.PropertyType,
+                    DataType = typeDescriber.GetDescriptor(property),
+                    Classifications = property.GetDataClassificationNames(),
+                })
             .ToArray();
 
     /// <summary>

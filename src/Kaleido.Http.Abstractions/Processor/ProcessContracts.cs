@@ -367,107 +367,94 @@ public sealed record ProcessorRegistryResponse
         = [];
 }
 
+/// <summary>
+/// What every step on the wire carries: the full step in the registry, and the summaries that name a
+/// step elsewhere (initial steps, relationships, next steps, the required step).
+/// </summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessStepResponse
+public abstract record ProcessStepContract
 {
+    /// <summary>The step's name: its type name.</summary>
     public required string Name { get; init; }
 
+    /// <summary>What the step does and when it applies.</summary>
     public string? Description { get; init; }
 
+    /// <summary>A short, human-readable name for the step.</summary>
     public string? DisplayName { get; init; }
 
+    /// <summary>The step's version.</summary>
     public string? Version { get; init; }
 
+    /// <summary>True when the step may run again after it completed.</summary>
     public bool Repeatable { get; init; }
 
     /// <summary>
-    /// True when the step's input is the answers to an information request; <see cref="Fields"/>
-    /// is then empty and the pending request (on the required step) says what to answer.
+    /// True when the step's input is the answers to an information request; its fields are then
+    /// empty and the pending request (on the required step) says what to answer.
     /// </summary>
     public bool IsInformationStep { get; init; }
 
+    /// <summary>The step is irreversible or loss-causing (cancel, delete, withdraw, pay); declared by the implementer.</summary>
+    public bool Destructive { get; init; }
+
+    /// <summary>The step changes something outside the process state (another system's data, a message, a payment); declared by the implementer.</summary>
+    public bool External { get; init; }
+
+    /// <summary>The user should confirm before a client calls the step (a hint; not enforced).</summary>
+    public bool RequiresConfirmation { get; init; }
+
+    /// <summary>
+    /// Authorization requirement for this step. Null means open.
+    /// </summary>
+    public AuthorizationMetadata? Authorization { get; init; }
+
+    /// <summary>Where to execute the step.</summary>
+    public string ExecuteUrl { get; init; }
+        = string.Empty;
+}
+
+/// <summary>A step as published in the processor registry: its description, inputs, relationships and result.</summary>
+[ExcludeFromCodeCoverage]
+public sealed record ProcessStepResponse : ProcessStepContract
+{
     /// <summary>
     /// True when this step is an entry point — it has no dependencies and no
     /// availability preconditions, so it can start a new process instance.
     /// </summary>
     public bool IsInitial { get; init; }
 
-    /// <summary>
-    /// Authorization requirement for this step. Null means open.
-    /// </summary>
-    public AuthorizationMetadata? Authorization { get; init; }
-
-    public string ExecuteUrl { get; init; }
-        = string.Empty;
-
+    /// <summary>The step's input fields; empty for an information step.</summary>
     public IReadOnlyCollection<ProcessFieldMetadata> Fields { get; init; }
         = [];
 
+    /// <summary>The steps this step depends on.</summary>
     public IReadOnlyCollection<ProcessStepSummary> Dependencies { get; init; }
         = [];
 
+    /// <summary>The steps after which this step becomes available.</summary>
     public IReadOnlyCollection<ProcessStepSummary> AvailableAfter { get; init; }
         = [];
 
+    /// <summary>The steps that close this step.</summary>
     public IReadOnlyCollection<ProcessStepSummary> AvailableUntil { get; init; }
         = [];
 
+    /// <summary>The step's result fields, when it returns a typed response.</summary>
     public ProcessStepResultMetadata? Result { get; init; }
 }
 
+/// <summary>A step named from elsewhere: an initial step, a relationship or a next step.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessStepSummary
-{
-    public required string Name { get; init; }
-
-    public string? Description { get; init; }
-
-    public string? DisplayName { get; init; }
-
-    public string? Version { get; init; }
-
-    public bool Repeatable { get; init; }
-
-    /// <summary>True when the step's input is the answers to an information request.</summary>
-    public bool IsInformationStep { get; init; }
-
-    /// <summary>
-    /// Authorization requirement for this step. Null means open.
-    /// </summary>
-    public AuthorizationMetadata? Authorization { get; init; }
-
-    public string ExecuteUrl { get; init; }
-        = string.Empty;
-}
+public sealed record ProcessStepSummary : ProcessStepContract;
 
 /// <summary>
 /// The step a process requires next: the same shape as each <c>AvailableSteps</c> entry, plus the
 /// pending <see cref="InformationRequest"/> when the step is an information step.
 /// </summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessRequiredStep
+public sealed record ProcessRequiredStep : ProcessStepContract
 {
-    public required string Name { get; init; }
-
-    public string? Description { get; init; }
-
-    public string? DisplayName { get; init; }
-
-    public string? Version { get; init; }
-
-    public bool Repeatable { get; init; }
-
-    /// <summary>True when the step's input is the answers to <see cref="InformationRequest"/>.</summary>
-    public bool IsInformationStep { get; init; }
-
-    /// <summary>
-    /// Authorization requirement for this step. Null means open.
-    /// </summary>
-    public AuthorizationMetadata? Authorization { get; init; }
-
-    public string ExecuteUrl { get; init; }
-        = string.Empty;
-
     /// <summary>
     /// The questions to answer, submitted as this step's payload
     /// (<c>{ "informationRequestId": …, "items": [ … ] }</c>); null for an ordinary step.

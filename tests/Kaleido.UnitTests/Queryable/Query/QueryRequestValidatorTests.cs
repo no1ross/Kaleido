@@ -120,13 +120,13 @@ public sealed class QueryRequestValidatorTests
     private static QuerySourceMetadata CreateMetadata() =>
         CreateMetadata(
             [
-                new FieldMetadata("Code", null, typeof(string), TestDataType, true, [FilterOperator.Equals], false, null, null, true),
-                new FieldMetadata("Description", null, typeof(string), TestDataType, false, [], true, 1, MatchMode.Contains, false)
+                new FieldMetadata { Name = "Code", Description = null, FieldType = typeof(string), DataType = TestDataType, IsFilterable = true, FilterOperators = [FilterOperator.Equals], IsSearchable = false, SearchPriority = null, MatchMode = null, IsSortable = true },
+                new FieldMetadata { Name = "Description", Description = null, FieldType = typeof(string), DataType = TestDataType, IsFilterable = false, FilterOperators = [], IsSearchable = true, SearchPriority = 1, MatchMode = MatchMode.Contains, IsSortable = false }
             ]);
 
     private static QuerySourceMetadata CreateMetadataWithoutSearchableFields() =>
         CreateMetadata(
-            [new FieldMetadata("Code", null, typeof(string), TestDataType, true, [FilterOperator.Equals], false, null, null, true)]);
+            [new FieldMetadata { Name = "Code", Description = null, FieldType = typeof(string), DataType = TestDataType, IsFilterable = true, FilterOperators = [FilterOperator.Equals], IsSearchable = false, SearchPriority = null, MatchMode = null, IsSortable = true }]);
 
     private static QuerySourceMetadata CreateMetadata(IReadOnlyList<FieldMetadata> fields) =>
         new(

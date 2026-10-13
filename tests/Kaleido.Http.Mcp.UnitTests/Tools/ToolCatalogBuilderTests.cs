@@ -182,6 +182,84 @@ public sealed class ToolCatalogBuilderTests
     }
 
     [Fact]
+    public void StepTool_ByDefault_IsNeitherDestructiveNorOpenWorld_AndIdempotentUnlessRepeatable()
+    {
+        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [Visits()] }), "clinic_startvisitstep");
+
+        Assert.False(tool.Definition.Annotations?.DestructiveHint);
+        Assert.False(tool.Definition.Annotations?.OpenWorldHint);
+        Assert.True(tool.Definition.Annotations?.IdempotentHint);
+        Assert.DoesNotContain("Cannot be undone.", tool.Definition.Description, StringComparison.Ordinal);
+        Assert.DoesNotContain("confirm", tool.Definition.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StepTool_TheDeclaredBehavior_MapsToTheAnnotationsAndTheDescription()
+    {
+        var processor = new ProcessorRegistryResponse
+        {
+            ServiceName = "billing",
+            Name = "billing",
+            Steps =
+            [
+                new ProcessStepResponse
+                {
+                    Name = "ChargeCardStep",
+                    Description = "Charges the card",
+                    IsInitial = true,
+                    Repeatable = true,
+                    Destructive = true,
+                    External = true,
+                    RequiresConfirmation = true,
+                    ExecuteUrl = "/billing/processes/steps/ChargeCardStep",
+                },
+            ],
+        };
+
+        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [processor] }), "billing_chargecardstep");
+
+        Assert.True(tool.Definition.Annotations?.DestructiveHint);
+        Assert.True(tool.Definition.Annotations?.OpenWorldHint);
+        Assert.False(tool.Definition.Annotations?.IdempotentHint);
+        Assert.Contains("Cannot be undone.", tool.Definition.Description, StringComparison.Ordinal);
+        Assert.Contains("Reaches outside systems.", tool.Definition.Description, StringComparison.Ordinal);
+        Assert.Contains("Ask the user to confirm before calling.", tool.Definition.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Tools_MarkClassifiedInputsParametersAndReturnedFieldsAsSensitive()
+    {
+        string[] phi = ["Clinic:PHI"];
+        var visits = Visits() with
+        {
+            Steps =
+            [
+                new ProcessStepResponse
+                {
+                    Name = "StartVisitStep",
+                    Description = "Opens a visit",
+                    IsInitial = true,
+                    ExecuteUrl = "/clinic/processes/steps/StartVisitStep",
+                    Fields = [new ProcessFieldMetadata { Name = "PatientName", Description = "The patient's name.", DataType = Text, Classifications = phi }],
+                },
+            ],
+        };
+        var patients = Patients() with
+        {
+            Parameters = [new QueryableQueryParameter { Name = "Ssn", DataType = Text, Classifications = phi }],
+            OutputFields = [new QueryableQueryProperty { Name = "Id", DataType = Text }, new QueryableQueryProperty { Name = "Name", DataType = Text, Classifications = phi }],
+        };
+        var catalog = Build(new AggregatedRegistryResponse { Queryables = [patients], Processes = [visits] });
+
+        var step = Tool(catalog, "clinic_startvisitstep").Definition;
+        var query = Tool(catalog, "clinic_patientsource").Definition;
+
+        Assert.Equal("The patient's name. Sensitive (PHI).", step.InputSchema.GetProperty("properties").GetProperty("patientName").GetProperty("description").GetString());
+        Assert.Equal("Sensitive (PHI).", query.InputSchema.GetProperty("properties").GetProperty("parameters").GetProperty("properties").GetProperty("ssn").GetProperty("description").GetString());
+        Assert.Contains("Returns: Id, Name (PHI).", query.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void StepTool_ThatIsNotInitial_RequiresTheProcessId()
     {
         var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [Visits()] }), "clinic_closevisitstep");
