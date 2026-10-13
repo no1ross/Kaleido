@@ -1,3 +1,4 @@
+using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Storage;
 using Kaleido.Provider.SQLite;
@@ -49,7 +50,10 @@ public sealed class SqliteKaleidoContextStoreTests
                     Version = "1.0.0",
                     Status = StepExecutionStatus.Completed,
                     LatestRequestId = "req-0",
-                    LastExecuted = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero)
+                    FirstExecuted = new DateTimeOffset(2026, 1, 1, 11, 0, 0, TimeSpan.Zero),
+                    StartedBy = Alice,
+                    LastExecuted = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero),
+                    LastUpdatedBy = SubjectOnly,
                 },
                 new StepContext
                 {
@@ -59,8 +63,13 @@ public sealed class SqliteKaleidoContextStoreTests
                 }
             ],
             CreatedUtc = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
-            UpdatedUtc = new DateTimeOffset(2026, 1, 2, 0, 0, 0, TimeSpan.Zero)
+            UpdatedUtc = new DateTimeOffset(2026, 1, 2, 0, 0, 0, TimeSpan.Zero),
+            CreatedBy = Alice,
+            UpdatedBy = SubjectOnly,
         };
+
+    private static readonly KaleidoCaller Alice = new() { Name = "alice", Id = "sub-alice" };
+    private static readonly KaleidoCaller SubjectOnly = new() { Id = "sub-42" };
 
     [Fact]
     public async Task LoadAsync_WhenProcessNotFound_ReturnsNull()
@@ -94,6 +103,8 @@ public sealed class SqliteKaleidoContextStoreTests
         Assert.Equal(expected.AvailableSteps, loaded.AvailableSteps);
         Assert.Equal(expected.CreatedUtc, loaded.CreatedUtc);
         Assert.Equal(expected.UpdatedUtc, loaded.UpdatedUtc);
+        Assert.Equal(Alice, loaded.CreatedBy);
+        Assert.Equal(SubjectOnly, loaded.UpdatedBy);
     }
 
     [Fact]
@@ -116,12 +127,39 @@ public sealed class SqliteKaleidoContextStoreTests
         Assert.Equal(StepExecutionStatus.Completed, stepA.Status);
         Assert.Equal("req-0", stepA.LatestRequestId);
         Assert.Equal(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero), stepA.LastExecuted);
+        Assert.Equal(new DateTimeOffset(2026, 1, 1, 11, 0, 0, TimeSpan.Zero), stepA.FirstExecuted);
+        Assert.Equal(Alice, stepA.StartedBy);
+        Assert.Equal(SubjectOnly, stepA.LastUpdatedBy);
 
         var stepB = loaded.FindStep("StepB");
         Assert.NotNull(stepB);
         Assert.Equal(StepExecutionStatus.Pending, stepB.Status);
         Assert.Null(stepB.LatestRequestId);
         Assert.Null(stepB.LastExecuted);
+        Assert.Null(stepB.StartedBy);
+        Assert.Null(stepB.LastUpdatedBy);
+    }
+
+    [Fact]
+    public async Task SaveAsync_AnUpdatedStep_StoresItsNewCallerTags()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var saved = await sut.SaveAsync(CreateContext(Guid.NewGuid()), []);
+        var bob = new KaleidoCaller { Name = "bob" };
+        var updated = saved with
+        {
+            UpdatedBy = bob,
+            Steps = [.. saved.Steps.Select(x => x.StepName == "StepB" ? x with { StartedBy = bob, LastUpdatedBy = bob } : x)],
+        };
+
+        await sut.SaveAsync(updated, []);
+        var loaded = await sut.LoadAsync(saved.ProcessId);
+
+        Assert.Equal(bob, loaded!.UpdatedBy);
+        Assert.Equal(Alice, loaded.CreatedBy);
+        Assert.Equal(bob, loaded.FindStep("StepB")!.StartedBy);
+        Assert.Equal(bob, loaded.FindStep("StepB")!.LastUpdatedBy);
     }
 
     [Fact]

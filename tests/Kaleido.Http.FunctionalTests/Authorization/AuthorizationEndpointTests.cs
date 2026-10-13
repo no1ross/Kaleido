@@ -1,6 +1,7 @@
 using System.Net;
 using Kaleido.Http.FunctionalTests.Processor.Infrastructure;
 using Kaleido.Http.Registry;
+using Kaleido.Observability;
 
 namespace Kaleido.Http.FunctionalTests.Authorization;
 
@@ -382,6 +383,44 @@ public sealed class AuthorizationEndpointTests(
         var response = await fixture.Client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    // Kaleido only tags (#193): who created and last changed the process, and who started and last
+    // ran each step - exactly as the principal provides it.
+    [Fact]
+    public async Task ProcessState_TagsWhoCreatedAndUpdatedTheProcess_AndWhoRanEachStep()
+    {
+        var create = AuthorizationAspNetCoreFixture.AuthenticatedJson(InternalStepExecuteUrl, StepBody, "alice", "internal");
+        create.Headers.Add(TestAuthHandler.SubjectHeader, "sub-alice");
+        var created = await fixture.Client.SendAsync(create);
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+        var processId = Guid.Parse(created.Headers.GetValues("X-Kaleido-Process-Id").Single());
+
+        var resume = AuthorizationAspNetCoreFixture.AuthenticatedJson(OpenStepExecuteUrl, StepBody, "bob", "viewer");
+        resume.Headers.Add("X-Kaleido-Process-Id", processId.ToString());
+        Assert.Equal(HttpStatusCode.OK, (await fixture.Client.SendAsync(resume)).StatusCode);
+
+        var response = await fixture.Client.SendAsync(
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, ProcessStateUrl(processId), "carol"));
+        var state = await response.Content.ReadFromJsonAsync<Kaleido.Http.Processor.ProcessStateResponse>(KaleidoJsonOptions.Options);
+
+        var alice = new KaleidoCaller { Name = "alice", Id = "sub-alice" };
+        var bob = new KaleidoCaller { Name = "bob" };
+        Assert.Equal(alice, state!.CreatedBy);
+        Assert.Equal(bob, state.UpdatedBy);
+
+        var internalStep = state.Steps.Single(x => x.StepName == AuthorizationStepNames.InternalStep);
+        Assert.Equal(alice, internalStep.StartedBy);
+        Assert.Equal(alice, internalStep.LastUpdatedBy);
+        Assert.NotNull(internalStep.FirstExecuted);
+
+        var openStep = state.Steps.Single(x => x.StepName == AuthorizationStepNames.OpenStep);
+        Assert.Equal(bob, openStep.StartedBy);
+        Assert.Equal(bob, openStep.LastUpdatedBy);
+
+        var neverRan = state.Steps.Single(x => x.StepName == AuthorizationStepNames.PolicyStep);
+        Assert.Null(neverRan.StartedBy);
+        Assert.Null(neverRan.FirstExecuted);
     }
 
     [Fact]

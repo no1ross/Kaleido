@@ -50,9 +50,8 @@ public sealed record ProcessorContext
     }
 
     /// <summary>
-    /// Name of the caller that created this process, captured from
-    /// <see cref="KaleidoCorrelationContext.CallerName"/> at creation.
-    /// <see langword="null"/> when the process was created anonymously or on a transport
+    /// The caller that created this process (<see cref="KaleidoCorrelationContext.Caller"/> at
+    /// creation). <see langword="null"/> when the process was created anonymously or on a transport
     /// without an authenticated caller.
     /// </summary>
     /// <remarks>
@@ -63,7 +62,18 @@ public sealed record ProcessorContext
     /// IVR, taken over by a phone rep, finished by the provider in a portal),
     /// subject only to each step's declared roles/policies (ADR 0010).
     /// </remarks>
-    public string? Owner
+    public KaleidoCaller? CreatedBy
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The caller of the latest request that changed this process - stamped with
+    /// <see cref="LatestRequestId"/>, and saved only when a step of that request ran. A tag only,
+    /// like <see cref="CreatedBy"/>.
+    /// </summary>
+    public KaleidoCaller? UpdatedBy
     {
         get;
         init;
@@ -219,9 +229,36 @@ public sealed record StepContext
     }
 
     /// <summary>
+    /// Timestamp of the first execution attempt; set once, never overwritten.
+    /// </summary>
+    public DateTimeOffset? FirstExecuted
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The caller of the first execution attempt (a tag); set once, never overwritten.
+    /// </summary>
+    public KaleidoCaller? StartedBy
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
     /// Timestamp of the most recent execution attempt.
     /// </summary>
     public DateTimeOffset? LastExecuted
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The caller of the most recent execution attempt (a tag).
+    /// </summary>
+    public KaleidoCaller? LastUpdatedBy
     {
         get;
         init;

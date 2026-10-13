@@ -66,6 +66,8 @@ public sealed class ProcessStateServiceTests
                 AvailableSteps = ["Step-A"],
                 CreatedUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
                 UpdatedUtc = DateTimeOffset.UtcNow,
+                CreatedBy = Alice,
+                UpdatedBy = Bob,
                 Steps =
                 [
                     new StepContext
@@ -79,7 +81,10 @@ public sealed class ProcessStateServiceTests
                         StepName = "Step-A",
                         Version = "1.0.0",
                         Status = StepExecutionStatus.Completed,
-                        LastExecuted = DateTimeOffset.UtcNow.AddMinutes(-1)
+                        FirstExecuted = FirstRun,
+                        StartedBy = Alice,
+                        LastExecuted = DateTimeOffset.UtcNow.AddMinutes(-1),
+                        LastUpdatedBy = Bob,
                     }
                 ]
             };
@@ -136,6 +141,8 @@ public sealed class ProcessStateServiceTests
         Assert.Same(expectedRequired, result.RequiredStep);
         Assert.Null(result.TargetProcessorName);
         Assert.Equal("Step-A", Assert.Single(result.AvailableSteps).Name);
+        Assert.Equal(Alice, result.CreatedBy);
+        Assert.Equal(Bob, result.UpdatedBy);
 
         Assert.Collection(
             result.Steps,
@@ -143,6 +150,9 @@ public sealed class ProcessStateServiceTests
             {
                 Assert.Equal("Step-A", step.StepName);
                 Assert.Equal(StepExecutionStatus.Completed, step.Status);
+                Assert.Equal(FirstRun, step.FirstExecuted);
+                Assert.Equal(Alice, step.StartedBy);
+                Assert.Equal(Bob, step.LastUpdatedBy);
             },
             step =>
             {
@@ -150,6 +160,10 @@ public sealed class ProcessStateServiceTests
                 Assert.Equal(StepExecutionStatus.Pending, step.Status);
             });
     }
+
+    private static readonly KaleidoCaller Alice = new() { Name = "alice", Id = "sub-alice" };
+    private static readonly KaleidoCaller Bob = new() { Name = "bob" };
+    private static readonly DateTimeOffset FirstRun = DateTimeOffset.UtcNow.AddMinutes(-3);
 
     private static readonly InformationRequest PendingRequest =
         new()
