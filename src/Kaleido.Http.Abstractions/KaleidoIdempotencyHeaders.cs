@@ -8,7 +8,7 @@ public static class KaleidoIdempotencyHeaders
 {
     /// <summary>
     /// Request: a caller-chosen key for one logical execute call (e.g. a GUID), the same on every retry
-    /// of that call. Scoped per service and caller; kept for <c>KaleidoHttpOptions.IdempotencyRetention</c>.
+    /// of that call. Scoped per service and caller (subject id, else name); kept for <c>KaleidoHttpOptions.IdempotencyRetention</c>.
     /// </summary>
     public const string IdempotencyKey =
         "Idempotency-Key";

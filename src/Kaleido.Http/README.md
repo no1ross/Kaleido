@@ -129,7 +129,7 @@ A process execute request - `POST /{service}/processes/execute` or a step call -
 - **Without the header** nothing changes.
 
 Details:
-- Keys are **scoped per service and caller**: two callers cannot see each other's answers, and the same key at two services is two keys.
+- Keys are **scoped per service and caller**: two callers cannot see each other's answers, and the same key at two services is two keys. The caller is its stable subject id (`sub`, else `NameIdentifier`) when the principal has one - a renamed user keeps their keys and two users with the same name stay apart - else its name; anonymous callers share one scope.
 - Answers are kept for `KaleidoHttpOptions.IdempotencyRetention` (default **24 hours**: `AddHttp(o => o.IdempotencyRetention = TimeSpan.FromHours(4))`) and stored by the process store (`IKaleidoContextStore.FindResultAsync`/`SaveResultAsync`) - the SQLite reference store keeps them in its own `IdempotentResults` table in the same database, so there is nothing extra to set up.
 - Only successful answers are stored: a request that failed may be retried with the same key.
 - Two requests with the same key **at the same time** both run; optimistic concurrency (below) lets only one of them save, the other gets 409.
