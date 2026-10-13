@@ -140,15 +140,21 @@ Information requests: Kaleido owns the schema, never the content. Validation is 
 ---
 
 ### Telemetry conventions
-Instrument names and tag keys live in the `*Telemetry` constants classes
-(`ProcessorTelemetry`, `QueryableTelemetry`, `KaleidoHttpTelemetry`) — constants
-only, no `Meter`/`Counter` instances. Each emitting class owns its
-instruments as `private static readonly Meter`/`Counter`/`Histogram` fields
-created with the shared `MeterName`; when two classes emit the same logical
-signal (e.g. `endpoint_errors` from `ExceptionMiddleware` and the
-authorization result handler), each declares its own counter with the same
-instrument name — the meter-name subscription merges them.
+Kaleido emits telemetry only for what only Kaleido can observe: the Process and Queryable runtimes,
+the event outbox and relay, store providers and the MCP adapter. Host and transport statistics
+(request rates, status codes, latencies) come from the host's own instrumentation - do not add a
+Kaleido metric that duplicates them (ADR 0014).
 
+Instrument names and tag keys live in the `*Telemetry` constants classes (`ProcessorTelemetry`,
+`QueryableTelemetry`, `KaleidoEventTelemetry`, `SqliteTelemetry`, `McpTelemetry`) - constants only,
+no `Meter`/`Counter` instances. Each emitting class owns its instruments as
+`private static readonly Meter`/`Counter`/`Histogram` fields created with the shared `MeterName`;
+when two classes emit on the same meter (e.g. the event outbox and the relay), each declares its own
+instruments and the meter-name subscription merges them.
+
+`Kaleido.Observability.OpenTelemetry` references only core: names of optional projects are copied
+there as internal constants, and its unit tests assert each copy equals the owning constant. A new
+meter or activity source is registered in `AddKaleidoInstrumentation()` in the same change.
 ## Transport and HTTP rules
 
 ### Kaleido.Http.Abstractions stability
