@@ -3,6 +3,7 @@
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
 		<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
 		<PackageReference Include="Microsoft.AspNetCore.TestHost" />
+		<PackageReference Include="Microsoft.Extensions.Compliance.Redaction" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido.Http\Kaleido.Http.csproj" />

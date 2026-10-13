@@ -245,6 +245,29 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         Assert.NotNull(resolved);
     }
 
+    [Fact]
+    public void AddEventRedactor_RegistersEachRedactorInOrder()
+    {
+        var services = new ServiceCollection();
+        services.AddKaleido(EmptyConfig(), DefaultServiceOptions())
+            .AddEventRedactor<FirstRedactor>()
+            .AddEventRedactor<SecondRedactor>();
+
+        using var provider = services.BuildServiceProvider(validateScopes: false);
+
+        Assert.Equal(
+            [typeof(FirstRedactor), typeof(SecondRedactor)],
+            provider.GetServices<Kaleido.Eventing.IKaleidoEventRedactor>().Select(x => x.GetType()));
+    }
+
+    [Fact]
+    public void AddEventRedactor_ShouldThrow_WhenBuilderIsNull()
+    {
+        IKaleidoBuilder? builder = null;
+
+        Assert.Throws<ArgumentNullException>(() => builder!.AddEventRedactor<FirstRedactor>());
+    }
+
     // ---------------------------------------------------------------------------
     // Test doubles
     // ---------------------------------------------------------------------------
@@ -257,5 +280,17 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     private sealed class CustomCorrelationContextInitializer : IKaleidoCorrelationContextInitializer
     {
         public void Initialize(KaleidoCorrelationContext context) { }
+    }
+
+    private sealed class FirstRedactor : Kaleido.Eventing.IKaleidoEventRedactor
+    {
+        public Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext> Redact<TEvent, TContext>(Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext> envelope)
+            where TEvent : Kaleido.Eventing.IKaleidoEvent => envelope;
+    }
+
+    private sealed class SecondRedactor : Kaleido.Eventing.IKaleidoEventRedactor
+    {
+        public Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext> Redact<TEvent, TContext>(Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext> envelope)
+            where TEvent : Kaleido.Eventing.IKaleidoEvent => envelope;
     }
 }

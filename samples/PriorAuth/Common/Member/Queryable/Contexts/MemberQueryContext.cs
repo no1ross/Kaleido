@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Compliance;
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Queryable;
 
@@ -20,23 +21,27 @@ public sealed class MemberQueryContext : IQueryContext
         Priority = 2,
         MatchMode = MatchMode.Contains)]
     [Sortable]
+    [Phi]
     public string FirstName { get; init; } = string.Empty;
 
     [Searchable(
         Priority = 3,
         MatchMode = MatchMode.Contains)]
     [Sortable]
+    [Phi]
     public string LastName { get; init; } = string.Empty;
 
     [Searchable(
         Priority = 4,
         MatchMode = MatchMode.Contains)]
     [Sortable]
+    [Phi]
     public string DisplayName { get; init; } = string.Empty;
 
     [Filterable(
         FilterOperator.Equals)]
     [Sortable]
+    [Phi]
     public DateOnly DateOfBirth { get; init; }
 
     [Filterable(
