@@ -8,8 +8,51 @@ namespace Kaleido.Eventing.UnitTests;
 public sealed class KaleidoEventOutboxTests
     : SutFixture
 {
-    private static KaleidoEventOutbox CreateSut(IKaleidoContextStore store, IEventPublisher publisher, IKaleidoEventSignal signal) =>
-        new(store, publisher, signal, NullLogger<KaleidoEventOutbox>.Instance);
+    private static KaleidoEventOutbox CreateSut(
+        IKaleidoContextStore store,
+        IEventPublisher publisher,
+        IKaleidoEventSignal signal,
+        IKaleidoEventPayloadWriter? payloadWriter = null) =>
+        new(store, publisher, payloadWriter ?? PlainWriter().Object, signal, NullLogger<KaleidoEventOutbox>.Instance);
+
+    // Writes the plain (unredacted) form; redaction is the writer's own concern.
+    private static Mock<IKaleidoEventPayloadWriter> PlainWriter()
+    {
+        var writer = new Mock<IKaleidoEventPayloadWriter>();
+        writer
+            .Setup(x => x.Write(It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>()))
+            .Returns<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>(envelope => envelope.ToOutboxEvent());
+
+        return writer;
+    }
+
+    [Fact]
+    public async Task PrepareAndEnqueue_WriteWhatThePayloadWriterProduces()
+    {
+        var written = new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = KaleidoEventTypes.ProcessCreated, Payload = "{\"redacted\":true}", OccurredUtc = DateTimeOffset.UtcNow };
+        var writer = new Mock<IKaleidoEventPayloadWriter>();
+        writer.Setup(x => x.Write(It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>())).Returns(written);
+        var store = new Mock<IKaleidoContextStore>();
+        var sut = CreateSut(store.Object, Mock.Of<IEventPublisher>(), Mock.Of<IKaleidoEventSignal>(), writer.Object);
+
+        var prepared = sut.Prepare(Envelope());
+        await sut.EnqueueAsync(Envelope(), CancellationToken.None);
+
+        Assert.Same(written, prepared);
+        store.Verify(x => x.EnqueueEventsAsync(It.Is<IReadOnlyCollection<KaleidoOutboxEvent>>(events => events.Single() == written), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task WithoutAPublisher_TheWriterIsNeverCalled()
+    {
+        var writer = new Mock<IKaleidoEventPayloadWriter>();
+        var sut = CreateSut(Mock.Of<IKaleidoContextStore>(), Mock.Of<INoOpEventPublisher>(), Mock.Of<IKaleidoEventSignal>(), writer.Object);
+
+        sut.Prepare(Envelope());
+        await sut.EnqueueAsync(Envelope(), CancellationToken.None);
+
+        writer.VerifyNoOtherCalls();
+    }
 
     private static KaleidoEventEnvelope<ProcessCreated, ProcessEventContext> Envelope() =>
         new()
