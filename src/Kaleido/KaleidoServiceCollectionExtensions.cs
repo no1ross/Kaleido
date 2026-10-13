@@ -42,6 +42,7 @@ public static class KaleidoServiceCollectionExtensions
         // that hands outbox entries to the publisher.
         services.TryAddSingleton<IKaleidoContextStore, InMemoryKaleidoContextStore>();
         services.TryAddSingleton<IKaleidoEventSignal, KaleidoEventSignal>();
+        services.TryAddSingleton<IKaleidoEventPayloadWriter, KaleidoEventPayloadWriter>();
         services.TryAddScoped<IKaleidoEventOutbox, KaleidoEventOutbox>();
         services.AddHostedService<KaleidoEventRelay>();
         services.TryAddSingleton<IKaleidoAuthorizationEvaluator, KaleidoAuthorizationEvaluator>();
@@ -74,6 +75,33 @@ public static class KaleidoServiceCollectionExtensions
 
         builder.Services.RemoveAll<IEventPublisher>();
         builder.Services.AddSingleton<IEventPublisher, TPublisher>();
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Registers an <see cref="IKaleidoEventRedactor"/> that reduces every event before it is written
+    /// to the outbox. Several redactors run in registration order; <typeparamref name="TRedactor"/> is
+    /// registered as a singleton.
+    /// </summary>
+    /// <remarks>
+    /// For classified properties (<c>DataClassificationAttribute</c>) no redactor is needed: register
+    /// <c>AddRedaction</c> to choose how each classification is redacted. See
+    /// <see cref="IKaleidoEventRedactor"/>.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// builder.Services.AddKaleido(builder.Configuration)
+    ///     .AddEventPublisher&lt;HttpEventPublisher&gt;()
+    ///     .AddEventRedactor&lt;AnswersRedactor&gt;();
+    /// </code>
+    /// </example>
+    public static IKaleidoBuilder AddEventRedactor<TRedactor>(this IKaleidoBuilder builder)
+        where TRedactor : class, IKaleidoEventRedactor
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.Services.AddSingleton<IKaleidoEventRedactor, TRedactor>();
 
         return builder;
     }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using Kaleido.Processor.Eventing;
 using Kaleido.Queryable.Eventing;
 
@@ -9,9 +10,14 @@ namespace Kaleido.Eventing;
 // up by EventType in a fixed map - no CLR type name is ever read from the store.
 internal static class KaleidoOutboxEventExtensions
 {
-    private static readonly JsonSerializerOptions Options = CreateOptions();
+    private static readonly JsonSerializerOptions Options = new DefaultJsonTypeInfoResolver().ToOutboxJsonOptions();
 
     public static KaleidoOutboxEvent ToOutboxEvent<TEvent, TContext>(this KaleidoEventEnvelope<TEvent, TContext> envelope)
+        where TEvent : IKaleidoEvent =>
+        envelope.ToOutboxEvent(Options);
+
+    // With the given serializer options (the payload writer's, which redact classified values).
+    public static KaleidoOutboxEvent ToOutboxEvent<TEvent, TContext>(this KaleidoEventEnvelope<TEvent, TContext> envelope, JsonSerializerOptions options)
         where TEvent : IKaleidoEvent
     {
         ArgumentNullException.ThrowIfNull(envelope);
@@ -20,7 +26,7 @@ internal static class KaleidoOutboxEventExtensions
         {
             EventId = envelope.Event.EventId,
             EventType = envelope.EventType,
-            Payload = JsonSerializer.Serialize(envelope, Options),
+            Payload = JsonSerializer.Serialize(envelope, options),
             OccurredUtc = envelope.Event.OccurredOn,
             NextAttemptUtc = envelope.Event.OccurredOn,
         };
@@ -49,14 +55,17 @@ internal static class KaleidoOutboxEventExtensions
                 $"Outbox event '{entry.EventId}' has an empty payload."),
             cancellationToken);
 
-    private static JsonSerializerOptions CreateOptions()
+    // The outbox's JSON form with the given type contracts: web defaults, enums as camelCase
+    // strings. The payload writer passes a resolver that redacts classified properties.
+    internal static JsonSerializerOptions ToOutboxJsonOptions(this DefaultJsonTypeInfoResolver resolver)
     {
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
         {
             Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+            TypeInfoResolver = resolver,
         };
 
-        options.MakeReadOnly(populateMissingResolver: true);
+        options.MakeReadOnly();
 
         return options;
     }

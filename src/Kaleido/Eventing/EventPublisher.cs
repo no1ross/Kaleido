@@ -15,10 +15,13 @@ namespace Kaleido.Eventing;
 /// and every query executed (context, filters, results).
 /// </para>
 /// <para>
-/// <strong>Privacy:</strong> Default event payloads include the full request and response
-/// business objects. If your process steps carry personally identifiable information (PII)
-/// or other sensitive data, implement a custom <see cref="IEventPublisher"/> that redacts or
-/// projects payloads before forwarding to your event infrastructure.
+/// <strong>Privacy:</strong> event payloads are complete (a step's request and response, a query's
+/// records), so an audit can show what was submitted and what a caller saw. Protect sensitive values
+/// <em>before</em> they are written to the outbox, not in the publisher (the outbox stores the payload
+/// until it is published): mark properties with your own <c>DataClassificationAttribute</c>
+/// subclasses (e.g. <c>[PHI]</c>, <c>[PII]</c>) and choose a redactor per classification with
+/// <c>AddRedaction</c> - without one, classified values are erased - and use
+/// <see cref="IKaleidoEventRedactor"/> for anything attributes cannot express.
 /// </para>
 /// <para>
 /// The process state stored in the database contains only what is required to resume
