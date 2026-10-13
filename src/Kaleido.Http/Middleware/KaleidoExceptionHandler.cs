@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Diagnostics.Metrics;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,7 +8,7 @@ namespace Kaleido.Http.Middleware;
 
 /// <summary>
 /// Turns an exception into Kaleido's HTTP answer: the status code, the <see cref="KaleidoErrorResponse"/>
-/// body, the error metric and the log entry. Used by <see cref="ExceptionMiddleware"/> and by
+/// body and the log entry. Used by <see cref="ExceptionMiddleware"/> and by
 /// <see cref="KaleidoExceptionEndpointFilter"/>, which answers inside Kaleido's endpoints so a host's own
 /// exception handling (the developer exception page, <c>UseExceptionHandler</c>) never sees Kaleido's errors.
 /// </summary>
@@ -20,7 +19,7 @@ internal interface IKaleidoExceptionHandler
     /// <param name="exception">The failure.</param>
     /// <param name="cancellationToken">
     /// The request's cancellation (<see cref="HttpContext.RequestAborted"/>). When the client is gone the
-    /// error is still logged and counted, but no response is written. The response itself is written
+    /// error is still logged, but no response is written. The response itself is written
     /// with <see cref="CancellationToken.None"/>, so the error handling never throws a cancellation of
     /// its own.
     /// </param>
@@ -31,13 +30,6 @@ internal interface IKaleidoExceptionHandler
 internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHandler> logger)
     : IKaleidoExceptionHandler
 {
-    private static readonly Meter Meter =
-        new(KaleidoHttpTelemetry.MeterName);
-
-    private static readonly Counter<long> EndpointErrorsCounter =
-        Meter.CreateCounter<long>(
-            KaleidoHttpTelemetry.EndpointErrorsCounterName);
-
     // The error responses are written with CancellationToken.None on purpose: they run after a
     // failure, and a canceled request is handled first - passing RequestAborted would throw a new
     // cancellation out of the error handling. The token only decides whether to write at all.
@@ -130,24 +122,20 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
         }
     }
 
-    // A 500 without details - unless the response has started or the client is gone, then only the
-    // error is counted.
+    // A 500 without details - unless the response has started or the client is gone.
     private static async Task WriteUnexpectedErrorAsync(HttpContext context, CancellationToken cancellationToken)
     {
         if (context.Response.HasStarted || cancellationToken.IsCancellationRequested)
         {
-            RecordEndpointError(KaleidoErrorCodes.FrameworkError, StatusCodes.Status500InternalServerError);
             return;
         }
 
         await WriteErrorAsync(context, StatusCodes.Status500InternalServerError, KaleidoErrorCodes.FrameworkError, "An unexpected error occurred.", cancellationToken);
     }
 
-    // The error is always counted; the response is written only while the client is still there.
+    // The response is written only while the client is still there.
     private static async Task WriteErrorAsync(HttpContext context, int statusCode, string code, string message, CancellationToken cancellationToken)
     {
-        RecordEndpointError(code, statusCode);
-
         if (cancellationToken.IsCancellationRequested)
         {
             return;
@@ -159,17 +147,6 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
             new KaleidoErrorResponse([new KaleidoError(code, message)]),
             CancellationToken.None);
     }
-
-    private static void RecordEndpointError(
-        string errorCode,
-        int statusCode) =>
-        EndpointErrorsCounter.Add(
-            1,
-            new TagList
-            {
-                { KaleidoHttpTelemetry.TagErrorCode, errorCode },
-                { KaleidoHttpTelemetry.TagHttpStatusCode, statusCode },
-            });
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Request was canceled by the client.")]
     private static partial void LogRequestCanceled(ILogger logger);

@@ -299,7 +299,6 @@
         "type": "Project",
         "dependencies": {
           "Kaleido": "[1.0.0, )",
-          "Kaleido.Http.Abstractions": "[1.0.0, )",
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.19.1, )",
           "OpenTelemetry.Extensions.Hosting": "[1.19.1, )",
           "OpenTelemetry.Instrumentation.AspNetCore": "[1.19.0, )",
