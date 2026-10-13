@@ -1,6 +1,7 @@
 using Kaleido.Eventing;
 using Kaleido.Processor.Observability;
 using Kaleido.Queryable.Observability;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Observability.OpenTelemetry;
@@ -8,9 +9,10 @@ namespace Kaleido.Observability.OpenTelemetry;
 public static class KaleidoObservabilityOpenTelemetryExtensions
 {
     /// <summary>
-    /// Wires full OpenTelemetry instrumentation into a Kaleido service in a single call:
-    /// structured log export, distributed tracing (Kaleido + ASP.NET Core + HttpClient),
-    /// and metrics (Kaleido + ASP.NET Core + HttpClient + runtime). Exports via OTLP.
+    /// Wires OpenTelemetry into a Kaleido service in one call and exports over OTLP: logs, traces
+    /// (Kaleido + ASP.NET Core + HttpClient) and metrics (Kaleido + ASP.NET Core + HttpClient +
+    /// runtime). Each part can be switched off with <see cref="KaleidoOpenTelemetryOptions"/>
+    /// (<c>Kaleido:OpenTelemetry</c>, then <paramref name="configure"/>).
     /// </summary>
     /// <remarks>
     /// Service name is resolved from the <c>OTEL_SERVICE_NAME</c> configuration key,
@@ -22,66 +24,108 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
     /// </para>
     /// </remarks>
     /// <param name="builder">The Kaleido builder.</param>
+    /// <param name="configure">Optional: switch signals or the host instrumentation off.</param>
     /// <param name="configureTracing">
     /// Optional hook for additional <see cref="TracerProviderBuilder"/> instrumentation
-    /// (e.g. EntityFrameworkCore, SQL Client, gRPC) — invoked after the built-in
-    /// Kaleido/ASP.NET/HttpClient instrumentations, before the OTLP exporter.
+    /// (e.g. EntityFrameworkCore, SQL Client, gRPC) - invoked after the built-in
+    /// instrumentations, before the OTLP exporter. Not called when traces are off.
     /// </param>
     /// <param name="configureMetrics">
-    /// Optional hook for additional <see cref="MeterProviderBuilder"/> instrumentation —
-    /// invoked after the built-in instrumentations, before the OTLP exporter.
+    /// Optional hook for additional <see cref="MeterProviderBuilder"/> instrumentation -
+    /// invoked after the built-in instrumentations, before the OTLP exporter. Not called when
+    /// metrics are off.
     /// </param>
+    /// <example>
+    /// <code>
+    /// builder.Services.AddKaleido(builder.Configuration)
+    ///     .AddOpenTelemetry(o => o.Logs = false);   // traces and metrics over OTLP, logs elsewhere
+    /// </code>
+    /// </example>
     public static IKaleidoBuilder AddOpenTelemetry(
         this IKaleidoBuilder builder,
+        Action<KaleidoOpenTelemetryOptions>? configure = null,
         Action<TracerProviderBuilder>? configureTracing = null,
         Action<MeterProviderBuilder>? configureMetrics = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
+        var options = new KaleidoOpenTelemetryOptions();
+        builder.Configuration.GetSection($"{KaleidoServiceOptions.SectionName}:{KaleidoOpenTelemetryOptions.SectionName}").Bind(options);
+        configure?.Invoke(options);
+
+        if (!options.Logs && !options.Traces && !options.Metrics)
+        {
+            return builder;
+        }
+
         var serviceName =
             builder.Configuration["OTEL_SERVICE_NAME"]
             ?? builder.ServiceOptions.ServiceName;
 
-        builder.Services
+        var telemetry = builder.Services
             .AddOpenTelemetry()
-            .ConfigureResource(r => r.AddService(serviceName: serviceName))
-            .WithLogging(
+            .ConfigureResource(r => r.AddService(serviceName: serviceName));
+
+        if (options.Logs)
+        {
+            telemetry.WithLogging(
                 logging => logging.AddOtlpExporter(),
-                options =>
+                logging =>
                 {
-                    options.IncludeFormattedMessage = true;
-                    options.IncludeScopes = true;
-                })
-            .WithTracing(tracing =>
-            {
-                tracing
-                    .AddKaleidoInstrumentation()
-                    .AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation();
+                    logging.IncludeFormattedMessage = true;
+                    logging.IncludeScopes = true;
+                });
+        }
 
-                configureTracing?.Invoke(tracing);
+        if (options.Traces)
+        {
+            telemetry.WithTracing(tracing => ConfigureTracing(tracing, options, configureTracing));
+        }
 
-                tracing.AddOtlpExporter();
-            })
-            .WithMetrics(metrics =>
-            {
-                metrics
-                    .AddKaleidoInstrumentation()
-                    .AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation();
-
-                configureMetrics?.Invoke(metrics);
-
-                metrics.AddOtlpExporter();
-            });
+        if (options.Metrics)
+        {
+            telemetry.WithMetrics(metrics => ConfigureMetrics(metrics, options, configureMetrics));
+        }
 
         return builder;
     }
 
+    private static void ConfigureTracing(TracerProviderBuilder tracing, KaleidoOpenTelemetryOptions options, Action<TracerProviderBuilder>? configure)
+    {
+        tracing.AddKaleidoInstrumentation();
+
+        if (options.HostInstrumentation)
+        {
+            tracing
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation();
+        }
+
+        configure?.Invoke(tracing);
+
+        tracing.AddOtlpExporter();
+    }
+
+    private static void ConfigureMetrics(MeterProviderBuilder metrics, KaleidoOpenTelemetryOptions options, Action<MeterProviderBuilder>? configure)
+    {
+        metrics.AddKaleidoInstrumentation();
+
+        if (options.HostInstrumentation)
+        {
+            metrics
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddRuntimeInstrumentation();
+        }
+
+        configure?.Invoke(metrics);
+
+        metrics.AddOtlpExporter();
+    }
+
     /// <summary>
-    /// Registers all Kaleido <see cref="System.Diagnostics.ActivitySource"/>s (Process + Queryable)
-    /// with the <see cref="TracerProviderBuilder"/>.
+    /// Registers all Kaleido <see cref="System.Diagnostics.ActivitySource"/>s (Process, Queryable,
+    /// SQLite store, MCP adapter) with the <see cref="TracerProviderBuilder"/>.
     /// Use this when managing your own OpenTelemetry setup instead of <see cref="AddOpenTelemetry"/>.
     /// </summary>
     public static TracerProviderBuilder AddKaleidoInstrumentation(
@@ -97,7 +141,7 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
     }
 
     /// <summary>
-    /// Registers all Kaleido <see cref="System.Diagnostics.Metrics.Meter"/>s (Process, Queryable, events)
+    /// Registers all Kaleido <see cref="System.Diagnostics.Metrics.Meter"/>s (Process, Queryable, events, SQLite store, MCP adapter)
     /// with the <see cref="MeterProviderBuilder"/>, including tuned histogram bucket boundaries.
     /// Use this when managing your own OpenTelemetry setup instead of <see cref="AddOpenTelemetry"/>.
     /// </summary>
@@ -136,7 +180,6 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
             .AddView(QueryableTelemetry.PageOffsetHistogramName, recordCountBoundaries)
             .AddKaleidoProcessorInstrumentation()
             .AddKaleidoQueryableInstrumentation()
-            .AddKaleidoHttpInstrumentation()
             .AddKaleidoSqliteInstrumentation()
             .AddKaleidoMcpInstrumentation()
             .AddMeter(KaleidoEventTelemetry.MeterName);

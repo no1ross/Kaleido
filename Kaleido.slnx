@@ -81,6 +81,7 @@
     <Project Path="tests/Kaleido.Http.Mcp.UnitTests/Kaleido.Http.Mcp.UnitTests.csproj" />
     <Project Path="tests/Kaleido.Http.UnitTests/Kaleido.Http.UnitTests.csproj" />
     <Project Path="tests/Kaleido.IntegrationTests/Kaleido.IntegrationTests.csproj" />
+    <Project Path="tests/Kaleido.Observability.OpenTelemetry.UnitTests/Kaleido.Observability.OpenTelemetry.UnitTests.csproj" />
     <Project Path="tests/Kaleido.Provider.SQLite.UnitTests/Kaleido.Provider.SQLite.UnitTests.csproj" />
     <Project Path="tests/Kaleido.UnitTests/Kaleido.UnitTests.csproj" />
   </Folder>

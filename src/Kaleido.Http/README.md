@@ -141,7 +141,7 @@ Every save of the process state is conditional on the version it was loaded with
 
 ## Error responses
 
-Kaleido answers every error from its own endpoints itself, with `{ "errors": [{ "code", "message" }] }`: `KaleidoExceptionEndpointFilter` runs first on every Kaleido route group and maps the exception inside the endpoint (400 validation, 401/403 authorization, 409 conflict, 500 configuration/framework/unexpected). A host's own exception handling - the developer exception page `WebApplication` adds in Development, or `UseExceptionHandler` - therefore never turns a Kaleido validation error into a 500 or an HTML page. `ExceptionMiddleware` (outermost, via the startup filter) covers failures outside the endpoints, e.g. during correlation setup. When the client has gone, the error is still logged and counted, but no response is written.
+Kaleido answers every error from its own endpoints itself, with `{ "errors": [{ "code", "message" }] }`: `KaleidoExceptionEndpointFilter` runs first on every Kaleido route group and maps the exception inside the endpoint (400 validation, 401/403 authorization, 409 conflict, 500 configuration/framework/unexpected). A host's own exception handling - the developer exception page `WebApplication` adds in Development, or `UseExceptionHandler` - therefore never turns a Kaleido validation error into a 500 or an HTML page. `ExceptionMiddleware` (outermost, via the startup filter) covers failures outside the endpoints, e.g. during correlation setup. When the client has gone, the error is still logged, but no response is written.
 
 ## Authorization
 
