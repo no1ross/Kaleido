@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Testing.Fixtures;
 
 /// <summary>
-/// KAL1009 G�� every testable type in the source assembly must have a
+/// KAL1009 — every testable type in the source assembly must have a
 /// {TypeName}Tests fixture in the matching unit-test project. Testable means:
 /// public or internal class, non-static, non-abstract, with behavior (at
 /// least one ordinary method). DTOs, records, exceptions, attributes, and
@@ -20,7 +20,7 @@ public sealed class FixtureCoverageAnalyzer : DiagnosticAnalyzer
         new(
             DiagnosticIds.FixtureCoverage,
             "Testable source type has no unit-test fixture",
-            "Type '{0}' in '{1}' has no '{2}' fixture G�� every testable type must have a unit-test fixture",
+            "Type '{0}' in '{1}' has no '{2}' fixture — every testable type must have a unit-test fixture",
             "Kaleido.Tests",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,

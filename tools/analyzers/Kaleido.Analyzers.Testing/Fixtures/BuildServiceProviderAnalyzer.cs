@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Testing.Fixtures;
 
 /// <summary>
-/// KAL1005 G�� tests/AGENTS.md: any test-built ServiceProvider must use
+/// KAL1005 — tests/AGENTS.md: any test-built ServiceProvider must use
 /// BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true,
 /// ValidateOnBuild = true }) to catch captive dependencies at build time.
 /// </summary>

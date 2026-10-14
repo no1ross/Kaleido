@@ -16,7 +16,7 @@ public sealed class ExceptionRecordAnalyzerTests
     public async Task RecordDerivingFromException_Reports()
     {
         // record : Exception produces a cascade of compiler errors (CS0115,
-        // CS8867) � filter them out and assert KAL0004 still fires
+        // CS8867) — filter them out and assert KAL0004 still fires
         var test = Create(@"
 public record {|#0:BadException|} : System.Exception;");
         test.CompilerDiagnostics = CompilerDiagnostics.None;

@@ -206,7 +206,7 @@ public sealed class KaleidoRemoteRegistryTests
     }
 
     [Fact]
-    public async Task Invalidate_RefetchesClient()
+    public async Task InvalidateAsync_RefetchesClient()
     {
         var callCount = 0;
         var (sut, _) = CreateSutWithHandler(_ =>
@@ -218,7 +218,7 @@ public sealed class KaleidoRemoteRegistryTests
         var stamper = Mock.Of<ICorrelationHeaderStamper>();
         await sut.GetAsync("remote", "remote-svc", null, stamper, CancellationToken.None);
 
-        sut.Invalidate("remote");
+        await sut.InvalidateAsync("remote", CancellationToken.None);
         await sut.GetAsync("remote", "remote-svc", null, stamper, CancellationToken.None);
 
         Assert.Equal(2, callCount);

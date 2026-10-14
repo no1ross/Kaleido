@@ -156,13 +156,13 @@ public sealed class HttpClientRegistryCacheTests
     }
 
     [Fact]
-    public async Task Reset_ClearsCache_SoNextFetchIsInvoked()
+    public async Task ResetAsync_ClearsCache_SoNextFetchIsInvoked()
     {
         using var sut = CreateSut();
 
         await sut.GetOrFetchAsync(null, _ => Task.FromResult(Fresh), CancellationToken.None);
 
-        sut.Reset();
+        await sut.ResetAsync(CancellationToken.None);
 
         var fetchCalled = false;
         var result = await sut.GetOrFetchAsync(
@@ -176,6 +176,29 @@ public sealed class HttpClientRegistryCacheTests
 
         Assert.True(fetchCalled);
         Assert.Same(Stale, result);
+    }
+
+    [Fact]
+    public async Task ResetAsync_AwaitsAnAsynchronousStore_WithoutBlocking_AndPassesTheToken()
+    {
+        var removal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken passed = default;
+        var store = new Mock<IRegistrySnapshotStore>();
+        store.Setup(s => s.RemoveAsync(Key, It.IsAny<CancellationToken>()))
+            .Returns((string _, CancellationToken token) =>
+            {
+                passed = token;
+                return new ValueTask(removal.Task);
+            });
+        using var cancellation = new CancellationTokenSource();
+        using var sut = CreateSut(store.Object);
+
+        var reset = sut.ResetAsync(cancellation.Token).AsTask();
+
+        Assert.False(reset.IsCompleted);
+        removal.SetResult();
+        await reset;
+        Assert.Equal(cancellation.Token, passed);
     }
 
     private static readonly AggregatedRegistryResponse StaleWithRevision = new()

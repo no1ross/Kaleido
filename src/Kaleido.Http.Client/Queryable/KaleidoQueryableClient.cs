@@ -21,7 +21,9 @@ internal sealed partial class KaleidoQueryableClient(
         return await EnsureRegistryAsync(cancellationToken);
     }
 
-    public void InvalidateRegistry() => remoteRegistry.Invalidate(clientName);
+    public Task InvalidateRegistryAsync(
+        CancellationToken cancellationToken = default) =>
+        remoteRegistry.InvalidateAsync(clientName, cancellationToken);
 
     public async Task<QueryResult<TView>> QueryViewAsync<TParameters, TView>(
         string source,
@@ -171,7 +173,7 @@ internal sealed partial class KaleidoQueryableClient(
         // registry snapshot is dropped so the next read loads the current one.
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            remoteRegistry.Invalidate(clientName);
+            await remoteRegistry.InvalidateAsync(clientName, cancellationToken);
         }
 
         return response;
