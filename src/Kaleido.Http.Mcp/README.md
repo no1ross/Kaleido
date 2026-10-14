@@ -125,3 +125,46 @@ A tool call never fails at the protocol level: a problem comes back as a tool re
   not the adapter.
 - Questions and lookups go to the user through forms where the client supports them; the model
   never answers for the user.
+
+## Sign-in from MCP clients (OAuth)
+
+The host authenticates, as for every Kaleido endpoint; the adapter only uses the caller the host
+established and forwards its token. What MCP adds is **discovery**: a client such as VS Code,
+Claude or Devin that connects without a token gets `401` with
+`WWW-Authenticate: Bearer resource_metadata="..."`, reads that protected-resource metadata
+document (RFC 9728) to learn which identity provider issues tokens for the endpoint, signs the user
+in there, and connects again with the token. Users do not paste tokens into the client.
+
+Kaleido needs nothing for this: the MCP SDK's authentication scheme serves the metadata and answers
+the challenge, next to the host's own token validation.
+
+```csharp
+builder.Services
+    .AddAuthentication(o =>
+    {
+        o.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;                 // validates tokens, as today
+        o.DefaultChallengeScheme = McpAuthenticationDefaults.AuthenticationScheme; // 401 + resource_metadata
+    })
+    .AddJwtBearer(o =>
+    {
+        o.Authority = "https://login.microsoftonline.com/{tenant}/v2.0";          // any OIDC provider
+        o.Audience = "api://kaleido-mcp";
+    })
+    .AddMcp(o => o.ResourceMetadata = new ProtectedResourceMetadata
+    {
+        AuthorizationServers = ["https://login.microsoftonline.com/{tenant}/v2.0"],
+        ScopesSupported = ["api://kaleido-mcp/mcp.access"],
+    });
+
+app.MapKaleidoMcp("/mcp").RequireAuthorization();
+```
+
+- **The token is forwarded unchanged** to the Kaleido services (`ForwardCaller`); per-caller tool
+  filtering and authorization work exactly as with a header token. The services must accept that
+  token (same audience), or the host exchanges it (on-behalf-of) before forwarding - the host's
+  concern.
+- **Client registration** (a pre-registered client id, or dynamic client registration) is the
+  identity provider's concern; check which one your MCP clients use.
+- Without `RequireAuthorization()` anonymous callers stay allowed and see only anonymous tools; the
+  challenge (and with it the sign-in) happens only for an endpoint that requires a caller.
+- The sample keeps its dev tokens.
