@@ -9,15 +9,15 @@
 <p align="center">
   <img alt=".NET" src="https://img.shields.io/badge/.NET-framework-512BD4?style=flat-square" />
   <img alt="Status: preview" src="https://img.shields.io/badge/status-preview-8B5CF6?style=flat-square" />
-  <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-19A974?style=flat-square" /></a>
+  <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-19A974?style=flat-square" /></a>
   <img alt="Machine discoverable" src="https://img.shields.io/badge/capabilities-machine--discoverable-3182F6?style=flat-square" />
 </p>
 
 <p align="center">
-  <a href="https://github.com/no1ross/Kaleido/actions/workflows/build.yml"><img alt="Build" src="https://github.com/no1ross/Kaleido/actions/workflows/build.yml/badge.svg?branch=master" /></a>
-  <a href="https://github.com/no1ross/Kaleido/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/no1ross/Kaleido/actions/workflows/codeql.yml/badge.svg?branch=master" /></a>
-  <a href="https://sonarcloud.io/summary/new_code?id=no1ross_Kaleido"><img alt="Quality gate" src="https://sonarcloud.io/api/project_badges/measure?project=no1ross_Kaleido&amp;metric=alert_status" /></a>
-  <a href="https://sonarcloud.io/component_measures?id=no1ross_Kaleido&amp;metric=coverage"><img alt="Coverage" src="https://sonarcloud.io/api/project_badges/measure?project=no1ross_Kaleido&amp;metric=coverage" /></a>
+  <a href="https://github.com/no1ross/Kaleido/actions/workflows/build.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/no1ross/Kaleido/build.yml?branch=master&amp;style=flat-square&amp;label=build" /></a>
+  <a href="https://github.com/no1ross/Kaleido/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://img.shields.io/github/actions/workflow/status/no1ross/Kaleido/codeql.yml?branch=master&amp;style=flat-square&amp;label=CodeQL" /></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=no1ross_Kaleido"><img alt="Quality gate" src="https://img.shields.io/sonar/quality_gate/no1ross_Kaleido?server=https%3A%2F%2Fsonarcloud.io&amp;style=flat-square&amp;label=quality%20gate" /></a>
+  <a href="https://sonarcloud.io/component_measures?id=no1ross_Kaleido&amp;metric=coverage"><img alt="Coverage" src="https://img.shields.io/sonar/coverage/no1ross_Kaleido?server=https%3A%2F%2Fsonarcloud.io&amp;style=flat-square" /></a>
 </p>
 
 > [!IMPORTANT]
