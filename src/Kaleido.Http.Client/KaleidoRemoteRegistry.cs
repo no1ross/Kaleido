@@ -40,19 +40,9 @@ internal sealed partial class KaleidoRemoteRegistry(
                 cancellationToken);
 
     public async Task InvalidateAsync(
-        string? clientName,
+        string clientName,
         CancellationToken cancellationToken)
     {
-        if (clientName is null)
-        {
-            foreach (var entry in _caches.Values)
-            {
-                await entry.ResetAsync(cancellationToken);
-            }
-
-            return;
-        }
-
         if (_caches.TryGetValue(clientName, out var cache))
         {
             await cache.ResetAsync(cancellationToken);
