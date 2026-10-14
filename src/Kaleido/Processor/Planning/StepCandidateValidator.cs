@@ -104,9 +104,7 @@ internal sealed class StepCandidateValidator : IStepCandidateValidator
             results,
             validateAllProperties: true);
 
-        return results
-            .Select(x => (ProcessorErrorCodes.ValidationFailed, GetMessage(x)))
-            .ToList();
+        return results.ConvertAll(x => (ProcessorErrorCodes.ValidationFailed, GetMessage(x)));
     }
 
     private static string GetMessage(ValidationResult result) =>
