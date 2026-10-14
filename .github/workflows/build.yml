@@ -25,6 +25,29 @@ jobs:
       with:
         fetch-depth: 0  # NBGV needs full history for version height
 
+    - name: Check text encoding
+      shell: python3 {0}
+      run: |
+        import re, subprocess, sys
+        corruption = re.compile("\ufffd|\u00e2\u20ac|\u00c3[\u0080-\u00bf]|\u00c2[\u0080-\u00bf]|\u0393\u00c7")
+        extensions = (".cs", ".md", ".txt", ".json", ".yml", ".yaml", ".xml", ".props", ".targets", ".csproj",
+                      ".slnx", ".editorconfig", ".http", ".ts", ".html", ".scss", ".css", ".razor", ".ps1", ".cmd", ".sh")
+        files = subprocess.run(["git", "ls-files", "-z"], capture_output=True, check=True).stdout.decode("utf-8").split("\0")
+        findings = 0
+        for path in (f for f in files if f.lower().endswith(extensions)):
+            try:
+                with open(path, encoding="utf-8") as handle:
+                    lines = handle.read().splitlines()
+            except UnicodeDecodeError:
+                print(f"::error file={path}::Not valid UTF-8.")
+                findings += 1
+                continue
+            for number, line in enumerate(lines, 1):
+                if corruption.search(line):
+                    print(f"::error file={path},line={number}::U+FFFD or mojibake (UTF-8 decoded as another code page).")
+                    findings += 1
+        sys.exit(1 if findings else 0)
+
     - name: Setup .NET
       uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68  # v6.0.0
       with:

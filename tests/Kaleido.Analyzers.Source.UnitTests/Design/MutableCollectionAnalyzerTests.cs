@@ -112,7 +112,7 @@ internal class Impl
     [Fact]
     public async Task Override_MutableReturn_NoDiagnostic()
     {
-        // The override itself is exempt � the type is fixed at the base.
+        // The override itself is exempt — the type is fixed at the base.
         // The base abstract method fires (correctly), so we suppress that with #pragma
         // in the test source and only assert no *additional* diagnostic on the override.
         await RunAsync(@"

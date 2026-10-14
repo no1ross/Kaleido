@@ -52,12 +52,12 @@ Kaleido should sound:
 - Confident without claiming production guarantees that have not been demonstrated
 - Focused on consumer outcomes rather than internal architecture
 
-Prefer concise language such as â€œExpose typed queries and stateful processesâ€ over large lists of implementation details.
+Prefer concise language such as “Expose typed queries and stateful processes” over large lists of implementation details.
 
 ## Surfaces
 
-- `kaleido-readme-banner.png` â€” repository README hero
-- `kaleido-github-social-preview.png` â€” GitHub social preview / Open Graph image
-- `kaleido-slide-cover-16x9.png` â€” presentation cover and section-title starting point
-- `kaleido-landing-page-concept.png` â€” website design direction
-- `kaleido-brand.css` and `kaleido-brand-tokens.json` â€” implementation tokens
+- `kaleido-readme-banner.png` — repository README hero
+- `kaleido-github-social-preview.png` — GitHub social preview / Open Graph image
+- `kaleido-slide-cover-16x9.png` — presentation cover and section-title starting point
+- `kaleido-landing-page-concept.png` — website design direction
+- `kaleido-brand.css` and `kaleido-brand-tokens.json` — implementation tokens
