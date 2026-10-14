@@ -102,6 +102,26 @@ public record QuerySort(
     SortDirection Direction,
     int? Sequence = null);
 
+/// <summary>
+/// The page of results a query asks for. Paging is accepted only for a source or view declared
+/// <see cref="PageableAttribute"/>; otherwise the request fails with
+/// <see cref="QueryableErrorCodes.PagingNotSupported"/>.
+/// </summary>
+/// <remarks>
+/// A present page is an explicit page even when both values are omitted (for example
+/// <c>{"page":{}}</c>), which selects the explicit-page <c>TotalCount</c> behaviour; an absent
+/// page does not.
+/// </remarks>
+/// <param name="Size">
+/// Results per page. Omitted (<see langword="null"/>) uses the capability's
+/// <see cref="PageableAttribute.DefaultSize"/>. A supplied value must be greater than zero and no
+/// greater than <see cref="PageableAttribute.MaxSize"/>
+/// (<see cref="QueryableErrorCodes.InvalidPageSize"/>).
+/// </param>
+/// <param name="Offset">
+/// Zero-based result offset. Omitted (<see langword="null"/>) means zero; a negative value fails
+/// with <see cref="QueryableErrorCodes.InvalidPageOffset"/>.
+/// </param>
 [ExcludeFromCodeCoverage]
 public record QueryPage(
     int? Size,
