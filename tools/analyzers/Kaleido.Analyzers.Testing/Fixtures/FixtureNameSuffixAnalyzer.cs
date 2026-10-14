@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Testing.Fixtures;
 
 /// <summary>
-/// KAL1001 G�� test fixtures are named after their subject under test:
+/// KAL1001 — test fixtures are named after their subject under test:
 /// {SutName}Tests.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]

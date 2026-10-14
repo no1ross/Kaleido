@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Testing.Fixtures;
 
 /// <summary>
-/// KAL1006 G�� every unit-test fixture declares its subject under test by
+/// KAL1006 — every unit-test fixture declares its subject under test by
 /// inheriting SutFixture&lt;TSut&gt;. Scoped to unit-test projects via
 /// .editorconfig.
 /// </summary>
@@ -16,7 +16,7 @@ public sealed class FixtureMustInheritSutFixtureAnalyzer : DiagnosticAnalyzer
         new(
             DiagnosticIds.FixtureMustInheritSutFixture,
             "Unit-test fixtures must inherit SutFixture<TSut>",
-            "Test fixture '{0}' must inherit SutFixture<{1}> G�� every unit test declares its subject under test",
+            "Test fixture '{0}' must inherit SutFixture<{1}> — every unit test declares its subject under test",
             "Kaleido.Tests",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);

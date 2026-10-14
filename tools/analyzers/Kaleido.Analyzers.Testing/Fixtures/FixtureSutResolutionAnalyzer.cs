@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Testing.Fixtures;
 
 /// <summary>
-/// KAL1002 G�� the {Sut}Tests prefix must resolve to a real type (the subject
+/// KAL1002 — the {Sut}Tests prefix must resolve to a real type (the subject
 /// under test). Catches fixtures named after scenarios instead of the SUT.
 /// Scoped to unit-test projects via .editorconfig.
 /// </summary>
@@ -16,7 +16,7 @@ public sealed class FixtureSutResolutionAnalyzer : DiagnosticAnalyzer
         new(
             DiagnosticIds.FixtureSutResolution,
             "Test fixture name prefix must resolve to a subject under test",
-            "Test fixture '{0}' does not map to a type named '{1}' G�� fixtures are named {{SutName}}Tests",
+            "Test fixture '{0}' does not map to a type named '{1}' — fixtures are named {{SutName}}Tests",
             "Kaleido.Tests",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);

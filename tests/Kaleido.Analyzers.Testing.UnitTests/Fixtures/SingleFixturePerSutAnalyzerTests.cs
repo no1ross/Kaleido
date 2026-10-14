@@ -25,7 +25,7 @@ namespace Xunit
     public async Task TwoFixturesSameSutPrefix_Reports()
     {
         // Two classes literally named WidgetTests in different namespaces
-        // both map to SUT 'Widget' � second one is flagged
+        // both map to SUT 'Widget' — second one is flagged
         await RunAsync(@"
 public class Widget { }
 
