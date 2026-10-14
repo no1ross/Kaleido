@@ -18,7 +18,8 @@ app.MapKaleidoMcp("/mcp");
 
 Configuration (`Kaleido:Mcp`): `ServerName`, `ServerVersion`, `Instructions` or
 `InstructionsFile` (replace the default instructions), `AdditionalInstructions` (appended: the
-business's guidance for its agents), `MaxElicitationRounds`.
+business's guidance for its agents), `MaxElicitationRounds` (zero or more, default 5; 0 returns
+every information request to the agent; a negative value fails startup with `mcp_invalid_options`).
 
 ## Tools
 

@@ -326,7 +326,7 @@ internal sealed class ProcessorRuntime(
         {
             foreach (var message in candidate.Messages.Where(x =>
                          x.Type == MessageType.Error &&
-                         x.Code.StartsWith("pro_information_response_", StringComparison.Ordinal)))
+                         x.Code.StartsWith(ProcessorErrorCodes.InformationResponsePrefix, StringComparison.Ordinal)))
             {
                 observation.InformationResponseRejected(
                     candidate.StepName,

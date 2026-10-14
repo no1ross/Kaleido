@@ -43,6 +43,36 @@ public sealed class QueryRequestCompilerTests
     }
 
     [Fact]
+    public void Compile_PageWithoutSize_UsesSourceDefaultSize_AndIsExplicit()
+    {
+        var request = new QueryRequest(new QueryBody(Page: new QueryPage(null, 20)));
+
+        var result = Compile(request, CreateContextMetadata());
+
+        Assert.Equal(25, result.Page.Size);
+        Assert.Equal(20, result.Page.Offset);
+        Assert.True(result.Page.IsExplicit);
+    }
+
+    [Fact]
+    public void Compile_PageWithoutSize_UsesViewDefaultSize_AndIsExplicit()
+    {
+        var request = new QueryRequest(new QueryBody(Page: new QueryPage(null, null)));
+
+        var result = Sut.Compile(request, CreateContextMetadata(), CreateViewMetadata().Pageable);
+
+        Assert.Equal(10, result.Page.Size);
+        Assert.Equal(0, result.Page.Offset);
+        Assert.True(result.Page.IsExplicit);
+    }
+
+    [Fact]
+    public void Compile_WithoutPage_IsNotExplicit()
+    {
+        Assert.False(Compile(new QueryRequest(), CreateContextMetadata()).Page.IsExplicit);
+    }
+
+    [Fact]
     public void Compile_ClampsRequestedPageSizeToMaxSize()
     {
         var request = new QueryRequest(new QueryBody(Page: new QueryPage(500, 3)));
