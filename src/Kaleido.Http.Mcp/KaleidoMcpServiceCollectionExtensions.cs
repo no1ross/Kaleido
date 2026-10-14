@@ -37,8 +37,9 @@ public static class KaleidoMcpServiceCollectionExtensions
     /// </remarks>
     /// <exception cref="KaleidoConfigurationException">
     /// <c>AddHttp()</c> was not called first (<see cref="McpErrorCodes.MissingHttp"/>), no Kaleido
-    /// client is configured (<see cref="McpErrorCodes.MissingClients"/>), or the instructions file
-    /// is missing (<see cref="McpErrorCodes.MissingInstructionsFile"/>).
+    /// client is configured (<see cref="McpErrorCodes.MissingClients"/>), the instructions file
+    /// is missing (<see cref="McpErrorCodes.MissingInstructionsFile"/>), or a setting is out of
+    /// range (<see cref="McpErrorCodes.InvalidOptions"/>).
     /// </exception>
     public static IKaleidoBuilder AddMcp(
         this IKaleidoBuilder builder,

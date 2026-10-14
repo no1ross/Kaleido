@@ -37,68 +37,83 @@ internal sealed class StepCandidateValidator : IStepCandidateValidator
                 $"Candidate '{candidate.StepName}' does not contain a hydrated step.");
         }
 
-        var validationResults = new List<ValidationResult>();
-        var validationContext = new ValidationContext(step);
+        var failures = ValidateProperties(step);
+        if (failures.Count == 0)
+        {
+            failures = ValidateObject(step);
+        }
 
-        var valid = Validator.TryValidateObject(
-            step,
-            validationContext,
-            validationResults,
-            validateAllProperties: true);
-
-        if (valid)
+        if (failures.Count == 0)
         {
             return;
         }
 
         candidate.Status = StepCandidateStatus.Invalid;
 
-        foreach (var validationResult in validationResults)
+        foreach (var (code, message) in failures)
         {
-            candidate.AddError(
-                GetValidationCode(step, validationResult),
-                validationResult.ErrorMessage ?? "Validation failed.");
+            candidate.AddError(code, message);
         }
     }
 
-    private static string GetValidationCode(object step, ValidationResult result)
+    private static List<(string Code, string Message)> ValidateProperties(object step)
     {
-        var members = result.MemberNames.ToArray();
-        if (members.Length != 1 || string.IsNullOrWhiteSpace(members[0]))
-        {
-            return ProcessorErrorCodes.ValidationFailed;
-        }
+        var failures = new List<(string Code, string Message)>();
 
-        var property = TypeDescriptor.GetProperties(step)[members[0]];
-        if (property is null)
+        foreach (var property in TypeDescriptor.GetProperties(step).Cast<PropertyDescriptor>())
         {
-            return ProcessorErrorCodes.ValidationFailed;
-        }
-
-        var context = new ValidationContext(step)
-        {
-            MemberName = members[0],
-        };
-
-        var value = property.GetValue(step);
-        foreach (var attribute in property.Attributes.OfType<ValidationAttribute>())
-        {
-            var code = GetAttributeCode(attribute.GetType());
-            if (code is null)
+            var attributes = property.Attributes.OfType<ValidationAttribute>().ToArray();
+            if (attributes.Length == 0)
             {
                 continue;
             }
 
-            var failure = attribute.GetValidationResult(value, context);
-            if (failure is not null &&
-                string.Equals(failure.ErrorMessage, result.ErrorMessage, StringComparison.Ordinal))
+            var context = new ValidationContext(step)
             {
-                return code;
+                MemberName = property.Name,
+            };
+
+            var value = property.GetValue(step);
+
+            var required = attributes.OfType<RequiredAttribute>().FirstOrDefault();
+            if (required?.GetValidationResult(value, context) is { } missing)
+            {
+                failures.Add((GetCode(required), GetMessage(missing)));
+                continue;
+            }
+
+            foreach (var attribute in attributes.Where(x => x is not RequiredAttribute))
+            {
+                if (attribute.GetValidationResult(value, context) is { } failure)
+                {
+                    failures.Add((GetCode(attribute), GetMessage(failure)));
+                }
             }
         }
 
-        return ProcessorErrorCodes.ValidationFailed;
+        return failures;
     }
+
+    private static List<(string Code, string Message)> ValidateObject(object step)
+    {
+        var results = new List<ValidationResult>();
+
+        Validator.TryValidateObject(
+            step,
+            new ValidationContext(step),
+            results,
+            validateAllProperties: true);
+
+        return results
+            .Select(x => (ProcessorErrorCodes.ValidationFailed, GetMessage(x)))
+            .ToList();
+    }
+
+    private static string GetMessage(ValidationResult result) =>
+        result.ErrorMessage ?? "Validation failed.";
+
+    private static string GetCode(ValidationAttribute attribute) =>
+        GetAttributeCode(attribute.GetType()) ?? ProcessorErrorCodes.ValidationFailed;
 
     private static string? GetAttributeCode(Type type)
     {

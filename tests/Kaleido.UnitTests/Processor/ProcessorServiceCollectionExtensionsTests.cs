@@ -47,6 +47,28 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddProcessor_RegistersTheStepRegistryOnce_FromTheScannedSteps()
+    {
+        var services = new ServiceCollection();
+
+        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+            {
+                o.ServiceName = "test-processor";
+                o.Assemblies = new[] { typeof(TestStep).Assembly };
+            });
+
+        var descriptor =
+            Assert.Single(services, x => x.ServiceType == typeof(IProcessorStepRegistry));
+
+        Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
+        Assert.NotNull(descriptor.ImplementationFactory);
+
+        using var provider = services.BuildServiceProvider();
+
+        Assert.NotNull(provider.GetRequiredService<IProcessorStepRegistry>().Find(typeof(TestStep)));
+    }
+
+    [Fact]
     public void AddProcessor_WithIsEntryProcessor_RegistrationReflectsIt()
     {
         var services = new ServiceCollection();

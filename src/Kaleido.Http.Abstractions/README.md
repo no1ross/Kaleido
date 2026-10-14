@@ -45,7 +45,7 @@ Queryable query operators and sort directions are already **string properties** 
 
 ### Queryable paging and `totalCount`
 
-A Queryable request may supply `{"query":{"page":{"size":10,"offset":0}}}`. `offset` is zero-based. An explicit `page` is accepted only for a source or view registered with `[Pageable]` (a source's paging applies to direct queries of it, a view's to that view); otherwise the endpoint returns `qry_paging_not_supported` (400). Omitted `size` uses the configured `DefaultSize`, and omitted `offset` uses zero. Explicit `size` must be greater than zero and no greater than `MaxSize` (`qry_invalid_page_size`); a negative `offset` returns `qry_invalid_page_offset`. An oversized explicit request is rejected, not silently clamped.
+A Queryable request may supply `{"query":{"page":{"size":10,"offset":0}}}`. `offset` is zero-based. An explicit `page` is accepted only for a source or view registered with `[Pageable]` (a source's paging applies to direct queries of it, a view's to that view); otherwise the endpoint returns `qry_paging_not_supported` (400). Omitted `size` uses the configured `DefaultSize`, and omitted `offset` uses zero, so `{"page":{}}` and `{"page":{"offset":20}}` are valid explicit pages of `DefaultSize` rows (and follow the explicit-page `totalCount` rules below). Explicit `size` must be greater than zero and no greater than `MaxSize` (`qry_invalid_page_size`); a negative `offset` returns `qry_invalid_page_offset`. An oversized explicit request is rejected, not silently clamped.
 
 For locally executed Queryable sources and views, `QueryResult<T>.totalCount` depends on whether the request explicitly contains `page` and whether the returned page is full:
 

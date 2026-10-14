@@ -222,8 +222,6 @@ public static class ProcessorServiceCollectionExtensions
 
     private static void RegisterFrameworkServices(IServiceCollection services)
     {
-        services.TryAddSingleton<IProcessorStepRegistry, ProcessorStepRegistry>();
-
         services.TryAddSingleton<IProcessorPlanner, ProcessorPlanner>();
         services.TryAddSingleton<IStepCandidateBuilder, StepCandidateBuilder>();
         services.TryAddSingleton<IStepCandidateConsistencyChecker, StepCandidateConsistencyChecker>();

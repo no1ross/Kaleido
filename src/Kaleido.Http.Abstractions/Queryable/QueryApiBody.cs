@@ -166,14 +166,26 @@ public sealed record QueryApiSort
     public int? Sequence { get; init; }
 }
 
+/// <summary>
+/// Wire form of the requested page (<c>{"size":10,"offset":0}</c>). A present page is an explicit
+/// page even with both members omitted (<c>{}</c>); it is accepted only for a <c>[Pageable]</c>
+/// source or view (otherwise <c>qry_paging_not_supported</c>).
+/// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record QueryApiPage
 {
-    /// <summary>Number of results per page.</summary>
+    /// <summary>
+    /// Number of results per page. Omitted uses the capability's configured <c>DefaultSize</c>; a
+    /// supplied value must be greater than zero and no greater than <c>MaxSize</c>
+    /// (<c>qry_invalid_page_size</c>).
+    /// </summary>
     [JsonPropertyName("size")]
     public int? Size { get; init; }
 
-    /// <summary>Zero-based result offset.</summary>
+    /// <summary>
+    /// Zero-based result offset. Omitted means zero; a negative value is rejected
+    /// (<c>qry_invalid_page_offset</c>).
+    /// </summary>
     [JsonPropertyName("offset")]
     public int? Offset { get; init; }
 }
