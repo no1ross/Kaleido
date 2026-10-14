@@ -11,8 +11,8 @@ internal sealed class NoDownstreamRegistries : IKaleidoDownstreamRegistries
         CancellationToken cancellationToken = default) =>
         Task.FromResult(DownstreamRegistries.None);
 
-    public void Invalidate()
-    {
-        // Nothing is cached when there are no downstream services.
-    }
+    // Nothing is cached when there are no downstream services.
+    public Task InvalidateAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 }

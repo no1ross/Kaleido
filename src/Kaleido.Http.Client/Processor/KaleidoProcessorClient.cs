@@ -22,7 +22,9 @@ internal sealed partial class KaleidoProcessorClient(
         return await EnsureRegistryAsync(cancellationToken);
     }
 
-    public void InvalidateRegistry() => remoteRegistry.Invalidate(clientName);
+    public Task InvalidateRegistryAsync(
+        CancellationToken cancellationToken = default) =>
+        remoteRegistry.InvalidateAsync(clientName, cancellationToken);
 
     public async Task<ProcessStateResponse?> GetProcessStateAsync(
         Guid processId,
@@ -298,7 +300,7 @@ internal sealed partial class KaleidoProcessorClient(
 
         if (capabilityCall && response.StatusCode == HttpStatusCode.NotFound)
         {
-            remoteRegistry.Invalidate(clientName);
+            await remoteRegistry.InvalidateAsync(clientName, cancellationToken);
         }
 
         return response;

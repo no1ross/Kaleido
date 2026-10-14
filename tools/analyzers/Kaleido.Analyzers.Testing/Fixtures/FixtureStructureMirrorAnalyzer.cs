@@ -7,8 +7,8 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Testing.Fixtures;
 
 /// <summary>
-/// KAL1003 G�� the fixture's file location mirrors the SUT's location:
-/// src/{Project}/{path}/Sut.cs G�� tests/{TestProject}/{path}/SutTests.cs.
+/// KAL1003 — the fixture's file location mirrors the SUT's location:
+/// src/{Project}/{path}/Sut.cs — tests/{TestProject}/{path}/SutTests.cs.
 /// Scoped to unit-test projects via .editorconfig.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]

@@ -20,8 +20,14 @@ public interface IKaleidoDownstreamRegistries
         int? maxParallelism = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Drops each downstream client's cached registry, so the next fetch re-reads it.</summary>
-    void Invalidate();
+    /// <summary>
+    /// Drops each downstream client's cached registry, so the next fetch re-reads it. Best effort per
+    /// client: a client that cannot be invalidated is logged and the others are still invalidated.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the removals from the snapshot store.</param>
+    /// <returns>A task that completes once every downstream snapshot has been dropped.</returns>
+    Task InvalidateAsync(
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>The downstream registries, and the clients that could not be read.</summary>

@@ -25,7 +25,7 @@ public sealed class KaleidoHttpClientOptions
     /// <summary>
     /// How often this client checks whether the remote registry changed: the known revision is sent
     /// as an ETag and an unchanged registry answers 304. When null the registry is fetched once and
-    /// kept until it is invalidated (a 404 from the service, or <c>InvalidateRegistry()</c>).
+    /// kept until it is invalidated (a 404 from the service, or <c>InvalidateRegistryAsync()</c>).
     /// <c>AddHttpClients()</c> sets it from <see cref="KaleidoClientOptions.RegistryTtl"/> (default
     /// 30 seconds).
     /// </summary>

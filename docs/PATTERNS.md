@@ -262,6 +262,22 @@ Throw `Kaleido*Exception` types only (KAL0002): `KaleidoValidationException`
 (internal integrity). Argument guards (`ArgumentNullException`) are fine.
 Exception types are classes, never records (KAL0004/KAL1011).
 
+## Async
+
+Kaleido code awaits without `ConfigureAwait(false)`; CA2007 is `silent` on purpose,
+for every project including the host-agnostic `Kaleido`, `Kaleido.Http.Client` and
+`Kaleido.Provider.SQLite`.
+
+- **Why:** the supported hosts (ASP.NET Core, the .NET generic host and its
+  workers) have no `SynchronizationContext`, so there is no context to return to
+  and `ConfigureAwait(false)` would change nothing.
+- **Consumer rule:** await Kaleido's async APIs all the way up. Never block on them
+  (`.Result`, `.Wait()`, `.GetAwaiter().GetResult()`), above all on a thread with a
+  `SynchronizationContext` (UI frameworks such as WPF, WinForms or MAUI): that can
+  deadlock.
+- **Revisit:** if a host with a `SynchronizationContext` becomes supported, enable
+  CA2007 for the host-agnostic projects and add `ConfigureAwait(false)` there.
+
 ## Dependency injection
 
 Constructor injection, service abstractions, readonly fields — enforced by

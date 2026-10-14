@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Testing.Fixtures;
 
 /// <summary>
-/// KAL1008 G�� the SUT may only be constructed inside CreateSut(). new-ing the
+/// KAL1008 — the SUT may only be constructed inside CreateSut(). new-ing the
 /// fixture's TSut inside test methods creates per-test construction drift;
 /// all arrangement belongs in the single CreateSut() seam.
 /// Scoped to unit-test projects via .editorconfig.
@@ -19,7 +19,7 @@ public sealed class SutConstructionAnalyzer : DiagnosticAnalyzer
         new(
             DiagnosticIds.SutConstruction,
             "SUT may only be constructed inside CreateSut()",
-            "'{0}' may only be constructed inside CreateSut() G�� use CreateSut() or the Sut property",
+            "'{0}' may only be constructed inside CreateSut() — use CreateSut() or the Sut property",
             "Kaleido.Tests",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);

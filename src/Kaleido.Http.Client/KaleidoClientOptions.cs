@@ -23,7 +23,7 @@ public sealed class KaleidoClientOptions
     /// downstream was deployed; the check is how it finds out. A check sends the known revision as an
     /// ETag and an unchanged registry answers an empty 304, so a short interval is cheap. Null means
     /// the registry is never checked again until it is invalidated (a 404 from the service, or
-    /// <c>InvalidateRegistry()</c>).
+    /// <c>InvalidateRegistryAsync()</c>).
     /// </remarks>
     public TimeSpan? RegistryTtl { get; set; } = TimeSpan.FromSeconds(30);
 
