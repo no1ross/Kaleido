@@ -96,6 +96,16 @@ public sealed class QueryRequestValidatorTests
         Assert.Equal(QueryableErrorCodes.InvalidPageSize, ex.Code);
     }
 
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(null, 20)]
+    public void Validate_WhenPageOmitsSize_DoesNotThrow(int? size, int? offset)
+    {
+        var request = new QueryRequest(new QueryBody(Page: new QueryPage(size, offset)));
+
+        Validate(request, CreateMetadata());
+    }
+
     [Fact]
     public void Validate_WhenSearchHasNoSearchableFields_Throws()
     {
