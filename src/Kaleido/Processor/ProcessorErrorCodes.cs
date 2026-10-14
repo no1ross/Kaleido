@@ -135,4 +135,6 @@ public static class ProcessorErrorCodes
     /// that wasn't offered, or several answers to a question that doesn't repeat.
     /// </summary>
     public const string InformationResponseInvalidAnswer = "pro_information_response_invalid_answer";
+
+    internal const string InformationResponsePrefix = "pro_information_response_";
 }
