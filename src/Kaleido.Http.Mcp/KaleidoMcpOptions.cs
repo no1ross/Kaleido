@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Kaleido.Http.Mcp;
 
 /// <summary>
@@ -35,6 +37,11 @@ public sealed record KaleidoMcpOptions
     /// The maximum number of information-request rounds put to the user in one tool call before
     /// the remaining questions are returned to the agent.
     /// </summary>
+    /// <remarks>
+    /// Zero or more; the default is 5. Zero never puts questions to the user automatically: every
+    /// information request is returned to the agent. A negative value fails <c>AddMcp</c> with
+    /// <see cref="McpErrorCodes.InvalidOptions"/>.
+    /// </remarks>
     public int MaxElicitationRounds { get; init; } = 5;
 }
 
@@ -75,14 +82,25 @@ public sealed class KaleidoMcpOptionsBuilder
     /// <inheritdoc cref="KaleidoMcpOptions.MaxElicitationRounds"/>
     public int MaxElicitationRounds { get; set; } = 5;
 
-    internal KaleidoMcpOptions Build() =>
-        new()
+    internal KaleidoMcpOptions Build()
+    {
+        if (MaxElicitationRounds < 0)
+        {
+            throw new KaleidoConfigurationException(
+                McpErrorCodes.InvalidOptions,
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{KaleidoMcpOptions.SectionName}:{nameof(MaxElicitationRounds)} is {MaxElicitationRounds}; it must be zero or more (0 returns every information request to the agent)."));
+        }
+
+        return new()
         {
             ServerName = string.IsNullOrWhiteSpace(ServerName) ? "kaleido" : ServerName.Trim(),
             ServerVersion = string.IsNullOrWhiteSpace(ServerVersion) ? "1.0.0" : ServerVersion.Trim(),
             Instructions = ResolveInstructions(),
-            MaxElicitationRounds = Math.Max(0, MaxElicitationRounds),
+            MaxElicitationRounds = MaxElicitationRounds,
         };
+    }
 
     private string ResolveInstructions()
     {
