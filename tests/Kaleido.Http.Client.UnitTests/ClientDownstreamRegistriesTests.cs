@@ -117,6 +117,17 @@ public sealed class ClientDownstreamRegistriesTests
     }
 
     [Fact]
+    public async Task InvalidateAsync_AQueryableOnlyClient_IsInvalidatedThroughItsQueryableClient()
+    {
+        queryableMap.SetRoutePrefix("Catalog", "catalog");
+        queryableClients["Catalog"] = new Mock<IKaleidoQueryableClient>();
+
+        await CreateSut().InvalidateAsync(Cancel);
+
+        queryableClients["Catalog"].Verify(x => x.InvalidateRegistryAsync(Cancel), Times.Once);
+    }
+
+    [Fact]
     public async Task InvalidateAsync_AFailingClient_DoesNotStopTheOthers()
     {
         Client("Intake", "intake");

@@ -146,6 +146,23 @@ public sealed class KaleidoProcessorClientTests
     }
 
     [Fact]
+    public async Task InvalidateRegistryAsync_DropsTheSnapshot_SoTheNextReadRefetches()
+    {
+        var callCount = 0;
+        var (client, _) = CreateClient(respond: _ =>
+        {
+            callCount++;
+            return JsonOk(FakeRegistry);
+        });
+
+        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
+        await client.InvalidateRegistryAsync(TestContext.Current.CancellationToken);
+        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, callCount);
+    }
+
+    [Fact]
     public async Task GetRegistryAsync_WhenResponseBodyIsNull_Throws()
     {
         var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
