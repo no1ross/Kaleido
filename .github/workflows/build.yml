@@ -9,6 +9,9 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 jobs:
   build:
 
@@ -101,7 +104,7 @@ jobs:
     # matched src/Kaleido.Http.Mcp/Tools/ (#260).
     - name: Merge coverage
       run: |
-        dotnet tool install --global dotnet-reportgenerator-globaltool
+        dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.11
         reportgenerator \
           "-reports:TestResults/*.cobertura.xml" \
           "-targetdir:coverage" \
