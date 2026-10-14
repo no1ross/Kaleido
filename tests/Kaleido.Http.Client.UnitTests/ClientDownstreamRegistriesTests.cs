@@ -105,14 +105,39 @@ public sealed class ClientDownstreamRegistriesTests
     }
 
     [Fact]
-    public void Invalidate_DropsEachClientsCachedRegistry_ExceptThisServices()
+    public async Task InvalidateAsync_DropsEachClientsCachedRegistry_ExceptThisServices()
     {
         Client("Self", "router");
         Client("Intake", "intake");
 
-        CreateSut("router").Invalidate();
+        await CreateSut("router").InvalidateAsync(Cancel);
 
-        processClients["Intake"].Verify(x => x.InvalidateRegistry(), Times.Once);
-        processClients["Self"].Verify(x => x.InvalidateRegistry(), Times.Never);
+        processClients["Intake"].Verify(x => x.InvalidateRegistryAsync(Cancel), Times.Once);
+        processClients["Self"].Verify(x => x.InvalidateRegistryAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task InvalidateAsync_AFailingClient_DoesNotStopTheOthers()
+    {
+        Client("Intake", "intake");
+        Client("Radiology", "radiology");
+        processClients["Intake"].Setup(x => x.InvalidateRegistryAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("store down"));
+
+        await CreateSut().InvalidateAsync(Cancel);
+
+        processClients["Radiology"].Verify(x => x.InvalidateRegistryAsync(Cancel), Times.Once);
+    }
+
+    [Fact]
+    public async Task InvalidateAsync_TheCallersCancellation_Propagates()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        Client("Intake", "intake");
+        processClients["Intake"].Setup(x => x.InvalidateRegistryAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException(cancellation.Token));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateSut().InvalidateAsync(cancellation.Token));
     }
 }

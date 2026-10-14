@@ -7,10 +7,14 @@ public interface IKaleidoProcessorClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Clears the local registry cache so the next operation re-fetches
-    /// the registry from the remote endpoint.
+    /// Drops the cached registry snapshot of this client's service so the next operation re-fetches
+    /// it from the remote endpoint. With a distributed <see cref="Registry.IRegistrySnapshotStore"/>
+    /// the shared snapshot is removed for every instance using that store.
     /// </summary>
-    void InvalidateRegistry();
+    /// <param name="cancellationToken">Cancels the removal from the snapshot store.</param>
+    /// <returns>A task that completes once the snapshot has been removed.</returns>
+    Task InvalidateRegistryAsync(
+        CancellationToken cancellationToken = default);
 
     Task<ProcessStateResponse?> GetProcessStateAsync(
         Guid processId,

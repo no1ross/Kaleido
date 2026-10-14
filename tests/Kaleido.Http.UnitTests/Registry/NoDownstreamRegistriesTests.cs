@@ -1,5 +1,3 @@
-using Kaleido.Http.Registry;
-
 namespace Kaleido.Http.Registry.UnitTests;
 
 public sealed class NoDownstreamRegistriesTests
@@ -19,10 +17,11 @@ public sealed class NoDownstreamRegistriesTests
     }
 
     [Fact]
-    public void Invalidate_DoesNothing()
+    public async Task InvalidateAsync_CompletesWithoutWork()
     {
-        var exception = Record.Exception(CreateSut().Invalidate);
+        var invalidation = CreateSut().InvalidateAsync(TestContext.Current.CancellationToken);
 
-        Assert.Null(exception);
+        Assert.True(invalidation.IsCompletedSuccessfully);
+        await invalidation;
     }
 }

@@ -82,7 +82,7 @@ internal sealed partial class KaleidoRegistryService(
         // not replays stale per-client snapshots.
         if (refresh && snapshot.Aggregate)
         {
-            downstream.Invalidate();
+            await downstream.InvalidateAsync(cancellationToken);
         }
 
         var remote = snapshot.Aggregate
