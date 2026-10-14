@@ -171,7 +171,55 @@ public sealed class StepCandidateValidatorTests
 
         Sut.Validate([candidate]);
 
+        var message = Assert.Single(candidate.Messages);
+        Assert.Equal(ProcessorErrorCodes.Required, message.Code);
+        Assert.Contains("Full name", message.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validate_WhenCustomErrorMessageIsUsed_KeepsTheAttributeCodeAndMessage()
+    {
+        var candidate = CreateCandidate(new CustomMessageStep { Quantity = 0 });
+
+        Sut.Validate([candidate]);
+
+        var message = Assert.Single(candidate.Messages);
+        Assert.Equal(ProcessorErrorCodes.OutOfRange, message.Code);
+        Assert.Equal("Pick a number.", message.Message);
+    }
+
+    [Fact]
+    public void Validate_WhenTwoAttributesFailWithTheSameMessage_UsesEachAttributesCode()
+    {
+        var candidate = CreateCandidate(new SameMessageStep { Value = "ab" });
+
+        Sut.Validate([candidate]);
+
+        Assert.Equal(StepCandidateStatus.Invalid, candidate.Status);
+        Assert.Equal(
+            new[] { ProcessorErrorCodes.InvalidFormat, ProcessorErrorCodes.InvalidLength },
+            candidate.Messages.Select(x => x.Code).Order(StringComparer.Ordinal));
+        Assert.All(candidate.Messages, x => Assert.Equal("Invalid.", x.Message));
+    }
+
+    [Fact]
+    public void Validate_WhenRequiredFails_SkipsTheOtherAttributesOfThatProperty()
+    {
+        var candidate = CreateCandidate(new RequiredAndLengthStep());
+
+        Sut.Validate([candidate]);
+
         Assert.Equal(ProcessorErrorCodes.Required, Assert.Single(candidate.Messages).Code);
+    }
+
+    [Fact]
+    public void Validate_WhenAPropertyFails_DoesNotRunObjectLevelRules()
+    {
+        var candidate = CreateCandidate(new PropertyAndObjectRuleStep { Quantity = 0 });
+
+        Sut.Validate([candidate]);
+
+        Assert.Equal(ProcessorErrorCodes.OutOfRange, Assert.Single(candidate.Messages).Code);
     }
 
     [Fact]
@@ -298,6 +346,35 @@ public sealed class StepCandidateValidatorTests
     {
         [EmailAddress]
         public string Email { get; init; } = string.Empty;
+    }
+
+    private sealed class CustomMessageStep
+    {
+        [Range(1, 100, ErrorMessage = "Pick a number.")]
+        public int Quantity { get; init; }
+    }
+
+    private sealed class SameMessageStep
+    {
+        [MinLength(5, ErrorMessage = "Invalid.")]
+        [RegularExpression("^x", ErrorMessage = "Invalid.")]
+        public string Value { get; init; } = string.Empty;
+    }
+
+    private sealed class RequiredAndLengthStep
+    {
+        [Required]
+        [StringLength(2, MinimumLength = 1)]
+        public string? Value { get; init; }
+    }
+
+    private sealed class PropertyAndObjectRuleStep : IValidatableObject
+    {
+        [Range(1, 100)]
+        public int Quantity { get; init; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
+            [new ValidationResult("Object validation failed.")];
     }
 
     private sealed class CustomPropertyStep

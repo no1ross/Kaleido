@@ -4,6 +4,7 @@ using Kaleido.Processor.Context;
 using Kaleido.Storage;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
+using Kaleido.Processor.Registry;
 using Kaleido.UnitTests;
 
 namespace Kaleido.Processor.UnitTests;
@@ -761,6 +762,49 @@ public sealed class ProcessorRuntimeTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_RecordsOnlyInformationResponseErrors_AsRejectedInformationResponses()
+    {
+        var request = CreateRequest();
+        var processId = Assert.IsType<Guid>(request.ProcessId);
+        var context = CreateContext(processId, "REQ-001");
+        var informationCandidate = new StepCandidate
+        {
+            StepName = nameof(InfoStep),
+            Status = StepCandidateStatus.Invalid,
+            Registration = new ProcessStepRegistration(
+                typeof(InfoStep),
+                null,
+                typeof(object),
+                [],
+                [],
+                [],
+                new RepeatableOptions(),
+                new ProcessStepMetadata { Name = nameof(InfoStep), Description = "Info step.", Version = "1.0", DisplayName = "Info step" })
+        };
+        informationCandidate.AddError(ProcessorErrorCodes.InformationResponseUnanswered, "Question 'q1' has no answer.");
+        informationCandidate.AddError(ProcessorErrorCodes.Required, "The Items field is required.");
+
+        var store = new Mock<IKaleidoContextStore>();
+        store.Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>())).ReturnsAsync(context);
+        var stateUpdater = new Mock<IProcessorStateUpdater>();
+        stateUpdater.Setup(x => x.Reconcile(context)).Returns(context);
+        var planner = new Mock<IProcessorPlanner>();
+        planner.Setup(x => x.BuildPlan(It.IsAny<ProcessorRequest>(), It.IsAny<ProcessorContext>())).Returns(new ExecutionPlanResult { Candidates = [informationCandidate] });
+        var observation = new Mock<IProcessorExecutionObservation>();
+        var observability = new Mock<IProcessorObservability>();
+        observability.Setup(x => x.BeginExecution(It.IsAny<ProcessorExecutionObservationDetails>())).Returns(observation.Object);
+
+        await CreateSut(
+                store.Object, stateUpdater.Object, planner.Object, ProcessorReturning(x => CreateExecutionResult(x.ProcessId)).Object,
+                CreateProcessEventFactory().Object, new Mock<IKaleidoEventOutbox>().Object, observability.Object,
+                CreateCorrelationAccessor())
+            .ExecuteAsync(request);
+
+        observation.Verify(x => x.InformationResponseRejected(nameof(InfoStep), ProcessorErrorCodes.InformationResponseUnanswered), Times.Once);
+        observation.Verify(x => x.InformationResponseRejected(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ForANewProcess_SavesItRightAwayWithItsProcessCreatedEvent()
     {
         var created = OutboxEvent(KaleidoEventTypes.ProcessCreated);
@@ -964,4 +1008,11 @@ public sealed class ProcessorRuntimeTests
     }
 
     private sealed class TestResponse;
+
+    private sealed class InfoStep : IInformationStep
+    {
+        public string InformationRequestId { get; init; } = string.Empty;
+
+        public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
+    }
 }
