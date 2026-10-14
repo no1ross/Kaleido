@@ -17,6 +17,12 @@ public static class McpErrorCodes
     /// <summary><c>Kaleido:Mcp:InstructionsFile</c> points at a file that does not exist.</summary>
     public const string MissingInstructionsFile = "mcp_missing_instructions_file";
 
+    /// <summary>
+    /// A <c>Kaleido:Mcp</c> setting (bound or set in the <c>AddMcp</c> configure delegate) is out of
+    /// range, e.g. a negative <c>MaxElicitationRounds</c>. Reported at startup, never clamped.
+    /// </summary>
+    public const string InvalidOptions = "mcp_invalid_options";
+
     /// <summary>The agent called a tool that is not (or no longer) offered to this caller.</summary>
     public const string UnknownTool = "mcp_unknown_tool";
 

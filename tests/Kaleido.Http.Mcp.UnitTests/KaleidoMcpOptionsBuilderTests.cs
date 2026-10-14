@@ -66,17 +66,47 @@ public sealed class KaleidoMcpOptionsBuilderTests
     }
 
     [Fact]
-    public void Build_ClampsNegativeSettings_AndDefaultsBlankNames()
+    public void Build_DefaultsBlankNames()
     {
         var builder = Sut;
-        builder.MaxElicitationRounds = -1;
         builder.ServerName = " ";
         builder.ServerVersion = string.Empty;
 
         var options = builder.Build();
 
-        Assert.Equal(0, options.MaxElicitationRounds);
         Assert.Equal("kaleido", options.ServerName);
         Assert.Equal("1.0.0", options.ServerVersion);
+    }
+
+    [Fact]
+    public void Build_MaxElicitationRounds_DefaultsToFive()
+    {
+        Assert.Equal(5, Sut.Build().MaxElicitationRounds);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(50)]
+    public void Build_MaxElicitationRounds_KeepsZeroOrMore(int rounds)
+    {
+        var builder = Sut;
+        builder.MaxElicitationRounds = rounds;
+
+        Assert.Equal(rounds, builder.Build().MaxElicitationRounds);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(int.MinValue)]
+    public void Build_NegativeMaxElicitationRounds_FailsWithItsCode(int rounds)
+    {
+        var builder = Sut;
+        builder.MaxElicitationRounds = rounds;
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(builder.Build);
+
+        Assert.Equal(McpErrorCodes.InvalidOptions, exception.Code);
+        Assert.Contains("Kaleido:Mcp:MaxElicitationRounds", exception.Message, StringComparison.Ordinal);
     }
 }
