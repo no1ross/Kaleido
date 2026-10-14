@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ModelContextProtocol.AspNetCore.Authentication;
+using ModelContextProtocol.Authentication;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
@@ -23,7 +25,12 @@ public class McpClinicFixture : IAsyncLifetime
     // The host's own clients carry a service credential, as a router's do; tools must never use it.
     public const string HostServiceToken = "Bearer svc-host|doctor";
 
+    // The identity provider and scope the sign-in mode publishes in its protected-resource metadata.
+    public const string AuthorizationServer = "https://login.example.test/";
+    public const string Scope = "kaleido.mcp";
+
     private readonly bool withDownstreamThatIsDown;
+    private readonly bool withSignIn;
 
     private IHost? host;
 
@@ -35,10 +42,14 @@ public class McpClinicFixture : IAsyncLifetime
     {
     }
 
-    protected McpClinicFixture(bool withDownstreamThatIsDown)
+    protected McpClinicFixture(bool withDownstreamThatIsDown, bool withSignIn = false)
     {
         this.withDownstreamThatIsDown = withDownstreamThatIsDown;
+        this.withSignIn = withSignIn;
     }
+
+    /// <summary>A raw HTTP client on the TestServer, for protocol-level assertions.</summary>
+    public HttpClient CreateHttpClient() => Server.CreateClient();
 
     private TestServer Server =>
         host?.GetTestServer() ?? throw new InvalidOperationException("The host has not started.");
@@ -54,8 +65,28 @@ public class McpClinicFixture : IAsyncLifetime
                     web.ConfigureServices(services =>
                     {
                         services.AddRouting();
-                        services.AddAuthentication(BearerTestAuthHandler.SchemeName)
+                        var authentication = services.AddAuthentication(o =>
+                            {
+                                o.DefaultScheme = BearerTestAuthHandler.SchemeName;
+
+                                // Sign-in discovery (#212): the host still validates tokens with its own
+                                // scheme; the MCP SDK's scheme only answers the challenge with the
+                                // protected-resource metadata, so MCP clients find the IdP themselves.
+                                if (withSignIn)
+                                {
+                                    o.DefaultChallengeScheme = McpAuthenticationDefaults.AuthenticationScheme;
+                                }
+                            })
                             .AddScheme<AuthenticationSchemeOptions, BearerTestAuthHandler>(BearerTestAuthHandler.SchemeName, _ => { });
+
+                        if (withSignIn)
+                        {
+                            authentication.AddMcp(o => o.ResourceMetadata = new ProtectedResourceMetadata
+                            {
+                                AuthorizationServers = [AuthorizationServer],
+                                ScopesSupported = [Scope],
+                            });
+                        }
                         services.AddAuthorization();
 
                         var settings = new Dictionary<string, string?>
@@ -114,7 +145,12 @@ public class McpClinicFixture : IAsyncLifetime
                         app.UseEndpoints(endpoints =>
                         {
                             endpoints.MapKaleidoHttp(o => o.AggregateRegistry = withDownstreamThatIsDown);
-                            endpoints.MapKaleidoMcp("/mcp");
+                            var mcp = endpoints.MapKaleidoMcp("/mcp");
+
+                            if (withSignIn)
+                            {
+                                mcp.RequireAuthorization();
+                            }
                         });
                     });
                 })
