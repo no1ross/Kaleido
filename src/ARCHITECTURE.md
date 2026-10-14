@@ -177,13 +177,13 @@ Public seams consumers are expected to implement or replace:
 ### Internal structure
 
 **Process client**
-- `IKaleidoProcessorClient` — typed interface: `GetRegistryAsync`, `InvalidateRegistry`, `GetProcessStateAsync`, `ExecuteAsync`, `ExecuteStepAsync<TStep>`, `ExecuteStepAsync<TStep, TResult>` (the step name is `typeof(TStep).Name`)
+- `IKaleidoProcessorClient` — typed interface: `GetRegistryAsync`, `InvalidateRegistryAsync`, `GetProcessStateAsync`, `ExecuteAsync`, `ExecuteStepAsync<TStep>`, `ExecuteStepAsync<TStep, TResult>` (the step name is `typeof(TStep).Name`)
 - `KaleidoProcessorClient` — concrete implementation; lazily fetches and caches the remote registry per client instance
 - `KaleidoHttpClientException` — thrown on non-success responses and on registry lookup failures
 - `KaleidoClientServiceCollectionExtensions` — internal `AddProcessorClient(...)` registration used by `AddHttpClients`
 
 **Queryable client**
-- `IKaleidoQueryableClient` — interface: `GetRegistryAsync`, `InvalidateRegistry`, `QueryViewAsync(source, view, …)`, `QuerySourceAsync(source, …)` (with and without parameters). Sources and views are addressed by their published names (strings): the caller cannot reference the remote types
+- `IKaleidoQueryableClient` — interface: `GetRegistryAsync`, `InvalidateRegistryAsync`, `QueryViewAsync(source, view, …)`, `QuerySourceAsync(source, …)` (with and without parameters). Sources and views are addressed by their published names (strings): the caller cannot reference the remote types
 - `KaleidoQueryableClient` — concrete implementation; lazily fetches and caches the remote registry per client instance
 - `KaleidoQueryableClientException` — thrown on non-success responses and on registry lookup failures
 - `KaleidoQueryableClientServiceCollectionExtensions` — internal `AddQueryableClient(...)` registration used by `AddHttpClients`

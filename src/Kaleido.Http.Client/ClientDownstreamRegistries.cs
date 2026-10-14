@@ -100,7 +100,8 @@ internal sealed partial class ClientDownstreamRegistries(
         }
     }
 
-    public void Invalidate()
+    public async Task InvalidateAsync(
+        CancellationToken cancellationToken = default)
     {
         foreach (var name in ClientNames())
         {
@@ -109,15 +110,16 @@ internal sealed partial class ClientDownstreamRegistries(
                 // Process and Queryable clients of one name share one cached snapshot.
                 if (processClientMap.Options.ContainsKey(name))
                 {
-                    processClientFactory.GetClient(name).InvalidateRegistry();
+                    await processClientFactory.GetClient(name).InvalidateRegistryAsync(cancellationToken);
                 }
                 else
                 {
-                    queryableClientFactory.GetClient(name).InvalidateRegistry();
+                    await queryableClientFactory.GetClient(name).InvalidateRegistryAsync(cancellationToken);
                 }
             }
-            // Best effort per client: one client that cannot be resolved (e.g. misconfigured) must not
-            // stop the others from being invalidated. Invalidation is local and synchronous.
+            // Best effort per client: one client that cannot be resolved (e.g. misconfigured) or whose
+            // snapshot store fails must not stop the others from being invalidated. The caller's
+            // cancellation is not swallowed.
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 LogInvalidateFailed(logger, ex, name);

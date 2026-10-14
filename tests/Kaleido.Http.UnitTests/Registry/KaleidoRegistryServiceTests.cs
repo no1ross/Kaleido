@@ -119,7 +119,7 @@ public sealed class KaleidoRegistryServiceTests
 
         await sut.GetForCallerAsync(refresh: true, cancellationToken: Cancel);
 
-        downstream.Verify(x => x.Invalidate(), Times.Once);
+        downstream.Verify(x => x.InvalidateAsync(Cancel), Times.Once);
         downstream.Verify(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 

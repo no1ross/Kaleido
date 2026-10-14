@@ -13,7 +13,7 @@ See also:
 ## What lives here
 
 ### Shared registry fetch
-- `KaleidoRemoteRegistry` — singleton that fetches `GET /{routePrefix}/registry` once per named client and caches the combined `AggregatedRegistryResponse` under the canonical key `kaleido:{routePrefix}` in `IRegistrySnapshotStore`; both typed clients project their half (`Processes` / `Queryables`) from it, so a service's registry is only ever fetched once regardless of how many client types consume it. `InvalidateRegistry()` drops the snapshot — with a distributed store this propagates across all instances sharing it.
+- `KaleidoRemoteRegistry` — singleton that fetches `GET /{routePrefix}/registry` once per named client and caches the combined `AggregatedRegistryResponse` under the canonical key `kaleido:{routePrefix}` in `IRegistrySnapshotStore`; both typed clients project their half (`Processes` / `Queryables`) from it, so a service's registry is only ever fetched once regardless of how many client types consume it. `InvalidateRegistryAsync()` drops the snapshot — with a distributed store this propagates across all instances sharing it.
 
 ### Process client
 - `IKaleidoProcessorClient` — typed interface for registry, step metadata, process state, and step execution
@@ -76,7 +76,7 @@ The granular `AddProcessorClient`/`AddQueryableClient` builder extensions are in
 **Route-prefix contract:** `RoutePrefix` must equal the downstream service's `Kaleido:ServiceName` — every endpoint a Kaleido service publishes lives under `/{ServiceName}/...`. The default (client key lowercased) works when the service sets `ServiceName` to the same lowercase name. A mismatch produces 404s at call time, not a startup error.
 
 **Registry freshness:** cached registry snapshots are keyed `kaleido:{RoutePrefix}` — the same key the downstream writes its own snapshot under — so a shared `IRegistrySnapshotStore` (e.g. Redis) lets a router skip the HTTP call entirely on a fresh hit, and each service's TTL refreshes only its own entry. Options, settable per client or as `Kaleido:RegistryTtl` / `Kaleido:StrictRegistryProbe` defaults:
-- `RegistryTtl` - how often the client checks whether the remote registry changed (default **30 seconds**). A check sends the known revision as `If-None-Match`; an unchanged registry answers an empty **304** and the snapshot is kept, so a short interval is cheap. A capability call answered **404** (the service was deployed without that step, source or view) drops the snapshot at once, so the next read loads the current registry. Null = never checked again until `InvalidateRegistry()` or a 404.
+- `RegistryTtl` - how often the client checks whether the remote registry changed (default **30 seconds**). A check sends the known revision as `If-None-Match`; an unchanged registry answers an empty **304** and the snapshot is kept, so a short interval is cheap. A capability call answered **404** (the service was deployed without that step, source or view) drops the snapshot at once, so the next read loads the current registry. Null = never checked again until `InvalidateRegistryAsync()` or a 404.
 - `StrictRegistryProbe` — the `kaleido-{name}` health check probes `/{prefix}/registry?strict` so a partially-degraded aggregating downstream reports `Unhealthy`.
 
 Failed fetches are never cached - the next call retries naturally.

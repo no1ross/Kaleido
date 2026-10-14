@@ -28,8 +28,8 @@ internal sealed class HttpClientRegistryCache(
     /// Drops the stored snapshot so the next call re-fetches from the remote endpoint. With a
     /// distributed store this invalidates across all instances sharing the store.
     /// </summary>
-    public void Reset() =>
-        store.RemoveAsync(key).AsTask().GetAwaiter().GetResult();
+    public ValueTask ResetAsync(CancellationToken cancellationToken) =>
+        store.RemoveAsync(key, cancellationToken);
 
     /// <summary>The snapshot while fresh; otherwise <paramref name="fetch"/> loads it again.</summary>
     public Task<AggregatedRegistryResponse> GetOrFetchAsync(
