@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using Kaleido.Processor;
 using Kaleido.Samples.PriorAuth.Member.Queryable.ContextSources;
 using Kaleido.Samples.PriorAuth.Member.Queryable.ViewSources;
 
@@ -12,6 +11,9 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
     Version = "1.0.0")]
 [AvailableAfter<StartRadiologyIntakeStep>]
 [AvailableUntil<CaptureRequestingProviderStep>]
+// See ValidateMemberStep: the member cannot be changed once the MRI/CT questions are answered.
+[AvailableUntil<CaptureMriInfoStep>]
+[AvailableUntil<ConfirmCtInsteadOfMriStep>]
 [Repeatable]
 public sealed record CaptureMemberStep : IProcessStep
 {
