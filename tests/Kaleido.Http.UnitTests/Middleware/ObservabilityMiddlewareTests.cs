@@ -231,6 +231,89 @@ public sealed class ObservabilityMiddlewareTests
             Times.Once);
     }
 
+    private static DefaultHttpContext CreateContextAuthenticatedByDefaultScheme(
+        Mock<IKaleidoCorrelationContextInitializer> initializer,
+        bool authenticates,
+        KaleidoHttpOptions? httpOptions = null)
+    {
+        var schemeProvider = new Mock<IAuthenticationSchemeProvider>();
+        var scheme = new AuthenticationScheme("test", null, typeof(IAuthenticationHandler));
+
+        schemeProvider
+            .Setup(x => x.GetDefaultAuthenticateSchemeAsync())
+            .ReturnsAsync(scheme);
+
+        var authentication = new Mock<IAuthenticationService>();
+
+        authentication
+            .Setup(x => x.AuthenticateAsync(It.IsAny<HttpContext>(), null))
+            .ReturnsAsync(authenticates
+                ? AuthenticateResult.Success(new AuthenticationTicket(
+                    new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.Name, "svc-intake"), new Claim(ClaimTypes.Role, "internal-service")],
+                        "test")),
+                    "test"))
+                : AuthenticateResult.NoResult());
+
+        var services = new ServiceCollection()
+            .AddSingleton(initializer.Object)
+            .AddSingleton(schemeProvider.Object)
+            .AddSingleton(authentication.Object);
+
+        if (httpOptions is not null)
+        {
+            services.AddSingleton(httpOptions);
+        }
+
+        var httpContext = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
+
+        SetHeaders(httpContext, requestId: "req-42", callingProcessor: "intake");
+
+        return httpContext;
+    }
+
+    // Kaleido's middleware runs ahead of the host's UseAuthentication(), so the caller is not
+    // authenticated yet: the middleware authenticates it with the default scheme itself.
+    [Theory]
+    [InlineData(true, "req-42", "intake")]
+    [InlineData(false, null, null)]
+    public async Task InvokeAsync_WhenNotYetAuthenticated_TrustsIdentityOnlyIfTheDefaultSchemeAuthenticates(
+        bool authenticates,
+        string? expectedRequestId,
+        string? expectedCallingProcessor)
+    {
+        var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
+        var httpContext = CreateContextAuthenticatedByDefaultScheme(initializer, authenticates);
+
+        await CreateSut().InvokeAsync(httpContext);
+
+        initializer.Verify(
+            x => x.Initialize(
+                It.Is<KaleidoCorrelationContext>(c =>
+                    (expectedRequestId == null ? c.RequestId != "req-42" : c.RequestId == expectedRequestId) &&
+                    c.CallingProcessorName == expectedCallingProcessor)),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenTrustPredicateChecksTheUser_SeesTheAuthenticatedCaller()
+    {
+        var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
+        var httpContext = CreateContextAuthenticatedByDefaultScheme(
+            initializer,
+            authenticates: true,
+            new KaleidoHttpOptions { TrustCorrelationIdentity = ctx => ctx.User.IsInRole("internal-service") });
+
+        await CreateSut().InvokeAsync(httpContext);
+
+        initializer.Verify(
+            x => x.Initialize(
+                It.Is<KaleidoCorrelationContext>(c =>
+                    c.RequestId == "req-42" &&
+                    c.CallingProcessorName == "intake")),
+            Times.Once);
+    }
+
     [Fact]
     public async Task InvokeAsync_WhenActivityCurrent_TagsCorrelationFields()
     {
