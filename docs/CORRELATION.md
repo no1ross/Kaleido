@@ -80,6 +80,14 @@ The default is adaptive:
 - **Authentication registered** — headers are trusted only when
   `User.Identity.IsAuthenticated`.
 
+`ObservabilityMiddleware` is added by Kaleido's startup filter, ahead of the host's
+`UseAuthentication()`. Before deciding trust it therefore authenticates the request itself with
+the default authenticate scheme (when one is registered) and sets `HttpContext.User`, so both the
+default and a custom predicate see the real caller. ASP.NET caches the result for the request, so
+`UseAuthentication()` does not run the handler again. Without this, every caller would look
+anonymous, and a handoff to a processor that has not seen the process would fail with
+`pro_process_not_found` because the calling processor is dropped.
+
 Override the predicate to apply a custom policy (e.g. service-account-only trust):
 
 ```csharp
