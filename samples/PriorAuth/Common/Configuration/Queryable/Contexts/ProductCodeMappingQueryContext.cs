@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
@@ -8,16 +9,20 @@ namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 public sealed class ProductCodeMappingQueryContext : IQueryContext
 {
     [Key]
+    [Description("The unique identifier of the product code mapping.")]
     public Guid ProductCodeMappingId { get; init; }
 
     [Filterable(FilterOperator.Equals)]
+    [Description("The code system of the mapped procedure code, such as CPT or HCPCS.")]
     public ProcedureCodeSystem CodeSystem { get; init; }
 
     [Filterable(FilterOperator.Equals, FilterOperator.In)]
     [Searchable(Priority = 1, MatchMode = MatchMode.Exact)]
+    [Description("The procedure code that is routed to the product processor.")]
     public string CodeValue { get; init; } = string.Empty;
 
     [Filterable(FilterOperator.Equals)]
     [Searchable(Priority = 2, MatchMode = MatchMode.Exact)]
+    [Description("The product processor that handles requests for this code, such as radiology.")]
     public string ProcessorName { get; init; } = string.Empty;
 }

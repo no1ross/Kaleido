@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Processor;
 using Kaleido.Samples.ECommerce.Steps;
@@ -15,12 +16,14 @@ public sealed record AddItemToCartStep : IProcessStep
 
     [Required]
     [StringLength(100)]
+    [Description("The ID (a GUID) of the catalog product to add.")]
     public required string ItemId
     {
         get;
         init;
     }
 
+    [Description("The customer who owns the cart, if known; used to find their active cart.")]
     public Guid? CustomerId
     {
         get;
@@ -28,6 +31,7 @@ public sealed record AddItemToCartStep : IProcessStep
     }
 
     [Range(1, 999)]
+    [Description("How many units to add (1-999).")]
     public required int Quantity
     {
         get;

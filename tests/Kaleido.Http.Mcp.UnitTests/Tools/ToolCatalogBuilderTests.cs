@@ -335,9 +335,41 @@ public sealed class ToolCatalogBuilderTests
     {
         var catalog = Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Visits()] });
 
-        Assert.Contains("clinic_patientsource.Name", catalog.MissingDescriptions);
+        Assert.Contains("clinic.PatientSource.Name", catalog.MissingDescriptions);
         Assert.Contains("clinic_startvisitstep.reason", catalog.MissingDescriptions);
         Assert.DoesNotContain("clinic_startvisitstep.patientId", catalog.MissingDescriptions);
+    }
+
+    // The source and its view share the query context's fields: a missing field description is
+    // reported once for the field, not once per tool.
+    [Fact]
+    public void Build_ReportsAMissingFieldDescriptionOnce()
+    {
+        var catalog = Build(new AggregatedRegistryResponse { Queryables = [Patients()] });
+
+        Assert.Single(catalog.MissingDescriptions, x => x.EndsWith(".Name", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Build_ExplainsSearchOnlyAndSortOnlyFields()
+    {
+        var patients = Patients() with
+        {
+            Fields =
+            [
+                new QueryableFieldMetadata { Name = "Id", Description = "The id.", DataType = new DataTypeDescriptor("integer"), IsFilterable = true, FilterOperators = [FilterOperator.Equals], IsSearchable = true, SearchPriority = 2, MatchMode = MatchMode.Exact },
+                new QueryableFieldMetadata { Name = "Name", Description = "The patient's full name.", DataType = Text, IsSearchable = true, SearchPriority = 1, MatchMode = MatchMode.Contains },
+                new QueryableFieldMetadata { Name = "Born", Description = "The date of birth.", DataType = Text, IsSortable = true },
+            ],
+        };
+
+        var schema = Tool(Build(new AggregatedRegistryResponse { Queryables = [patients] }), "clinic_patientsource").Definition.InputSchema.GetProperty("properties");
+        var search = schema.GetProperty("searchText").GetProperty("description").GetString();
+        var sort = schema.GetProperty("sort").GetProperty("description").GetString();
+
+        Assert.Contains("Name (contains, The patient's full name)", search, StringComparison.Ordinal);
+        Assert.Contains("Id (exact)", search, StringComparison.Ordinal);
+        Assert.Contains("Born (The date of birth)", sort, StringComparison.Ordinal);
     }
 
     [Fact]

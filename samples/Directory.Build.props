@@ -4,4 +4,8 @@
         <IsPackable>false</IsPackable>
         <NoWarn>$(NoWarn);1591</NoWarn>
     </PropertyGroup>
+    <!-- Consumer analyzers (KAL2xxx), as a NuGet consumer of Kaleido gets them: samples are consumers too. -->
+    <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+        <ProjectReference Include="$(MSBuildThisFileDirectory)..\tools\analyzers\Kaleido.Analyzers\Kaleido.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    </ItemGroup>
 </Project>

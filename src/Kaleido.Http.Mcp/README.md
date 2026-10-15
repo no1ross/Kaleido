@@ -51,7 +51,10 @@ Names come from the published names in snake case. When two capabilities produce
 the later one says what it is (`_view`, `_source`, `_step`), and the collision is logged.
 
 Step and input descriptions are the published metadata (`[ProcessStep]`, `[Description]`,
-`[Display]`): they are the interface the agent reads (ADR 0007).
+`[Display]`): they are the interface the agent reads (ADR 0007). A query field's description is
+shown where the field first appears in the tool (`filters`, else `searchText`, else `sort`). At
+startup the adapter logs, at Warning, every capability, input and query field without a
+description, once per property (`service.Source.Field`), not once per tool.
 
 **Tool hints** ([ADR 0015](../../docs/decisions/0015-declared-step-behavior.md)) - what the implementer declared on
 `[ProcessStep]`, so a client knows which calls need extra care:
