@@ -36,8 +36,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @for (record of records(); track record.priorAuthRecordId) {
-                        <tr class="history-table__row" (click)="resumeProcess(record)">
+                    @for (record of records(); track record.processId) {
+                        <tr
+                            class="history-table__row"
+                            [class.history-table__row--finished]="!canResume(record)"
+                            (click)="resumeProcess(record)">
                             <td class="history-table__cell history-table__cell--name">
                                 {{ record.memberDisplayName || '—' }}
                             </td>
@@ -69,7 +72,9 @@
                                 {{ formatDate(record.lastUpdatedUtc) }}
                             </td>
                             <td class="history-table__cell history-table__cell--action">
-                                <span class="history-table__resume">{{ resumingProcessId() === record.processId ? 'Opening...' : 'Resume' }}</span>
+                                @if (canResume(record)) {
+                                    <span class="history-table__resume">{{ resumingProcessId() === record.processId ? 'Opening...' : 'Resume' }}</span>
+                                }
                             </td>
                         </tr>
                     }
