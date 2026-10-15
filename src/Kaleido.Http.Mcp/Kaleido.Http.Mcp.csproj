@@ -21,6 +21,8 @@
 	<ItemGroup>
 		<!-- Default agent instructions: Markdown, overridable or extendable through Kaleido:Mcp. -->
 		<EmbeddedResource Include="Instructions\DefaultInstructions.md" LogicalName="Kaleido.Http.Mcp.Instructions.DefaultInstructions.md" />
+		<!-- Appended when Kaleido:Mcp:ToolListing is FrontDoor: how unlisted tools are reached. -->
+		<EmbeddedResource Include="Instructions\FrontDoorInstructions.md" LogicalName="Kaleido.Http.Mcp.Instructions.FrontDoorInstructions.md" />
 	</ItemGroup>
 
 	<ItemGroup>

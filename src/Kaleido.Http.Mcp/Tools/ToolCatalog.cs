@@ -17,6 +17,15 @@ internal enum KaleidoToolKind
 
     /// <summary>Reads a process's state, next steps and pending questions.</summary>
     GetProcessState,
+
+    /// <summary>Front door: finds the caller's tools by what they do (no service call).</summary>
+    SearchTools,
+
+    /// <summary>Front door: one tool's full inputs and hints (no service call).</summary>
+    DescribeTool,
+
+    /// <summary>Front door: runs any of the caller's tools by name, listed or not (unwrapped by the handler).</summary>
+    CallTool,
 }
 
 /// <summary>An MCP tool and what it maps to in Kaleido.</summary>
@@ -60,6 +69,13 @@ internal sealed record KaleidoTool
     /// tool's top-level <c>processId</c> argument (the parameter is not repeated in the tool's schema).
     /// </summary>
     public bool ParametersTakeProcessId { get; init; }
+
+    /// <summary>
+    /// The tool is in <c>tools/list</c>. Every tool is listed with <see cref="McpToolListing.All"/>;
+    /// with <see cref="McpToolListing.FrontDoor"/> only the front door is, and the rest is reached
+    /// through <c>next</c>, <c>search_tools</c> and <c>call_tool</c>.
+    /// </summary>
+    public bool Listed { get; init; } = true;
 }
 
 /// <summary>
@@ -132,6 +148,12 @@ internal sealed record ToolCatalog
     /// <summary>Capabilities whose derived tool names collided, and the names they got instead.</summary>
     public IReadOnlyList<string> NameCollisions { get; init; } = [];
 
+    /// <summary>The catalog lists only its front door (<see cref="McpToolListing.FrontDoor"/>): <c>next</c> describes the open steps in full.</summary>
+    public bool IsFrontDoor { get; init; }
+
+    /// <summary>Configured <see cref="KaleidoMcpOptions.ListedTools"/> names that are not tools of this caller.</summary>
+    public IReadOnlyList<string> UnknownListedTools { get; init; } = [];
+
     private FrozenDictionary<string, KaleidoTool>? byName;
     private FrozenDictionary<string, KaleidoTool>? byUrl;
 
@@ -152,6 +174,8 @@ internal sealed record ToolCatalog
         TruncatedNames = original.TruncatedNames;
         UnresolvedLookups = original.UnresolvedLookups;
         NameCollisions = original.NameCollisions;
+        IsFrontDoor = original.IsFrontDoor;
+        UnknownListedTools = original.UnknownListedTools;
     }
 
     public KaleidoTool? Find(string toolName)

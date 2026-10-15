@@ -31,21 +31,26 @@ public class McpClinicFixture : IAsyncLifetime
 
     private readonly bool withDownstreamThatIsDown;
     private readonly bool withSignIn;
+    private readonly bool withFrontDoor;
 
     private IHost? host;
 
     /// <summary>The Authorization header of every request the clinic service received (path, header).</summary>
     public System.Collections.Concurrent.ConcurrentQueue<(string Path, string Authorization)> ServiceRequests { get; } = new();
 
+    /// <summary>The X-Kaleido-Process-Id header of every request the clinic service received (path, header).</summary>
+    public System.Collections.Concurrent.ConcurrentQueue<(string Path, string ProcessId)> ServiceProcessIds { get; } = new();
+
     public McpClinicFixture()
         : this(withDownstreamThatIsDown: false)
     {
     }
 
-    protected McpClinicFixture(bool withDownstreamThatIsDown, bool withSignIn = false)
+    protected McpClinicFixture(bool withDownstreamThatIsDown, bool withSignIn = false, bool withFrontDoor = false)
     {
         this.withDownstreamThatIsDown = withDownstreamThatIsDown;
         this.withSignIn = withSignIn;
+        this.withFrontDoor = withFrontDoor;
     }
 
     /// <summary>A raw HTTP client on the TestServer, for protocol-level assertions.</summary>
@@ -96,6 +101,12 @@ public class McpClinicFixture : IAsyncLifetime
                             ["Kaleido:Mcp:AdditionalInstructions"] = "A visit starts with a patient search."
                         };
 
+                        if (withFrontDoor)
+                        {
+                            settings["Kaleido:Mcp:ToolListing"] = "FrontDoor";
+                            settings["Kaleido:Mcp:ListedTools:0"] = "clinic_patient";
+                        }
+
                         if (withDownstreamThatIsDown)
                         {
                             settings["Kaleido:Clients:radiology:BaseUrl"] = "http://radiology.test/";
@@ -135,6 +146,7 @@ public class McpClinicFixture : IAsyncLifetime
                             if (context.Request.Path.StartsWithSegments("/clinic"))
                             {
                                 ServiceRequests.Enqueue((context.Request.Path, context.Request.Headers.Authorization.ToString()));
+                                ServiceProcessIds.Enqueue((context.Request.Path, context.Request.Headers[KaleidoCorrelationHeaders.ProcessId].ToString()));
                             }
 
                             await next(context);

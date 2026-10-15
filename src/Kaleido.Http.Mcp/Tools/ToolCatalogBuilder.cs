@@ -20,9 +20,10 @@ internal interface IToolCatalogBuilder
     ToolCatalog Build(AggregatedRegistryResponse registry);
 }
 
-internal sealed class ToolCatalogBuilder(
+internal sealed partial class ToolCatalogBuilder(
     IToolNameBuilder nameBuilder,
-    IToolSchemaBuilder schemaBuilder)
+    IToolSchemaBuilder schemaBuilder,
+    KaleidoMcpOptions options)
     : IToolCatalogBuilder
 {
     /// <summary>The built-in tool that submits the user's answers to a pending information request.</summary>
@@ -30,6 +31,15 @@ internal sealed class ToolCatalogBuilder(
 
     /// <summary>The built-in tool that reads a process's state.</summary>
     public const string GetProcessStateTool = "get_process_state";
+
+    /// <summary>Front door: the built-in tool that finds the caller's tools by what they do.</summary>
+    public const string SearchToolsTool = "search_tools";
+
+    /// <summary>Front door: the built-in tool that returns one tool's full inputs.</summary>
+    public const string DescribeToolTool = "describe_tool";
+
+    /// <summary>Front door: the built-in tool that runs any of the caller's tools by name.</summary>
+    public const string CallToolTool = "call_tool";
 
     /// <summary>The argument that carries the process id on step and query tools.</summary>
     public const string ProcessIdArgument = "processId";
@@ -76,9 +86,14 @@ internal sealed class ToolCatalogBuilder(
             AddBuiltInTools(context, processServices);
         }
 
+        var frontDoor = options.ToolListing == McpToolListing.FrontDoor;
+        var unknownListed = frontDoor ? ListFrontDoor(context) : [];
+
         return new ToolCatalog
         {
             Tools = context.Tools,
+            IsFrontDoor = frontDoor,
+            UnknownListedTools = unknownListed,
             Revision = registry.Revision,
             IsPartial = registry.IsPartial || registry.ClientErrors.Count > 0,
             UnavailableServices = registry.ClientErrors.Select(x => x.ClientName).ToArray(),
