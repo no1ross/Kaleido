@@ -42,8 +42,12 @@ public sealed class CaptureMriInfoHandler(
                 (await dbContext.PriorAuthorizationRequestedServices
                     .Where(x => x.PriorAuthorization.ProcessId == context.ProcessId)
                     .ToListAsync(cancellationToken))
-                .MaxBy(x => x.CreatedUtc)
-                ?? throw new InvalidOperationException($"Process {context.ProcessId} has no requested service.");
+                .MaxBy(x => x.CreatedUtc);
+
+            if (requestedService is null)
+            {
+                return ProcessStepHandlerResult.Reject(RadiologyProcessMessages.NoRequestedService());
+            }
 
             var originalCodeValue = requestedService.ResolvedCodeValue;
             var originalCodeSystem = requestedService.ResolvedCodeSystem;

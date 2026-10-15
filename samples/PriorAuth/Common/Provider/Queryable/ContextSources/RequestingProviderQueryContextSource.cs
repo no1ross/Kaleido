@@ -1,9 +1,11 @@
 using Kaleido.Queryable;
+using Kaleido.Samples.PriorAuth.Compliance;
 using Kaleido.Samples.PriorAuth.Provider.Data;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Clients;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Contexts;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Parameters;
 using Microsoft.EntityFrameworkCore;
+using Kaleido.Exceptions;
 
 namespace Kaleido.Samples.PriorAuth.Provider.Queryable.ContextSources;
 
@@ -22,13 +24,15 @@ internal sealed class RequestingProviderQueryContextSource(
         QueryExecutionContext executionContext,
         CancellationToken cancellationToken = default)
     {
+        // Kaleido validates [Required] parameters before the query runs; these guards keep the
+        // nullable contract explicit and answer 400 if they are ever reached.
         var parameters =
             executionContext.TryGetViewParameters<RequestingProviderSearchParameters>()
-            ?? throw new InvalidOperationException("RequestingProviderSearchParameters are required.");
+            ?? throw new KaleidoValidationException(PriorAuthErrorCodes.QueryParametersRequired, "The provider search parameters (planId) are required.");
 
         if (string.IsNullOrWhiteSpace(parameters.PlanId))
         {
-            throw new InvalidOperationException("PlanId is required.");
+            throw new KaleidoValidationException(PriorAuthErrorCodes.PlanIdRequired, "PlanId is required.");
         }
 
         var networkIds =
