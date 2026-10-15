@@ -40,6 +40,22 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddMcp_BindsTheFrontDoor_FromConfiguration()
+    {
+        var services = HostServices();
+
+        Builder(services, new Dictionary<string, string?>
+        {
+            ["Kaleido:Mcp:ToolListing"] = "FrontDoor",
+            ["Kaleido:Mcp:ListedTools:0"] = "history_prior_auth_record_list",
+        }).Object.AddMcp();
+
+        var options = RegisteredOptions(services);
+        Assert.Equal(McpToolListing.FrontDoor, options.ToolListing);
+        Assert.Equal(["history_prior_auth_record_list"], options.ListedTools);
+    }
+
+    [Fact]
     public void AddMcp_NegativeMaxElicitationRoundsInConfiguration_FailsWithItsCode()
     {
         var builder = Builder(HostServices(), new Dictionary<string, string?> { ["Kaleido:Mcp:MaxElicitationRounds"] = "-1" });

@@ -156,6 +156,8 @@ internal sealed partial class KaleidoToolInvoker(
                 KaleidoToolKind.Step => await StepAsync(tool, call, catalog, cancellationToken),
                 KaleidoToolKind.AnswerInformationRequest => await AnswerAsync(call, catalog, cancellationToken),
                 KaleidoToolKind.GetProcessState => await StateAsync(call.Arguments, catalog, cancellationToken),
+                KaleidoToolKind.SearchTools => SearchTools(call.Arguments, catalog),
+                KaleidoToolKind.DescribeTool => DescribeTool(call.Arguments, catalog),
                 _ => Error(McpErrorCodes.UnknownTool, $"Tool '{tool.Definition.Name}' has no handler."),
             };
         }
@@ -615,7 +617,7 @@ internal sealed partial class KaleidoToolInvoker(
                 .Where(x => x.Status is StepExecutionStatus.Failed or StepExecutionStatus.Exception)
                 .Select(x => (JsonNode?)x.StepName)
                 .ToArray()),
-            ["next"] = Next(service, state.RequiredStep, state.AvailableSteps, catalog, elicited: false),
+            ["next"] = Next(service, state.RequiredStep, state.AvailableSteps, catalog, elicited: false, processId),
         };
 
         if (note is not null)
@@ -787,7 +789,7 @@ internal sealed partial class KaleidoToolInvoker(
             summary["handoff"] = step.TargetProcessorName;
         }
 
-        summary["next"] = Next(pendingService, required, available, catalog, elicited: answered.Count > 0);
+        summary["next"] = Next(pendingService, required, available, catalog, elicited: answered.Count > 0, step.ProcessId);
 
         // A rejected step, or one that failed unexpectedly, changed nothing: the process is where it
         // was, so the user can correct the input and retry, or choose another step.
@@ -831,7 +833,8 @@ internal sealed partial class KaleidoToolInvoker(
         ProcessRequiredStep? required,
         IReadOnlyCollection<ProcessStepSummary> available,
         ToolCatalog catalog,
-        bool elicited)
+        bool elicited,
+        Guid? processId)
     {
         var next = new JsonObject { ["service"] = service };
 
@@ -855,11 +858,16 @@ internal sealed partial class KaleidoToolInvoker(
         else if (required is not null)
         {
             next["required"] = catalog.FindByUrl(required.ExecuteUrl) is { } tool
-                ? new JsonObject { ["tool"] = tool.Definition.Name, ["step"] = required.Name, ["displayName"] = required.DisplayName }
+                ? WithDetails(new JsonObject { ["tool"] = tool.Definition.Name, ["step"] = required.Name, ["displayName"] = required.DisplayName }, tool, catalog, processId)
                 : new JsonObject { ["step"] = required.Name, ["displayName"] = required.DisplayName, ["note"] = "You are not allowed to run this step." };
         }
 
-        var tools = OfferedTools(available, catalog);
+        var tools = OfferedTools(available, catalog, processId);
+
+        if (catalog.IsFrontDoor && HasDetails(next, tools))
+        {
+            next["howToRun"] = FrontDoorHowToRun;
+        }
 
         next["available"] = new JsonArray(tools);
 
@@ -878,7 +886,7 @@ internal sealed partial class KaleidoToolInvoker(
 
     // The available steps the caller may run, each with the steps it closes - from the published
     // availableUntil - so the user decides in which order to go, knowing what each choice ends.
-    private static JsonNode[] OfferedTools(IReadOnlyCollection<ProcessStepSummary> available, ToolCatalog catalog)
+    private static JsonNode[] OfferedTools(IReadOnlyCollection<ProcessStepSummary> available, ToolCatalog catalog, Guid? processId)
     {
         var offered = available
             .Select(x => (Step: x, Tool: catalog.FindByUrl(x.ExecuteUrl)))
@@ -900,7 +908,7 @@ internal sealed partial class KaleidoToolInvoker(
                     entry["closes"] = new JsonArray(closes);
                 }
 
-                return (JsonNode)entry;
+                return (JsonNode)(x.Tool is { } tool ? WithDetails(entry, tool, catalog, processId) : entry);
             })
             .ToArray();
     }

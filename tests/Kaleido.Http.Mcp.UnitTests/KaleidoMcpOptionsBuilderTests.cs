@@ -96,6 +96,47 @@ public sealed class KaleidoMcpOptionsBuilderTests
         Assert.Equal(rounds, builder.Build().MaxElicitationRounds);
     }
 
+    [Fact]
+    public void Build_ListsEverything_ByDefault()
+    {
+        var options = Sut.Build();
+
+        Assert.Equal(McpToolListing.All, options.ToolListing);
+        Assert.Empty(options.ListedTools);
+        Assert.DoesNotContain("call_tool", options.Instructions, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Build_FrontDoor_AppendsItsInstructions_BeforeTheAdditionalOnes()
+    {
+        var builder = Sut;
+        builder.ToolListing = McpToolListing.FrontDoor;
+        builder.AdditionalInstructions = "Start with the intake.";
+
+        var instructions = builder.Build().Instructions;
+
+        Assert.Contains("call_tool", instructions, StringComparison.Ordinal);
+        Assert.True(instructions.IndexOf("call_tool", StringComparison.Ordinal) < instructions.IndexOf("Start with the intake.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Build_ListedTools_AreTrimmedAndDistinct()
+    {
+        var builder = Sut;
+        builder.ListedTools = [" a ", "a", "", "b"];
+
+        Assert.Equal(["a", "b"], builder.Build().ListedTools);
+    }
+
+    [Fact]
+    public void Build_AnUndefinedToolListing_FailsWithItsCode()
+    {
+        var builder = Sut;
+        builder.ToolListing = (McpToolListing)42;
+
+        Assert.Equal(McpErrorCodes.InvalidOptions, Assert.Throws<KaleidoConfigurationException>(builder.Build).Code);
+    }
+
     [Theory]
     [InlineData(-1)]
     [InlineData(int.MinValue)]

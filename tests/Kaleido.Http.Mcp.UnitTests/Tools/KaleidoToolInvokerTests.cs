@@ -710,6 +710,122 @@ public sealed class KaleidoToolInvokerTests
         Assert.Null(outcome.InputRequired);
     }
 
+    // ── Front door ──────────────────────────────────────────────────────────
+
+    private static readonly KaleidoTool HiddenClose = Close with
+    {
+        Definition = new Tool
+        {
+            Name = "clinic_close_visit",
+            Description = "Close visit: Closes the visit.",
+            InputSchema = JsonSerializer.SerializeToElement(new { type = "object", properties = new { patientId = new { type = "string" } } }),
+            Annotations = new ToolAnnotations { ReadOnlyHint = false, DestructiveHint = true }
+        },
+        Listed = false,
+        Lookups =
+        [
+            new ToolLookup
+            {
+                Group = "patient",
+                Service = "clinic",
+                Source = "Patient",
+                QueryTool = "clinic_patient",
+                Inputs = [("patientId", "PatientId")],
+                Display = ["Name"]
+            }
+        ]
+    };
+
+    private static readonly ToolCatalog FrontDoorCatalog = new()
+    {
+        Tools = [Search, SearchView, Start, HiddenClose, Scan, Answer, State],
+        IsFrontDoor = true
+    };
+
+    [Fact]
+    public async Task FrontDoor_Next_DescribesAnUnlistedStep_WithItsInputs_AndItsSearchScopedToTheProcess()
+    {
+        StepReturns(StepResponse(required: CloseRequired));
+
+        var required = Body(await CreateSut().InvokeAsync(Start, Call(new { patientId = 1 }), FrontDoorCatalog, Cancel))["next"]?["required"];
+
+        Assert.Equal("clinic_close_visit", required?["tool"]?.GetValue<string>());
+        Assert.Equal("Close visit: Closes the visit.", required?["description"]?.GetValue<string>());
+        Assert.NotNull(required?["inputs"]?["properties"]?["patientId"]);
+        Assert.True(required?["hints"]?["destructive"]?.GetValue<bool>());
+
+        var search = required?["lookups"]?[0]?["search"];
+        Assert.Equal("clinic_patient", search?["tool"]?.GetValue<string>());
+        Assert.Equal(ProcessId.ToString(), search?["arguments"]?["processId"]?.GetValue<string>());
+        Assert.Equal("PatientId", required?["lookups"]?[0]?["fills"]?["patientId"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task FrontDoor_Next_SaysHowToRunUnlistedTools()
+    {
+        StepReturns(StepResponse(required: CloseRequired));
+
+        var next = Body(await CreateSut().InvokeAsync(Start, Call(new { patientId = 1 }), FrontDoorCatalog, Cancel))["next"];
+
+        Assert.Contains("call_tool", next?["howToRun"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ListingEverything_Next_KeepsItsShape()
+    {
+        StepReturns(StepResponse(required: CloseRequired));
+
+        var next = Body(await CreateSut().InvokeAsync(Start, Call(new { patientId = 1 }), Catalog, Cancel))["next"];
+
+        Assert.Null(next?["required"]?["inputs"]);
+        Assert.Null(next?["howToRun"]);
+    }
+
+    [Fact]
+    public async Task SearchTools_FindsTheCallersToolsByWhatTheyDo()
+    {
+        var search = new KaleidoTool { Definition = new Tool { Name = ToolCatalogBuilder.SearchToolsTool }, Kind = KaleidoToolKind.SearchTools };
+
+        var body = Body(await CreateSut().InvokeAsync(search, Call(new { text = "close visit" }), FrontDoorCatalog, Cancel));
+
+        Assert.Equal("clinic_close_visit", body["tools"]?[0]?["name"]?.GetValue<string>());
+        Assert.False(body["tools"]?[0]?["listed"]?.GetValue<bool>());
+        Assert.Empty(queries);
+        Assert.Empty(posts);
+    }
+
+    [Fact]
+    public async Task SearchTools_WithoutText_IsAnArgumentError()
+    {
+        var search = new KaleidoTool { Definition = new Tool { Name = ToolCatalogBuilder.SearchToolsTool }, Kind = KaleidoToolKind.SearchTools };
+
+        var outcome = await CreateSut().InvokeAsync(search, Call(), FrontDoorCatalog, Cancel);
+
+        Assert.Equal(McpErrorCodes.InvalidArguments, Body(outcome)["code"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task DescribeTool_ReturnsATool_WithItsInputs_AndHowToRunIt()
+    {
+        var describe = new KaleidoTool { Definition = new Tool { Name = ToolCatalogBuilder.DescribeToolTool }, Kind = KaleidoToolKind.DescribeTool };
+
+        var body = Body(await CreateSut().InvokeAsync(describe, Call(new { name = "clinic_close_visit" }), FrontDoorCatalog, Cancel));
+
+        Assert.NotNull(body["inputs"]?["properties"]?["patientId"]);
+        Assert.Contains("call_tool", body["howToRun"]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Null(body["lookups"]?[0]?["search"]?["arguments"]);
+    }
+
+    [Fact]
+    public async Task DescribeTool_ForAToolTheCallerDoesNotHave_IsAnUnknownToolResult()
+    {
+        var describe = new KaleidoTool { Definition = new Tool { Name = ToolCatalogBuilder.DescribeToolTool }, Kind = KaleidoToolKind.DescribeTool };
+
+        var outcome = await CreateSut().InvokeAsync(describe, Call(new { name = "clinic_chart" }), FrontDoorCatalog, Cancel);
+
+        Assert.Equal(McpErrorCodes.UnknownTool, Body(outcome)["code"]?.GetValue<string>());
+    }
+
     // ── Guided lookups ──────────────────────────────────────────────────────
 
     private static readonly KaleidoTool PickPatient = new()

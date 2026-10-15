@@ -1,6 +1,7 @@
 These tools are generated from Kaleido services and filtered to what you are allowed to use.
 
 - Query tools are read-only: they search and read data. Step tools change state: each runs one step of a business process.
+- When you are working on a process, pass its processId to query tools too, so every query is recorded with the process.
 - A process is identified by its processId. A step tool returns the processId; pass it to the next step tools. A step tool that can start a process may be called without a processId. Never make up a processId: an unknown one is rejected.
 - After every step, read `next`: call the `required` tool when present. When several steps are `available`, offer them to the user and let the user choose; never pick one yourself, and say which choices end others (`closes`). When `handoff` names another service, continue with that service's tools and the same processId.
 - Ids are never typed by users and never guessed. When a step input says its value comes from a query tool, ask the user for details that identify the record (for example a name and date of birth), search with that tool, show the matches, and let the user pick one; then pass that result's fields. Ask the user for every other input you do not know.

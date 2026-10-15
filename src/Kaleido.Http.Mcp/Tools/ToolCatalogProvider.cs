@@ -22,12 +22,14 @@ internal sealed partial class ToolCatalogProvider(
     IKaleidoRegistryService registry,
     IToolCatalogBuilder catalogBuilder,
     IMcpObservability observability,
+    KaleidoMcpOptions options,
     ILogger<ToolCatalogProvider> logger)
     : IToolCatalogProvider
 {
     private const int MaxRevisions = 256;
 
-    // Translated catalogs by registry revision (one per distinct caller-visible registry).
+    // Translated catalogs by listing and registry revision (one per distinct caller-visible registry;
+    // the listing is part of the key, so hosts with different settings never share a catalog).
     private static readonly ConcurrentDictionary<string, ToolCatalog> Catalogs = new(StringComparer.Ordinal);
 
     public async Task<ToolCatalog> GetAsync(CancellationToken cancellationToken = default)
@@ -42,8 +44,9 @@ internal sealed partial class ToolCatalogProvider(
 
         var response = await registry.GetForCallerAsync(cancellationToken: cancellationToken);
         var revision = response.Revision ?? string.Empty;
+        var key = $"{options.ToolListing}|{string.Join(',', options.ListedTools)}|{revision}";
 
-        if (Catalogs.TryGetValue(revision, out var known))
+        if (Catalogs.TryGetValue(key, out var known))
         {
             observability.RegistryRead(McpTelemetry.RegistryHit, revision);
 
@@ -57,7 +60,7 @@ internal sealed partial class ToolCatalogProvider(
             Catalogs.Clear();
         }
 
-        Catalogs[revision] = catalog;
+        Catalogs[key] = catalog;
         observability.RegistryRead(McpTelemetry.RegistryFetched, revision);
         Report(catalog);
 
@@ -87,11 +90,19 @@ internal sealed partial class ToolCatalogProvider(
             LogUnresolvedLookups(logger, catalog.UnresolvedLookups.Count, string.Join(", ", catalog.UnresolvedLookups));
         }
 
+        if (catalog.UnknownListedTools.Count > 0)
+        {
+            LogUnknownListedTools(logger, catalog.UnknownListedTools.Count, string.Join(", ", catalog.UnknownListedTools));
+        }
+
         if (catalog.IsPartial)
         {
             LogPartialRegistry(logger, string.Join(", ", catalog.UnavailableServices));
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: {Count} name(s) in Kaleido:Mcp:ListedTools are not tools of this caller, so they are not listed (check the names, or the caller's access): {Names}.")]
+    private static partial void LogUnknownListedTools(ILogger logger, int count, string names);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: {Count} tool(s) or argument(s) have no description, so agents must guess what they mean. Add [Description] to: {Missing}.")]
     private static partial void LogMissingDescriptions(ILogger logger, int count, string missing);

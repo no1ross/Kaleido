@@ -43,6 +43,43 @@ public sealed record KaleidoMcpOptions
     /// <see cref="McpErrorCodes.InvalidOptions"/>.
     /// </remarks>
     public int MaxElicitationRounds { get; init; } = 5;
+
+    /// <summary>Which tools <c>tools/list</c> offers; see <see cref="McpToolListing"/>.</summary>
+    /// <remarks>The default, <see cref="McpToolListing.All"/>, lists every tool the caller may use.</remarks>
+    public McpToolListing ToolListing { get; init; } = McpToolListing.All;
+
+    /// <summary>
+    /// With <see cref="McpToolListing.FrontDoor"/>: more tools to list by name (for example a search
+    /// no starting step declares as a lookup, such as "find a previous request"). Names that are not
+    /// tools of the host are reported at Warning when the tools are built. Ignored with
+    /// <see cref="McpToolListing.All"/>.
+    /// </summary>
+    public IReadOnlyList<string> ListedTools { get; init; } = [];
+}
+
+/// <summary>Which of the caller's tools the MCP adapter lists in <c>tools/list</c>.</summary>
+/// <remarks>
+/// Listing decides only what the agent sees up front. Every tool of the caller stays callable, with
+/// the same authorization and process rules, whichever mode is used.
+/// </remarks>
+public enum McpToolListing
+{
+    /// <summary>
+    /// Every query and step tool the caller may use, plus the built-ins (today's behavior). Best for
+    /// small hosts: every tool has its own typed definition and its own approval prompt in clients.
+    /// </summary>
+    All,
+
+    /// <summary>
+    /// A small, fixed menu for hosts with many capabilities: the steps that can start a process,
+    /// the queries those steps declare as lookups, the configured
+    /// <see cref="KaleidoMcpOptions.ListedTools"/>, and the built-ins, including
+    /// <c>search_tools</c>, <c>describe_tool</c> and <c>call_tool</c>. Steps that are open in a
+    /// process are described in each step result's <c>next</c> (inputs, approval hints, the lookups
+    /// they need with the processId filled in) and run with <c>call_tool</c>. The menu does not grow
+    /// with the number of non-initial steps or unlisted queries.
+    /// </summary>
+    FrontDoor,
 }
 
 /// <summary>
@@ -53,6 +90,7 @@ public sealed record KaleidoMcpOptions
 public sealed class KaleidoMcpOptionsBuilder
 {
     private const string DefaultInstructionsResource = "Kaleido.Http.Mcp.Instructions.DefaultInstructions.md";
+    private const string FrontDoorInstructionsResource = "Kaleido.Http.Mcp.Instructions.FrontDoorInstructions.md";
 
     /// <inheritdoc cref="KaleidoMcpOptions.ServerName"/>
     public string ServerName { get; set; } = "kaleido";
@@ -82,6 +120,12 @@ public sealed class KaleidoMcpOptionsBuilder
     /// <inheritdoc cref="KaleidoMcpOptions.MaxElicitationRounds"/>
     public int MaxElicitationRounds { get; set; } = 5;
 
+    /// <inheritdoc cref="KaleidoMcpOptions.ToolListing"/>
+    public McpToolListing ToolListing { get; set; } = McpToolListing.All;
+
+    /// <inheritdoc cref="KaleidoMcpOptions.ListedTools"/>
+    public IReadOnlyList<string> ListedTools { get; set; } = [];
+
     internal KaleidoMcpOptions Build()
     {
         if (MaxElicitationRounds < 0)
@@ -93,12 +137,25 @@ public sealed class KaleidoMcpOptionsBuilder
                     $"{KaleidoMcpOptions.SectionName}:{nameof(MaxElicitationRounds)} is {MaxElicitationRounds}; it must be zero or more (0 returns every information request to the agent)."));
         }
 
+        if (!Enum.IsDefined(ToolListing))
+        {
+            throw new KaleidoConfigurationException(
+                McpErrorCodes.InvalidOptions,
+                $"{KaleidoMcpOptions.SectionName}:{nameof(ToolListing)} is '{ToolListing}'; use {nameof(McpToolListing.All)} or {nameof(McpToolListing.FrontDoor)}.");
+        }
+
         return new()
         {
             ServerName = string.IsNullOrWhiteSpace(ServerName) ? "kaleido" : ServerName.Trim(),
             ServerVersion = string.IsNullOrWhiteSpace(ServerVersion) ? "1.0.0" : ServerVersion.Trim(),
             Instructions = ResolveInstructions(),
             MaxElicitationRounds = MaxElicitationRounds,
+            ToolListing = ToolListing,
+            ListedTools = ListedTools
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToArray(),
         };
     }
 
@@ -109,7 +166,13 @@ public sealed class KaleidoMcpOptionsBuilder
                 ? Instructions.Trim()
                 : !string.IsNullOrWhiteSpace(InstructionsFile)
                     ? ReadInstructionsFile(InstructionsFile)
-                    : ReadDefaultInstructions();
+                    : ReadResource(DefaultInstructionsResource);
+
+        // The front door changes how unlisted tools are reached; the agent is told whatever the base text.
+        if (ToolListing == McpToolListing.FrontDoor)
+        {
+            instructions += "\n\n" + ReadResource(FrontDoorInstructionsResource);
+        }
 
         return string.IsNullOrWhiteSpace(AdditionalInstructions)
             ? instructions
@@ -129,13 +192,13 @@ public sealed class KaleidoMcpOptionsBuilder
                 $"Kaleido MCP InstructionsFile '{fullPath}' ({KaleidoMcpOptions.SectionName}:InstructionsFile) was not found.");
     }
 
-    private static string ReadDefaultInstructions()
+    private static string ReadResource(string name)
     {
         using var stream =
-            typeof(KaleidoMcpOptionsBuilder).Assembly.GetManifestResourceStream(DefaultInstructionsResource)
+            typeof(KaleidoMcpOptionsBuilder).Assembly.GetManifestResourceStream(name)
             ?? throw new KaleidoFrameworkException(
                 FrameworkErrorCodes.MissingRegistration,
-                $"The packaged MCP instructions resource '{DefaultInstructionsResource}' is missing.");
+                $"The packaged MCP instructions resource '{name}' is missing.");
 
         using var reader = new StreamReader(stream);
 
