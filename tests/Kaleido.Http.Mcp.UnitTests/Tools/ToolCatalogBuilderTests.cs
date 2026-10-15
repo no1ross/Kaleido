@@ -155,6 +155,46 @@ public sealed class ToolCatalogBuilderTests
     }
 
     [Fact]
+    public void QueryTool_WithoutProcesses_HasNoProcessId()
+    {
+        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()] }), "clinic_patientsource");
+
+        Assert.False(tool.Definition.InputSchema.GetProperty("properties").TryGetProperty("processId", out _));
+        Assert.DoesNotContain("processId", tool.Definition.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void QueryTool_WhereProcessesExist_TakesAnOptionalTopLevelProcessId()
+    {
+        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Visits()] }), "clinic_patientsource");
+        var schema = tool.Definition.InputSchema;
+
+        Assert.Equal("uuid", schema.GetProperty("properties").GetProperty("processId").GetProperty("format").GetString());
+        Assert.Equal(["parameters"], schema.GetProperty("required").EnumerateArray().Select(x => x.GetString()));
+        Assert.False(tool.ParametersTakeProcessId);
+        Assert.Contains("Pass the processId of the process you are working on, when there is one.", tool.Definition.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void QueryTool_WhoseSourceDeclaresAProcessId_TakesItOnlyAtTheTopLevel()
+    {
+        var scoped = Patients() with
+        {
+            Parameters = [new QueryableQueryParameter { Name = "ProcessId", Description = "The visit this search is for.", DataType = Text, Constraints = [new ConstraintContract { Type = "Required" }] }]
+        };
+
+        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [scoped], Processes = [Visits()] }), "clinic_patientsource");
+        var schema = tool.Definition.InputSchema;
+        var properties = schema.GetProperty("properties");
+
+        Assert.True(tool.ParametersTakeProcessId);
+        Assert.False(properties.TryGetProperty("parameters", out _));
+        Assert.StartsWith("The visit this search is for.", properties.GetProperty("processId").GetProperty("description").GetString(), StringComparison.Ordinal);
+        Assert.Equal(["processId"], schema.GetProperty("required").EnumerateArray().Select(x => x.GetString()));
+        Assert.Contains("Scoped to one process: pass its processId.", tool.Definition.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ViewTool_UsesItsSourcesFields_AndNamesItsSource()
     {
         var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()] }), "clinic_patientcardviewsource");

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -82,6 +83,7 @@ internal sealed record ToolOutcome
 internal sealed partial class KaleidoToolInvoker(
     IKaleidoProcessorClientFactory processors,
     IKaleidoQueryableClientFactory queryables,
+    IKaleidoProcessForwarding processForwarding,
     IInformationRequestElicitor elicitor,
     KaleidoMcpOptions options,
     ILogger<KaleidoToolInvoker> logger)
@@ -104,6 +106,18 @@ internal sealed partial class KaleidoToolInvoker(
             return Error(
                 McpErrorCodes.ProcessConflict,
                 $"{tool.Definition.Name}: the process was changed by another call, so nothing was saved. Read its state with {ToolCatalogBuilder.GetProcessStateTool} and decide with the user what to do next; do not repeat the call.");
+        }
+
+        // A server failure says nothing the agent can act on (and may name internal types): tell it
+        // what to check instead of what failed inside the service.
+        if ((int)exception.StatusCode >= 500 && exception.Errors.Count == 0)
+        {
+            return Error(
+                McpErrorCodes.ServiceError,
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{tool.Definition.Name}: the service failed ({(int)exception.StatusCode}) and reported no reason. Check your arguments against this tool's inputs; if they are right, tell the user and do not repeat the same call. If it was a step, check the process with {ToolCatalogBuilder.GetProcessStateTool} before trying again."),
+                Serialize(new { status = (int)exception.StatusCode, errors = exception.Errors }));
         }
 
         return Error(
@@ -180,6 +194,52 @@ internal sealed partial class KaleidoToolInvoker(
         IReadOnlyDictionary<string, JsonElement> arguments,
         CancellationToken cancellationToken)
     {
+        QueryApiBody? body;
+        JsonObject? parameters = null;
+
+        try
+        {
+            body = QueryBody(arguments).Deserialize<QueryApiBody>(KaleidoJsonOptions.Options);
+
+            if (arguments.TryGetValue("parameters", out var given) && given.ValueKind == JsonValueKind.Object)
+            {
+                parameters = JsonNode.Parse(given.GetRawText())?.AsObject();
+            }
+        }
+        catch (JsonException exception)
+        {
+            return Error(McpErrorCodes.InvalidArguments, $"The query arguments have the wrong shape: {exception.Message}");
+        }
+
+        // One processId, at the top level. A nested parameters.processId (the earlier shape) is still
+        // accepted when the top level has none.
+        var processIdText =
+            Text(arguments, ToolCatalogBuilder.ProcessIdArgument) ??
+            (parameters?[ToolCatalogBuilder.ProcessIdArgument] is JsonValue nested && nested.TryGetValue<string>(out var nestedText) ? nestedText : null);
+
+        Guid? processId = null;
+
+        if (!string.IsNullOrWhiteSpace(processIdText))
+        {
+            if (!Guid.TryParse(processIdText, out var parsed))
+            {
+                return Error(McpErrorCodes.InvalidArguments, $"processId '{processIdText}' is not a valid id.");
+            }
+
+            processId = parsed;
+        }
+
+        if (MissingArgument(tool, arguments, processId) is { } missing)
+        {
+            return missing;
+        }
+
+        return await RunQueryAsync(tool, body, parameters, processId, cancellationToken);
+    }
+
+    // { searchText?, filter?, sort?, page? } from the tool's arguments; several filters are and-ed.
+    private static JsonObject QueryBody(IReadOnlyDictionary<string, JsonElement> arguments)
+    {
         var query = new JsonObject();
 
         if (Text(arguments, "searchText") is { } searchText)
@@ -209,33 +269,128 @@ internal sealed partial class KaleidoToolInvoker(
         CopyArgument(arguments, "sort", query);
         CopyArgument(arguments, "page", query);
 
-        QueryApiBody? body;
-        JsonObject? parameters = null;
+        return query;
+    }
 
-        try
-        {
-            body = query.Deserialize<QueryApiBody>(KaleidoJsonOptions.Options);
+    private async Task<CallToolResult> RunQueryAsync(
+        KaleidoTool tool,
+        QueryApiBody? body,
+        JsonObject? parameters,
+        Guid? processId,
+        CancellationToken cancellationToken)
+    {
 
-            if (arguments.TryGetValue("parameters", out var given) && given.ValueKind == JsonValueKind.Object)
-            {
-                parameters = JsonNode.Parse(given.GetRawText())?.AsObject();
-            }
-        }
-        catch (JsonException exception)
+        if (tool.ParametersTakeProcessId && processId is { } scoped)
         {
-            return Error(McpErrorCodes.InvalidArguments, $"The query arguments have the wrong shape: {exception.Message}");
+            parameters ??= [];
+            parameters[ToolCatalogBuilder.ProcessIdArgument] = scoped.ToString();
         }
 
         var client = Queryable(tool.Service);
         var request = new QueryApiRequest<JsonObject>(parameters, body);
         var source = tool.SourceName ?? tool.CapabilityName;
 
+        // The process id goes with the query as X-Kaleido-Process-Id, so the service records it.
+        using var forwarded = processId is null ? null : processForwarding.ForwardProcess(processId);
+
         var result = tool.ViewName is { } view
             ? await client.QueryViewAsync<JsonObject, JsonObject>(source, view, request, cancellationToken)
             : await client.QuerySourceAsync<JsonObject, JsonObject>(source, request, cancellationToken);
 
-        return Success(Serialize(result) ?? new JsonObject());
+        var answer = Serialize(result) as JsonObject ?? [];
+
+        if (processId is { } id)
+        {
+            answer[ToolCatalogBuilder.ProcessIdArgument] = id.ToString();
+        }
+
+        return Success(answer);
     }
+
+    // The tool's own required inputs, checked before anything is sent, so a missing value comes back
+    // as a fix the agent can make (the input's own description) rather than a service failure.
+    private static CallToolResult? MissingArgument(
+        KaleidoTool tool,
+        IReadOnlyDictionary<string, JsonElement> arguments,
+        Guid? processId)
+    {
+        var schema = tool.Definition.InputSchema;
+
+        if (schema.ValueKind != JsonValueKind.Object ||
+            !schema.TryGetProperty("properties", out var properties) ||
+            properties.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var name in RequiredNames(schema))
+        {
+            if (!properties.TryGetProperty(name, out var property))
+            {
+                continue;
+            }
+
+            var present = string.Equals(name, ToolCatalogBuilder.ProcessIdArgument, StringComparison.Ordinal)
+                ? processId is not null
+                : arguments.TryGetValue(name, out var value) && IsPresent(value);
+
+            // A missing required object is reported by its first required member: what the agent must supply.
+            var missing = present
+                ? MissingMember(name, property, arguments.TryGetValue(name, out var given) ? given : default)
+                : RequiredNames(property).FirstOrDefault() is { } inner
+                    ? ($"{name}.{inner}", MemberDescription(property, inner))
+                    : (name, Description(property));
+
+            if (missing is var (path, description))
+            {
+                return Error(
+                    McpErrorCodes.InvalidArguments,
+                    $"{tool.Definition.Name}: {path} is required" + (string.IsNullOrWhiteSpace(description) ? "." : $": {description.Trim()}") + " Nothing was sent.");
+            }
+        }
+
+        return null;
+    }
+
+    // The first required member a given object argument leaves out.
+    private static (string Path, string? Description)? MissingMember(string name, JsonElement property, JsonElement given)
+    {
+        if (given.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var inner in RequiredNames(property))
+        {
+            if (!given.TryGetProperty(inner, out var value) || !IsPresent(value))
+            {
+                return ($"{name}.{inner}", MemberDescription(property, inner));
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> RequiredNames(JsonElement element) =>
+        element.ValueKind == JsonValueKind.Object &&
+        element.TryGetProperty("required", out var required) &&
+        required.ValueKind == JsonValueKind.Array
+            ? required.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()).OfType<string>()
+            : [];
+
+    private static bool IsPresent(JsonElement value) =>
+        value.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined) &&
+        (value.ValueKind != JsonValueKind.String || !string.IsNullOrWhiteSpace(value.GetString()));
+
+    private static string? MemberDescription(JsonElement property, string member) =>
+        property.TryGetProperty("properties", out var members) && members.TryGetProperty(member, out var inner)
+            ? Description(inner)
+            : null;
+
+    private static string? Description(JsonElement property) =>
+        property.TryGetProperty("description", out var description) && description.ValueKind == JsonValueKind.String
+            ? description.GetString()
+            : null;
 
     // ── Steps ────────────────────────────────────────────────────────────────
 

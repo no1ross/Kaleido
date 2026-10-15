@@ -7,11 +7,13 @@ internal interface ICorrelationHeaderStamper
 
 /// <summary>
 /// Stamps outbound correlation headers. Request id and process id are forwarded
-/// unchanged; calling processor and step are this service and its executing step,
+/// unchanged (the process id of an <see cref="IKaleidoProcessForwarding"/> scope wins over
+/// the inbound one); calling processor and step are this service and its executing step,
 /// sent only when the call is made from inside a step (never forwarded from inbound).
 /// </summary>
 internal sealed class CorrelationHeaderStamper(
     IKaleidoCorrelationContextAccessor correlation,
+    IKaleidoProcessForwarding processForwarding,
     KaleidoServiceOptions serviceOptions)
     : ICorrelationHeaderStamper
 {
@@ -26,11 +28,11 @@ internal sealed class CorrelationHeaderStamper(
                 ctx.RequestId.Sanitize());
         }
 
-        if (ctx.ProcessId.HasValue)
+        if ((processForwarding.ProcessId ?? ctx.ProcessId) is { } processId)
         {
             request.Headers.TryAddWithoutValidation(
                 KaleidoCorrelationHeaders.ProcessId,
-                ctx.ProcessId.Value.ToString());
+                processId.ToString());
         }
 
         if (string.IsNullOrWhiteSpace(ctx.ExecutingStepName))

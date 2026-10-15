@@ -73,7 +73,7 @@ public sealed class McpObservabilityTests
     {
         using (var call = CreateSut().BeginToolCall("clinic_start_visit"))
         {
-            call.Resolved(Step);
+            call.Resolved(Step, processId: null);
             call.Completed(Result("""{"processId":"p-1","outcome":"completed"}"""));
         }
 
@@ -98,7 +98,7 @@ public sealed class McpObservabilityTests
     {
         using (var call = CreateSut().BeginToolCall("clinic_close_visit"))
         {
-            call.Resolved(Step);
+            call.Resolved(Step, processId: null);
             call.Completed(Result("""{"code":"mcp_invalid_arguments","message":"x"}""", isError: true));
         }
 
@@ -109,6 +109,18 @@ public sealed class McpObservabilityTests
             x.Instrument == McpTelemetry.ToolCallsCounterName &&
             Equals(x.Tags[McpTelemetry.TagOutcome], McpTelemetry.OutcomeError) &&
             Equals(x.Tags[McpTelemetry.TagErrorCode], McpErrorCodes.InvalidArguments));
+    }
+
+    [Fact]
+    public void TheProcessIdArgument_TagsTheSpan_EvenWhenTheResultHasNone()
+    {
+        using (var call = CreateSut().BeginToolCall("clinic_patient"))
+        {
+            call.Resolved(Step, "p-7");
+            call.Completed(Result("""{"code":"mcp_service_error","message":"x"}""", isError: true));
+        }
+
+        Assert.Equal("p-7", Span(McpTelemetry.ToolCallActivityName).GetTagItem(McpTelemetry.TagProcessId));
     }
 
     [Fact]

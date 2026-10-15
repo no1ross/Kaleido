@@ -140,12 +140,12 @@ internal sealed partial class KaleidoMcpToolHandler(
                 $"There is no tool '{name}' for you. Tools follow your access and the deployed services; list the tools again.");
         }
 
-        observation.Resolved(tool);
-
         var arguments =
             request.Params?.Arguments is { } given
                 ? new Dictionary<string, JsonElement>(given, StringComparer.Ordinal)
                 : new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+
+        observation.Resolved(tool, ProcessIdOf(arguments));
 
         // A front door calls services as the caller, never with the host's own credentials.
         using var asCaller = callerForwarding.ForwardCaller(
@@ -196,6 +196,14 @@ internal sealed partial class KaleidoMcpToolHandler(
 
         return result;
     }
+
+    // The call's processId argument when it is a valid id (tagging only; the invoker validates it).
+    private static string? ProcessIdOf(Dictionary<string, JsonElement> arguments) =>
+        arguments.TryGetValue(ToolCatalogBuilder.ProcessIdArgument, out var value) &&
+        value.ValueKind == JsonValueKind.String &&
+        Guid.TryParse(value.GetString(), out var id)
+            ? id.ToString()
+            : null;
 
     private static CallToolResult Error(string code, string message) =>
         new()

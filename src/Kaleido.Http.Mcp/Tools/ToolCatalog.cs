@@ -54,6 +54,12 @@ internal sealed record KaleidoTool
 
     /// <summary>For a step: the steps whose completion closes it (its published <c>availableUntil</c>).</summary>
     public IReadOnlyList<string> ClosedBy { get; init; } = [];
+
+    /// <summary>
+    /// For a query: the source or view declares its own <c>processId</c> parameter, filled from the
+    /// tool's top-level <c>processId</c> argument (the parameter is not repeated in the tool's schema).
+    /// </summary>
+    public bool ParametersTakeProcessId { get; init; }
 }
 
 /// <summary>

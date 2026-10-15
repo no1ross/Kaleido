@@ -31,13 +31,24 @@ internal sealed class ToolCatalogBuilder(
     /// <summary>The built-in tool that reads a process's state.</summary>
     public const string GetProcessStateTool = "get_process_state";
 
+    /// <summary>The argument that carries the process id on step and query tools.</summary>
+    public const string ProcessIdArgument = "processId";
+
     private const int MaxListedOutputFields = 15;
 
     public ToolCatalog Build(AggregatedRegistryResponse registry)
     {
         ArgumentNullException.ThrowIfNull(registry);
 
-        var context = new BuildContext();
+        var processors = registry.Processes.OrderBy(x => x.ServiceName, StringComparer.Ordinal).ToArray();
+
+        var processServices = processors
+            .Where(x => (x.Steps ?? []).Count > 0)
+            .Select(x => x.ServiceName)
+            .ToList();
+
+        // Queries take a processId only where processes exist: it records the query with the process.
+        var context = new BuildContext { HasProcesses = processServices.Count > 0 };
 
         foreach (var source in registry.Queryables.OrderBy(x => x.ServiceName, StringComparer.Ordinal).ThenBy(x => x.Name, StringComparer.Ordinal))
         {
@@ -52,18 +63,9 @@ internal sealed class ToolCatalogBuilder(
             }
         }
 
-        var processServices = new List<string>();
-
-        foreach (var processor in registry.Processes.OrderBy(x => x.ServiceName, StringComparer.Ordinal))
+        foreach (var processor in processors)
         {
-            var steps = processor.Steps ?? [];
-
-            if (steps.Count > 0)
-            {
-                processServices.Add(processor.ServiceName);
-            }
-
-            foreach (var step in steps.Where(x => !x.IsInformationStep).OrderBy(x => x.Name, StringComparer.Ordinal))
+            foreach (var step in (processor.Steps ?? []).Where(x => !x.IsInformationStep).OrderBy(x => x.Name, StringComparer.Ordinal))
             {
                 AddStepTool(context, processor, step);
             }
@@ -95,11 +97,13 @@ internal sealed class ToolCatalogBuilder(
         QueryableSourceResponse source)
     {
         var name = Name(context, source.ServiceName, source.Name, "source");
+        var query = QuerySchema(context, name, source.Fields, source.Parameters, source.Pageable);
 
         var description =
             Describe(context, name, source.DisplayName, source.Description) +
             (string.IsNullOrWhiteSpace(source.Source) ? string.Empty : $" Data source: {source.Source}.") +
             Returns(source.OutputFields) +
+            ProcessIdHint(query) +
             " Read-only.";
 
         context.Add(new KaleidoTool
@@ -108,12 +112,13 @@ internal sealed class ToolCatalogBuilder(
                 name,
                 source.DisplayName ?? source.Name,
                 description,
-                QuerySchema(context, name, source.Fields, source.Parameters, source.Pageable)),
+                query.Schema),
             Kind = KaleidoToolKind.Query,
             Service = source.ServiceName,
             CapabilityName = source.Name,
             SourceName = source.Name,
             Url = source.QueryUrl ?? string.Empty,
+            ParametersTakeProcessId = query.ParametersTakeProcessId,
         });
     }
 
@@ -123,11 +128,13 @@ internal sealed class ToolCatalogBuilder(
         QueryableViewResponse view)
     {
         var name = Name(context, source.ServiceName, view.Name, "view");
+        var query = QuerySchema(context, name, source.Fields, view.Parameters, view.Pageable);
 
         var description =
             Describe(context, name, view.DisplayName, view.Description) +
             $" A view of {source.DisplayName ?? source.Name}." +
             Returns(view.OutputFields) +
+            ProcessIdHint(query) +
             " Read-only.";
 
         context.Add(new KaleidoTool
@@ -136,13 +143,14 @@ internal sealed class ToolCatalogBuilder(
                 name,
                 view.DisplayName ?? view.Name,
                 description,
-                QuerySchema(context, name, source.Fields, view.Parameters, view.Pageable)),
+                query.Schema),
             Kind = KaleidoToolKind.Query,
             Service = source.ServiceName,
             CapabilityName = view.Name,
             SourceName = source.Name,
             ViewName = view.Name,
             Url = view.QueryUrl,
+            ParametersTakeProcessId = query.ParametersTakeProcessId,
         });
     }
 
@@ -167,8 +175,12 @@ internal sealed class ToolCatalogBuilder(
             },
         };
 
-    // { searchText?, filters?, sort?, page?, parameters? } — only what the source supports.
-    private JsonObject QuerySchema(
+    // { processId?, searchText?, filters?, sort?, page?, parameters? } — only what the source supports.
+    // processId is the adapter's argument, not the source's: it is sent as the query's process id
+    // (X-Kaleido-Process-Id) so the query is recorded with the process. A source that declares its
+    // own processId parameter gets it filled from the same argument, so there is one processId,
+    // always at the top level.
+    private QueryToolSchema QuerySchema(
         BuildContext context,
         string toolName,
         IReadOnlyCollection<QueryableFieldMetadata> fields,
@@ -176,8 +188,54 @@ internal sealed class ToolCatalogBuilder(
         PageableMetadata? pageable)
     {
         var properties = new JsonObject();
+        var required = new List<string>();
         var parametersRequired = false;
 
+        var processIdParameter = parameters.FirstOrDefault(x => string.Equals(x.Name, ProcessIdArgument, StringComparison.OrdinalIgnoreCase));
+        var processIdRequired = processIdParameter is not null && schemaBuilder.IsRequired(processIdParameter.Constraints);
+
+        if (context.HasProcesses || processIdParameter is not null)
+        {
+            properties[ProcessIdArgument] = QueryProcessIdSchema(processIdParameter);
+
+            if (processIdRequired)
+            {
+                required.Add(ProcessIdArgument);
+            }
+        }
+
+        parameters = parameters.Where(x => !ReferenceEquals(x, processIdParameter)).ToArray();
+
+        AddQueryProperties(context, toolName, properties, fields, pageable);
+
+        if (parameters.Count > 0)
+        {
+            (properties["parameters"], parametersRequired) = ParametersSchema(context, toolName, parameters);
+        }
+
+        var schema = new JsonObject { ["type"] = "object", ["properties"] = properties };
+
+        if (parametersRequired)
+        {
+            required.Add("parameters");
+        }
+
+        if (required.Count > 0)
+        {
+            schema["required"] = new JsonArray([.. required.Select(x => (JsonNode)x)]);
+        }
+
+        return new QueryToolSchema(schema, processIdParameter is not null, processIdRequired);
+    }
+
+    // searchText, filters, sort and page: only what the source supports.
+    private static void AddQueryProperties(
+        BuildContext context,
+        string toolName,
+        JsonObject properties,
+        IReadOnlyCollection<QueryableFieldMetadata> fields,
+        PageableMetadata? pageable)
+    {
         var searchable = fields.Where(x => x.IsSearchable).OrderBy(x => x.SearchPriority ?? int.MaxValue).ToArray();
         var filterable = fields.Where(x => x.IsFilterable && x.FilterOperators.Count > 0).ToArray();
         var sortable = fields.Where(x => x.IsSortable).ToArray();
@@ -202,25 +260,32 @@ internal sealed class ToolCatalogBuilder(
             properties["page"] = PageSchema(pageable);
         }
 
-        if (parameters.Count > 0)
-        {
-            (properties["parameters"], parametersRequired) = ParametersSchema(context, toolName, parameters);
-        }
-
         foreach (var field in filterable.Concat(searchable).Concat(sortable).Distinct().Where(x => string.IsNullOrWhiteSpace(x.Description)))
         {
             context.MissingDescriptions.Add($"{toolName}.{field.Name}");
         }
-
-        var schema = new JsonObject { ["type"] = "object", ["properties"] = properties };
-
-        if (parametersRequired)
-        {
-            schema["required"] = new JsonArray("parameters");
-        }
-
-        return schema;
     }
+
+    private static JsonObject QueryProcessIdSchema(QueryableQueryParameter? declared) =>
+        new()
+        {
+            ["type"] = "string",
+            ["format"] = "uuid",
+            ["description"] = declared is null
+                ? "The process this query is part of, when there is one (returned by an earlier step). Sent with the query so it is recorded with the process."
+                : (string.IsNullOrWhiteSpace(declared.Description) ? "The process this query is for (returned by an earlier step)." : declared.Description.Trim()) +
+                  " Also sent with the query so it is recorded with the process.",
+        };
+
+    // The query's one sentence about processId, so an agent passes it without reading the schema.
+    private static string ProcessIdHint(QueryToolSchema query) =>
+        query.ProcessIdRequired
+            ? " Scoped to one process: pass its processId."
+            : query.Schema["properties"]?[ProcessIdArgument] is not null
+                ? " Pass the processId of the process you are working on, when there is one."
+                : string.Empty;
+
+    private sealed record QueryToolSchema(JsonObject Schema, bool ParametersTakeProcessId, bool ProcessIdRequired);
 
     private static JsonObject SearchTextSchema(IEnumerable<QueryableFieldMetadata> searchable) =>
         new()
@@ -423,7 +488,7 @@ internal sealed class ToolCatalogBuilder(
     private static string LookupSummary(IReadOnlyList<ToolLookup> lookups) =>
         string.Concat(lookups.Select(x =>
             x.QueryTool is { } tool
-                ? $" Before calling, find {string.Join(" and ", x.Inputs.Select(i => i.Argument))} with {tool}: the user identifies the record and picks one result."
+                ? $" Before calling, find {string.Join(" and ", x.Inputs.Select(i => i.Argument))} with {tool} (pass the processId when there is one): the user identifies the record and picks one result."
                 : $" {string.Join(" and ", x.Inputs.Select(i => i.Argument))} come from {x.View ?? x.Source} on {x.Service}, which you cannot search: ask the user."));
 
     // Step fields carry [Display] hints next to the description; agents may phrase questions
@@ -734,6 +799,8 @@ internal sealed class ToolCatalogBuilder(
 
     private sealed class BuildContext
     {
+        public bool HasProcesses { get; init; }
+
         public List<KaleidoTool> Tools { get; } = [];
 
         public HashSet<string> Names { get; } = new(StringComparer.Ordinal);

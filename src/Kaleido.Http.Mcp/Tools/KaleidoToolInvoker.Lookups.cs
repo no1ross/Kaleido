@@ -194,9 +194,9 @@ internal sealed partial class KaleidoToolInvoker
 
         JsonObject? parameters = null;
 
-        if (processId is { } id && query is not null && TakesProcessId(query))
+        if (processId is { } id && query is { ParametersTakeProcessId: true })
         {
-            parameters = new JsonObject { ["processId"] = id.ToString() };
+            parameters = new JsonObject { [ToolCatalogBuilder.ProcessIdArgument] = id.ToString() };
         }
 
         var request = new QueryApiRequest<JsonObject>(
@@ -204,6 +204,9 @@ internal sealed partial class KaleidoToolInvoker
             new QueryApiBody { SearchText = searchText, Page = new QueryApiPage { Size = LookupPageSize } });
 
         var client = Queryable(lookup.Service);
+
+        // The search belongs to the step's process: it is recorded with it (X-Kaleido-Process-Id).
+        using var forwarded = processId is null ? null : processForwarding.ForwardProcess(processId);
 
         var result = lookup.View is { } view
             ? await client.QueryViewAsync<JsonObject, JsonObject>(lookup.Source, view, request, cancellationToken)
@@ -220,12 +223,6 @@ internal sealed partial class KaleidoToolInvoker
 
         return new LookupCandidates(labels, rows, result.TotalCount > result.Results.Count ? result.TotalCount : null);
     }
-
-    private static bool TakesProcessId(KaleidoTool query) =>
-        query.Definition.InputSchema.TryGetProperty("properties", out var properties) &&
-        properties.TryGetProperty("parameters", out var parameters) &&
-        parameters.TryGetProperty("properties", out var fields) &&
-        fields.TryGetProperty("processId", out _);
 
     // A result as the user recognises it: the lookup's display fields, in order.
     private static string Label(ToolLookup lookup, JsonObject row)
