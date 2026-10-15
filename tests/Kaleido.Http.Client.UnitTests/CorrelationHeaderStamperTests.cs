@@ -6,8 +6,14 @@ public sealed class CorrelationHeaderStamperTests
     : Kaleido.UnitTests.SutFixture
 {
     private static CorrelationHeaderStamper CreateSut(
-        IKaleidoCorrelationContextAccessor correlation) =>
-        new(correlation, new KaleidoServiceOptions { ServiceName = "intake" });
+        IKaleidoCorrelationContextAccessor correlation,
+        Guid? forwardedProcessId = null)
+    {
+        var forwarding = new Mock<IKaleidoProcessForwarding>();
+        forwarding.Setup(x => x.ProcessId).Returns(forwardedProcessId);
+
+        return new(correlation, forwarding.Object, new KaleidoServiceOptions { ServiceName = "intake" });
+    }
 
     // ---------------------------------------------------------------------------
     // Sanitize
@@ -95,6 +101,30 @@ public sealed class CorrelationHeaderStamperTests
 
         Assert.True(request.Headers.TryGetValues(KaleidoCorrelationHeaders.ProcessId, out var values));
         Assert.Contains(id.ToString(), values);
+    }
+
+    [Fact]
+    public void Stamp_ForwardedProcessId_AddsHeader_WhenTheContextHasNone()
+    {
+        var id = Guid.NewGuid();
+        var stamper = CreateSut(SetupContext(new KaleidoCorrelationContext()), id);
+        var request = new HttpRequestMessage();
+
+        stamper.Stamp(request);
+
+        Assert.Equal([id.ToString()], request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId));
+    }
+
+    [Fact]
+    public void Stamp_ForwardedProcessId_WinsOverTheContextProcessId()
+    {
+        var forwarded = Guid.NewGuid();
+        var stamper = CreateSut(SetupContext(new KaleidoCorrelationContext { ProcessId = Guid.NewGuid() }), forwarded);
+        var request = new HttpRequestMessage();
+
+        stamper.Stamp(request);
+
+        Assert.Equal([forwarded.ToString()], request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId));
     }
 
     [Fact]

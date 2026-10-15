@@ -113,8 +113,26 @@ public sealed class KaleidoMcpToolHandlerTests
         Assert.Equal("Ava", call?.Arguments["searchText"].GetString());
         Assert.Same(server.Object, call?.Server);
         Assert.Equal("req-7", Body(result)["requestId"]?.GetValue<string>());
-        callObservation.Verify(x => x.Resolved(Search));
+        callObservation.Verify(x => x.Resolved(Search, null));
         callObservation.Verify(x => x.Completed(result));
+    }
+
+    [Fact]
+    public async Task CallTool_TagsTheCall_WithItsProcessIdArgument()
+    {
+        var processId = Guid.NewGuid();
+        invoker.Setup(x => x.InvokeAsync(Search, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Text("{}"));
+
+        await CreateSut().CallToolAsync(
+            new RequestContext<CallToolRequestParams>(server.Object, new JsonRpcRequest { Method = RequestMethods.ToolsCall }, new CallToolRequestParams
+            {
+                Name = "clinic_patient",
+                Arguments = new Dictionary<string, JsonElement> { ["processId"] = JsonSerializer.SerializeToElement(processId.ToString()) }
+            }),
+            Cancel);
+
+        callObservation.Verify(x => x.Resolved(Search, processId.ToString()));
     }
 
     [Fact]

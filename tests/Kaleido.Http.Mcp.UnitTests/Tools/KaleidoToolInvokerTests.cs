@@ -27,6 +27,8 @@ public sealed class KaleidoToolInvokerTests
     };
     private readonly Mock<IKaleidoQueryableClient> clinicQueries = new();
     private readonly Mock<IInformationRequestElicitor> elicitor = new();
+    private readonly Mock<IKaleidoProcessForwarding> processForwarding = new();
+    private readonly List<Guid?> forwardedProcessIds = [];
     private readonly Mock<McpServer> server = new();
     private readonly List<(string Service, string Step, JsonNode Body, Guid? ProcessId)> posts = [];
     private readonly List<(string Source, string? View, QueryApiRequest<JsonObject> Request)> queries = [];
@@ -140,12 +142,17 @@ public sealed class KaleidoToolInvokerTests
             .Returns([new InformationResponseItem { ItemId = "urgent", Answers = [new InformationAnswer { Value = "true" }] }]);
 
         server.Setup(x => x.ClientCapabilities).Returns(default(ClientCapabilities));
+
+        processForwarding.Setup(x => x.ForwardProcess(It.IsAny<Guid?>()))
+            .Callback((Guid? id) => forwardedProcessIds.Add(id))
+            .Returns(Mock.Of<IDisposable>());
     }
 
     private KaleidoToolInvoker CreateSut() =>
         new(
             processors.Object,
             queryables.Object,
+            processForwarding.Object,
             elicitor.Object,
             new KaleidoMcpOptions
             {
@@ -312,6 +319,126 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal(McpErrorCodes.ServiceError, Body(outcome)["code"]?.GetValue<string>());
         Assert.Equal(403, Body(outcome)["details"]?["status"]?.GetValue<int>());
         Assert.Equal("forbidden", Body(outcome)["details"]?["errors"]?[0]?["code"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task AQueryTheServiceFails_TellsTheAgentWhatToDo_WithoutTheServicesMessage()
+    {
+        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryApiRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KaleidoHttpClientException(
+                HttpClientErrorCodes.RequestFailed,
+                "clinic tried to call source 'PatientQueryContextSource', but the request failed with status code 500 (InternalServerError).",
+                HttpStatusCode.InternalServerError));
+
+        var message = Body(await CreateSut().InvokeAsync(Search, Call(), Catalog, Cancel))["message"]?.GetValue<string>();
+
+        Assert.Contains("the service failed (500)", message, StringComparison.Ordinal);
+        Assert.Contains("do not repeat the same call", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("PatientQueryContextSource", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AQuery_WithAProcessId_IsSentWithThatProcess_AndEchoesIt()
+    {
+        var body = Body(await CreateSut().InvokeAsync(Search, Call(new { processId = ProcessId, searchText = "Ava" }), Catalog, Cancel));
+
+        Assert.Equal([ProcessId], forwardedProcessIds);
+        Assert.Equal(ProcessId.ToString(), body["processId"]?.GetValue<string>());
+        Assert.Null(Assert.Single(queries).Request.Parameters);
+    }
+
+    [Fact]
+    public async Task AQuery_WithoutAProcessId_IsNotScoped()
+    {
+        var body = Body(await CreateSut().InvokeAsync(Search, Call(new { searchText = "Ava" }), Catalog, Cancel));
+
+        Assert.Empty(forwardedProcessIds);
+        Assert.Null(body["processId"]);
+    }
+
+    [Fact]
+    public async Task AQuery_WithAnInvalidProcessId_IsAnArgumentError_AndNothingIsSent()
+    {
+        var outcome = await CreateSut().InvokeAsync(Search, Call(new { processId = "nope" }), Catalog, Cancel);
+
+        Assert.Equal(McpErrorCodes.InvalidArguments, Body(outcome)["code"]?.GetValue<string>());
+        Assert.Empty(queries);
+    }
+
+    private static readonly KaleidoTool ScopedSearch = Search with
+    {
+        Definition = new Tool
+        {
+            Name = "clinic_scoped_patient",
+            InputSchema = JsonSerializer.SerializeToElement(new
+            {
+                type = "object",
+                properties = new { processId = new { type = "string", description = "The visit this search is for." } },
+                required = new[] { "processId" }
+            })
+        },
+        ParametersTakeProcessId = true
+    };
+
+    [Fact]
+    public async Task AQuery_ThatTakesTheProcessId_GetsItInItsParameters()
+    {
+        await CreateSut().InvokeAsync(ScopedSearch, Call(new { processId = ProcessId }), Catalog, Cancel);
+
+        Assert.Equal(ProcessId.ToString(), Assert.Single(queries).Request.Parameters?["processId"]?.GetValue<string>());
+        Assert.Equal([ProcessId], forwardedProcessIds);
+    }
+
+    [Fact]
+    public async Task AQuery_AcceptsTheNestedProcessId_WhenTheTopLevelHasNone()
+    {
+        await CreateSut().InvokeAsync(ScopedSearch, Call(new { parameters = new { processId = ProcessId } }), Catalog, Cancel);
+
+        Assert.Equal(ProcessId.ToString(), Assert.Single(queries).Request.Parameters?["processId"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task AQuery_MissingARequiredArgument_SaysWhichAndWhy_AndNothingIsSent()
+    {
+        var outcome = await CreateSut().InvokeAsync(ScopedSearch, Call(new { searchText = "Ava" }), Catalog, Cancel);
+
+        Assert.Equal(McpErrorCodes.InvalidArguments, Body(outcome)["code"]?.GetValue<string>());
+        Assert.Equal(
+            "clinic_scoped_patient: processId is required: The visit this search is for. Nothing was sent.",
+            Body(outcome)["message"]?.GetValue<string>());
+        Assert.Empty(queries);
+    }
+
+    [Fact]
+    public async Task AQuery_MissingARequiredNestedParameter_NamesItsPath()
+    {
+        var tool = Search with
+        {
+            Definition = new Tool
+            {
+                Name = "clinic_by_state",
+                InputSchema = JsonSerializer.Deserialize<JsonElement>("""
+                    {
+                      "type": "object",
+                      "properties": {
+                        "parameters": {
+                          "type": "object",
+                          "properties": { "state": { "type": "string", "description": "Two-letter state code." } },
+                          "required": ["state"]
+                        }
+                      },
+                      "required": ["parameters"]
+                    }
+                    """)
+            }
+        };
+
+        var outcome = await CreateSut().InvokeAsync(tool, Call(new { parameters = new { } }), Catalog, Cancel);
+
+        Assert.Equal(
+            "clinic_by_state: parameters.state is required: Two-letter state code. Nothing was sent.",
+            Body(outcome)["message"]?.GetValue<string>());
+        Assert.Empty(queries);
     }
 
     [Fact]
@@ -663,6 +790,7 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal("Ava", request.Query?.SearchText);
         Assert.StartsWith("kaleido-mcp-lookup:", outcome.InputRequired?.RequestState, StringComparison.Ordinal);
         Assert.Empty(posts);
+        Assert.Equal([ProcessId], forwardedProcessIds);
     }
 
     [Fact]
