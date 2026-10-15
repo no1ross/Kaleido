@@ -59,7 +59,7 @@ internal sealed partial class KaleidoMcpToolHandler(
 
             return new ListToolsResult
             {
-                Tools = catalog.Tools.Select(x => x.Definition).ToList(),
+                Tools = catalog.Tools.Where(x => x.Listed).Select(x => x.Definition).ToList(),
             };
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -140,13 +140,34 @@ internal sealed partial class KaleidoMcpToolHandler(
                 $"There is no tool '{name}' for you. Tools follow your access and the deployed services; list the tools again.");
         }
 
-        observation.Resolved(tool);
-
         var arguments =
             request.Params?.Arguments is { } given
                 ? new Dictionary<string, JsonElement>(given, StringComparer.Ordinal)
                 : new Dictionary<string, JsonElement>(StringComparer.Ordinal);
 
+        // call_tool runs another of the caller's tools, listed or not, exactly as if it were called.
+        if (tool.Kind == KaleidoToolKind.CallTool)
+        {
+            if (Unwrap(catalog, arguments) is not var (inner, innerArguments))
+            {
+                return Error(McpErrorCodes.UnknownTool, $"{name}: pass the name of one of your tools (from next, search_tools or describe_tool) and its arguments.");
+            }
+
+            (tool, arguments) = (inner, innerArguments);
+        }
+
+        observation.Resolved(tool, ProcessIdOf(arguments));
+
+        return await InvokeAsCallerAsync(request, tool, arguments, catalog, cancellationToken);
+    }
+
+    private async Task<ToolOutcome> InvokeAsCallerAsync(
+        RequestContext<CallToolRequestParams> request,
+        KaleidoTool tool,
+        Dictionary<string, JsonElement> arguments,
+        ToolCatalog catalog,
+        CancellationToken cancellationToken)
+    {
         // A front door calls services as the caller, never with the host's own credentials.
         using var asCaller = callerForwarding.ForwardCaller(
             httpContextAccessor.HttpContext?.Request.Headers[HeaderNames.Authorization].ToString());
@@ -196,6 +217,36 @@ internal sealed partial class KaleidoMcpToolHandler(
 
         return result;
     }
+
+    // call_tool's target and arguments; null when the name is not a tool of this caller (call_tool
+    // itself included: one level only).
+    private static (KaleidoTool Tool, Dictionary<string, JsonElement> Arguments)? Unwrap(
+        ToolCatalog catalog,
+        Dictionary<string, JsonElement> arguments)
+    {
+        if (!arguments.TryGetValue("name", out var name) ||
+            name.ValueKind != JsonValueKind.String ||
+            catalog.Find(name.GetString() ?? string.Empty) is not { } inner ||
+            inner.Kind == KaleidoToolKind.CallTool)
+        {
+            return null;
+        }
+
+        var innerArguments =
+            arguments.TryGetValue("arguments", out var given) && given.ValueKind == JsonValueKind.Object
+                ? given.EnumerateObject().ToDictionary(x => x.Name, x => x.Value.Clone(), StringComparer.Ordinal)
+                : new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+
+        return (inner, innerArguments);
+    }
+
+    // The call's processId argument when it is a valid id (tagging only; the invoker validates it).
+    private static string? ProcessIdOf(Dictionary<string, JsonElement> arguments) =>
+        arguments.TryGetValue(ToolCatalogBuilder.ProcessIdArgument, out var value) &&
+        value.ValueKind == JsonValueKind.String &&
+        Guid.TryParse(value.GetString(), out var id)
+            ? id.ToString()
+            : null;
 
     private static CallToolResult Error(string code, string message) =>
         new()

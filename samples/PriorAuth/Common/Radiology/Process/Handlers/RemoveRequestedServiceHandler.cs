@@ -1,18 +1,35 @@
+using Kaleido.Samples.PriorAuth.History.Process;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Messages;
+using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Handlers;
 
+/// <summary>
+/// Removes a requested service. The primary procedure History shows may change with it, so the
+/// removal and the History snapshot are kept together.
+/// </summary>
 public sealed class RemoveRequestedServiceHandler(
-    RadiologyDbContext dbContext)
+    RadiologyDbContext dbContext,
+    HistoryClient historyClient)
     : IProcessStepHandler<RemoveRequestedServiceStep>
 {
-    public async Task<ProcessStepHandlerResult> ExecuteAsync(
+    public Task<ProcessStepHandlerResult> ExecuteAsync(
         RemoveRequestedServiceStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        HistoryRecording.InTransactionAsync(
+            dbContext,
+            () => RunAsync(processStep, context, cancellationToken),
+            _ => ProcessStepHandlerResult.Reject(RadiologyProcessMessages.HistoryNotRecorded(context.ProcessId)),
+            cancellationToken);
+
+    private async Task<ProcessStepHandlerResult> RunAsync(
+        RemoveRequestedServiceStep processStep,
+        ProcessStepContext context,
+        CancellationToken cancellationToken)
     {
         var requestedService =
             await dbContext.PriorAuthorizationRequestedServices
@@ -43,6 +60,8 @@ public sealed class RemoveRequestedServiceHandler(
         dbContext.PriorAuthorizationRequestedServices.Remove(requestedService);
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        await historyClient.RecordAsync(context.ProcessId, cancellationToken);
 
         var hasRemainingRequestedServices =
             await dbContext.PriorAuthorizationRequestedServices

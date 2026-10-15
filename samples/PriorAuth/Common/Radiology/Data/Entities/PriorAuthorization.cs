@@ -8,6 +8,9 @@ public sealed class PriorAuthorization
 
     public PriorAuthorizationStatus Status { get; set; }
 
+    /// <summary>The date of service the member was captured for; null until a member is captured.</summary>
+    public DateOnly? DateOfService { get; set; }
+
     public DateTimeOffset CreatedUtc { get; set; }
 
     public DateTimeOffset? SubmittedUtc { get; set; }

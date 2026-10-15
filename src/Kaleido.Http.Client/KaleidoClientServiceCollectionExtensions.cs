@@ -46,6 +46,7 @@ internal static class KaleidoClientServiceCollectionExtensions
 
         services.TryAddSingleton<Registry.IRegistrySnapshotStore, Registry.InMemoryRegistrySnapshotStore>();
         services.TryAddSingleton<KaleidoRemoteRegistry>();
+        services.TryAddSingleton<IKaleidoProcessForwarding, KaleidoProcessForwarding>();
         services.TryAddScoped<ICorrelationHeaderStamper, CorrelationHeaderStamper>();
         services.TryAddScoped<TFactoryInterface, TFactory>();
 

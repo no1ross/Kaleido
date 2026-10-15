@@ -21,8 +21,13 @@ public sealed class ToolCatalogProviderTests
             .Returns((AggregatedRegistryResponse response) => new ToolCatalog { Revision = response.Revision });
     }
 
-    private ToolCatalogProvider CreateSut() =>
-        new(registry.Object, builder.Object, observability.Object, NullLogger<ToolCatalogProvider>.Instance);
+    private ToolCatalogProvider CreateSut(McpToolListing listing = McpToolListing.All) =>
+        new(
+            registry.Object,
+            builder.Object,
+            observability.Object,
+            new KaleidoMcpOptions { Instructions = "test", ToolListing = listing },
+            NullLogger<ToolCatalogProvider>.Instance);
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -46,6 +51,16 @@ public sealed class ToolCatalogProviderTests
         builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>()), Times.Once);
         registry.Verify(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         observability.Verify(x => x.RegistryRead(McpTelemetry.RegistryHit, revision));
+    }
+
+    [Fact]
+    public async Task GetAsync_ADifferentListing_IsTranslatedAgain_ForTheSameRevision()
+    {
+        var all = await CreateSut(McpToolListing.All).GetAsync(Cancel);
+        var frontDoor = await CreateSut(McpToolListing.FrontDoor).GetAsync(Cancel);
+
+        Assert.NotSame(all, frontDoor);
+        builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>()), Times.Exactly(2));
     }
 
     [Fact]

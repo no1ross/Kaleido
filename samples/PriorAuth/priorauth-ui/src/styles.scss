@@ -1,6 +1,6 @@
 @use 'sass:meta';
 
-:is(priorauth-capture-mri-info, priorauth-requested-services-summary, priorauth-confirm-ct-instead-of-mri) {
+:is(priorauth-information-step, priorauth-requested-services-summary, priorauth-provider-selection, priorauth-review-prior-authorization) {
     @include meta.load-css('./app/process/requested-service.scss');
     @include meta.load-css('./app/member/member-search/member-search.scss');
     display: block;

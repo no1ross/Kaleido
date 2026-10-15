@@ -200,8 +200,12 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
         return await ReadRecordsAsync(response);
     }
 
+    // The wire contract names the view's parameters "parameters" (QueryApiRequest), not the core
+    // request's "viewParameters".
     private Task<HttpResponseMessage> PostViewQueryAsync(QueryRequest<FunctionalRecordViewParameters> request) =>
-        PostJsonAsync("/kaleido/queryable/functionalrecordcontextsource/functionalrecordgridview/query", request);
+        PostJsonAsync(
+            "/kaleido/queryable/functionalrecordcontextsource/functionalrecordgridview/query",
+            new { parameters = request.ViewParameters, query = request.Query });
 
     private Task<HttpResponseMessage> PostJsonAsync<T>(string url, T request) where T : class =>
         _client.PostAsJsonAsync(url, request, JsonOptions);

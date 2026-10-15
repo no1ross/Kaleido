@@ -1,5 +1,5 @@
 import { computed, Component, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { InformationResponse, InformationResponseItem } from '../kaleido/models/information-request';
 import { QueryErrorResponse } from '../kaleido/models/query-error-response';
@@ -7,17 +7,37 @@ import { ProcessService, ProcessErrorResponse } from '../kaleido/services/proces
 import { InformationRequestForm } from './information-request-form';
 import { buildProcessRoute } from './services/process-navigation';
 import { ProcessStateService } from './services/process-state-service';
+import { getRouteForStep } from './services/step-route';
 
-const StepName = 'CaptureMriInfoStep';
+/** Route data for an information step screen. */
+export interface InformationStepRouteData {
+    /** The information step the questions belong to. */
+    stepName: string;
+    eyebrow: string;
+    /** Heading when the request has no title. */
+    title: string;
+    submitLabel: string;
+    /** Shown when no questions are pending for this step. */
+    emptyMessage: string;
+    /** Shown when the step fails without messages. */
+    failureMessage: string;
+    /** Where to go when the step requires nothing next (otherwise the required step's screen). */
+    nextRoute?: string;
+}
 
+/**
+ * Presents the pending information request of one information step (MRI questions, CT
+ * confirmation, clinical rounds) and submits the answers. A new round of the same step replaces
+ * the questions in place.
+ */
 @Component({
-    selector: 'priorauth-capture-mri-info',
+    selector: 'priorauth-information-step',
     standalone: true,
     imports: [InformationRequestForm],
-    templateUrl: './capture-mri-info.html',
-    styleUrl: './capture-mri-info.scss'
+    templateUrl: './information-step.html',
+    styleUrl: './information-step.scss'
 })
-export class CaptureMriInfo {
+export class InformationStep {
     private readonly processService =
         inject(ProcessService);
 
@@ -27,6 +47,9 @@ export class CaptureMriInfo {
     private readonly router =
         inject(Router);
 
+    readonly config =
+        inject(ActivatedRoute).snapshot.data as InformationStepRouteData;
+
     readonly isSubmitting =
         signal(false);
     readonly errorMessage =
@@ -35,14 +58,15 @@ export class CaptureMriInfo {
     /** The pending questions, presented with the required step (requiredStep.informationRequest). */
     readonly informationRequest =
         computed(() =>
-            this.processState.state().informationStepName === StepName
+            this.processState.state().informationStepName === this.config.stepName
                 ? this.processState.state().informationRequest
                 : undefined);
 
     submit(items: InformationResponseItem[]): void {
         const request = this.informationRequest();
+        const processId = this.processState.state().processId;
 
-        if (!this.processState.state().processId || !request || this.isSubmitting()) {
+        if (!processId || !request || this.isSubmitting()) {
             return;
         }
 
@@ -50,20 +74,21 @@ export class CaptureMriInfo {
         this.errorMessage.set(undefined);
 
         this.processService
-            .executeStep<InformationResponse, object>(StepName, {
-                processId: this.processState.state().processId,
+            .executeStep<InformationResponse, object>(this.config.stepName, {
+                processId,
                 processStep: {
                     informationRequestId: request.informationRequestId,
                     items
                 }
             })
             .subscribe({
-                next: () => {
+                next: result => {
                     this.isSubmitting.set(false);
-                    void this.router.navigate(
-                        buildProcessRoute(
-                            this.processState.state().processId,
-                            'requested-services'));
+
+                    if (!getRouteForStep(result.requiredStep?.name) && this.config.nextRoute) {
+                        void this.router.navigate(
+                            buildProcessRoute(processId, this.config.nextRoute));
+                    }
                 },
                 error: error => {
                     this.isSubmitting.set(false);
@@ -87,7 +112,7 @@ export class CaptureMriInfo {
                 .join(' ');
         }
 
-        return 'Unable to capture MRI information.';
+        return this.config.failureMessage;
     }
 
     private isQueryErrorResponse(

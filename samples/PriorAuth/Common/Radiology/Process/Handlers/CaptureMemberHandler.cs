@@ -1,5 +1,5 @@
 using Kaleido.Http.Client;
-using Kaleido.Samples.PriorAuth.History.Process.Steps;
+using Kaleido.Samples.PriorAuth.History.Process;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Messages;
@@ -15,10 +15,20 @@ public sealed class CaptureMemberHandler(
     HistoryClient historyClient)
     : IProcessStepHandler<CaptureMemberStep>
 {
-    public async Task<ProcessStepHandlerResult> ExecuteAsync(
+    public Task<ProcessStepHandlerResult> ExecuteAsync(
         CaptureMemberStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        HistoryRecording.InTransactionAsync(
+            dbContext,
+            () => RunAsync(processStep, context, cancellationToken),
+            _ => ProcessStepHandlerResult.Reject(RadiologyProcessMessages.HistoryNotRecorded(context.ProcessId)),
+            cancellationToken);
+
+    private async Task<ProcessStepHandlerResult> RunAsync(
+        CaptureMemberStep processStep,
+        ProcessStepContext context,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -62,20 +72,11 @@ public sealed class CaptureMemberHandler(
             priorAuthorization.Member.PlanId = memberDetails.PlanId;
             priorAuthorization.Member.PlanName = memberDetails.PlanName;
             priorAuthorization.Member.LineOfBusiness = memberDetails.LineOfBusiness;
+            priorAuthorization.DateOfService = processStep.DateOfService;
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            await historyClient.UpsertAsync(
-                new UpsertPriorAuthRecordStep
-                {
-                    ProcessorName = "radiology",
-                    Status = PriorAuthorizationStatus.Draft,
-                    MemberNumber = priorAuthorization.Member!.MemberNumber,
-                    MemberDisplayName = priorAuthorization.Member.DisplayName,
-                    DateOfService = processStep.DateOfService
-                },
-                context.ProcessId,
-                cancellationToken);
+            await historyClient.RecordAsync(context.ProcessId, cancellationToken);
 
             // Route to the correct next step based on the already-captured requested service
             var routing =

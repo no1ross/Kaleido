@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, map, switchMap, throwError } from 'rxjs';
+import { Observable, catchError, map, of, switchMap, take, throwError } from 'rxjs';
 
 import {
     ProcessExecutionResponse,
@@ -19,7 +19,8 @@ import {
 import { buildServiceUrl, getServiceRoutes, PriorAuthServiceRouteConfig } from '../../../configuration/urlConfig';
 import { ProcessStateService } from '../../process/services/process-state-service';
 import { buildProcessRoute } from '../../process/services/process-navigation';
-import { getRouteForStep } from '../../process/services/step-route';
+import { getResumeRoute, getRouteForStep } from '../../process/services/step-route';
+import { RegistryCatalog } from '../../registries/registry-catalog';
 
 @Injectable({
     providedIn: 'root'
@@ -39,6 +40,9 @@ export class ProcessService {
 
     private readonly router =
         inject(Router);
+
+    private readonly registryCatalog =
+        inject(RegistryCatalog);
 
     executeStep<TProcessStep, TResponse>(
         stepName: string,
@@ -90,7 +94,7 @@ export class ProcessService {
                         // steps, and any pending information request before navigating.
                         // This also switches currentProcessorName in state so
                         // subsequent steps go to the right processor automatically.
-                        return this.fetchTargetProcessorState(
+                        return this.fetchProcessorState(
                             result.targetProcessorName,
                             result.processId)
                             .pipe(
@@ -146,26 +150,60 @@ export class ProcessService {
                 }));
     }
 
-    private fetchTargetProcessorState(
-        targetProcessorName: string,
+    /**
+     * Continues a process started elsewhere (another session, or an agent through the MCP adapter):
+     * reads its state from the processor that owns it, follows a handoff to the target processor,
+     * restores the current processor, required step (with any pending questions) and available
+     * steps, then navigates to the required step or, when nothing is required, to the furthest
+     * available step this UI has a screen for.
+     */
+    resumeProcess(
+        processorName: string,
         processId: string
     ): Observable<ProcessStateResponse> {
-        const targetEntry =
-            this.processRegistry.getAnyEntryForProcessor(targetProcessorName);
+        return this.registryCatalog.loadState()
+            .pipe(
+                take(1),
+                switchMap(() => this.fetchProcessorState(processorName, processId)),
+                switchMap(state => {
+                    const target = state.targetProcessorName;
 
-        if (!targetEntry) {
-            throw new Error(
-                `Cannot resolve service for target processor '${targetProcessorName}'. ` +
-                `No steps from that processor are in the registry.`);
+                    return target
+                        ? this.fetchProcessorState(target, processId)
+                            .pipe(map(targetState => ({ processorName: target, state: targetState })))
+                        : of({ processorName, state });
+                }),
+                map(({ processorName: owner, state }) => {
+                    this.processState.setProcessId(state.processId);
+                    this.applyNextSteps(owner, state.requiredStep, state.availableSteps);
+
+                    if (!getRouteForStep(state.requiredStep?.name)) {
+                        this.navigateToRoute(getResumeRoute(state.availableSteps));
+                    }
+
+                    return state;
+                }));
+    }
+
+    private fetchProcessorState(
+        processorName: string,
+        processId: string
+    ): Observable<ProcessStateResponse> {
+        const entry =
+            this.processRegistry.getAnyEntryForProcessor(processorName);
+
+        if (!entry) {
+            return throwError(() => new Error(
+                `Cannot resolve service for processor '${processorName}'. ` +
+                `No steps from that processor are in the registry.`));
         }
 
-        const targetService = this.resolveService(targetEntry.serviceName);
         const stateUrl = buildServiceUrl(
-            targetService,
-            `/${targetEntry.serviceName}/processes/${processId}`);
+            this.resolveService(entry.serviceName),
+            `/${entry.serviceName}/processes/${processId}`);
 
         console.log(
-            `[ProcessService] Cross-processor handoff → fetching state from '${targetProcessorName}'`,
+            `[ProcessService] Fetching process state from '${processorName}'`,
             stateUrl);
 
         return this.http.get<ProcessStateResponse>(stateUrl);
@@ -229,12 +267,12 @@ export class ProcessService {
     private navigateToRequiredStep(
         requiredStep: string | undefined
     ): void {
-        if (!requiredStep) {
-            return;
-        }
+        this.navigateToRoute(getRouteForStep(requiredStep));
+    }
 
-        const route = getRouteForStep(requiredStep);
-
+    private navigateToRoute(
+        route: string | undefined
+    ): void {
         if (!route) {
             return;
         }

@@ -1,0 +1,63 @@
+.process-step-card__actions--stacked {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.review__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.review__section,
+.review__submitted,
+.review__attestation {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid #d9e2ee;
+  border-radius: 14px;
+  background: #fbfcfe;
+  color: #4f5d73;
+}
+
+.review__section h3,
+.review__attestation h3 {
+  margin: 0 0 0.2rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7788;
+}
+
+.review__section strong,
+.review__submitted strong {
+  color: #172033;
+}
+
+.review__submitted strong {
+  font-family: monospace;
+  color: #315efb;
+}
+
+.review__submitted p {
+  margin: 0.35rem 0 0;
+}
+
+.review__answers {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+
+.review__answers dt {
+  color: #25324a;
+}
+
+.review__answers dd {
+  margin: 0;
+  color: #172033;
+  font-weight: 600;
+}

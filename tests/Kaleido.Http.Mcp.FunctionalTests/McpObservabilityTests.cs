@@ -7,10 +7,10 @@ using ModelContextProtocol.Protocol;
 namespace Kaleido.Http.Mcp.FunctionalTests;
 
 /// <summary>
-/// Every tool call is correlated and traced with the host's request id — the one Kaleido's
-/// middleware assigned to the MCP request (an end user's own X-Kaleido-Request-Id is not trusted by
-/// an authenticated host) — in the result and on the tool-call span, which carries the tool, its
-/// kind, service and outcome.
+/// Every tool call is correlated and traced with the request id Kaleido's middleware resolved for
+/// the MCP request (an authenticated caller's own X-Kaleido-Request-Id is kept; otherwise one is
+/// generated) — in the result and on the tool-call span, which carries the tool, its kind, service
+/// and outcome.
 /// </summary>
 public sealed class McpObservabilityTests(McpClinicFixture fixture)
     : IClassFixture<McpClinicFixture>, IDisposable
@@ -23,12 +23,12 @@ public sealed class McpObservabilityTests(McpClinicFixture fixture)
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task TheResult_ReturnsTheHostsRequestId_TheSameOneOnTheSpan()
+    public async Task TheResult_ReturnsTheAuthenticatedCallersRequestId_TheSameOneOnTheSpan()
     {
         Listen();
-        var untrusted = $"mcp-test-{Guid.NewGuid():N}";
+        var supplied = $"mcp-test-{Guid.NewGuid():N}";
 
-        await using var client = await fixture.ConnectAsync(Nurse, requestId: untrusted);
+        await using var client = await fixture.ConnectAsync(Nurse, requestId: supplied);
 
         var body = Body(await client.CallToolAsync(
             "clinic_patient",
@@ -36,8 +36,7 @@ public sealed class McpObservabilityTests(McpClinicFixture fixture)
             cancellationToken: Cancel));
 
         var requestId = body["requestId"]?.GetValue<string>();
-        Assert.False(string.IsNullOrWhiteSpace(requestId));
-        Assert.NotEqual(untrusted, requestId);
+        Assert.Equal(supplied, requestId);
         Assert.Contains(
             activities,
             x => x.OperationName == McpTelemetry.ToolCallActivityName &&

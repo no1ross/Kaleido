@@ -23,8 +23,11 @@ internal interface IMcpObservability
 
 internal interface IMcpToolCallObservation : IDisposable
 {
-    /// <summary>The tool was found: tag its kind, service and capability.</summary>
-    void Resolved(KaleidoTool tool);
+    /// <summary>
+    /// The tool was found: tag its kind, service and capability, and the process the call names in
+    /// its <c>processId</c> argument (queries included, which return no process of their own).
+    /// </summary>
+    void Resolved(KaleidoTool tool, string? processId);
 
     /// <summary>The call finished with a result (successful, or <c>isError</c> with an <c>mcp_*</c> code).</summary>
     void Completed(CallToolResult result);
@@ -112,8 +115,13 @@ internal sealed partial class McpObservability(
         private string service = string.Empty;
         private bool recorded;
 
-        public void Resolved(KaleidoTool tool)
+        public void Resolved(KaleidoTool tool, string? processId)
         {
+            if (!string.IsNullOrWhiteSpace(processId))
+            {
+                activity?.SetTag(McpTelemetry.TagProcessId, processId);
+            }
+
             kind = tool.Kind switch
             {
                 KaleidoToolKind.Query => "query",

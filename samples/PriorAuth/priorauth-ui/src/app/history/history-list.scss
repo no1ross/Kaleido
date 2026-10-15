@@ -96,6 +96,14 @@
     }
 }
 
+.history-table__row--finished {
+    cursor: default;
+
+    &:hover {
+        background: transparent;
+    }
+}
+
 .history-table__cell {
     padding: 0.85rem 1rem;
     vertical-align: middle;
