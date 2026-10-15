@@ -1,6 +1,6 @@
 import { computed, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { FilterOperator, LogicalOperator } from '../kaleido/models/enumerations';
 import { QueryErrorResponse } from '../kaleido/models/query-error-response';
@@ -13,20 +13,43 @@ import { ProcessErrorResponse, ProcessService } from '../kaleido/services/proces
 import { QueryableService } from '../kaleido/services/queryable-service';
 import { StateOption } from '../member/models/state-option';
 import { RegistryCatalog } from '../registries/registry-catalog';
-import { CaptureRequestingProviderStep } from './models/capture-requesting-provider-step';
+import { CaptureProviderStep } from './models/capture-provider-step';
 import { ProviderSearchResult } from './models/provider-search-result';
 import { ProviderSpecialtyOption } from './models/provider-specialty-option';
 import { buildProcessRoute } from './services/process-navigation';
 import { ProcessStateService } from './services/process-state-service';
+import { getRouteForStep } from './services/step-route';
 
+/** Route data for a provider selection screen. */
+export interface ProviderSelectionRouteData {
+    /** The query source searched (scoped to the process by its id). */
+    searchSourceName: string;
+    /** The step executed with the chosen result's provider and location ids. */
+    stepName: string;
+    /** Which provider is being chosen, e.g. "Ordering provider" or "Servicing provider". */
+    role: string;
+    /** One sentence telling the user what this provider is. */
+    description: string;
+    title: string;
+    confirmLabel: string;
+    savingLabel: string;
+    failureMessage: string;
+    /** Where to go when the step requires nothing next (otherwise the required step's screen). */
+    nextRoute?: string;
+}
+
+/**
+ * Searches providers for the active request and captures the chosen one: the requesting
+ * provider and the servicing facility share this screen, each with its own source and step.
+ */
 @Component({
-    selector: 'priorauth-requesting-provider',
+    selector: 'priorauth-provider-selection',
     standalone: true,
     imports: [FormsModule],
-    templateUrl: './requesting-provider.html',
-    styleUrl: './requesting-provider.scss'
+    templateUrl: './provider-selection.html',
+    styleUrl: './provider-selection.scss'
 })
-export class RequestingProvider {
+export class ProviderSelection {
     constructor() {
         this.loadStateOptions();
         this.loadSpecialtyOptions();
@@ -50,8 +73,11 @@ export class RequestingProvider {
     private readonly router =
         inject(Router);
 
+    readonly config =
+        inject(ActivatedRoute).snapshot.data as ProviderSelectionRouteData;
+
     readonly searchSourceName =
-        'RequestingProviderSearchSource';
+        this.config.searchSourceName;
 
     readonly request: QueryRequest<{ processId: string | undefined }> = {
         parameters: {
@@ -179,7 +205,7 @@ export class RequestingProvider {
         this.registryCatalog.loadState().subscribe({
             next: () => {
                 this.processService
-                    .executeStep<CaptureRequestingProviderStep, object>('CaptureRequestingProviderStep', {
+                    .executeStep<CaptureProviderStep, object>(this.config.stepName, {
                         processId: this.processState.state().processId,
                         processStep: {
                             providerId: selectedRecord.providerId,
@@ -190,16 +216,16 @@ export class RequestingProvider {
                         next: result => {
                             this.isSubmitting.set(false);
 
-                            if (result.requiredStep?.name !== 'CaptureServicingProviderStep') {
+                            if (!getRouteForStep(result.requiredStep?.name) && this.config.nextRoute) {
                                 void this.router.navigate(
                                     buildProcessRoute(
                                         this.processState.state().processId,
-                                        'servicing-provider'));
+                                        this.config.nextRoute));
                             }
                         },
                         error: error => {
                             this.isSubmitting.set(false);
-                            this.detailsError.set(this.getProcessErrorMessage(error) ?? 'Unable to capture requesting provider.');
+                            this.detailsError.set(this.getProcessErrorMessage(error) ?? this.config.failureMessage);
                         }
                     });
             },

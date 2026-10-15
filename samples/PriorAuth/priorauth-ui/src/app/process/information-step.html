@@ -1,0 +1,24 @@
+<section class="process-step-card">
+  <header class="process-step-card__header">
+    <div>
+      <div class="process-step-card__eyebrow">{{ config.eyebrow }}</div>
+      <h2>{{ informationRequest()?.title ?? config.title }}</h2>
+    </div>
+  </header>
+
+  <div class="process-step-card__body">
+    @if (informationRequest(); as request) {
+      <priorauth-information-request-form
+        [request]="request"
+        [submitLabel]="config.submitLabel"
+        [isSubmitting]="isSubmitting()"
+        (submitted)="submit($event)" />
+    } @else {
+      <p class="process-step-card__error">{{ config.emptyMessage }}</p>
+    }
+
+    @if (errorMessage()) {
+      <p class="process-step-card__error">{{ errorMessage() }}</p>
+    }
+  </div>
+</section>

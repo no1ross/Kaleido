@@ -139,6 +139,28 @@
     overflow-wrap: anywhere;
 }
 
+.process-shell__next-steps-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.process-shell__next-step {
+    padding: 0.35rem 0.8rem;
+    border: 1px solid #cfd8e3;
+    border-radius: 999px;
+    background: #fff;
+    color: #315efb;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.process-shell__next-step--current {
+    border-color: #315efb;
+    background: #eef4ff;
+}
+
 .process-shell__content {
     min-width: 0;
 }

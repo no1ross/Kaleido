@@ -106,8 +106,13 @@ export class RegistryCatalog {
 
         const started = performance.now();
 
+        // The registry is filtered per caller, but the browser caches it by URL alone: without
+        // no-cache, a persona switch inside the max-age window is answered from the cache with the
+        // previous caller's registry and never reaches the server (or carries the new token).
         return this.http
-            .get<{ processes: ProcessProcessorRegistryRecord[]; queryables: QueryableSource[]; clientErrors?: RegistryClientError[] }>(url)
+            .get<{ processes: ProcessProcessorRegistryRecord[]; queryables: QueryableSource[]; clientErrors?: RegistryClientError[] }>(
+                url,
+                { headers: { 'Cache-Control': 'no-cache' } })
             .pipe(
                 map(data => {
                     const duration = Math.round(performance.now() - started);

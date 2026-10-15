@@ -5,6 +5,7 @@ import {
     ProcessStepSummary
 } from '../../kaleido/models/processor-process-result';
 import { InformationRequest } from '../../kaleido/models/information-request';
+import { PriorAuthorizationReview } from '../models/prior-authorization-review';
 
 export interface ProcessSelectedMemberSummary {
     memberId: string;
@@ -30,6 +31,8 @@ export interface ProcessState {
     /** The step the pending information request belongs to (the required step). */
     informationStepName?: string;
     informationRequest?: InformationRequest;
+    /** The read-back returned by the last Review step run in this session. */
+    review?: PriorAuthorizationReview;
 }
 
 @Injectable({
@@ -111,6 +114,33 @@ export class ProcessStateService {
             informationStepName: stepName,
             informationRequest
         }));
+    }
+
+    setReview(
+        review: PriorAuthorizationReview | undefined
+    ): void {
+        this.state.update(state => ({
+            ...state,
+            review
+        }));
+    }
+
+    /**
+     * Starts the state of a process resumed from elsewhere (History): only the process id and
+     * what History knows about the member and date of service; the process flow is loaded next.
+     */
+    resume(
+        processId: string,
+        member: ProcessSelectedMemberSummary | undefined,
+        dateOfService: string | undefined
+    ): void {
+        this.state.set({
+            ...this.createInitialState(),
+            processId,
+            selectedMember: member,
+            dateOfService: dateOfService || this.getTodayDate(),
+            isDateOfServiceLocked: member !== undefined || !!dateOfService
+        });
     }
 
     setDateOfService(

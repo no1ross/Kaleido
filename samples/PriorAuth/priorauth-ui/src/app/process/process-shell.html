@@ -39,12 +39,12 @@
 
             <div class="process-shell__grid">
                 @if (processState.state().selectedMember) {
-                    <div><span>Name</span><strong>{{ processState.state().selectedMember!.displayName }}</strong></div>
-                    <div><span>Member Number</span><strong>{{ processState.state().selectedMember!.memberNumber }}</strong></div>
-                    <div><span>Date of Birth</span><strong>{{ processState.state().selectedMember!.dateOfBirth }}</strong></div>
-                    <div><span>LOB</span><strong>{{ processState.state().selectedMember!.lineOfBusiness }}</strong></div>
-                    <div><span>Plan</span><strong>{{ processState.state().selectedMember!.planName }}</strong></div>
-                    <div><span>Effective Date</span><strong>{{ processState.state().selectedMember!.effectiveDate }}</strong></div>
+                    <div><span>Name</span><strong>{{ processState.state().selectedMember!.displayName || '—' }}</strong></div>
+                    <div><span>Member Number</span><strong>{{ processState.state().selectedMember!.memberNumber || '—' }}</strong></div>
+                    <div><span>Date of Birth</span><strong>{{ processState.state().selectedMember!.dateOfBirth || '—' }}</strong></div>
+                    <div><span>LOB</span><strong>{{ processState.state().selectedMember!.lineOfBusiness || '—' }}</strong></div>
+                    <div><span>Plan</span><strong>{{ processState.state().selectedMember!.planName || '—' }}</strong></div>
+                    <div><span>Effective Date</span><strong>{{ processState.state().selectedMember!.effectiveDate || '—' }}</strong></div>
                     <div><span>Termination Date</span><strong>{{ processState.state().selectedMember!.terminationDate || 'Open-ended' }}</strong></div>
                 }
             </div>
@@ -56,6 +56,23 @@
             }
         </div>
         }<!-- /showSummaryCard -->
+
+        @if (nextSteps().length > 0) {
+            <div class="process-shell__card process-shell__next-steps">
+                <span class="process-shell__inline-summary-label">{{ isStepRequired() ? 'Required next' : 'Available next' }}</span>
+                <div class="process-shell__next-steps-list">
+                    @for (step of nextSteps(); track step.route) {
+                        <button
+                            type="button"
+                            class="process-shell__next-step"
+                            [class.process-shell__next-step--current]="isCurrentRoute(step.route)"
+                            (click)="goToStep(step.route)">
+                            {{ step.label }}
+                        </button>
+                    }
+                </div>
+            </div>
+        }
 
         <div class="process-shell__card">
             <priorauth-process-messages />
