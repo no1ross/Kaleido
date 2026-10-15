@@ -1,4 +1,6 @@
+using Kaleido.Exceptions;
 using Kaleido.Queryable;
+using Kaleido.Samples.PriorAuth.Compliance;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.ViewSources.Views;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Models;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
@@ -23,13 +25,16 @@ internal sealed class ServicingProviderSearchSource(
         IQueryRequest<RequestingProviderSearchQueryParameters> request,
         CancellationToken cancellationToken = default)
     {
-        var parameters =
-            request.ViewParameters
-            ?? throw new InvalidOperationException(
-                $"{nameof(RequestingProviderSearchQueryParameters)} are required.");
+        // Kaleido validates the [Required] processId before the query runs; this guard keeps the
+        // nullable contract explicit and answers 400 if it is ever reached.
+        var processId =
+            request.ViewParameters?.ProcessId
+            ?? throw new KaleidoValidationException(
+                PriorAuthErrorCodes.QueryParametersRequired,
+                "processId is required: the prior authorization this search is for.");
 
         return await providerSearchClient.SearchAsync(
-            parameters.ProcessId,
+            processId,
             request.Query,
             ProviderType.ServicingFacility,
             cancellationToken);
