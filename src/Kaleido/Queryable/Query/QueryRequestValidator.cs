@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using Kaleido.Queryable.Metadata;
 
@@ -15,7 +17,8 @@ namespace Kaleido.Queryable.Query;
 ///   - Operator support validation
 ///   - Search mode validation
 ///   - Sort validation
-///   - Named query parameter validation
+///   - Query parameter validation (the parameters record's DataAnnotations; a missing record is
+///     rejected when it has a required member)
 ///   - Paging validation
 /// </para>
 /// <para>
@@ -42,6 +45,8 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(metadata);
 
+        ValidateParameters(request);
+
         ValidateFilter(
             request.Query?.Filter,
             metadata);
@@ -57,6 +62,65 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         ValidatePage(
             request.Query?.Page,
             pageable);
+    }
+
+    // The parameters record is validated like a step's input: [Required] first, then the other
+    // DataAnnotations. A missing record fails only when a member is required.
+    private static void ValidateParameters(IQueryRequest request)
+    {
+        if (request.ViewParametersType == typeof(EmptyQueryViewParameters))
+        {
+            return;
+        }
+
+        var properties = TypeDescriptor.GetProperties(request.ViewParametersType).Cast<PropertyDescriptor>().ToArray();
+
+        if (request.ViewParameters is not { } parameters)
+        {
+            if (properties.FirstOrDefault(x => x.Attributes.OfType<RequiredAttribute>().Any()) is { } required)
+            {
+                throw new KaleidoValidationException(
+                    QueryableErrorCodes.MissingParameter,
+                    $"Parameter '{required.Name}' is required.");
+            }
+
+            return;
+        }
+
+        foreach (var property in properties)
+        {
+            var attributes = property.Attributes.OfType<ValidationAttribute>().ToArray();
+
+            if (attributes.Length == 0)
+            {
+                continue;
+            }
+
+            var context = new ValidationContext(parameters) { MemberName = property.Name, DisplayName = property.Name };
+            var value = property.GetValue(parameters);
+
+            var requiredAttribute = attributes.OfType<RequiredAttribute>().FirstOrDefault();
+
+            if (requiredAttribute?.GetValidationResult(value, context) is { } missing)
+            {
+                // The attribute's own message only when the implementer wrote one.
+                throw new KaleidoValidationException(
+                    QueryableErrorCodes.MissingParameter,
+                    requiredAttribute.ErrorMessage is null
+                        ? $"Parameter '{property.Name}' is required."
+                        : missing.ErrorMessage ?? $"Parameter '{property.Name}' is required.");
+            }
+
+            foreach (var attribute in attributes.Where(x => x is not RequiredAttribute))
+            {
+                if (attribute.GetValidationResult(value, context) is { } failure)
+                {
+                    throw new KaleidoValidationException(
+                        QueryableErrorCodes.InvalidParameterValue,
+                        failure.ErrorMessage ?? $"Parameter '{property.Name}' is not valid.");
+                }
+            }
+        }
     }
 
     private void ValidateFilterValueTypes(QueryFilterCondition condition)
