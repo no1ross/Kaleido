@@ -44,6 +44,10 @@
 - MCP: the router uses `Kaleido:Mcp:ToolListing = FrontDoor` (ADR 0016) with `ListedTools = [history_prior_auth_record_list]`. Its instructions tell the agent to start the intake first and pass that processId on every call, searches included; the adapter sends it as the header and fills a search's own `processId` parameter from it.
 - Radiology's steps and the provider searches they need are not on the agent's tool list: they arrive in `next` (inputs, hints, the search with the processId pre-filled) and run with `call_tool`.
 
+## The member cannot change once the request is under way
+- Radiology's `ValidateMemberStep` / `CaptureMemberStep` exist for a request handed off without a member (service captured first in Intake; `StartRadiologyIntake` then requires Validate Member). They close when the MRI or CT questions are answered (`[AvailableUntil<CaptureMriInfoStep>]`, `[AvailableUntil<ConfirmCtInsteadOfMriStep>]`): the member is settled before those questions in every path.
+- After that, Radiology offers only Capture Requested Service, Remove Requested Service and Capture Requesting Provider (which closes the other two). Calling a member step then is refused with `pro_step_not_available`.
+
 ## Errors a caller can fix
 - Request paths throw `KaleidoValidationException` with the sample's own codes (`Common/Compliance/PriorAuthErrorCodes.cs`), never `InvalidOperationException` (a 500 the caller cannot act on) and never Kaleido's `qry_*`/`pro_*` codes. Step handlers reject with a business message instead of throwing.
 - Query parameters that a source needs are `[Required]` (nullable for value types, e.g. `Guid? ProcessId`), so Kaleido rejects a missing one with 400 before the source runs.

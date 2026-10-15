@@ -13,6 +13,10 @@ namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
     Version = "1.0.0")]
 [AvailableAfter<StartRadiologyIntakeStep>]
 [AvailableUntil<CaptureRequestingProviderStep>]
+// For a request handed off without a member (service captured first in Intake). The member is
+// settled before the MRI/CT questions in every path, so it cannot be changed once they are answered.
+[AvailableUntil<CaptureMriInfoStep>]
+[AvailableUntil<ConfirmCtInsteadOfMriStep>]
 [Repeatable]
 public sealed record ValidateMemberStep : IProcessStep
 {
