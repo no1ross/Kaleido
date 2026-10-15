@@ -112,7 +112,8 @@ public sealed class FunctionalRecordViewParameters : IQueryParameters
     Version = "1.0.0",
     DisplayName = "Functional Records",
     Description = "Functional records for Queryable HTTP tests.",
-    Source = "AspNetCore Functional Test Data")]
+    Source = "AspNetCore Functional Test Data",
+    DefaultSortField = nameof(FunctionalRecordContext.Id))]
 [Pageable(DefaultSize = 3, MaxSize = 10)]
 public sealed class FunctionalRecordContextSource : IQuerySource<FunctionalRecordContext>
 {
@@ -123,8 +124,9 @@ public sealed class FunctionalRecordContextSource : IQuerySource<FunctionalRecor
         _data = data;
     }
 
+    // Reversed on purpose: results in Id order prove the DefaultSortField is applied, not the data's order.
     public IQueryable<FunctionalRecordContext> CreateQuery(QueryExecutionContext executionContext) =>
-        _data.Records.AsQueryable();
+        _data.Records.Reverse().AsQueryable();
 }
 
 /// <summary>The same records without [Pageable]: an explicit page is a request error (#210).</summary>

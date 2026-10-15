@@ -33,6 +33,16 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
     }
 
     [Fact]
+    public async Task PostDirectQuery_WithoutSort_PagesInTheSourcesDefaultOrder()
+    {
+        var first = await PostContextQueryForRecordsAsync(new QueryRequest(new QueryBody(Page: new QueryPage(3, 0))));
+        var second = await PostContextQueryForRecordsAsync(new QueryRequest(new QueryBody(Page: new QueryPage(3, 3))));
+
+        Assert.Equal([1, 2, 3], first.Select(x => GetInt32(x, "Id")));
+        Assert.Equal([4, 5, 6], second.Select(x => GetInt32(x, "Id")));
+    }
+
+    [Fact]
     public async Task PostDirectQuery_FiltersByCategory()
     {
         var request = new QueryRequest(new QueryBody(

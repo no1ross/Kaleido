@@ -50,7 +50,7 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
         return new CompiledQuery(
             CompileFilter(request.Query?.Filter, metadata),
             CompileSearch(request.Query?.SearchText, metadata),
-            CompileSort(request.Query?.Sort, metadata),
+            CompileSort(request.Query?.Sort, metadata, pageable?.DefaultSortField),
             new CompiledPage(size, offset, IsExplicit: request.Query?.Page is not null));
     }
 
@@ -146,13 +146,17 @@ internal sealed class QueryRequestCompiler : IQueryContextCompiler
             searchableFields);
     }
 
+    // The request's sort; without one, a pageable capability's default sort, so pages are stable.
     private static CompiledSort[] CompileSort(
         IReadOnlyList<QuerySort>? sorts,
-        QuerySourceMetadata metadata)
+        QuerySourceMetadata metadata,
+        string? defaultSortField)
     {
         if (sorts is null || sorts.Count == 0)
         {
-            return Array.Empty<CompiledSort>();
+            return defaultSortField is null
+                ? []
+                : [new CompiledSort(metadata.GetField(defaultSortField), SortDirection.Ascending, 0)];
         }
 
         return sorts

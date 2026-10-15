@@ -13,7 +13,8 @@ namespace Kaleido.Samples.PriorAuth.Provider.Queryable.ContextSources;
     Version = "1.0.0",
     DisplayName = "Network Providers",
     Description = "Requesting providers or servicing facilities, with their locations and network status for a plan.",
-    Source = "Prior Authorization Provider Search")]
+    Source = "Prior Authorization Provider Search",
+    DefaultSortField = nameof(RequestingProviderQueryContext.ProviderName))]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class RequestingProviderQueryContextSource(
     ProviderSearchDbContext dbContext,

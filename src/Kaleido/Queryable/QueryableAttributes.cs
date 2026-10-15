@@ -38,6 +38,15 @@ public sealed class QuerySourceAttribute : Attribute
 
     /// <summary>Optional free-text description of where the data comes from (for example the owning system).</summary>
     public string? Source { get; init; }
+
+    /// <summary>
+    /// The query context property direct queries are sorted by when the request specifies no sort,
+    /// so pages are stable. Required when a local source is <see cref="PageableAttribute">pageable</see>;
+    /// the property must be <see cref="SortableAttribute">sortable</see>. Not used by delegated
+    /// sources, whose order is their downstream's. Prefer a unique field (an id or code): rows with
+    /// equal values can still change places between pages.
+    /// </summary>
+    public string? DefaultSortField { get; init; }
 }
 
 /// <summary>
@@ -63,9 +72,10 @@ public sealed class QueryViewAttribute : Attribute
     public required string Description { get; init; }
 
     /// <summary>
-    /// The query context property used to sort when the request specifies no sort. Required when
-    /// the view is <see cref="PageableAttribute">pageable</see>; the property must be
-    /// <see cref="SortableAttribute">sortable</see>.
+    /// The query context property used to sort when the request specifies no sort, so pages are
+    /// stable. Required when the view is <see cref="PageableAttribute">pageable</see>; the property
+    /// must be <see cref="SortableAttribute">sortable</see>. Prefer a unique field: rows with equal
+    /// values can still change places between pages.
     /// </summary>
     public string? DefaultSortField { get; init; }
 }

@@ -145,6 +145,35 @@ public sealed class QueryRequestCompilerTests
     }
 
     [Fact]
+    public void Compile_WithoutSort_UsesTheDefaultSortField_Ascending()
+    {
+        var result = Sut.Compile(new QueryRequest(), CreateContextMetadata(), new PageableMetadata(10, 20, nameof(TestRecord.Region)));
+
+        var sort = Assert.Single(result.Sort);
+        Assert.Equal(nameof(TestRecord.Region), sort.Field.Name);
+        Assert.Equal(SortDirection.Ascending, sort.Direction);
+    }
+
+    [Fact]
+    public void Compile_TheRequestSort_WinsOverTheDefault()
+    {
+        var request = new QueryRequest(new QueryBody(Sort: [new QuerySort(nameof(TestRecord.Code), SortDirection.Descending, 1)]));
+
+        var result = Sut.Compile(request, CreateContextMetadata(), new PageableMetadata(10, 20, nameof(TestRecord.Region)));
+
+        var sort = Assert.Single(result.Sort);
+        Assert.Equal(nameof(TestRecord.Code), sort.Field.Name);
+        Assert.Equal(SortDirection.Descending, sort.Direction);
+    }
+
+    [Fact]
+    public void Compile_WithoutSortOrDefault_LeavesTheQueryUnsorted()
+    {
+        Assert.Empty(Compile(new QueryRequest(), CreateContextMetadata()).Sort);
+        Assert.Empty(Compile(new QueryRequest(), CreateContextMetadataWithoutPageable()).Sort);
+    }
+
+    [Fact]
     public void Compile_WhenFieldIsMissing_Throws()
     {
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Missing", FilterOperator.Equals, "A")));
