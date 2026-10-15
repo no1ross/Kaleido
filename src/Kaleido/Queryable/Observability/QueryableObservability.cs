@@ -129,13 +129,20 @@ internal sealed partial class QueryableObservability(
 
         QueryExecutionsCounter.Add(1, CreateExecutionTags(details));
 
-        LogExecutionStarted(logger, details.QuerySourceName, details.QueryViewName, details.IsDirectQuery, details.ExecutionMode);
+        var capability = Capability(details);
+
+        LogExecutionStarted(logger, capability, details.IsDirectQuery, details.ExecutionMode);
 
         return new QueryExecutionObservation(
             activity,
             logger,
-            details);
+            details,
+            capability);
     }
+
+    // "Source" for a direct query, "Source/View" for a view: no "view (null)" in the logs.
+    private static string Capability(QueryObservationDetails details) =>
+        details.QueryViewName is { } view ? $"{details.QuerySourceName}/{view}" : details.QuerySourceName;
 
     private static TagList CreateExecutionTags(QueryObservationDetails details)
     {
@@ -157,7 +164,8 @@ internal sealed partial class QueryableObservability(
     private sealed partial class QueryExecutionObservation(
         Activity? activity,
         ILogger logger,
-        QueryObservationDetails details)
+        QueryObservationDetails details,
+        string capability)
         : IQueryExecutionObservation
     {
         public IDisposable BeginSource() =>
@@ -176,14 +184,15 @@ internal sealed partial class QueryableObservability(
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            // The caller's query was refused (400): tagged and counted, but not an error of this
+            // service, and logged once at Warning by the transport.
             activity?.SetTag(QueryableTelemetry.TagValidationCode, exception.Code);
 
             QueryValidationFailuresCounter.Add(
                 1,
                 CreateValidationTags(details, exception.Code));
 
-            LogValidationFailed(logger, exception, details.QuerySourceName, details.QueryViewName, exception.Code);
+            LogValidationFailed(logger, exception, capability, exception.Code);
         }
 
         public void Materialized(int totalCount, int returnedCount, int? pageSize, int? pageOffset)
@@ -208,7 +217,7 @@ internal sealed partial class QueryableObservability(
                 QueryPageOffsetHistogram.Record(pageOffset.Value, tags);
             }
 
-            LogMaterialized(logger, details.QuerySourceName, details.QueryViewName, totalCount, returnedCount, pageSize, pageOffset);
+            LogMaterialized(logger, capability, totalCount, returnedCount, pageSize, pageOffset);
         }
 
         public void Canceled()
@@ -217,7 +226,7 @@ internal sealed partial class QueryableObservability(
 
             QueryExecutionCancellationsCounter.Add(1, CreateExecutionTags(details));
 
-            LogCanceled(logger, details.QuerySourceName, details.QueryViewName);
+            LogCanceled(logger, capability);
         }
 
         public void ExecutionFailed(Exception exception)
@@ -229,7 +238,7 @@ internal sealed partial class QueryableObservability(
 
             QueryExecutionFailuresCounter.Add(1, CreateExecutionTags(details));
 
-            LogFailed(logger, exception, details.QuerySourceName, details.QueryViewName);
+            LogFailed(logger, exception, capability);
         }
 
         public void Dispose()
@@ -258,19 +267,19 @@ internal sealed partial class QueryableObservability(
             return (IDisposable?)activity ?? NullDisposable.Instance;
         }
 
-        [LoggerMessage(Level = LogLevel.Warning, Message = "Queryable validation failed for source {QuerySourceName} view {QueryViewName} with code {ValidationCode}.")]
-        private static partial void LogValidationFailed(ILogger logger, Exception exception, string querySourceName, string? queryViewName, string validationCode);
+        [LoggerMessage(Level = LogLevel.Debug, Message = "Queryable validation failed for {Capability} with code {ValidationCode}.")]
+        private static partial void LogValidationFailed(ILogger logger, Exception exception, string capability, string validationCode);
 
-        [LoggerMessage(Level = LogLevel.Debug, Message = "Queryable materialization completed for source {QuerySourceName} view {QueryViewName} total {TotalCount} returned {ReturnedCount} pageSize {PageSize} pageOffset {PageOffset}.")]
-        private static partial void LogMaterialized(ILogger logger, string querySourceName, string? queryViewName, int totalCount, int returnedCount, int? pageSize, int? pageOffset);
+        [LoggerMessage(Level = LogLevel.Debug, Message = "Queryable materialization completed for {Capability} total {TotalCount} returned {ReturnedCount} pageSize {PageSize} pageOffset {PageOffset}.")]
+        private static partial void LogMaterialized(ILogger logger, string capability, int totalCount, int returnedCount, int? pageSize, int? pageOffset);
 
-        [LoggerMessage(Level = LogLevel.Warning, Message = "Queryable execution was canceled for source {QuerySourceName} view {QueryViewName}.")]
-        private static partial void LogCanceled(ILogger logger, string querySourceName, string? queryViewName);
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Queryable execution was canceled for {Capability}.")]
+        private static partial void LogCanceled(ILogger logger, string capability);
 
-        [LoggerMessage(Level = LogLevel.Error, Message = "Queryable execution failed for source {QuerySourceName} view {QueryViewName}.")]
-        private static partial void LogFailed(ILogger logger, Exception exception, string querySourceName, string? queryViewName);
+        [LoggerMessage(Level = LogLevel.Error, Message = "Queryable execution failed for {Capability}.")]
+        private static partial void LogFailed(ILogger logger, Exception exception, string capability);
     }
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Queryable execution started for source {QuerySourceName} view {QueryViewName} direct {IsDirectQuery} mode {ExecutionMode}.")]
-    private static partial void LogExecutionStarted(ILogger logger, string querySourceName, string? queryViewName, bool isDirectQuery, QueryExecutionMode executionMode);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Queryable execution started for {Capability} direct {IsDirectQuery} mode {ExecutionMode}.")]
+    private static partial void LogExecutionStarted(ILogger logger, string capability, bool isDirectQuery, QueryExecutionMode executionMode);
 }

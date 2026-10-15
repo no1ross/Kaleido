@@ -1035,7 +1035,9 @@ internal sealed partial class KaleidoToolInvoker(
             new(new ProcessRequiredStep { Name = string.Empty }, new InformationRequest { InformationRequestId = string.Empty }, error);
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP tool {Tool}: the service answered {StatusCode} ({Code}).")]
+    // Debug: the Kaleido client already logged the service's non-success answer at Warning (one
+    // signal per failure); this line only ties it to the tool.
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Kaleido MCP tool {Tool}: the service answered {StatusCode} ({Code}).")]
     private static partial void LogServiceAnswered(ILogger logger, string tool, int statusCode, string code);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP tool {Tool}: the service could not be reached.")]
