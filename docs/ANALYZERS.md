@@ -36,6 +36,8 @@ All three are build diagnostics, not runtime error codes (runtime codes are in [
 | KAL2016 | Error | `Success<TNext>()` or `Next<TNext>()` names an information step | A step with nothing to answer (runtime `pro_information_request_missing`); use `RequireInformation<TNext>(request)` |
 | KAL2017 | Warning | A process step input property has no description (`[Description]` or `[Display(Description = …)]`) | Inputs UIs and AI agents can't explain or ask for |
 | KAL2018 | Warning | An `IQueryContext` or `IQueryParameters` property has no description | Query fields UIs and AI agents (MCP tool schemas) can't explain |
+| KAL2021 | Warning | A `[Required]` process step input has a non-nullable value type and is not a C# `required` member | An omitted input silently becomes its default (`Guid.Empty`, `default(DateOnly)`) and passes validation |
+| KAL2022 | Warning | The same for an `IQueryParameters` property | An omitted query parameter silently becomes its default and passes validation |
 
 ### Examples and notes
 
@@ -47,6 +49,8 @@ All three are build diagnostics, not runtime error codes (runtime codes are in [
 - **KAL2014 — query rules live on query contexts.** Put `[Filterable]` / `[Searchable]` / `[Sortable]` on the `IQueryContext` record a source is queried by, not on view or result records.
 - **KAL2015–KAL2016 — information steps.** An `IInformationStep`'s payload is the answers to its pending request, so it declares only `InformationRequestId` and `Items`; known inputs belong on an ordinary step. It is always required with its questions: `RequireInformation<TNext>(request)`, never `Success<TNext>()`. Requests built from runtime values can't be checked statically; the runtime guard (`pro_information_request_missing`) still applies. See [`INFORMATION_REQUESTS.md`](./INFORMATION_REQUESTS.md). [Implementation](../tools/analyzers/Kaleido.Analyzers/Process/InformationStepAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Process/InformationStepAnalyzerTests.cs).
 - **KAL2017–KAL2018 — describe inputs.** Only a description is asked for — `[Description("…")]` or `[Display(Description = "…")]`; `[Display(Name, Prompt)]` stay optional hints. The registry publishes them as field metadata, which is what UIs and AI agents read to know what to ask for. Warnings, not errors: the rule nudges without blocking. Information steps are exempt (their request describes the questions). [Implementation](../tools/analyzers/Kaleido.Analyzers/InputDescriptionAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/InputDescriptionAnalyzerTests.cs).
+
+- **KAL2021–KAL2022 — a required value must be able to be missing.** The `[Required]` attribute fails only for `null`, so on a `Guid`, `DateOnly`, enum or number it never fails: an omitted value has already become its default. Declare the input with the C# `required` keyword (`[Required] public required Guid MemberId { get; init; }`): the compiler makes in-process callers set it, and System.Text.Json refuses a request body that leaves it out (Kaleido answers 400 naming it). A nullable type (`Guid?`) also satisfies the rule, at the cost of `.Value` in handlers. [Implementation](../tools/analyzers/Kaleido.Analyzers/RequiredValueTypeAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/RequiredValueTypeAnalyzerTests.cs).
 
 Compliant shapes for all of the above are in [`PATTERNS.md`](./PATTERNS.md).
 

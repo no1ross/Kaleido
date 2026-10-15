@@ -23,5 +23,5 @@ public sealed record RemoveRequestedServiceStep : IProcessStep
         Source = nameof(RequestedServiceQueryContextSource),
         Field = "PriorAuthorizationRequestedServiceId",
         Display = ["ResolvedCodeValue", "Description"])]
-    public Guid PriorAuthorizationRequestedServiceId { get; init; }
+    public required Guid PriorAuthorizationRequestedServiceId { get; init; }
 }
