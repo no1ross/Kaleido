@@ -45,6 +45,7 @@ public sealed class QueryViewRegistryTests
         Assert.Equal("Test View", registration.Metadata.DisplayName);
         Assert.Equal("Test view description", registration.Metadata.Description);
         Assert.NotNull(registration.Metadata.Pageable);
+        Assert.Equal(nameof(TestContext.Id), registration.Metadata.Pageable.DefaultSortField);
     }
 
     [Fact]

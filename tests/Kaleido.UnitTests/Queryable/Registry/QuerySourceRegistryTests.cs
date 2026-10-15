@@ -56,6 +56,35 @@ public sealed class QuerySourceRegistryTests
     }
 
     [Fact]
+    public void Constructor_APageableLocalSource_CarriesItsDefaultSortField()
+    {
+        Assert.Equal(nameof(TestContext.Code), CreateSut(typeof(TestSource)).GetRegistration(typeof(TestSource)).Metadata.Pageable?.DefaultSortField);
+    }
+
+    [Theory]
+    [InlineData(typeof(UnsortedPageableSource), "must define a DefaultSortField")]
+    [InlineData(typeof(MissingSortFieldSource), "does not exist")]
+    [InlineData(typeof(NotSortableSortFieldSource), "not marked as sortable")]
+    public void Constructor_APageableLocalSource_WithoutAValidDefaultSort_FailsStartup(Type sourceType, string message)
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => CreateSut(sourceType));
+
+        Assert.Equal(QueryableErrorCodes.InvalidRegistration, exception.Code);
+        Assert.Contains(message, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Constructor_APageableDelegatedSource_NeedsNoDefaultSort()
+    {
+        var registry = CreateSut(AuthorizationMetadata.Unspecified, [], [typeof(PageableDelegatedSource)]);
+
+        var pageable = registry.GetRegistration(typeof(PageableDelegatedSource)).Metadata.Pageable;
+
+        Assert.Equal(5, pageable?.DefaultSize);
+        Assert.Null(pageable?.DefaultSortField);
+    }
+
+    [Fact]
     public void Constructor_BuildsFieldMetadataFromQueryContext()
     {
         var registry = CreateSut(typeof(TestSource));
@@ -176,7 +205,8 @@ public sealed class QuerySourceRegistryTests
         DisplayName = "Test Source",
         Description = "Test source description",
         Version = "1.0.0",
-        Source = "Unit Test")]
+        Source = "Unit Test",
+        DefaultSortField = nameof(TestContext.Code))]
     [Pageable(DefaultSize = 25, MaxSize = 100)]
     private sealed class TestSource : IQuerySource<TestContext>
     {
@@ -213,5 +243,39 @@ public sealed class QuerySourceRegistryTests
             IQueryRequest<TestParameters> request,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new QueryResult<TestResult>(0, 0, 0, []));
+    }
+
+    [QuerySource(DisplayName = "Pageable delegated", Description = "Pages in its downstream.", Version = "1.0.0")]
+    [Pageable(DefaultSize = 5, MaxSize = 10)]
+    private sealed class PageableDelegatedSource : IDelegatedQuerySource<TestContext, TestResult, TestParameters>
+    {
+        public Task<QueryResult<TestResult>> ExecuteAsync(
+            IQueryRequest<TestParameters> request,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new QueryResult<TestResult>(0, 0, 0, []));
+    }
+
+    [QuerySource(DisplayName = "Unsorted", Description = "Pageable without a default sort.", Version = "1.0.0")]
+    [Pageable(DefaultSize = 5, MaxSize = 10)]
+    private sealed class UnsortedPageableSource : IQuerySource<TestContext>
+    {
+        public IQueryable<TestContext> CreateQuery(QueryExecutionContext executionContext) =>
+            Array.Empty<TestContext>().AsQueryable();
+    }
+
+    [QuerySource(DisplayName = "Missing", Description = "Default sort on a missing field.", Version = "1.0.0", DefaultSortField = "Nope")]
+    [Pageable(DefaultSize = 5, MaxSize = 10)]
+    private sealed class MissingSortFieldSource : IQuerySource<TestContext>
+    {
+        public IQueryable<TestContext> CreateQuery(QueryExecutionContext executionContext) =>
+            Array.Empty<TestContext>().AsQueryable();
+    }
+
+    [QuerySource(DisplayName = "Not sortable", Description = "Default sort on a field that is not sortable.", Version = "1.0.0", DefaultSortField = nameof(TestContext.Region))]
+    [Pageable(DefaultSize = 5, MaxSize = 10)]
+    private sealed class NotSortableSortFieldSource : IQuerySource<TestContext>
+    {
+        public IQueryable<TestContext> CreateQuery(QueryExecutionContext executionContext) =>
+            Array.Empty<TestContext>().AsQueryable();
     }
 }

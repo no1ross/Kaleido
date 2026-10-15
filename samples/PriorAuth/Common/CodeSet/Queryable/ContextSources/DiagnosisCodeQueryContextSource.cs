@@ -9,7 +9,8 @@ namespace Kaleido.Samples.PriorAuth.CodeSet.Queryable.ContextSources;
     Version = "1.0.0",
     DisplayName = "Diagnosis Codes",
     Description = "Diagnosis codes, searchable by code and description.",
-    Source = "Prior Authorization Code Set")]
+    Source = "Prior Authorization Code Set",
+    DefaultSortField = nameof(DiagnosisCodeQueryContext.CodeValue))]
 [Pageable(
     DefaultSize = 25,
     MaxSize = 100)]

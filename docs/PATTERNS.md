@@ -203,7 +203,8 @@ public sealed record MemberQueryContext : IQueryContext
 }
 
 // The source: the published capability. Queryable directly at /{service}/queryable/{source}/query.
-[QuerySource(Version = "1.0.0", DisplayName = "Members", Description = "Member enrollments, searchable by member number and name.")]
+[QuerySource(Version = "1.0.0", DisplayName = "Members", Description = "Member enrollments, searchable by member number and name.",
+             DefaultSortField = nameof(MemberQueryContext.MemberNumber))]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class MemberQuerySource(MemberDbContext db) : IQuerySource<MemberQueryContext>
 {
@@ -237,7 +238,9 @@ Rules:
 - **Parameter records implement `IQueryParameters`.** View and result records are
   plain output shapes, with no marker.
 - **Paging:** a source's `[Pageable]` applies to direct queries of that source, a
-  view's to that view. Nothing is inherited.
+  view's to that view. Nothing is inherited. A pageable view or local source
+  declares a sortable `DefaultSortField` (prefer a unique field); requests without
+  a sort are ordered by it, so pages are stable.
 - **Sync vs async:** prefer `IQuerySource<T>` / `IQueryViewSource<…>` when the
   queryable is already in hand (in-memory, pre-fetched, or deferred LINQ). Use
   `IQuerySourceAsync<T>` / `IQueryViewSourceAsync<…>` when producing it needs async I/O.
