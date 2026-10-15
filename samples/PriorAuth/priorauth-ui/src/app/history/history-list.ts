@@ -5,9 +5,16 @@ import { Router } from '@angular/router';
 
 import { SortDirection } from '../kaleido/models/enumerations';
 import { ProcessService } from '../kaleido/services/process-service';
+import { QueryableRegistry } from '../kaleido/services/queryable-registry';
 import { QueryableService } from '../kaleido/services/queryable-service';
 import { ProcessStateService } from '../process/services/process-state-service';
 import { PriorAuthRecordView } from './prior-auth-record-view';
+
+/** History's list view; present in the caller's registry only when the caller may query it. */
+export const HistoryListView = 'PriorAuthRecordListViewSource';
+
+const NotAuthorizedMessage =
+    'You are not authorized to view prior authorization history. Sign in with a persona that has access.';
 
 @Component({
     selector: 'priorauth-history-list',
@@ -28,6 +35,9 @@ export class HistoryList implements OnInit {
 
     private readonly processService =
         inject(ProcessService);
+
+    private readonly queryableRegistry =
+        inject(QueryableRegistry);
 
     readonly records =
         signal<PriorAuthRecordView[]>([]);
@@ -52,8 +62,16 @@ export class HistoryList implements OnInit {
         this.isLoading.set(true);
         this.errorMessage.set(undefined);
 
+        // The registry lists only what this caller may query: without the view, the caller is not
+        // allowed to see History (e.g. anonymous).
+        if (!this.queryableRegistry.tryGetViewRegistration(HistoryListView)) {
+            this.isLoading.set(false);
+            this.errorMessage.set(NotAuthorizedMessage);
+            return;
+        }
+
         this.queryableService
-            .queryView<PriorAuthRecordView>('PriorAuthRecordListViewSource', {
+            .queryView<PriorAuthRecordView>(HistoryListView, {
                 query: {
                     sort: [
                         {
@@ -73,9 +91,12 @@ export class HistoryList implements OnInit {
                     this.records.set(result.results);
                     this.isLoading.set(false);
                 },
-                error: () => {
+                error: error => {
                     this.isLoading.set(false);
-                    this.errorMessage.set('Failed to load prior authorization history. Please try again.');
+                    this.errorMessage.set(
+                        error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403)
+                            ? NotAuthorizedMessage
+                            : 'Failed to load prior authorization history. Please try again.');
                 }
             });
     }
@@ -85,8 +106,13 @@ export class HistoryList implements OnInit {
      * MCP adapter): History supplies the member and date of service it knows; the process's own
      * state supplies the processor, the next step and any pending questions.
      */
+    /** A submitted request is finished: there is nothing left to continue. */
+    canResume(record: PriorAuthRecordView): boolean {
+        return record.status?.toLowerCase() !== 'submitted';
+    }
+
     resumeProcess(record: PriorAuthRecordView): void {
-        if (this.resumingProcessId()) {
+        if (this.resumingProcessId() || !this.canResume(record)) {
             return;
         }
 

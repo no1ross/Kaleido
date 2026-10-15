@@ -8,10 +8,13 @@
 
       <div class="shell__persona">
         <label for="persona-picker">Persona</label>
-        <select id="persona-picker" [value]="auth.persona() ?? ''" (change)="onPersonaChange($event)">
-          <option value="">Anonymous</option>
+        <!-- [selected] per option, not [value] on the select: the options are rendered after the
+             select's value is bound, so a restored persona would show as "Anonymous" while its
+             token is still sent. -->
+        <select id="persona-picker" (change)="onPersonaChange($event)">
+          <option value="" [selected]="!auth.persona()">Anonymous</option>
           @for (persona of auth.personas; track persona.name) {
-            <option [value]="persona.name">{{ persona.displayName }}</option>
+            <option [value]="persona.name" [selected]="persona.name === auth.persona()">{{ persona.displayName }}</option>
           }
         </select>
       </div>

@@ -1,8 +1,12 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
+import { map } from 'rxjs';
 
+import { HistoryListView } from '../history/history-list';
 import { ProcessService } from '../kaleido/services/process-service';
 import { ProcessStateService } from '../process/services/process-state-service';
+import { RegistryCatalog } from '../registries/registry-catalog';
 
 @Component({
     selector: 'priorauth-home',
@@ -23,6 +27,16 @@ export class PriorAuthHome {
 
     readonly processId =
         computed(() => this.processState.state().processId);
+
+    /**
+     * The registry is filtered per caller: History is offered only when the caller may query its
+     * list view (an anonymous caller may not).
+     */
+    readonly canViewHistory =
+        toSignal(
+            inject(RegistryCatalog).loadState().pipe(
+                map(state => state.queryableViews.some(x => x.view.name === HistoryListView))),
+            { initialValue: false });
 
     readonly isStarting =
         signal(false);
