@@ -41,6 +41,12 @@ Rules:
 - `[ProcessStep]` declares non-empty `Version`, `DisplayName`, and `Description`
   (KAL2001). `DisplayName`/`Description` are what UIs and AI agents read — write
   them for that audience.
+- **Required inputs are `required` members.** Inputs are validated with DataAnnotations, and
+  `[Required]` cannot see an omitted value type (it is already its default). Declare required
+  value-type inputs with the C# keyword too (KAL2021):
+  `[Required] public required Guid MemberId { get; init; }`. Callers must then supply it: the
+  compiler checks in-process callers, and a request body that leaves it out is answered 400
+  naming it. The handler reads a plain `Guid`.
 - **The next step is named by type**: `Success<TNext>()`, or with a typed response
   `ProcessStepHandlerResult.Success(response).Next<TNext>()` (the response type is inferred);
   `Success()` / `Success(response)` let the process rules decide. Cross-processor routing uses

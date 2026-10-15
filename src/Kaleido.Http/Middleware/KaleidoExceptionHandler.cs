@@ -60,10 +60,12 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
                 await WriteErrorAsync(context, StatusCodes.Status409Conflict, conflict.Code, conflict.Message, cancellationToken);
                 break;
 
-            case BadHttpRequestException badRequest:
-                MarkFailed(badRequest);
-                LogMalformedRequest(logger, badRequest, badRequest.Message);
-                await WriteErrorAsync(context, badRequest.StatusCode, KaleidoErrorCodes.ArgumentError, badRequest.Message, cancellationToken);
+            // A malformed request, including a body that does not fit its type if one ever gets past
+            // KaleidoJsonBody: a caller's mistake, never a 500.
+            case BadHttpRequestException or System.Text.Json.JsonException:
+                MarkFailed(exception);
+                LogMalformedRequest(logger, exception, exception.Message);
+                await WriteMalformedAsync(context, exception, cancellationToken);
                 break;
 
             case ArgumentException argument:
@@ -92,6 +94,11 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
                 break;
         }
     }
+
+    private static Task WriteMalformedAsync(HttpContext context, Exception exception, CancellationToken cancellationToken) =>
+        exception is BadHttpRequestException badRequest
+            ? WriteErrorAsync(context, badRequest.StatusCode, KaleidoErrorCodes.ArgumentError, badRequest.Message, cancellationToken)
+            : WriteErrorAsync(context, StatusCodes.Status400BadRequest, KaleidoErrorCodes.ArgumentError, "The request body does not fit the expected shape.", cancellationToken);
 
     private static void MarkFailed(Exception exception) =>
         Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);

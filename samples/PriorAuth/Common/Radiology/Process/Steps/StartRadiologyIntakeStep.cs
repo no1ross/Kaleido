@@ -25,7 +25,7 @@ public sealed record StartRadiologyIntakeStep : IProcessStep
     public string CodeValue { get; init; } = string.Empty;
 
     [Required]
-    public ProcedureCodeSystem CodeSystem { get; init; }
+    public required ProcedureCodeSystem CodeSystem { get; init; }
 
     // What the caller stated about the service at intake (see Intake's CaptureRequestedServiceStep).
     public MriBodyPart? BodyPart { get; init; }

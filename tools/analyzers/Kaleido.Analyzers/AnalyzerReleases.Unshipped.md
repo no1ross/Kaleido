@@ -20,3 +20,5 @@ KAL2017 | Kaleido.Usage | Warning | Process step input property has no descripti
 KAL2018 | Kaleido.Usage | Warning | Query context or parameters property has no description
 KAL2019 | Kaleido.Usage | Warning | Capability type name is too long for an MCP tool name
 KAL2020 | Kaleido.Usage | Warning | ServiceName is too long for MCP tool names
+KAL2021 | Kaleido.Usage | Warning | A [Required] process step input has a non-nullable value type
+KAL2022 | Kaleido.Usage | Warning | A [Required] query parameter has a non-nullable value type

@@ -29,6 +29,51 @@ public sealed class HostExceptionHandlerTests
                 return context.Response.WriteAsync("host error page");
             })));
 
+    // A body that does not fit its type fails before endpoint filters in minimal-API binding; Kaleido
+    // reads bodies itself so the developer exception page never answers (and never logs an Error).
+    [Fact]
+    public async Task MalformedParameters_WithTheDeveloperExceptionPage_Returns400WithTheKaleidoError()
+    {
+        using var host = await StartAsync(app => app.UseDeveloperExceptionPage());
+
+        using var content = new StringContent("""{"parameters":{"category":42}}""", Encoding.UTF8, "application/json");
+        using var response = await host.GetTestClient().PostAsync(
+            "/kaleido/queryable/functionalrecordcontextsource/functionalrecordgridview/query",
+            content,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.Contains("argument_error", body, StringComparison.Ordinal);
+        Assert.Contains("$.parameters.category", body, StringComparison.Ordinal);
+
+        await host.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    private static async Task<IHost> StartAsync(Action<IApplicationBuilder> hostExceptionHandling) =>
+        await new HostBuilder()
+            .ConfigureWebHost(webBuilder =>
+            {
+                webBuilder.UseTestServer();
+                webBuilder.ConfigureServices(services =>
+                {
+                    services.AddSingleton<FunctionalRecordData>();
+                    services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+                        {
+                            o.ServiceName = "kaleido";
+                            o.Assemblies = [typeof(FunctionalRecordContext).Assembly];
+                        })
+                        .AddHttp();
+                });
+                webBuilder.Configure(app =>
+                {
+                    hostExceptionHandling(app);
+                    app.UseRouting();
+                    app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp());
+                });
+            })
+            .StartAsync(TestContext.Current.CancellationToken);
+
     private static async Task AssertPagingNotSupportedAsync(Action<IApplicationBuilder> hostExceptionHandling)
     {
         using var host = await new HostBuilder()
