@@ -38,6 +38,16 @@
 - Recording is a hard stop: the step runs in `HistoryRecording.InTransactionAsync`, which commits the service's changes only when the step succeeds. If History does not record (HTTP failure, or an outcome other than completed; logged at Error), the step is rolled back and rejected with `HISTORY_NOT_RECORDED`.
 - This is the sample's choice. A production system would feed History from Kaleido's process events (outbox, at-least-once) instead of synchronous calls.
 
+## Process id on every call (MCP and UI)
+- A request's queries are tracked with its process: every query of a request must carry its process id (`X-Kaleido-Process-Id`).
+- UI: the global `kaleido-correlation-interceptor` already sends it on every request while a process is active; member search etc. still work without one before a process exists.
+- MCP: the router uses `Kaleido:Mcp:ToolListing = FrontDoor` (ADR 0016) with `ListedTools = [history_prior_auth_record_list]`. Its instructions tell the agent to start the intake first and pass that processId on every call, searches included; the adapter sends it as the header and fills a search's own `processId` parameter from it.
+- Radiology's steps and the provider searches they need are not on the agent's tool list: they arrive in `next` (inputs, hints, the search with the processId pre-filled) and run with `call_tool`.
+
+## Errors a caller can fix
+- Request paths throw `KaleidoValidationException` with the sample's own codes (`Common/Compliance/PriorAuthErrorCodes.cs`), never `InvalidOperationException` (a 500 the caller cannot act on) and never Kaleido's `qry_*`/`pro_*` codes. Step handlers reject with a business message instead of throwing.
+- Query parameters that a source needs are `[Required]` (nullable for value types, e.g. `Guid? ProcessId`), so Kaleido rejects a missing one with 400 before the source runs.
+
 ## Sensitive data in events
 - Member fields are classified with `[Phi]` (name, display name, date of birth) and `[Pii]` (email, phone, address) from `Common/Compliance/PriorAuthDataClassifications.cs`.
 - Kaleido redacts classified values in event payloads before the outbox write (ADR 0013); responses to callers keep the real values.

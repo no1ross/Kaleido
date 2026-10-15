@@ -37,7 +37,7 @@ One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup 
 | `InvalidPageSize` | `qry_invalid_page_size` | Requested page size is invalid or exceeds the maximum |
 | `InvalidPageOffset` | `qry_invalid_page_offset` | Requested page offset is negative |
 | `UnsupportedMatchMode` | `qry_unsupported_match_mode` | Search field uses a match mode not supported by the field |
-| `MissingParameter` | `qry_missing_parameter` | Required named query parameter is missing |
+| `MissingParameter` | `qry_missing_parameter` | A required query parameter is missing, or the parameters record is missing while it has a `[Required]` member (validated before the query runs, for views, local and delegated sources) |
 | `InvalidParameterType` | `qry_invalid_parameter_type` | Named query parameter value has an incompatible type |
 | `FieldNotSearchable` | `qry_field_not_searchable` | Search text provided but no searchable fields are defined |
 | `DuplicateSortField` | `qry_duplicate_sort_field` | Same field appears more than once in the sort clause |
@@ -51,7 +51,7 @@ One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup 
 | `MissingFilterField` | `qry_missing_filter_field` | Filter condition is missing its field name |
 | `MissingSearchText` | `qry_missing_search_text` | Search request is missing the required search text |
 | `InvalidFilterValue` | `qry_invalid_filter_value` | Filter value cannot be converted to the field's declared type |
-| `InvalidParameterValue` | `qry_invalid_parameter_value` | Named query parameter value cannot be converted |
+| `InvalidParameterValue` | `qry_invalid_parameter_value` | A query parameter value cannot be converted, or fails one of its DataAnnotations (e.g. `[Range]`) |
 
 ---
 

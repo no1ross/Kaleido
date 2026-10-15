@@ -227,6 +227,19 @@ Both clients:
 
 `KaleidoQueryableClientException` is also thrown when the requested context or view name is not found in the cached registry.
 
+### Front doors: calling as the caller, for a process
+
+A front door (a router proxy, the MCP adapter) calls services on behalf of its callers. Two
+per-call scopes, both opt-in and flowing with the async call only:
+
+- `IKaleidoCallerForwarding.ForwardCaller(authorization)`: calls inside it send the caller's
+  `Authorization` instead of the host's configured credentials.
+- `IKaleidoProcessForwarding.ForwardProcess(processId)`: calls inside it send
+  `X-Kaleido-Process-Id: {processId}`, ahead of the request's correlation context. Use it when the
+  process id arrives as data rather than as a header (an MCP tool argument), so the called service
+  records the call with its process. An explicit `processId` passed to
+  `ExecuteStepAsync(stepName, step, processId)` still wins.
+
 ---
 
 ## What this project does NOT do

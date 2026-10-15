@@ -143,10 +143,17 @@ step handler / consumer code
   └─ IKaleidoProcessorClient / IKaleidoQueryableClient
        └─ CorrelationHeaderStamper.Stamp(request)
             reads IKaleidoCorrelationContextAccessor.Current
-            ├─ forwards RequestId and ProcessId unchanged
+            ├─ forwards RequestId unchanged
+            ├─ ProcessId: the IKaleidoProcessForwarding scope's, else the context's
             └─ inside a step only: stamps this service (ServiceName) and
                ExecutingStepName as Calling-Processor / Calling-Step
 ```
+
+- **A front door whose callers cannot send headers** (the MCP adapter: the process id is a tool
+  argument, and the `/mcp` request has no `X-Kaleido-Process-Id`) opens
+  `IKaleidoProcessForwarding.ForwardProcess(processId)` around its calls, so queries an agent runs
+  are recorded with their process like every step. An explicit `processId` on
+  `ExecuteStepAsync` still wins over both.
 
 - Inbound per-hop values are never forwarded: a call made outside a step (router
   forwarding, registry fan-out, a delegated query source) carries no calling processor or step.
