@@ -19,16 +19,33 @@ app.MapKaleidoMcp("/mcp");
 Configuration (`Kaleido:Mcp`): `ServerName`, `ServerVersion`, `Instructions` or
 `InstructionsFile` (replace the default instructions), `AdditionalInstructions` (appended: the
 business's guidance for its agents), `MaxElicitationRounds` (zero or more, default 5; 0 returns
-every information request to the agent; a negative value fails startup with `mcp_invalid_options`).
+every information request to the agent; a negative value fails startup with `mcp_invalid_options`),
+`ToolListing` (`All`, the default, or `FrontDoor`; see [Front door](#front-door)) and `ListedTools`
+(FrontDoor only: extra tool names to list).
 
 ## Tools
 
 | Tool | From | What it does |
 |---|---|---|
-| `{service}_{source or view}` | each query source and view | Runs the query (search text, filters, sort, page, view parameters). |
+| `{service}_{source or view}` | each query source and view | Runs the query (search text, filters, sort, page, view parameters). Takes an optional `processId` where the host has processes (see below). |
 | `{service}_{step}` | each step | Executes the step; a step that is not initial needs the `processId`. |
 | `answer_information_request` | built in | Submits the user's answers to the questions a process is waiting for. |
 | `get_process_state` | built in | Where a process stands: state, completed and failed steps, next steps. |
+| `search_tools`, `describe_tool`, `call_tool` | built in, FrontDoor only | Find a tool by what it does; read one tool's full inputs; run any of the caller's tools by name. |
+
+**Queries and the process id.** A query tool's `processId` argument is the adapter's, not the
+source's: the query is sent inside `IKaleidoProcessForwarding.ForwardProcess(processId)`, so it
+carries `X-Kaleido-Process-Id` and the service records it with the process (traces, logs,
+`QueryExecuted`). The `/mcp` request itself has no process id header, so without the argument an
+agent's queries are not tied to any process. A source that declares its own `processId` parameter
+(a search scoped to the request) gets it filled from the same argument; the parameter is not
+repeated under `parameters`, so there is one `processId`, always at the top level (a nested
+`parameters.processId` is still accepted). It is required only when that parameter is. The result
+echoes the `processId`.
+
+**Required arguments are checked first.** A query whose required argument is missing (top level,
+or a required member of `parameters`) is answered with `mcp_invalid_arguments` naming the field
+and quoting its description; nothing is sent to the service.
 
 Names come from the published names in snake case. When two capabilities produce the same name,
 the later one says what it is (`_view`, `_source`, `_step`), and the collision is logged.
@@ -89,7 +106,8 @@ grouped inputs from the same result.
 lookup's inputs, the adapter runs the lookup itself:
 
 1. the user gets a search form ("Find Member Search");
-2. the query runs as the caller (with the step's `processId` when the query takes one);
+2. the query runs as the caller, sent with the step's `processId` (and filled into the query's own
+   `processId` parameter when it declares one);
 3. the user picks one result from a single-choice form labelled with the display fields (or
    searches again);
 4. the adapter fills the grouped inputs from the chosen row and runs the step.
@@ -103,15 +121,44 @@ PriorAuth sample rejects an enrollment that is not the member's, and a provider 
 not the provider's or not offered for the request, and reads names and network status from the
 chosen result instead of taking them from the caller).
 
+## Front door
+
+With `Kaleido:Mcp:ToolListing = FrontDoor`
+([ADR 0016](../../docs/decisions/0016-mcp-front-door-tool-listing.md)), `tools/list` holds only:
+
+- the steps that can start a process;
+- the queries those steps declare with `[Lookup]` (what an agent needs before a process exists);
+- the names in `Kaleido:Mcp:ListedTools` (searches no starting step declares, e.g. "previous requests");
+- the built-ins, including `search_tools`, `describe_tool` and `call_tool`.
+
+Every other tool is still built and callable, with the same authorization and process rules, and
+the list does not grow with the number of non-initial steps or unlisted queries. Names in
+`ListedTools` that are not tools of the caller are logged at Warning.
+
+- **`next` describes each open step that is not listed**: its `description`, `inputs` (the tool's
+  input schema), `hints` (`readOnly`, `destructive`, `idempotent`), and per lookup what it `fills`
+  and the `search` to run (tool, inputs, the processId already in `arguments`, the fields to
+  `show`). `howToRun` says to run them with `call_tool`.
+- **`call_tool`** (`name`, `arguments`) runs the named tool exactly as if it had been called: the
+  handler unwraps it before anything else, MRTR retries included. It is annotated not read-only and
+  destructive, so clients keep asking the user before each call; the instructions also tell the
+  agent to confirm before running a step.
+- **`search_tools`** (`text`, optional `kind`) ranks the caller's tools by the words they mention;
+  **`describe_tool`** (`name`) returns one tool in full. Neither calls a service.
+- The packaged front-door instructions are appended to the instructions (before
+  `AdditionalInstructions`).
+
+Use `All` for small hosts: every tool keeps its own typed definition and its own approval prompt.
+
 ## When a call fails
 
 A tool call never fails at the protocol level: a problem comes back as a tool result with `isError: true` and one of the `McpErrorCodes`, so the agent can explain it or recover.
 
 | Code | When | What the agent is told to do |
 |---|---|---|
-| `mcp_unknown_tool` | The tool is not (or no longer) offered to this caller. | Use the current tool list. |
-| `mcp_invalid_arguments` | A required argument is missing or has the wrong shape. | Fix the arguments. |
-| `mcp_service_error` | The service refused or failed the call; its status and errors are included. | Explain the errors to the user. |
+| `mcp_unknown_tool` | The tool (or `call_tool`'s / `describe_tool`'s `name`) is not offered to this caller. | Use the current tool list, `next` or `search_tools`. |
+| `mcp_invalid_arguments` | A required argument is missing (named, with its description) or has the wrong shape. | Fix the arguments. |
+| `mcp_service_error` | The service refused or failed the call; its status and errors are included. A 5xx without errors does not pass the service's message through. | Explain the errors to the user. For a 5xx: check the arguments against the tool's inputs; if they are right, tell the user and do not repeat the same call. |
 | `mcp_process_conflict` | Another call changed the process first (409); nothing was saved. | Read the process with `get_process_state` and decide with the user - never repeat the call blindly. |
 | `mcp_service_unavailable` | The service could not be reached, or no client is configured for it. | For a step, check the process with `get_process_state` before trying again. |
 | `mcp_internal_error` | An unexpected error in the adapter. | Same as above. |

@@ -26,11 +26,12 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0008](./0008-rejected-outcome-and-retryable-exceptions.md) | Correctable input is rejected without changing the process; unexpected errors are retryable | Accepted | #237, #238 |
 | [0009](./0009-unknown-process-id-only-on-handoff.md) | An unknown process id starts a process only on a handoff | Accepted | #140 |
 | [0010](./0010-no-case-level-guardrails.md) | Kaleido has no case-level guardrails: no process ownership, no transfer | Accepted | #194 |
-| [0011](./0011-mcp-lists-every-tool-the-caller-may-use.md) | The MCP adapter lists every tool the caller may use; the process stays the gate | Accepted | #230 |
+| [0011](./0011-mcp-lists-every-tool-the-caller-may-use.md) | The MCP adapter lists every tool the caller may use; the process stays the gate | Superseded by 0016 | #230 |
 | [0012](./0012-events-at-least-once-through-the-store.md) | Events reach the publisher at least once, through an outbox in the store | Accepted | #240 |
 | [0013](./0013-event-payloads-classified-and-redacted.md) | Event payloads stay complete; classified values are redacted before the outbox | Accepted | #139 |
 | [0014](./0014-kaleido-telemetry-only-what-kaleido-observes.md) | Kaleido emits telemetry only for what Kaleido alone can observe; OTel parts are switchable | Accepted | #109 |
 | [0015](./0015-declared-step-behavior.md) | Step behavior (destructive, external, confirmation) is declared; idempotence derived; classifications published | Accepted | #137 |
+| [0016](./0016-mcp-front-door-tool-listing.md) | The MCP adapter can list a front door (derived from initial steps and their lookups); open steps arrive in `next` and run with `call_tool` | Accepted | #338 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are

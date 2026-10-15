@@ -1,6 +1,6 @@
 # 0011. The MCP adapter lists every tool the caller may use
 
-- **Status:** Accepted
+- **Status:** Superseded by [0016](./0016-mcp-front-door-tool-listing.md)
 - **Date:** 2026-10-12
 - **Related:** #230, #140
 
