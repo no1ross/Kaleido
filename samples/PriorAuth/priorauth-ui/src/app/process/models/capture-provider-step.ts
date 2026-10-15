@@ -1,5 +1,6 @@
 // Only the ids of the chosen search result: the service checks them and reads the rest of the row.
-export interface CaptureRequestingProviderStep {
+// Shared by CaptureRequestingProviderStep and CaptureServicingProviderStep.
+export interface CaptureProviderStep {
     providerId: string;
     providerLocationId: string;
 }

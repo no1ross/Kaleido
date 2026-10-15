@@ -132,6 +132,12 @@ executeStep<TStep, TResponse>(stepName: string, request: ...): Observable<...>
 
 After a handoff, all subsequent `executeStep()` calls automatically go to the new processor — no changes required at call sites.
 
+### Resuming a process (`ProcessService.resumeProcess()`)
+
+History's **Resume** continues a process wherever it stands, including one started elsewhere (e.g. by an agent through the MCP adapter). It reads `GET /{processor}/processes/{processId}` for the record's processor, follows `targetProcessorName` once if the process was handed off, and restores `currentProcessorName`, the required step (with its pending `informationRequest`) and the available steps. It then navigates to the required step's screen or, when nothing is required, to the furthest available step the UI has a screen for (`getResumeRoute`). The member summary and date of service come from the History record.
+
+While a step is required, only that step can run. A process resumed with the submission attestation pending therefore shows the attestation without Review's read-back, which was returned to whoever ran Review.
+
 ### Cross-processor state fetch
 
 The service resolves the target processor's base URL by looking up any registered entry for that processor name in the registry:

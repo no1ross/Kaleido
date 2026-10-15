@@ -1,0 +1,101 @@
+<section class="process-step-card">
+  <header class="process-step-card__header">
+    <div>
+      <div class="process-step-card__eyebrow">Review &amp; Submit</div>
+      <h2>{{ isSubmitted() ? 'Prior authorization submitted' : 'Review the prior authorization' }}</h2>
+      @if (!isSubmitted()) {
+        <p>Read the request back to the caller, then confirm the attestation to submit it.</p>
+      }
+    </div>
+  </header>
+
+  <div class="process-step-card__body">
+    @if (isSubmitted()) {
+      <div class="review__submitted">
+        <span>Process Id</span>
+        <strong>{{ processState.state().processId }}</strong>
+        <p>The request was submitted. The decision is made outside this process.</p>
+      </div>
+      <div class="process-step-card__actions--stacked">
+        <button type="button" class="primary-button" (click)="viewHistory()">View history</button>
+        <button type="button" class="secondary-button" (click)="startNew()">New request</button>
+      </div>
+    } @else {
+      @if (isReviewing()) {
+        <div class="process-step-card__hint">Loading the request for review...</div>
+      } @else if (review(); as review) {
+        <div class="review__grid">
+          <div class="review__section">
+            <h3>Member</h3>
+            @if (review.member; as member) {
+              <strong>{{ member.displayName }}</strong>
+              <span>{{ member.memberNumber }} · {{ member.planName }}</span>
+            } @else {
+              <span>Not captured</span>
+            }
+          </div>
+
+          <div class="review__section">
+            <h3>Status</h3>
+            <strong>{{ review.status }}</strong>
+            @if (review.clinicalDetermination) {
+              <span>Clinical determination: {{ review.clinicalDetermination }}</span>
+            }
+          </div>
+
+          <div class="review__section">
+            <h3>Ordering (requesting) provider</h3>
+            <span>{{ describeProvider(review.requestingProvider) }}</span>
+          </div>
+
+          <div class="review__section">
+            <h3>Servicing provider (facility)</h3>
+            <span>{{ describeProvider(review.servicingProvider) }}</span>
+          </div>
+        </div>
+
+        <div class="review__section">
+          <h3>Requested services</h3>
+          @for (service of review.requestedServices; track $index) {
+            <span><strong>{{ service.codeValue }}</strong> {{ service.codeSystem }} · {{ service.description }}</span>
+          } @empty {
+            <span>No requested services.</span>
+          }
+        </div>
+
+        @for (questionnaire of review.answers; track questionnaire.key) {
+          <div class="review__section">
+            <h3>{{ questionnaire.title }}</h3>
+            <dl class="review__answers">
+              @for (answer of questionnaire.answers; track answer.itemId) {
+                <dt>{{ answer.question }}</dt>
+                <dd>{{ answer.answers.join(', ') || '—' }}</dd>
+              }
+            </dl>
+          </div>
+        }
+      } @else if (attestation()) {
+        <div class="process-step-card__hint">
+          The request was reviewed earlier (for example by an agent). Its read-back is not available here; the attestation is still pending.
+        </div>
+      }
+
+      @if (attestation(); as request) {
+        <div class="review__attestation">
+          <h3>{{ request.title ?? 'Attestation' }}</h3>
+          <priorauth-information-request-form
+            [request]="request"
+            submitLabel="Submit Prior Authorization"
+            [isSubmitting]="isSubmitting()"
+            (submitted)="submit($event)" />
+        </div>
+      } @else if (!isReviewing() && !errorMessage()) {
+        <p class="process-step-card__error">There is no review or submission pending for this process.</p>
+      }
+    }
+
+    @if (errorMessage()) {
+      <p class="process-step-card__error">{{ errorMessage() }}</p>
+    }
+  </div>
+</section>

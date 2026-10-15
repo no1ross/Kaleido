@@ -10,6 +10,10 @@
         </div>
     </div>
 
+    @if (resumeError()) {
+        <div class="history-error">{{ resumeError() }}</div>
+    }
+
     @if (isLoading()) {
         <div class="history-empty">Loading history...</div>
     } @else if (errorMessage()) {
@@ -65,7 +69,7 @@
                                 {{ formatDate(record.lastUpdatedUtc) }}
                             </td>
                             <td class="history-table__cell history-table__cell--action">
-                                <span class="history-table__resume">Resume</span>
+                                <span class="history-table__resume">{{ resumingProcessId() === record.processId ? 'Opening...' : 'Resume' }}</span>
                             </td>
                         </tr>
                     }
