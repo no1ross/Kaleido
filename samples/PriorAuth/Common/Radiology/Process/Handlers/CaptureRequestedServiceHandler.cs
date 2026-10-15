@@ -1,5 +1,5 @@
 using Kaleido.Http.Client;
-using Kaleido.Samples.PriorAuth.History.Process.Steps;
+using Kaleido.Samples.PriorAuth.History.Process;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Messages;
@@ -18,10 +18,20 @@ public sealed class CaptureRequestedServiceHandler(
     HistoryClient historyClient)
     : IProcessStepHandler<CaptureRequestedServiceStep, CaptureRequestedServiceResponse>
 {
-    public async Task<ProcessStepHandlerResult<CaptureRequestedServiceResponse>> ExecuteAsync(
+    public Task<ProcessStepHandlerResult<CaptureRequestedServiceResponse>> ExecuteAsync(
         CaptureRequestedServiceStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        HistoryRecording.InTransactionAsync<ProcessStepHandlerResult<CaptureRequestedServiceResponse>>(
+            dbContext,
+            () => RunAsync(processStep, context, cancellationToken),
+            _ => ProcessStepHandlerResult.Reject(RadiologyProcessMessages.HistoryNotRecorded(context.ProcessId)),
+            cancellationToken);
+
+    private async Task<ProcessStepHandlerResult<CaptureRequestedServiceResponse>> RunAsync(
+        CaptureRequestedServiceStep processStep,
+        ProcessStepContext context,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -109,16 +119,7 @@ public sealed class CaptureRequestedServiceHandler(
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            await historyClient.UpsertAsync(
-                new UpsertPriorAuthRecordStep
-                {
-                    ProcessorName = "radiology",
-                    Status = PriorAuthorizationStatus.Draft,
-                    PrimaryProcedureCode = procedureCode.CodeValue,
-                    PrimaryProcedureDescription = procedureCode.ShortDescription
-                },
-                context.ProcessId,
-                cancellationToken);
+            await historyClient.RecordAsync(context.ProcessId, cancellationToken);
 
             var response = new CaptureRequestedServiceResponse();
 

@@ -178,4 +178,13 @@ public static class RadiologyProcessMessages
             Type = MessageType.Information,
             Message = $"Prior authorization request {processId} was submitted for review."
         };
+
+    public static ProcessMessage HistoryNotRecorded(
+        Guid processId) =>
+        new()
+        {
+            Code = "HISTORY_NOT_RECORDED",
+            Type = MessageType.Error,
+            Message = $"The change to request '{processId}' could not be recorded in History, so nothing was saved. Try again."
+        };
 }

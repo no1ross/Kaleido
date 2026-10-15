@@ -1,12 +1,18 @@
+using Kaleido.Observability;
 using Kaleido.Samples.PriorAuth.History.Data;
 using Kaleido.Samples.PriorAuth.History.Data.Entities;
 using Kaleido.Samples.PriorAuth.History.Process.Steps;
-using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Samples.PriorAuth.History.Process.Handlers;
 
+/// <summary>
+/// Keeps the latest snapshot of a request: one record per process, overwritten by each recording.
+/// The recording processor is the calling processor Kaleido stamped on the call (trusted for the
+/// authenticated service call this step requires).
+/// </summary>
 public sealed class UpsertPriorAuthRecordHandler(
-    HistoryDbContext dbContext)
+    HistoryDbContext dbContext,
+    IKaleidoCorrelationContextAccessor correlation)
     : IProcessStepHandler<UpsertPriorAuthRecordStep>
 {
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
@@ -14,41 +20,39 @@ public sealed class UpsertPriorAuthRecordHandler(
         ProcessStepContext context,
         CancellationToken cancellationToken = default)
     {
-        var existing =
-            await dbContext.PriorAuthRecords
-                .SingleOrDefaultAsync(
-                    x => x.ProcessId == context.ProcessId,
-                    cancellationToken);
-
-        if (existing is null)
+        if (correlation.Current.CallingProcessorName is not { Length: > 0 } processorName)
         {
-            dbContext.PriorAuthRecords.Add(
-                new PriorAuthRecord
+            return ProcessStepHandlerResult.Reject(
+                new ProcessMessage
                 {
-                    PriorAuthRecordId = Guid.NewGuid(),
-                    ProcessId = context.ProcessId,
-                    ProcessorName = processStep.ProcessorName,
-                    Status = processStep.Status,
-                    MemberNumber = processStep.MemberNumber,
-                    MemberDisplayName = processStep.MemberDisplayName,
-                    DateOfService = processStep.DateOfService,
-                    PrimaryProcedureCode = processStep.PrimaryProcedureCode,
-                    PrimaryProcedureDescription = processStep.PrimaryProcedureDescription,
-                    CreatedUtc = DateTimeOffset.UtcNow,
-                    LastUpdatedUtc = DateTimeOffset.UtcNow
+                    Code = "CALLING_PROCESSOR_REQUIRED",
+                    Type = MessageType.Error,
+                    Message = "History records a request only for the processor step that changed it: call this step from inside a processor step."
                 });
         }
-        else
+
+        var record = await dbContext.PriorAuthRecords.FindAsync([context.ProcessId], cancellationToken);
+
+        if (record is null)
         {
-            existing.ProcessorName = processStep.ProcessorName;
-            existing.Status = processStep.Status;
-            existing.MemberNumber = processStep.MemberNumber;
-            existing.MemberDisplayName = processStep.MemberDisplayName;
-            existing.DateOfService = processStep.DateOfService;
-            existing.PrimaryProcedureCode = processStep.PrimaryProcedureCode;
-            existing.PrimaryProcedureDescription = processStep.PrimaryProcedureDescription;
-            existing.LastUpdatedUtc = DateTimeOffset.UtcNow;
+            record = new PriorAuthRecord
+            {
+                ProcessId = context.ProcessId,
+                CreatedUtc = DateTimeOffset.UtcNow
+            };
+
+            dbContext.PriorAuthRecords.Add(record);
         }
+
+        record.ProcessorName = processorName;
+        record.PriorAuthorizationId = processStep.PriorAuthorizationId;
+        record.Status = processStep.Status;
+        record.MemberNumber = processStep.MemberNumber;
+        record.MemberDisplayName = processStep.MemberDisplayName;
+        record.DateOfService = processStep.DateOfService;
+        record.PrimaryProcedureCode = processStep.PrimaryProcedureCode;
+        record.PrimaryProcedureDescription = processStep.PrimaryProcedureDescription;
+        record.LastUpdatedUtc = DateTimeOffset.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 

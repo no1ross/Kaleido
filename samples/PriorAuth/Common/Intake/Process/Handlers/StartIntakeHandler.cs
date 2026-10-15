@@ -1,6 +1,7 @@
-using Kaleido.Samples.PriorAuth.History.Process.Steps;
+using Kaleido.Samples.PriorAuth.History.Process;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
+using Kaleido.Samples.PriorAuth.Intake.Process.Messages;
 using Kaleido.Samples.PriorAuth.Intake.Process.Services;
 using Kaleido.Samples.PriorAuth.Intake.Process.Steps;
 
@@ -11,10 +12,19 @@ public sealed class StartIntakeHandler(
     HistoryClient historyClient)
     : IProcessStepHandler<StartIntakeStep>
 {
-    public async Task<ProcessStepHandlerResult> ExecuteAsync(
+    public Task<ProcessStepHandlerResult> ExecuteAsync(
         StartIntakeStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        HistoryRecording.InTransactionAsync(
+            dbContext,
+            () => RunAsync(context, cancellationToken),
+            _ => ProcessStepHandlerResult.Reject(IntakeProcessMessages.HistoryNotRecorded(context.ProcessId)),
+            cancellationToken);
+
+    private async Task<ProcessStepHandlerResult> RunAsync(
+        ProcessStepContext context,
+        CancellationToken cancellationToken)
     {
         dbContext.IntakeSessions.Add(
             new IntakeSession
@@ -26,14 +36,7 @@ public sealed class StartIntakeHandler(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        await historyClient.UpsertAsync(
-            new UpsertPriorAuthRecordStep
-            {
-                ProcessorName = "intake",
-                Status = PriorAuthorizationStatus.Draft
-            },
-            context.ProcessId,
-            cancellationToken);
+        await historyClient.RecordAsync(context.ProcessId, cancellationToken);
 
         return ProcessStepHandlerResult.Success();
     }

@@ -1,5 +1,5 @@
 using Kaleido.Http.Client;
-using Kaleido.Samples.PriorAuth.History.Process.Steps;
+using Kaleido.Samples.PriorAuth.History.Process;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Messages;
@@ -23,10 +23,20 @@ public sealed class StartRadiologyIntakeHandler(
     HistoryClient historyClient)
     : IProcessStepHandler<StartRadiologyIntakeStep, StartRadiologyIntakeResponse>
 {
-    public async Task<ProcessStepHandlerResult<StartRadiologyIntakeResponse>> ExecuteAsync(
+    public Task<ProcessStepHandlerResult<StartRadiologyIntakeResponse>> ExecuteAsync(
         StartRadiologyIntakeStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        HistoryRecording.InTransactionAsync<ProcessStepHandlerResult<StartRadiologyIntakeResponse>>(
+            dbContext,
+            () => RunAsync(processStep, context, cancellationToken),
+            _ => ProcessStepHandlerResult.Reject(RadiologyProcessMessages.HistoryNotRecorded(context.ProcessId)),
+            cancellationToken);
+
+    private async Task<ProcessStepHandlerResult<StartRadiologyIntakeResponse>> RunAsync(
+        StartRadiologyIntakeStep processStep,
+        ProcessStepContext context,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -89,6 +99,8 @@ public sealed class StartRadiologyIntakeHandler(
                 dbContext.PriorAuthorizations.Add(priorAuthorization);
             }
 
+            priorAuthorization.DateOfService = processStep.DateOfService ?? priorAuthorization.DateOfService;
+
             // --- Add requested service (once: a retried start does not add it again) ---
 
             if (!priorAuthorization.RequestedServices.Any(x =>
@@ -114,26 +126,12 @@ public sealed class StartRadiologyIntakeHandler(
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            // --- History ---
-
-            await historyClient.UpsertAsync(
-                new UpsertPriorAuthRecordStep
-                {
-                    ProcessorName = "radiology",
-                    Status = PriorAuthorizationStatus.Draft,
-                    MemberNumber = priorAuthorization.Member?.MemberNumber ?? string.Empty,
-                    MemberDisplayName = priorAuthorization.Member?.DisplayName ?? string.Empty,
-                    DateOfService = processStep.DateOfService ?? DateOnly.FromDateTime(DateTime.UtcNow),
-                    PrimaryProcedureCode = procedureCode.CodeValue,
-                    PrimaryProcedureDescription = procedureCode.ShortDescription
-                },
-                context.ProcessId,
-                cancellationToken);
-
             // --- Route based on member presence ---
 
             if (eligibility is null)
             {
+                await historyClient.RecordAsync(context.ProcessId, cancellationToken);
+
                 // No member provided — require ValidateMember next
                 return ProcessStepHandlerResult.Success(
                     new StartRadiologyIntakeResponse(),
@@ -161,7 +159,12 @@ public sealed class StartRadiologyIntakeHandler(
             priorAuthorization.Member.PlanName = memberDetails.PlanName;
             priorAuthorization.Member.LineOfBusiness = memberDetails.LineOfBusiness;
 
+            // The date eligibility was checked for.
+            priorAuthorization.DateOfService ??= DateOnly.FromDateTime(DateTime.UtcNow);
+
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            await historyClient.RecordAsync(context.ProcessId, cancellationToken);
 
             var routing =
                 await memberEligibilityService.RouteByModalityAsync(
