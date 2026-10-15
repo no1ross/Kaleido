@@ -1,5 +1,5 @@
 using Kaleido.Http.Client;
-using Kaleido.Samples.PriorAuth.History.Process.Steps;
+using Kaleido.Samples.PriorAuth.History.Process;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 using Kaleido.Samples.PriorAuth.Intake.Process.Messages;
@@ -15,10 +15,20 @@ public sealed class CaptureMemberHandler(
     HistoryClient historyClient)
     : IProcessStepHandler<CaptureMemberStep>
 {
-    public async Task<ProcessStepHandlerResult> ExecuteAsync(
+    public Task<ProcessStepHandlerResult> ExecuteAsync(
         CaptureMemberStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        HistoryRecording.InTransactionAsync(
+            dbContext,
+            () => RunAsync(processStep, context, cancellationToken),
+            _ => ProcessStepHandlerResult.Reject(IntakeProcessMessages.HistoryNotRecorded(context.ProcessId)),
+            cancellationToken);
+
+    private async Task<ProcessStepHandlerResult> RunAsync(
+        CaptureMemberStep processStep,
+        ProcessStepContext context,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -74,17 +84,7 @@ public sealed class CaptureMemberHandler(
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            await historyClient.UpsertAsync(
-                new UpsertPriorAuthRecordStep
-                {
-                    ProcessorName = "intake",
-                    Status = PriorAuthorizationStatus.Draft,
-                    MemberNumber = session.Member!.MemberNumber,
-                    MemberDisplayName = session.Member.DisplayName,
-                    DateOfService = session.Member.DateOfService
-                },
-                context.ProcessId,
-                cancellationToken);
+            await historyClient.RecordAsync(context.ProcessId, cancellationToken);
 
             return ProcessStepHandlerResult.Success<CaptureRequestedServiceStep>();
         }

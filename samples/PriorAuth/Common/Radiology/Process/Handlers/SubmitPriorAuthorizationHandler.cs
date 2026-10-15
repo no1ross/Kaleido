@@ -1,4 +1,4 @@
-using Kaleido.Samples.PriorAuth.History.Process.Steps;
+using Kaleido.Samples.PriorAuth.History.Process;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Messages;
 using Kaleido.Samples.PriorAuth.Radiology.Process.Services;
@@ -20,10 +20,20 @@ public sealed class SubmitPriorAuthorizationHandler(
     // The binding key the business configures on the submission attestation.
     private const string AttestedItem = "Attested";
 
-    public async Task<ProcessStepHandlerResult> ExecuteAsync(
+    public Task<ProcessStepHandlerResult> ExecuteAsync(
         SubmitPriorAuthorizationStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        HistoryRecording.InTransactionAsync(
+            dbContext,
+            () => RunAsync(processStep, context, cancellationToken),
+            _ => ProcessStepHandlerResult.Reject(RadiologyProcessMessages.HistoryNotRecorded(context.ProcessId)),
+            cancellationToken);
+
+    private async Task<ProcessStepHandlerResult> RunAsync(
+        SubmitPriorAuthorizationStep processStep,
+        ProcessStepContext context,
+        CancellationToken cancellationToken)
     {
         await informationRequests.RecordAnswersAsync(context.ProcessId, nameof(SubmitPriorAuthorizationStep), processStep, cancellationToken);
 
@@ -34,8 +44,6 @@ public sealed class SubmitPriorAuthorizationHandler(
 
         var priorAuthorization =
             await dbContext.PriorAuthorizations
-                .Include(x => x.Member)
-                .Include(x => x.RequestedServices)
                 .SingleAsync(x => x.ProcessId == context.ProcessId, cancellationToken);
 
         priorAuthorization.Status = PriorAuthorizationStatus.Submitted;
@@ -43,20 +51,7 @@ public sealed class SubmitPriorAuthorizationHandler(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        var primaryService = priorAuthorization.RequestedServices.MinBy(x => x.CreatedUtc);
-
-        await historyClient.UpsertAsync(
-            new UpsertPriorAuthRecordStep
-            {
-                ProcessorName = "radiology",
-                Status = PriorAuthorizationStatus.Submitted,
-                MemberNumber = priorAuthorization.Member?.MemberNumber ?? string.Empty,
-                MemberDisplayName = priorAuthorization.Member?.DisplayName ?? string.Empty,
-                PrimaryProcedureCode = primaryService?.ResolvedCodeValue ?? string.Empty,
-                PrimaryProcedureDescription = primaryService?.Description ?? string.Empty
-            },
-            context.ProcessId,
-            cancellationToken);
+        await historyClient.RecordAsync(context.ProcessId, cancellationToken);
 
         return ProcessStepHandlerResult.Success(RadiologyProcessMessages.Submitted(context.ProcessId));
     }

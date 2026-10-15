@@ -1,5 +1,5 @@
 using Kaleido.Http.Client;
-using Kaleido.Samples.PriorAuth.History.Process.Steps;
+using Kaleido.Samples.PriorAuth.History.Process;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Parameters;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
 using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
@@ -23,10 +23,20 @@ public sealed class CaptureServicingProviderHandler(
     HistoryClient historyClient)
     : IProcessStepHandler<CaptureServicingProviderStep>
 {
-    public async Task<ProcessStepHandlerResult> ExecuteAsync(
+    public Task<ProcessStepHandlerResult> ExecuteAsync(
         CaptureServicingProviderStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        HistoryRecording.InTransactionAsync(
+            dbContext,
+            () => RunAsync(processStep, context, cancellationToken),
+            _ => ProcessStepHandlerResult.Reject(RadiologyProcessMessages.HistoryNotRecorded(context.ProcessId)),
+            cancellationToken);
+
+    private async Task<ProcessStepHandlerResult> RunAsync(
+        CaptureServicingProviderStep processStep,
+        ProcessStepContext context,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -54,10 +64,7 @@ public sealed class CaptureServicingProviderHandler(
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            await historyClient.UpsertAsync(
-                new UpsertPriorAuthRecordStep { ProcessorName = "radiology", Status = PriorAuthorizationStatus.Draft },
-                context.ProcessId,
-                cancellationToken);
+            await historyClient.RecordAsync(context.ProcessId, cancellationToken);
 
             return await clinicalReview.StartAsync(context.ProcessId, cancellationToken) is { } clinical
                 ? ProcessStepHandlerResult.RequireInformation<CaptureClinicalInfoStep>(clinical)

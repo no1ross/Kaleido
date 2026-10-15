@@ -8,6 +8,8 @@ public sealed class IntakeSessionProcedure
 
     public ProcedureCodeSystem CodeSystem { get; set; }
 
+    public string Description { get; set; } = string.Empty;
+
     public string ResolvedProcessorName { get; set; } = string.Empty;
 
     public IntakeSession IntakeSession { get; set; } = null!;

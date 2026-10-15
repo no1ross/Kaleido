@@ -6,12 +6,14 @@ namespace Kaleido.Samples.PriorAuth.History.Queryable.Contexts;
 public sealed class PriorAuthRecordQueryContext : IQueryContext
 {
     [Key]
-    public Guid PriorAuthRecordId { get; init; }
-
+    [Filterable(FilterOperator.Equals)]
     public Guid ProcessId { get; init; }
 
     [Filterable(FilterOperator.Equals)]
     public string ProcessorName { get; init; } = string.Empty;
+
+    [Filterable(FilterOperator.Equals, FilterOperator.IsNull)]
+    public Guid? PriorAuthorizationId { get; init; }
 
     [Filterable(FilterOperator.Equals, FilterOperator.In)]
     [Sortable]
@@ -26,7 +28,7 @@ public sealed class PriorAuthRecordQueryContext : IQueryContext
 
     [Filterable(FilterOperator.Equals, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThanOrEqual)]
     [Sortable]
-    public DateOnly DateOfService { get; init; }
+    public DateOnly? DateOfService { get; init; }
 
     [Sortable]
     public string PrimaryProcedureCode { get; init; } = string.Empty;

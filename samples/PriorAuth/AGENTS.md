@@ -30,6 +30,13 @@
 - Compose mounts that host directory into service containers as `/app/data`
 - Runtime-created DBs like `eventcollector.db`, `intake.db`, `intake-process.db`, `radiology.db`, and `radiology-process.db` may appear in `samples/PriorAuth/data/` after services start
 - The `*-process.db` files are the Kaleido context stores (process state, idempotent results, event outbox). They are created with `EnsureCreated`, which never adds tables to an existing file: after a store schema change (e.g. the `OutboxEvents` table) delete them; they are recreated at startup
+- The services' own databases (`intake.db`, `radiology.db`, `history.db`) are created the same way: after an entity change, delete the affected file (and its `*-process.db`, so no process points at missing data)
+
+## History records
+- History is the source of truth for finding requests: one record per process (keyed by `ProcessId`) holding the latest snapshot. `PriorAuthorizationId` is set only by the product processor (Radiology); it is empty while the request is in Intake.
+- Every Intake/Radiology step that changes what History shows calls its `HistoryClient.RecordAsync(processId)`, which sends the full current snapshot read from the service's own database. The recording processor is the calling processor Kaleido stamps on the call, not a payload field.
+- Recording is a hard stop: the step runs in `HistoryRecording.InTransactionAsync`, which commits the service's changes only when the step succeeds. If History does not record (HTTP failure, or an outcome other than completed; logged at Error), the step is rolled back and rejected with `HISTORY_NOT_RECORDED`.
+- This is the sample's choice. A production system would feed History from Kaleido's process events (outbox, at-least-once) instead of synchronous calls.
 
 ## Sensitive data in events
 - Member fields are classified with `[Phi]` (name, display name, date of birth) and `[Pii]` (email, phone, address) from `Common/Compliance/PriorAuthDataClassifications.cs`.

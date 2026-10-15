@@ -1,6 +1,6 @@
 using Kaleido.Http.Client;
 using Kaleido.Http.Processor;
-using Kaleido.Samples.PriorAuth.History.Process.Steps;
+using Kaleido.Samples.PriorAuth.History.Process;
 using Kaleido.Samples.PriorAuth.Intake.Data;
 using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 using Kaleido.Samples.PriorAuth.Intake.Process.Messages;
@@ -18,10 +18,22 @@ public sealed class CaptureRequestedServiceHandler(
     HistoryClient historyClient)
     : IProcessStepHandler<Intake.Process.Steps.CaptureRequestedServiceStep>
 {
-    public async Task<ProcessStepHandlerResult> ExecuteAsync(
+    // The handoff call to the product processor runs inside the transaction too: if it fails,
+    // Intake's change and its History snapshot are not kept.
+    public Task<ProcessStepHandlerResult> ExecuteAsync(
         Intake.Process.Steps.CaptureRequestedServiceStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        HistoryRecording.InTransactionAsync(
+            dbContext,
+            () => RunAsync(processStep, context, cancellationToken),
+            _ => ProcessStepHandlerResult.Reject(IntakeProcessMessages.HistoryNotRecorded(context.ProcessId)),
+            cancellationToken);
+
+    private async Task<ProcessStepHandlerResult> RunAsync(
+        Intake.Process.Steps.CaptureRequestedServiceStep processStep,
+        ProcessStepContext context,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -85,20 +97,12 @@ public sealed class CaptureRequestedServiceHandler(
 
             session.Procedure.CodeValue = procedureCode.CodeValue;
             session.Procedure.CodeSystem = procedureCode.CodeSystem;
+            session.Procedure.Description = procedureCode.ShortDescription;
             session.Procedure.ResolvedProcessorName = processorName;
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            await historyClient.UpsertAsync(
-                new UpsertPriorAuthRecordStep
-                {
-                    ProcessorName = "intake",
-                    Status = PriorAuthorizationStatus.Draft,
-                    PrimaryProcedureCode = session.Procedure.CodeValue,
-                    PrimaryProcedureDescription = session.Procedure.ResolvedProcessorName
-                },
-                context.ProcessId,
-                cancellationToken);
+            await historyClient.RecordAsync(context.ProcessId, cancellationToken);
 
             // Start the downstream process with whatever member info we have (may be null if member not captured yet)
             var downstreamResult =
