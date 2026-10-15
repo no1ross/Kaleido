@@ -3,7 +3,10 @@ namespace Kaleido.Http.Mcp.Tools.UnitTests;
 public sealed class ToolCatalogBuilderTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static ToolCatalogBuilder CreateSut(Func<string, string, ToolName>? naming = null)
+    private static ToolCatalogBuilder CreateSut(
+        Func<string, string, ToolName>? naming = null,
+        McpToolListing listing = McpToolListing.All,
+        IReadOnlyList<string>? listedTools = null)
     {
         var names = new Mock<IToolNameBuilder>();
         names.Setup(x => x.Build(It.IsAny<string>(), It.IsAny<string>()))
@@ -18,7 +21,10 @@ public sealed class ToolCatalogBuilderTests
         schemas.Setup(x => x.IsRequired(It.IsAny<IReadOnlyCollection<ConstraintContract>?>()))
             .Returns((IReadOnlyCollection<ConstraintContract>? constraints) => constraints?.Any(c => c.Type == "Required") == true);
 
-        return new ToolCatalogBuilder(names.Object, schemas.Object);
+        return new ToolCatalogBuilder(
+            names.Object,
+            schemas.Object,
+            new KaleidoMcpOptions { Instructions = "test", ToolListing = listing, ListedTools = listedTools ?? [] });
     }
 
     private static readonly DataTypeDescriptor Text = new("string");
@@ -152,6 +158,46 @@ public sealed class ToolCatalogBuilderTests
         var schema = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()] }), "clinic_patientsource").Definition.InputSchema;
 
         Assert.Equal(["parameters"], schema.GetProperty("required").EnumerateArray().Select(x => x.GetString()));
+    }
+
+    [Fact]
+    public void QueryTool_WithoutProcesses_HasNoProcessId()
+    {
+        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()] }), "clinic_patientsource");
+
+        Assert.False(tool.Definition.InputSchema.GetProperty("properties").TryGetProperty("processId", out _));
+        Assert.DoesNotContain("processId", tool.Definition.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void QueryTool_WhereProcessesExist_TakesAnOptionalTopLevelProcessId()
+    {
+        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Visits()] }), "clinic_patientsource");
+        var schema = tool.Definition.InputSchema;
+
+        Assert.Equal("uuid", schema.GetProperty("properties").GetProperty("processId").GetProperty("format").GetString());
+        Assert.Equal(["parameters"], schema.GetProperty("required").EnumerateArray().Select(x => x.GetString()));
+        Assert.False(tool.ParametersTakeProcessId);
+        Assert.Contains("Pass the processId of the process you are working on, when there is one.", tool.Definition.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void QueryTool_WhoseSourceDeclaresAProcessId_TakesItOnlyAtTheTopLevel()
+    {
+        var scoped = Patients() with
+        {
+            Parameters = [new QueryableQueryParameter { Name = "ProcessId", Description = "The visit this search is for.", DataType = Text, Constraints = [new ConstraintContract { Type = "Required" }] }]
+        };
+
+        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [scoped], Processes = [Visits()] }), "clinic_patientsource");
+        var schema = tool.Definition.InputSchema;
+        var properties = schema.GetProperty("properties");
+
+        Assert.True(tool.ParametersTakeProcessId);
+        Assert.False(properties.TryGetProperty("parameters", out _));
+        Assert.StartsWith("The visit this search is for.", properties.GetProperty("processId").GetProperty("description").GetString(), StringComparison.Ordinal);
+        Assert.Equal(["processId"], schema.GetProperty("required").EnumerateArray().Select(x => x.GetString()));
+        Assert.Contains("Scoped to one process: pass its processId.", tool.Definition.Description, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -377,6 +423,72 @@ public sealed class ToolCatalogBuilderTests
             }
         ]
     };
+
+    // ── Front door ───────────────────────────────────────────────────────────
+
+    private static ToolCatalog FrontDoor(params string[] listedTools) =>
+        CreateSut(listing: McpToolListing.FrontDoor, listedTools: listedTools)
+            .Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Visits(), Referrals()] });
+
+    private static string[] Listed(ToolCatalog catalog) =>
+        [.. catalog.Tools.Where(x => x.Listed).Select(x => x.Definition.Name)];
+
+    [Fact]
+    public void All_ListsEveryTool_WithoutTheFrontDoorBuiltIns()
+    {
+        var catalog = Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Visits()] });
+
+        Assert.All(catalog.Tools, x => Assert.True(x.Listed));
+        Assert.False(catalog.IsFrontDoor);
+        Assert.Null(catalog.Find(ToolCatalogBuilder.CallToolTool));
+    }
+
+    [Fact]
+    public void FrontDoor_ListsTheStartingSteps_TheirLookupQueries_AndTheBuiltIns()
+    {
+        var catalog = FrontDoor();
+
+        Assert.True(catalog.IsFrontDoor);
+        Assert.Equal(
+            [
+                "clinic_patientcardviewsource",
+                "clinic_startvisitstep",
+                "referrals_referpatientstep",
+                "answer_information_request",
+                "get_process_state",
+                "search_tools",
+                "describe_tool",
+                "call_tool",
+            ],
+            Listed(catalog));
+    }
+
+    [Fact]
+    public void FrontDoor_KeepsEveryOtherTool_UnlistedButCallable()
+    {
+        var catalog = FrontDoor();
+
+        Assert.False(Tool(catalog, "clinic_closevisitstep").Listed);
+        Assert.False(Tool(catalog, "clinic_patientsource").Listed);
+    }
+
+    [Fact]
+    public void FrontDoor_ListsTheConfiguredExtras_AndReportsUnknownNames()
+    {
+        var catalog = FrontDoor("clinic_patientsource", "clinic_nothing");
+
+        Assert.True(Tool(catalog, "clinic_patientsource").Listed);
+        Assert.Equal(["clinic_nothing"], catalog.UnknownListedTools);
+    }
+
+    [Fact]
+    public void FrontDoor_CallTool_KeepsClientsAskingBeforeEachCall()
+    {
+        var annotations = Tool(FrontDoor(), ToolCatalogBuilder.CallToolTool).Definition.Annotations;
+
+        Assert.False(annotations?.ReadOnlyHint);
+        Assert.True(annotations?.DestructiveHint);
+    }
 
     private static string ArgumentDescription(KaleidoTool tool, string argument) =>
         tool.Definition.InputSchema.GetProperty("properties").GetProperty(argument).GetProperty("description").GetString() ?? string.Empty;

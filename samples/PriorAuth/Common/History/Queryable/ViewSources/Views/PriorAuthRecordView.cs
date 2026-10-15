@@ -2,11 +2,11 @@ namespace Kaleido.Samples.PriorAuth.History.Queryable.ViewSources.Views;
 
 public sealed record PriorAuthRecordView
 {
-    public Guid PriorAuthRecordId { get; init; }
-
     public Guid ProcessId { get; init; }
 
     public string ProcessorName { get; init; } = string.Empty;
+
+    public Guid? PriorAuthorizationId { get; init; }
 
     public PriorAuthorizationStatus Status { get; init; }
 
@@ -14,7 +14,7 @@ public sealed record PriorAuthRecordView
 
     public string MemberDisplayName { get; init; } = string.Empty;
 
-    public DateOnly DateOfService { get; init; }
+    public DateOnly? DateOfService { get; init; }
 
     public string PrimaryProcedureCode { get; init; } = string.Empty;
 

@@ -90,6 +90,78 @@ public sealed class KaleidoMcpToolHandlerTests
         listObservation.Verify(x => x.Completed(It.Is<ToolCatalog>(c => c.Tools.Count == 1)));
     }
 
+    private static readonly KaleidoTool HiddenStep = new()
+    {
+        Definition = new Tool { Name = "clinic_close_visit" },
+        Kind = KaleidoToolKind.Step,
+        Service = "clinic",
+        Listed = false
+    };
+
+    private static readonly KaleidoTool CallTool = new()
+    {
+        Definition = new Tool { Name = ToolCatalogBuilder.CallToolTool },
+        Kind = KaleidoToolKind.CallTool
+    };
+
+    private void FrontDoorCatalog() =>
+        catalogs.Setup(x => x.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ToolCatalog { Tools = [Search, HiddenStep, CallTool], IsFrontDoor = true });
+
+    private RequestContext<CallToolRequestParams> CallThrough(string? name, object? arguments = null) =>
+        new(server.Object, new JsonRpcRequest { Method = RequestMethods.ToolsCall }, new CallToolRequestParams
+        {
+            Name = ToolCatalogBuilder.CallToolTool,
+            Arguments = name is null
+                ? new Dictionary<string, JsonElement>()
+                : new Dictionary<string, JsonElement>
+                {
+                    ["name"] = JsonSerializer.SerializeToElement(name),
+                    ["arguments"] = JsonSerializer.SerializeToElement(arguments ?? new { })
+                }
+        });
+
+    [Fact]
+    public async Task ListTools_ReturnsOnlyTheListedTools()
+    {
+        FrontDoorCatalog();
+
+        var result = await CreateSut().ListToolsAsync(ListRequest(), Cancel);
+
+        Assert.Equal(["clinic_patient", ToolCatalogBuilder.CallToolTool], result.Tools.Select(x => x.Name));
+    }
+
+    [Fact]
+    public async Task CallTool_RunsTheNamedTool_WithItsArguments_AsIfItWereCalled()
+    {
+        FrontDoorCatalog();
+        var processId = Guid.NewGuid();
+        KaleidoToolCall? call = null;
+        invoker.Setup(x => x.InvokeAsync(HiddenStep, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
+            .Callback((KaleidoTool _, KaleidoToolCall given, ToolCatalog _, CancellationToken _) => call = given)
+            .ReturnsAsync(Text("{}"));
+
+        await CreateSut().CallToolAsync(CallThrough("clinic_close_visit", new { processId = processId.ToString(), note = "done" }), Cancel);
+
+        Assert.Equal("done", call?.Arguments["note"].GetString());
+        callObservation.Verify(x => x.Resolved(HiddenStep, processId.ToString()));
+        forwarding.Verify(x => x.ForwardCaller("Bearer carol-token"), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("clinic_chart")]
+    [InlineData(ToolCatalogBuilder.CallToolTool)]
+    public async Task CallTool_WithoutAToolOfTheCaller_IsAnUnknownToolResult(string? name)
+    {
+        FrontDoorCatalog();
+
+        var result = await CreateSut().CallToolAsync(CallThrough(name), Cancel);
+
+        Assert.Equal(McpErrorCodes.UnknownTool, Body(result)["code"]?.GetValue<string>());
+        invoker.VerifyNoOtherCalls();
+    }
+
     [Fact]
     public async Task ListTools_WhenReadingFailsUnexpectedly_ReturnsNoTools()
     {
@@ -113,8 +185,26 @@ public sealed class KaleidoMcpToolHandlerTests
         Assert.Equal("Ava", call?.Arguments["searchText"].GetString());
         Assert.Same(server.Object, call?.Server);
         Assert.Equal("req-7", Body(result)["requestId"]?.GetValue<string>());
-        callObservation.Verify(x => x.Resolved(Search));
+        callObservation.Verify(x => x.Resolved(Search, null));
         callObservation.Verify(x => x.Completed(result));
+    }
+
+    [Fact]
+    public async Task CallTool_TagsTheCall_WithItsProcessIdArgument()
+    {
+        var processId = Guid.NewGuid();
+        invoker.Setup(x => x.InvokeAsync(Search, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Text("{}"));
+
+        await CreateSut().CallToolAsync(
+            new RequestContext<CallToolRequestParams>(server.Object, new JsonRpcRequest { Method = RequestMethods.ToolsCall }, new CallToolRequestParams
+            {
+                Name = "clinic_patient",
+                Arguments = new Dictionary<string, JsonElement> { ["processId"] = JsonSerializer.SerializeToElement(processId.ToString()) }
+            }),
+            Cancel);
+
+        callObservation.Verify(x => x.Resolved(Search, processId.ToString()));
     }
 
     [Fact]

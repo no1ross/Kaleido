@@ -124,6 +124,65 @@ public sealed class QueryRequestValidatorTests
         Assert.Equal(QueryableErrorCodes.PagingNotSupported, ex.Code);
     }
 
+    [Fact]
+    public void Validate_WhenParametersWithARequiredMemberAreMissing_Throws()
+    {
+        var request = new QueryRequest<ScopedParameters>(ViewParameters: null);
+
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
+        Assert.Equal(QueryableErrorCodes.MissingParameter, ex.Code);
+        Assert.Equal("Parameter 'ProcessId' is required.", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WhenARequiredParameterIsNull_Throws()
+    {
+        var request = new QueryRequest<ScopedParameters>(new ScopedParameters { ProcessId = null });
+
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
+        Assert.Equal(QueryableErrorCodes.MissingParameter, ex.Code);
+        Assert.Equal("Parameter 'ProcessId' is required.", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WhenAParameterFailsAnotherAttribute_Throws()
+    {
+        var request = new QueryRequest<ScopedParameters>(new ScopedParameters { ProcessId = Guid.NewGuid(), Limit = 500 });
+
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
+        Assert.Equal(QueryableErrorCodes.InvalidParameterValue, ex.Code);
+    }
+
+    [Fact]
+    public void Validate_WhenParametersAreValid_DoesNotThrow()
+    {
+        var request = new QueryRequest<ScopedParameters>(new ScopedParameters { ProcessId = Guid.NewGuid(), Limit = 5 });
+
+        Validate(request, CreateMetadata());
+    }
+
+    [Fact]
+    public void Validate_WhenOptionalParametersAreMissing_DoesNotThrow()
+    {
+        var request = new QueryRequest<OptionalParameters>(ViewParameters: null);
+
+        Validate(request, CreateMetadata());
+    }
+
+    private sealed class ScopedParameters : IQueryParameters
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public Guid? ProcessId { get; init; }
+
+        [System.ComponentModel.DataAnnotations.Range(1, 100)]
+        public int Limit { get; init; } = 10;
+    }
+
+    private sealed class OptionalParameters : IQueryParameters
+    {
+        public string? State { get; init; }
+    }
+
     private void Validate(IQueryRequest request, QuerySourceMetadata metadata) =>
         _validator.Validate(request, metadata, metadata.Pageable);
 

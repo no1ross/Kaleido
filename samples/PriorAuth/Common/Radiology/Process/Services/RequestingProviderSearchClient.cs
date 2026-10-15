@@ -1,5 +1,7 @@
+using Kaleido.Exceptions;
 using Kaleido.Http.Queryable;
 using Kaleido.Queryable;
+using Kaleido.Samples.PriorAuth.Compliance;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.Parameters;
 using Kaleido.Samples.PriorAuth.Provider.Queryable.ViewSources.Views;
 using Kaleido.Samples.PriorAuth.Radiology.Data;
@@ -45,9 +47,12 @@ public sealed class RequestingProviderSearchClient(
                 .Select(x => x.Member != null ? x.Member.PlanId : null)
                 .SingleOrDefaultAsync(cancellationToken);
 
+        // Searching before the member is captured is a caller's ordering mistake: a 400 that says so.
         if (string.IsNullOrWhiteSpace(planId))
         {
-            throw new InvalidOperationException("A captured member plan is required before a provider search can run.");
+            throw new KaleidoValidationException(
+                PriorAuthErrorCodes.MemberPlanRequired,
+                "Capture the member first: a provider search is scoped to the member's plan.");
         }
 
         return await queryableClientFactory

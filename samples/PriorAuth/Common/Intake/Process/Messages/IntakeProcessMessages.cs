@@ -91,4 +91,13 @@ public static class IntakeProcessMessages
             Type = MessageType.Error,
             Message = $"The downstream processor returned an unexpected response: {message}"
         };
+
+    public static ProcessMessage HistoryNotRecorded(
+        Guid processId) =>
+        new()
+        {
+            Code = "HISTORY_NOT_RECORDED",
+            Type = MessageType.Error,
+            Message = $"The change to request '{processId}' could not be recorded in History, so nothing was saved. Try again."
+        };
 }

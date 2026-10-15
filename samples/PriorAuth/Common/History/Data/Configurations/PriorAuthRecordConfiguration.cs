@@ -8,10 +8,9 @@ internal sealed class PriorAuthRecordConfiguration : IEntityTypeConfiguration<Pr
 {
     public void Configure(EntityTypeBuilder<PriorAuthRecord> builder)
     {
-        builder.HasKey(x => x.PriorAuthRecordId);
+        builder.HasKey(x => x.ProcessId);
 
-        builder.HasIndex(x => x.ProcessId)
-            .IsUnique();
+        builder.HasIndex(x => x.PriorAuthorizationId);
 
         builder.HasIndex(x => x.LastUpdatedUtc);
 

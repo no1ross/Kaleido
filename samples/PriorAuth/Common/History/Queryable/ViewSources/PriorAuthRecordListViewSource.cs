@@ -7,7 +7,7 @@ namespace Kaleido.Samples.PriorAuth.History.Queryable.ViewSources;
 
 [QueryView(
     DisplayName = "Prior Auth Record List",
-    Version = "1.0.0",
+    Version = "2.0.0",
     Description = "Prior authorization history records for grid display.",
     DefaultSortField = nameof(PriorAuthRecordQueryContext.LastUpdatedUtc))]
 [Pageable(DefaultSize = 25, MaxSize = 100)]
@@ -21,9 +21,9 @@ internal sealed class PriorAuthRecordListViewSource
         return query.Select(x =>
             new PriorAuthRecordView
             {
-                PriorAuthRecordId = x.PriorAuthRecordId,
                 ProcessId = x.ProcessId,
                 ProcessorName = x.ProcessorName,
+                PriorAuthorizationId = x.PriorAuthorizationId,
                 Status = x.Status,
                 MemberNumber = x.MemberNumber,
                 MemberDisplayName = x.MemberDisplayName,

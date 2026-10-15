@@ -17,6 +17,8 @@ internal sealed class ObservabilityMiddleware(RequestDelegate next)
             context.RequestServices
                 .GetService<KaleidoHttpOptions>() ?? new KaleidoHttpOptions();
 
+        await AuthenticateAsync(context);
+
         var trustIdentity =
             options.TrustCorrelationIdentity?.Invoke(context)
             ?? IsCorrelationIdentityTrustedByDefault(context);
@@ -61,6 +63,31 @@ internal sealed class ObservabilityMiddleware(RequestDelegate next)
         });
 
         await next(context);
+    }
+
+    // This middleware is added by KaleidoStartupFilter, ahead of the host's
+    // UseAuthentication(), so the caller is not authenticated yet: without this, every
+    // caller looks anonymous to the trust check and identity headers (calling processor,
+    // request id) are always dropped, which breaks handoffs. Authenticate with the
+    // default scheme here; ASP.NET caches the result for the request, so
+    // UseAuthentication() does not run the handler again.
+    private static async Task AuthenticateAsync(
+        HttpContext context)
+    {
+        if (context.User.Identity?.IsAuthenticated == true ||
+            context.RequestServices.GetService<IAuthenticationSchemeProvider>() is not { } schemes ||
+            context.RequestServices.GetService<IAuthenticationService>() is null ||
+            await schemes.GetDefaultAuthenticateSchemeAsync() is null)
+        {
+            return;
+        }
+
+        var result = await context.AuthenticateAsync();
+
+        if (result.Succeeded)
+        {
+            context.User = result.Principal;
+        }
     }
 
     // Adaptive default: a host with no authentication infrastructure has

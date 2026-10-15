@@ -107,6 +107,14 @@ public static class RadiologyProcessMessages
             Message = $"Requested service '{priorAuthorizationRequestedServiceId}' was not found and may already have been removed."
         };
 
+    public static ProcessMessage NoRequestedService() =>
+        new()
+        {
+            Code = "NO_REQUESTED_SERVICE",
+            Type = MessageType.Error,
+            Message = "The prior authorization has no requested service yet. Capture the requested service before answering its questions."
+        };
+
     public static ProcessMessage MemberInfoNotProvided() =>
         new()
         {
@@ -177,5 +185,14 @@ public static class RadiologyProcessMessages
             Code = "PRIOR_AUTHORIZATION_SUBMITTED",
             Type = MessageType.Information,
             Message = $"Prior authorization request {processId} was submitted for review."
+        };
+
+    public static ProcessMessage HistoryNotRecorded(
+        Guid processId) =>
+        new()
+        {
+            Code = "HISTORY_NOT_RECORDED",
+            Type = MessageType.Error,
+            Message = $"The change to request '{processId}' could not be recorded in History, so nothing was saved. Try again."
         };
 }

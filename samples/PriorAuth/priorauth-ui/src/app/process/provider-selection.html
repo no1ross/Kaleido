@@ -4,10 +4,15 @@
             The <strong>{{ searchSourceName }}</strong> query source is not available. Check registry conflicts and service registration.
         </div>
     } @else {
+        <div class="provider-selection__role">
+            <span class="provider-selection__role-badge">{{ config.role }}</span>
+            <span>{{ config.description }}</span>
+        </div>
+
         @if (viewMode() === 'results') {
             <div class="member-search-page__layout">
                 <div class="member-search-card">
-                    <div class="member-search-card__title">Requesting Provider Search</div>
+                    <div class="member-search-card__title">{{ config.title }}</div>
                     <div class="member-search-card__meta">Service: {{ registrationServiceName }}</div>
                     <div class="member-search-card__meta">Source: {{ context.displayName }}</div>
 
@@ -134,7 +139,7 @@
                 <div class="member-details-page__header">
                     <button type="button" class="secondary-button" (click)="backToResults()">Back to results</button>
                     <button type="button" class="primary-button" (click)="confirmSelection()" [disabled]="isSubmitting()">
-                        {{ isSubmitting() ? 'Saving Requesting Provider...' : 'Use Requesting Provider' }}
+                        {{ isSubmitting() ? config.savingLabel : config.confirmLabel }}
                     </button>
                 </div>
 
@@ -142,6 +147,7 @@
                     <div class="member-search-page__error">{{ detailsError() }}</div>
                 } @else if (selectedRecord()) {
                     <div class="member-search-selection">
+                        <div class="provider-selection__role-badge">{{ config.role }}</div>
                         <h3>{{ selectedRecordSummary() }}</h3>
                         <div class="member-record__status" [class.member-coverage--active]="selectedRecord()!.isInNetwork !== false" [class.member-coverage--inactive]="selectedRecord()!.isInNetwork === false">
                             {{ selectedRecord()!.locationName }} · {{ selectedRecord()!.city }}, {{ selectedRecord()!.stateCode }} {{ selectedRecord()!.postalCode }}

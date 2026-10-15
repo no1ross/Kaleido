@@ -1,0 +1,25 @@
+.provider-selection__role {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d9e2ee;
+  border-radius: 14px;
+  background: #eef4ff;
+  color: #25324a;
+  font-size: 0.9rem;
+}
+
+.provider-selection__role-badge {
+  display: inline-block;
+  width: fit-content;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: #315efb;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

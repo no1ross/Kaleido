@@ -80,6 +80,14 @@ The default is adaptive:
 - **Authentication registered** — headers are trusted only when
   `User.Identity.IsAuthenticated`.
 
+`ObservabilityMiddleware` is added by Kaleido's startup filter, ahead of the host's
+`UseAuthentication()`. Before deciding trust it therefore authenticates the request itself with
+the default authenticate scheme (when one is registered) and sets `HttpContext.User`, so both the
+default and a custom predicate see the real caller. ASP.NET caches the result for the request, so
+`UseAuthentication()` does not run the handler again. Without this, every caller would look
+anonymous, and a handoff to a processor that has not seen the process would fail with
+`pro_process_not_found` because the calling processor is dropped.
+
 Override the predicate to apply a custom policy (e.g. service-account-only trust):
 
 ```csharp
@@ -135,10 +143,17 @@ step handler / consumer code
   └─ IKaleidoProcessorClient / IKaleidoQueryableClient
        └─ CorrelationHeaderStamper.Stamp(request)
             reads IKaleidoCorrelationContextAccessor.Current
-            ├─ forwards RequestId and ProcessId unchanged
+            ├─ forwards RequestId unchanged
+            ├─ ProcessId: the IKaleidoProcessForwarding scope's, else the context's
             └─ inside a step only: stamps this service (ServiceName) and
                ExecutingStepName as Calling-Processor / Calling-Step
 ```
+
+- **A front door whose callers cannot send headers** (the MCP adapter: the process id is a tool
+  argument, and the `/mcp` request has no `X-Kaleido-Process-Id`) opens
+  `IKaleidoProcessForwarding.ForwardProcess(processId)` around its calls, so queries an agent runs
+  are recorded with their process like every step. An explicit `processId` on
+  `ExecuteStepAsync` still wins over both.
 
 - Inbound per-hop values are never forwarded: a call made outside a step (router
   forwarding, registry fan-out, a delegated query source) carries no calling processor or step.

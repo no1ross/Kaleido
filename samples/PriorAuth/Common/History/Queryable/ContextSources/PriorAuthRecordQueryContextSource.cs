@@ -6,9 +6,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Kaleido.Samples.PriorAuth.History.Queryable.ContextSources;
 
 [QuerySource(
-    Version = "1.0.0",
+    Version = "2.0.0",
     DisplayName = "Prior Auth Records",
-    Description = "Prior authorization history records.",
+    Description = "Prior authorization history: the latest information for each request, one record per process.",
     Source = "Prior Auth History Service")]
 internal sealed class PriorAuthRecordQueryContextSource(
     HistoryDbContext dbContext)
@@ -22,9 +22,9 @@ internal sealed class PriorAuthRecordQueryContextSource(
             .Select(x =>
                 new PriorAuthRecordQueryContext
                 {
-                    PriorAuthRecordId = x.PriorAuthRecordId,
                     ProcessId = x.ProcessId,
                     ProcessorName = x.ProcessorName,
+                    PriorAuthorizationId = x.PriorAuthorizationId,
                     Status = x.Status,
                     MemberDisplayName = x.MemberDisplayName,
                     MemberNumber = x.MemberNumber,
