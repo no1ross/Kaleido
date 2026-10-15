@@ -16,7 +16,7 @@ All three are build diagnostics, not runtime error codes (runtime codes are in [
 
 ## Consumer rules — `KAL2xxx`
 
-**Audience:** developers building services on Kaleido. **Project:** [`Kaleido.Analyzers`](../tools/analyzers/Kaleido.Analyzers/), shipped in the `Kaleido` package, so the rules apply automatically to any code that references it. Most are compile-time equivalents of startup validation: a misconfigured step, source or view fails the build instead of failing at startup.
+**Audience:** developers building services on Kaleido. **Project:** [`Kaleido.Analyzers`](../tools/analyzers/Kaleido.Analyzers/), shipped in the `Kaleido` package, so the rules apply automatically to any code that references it. A project reference to `src/Kaleido` does not carry it (the analyzer reference is `PrivateAssets="all"`), so the repository's samples load it explicitly in `samples/Directory.Build.props`, as a NuGet consumer would get it. Most are compile-time equivalents of startup validation: a misconfigured step, source or view fails the build instead of failing at startup.
 
 | ID | Severity | Rule | What it prevents |
 |---|---|---|---|
@@ -41,7 +41,7 @@ All three are build diagnostics, not runtime error codes (runtime codes are in [
 
 ### Examples and notes
 
-- **KAL2001–KAL2003 — required metadata.** Steps, sources and views are named by their type name; `Version`, `DisplayName` and `Description` are what the registry publishes to UIs, documentation and AI agents, so they must be non-empty.
+- **KAL2001–KAL2003 — required metadata.** Steps, sources and views are named by their type name; `Version`, `DisplayName` and `Description` are what the registry publishes to UIs, documentation and AI agents, so they must be non-empty. The value is read as the compiler sees it, so a constant expression (`"…" + "…"`, a `const`, `nameof(…)`) counts like a literal.
 - **KAL2004 — preserve cancellation.** Use `catch (Exception ex) when (ex is not OperationCanceledException)` or handle cancellation in an earlier catch. The rule targets step-handler `ExecuteAsync` bodies, not every catch in an application. [Implementation](../tools/analyzers/Kaleido.Analyzers/Process/StepHandlerOceAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Process/StepHandlerOceAnalyzerTests.cs).
 - **KAL2008 — one handler per step.** Only the same compilation is inspected; a handler in another assembly suppresses the warning.
 - **KAL2009 — explicit discovery.** `AddKaleido(config, o => o.ServiceName = "app")` omits `Assemblies`; set `o.Assemblies = [typeof(Program).Assembly]`. The warning is a syntax-level hint for lambdas; `AddKaleido()` itself rejects missing or empty lists with `missing_assembly`, including when no lambda is supplied. [Implementation](../tools/analyzers/Kaleido.Analyzers/Bootstrap/AddKaleidoAssembliesAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Bootstrap/AddKaleidoAssembliesAnalyzerTests.cs).

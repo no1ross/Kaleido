@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Processor;
 using Kaleido.Samples.ECommerce.Steps;
@@ -14,11 +15,14 @@ namespace Kaleido.Samples.ECommerce.Process.Steps;
 public sealed record UpdateCartItemStep : IProcessStep
 {
     [Required]
+    [Description("The shopping cart the item belongs to.")]
     public required Guid ShoppingCartId { get; init; }
 
     [Required]
+    [Description("The cart item whose quantity to change.")]
     public required Guid ShoppingCartItemId { get; init; }
 
     [Range(1, 999)]
+    [Description("The new number of units for the item (1-999).")]
     public required int Quantity { get; init; }
 }

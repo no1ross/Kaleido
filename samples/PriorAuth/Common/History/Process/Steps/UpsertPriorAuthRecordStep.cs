@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Kaleido.Samples.PriorAuth.Auth;
 
 namespace Kaleido.Samples.PriorAuth.History.Process.Steps;
@@ -15,17 +16,24 @@ namespace Kaleido.Samples.PriorAuth.History.Process.Steps;
 public sealed record UpsertPriorAuthRecordStep : IProcessStep
 {
     /// <summary>The product processor's prior authorization; null while the request is in Intake.</summary>
+    [Description("The prior authorization assigned by the product processor; empty while the request is in Intake.")]
     public Guid? PriorAuthorizationId { get; init; }
 
+    [Description("The current status of the prior authorization request.")]
     public PriorAuthorizationStatus Status { get; init; }
 
+    [Description("The member number of the member the request is for.")]
     public string MemberNumber { get; init; } = string.Empty;
 
+    [Description("The display name of the member the request is for.")]
     public string MemberDisplayName { get; init; } = string.Empty;
 
+    [Description("The date the service is planned, when known.")]
     public DateOnly? DateOfService { get; init; }
 
+    [Description("The procedure code of the main service requested.")]
     public string PrimaryProcedureCode { get; init; } = string.Empty;
 
+    [Description("A readable description of the main service requested.")]
     public string PrimaryProcedureDescription { get; init; } = string.Empty;
 }

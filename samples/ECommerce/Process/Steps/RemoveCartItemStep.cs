@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Processor;
 using Kaleido.Samples.ECommerce.Steps;
@@ -14,9 +15,11 @@ namespace Kaleido.Samples.ECommerce.Process.Steps;
 public sealed record RemoveCartItemStep : IProcessStep
 {
     [Required]
+    [Description("The shopping cart the item belongs to.")]
     public required Guid ShoppingCartId { get; init; }
 
     [Required]
+    [Description("The cart item to remove.")]
     public required Guid ShoppingCartItemId { get; init; }
 }
 

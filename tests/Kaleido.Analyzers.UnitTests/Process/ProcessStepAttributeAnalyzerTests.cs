@@ -69,4 +69,28 @@ using Kaleido.Processor;
 public class MyStep { }
 " + ProcessStepStub);
     }
+
+    // Attribute arguments are constants: a concatenation, a const or nameof(...) is as good as a literal.
+    [Fact]
+    public async Task ConstantExpressions_NoDiagnostic()
+    {
+        await RunAsync(@"
+using Kaleido.Processor;
+public static class Texts { public const string Version = ""1.0.0""; }
+[ProcessStep(Version = Texts.Version, DisplayName = nameof(MyStep), Description = ""Does foo. "" + ""Then bar."")]
+public class MyStep { }
+" + ProcessStepStub);
+    }
+
+    [Fact]
+    public async Task ConstantExpressionThatIsEmpty_Reports()
+    {
+        await RunAsync(@"
+using Kaleido.Processor;
+public static class Texts { public const string Empty = """"; }
+[{|#0:ProcessStep(Version = ""1.0.0"", DisplayName = ""Foo"", Description = Texts.Empty + """")|}]
+public class MyStep { }
+" + ProcessStepStub,
+            Expected.WithLocation(0).WithArguments("ProcessStepAttribute"));
+    }
 }
