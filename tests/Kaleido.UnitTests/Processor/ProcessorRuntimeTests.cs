@@ -246,6 +246,36 @@ public sealed class ProcessorRuntimeTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ACallerError_IsRecordedAsRejected_NotAsAFailure()
+    {
+        var request = CreateRequest();
+        var processId = Assert.IsType<Guid>(request.ProcessId);
+
+        var contextStore = new Mock<IKaleidoContextStore>();
+        contextStore.Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>())).ReturnsAsync(default(ProcessorContext));
+
+        var execution = new Mock<IProcessorExecutionObservation>();
+        var observability = new Mock<IProcessorObservability>();
+        observability.Setup(x => x.BeginExecution(It.IsAny<ProcessorExecutionObservationDetails>())).Returns(execution.Object);
+
+        var runtime =
+            CreateSut(
+                contextStore.Object,
+                new Mock<IProcessorStateUpdater>(MockBehavior.Strict).Object,
+                new Mock<IProcessorPlanner>(MockBehavior.Strict).Object,
+                new Mock<IProcessorExecutor>(MockBehavior.Strict).Object,
+                CreateProcessEventFactory().Object,
+                new Mock<IKaleidoEventOutbox>().Object,
+                observability.Object,
+                CreateCorrelationAccessor());
+
+        await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoValidationException>(() => runtime.ExecuteAsync(request, TestContext.Current.CancellationToken));
+
+        execution.Verify(x => x.ExecutionRejected(It.IsAny<Kaleido.Exceptions.KaleidoValidationException>(), ProcessorErrorCodes.ProcessNotFound), Times.Once);
+        execution.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WhenContextExists_ReconcilesContext()
     {
         var request =

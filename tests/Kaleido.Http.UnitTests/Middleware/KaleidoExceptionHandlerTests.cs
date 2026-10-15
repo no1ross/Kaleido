@@ -55,6 +55,25 @@ public sealed class KaleidoExceptionHandlerTests
         Assert.Null(error.Field);
     }
 
+    // A 4xx is the caller's mistake: the request's span stays unset; only a 5xx marks it as an error.
+    [Theory]
+    [MemberData(nameof(ErrorContractCases))]
+    public async Task HandleAsync_MarksTheSpanAsAnError_OnlyFor5xx(
+        string exceptionName,
+        int expectedStatus,
+        string expectedCode,
+        string expectedMessage)
+    {
+        _ = (expectedCode, expectedMessage);
+        using var activity = new System.Diagnostics.Activity("request").Start();
+
+        await CreateSut().HandleAsync(CreateContext(), Create(exceptionName), CancellationToken.None);
+
+        Assert.Equal(
+            expectedStatus >= 500 ? System.Diagnostics.ActivityStatusCode.Error : System.Diagnostics.ActivityStatusCode.Unset,
+            activity.Status);
+    }
+
     [Theory]
     [MemberData(nameof(ErrorContractCases))]
     public async Task HandleAsync_WhenTheClientIsGone_WritesNothing(
