@@ -36,6 +36,30 @@ public sealed class KaleidoHttpServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddHttp_AppliesTheConfiguredOptions()
+    {
+        var services = new ServiceCollection();
+        var builder = services.AddKaleido(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), ConfigureKaleido("test"));
+
+        builder.AddHttp(o => o.IncludeFrameworkMessages = true);
+
+        var options = Assert.Single(services, d => d.ServiceType == typeof(KaleidoHttpOptions)).ImplementationInstance;
+        Assert.True(Assert.IsType<KaleidoHttpOptions>(options).IncludeFrameworkMessages);
+    }
+
+    [Fact]
+    public void AddHttp_WithoutConfiguration_RegistersDefaultOptions()
+    {
+        var services = new ServiceCollection();
+        var builder = services.AddKaleido(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), ConfigureKaleido("test"));
+
+        builder.AddHttp();
+
+        var options = Assert.Single(services, d => d.ServiceType == typeof(KaleidoHttpOptions)).ImplementationInstance;
+        Assert.False(Assert.IsType<KaleidoHttpOptions>(options).IncludeFrameworkMessages);
+    }
+
+    [Fact]
     public void AddHttp_RegistersKaleidoStartupFilter()
     {
         var webBuilder = WebApplication.CreateBuilder();

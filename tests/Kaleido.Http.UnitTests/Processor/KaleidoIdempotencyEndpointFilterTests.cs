@@ -124,6 +124,86 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
     }
 
     [Fact]
+    public async Task AnAnswerWithoutAValue_IsNotStored()
+    {
+        var result = await CreateSut().InvokeAsync(
+            Context("k1"),
+            _ => ValueTask.FromResult<object?>(Results.NoContent()));
+
+        Assert.IsType<NoContent>(result);
+        Assert.Empty(saved);
+    }
+
+    [Fact]
+    public async Task AValueAnswerWithoutAStatusCode_IsStoredAs200()
+    {
+        await CreateSut().InvokeAsync(
+            Context("k1"),
+            _ => ValueTask.FromResult<object?>(new ValueOnlyResult(new { processId = "p-2" })));
+
+        var stored = Assert.Single(saved);
+        Assert.Equal(StatusCodes.Status200OK, stored.StatusCode);
+        Assert.Equal("""{"processId":"p-2"}""", stored.Response);
+    }
+
+    [Fact]
+    public async Task ASuccessfulAnswer_IsStoredWithItsStatusCode()
+    {
+        await CreateSut().InvokeAsync(
+            Context("k1"),
+            _ => ValueTask.FromResult<object?>(Results.Created("/p-3", new { processId = "p-3" })));
+
+        Assert.Equal(StatusCodes.Status201Created, Assert.Single(saved).StatusCode);
+    }
+
+    [Fact]
+    public async Task AnInformationalAnswer_IsNotStored()
+    {
+        await CreateSut().InvokeAsync(
+            Context("k1"),
+            _ => ValueTask.FromResult<object?>(Results.Json(new { }, JsonSerializerOptions.Default, statusCode: StatusCodes.Status102Processing)));
+
+        Assert.Empty(saved);
+    }
+
+    [Fact]
+    public async Task ARequestWithoutArguments_IsHashedByRouteAndProcessOnly()
+    {
+        var http = new DefaultHttpContext();
+        http.Request.Method = "POST";
+        http.Request.Path = "/svc/processes/execute";
+        http.Request.Headers[KaleidoIdempotencyHeaders.IdempotencyKey] = "k1";
+        http.Request.Headers[KaleidoCorrelationHeaders.ProcessId] = "p-9";
+
+        await CreateSut().InvokeAsync(new DefaultEndpointFilterInvocationContext(http), Endpoint);
+
+        Assert.Equal(Sha256("POST /svc/processes/execute\np-9\n"), Assert.Single(saved).RequestHash);
+    }
+
+    [Fact]
+    public async Task AJsonBodyArgument_IsHashedAsSent()
+    {
+        var body = Mock.Of<IKaleidoJsonBody>(x => x.RawJson == """{ "step" : "start" }""");
+
+        await CreateSut().InvokeAsync(Context("k1", body), Endpoint);
+
+        Assert.Equal(
+            Sha256("POST /svc/processes/steps/start\n\n{ \"step\" : \"start\" }"),
+            Assert.Single(saved).RequestHash);
+    }
+
+    private static string Sha256(string payload) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(payload))).ToLowerInvariant();
+
+    private sealed class ValueOnlyResult(object value)
+        : IResult, IValueHttpResult
+    {
+        public object? Value => value;
+
+        public Task ExecuteAsync(HttpContext httpContext) => Task.CompletedTask;
+    }
+
+    [Fact]
     public async Task AFailedAnswer_IsNotStored()
     {
         await CreateSut().InvokeAsync(

@@ -344,6 +344,94 @@ public sealed class ObservabilityMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_WhenActivityCurrentWithoutServiceOptions_TagsNoInstanceIdOrProcessId()
+    {
+        var httpContext = CreateContext();
+        SetHeaders(httpContext, requestId: "req-3");
+
+        using var activity = new Activity("kaleido-test").Start();
+
+        await CreateSut().InvokeAsync(httpContext);
+
+        Assert.Equal("req-3", activity.GetTagItem(KaleidoTelemetryTags.RequestId));
+        Assert.Null(activity.GetTagItem(KaleidoTelemetryTags.ProcessorInstanceId));
+        Assert.Null(activity.GetTagItem(ProcessorTelemetry.TagProcessId));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenNoDefaultAuthenticateScheme_DoesNotAuthenticate()
+    {
+        var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
+        var schemeProvider = new Mock<IAuthenticationSchemeProvider>();
+        schemeProvider
+            .Setup(x => x.GetDefaultAuthenticateSchemeAsync())
+            .ReturnsAsync((AuthenticationScheme?)null);
+        var authentication = new Mock<IAuthenticationService>();
+        var httpContext = CreateContextWithAuthentication(initializer, schemeProvider, authentication);
+        SetHeaders(httpContext, requestId: "req-42", callingProcessor: "intake");
+
+        await CreateSut().InvokeAsync(httpContext);
+
+        authentication.Verify(x => x.AuthenticateAsync(It.IsAny<HttpContext>(), It.IsAny<string?>()), Times.Never);
+        initializer.Verify(
+            x => x.Initialize(It.Is<KaleidoCorrelationContext>(c => c.RequestId != "req-42" && c.CallingProcessorName == null)),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenAlreadyAuthenticated_DoesNotAuthenticateAgain()
+    {
+        var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
+        var schemeProvider = new Mock<IAuthenticationSchemeProvider>();
+        var authentication = new Mock<IAuthenticationService>();
+        var httpContext = CreateContextWithAuthentication(initializer, schemeProvider, authentication);
+        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "alice")], "test"));
+        SetHeaders(httpContext, requestId: "req-42", callingProcessor: "intake");
+
+        await CreateSut().InvokeAsync(httpContext);
+
+        authentication.Verify(x => x.AuthenticateAsync(It.IsAny<HttpContext>(), It.IsAny<string?>()), Times.Never);
+        schemeProvider.Verify(x => x.GetDefaultAuthenticateSchemeAsync(), Times.Never);
+        initializer.Verify(
+            x => x.Initialize(It.Is<KaleidoCorrelationContext>(c => c.RequestId == "req-42" && c.CallingProcessorName == "intake")),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenAuthWiredAndThePrincipalHasNoIdentity_IgnoresIdentityHeaders()
+    {
+        var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
+        var httpContext = CreateContext(
+            initializer,
+            schemeProvider: new Mock<IAuthenticationSchemeProvider>());
+        httpContext.User = new ClaimsPrincipal();
+        SetHeaders(httpContext, requestId: "req-42", callingProcessor: "intake");
+
+        await CreateSut().InvokeAsync(httpContext);
+
+        initializer.Verify(
+            x => x.Initialize(It.Is<KaleidoCorrelationContext>(c => c.RequestId != "req-42" && c.CallingProcessorName == null)),
+            Times.Once);
+    }
+
+    private static DefaultHttpContext CreateContextWithAuthentication(
+        Mock<IKaleidoCorrelationContextInitializer> initializer,
+        Mock<IAuthenticationSchemeProvider> schemeProvider,
+        Mock<IAuthenticationService> authentication)
+    {
+        var services = new ServiceCollection()
+            .AddSingleton(initializer.Object)
+            .AddSingleton(schemeProvider.Object)
+            .AddSingleton(authentication.Object);
+
+        return new DefaultHttpContext
+        {
+            RequestServices = services.BuildServiceProvider(
+                new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true }),
+        };
+    }
+
+    [Fact]
     public async Task InvokeAsync_EchoesOnlyRequestIdAndProcessIdOnResponse()
     {
         var httpContext = CreateContext();

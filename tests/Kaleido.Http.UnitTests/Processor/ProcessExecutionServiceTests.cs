@@ -5,6 +5,7 @@ using Kaleido.Processor.Context;
 using Kaleido.Registry;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.Processor.UnitTests;
@@ -23,7 +24,9 @@ public sealed class ProcessExecutionServiceTests
         IProcessorRuntime runtime,
         IProcessExecutionResponseFactory responseFactory,
         Guid? contextProcessId = null,
-        IKaleidoAuthorizer? authorizer = null)
+        IKaleidoAuthorizer? authorizer = null,
+        IHttpContextAccessor? httpContextAccessor = null,
+        ILogger<ProcessExecutionService>? logger = null)
     {
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
         correlation
@@ -43,15 +46,153 @@ public sealed class ProcessExecutionServiceTests
             .Returns(Task.CompletedTask);
 
         return new ProcessExecutionService(
-            new HttpContextAccessor { HttpContext = new DefaultHttpContext() },
+            httpContextAccessor ?? new HttpContextAccessor { HttpContext = new DefaultHttpContext() },
             registry,
             runtime,
             new KaleidoServiceOptions { ServiceName = "test-processor" },
             correlation.Object,
             responseFactory,
             authorizer ?? stepAuthorizer.Object,
-            NullLogger<ProcessExecutionService>.Instance);
+            logger ?? NullLogger<ProcessExecutionService>.Instance);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ProcessRequest_EchoesTheProcessIdHeader_AndLogsAtDebug()
+    {
+        var registration = CreateRegistration();
+        var processResult = CreateProcessResult(registration.Metadata.Name, new TestResponse());
+        var runtime = new Mock<IProcessorRuntime>();
+        runtime
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(processResult);
+        var httpContext = new DefaultHttpContext();
+        var logger = CreateLogger();
+
+        await CreateSut(
+                CreateRegistry(registration),
+                runtime.Object,
+                Mock.Of<IProcessExecutionResponseFactory>(),
+                httpContextAccessor: new HttpContextAccessor { HttpContext = httpContext },
+                logger: logger.Object)
+            .ExecuteAsync(
+                new ExecuteProcessRequest
+                {
+                    Steps = [new ProcessStepRequest { StepName = registration.Metadata.Name, Request = JsonSerializer.SerializeToElement(new { }) }]
+                },
+                CancellationToken.None);
+
+        Assert.Equal(processResult.ProcessId.ToString(), httpContext.Response.Headers[KaleidoCorrelationHeaders.ProcessId].ToString());
+        Assert.Equal(["Executing process for processor test-processor with 1 submitted step(s)."], DebugLogs(logger));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Step_EchoesTheProcessIdHeader_AndLogsAtDebug()
+    {
+        var registration = CreateRegistration();
+        var processResult = CreateProcessResult(registration.Metadata.Name, new TestResponse());
+        var runtime = new Mock<IProcessorRuntime>();
+        runtime
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(processResult);
+        var httpContext = new DefaultHttpContext();
+        var logger = CreateLogger();
+
+        await CreateSut(
+                CreateRegistry(registration),
+                runtime.Object,
+                Mock.Of<IProcessExecutionResponseFactory>(),
+                httpContextAccessor: new HttpContextAccessor { HttpContext = httpContext },
+                logger: logger.Object)
+            .ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
+
+        Assert.Equal(processResult.ProcessId.ToString(), httpContext.Response.Headers[KaleidoCorrelationHeaders.ProcessId].ToString());
+        Assert.Equal(["Executing step Test-Step for processor test-processor."], DebugLogs(logger));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_OutsideAnHttpRequest_ReturnsTheResponseWithoutHeaders()
+    {
+        var registration = CreateRegistration();
+        var registry = CreateRegistry(registration);
+        var processResult = CreateProcessResult(registration.Metadata.Name, new TestResponse());
+        var runtime = new Mock<IProcessorRuntime>();
+        runtime
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(processResult);
+        var expected = new ProcessExecutionResponse { ProcessId = processResult.ProcessId };
+        var responseFactory = new Mock<IProcessExecutionResponseFactory>();
+        responseFactory
+            .Setup(x => x.CreateExecutionResponse(processResult, registry, "test-processor"))
+            .Returns(expected);
+
+        var response = await CreateSut(
+                registry,
+                runtime.Object,
+                responseFactory.Object,
+                httpContextAccessor: new HttpContextAccessor())
+            .ExecuteAsync(new ExecuteProcessRequest { Steps = [] }, CancellationToken.None);
+
+        Assert.Same(expected, response);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Step_WhenTheResultHasNoEntryForTheStep_ThrowsAFrameworkError()
+    {
+        var registration = CreateRegistration();
+        var runtime = new Mock<IProcessorRuntime>();
+        runtime
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateProcessResult("Other-Step", new TestResponse()));
+
+        var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
+            CreateSut(CreateRegistry(registration), runtime.Object, Mock.Of<IProcessExecutionResponseFactory>())
+                .ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None));
+
+        Assert.Equal(ProcessorErrorCodes.MissingStepResult, exception.Code);
+        Assert.Equal("Process result for step 'Test-Step' contained no entry for that step.", exception.Message);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Step_WhenTheStepAppearsMoreThanOnce_ReportsTheEntryThatRan()
+    {
+        var registration = CreateRegistration();
+        var ran = CreateProcessResult(registration.Metadata.Name, new TestResponse()).Steps.Single();
+        var pending = ran with { ExecutionStatus = StepExecutionStatus.Pending, Response = null };
+        var processResult = CreateProcessResult(registration.Metadata.Name, new TestResponse()) with
+        {
+            Steps = [pending, ran with { StepName = "test-step" }, pending],
+        };
+        var runtime = new Mock<IProcessorRuntime>();
+        runtime
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(processResult);
+        ProcessStepResult? reported = null;
+        var responseFactory = new Mock<IProcessExecutionResponseFactory>();
+        responseFactory
+            .Setup(x => x.CreateStepResponse(It.IsAny<ProcessResult>(), It.IsAny<ProcessStepResult>(), It.IsAny<IProcessorStepRegistry>(), It.IsAny<string>()))
+            .Callback((ProcessResult _, ProcessStepResult step, IProcessorStepRegistry _, string _) => reported = step)
+            .Returns(new StepExecutionResponse { ProcessId = processResult.ProcessId, StepName = registration.Metadata.Name });
+
+        await CreateSut(CreateRegistry(registration), runtime.Object, responseFactory.Object)
+            .ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
+
+        Assert.NotNull(reported);
+        Assert.Equal(StepExecutionStatus.Completed, reported.ExecutionStatus);
+        Assert.Equal("test-step", reported.StepName);
+    }
+
+    private static Mock<ILogger<ProcessExecutionService>> CreateLogger()
+    {
+        var logger = new Mock<ILogger<ProcessExecutionService>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        return logger;
+    }
+
+    private static string?[] DebugLogs(Mock<ILogger<ProcessExecutionService>> logger) =>
+        logger.Invocations
+            .Where(x => string.Equals(x.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal) && Equals(x.Arguments[0], LogLevel.Debug))
+            .Select(x => x.Arguments[2]?.ToString())
+            .ToArray();
 
     [Fact]
     public async Task ExecuteAsync_ProcessRequest_MapsRequestAndReturnsResponse()

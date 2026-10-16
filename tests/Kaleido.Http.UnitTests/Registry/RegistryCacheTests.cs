@@ -197,6 +197,54 @@ public sealed class HttpRegistryCacheTests
     }
 
     [Fact]
+    public async Task GetOrBuildAsync_WhenAnotherCallerBuiltWhileWaiting_ServesThatSnapshot()
+    {
+        var builtMeanwhile = new AggregatedRegistryResponse { GeneratedAt = DateTimeOffset.UtcNow, Revision = "meanwhile" };
+        var store = new Mock<IRegistrySnapshotStore>();
+        store.SetupSequence(s => s.GetAsync(Key, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AggregatedRegistryResponse?)null)
+            .ReturnsAsync(builtMeanwhile);
+        using var sut = CreateSut(store.Object);
+        var buildCount = 0;
+
+        var result = await sut.GetOrBuildAsync(
+            ttl: null,
+            refreshCooldown: TimeSpan.FromSeconds(30),
+            forceRefresh: false,
+            build: _ =>
+            {
+                buildCount++;
+                return Clean();
+            },
+            cancellationToken: default);
+
+        Assert.Same(builtMeanwhile, result);
+        Assert.Equal(0, buildCount);
+        store.Verify(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetOrBuildAsync_RefreshWithoutACooldown_AlwaysRebuilds()
+    {
+        using var sut = CreateSut();
+        await sut.GetOrBuildAsync(null, TimeSpan.Zero, false, _ => Clean(), default);
+        var buildCount = 0;
+
+        await sut.GetOrBuildAsync(
+            ttl: null,
+            refreshCooldown: TimeSpan.Zero,
+            forceRefresh: true,
+            build: _ =>
+            {
+                buildCount++;
+                return Clean();
+            },
+            cancellationToken: default);
+
+        Assert.Equal(1, buildCount);
+    }
+
+    [Fact]
     public async Task GetOrBuildAsync_RefreshPastCooldown_Rebuilds()
     {
         var store = CreateStore();

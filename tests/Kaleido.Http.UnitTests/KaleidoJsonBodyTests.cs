@@ -65,6 +65,30 @@ public sealed class KaleidoJsonBodyTests
     }
 
     [Fact]
+    public async Task AJsonNullBody_IsA400ForAnEmptyBody()
+    {
+        var body = await CreateSut("null");
+
+        var exception = Assert.Throws<BadHttpRequestException>(() => body.Value);
+
+        Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
+        Assert.Equal("The request body is empty.", exception.Message);
+        Assert.Equal("null", body.RawJson);
+    }
+
+    [Fact]
+    public async Task AnEmptyBody_IsA400WithoutAPath()
+    {
+        var body = await CreateSut(string.Empty);
+
+        var exception = Assert.Throws<BadHttpRequestException>(() => body.Value);
+
+        Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
+        Assert.StartsWith("The request body is not valid JSON: ", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("LineNumber", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task RawJson_IsTheBodyAsSent()
     {
         var body = await CreateSut("""{"id":"6f1c2a9e-5d3b-4f7a-9c1e-2b8d4e6a0f13","on":"2026-10-15"}""");

@@ -229,5 +229,48 @@ public sealed class KaleidoAuthorizerTests
         Assert.Null(captured);
     }
 
+    [Fact]
+    public async Task CanAccessAsync_InARequestWithoutAnAuthorizationService_PolicyEvaluatorIsNull()
+    {
+        Func<string, CancellationToken, Task<bool>>? captured = null;
+        var invoked = false;
+
+        var evaluator = Evaluator();
+        evaluator
+            .Setup(x => x.CanAccessAsync(
+                It.IsAny<AuthorizationMetadata?>(),
+                It.IsAny<KaleidoCorrelationContext>(),
+                It.IsAny<Func<string, CancellationToken, Task<bool>>?>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<AuthorizationMetadata?, KaleidoCorrelationContext, Func<string, CancellationToken, Task<bool>>?, CancellationToken>(
+                (_, _, pe, _) =>
+                {
+                    invoked = true;
+                    captured = pe;
+                })
+            .ReturnsAsync(true);
+
+        var httpContextAccessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                RequestServices = new ServiceCollection().BuildServiceProvider(
+                    new ServiceProviderOptions
+                    {
+                        ValidateScopes = true,
+                        ValidateOnBuild = true
+                    })
+            }
+        };
+
+        var sut = CreateSut(evaluator, httpContextAccessor: httpContextAccessor);
+
+        await sut.CanAccessAsync(
+            new AuthorizationMetadata("hipaa", []));
+
+        Assert.True(invoked);
+        Assert.Null(captured);
+    }
+
     private sealed record Item(string Name, AuthorizationMetadata? Authorization);
 }

@@ -5,6 +5,9 @@ using Kaleido.Http.Queryable;
 using Kaleido.Http.Registry;
 using Kaleido.Queryable.Registry;
 using Kaleido.Registry;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.Registry.UnitTests;
@@ -40,7 +43,11 @@ public sealed class KaleidoRegistryServiceTests
         authorizer.Setup(x => x.IsEnforced).Returns(false);
     }
 
-    private (KaleidoRegistryService Sut, RegistrySnapshot Snapshot) CreateSut(bool aggregate = true, TimeSpan? cooldown = null)
+    private (KaleidoRegistryService Sut, RegistrySnapshot Snapshot) CreateSut(
+        bool aggregate = true,
+        TimeSpan? cooldown = null,
+        ILogger<KaleidoRegistryService>? logger = null,
+        IHttpContextAccessor? httpContextAccessor = null)
     {
         var store = new Mock<IRegistrySnapshotStore>();
         store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -68,7 +75,13 @@ public sealed class KaleidoRegistryServiceTests
         var local = new LocalRegistrations([processors.Object], [queryables.Object], responses.Object, serviceOptions);
 
         return (
-            new KaleidoRegistryService(snapshot, local, downstream.Object, authorizer.Object, Mock.Of<Microsoft.AspNetCore.Http.IHttpContextAccessor>(), NullLogger<KaleidoRegistryService>.Instance),
+            new KaleidoRegistryService(
+                snapshot,
+                local,
+                downstream.Object,
+                authorizer.Object,
+                httpContextAccessor ?? Mock.Of<IHttpContextAccessor>(),
+                logger ?? NullLogger<KaleidoRegistryService>.Instance),
             snapshot);
     }
 
@@ -207,4 +220,161 @@ public sealed class KaleidoRegistryServiceTests
     {
         Assert.True(CreateSut().Sut.IsMapped);
     }
+
+    [Fact]
+    public async Task GetForCaller_WhenBuilt_LogsTheCountsAtDebug()
+    {
+        var logger = CreateLogger();
+
+        await CreateSut(logger: logger.Object).Sut.GetForCallerAsync(cancellationToken: Cancel);
+
+        var log = Assert.Single(Logs(logger));
+        Assert.Equal(LogLevel.Debug, log.Level);
+        Assert.Equal("Registry response built: 2 process(es), 1 queryable(s).", log.Message);
+    }
+
+    [Fact]
+    public async Task GetForCaller_WhenRefreshed_LogsTheRebuildAtDebug()
+    {
+        var logger = CreateLogger();
+        var sut = CreateSut(cooldown: TimeSpan.Zero, logger: logger.Object).Sut;
+        await sut.GetForCallerAsync(cancellationToken: Cancel);
+
+        await sut.GetForCallerAsync(refresh: true, cancellationToken: Cancel);
+
+        Assert.Contains(Logs(logger), x => x.Level == LogLevel.Debug && x.Message == "Registry rebuilt via force refresh.");
+    }
+
+    [Fact]
+    public async Task GetForCaller_WhenPartial_LogsTheFailedClientsOnceAtWarning()
+    {
+        downstream.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DownstreamRegistries(
+                [],
+                [],
+                [
+                    new RegistryClientError { ClientName = "radiology", ClientType = "Registry", Reason = "down" },
+                    new RegistryClientError { ClientName = "member", ClientType = "Registry", Reason = "down" },
+                ]));
+        var logger = CreateLogger();
+
+        await CreateSut(logger: logger.Object).Sut.GetForCallerAsync(cancellationToken: Cancel);
+
+        var log = Assert.Single(Logs(logger));
+        Assert.Equal(LogLevel.Warning, log.Level);
+        Assert.Equal("Registry response is partial — 2 downstream client(s) failed: radiology, member.", log.Message);
+    }
+
+    [Fact]
+    public async Task GetForCaller_WhenEnforced_InitializesTheCallerOfTheCurrentRequest()
+    {
+        var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
+        var services = new ServiceCollection();
+        services.AddSingleton(initializer.Object);
+        services.AddSingleton(Mock.Of<IKaleidoCorrelationContextAccessor>(x => x.Current == new KaleidoCorrelationContext()));
+        var httpContext = new DefaultHttpContext
+        {
+            RequestServices = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true }),
+        };
+        var accessor = Mock.Of<IHttpContextAccessor>(x => x.HttpContext == httpContext);
+        AllowEverything();
+
+        await CreateSut(httpContextAccessor: accessor).Sut.GetForCallerAsync(cancellationToken: Cancel);
+
+        initializer.Verify(x => x.Initialize(It.IsAny<KaleidoCorrelationContext>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetForCaller_WhenEnforced_DropsProcessorsAndSourcesTheCallerCannotUse()
+    {
+        downstream.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DownstreamRegistries(
+                [
+                    new ProcessorRegistryResponse
+                    {
+                        Name = "radiology",
+                        ServiceName = "radiology",
+                        InitialSteps = [new ProcessStepSummary { Name = "OrderScanStep", Authorization = Radiology }],
+                        Steps = [new ProcessStepResponse { Name = "CaptureScanStep", Authorization = Radiology }],
+                    },
+                    new ProcessorRegistryResponse
+                    {
+                        Name = "empty",
+                        ServiceName = "empty",
+                        Steps = null,
+                    },
+                    new ProcessorRegistryResponse
+                    {
+                        Name = "initial-only",
+                        ServiceName = "initial-only",
+                        InitialSteps = [new ProcessStepSummary { Name = "StartStep" }],
+                        Steps = null,
+                    },
+                ],
+                [
+                    new QueryableSourceResponse
+                    {
+                        Name = "ScanSource",
+                        ServiceName = "radiology",
+                        QueryUrl = "/radiology/q",
+                        Authorization = Radiology,
+                        Views = [new QueryableViewResponse { Name = "ScanCard", QueryUrl = "/radiology/v", Authorization = Radiology }],
+                    },
+                    new QueryableSourceResponse { Name = "MemberSource", ServiceName = "member", QueryUrl = "/member/q" },
+                ],
+                []));
+        localProcessors.Clear();
+        var ruleChecks = new List<AuthorizationMetadata?>();
+        authorizer.Setup(x => x.IsEnforced).Returns(true);
+        authorizer.Setup(x => x.CanAccessAsync(It.IsAny<AuthorizationMetadata?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AuthorizationMetadata? rule, CancellationToken _) => rule != Radiology);
+        authorizer.Setup(x => x.FilterAsync(It.IsAny<IReadOnlyCollection<ProcessStepSummary>>(), It.IsAny<Func<ProcessStepSummary, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyCollection<ProcessStepSummary> items, Func<ProcessStepSummary, AuthorizationMetadata?> rule, CancellationToken _) =>
+                items.Where(x => Allowed(rule(x), ruleChecks)).ToArray());
+        authorizer.Setup(x => x.FilterAsync(It.IsAny<IReadOnlyCollection<ProcessStepResponse>>(), It.IsAny<Func<ProcessStepResponse, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyCollection<ProcessStepResponse> items, Func<ProcessStepResponse, AuthorizationMetadata?> rule, CancellationToken _) =>
+                items.Where(x => Allowed(rule(x), ruleChecks)).ToArray());
+        authorizer.Setup(x => x.FilterAsync(It.IsAny<IReadOnlyCollection<QueryableViewResponse>>(), It.IsAny<Func<QueryableViewResponse, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyCollection<QueryableViewResponse> items, Func<QueryableViewResponse, AuthorizationMetadata?> rule, CancellationToken _) =>
+                items.Where(x => Allowed(rule(x), ruleChecks)).ToArray());
+
+        var registry = await CreateSut().Sut.GetForCallerAsync(cancellationToken: Cancel);
+
+        Assert.Equal(["empty", "initial-only"], registry.Processes.Select(x => x.Name));
+        Assert.Null(registry.Processes.First().Steps);
+        Assert.Equal(["MemberSource"], registry.Queryables.Select(x => x.Name));
+        Assert.Equal(3, ruleChecks.Count(x => x == Radiology));
+    }
+
+    private static bool Allowed(AuthorizationMetadata? rule, List<AuthorizationMetadata?> ruleChecks)
+    {
+        ruleChecks.Add(rule);
+        return rule != Radiology;
+    }
+
+    private void AllowEverything()
+    {
+        authorizer.Setup(x => x.IsEnforced).Returns(true);
+        authorizer.Setup(x => x.CanAccessAsync(It.IsAny<AuthorizationMetadata?>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        authorizer.Setup(x => x.FilterAsync(It.IsAny<IReadOnlyCollection<ProcessStepSummary>>(), It.IsAny<Func<ProcessStepSummary, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyCollection<ProcessStepSummary> items, Func<ProcessStepSummary, AuthorizationMetadata?> _, CancellationToken _) => items.ToArray());
+        authorizer.Setup(x => x.FilterAsync(It.IsAny<IReadOnlyCollection<ProcessStepResponse>>(), It.IsAny<Func<ProcessStepResponse, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyCollection<ProcessStepResponse> items, Func<ProcessStepResponse, AuthorizationMetadata?> _, CancellationToken _) => items.ToArray());
+        authorizer.Setup(x => x.FilterAsync(It.IsAny<IReadOnlyCollection<QueryableViewResponse>>(), It.IsAny<Func<QueryableViewResponse, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyCollection<QueryableViewResponse> items, Func<QueryableViewResponse, AuthorizationMetadata?> _, CancellationToken _) => items.ToArray());
+    }
+
+    private static Mock<ILogger<KaleidoRegistryService>> CreateLogger()
+    {
+        var logger = new Mock<ILogger<KaleidoRegistryService>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        return logger;
+    }
+
+    private static (LogLevel Level, string? Message)[] Logs(
+        Mock<ILogger<KaleidoRegistryService>> logger) =>
+        logger.Invocations
+            .Where(x => string.Equals(x.Method.Name, "Log", StringComparison.Ordinal))
+            .Select(x => ((LogLevel)x.Arguments[0], x.Arguments[2]?.ToString()))
+            .ToArray();
 }
