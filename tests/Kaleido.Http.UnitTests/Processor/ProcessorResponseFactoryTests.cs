@@ -4,9 +4,9 @@ using Kaleido.Processor.Registry;
 namespace Kaleido.Http.Processor.UnitTests;
 
 public sealed class ProcessorResponseFactoryTests
-    : Kaleido.UnitTests.SutFixture<ProcessorResponseFactory>
+    : Kaleido.UnitTests.SutFixture
 {
-    protected override ProcessorResponseFactory CreateSut() => new();
+    private static ProcessorResponseFactory CreateSut() => new();
 
     [Fact]
     public void CreateRegistryResponse_WithEmptyRegistration_ReturnsResponse()

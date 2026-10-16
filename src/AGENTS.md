@@ -40,7 +40,7 @@ Depends on `Kaleido.Http.Abstractions` only. Does **not** own runtime logic or c
 ### `src/Kaleido.Http.Abstractions`
 Owns shared HTTP contract types and HTTP-specific correlation primitives:
 - `KaleidoCorrelationHeaders` — canonical `X-Kaleido-*` header name constants (namespace `Kaleido.Http`)
-- `HttpHeaderSanitizer` — RFC 7230-compliant sanitization, max 256 chars, printable ASCII only
+- `HttpHeaderSanitizer` (internal, shared through `InternalsVisibleTo`) — RFC 7230-compliant sanitization, max 256 chars, printable ASCII only
 - Process HTTP request/response contracts
 - Queryable HTTP request/response contracts
 

@@ -286,7 +286,7 @@ dotnet_diagnostic.MA0018.severity = none       ; Deprecated duplicate of CA1000
 
 ; Internal types here are used by Kaleido.Http and Kaleido.Http.Client through InternalsVisibleTo,
 ; which MA0182 cannot see - every finding is a false positive
-[src/Kaleido.Http.Abstractions/**/*.cs]
+[src/Kaleido.Http.Abstractions/{*.cs,**/*.cs}]
 dotnet_diagnostic.MA0182.severity = none
 
 ; EF Core entity navigation properties use ICollection<T> by convention

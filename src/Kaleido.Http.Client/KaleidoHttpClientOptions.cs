@@ -3,7 +3,7 @@ namespace Kaleido.Http.Client;
 /// <summary>
 /// Registration options for a named Kaleido HTTP client.
 /// </summary>
-public sealed class KaleidoHttpClientOptions
+internal sealed class KaleidoHttpClientOptions
 {
     /// <summary>
     /// The name used to identify this client in the client factory.

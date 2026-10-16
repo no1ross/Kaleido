@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Processor;
 
-public static class ProcessorServiceCollectionExtensions
+internal static class ProcessorServiceCollectionExtensions
 {
     internal static IKaleidoBuilder AddProcessor(this IKaleidoBuilder builder)
     {
