@@ -36,6 +36,8 @@ All three are build diagnostics, not runtime error codes (runtime codes are in [
 | KAL2016 | Error | `Success<TNext>()` or `Next<TNext>()` names an information step | A step with nothing to answer (runtime `pro_information_request_missing`); use `RequireInformation<TNext>(request)` |
 | KAL2017 | Warning | A process step input property has no description (`[Description]` or `[Display(Description = …)]`) | Inputs UIs and AI agents can't explain or ask for |
 | KAL2018 | Warning | An `IQueryContext` or `IQueryParameters` property has no description | Query fields UIs and AI agents (MCP tool schemas) can't explain |
+| KAL2019 | Warning | A step, query source or query view type name makes the MCP tool name's capability part longer than 40 characters | MCP tool names over 64 characters are shortened with a hash, which agents read badly |
+| KAL2020 | Warning | `o.ServiceName` is longer than 15 characters | The service name prefixes every MCP tool name (`{service}_{capability}`) and eats the 64-character budget |
 | KAL2021 | Warning | A `[Required]` process step input has a non-nullable value type and is not a C# `required` member | An omitted input silently becomes its default (`Guid.Empty`, `default(DateOnly)`) and passes validation |
 | KAL2022 | Warning | The same for an `IQueryParameters` property | An omitted query parameter silently becomes its default and passes validation |
 
@@ -63,7 +65,7 @@ Compliant shapes for all of the above are in [`PATTERNS.md`](./PATTERNS.md).
 | ID | Rule | Diagnostic message |
 |---|---|---|
 | KAL0001 | Static classes are reserved for extension methods — no static helper/util classes | `Static class '{0}' is reserved for extension methods — convert '{1}' to an extension method or use a non-static class` |
-| KAL0002 | Throw `Kaleido*Exception` types, not general BCL exceptions (argument guards and the ASP.NET 400 contract are allow-listed) | `Throw a Kaleido*Exception instead of '{0}'` |
+| KAL0002 | Throw `Kaleido*Exception` types, not general BCL exceptions (argument and format guards, the ASP.NET 400 contract and the MCP input-required signal are allow-listed) | `Throw a Kaleido*Exception instead of '{0}'` |
 | KAL0003 | No `!` null-forgiving operator — use explicit null checks | `Replace '!' with an explicit null check` |
 | KAL0004 | Exception types must not be records | `Exception type '{0}' is declared as a record — exception classes must remain classes` |
 | KAL0005 | Service-like types must not be static (name ends `Service/Handler/Executor/Processor/Provider/Factory/Reader/Writer`) | `Static class '{0}' looks like an injectable service ('{1}' is not an extension method) — make it injectable or rename it` |
@@ -71,7 +73,7 @@ Compliant shapes for all of the above are in [`PATTERNS.md`](./PATTERNS.md).
 | KAL0007 | No service locator — `IServiceProvider.GetService/GetServices/GetRequiredService` outside composition roots | `'{0}' on IServiceProvider is a service locator call — inject the dependency through the constructor instead` |
 | KAL0008 | Inject the service abstraction, not the concrete implementation | `Parameter '{0}' is typed as concrete '{1}' — inject '{2}' instead` |
 | KAL0009 | Services use constructor injection only — no settable service properties or `Set*` injection methods | `'{0}' on service '{1}' injects '{2}' outside the constructor — use constructor injection` |
-| KAL0010 | Injected deps must be retained safely — readonly fields, no ignored ctor params | `Field '{0}' on service '{1}' holds '{2}' — make it readonly` / `Constructor parameter '{0}' on service '{1}' is never used` |
+| KAL0010 | Injected deps must be retained in readonly fields (unused ctor params are caught by IDE0060) | `Field '{0}' on service '{1}' holds '{2}' — make it readonly` |
 | KAL0011 | DI constructors must not perform work on injected dependencies | `Invocation '{0}' inside '{1}'s constructor does work — assign dependencies and validate arguments only` |
 | KAL0012 | No manual infrastructure instantiation (`HttpClient`, `ServiceCollection`, `ServiceProvider`, `LoggerFactory`, `DbContext`) | `'new {0}()' bypasses the container-managed factory — inject the corresponding abstraction instead` |
 | KAL0013 | Do not dispose container-owned dependencies | `'{0}' on '{1}' disposes a container-owned dependency ('{2}') — the container manages its lifetime` |
@@ -90,7 +92,7 @@ Compliant shapes for all of the above are in [`PATTERNS.md`](./PATTERNS.md).
 | KAL0007 | Service-locator calls outside composition roots — hides dependencies from validation |
 | KAL0008 | Injecting concrete types — breaks substitutability, lets callers reach internals |
 | KAL0009 | Property/`Set*` injection on services — services become incompletely initialized |
-| KAL0010 | Non-readonly injected fields / ignored ctor params — mutable deps or silent misconfiguration |
+| KAL0010 | Non-readonly injected fields — a dependency replaced after construction |
 | KAL0011 | Constructor work on injected deps — side effects at resolution time, ordering hazards |
 | KAL0012 | Manual `new HttpClient`/`ServiceProvider`/`DbContext` — socket exhaustion, leaked scopes |
 | KAL0013 | Disposing container-owned dependencies — disposed-injected-dependency crashes mid-request |

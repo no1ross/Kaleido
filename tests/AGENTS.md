@@ -8,6 +8,8 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Http.UnitTests` | `src/Kaleido.Http` (middleware, startup filter, correlation reader, endpoint extensions, queryable value normalizer) |
 | `Kaleido.Http.FunctionalTests` | `src/Kaleido.Http` and client contracts through TestServer |
 | `Kaleido.Http.Client.UnitTests` | `src/Kaleido.Http.Client` |
+| `Kaleido.Http.Mcp.UnitTests` | `src/Kaleido.Http.Mcp` (tool catalog and naming, schemas, the tool invoker) |
+| `Kaleido.Http.Mcp.FunctionalTests` | `src/Kaleido.Http.Mcp` through a real host and the SDK's MCP client |
 | `Kaleido.Http.Abstractions.UnitTests` | `src/Kaleido.Http.Abstractions` (`HttpHeaderSanitizer` and contract types) |
 | `Kaleido.Provider.SQLite.UnitTests` | `src/Kaleido.Provider.SQLite` (`IKaleidoContextStore` contract and SQLite fidelity) |
 | `Kaleido.Observability.OpenTelemetry.UnitTests` | `src/Kaleido.Observability.OpenTelemetry` (registration of every Kaleido source/meter, `AddOpenTelemetry` options, copied telemetry names equal the owning constants) |
@@ -69,7 +71,7 @@ that namespace (e.g. `Processor/Behavior`, `IntegrationTests/EfCore`), so they c
 shared fixtures publish.
 
 ### Shared fixture state
-`ProcessAspNetCoreFixture` and `QueryableAspNetCoreFixture` expose:
+`ProcessorAspNetCoreFixture` and `QueryableAspNetCoreFixture` expose:
 - `Client` — a pre-wired `HttpClient` pointed at the TestServer (use for raw HTTP assertions)
 - `ClientFactory` — the Kaleido client factory wired against the TestServer (use for client-level tests)
 - `TestServer` — the underlying `TestServer` instance (use when a test needs its own `CreateHandler()`)
