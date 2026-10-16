@@ -271,10 +271,14 @@ public sealed class ProcessorStepInvokerTests
     [Fact]
     public async Task ExecuteAsync_WhenHandlerThrows_PropagatesException()
     {
+        var failures =
+            new HandlerFailureRecorder();
+
         var invoker =
             CreateSut(
                 services =>
                 {
+                    services.AddSingleton(failures);
                     services.AddTransient<ThrowingHandler>();
                 });
 
@@ -296,6 +300,47 @@ public sealed class ProcessorStepInvokerTests
         Assert.Equal(
             "handler failed",
             exception.Message);
+
+        Assert.Same(
+            exception,
+            Assert.Single(failures.Exceptions));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenHandlerThrowsAValidationException_PropagatesItWithoutAHandlerFailure()
+    {
+        var failures =
+            new HandlerFailureRecorder();
+
+        var invoker =
+            CreateSut(
+                services =>
+                {
+                    services.AddSingleton(failures);
+                    services.AddTransient<ValidationThrowingHandler>();
+                });
+
+        var registration =
+            CreateRegistration<ValidationThrowingHandler>(
+                invokeHandlerAsync: (handler, step, context, cancellationToken) =>
+                    ((IProcessStepHandler<TestStep, TestStepResponse>)handler).ExecuteAsync(
+                        (TestStep)step,
+                        context,
+                        cancellationToken));
+
+        var exception =
+            await Assert.ThrowsAsync<KaleidoValidationException>(() =>
+                invoker.ExecuteAsync(
+                    registration,
+                    new TestStep(),
+                    CreateContext()));
+
+        Assert.Equal(
+            "pro_custom_validation",
+            exception.Code);
+
+        Assert.Empty(
+            failures.Exceptions);
     }
 
     [Fact]
@@ -368,6 +413,7 @@ public sealed class ProcessorStepInvokerTests
         var services =
             new ServiceCollection();
 
+        services.AddSingleton<HandlerFailureRecorder>();
         services.AddScoped<IProcessorObservability, TestProcessObservability>();
         services.AddScoped<KaleidoCorrelationContextAccessor>();
         services.AddScoped<IKaleidoCorrelationContextAccessor>(sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
@@ -480,7 +526,13 @@ public sealed class ProcessorStepInvokerTests
         public CancellationToken CancellationToken { get; set; }
     }
 
-    private sealed class TestProcessObservability
+    private sealed class HandlerFailureRecorder
+    {
+        public List<Exception> Exceptions { get; } = [];
+    }
+
+    private sealed class TestProcessObservability(
+        HandlerFailureRecorder failures)
         : IProcessorObservability
     {
         public IProcessorExecutionObservation BeginExecution(
@@ -498,16 +550,18 @@ public sealed class ProcessorStepInvokerTests
         public IProcessorHandlerObservation BeginHandler(
             ProcessorHandlerObservationDetails details)
         {
-            return new TestProcessHandlerObservation();
+            return new TestProcessHandlerObservation(failures);
         }
     }
 
-    private sealed class TestProcessHandlerObservation
+    private sealed class TestProcessHandlerObservation(
+        HandlerFailureRecorder failures)
         : IProcessorHandlerObservation
     {
         public void HandlerFailed(
             Exception exception)
         {
+            failures.Exceptions.Add(exception);
         }
 
         public void Dispose()
@@ -593,6 +647,20 @@ public sealed class ProcessorStepInvokerTests
         {
             throw new InvalidOperationException(
                 "handler failed");
+        }
+    }
+
+    private sealed class ValidationThrowingHandler :
+        IProcessStepHandler<TestStep, TestStepResponse>
+    {
+        public Task<ProcessStepHandlerResult<TestStepResponse>> ExecuteAsync(
+            TestStep processStep,
+            ProcessStepContext context,
+            CancellationToken cancellationToken = default)
+        {
+            throw new KaleidoValidationException(
+                "pro_custom_validation",
+                "Member invalid.");
         }
     }
 

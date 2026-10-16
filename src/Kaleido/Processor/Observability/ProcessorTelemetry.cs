@@ -94,6 +94,14 @@ public static class ProcessorTelemetry
     public const string StepCanceledEventName =
         "kaleido.processor.step.canceled";
 
+    /// <summary>
+    /// Event on the step activity: the step threw a <see cref="KaleidoValidationException"/>, a caller
+    /// error. Tagged with <see cref="TagRejectionCode"/> (the exception's code). The step's outcome is
+    /// failed, but the activity is not marked as an error and no failure is counted.
+    /// </summary>
+    public const string StepValidationFailedEventName =
+        "kaleido.processor.step.validation_failed";
+
     // ── Tag key names (activity tags) ─────────────────────────────────────────
 
     /// <summary>
@@ -155,7 +163,8 @@ public static class ProcessorTelemetry
     /// Why a request or answer was refused. On <see cref="ExecutionRejectedEventName"/> it is the
     /// refusing exception's error code, or <see cref="AuthorizationRejectionCode"/>; on
     /// <see cref="InformationResponsesRejectedCounterName"/> it is a
-    /// <c>pro_information_response_*</c> error code.
+    /// <c>pro_information_response_*</c> error code; on <see cref="StepValidationFailedEventName"/> it is
+    /// the step's validation error code.
     /// </summary>
     public const string TagRejectionCode =
         "kaleido.processor.rejection_code";
@@ -216,8 +225,9 @@ public static class ProcessorTelemetry
         "kaleido.processor.step_cancellations";
 
     /// <summary>
-    /// Counter: step runs that threw, including a <see cref="KaleidoValidationException"/>.
-    /// Cancellations, concurrency conflicts and handler rejections are not counted.
+    /// Counter: step runs that failed with an unexpected exception. Validation errors (a caller
+    /// error, see <see cref="StepValidationFailedEventName"/>), cancellations, concurrency conflicts
+    /// and handler rejections are not counted.
     /// </summary>
     public const string StepFailuresCounterName =
         "kaleido.processor.step_failures";

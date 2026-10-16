@@ -87,7 +87,8 @@ internal sealed class ProcessorStepInvoker(
 
             return handlerResult;
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        // A validation error is the caller's mistake, recorded once by the executor; not a handler failure.
+        catch (Exception exception) when (exception is not OperationCanceledException and not KaleidoValidationException)
         {
             handlerObservation.HandlerFailed(exception);
             throw;

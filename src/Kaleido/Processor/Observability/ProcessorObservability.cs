@@ -60,6 +60,11 @@ internal interface IProcessorStepObservation
 
     void StepFailed(
         Exception exception);
+
+    // A validation error from the step is the caller's mistake: a span event and a Debug line,
+    // never an Error, a failure count or an error status.
+    void StepValidationFailed(
+        string code);
 }
 
 internal interface IProcessorHandlerObservation
@@ -478,6 +483,15 @@ internal sealed partial class ProcessorObservability(
             LogStepFailed(logger, exception, processorName, details.StepName, details.StepVersion);
         }
 
+        public void StepValidationFailed(string code)
+        {
+            activity?.AddEvent(new ActivityEvent(
+                ProcessorTelemetry.StepValidationFailedEventName,
+                tags: new ActivityTagsCollection { [ProcessorTelemetry.TagRejectionCode] = code }));
+
+            LogStepValidationFailed(logger, processorName, details.StepName, details.StepVersion, code);
+        }
+
         public void Dispose()
         {
             ProcessStepDurationHistogram.Record(
@@ -500,6 +514,9 @@ internal sealed partial class ProcessorObservability(
 
         [LoggerMessage(Level = LogLevel.Error, Message = "Process step execution failed for processor {ProcessorName} step {StepName} version {StepVersion}.")]
         private static partial void LogStepFailed(ILogger logger, Exception exception, string processorName, string stepName, string? stepVersion);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "Process step for processor {ProcessorName} step {StepName} version {StepVersion} failed validation [{Code}].")]
+        private static partial void LogStepValidationFailed(ILogger logger, string processorName, string stepName, string? stepVersion, string code);
     }
 
     private sealed partial class ProcessHandlerObservation(
