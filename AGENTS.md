@@ -2,11 +2,12 @@
 
 This is the repository-level contributor guide for Kaleido.
 
-Kaleido is organized into six main framework projects:
+Kaleido is organized into seven main framework projects:
 - [`src/Kaleido`](./src/Kaleido/README.md) — foundational bootstrap, shared abstractions, metadata primitives, eventing, transport-agnostic correlation context, and the core runtime for both Process and Queryable
 - [`src/Kaleido.Http`](./src/Kaleido.Http/README.md) — HTTP transport: endpoint publication, middleware pipeline (`ExceptionMiddleware`, `ObservabilityMiddleware`), correlation context reader, startup filter, and execution services
 - [`src/Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP contract types and HTTP-specific correlation primitives (`KaleidoCorrelationHeaders`, `HttpHeaderSanitizer`) used by both server-side and client-side projects
 - [`src/Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) — typed HTTP clients for consuming remote Process and Queryable endpoints
+- [`src/Kaleido.Http.Mcp`](./src/Kaleido.Http.Mcp/README.md) — MCP adapter: publishes the host's (aggregated) registry to AI agents as MCP tools and calls the services through the Kaleido clients as the caller
 - [`src/Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) — optional OpenTelemetry provider: `AddOpenTelemetry()` on `IKaleidoBuilder` for full OTel setup (logging + tracing + metrics + OTLP), and `AddKaleidoInstrumentation()` on `TracerProviderBuilder`/`MeterProviderBuilder` for consumers managing their own OTel pipeline
 - [`src/Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) — reference implementation of `IKaleidoContextStore` (SQLite); consumers write their own durable store
 
@@ -26,6 +27,7 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository m
 - [`src/Kaleido.Http/README.md`](./src/Kaleido.Http/README.md)
 - [`src/Kaleido.Http.Abstractions/README.md`](./src/Kaleido.Http.Abstractions/README.md)
 - [`src/Kaleido.Http.Client/README.md`](./src/Kaleido.Http.Client/README.md)
+- [`src/Kaleido.Http.Mcp/README.md`](./src/Kaleido.Http.Mcp/README.md)
 - [`src/Kaleido.Observability.OpenTelemetry/README.md`](./src/Kaleido.Observability.OpenTelemetry/README.md)
 - [`src/Kaleido.Provider.SQLite/README.md`](./src/Kaleido.Provider.SQLite/README.md)
 
@@ -41,7 +43,7 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository m
 ### Kaleido (core)
 Owns shared substrate concerns and capability runtimes:
 - bootstrap and builder state (`AddKaleido()`, `IKaleidoBuilder`, `KaleidoServiceOptions`)
-- shared metadata primitives (`DataTypeMapper`, `ConstraintMapper`)
+- shared metadata primitives (`TypeDescriber`, `ConstraintMapper`)
 - shared eventing abstractions and correlation context
 - Queryable runtime: source/view registration, validation, dispatch, execution, observability
 - Process runtime: step registration, planning, execution, state mutation, observability
@@ -68,9 +70,16 @@ Owns shared HTTP contract types and HTTP-specific correlation primitives:
 
 ### Kaleido.Http.Client
 Owns typed HTTP clients:
-- `IKaleidoProcessClientFactory` / `KaleidoProcessClient` for consuming remote process endpoints
+- `IKaleidoProcessorClientFactory` / `KaleidoProcessorClient` for consuming remote process endpoints
 - `IKaleidoQueryableClientFactory` / `KaleidoQueryableClient` for consuming remote queryable endpoints
-- `AddHttpClients()` — consumer-facing registration (config-driven `Kaleido:Clients`); `AddProcessClient(...)`/`AddQueryableClient(...)` are internal
+- `AddHttpClients()` — consumer-facing registration (config-driven `Kaleido:Clients`); `AddProcessorClient(...)`/`AddQueryableClient(...)` are internal
+
+### Kaleido.Http.Mcp
+Owns the MCP adapter (depends on `Kaleido.Http` and `Kaleido.Http.Client`):
+- `AddMcp()` — registers the MCP server, its options (`Kaleido:Mcp`), the tool catalog and the tool invoker; requires `AddHttp()` and `AddHttpClients()`
+- `MapKaleidoMcp(pattern)` — maps the Streamable HTTP MCP endpoint (stateless)
+- tool listing (`McpToolListing.All` / `FrontDoor`), the built-in tools, information requests as forms (MRTR) or agent-asked questions, guided lookups
+- Does **not** own transport or client logic: tools come from the registry, calls go through the Kaleido clients as the caller
 
 ### Kaleido.Observability.OpenTelemetry
 Owns the OpenTelemetry observability provider (opt-in):
@@ -142,6 +151,7 @@ Information logs must stay minimal — treat them as the "normal operations" vie
   - `FrameworkErrorCodes` (`KaleidoFrameworkException.cs`) — cross-cutting integrity violation codes
   - `HttpClientErrorCodes` (`Kaleido.Http.Client/KaleidoClientException.cs`) — `httpclient_*` codes for remote call failures, plus the client's startup `missing_base_url`
   - `SqliteErrorCodes` (`Kaleido.Provider.SQLite`) — the provider's own codes; providers never add codes to core
+  - `McpErrorCodes` (`Kaleido.Http.Mcp/McpErrorCodes.cs`) — `mcp_*` codes for the MCP adapter's startup and tool-call failures
   - `KaleidoErrorCodes` (`KaleidoErrorResponse.cs`) — shared HTTP error codes (`argument_error`, `framework_error`)
 
 ### OperationCanceledException and observability
@@ -149,9 +159,9 @@ Never record `OperationCanceledException` as an execution failure — it inflate
 
 The rule is: **one observability signal per cancellation, at the lowest level that has full context.**
 
-- **Process:** `ProcessExecutor` is the single recording point (`stepObservation.Canceled()`). It has step name, version, and processor name, and is where state is saved on cancellation. All layers above (`ProcessStepInvoker`, `ProcessRuntime`) use `when (exception is not OperationCanceledException)` on their `catch (Exception)` blocks so OCE propagates cleanly without triggering `ExecutionFailed` or `HandlerFailed`.
+- **Process:** `ProcessorExecutor` is the single recording point (`stepObservation.Canceled()`). It has step name, version, and processor name, and is where state is saved on cancellation. All layers above (`ProcessorStepInvoker`, `ProcessorRuntime`) use `when (exception is not OperationCanceledException)` on their `catch (Exception)` blocks so OCE propagates cleanly without triggering `ExecutionFailed` or `HandlerFailed`.
 - **Queryable:** `QueryContextEngine` and `DelegatedQuerySourceEngine` each call `observation.Canceled()` in an explicit `catch (OperationCanceledException)` block placed before `catch (Exception)`. These are mutually exclusive code paths (dispatched by `QueryableService`), so only one signal fires per request.
-- Do **not** add `Canceled()` calls at higher levels (`ProcessRuntime`, `ProcessStepInvoker`) — you will get duplicate signals for the same cancellation event.
+- Do **not** add `Canceled()` calls at higher levels (`ProcessorRuntime`, `ProcessorStepInvoker`) — you will get duplicate signals for the same cancellation event.
 - KAL0021 enforces the "exclude OCE" half: a catch-all that calls an observability member without a `when (… is not OperationCanceledException)` filter or an earlier `catch (OperationCanceledException)` is reported. The one-signal-per-cancellation placement is still a review responsibility.
 
 ### Record conversion
@@ -282,5 +292,6 @@ dotnet test Kaleido.slnx --no-build --
 - If the concern is HTTP transport wiring, middleware, correlation propagation, or endpoint mapping, it belongs in `Kaleido.Http`.
 - If the concern is shared HTTP contract types used by both server and client, it belongs in `Kaleido.Http.Abstractions`.
 - If the concern is calling a remote Kaleido service over HTTP, it belongs in `Kaleido.Http.Client`.
+- If the concern is publishing capabilities to AI agents as MCP tools (tool listing, schemas, forms, `call_tool`), it belongs in `Kaleido.Http.Mcp`.
 - If the concern is OpenTelemetry provider wiring (exporters, instrumentation, resource config), it belongs in `Kaleido.Observability.OpenTelemetry`.
-- If the concern is the `IKaleidoContextStore` contract or the SQLite reference implementation, it belongs in `Kaleido.Provider.SQLite`.
+- If the concern is the `IKaleidoContextStore` contract, it belongs in `Kaleido` (`Storage/`); the SQLite reference implementation belongs in `Kaleido.Provider.SQLite`.

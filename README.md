@@ -232,7 +232,7 @@ The default store is in memory. For local persistence, add the SQLite reference 
 kaleido.UseSqliteKaleidoContextStore("Data Source=kaleido-process.db");
 ```
 
-[`Kaleido.Provider.SQLite`](src/Kaleido.Provider.SQLite/README.md) is a **reference implementation for samples and local development**, not the production-provider recommendation. Check schema initialization and migration requirements for the version being evaluated; registration alone is not that guarantee.
+[`Kaleido.Provider.SQLite`](src/Kaleido.Provider.SQLite/README.md) is a **reference implementation for samples and local development**, not the production-provider recommendation. Registration does not create the database: the host creates the schema once at startup (`SqliteKaleidoContextDbContext.Database.EnsureCreatedAsync()`, shown in the [provider README](src/Kaleido.Provider.SQLite/README.md#using-the-example-implementation)), and `EnsureCreated` never migrates an existing database.
 
 Production deployments provide and validate an `IKaleidoContextStore` suited to their infrastructure. Its contract covers process state, stored execution responses, and the event outbox.
 
@@ -248,7 +248,7 @@ Steps declare inputs and relationships; handlers implement behavior. The process
 
 ### Discovery: how does a consumer find it?
 
-Catalogs, registries, metadata, and advertised URLs describe how to call capabilities. A router can aggregate downstream registries; MCP exposes tools from the caller-visible model. Discovery does not replace execution-time validation or authorization.
+Each service's registry (`GET /{service}/registry`) publishes its capabilities' metadata and the URLs to call them. A router can aggregate downstream registries; MCP exposes tools from the caller-visible model. Discovery does not replace execution-time validation or authorization.
 
 ## Deployment responsibilities
 
@@ -271,16 +271,22 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 ## Documentation
 
 - [Architecture](ARCHITECTURE.md)
+- [Patterns: steps, handlers, sources, views, lookups](docs/PATTERNS.md)
 - [Core runtime](src/Kaleido/README.md)
-- [HTTP transport](src/Kaleido.Http/README.md)
+- [HTTP transport](src/Kaleido.Http/README.md) and [contracts](src/Kaleido.Http.Abstractions/README.md)
 - [HTTP clients](src/Kaleido.Http.Client/README.md)
 - [MCP adapter](src/Kaleido.Http.Mcp/README.md)
 - [Information requests](docs/INFORMATION_REQUESTS.md)
-- [Process engine, not decision maker](docs/decisions/0001-process-engine-not-decision-maker.md)
+- [Authorization](docs/AUTHORIZATION.md)
+- [Error codes](docs/ERROR_CODES.md)
+- [Correlation](docs/CORRELATION.md)
+- [Analyzers (KAL rules)](docs/ANALYZERS.md)
+- [Decision records](docs/decisions/README.md), starting with [process engine, not decision maker](docs/decisions/0001-process-engine-not-decision-maker.md)
 - [SQLite reference provider](src/Kaleido.Provider.SQLite/README.md)
 - [OpenTelemetry provider](src/Kaleido.Observability.OpenTelemetry/README.md)
 - [Prior authorization sample](samples/PriorAuth)
 - [E-commerce sample](samples/ECommerce)
+- [Queryable sample over CSV records](samples/SQLite) (every field type, filter operator and match mode)
 
 ## Project status
 

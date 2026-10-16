@@ -54,11 +54,11 @@ The core project is organized into two main namespaces:
 **`Kaleido` (bootstrap and shared)**
 - `KaleidoServiceCollectionExtensions` — `AddKaleido()` (assemblies via `KaleidoServiceOptions.Assemblies`)
 - `IKaleidoBuilder` / `KaleidoBuilder` — minimal shared builder
-- `KaleidoCorrelationContextAccessor` — scoped accessor for ambient correlation
+- `IKaleidoCorrelationContextAccessor` — scoped accessor for ambient correlation (a pre-existing registration wins)
 - `TypeDescriber` — CLR type → `DataTypeDescriptor` projection and `IsSupportedType` check
 - `ConstraintMapper` — `ValidationAttribute` → `ConstraintContract` projection
 - `KaleidoCorrelationContext` — shared ambient identity
-- `IEventPublisher` / `NullEventPublisher` — infrastructure-agnostic event seam
+- `IEventPublisher` — infrastructure-agnostic event seam; `AddKaleido()` registers an internal no-op publisher (with a Warning log) until the host calls `AddEventPublisher<T>()`
 
 **`Kaleido.Queryable`**
 - Registration: `QueryableServiceCollectionExtensions`, `QueryableBuilder`
@@ -68,12 +68,12 @@ The core project is organized into two main namespaces:
 - Registries: `IQuerySourceRegistry`, `IQueryViewRegistry`, `IQueryableRegistry` (published projection)
 - Observability: `QueryableObservability`
 
-**`Kaleido.Process`**
+**`Kaleido.Processor`**
 - Registration: `ProcessorServiceCollectionExtensions`
-- Runtime: `ExecutionProcessor`
+- Runtime: `IProcessorRuntime`, `ProcessorExecutor` (the step execution loop)
 - Planning: `StepCandidateBuilder`, `StepCandidateValidator`, `StepCandidateConsistencyChecker`, `StepCandidatePlanner`, `StepCandidateNextStepChecker` (only next steps run; answers checked against the pending information request)
-- State: `IKaleidoContextStore`, `InMemoryKaleidoContextStore`, `ProcessorContext`
-- Registries: `ProcessorStepRegistry`, `ProcessorRegistry`
+- State: `IKaleidoContextStore` (in `Kaleido.Storage`), the internal in-memory default, `ProcessorContext`
+- Registries: `IProcessorStepRegistry`, `IProcessorRegistry`
 - Observability: `ProcessorObservability`
 
 ### Extension points
@@ -83,8 +83,8 @@ Public seams consumers are expected to implement or replace:
 | Seam | Register via | Notes |
 |------|--------------|-------|
 | `IKaleidoContextStore` | `UseSqliteKaleidoContextStore(...)` or your own `services.AddScoped` after `AddKaleido()` | Production deployments implement against their own durable store; SQLite provider is a reference impl |
-| `IEventPublisher` | `AddEventPublisher<TPublisher>()` on the builder | Default is no-op `NullEventPublisher` (nothing is written to the outbox); replace for real event delivery - the relay hands it every event at least once |
-| `IQueryContextExecutor<TView>` | `services.AddScoped<IQueryContextExecutor<TView>, ...>` | Provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`) instead of sync fallback |
+| `IEventPublisher` | `AddEventPublisher<TPublisher>()` on the builder | Default is an internal no-op publisher (nothing is written to the outbox; a Warning says events are discarded); replace for real event delivery - the relay hands it every event at least once |
+| `IQueryContextExecutor<TView>` | `services.AddSingleton(typeof(IQueryContextExecutor<>), typeof(MyExecutor<>))` (the default is added with `TryAdd`) | Provider-native execution (e.g. EF Core `CountAsync`/`ToListAsync`): the default counts an async query by reading every matching row; see `docs/PATTERNS.md` |
 | Observability provider | `AddOpenTelemetry()` (Kaleido.Observability.OpenTelemetry) or custom `AddKaleidoInstrumentation()` calls | Core stays provider-agnostic on BCL `ActivitySource`/`Meter` |
 | Delegated query sources | implement `IDelegatedQuerySource<TQueryContext, TResult[, TParameters]>` and add `[QuerySource]` | A facade: translates the consumer's query (validated against `TQueryContext`), calls a downstream source or view, and maps to `TResult` |
 
@@ -94,7 +94,7 @@ Public seams consumers are expected to implement or replace:
 - Queryable discovery is interface-only and a type is exactly one capability; `QueryableService` dispatches by the queried type. How a source is fulfilled (local or delegated) is never published.
 - `ProcessorContext` is current resumable state only, not an audit log.
 - `IKaleidoBuilder` is intentionally minimal.
-- `CountAsync` runs only when `Page` is explicitly provided AND the returned page is full (`items.Count == page.Size`). When `Page` is absent or the page is partial, `TotalCount = items.Count` — the caller received all results.
+- `TotalCount` is always the number of matching results. A pageable capability always pages (its default page when the request names none). `CountAsync` runs only when the page cannot tell the total: the page is full, or empty past the start. A partial page ends the results (`TotalCount = offset + items.Count`); an unpageable capability returns every result (`TotalCount = items.Count`).
 - Core runtime types (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirection`, `LogicalOperator`) are transport-agnostic — they use CLR enums and `object?` values. The HTTP transport converts `QueryApiBody` (string enums, `JsonElement` values) to `QueryBody` via `QueryBodyResolver` before handing to core.
 
 ---
@@ -155,12 +155,12 @@ Public seams consumers are expected to implement or replace:
 **Process contracts**
 - Request: `ExecuteProcessRequest`, `ExecuteStepRequest<TStep>`
 - Response: `ProcessExecutionResponse`, `ProcessExecutionStepResponse`, `StepExecutionResponse`, `StepExecutionResponse<TResult>`, `ProcessStateResponse`
-- Reference types: `ProcessStepInfo`, `ProcessStepSummary`, `ProcessorRegistryResponse`, `ProcessStepResponse`
+- Reference types: `ProcessRequiredStep`, `ProcessStepSummary`, `ProcessorRegistryResponse`, `ProcessStepResponse`
 
 **Queryable contracts**
 - Request: `QueryApiRequest`, `QueryApiRequest<TParameters>` — accepts `QueryApiBody` (transport shape)
 - Transport body: `QueryApiBody`, `QueryApiFilterNode`, `QueryApiFilterCondition`, `QueryApiFilterGroup`, `QueryApiSort`, `QueryApiPage` — string enums, raw `JsonElement` filter values
-- Response: `QueryableSourceResponse` (carries `ServiceName`, `RegistryUrl`), `QueryableFieldMetadata`, `QueryableQueryParameter`, `QueryableQueryProperty`, `QueryErrorResponse`
+- Response: `QueryableSourceResponse` (carries `ServiceName`, `RegistryUrl`), `QueryableFieldMetadata`, `QueryableViewResponse`; errors use the core `KaleidoErrorResponse`
 - `QueryApiBodyExtensions.ToApiBody()` — converts runtime `QueryBody` → `QueryApiBody` for core callers forwarding over HTTP (e.g. delegated query sources)
 - `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` with `JsonStringEnumConverter` for all Kaleido HTTP serialization
 
@@ -185,14 +185,14 @@ Public seams consumers are expected to implement or replace:
 **Queryable client**
 - `IKaleidoQueryableClient` — interface: `GetRegistryAsync`, `InvalidateRegistryAsync`, `QueryViewAsync(source, view, …)`, `QuerySourceAsync(source, …)` (with and without parameters). Sources and views are addressed by their published names (strings): the caller cannot reference the remote types
 - `KaleidoQueryableClient` — concrete implementation; lazily fetches and caches the remote registry per client instance
-- `KaleidoQueryableClientException` — thrown on non-success responses and on registry lookup failures
-- `KaleidoQueryableClientServiceCollectionExtensions` — internal `AddQueryableClient(...)` registration used by `AddHttpClients`
+- Non-success responses and registry lookup failures throw `KaleidoHttpClientException`, as for the Process client
+- `KaleidoClientServiceCollectionExtensions` — internal `AddQueryableClient(...)` registration used by `AddHttpClients`
 
 ### Key design invariants
-- Both clients lazily fetch and cache the remote registry for the lifetime of the client instance.
+- Both clients share one cached registry per downstream (`KaleidoRemoteRegistry`, keyed `kaleido:{routePrefix}`), revalidated every `RegistryTtl` (default 30 s) with `If-None-Match` and dropped when a capability call answers 404.
 - Both clients automatically forward Kaleido correlation headers on outbound requests.
 - `AddHttpClients()` (in `KaleidoHttpClientsServiceCollectionExtensions`) registers both a Process and a Queryable client per entry in `Kaleido:Clients`, reading base URLs from `Kaleido:Clients:<Name>:BaseUrl` with a `Kaleido:BaseUrl` fallback.
-- The client name is lowercased to derive the route prefix, matching the remote server's `Kaleido:ServiceName`.
+- The route prefix defaults to the client name lowercased (`RoutePrefix` overrides it) and must equal the remote server's `Kaleido:ServiceName`.
 
 ---
 
@@ -263,11 +263,11 @@ Both Queryable and Process publish observability through activity sources and me
 
 Events are handed to `IEventPublisher` **at least once, never on the request path** ([ADR 0012](../docs/decisions/0012-events-at-least-once-through-the-store.md)):
 - **Outbox in the store.** The runtime writes every event to the outbox of `IKaleidoContextStore`. Events that describe a save go in the same transaction as the state: `ProcessCreated` (a new process is saved right away) and `StepCompleted`. `PlanBuilt`, `ExecutionCompleted` and `QueryExecuted` are enqueued right after; an enqueue failure is logged and counted, never fails the request. Without a registered publisher nothing is written.
-- **Relay.** `KaleidoEventRelay`, a hosted background service registered by `AddKaleido()` (one per instance), claims a batch (`Kaleido:Events:BatchSize`), publishes each entry through a Polly pipeline (timeout + circuit breaker, no Polly retries; `Kaleido:Events:Resilience`) and removes it on success. A failure is retried with exponential backoff (the durable schedule lives in the outbox, so it survives restarts); after `MaxRetryAttempts` the entry is parked. A write wakes the local relay at once; otherwise it polls, backing off to 10 s while the outbox is empty.
-- **Privacy.** Payloads are complete (the audit trail); before the outbox write, the registered `IKaleidoEventRedactor`s run and properties marked with a `DataClassificationAttribute` are redacted with the host's `IRedactorProvider` (`AddRedaction`), or erased when none is registered (`KaleidoEventPayloadWriter`, ADR 0013). so an entry is in one instance's hands at a time; when an instance stops, its leases expire and another takes over. A crash between a successful publish and its removal publishes the event again - consumers drop duplicates by `IKaleidoEvent.EventId`.
+- **Relay.** `KaleidoEventRelay`, a hosted background service registered by `AddKaleido()` (one per instance), claims a batch (`Kaleido:Events:BatchSize`), publishes each entry through a Polly pipeline (timeout + circuit breaker, no Polly retries; `Kaleido:Events:Resilience`) and removes it on success. A failure is retried with exponential backoff (the durable schedule lives in the outbox, so it survives restarts); after `MaxRetryAttempts` the entry is parked. A write wakes the local relay at once; otherwise it polls, backing off to 10 s while the outbox is empty. Claims are leases, so an entry is in one instance's hands at a time; when an instance stops, its leases expire and another takes over.
+- **Privacy.** Payloads are complete (the audit trail); before the outbox write, the registered `IKaleidoEventRedactor`s run and properties marked with a `DataClassificationAttribute` are redacted with the host's `IRedactorProvider` (`AddRedaction`), or erased when none is registered (`KaleidoEventPayloadWriter`, ADR 0013). A crash between a successful publish and its removal publishes the event again - consumers drop duplicates by `IKaleidoEvent.EventId`.
 
 ### Discoverability
 Metadata is derived from CLR types at startup:
-- `DataTypeMapper` converts CLR property types to `DataTypeDescriptor` values
+- `TypeDescriber` converts CLR property types to `DataTypeDescriptor` values
 - `ConstraintMapper` converts `ValidationAttribute` usage to `ConstraintContract` values
 - Both are used by the Queryable and Process runtimes when building discovery metadata for HTTP endpoints
