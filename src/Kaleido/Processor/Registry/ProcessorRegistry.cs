@@ -172,7 +172,7 @@ public sealed record ProcessorStepResultDescriptor
         = [];
 }
 
-public interface IProcessorRegistry
+internal interface IProcessorRegistry
 {
     IReadOnlyCollection<ProcessorRegistryItem> Registrations { get; }
 }

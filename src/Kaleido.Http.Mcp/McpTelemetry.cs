@@ -5,7 +5,7 @@ namespace Kaleido.Http.Mcp;
 /// telemetry contract. Register them with <c>AddKaleidoMcpInstrumentation()</c> (included in
 /// <c>AddKaleidoInstrumentation()</c>) from <c>Kaleido.Observability.OpenTelemetry</c>.
 /// </summary>
-public static class McpTelemetry
+internal static class McpTelemetry
 {
     // ── ActivitySource / Meter ───────────────────────────────────────────────
 

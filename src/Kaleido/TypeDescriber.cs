@@ -20,7 +20,7 @@ public sealed record EnumValueDescriptor(
     string Name,
     string? Description);
 
-public interface ITypeDescriber
+internal interface ITypeDescriber
 {
     DataTypeDescriptor GetDescriptor(PropertyInfo propertyInfo);
 

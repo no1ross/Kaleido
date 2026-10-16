@@ -28,6 +28,7 @@
 	<ItemGroup>
 		<InternalsVisibleTo Include="Kaleido.Http.Mcp.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.Mcp.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Observability.OpenTelemetry.UnitTests" />
 		<InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
 	</ItemGroup>
 

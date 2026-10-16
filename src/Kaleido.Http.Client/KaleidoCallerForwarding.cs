@@ -18,7 +18,7 @@ namespace Kaleido.Http.Client;
 /// mints, upgrades or adds identity — in particular no service token or actor claim reaches a service
 /// through a front door.</para>
 /// </remarks>
-public interface IKaleidoCallerForwarding
+internal interface IKaleidoCallerForwarding
 {
     /// <summary>True inside a <see cref="ForwardCaller"/> scope (on this async flow).</summary>
     bool IsForwarding { get; }

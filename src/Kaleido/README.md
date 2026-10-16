@@ -17,8 +17,8 @@ For the full repository model, see:
 - a default no-op `IEventPublisher` (internal) — events are discarded, with a Warning log, until the host calls `AddEventPublisher<T>()`
 
 ### Shared abstractions
-- `ITypeDescriber` / `TypeDescriber` — converts CLR types and properties into transport-friendly `DataTypeDescriptor` values
-- `IConstraintMapper` / `ConstraintMapper` — converts `ValidationAttribute` usage into metadata constraint contracts
+- `ITypeDescriber` / `TypeDescriber` (internal) — converts CLR types and properties into transport-friendly `DataTypeDescriptor` values
+- `IConstraintMapper` / `ConstraintMapper` (internal) — converts `ValidationAttribute` usage into metadata constraint contracts
 - `KaleidoCorrelationContext` — shared ambient identity model for requests/workflows
 - `IEventPublisher` / `IKaleidoEvent` - infrastructure-agnostic event publication seam; events reach the publisher at least once through the outbox and the event relay (`KaleidoEventRelay`, `KaleidoEventOptions`, ADR 0012)
 - `IKaleidoEventRedactor` / `AddEventRedactor<T>()` - reduce events before the outbox write; properties marked with a `DataClassificationAttribute` are redacted with the host's `AddRedaction` redactors, or erased when none is registered (ADR 0013)
@@ -40,7 +40,7 @@ For the full repository model, see:
 - `ProcessorServiceCollectionExtensions` — `AddProcessor(...)` (internal, auto-invoked by `AddKaleido()`)
 - `IProcessorRuntime` — runs submitted steps in-process (what the HTTP transport calls); `ProcessorExecutor` (internal) is the main step execution loop
 - `StepCandidateBuilder` / `StepCandidateValidator` / `StepCandidateConsistencyChecker` / `StepCandidatePlanner` / `StepCandidateNextStepChecker` — planning pipeline
-- `IProcessorStepRegistry` / `IProcessorRegistry` — runtime registries
+- `IProcessorStepRegistry` / `IProcessorRegistry` — runtime registries (`IProcessorRegistry` is internal, shared with `Kaleido.Http`)
 - `ProcessorObservability` (internal) — logs, traces and metrics of the runtime
 - `IProcessStepHandler<TStep>` / `IProcessStepHandler<TStep, TResult>` — handler contracts
 - `IInformationStep` / `InformationRequest` / `RequireInformation<TNext>` — information requests: runtime-decided questions answered by an information step (see [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md))

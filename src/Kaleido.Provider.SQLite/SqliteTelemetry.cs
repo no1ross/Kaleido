@@ -5,7 +5,7 @@ namespace Kaleido.Provider.SQLite;
 /// <summary>
 /// Activity source and metric names for the SQLite process context store.
 /// </summary>
-public static class SqliteTelemetry
+internal static class SqliteTelemetry
 {
     // ── ActivitySource / Meter ────────────────────────────────────────────────
 
