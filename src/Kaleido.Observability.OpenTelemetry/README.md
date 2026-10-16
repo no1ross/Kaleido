@@ -11,15 +11,39 @@ builder.Services
     .AddOpenTelemetry();   // ← this package
 ```
 
-Configure the OTLP endpoint via standard OTel environment variables:
+### Where the telemetry goes
+
+Configure the export and the resource under `Kaleido:OpenTelemetry` (configuration first, then the options delegate):
+
+```json
+{
+  "Kaleido": {
+    "ServiceName": "intake",
+    "OpenTelemetry": {
+      "Endpoint": "http://localhost:4317",
+      "Protocol": "grpc",
+      "ServiceVersion": "1.0.0",
+      "ResourceAttributes": "deployment.environment=Development"
+    }
+  }
+}
+```
+
+| Setting | Effect | Default |
+|---|---|---|
+| `Endpoint` | OTLP collector base address; with `http/protobuf` each signal's `/v1/traces`, `/v1/metrics`, `/v1/logs` is appended | SDK default, `http://localhost:4317` |
+| `Protocol` | `grpc` or `http/protobuf` (anything else fails startup with `otel_invalid_options`) | gRPC |
+| `Headers` | `key=value,...` sent with every export (for example a backend's API key) | none |
+| `ServiceVersion` | `service.version` | none |
+| `ResourceAttributes` | further resource attributes, `key=value,...` | none |
+
+The resource's `service.name` is the Kaleido `ServiceName` and `service.instance.id` its `InstanceId`; there is no second service name to keep in step.
+
+**The standard OpenTelemetry keys win:** `OTEL_EXPORTER_OTLP_ENDPOINT` (or a signal's `OTEL_EXPORTER_OTLP_{SIGNAL}_ENDPOINT`), `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES`, as environment variables or configuration keys. A deployment (a container, compose) overrides `appsettings.json` with them without a code change:
 
 ```
 OTEL_EXPORTER_OTLP_ENDPOINT=http://your-backend:4317
-OTEL_SERVICE_NAME=my-service          # optional — overrides KaleidoServiceOptions.ServiceName
 ```
-
-> [!WARNING]
-> **Known limitation ([#354](https://github.com/no1ross/Kaleido/issues/354)).** Today these `OTEL_*` keys are the only way to configure the export. The OTLP exporters are added without options, so without `OTEL_EXPORTER_OTLP_*` they use the SDK default (`http://localhost:4317`, gRPC). The service name is `OTEL_SERVICE_NAME`, else `KaleidoServiceOptions.ServiceName`, and it replaces any other configured name. Resource attributes come only from `OTEL_RESOURCE_ATTRIBUTES`. Other configuration sections (such as an `OpenTelemetry` section in `appsettings.json`) are not applied by `AddOpenTelemetry()`.
 
 ## What `AddOpenTelemetry()` wires
 

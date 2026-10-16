@@ -86,8 +86,8 @@ below).
 - **Information requests:** `proposedAnswers` and their validation.
 - **Authorization:** a view without its own attribute takes its source's rule
   (`QueryableRegistry.cs`).
-- **OpenTelemetry:** the `configureTracing`/`configureMetrics` hooks; the known configuration
-  limitation (#354).
+- **OpenTelemetry:** the `configureTracing`/`configureMetrics` hooks; the export and resource
+  configuration and its precedence (#354).
 - **Analyzers:** KAL2019 and KAL2020 were shipped but undocumented.
 - **Front door:** the root README now links authorization, error codes, correlation, analyzers,
   patterns, contracts and the decision records.
@@ -151,9 +151,10 @@ explanations.
 
 ## 11. Ambiguities (not resolved by inventing a rule)
 
-- **OpenTelemetry configuration** ([#354](https://github.com/no1ross/Kaleido/issues/354), bug):
-  `AddOpenTelemetry()` applies only `OTEL_*` keys and overrides the service name; the PriorAuth
-  `OpenTelemetry` sections are not applied by it. Fixed separately (last commit of this PR).
+- **OpenTelemetry configuration** ([#354](https://github.com/no1ross/Kaleido/issues/354), bug, fixed in the last commit of this PR):
+  `AddOpenTelemetry()` applied only `OTEL_*` keys, so the PriorAuth `OpenTelemetry` sections never
+  reached the exporter. The export and resource are now configured under `Kaleido:OpenTelemetry`, with
+  the standard `OTEL_*` keys winning.
 - **`unsupported_data_type`, `data_conversion_error`**: public constants that nothing raises. Kept
   and marked reserved; remove or use them deliberately.
 - **Route-level role matching** is ASP.NET's (`RequireRole`), while the in-handler evaluator compares

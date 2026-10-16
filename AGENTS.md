@@ -152,6 +152,7 @@ Information logs must stay minimal — treat them as the "normal operations" vie
   - `HttpClientErrorCodes` (`Kaleido.Http.Client/KaleidoClientException.cs`) — `httpclient_*` codes for remote call failures, plus the client's startup `missing_base_url`
   - `SqliteErrorCodes` (`Kaleido.Provider.SQLite`) — the provider's own codes; providers never add codes to core
   - `McpErrorCodes` (`Kaleido.Http.Mcp/McpErrorCodes.cs`) — `mcp_*` codes for the MCP adapter's startup and tool-call failures
+  - `OpenTelemetryErrorCodes` (`Kaleido.Observability.OpenTelemetry`) — `otel_*` codes for the provider's startup failures
   - `KaleidoErrorCodes` (`KaleidoErrorResponse.cs`) — shared HTTP error codes (`argument_error`, `framework_error`)
 
 ### OperationCanceledException and observability
