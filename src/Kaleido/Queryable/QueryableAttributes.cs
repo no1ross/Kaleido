@@ -3,6 +3,15 @@ namespace Kaleido.Queryable;
 /// <summary>
 /// Declares an <see cref="IQueryContext"/> property as filterable with the given operators.
 /// </summary>
+/// <remarks>
+/// Each operator must apply to the property's type, or startup fails with
+/// <see cref="QueryableErrorCodes.InvalidRegistration"/> (analyzer KAL2023 reports it at compile
+/// time): comparisons and <see cref="FilterOperator.Between"/> need a number or a type with
+/// comparison operators (dates, times, <see cref="Guid"/>), string operators need a
+/// <see langword="string"/>, <see cref="FilterOperator.IsTrue"/>/<see cref="FilterOperator.IsFalse"/> need a
+/// <see langword="bool"/>, and <see cref="FilterOperator.IsNull"/>/<see cref="FilterOperator.IsNotNull"/> need a
+/// nullable type.
+/// </remarks>
 /// <param name="operators">The filter operators consumers may use on this property.</param>
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 public sealed class FilterableAttribute(

@@ -27,7 +27,7 @@ public static class QueryableErrorCodes
     /// <summary>
     /// A query source or view registration is structurally invalid (e.g. both sync and async
     /// shapes, more than one source/view interface, both a source and a view, a bad default sort
-    /// field, or a failing TypeFilter).
+    /// field, a [Filterable] operator that does not apply to the field's type, or a failing TypeFilter).
     /// </summary>
     public const string InvalidRegistration = "qry_invalid_registration";
 
