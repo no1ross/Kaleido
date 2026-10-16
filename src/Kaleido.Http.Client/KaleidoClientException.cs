@@ -112,4 +112,10 @@ public static class HttpClientErrorCodes
 
     /// <summary>A configured Kaleido client is missing a BaseUrl (neither client-level nor shared Kaleido:BaseUrl). Raised at startup as a configuration error.</summary>
     public const string MissingBaseUrl = "missing_base_url";
+
+    /// <summary>
+    /// <c>GetClient</c> was asked for a client name that is not configured under <c>Kaleido:Clients</c>.
+    /// Raised as a configuration error at the call; the message lists the configured clients.
+    /// </summary>
+    public const string UnknownClient = "httpclient_unknown_client";
 }

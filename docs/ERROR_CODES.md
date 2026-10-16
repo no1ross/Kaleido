@@ -160,6 +160,7 @@ Runtime client codes are prefixed `httpclient_`; `missing_base_url` is a startup
 | `Conflict` | `httpclient_conflict` | The remote process was changed by another request (409, `pro_process_conflict` in `Errors`); nothing was saved - read the state again instead of repeating the call |
 | `InvalidRegistryUrl` | `httpclient_invalid_registry_url` | A URL returned by a remote registry was not a valid absolute http(s) URL |
 | `MissingBaseUrl` | `missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
+| `UnknownClient` | `httpclient_unknown_client` | `GetClient` was asked for a name not configured under `Kaleido:Clients`; the message lists the configured clients (`KaleidoConfigurationException`, at the call) |
 
 ---
 

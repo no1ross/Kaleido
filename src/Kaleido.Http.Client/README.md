@@ -153,7 +153,7 @@ The process client sends an `Idempotency-Key` (a new GUID) with **every execute 
 
 ### Process client
 
-Inject `IKaleidoProcessorClientFactory` and resolve a client by name (`GetClient`), or by the downstream's service name when you start from a registry entry (`TryGetClientForService(serviceName, out var client)`, as gateways and the MCP adapter do).
+Inject `IKaleidoProcessorClientFactory` and resolve a client by name (`GetClient`; a name not configured under `Kaleido:Clients` throws a `KaleidoConfigurationException`, `httpclient_unknown_client`, listing the configured clients), or by the downstream's service name when you start from a registry entry (`TryGetClientForService(serviceName, out var client)`, as gateways and the MCP adapter do).
 
 ```csharp
 // Get the full registry (lazily fetched and cached per client instance)

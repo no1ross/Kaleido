@@ -12,7 +12,8 @@ public interface IKaleidoQueryableClientFactory
     /// <param name="name">The client's configured name (its <c>Kaleido:Clients</c> key), matched case-insensitively.</param>
     /// <returns>A client bound to that service's base address and route prefix.</returns>
     /// <remarks>
-    /// The name is not validated: an unknown name yields a client with no configured route prefix.
+    /// A name that is not configured fails at the call with a <c>KaleidoConfigurationException</c>
+    /// (<c>httpclient_unknown_client</c>) listing the configured clients.
     /// Use <see cref="TryGetClientForService"/> when starting from a registry entry.
     /// </remarks>
     IKaleidoQueryableClient GetClient(string name);

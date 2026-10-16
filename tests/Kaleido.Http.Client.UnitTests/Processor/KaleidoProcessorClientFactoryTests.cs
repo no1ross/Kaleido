@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Http.Processor;
 using Kaleido.Observability;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -41,15 +42,19 @@ public sealed class KaleidoProcessorClientFactoryTests
     }
 
     [Fact]
-    public void GetClient_ForAnUnregisteredName_UsesTheNameAsGiven()
+    public void GetClient_ForAnUnconfiguredName_FailsNamingTheConfiguredClients()
     {
+        var routeMap = new KaleidoProcessorClientRouteOptionsMap();
+        routeMap.SetRoutePrefix("Radiology", "radiology");
+        routeMap.SetRoutePrefix("History", "history");
         var httpClientFactory = new Mock<IHttpClientFactory>();
-        httpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(new System.Net.Http.HttpClient());
 
-        var factory = CreateSut(httpClientFactory.Object, new KaleidoProcessorClientRouteOptionsMap());
+        var exception = Assert.Throws<KaleidoConfigurationException>(
+            () => CreateSut(httpClientFactory.Object, routeMap).GetClient("Radiolgy"));
 
-        Assert.NotNull(factory.GetClient("unknown"));
-        httpClientFactory.Verify(f => f.CreateClient("unknown"), Times.Once);
+        Assert.Equal(HttpClientErrorCodes.UnknownClient, exception.Code);
+        Assert.Equal("Kaleido client 'Radiolgy' is not configured under Kaleido:Clients; configured clients: History, Radiology.", exception.Message);
+        httpClientFactory.Verify(f => f.CreateClient(It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
