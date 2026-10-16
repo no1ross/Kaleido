@@ -19,7 +19,7 @@ See also:
 - `StepExecutionResponse` / `StepExecutionResponse<TResult>` — per-step execute response
 - `ProcessStateResponse` — process state read response
 - `ProcessStepSummary` — lightweight step summary used in registry and state responses
-- `ProcessStepInfo` — step reference with execute/metadata URLs (used in required/available step fields)
+- `ProcessRequiredStep` — the step a process requires next: the fields of a `ProcessStepSummary` (including its execute URL) plus the pending information request, if any
 - `ProcessorRegistryResponse` — full processor registry record (all step metadata)
 - `ProcessStepResponse` — detailed step metadata record
 

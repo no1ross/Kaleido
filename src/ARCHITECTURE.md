@@ -124,10 +124,10 @@ Public seams consumers are expected to implement or replace:
 - `POST /{prefix}/queryable/{source}/{view}/query` — view query
 
 **Process endpoints** (`ProcessorEndpointRouteBuilderExtensions`)
-- `GET /{prefix}/processes/steps/{step}/metadata` — per-step metadata
 - `POST /{prefix}/processes/execute` — multi-step execute
 - `GET /{prefix}/processes/{processId}` — process state
 - `POST /{prefix}/processes/steps/{step}` — per-step execute
+- Step metadata is published by the registry endpoint (no per-step metadata endpoint)
 
 **Registry endpoint** (`RegistryEndpointRouteBuilderExtensions` — internal; mapped by `MapKaleidoHttp`)
 - `GET /{prefix}/registry` — unified discovery envelope (`AggregatedRegistryResponse`: `Processes`, `Queryables`, `ClientErrors`)

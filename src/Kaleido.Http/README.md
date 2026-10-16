@@ -30,18 +30,19 @@ Queryable requests use an optional `query.page` object. An omitted page on a pag
 
 ### Process endpoint mapping
 - `ProcessorEndpointRouteBuilderExtensions` — `MapProcessor()` extension
-  - `GET /{prefix}/processes/steps/{step}/metadata` — per-step metadata
   - `POST /{prefix}/processes/execute` — multi-step execute endpoint
   - `GET /{prefix}/processes/{processId}` — process state
   - `POST /{prefix}/processes/steps/{step}` — per-step execute endpoint
+
+  Step metadata (inputs, results, relationships, authorization, execute URL) is published by the registry endpoint below; there is no per-step metadata endpoint.
 
 ### Registry endpoint mapping
 - `RegistryEndpointRouteBuilderExtensions` — `MapRegistry()` extension (internal; mapped by `MapKaleidoHttp`)
   - `GET /{prefix}/registry` — unified discovery: local process + queryable registrations; when `MapKaleidoHttp(o => o.AggregateRegistry = true)` is used, also merges every downstream client registered via `AddHttpClients()`
 
 ### URL and route helpers
-- `ProcessContractUrls` / `ProcessRoutePaths` (in `Kaleido.Http.Abstractions`) — URL generation for Process metadata and execute URLs
-- `QueryableContractUrls` (in `Kaleido.Http.Abstractions`) — URL generation for Queryable metadata and query URLs
+- `ProcessContractUrls` / `ProcessRoutePaths` (in `Kaleido.Http.Abstractions`) — URL generation for Process execute and state URLs
+- `QueryableContractUrls` (in `Kaleido.Http.Abstractions`) — URL generation for Queryable query URLs
 
 ---
 
