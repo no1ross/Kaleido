@@ -6,6 +6,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Observability.OpenTelemetry;
 
+/// <summary>
+/// Connects Kaleido to OpenTelemetry: <see cref="AddOpenTelemetry"/> is the one-call setup (logs,
+/// traces and metrics over OTLP); <see cref="AddKaleidoInstrumentation(TracerProviderBuilder)"/> and
+/// <see cref="AddKaleidoInstrumentation(MeterProviderBuilder)"/> register Kaleido's sources and meters
+/// with a pipeline the consumer manages.
+/// </summary>
 public static class KaleidoObservabilityOpenTelemetryExtensions
 {
     /// <summary>

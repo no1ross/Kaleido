@@ -8,6 +8,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Kaleido.Http;
 
+/// <summary>
+/// Registers the Kaleido HTTP transport (routing, middleware pipeline, capability authorization,
+/// HTTP execution services and the unified registry) on an <see cref="IKaleidoBuilder"/>; the entry
+/// point is <see cref="AddHttp"/>. Map the endpoints with <c>MapKaleidoHttp()</c>.
+/// </summary>
 public static class KaleidoHttpServiceCollectionExtensions
 {
     /// <summary>

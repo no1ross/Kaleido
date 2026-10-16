@@ -3,11 +3,31 @@ using System.Reflection;
 
 namespace Kaleido;
 
+/// <summary>
+/// A validation constraint on a field, published in the registry metadata of Process step fields and
+/// Queryable query parameters so clients and AI agents know which values are accepted. The framework
+/// derives one per <see cref="ValidationAttribute"/> on the property at startup.
+/// </summary>
+/// <remarks>
+/// The constraint only describes the attribute; the service still validates the values it receives.
+/// </remarks>
 [ExcludeFromCodeCoverage]
 public sealed record ConstraintContract
 {
+    /// <summary>
+    /// The constraint name: the attribute's class name without the <c>Attribute</c> suffix, e.g.
+    /// <c>Required</c>, <c>StringLength</c>, <c>MaxLength</c>, <c>MinLength</c>, <c>Range</c>,
+    /// <c>RegularExpression</c>, <c>EmailAddress</c>, <c>Phone</c> or <c>Url</c>. Custom
+    /// <see cref="ValidationAttribute"/> types are named the same way.
+    /// </summary>
     public required string Type { get; init; }
 
+    /// <summary>
+    /// The constraint's arguments: <c>MaximumLength</c> and <c>MinimumLength</c> for
+    /// <c>StringLength</c>, <c>Length</c> for <c>MaxLength</c> and <c>MinLength</c>, <c>Minimum</c>
+    /// and <c>Maximum</c> for <c>Range</c>, <c>Pattern</c> for <c>RegularExpression</c>. Empty for
+    /// every other constraint, including custom attributes.
+    /// </summary>
     public IReadOnlyCollection<ConstraintParameterContract> Parameters
     {
         get;
@@ -16,11 +36,21 @@ public sealed record ConstraintContract
         = [];
 }
 
+/// <summary>
+/// One named argument of a <see cref="ConstraintContract"/>, e.g. <c>MaximumLength</c> of a
+/// <c>StringLength</c> constraint.
+/// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record ConstraintParameterContract
 {
+    /// <summary>The argument name, as listed in <see cref="ConstraintContract.Parameters"/>.</summary>
     public required string Name { get; init; }
 
+    /// <summary>
+    /// The argument value as read from the attribute, e.g. an <see cref="int"/> length, a
+    /// <c>Range</c> bound or a <c>RegularExpression</c> pattern. After a JSON round trip of the
+    /// registry it arrives as a <c>JsonElement</c>.
+    /// </summary>
     public object? Value { get; init; }
 }
 

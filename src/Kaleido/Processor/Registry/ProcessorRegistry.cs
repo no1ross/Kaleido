@@ -3,6 +3,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Processor.Registry;
 
+/// <summary>
+/// The processor as published in its registry: whether it is the entry processor, the steps that can
+/// start a process and every registered step. Built once at startup from the discovered steps.
+/// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record ProcessorRegistryItem
 {
@@ -13,9 +17,15 @@ public sealed record ProcessorRegistryItem
     /// </summary>
     public bool IsEntryProcessor { get; init; }
 
+    /// <summary>
+    /// The steps that can start a new process: registered steps with no <c>[DependsOn]</c> or
+    /// <c>[AvailableAfter]</c> relationship, excluding information steps. Ordered by name
+    /// (case-insensitive).
+    /// </summary>
     public IReadOnlyCollection<ProcessorStepSummary> InitialSteps { get; init; }
         = [];
 
+    /// <summary>Every step the processor registers, ordered by name (case-insensitive).</summary>
     public IReadOnlyCollection<ProcessorStepRegistryItem> Steps { get; init; }
         = [];
 }
@@ -92,13 +102,22 @@ public sealed record ProcessorStepRegistryItem : ProcessorStepDescriptor
 [ExcludeFromCodeCoverage]
 public sealed record ProcessorStepSummary : ProcessorStepDescriptor;
 
+/// <summary>
+/// A published property of a step: an input field of the step or an output field of its result.
+/// </summary>
 [ExcludeFromCodeCoverage]
 public record ProcessorPropertyDescriptor
 {
+    /// <summary>The property's name, as declared on its type.</summary>
     public required string Name { get; init; }
 
+    /// <summary>
+    /// The property's description, from <c>[Description]</c>; for an input field, from
+    /// <c>[Display(Description = …)]</c> when it has no <c>[Description]</c>. Null when neither is declared.
+    /// </summary>
     public string? Description { get; init; }
 
+    /// <summary>The property's data type, as described for the published contracts.</summary>
     public required DataTypeDescriptor DataType { get; init; }
 
     /// <summary>
@@ -108,6 +127,10 @@ public record ProcessorPropertyDescriptor
     public IReadOnlyList<string> Classifications { get; init; } = [];
 }
 
+/// <summary>
+/// An input field of a step: a public property of the step type, with its display hints, lookup and
+/// validation constraints.
+/// </summary>
 [ExcludeFromCodeCoverage]
 public record ProcessorInputFieldDescriptor : ProcessorPropertyDescriptor
 {
@@ -128,6 +151,10 @@ public record ProcessorInputFieldDescriptor : ProcessorPropertyDescriptor
     /// </summary>
     public LookupMetadata? Lookup { get; init; }
 
+    /// <summary>
+    /// The input's validation constraints, one per <c>ValidationAttribute</c> (DataAnnotations) on the
+    /// property. Empty when it declares none.
+    /// </summary>
     public IReadOnlyCollection<ConstraintContract> Constraints { get; init; }
         = [];
 }
@@ -162,12 +189,21 @@ public sealed record LookupMetadata
     public IReadOnlyList<string> Display { get; init; } = [];
 }
 
+/// <summary>An output field of a step's result: a public readable instance property of the handler's typed response.</summary>
 [ExcludeFromCodeCoverage]
 public record ProcessorOutputFieldDescriptor : ProcessorPropertyDescriptor;
 
+/// <summary>
+/// The result of a step whose handler returns a typed response
+/// (<see cref="Kaleido.Processor.Execution.IProcessStepHandler{TProcessStep, TProcessStepResult}"/>).
+/// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record ProcessorStepResultDescriptor
 {
+    /// <summary>
+    /// The response type's public readable instance properties. Empty when the response type is a
+    /// string, a primitive or an enum.
+    /// </summary>
     public IReadOnlyCollection<ProcessorOutputFieldDescriptor> OutputFields { get; init; }
         = [];
 }

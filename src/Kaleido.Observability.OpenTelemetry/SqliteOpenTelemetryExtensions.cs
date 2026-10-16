@@ -16,6 +16,11 @@ internal static class SqliteTelemetryNames
     public const string MeterName = "Kaleido.Provider.SQLite";
 }
 
+/// <summary>
+/// Registers only the SQLite context store's telemetry (<c>Kaleido.Provider.SQLite</c>) with an
+/// OpenTelemetry pipeline the consumer manages. <c>AddKaleidoInstrumentation()</c> registers it
+/// together with the rest of Kaleido's.
+/// </summary>
 public static class SqliteOpenTelemetryExtensions
 {
     /// <summary>Registers the SQLite provider's <c>ActivitySource</c>. Requires the Kaleido.Provider.SQLite package to be in use for any signals to be emitted.</summary>
