@@ -24,9 +24,9 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
         await AssertStatusCodeAsync(HttpStatusCode.OK, response);
 
         var root = await ReadResponseRootAsync(response);
-        // Page not provided — TotalCount is the number of rows returned (DefaultSize cap),
-        // not the full unfiltered count.
-        Assert.Equal(3, GetTotalCount(root));
+        // Page not provided: the default page (3 rows), and the total of all matching rows, so a
+        // consumer knows there is more than this page (#343).
+        Assert.Equal(6, GetTotalCount(root));
         Assert.Equal(0, GetOffset(root));
         Assert.Equal(3, GetPageSize(root));
         Assert.Equal(3, GetRecords(root).Length);
@@ -84,7 +84,7 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
     }
 
     [Fact]
-    public async Task PostDirectQuery_WhenExplicitPageIsPartial_ReportsReturnedRowCount()
+    public async Task PostDirectQuery_WhenThePageIsPartial_ReportsOffsetPlusReturnedRows()
     {
         var request = new QueryRequest(new QueryBody(
             Sort: [new QuerySort("Id", SortDirection.Ascending)],
@@ -94,14 +94,14 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
 
         await AssertStatusCodeAsync(HttpStatusCode.OK, response);
         var root = await ReadResponseRootAsync(response);
-        Assert.Equal(2, GetTotalCount(root));
+        Assert.Equal(6, GetTotalCount(root));
         Assert.Equal(4, GetOffset(root));
         Assert.Equal(4, GetPageSize(root));
         Assert.Equal([5, 6], GetRecords(root).Select(x => GetInt32(x, "Id")));
     }
 
     [Fact]
-    public async Task PostDirectQuery_WhenOffsetExceedsResults_ReturnsEmptyPage()
+    public async Task PostDirectQuery_WhenOffsetExceedsResults_ReturnsAnEmptyPage_AndTheTotal()
     {
         var request = new QueryRequest(new QueryBody(
             Sort: [new QuerySort("Id", SortDirection.Ascending)],
@@ -111,7 +111,7 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
 
         await AssertStatusCodeAsync(HttpStatusCode.OK, response);
         var root = await ReadResponseRootAsync(response);
-        Assert.Equal(0, GetTotalCount(root));
+        Assert.Equal(6, GetTotalCount(root));
         Assert.Equal(100, GetOffset(root));
         Assert.Equal(4, GetPageSize(root));
         Assert.Empty(GetRecords(root));
@@ -152,8 +152,8 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
         await AssertStatusCodeAsync(HttpStatusCode.OK, response);
 
         var root = await ReadResponseRootAsync(response);
-        // Page not provided — TotalCount is the number of rows returned (DefaultSize cap).
-        Assert.Equal(3, GetTotalCount(root));
+        // Page not provided: the view's default page (3 rows) and the total of all its rows.
+        Assert.Equal(6, GetTotalCount(root));
         Assert.Equal(3, GetRecords(root).Length);
         Assert.Contains(GetRecords(root), x => GetString(x, "Code") == "AL-001");
     }
