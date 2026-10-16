@@ -725,6 +725,82 @@ public sealed class SqliteKaleidoContextStoreTests
     }
 
     [Fact]
+    public async Task SaveAsync_ANewProcessTheDatabaseRejectsForAnotherReason_IsAFailureNotAConflict()
+    {
+        using var dbContext = CreateDbContext();
+        var logger = CreateLogger();
+        var sut = CreateSut(dbContext, logger: logger.Object);
+        var @event = Event();
+        await sut.SaveAsync(CreateContext(Guid.NewGuid()), [@event]);
+        dbContext.ChangeTracker.Clear();
+        var newProcess = CreateContext(Guid.NewGuid());
+
+        var exception = await Assert.ThrowsAsync<DbUpdateException>(() => sut.SaveAsync(newProcess, [@event]));
+
+        Assert.IsNotType<Kaleido.Exceptions.KaleidoConcurrencyException>(exception);
+        Assert.Equal(1, LoggedCount(logger, LogLevel.Error));
+        dbContext.ChangeTracker.Clear();
+        Assert.Null(await sut.LoadAsync(newProcess.ProcessId));
+    }
+
+    [Fact]
+    public async Task SaveAsync_ANewProcessWhoseEventsCannotBeStored_IsAFailureNotAConflict()
+    {
+        using var dbContext = CreateDbContext();
+        var logger = CreateLogger();
+        var sut = CreateSut(dbContext, logger: logger.Object);
+        await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE OutboxEvents");
+
+        var exception = await Assert.ThrowsAsync<DbUpdateException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), [Event()]));
+
+        Assert.IsNotType<Kaleido.Exceptions.KaleidoConcurrencyException>(exception);
+        Assert.Equal(1, LoggedCount(logger, LogLevel.Error));
+    }
+
+    [Fact]
+    public async Task SaveAsync_ANewProcessCreatedConcurrently_IsAConflict()
+    {
+        using var dbContext = CreateDbContext(new InsertProcessTwiceInterceptor());
+        var logger = CreateLogger();
+        var sut = CreateSut(dbContext, logger: logger.Object);
+
+        var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), []));
+
+        Assert.IsType<DbUpdateException>(exception.InnerException);
+        Assert.Equal(0, LoggedCount(logger, LogLevel.Error));
+    }
+
+    // Runs the process INSERT once more just before EF does: the same process created concurrently.
+    private sealed class InsertProcessTwiceInterceptor : DbCommandInterceptor
+    {
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("INSERT INTO \"ProcessContexts\"", StringComparison.Ordinal))
+            {
+                await using var duplicate = command.Connection!.CreateCommand();
+                duplicate.Transaction = command.Transaction;
+                duplicate.CommandText = command.CommandText.Split(';')[0];
+
+                foreach (DbParameter parameter in command.Parameters)
+                {
+                    var copy = duplicate.CreateParameter();
+                    copy.ParameterName = parameter.ParameterName;
+                    copy.Value = parameter.Value;
+                    duplicate.Parameters.Add(copy);
+                }
+
+                await duplicate.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            return await base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
+    }
+
+    [Fact]
     public async Task SaveAsync_WhenTheRowChangedAfterItWasRead_ThrowsAConflictFromTheConditionalUpdate()
     {
         var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
