@@ -82,9 +82,8 @@ caller forwarding order (`CallerForwardingTests`), delegated paging pass-through
 - The validator, resolver and applier each resolve field names case-insensitively, while
   `Expression.PropertyOrField` is case-sensitive; it works because the applier uses the metadata's
   canonical name. Now pinned by `AFieldName_IsMatchedCaseInsensitively_*`.
-- `ToApiBody` serializes condition values with **default** `JsonSerializerOptions`, not
-  `KaleidoJsonOptions`: an enum without a string converter is sent as a number, and works only
-  because the downstream resolver parses the number text. Round trip pinned for the converter case.
+- `ToApiBody` serialized condition values with **default** `JsonSerializerOptions`, not
+  `KaleidoJsonOptions` (fixed, #349); the round trip is pinned functionally, the wire form by a unit test.
 - `StepCandidateBuilder` uses its own serializer options, separate from the endpoint's.
 - `KaleidoStartupFilter` order (exception middleware outermost) is load-bearing for the
   `BadHttpRequestException` thrown inside the observability middleware: pinned by
@@ -136,19 +135,21 @@ register them.
 
 ## 8. Architectural risks and findings (not fixed here)
 
-1. **MCP session elicitation is unreachable over the shipped HTTP transport.** The adapter uses
+1. **MCP session elicitation is unreachable over the shipped HTTP transport** ([#350](https://github.com/no1ross/Kaleido/issues/350)). The adapter uses
    stateless HTTP; a client on an initialize-based revision (e.g. `2025-11-25`) that advertises
    forms has no session, so the adapter falls back to returning the questions to the agent. The
    README promises "clients with a session get an elicitation request during the call". Behavior is
    safe (questions are never lost, pinned by `WithAnOlderRevision_TheQuestionsAreNeverLost`), but
    the documented path only exists for non-HTTP transports. Decide: document, or offer stateful HTTP.
-2. **Documented endpoint does not exist:** `GET /{prefix}/processes/steps/{step}/metadata` is listed
-   in `src/Kaleido.Http/README.md` and `src/ARCHITECTURE.md` but is not mapped.
-3. **Count materializes rows:** the default `QueryContextExecutor.CountAsync` enumerates every
+2. **Stale docs for a removed endpoint** ([#348](https://github.com/no1ross/Kaleido/issues/348), fixed):
+   `GET /{prefix}/processes/steps/{step}/metadata` was removed (step metadata comes from the
+   registry) but was still listed, with a `ProcessStepInfo` type that no longer exists.
+3. **Count materializes rows** ([#351](https://github.com/no1ross/Kaleido/issues/351)): the default `QueryContextExecutor.CountAsync` enumerates every
    matching row of an async (EF Core) query to count it, instead of `SELECT COUNT(*)`. Documented as
    an extension point, but the default is a performance trap for large sources.
-4. **`ToApiBody` value serialization** uses default JSON options (see 4); a delegated source over an
-   enum without a string converter depends on accidental numeric parsing downstream.
+4. **`ToApiBody` value serialization** ([#349](https://github.com/no1ross/Kaleido/issues/349), fixed):
+   forwarded values were written with default JSON options, so an enum without a string converter
+   went out as a number. They now use `KaleidoJsonOptions.Options` like every other wire value.
 5. **Redundant guard:** `StepCandidateConsistencyChecker`'s "already completed" path is unreachable
    over HTTP because the availability resolver already removes completed non-repeatable steps.
    Defense in depth, not a defect; disabling it changes no behavior.

@@ -54,8 +54,8 @@ Owns the full HTTP transport layer:
 - `ObservabilityMiddleware` — reads inbound correlation headers, populates `IKaleidoCorrelationContextAccessor`, tags the Activity, and echoes correlation headers on the response
 - `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers into `KaleidoCorrelationContext`
 - `KaleidoStartupFilter` — registers middlewares in the correct pipeline order via `IStartupFilter`
-- Queryable endpoint mapping (`MapQueryable`) — catalog, registry, query, and metadata endpoints
-- Process endpoint mapping (`MapProcessor`) — catalog, registry, metadata, execute, and state endpoints
+- Queryable endpoint mapping (`MapQueryable`) — source and view query endpoints
+- Process endpoint mapping (`MapProcessor`) — multi-step execute, per-step execute, and state endpoints (step and query metadata are published by the registry endpoint)
 - Registry endpoint mapping (`MapRegistry`, internal) — `GET /{service}/registry` unified discovery combining Process and Queryable; `MapKaleidoHttp(o => o.AggregateRegistry = true)` fans out to `AddHttpClients()` clients
 
 ### Kaleido.Http.Abstractions
