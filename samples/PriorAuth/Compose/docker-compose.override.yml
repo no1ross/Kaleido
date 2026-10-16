@@ -1,31 +1,6 @@
-services:
-  eventcollector:
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-  referencedata:
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-  codeset:
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-  configuration:
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-  provider:
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-  member:
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-  history:
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-  router:
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-  intake:
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-  radiology:
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
+# Local overrides for docker-compose.yml (loaded automatically by `podman compose`).
+# The containers run as Production, so they read each service's appsettings.json (container
+# addresses, /app/data paths, the dashboard's OTLP endpoint). Do not set
+# ASPNETCORE_ENVIRONMENT=Development here: that loads appsettings.Development.json, the settings
+# for `dotnet run` on this machine.
+services: {}

@@ -7,11 +7,11 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY . .
-RUN dotnet restore "samples/PriorAuth/MemberService/Kaleido.Samples.PriorAuth.MemberService.csproj"
-RUN dotnet publish "samples/PriorAuth/MemberService/Kaleido.Samples.PriorAuth.MemberService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet restore "samples/PriorAuth/Services/Member/Kaleido.Samples.PriorAuth.Member.csproj"
+RUN dotnet publish "samples/PriorAuth/Services/Member/Kaleido.Samples.PriorAuth.Member.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 RUN mkdir -p /app/data
-ENTRYPOINT ["dotnet", "Kaleido.Samples.PriorAuth.MemberService.dll"]
+ENTRYPOINT ["dotnet", "Kaleido.Samples.PriorAuth.Member.dll"]

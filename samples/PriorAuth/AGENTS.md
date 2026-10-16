@@ -19,7 +19,7 @@
 - If a change touches UI + backend integration, validate both
 
 ## Local run workflow
-- Prefer the compose file under `samples/PriorAuth/Compose/` (`docker-compose.yml`, with `docker-compose.override.yml` setting `ASPNETCORE_ENVIRONMENT=Development`): it runs the router, every service and the UI
+- Prefer the compose file under `samples/PriorAuth/Compose/` (`docker-compose.yml`; `docker-compose.override.yml` is for local overrides and sets nothing by default): it runs the router, every service and the UI as Production (see [Configuration per environment](#configuration-per-environment))
 - For backend-only work, `dotnet run` the affected services instead
 - If only the UI is changing, prefer running the Angular dev server directly
 - The PriorAuth seeder is now a local-only workflow; it is no longer run as a compose service
@@ -56,13 +56,18 @@
 - Kaleido redacts classified values in event payloads before the outbox write (ADR 0013); responses to callers keep the real values.
 - The sample registers no `AddRedaction`, so classified values are erased in events (a warning is logged once). To pseudonymize or encrypt instead, add `Microsoft.Extensions.Compliance.Redaction` to a host and call `services.AddRedaction(...)` per classification.
 
+## Configuration per environment
+- **Containers run as Production** (images are built `Release`; compose sets no `ASPNETCORE_ENVIRONMENT`), so they read only each host's `appsettings.json`: container addresses (`http://member:8080`, `http://eventcollector:8080`), `data/...` paths (`/app/data` in the container) and the dashboard's OTLP endpoint `http://aspire-dashboard:18889`. Swagger is Development-only, so it is off in containers.
+- **`dotnet run` is Development**: `appsettings.Development.json` overrides those with `localhost` ports, `../../data/...` paths and `http://localhost:4317`.
+- Do not set `ASPNETCORE_ENVIRONMENT=Development` in compose: the containers would read the `localhost` settings.
+
 ## Telemetry
-- Each Kaleido service configures its export under `Kaleido:OpenTelemetry` in `appsettings*.json` (`Endpoint`, `Protocol`, `ResourceAttributes`); `service.name` is its `Kaleido:ServiceName`. See [`src/Kaleido.Observability.OpenTelemetry/README.md`](../../src/Kaleido.Observability.OpenTelemetry/README.md).
-- Compose sets the standard `OTEL_EXPORTER_OTLP_*`, `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` variables, which win over `appsettings.json`.
+- Each Kaleido service configures its export under `Kaleido:OpenTelemetry` (`Endpoint`, `Protocol`, `ResourceAttributes`); `service.name` is its `Kaleido:ServiceName`. See [`src/Kaleido.Observability.OpenTelemetry/README.md`](../../src/Kaleido.Observability.OpenTelemetry/README.md).
+- Compose sets no `OTEL_*` variables: the configuration applies as written. A standard `OTEL_*` variable, if set, still wins.
 - The EventCollector is not a Kaleido service: it wires OpenTelemetry itself from its own `OpenTelemetry` section, with the same precedence.
 
 ## Environment assumptions
-- Assume `ASPNETCORE_ENVIRONMENT=Development` for local work unless told otherwise
+- Assume `ASPNETCORE_ENVIRONMENT=Development` for `dotnet run` on this machine, and Production in containers
 - Use `npm` for the Angular app
 - Preserve existing service ports and compose service names unless the task requires changing them
 
