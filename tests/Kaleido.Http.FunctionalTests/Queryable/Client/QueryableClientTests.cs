@@ -48,22 +48,59 @@ public sealed class QueryableClientTests : IClassFixture<QueryableAspNetCoreFixt
                 new FunctionalRecordViewParameters { Category = "Alpha" },
                 new QueryApiBody()));
 
-        Assert.True(result.TotalCount > 0);
-        Assert.NotEmpty(result.Results);
+        // The view's default page (3) in its default order, with the total of all its rows.
+        Assert.Equal(6, result.TotalCount);
+        Assert.Equal([1, 2, 3], result.Results.Select(x => x.Id));
     }
 
     // ---------------------------------------------------------------------------
     // QuerySourceAsync
     // ---------------------------------------------------------------------------
 
+    // The typed client and the server must agree on the JSON of every value type: a record read
+    // back through the client equals the server's record field by field.
     [Fact]
-    public async Task QuerySourceAsync_ReturnsResults()
+    public async Task QuerySourceAsync_ReturnsTheRecordsTheSourceHolds_ValueForValue()
     {
         var result = await _factory.GetClient("test").QuerySourceAsync<FunctionalRecordContext>(
             "FunctionalRecordContextSource",
-            new QueryApiRequest(new QueryApiBody()));
+            new QueryApiRequest(new QueryApiBody { Page = new QueryApiPage { Size = 10 } }));
 
-        Assert.True(result.TotalCount > 0);
-        Assert.NotEmpty(result.Results);
+        var expected = new FunctionalRecordData().Records.OrderBy(x => x.Id).ToArray();
+        Assert.Equal(6, result.TotalCount);
+        Assert.Equal(expected.Length, result.Results.Count);
+
+        foreach (var (actual, record) in result.Results.Zip(expected))
+        {
+            Assert.Equal(record.Id, actual.Id);
+            Assert.Equal(record.Code, actual.Code);
+            Assert.Equal(record.Name, actual.Name);
+            Assert.Equal(record.IsActive, actual.IsActive);
+            Assert.Equal(record.Amount, actual.Amount);
+            Assert.Equal(record.Status, actual.Status);
+            Assert.Equal(record.EffectiveDate, actual.EffectiveDate);
+            Assert.Equal(record.NullableScore, actual.NullableScore);
+            Assert.Equal(record.ExternalId, actual.ExternalId);
+            Assert.Equal(record.CreatedAt, actual.CreatedAt.ToUniversalTime());
+        }
+    }
+
+    [Fact]
+    public async Task QuerySourceAsync_WhenTheServiceRefusesTheQuery_ThrowsWithTheServicesErrors()
+    {
+        var body = new QueryApiBody
+        {
+            Filter = new QueryApiFilterNode
+            {
+                Condition = new QueryApiFilterCondition { Field = "Region", Operator = "equals", Values = [System.Text.Json.JsonSerializer.SerializeToElement("East")] },
+            },
+        };
+
+        var exception =
+            await Assert.ThrowsAsync<Kaleido.Http.Client.KaleidoHttpClientException>(() =>
+                _factory.GetClient("test").QuerySourceAsync<FunctionalRecordContext>("FunctionalRecordContextSource", new QueryApiRequest(body)));
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, exception.StatusCode);
+        Assert.Contains(exception.Errors, x => x.Code == "qry_field_not_filterable");
     }
 }
