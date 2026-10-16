@@ -38,6 +38,7 @@ internal sealed partial class ProcessExecutionService(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        RejectDuplicateSteps(request.Steps);
 
         // All-or-nothing per-step authorization, before anything runs. The
         // execute route carries no auth of its own, so this is the only gate:
@@ -92,6 +93,21 @@ internal sealed partial class ProcessExecutionService(
             processResult,
             registry,
             serviceOptions.ServiceName);
+    }
+
+    // The runtime takes the steps keyed by name: a step named twice is the caller's mistake.
+    private static void RejectDuplicateSteps(IReadOnlyCollection<ProcessStepRequest> steps)
+    {
+        var duplicate = steps
+            .GroupBy(x => x.StepName, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(x => x.Skip(1).Any());
+
+        if (duplicate is not null)
+        {
+            throw new KaleidoValidationException(
+                ProcessorErrorCodes.InvalidRequest,
+                $"Step '{duplicate.Last().StepName}' is submitted more than once; submit each step once per request.");
+        }
     }
 
     public async Task<StepExecutionResponse<TResponse>> ExecuteAsync<TProcessStep, TResponse>(

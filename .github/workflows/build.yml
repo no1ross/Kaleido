@@ -115,24 +115,26 @@ jobs:
       if: ${{ env.SONAR_TOKEN != '' }}
       run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
 
-    # ADVISORY: reports merged line coverage vs the 90% target and emits a
-    # warning annotation. Not enforced yet - flip continue-on-error to hard-gate
-    # once coverage is sustained above the floor. Ratchet: raise, never lower.
-    - name: Coverage gate (advisory)
-      continue-on-error: true
+    # ENFORCED: merged line coverage of the shipped src/ assemblies must meet the floor, or the build
+    # fails. Ratchet: raise, never lower (99.8% when the gate was enforced).
+    - name: Coverage gate
       run: |
         lh=$(awk -F: '/^LH:/{s+=$2} END{print s+0}' coverage/lcov.info)
         lf=$(awk -F: '/^LF:/{s+=$2} END{print s+0}' coverage/lcov.info)
-        rate=$(awk "BEGIN{r=0; if ($lf>0) r=$lh*100.0/$lf; printf \"%.1f\", r}")
-        echo "Merged line coverage: $rate% ($lh/$lf) - target: $COVERAGE_FLOOR%"
+        if [ "$lf" -eq 0 ]; then
+          echo "::error::No coverable lines found in coverage/lcov.info."
+          exit 1
+        fi
+        rate=$(awk "BEGIN{printf \"%.1f\", $lh*100.0/$lf}")
+        echo "Merged line coverage: $rate% ($lh/$lf) - floor: $COVERAGE_FLOOR%"
         if awk "BEGIN{exit !($rate+0 >= $COVERAGE_FLOOR)}"; then
-          echo "Coverage meets the $COVERAGE_FLOOR% target."
+          echo "Coverage meets the $COVERAGE_FLOOR% floor."
         else
-          echo "::warning::Merged line coverage $rate% is below the $COVERAGE_FLOOR% target."
+          echo "::error::Merged line coverage $rate% is below the $COVERAGE_FLOOR% floor."
           exit 1
         fi
       env:
-        COVERAGE_FLOOR: 90
+        COVERAGE_FLOOR: 95
 
     - name: Upload coverage
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1

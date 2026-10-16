@@ -179,6 +179,46 @@ public sealed class StepCandidateBuilderTests
         Assert.All(candidates, c => Assert.Equal(StepCandidateStatus.Built, c.Status));
     }
 
+    private ProcessStepRegistration RegisterTestStep()
+    {
+        var registration = new ProcessStepRegistration(
+            typeof(TestStep),
+            typeof(object),
+            typeof(object),
+            [],
+            [],
+            [],
+            new RepeatableOptions { Enabled = false },
+            new ProcessStepMetadata { Name = "test-step", Description = "desc", Version = "1.0", DisplayName = "display" });
+
+        _registry.Setup(r => r.Find("test-step")).Returns(registration);
+
+        return registration;
+    }
+
+    [Fact]
+    public void Build_FromAJsonElement_DeserializesTheStep()
+    {
+        RegisterTestStep();
+        using var json = System.Text.Json.JsonDocument.Parse("{\"name\":\"from-json\"}");
+
+        var candidate = Assert.Single(Sut.Build(new ProcessorRequest { Steps = new Dictionary<string, object?> { ["test-step"] = json.RootElement.Clone() } }));
+
+        Assert.Equal(StepCandidateStatus.Built, candidate.Status);
+        Assert.Equal("from-json", Assert.IsType<TestStep>(candidate.Step).Name);
+    }
+
+    [Fact]
+    public void Build_FromAnInstanceOfTheStepType_UsesItAsIs()
+    {
+        RegisterTestStep();
+        var step = new TestStep { Name = "typed" };
+
+        var candidate = Assert.Single(Sut.Build(new ProcessorRequest { Steps = new Dictionary<string, object?> { ["test-step"] = step } }));
+
+        Assert.Same(step, candidate.Step);
+    }
+
     [ProcessStep(DisplayName = "test-step", Description = "test-step", Version = "1.0")]
     private sealed class TestStep : IProcessStep
     {

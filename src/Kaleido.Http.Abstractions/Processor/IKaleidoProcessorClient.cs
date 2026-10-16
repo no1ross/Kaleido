@@ -1,8 +1,33 @@
 using System.Text.Json;
 namespace Kaleido.Http.Processor;
 
+/// <summary>
+/// Client for a remote service's Process capabilities: its processor registry, process state, and
+/// step execution. Steps are addressed by their published names and resolved against the remote
+/// registry (case-insensitive). Obtain one from <see cref="IKaleidoProcessorClientFactory"/>.
+/// </summary>
+/// <remarks>
+/// Calls carry the ambient correlation headers. Every execute call is sent with its own
+/// idempotency key, so a retry of the same call does not run the step twice. The HTTP client
+/// implementation throws <c>KaleidoHttpClientException</c> when a remote call fails.
+/// </remarks>
 public interface IKaleidoProcessorClient
 {
+    /// <summary>
+    /// Gets the remote service's processor registry. The registry is fetched on first use and cached
+    /// per client name. With a registry time to live configured for the client, the snapshot is
+    /// revalidated with the remote once it expires; without one it is kept until it is invalidated
+    /// (<see cref="InvalidateRegistryAsync"/>, or a step call answered 404).
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>
+    /// The processors published by the remote registry, as filtered for the caller: usually one,
+    /// more when the remote aggregates other services' registries.
+    /// </returns>
+    /// <remarks>
+    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the registry
+    /// request fails or returns no payload.
+    /// </remarks>
     Task<IReadOnlyList<ProcessorRegistryResponse>> GetRegistryAsync(
         CancellationToken cancellationToken = default);
 
@@ -16,10 +41,37 @@ public interface IKaleidoProcessorClient
     Task InvalidateRegistryAsync(
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Gets the current state of a remote process (<c>GET /{service}/processes/{processId}</c>).
+    /// Reading the state never executes a step.
+    /// </summary>
+    /// <param name="processId">The id of the process on the remote service.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>
+    /// The process state, or <see langword="null"/> when the remote service answers 404 (no such
+    /// process).
+    /// </returns>
+    /// <remarks>
+    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> for any other
+    /// non-success status or an empty payload. A 404 here does not invalidate the cached registry.
+    /// </remarks>
     Task<ProcessStateResponse?> GetProcessStateAsync(
         Guid processId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Executes one or more steps in a single call to the remote multi-step execute endpoint
+    /// (<c>POST /{service}/processes/execute</c>).
+    /// </summary>
+    /// <param name="request">The steps to submit, each with its JSON input.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The process id, the next required or available steps, and the results of the steps that ran.</returns>
+    /// <remarks>
+    /// The process to continue is the ambient process id, if any (sent as
+    /// <c>X-Kaleido-Process-Id</c>); without one the remote service starts a new process. The HTTP
+    /// client implementation throws <c>KaleidoHttpClientException</c> when the remote call fails;
+    /// a 400 or 409 carrying Kaleido errors is surfaced with those errors.
+    /// </remarks>
     Task<ProcessExecutionResponse> ExecuteAsync(
         ExecuteProcessRequest request,
         CancellationToken cancellationToken = default);

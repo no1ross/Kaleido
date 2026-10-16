@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Processor;
 
-public static partial class ProcessorEndpointRouteBuilderExtensions
+internal static partial class ProcessorEndpointRouteBuilderExtensions
 {
     /// <summary>
     /// Maps all Kaleido Process endpoints and returns the route group so hosts can

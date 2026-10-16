@@ -29,6 +29,15 @@ public sealed class ToolNameBuilderTests
     }
 
     [Fact]
+    public void Build_WithANullService_UsesTheCapabilityAlone()
+    {
+        var name = CreateSut().Build(null!, "PatientSource");
+
+        Assert.Equal("patient", name.Value);
+        Assert.False(name.Truncated);
+    }
+
+    [Fact]
     public void Build_ReplacesCharactersOutsideTheAllowedSet()
     {
         Assert.Equal("my_svc_capture2_member", CreateSut().Build("my.svc", "Capture2MemberStep").Value);

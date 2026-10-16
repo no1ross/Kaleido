@@ -30,8 +30,7 @@ Owns the full HTTP transport layer — middleware, correlation propagation, and 
 - `ObservabilityMiddleware` — reads inbound correlation headers via `HttpCorrelationContextReader`, populates `IKaleidoCorrelationContextAccessor`, tags the `Activity`, and echoes `RequestId`/`ProcessId` on the response
 - `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers into `KaleidoCorrelationContext`
 - `KaleidoStartupFilter` — registers middlewares via `IStartupFilter` in the correct pipeline order
-- `MapQueryable()` — all Queryable HTTP endpoints
-- `MapProcessor()` — all Process HTTP endpoints
+- `MapKaleidoHttp()` — the public mapping entry point; it calls the internal `MapQueryable()` (all Queryable HTTP endpoints) and `MapProcessor()` (all Process HTTP endpoints)
 - `MapRegistry()` — internal; `GET /{service}/registry` unified discovery endpoint (mapped by `MapKaleidoHttp`, optionally aggregating downstream clients)
 - `IProcessExecutionService` / `ProcessExecutionService` — translates HTTP execute requests into runtime calls
 - `IProcessStateService` / `ProcessStateService` — reads durable process state and maps it to HTTP contracts
@@ -41,7 +40,7 @@ Depends on `Kaleido.Http.Abstractions` only. Does **not** own runtime logic or c
 ### `src/Kaleido.Http.Abstractions`
 Owns shared HTTP contract types and HTTP-specific correlation primitives:
 - `KaleidoCorrelationHeaders` — canonical `X-Kaleido-*` header name constants (namespace `Kaleido.Http`)
-- `HttpHeaderSanitizer` — RFC 7230-compliant sanitization, max 256 chars, printable ASCII only
+- `HttpHeaderSanitizer` (internal, shared through `InternalsVisibleTo`) — RFC 7230-compliant sanitization, max 256 chars, printable ASCII only
 - Process HTTP request/response contracts
 - Queryable HTTP request/response contracts
 
@@ -54,6 +53,14 @@ Owns typed HTTP clients for consuming remote Kaleido services:
 - `AddHttpClients()` — consumer-facing registration (config-driven `Kaleido:Clients`); `AddProcessorClient(...)`/`AddQueryableClient(...)` are internal
 
 Does **not** own server-side runtime logic or endpoint mapping.
+
+### `src/Kaleido.Http.Mcp`
+Owns the MCP adapter (depends on `Kaleido.Http` and `Kaleido.Http.Client`):
+- `AddMcp()` / `MapKaleidoMcp(pattern)` — the MCP server and its stateless Streamable HTTP endpoint; `AddMcp()` requires `AddHttp()` and `AddHttpClients()`
+- the tool catalog, built per caller from `IKaleidoRegistryService`, and the tool invoker, which calls services through the Kaleido clients as the caller
+- `McpErrorCodes` (`mcp_*`) and `McpTelemetry`
+
+Does **not** own runtime logic, endpoint mapping of the services, or client transport.
 
 ### `src/Kaleido.Observability.OpenTelemetry`
 Owns the OpenTelemetry observability provider (opt-in, no OTel dependency in core):
@@ -88,7 +95,7 @@ Owns the reference `IKaleidoContextStore` implementation (SQLite):
 `KaleidoBuilder` deduplicates assemblies by identity. Preserve that behavior.
 
 ### Shared metadata rules
-`DataTypeMapper` and `ConstraintMapper` are high-impact shared primitives. Changes ripple into anything that reflects CLR types into discovery metadata, projects validation rules, or converts transport values.
+`TypeDescriber` and `ConstraintMapper` are high-impact shared primitives. Changes ripple into anything that reflects CLR types into discovery metadata, projects validation rules, or converts transport values.
 
 Be careful when changing:
 - scalar type names or format strings
@@ -131,7 +138,7 @@ The planning pipeline is layered — keep those responsibilities separated:
 - `StepCandidateConsistencyChecker` → enforces history, dependency, and repeatability consistency
 - `StepCandidatePlanner` → orders executable candidates
 - `StepCandidateNextStepChecker` → admits only next steps (the pending required step, or a step available under the process rules) and checks information-step answers against the pending request
-- `ExecutionProcessor` → invokes handlers, evaluates decisions, updates state, persists, emits events
+- `ProcessorExecutor` → invokes handlers, evaluates decisions, updates state, persists, emits events
 
 `ProcessorContext` is current resumable state only. Keep it small. Historical evidence belongs in emitted process events. The pending information request (`RequiredInformationRequest`) is part of that state; past questions and answers are not.
 
@@ -184,7 +191,7 @@ When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` a
 ---
 
 ## Eventing rules
-`IEventPublisher` is intentionally infrastructure-agnostic. The default `NullEventPublisher` makes eventing optional. Do not remove that default.
+`IEventPublisher` is intentionally infrastructure-agnostic. The default no-op publisher (internal `EventPublisher`, which logs a Warning that events are discarded) makes eventing optional. Do not remove that default.
 
 ---
 
@@ -192,7 +199,7 @@ When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` a
 - the minimal shape of `IKaleidoBuilder`
 - `KaleidoBuilder` assembly deduplication behavior
 - the default no-op event publisher
-- `DataTypeMapper` scalar/format conventions
+- `TypeDescriber` scalar/format conventions
 - `ConstraintMapper` constraint naming and parameter conventions
 - Queryable registration invariants (interface identity, type-name naming, one capability per type)
 - `QuerySourceKind` staying unpublished (consumers see every source the same way)
@@ -220,6 +227,8 @@ dotnet build src/Kaleido/Kaleido.csproj
 dotnet build src/Kaleido.Http/Kaleido.Http.csproj
 dotnet build src/Kaleido.Http.Abstractions/Kaleido.Http.Abstractions.csproj
 dotnet build src/Kaleido.Http.Client/Kaleido.Http.Client.csproj
+dotnet build src/Kaleido.Http.Mcp/Kaleido.Http.Mcp.csproj
+dotnet build src/Kaleido.Observability.OpenTelemetry/Kaleido.Observability.OpenTelemetry.csproj
 dotnet build src/Kaleido.Provider.SQLite/Kaleido.Provider.SQLite.csproj
 ```
 

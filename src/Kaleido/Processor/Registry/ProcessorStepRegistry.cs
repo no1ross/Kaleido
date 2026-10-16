@@ -409,11 +409,6 @@ internal sealed record ProcessStepDefinition
 }
 
 [ExcludeFromCodeCoverage]
-public sealed record ProcessStepDependencyGraph(
-    IReadOnlyDictionary<Type, IReadOnlyCollection<Type>> Dependencies,
-    IReadOnlyDictionary<Type, IReadOnlyCollection<Type>> Dependents);
-
-[ExcludeFromCodeCoverage]
 internal sealed class RegistrationSlot
 {
     private readonly List<ProcessStepRegistration> _dependencies = [];

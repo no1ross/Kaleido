@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Compliance;
 using Kaleido;
 using Kaleido.Exceptions;
 using Kaleido.Http;
@@ -14,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 var providerConnectionString =
     builder.Configuration.GetConnectionString("Provider")
     ?? throw new KaleidoConfigurationException(
-        ConfigurationErrorCodes.InvalidServiceName,
+        PriorAuthErrorCodes.MissingConnectionString,
         "ConnectionStrings:Provider is required.");
 
 builder.Services.AddDbContext<ProviderSearchDbContext>(

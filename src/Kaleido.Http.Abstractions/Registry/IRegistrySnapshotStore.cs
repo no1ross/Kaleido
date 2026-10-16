@@ -41,7 +41,7 @@ public interface IRegistrySnapshotStore
 /// Appropriate for leaf services; aggregators that run multiple replicas should
 /// register a distributed implementation instead.
 /// </summary>
-public sealed class InMemoryRegistrySnapshotStore
+internal sealed class InMemoryRegistrySnapshotStore
     : IRegistrySnapshotStore
 {
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse> _snapshots =

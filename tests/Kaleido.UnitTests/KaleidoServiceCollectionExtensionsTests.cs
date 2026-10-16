@@ -268,8 +268,48 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         Assert.Throws<ArgumentNullException>(() => builder!.AddEventRedactor<FirstRedactor>());
     }
 
+    [Fact]
+    public void AddKaleido_WithoutConfigureCallback_UsesBoundConfigurationAndValidatesIt()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Kaleido:ServiceName"] = "bound-service" })
+            .Build();
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => services.AddKaleido(config));
+
+        Assert.Equal(ConfigurationErrorCodes.MissingAssembly, exception.Code);
+    }
+
+    [Fact]
+    public void AddEventPublisher_ReplacesTheDefaultPublisherWithASingleton()
+    {
+        var services = new ServiceCollection();
+
+        services.AddKaleido(EmptyConfig(), DefaultServiceOptions())
+            .AddEventPublisher<RecordingPublisher>();
+
+        var registration = Assert.Single(services, x => x.ServiceType == typeof(Kaleido.Eventing.IEventPublisher));
+        Assert.Equal(typeof(RecordingPublisher), registration.ImplementationType);
+        Assert.Equal(ServiceLifetime.Singleton, registration.Lifetime);
+    }
+
+    [Fact]
+    public void AddEventPublisher_ShouldThrow_WhenBuilderIsNull()
+    {
+        IKaleidoBuilder? builder = null;
+
+        Assert.Throws<ArgumentNullException>(() => builder!.AddEventPublisher<RecordingPublisher>());
+    }
+
     // ---------------------------------------------------------------------------
     // Test doubles
+
+    private sealed class RecordingPublisher : Kaleido.Eventing.IEventPublisher
+    {
+        public Task PublishAsync<TEvent, TContext>(Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext> envelope, CancellationToken cancellationToken = default)
+            where TEvent : Kaleido.Eventing.IKaleidoEvent => Task.CompletedTask;
+    }
     // ---------------------------------------------------------------------------
 
     private sealed class CustomCorrelationContextAccessor : IKaleidoCorrelationContextAccessor

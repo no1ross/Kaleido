@@ -1,7 +1,7 @@
 namespace Kaleido.Processor.Execution;
 
 [ExcludeFromCodeCoverage]
-public sealed record ProcessExecutionOutcome
+internal sealed record ProcessExecutionOutcome
 {
     public required string StepName { get; init; }
     public required StepExecutionStatus Status { get; init; }

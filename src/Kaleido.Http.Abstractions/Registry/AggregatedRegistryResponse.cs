@@ -13,14 +13,14 @@ public sealed record AggregatedRegistryResponse
 {
     /// <summary>
     /// All process processor registrations, including this processor's local steps
-    /// and all downstream processors registered via <c>AddProcessorClient()</c>.
+    /// and all downstream processors of the clients configured with <c>AddHttpClients()</c>.
     /// </summary>
     public IReadOnlyCollection<ProcessorRegistryResponse> Processes { get; init; }
         = [];
 
     /// <summary>
     /// All queryable context registrations from this processor's local contexts
-    /// and all downstream queryable clients registered via <c>AddQueryableClient()</c>.
+    /// and all downstream queryables of the clients configured with <c>AddHttpClients()</c>.
     /// </summary>
     public IReadOnlyCollection<QueryableSourceResponse> Queryables { get; init; }
         = [];
@@ -66,7 +66,7 @@ public sealed record RegistryClientError
 {
     /// <summary>
     /// The registered name of the downstream client (e.g. <c>"Member"</c>, <c>"CodeSet"</c>).
-    /// Matches the <c>Name</c> passed to <c>AddProcessorClient()</c> or <c>AddQueryableClient()</c>.
+    /// Matches the client name configured under <c>Kaleido:Clients</c> (registered by <c>AddHttpClients()</c>).
     /// </summary>
     public required string ClientName { get; init; }
 

@@ -40,6 +40,25 @@ public sealed class LocalRegistrationsTests
     }
 
     [Fact]
+    public void Queryables_AreThisServicesSources_InTheirPublishedShape()
+    {
+        var source = new QueryableSourceRegistryItem
+        {
+            SourceType = typeof(object),
+            QueryContextType = typeof(object),
+            ResultType = typeof(object),
+            ParametersType = typeof(object),
+            Name = "MemberSource",
+            DisplayName = "Members",
+        };
+
+        var queryable = Assert.Single(CreateSut([], [source]).Queryables());
+
+        Assert.Equal("MemberSource", queryable.Name);
+        Assert.Equal("intake", queryable.ServiceName);
+    }
+
+    [Fact]
     public void WithNothingRegistered_BothAreEmpty()
     {
         var sut = CreateSut([], []);

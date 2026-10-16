@@ -1,6 +1,7 @@
 using Kaleido.Http.Client.Queryable;
 using Kaleido.Http.Queryable;
 using Kaleido.Observability;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.Client.Queryable.UnitTests;
@@ -11,7 +12,8 @@ public sealed class KaleidoQueryableClientTests
     private static KaleidoQueryableClient CreateSut(
         HttpClient httpClient,
         ICorrelationHeaderStamper headerStamper,
-        string callerServiceName = "")
+        string callerServiceName = "",
+        ILogger<KaleidoQueryableClient>? logger = null)
     {
         // Registry fetches go through the shared remote registry, which pulls
         // the HttpClient from IHttpClientFactory — return the test client.
@@ -28,7 +30,7 @@ public sealed class KaleidoQueryableClientTests
         return new(
             httpClient,
             headerStamper,
-            NullLogger<KaleidoQueryableClient>.Instance,
+            logger ?? NullLogger<KaleidoQueryableClient>.Instance,
             remoteRegistry,
             "test",
             callerServiceName);
@@ -411,6 +413,152 @@ public sealed class KaleidoQueryableClientTests
         await client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()));
 
         stamper.Verify(x => x.Stamp(It.IsAny<HttpRequestMessage>()), Times.AtLeastOnce);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Failures and logging
+    // ---------------------------------------------------------------------------
+
+    private static (KaleidoQueryableClient Client, RecordingLogger Logger, List<string> Queries) CreateQueryClient(
+        Func<HttpResponseMessage> queryResponse,
+        AggregatedRegistryResponse? registry = null)
+    {
+        var queries = new List<string>();
+        var handler = HandlerThatReturns(req =>
+        {
+            if (req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal))
+            {
+                return JsonOk(registry ?? FakeRegistry);
+            }
+
+            queries.Add(req.RequestUri.ToString());
+            return queryResponse();
+        });
+        var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
+        var logger = new RecordingLogger();
+
+        return (CreateSut(httpClient, Mock.Of<ICorrelationHeaderStamper>(), "caller", logger), logger, queries);
+    }
+
+    private static HttpResponseMessage JsonNull(HttpStatusCode statusCode) =>
+        new(statusCode)
+        {
+            Content = new StringContent("null", System.Text.Encoding.UTF8, "application/json")
+        };
+
+    [Fact]
+    public async Task QuerySourceAsync_WhenTheServiceRejectsTheQuery_ThrowsValidationFailedWithTheErrors()
+    {
+        var (client, _, _) = CreateQueryClient(() => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = JsonContent.Create(
+                new KaleidoErrorResponse([new KaleidoError("qry_invalid_filter", "Unknown field 'x'.")]),
+                options: KaleidoJsonOptions.Options),
+        });
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
+            () => client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
+
+        Assert.Equal(HttpClientErrorCodes.ValidationFailed, exception.Code);
+        Assert.Equal(HttpStatusCode.BadRequest, exception.StatusCode);
+        Assert.Equal("qry_invalid_filter", Assert.Single(exception.Errors).Code);
+        Assert.Contains("source 'my-context'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("Unknown field 'x'.", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task QuerySourceAsync_ABadRequestWithoutStructuredErrors_ThrowsRequestFailed(bool nullBody)
+    {
+        var (client, _, _) = CreateQueryClient(() => nullBody
+            ? JsonNull(HttpStatusCode.BadRequest)
+            : new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = JsonContent.Create(new KaleidoErrorResponse([]), options: KaleidoJsonOptions.Options),
+            });
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
+            () => client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
+
+        Assert.Equal(HttpClientErrorCodes.RequestFailed, exception.Code);
+        Assert.Equal(HttpStatusCode.BadRequest, exception.StatusCode);
+        Assert.Contains("status code 400 (BadRequest)", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task QueryViewAsync_WhenTheServiceReturnsNoPayload_ThrowsEmptyResponse()
+    {
+        var (client, _, _) = CreateQueryClient(() => JsonNull(HttpStatusCode.OK));
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
+            () => client.QueryViewAsync<FakeParams, FakeView>(
+                "my-context",
+                "grid",
+                new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody()),
+                TestContext.Current.CancellationToken));
+
+        Assert.Equal(HttpClientErrorCodes.EmptyResponse, exception.Code);
+        Assert.Contains("view 'grid' on source 'my-context'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task QuerySourceAsync_AQueryUrlOnAnotherHost_IsRejected_WithoutSendingTheQuery()
+    {
+        var registry = new AggregatedRegistryResponse { Queryables = [FakeContext with { QueryUrl = "http://evil.example/steal" }] };
+        var (client, _, queries) = CreateQueryClient(() => JsonOk(new QueryResult<FakeView>(0, 0, 0, [])), registry);
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
+            () => client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
+
+        Assert.Equal(HttpClientErrorCodes.InvalidRegistryUrl, exception.Code);
+        Assert.Empty(queries);
+    }
+
+    [Fact]
+    public async Task QuerySourceAsync_LogsTheOutgoingQueryAtDebug()
+    {
+        var (client, logger, _) = CreateQueryClient(() => JsonOk(new QueryResult<FakeView>(0, 0, 0, [])));
+
+        await client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Debug, entry.Level);
+        Assert.Contains("Sending POST", entry.Message, StringComparison.Ordinal);
+        Assert.Contains("/queryable/my-context/query", entry.Message, StringComparison.Ordinal);
+        Assert.Contains("remote queryable 'caller'", entry.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task QuerySourceAsync_WhenTheServiceFails_LogsAWarningWithTheStatus()
+    {
+        var (client, logger, _) = CreateQueryClient(() => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(
+            () => client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
+
+        Assert.Collection(
+            logger.Entries,
+            sending => Assert.Equal(LogLevel.Debug, sending.Level),
+            failed =>
+            {
+                Assert.Equal(LogLevel.Warning, failed.Level);
+                Assert.Contains("Remote queryable 'caller' returned 503 (ServiceUnavailable) for POST", failed.Message, StringComparison.Ordinal);
+                Assert.Contains("/queryable/my-context/query", failed.Message, StringComparison.Ordinal);
+            });
+    }
+
+    private sealed class RecordingLogger : ILogger<KaleidoQueryableClient>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Entries.Add((logLevel, formatter(state, exception)));
     }
 
     // ---------------------------------------------------------------------------

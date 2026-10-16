@@ -166,8 +166,9 @@ step handler / consumer code
 ## Observability correlation
 
 - The inbound `ObservabilityMiddleware` and the runtime engines tag the `Activity` with
-  `kaleido.request.id`, `kaleido.processor.instance_id` (own), `kaleido.calling.processor`
-  and `kaleido.calling.step`, so distributed traces line up with the correlation headers.
+  `kaleido.request.id`, `kaleido.process.id` (when known), `kaleido.processor.instance_id` (own),
+  `kaleido.calling.processor` and `kaleido.calling.step`, so distributed traces line up with the
+  correlation headers.
 - Emitted events carry the correlation (`RequestId`, `ProcessId`, `CallingProcessorName`,
   `CallingStepName`) plus the emitting service's own `ProcessorInstanceId`.
 

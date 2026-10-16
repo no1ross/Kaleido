@@ -4,13 +4,50 @@ using Kaleido.Processor.Observability;
 
 namespace Kaleido.Processor;
 
+/// <summary>
+/// Runs submitted steps of this processor in-process: loads or creates the process, plans the
+/// submitted steps, executes the ones the process rules admit, and saves the process state after
+/// each executed step (a step its handler rejects leaves the process unchanged and unsaved). The
+/// HTTP transport calls it for the process execute endpoints.
+/// </summary>
 public interface IProcessorRuntime
 {
+    /// <summary>
+    /// Executes the steps in <paramref name="request"/> against the process it identifies, or
+    /// against a new process when <see cref="ProcessRequest.ProcessId"/> is <see langword="null"/>.
+    /// </summary>
+    /// <remarks>
+    /// A new process is saved right away, before any step runs. Every submitted step becomes a
+    /// planned candidate; invalid, already completed or not-yet-allowed steps are reported in the
+    /// result instead of being executed. A step whose handler throws (including a
+    /// <see cref="KaleidoValidationException"/>) or is cancelled is recorded in the result and the
+    /// process state, and stops the request; the exception is not rethrown.
+    /// </remarks>
+    /// <param name="request">The process to continue (or create) and the steps to submit.</param>
+    /// <param name="cancellationToken">
+    /// Cancels the execution. A step running when it is cancelled is recorded as canceled and the
+    /// process state is saved.
+    /// </param>
+    /// <returns>The process state after this request and the planning and execution result of every submitted step.</returns>
+    /// <exception cref="KaleidoValidationException">
+    /// <see cref="ProcessRequest.ProcessId"/> is set but no such process exists, and the request is
+    /// not a handoff from another processor (<see cref="ProcessorErrorCodes.ProcessNotFound"/>).
+    /// </exception>
+    /// <exception cref="KaleidoConcurrencyException">
+    /// The process was changed or created concurrently, so its state could not be saved.
+    /// </exception>
     Task<ProcessResult> ExecuteAsync(
         ProcessRequest request,
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// A request to <see cref="IProcessorRuntime.ExecuteAsync"/>: the process to continue (or none, to
+/// start one) and the steps submitted for it.
+/// </summary>
+/// <remarks>
+/// Use <see cref="ForStep{TStep}"/> to submit a single typed step.
+/// </remarks>
 [ExcludeFromCodeCoverage]
 public sealed record ProcessRequest
 {
@@ -66,17 +103,33 @@ public sealed record ProcessRequest
     }
 }
 
+/// <summary>
+/// The result of <see cref="IProcessorRuntime.ExecuteAsync"/>: the process state after the request
+/// and the result of every submitted step.
+/// </summary>
+/// <remarks>
+/// <see cref="State"/>, <see cref="RequiredStep"/>, <see cref="RequiredInformationRequest"/>,
+/// <see cref="TargetProcessorName"/> and <see cref="AvailableSteps"/> are taken from the process state
+/// after the last step this request ran; when no step changed it, they are the state the request
+/// started from.
+/// </remarks>
 [ExcludeFromCodeCoverage]
 public sealed record ProcessResult
 {
+    /// <summary>The process instance the request ran against; newly generated when the request created the process without an id.</summary>
     public required Guid ProcessId { get; init; }
 
+    /// <summary>The process state after this request.</summary>
     public required ProcessExecutionState State
     {
         get;
         init;
     }
 
+    /// <summary>
+    /// The step the process requires next on this processor, or <see langword="null"/> when it does
+    /// not wait for a specific step.
+    /// </summary>
     public string? RequiredStep
     {
         get;
@@ -90,12 +143,21 @@ public sealed record ProcessResult
         init;
     }
 
+    /// <summary>
+    /// The processor the process was handed off to, or <see langword="null"/> when it stays in this
+    /// processor. Set when <see cref="State"/> is <see cref="ProcessExecutionState.HandOff"/>.
+    /// </summary>
     public string? TargetProcessorName
     {
         get;
         init;
     }
 
+    /// <summary>
+    /// The steps the caller may submit next, as stored in the process state. Set when
+    /// <see cref="State"/> is <see cref="ProcessExecutionState.AwaitingStepSelection"/>; empty
+    /// otherwise, including for a new process on which no step ran (its initial steps are not stored).
+    /// </summary>
     public IReadOnlyCollection<string> AvailableSteps
     {
         get;
@@ -103,6 +165,10 @@ public sealed record ProcessResult
     }
         = [];
 
+    /// <summary>
+    /// One result per submitted step, in planning order: the steps that passed validation first, in
+    /// dependency order, then the rest.
+    /// </summary>
     public IReadOnlyCollection<ProcessStepResult> Steps
     {
         get;
@@ -111,45 +177,75 @@ public sealed record ProcessResult
         = [];
 }
 
+/// <summary>
+/// The result of one submitted step in a <see cref="ProcessResult"/>: how it was planned and, when
+/// it ran in this request, its outcome.
+/// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record ProcessStepResult
 {
+    /// <summary>The step name as submitted in <see cref="ProcessorRequest.Steps"/>.</summary>
     public required string StepName
     {
         get;
         init;
     }
 
+    /// <summary>
+    /// The step's planning result: <see cref="StepCandidateStatus.Built"/> when it was valid,
+    /// <see cref="StepCandidateStatus.Invalid"/> when it is not registered, could not be read, failed
+    /// validation, misses a dependency, or is not allowed to run next, and
+    /// <see cref="StepCandidateStatus.Satisfied"/> when it had already completed and is not repeatable.
+    /// </summary>
     public required StepCandidateStatus CandidateStatus
     {
         get;
         init;
     }
 
+    /// <summary>
+    /// <see langword="true"/> when the step was put in the execution plan of this request. An
+    /// included step runs only when execution reaches it: the first admitted step runs, and later
+    /// ones only when the process continues into them.
+    /// </summary>
     public required bool IncludedInExecutionPlan
     {
         get;
         init;
     }
 
+    /// <summary>The handler's response payload; <see langword="null"/> when the step did not run, failed with an error, or returned no response.</summary>
     public object? Response
     {
         get;
         init;
     }
 
+    /// <summary>
+    /// The step's execution status in this request; <see cref="StepExecutionStatus.Pending"/> when
+    /// it did not run.
+    /// </summary>
     public StepExecutionStatus ExecutionStatus
     {
         get;
         init;
     }
 
+    /// <summary>
+    /// The step's outcome in this request, derived from <see cref="ExecutionStatus"/>;
+    /// <see cref="StepExecutionOutcome.Pending"/> when it did not run.
+    /// </summary>
     public StepExecutionOutcome Outcome
     {
         get;
         init;
     }
 
+    /// <summary>
+    /// The runtime's messages about the step: its planning and validation messages, followed by the
+    /// messages from its execution when it ran (a process violation, a validation failure, an
+    /// unexpected error or a cancellation).
+    /// </summary>
     public IReadOnlyCollection<StepProcessingMessage> RuntimeMessages
     {
         get;
@@ -157,6 +253,10 @@ public sealed record ProcessStepResult
     }
         = [];
 
+    /// <summary>
+    /// The business messages the step's handler returned; empty when the step did not run or
+    /// failed with an error.
+    /// </summary>
     public IReadOnlyCollection<ProcessMessage> BusinessMessages
     {
         get;

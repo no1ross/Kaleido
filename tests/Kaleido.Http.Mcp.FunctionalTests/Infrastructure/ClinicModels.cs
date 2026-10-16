@@ -11,26 +11,42 @@ public sealed class PatientQueryContext : IQueryContext
     [Key]
     [Description("The patient's id.")]
     [Filterable(FilterOperator.Equals)]
+    [Sortable]
     public int Id { get; init; }
 
     [Description("The patient's full name.")]
     [Searchable(Priority = 1, MatchMode = MatchMode.Contains)]
     [Sortable]
     public string Name { get; init; } = string.Empty;
+
+    [Description("The ward the patient is in.")]
+    [Filterable(FilterOperator.Equals, FilterOperator.In)]
+    [Sortable]
+    public string Ward { get; init; } = string.Empty;
+
+    [Description("The patient's age in years.")]
+    [Filterable(FilterOperator.GreaterThanOrEqual)]
+    [Sortable]
+    public int Age { get; init; }
 }
 
 [QuerySource(
     Version = "1.0.0",
     DisplayName = "Patients",
-    Description = "Patients registered at the clinic.")]
+    Description = "Patients registered at the clinic.",
+    DefaultSortField = nameof(PatientQueryContext.Id))]
+[Pageable(DefaultSize = 10, MaxSize = 10)]
 public sealed class PatientSource : IQuerySource<PatientQueryContext>
 {
     public IQueryable<PatientQueryContext> CreateQuery(
         QueryExecutionContext executionContext) =>
         new[]
         {
-            new PatientQueryContext { Id = 1, Name = "Ava Carter" },
-            new PatientQueryContext { Id = 2, Name = "Ben Ortiz" }
+            new PatientQueryContext { Id = 1, Name = "Ava Carter", Ward = "A", Age = 45 },
+            new PatientQueryContext { Id = 2, Name = "Ben Ortiz", Ward = "B", Age = 62 },
+            new PatientQueryContext { Id = 3, Name = "Cleo Diaz", Ward = "B", Age = 70 },
+            new PatientQueryContext { Id = 4, Name = "Dev Patel", Ward = "A", Age = 30 },
+            new PatientQueryContext { Id = 5, Name = "Eli Brooks", Ward = "C", Age = 81 }
         }.AsQueryable();
 }
 
@@ -135,11 +151,21 @@ public sealed record CloseVisitStep : IProcessStep
     public string? Note { get; init; }
 }
 
+// A closing note of "?" is rejected as correctable; otherwise the visit closes with a business
+// message for the user.
 public sealed class CloseVisitHandler : IProcessStepHandler<CloseVisitStep>
 {
+    public const string UnclearNote = "?";
+    public const string UnclearCode = "CLINIC_NOTE_UNCLEAR";
+    public const string UnclearMessage = "The closing note is unclear; write what was done.";
+    public const string ClosedMessage = "The visit is closed; the patient may leave.";
+
     public Task<ProcessStepHandlerResult> ExecuteAsync(
         CloseVisitStep processStep,
         ProcessStepContext context,
         CancellationToken cancellationToken = default) =>
-        Task.FromResult(ProcessStepHandlerResult.Success());
+        Task.FromResult(
+            processStep.Note == UnclearNote
+                ? ProcessStepHandlerResult.Reject(new ProcessMessage { Code = UnclearCode, Type = MessageType.Error, Message = UnclearMessage })
+                : ProcessStepHandlerResult.Success(new ProcessMessage { Code = "CLINIC_VISIT_CLOSED", Type = MessageType.Information, Message = ClosedMessage }));
 }

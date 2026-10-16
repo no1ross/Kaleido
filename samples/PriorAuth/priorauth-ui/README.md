@@ -1,5 +1,20 @@
 # PriorauthUi
 
+The Angular UI of the PriorAuth sample. It drives the Intake and Radiology processes and the
+reference searches over the services' Kaleido HTTP endpoints; see
+[`../AGENTS.md`](../AGENTS.md) for the services, ports, personas and the cross-processor handoff the
+UI follows (`ProcessService.executeStep()`).
+
+- **Backend first.** The UI only renders what the services return: run the services (or the compose
+  file under `../Compose/`) before `ng serve`.
+- **How it reaches them** is set in `src/environments/`: `environment.ts` calls each service directly
+  on its local port (`apiMode: 'direct'`), `environment.container.ts` goes through the router
+  (`apiMode: 'router'`), as in compose. `environment.local.ts` and `environment.hybrid.ts` currently
+  re-export `environment.ts`.
+- **Sign in** with a dev persona (`alice`, `bob`, `carol`) at the router's `/auth/login`.
+
+The rest of this file is the Angular CLI's standard guide.
+
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.21.
 
 ## Development server

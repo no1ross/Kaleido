@@ -119,7 +119,7 @@ internal sealed partial class McpObservability(
         {
             if (!string.IsNullOrWhiteSpace(processId))
             {
-                activity?.SetTag(McpTelemetry.TagProcessId, processId);
+                activity?.SetTag(KaleidoTelemetryTags.ProcessId, processId);
             }
 
             kind = tool.Kind switch
@@ -145,7 +145,7 @@ internal sealed partial class McpObservability(
 
             if (processId is not null)
             {
-                activity?.SetTag(McpTelemetry.TagProcessId, processId);
+                activity?.SetTag(KaleidoTelemetryTags.ProcessId, processId);
             }
 
             if (result.IsError == true)

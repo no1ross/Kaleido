@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Compliance;
 using Kaleido;
 using Kaleido.Http;
 using Kaleido.Observability.OpenTelemetry;
@@ -10,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var referenceDataConnectionString =
     builder.Configuration.GetConnectionString("ReferenceData")
-    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(Kaleido.Exceptions.ConfigurationErrorCodes.InvalidServiceName, "ConnectionStrings:ReferenceData is required.");
+    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(PriorAuthErrorCodes.MissingConnectionString, "ConnectionStrings:ReferenceData is required.");
 
 builder.Services.AddDbContext<ReferenceDataDbContext>(
     options => options.UseSqlite(referenceDataConnectionString));

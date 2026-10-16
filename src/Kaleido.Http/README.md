@@ -20,7 +20,7 @@ See also:
 - `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers
 
 ### Queryable endpoint mapping
-- `QueryableEndpointRouteBuilderExtensions` — `MapQueryable()` extension
+- `QueryableEndpointRouteBuilderExtensions` — `MapQueryable()` (internal; mapped by `MapKaleidoHttp`)
   - `POST /{prefix}/queryable/{source}/query` — direct query of a query source (every source, local or delegated)
   - `POST /{prefix}/queryable/{source}/{view}/query` — query view of a local source
 
@@ -29,29 +29,26 @@ See also:
 Queryable requests use an optional `query.page` object. An omitted page on a pageable source or view applies its default page; `totalCount` is always the number of matching rows. See [Queryable paging and totalCount](../Kaleido.Http.Abstractions/README.md#queryable-paging-and-totalcount) before implementing a non-.NET consumer.
 
 ### Process endpoint mapping
-- `ProcessorEndpointRouteBuilderExtensions` — `MapProcessor()` extension
-  - `GET /{prefix}/processes/steps/{step}/metadata` — per-step metadata
+- `ProcessorEndpointRouteBuilderExtensions` — `MapProcessor()` (internal; mapped by `MapKaleidoHttp`)
   - `POST /{prefix}/processes/execute` — multi-step execute endpoint
   - `GET /{prefix}/processes/{processId}` — process state
   - `POST /{prefix}/processes/steps/{step}` — per-step execute endpoint
+
+  Step metadata (inputs, results, relationships, authorization, execute URL) is published by the registry endpoint below; there is no per-step metadata endpoint.
 
 ### Registry endpoint mapping
 - `RegistryEndpointRouteBuilderExtensions` — `MapRegistry()` extension (internal; mapped by `MapKaleidoHttp`)
   - `GET /{prefix}/registry` — unified discovery: local process + queryable registrations; when `MapKaleidoHttp(o => o.AggregateRegistry = true)` is used, also merges every downstream client registered via `AddHttpClients()`
 
-### URL and route helpers
-- `ProcessContractUrls` / `ProcessRoutePaths` (in `Kaleido.Http.Abstractions`) — URL generation for Process metadata and execute URLs
-- `QueryableContractUrls` (in `Kaleido.Http.Abstractions`) — URL generation for Queryable metadata and query URLs
+### URL and route helpers (internal)
+- `ProcessContractUrls` / `ProcessRoutePaths` and `QueryableContractUrls` (in `Kaleido.Http.Abstractions`) build the execute, state and query URLs for both the server and the clients. They are internal, as are the endpoint-name constants (`ProcessEndpointNames`, `QueryableEndpointNames`, `RegistryEndpointNames`): consumers take URLs from the registry (`executeUrl`, `queryUrl`).
 
 ---
 
 ## What this project is for
 
 Reference this project when you need to:
-- publish all Kaleido endpoints at once with `MapKaleidoHttp()` (auto-detects active runtimes and maps the registry)
-- publish only Queryable endpoints with `MapQueryable()`
-- publish only Process endpoints with `MapProcessor()`
-- work with the URL/path generation helpers for Process or Queryable routes
+- publish all Kaleido endpoints with `MapKaleidoHttp()` (it detects the active runtimes, maps their endpoints and the registry; per-surface mapping is internal)
 
 ## What this project is NOT for
 
@@ -67,8 +64,8 @@ This project does not contain:
 ```csharp
 builder.Services.AddKaleido(builder.Configuration, o =>
 {
-    o.ServiceName = "my-service";
-    o.Assemblies = new[] { typeof(Program).Assembly };
+    o.ServiceName = "myservice"; // lowercase, no separators (KAL2005)
+    o.Assemblies = [typeof(Program).Assembly];
 })
     .AddHttp();
 
@@ -112,7 +109,7 @@ A step whose handler returns a typed result has this response shape (values are 
 }
 ```
 
-`requiredStep` is an object with the same fields as an `availableSteps` entry (`name`, `displayName`, `description`, `version`, `repeatable`, `isInformationStep`, `authorization`, `executeUrl`), plus `informationRequest` when the process is `AwaitingInformation`. The questions arrive there; submit the answers as that step's payload. See [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md). The state endpoint (`GET /{service}/processes/{processId}`) returns the same `requiredStep` with the pending request. A step that isn't a next step of the process is rejected (`pro_step_not_available`).
+`requiredStep` is an object with the same fields as an `availableSteps` entry (`name`, `displayName`, `description`, `version`, `repeatable`, `isInformationStep`, `destructive`, `external`, `requiresConfirmation`, `authorization`, `executeUrl`), plus `informationRequest` when the process is `AwaitingInformation`. The questions arrive there; submit the answers as that step's payload. See [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md). The state endpoint (`GET /{service}/processes/{processId}`) returns the same `requiredStep` with the pending request. A step that isn't a next step of the process is rejected (`pro_step_not_available`).
 
 Steps without a typed handler result return the same fields without `result`. Handler-authored `businessMessages` remain available; `frameworkMessages` is an empty collection unless `AddHttp(o => o.IncludeFrameworkMessages = true)` enables diagnostics. Inspect `outcome` rather than interpreting HTTP 200 alone as step completion. Kaleido's HTTP JSON options use camelCase property names and string enum values; see the [JSON enum contract](../Kaleido.Http.Abstractions/README.md#json-enum-values) for canonical names and numeric-input rules.
 
@@ -145,15 +142,11 @@ Kaleido answers every error from its own endpoints itself, with `{ "errors": [{ 
 
 ## Authorization
 
-`MapKaleidoHttp()` returns an `IEndpointConventionBuilder` covering every mapped endpoint, so conventions compose directly. For per-surface conventions, `MapProcessor()` and `MapQueryable()` still return the `RouteGroupBuilder` they mapped:
+`MapKaleidoHttp()` returns an `IEndpointConventionBuilder` covering every mapped endpoint, so conventions compose directly. Per-surface mapping is internal, so a host convention applies to all Kaleido endpoints; per-capability rules come from `[KaleidoAuthorization]` (below):
 
 ```csharp
 // Require authorization on everything Kaleido publishes
 app.MapKaleidoHttp().RequireAuthorization();
-
-// Different policies per surface
-app.MapProcessor().RequireAuthorization("ProcessPolicy");
-app.MapQueryable().RequireAuthorization("QueryPolicy");
 
 // No auth (default)
 app.MapKaleidoHttp();
@@ -173,7 +166,7 @@ public sealed record ApproveStep : IProcessStep;
 
 Enforcement works on two layers:
 
-**Route-level gate** — `MapProcessor()`/`MapQueryable()` attach metadata to each capability's execute/query endpoint at map time: `AllowAnonymous` → `AllowAnonymous()`; otherwise `RequireAuthorization()` plus a role requirement for declared `Roles` and the named ASP.NET policy for a declared `Policy` (ANDed). Evaluation is done by the host's `UseAuthorization()` middleware — the host must wire `AddAuthentication()`/`AddAuthorization()` and `app.UseAuthentication(); app.UseAuthorization();`. `MapKaleidoHttp()` throws `authentication_not_configured` at startup when enforcing without any authentication scheme.
+**Route-level gate** — `MapKaleidoHttp()` attaches metadata to each capability's execute/query endpoint at map time: `AllowAnonymous` → `AllowAnonymous()`; otherwise `RequireAuthorization()` plus a role requirement for declared `Roles` and the named ASP.NET policy for a declared `Policy` (ANDed). Evaluation is done by the host's `UseAuthorization()` middleware — the host must wire `AddAuthentication()`/`AddAuthorization()` and `app.UseAuthentication(); app.UseAuthorization();`. `MapKaleidoHttp()` throws `authentication_not_configured` at startup when enforcing without any authentication scheme.
 
 **In-handler evaluation** — `IKaleidoAuthorizer` (registered scoped by `AddHttp()`) covers what per-route metadata cannot express:
 - *Multi-step execute* — `ProcessExecutionService` checks every submitted step against its own declaration before anything runs, and the first denial rejects the whole request (401/403). Unknown step names and empty requests are checked as undeclared. At route level, `POST /processes/execute` and `GET /processes/{processId}` require an authenticated caller when enforcing, unless the processor has an `AllowAnonymous` step (then they stay open and the per-step checks decide).
@@ -204,6 +197,9 @@ A client whose `RoutePrefix` equals this service's `ServiceName` is skipped (sel
 **Caching & TTL:** the built snapshot is stored under the canonical key `kaleido:{ServiceName}` in `IRegistrySnapshotStore` (in-memory by default; register a distributed implementation — e.g. Redis over `IDistributedCache` — on multi-replica aggregators so replicas share one snapshot and one downstream fan-out). Only fully-clean snapshots are committed: a partial result is served but never cached, so every request while degraded naturally re-probes the failed services. Options on `MapKaleidoHttp`:
 - `RegistryCacheTtl` - how long the snapshot is served before the next request rebuilds it (default **30 seconds**; null = never on its own). On an aggregating host the rebuild checks every downstream with its ETag, so an unchanged downstream costs one small request with an empty 304; a deployed one is picked up. This is how a router - and the MCP tool list built from it - learns about deployments without a restart. It also bounds how long a clean snapshot can mask a newly-failing downstream.
 - `RegistryRefreshCooldown` — minimum interval between honored `?refresh` requests (default 30s). Refreshes inside the window serve the cache instead of re-fanning-out; an honored refresh first invalidates each downstream client snapshot so the rebuild re-fetches.
+- `RegistryDownstreamMaxParallelism` — maximum number of downstream registry fetches in flight at once during an aggregate build (default: unbounded). Set it on a router that aggregates many services.
+
+In-host consumers (such as the MCP adapter) read the same caller-filtered payload without HTTP through `IKaleidoRegistryService`: `GetForCallerAsync()` returns it with its revision, and `IsMapped` reports whether `MapKaleidoHttp()` has run.
 
 The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from `Kaleido:ServiceName` configuration).
 
@@ -213,7 +209,7 @@ The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from
 
 ## Registration requirement
 
-`AddHttp()` registers the middleware pipeline (`ExceptionMiddleware`, `ObservabilityMiddleware`) and the transport services (`ProcessExecutionService`, `ProcessStateService`) that `MapKaleidoHttp()`, `MapQueryable()`, and `MapProcessor()` depend on. Call it on the `IKaleidoBuilder` before mapping endpoints.
+`AddHttp()` registers the middleware pipeline (`ExceptionMiddleware`, `ObservabilityMiddleware`) and the transport services (`ProcessExecutionService`, `ProcessStateService`) that `MapKaleidoHttp()` depends on. Call it on the `IKaleidoBuilder` before mapping endpoints.
 
 ---
 

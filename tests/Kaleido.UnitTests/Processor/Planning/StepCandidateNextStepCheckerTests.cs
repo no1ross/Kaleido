@@ -139,6 +139,29 @@ public sealed class StepCandidateNextStepCheckerTests
         Assert.Equal(ProcessorErrorCodes.InformationResponseMismatch, Assert.Single(candidate.Messages).Code);
     }
 
+    [Fact]
+    public void Check_WhenNothingIsAvailable_SaysSo()
+    {
+        var candidate = Candidate<StepA>("step-a");
+
+        CreateSut([]).Check([candidate], Context());
+
+        Assert.Contains("Available: none", Assert.Single(candidate.Messages).Message);
+    }
+
+    [Fact]
+    public void Check_AnInformationStepWhoseInputWasNotHydrated_ThrowsAFrameworkException()
+    {
+        var candidate = InformationCandidate("out-of-network");
+        candidate.Step = new object();
+
+        var exception =
+            Assert.Throws<Kaleido.Exceptions.KaleidoFrameworkException>(() =>
+                CreateSut([], Mock.Of<IInformationValidator>()).Check([candidate], AwaitingInformation()));
+
+        Assert.Equal(Kaleido.Exceptions.FrameworkErrorCodes.TypeMismatch, exception.Code);
+    }
+
     private static ProcessorContext Context() =>
         new()
         {

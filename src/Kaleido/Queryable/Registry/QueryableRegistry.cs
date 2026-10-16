@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace Kaleido.Queryable.Registry;
 
 /// <summary>The Queryable registry: every query source with its views, as published to transports.</summary>
-public interface IQueryableRegistry
+internal interface IQueryableRegistry
 {
     /// <summary>The registered query sources (local and delegated), ordered by name.</summary>
     IReadOnlyCollection<QueryableSourceRegistryItem> Registrations { get; }

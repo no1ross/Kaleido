@@ -2,6 +2,7 @@ using Kaleido.Http.Client;
 using Kaleido.Http.Mcp.Observability;
 using Kaleido.Observability;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -37,7 +38,7 @@ public sealed class KaleidoMcpToolHandlerTests
         forwarding.Setup(x => x.ForwardCaller(It.IsAny<string?>())).Returns(forwardingScope.Object);
     }
 
-    private KaleidoMcpToolHandler CreateSut()
+    private KaleidoMcpToolHandler CreateSut(ILogger<KaleidoMcpToolHandler>? logger = null, bool inAnHttpRequest = true)
     {
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
         correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext { RequestId = "req-7" });
@@ -50,7 +51,7 @@ public sealed class KaleidoMcpToolHandlerTests
         }
 
         var httpContext = new Mock<IHttpContextAccessor>();
-        httpContext.Setup(x => x.HttpContext).Returns(context);
+        httpContext.Setup(x => x.HttpContext).Returns(inAnHttpRequest ? context : null);
 
         return new KaleidoMcpToolHandler(
             catalogs.Object,
@@ -59,7 +60,277 @@ public sealed class KaleidoMcpToolHandlerTests
             correlation.Object,
             forwarding.Object,
             httpContext.Object,
-            NullLogger<KaleidoMcpToolHandler>.Instance);
+            logger ?? NullLogger<KaleidoMcpToolHandler>.Instance);
+    }
+
+    private sealed class RecordingLogger : ILogger<KaleidoMcpToolHandler>
+    {
+        public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Entries.Add((logLevel, formatter(state, exception), exception));
+    }
+
+    [Fact]
+    public async Task ListTools_WhenReadingFailsUnexpectedly_LogsTheFailure_AtError()
+    {
+        var failure = new InvalidCastException("boom");
+        catalogs.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ThrowsAsync(failure);
+        var logger = new RecordingLogger();
+
+        await CreateSut(logger).ListToolsAsync(ListRequest(), Cancel);
+        await CreateSut(logger).ListToolsAsync(ListRequest(), Cancel);
+
+        Assert.Equal(2, logger.Entries.Count);
+        Assert.All(logger.Entries, x =>
+        {
+            Assert.Equal(LogLevel.Error, x.Level);
+            Assert.Equal("Kaleido MCP: listing tools failed unexpectedly; returning no tools.", x.Message);
+            Assert.Same(failure, x.Exception);
+        });
+        listObservation.Verify(x => x.Completed(It.IsAny<ToolCatalog>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ListTools_WhenTheCallerCancels_Propagates()
+    {
+        catalogs.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException());
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut().ListToolsAsync(ListRequest(), Cancel).AsTask());
+
+        listObservation.Verify(x => x.Dispose(), Times.Once);
+    }
+
+    [Fact]
+    public async Task CallTool_WhenReadingTheToolsFailsUnexpectedly_LogsTheFailure_ForTheTool()
+    {
+        var failure = new InvalidCastException("boom");
+        catalogs.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ThrowsAsync(failure);
+        var logger = new RecordingLogger();
+
+        await CreateSut(logger).CallToolAsync(CallRequest("clinic_patient"), Cancel);
+        await CreateSut(logger).CallToolAsync(CallRequest("clinic_chart"), Cancel);
+
+        Assert.Equal(
+            [
+                (LogLevel.Error, "Kaleido MCP: reading the tools failed unexpectedly for clinic_patient.", (Exception?)failure),
+                (LogLevel.Error, "Kaleido MCP: reading the tools failed unexpectedly for clinic_chart.", failure)
+            ],
+            logger.Entries);
+        invoker.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task CallTool_WhenReadingTheToolsIsCanceled_IsObservedAsCanceled_AndPropagates()
+    {
+        catalogs.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException());
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut().CallToolAsync(CallRequest("clinic_patient"), Cancel).AsTask());
+
+        callObservation.Verify(x => x.Canceled());
+        callObservation.Verify(x => x.Dispose(), Times.Once);
+    }
+
+    [Fact]
+    public async Task CallTool_WithoutParams_IsAnUnknownToolResult_ForTheEmptyName()
+    {
+        var request = new RequestContext<CallToolRequestParams>(server.Object, new JsonRpcRequest { Method = RequestMethods.ToolsCall }, parameters: null!);
+
+        var result = await CreateSut().CallToolAsync(request, Cancel);
+
+        Assert.True(result.IsError);
+        Assert.Equal(McpErrorCodes.UnknownTool, Body(result)["code"]?.GetValue<string>());
+        observability.Verify(x => x.BeginToolCall(string.Empty));
+        invoker.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task CallTool_WithoutParams_RunsTheToolOfTheEmptyName_WithNoArgumentsOrState()
+    {
+        var unnamed = Search with { Definition = new Tool { Name = string.Empty } };
+        catalogs.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new ToolCatalog { Tools = [unnamed] });
+        KaleidoToolCall? call = null;
+        invoker.Setup(x => x.InvokeAsync(unnamed, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
+            .Callback((KaleidoTool _, KaleidoToolCall given, ToolCatalog _, CancellationToken _) => call = given)
+            .ReturnsAsync(Text("{}"));
+        var request = new RequestContext<CallToolRequestParams>(server.Object, new JsonRpcRequest { Method = RequestMethods.ToolsCall }, parameters: null!);
+
+        await CreateSut().CallToolAsync(request, Cancel);
+
+        Assert.NotNull(call);
+        Assert.Empty(call.Arguments);
+        Assert.Null(call.Meta);
+        Assert.Null(call.InputResponses);
+        Assert.Null(call.RequestState);
+    }
+
+    [Fact]
+    public async Task CallTool_WithoutAnyRequest_Throws()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().CallToolAsync(null!, Cancel).AsTask());
+    }
+
+    [Fact]
+    public async Task CallTool_WhenTheToolReturnsNothing_IsAnInternalErrorResult_WithTheRequestId()
+    {
+        invoker.Setup(x => x.InvokeAsync(Search, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ToolOutcome());
+
+        var result = await CreateSut().CallToolAsync(CallRequest("clinic_patient"), Cancel);
+
+        Assert.True(result.IsError);
+        Assert.Equal(McpErrorCodes.InternalError, Body(result)["code"]?.GetValue<string>());
+        Assert.Equal("clinic_patient returned no result.", Body(result)["message"]?.GetValue<string>());
+        Assert.Equal("req-7", Body(result)["requestId"]?.GetValue<string>());
+        callObservation.Verify(x => x.Completed(result));
+    }
+
+    [Fact]
+    public async Task CallTool_WithoutArguments_RunsTheToolWithNone()
+    {
+        KaleidoToolCall? call = null;
+        invoker.Setup(x => x.InvokeAsync(Search, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
+            .Callback((KaleidoTool _, KaleidoToolCall given, ToolCatalog _, CancellationToken _) => call = given)
+            .ReturnsAsync(Text("{}"));
+
+        await CreateSut().CallToolAsync(
+            new RequestContext<CallToolRequestParams>(server.Object, new JsonRpcRequest { Method = RequestMethods.ToolsCall }, new CallToolRequestParams { Name = "clinic_patient" }),
+            Cancel);
+
+        Assert.NotNull(call);
+        Assert.Empty(call.Arguments);
+        Assert.Null(call.Meta);
+        Assert.Null(call.InputResponses);
+        Assert.Null(call.RequestState);
+        callObservation.Verify(x => x.Resolved(Search, null));
+    }
+
+    [Fact]
+    public async Task CallTool_PassesTheMetaAndTheMrtrAnswersThrough()
+    {
+        KaleidoToolCall? call = null;
+        invoker.Setup(x => x.InvokeAsync(Search, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
+            .Callback((KaleidoTool _, KaleidoToolCall given, ToolCatalog _, CancellationToken _) => call = given)
+            .ReturnsAsync(Text("{}"));
+        var meta = new JsonObject { ["io.modelcontextprotocol/clientCapabilities"] = new JsonObject() };
+        var answers = new InputResponse { RawValue = JsonSerializer.SerializeToElement(new { action = "accept" }) };
+
+        await CreateSut().CallToolAsync(
+            new RequestContext<CallToolRequestParams>(server.Object, new JsonRpcRequest { Method = RequestMethods.ToolsCall }, new CallToolRequestParams
+            {
+                Name = "clinic_patient",
+                Meta = meta,
+                InputResponses = new Dictionary<string, InputResponse> { ["kaleido-answers"] = answers }
+            }),
+            Cancel);
+
+        Assert.Same(meta, call?.Meta);
+        Assert.Same(answers, Assert.Single(call?.InputResponses ?? new Dictionary<string, InputResponse>(), x => x.Key == "kaleido-answers").Value);
+    }
+
+    [Fact]
+    public async Task CallTool_OutsideAnHttpRequest_IsForwardedAsAnonymous()
+    {
+        invoker.Setup(x => x.InvokeAsync(Search, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Text("{}"));
+
+        await CreateSut(inAnHttpRequest: false).CallToolAsync(CallRequest("clinic_patient"), Cancel);
+
+        forwarding.Verify(x => x.ForwardCaller(null), Times.Once);
+        forwardingScope.Verify(x => x.Dispose(), Times.Once);
+    }
+
+    [Fact]
+    public async Task CallTool_LeavesTextThatOnlyLooksLikeJsonAsItIs_AndStampsTheJsonBlocks()
+    {
+        invoker.Setup(x => x.InvokeAsync(Search, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CallToolResult
+            {
+                Content =
+                [
+                    new TextContentBlock { Text = "{not json" },
+                    new TextContentBlock { Text = """{"results":[]}""" },
+                    new TextContentBlock { Text = "{}" }
+                ]
+            });
+
+        var result = await CreateSut().CallToolAsync(CallRequest("clinic_patient"), Cancel);
+
+        var texts = result.Content.OfType<TextContentBlock>().Select(x => x.Text).ToArray();
+        Assert.Equal("{not json", texts[0]);
+        Assert.Equal("req-7", JsonNode.Parse(texts[1])?["requestId"]?.GetValue<string>());
+        Assert.Equal("req-7", JsonNode.Parse(texts[2])?["requestId"]?.GetValue<string>());
+    }
+
+    [Theory]
+    [InlineData("""{"name":7}""")]
+    [InlineData("""{"name":null}""")]
+    public async Task CallTool_WithANameThatIsNotText_IsAnUnknownToolResult(string arguments)
+    {
+        FrontDoorCatalog();
+
+        var result = await CreateSut().CallToolAsync(
+            new RequestContext<CallToolRequestParams>(server.Object, new JsonRpcRequest { Method = RequestMethods.ToolsCall }, new CallToolRequestParams
+            {
+                Name = ToolCatalogBuilder.CallToolTool,
+                Arguments = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(arguments)
+            }),
+            Cancel);
+
+        Assert.Equal(McpErrorCodes.UnknownTool, Body(result)["code"]?.GetValue<string>());
+        invoker.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("""{"name":"clinic_close_visit"}""")]
+    [InlineData("""{"name":"clinic_close_visit","arguments":"processId=1"}""")]
+    [InlineData("""{"name":"clinic_close_visit","arguments":null}""")]
+    public async Task CallTool_WithoutAnArgumentsObject_RunsTheNamedToolWithNone(string arguments)
+    {
+        FrontDoorCatalog();
+        KaleidoToolCall? call = null;
+        invoker.Setup(x => x.InvokeAsync(HiddenStep, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
+            .Callback((KaleidoTool _, KaleidoToolCall given, ToolCatalog _, CancellationToken _) => call = given)
+            .ReturnsAsync(Text("{}"));
+
+        await CreateSut().CallToolAsync(
+            new RequestContext<CallToolRequestParams>(server.Object, new JsonRpcRequest { Method = RequestMethods.ToolsCall }, new CallToolRequestParams
+            {
+                Name = ToolCatalogBuilder.CallToolTool,
+                Arguments = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(arguments)
+            }),
+            Cancel);
+
+        Assert.NotNull(call);
+        Assert.Empty(call.Arguments);
+        callObservation.Verify(x => x.Resolved(HiddenStep, null));
+    }
+
+    [Theory]
+    [InlineData("""{"processId":42}""")]
+    [InlineData("""{"processId":"not-a-guid"}""")]
+    public async Task CallTool_WithAProcessIdThatIsNotAnId_DoesNotTagIt_AndLeavesItToTheTool(string arguments)
+    {
+        KaleidoToolCall? call = null;
+        invoker.Setup(x => x.InvokeAsync(Search, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
+            .Callback((KaleidoTool _, KaleidoToolCall given, ToolCatalog _, CancellationToken _) => call = given)
+            .ReturnsAsync(Text("{}"));
+
+        await CreateSut().CallToolAsync(
+            new RequestContext<CallToolRequestParams>(server.Object, new JsonRpcRequest { Method = RequestMethods.ToolsCall }, new CallToolRequestParams
+            {
+                Name = "clinic_patient",
+                Arguments = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(arguments)
+            }),
+            Cancel);
+
+        callObservation.Verify(x => x.Resolved(Search, null));
+        Assert.True(call?.Arguments.ContainsKey("processId"));
     }
 
     private RequestContext<CallToolRequestParams> CallRequest(string tool, string? requestState = null) =>

@@ -9,29 +9,30 @@ Every Kaleido exception carries a machine-readable `Code`. Framework-defined cod
 | Type | Namespace | HTTP result | Code set |
 |---|---|---|---|
 | `KaleidoValidationException` | `Kaleido.Exceptions` | 400 Bad Request, or a failed Process step outcome | `QueryableErrorCodes` (`qry_*`), `ProcessorErrorCodes` (`pro_*`), or a handler-supplied domain code |
-| `KaleidoConfigurationException` | `Kaleido.Exceptions` | 500 Internal Server Error | the owning area's codes: `ConfigurationErrorCodes` (core), `QueryableErrorCodes`, `ProcessorErrorCodes`, `HttpClientErrorCodes`, `SqliteErrorCodes` |
+| `KaleidoConfigurationException` | `Kaleido.Exceptions` | 500 Internal Server Error | the owning area's codes: `ConfigurationErrorCodes` (core), `QueryableErrorCodes`, `ProcessorErrorCodes`, `HttpClientErrorCodes`, `SqliteErrorCodes`, `McpErrorCodes`, `OpenTelemetryErrorCodes` |
 | `KaleidoFrameworkException` | `Kaleido.Exceptions` | 500 Internal Server Error | `FrameworkErrorCodes` |
 | `KaleidoConcurrencyException` | `Kaleido.Exceptions` | 409 Conflict | `ProcessorErrorCodes.ProcessConflict` (`pro_process_conflict`) |
+| `KaleidoAuthorizationException` | `Kaleido.Exceptions` | 401 (unauthenticated) or 403 (denied), answered by the host's authentication scheme (challenge / forbid) | none: carries `Capability` and `CallerIsAuthenticated` ([`AUTHORIZATION.md`](./AUTHORIZATION.md)) |
 | `KaleidoHttpClientException` | `Kaleido.Http.Client` | — (client-side) | `HttpClientErrorCodes` |
 
-Each area owns its codes; there is no single catalog. Code string values are stable regardless of which class declares them.
+Each area owns its codes; there is no single catalog. Code string values are stable regardless of which class declares them. Every failed Kaleido endpoint answers with the same body, `KaleidoErrorResponse`: `{ "errors": [{ "code", "message" }] }`. The MCP adapter's `mcp_*` codes are returned inside tool results and are listed in the [MCP README](../src/Kaleido.Http.Mcp/README.md#when-a-call-fails).
 
 A request the HTTP layer cannot read (a body that is not JSON, a value that does not fit its type, a C# `required` member left out) is answered 400 `argument_error` (415 for a non-JSON content type) with a message naming the JSON path, by Kaleido's error handling on the per-step and query endpoints; a `JsonException` is never a 500.
 
-HTTP middleware exposes a validation exception's `Code` and `Message` in a 400 error body. A Process step handler's validation exception instead produces a failed step outcome; its original code and message appear in `FrameworkMessages` only when the transport enables framework diagnostics. Configuration and framework exception codes remain log-only.
+HTTP middleware exposes a validation exception's `Code` and `Message` in a 400 error body. A Process step handler's validation exception instead produces a failed step outcome; its original code and message appear in `FrameworkMessages` only when the transport enables framework diagnostics. A configuration or framework exception thrown during a request is logged and answered 500 with its `Code` and `Message`; one thrown at startup stops the host and never reaches a response.
 
 ---
 
 ## `QueryableErrorCodes` — Queryable startup and request validation
 
-One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup registration codes are raised as `KaleidoConfigurationException` (log-only); request-validation codes as `KaleidoValidationException` (400 body).
+One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup registration codes are raised as `KaleidoConfigurationException` at startup (they stop the host and never reach a response); request-validation codes as `KaleidoValidationException` (400 body).
 
 | Constant | Code | Meaning |
 |---|---|---|
 | `MissingAttribute` | `qry_missing_attribute` | Query source or view missing `[QuerySource]`/`[QueryView]`, or with an empty `Version`/`DisplayName`/`Description` (startup) |
 | `MissingSource` | `qry_missing_source` | Query view references a type that is not a registered local query source (startup) |
 | `DuplicateRegistration` | `qry_duplicate_registration` | Two sources share a type name, or two views of one source share a type name (startup) |
-| `InvalidRegistration` | `qry_invalid_registration` | Structurally invalid registration, for example `[QuerySource]`/`[QueryView]` on a type that implements no source or view interface (also KAL2012), both sync and async shapes, more than one source/view interface, a type that is both a source and a view, or a pageable view or local source without a valid sortable `DefaultSortField` (startup) |
+| `InvalidRegistration` | `qry_invalid_registration` | Structurally invalid registration, for example `[QuerySource]`/`[QueryView]` on a type that implements no source or view interface (also KAL2012), both sync and async shapes, more than one source/view interface, a type that is both a source and a view, a pageable view or local source without a valid sortable `DefaultSortField`, or a `[Filterable]` operator that does not apply to the field's type (also KAL2023) (startup) |
 | `InvalidField` | `qry_invalid_field` | Field referenced in a filter, sort, or parameter does not exist on the query context |
 | `UnsupportedOperator` | `qry_unsupported_operator` | Filter condition uses an operator not supported by the field |
 | `FieldNotFilterable` | `qry_field_not_filterable` | Filter condition references a field not marked as filterable |
@@ -75,7 +76,7 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `ProcessConflict` | `pro_process_conflict` | Another request saved the process since this one loaded it (optimistic concurrency); nothing of this request was saved. Read the process state again and decide on the next step (409, `KaleidoConcurrencyException`) |
 | `IdempotencyKeyReused` | `pro_idempotency_key_reused` | An `Idempotency-Key` was sent again with a different request; a key identifies one call - use a new key for a new call (422) |
 | `InvalidIdempotencyKey` | `pro_invalid_idempotency_key` | The `Idempotency-Key` header is longer than 200 characters (400) |
-| `InvalidRequest` | `pro_invalid_request` | Step request cannot be hydrated or processed |
+| `InvalidRequest` | `pro_invalid_request` | Step request cannot be hydrated or processed, or an execute request names a step more than once (400) |
 | `PropertyNotFound` | `pro_property_not_found` | Requested step property was not found |
 | `ConversionFailed` | `pro_conversion_failed` | Request value could not be converted |
 | `ValidationFailed` | `pro_validation_failed` | Generic, custom, or object-level step validation failed |
@@ -132,8 +133,17 @@ These indicate a framework bug or broken DI wiring, not a user error.
 | `TypeMismatch` | `type_mismatch` | Resolved type does not match the expected type |
 | `MissingRegistration` | `missing_registration` | Required entry not found in an internal registry |
 | `InvalidHandlerResult` | `invalid_handler_result` | Handler returned an unexpected or null result |
-| `UnsupportedDataType` | `unsupported_data_type` | `DataTypeMapper` does not support the CLR type |
-| `DataConversionError` | `data_conversion_error` | `DataTypeMapper` failed to convert a value |
+| `UnsupportedDataType` | `unsupported_data_type` | Reserved: defined but not raised by the current code (unsupported CLR types are described as generic objects) |
+| `DataConversionError` | `data_conversion_error` | Reserved: defined but not raised by the current code (value conversion failures surface as `argument_error` or `qry_invalid_filter_value`) |
+
+---
+
+## `KaleidoErrorCodes` - shared HTTP error-body codes
+
+| Constant | Code | Meaning |
+|---|---|---|
+| `ArgumentError` | `argument_error` | 400 (415 for a non-JSON content type): a body Kaleido cannot read - malformed JSON, a value that does not fit its type, a `required` member left out, a malformed correlation header such as a non-GUID `X-Kaleido-Process-Id` |
+| `FrameworkError` | `framework_error` | 500 for an unexpected failure; the message is generic and never carries the exception's detail |
 
 ---
 
@@ -150,6 +160,7 @@ Runtime client codes are prefixed `httpclient_`; `missing_base_url` is a startup
 | `Conflict` | `httpclient_conflict` | The remote process was changed by another request (409, `pro_process_conflict` in `Errors`); nothing was saved - read the state again instead of repeating the call |
 | `InvalidRegistryUrl` | `httpclient_invalid_registry_url` | A URL returned by a remote registry was not a valid absolute http(s) URL |
 | `MissingBaseUrl` | `missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
+| `UnknownClient` | `httpclient_unknown_client` | `GetClient` was asked for a name not configured under `Kaleido:Clients`; the message lists the configured clients (`KaleidoConfigurationException`, at the call) |
 
 ---
 
@@ -160,6 +171,14 @@ The reference provider owns its own code; core knows nothing about it.
 | Constant | Code | Meaning |
 |---|---|---|
 | `InvalidConnectionString` | `invalid_connection_string` | Process context-store connection string cannot be parsed at registration |
+
+---
+
+## `OpenTelemetryErrorCodes` - OpenTelemetry provider (`Kaleido.Observability.OpenTelemetry`)
+
+| Constant | Code | Meaning |
+|---|---|---|
+| `InvalidOptions` | `otel_invalid_options` | A `Kaleido:OpenTelemetry` setting cannot be used: a protocol other than `grpc`/`http/protobuf`, or a malformed `key=value` list (startup, `KaleidoConfigurationException`) |
 
 ---
 

@@ -200,6 +200,143 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         Assert.Contains("MemberId", ex.Message);
     }
 
+    [Fact]
+    public void AddProcessor_WhenNoAssemblyIsRegistered_Throws()
+    {
+        var builder = new Mock<IKaleidoBuilder>();
+        builder.SetupGet(x => x.Assemblies).Returns([]);
+
+        var ex =
+            Assert.Throws<KaleidoConfigurationException>(() =>
+                builder.Object.AddProcessor());
+
+        Assert.Equal(ConfigurationErrorCodes.MissingAssembly, ex.Code);
+    }
+
+    [Fact]
+    public void AddProcessor_WhenBuilderIsNull_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => ((IKaleidoBuilder)null!).AddProcessor());
+    }
+
+    [Fact]
+    public void AddProcessor_WhenAStepHasNoHandler_Throws()
+    {
+        var assembly =
+            BuildAssembly(module =>
+                DefineType(module, "Steps.UnhandledStep", implementsStep: true, withAttribute: true));
+
+        var ex =
+            Assert.Throws<KaleidoConfigurationException>(() =>
+                AddKaleido(assembly));
+
+        Assert.Equal(ProcessorErrorCodes.MissingHandler, ex.Code);
+        Assert.Contains("Steps.UnhandledStep", ex.Message);
+    }
+
+    [Fact]
+    public void AddProcessor_WhenAStepHasTwoHandlers_Throws()
+    {
+        var assembly =
+            BuildAssembly(module =>
+            {
+                var step = DefineType(module, "Steps.DoublyHandledStep", implementsStep: true, withAttribute: true);
+                DefineHandler(module, "Handlers.FirstHandler", step);
+                DefineHandler(module, "Handlers.SecondHandler", step);
+            });
+
+        var ex =
+            Assert.Throws<KaleidoConfigurationException>(() =>
+                AddKaleido(assembly));
+
+        Assert.Equal(ProcessorErrorCodes.InvalidHandler, ex.Code);
+        Assert.Contains("Handlers.FirstHandler", ex.Message);
+        Assert.Contains("Handlers.SecondHandler", ex.Message);
+    }
+
+    // Emits a concrete IProcessStepHandler<TStep> whose ExecuteAsync throws NotImplementedException.
+    private static void DefineHandler(
+        System.Reflection.Emit.ModuleBuilder module,
+        string fullName,
+        Type stepType)
+    {
+        var handlerInterface = typeof(IProcessStepHandler<>).MakeGenericType(stepType);
+        var typeBuilder =
+            module.DefineType(
+                fullName,
+                System.Reflection.TypeAttributes.Public |
+                System.Reflection.TypeAttributes.Class |
+                System.Reflection.TypeAttributes.Sealed);
+
+        typeBuilder.AddInterfaceImplementation(handlerInterface);
+        typeBuilder.DefineDefaultConstructor(System.Reflection.MethodAttributes.Public);
+
+        var execute =
+            typeBuilder.DefineMethod(
+                nameof(IProcessStepHandler<IProcessStep>.ExecuteAsync),
+                System.Reflection.MethodAttributes.Public |
+                System.Reflection.MethodAttributes.Virtual |
+                System.Reflection.MethodAttributes.Final |
+                System.Reflection.MethodAttributes.NewSlot |
+                System.Reflection.MethodAttributes.HideBySig,
+                typeof(Task<ProcessStepHandlerResult>),
+                [stepType, typeof(ProcessStepContext), typeof(CancellationToken)]);
+        var il = execute.GetILGenerator();
+        il.Emit(
+            System.Reflection.Emit.OpCodes.Newobj,
+            typeof(NotImplementedException).GetConstructor(Type.EmptyTypes)
+                ?? throw new InvalidOperationException("NotImplementedException constructor not found."));
+        il.Emit(System.Reflection.Emit.OpCodes.Throw);
+
+        typeBuilder.DefineMethodOverride(
+            execute,
+            handlerInterface.GetMethod(nameof(IProcessStepHandler<IProcessStep>.ExecuteAsync))
+                ?? throw new InvalidOperationException("ExecuteAsync not found."));
+        typeBuilder.CreateType();
+    }
+
+    [Fact]
+    public void AddProcessor_IgnoresAbstractAndInterfaceStepTypes()
+    {
+        var assembly =
+            BuildAssembly(module =>
+            {
+                module.DefineType(
+                        "Steps.AbstractStep",
+                        System.Reflection.TypeAttributes.Public | System.Reflection.TypeAttributes.Class | System.Reflection.TypeAttributes.Abstract,
+                        parent: null,
+                        interfaces: [typeof(IProcessStep)])
+                    .CreateType();
+                DefineHandlerInterface(module, "Steps.IStepContract", typeof(IProcessStep));
+            });
+
+        var services = new ServiceCollection();
+
+        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+        {
+            o.ServiceName = "test-processor";
+            o.Assemblies = [assembly];
+        });
+
+        Assert.DoesNotContain(services, x => x.ServiceType == typeof(IProcessorStepRegistry));
+    }
+
+    private static void DefineHandlerInterface(
+        System.Reflection.Emit.ModuleBuilder module,
+        string fullName,
+        Type handlerInterface)
+    {
+        var typeBuilder =
+            module.DefineType(
+                fullName,
+                System.Reflection.TypeAttributes.Public |
+                System.Reflection.TypeAttributes.Interface |
+                System.Reflection.TypeAttributes.Abstract);
+
+        typeBuilder.AddInterfaceImplementation(handlerInterface);
+        typeBuilder.CreateType();
+    }
+
     private static void AddKaleido(
         System.Reflection.Assembly assembly)
     {
@@ -225,7 +362,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         return assemblyBuilder;
     }
 
-    private static void DefineType(
+    private static Type DefineType(
         System.Reflection.Emit.ModuleBuilder module,
         string fullName,
         bool implementsStep,
@@ -263,7 +400,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
                     [version, displayName, description]));
         }
 
-        typeBuilder.CreateType();
+        return typeBuilder.CreateType();
     }
 
     // Emits an IInformationStep (with the interface's init-only properties) plus an extra property.

@@ -1,6 +1,5 @@
 using Kaleido.Observability;
 using Kaleido.Processor.Context;
-using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Registry;
 
 using Kaleido.UnitTests;
@@ -169,6 +168,74 @@ public sealed class ProcessorEventFactoryTests
         Assert.Equal(
             ProcessorErrorCodes.Required,
             Assert.Single(result.Event.Candidates.First().Messages).Code);
+    }
+
+    [Fact]
+    public void CreatePlanBuilt_ACandidateWithoutARegistration_HasNoVersion()
+    {
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
+        var request = new ProcessRequest { Processor = new ProcessorRequest { Steps = new Dictionary<string, object?> { ["unknown"] = null } } };
+        var plan = new ExecutionPlanResult { Candidates = [StepCandidate.Invalid("unknown", ProcessorErrorCodes.InvalidRequest, "unknown step")] };
+
+        var result = Sut.CreatePlanBuilt(new KaleidoCorrelationContext(), context, request, plan, 0);
+
+        var candidate = Assert.Single(result.Event.Candidates);
+        Assert.Equal(string.Empty, candidate.StepVersion);
+        Assert.Equal(StepCandidateStatus.Invalid, candidate.CandidateStatus);
+    }
+
+    private static ProcessExecutionOutcome CompletedOutcome() =>
+        new()
+        {
+            StepName = "test-step",
+            Decision = ExecutionDecisionType.Continue,
+            Status = StepExecutionStatus.Completed,
+            Outcome = StepExecutionOutcome.Completed
+        };
+
+    [Fact]
+    public void CreateStepCompleted_TakesTheVersionAndHistoryFromTheStepInTheProcess()
+    {
+        var executed = DateTimeOffset.UtcNow;
+        var context = new ProcessorContext
+        {
+            ProcessId = Guid.NewGuid(),
+            ProcessorName = "test",
+            Steps = [new StepContext { StepName = "test-step", Version = "2.0", LatestRequestId = "req-7", LastExecuted = executed }]
+        };
+
+        var envelope = Sut.CreateStepCompleted(new KaleidoCorrelationContext(), context, new StepCandidate { StepName = "test-step" }, CompletedOutcome(), new StepInvocationResult());
+
+        Assert.Equal("2.0", envelope.Event.StepVersion);
+        Assert.Equal("req-7", envelope.Event.StepLatestRequestId);
+        Assert.Equal(executed, envelope.Event.StepLastExecuted);
+    }
+
+    [Fact]
+    public void CreateStepCompleted_ForAStepNotInTheProcess_FallsBackToTheRegistrationVersion_OrNone()
+    {
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
+        var registered = new StepCandidate
+        {
+            StepName = "test-step",
+            Registration = new ProcessStepRegistration(
+                typeof(object),
+                typeof(object),
+                typeof(object),
+                [],
+                [],
+                [],
+                new RepeatableOptions { Enabled = false },
+                new ProcessStepMetadata { Name = "test-step", Description = "desc", Version = "3.1", DisplayName = "display" })
+        };
+
+        var withRegistration = Sut.CreateStepCompleted(new KaleidoCorrelationContext(), context, registered, CompletedOutcome(), new StepInvocationResult());
+        var withoutRegistration = Sut.CreateStepCompleted(new KaleidoCorrelationContext(), context, new StepCandidate { StepName = "test-step" }, CompletedOutcome(), new StepInvocationResult());
+
+        Assert.Equal("3.1", withRegistration.Event.StepVersion);
+        Assert.Equal(string.Empty, withoutRegistration.Event.StepVersion);
+        Assert.Null(withoutRegistration.Event.StepLatestRequestId);
+        Assert.Null(withoutRegistration.Event.StepLastExecuted);
     }
 
     [Fact]

@@ -32,7 +32,7 @@ internal static class ProcessContractUrls
         => $"{ProcessesPrefix(serviceName)}/{processId}";
 }
 
-public static class ProcessEndpointNames
+internal static class ProcessEndpointNames
 {
     public const string ExecuteEndpointName =
         "KaleidoProcessExecute";

@@ -3,6 +3,10 @@ using Microsoft.AspNetCore.Routing;
 
 namespace Kaleido.Http.Mcp;
 
+/// <summary>
+/// Maps the Kaleido MCP endpoint registered by <c>AddMcp()</c>; the entry point is
+/// <see cref="MapKaleidoMcp"/>.
+/// </summary>
 public static class KaleidoMcpEndpointRouteBuilderExtensions
 {
     /// <summary>

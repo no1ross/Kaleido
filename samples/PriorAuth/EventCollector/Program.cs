@@ -1,7 +1,9 @@
+using Kaleido.Samples.PriorAuth.Compliance;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Kaleido.Samples.PriorAuth.EventCollector.Data;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -9,31 +11,63 @@ using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var serviceName =
-    builder.Configuration["OTEL_SERVICE_NAME"]
-    ?? builder.Environment.ApplicationName;
+// The collector is not a Kaleido service, so it wires OpenTelemetry itself from its own
+// "OpenTelemetry" section. As in Kaleido's AddOpenTelemetry(), the standard OTEL_* keys (set by
+// compose) win over that section, and the SDK defaults apply when neither is set.
+var telemetrySettings = builder.Configuration.GetSection("OpenTelemetry");
 
-var resourceBuilder =
-    ResourceBuilder.CreateDefault()
-        .AddService(serviceName: serviceName);
+string? Configured(string standardKey, string key) =>
+    string.IsNullOrWhiteSpace(builder.Configuration[standardKey]) ? telemetrySettings[key] : null;
 
-builder.Logging.AddOpenTelemetry(options =>
+var serviceName = telemetrySettings["ServiceName"] ?? builder.Environment.ApplicationName;
+var endpoint = Configured("OTEL_EXPORTER_OTLP_ENDPOINT", "Endpoint");
+var protocol = Configured("OTEL_EXPORTER_OTLP_PROTOCOL", "Protocol");
+
+void ConfigureExporter(OtlpExporterOptions exporter, string signal)
 {
-    options.IncludeFormattedMessage = true;
-    options.IncludeScopes = true;
-    options.SetResourceBuilder(resourceBuilder);
-    options.AddOtlpExporter();
-});
+    if (string.Equals(protocol, "http/protobuf", StringComparison.OrdinalIgnoreCase))
+    {
+        exporter.Protocol = OtlpExportProtocol.HttpProtobuf;
+    }
+
+    if (endpoint is not null)
+    {
+        // The SDK appends the signal path only to an endpoint it read from OTEL_*.
+        exporter.Endpoint = exporter.Protocol == OtlpExportProtocol.HttpProtobuf
+            ? new Uri($"{endpoint.TrimEnd('/')}/v1/{signal}")
+            : new Uri(endpoint);
+    }
+}
+
+void ConfigureResource(ResourceBuilder resource)
+{
+    resource.AddService(serviceName: serviceName);
+
+    var attributes = (telemetrySettings["ResourceAttributes"] ?? string.Empty)
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(x => x.Split('=', 2, StringSplitOptions.TrimEntries))
+        .Where(x => x.Length == 2 && x[0].Length > 0)
+        .Select(x => new KeyValuePair<string, object>(x[0], x[1]));
+
+    // OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES are applied last, so they win.
+    resource.AddAttributes(attributes).AddEnvironmentVariableDetector();
+}
 
 builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource =>
-        resource.AddService(serviceName: serviceName))
+    .ConfigureResource(ConfigureResource)
+    .WithLogging(
+        logging => logging.AddOtlpExporter(o => ConfigureExporter(o, "logs")),
+        options =>
+        {
+            options.IncludeFormattedMessage = true;
+            options.IncludeScopes = true;
+        })
     .WithTracing(tracing =>
     {
         tracing
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
-            .AddOtlpExporter();
+            .AddOtlpExporter(o => ConfigureExporter(o, "traces"));
     })
     .WithMetrics(metrics =>
     {
@@ -41,13 +75,13 @@ builder.Services.AddOpenTelemetry()
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
             .AddRuntimeInstrumentation()
-            .AddOtlpExporter();
+            .AddOtlpExporter(o => ConfigureExporter(o, "metrics"));
     });
 
 var eventCollectorConnectionString =
     builder.Configuration.GetConnectionString("EventCollector")
     ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(
-        Kaleido.Exceptions.ConfigurationErrorCodes.InvalidServiceName,
+        PriorAuthErrorCodes.MissingConnectionString,
         "ConnectionStrings:EventCollector is required.");
 
 builder.Services.AddDbContext<EventCollectorDbContext>(

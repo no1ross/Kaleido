@@ -2,7 +2,7 @@ namespace Kaleido;
 
 /// <summary>
 /// Declares the authorization requirement for a Kaleido capability — a process step,
-/// query context, or query view. Transport-agnostic metadata only: the HTTP layer
+/// query source, or query view. Transport-agnostic metadata only: the HTTP layer
 /// maps <see cref="Policy"/> to an ASP.NET named authorization policy and
 /// <see cref="Roles"/> to role checks against the caller's claims principal.
 /// Declarations take effect when <see cref="KaleidoServiceOptions.AuthorizationMode"/>

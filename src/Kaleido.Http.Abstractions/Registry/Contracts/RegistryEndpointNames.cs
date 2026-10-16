@@ -1,6 +1,6 @@
 namespace Kaleido.Http.Registry.Contracts;
 
-public static class RegistryEndpointNames
+internal static class RegistryEndpointNames
 {
     public const string RegistryEndpointName = "KaleidoRegistry";
 }

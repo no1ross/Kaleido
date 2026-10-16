@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Http.Registry;
 
-public static class RegistryEndpointRouteBuilderExtensions
+internal static class RegistryEndpointRouteBuilderExtensions
 {
     /// <summary>
     /// Maps the unified registry endpoint at <c>GET /{service}/registry</c>.

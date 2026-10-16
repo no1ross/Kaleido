@@ -12,14 +12,15 @@ public sealed class KaleidoAuthorizationEvaluatorTests
     : SutFixture
 {
     private static KaleidoAuthorizationEvaluator CreateSut(
-        KaleidoAuthorizationMode mode = KaleidoAuthorizationMode.Authenticated) =>
+        KaleidoAuthorizationMode mode = KaleidoAuthorizationMode.Authenticated,
+        Microsoft.Extensions.Logging.ILogger<KaleidoAuthorizationEvaluator>? logger = null) =>
         new(
             new KaleidoServiceOptions
             {
                 ServiceName = "test",
                 AuthorizationMode = mode
             },
-            NullLogger<KaleidoAuthorizationEvaluator>.Instance);
+            logger ?? NullLogger<KaleidoAuthorizationEvaluator>.Instance);
 
     private static KaleidoCorrelationContext Caller(
         string? name = null,
@@ -235,5 +236,66 @@ public sealed class KaleidoAuthorizationEvaluatorTests
                 policyEvaluator: null));
 
         Assert.True(authenticated.CallerIsAuthenticated);
+    }
+
+    [Fact]
+    public async Task AuthorizeAsync_WhenAllowed_Completes()
+    {
+        var sut = CreateSut();
+
+        await sut.AuthorizeAsync(new AuthorizationMetadata(null, ["radiology"]), "cap", Caller("bob", "RADIOLOGY"), policyEvaluator: null);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(" ")]
+    public async Task AuthorizeAsync_WithoutACapabilityName_Throws(string? capabilityName)
+    {
+        await Assert.ThrowsAnyAsync<ArgumentException>(
+            () => CreateSut().AuthorizeAsync(null, capabilityName!, Caller("bob"), policyEvaluator: null));
+    }
+
+    [Fact]
+    public async Task CanAccessAsync_WithoutACaller_Throws()
+    {
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().CanAccessAsync(null, null!, null));
+
+        Assert.Equal("caller", exception.ParamName);
+    }
+
+    [Fact]
+    public async Task CanAccessAsync_Enforced_WhenThePolicyIsNotSatisfied_Denies()
+    {
+        using var cancellation = new CancellationTokenSource();
+        string? evaluatedPolicy = null;
+        CancellationToken evaluatedToken = default;
+
+        var allowed = await CreateSut().CanAccessAsync(
+            new AuthorizationMetadata("can-view", []),
+            Caller("alice"),
+            (policy, token) =>
+            {
+                evaluatedPolicy = policy;
+                evaluatedToken = token;
+                return Task.FromResult(false);
+            },
+            cancellation.Token);
+
+        Assert.False(allowed);
+        Assert.Equal("can-view", evaluatedPolicy);
+        Assert.Equal(cancellation.Token, evaluatedToken);
+    }
+
+    [Fact]
+    public async Task CanAccessAsync_Enforced_WithPolicy_NoEvaluator_LogsAWarning()
+    {
+        var logger = new Mock<Microsoft.Extensions.Logging.ILogger<KaleidoAuthorizationEvaluator>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<Microsoft.Extensions.Logging.LogLevel>())).Returns(true);
+
+        await CreateSut(logger: logger.Object).CanAccessAsync(new AuthorizationMetadata("can-view", []), Caller("alice"), policyEvaluator: null);
+
+        var logged = Assert.Single(logger.Invocations, x => x.Method.Name == nameof(Microsoft.Extensions.Logging.ILogger.Log));
+        Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Warning, logged.Arguments[0]);
+        Assert.Contains("requires policy 'can-view'", logged.Arguments[2].ToString(), StringComparison.Ordinal);
     }
 }

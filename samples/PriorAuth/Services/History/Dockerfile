@@ -7,8 +7,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY . .
-RUN dotnet restore "samples/PriorAuth/History/Kaleido.Samples.PriorAuth.History.csproj"
-RUN dotnet publish "samples/PriorAuth/History/Kaleido.Samples.PriorAuth.History.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet restore "samples/PriorAuth/Services/History/Kaleido.Samples.PriorAuth.History.csproj"
+RUN dotnet publish "samples/PriorAuth/Services/History/Kaleido.Samples.PriorAuth.History.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app

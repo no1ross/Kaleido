@@ -176,6 +176,90 @@ public sealed class QueryRequestCompilerTests
         Assert.Contains("Field 'Missing' does not exist", exception.Message);
     }
 
+    [Fact]
+    public void Compile_WhenRequestOrMetadataIsNull_Throws()
+    {
+        Assert.Equal("request", Assert.Throws<ArgumentNullException>(() => Sut.Compile(null!, CreateContextMetadata(), null)).ParamName);
+        Assert.Equal("metadata", Assert.Throws<ArgumentNullException>(() => Sut.Compile(new QueryRequest(), null!, null)).ParamName);
+    }
+
+    [Fact]
+    public void Compile_WhenANodeHasConditionAndGroup_Throws()
+    {
+        var node = new QueryFilterNode(
+            new QueryFilterCondition(nameof(TestRecord.Code), FilterOperator.Equals, ["A"]),
+            new QueryFilterGroup(LogicalOperator.And, []));
+
+        var exception = Assert.Throws<KaleidoValidationException>(() => Compile(new QueryRequest(new QueryBody(Filter: node)), CreateContextMetadata()));
+
+        Assert.Equal(QueryableErrorCodes.InvalidFilterNode, exception.Code);
+    }
+
+    [Fact]
+    public void Compile_WhenANodeHasNeitherConditionNorGroup_Throws()
+    {
+        var exception = Assert.Throws<KaleidoValidationException>(
+            () => Compile(new QueryRequest(new QueryBody(Filter: new QueryFilterNode(null, null))), CreateContextMetadata()));
+
+        Assert.Equal(QueryableErrorCodes.InvalidFilterNode, exception.Code);
+    }
+
+    [Fact]
+    public void Compile_WhenASearchableFieldHasNoMatchMode_ThrowsFrameworkException()
+    {
+        var metadata = CreateContextMetadata() with
+        {
+            Fields = [new FieldMetadata { Name = nameof(TestRecord.Name), FieldType = typeof(string), DataType = TestDataType, IsSearchable = true, SearchPriority = 1, MatchMode = null }],
+        };
+
+        var exception = Assert.Throws<KaleidoFrameworkException>(() => Compile(new QueryRequest(new QueryBody(SearchText: "abc")), metadata));
+
+        Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
+        Assert.Contains(nameof(TestRecord.Name), exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Compile_SearchFieldWithoutPriority_IsOrderedLast()
+    {
+        var metadata = CreateContextMetadata() with
+        {
+            Fields =
+            [
+                new FieldMetadata { Name = nameof(TestRecord.Code), FieldType = typeof(string), DataType = TestDataType, IsSearchable = true, SearchPriority = null, MatchMode = MatchMode.Exact },
+                new FieldMetadata { Name = nameof(TestRecord.Name), FieldType = typeof(string), DataType = TestDataType, IsSearchable = true, SearchPriority = 3, MatchMode = MatchMode.Contains },
+            ],
+        };
+
+        var search = Assert.IsType<CompiledSearch>(Compile(new QueryRequest(new QueryBody(SearchText: "abc")), metadata).Search);
+
+        Assert.Equal([nameof(TestRecord.Name), nameof(TestRecord.Code)], search.Fields.Select(x => x.Field.Name));
+        Assert.Equal([3, int.MaxValue], search.Fields.Select(x => x.Priority));
+    }
+
+    [Fact]
+    public void Compile_SortsWithoutSequence_KeepTheirOrderAfterSequencedSorts()
+    {
+        var request = new QueryRequest(
+            new QueryBody(
+                Sort:
+                [
+                    new QuerySort(nameof(TestRecord.Region), SortDirection.Descending),
+                    new QuerySort(nameof(TestRecord.Code), SortDirection.Ascending, 1),
+                ]));
+
+        var result = Compile(request, CreateContextMetadata());
+
+        Assert.Equal([nameof(TestRecord.Code), nameof(TestRecord.Region)], result.Sort.Select(x => x.Field.Name));
+    }
+
+    [Fact]
+    public void Compile_EmptySortList_UsesTheDefaultSortField()
+    {
+        var result = Sut.Compile(new QueryRequest(new QueryBody(Sort: [])), CreateContextMetadata(), new PageableMetadata(10, 20, nameof(TestRecord.Code)));
+
+        Assert.Equal(nameof(TestRecord.Code), Assert.Single(result.Sort).Field.Name);
+    }
+
     private CompiledQuery Compile(IQueryRequest request, QuerySourceMetadata metadata) =>
         Sut.Compile(request, metadata, metadata.Pageable);
 

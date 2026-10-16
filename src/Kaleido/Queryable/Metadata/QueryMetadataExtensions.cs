@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Linq.Expressions;
 using System.Reflection;
 using Kaleido.Registry;
 
@@ -34,7 +35,7 @@ internal static class QueryMetadataExtensions
             FieldType = property.PropertyType,
             DataType = typeDescriber.GetDescriptor(property),
             IsFilterable = filterable is not null,
-            FilterOperators = filterable?.Operators ?? [],
+            FilterOperators = filterable is null ? [] : property.ValidateFilterOperators(filterable.Operators),
             IsSearchable = searchable is not null,
             SearchPriority = searchable?.Priority,
             MatchMode = searchable?.MatchMode,
@@ -159,6 +160,58 @@ internal static class QueryMetadataExtensions
                 kind == QuerySourceKind.Local
                     ? ValidateDefaultSort("Query source", sourceType, contextType, attribute.DefaultSortField)
                     : null);
+    }
+
+    // Every declared filter operator must apply to the field's type, the way the query engine
+    // (CompiledQueryApplier) builds it; otherwise the registry would advertise an operator that
+    // fails every request that uses it. Analyzer KAL2023 reports the same mistakes at compile time.
+    private static IReadOnlyList<FilterOperator> ValidateFilterOperators(
+        this PropertyInfo property,
+        IReadOnlyList<FilterOperator> operators)
+    {
+        var type = property.PropertyType;
+
+        foreach (var @operator in operators)
+        {
+            var reason = @operator switch
+            {
+                FilterOperator.Equals or FilterOperator.NotEquals when !Builds(Expression.Equal, type) =>
+                    "the type has no equality operator",
+                FilterOperator.GreaterThan or FilterOperator.GreaterThanOrEqual or FilterOperator.LessThan or FilterOperator.LessThanOrEqual
+                    or FilterOperator.Between or FilterOperator.NotBetween when !Builds(Expression.GreaterThan, type) =>
+                    "the type cannot be compared (a number, date, time or other type with comparison operators)",
+                FilterOperator.Contains or FilterOperator.NotContains or FilterOperator.StartsWith or FilterOperator.EndsWith
+                    when type != typeof(string) =>
+                    "it applies to string fields only",
+                FilterOperator.IsTrue or FilterOperator.IsFalse when (Nullable.GetUnderlyingType(type) ?? type) != typeof(bool) =>
+                    "it applies to bool fields only",
+                FilterOperator.IsNull or FilterOperator.IsNotNull when type.IsValueType && Nullable.GetUnderlyingType(type) is null =>
+                    "the type cannot be null",
+                _ => null,
+            };
+
+            if (reason is not null)
+            {
+                throw new KaleidoConfigurationException(
+                    QueryableErrorCodes.InvalidRegistration,
+                    $"Query context '{property.DeclaringType?.Name}' field '{property.Name}' ({type.Name}) declares filter operator '{@operator}', which does not apply: {reason}.");
+            }
+        }
+
+        return operators;
+    }
+
+    private static bool Builds(Func<Expression, Expression, BinaryExpression> build, Type type)
+    {
+        try
+        {
+            build(Expression.Default(type), Expression.Default(type));
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     // The default sort field, by its declared property name, after checking it exists and is sortable.

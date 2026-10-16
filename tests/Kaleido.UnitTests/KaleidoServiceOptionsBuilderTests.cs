@@ -37,4 +37,48 @@ public sealed class KaleidoServiceOptionsBuilderTests : SutFixture<KaleidoServic
         Assert.Null(options.TypeFilter);
         Assert.False(options.IsEntryProcessor);
     }
+
+    [Fact]
+    public void Build_CopiesEventsAndAuthorizationSoLaterChangesDoNotLeak()
+    {
+        var sut = CreateSut();
+        var roles = new List<string> { "admin" };
+        sut.Events.BatchSize = 7;
+        sut.DefaultAuthorization = new Kaleido.Registry.AuthorizationMetadata("staff", roles);
+        sut.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
+
+        var options = sut.Build();
+        sut.Events.BatchSize = 99;
+        roles.Add("other");
+
+        Assert.Equal(7, options.Events.BatchSize);
+        Assert.NotSame(sut.Events, options.Events);
+        Assert.Equal("staff", options.DefaultAuthorization.Policy);
+        Assert.Equal(["admin"], options.DefaultAuthorization.Roles);
+        Assert.Equal(KaleidoAuthorizationMode.ZeroTrust, options.AuthorizationMode);
+    }
+
+    [Fact]
+    public void Build_WhenEventsIsNull_ThrowsInvalidEventOptions()
+    {
+        var sut = CreateSut();
+        sut.Events = null!;
+
+        var exception = Assert.Throws<Kaleido.Exceptions.KaleidoConfigurationException>(() => sut.Build());
+
+        Assert.Equal(Kaleido.Exceptions.ConfigurationErrorCodes.InvalidEventOptions, exception.Code);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Build_WhenDefaultAuthorizationOrRolesIsNull_ThrowsConflictingAuthorization(bool nullDeclaration)
+    {
+        var sut = CreateSut();
+        sut.DefaultAuthorization = nullDeclaration ? null! : new Kaleido.Registry.AuthorizationMetadata(null, null!);
+
+        var exception = Assert.Throws<Kaleido.Exceptions.KaleidoConfigurationException>(() => sut.Build());
+
+        Assert.Equal(Kaleido.Exceptions.ConfigurationErrorCodes.ConflictingAuthorization, exception.Code);
+    }
 }

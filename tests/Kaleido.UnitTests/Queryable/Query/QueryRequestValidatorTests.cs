@@ -11,12 +11,12 @@ public sealed class QueryRequestValidatorTests
 
     private readonly QueryRequestValidator _validator = CreateSut();
 
-    private static QueryRequestValidator CreateSut()
+    private static QueryRequestValidator CreateSut(bool supportedTypes = true)
     {
         var typeDescriber = new Mock<ITypeDescriber>();
         typeDescriber
             .Setup(m => m.IsSupportedType(It.IsAny<Type>()))
-            .Returns(true);
+            .Returns(supportedTypes);
 
         return new QueryRequestValidator(typeDescriber.Object);
     }
@@ -167,6 +167,188 @@ public sealed class QueryRequestValidatorTests
         var request = new QueryRequest<OptionalParameters>(ViewParameters: null);
 
         Validate(request, CreateMetadata());
+    }
+
+    [Fact]
+    public void Validate_WhenRequestOrMetadataIsNull_Throws()
+    {
+        Assert.Equal("request", Assert.Throws<ArgumentNullException>(() => _validator.Validate(null!, CreateMetadata(), null)).ParamName);
+        Assert.Equal("metadata", Assert.Throws<ArgumentNullException>(() => _validator.Validate(new QueryRequest(), null!, null)).ParamName);
+    }
+
+    [Fact]
+    public void Validate_WhenAFilterValueHasAnUnsupportedRuntimeType_Throws()
+    {
+        var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Code", FilterOperator.Equals, new object())));
+
+        var ex = Assert.Throws<KaleidoValidationException>(() => CreateSut(supportedTypes: false).Validate(request, CreateMetadata(), null));
+
+        Assert.Equal(QueryableErrorCodes.UnsupportedRuntimeType, ex.Code);
+        Assert.Contains("System.Object", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validate_NullFilterValues_AreNotTypeChecked()
+    {
+        var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Code", FilterOperator.Equals, [null])));
+
+        CreateSut(supportedTypes: false).Validate(request, CreateMetadata(), null);
+    }
+
+    [Fact]
+    public void Validate_WhenTheFieldDoesNotSupportTheOperator_Throws()
+    {
+        var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Code", FilterOperator.Contains, "A")));
+
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
+
+        Assert.Equal(QueryableErrorCodes.UnsupportedOperator, ex.Code);
+    }
+
+    [Fact]
+    public void Validate_WhenAGroupHasValidConditions_DoesNotThrow()
+    {
+        var request = new QueryRequest(
+            new QueryBody(
+                Filter: QueryFilterNode.CreateGroup(
+                    LogicalOperator.Or,
+                    QueryFilterNode.CreateCondition("Code", FilterOperator.Equals, "A"),
+                    QueryFilterNode.CreateGroup(LogicalOperator.And, QueryFilterNode.CreateCondition("Code", FilterOperator.Equals, "B")))));
+
+        Validate(request, CreateMetadata());
+    }
+
+    [Fact]
+    public void Validate_WhenAChildConditionIsInvalid_Throws()
+    {
+        var request = new QueryRequest(
+            new QueryBody(Filter: QueryFilterNode.CreateGroup(LogicalOperator.And, QueryFilterNode.CreateCondition("Description", FilterOperator.Equals, "A"))));
+
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
+
+        Assert.Equal(QueryableErrorCodes.FieldNotFilterable, ex.Code);
+    }
+
+    [Fact]
+    public void Validate_WhenTheFilterIsNestedTooDeeply_Throws()
+    {
+        var node = QueryFilterNode.CreateCondition("Code", FilterOperator.Equals, "A");
+        for (var i = 0; i < 11; i++)
+        {
+            node = QueryFilterNode.CreateGroup(LogicalOperator.And, node);
+        }
+
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(new QueryRequest(new QueryBody(Filter: node)), CreateMetadata()));
+
+        Assert.Equal(QueryableErrorCodes.FilterDepthExceeded, ex.Code);
+    }
+
+    [Fact]
+    public void Validate_AtTheMaximumFilterDepth_DoesNotThrow()
+    {
+        var node = QueryFilterNode.CreateCondition("Code", FilterOperator.Equals, "A");
+        for (var i = 0; i < 10; i++)
+        {
+            node = QueryFilterNode.CreateGroup(LogicalOperator.And, node);
+        }
+
+        Validate(new QueryRequest(new QueryBody(Filter: node)), CreateMetadata());
+    }
+
+    [Fact]
+    public void Validate_WhenANodeHasConditionAndGroup_Throws()
+    {
+        var condition = new QueryFilterCondition("Code", FilterOperator.Equals, ["A"]);
+        var group = new QueryFilterGroup(LogicalOperator.And, [QueryFilterNode.CreateCondition("Code", FilterOperator.Equals, "A")]);
+
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(new QueryRequest(new QueryBody(Filter: new QueryFilterNode(condition, group))), CreateMetadata()));
+
+        Assert.Equal(QueryableErrorCodes.InvalidFilterNode, ex.Code);
+        Assert.Contains("both", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validate_WhenANodeHasNeitherConditionNorGroup_Throws()
+    {
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(new QueryRequest(new QueryBody(Filter: new QueryFilterNode(null, null))), CreateMetadata()));
+
+        Assert.Equal(QueryableErrorCodes.InvalidFilterNode, ex.Code);
+        Assert.Contains("either", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData(" ")]
+    public void Validate_SearchWithSearchableFieldsOrBlankText_DoesNotThrow(string searchText)
+    {
+        Validate(new QueryRequest(new QueryBody(SearchText: searchText)), CreateMetadata());
+        _validator.Validate(new QueryRequest(new QueryBody(SearchText: " ")), CreateMetadataWithoutSearchableFields(), null);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Validate_WhenThePageSizeIsNotPositive_Throws(int size)
+    {
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(new QueryRequest(new QueryBody(Page: new QueryPage(size, 0))), CreateMetadata()));
+
+        Assert.Equal(QueryableErrorCodes.InvalidPageSize, ex.Code);
+        Assert.Contains("greater than zero", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validate_WhenThePageOffsetIsNegative_Throws()
+    {
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(new QueryRequest(new QueryBody(Page: new QueryPage(10, -1))), CreateMetadata()));
+
+        Assert.Equal(QueryableErrorCodes.InvalidPageOffset, ex.Code);
+    }
+
+    [Fact]
+    public void Validate_WhenARequiredParameterHasACustomMessage_UsesIt()
+    {
+        var request = new QueryRequest<CustomMessageParameters>(new CustomMessageParameters());
+
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
+
+        Assert.Equal(QueryableErrorCodes.MissingParameter, ex.Code);
+        Assert.Equal("Choose a member first.", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WhenAParameterFailsWithoutAMessage_UsesTheAttributesDefaultMessage()
+    {
+        var request = new QueryRequest<SilentFailureParameters>(new SilentFailureParameters { Code = "x" });
+
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
+
+        Assert.Equal(QueryableErrorCodes.InvalidParameterValue, ex.Code);
+        Assert.Contains("Code", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validate_WhenParametersHaveMembersWithoutAttributes_SkipsThem()
+    {
+        Validate(new QueryRequest<OptionalParameters>(new OptionalParameters { State = "open" }), CreateMetadata());
+    }
+
+    private sealed class CustomMessageParameters : IQueryParameters
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Choose a member first.")]
+        public string? MemberId { get; init; }
+    }
+
+    private sealed class SilentFailureParameters : IQueryParameters
+    {
+        [SilentFailure]
+        public string? Code { get; init; }
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    private sealed class SilentFailureAttribute : System.ComponentModel.DataAnnotations.ValidationAttribute
+    {
+        protected override System.ComponentModel.DataAnnotations.ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext) =>
+            new(null);
     }
 
     private sealed class ScopedParameters : IQueryParameters

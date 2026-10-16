@@ -144,6 +144,56 @@ public sealed class KaleidoCallerContextEndpointFilterTests
     }
 
     [Fact]
+    public async Task InvokeAsync_WithAPrincipalWithoutAnIdentity_LeavesCallerUnset()
+    {
+        var context = await InitializedWith(new ClaimsPrincipal());
+
+        Assert.Null(context.CallerName);
+        Assert.Null(context.CallerId);
+        Assert.Empty(context.CallerRoles);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenAuthenticatedWithoutAName_PublishesNoRoles()
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", "sub-42"), new Claim(ClaimTypes.Role, "clerk")],
+            authenticationType: "test"));
+
+        var context = await InitializedWith(user);
+
+        Assert.Null(context.CallerName);
+        Assert.Equal("sub-42", context.CallerId);
+        Assert.Empty(context.CallerRoles);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenOnlyTheInitializerIsRegistered_DoesNotInitializeAndCallsNext()
+    {
+        var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
+        var services = new ServiceCollection();
+        services.AddSingleton(initializer.Object);
+        var invocation = new DefaultEndpointFilterInvocationContext(
+            new DefaultHttpContext
+            {
+                RequestServices = services.BuildServiceProvider(
+                    new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true })
+            });
+        var called = false;
+
+        await CreateSut().InvokeAsync(
+            invocation,
+            _ =>
+            {
+                called = true;
+                return ValueTask.FromResult<object?>(null);
+            });
+
+        Assert.True(called);
+        initializer.Verify(x => x.Initialize(It.IsAny<KaleidoCorrelationContext>()), Times.Never);
+    }
+
+    [Fact]
     public async Task InvokeAsync_WhenAccessorNotRegistered_CallsNext()
     {
         var services = new ServiceCollection();

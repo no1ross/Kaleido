@@ -8,10 +8,12 @@ namespace Kaleido.Provider.SQLite.Configuration;
 internal sealed class ProcessorContextEntityConfiguration
     : IEntityTypeConfiguration<ProcessorContextEntity>
 {
+    internal const string TableName = "ProcessContexts";
+
     public void Configure(
         EntityTypeBuilder<ProcessorContextEntity> builder)
     {
-        builder.ToTable("ProcessContexts");
+        builder.ToTable(TableName);
         builder.HasKey(x => x.ProcessId);
         builder.Property(x => x.LatestRequestId).HasMaxLength(100);
 

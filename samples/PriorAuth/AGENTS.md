@@ -7,8 +7,8 @@
 ## PriorAuth layout
 - `samples/PriorAuth/Compose/` contains local orchestration files
 - `samples/PriorAuth/priorauth-ui/` is the Angular frontend
-- `samples/PriorAuth/*/` folders are ASP.NET Core services targeting .NET 8
-- `samples/PriorAuth/*.Artifacts/` projects contain sample contracts/artifacts
+- `samples/PriorAuth/Services/*/` are the ASP.NET Core services (targeting .NET 8); `Router/` is the gateway with the MCP adapter, `EventCollector/` receives the services' events, and `Seeder/` seeds the shared databases
+- `samples/PriorAuth/Common/` holds the steps, handlers, query sources, data and dev auth the services share
 
 ## Verification
 - For backend changes, prefer `dotnet build` on the affected project
@@ -19,9 +19,8 @@
 - If a change touches UI + backend integration, validate both
 
 ## Local run workflow
-- Prefer compose files under `samples/PriorAuth/Compose/`
-- Use the smaller compose file for backend-only work
-- Use the full compose file when testing the full sample including router/UI/intake
+- Prefer the compose file under `samples/PriorAuth/Compose/` (`docker-compose.yml`; `docker-compose.override.yml` is for local overrides and sets nothing by default): it runs the router, every service and the UI as Production (see [Configuration per environment](#configuration-per-environment))
+- For backend-only work, `dotnet run` the affected services instead
 - If only the UI is changing, prefer running the Angular dev server directly
 - The PriorAuth seeder is now a local-only workflow; it is no longer run as a compose service
 - Seed shared databases locally before starting compose-backed services:
@@ -57,8 +56,18 @@
 - Kaleido redacts classified values in event payloads before the outbox write (ADR 0013); responses to callers keep the real values.
 - The sample registers no `AddRedaction`, so classified values are erased in events (a warning is logged once). To pseudonymize or encrypt instead, add `Microsoft.Extensions.Compliance.Redaction` to a host and call `services.AddRedaction(...)` per classification.
 
+## Configuration per environment
+- **Containers run as Production** (images are built `Release`; compose sets no `ASPNETCORE_ENVIRONMENT`), so they read only each host's `appsettings.json`: container addresses (`http://member:8080`, `http://eventcollector:8080`), `data/...` paths (`/app/data` in the container) and the dashboard's OTLP endpoint `http://aspire-dashboard:18889`. Swagger is Development-only, so it is off in containers.
+- **`dotnet run` is Development**: `appsettings.Development.json` overrides those with `localhost` ports, `../../data/...` paths and `http://localhost:4317`.
+- Do not set `ASPNETCORE_ENVIRONMENT=Development` in compose: the containers would read the `localhost` settings.
+
+## Telemetry
+- Each Kaleido service configures its export under `Kaleido:OpenTelemetry` (`Endpoint`, `Protocol`, `ResourceAttributes`); `service.name` is its `Kaleido:ServiceName`. See [`src/Kaleido.Observability.OpenTelemetry/README.md`](../../src/Kaleido.Observability.OpenTelemetry/README.md).
+- Compose sets no `OTEL_*` variables: the configuration applies as written. A standard `OTEL_*` variable, if set, still wins.
+- The EventCollector is not a Kaleido service: it wires OpenTelemetry itself from its own `OpenTelemetry` section, with the same precedence.
+
 ## Environment assumptions
-- Assume `ASPNETCORE_ENVIRONMENT=Development` for local work unless told otherwise
+- Assume `ASPNETCORE_ENVIRONMENT=Development` for `dotnet run` on this machine, and Production in containers
 - Use `npm` for the Angular app
 - Preserve existing service ports and compose service names unless the task requires changing them
 
@@ -85,7 +94,7 @@ The sample's dev auth (`Common/Auth`) stands in for a real IdP. Kaleido itself o
 ## Cross-processor handoff convention
 
 When a step handler resolves a downstream processor (e.g. Intake routing to Radiology), it:
-1. Calls the downstream processor's `/processes/execute` endpoint with the full original payload and the same `ProcessId`
+1. Calls the downstream processor's entry step through the Kaleido process client (`ExecuteStepAsync`, i.e. `POST /{processor}/processes/steps/{step}`) with a typed payload built for it (e.g. `StartRadiologyIntakeStep`) and the same `ProcessId`; it does not forward the original request
 2. Returns `ProcessStepHandlerResult.HandOff(targetProcessorName: "radiology")` — leaving `RequiredStep` null
 
 The handler itself returns no typed response — the downstream processor is the source of truth for its own state.
@@ -106,8 +115,8 @@ This pattern applies uniformly for any cross-processor handoff (Intake → Radio
 - router: `8080`
 - referencedata: `8081`
 - codeset: `8082`
-- providersearch: `8083`
-- memberservice: `8084`
+- provider: `8083`
+- member: `8084`
 - intake: `8085`
 - eventcollector: `8086`
 - configuration: `8087`
