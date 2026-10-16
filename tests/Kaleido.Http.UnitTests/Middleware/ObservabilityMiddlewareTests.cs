@@ -340,7 +340,7 @@ public sealed class ObservabilityMiddlewareTests
         Assert.Equal(serviceOptions.InstanceId.ToString(), activity.GetTagItem(KaleidoTelemetryTags.ProcessorInstanceId));
         Assert.Equal("intake", activity.GetTagItem(KaleidoTelemetryTags.CallingProcessor));
         Assert.Equal("Capture", activity.GetTagItem(KaleidoTelemetryTags.CallingStep));
-        Assert.Equal(processId.ToString(), activity.GetTagItem(ProcessorTelemetry.TagProcessId));
+        Assert.Equal(processId.ToString(), activity.GetTagItem(KaleidoTelemetryTags.ProcessId));
     }
 
     [Fact]
@@ -355,7 +355,7 @@ public sealed class ObservabilityMiddlewareTests
 
         Assert.Equal("req-3", activity.GetTagItem(KaleidoTelemetryTags.RequestId));
         Assert.Null(activity.GetTagItem(KaleidoTelemetryTags.ProcessorInstanceId));
-        Assert.Null(activity.GetTagItem(ProcessorTelemetry.TagProcessId));
+        Assert.Null(activity.GetTagItem(KaleidoTelemetryTags.ProcessId));
     }
 
     [Fact]

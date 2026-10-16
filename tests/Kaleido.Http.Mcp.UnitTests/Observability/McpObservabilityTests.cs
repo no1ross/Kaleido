@@ -98,7 +98,7 @@ public sealed class McpObservabilityTests
         Assert.Equal("step", span.GetTagItem(McpTelemetry.TagToolKind));
         Assert.Equal("clinic", span.GetTagItem(McpTelemetry.TagService));
         Assert.Equal("StartVisitStep", span.GetTagItem(McpTelemetry.TagCapability));
-        Assert.Equal("p-1", span.GetTagItem(McpTelemetry.TagProcessId));
+        Assert.Equal("p-1", span.GetTagItem(KaleidoTelemetryTags.ProcessId));
         Assert.Equal(McpTelemetry.OutcomeCompleted, span.GetTagItem(McpTelemetry.TagOutcome));
         Assert.NotEqual(ActivityStatusCode.Error, span.Status);
 
@@ -136,7 +136,7 @@ public sealed class McpObservabilityTests
             call.Completed(Result("""{"code":"mcp_service_error","message":"x"}""", isError: true));
         }
 
-        Assert.Equal("p-7", Span(McpTelemetry.ToolCallActivityName).GetTagItem(McpTelemetry.TagProcessId));
+        Assert.Equal("p-7", Span(McpTelemetry.ToolCallActivityName).GetTagItem(KaleidoTelemetryTags.ProcessId));
     }
 
     [Fact]
@@ -267,7 +267,7 @@ public sealed class McpObservabilityTests
             call.Completed(Result("""{"outcome":"completed"}"""));
         }
 
-        Assert.Null(Span(McpTelemetry.ToolCallActivityName).GetTagItem(McpTelemetry.TagProcessId));
+        Assert.Null(Span(McpTelemetry.ToolCallActivityName).GetTagItem(KaleidoTelemetryTags.ProcessId));
     }
 
     [Theory]
@@ -291,7 +291,7 @@ public sealed class McpObservabilityTests
         Assert.Equal(ActivityStatusCode.Error, span.Status);
         Assert.Equal(McpErrorCodes.InternalError, span.StatusDescription);
         Assert.Equal(McpErrorCodes.InternalError, span.GetTagItem(McpTelemetry.TagErrorCode));
-        Assert.Null(span.GetTagItem(McpTelemetry.TagProcessId));
+        Assert.Null(span.GetTagItem(KaleidoTelemetryTags.ProcessId));
     }
 
     [Fact]

@@ -29,7 +29,7 @@ public static class ProcessorTelemetry
     /// <summary>
     /// The activity for one execution request: loading or creating the process, planning the
     /// submitted steps and running them. Tagged with the request's correlation, the
-    /// <see cref="TagProcessId"/>, <see cref="TagSubmittedStepCount"/>, plan counts and, on
+    /// <see cref="KaleidoTelemetryTags.ProcessId"/>, <see cref="TagSubmittedStepCount"/>, plan counts and, on
     /// completion, <see cref="TagExecutionStatus"/>. Marked as an error only for an execution failure,
     /// never for a request refused to the caller (<see cref="ExecutionRejectedEventName"/>).
     /// </summary>
@@ -95,14 +95,6 @@ public static class ProcessorTelemetry
         "kaleido.processor.step.canceled";
 
     // ── Tag key names (activity tags) ─────────────────────────────────────────
-
-    /// <summary>
-    /// The process id (a <see cref="System.Guid"/> string). Set on the execute activity, and also on the
-    /// Queryable execution activity and the HTTP request activity when the inbound correlation carries
-    /// a process id.
-    /// </summary>
-    public const string TagProcessId =
-        "kaleido.processor.id";
 
     /// <summary>
     /// The step's name (its type name). Set on the step and handler activities, and a tag of the

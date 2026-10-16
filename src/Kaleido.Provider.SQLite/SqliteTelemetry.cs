@@ -21,8 +21,6 @@ internal static class SqliteTelemetry
 
     // ── Tag key names ─────────────────────────────────────────────────────────
 
-    public const string TagProcessId = "kaleido.processor.id";
-
     // ── Metric names ──────────────────────────────────────────────────────────
 
     public const string LoadFailuresCounterName = "kaleido.sqlite.context.load_failures";

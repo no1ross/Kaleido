@@ -10,6 +10,13 @@ public static class KaleidoTelemetryTags
     /// <summary>The unique identifier of the originating request.</summary>
     public const string RequestId = "kaleido.request.id";
 
+    /// <summary>
+    /// The process (one executing instance, a <see cref="System.Guid"/> string) the work belongs to: set on the
+    /// Processor execute activity, and on the Queryable, HTTP, MCP and context-store activities when the
+    /// process id is known.
+    /// </summary>
+    public const string ProcessId = "kaleido.process.id";
+
     /// <summary>This service's own instance id (<c>KaleidoServiceOptions.InstanceId</c>); never taken from the wire.</summary>
     public const string ProcessorInstanceId = "kaleido.processor.instance_id";
 

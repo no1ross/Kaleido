@@ -163,7 +163,7 @@ public sealed class QueryableObservabilityTests
         Assert.Equal("REQ-001", activity.GetTagItem(KaleidoTelemetryTags.RequestId));
         Assert.Equal("calling-processor", activity.GetTagItem(KaleidoTelemetryTags.CallingProcessor));
         Assert.Equal("calling-step", activity.GetTagItem(KaleidoTelemetryTags.CallingStep));
-        Assert.Equal(processId.ToString(), activity.GetTagItem(Kaleido.Processor.Observability.ProcessorTelemetry.TagProcessId));
+        Assert.Equal(processId.ToString(), activity.GetTagItem(KaleidoTelemetryTags.ProcessId));
         Assert.Equal("grid", activity.GetTagItem(QueryableTelemetry.TagQueryView));
         Assert.Equal(false, activity.GetTagItem(QueryableTelemetry.TagQueryDirect));
         Assert.Equal(nameof(QueryExecutionMode.LocalView), activity.GetTagItem(QueryableTelemetry.TagQueryExecutionMode));
