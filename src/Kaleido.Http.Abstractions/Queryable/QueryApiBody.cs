@@ -54,8 +54,10 @@ public static class QueryApiBodyExtensions
                 {
                     Field = node.Condition.Field,
                     Operator = node.Condition.Operator.ToString(),
+                    // The Kaleido wire format, like every other value Kaleido sends: an enum as its
+                    // camelCase name, never a number the receiving service would have to guess at.
                     Values = node.Condition.Values?
-                        .Select(v => JsonSerializer.SerializeToElement(v))
+                        .Select(v => JsonSerializer.SerializeToElement(v, KaleidoJsonOptions.Options))
                         .ToArray(),
                 },
             };
