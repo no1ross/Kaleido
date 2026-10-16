@@ -274,6 +274,8 @@ Every commit must pass this gate on its own. A later commit fixing an earlier on
 3. **If the commit touches a UI sample:** `npm run build` (0 errors) and `npm test` in that UI folder.
 4. **Record the result in the commit message body**, e.g. `Gate: build 0 errors / 0 warnings; tests 812 passed; priorauth-ui build + test OK`.
 
+CI (`build.yml`) also enforces a **coverage gate**: merged line coverage of the shipped `src/` assemblies (tests, analyzers and samples excluded) must be at least the `COVERAGE_FLOOR` (95%), or the build fails. Raise the floor, never lower it. To check locally, run the tests with `-- --coverage --coverage-output-format cobertura` and merge the reports with `reportgenerator` using the workflow's `-assemblyfilters`.
+
 Never delete `bin`/`obj` folders inside `node_modules`; if a clean is needed, exclude `node_modules` (see below).
 
 ### When tests still report "Zero tests ran"
