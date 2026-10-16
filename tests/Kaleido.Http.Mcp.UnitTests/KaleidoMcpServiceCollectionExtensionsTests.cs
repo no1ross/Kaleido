@@ -1,7 +1,15 @@
 using Kaleido.Exceptions;
 using Kaleido.Http.Client;
+using Kaleido.Http.Mcp.Observability;
+using Kaleido.Http.Mcp.Tools;
+using Kaleido.Observability;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 
 namespace Kaleido.Http.Mcp.UnitTests;
 
@@ -107,5 +115,149 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
 
         var options = Assert.Single(services, x => x.ServiceType == typeof(KaleidoMcpOptions)).ImplementationInstance;
         Assert.Equal("priorauth", Assert.IsType<KaleidoMcpOptions>(options).ServerName);
+    }
+
+    [Fact]
+    public void AddMcp_WithoutABuilder_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => KaleidoMcpServiceCollectionExtensions.AddMcp(null!));
+    }
+
+    [Fact]
+    public void AddMcp_RegistersTheAdaptersServices_WithTheirLifetimes()
+    {
+        var services = HostServices();
+
+        Builder(services).Object.AddMcp();
+
+        Assert.Equal(ServiceLifetime.Singleton, Lifetime<IToolNameBuilder>(services));
+        Assert.Equal(ServiceLifetime.Singleton, Lifetime<IToolSchemaBuilder>(services));
+        Assert.Equal(ServiceLifetime.Singleton, Lifetime<IToolCatalogBuilder>(services));
+        Assert.Equal(ServiceLifetime.Singleton, Lifetime<IInformationRequestElicitor>(services));
+        Assert.Equal(ServiceLifetime.Scoped, Lifetime<IMcpObservability>(services));
+        Assert.Equal(ServiceLifetime.Scoped, Lifetime<IToolCatalogProvider>(services));
+        Assert.Equal(ServiceLifetime.Scoped, Lifetime<IKaleidoToolInvoker>(services));
+        Assert.Equal(ServiceLifetime.Scoped, Lifetime<IKaleidoMcpToolHandler>(services));
+    }
+
+    private static ServiceLifetime Lifetime<TService>(ServiceCollection services) =>
+        Assert.Single(services, x => x.ServiceType == typeof(TService)).Lifetime;
+
+    [Fact]
+    public void AddMcp_ConfiguresTheServer_WithTheOptionsNameVersionAndInstructions()
+    {
+        var services = HostServices();
+
+        Builder(services).Object.AddMcp(o =>
+        {
+            o.ServerName = "priorauth";
+            o.ServerVersion = "2.1.0";
+            o.Instructions = "Be careful.";
+        });
+
+        var server = ServerOptions(services);
+
+        Assert.Equal("priorauth", server.ServerInfo?.Name);
+        Assert.Equal("2.1.0", server.ServerInfo?.Version);
+        Assert.Equal(RegisteredOptions(services).Instructions, server.ServerInstructions);
+        Assert.Contains("Be careful.", server.ServerInstructions, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ToolsList_IsHandled_ByTheHandlerOfTheHttpRequestsScope()
+    {
+        var handler = new Mock<IKaleidoMcpToolHandler>();
+        var expected = new ListToolsResult { Tools = [new Tool { Name = "clinic_patient" }] };
+        handler.Setup(x => x.ListToolsAsync(It.IsAny<RequestContext<ListToolsRequestParams>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+        var messageScope = new Mock<IServiceProvider>();
+        messageScope.Setup(x => x.GetService(typeof(IHttpContextAccessor))).Returns(HttpRequestWith(handler.Object));
+        var services = HostServices();
+        Builder(services).Object.AddMcp();
+
+        var listTools = ServerOptions(services).Handlers.ListToolsHandler ?? throw new Xunit.Sdk.XunitException("No tools/list handler.");
+        var request = new RequestContext<ListToolsRequestParams>(new Mock<McpServer>().Object, new JsonRpcRequest { Method = RequestMethods.ToolsList }, new ListToolsRequestParams())
+        {
+            Services = messageScope.Object
+        };
+
+        var result = await listTools(request, TestContext.Current.CancellationToken);
+
+        Assert.Same(expected, result);
+        handler.Verify(x => x.ListToolsAsync(request, TestContext.Current.CancellationToken), Times.Once);
+        messageScope.Verify(x => x.GetService(typeof(IKaleidoMcpToolHandler)), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ToolsCall_OutsideAnHttpRequest_IsHandled_ByTheHandlerOfTheMessagesScope(bool withAccessor)
+    {
+        var handler = new Mock<IKaleidoMcpToolHandler>();
+        var expected = new CallToolResult { Content = [] };
+        handler.Setup(x => x.CallToolAsync(It.IsAny<RequestContext<CallToolRequestParams>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+        var messageScope = new Mock<IServiceProvider>();
+        messageScope.Setup(x => x.GetService(typeof(IKaleidoMcpToolHandler))).Returns(handler.Object);
+
+        if (withAccessor)
+        {
+            messageScope.Setup(x => x.GetService(typeof(IHttpContextAccessor))).Returns(Mock.Of<IHttpContextAccessor>());
+        }
+
+        var services = HostServices();
+        Builder(services).Object.AddMcp();
+
+        var callTool = ServerOptions(services).Handlers.CallToolHandler ?? throw new Xunit.Sdk.XunitException("No tools/call handler.");
+        var request = new RequestContext<CallToolRequestParams>(new Mock<McpServer>().Object, new JsonRpcRequest { Method = RequestMethods.ToolsCall }, new CallToolRequestParams { Name = "clinic_patient" })
+        {
+            Services = messageScope.Object
+        };
+
+        var result = await callTool(request, TestContext.Current.CancellationToken);
+
+        Assert.Same(expected, result);
+        handler.Verify(x => x.CallToolAsync(request, TestContext.Current.CancellationToken), Times.Once);
+    }
+
+    [Fact]
+    public async Task ToolsCall_WithoutAnyServiceProvider_IsAFrameworkError()
+    {
+        var services = HostServices();
+        Builder(services).Object.AddMcp();
+
+        var callTool = ServerOptions(services).Handlers.CallToolHandler ?? throw new Xunit.Sdk.XunitException("No tools/call handler.");
+        var request = new RequestContext<CallToolRequestParams>(new Mock<McpServer>().Object, new JsonRpcRequest { Method = RequestMethods.ToolsCall }, new CallToolRequestParams { Name = "clinic_patient" })
+        {
+            Services = null
+        };
+
+        var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() => callTool(request, TestContext.Current.CancellationToken).AsTask());
+
+        Assert.Equal(FrameworkErrorCodes.MissingRegistration, exception.Code);
+    }
+
+    private static IHttpContextAccessor HttpRequestWith(IKaleidoMcpToolHandler handler)
+    {
+        var requestServices = new Mock<IServiceProvider>();
+        requestServices.Setup(x => x.GetService(typeof(IKaleidoMcpToolHandler))).Returns(handler);
+        var accessor = new Mock<IHttpContextAccessor>();
+        accessor.Setup(x => x.HttpContext).Returns(new DefaultHttpContext { RequestServices = requestServices.Object });
+        return accessor.Object;
+    }
+
+    private static McpServerOptions ServerOptions(ServiceCollection services)
+    {
+        services.AddLogging();
+        services.AddSingleton(Mock.Of<IHostApplicationLifetime>());
+        services.AddSingleton(Mock.Of<IHttpContextAccessor>());
+        services.AddSingleton(Mock.Of<IKaleidoCorrelationContextAccessor>());
+        services.AddSingleton(Mock.Of<IKaleidoProcessorClientFactory>());
+        services.AddSingleton(Mock.Of<IKaleidoQueryableClientFactory>());
+        services.AddSingleton(Mock.Of<IKaleidoProcessForwarding>());
+
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+
+        return provider.GetRequiredService<IOptions<McpServerOptions>>().Value;
     }
 }
