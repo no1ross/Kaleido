@@ -75,6 +75,10 @@ public sealed record RuntimeInputStep : IProcessStep
 
     [Description("The day.")]
     public DateOnly? On { get; init; }
+
+    [Description("A free-text remark; classified, so it is redacted in events.")]
+    [Kaleido.Http.FunctionalTests.Queryable.Infrastructure.FunctionalSensitiveData]
+    public string? Remark { get; init; }
 }
 
 public sealed class RuntimeInputStepHandler : IProcessStepHandler<RuntimeInputStep>
