@@ -11,20 +11,18 @@ For the full repository model, see:
 ## What lives here
 
 ### Bootstrap
-- `KaleidoServiceCollectionExtensions` — `AddKaleido()` entry point (assemblies supplied via `KaleidoServiceOptions.Assemblies`)
-- `IKaleidoBuilder` / `KaleidoBuilder` — shared builder abstraction carrying `Services` and `Assemblies`
-- `KaleidoCorrelationContextAccessor` — scoped correlation accessor registered by bootstrap
-- `NullEventPublisher` — default no-op event publisher
+- `KaleidoServiceCollectionExtensions` — `AddKaleido()` entry point (assemblies supplied via `KaleidoServiceOptions.Assemblies`), `AddEventPublisher<T>()`, `AddEventRedactor<T>()`
+- `IKaleidoBuilder` / `KaleidoBuilder` — shared builder abstraction carrying `Services`, `Assemblies`, `Configuration` and `ServiceOptions`
+- `IKaleidoCorrelationContextAccessor` — scoped correlation accessor registered by bootstrap (a pre-existing registration wins)
+- a default no-op `IEventPublisher` (internal) — events are discarded, with a Warning log, until the host calls `AddEventPublisher<T>()`
 
 ### Shared abstractions
-- `DataTypeMapper` — converts CLR types and properties into transport-friendly `DataTypeDescriptor` values
-- `ConstraintMapper` — converts `ValidationAttribute` usage into metadata constraint contracts
+- `ITypeDescriber` / `TypeDescriber` — converts CLR types and properties into transport-friendly `DataTypeDescriptor` values
+- `IConstraintMapper` / `ConstraintMapper` — converts `ValidationAttribute` usage into metadata constraint contracts
 - `KaleidoCorrelationContext` — shared ambient identity model for requests/workflows
 - `IEventPublisher` / `IKaleidoEvent` - infrastructure-agnostic event publication seam; events reach the publisher at least once through the outbox and the event relay (`KaleidoEventRelay`, `KaleidoEventOptions`, ADR 0012)
 - `IKaleidoEventRedactor` / `AddEventRedactor<T>()` - reduce events before the outbox write; properties marked with a `DataClassificationAttribute` are redacted with the host's `AddRedaction` redactors, or erased when none is registered (ADR 0013)
-- `ValidationException` / `ValidationError` — shared error shape for validation failures
-- `KaleidoEnumConverter` / `KaleidoEnumConverterFactory` — shared JSON enum conversion helpers
-- `ValueConverter` — shared runtime value conversion helper
+- `Kaleido.Exceptions` — `KaleidoValidationException` (400), `KaleidoAuthorizationException` (401/403), `KaleidoConcurrencyException` (409), `KaleidoConfigurationException` and `KaleidoFrameworkException` (500); `KaleidoErrorResponse` is the error body every Kaleido endpoint returns (see [`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md))
 
 ### Queryable runtime
 - `QueryableServiceCollectionExtensions` — `AddQueryable()` (internal, auto-invoked by `AddKaleido()`)
@@ -40,13 +38,13 @@ For the full repository model, see:
 
 ### Process runtime
 - `ProcessorServiceCollectionExtensions` — `AddProcessor(...)` (internal, auto-invoked by `AddKaleido()`)
-- `ExecutionProcessor` — main step execution loop
+- `IProcessorRuntime` — runs submitted steps in-process (what the HTTP transport calls); `ProcessorExecutor` (internal) is the main step execution loop
 - `StepCandidateBuilder` / `StepCandidateValidator` / `StepCandidateConsistencyChecker` / `StepCandidatePlanner` / `StepCandidateNextStepChecker` — planning pipeline
-- `ProcessorStepRegistry` / `ProcessorRegistry` — runtime registries
-- `ProcessorObservability` — observability
+- `IProcessorStepRegistry` / `IProcessorRegistry` — runtime registries
+- `ProcessorObservability` (internal) — logs, traces and metrics of the runtime
 - `IProcessStepHandler<TStep>` / `IProcessStepHandler<TStep, TResult>` — handler contracts
 - `IInformationStep` / `InformationRequest` / `RequireInformation<TNext>` — information requests: runtime-decided questions answered by an information step (see [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md))
-- `IKaleidoContextStore` / `InMemoryKaleidoContextStore` — state store abstraction and default implementation
+- `IKaleidoContextStore` — state store abstraction (process state, idempotent results, event outbox); the default in-memory store (internal) is for development and logs a Warning that state is lost on restart
 
 ---
 
@@ -55,7 +53,7 @@ For the full repository model, see:
 Reference this project when you need to:
 - bootstrap Kaleido with `AddKaleido()` (which auto-registers the Queryable and Process runtimes)
 - register assemblies via `KaleidoServiceOptions.Assemblies` in the `AddKaleido()` configure callback
-- work with shared metadata primitives (`DataTypeMapper`, `ConstraintMapper`)
+- work with shared metadata primitives (`TypeDescriber`, `ConstraintMapper`)
 - implement a query source, query view, delegated query source, or step handler
 - work with correlation context or event publishing
 
@@ -76,14 +74,22 @@ A service starts by calling `AddKaleido()`:
 ```csharp
 builder.Services.AddKaleido(builder.Configuration, o =>
 {
-    o.ServiceName = "my-service";
-    o.Assemblies = new[]
-    {
+    o.ServiceName = "myservice"; // lowercase, no separators: it is the route prefix and the MCP tool prefix (KAL2005)
+    o.Assemblies =
+    [
         typeof(Program).Assembly,
         typeof(MyDbContext).Assembly
-    };
+    ];
 });
 ```
+
+Other `KaleidoServiceOptions` (bound from the `Kaleido` configuration section, then the callback):
+- `DisplayName` / `Description` — the service's human-readable name and description, published in the registry
+- `IsEntryProcessor` — marks this service's processor as the entry point of an aggregated registry (only one may)
+- `InstanceId` — identifies this running instance (new at each start by default) in its own trace tags, events and logs; never sent or read in correlation headers
+- `TypeFilter` — limits which step and query source/view types are registered when an assembly is shared
+- `AuthorizationMode` / `DefaultAuthorization` — capability authorization ([`docs/AUTHORIZATION.md`](../../docs/AUTHORIZATION.md))
+- `Events` — the event relay (`Kaleido:Events`, `KaleidoEventOptions`)
 
 `AddKaleido()`:
 - validates the `IServiceCollection`
@@ -148,8 +154,9 @@ The runtime:
 ## Where to look
 
 - `KaleidoServiceCollectionExtensions.cs` — bootstrap entry point
-- `IKaleidoBuilder.cs` / `KaleidoBuilder.cs` — builder contract and implementation
-- `DataTypeMapper.cs` / `ConstraintMapper.cs` — shared metadata utilities
+- `KaleidoBuilder.cs` — builder contract (`IKaleidoBuilder`) and implementation
+- `KaleidoServiceOptions.cs` — service options and their validation
+- `TypeDescriber.cs` / `ConstraintMapper.cs` — shared metadata utilities
 - `Queryable/QueryableService.cs` — Queryable dispatch
-- `Process/Execution/ExecutionProcessor.cs` — Process execution loop
-- `Process/Planning/` — planning pipeline components
+- `Processor/Execution/ProcessorExecutor.cs` — Process execution loop
+- `Processor/Planning/` — planning pipeline components

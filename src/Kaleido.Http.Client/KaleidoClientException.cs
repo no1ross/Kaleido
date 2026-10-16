@@ -44,9 +44,10 @@ public sealed class KaleidoHttpClientException : Exception
 }
 
 /// <summary>
-/// Stable machine-readable diagnostic codes for Kaleido HTTP client errors.
-/// Process-specific codes are prefixed <c>pro_</c>; Queryable-specific codes are prefixed <c>qry_</c>.
-/// Cross-cutting codes have no prefix.
+/// Stable machine-readable diagnostic codes for Kaleido HTTP client errors. Runtime codes are
+/// prefixed <c>httpclient_</c>; <c>missing_base_url</c> is a startup configuration code. The
+/// called service's own codes (<c>pro_*</c>, <c>qry_*</c>) arrive in
+/// <see cref="KaleidoHttpClientException.Errors"/>.
 /// </summary>
 public static class HttpClientErrorCodes
 {

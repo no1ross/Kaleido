@@ -18,7 +18,7 @@ public static class KaleidoMcpServiceCollectionExtensions
     /// <param name="builder">The Kaleido builder, after <c>AddHttp()</c> and <c>AddHttpClients()</c>.</param>
     /// <param name="configure">
     /// Adjusts the settings bound from <c>Kaleido:Mcp</c> (server name and version, instructions,
-    /// elicitation rounds).
+    /// elicitation rounds, tool listing).
     /// </param>
     /// <returns>The builder, for chaining.</returns>
     /// <remarks>

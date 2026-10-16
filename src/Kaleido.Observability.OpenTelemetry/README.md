@@ -6,7 +6,7 @@ Optional OpenTelemetry provider for Kaleido. Wires full observability (structure
 
 ```csharp
 builder.Services
-    .AddKaleido(builder.Configuration, o => { o.ServiceName = "my-service"; ... })
+    .AddKaleido(builder.Configuration, o => { o.ServiceName = "myservice"; ... })
     .AddHttp()
     .AddOpenTelemetry();   // ← this package
 ```
@@ -18,6 +18,9 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://your-backend:4317
 OTEL_SERVICE_NAME=my-service          # optional — overrides KaleidoServiceOptions.ServiceName
 ```
 
+> [!WARNING]
+> **Known limitation ([#354](https://github.com/no1ross/Kaleido/issues/354)).** Today these `OTEL_*` keys are the only way to configure the export. The OTLP exporters are added without options, so without `OTEL_EXPORTER_OTLP_*` they use the SDK default (`http://localhost:4317`, gRPC). The service name is `OTEL_SERVICE_NAME`, else `KaleidoServiceOptions.ServiceName`, and it replaces any other configured name. Resource attributes come only from `OTEL_RESOURCE_ATTRIBUTES`. Other configuration sections (such as an `OpenTelemetry` section in `appsettings.json`) are not applied by `AddOpenTelemetry()`.
+
 ## What `AddOpenTelemetry()` wires
 
 | Signal | Instrumentation |
@@ -27,6 +30,17 @@ OTEL_SERVICE_NAME=my-service          # optional — overrides KaleidoServiceOpt
 | Metrics | Kaleido Process + Queryable + events + SQLite store + MCP adapter, plus ASP.NET Core + HttpClient + runtime -> OTLP |
 
 Kaleido histogram instruments are registered with tuned explicit bucket boundaries (replacing the OTel defaults which are unsuitable for small integer values like step counts).
+
+### Adding instrumentation
+
+`AddOpenTelemetry(configure, configureTracing, configureMetrics)` also takes hooks for extra sources (EF Core, SQL Client, gRPC ...). They run after the built-in instrumentations and before the OTLP exporter, and are not called when traces (or metrics) are switched off:
+
+```csharp
+builder.Services.AddKaleido(builder.Configuration, o => { ... })
+    .AddOpenTelemetry(
+        configureTracing: tracing => tracing.AddEntityFrameworkCoreInstrumentation(),
+        configureMetrics: metrics => metrics.AddMeter("MyCompany.Billing"));
+```
 
 ### Switching parts off
 
