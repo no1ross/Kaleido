@@ -81,6 +81,25 @@ public sealed class QueryApiBodyExtensionsTests
     }
 
     [Fact]
+    public void ToApiBody_WhenConditionValuesAndGroupFiltersAreMissing_LeavesThemNull()
+    {
+        var condition = new QueryBody(
+            Filter: new QueryFilterNode(new QueryFilterCondition("deletedAt", FilterOperator.IsNull, null!), null));
+        var group = new QueryBody(
+            Filter: new QueryFilterNode(null, new QueryFilterGroup(LogicalOperator.And, null!)));
+
+        var apiCondition = condition.ToApiBody()!.Filter!.Condition;
+        var apiGroup = group.ToApiBody()!.Filter!.Group;
+
+        Assert.NotNull(apiCondition);
+        Assert.Equal("IsNull", apiCondition.Operator);
+        Assert.Null(apiCondition.Values);
+        Assert.NotNull(apiGroup);
+        Assert.Equal("And", apiGroup.Operator);
+        Assert.Null(apiGroup.Filters);
+    }
+
+    [Fact]
     public void ToApiBody_WhenFilterNodeIsEmpty_DropsIt()
     {
         var body = new QueryBody(Filter: new QueryFilterNode(null, null));
