@@ -6,6 +6,39 @@ using System.Reflection;
 
 namespace Kaleido;
 
+/// <summary>
+/// The transport-friendly description of a field's CLR type, published in the registry metadata of
+/// Process steps and Queryable sources and views, so clients and AI agents know what value to send
+/// or expect.
+/// </summary>
+/// <remarks>
+/// The framework derives descriptors from CLR types at startup. Scalars map to <c>"string"</c>,
+/// <c>"boolean"</c>, <c>"integer"</c> or <c>"number"</c>, with a <paramref name="Format"/> where the base type
+/// alone is ambiguous; enums map to <c>"string"</c> with format <c>"enum"</c> and their members in
+/// <paramref name="EnumValues"/>; arrays and other enumerables (except <see langword="string"/>) map to
+/// <c>"array"</c> with an <paramref name="ItemType"/>; every other type maps to <c>"object"</c>.
+/// </remarks>
+/// <param name="Type">
+/// The base type: <c>"string"</c>, <c>"boolean"</c>, <c>"integer"</c>, <c>"number"</c>, <c>"array"</c> or
+/// <c>"object"</c>.
+/// </param>
+/// <param name="Format">
+/// Refines <paramref name="Type"/>, or <see langword="null"/> when the base type is enough:
+/// <c>"int64"</c> (<see langword="long"/>, <see langword="ulong"/>), <c>"float"</c>, <c>"double"</c>, <c>"decimal"</c>,
+/// <c>"uuid"</c> (<see cref="Guid"/>), <c>"date"</c> (<see cref="DateOnly"/>), <c>"time"</c>
+/// (<see cref="TimeOnly"/>), <c>"date-time"</c> (<see cref="DateTime"/>), <c>"date-time-offset"</c>
+/// (<see cref="DateTimeOffset"/>), <c>"duration"</c> (<see cref="TimeSpan"/>) or <c>"enum"</c>.
+/// </param>
+/// <param name="Nullable">
+/// <see langword="true"/> when the value may be <see langword="null"/>: a <see cref="System.Nullable{T}"/> type,
+/// or, for a property, a reference type annotated as nullable.
+/// </param>
+/// <param name="EnumValues">
+/// The members of an enum type (format <c>"enum"</c>); <see langword="null"/> for every other type.
+/// </param>
+/// <param name="ItemType">
+/// The descriptor of the element type of an <c>"array"</c>; <see langword="null"/> for every other type.
+/// </param>
 [ExcludeFromCodeCoverage]
 public sealed record DataTypeDescriptor(
     string Type,
@@ -14,13 +47,21 @@ public sealed record DataTypeDescriptor(
     IReadOnlyCollection<EnumValueDescriptor>? EnumValues = null,
     DataTypeDescriptor? ItemType = null);
 
+/// <summary>
+/// One member of an enum type, listed in <see cref="DataTypeDescriptor.EnumValues"/>.
+/// </summary>
+/// <param name="Value">The member's underlying numeric value, converted to <see cref="int"/>.</param>
+/// <param name="Name">The member's name, as declared in code.</param>
+/// <param name="Description">
+/// The member's <see cref="DescriptionAttribute"/> text, or <see langword="null"/> when it has none.
+/// </param>
 [ExcludeFromCodeCoverage]
 public sealed record EnumValueDescriptor(
     int Value,
     string Name,
     string? Description);
 
-public interface ITypeDescriber
+internal interface ITypeDescriber
 {
     DataTypeDescriptor GetDescriptor(PropertyInfo propertyInfo);
 

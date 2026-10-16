@@ -6,16 +6,43 @@ Optional OpenTelemetry provider for Kaleido. Wires full observability (structure
 
 ```csharp
 builder.Services
-    .AddKaleido(builder.Configuration, o => { o.ServiceName = "my-service"; ... })
+    .AddKaleido(builder.Configuration, o => { o.ServiceName = "myservice"; ... })
     .AddHttp()
     .AddOpenTelemetry();   // ← this package
 ```
 
-Configure the OTLP endpoint via standard OTel environment variables:
+### Where the telemetry goes
+
+Configure the export and the resource under `Kaleido:OpenTelemetry` (configuration first, then the options delegate):
+
+```json
+{
+  "Kaleido": {
+    "ServiceName": "intake",
+    "OpenTelemetry": {
+      "Endpoint": "http://localhost:4317",
+      "Protocol": "grpc",
+      "ServiceVersion": "1.0.0",
+      "ResourceAttributes": "deployment.environment=Development"
+    }
+  }
+}
+```
+
+| Setting | Effect | Default |
+|---|---|---|
+| `Endpoint` | OTLP collector base address; with `http/protobuf` each signal's `/v1/traces`, `/v1/metrics`, `/v1/logs` is appended | SDK default, `http://localhost:4317` |
+| `Protocol` | `grpc` or `http/protobuf` (anything else fails startup with `otel_invalid_options`) | gRPC |
+| `Headers` | `key=value,...` sent with every export (for example a backend's API key) | none |
+| `ServiceVersion` | `service.version` | none |
+| `ResourceAttributes` | further resource attributes, `key=value,...` | none |
+
+The resource's `service.name` is the Kaleido `ServiceName` and `service.instance.id` its `InstanceId`; there is no second service name to keep in step.
+
+**The standard OpenTelemetry keys win:** `OTEL_EXPORTER_OTLP_ENDPOINT` (or a signal's `OTEL_EXPORTER_OTLP_{SIGNAL}_ENDPOINT`), `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES`, as environment variables or configuration keys. A deployment (a container, compose) overrides `appsettings.json` with them without a code change:
 
 ```
 OTEL_EXPORTER_OTLP_ENDPOINT=http://your-backend:4317
-OTEL_SERVICE_NAME=my-service          # optional — overrides KaleidoServiceOptions.ServiceName
 ```
 
 ## What `AddOpenTelemetry()` wires
@@ -27,6 +54,17 @@ OTEL_SERVICE_NAME=my-service          # optional — overrides KaleidoServiceOpt
 | Metrics | Kaleido Process + Queryable + events + SQLite store + MCP adapter, plus ASP.NET Core + HttpClient + runtime -> OTLP |
 
 Kaleido histogram instruments are registered with tuned explicit bucket boundaries (replacing the OTel defaults which are unsuitable for small integer values like step counts).
+
+### Adding instrumentation
+
+`AddOpenTelemetry(configure, configureTracing, configureMetrics)` also takes hooks for extra sources (EF Core, SQL Client, gRPC ...). They run after the built-in instrumentations and before the OTLP exporter, and are not called when traces (or metrics) are switched off:
+
+```csharp
+builder.Services.AddKaleido(builder.Configuration, o => { ... })
+    .AddOpenTelemetry(
+        configureTracing: tracing => tracing.AddEntityFrameworkCoreInstrumentation(),
+        configureMetrics: metrics => metrics.AddMeter("MyCompany.Billing"));
+```
 
 ### Switching parts off
 

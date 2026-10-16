@@ -5,8 +5,52 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Kaleido;
 
+/// <summary>
+/// Registers the Kaleido core on an <see cref="IServiceCollection"/>: <see cref="AddKaleido"/> is the
+/// entry point; <see cref="AddEventPublisher{TPublisher}"/> and
+/// <see cref="AddEventRedactor{TRedactor}"/> extend the returned <see cref="IKaleidoBuilder"/>.
+/// </summary>
 public static class KaleidoServiceCollectionExtensions
 {
+    /// <summary>
+    /// Registers the Kaleido core and the Process and Queryable runtimes for the steps, query sources
+    /// and views found in <see cref="KaleidoServiceOptions.Assemblies"/>.
+    /// </summary>
+    /// <remarks>
+    /// Options are bound from the <c>Kaleido</c> configuration section, then <paramref name="configure"/>
+    /// runs, then the result is validated and registered as an immutable
+    /// <see cref="KaleidoServiceOptions"/> singleton. Besides the runtimes it registers logging, the
+    /// scoped correlation context accessor, the event outbox and relay, and defaults the host can
+    /// replace by registering its own first: a no-op <see cref="IEventPublisher"/> (replace it with
+    /// <see cref="AddEventPublisher{TPublisher}"/>) and an in-memory <see cref="IKaleidoContextStore"/>.
+    /// Transports and providers are added on the returned builder (e.g. <c>AddHttp</c>).
+    /// </remarks>
+    /// <param name="services">The service collection to register into.</param>
+    /// <param name="configuration">
+    /// The application configuration; the <c>Kaleido</c> section is bound to the options and the
+    /// configuration flows to every subsystem through <see cref="IKaleidoBuilder.Configuration"/>.
+    /// </param>
+    /// <param name="configure">
+    /// Optionally sets options in code after configuration binding, e.g. <c>ServiceName</c> and
+    /// <c>Assemblies</c>.
+    /// </param>
+    /// <returns>The builder for chaining further Kaleido registrations.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="services"/> or <paramref name="configuration"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="KaleidoConfigurationException">
+    /// The options are invalid: e.g. a missing or invalid <see cref="KaleidoServiceOptions.ServiceName"/>,
+    /// no <see cref="KaleidoServiceOptions.Assemblies"/>, or invalid authorization or event settings.
+    /// </exception>
+    /// <example>
+    /// <code>
+    /// builder.Services.AddKaleido(builder.Configuration, o =>
+    /// {
+    ///     o.ServiceName = "intake";
+    ///     o.Assemblies = [typeof(Program).Assembly];
+    /// });
+    /// </code>
+    /// </example>
     public static IKaleidoBuilder AddKaleido(
         this IServiceCollection services,
         IConfiguration configuration,

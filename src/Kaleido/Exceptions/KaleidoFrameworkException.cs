@@ -9,25 +9,44 @@ namespace Kaleido.Exceptions;
 [ExcludeFromCodeCoverage]
 public sealed class KaleidoFrameworkException : Exception
 {
+    /// <summary>
+    /// Creates the exception for an integrity violation the framework detected, such as a member
+    /// that reflection could not find or a resolved type that does not match.
+    /// </summary>
+    /// <param name="code">The diagnostic code, a <see cref="FrameworkErrorCodes"/> value.</param>
+    /// <param name="message">
+    /// A description of the violation. Keep it free of sensitive data: the HTTP exception handler
+    /// writes it to the 500 response body.
+    /// </param>
     public KaleidoFrameworkException(string code, string message)
         : base(message)
     {
         Code = code;
     }
 
+    /// <summary>
+    /// Creates the exception for an integrity violation the framework detected, wrapping the
+    /// exception that revealed it.
+    /// </summary>
+    /// <param name="code">The diagnostic code, a <see cref="FrameworkErrorCodes"/> value.</param>
+    /// <param name="message">
+    /// A description of the violation. Keep it free of sensitive data: the HTTP exception handler
+    /// writes it to the 500 response body.
+    /// </param>
+    /// <param name="innerException">The exception that revealed the violation.</param>
     public KaleidoFrameworkException(string code, string message, Exception innerException)
         : base(message, innerException)
     {
         Code = code;
     }
 
-    /// <summary>Stable machine-readable diagnostic code (see <see cref="FrameworkErrorCodes"/>). Log-only — not forwarded to HTTP responses.</summary>
+    /// <summary>Stable machine-readable diagnostic code (see <see cref="FrameworkErrorCodes"/>). Logged, and written with <see cref="Exception.Message"/> to the 500 response body by the HTTP exception handler.</summary>
     public string Code { get; }
 }
 
 /// <summary>
 /// Stable machine-readable diagnostic codes for Kaleido framework integrity violations.
-/// These are log-only — they are never forwarded to HTTP response bodies.
+/// They are logged, and the HTTP exception handler also writes them to the 500 response body.
 /// Use the stack trace alongside the code to locate the source of the violation.
 /// </summary>
 public static class FrameworkErrorCodes

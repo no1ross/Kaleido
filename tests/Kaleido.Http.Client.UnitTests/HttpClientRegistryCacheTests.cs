@@ -266,6 +266,50 @@ public sealed class HttpClientRegistryCacheTests
     }
 
     [Fact]
+    public async Task GetOrRevalidateAsync_ASnapshotWithoutAnAge_IsServedWithoutChecking()
+    {
+        var store = CreateStore();
+        var undated = new AggregatedRegistryResponse { Revision = "r1" };
+        await store.SetAsync(Key, undated);
+        using var sut = CreateSut(store);
+        var checks = 0;
+
+        var result = await sut.GetOrRevalidateAsync(
+            TimeSpan.FromSeconds(30),
+            (_, _) =>
+            {
+                checks++;
+                return Task.FromResult<AggregatedRegistryResponse?>(Fresh);
+            },
+            CancellationToken.None);
+
+        Assert.Same(undated, result);
+        Assert.Equal(0, checks);
+    }
+
+    [Fact]
+    public async Task GetOrFetchAsync_ACallerWaitingForAnotherFetch_ServesItsResultWithoutFetchingAgain()
+    {
+        using var sut = CreateSut();
+        var release = new TaskCompletionSource<AggregatedRegistryResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fetches = 0;
+
+        Task<AggregatedRegistryResponse> Fetch(CancellationToken _)
+        {
+            fetches++;
+            return release.Task;
+        }
+
+        var first = sut.GetOrFetchAsync(null, Fetch, CancellationToken.None);
+        var second = sut.GetOrFetchAsync(null, Fetch, CancellationToken.None);
+        release.SetResult(Fresh);
+
+        Assert.Same(Fresh, await first);
+        Assert.Same(Fresh, await second);
+        Assert.Equal(1, fetches);
+    }
+
+    [Fact]
     public async Task GetOrRevalidateAsync_WhenReportedUnchangedWithoutASnapshot_Throws()
     {
         using var sut = CreateSut();

@@ -5,7 +5,7 @@ namespace Kaleido.Http;
 /// only printable US-ASCII characters (0x20–0x7E) are permitted,
 /// and values are capped at <see cref="MaxLength"/> to prevent oversized headers.
 /// </summary>
-public static class HttpHeaderSanitizerExtensions
+internal static class HttpHeaderSanitizerExtensions
 {
     /// <summary>Maximum permitted header value length. Values exceeding this are truncated.</summary>
     public const int MaxLength = 256;

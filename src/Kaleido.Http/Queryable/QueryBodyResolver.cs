@@ -34,31 +34,17 @@ internal static class QueryBodyResolver
 
     // ── Filter tree ──────────────────────────────────────────────────────────
 
+    // The node's shape is kept as sent - both parts or neither included - so the runtime's
+    // validation rejects an invalid node (qry_invalid_filter_node) instead of the transport
+    // silently dropping part of the filter.
     private static QueryFilterNode? ResolveFilterNode(
         QueryApiFilterNode? node,
-        IReadOnlyCollection<QueryableFieldDescriptor> fields)
-    {
-        if (node is null)
-        {
-            return null;
-        }
-
-        if (node.Condition is not null)
-        {
-            return new QueryFilterNode(
-                ResolveCondition(node.Condition, fields),
-                Group: null);
-        }
-
-        if (node.Group is not null)
-        {
-            return new QueryFilterNode(
-            Condition: null,
-                ResolveGroup(node.Group, fields));
-        }
-
-        return null;
-    }
+        IReadOnlyCollection<QueryableFieldDescriptor> fields) =>
+        node is null
+            ? null
+            : new QueryFilterNode(
+                node.Condition is null ? null : ResolveCondition(node.Condition, fields),
+                node.Group is null ? null : ResolveGroup(node.Group, fields));
 
     private static QueryFilterCondition ResolveCondition(
         QueryApiFilterCondition condition,
@@ -92,8 +78,7 @@ internal static class QueryBodyResolver
         new(
             ParseLogicalOperator(group.Operator),
             group.Filters?
-                .Select(x => ResolveFilterNode(x, fields))
-                .OfType<QueryFilterNode>()
+                .Select(x => ResolveFilterNode(x, fields) ?? new QueryFilterNode(Condition: null, Group: null))
                 .ToArray()
             ?? []);
 

@@ -57,7 +57,7 @@ public class KaleidoServiceOptions
     public bool IsEntryProcessor { get; init; }
 
     /// <summary>
-    /// Optional filter to control which process steps are registered.
+    /// Optional filter to control which step and query source/view types are registered.
     /// Useful when sharing assemblies across multiple services.
     /// </summary>
     public Func<Type, bool>? TypeFilter { get; init; }
@@ -71,6 +71,19 @@ public class KaleidoServiceOptions
     /// </summary>
     public KaleidoAuthorizationMode AuthorizationMode { get; init; }
 
+    /// <summary>
+    /// The service-wide authorization rule for process steps and query sources that declare no
+    /// <see cref="KaleidoAuthorizationAttribute"/> of their own; query views without one inherit
+    /// their source's rule. Default <see cref="AuthorizationMetadata.Unspecified"/> (no service rule).
+    /// Takes effect only when <see cref="AuthorizationMode"/> enforces authorization; in
+    /// <see cref="KaleidoAuthorizationMode.ZeroTrust"/> an explicit default makes every capability
+    /// explicit.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="AuthorizationMetadata.Roles"/> must not be <see langword="null"/>, and
+    /// <see cref="AuthorizationMetadata.AllowAnonymous"/> cannot be combined with roles or a policy;
+    /// <c>AddKaleido</c> throws a <see cref="KaleidoConfigurationException"/> otherwise.
+    /// </remarks>
     public AuthorizationMetadata DefaultAuthorization { get; init; } = AuthorizationMetadata.Unspecified;
 
     /// <summary>
@@ -141,7 +154,7 @@ public class KaleidoServiceOptions
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidServiceName,
                 "KaleidoServiceOptions.ServiceName must be a non-empty string. " +
-                "Set it via AddKaleido(config, o => o.ServiceName = \"my-service\") " +
+                "Set it via AddKaleido(config, o => o.ServiceName = \"myservice\") " +
                 "or via the Kaleido:ServiceName configuration key.");
         }
 
@@ -202,6 +215,7 @@ public sealed class KaleidoServiceOptionsBuilder
     /// <inheritdoc cref="KaleidoServiceOptions.AuthorizationMode"/>
     public KaleidoAuthorizationMode AuthorizationMode { get; set; }
 
+    /// <inheritdoc cref="KaleidoServiceOptions.DefaultAuthorization"/>
     public AuthorizationMetadata DefaultAuthorization { get; set; } = new(Policy: null, []);
 
     /// <inheritdoc cref="KaleidoServiceOptions.Events"/>

@@ -6,6 +6,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Observability.OpenTelemetry;
 
+/// <summary>
+/// Connects Kaleido to OpenTelemetry: <see cref="AddOpenTelemetry"/> is the one-call setup (logs,
+/// traces and metrics over OTLP); <see cref="AddKaleidoInstrumentation(TracerProviderBuilder)"/> and
+/// <see cref="AddKaleidoInstrumentation(MeterProviderBuilder)"/> register Kaleido's sources and meters
+/// with a pipeline the consumer manages.
+/// </summary>
 public static class KaleidoObservabilityOpenTelemetryExtensions
 {
     /// <summary>
@@ -15,8 +21,11 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
     /// (<c>Kaleido:OpenTelemetry</c>, then <paramref name="configure"/>).
     /// </summary>
     /// <remarks>
-    /// Service name is resolved from the <c>OTEL_SERVICE_NAME</c> configuration key,
-    /// falling back to <c>KaleidoServiceOptions.ServiceName</c>.
+    /// The export (endpoint, protocol, headers) and the resource's version and attributes come
+    /// from <see cref="KaleidoOpenTelemetryOptions"/>; the standard <c>OTEL_*</c> keys win over
+    /// them, and the SDK defaults apply when neither is set. <c>service.name</c> is
+    /// <c>KaleidoServiceOptions.ServiceName</c> (<c>OTEL_SERVICE_NAME</c> overrides it) and
+    /// <c>service.instance.id</c> is <c>KaleidoServiceOptions.InstanceId</c>.
     /// <para>
     /// For consumers managing their own OpenTelemetry setup, use
     /// <see cref="AddKaleidoInstrumentation(TracerProviderBuilder)"/> and
@@ -58,18 +67,19 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
             return builder;
         }
 
-        var serviceName =
-            builder.Configuration["OTEL_SERVICE_NAME"]
-            ?? builder.ServiceOptions.ServiceName;
+        options.Validate();
+
+        var configuration = builder.Configuration;
+        var service = builder.ServiceOptions;
 
         var telemetry = builder.Services
             .AddOpenTelemetry()
-            .ConfigureResource(r => r.AddService(serviceName: serviceName));
+            .ConfigureResource(r => options.ConfigureResource(r, service));
 
         if (options.Logs)
         {
             telemetry.WithLogging(
-                logging => logging.AddOtlpExporter(),
+                logging => logging.AddOtlpExporter(o => options.ApplyTo(o, configuration, OtlpSignal.Logs)),
                 logging =>
                 {
                     logging.IncludeFormattedMessage = true;
@@ -79,18 +89,18 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
 
         if (options.Traces)
         {
-            telemetry.WithTracing(tracing => ConfigureTracing(tracing, options, configureTracing));
+            telemetry.WithTracing(tracing => ConfigureTracing(tracing, options, configuration, configureTracing));
         }
 
         if (options.Metrics)
         {
-            telemetry.WithMetrics(metrics => ConfigureMetrics(metrics, options, configureMetrics));
+            telemetry.WithMetrics(metrics => ConfigureMetrics(metrics, options, configuration, configureMetrics));
         }
 
         return builder;
     }
 
-    private static void ConfigureTracing(TracerProviderBuilder tracing, KaleidoOpenTelemetryOptions options, Action<TracerProviderBuilder>? configure)
+    private static void ConfigureTracing(TracerProviderBuilder tracing, KaleidoOpenTelemetryOptions options, IConfiguration configuration, Action<TracerProviderBuilder>? configure)
     {
         tracing.AddKaleidoInstrumentation();
 
@@ -103,10 +113,10 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
 
         configure?.Invoke(tracing);
 
-        tracing.AddOtlpExporter();
+        tracing.AddOtlpExporter(o => options.ApplyTo(o, configuration, OtlpSignal.Traces));
     }
 
-    private static void ConfigureMetrics(MeterProviderBuilder metrics, KaleidoOpenTelemetryOptions options, Action<MeterProviderBuilder>? configure)
+    private static void ConfigureMetrics(MeterProviderBuilder metrics, KaleidoOpenTelemetryOptions options, IConfiguration configuration, Action<MeterProviderBuilder>? configure)
     {
         metrics.AddKaleidoInstrumentation();
 
@@ -120,7 +130,7 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
 
         configure?.Invoke(metrics);
 
-        metrics.AddOtlpExporter();
+        metrics.AddOtlpExporter(o => options.ApplyTo(o, configuration, OtlpSignal.Metrics));
     }
 
     /// <summary>

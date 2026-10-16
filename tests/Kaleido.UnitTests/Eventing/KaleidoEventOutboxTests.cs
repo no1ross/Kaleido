@@ -12,8 +12,9 @@ public sealed class KaleidoEventOutboxTests
         IKaleidoContextStore store,
         IEventPublisher publisher,
         IKaleidoEventSignal signal,
-        IKaleidoEventPayloadWriter? payloadWriter = null) =>
-        new(store, publisher, payloadWriter ?? PlainWriter().Object, signal, NullLogger<KaleidoEventOutbox>.Instance);
+        IKaleidoEventPayloadWriter? payloadWriter = null,
+        Microsoft.Extensions.Logging.ILogger<KaleidoEventOutbox>? logger = null) =>
+        new(store, publisher, payloadWriter ?? PlainWriter().Object, signal, logger ?? NullLogger<KaleidoEventOutbox>.Instance);
 
     // Writes the plain (unredacted) form; redaction is the writer's own concern.
     private static Mock<IKaleidoEventPayloadWriter> PlainWriter()
@@ -120,6 +121,27 @@ public sealed class KaleidoEventOutboxTests
         await CreateSut(store.Object, Mock.Of<IEventPublisher>(), signal.Object).EnqueueAsync(Envelope(), CancellationToken.None);
 
         signal.Verify(x => x.Notify(), Times.Never);
+    }
+
+    [Fact]
+    public async Task EnqueueAsync_WhenTheStoreFails_LogsAnErrorWithTheEvent()
+    {
+        var failure = new InvalidOperationException("database down");
+        var store = new Mock<IKaleidoContextStore>();
+        store
+            .Setup(x => x.EnqueueEventsAsync(It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(failure);
+        var logger = new Mock<Microsoft.Extensions.Logging.ILogger<KaleidoEventOutbox>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<Microsoft.Extensions.Logging.LogLevel>())).Returns(true);
+        var envelope = Envelope();
+
+        await CreateSut(store.Object, Mock.Of<IEventPublisher>(), Mock.Of<IKaleidoEventSignal>(), logger: logger.Object)
+            .EnqueueAsync(envelope, CancellationToken.None);
+
+        var logged = Assert.Single(logger.Invocations, x => x.Method.Name == nameof(Microsoft.Extensions.Logging.ILogger.Log));
+        Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Error, logged.Arguments[0]);
+        Assert.Same(failure, logged.Arguments[3]);
+        Assert.Contains(envelope.Event.EventId.ToString(), logged.Arguments[2].ToString());
     }
 
     [Fact]

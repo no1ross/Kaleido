@@ -23,14 +23,20 @@ every information request to the agent; a negative value fails startup with `mcp
 `ToolListing` (`All`, the default, or `FrontDoor`; see [Front door](#front-door)) and `ListedTools`
 (FrontDoor only: extra tool names to list).
 
+Call `AddHttp()` and `AddHttpClients()` (with at least one client under `Kaleido:Clients`)
+**before** `AddMcp()`: it fails startup with `mcp_missing_http` or `mcp_missing_clients`
+otherwise. An `InstructionsFile` that does not exist fails with
+`mcp_missing_instructions_file`. The endpoint is stateless Streamable HTTP, so it needs no session
+affinity behind a load balancer.
+
 ## Tools
 
 | Tool | From | What it does |
 |---|---|---|
 | `{service}_{source or view}` | each query source and view | Runs the query (search text, filters, sort, page, view parameters). Takes an optional `processId` where the host has processes (see below). |
 | `{service}_{step}` | each step | Executes the step; a step that is not initial needs the `processId`. |
-| `answer_information_request` | built in | Submits the user's answers to the questions a process is waiting for. |
-| `get_process_state` | built in | Where a process stands: state, completed and failed steps, next steps. |
+| `answer_information_request` | built in, when the host (or its aggregate) has processes | Submits the user's answers to the questions a process is waiting for. |
+| `get_process_state` | built in, when the host (or its aggregate) has processes | Where a process stands: state, completed and failed steps, next steps. |
 | `search_tools`, `describe_tool`, `call_tool` | built in, FrontDoor only | Find a tool by what it does; read one tool's full inputs; run any of the caller's tools by name. |
 
 **Queries and the process id.** A query tool's `processId` argument is the adapter's, not the
@@ -47,13 +53,17 @@ echoes the `processId`.
 or a required member of `parameters`) is answered with `mcp_invalid_arguments` naming the field
 and quoting its description; nothing is sent to the service.
 
-Names come from the published names in snake case. When two capabilities produce the same name,
-the later one says what it is (`_view`, `_source`, `_step`), and the collision is logged.
+Names are `{service}_{capability}` in snake case, where the capability part is the type name
+without a `QueryContextSource`, `QueryViewSource`, `ViewSource`, `Source` or `Step` suffix
+(`MemberSearchSource` in service `member` becomes `member_member_search`). A name longer than MCP's
+64 characters is shortened with a hash suffix and logged at Warning; KAL2020 and KAL2019 keep the
+service name (15) and the capability part (40) inside the budget. When two capabilities produce the
+same name, the later one says what it is (`_view`, `_source`, `_step`), and the collision is logged.
 
 Step and input descriptions are the published metadata (`[ProcessStep]`, `[Description]`,
 `[Display]`): they are the interface the agent reads (ADR 0007). A query field's description is
-shown where the field first appears in the tool (`filters`, else `searchText`, else `sort`). At
-startup the adapter logs, at Warning, every capability, input and query field without a
+shown where the field first appears in the tool (`filters`, else `searchText`, else `sort`). When
+the tools are built (the first request, and again whenever the registry changes) the adapter logs, at Warning, every capability, input and query field without a
 description, once per property (`service.Source.Field`), not once per tool.
 
 **Tool hints** ([ADR 0015](../../docs/decisions/0015-declared-step-behavior.md)) - what the implementer declared on
@@ -106,10 +116,14 @@ and the instructions tell the model to relay messages verbatim.
 
 When the client can show forms, questions go to the **user**, not the model:
 
-- clients on the stateless revisions (MRTR) get "input required" with the form, and call the tool
+- clients on the `2026-07-28` revision (MRTR) get "input required" with the form, and call the tool
   again with the answers; nothing is held between calls;
-- clients with a session get an elicitation request during the call;
 - otherwise the questions are returned in `next.informationRequest` for the agent to ask.
+
+The endpoint is stateless (no session affinity needed), so clients on `2025-11-25` or earlier, which
+rely on a session for server-to-client requests, are asked through the agent even when they can show
+forms. Sessions for those clients are an opt-in not offered yet
+([#350](https://github.com/no1ross/Kaleido/issues/350)).
 
 Proposed answers open the form pre-filled; the user confirms or corrects them.
 
@@ -179,6 +193,7 @@ A tool call never fails at the protocol level: a problem comes back as a tool re
 | `mcp_service_error` | The service refused or failed the call; its status and errors are included. A 5xx without errors does not pass the service's message through. | Explain the errors to the user. For a 5xx: check the arguments against the tool's inputs; if they are right, tell the user and do not repeat the same call. |
 | `mcp_process_conflict` | Another call changed the process first (409); nothing was saved. | Read the process with `get_process_state` and decide with the user - never repeat the call blindly. |
 | `mcp_service_unavailable` | The service could not be reached, or no client is configured for it. | For a step, check the process with `get_process_state` before trying again. |
+| `mcp_no_pending_information_request` | `answer_information_request` for a process that is not waiting for answers (already answered, or it needs a step instead). | Read the process with `get_process_state` and do what it needs now. |
 | `mcp_internal_error` | An unexpected error in the adapter. | Same as above. |
 
 **Retries are safe.** Tool calls go through the Kaleido clients: transient failures are retried by their resilience pipeline, and every step call carries an `Idempotency-Key`, so a retry the service has already answered gets the stored answer instead of running the step twice ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#resilience)).

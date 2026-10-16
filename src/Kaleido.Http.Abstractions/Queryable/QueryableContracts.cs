@@ -4,10 +4,25 @@ namespace Kaleido.Http.Queryable;
 
 // ── Request ──────────────────────────────────────────────────────────────────
 
+/// <summary>
+/// The body of a query endpoint for a query without parameters: <c>{"query":{…}}</c>. Used by
+/// clients to query a source directly when it takes no parameters.
+/// </summary>
+/// <param name="Query">The search, filter, sort and page to apply; <see langword="null"/> for none of them.</param>
 [ExcludeFromCodeCoverage]
 public record QueryApiRequest(
     QueryApiBody? Query = null);
 
+/// <summary>
+/// The body of a query endpoint (<c>POST /{service}/queryable/{source}[/{view}]/query</c>):
+/// the source's or view's parameters plus an optional query, <c>{"parameters":{…},"query":{…}}</c>.
+/// </summary>
+/// <typeparam name="TParameters">
+/// The parameters record of the source or view: the declared type on the server; on a client, that
+/// type or a local mirror.
+/// </typeparam>
+/// <param name="Parameters">The parameter values; <see langword="null"/> when none are supplied.</param>
+/// <param name="Query">The search, filter, sort and page to apply; <see langword="null"/> for none of them.</param>
 [ExcludeFromCodeCoverage]
 public record QueryApiRequest<TParameters>(
     TParameters? Parameters = null,
@@ -16,49 +31,54 @@ public record QueryApiRequest<TParameters>(
 
 // ── Registry responses ────────────────────────────────────────────────────────
 
-[ExcludeFromCodeCoverage]
-public sealed record PageableContract
-{
-    public int DefaultSize { get; init; }
-
-    public int MaxSize { get; init; }
-
-    public static PageableContract FromMetadata(
-        PageableMetadata metadata)
-    {
-        return new PageableContract
-        {
-            DefaultSize = metadata.DefaultSize,
-            MaxSize = metadata.MaxSize,
-        };
-    }
-}
-
+/// <summary>
+/// A field of a source's query context as published in the registry
+/// (<see cref="QueryableSourceResponse.Fields"/>): its type and which query operations it supports.
+/// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record QueryableFieldMetadata
 {
+    /// <summary>The field's name (the query context property name); use it in filter and sort clauses.</summary>
     public required string Name { get; init; }
 
+    /// <summary>The field's description (<c>[Description]</c>), if any.</summary>
     public string? Description { get; init; }
 
+    /// <summary>The field's published data type.</summary>
     public required DataTypeDescriptor DataType { get; init; }
 
     /// <summary>The property's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>), so clients know which values are sensitive; empty when not classified.</summary>
     public IReadOnlyList<string> Classifications { get; init; } = [];
 
+    /// <summary>True when the field is declared <c>[Filterable]</c> and may appear in a filter condition.</summary>
     public bool IsFilterable { get; init; }
 
+    /// <summary>The operators a filter condition on this field may use; empty when the field is not filterable.</summary>
     public IReadOnlyCollection<FilterOperator> FilterOperators { get; init; }
         = [];
 
+    /// <summary>True when the field is declared <c>[Searchable]</c> and is matched by the request's free-text search.</summary>
     public bool IsSearchable { get; init; }
 
+    /// <summary>
+    /// The order in which searchable fields are considered (lower first); <see langword="null"/>
+    /// when the field is not searchable.
+    /// </summary>
     public int? SearchPriority { get; init; }
 
+    /// <summary>
+    /// How the search text is matched against this field; <see langword="null"/> when the field is
+    /// not searchable.
+    /// </summary>
     public MatchMode? MatchMode { get; init; }
 
+    /// <summary>True when the field is declared <c>[Sortable]</c> and may appear in a sort clause.</summary>
     public bool IsSortable { get; init; }
 
+    /// <summary>Projects a registry field descriptor to its wire shape.</summary>
+    /// <param name="item">The field as registered in the Queryable registry.</param>
+    /// <returns>A new <see cref="QueryableFieldMetadata"/> with the descriptor's values.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null"/>.</exception>
     public static QueryableFieldMetadata FromRegistryItem(
         QueryableFieldDescriptor item)
     {
@@ -80,21 +100,33 @@ public sealed record QueryableFieldMetadata
     }
 }
 
+/// <summary>
+/// A parameter of a source or view as published in the registry: a property of its parameters
+/// record, sent in the request's <c>parameters</c> object.
+/// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record QueryableQueryParameter
 {
+    /// <summary>The parameter's name (the parameters record's property name).</summary>
     public required string Name { get; init; }
 
+    /// <summary>The parameter's description (<c>[Description]</c>), if any.</summary>
     public string? Description { get; init; }
 
+    /// <summary>The parameter's published data type.</summary>
     public required DataTypeDescriptor DataType { get; init; }
 
+    /// <summary>The parameter's validation constraints, one per validation attribute; empty when it has none.</summary>
     public IReadOnlyCollection<ConstraintContract> Constraints { get; init; }
         = [];
 
     /// <summary>The property's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>), so clients know which values are sensitive; empty when not classified.</summary>
     public IReadOnlyList<string> Classifications { get; init; } = [];
 
+    /// <summary>Projects a registry parameter descriptor to its wire shape.</summary>
+    /// <param name="item">The parameter as registered in the Queryable registry.</param>
+    /// <returns>A new <see cref="QueryableQueryParameter"/> with the descriptor's values.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null"/>.</exception>
     public static QueryableQueryParameter FromRegistryItem(
         QueryableParameterDescriptor item)
     {
@@ -111,18 +143,29 @@ public sealed record QueryableQueryParameter
     }
 }
 
+/// <summary>
+/// A field of the records a source or view returns, as published in the registry
+/// (<see cref="QueryableSourceResponse.OutputFields"/>, <see cref="QueryableViewResponse.OutputFields"/>).
+/// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record QueryableQueryProperty
 {
+    /// <summary>The field's name (the result record's property name).</summary>
     public required string Name { get; init; }
 
+    /// <summary>The field's description (<c>[Description]</c>), if any.</summary>
     public string? Description { get; init; }
 
+    /// <summary>The field's published data type.</summary>
     public required DataTypeDescriptor DataType { get; init; }
 
     /// <summary>The property's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>), so clients know which values are sensitive; empty when not classified.</summary>
     public IReadOnlyList<string> Classifications { get; init; } = [];
 
+    /// <summary>Projects a registry output field descriptor to its wire shape.</summary>
+    /// <param name="item">The output field as registered in the Queryable registry.</param>
+    /// <returns>A new <see cref="QueryableQueryProperty"/> with the descriptor's values.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null"/>.</exception>
     public static QueryableQueryProperty FromRegistryItem(
         QueryableOutputFieldDescriptor item)
     {
@@ -138,17 +181,26 @@ public sealed record QueryableQueryProperty
     }
 }
 
+/// <summary>
+/// A view of a query source as published in the registry (<see cref="QueryableSourceResponse.Views"/>):
+/// its description, paging, authorization, query URL, parameters and result fields.
+/// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record QueryableViewResponse
 {
+    /// <summary>The view's public name (its type name), unique within its source. Pass it to the client to query the view.</summary>
     public required string Name { get; init; }
 
+    /// <summary>What the view returns.</summary>
     public string? Description { get; init; }
 
+    /// <summary>The human-readable name.</summary>
     public string? DisplayName { get; init; }
 
+    /// <summary>The view's version.</summary>
     public string? Version { get; init; }
 
+    /// <summary>Paging for this view (not inherited from its source). Null means not pageable.</summary>
     public PageableMetadata? Pageable { get; init; }
 
     /// <summary>
@@ -157,14 +209,24 @@ public sealed record QueryableViewResponse
     /// </summary>
     public AuthorizationMetadata? Authorization { get; init; }
 
+    /// <summary>The URL to query this view: <c>/{service}/queryable/{source}/{view}/query</c>, with lowercase source and view names.</summary>
     public required string QueryUrl { get; init; }
 
+    /// <summary>The parameters the view accepts; empty when it takes none.</summary>
     public IReadOnlyCollection<QueryableQueryParameter> Parameters { get; init; }
         = [];
 
+    /// <summary>The fields of the records the view returns.</summary>
     public IReadOnlyCollection<QueryableQueryProperty> OutputFields { get; init; }
         = [];
 
+    /// <summary>Projects a registry view to its wire shape, building its query URL.</summary>
+    /// <param name="item">The view as registered in the Queryable registry.</param>
+    /// <param name="sourceName">The owning source's route segment (the lowercase source name), used as-is in <see cref="QueryUrl"/>.</param>
+    /// <param name="serviceName">The service's route prefix; when empty the URL has no service segment.</param>
+    /// <returns>A new <see cref="QueryableViewResponse"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="sourceName"/> is <see langword="null"/>, empty or whitespace.</exception>
     public static QueryableViewResponse FromRegistryItem(
         QueryableViewRegistryItem item,
         string sourceName,
@@ -258,6 +320,14 @@ public sealed record QueryableSourceResponse
     public IReadOnlyCollection<QueryableViewResponse> Views { get; init; }
         = [];
 
+    /// <summary>
+    /// Projects a registry source, with its fields, parameters, output fields and views, to its wire
+    /// shape, building its registry and query URLs (the URL uses the lowercase source name).
+    /// </summary>
+    /// <param name="item">The source as registered in the Queryable registry.</param>
+    /// <param name="serviceName">The service name, published as <see cref="ServiceName"/> and used as the URLs' route prefix.</param>
+    /// <returns>A new <see cref="QueryableSourceResponse"/>; <see cref="QueryUrl"/> is always set.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null"/>.</exception>
     public static QueryableSourceResponse FromRegistryItem(
         QueryableSourceRegistryItem item,
         string serviceName)

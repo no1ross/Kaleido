@@ -1,3 +1,5 @@
+using Kaleido.Exceptions;
+
 namespace Kaleido.Http.Client;
 
 internal abstract class KaleidoClientFactoryBase<TClient, TMap>
@@ -17,17 +19,22 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
 
     public TClient GetClient(string name)
     {
-        var serviceName = GetServiceName(name);
-        var registryTtl = GetRegistryTtl(name);
-
         // Find the exact registered name (case-sensitive) from the map.
         // This handles the case where handlers call GetClient with lowercase
         // but HttpClients are registered with PascalCase.
-        var registeredName = GetRegisteredName(name) ?? name;
+        var registeredName = GetRegisteredName(name)
+            ?? throw new KaleidoConfigurationException(
+                HttpClientErrorCodes.UnknownClient,
+                $"Kaleido client '{name}' is not configured under Kaleido:Clients; {ConfiguredClients()}.");
 
         var httpClient = HttpClientFactory.CreateClient(registeredName);
-        return CreateClient(httpClient, HeaderStamper, registeredName, serviceName, registryTtl);
+        return CreateClient(httpClient, HeaderStamper, registeredName, RouteOptionsMap.Options[registeredName], GetRegistryTtl(registeredName));
     }
+
+    private string ConfiguredClients() =>
+        RouteOptionsMap.Options.Count == 0
+            ? "no clients are configured"
+            : "configured clients: " + string.Join(", ", RouteOptionsMap.Options.Keys.Order(StringComparer.OrdinalIgnoreCase));
 
     public bool TryGetClientForService(
         string serviceName,
@@ -47,11 +54,6 @@ internal abstract class KaleidoClientFactoryBase<TClient, TMap>
         RouteOptionsMap.RegistryTtls.TryGetValue(name, out var ttl)
             ? ttl
             : null;
-
-    private string GetServiceName(string name) =>
-        RouteOptionsMap.Options.TryGetValue(name, out var serviceName)
-            ? serviceName
-            : string.Empty;
 
     private string? GetRegisteredName(string name) =>
         RouteOptionsMap.Options.Keys.FirstOrDefault(k =>

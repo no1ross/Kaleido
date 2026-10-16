@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Kaleido.Http.Processor;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.Client.Processor.UnitTests;
@@ -13,7 +15,8 @@ public sealed class KaleidoProcessorClientTests
     private static KaleidoProcessorClient CreateSut(
         HttpClient httpClient,
         ICorrelationHeaderStamper headerStamper,
-        string serviceName = "")
+        string serviceName = "",
+        ILogger<KaleidoProcessorClient>? logger = null)
     {
         // Registry fetches go through the shared remote registry, which pulls
         // the HttpClient from IHttpClientFactory — return the test client.
@@ -30,7 +33,7 @@ public sealed class KaleidoProcessorClientTests
         return new(
             httpClient,
             headerStamper,
-            NullLogger<KaleidoProcessorClient>.Instance,
+            logger ?? NullLogger<KaleidoProcessorClient>.Instance,
             remoteRegistry,
             "test",
             serviceName);
@@ -610,6 +613,130 @@ public sealed class KaleidoProcessorClientTests
         Assert.Equal(2, keys.Count);
         Assert.All(keys, key => Assert.False(string.IsNullOrWhiteSpace(key)));
         Assert.NotEqual(keys[0], keys[1]);
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_TypedResult_WhenTheServiceRejectsTheStep_ThrowsValidationFailedWithTheErrors()
+    {
+        var (client, _) = CreateClient(respond: req =>
+            req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal)
+                ? JsonOk(FakeRegistry)
+                : new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = JsonContent.Create(
+                        new KaleidoErrorResponse([new KaleidoError("pro_invalid_step", "Field required.")]),
+                        options: KaleidoJsonOptions.Options),
+                });
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
+            () => client.ExecuteStepAsync<MyStep, MyStepResponse>(new MyStep(), TestContext.Current.CancellationToken));
+
+        Assert.Equal(HttpClientErrorCodes.ValidationFailed, exception.Code);
+        Assert.Equal(HttpStatusCode.BadRequest, exception.StatusCode);
+        Assert.Equal("pro_invalid_step", Assert.Single(exception.Errors).Code);
+        Assert.Equal("Process step request failed: Field required.", exception.Message);
+    }
+
+    private static HttpResponseMessage RegistryWithAStepLessProcessor()
+    {
+        var node = JsonSerializer.SerializeToNode(
+            new AggregatedRegistryResponse { Processes = [FakeProcessor with { Name = "empty" }, FakeProcessor] },
+            KaleidoJsonOptions.Options)!;
+        node["processes"]![0]!["steps"] = null;
+
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(node.ToJsonString(), System.Text.Encoding.UTF8, "application/json")
+        };
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_ByName_SkipsAProcessorThatPublishesNoSteps()
+    {
+        string? postedPath = null;
+        var (client, _) = CreateClient(respond: req =>
+        {
+            if (req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal))
+            {
+                return RegistryWithAStepLessProcessor();
+            }
+
+            postedPath = req.RequestUri.AbsolutePath;
+            return JsonOk(new StepExecutionResponse<object> { ProcessId = Guid.NewGuid(), StepName = "MyStep" });
+        });
+
+        await client.ExecuteStepAsync("MyStep", JsonSerializer.SerializeToElement(new { }), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("/processes/steps/mystep", postedPath);
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_ByName_AnUnknownStep_ListsTheStepsOfProcessorsThatPublishThem()
+    {
+        var (client, _) = CreateClient(respond: _ => RegistryWithAStepLessProcessor());
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
+            () => client.ExecuteStepAsync("NoSuchStep", JsonSerializer.SerializeToElement(new { }), cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(HttpClientErrorCodes.NotFound, exception.Code);
+        Assert.Contains("Available steps: MyStep.", exception.Message, StringComparison.Ordinal);
+    }
+
+    private static (KaleidoProcessorClient Client, RecordingLogger Logger) CreateLoggedClient(Func<HttpRequestMessage, HttpResponseMessage> respond)
+    {
+        var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        handler.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync((HttpRequestMessage req, CancellationToken _) => respond(req));
+        var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
+        var logger = new RecordingLogger();
+
+        return (CreateSut(httpClient, Mock.Of<ICorrelationHeaderStamper>(), "radiology", logger), logger);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_LogsTheOutgoingCallAtDebug()
+    {
+        var (client, logger) = CreateLoggedClient(_ => JsonOk(new ProcessExecutionResponse { ProcessId = Guid.NewGuid() }));
+
+        await client.ExecuteAsync(new ExecuteProcessRequest(), TestContext.Current.CancellationToken);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Debug, entry.Level);
+        Assert.Contains("Sending POST", entry.Message, StringComparison.Ordinal);
+        Assert.Contains("remote processor 'radiology'", entry.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetProcessStateAsync_WhenTheServiceFails_LogsAWarningWithTheStatus()
+    {
+        var (client, logger) = CreateLoggedClient(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(
+            () => client.GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
+
+        Assert.Collection(
+            logger.Entries,
+            sending => Assert.Equal(LogLevel.Debug, sending.Level),
+            failed =>
+            {
+                Assert.Equal(LogLevel.Warning, failed.Level);
+                Assert.Contains("Remote processor 'radiology' returned 503 (ServiceUnavailable) for GET", failed.Message, StringComparison.Ordinal);
+                Assert.Contains("/radiology/processes/", failed.Message, StringComparison.Ordinal);
+            });
+    }
+
+    private sealed class RecordingLogger : ILogger<KaleidoProcessorClient>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Entries.Add((logLevel, formatter(state, exception)));
     }
 
     [Fact]

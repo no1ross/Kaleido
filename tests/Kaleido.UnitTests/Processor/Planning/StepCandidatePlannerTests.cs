@@ -288,6 +288,17 @@ public sealed class StepCandidatePlannerTests
             x => x.Status == StepCandidateStatus.Satisfied);
     }
 
+    [Fact]
+    public void Build_WhenABuiltCandidateHasNoRegistration_ThrowsAFrameworkException()
+    {
+        var candidate = new StepCandidate { StepName = "orphan", Status = StepCandidateStatus.Built };
+
+        var exception = Assert.Throws<Kaleido.Exceptions.KaleidoFrameworkException>(() => CreateSut().Build([candidate]));
+
+        Assert.Equal(Kaleido.Exceptions.FrameworkErrorCodes.MissingRegistration, exception.Code);
+        Assert.Contains("orphan", exception.Message);
+    }
+
     private static StepCandidatePlanner CreateSut()
     {
         return new StepCandidatePlanner();

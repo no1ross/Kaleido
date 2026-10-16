@@ -32,6 +32,13 @@ public sealed record ProcessorContext
         init;
     }
 
+    /// <summary>
+    /// The correlation request id (<see cref="KaleidoCorrelationContext.RequestId"/>) of the latest
+    /// request that created or loaded this process. The runtime copies it to the
+    /// <see cref="StepContext.LatestRequestId"/> of each step whose execution that request records
+    /// (not a step its handler rejects). It is saved only when the process is created or such a step
+    /// is recorded; a request that records no step leaves the stored value unchanged.
+    /// </summary>
     public string? LatestRequestId
     {
         get;
@@ -142,18 +149,34 @@ public sealed record ProcessorContext
     }
         = [];
 
+    /// <summary>
+    /// When the process instance was created (UTC); set once when the runtime initializes the context.
+    /// </summary>
     public DateTimeOffset CreatedUtc
     {
         get;
         init;
     }
 
+    /// <summary>
+    /// A timestamp (UTC) the runtime sets on creation, when a loaded process is reconciled with the
+    /// registered steps (at the start of every request on it), and when a step's result or failure
+    /// is applied. A cancelled step does not set it. Like the rest of the context, a new value is
+    /// stored only when the context is saved.
+    /// </summary>
     public DateTimeOffset UpdatedUtc
     {
         get;
         init;
     }
 
+    /// <summary>
+    /// Returns the state of the step named <paramref name="stepName"/> (case-insensitive), or
+    /// <see langword="null"/> when <see cref="Steps"/> has no entry for it.
+    /// </summary>
+    /// <param name="stepName">The step's name: its type name.</param>
+    /// <returns>The step's <see cref="StepContext"/>, or <see langword="null"/>.</returns>
+    /// <exception cref="ArgumentException"><paramref name="stepName"/> is null, empty or whitespace.</exception>
     public StepContext? FindStep(
         string stepName)
     {
@@ -166,6 +189,15 @@ public sealed record ProcessorContext
                 StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Whether the step named <paramref name="stepName"/> (case-insensitive) has the status
+    /// <see cref="StepExecutionStatus.Completed"/> in <see cref="Steps"/>.
+    /// </summary>
+    /// <param name="stepName">The step's name: its type name.</param>
+    /// <returns>
+    /// <see langword="true"/> when the step's last recorded status is completed; <see langword="false"/>
+    /// when it has any other status or is not in <see cref="Steps"/>.
+    /// </returns>
     public bool HasCompletedStep(
         string stepName)
     {

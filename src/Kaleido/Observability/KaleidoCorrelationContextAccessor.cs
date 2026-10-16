@@ -45,7 +45,7 @@ public interface IKaleidoCorrelationContextAccessor
 /// resolves this interface to stamp the context once per request. Consumers should
 /// inject <see cref="IKaleidoCorrelationContextAccessor"/> for read access only.
 /// </remarks>
-public interface IKaleidoCorrelationContextInitializer
+internal interface IKaleidoCorrelationContextInitializer
 {
     /// <summary>
     /// Sets the correlation context for the current request scope.

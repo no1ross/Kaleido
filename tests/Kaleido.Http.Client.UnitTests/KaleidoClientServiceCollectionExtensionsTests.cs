@@ -1,8 +1,12 @@
 using System.Reflection;
+using Kaleido.Http.Client.HealthChecks;
 using Kaleido.Http.Processor;
 using Kaleido.Http.Queryable;
+using Kaleido.Observability;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 
 namespace Kaleido.Http.Client.UnitTests;
 
@@ -450,7 +454,160 @@ public sealed class KaleidoClientServiceCollectionExtensionsTests
         Assert.True(callbackInvoked);
     }
 
+    // ── Resilience and health check ──────────────────────────────────────────────
+
+    private static readonly KaleidoResilienceOptions FastResilience = new()
+    {
+        MaxRetryAttempts = 2,
+        RetryDelay = TimeSpan.FromMilliseconds(1),
+    };
+
+    private static ServiceCollection ClientServices()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(Mock.Of<IKaleidoCorrelationContextAccessor>());
+        services.AddSingleton(new KaleidoServiceOptions { ServiceName = "test" });
+        return services;
+    }
+
+    private static ServiceProvider Build(IServiceCollection services) =>
+        services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+
+    private static Task<HttpResponseMessage> GetAsync(ServiceProvider provider, string clientName, string path) =>
+        provider.GetRequiredService<IHttpClientFactory>().CreateClient(clientName).GetAsync(path, TestContext.Current.CancellationToken);
+
+    [Fact]
+    public async Task AddProcessorClient_WithResilience_RetriesATransientReadFailure()
+    {
+        var wire = new StubHandler(HttpStatusCode.ServiceUnavailable);
+        var services = ClientServices();
+        new FakeKaleidoBuilder(services).AddProcessorClient(
+            o =>
+            {
+                o.Name = "Radiology";
+                o.BaseUrl = "http://radiology/";
+                o.Resilience = FastResilience;
+            },
+            http => http.ConfigurePrimaryHttpMessageHandler(() => wire));
+        using var provider = Build(services);
+
+        using var response = await GetAsync(provider, "Radiology", "/radiology/registry");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal(3, wire.Paths.Count);
+    }
+
+    // Two stacked pipelines would make 3 x 3 attempts.
+    [Fact]
+    public async Task AProcessorAndAQueryableClientOfOneName_ShareOneResiliencePipeline()
+    {
+        var wire = new StubHandler(HttpStatusCode.ServiceUnavailable);
+        var services = ClientServices();
+        new FakeKaleidoBuilder(services)
+            .AddProcessorClient(
+                o =>
+                {
+                    o.Name = "Radiology";
+                    o.BaseUrl = "http://radiology/";
+                    o.Resilience = FastResilience;
+                },
+                http => http.ConfigurePrimaryHttpMessageHandler(() => wire))
+            .AddQueryableClient(o =>
+            {
+                o.Name = "radiology";
+                o.BaseUrl = "http://radiology/";
+                o.Resilience = FastResilience;
+            });
+        using var provider = Build(services);
+
+        using var response = await GetAsync(provider, "Radiology", "/radiology/registry");
+
+        Assert.Equal(3, wire.Paths.Count);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AddProcessorClient_WithoutEnabledResilience_CallsOnce(bool disabled)
+    {
+        var wire = new StubHandler(HttpStatusCode.ServiceUnavailable);
+        var services = ClientServices();
+        new FakeKaleidoBuilder(services).AddProcessorClient(
+            o =>
+            {
+                o.Name = "Radiology";
+                o.BaseUrl = "http://radiology/";
+                o.Resilience = disabled ? new KaleidoResilienceOptions { Enabled = false } : null;
+            },
+            http => http.ConfigurePrimaryHttpMessageHandler(() => wire));
+        using var provider = Build(services);
+
+        using var response = await GetAsync(provider, "Radiology", "/radiology/registry");
+
+        Assert.Single(wire.Paths);
+    }
+
+    [Fact]
+    public void AddProcessorClient_RegistersOneRemoteHealthCheckPerClientName()
+    {
+        var services = ClientServices();
+        new FakeKaleidoBuilder(services)
+            .AddProcessorClient(o => { o.Name = "Radiology"; o.BaseUrl = "http://radiology/"; })
+            .AddQueryableClient(o => { o.Name = "radiology"; o.BaseUrl = "http://radiology/"; });
+        using var provider = Build(services);
+
+        var registration = Assert.Single(provider.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value.Registrations);
+
+        Assert.Equal("kaleido-Radiology", registration.Name);
+        Assert.Equal(HealthStatus.Unhealthy, registration.FailureStatus);
+        Assert.Equal(["kaleido", "remote"], registration.Tags.Order());
+    }
+
+    [Theory]
+    [InlineData(false, "/radiology/registry")]
+    [InlineData(true, "/radiology/registry?strict")]
+    public async Task TheClientHealthCheck_ProbesTheRemoteRegistry_ThroughTheNamedClient(bool strict, string expectedPath)
+    {
+        var wire = new StubHandler(HttpStatusCode.OK);
+        var services = ClientServices();
+        new FakeKaleidoBuilder(services).AddProcessorClient(
+            o =>
+            {
+                o.Name = "Radiology";
+                o.BaseUrl = "http://radiology/";
+                o.RoutePrefix = "radiology";
+                o.StrictRegistryProbe = strict;
+                o.Resilience = FastResilience;
+            },
+            http => http.ConfigurePrimaryHttpMessageHandler(() => wire));
+        using var provider = Build(services);
+        var registration = Assert.Single(provider.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value.Registrations);
+
+        var check = registration.Factory(provider);
+        var result = await check.CheckHealthAsync(new HealthCheckContext { Registration = registration }, TestContext.Current.CancellationToken);
+
+        Assert.IsType<KaleidoClientHealthCheck>(check);
+        Assert.Equal(HealthStatus.Healthy, result.Status);
+        Assert.Equal(expectedPath, Assert.Single(wire.Paths));
+    }
+
     // ── Test doubles ─────────────────────────────────────────────────────────────
+
+    private sealed class StubHandler(HttpStatusCode status) : HttpMessageHandler
+    {
+        public List<string> Paths { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            lock (Paths)
+            {
+                Paths.Add(request.RequestUri!.PathAndQuery);
+            }
+
+            return Task.FromResult(new HttpResponseMessage(status));
+        }
+    }
 
     private sealed class FakeKaleidoBuilder(IServiceCollection services) : IKaleidoBuilder
     {

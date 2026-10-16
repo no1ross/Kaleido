@@ -142,6 +142,75 @@ public sealed class InformationRequestElicitorTests
         Assert.Empty(notes.Answers);
     }
 
+    [Fact]
+    public void ToElicitation_ADateTime_IsADateTimeField_PreFilledWithItsProposal()
+    {
+        var elicitation = CreateSut().ToElicitation(new InformationRequest
+        {
+            InformationRequestId = "q",
+            Items =
+            [
+                new InformationItem { Id = "at", Text = " When? ", Type = InformationItemType.DateTime, ProposedAnswers = [new InformationAnswer { Value = " " }, new InformationAnswer { Value = "2026-10-01T09:00:00Z" }] }
+            ]
+        });
+
+        var field = Assert.IsType<ElicitRequestParams.StringSchema>(Assert.IsType<ElicitRequestParams.RequestSchema>(elicitation.RequestedSchema).Properties["at"]);
+        Assert.Equal("date-time", field.Format);
+        Assert.Equal("When?", field.Title);
+        Assert.Null(field.Description);
+        Assert.Equal("2026-10-01T09:00:00Z", field.Default);
+    }
+
+    [Fact]
+    public void ToElicitation_ProposalsThatDoNotParse_LeaveTheFieldEmpty()
+    {
+        var elicitation = CreateSut().ToElicitation(new InformationRequest
+        {
+            InformationRequestId = "q",
+            Items =
+            [
+                new InformationItem { Id = "flag", Text = "Flag?", Type = InformationItemType.Boolean, ProposedAnswers = [new InformationAnswer { Value = "maybe" }] },
+                new InformationItem { Id = "count", Text = "Count?", Type = InformationItemType.WholeNumber, ProposedAnswers = [new InformationAnswer { Value = "many" }] },
+                new InformationItem { Id = "score", Text = "Score?", Type = InformationItemType.Number, ProposedAnswers = [new InformationAnswer { Value = "2.5" }] }
+            ]
+        });
+
+        var fields = Assert.IsType<ElicitRequestParams.RequestSchema>(elicitation.RequestedSchema).Properties;
+        Assert.Null(Assert.IsType<ElicitRequestParams.BooleanSchema>(fields["flag"]).Default);
+        Assert.Null(Assert.IsType<ElicitRequestParams.NumberSchema>(fields["count"]).Default);
+        Assert.Equal(2.5d, Assert.IsType<ElicitRequestParams.NumberSchema>(fields["score"]).Default);
+    }
+
+    [Fact]
+    public void ToAnswers_ConvertsTrue_AndDropsValuesThatAreNotAnswers()
+    {
+        var request = new InformationRequest
+        {
+            InformationRequestId = "q",
+            Items =
+            [
+                new InformationItem { Id = "flag", Text = "Flag?", Type = InformationItemType.Boolean },
+                new InformationItem { Id = "empty", Text = "Empty?", Type = InformationItemType.Text },
+                new InformationItem { Id = "shape", Text = "Shape?", Type = InformationItemType.Text },
+                new InformationItem { Id = "mixed", Text = "Mixed?", Type = InformationItemType.Choice, Repeats = true }
+            ]
+        };
+        var content = new Dictionary<string, JsonElement>
+        {
+            ["flag"] = JsonSerializer.SerializeToElement(true),
+            ["empty"] = JsonSerializer.SerializeToElement<object?>(null),
+            ["shape"] = JsonSerializer.SerializeToElement(new { a = 1 }),
+            ["mixed"] = JsonSerializer.SerializeToElement(new object?[] { "a", 2, null, true })
+        };
+
+        var answers = CreateSut().ToAnswers(request, content).ToDictionary(x => x.ItemId, x => x.Answers.Select(a => a.Value).ToArray());
+
+        Assert.Equal(["true"], answers["flag"]);
+        Assert.Empty(answers["empty"]);
+        Assert.Empty(answers["shape"]);
+        Assert.Equal(["a", "2", "true"], answers["mixed"]);
+    }
+
     private static InformationRequest WithProposals() => Request with
     {
         Items = Request.Items.Select(item => item.Id switch

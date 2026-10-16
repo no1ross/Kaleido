@@ -8,11 +8,29 @@ public sealed class QueryableRegistryTests
 {
     private static QueryableRegistry CreateSut(
         IQuerySourceRegistry sourceRegistry,
-        IQueryViewRegistry viewRegistry) =>
+        IQueryViewRegistry viewRegistry,
+        Microsoft.Extensions.Logging.ILogger<QueryableRegistry>? logger = null) =>
         new(
             sourceRegistry,
             viewRegistry,
-            NullLogger<QueryableRegistry>.Instance);
+            logger ?? NullLogger<QueryableRegistry>.Instance);
+
+    [Fact]
+    public void Constructor_LogsTheBuiltRegistryOnceAtInformation()
+    {
+        var sourceRegistry = new Mock<IQuerySourceRegistry>();
+        sourceRegistry.Setup(r => r.Registrations).Returns([Source(typeof(LocalSource), "LocalSource", QuerySourceKind.Local)]);
+        var viewRegistry = new Mock<IQueryViewRegistry>();
+        viewRegistry.Setup(r => r.Registrations).Returns([]);
+        var logger = new Mock<Microsoft.Extensions.Logging.ILogger<QueryableRegistry>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<Microsoft.Extensions.Logging.LogLevel>())).Returns(true);
+
+        _ = CreateSut(sourceRegistry.Object, viewRegistry.Object, logger.Object);
+
+        var logged = Assert.Single(logger.Invocations, x => x.Method.Name == nameof(Microsoft.Extensions.Logging.ILogger.Log));
+        Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Information, logged.Arguments[0]);
+        Assert.Equal("Queryable registry built with 1 sources.", logged.Arguments[2].ToString());
+    }
 
     private static QueryableRegistry CreateSut(
         IReadOnlyCollection<QuerySourceRegistration> sources,

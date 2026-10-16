@@ -3,15 +3,15 @@ using Kaleido.Http.Registry;
 namespace Kaleido.Http.Registry.UnitTests;
 
 public sealed class InMemoryRegistrySnapshotStoreTests
-    : Kaleido.UnitTests.SutFixture<InMemoryRegistrySnapshotStore>
+    : Kaleido.UnitTests.SutFixture
 {
-    protected override InMemoryRegistrySnapshotStore CreateSut() =>
+    private static InMemoryRegistrySnapshotStore CreateSut() =>
         new();
 
     [Fact]
     public async Task GetAsync_WhenKeyAbsent_ReturnsNull()
     {
-        var store = Sut;
+        var store = CreateSut();
 
         var result = await store.GetAsync("missing");
 
@@ -21,7 +21,7 @@ public sealed class InMemoryRegistrySnapshotStoreTests
     [Fact]
     public async Task SetAsync_ThenGet_ReturnsSnapshot()
     {
-        var store = Sut;
+        var store = CreateSut();
 
         var snapshot = new AggregatedRegistryResponse
         {
@@ -37,7 +37,7 @@ public sealed class InMemoryRegistrySnapshotStoreTests
     [Fact]
     public async Task RemoveAsync_RemovesSnapshot()
     {
-        var store = Sut;
+        var store = CreateSut();
 
         var snapshot = new AggregatedRegistryResponse();
 
@@ -50,7 +50,7 @@ public sealed class InMemoryRegistrySnapshotStoreTests
     [Fact]
     public async Task Keys_AreCaseInsensitive()
     {
-        var store = Sut;
+        var store = CreateSut();
 
         var snapshot = new AggregatedRegistryResponse();
 

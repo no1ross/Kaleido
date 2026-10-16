@@ -56,6 +56,93 @@ public sealed class QueryContextExecutorTests
         Assert.Equal(2, item.Id);
     }
 
+    [Fact]
+    public async Task CountAsync_WhenQueryIsNull_Throws()
+    {
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => Sut.CountAsync(null!));
+
+        Assert.Equal("query", exception.ParamName);
+    }
+
+    [Fact]
+    public async Task ToListAsync_WhenQueryIsNull_Throws()
+    {
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => Sut.ToListAsync(null!));
+
+        Assert.Equal("query", exception.ParamName);
+    }
+
+    [Fact]
+    public async Task CountAsync_WhenQueryIsAsyncEnumerable_EnumeratesAsynchronously()
+    {
+        var query = new AsyncQueryable(TestData());
+
+        var result = await Sut.CountAsync(query);
+
+        Assert.Equal(3, result);
+        Assert.True(query.AsyncEnumerated);
+    }
+
+    [Fact]
+    public async Task ToListAsync_WhenQueryIsAsyncEnumerable_EnumeratesAsynchronously()
+    {
+        var query = new AsyncQueryable(TestData());
+
+        var result = await Sut.ToListAsync(query);
+
+        Assert.Equal([1, 2, 3], result.Select(x => x.Id));
+        Assert.True(query.AsyncEnumerated);
+    }
+
+    [Fact]
+    public async Task ToListAsync_WhenCancelledDuringAsyncEnumeration_Throws()
+    {
+        using var cts = new CancellationTokenSource();
+        var query = new AsyncQueryable(TestData(), onItem: cts.Cancel);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Sut.ToListAsync(query, cts.Token));
+    }
+
+    [Fact]
+    public async Task CountAsync_WhenCancelledDuringAsyncEnumeration_Throws()
+    {
+        using var cts = new CancellationTokenSource();
+        var query = new AsyncQueryable(TestData(), onItem: cts.Cancel);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Sut.CountAsync(query, cts.Token));
+    }
+
+    private sealed class AsyncQueryable(IReadOnlyList<TestRecord> items, Action? onItem = null)
+        : IQueryable<TestRecord>, IAsyncEnumerable<TestRecord>
+    {
+        private readonly IQueryable<TestRecord> _inner = items.AsQueryable();
+
+        public bool AsyncEnumerated { get; private set; }
+
+        public Type ElementType => _inner.ElementType;
+
+        public System.Linq.Expressions.Expression Expression => _inner.Expression;
+
+        public IQueryProvider Provider => _inner.Provider;
+
+        public async IAsyncEnumerator<TestRecord> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+        {
+            AsyncEnumerated = true;
+
+            foreach (var item in items)
+            {
+                await Task.Yield();
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return item;
+                onItem?.Invoke();
+            }
+        }
+
+        public IEnumerator<TestRecord> GetEnumerator() => throw new NotSupportedException();
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
     private static IReadOnlyList<TestRecord> TestData() =>
     [
         new() { Id = 1 },

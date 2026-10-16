@@ -99,7 +99,7 @@ internal sealed class ProcessorExecutor(
         }
         catch (KaleidoValidationException exception)
         {
-            stepObservation.StepFailed(exception);
+            stepObservation.StepValidationFailed(exception.Code);
 
             return (await FailAsync(
                 stateUpdater.ApplyException(context, candidate),
@@ -350,7 +350,7 @@ internal sealed class ProcessorExecutor(
                 StepExecutionOutcome.Blocked,
 
             StepExecutionStatus.Canceled =>
-                StepExecutionOutcome.Blocked,
+                StepExecutionOutcome.Canceled,
 
             StepExecutionStatus.Failed =>
                 StepExecutionOutcome.Failed,

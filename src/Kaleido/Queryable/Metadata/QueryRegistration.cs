@@ -37,7 +37,7 @@ public enum QuerySourceKind
 /// <param name="ParametersType">The source's parameters record (<see cref="EmptyQueryViewParameters"/> for local sources).</param>
 /// <param name="Metadata">The source's published metadata.</param>
 [ExcludeFromCodeCoverage]
-public sealed record QuerySourceRegistration(
+internal sealed record QuerySourceRegistration(
     Type SourceType,
     Type QueryContextType,
     Type ResultType,
@@ -115,7 +115,7 @@ public sealed record FieldMetadata
 /// <param name="QueryContextType">The source's query context record.</param>
 /// <param name="Metadata">The view's published metadata.</param>
 [ExcludeFromCodeCoverage]
-public sealed record QueryViewRegistration
+internal sealed record QueryViewRegistration
 (
     Type QueryViewType,
     Type ViewType,

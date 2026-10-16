@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Kaleido.Exceptions;
 using Kaleido.UnitTests;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,10 +16,160 @@ public sealed class KaleidoExceptionHandlerTests
 
     private static readonly Guid ConflictedProcess = Guid.Parse("6f1c2a9e-5d3b-4f7a-9c1e-2b8d4e6a0f13");
 
+    public KaleidoExceptionHandlerTests()
+    {
+        Logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+    }
+
     private Mock<ILogger<KaleidoExceptionHandler>> Logger { get; } = new();
 
     private KaleidoExceptionHandler CreateSut() =>
         new(Logger.Object);
+
+    public static TheoryData<string, LogLevel> LogLevelCases { get; } =
+        new()
+        {
+            { nameof(KaleidoValidationException), LogLevel.Warning },
+            { nameof(ArgumentException), LogLevel.Warning },
+            { nameof(BadHttpRequestException), LogLevel.Warning },
+            { nameof(System.Text.Json.JsonException), LogLevel.Warning },
+            { nameof(KaleidoConcurrencyException), LogLevel.Warning },
+            { nameof(KaleidoConfigurationException), LogLevel.Error },
+            { nameof(KaleidoFrameworkException), LogLevel.Error },
+            { nameof(Exception), LogLevel.Error },
+        };
+
+    [Theory]
+    [MemberData(nameof(LogLevelCases))]
+    public async Task HandleAsync_LogsOnceAtTheContractLevel(string exceptionName, LogLevel expectedLevel)
+    {
+        var exception = Create(exceptionName);
+
+        await CreateSut().HandleAsync(CreateContext(), exception, CancellationToken.None);
+
+        var log = Assert.Single(Logger.Invocations, x => string.Equals(x.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal));
+        Assert.Equal(expectedLevel, log.Arguments[0]);
+        Assert.False(string.IsNullOrWhiteSpace(log.Arguments[2]?.ToString()));
+    }
+
+    [Fact]
+    public async Task HandleAsync_LogsTheValidationCodeAndMessage()
+    {
+        await CreateSut().HandleAsync(
+            CreateContext(),
+            new KaleidoValidationException("qry_invalid_field", "bad field"),
+            CancellationToken.None);
+
+        var log = Assert.Single(Logger.Invocations, x => string.Equals(x.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal));
+        Assert.Equal("Validation failed [qry_invalid_field]: bad field", log.Arguments[2]?.ToString());
+    }
+
+    [Fact]
+    public async Task HandleAsync_LogsTheConflictedProcess()
+    {
+        await CreateSut().HandleAsync(
+            CreateContext(),
+            new KaleidoConcurrencyException(ConflictedProcess),
+            CancellationToken.None);
+
+        var log = Assert.Single(Logger.Invocations, x => string.Equals(x.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal));
+        Assert.Equal(
+            $"Process {ConflictedProcess} was changed by another request; nothing was saved (409).",
+            log.Arguments[2]?.ToString());
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenOperationCanceled_LogsAtDebugOnly()
+    {
+        await CreateSut().HandleAsync(CreateContext(), new OperationCanceledException(), CancellationToken.None);
+
+        var log = Assert.Single(Logger.Invocations, x => string.Equals(x.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal));
+        Assert.Equal(LogLevel.Debug, log.Arguments[0]);
+        Assert.Equal("Request was canceled by the client.", log.Arguments[2]?.ToString());
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenTheLoggerIsDisabled_StillWritesTheAnswer()
+    {
+        Logger.Reset();
+        Logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(false);
+        var context = CreateContext();
+
+        await CreateSut().HandleAsync(context, new KaleidoValidationException("qry_invalid_field", "bad field"), CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status400BadRequest, context.Response.StatusCode);
+        Assert.DoesNotContain(Logger.Invocations, x => string.Equals(x.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenBadHttpRequestCarriesAStatus_AnswersWithThatStatus()
+    {
+        var context = CreateContext();
+
+        await CreateSut().HandleAsync(
+            context,
+            new BadHttpRequestException("too large", StatusCodes.Status413PayloadTooLarge),
+            CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status413PayloadTooLarge, context.Response.StatusCode);
+        var body = JsonSerializer.Deserialize<KaleidoErrorResponse>(ReadBody(context), WebJson);
+        var error = Assert.Single(Assert.IsType<KaleidoErrorResponse>(body).Errors);
+        Assert.Equal("argument_error", error.Code);
+        Assert.Equal("too large", error.Message);
+    }
+
+    [Theory]
+    [InlineData(true, StatusCodes.Status403Forbidden)]
+    [InlineData(false, StatusCodes.Status401Unauthorized)]
+    public async Task HandleAsync_AuthorizationDenied_WithoutAuthentication_SetsTheStatusCode(
+        bool callerIsAuthenticated,
+        int expectedStatus)
+    {
+        var context = CreateContext();
+
+        await CreateSut().HandleAsync(
+            context,
+            new KaleidoAuthorizationException("denied", callerIsAuthenticated),
+            CancellationToken.None);
+
+        Assert.Equal(expectedStatus, context.Response.StatusCode);
+        Assert.Equal(string.Empty, ReadBody(context));
+        var log = Assert.Single(Logger.Invocations, x => string.Equals(x.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal));
+        Assert.Equal(LogLevel.Warning, log.Arguments[0]);
+        Assert.StartsWith(
+            $"Authorization denied (caller authenticated: {callerIsAuthenticated}): ",
+            log.Arguments[2]?.ToString());
+    }
+
+    [Fact]
+    public async Task HandleAsync_AuthorizationDenied_ForAuthenticatedCaller_Forbids()
+    {
+        var authentication = new Mock<IAuthenticationService>();
+        var context = CreateContext(authentication.Object);
+
+        await CreateSut().HandleAsync(
+            context,
+            new KaleidoAuthorizationException("denied", callerIsAuthenticated: true),
+            CancellationToken.None);
+
+        authentication.Verify(x => x.ForbidAsync(context, null, null), Times.Once);
+        authentication.Verify(x => x.ChallengeAsync(It.IsAny<HttpContext>(), It.IsAny<string?>(), It.IsAny<AuthenticationProperties?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AuthorizationDenied_ForAnonymousCaller_Challenges()
+    {
+        var authentication = new Mock<IAuthenticationService>();
+        var context = CreateContext(authentication.Object);
+
+        await CreateSut().HandleAsync(
+            context,
+            new KaleidoAuthorizationException("denied", callerIsAuthenticated: false),
+            CancellationToken.None);
+
+        authentication.Verify(x => x.ChallengeAsync(context, null, null), Times.Once);
+        authentication.Verify(x => x.ForbidAsync(It.IsAny<HttpContext>(), It.IsAny<string?>(), It.IsAny<AuthenticationProperties?>()), Times.Never);
+    }
 
     public static TheoryData<string, int, string, string> ErrorContractCases { get; } =
         new()
@@ -148,6 +299,22 @@ public sealed class KaleidoExceptionHandlerTests
                 Body = new MemoryStream(),
             },
         };
+
+    private static DefaultHttpContext CreateContext(IAuthenticationService authentication)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(authentication);
+
+        return new DefaultHttpContext
+        {
+            RequestServices = services.BuildServiceProvider(
+                new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true }),
+            Response =
+            {
+                Body = new MemoryStream(),
+            },
+        };
+    }
 
     private static string ReadBody(DefaultHttpContext context)
     {

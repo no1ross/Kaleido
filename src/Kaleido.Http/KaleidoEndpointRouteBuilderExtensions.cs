@@ -9,6 +9,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http;
 
+/// <summary>
+/// Maps the Kaleido HTTP endpoints registered by <c>AddHttp()</c>: Process, Queryable and the
+/// unified registry. The entry point is <see cref="MapKaleidoHttp"/>, which also runs the startup
+/// authorization checks.
+/// </summary>
 public static partial class KaleidoEndpointRouteBuilderExtensions
 {
     /// <summary>

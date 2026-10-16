@@ -271,10 +271,14 @@ public sealed class ProcessorStepInvokerTests
     [Fact]
     public async Task ExecuteAsync_WhenHandlerThrows_PropagatesException()
     {
+        var failures =
+            new HandlerFailureRecorder();
+
         var invoker =
             CreateSut(
                 services =>
                 {
+                    services.AddSingleton(failures);
                     services.AddTransient<ThrowingHandler>();
                 });
 
@@ -296,6 +300,71 @@ public sealed class ProcessorStepInvokerTests
         Assert.Equal(
             "handler failed",
             exception.Message);
+
+        Assert.Same(
+            exception,
+            Assert.Single(failures.Exceptions));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenHandlerThrowsAValidationException_PropagatesItWithoutAHandlerFailure()
+    {
+        var failures =
+            new HandlerFailureRecorder();
+
+        var invoker =
+            CreateSut(
+                services =>
+                {
+                    services.AddSingleton(failures);
+                    services.AddTransient<ValidationThrowingHandler>();
+                });
+
+        var registration =
+            CreateRegistration<ValidationThrowingHandler>(
+                invokeHandlerAsync: (handler, step, context, cancellationToken) =>
+                    ((IProcessStepHandler<TestStep, TestStepResponse>)handler).ExecuteAsync(
+                        (TestStep)step,
+                        context,
+                        cancellationToken));
+
+        var exception =
+            await Assert.ThrowsAsync<KaleidoValidationException>(() =>
+                invoker.ExecuteAsync(
+                    registration,
+                    new TestStep(),
+                    CreateContext()));
+
+        Assert.Equal(
+            "pro_custom_validation",
+            exception.Code);
+
+        Assert.Empty(
+            failures.Exceptions);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenTheRegistrationHasNoResultExtractor_ThrowsAfterTheHandlerRan()
+    {
+        var recorder = new CorrelationRecorder();
+        var invoker =
+            CreateSut(
+                services =>
+                {
+                    services.AddSingleton(recorder);
+                    services.AddTransient<CorrelationCapturingHandler>();
+                });
+
+        var exception =
+            await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
+                invoker.ExecuteAsync(
+                    CreateRegistration<CorrelationCapturingHandler>(withoutResultExtractor: true),
+                    new TestStep(),
+                    CreateContext()));
+
+        Assert.Equal(FrameworkErrorCodes.InvalidHandlerResult, exception.Code);
+        Assert.Contains("has no cached result extractor", exception.Message);
+        Assert.NotNull(recorder.Seen);
     }
 
     [Fact]
@@ -344,6 +413,7 @@ public sealed class ProcessorStepInvokerTests
         var services =
             new ServiceCollection();
 
+        services.AddSingleton<HandlerFailureRecorder>();
         services.AddScoped<IProcessorObservability, TestProcessObservability>();
         services.AddScoped<KaleidoCorrelationContextAccessor>();
         services.AddScoped<IKaleidoCorrelationContextAccessor>(sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
@@ -399,7 +469,8 @@ public sealed class ProcessorStepInvokerTests
     }
 
     private static ProcessStepRegistration CreateRegistration<THandler>(
-        Func<object, object, ProcessStepContext, CancellationToken, Task>? invokeHandlerAsync = null)
+        Func<object, object, ProcessStepContext, CancellationToken, Task>? invokeHandlerAsync = null,
+        bool withoutResultExtractor = false)
     {
         var executeAsyncMethod =
             typeof(THandler).GetMethod(
@@ -417,7 +488,7 @@ public sealed class ProcessorStepInvokerTests
             executeAsyncMethod?.ReturnType.GetProperty(
                 nameof(Task<object>.Result));
 
-        Func<Task, IProcessStepHandlerResult>? getResultFromTask = resultProperty is null
+        Func<Task, IProcessStepHandlerResult>? getResultFromTask = resultProperty is null || withoutResultExtractor
             ? null
             : task =>
             {
@@ -455,7 +526,13 @@ public sealed class ProcessorStepInvokerTests
         public CancellationToken CancellationToken { get; set; }
     }
 
-    private sealed class TestProcessObservability
+    private sealed class HandlerFailureRecorder
+    {
+        public List<Exception> Exceptions { get; } = [];
+    }
+
+    private sealed class TestProcessObservability(
+        HandlerFailureRecorder failures)
         : IProcessorObservability
     {
         public IProcessorExecutionObservation BeginExecution(
@@ -473,16 +550,18 @@ public sealed class ProcessorStepInvokerTests
         public IProcessorHandlerObservation BeginHandler(
             ProcessorHandlerObservationDetails details)
         {
-            return new TestProcessHandlerObservation();
+            return new TestProcessHandlerObservation(failures);
         }
     }
 
-    private sealed class TestProcessHandlerObservation
+    private sealed class TestProcessHandlerObservation(
+        HandlerFailureRecorder failures)
         : IProcessorHandlerObservation
     {
         public void HandlerFailed(
             Exception exception)
         {
+            failures.Exceptions.Add(exception);
         }
 
         public void Dispose()
@@ -568,6 +647,20 @@ public sealed class ProcessorStepInvokerTests
         {
             throw new InvalidOperationException(
                 "handler failed");
+        }
+    }
+
+    private sealed class ValidationThrowingHandler :
+        IProcessStepHandler<TestStep, TestStepResponse>
+    {
+        public Task<ProcessStepHandlerResult<TestStepResponse>> ExecuteAsync(
+            TestStep processStep,
+            ProcessStepContext context,
+            CancellationToken cancellationToken = default)
+        {
+            throw new KaleidoValidationException(
+                "pro_custom_validation",
+                "Member invalid.");
         }
     }
 

@@ -1,8 +1,13 @@
+using System.Collections.Concurrent;
+using System.Data.Common;
+using System.Diagnostics;
 using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Storage;
 using Kaleido.Provider.SQLite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Provider.SQLite.UnitTests;
@@ -13,22 +18,75 @@ namespace Kaleido.Provider.SQLite.UnitTests;
 public sealed class SqliteKaleidoContextStoreTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static SqliteKaleidoContextDbContext CreateDbContext()
+    private static SqliteKaleidoContextDbContext CreateDbContext(IInterceptor? interceptor = null)
     {
-        var options = new DbContextOptionsBuilder<SqliteKaleidoContextDbContext>()
-            .UseSqlite("DataSource=:memory:")
-            .Options;
+        var builder = new DbContextOptionsBuilder<SqliteKaleidoContextDbContext>()
+            .UseSqlite("DataSource=:memory:");
 
-        var context = new SqliteKaleidoContextDbContext(options);
+        if (interceptor is not null)
+        {
+            builder.AddInterceptors(interceptor);
+        }
+
+        var context = new SqliteKaleidoContextDbContext(builder.Options);
         context.Database.OpenConnection();
         context.Database.EnsureCreated();
         return context;
     }
 
-    private static SqliteKaleidoContextStore CreateSut(SqliteKaleidoContextDbContext dbContext, Guid? instanceId = null) =>
+    private static SqliteKaleidoContextStore CreateSut(
+        SqliteKaleidoContextDbContext dbContext,
+        Guid? instanceId = null,
+        ILogger<SqliteKaleidoContextStore>? logger = null) =>
         new(dbContext,
             new KaleidoServiceOptions { ServiceName = "test-svc", InstanceId = instanceId ?? Guid.NewGuid() },
-            NullLogger<SqliteKaleidoContextStore>.Instance);
+            logger ?? NullLogger<SqliteKaleidoContextStore>.Instance);
+
+    private static Mock<ILogger<SqliteKaleidoContextStore>> CreateLogger()
+    {
+        var logger = new Mock<ILogger<SqliteKaleidoContextStore>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        return logger;
+    }
+
+    private static int LoggedCount(
+        Mock<ILogger<SqliteKaleidoContextStore>> logger,
+        LogLevel level) =>
+        logger.Invocations.Count(x =>
+            x.Method.Name == nameof(ILogger.Log) &&
+            Equals(x.Arguments[0], level));
+
+    private static ActivityListener ListenToTheStore(ConcurrentQueue<Activity> stopped)
+    {
+        var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == SqliteTelemetry.ActivitySourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = stopped.Enqueue,
+        };
+
+        ActivitySource.AddActivityListener(listener);
+        return listener;
+    }
+
+    private static Activity StoppedActivity(ConcurrentQueue<Activity> stopped, string name, Guid processId) =>
+        Assert.Single(stopped, x =>
+            x.OperationName == name &&
+            Equals(x.GetTagItem(KaleidoTelemetryTags.ProcessId), processId.ToString()));
+
+    private sealed class CancelOnQueryInterceptor(CancellationTokenSource cancellation)
+        : DbCommandInterceptor
+    {
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            cancellation.Cancel();
+            return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
+    }
 
     private static ProcessorContext CreateContext(
         Guid processId,
@@ -571,5 +629,258 @@ public sealed class SqliteKaleidoContextStoreTests
         var parked = Assert.Single(await dbContext.OutboxEvents.AsNoTracking().ToListAsync());
         Assert.True(parked.IsParked);
         Assert.Equal(SqliteKaleidoContextStore.MaxErrorLength, parked.LastError!.Length);
+    }
+
+    [Fact]
+    public async Task LoadAsync_And_SaveAsync_TraceTheProcessId()
+    {
+        var stopped = new ConcurrentQueue<Activity>();
+        using var listener = ListenToTheStore(stopped);
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var context = CreateContext(Guid.NewGuid());
+
+        await sut.SaveAsync(context, []);
+        await sut.LoadAsync(context.ProcessId);
+
+        Assert.Equal(ActivityStatusCode.Unset, StoppedActivity(stopped, SqliteTelemetry.SaveActivityName, context.ProcessId).Status);
+        Assert.Equal(ActivityStatusCode.Unset, StoppedActivity(stopped, SqliteTelemetry.LoadActivityName, context.ProcessId).Status);
+    }
+
+    [Fact]
+    public async Task LoadAsync_WhenTheDatabaseFails_LogsAnErrorMarksTheActivityAndRethrows()
+    {
+        var stopped = new ConcurrentQueue<Activity>();
+        using var listener = ListenToTheStore(stopped);
+        using var dbContext = CreateDbContext();
+        var logger = CreateLogger();
+        var sut = CreateSut(dbContext, logger: logger.Object);
+        var processId = Guid.NewGuid();
+        await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE ProcessContexts");
+
+        await Assert.ThrowsAnyAsync<DbException>(() => sut.LoadAsync(processId));
+
+        Assert.Equal(1, LoggedCount(logger, LogLevel.Error));
+        Assert.Equal(ActivityStatusCode.Error, StoppedActivity(stopped, SqliteTelemetry.LoadActivityName, processId).Status);
+    }
+
+    [Fact]
+    public async Task LoadAsync_WhenCanceledDuringTheQuery_PropagatesTheCancellationWithoutLoggingAFailure()
+    {
+        using var cancellation = new CancellationTokenSource();
+        using var dbContext = CreateDbContext(new CancelOnQueryInterceptor(cancellation));
+        var logger = CreateLogger();
+        var sut = CreateSut(dbContext, logger: logger.Object);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.LoadAsync(Guid.NewGuid(), cancellation.Token));
+
+        Assert.Equal(0, LoggedCount(logger, LogLevel.Error));
+    }
+
+    [Fact]
+    public async Task LoadAsync_And_SaveAsync_WhenAlreadyCanceled_ThrowBeforeTouchingTheStore()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var context = CreateContext(Guid.NewGuid());
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.LoadAsync(context.ProcessId, new CancellationToken(true)));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.SaveAsync(context, [], new CancellationToken(true)));
+        Assert.Null(await sut.LoadAsync(context.ProcessId));
+    }
+
+    [Fact]
+    public async Task SaveAsync_WhenCanceledDuringTheSave_PropagatesTheCancellationWithoutLoggingAFailure()
+    {
+        using var cancellation = new CancellationTokenSource();
+        using var dbContext = CreateDbContext(new CancelOnQueryInterceptor(cancellation));
+        var logger = CreateLogger();
+        var sut = CreateSut(dbContext, logger: logger.Object);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), [], cancellation.Token));
+
+        Assert.Equal(0, LoggedCount(logger, LogLevel.Error));
+    }
+
+    [Fact]
+    public async Task SaveAsync_WhenTheDatabaseRejectsAnUpdate_LogsAnErrorAndKeepsTheStoredState()
+    {
+        var stopped = new ConcurrentQueue<Activity>();
+        using var listener = ListenToTheStore(stopped);
+        using var dbContext = CreateDbContext();
+        var logger = CreateLogger();
+        var sut = CreateSut(dbContext, logger: logger.Object);
+        var @event = Event();
+        var saved = await sut.SaveAsync(CreateContext(Guid.NewGuid()), [@event]);
+        dbContext.ChangeTracker.Clear();
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => sut.SaveAsync(saved with { State = ProcessExecutionState.Complete }, [@event]));
+
+        Assert.Equal(1, LoggedCount(logger, LogLevel.Error));
+        Assert.Contains(stopped, x => x.OperationName == SqliteTelemetry.SaveActivityName && x.Status == ActivityStatusCode.Error);
+        var loaded = await sut.LoadAsync(saved.ProcessId);
+        Assert.NotNull(loaded);
+        Assert.Equal(1, loaded.Version);
+        Assert.Equal(ProcessExecutionState.Active, loaded.State);
+    }
+
+    [Fact]
+    public async Task SaveAsync_ANewProcessTheDatabaseRejectsForAnotherReason_IsAFailureNotAConflict()
+    {
+        using var dbContext = CreateDbContext();
+        var logger = CreateLogger();
+        var sut = CreateSut(dbContext, logger: logger.Object);
+        var @event = Event();
+        await sut.SaveAsync(CreateContext(Guid.NewGuid()), [@event]);
+        dbContext.ChangeTracker.Clear();
+        var newProcess = CreateContext(Guid.NewGuid());
+
+        var exception = await Assert.ThrowsAsync<DbUpdateException>(() => sut.SaveAsync(newProcess, [@event]));
+
+        Assert.IsNotType<Kaleido.Exceptions.KaleidoConcurrencyException>(exception);
+        Assert.Equal(1, LoggedCount(logger, LogLevel.Error));
+        dbContext.ChangeTracker.Clear();
+        Assert.Null(await sut.LoadAsync(newProcess.ProcessId));
+    }
+
+    [Fact]
+    public async Task SaveAsync_ANewProcessWhoseEventsCannotBeStored_IsAFailureNotAConflict()
+    {
+        using var dbContext = CreateDbContext();
+        var logger = CreateLogger();
+        var sut = CreateSut(dbContext, logger: logger.Object);
+        await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE OutboxEvents");
+
+        var exception = await Assert.ThrowsAsync<DbUpdateException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), [Event()]));
+
+        Assert.IsNotType<Kaleido.Exceptions.KaleidoConcurrencyException>(exception);
+        Assert.Equal(1, LoggedCount(logger, LogLevel.Error));
+    }
+
+    [Fact]
+    public async Task SaveAsync_ANewProcessCreatedConcurrently_IsAConflict()
+    {
+        using var dbContext = CreateDbContext(new InsertProcessTwiceInterceptor());
+        var logger = CreateLogger();
+        var sut = CreateSut(dbContext, logger: logger.Object);
+
+        var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), []));
+
+        Assert.IsType<DbUpdateException>(exception.InnerException);
+        Assert.Equal(0, LoggedCount(logger, LogLevel.Error));
+    }
+
+    // Runs the process INSERT once more just before EF does: the same process created concurrently.
+    private sealed class InsertProcessTwiceInterceptor : DbCommandInterceptor
+    {
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("INSERT INTO \"ProcessContexts\"", StringComparison.Ordinal))
+            {
+                await using var duplicate = command.Connection!.CreateCommand();
+                duplicate.Transaction = command.Transaction;
+                duplicate.CommandText = command.CommandText.Split(';')[0];
+
+                foreach (DbParameter parameter in command.Parameters)
+                {
+                    var copy = duplicate.CreateParameter();
+                    copy.ParameterName = parameter.ParameterName;
+                    copy.Value = parameter.Value;
+                    duplicate.Parameters.Add(copy);
+                }
+
+                await duplicate.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            return await base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
+    }
+
+    [Fact]
+    public async Task SaveAsync_WhenTheRowChangedAfterItWasRead_ThrowsAConflictFromTheConditionalUpdate()
+    {
+        var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
+        using var first = CreateSharedDbContext(connectionString);
+        using var second = CreateSharedDbContext(connectionString);
+        var processId = Guid.NewGuid();
+        var savedBySecond = await CreateSut(second).SaveAsync(CreateContext(processId), []);
+        var loadedByFirst = await CreateSut(first).LoadAsync(processId);
+        await CreateSut(first).SaveAsync(loadedByFirst! with { State = ProcessExecutionState.Complete }, []);
+
+        var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
+            CreateSut(second).SaveAsync(savedBySecond with { State = ProcessExecutionState.Exception }, []));
+
+        Assert.IsType<DbUpdateConcurrencyException>(exception.InnerException);
+        Assert.Equal(ProcessExecutionState.Complete, (await CreateSut(first).LoadAsync(processId))!.State);
+    }
+
+    [Fact]
+    public async Task SaveAsync_WithoutTimestamps_StampsTheCurrentTime()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var context = CreateContext(Guid.NewGuid()) with { CreatedUtc = default, UpdatedUtc = default };
+        var before = DateTimeOffset.UtcNow;
+
+        await sut.SaveAsync(context, []);
+
+        var after = DateTimeOffset.UtcNow;
+        var loaded = await sut.LoadAsync(context.ProcessId);
+        Assert.NotNull(loaded);
+        Assert.InRange(loaded.CreatedUtc, before, after);
+        Assert.InRange(loaded.UpdatedUtc, before, after);
+    }
+
+    [Fact]
+    public async Task SaveAsync_ANewProcessWithoutCallersOrARequiredStep_LoadsThemAsNull()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var context = CreateContext(Guid.NewGuid()) with
+        {
+            CreatedBy = null,
+            UpdatedBy = null,
+            RequiredStep = null,
+            TargetProcessorName = null
+        };
+
+        await sut.SaveAsync(context, []);
+
+        var loaded = await sut.LoadAsync(context.ProcessId);
+        Assert.NotNull(loaded);
+        Assert.Null(loaded.CreatedBy);
+        Assert.Null(loaded.UpdatedBy);
+        Assert.Null(loaded.RequiredStep);
+        Assert.Null(loaded.TargetProcessorName);
+        Assert.Null(loaded.RequiredInformationRequest);
+    }
+
+    [Fact]
+    public async Task SaveAsync_WhenDebugLoggingIsEnabled_LogsTheSave()
+    {
+        using var dbContext = CreateDbContext();
+        var logger = CreateLogger();
+        var sut = CreateSut(dbContext, logger: logger.Object);
+
+        await sut.SaveAsync(CreateContext(Guid.NewGuid()), []);
+
+        Assert.Equal(1, LoggedCount(logger, LogLevel.Debug));
+        Assert.Equal(0, LoggedCount(logger, LogLevel.Error));
+    }
+
+    [Fact]
+    public async Task Writes_WithNullArguments_Throw()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveAsync(null!, []));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveResultAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.EnqueueEventsAsync(null!));
     }
 }

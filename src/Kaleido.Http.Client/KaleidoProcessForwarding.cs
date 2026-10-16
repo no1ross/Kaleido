@@ -17,7 +17,7 @@ namespace Kaleido.Http.Client;
 /// <para>The same pattern as <see cref="IKaleidoCallerForwarding"/>: the value flows with the async
 /// call and does not leak into other requests.</para>
 /// </remarks>
-public interface IKaleidoProcessForwarding
+internal interface IKaleidoProcessForwarding
 {
     /// <summary>The process id of the current scope (on this async flow); null outside a scope or for a scope without one.</summary>
     Guid? ProcessId { get; }

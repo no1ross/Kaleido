@@ -4,7 +4,9 @@ using Kaleido.Exceptions;
 using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Storage;
+using Kaleido.Provider.SQLite.Configuration;
 using Kaleido.Provider.SQLite.Entities;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -24,7 +26,7 @@ internal sealed partial class SqliteKaleidoContextStore(
 
         using var activity = SqliteTelemetry.ActivitySource
             .StartActivity(SqliteTelemetry.LoadActivityName, ActivityKind.Internal);
-        activity?.SetTag(SqliteTelemetry.TagProcessId, processId.ToString());
+        activity?.SetTag(KaleidoTelemetryTags.ProcessId, processId.ToString());
 
         try
         {
@@ -72,7 +74,7 @@ internal sealed partial class SqliteKaleidoContextStore(
 
         using var activity = SqliteTelemetry.ActivitySource
             .StartActivity(SqliteTelemetry.SaveActivityName, ActivityKind.Internal);
-        activity?.SetTag(SqliteTelemetry.TagProcessId, context.ProcessId.ToString());
+        activity?.SetTag(KaleidoTelemetryTags.ProcessId, context.ProcessId.ToString());
 
         try
         {
@@ -277,7 +279,9 @@ internal sealed partial class SqliteKaleidoContextStore(
         };
 
     // Another instance saved the row since it was read (the version no longer matches), or created
-    // the same process at the same time (duplicate key): either way this save lost the race.
+    // the same process at the same time (duplicate process key): either way this save lost the race.
+    // Any other failure of a first save (a duplicate outbox event, another constraint, a missing
+    // table) is a store failure, not a conflict.
     private async Task SaveChangesAsync(ProcessorContext context, CancellationToken cancellationToken)
     {
         try
@@ -288,10 +292,21 @@ internal sealed partial class SqliteKaleidoContextStore(
         {
             throw new KaleidoConcurrencyException(context.ProcessId, exception);
         }
-        catch (DbUpdateException exception) when (context.Version == 0)
+        catch (DbUpdateException exception) when (context.Version == 0 && IsDuplicateProcess(exception))
         {
             throw new KaleidoConcurrencyException(context.ProcessId, exception);
         }
+    }
+
+    // SQLite names the violated key in the message: "UNIQUE constraint failed: ProcessContexts.ProcessId".
+    private static bool IsDuplicateProcess(DbUpdateException exception)
+    {
+        const int SqliteConstraintPrimaryKey = 1555;
+        const int SqliteConstraintUnique = 2067;
+
+        return exception.InnerException is SqliteException sqlite
+            && sqlite.SqliteExtendedErrorCode is SqliteConstraintPrimaryKey or SqliteConstraintUnique
+            && sqlite.Message.Contains($" {ProcessorContextEntityConfiguration.TableName}.", StringComparison.Ordinal);
     }
 
     // The tracked entity with its children, or a new one added to the context.

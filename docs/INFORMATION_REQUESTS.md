@@ -95,7 +95,7 @@ keyed by item id. They use Kaleido's own schema; Kaleido is not a FHIR framework
 | Type | Fields |
 |---|---|
 | `InformationRequest` | `informationRequestId` (required, set by you), `title`, `items` |
-| `InformationItem` | `id` (unique in the request), `text` (verbatim), `type`, `repeats`, `options`, `items` (groups only) |
+| `InformationItem` | `id` (unique in the request), `text` (verbatim), `type`, `repeats`, `options`, `items` (groups only), `proposedAnswers` (optional pre-filled answers the user confirms or corrects; never submitted for them) |
 | `InformationOption` | `value` (what is submitted), `display` |
 | `IInformationStep` (the answers) | `informationRequestId`, `items` |
 | `InformationResponseItem` | `itemId`, `answers`, optional nested `items` (mirroring groups) |
@@ -126,7 +126,8 @@ Kaleido checks shape only, never meaning:
   - an `informationRequestId` and at least one item;
   - unique item ids, and text on every item;
   - choice items have options with unique, non-empty values;
-  - only groups have nested items, and every group has some.
+  - only groups have nested items, and every group has some;
+  - proposed answers fit their question like answers (an offered option, the right type), at most one unless the question `repeats`; groups and display items take none.
 - **Response**, against the pending request:
   - `pro_information_response_mismatch`: the step isn't the pending required step, or the `informationRequestId` differs (answers for another or an earlier round);
   - `pro_information_response_unanswered`: every question (not `display`/`group`) must be answered. There is no optional question: if you ask, you need an answer; "none of the above" is an option you provide;

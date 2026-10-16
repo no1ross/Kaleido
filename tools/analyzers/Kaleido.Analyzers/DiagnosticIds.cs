@@ -67,4 +67,7 @@ internal static class DiagnosticIds
 
     /// <summary>A [Required] query parameter has a non-nullable value type, so it can never be missing.</summary>
     public const string QueryParameterRequiredValueType = "KAL2022";
+
+    /// <summary>A [Filterable] operator does not apply to the property's type.</summary>
+    public const string FilterOperatorTypeMismatch = "KAL2023";
 }

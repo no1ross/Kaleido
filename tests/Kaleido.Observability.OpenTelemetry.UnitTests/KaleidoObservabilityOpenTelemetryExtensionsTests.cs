@@ -1,4 +1,5 @@
 using Kaleido.Eventing;
+using Kaleido.Exceptions;
 using Kaleido.Http.Mcp;
 using Kaleido.Processor.Observability;
 using Kaleido.Provider.SQLite;
@@ -167,6 +168,45 @@ public sealed class KaleidoObservabilityOpenTelemetryExtensionsTests
             new Dictionary<string, string?> { ["Kaleido:OpenTelemetry:Logs"] = "false" });
 
         Assert.True(ExportsLogs(provider));
+    }
+
+    private static Dictionary<string, object> ResourceOf(IServiceProvider provider) =>
+        provider.GetRequiredService<TracerProvider>().GetResource().Attributes.ToDictionary(x => x.Key, x => x.Value);
+
+    [Fact]
+    public void AddOpenTelemetry_NamesTheResourceAfterTheKaleidoService_WithTheConfiguredVersionAndAttributes()
+    {
+        using var provider = BuildHost(configuration: new Dictionary<string, string?>
+        {
+            ["Kaleido:OpenTelemetry:ServiceVersion"] = "1.0.0",
+            ["Kaleido:OpenTelemetry:ResourceAttributes"] = "deployment.environment=Development",
+        });
+
+        var resource = ResourceOf(provider);
+        Assert.Equal("telemetry-test", resource["service.name"]);
+        Assert.Equal("1.0.0", resource["service.version"]);
+        Assert.Equal("Development", resource["deployment.environment"]);
+        Assert.True(Guid.TryParse(resource["service.instance.id"].ToString(), out _));
+    }
+
+    [Fact]
+    public void AddOpenTelemetry_TheStandardServiceNameKey_WinsOverTheKaleidoServiceName()
+    {
+        using var provider = BuildHost(configuration: new Dictionary<string, string?>
+        {
+            ["OTEL_SERVICE_NAME"] = "from-the-deployment",
+        });
+
+        Assert.Equal("from-the-deployment", ResourceOf(provider)["service.name"]);
+    }
+
+    [Fact]
+    public void AddOpenTelemetry_WithAnUnknownProtocol_FailsAtStartup()
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
+            BuildHost(configuration: new Dictionary<string, string?> { ["Kaleido:OpenTelemetry:Protocol"] = "http/json" }));
+
+        Assert.Equal(OpenTelemetryErrorCodes.InvalidOptions, exception.Code);
     }
 
     [Fact]

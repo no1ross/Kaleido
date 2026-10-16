@@ -1,4 +1,7 @@
 using Kaleido.Exceptions;
+using Kaleido.Queryable.Registry;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable.UnitTests;
 
@@ -94,6 +97,88 @@ public sealed class QueryableServiceCollectionExtensionsTests
                 .DiscoverQueryableCapabilities();
 
         Assert.Equal(2, views.Length);
+    }
+
+    [Fact]
+    public void Discover_WhenDelegatedSourceImplementsTwoDelegatedInterfaces_Throws() =>
+        AssertThrows(QueryableErrorCodes.InvalidRegistration, nameof(TwoDelegatedInterfacesSource), typeof(TwoDelegatedInterfacesSource));
+
+    [Fact]
+    public void Discover_WhenViewProjectsTwoSources_Throws() =>
+        AssertThrows(QueryableErrorCodes.InvalidRegistration, "more than one view interface", typeof(MemberSource), typeof(AsyncMemberSource), typeof(TwoSourcesView));
+
+    [Fact]
+    public void Discover_AcceptsAnAsyncView()
+    {
+        var (_, _, views) =
+            new[] { typeof(MemberSource), typeof(AsyncMemberSearch) }.DiscoverQueryableCapabilities();
+
+        Assert.Equal([typeof(AsyncMemberSearch)], views);
+    }
+
+    [Fact]
+    public void AddQueryable_WhenBuilderIsNull_Throws()
+    {
+        IKaleidoBuilder? builder = null;
+
+        Assert.Throws<ArgumentNullException>(() => builder!.AddQueryable());
+    }
+
+    [Fact]
+    public void AddQueryable_WithoutAssemblies_ThrowsMissingAssembly()
+    {
+        var builder = new Mock<IKaleidoBuilder>();
+        builder.SetupGet(x => x.Assemblies).Returns([]);
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.Object.AddQueryable());
+
+        Assert.Equal(ConfigurationErrorCodes.MissingAssembly, exception.Code);
+    }
+
+    [Fact]
+    public void AddQueryable_WithoutCapabilities_RegistersNothing()
+    {
+        var services = new ServiceCollection();
+        var builder = new Mock<IKaleidoBuilder>();
+        builder.SetupGet(x => x.Assemblies).Returns([typeof(QueryableServiceCollectionExtensionsTests).Assembly]);
+        builder.SetupGet(x => x.Services).Returns(services);
+        builder.SetupGet(x => x.ServiceOptions).Returns(new KaleidoServiceOptions { ServiceName = "svc", TypeFilter = _ => false });
+
+        var result = builder.Object.AddQueryable();
+
+        Assert.Same(builder.Object, result);
+        Assert.Empty(services);
+    }
+
+    [Fact]
+    public void AddQueryable_RegistersRegistriesBuiltFromTheScannedCapabilities()
+    {
+        var sourceType = typeof(Kaleido.Queryable.Query.UnitTests.QueryContextEngineTests.FakeSource);
+        var viewType = typeof(Kaleido.Queryable.Query.UnitTests.QueryContextEngineTests.FakeLabelView);
+        var services = new ServiceCollection();
+        services.AddKaleido(
+            new ConfigurationBuilder().Build(),
+            o =>
+            {
+                o.ServiceName = "test-service";
+                o.Assemblies = [typeof(QueryableServiceCollectionExtensionsTests).Assembly];
+                o.TypeFilter = type => type == sourceType || type == viewType;
+            });
+
+        using var provider = services.BuildServiceProvider(
+            new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+
+        var sources = provider.GetRequiredService<IQuerySourceRegistry>();
+        var views = provider.GetRequiredService<IQueryViewRegistry>();
+
+        Assert.Equal(sourceType, sources.GetRegistration(sourceType).SourceType);
+        Assert.Equal(viewType, views.Find(viewType)?.QueryViewType);
+        Assert.Same(
+            provider.GetRequiredService<QuerySourceRegistry>(),
+            sources);
+        Assert.Same(
+            provider.GetRequiredService<QueryViewRegistry>(),
+            views);
     }
 
     // The duplicate-name types are private (so fixtures scanning this assembly never see them)
@@ -244,6 +329,41 @@ public sealed class QueryableServiceCollectionExtensionsTests
         public IQueryable<MemberView> CreateView(IQueryable<MemberContext> query, QueryExecutionContext executionContext) =>
             Array.Empty<MemberView>().AsQueryable();
 
+        public Task<IQueryable<MemberView>> CreateViewAsync(
+            IQueryable<MemberContext> query,
+            QueryExecutionContext executionContext,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Array.Empty<MemberView>().AsQueryable());
+    }
+
+    [QuerySource(Version = "1.0.0", DisplayName = "Two delegated", Description = "Two delegated interfaces.")]
+    private sealed class TwoDelegatedInterfacesSource
+        : IDelegatedQuerySource<MemberContext, MemberView>,
+          IDelegatedQuerySource<MemberContext, MemberView, ProcessParameters>
+    {
+        public Task<QueryResult<MemberView>> ExecuteAsync(
+            IQueryRequest<EmptyQueryViewParameters> request,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new QueryResult<MemberView>(0, 0, 0, []));
+
+        public Task<QueryResult<MemberView>> ExecuteAsync(
+            IQueryRequest<ProcessParameters> request,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new QueryResult<MemberView>(0, 0, 0, []));
+    }
+
+    [QueryView(Version = "1.0.0", DisplayName = "Two sources", Description = "Projects two sources.")]
+    private sealed class TwoSourcesView
+        : IQueryViewSource<MemberSource, MemberContext, MemberView>,
+          IQueryViewSource<AsyncMemberSource, MemberContext, MemberView>
+    {
+        public IQueryable<MemberView> CreateView(IQueryable<MemberContext> query, QueryExecutionContext executionContext) =>
+            Array.Empty<MemberView>().AsQueryable();
+    }
+
+    [QueryView(Version = "1.0.0", DisplayName = "Member search (async)", Description = "Searches members asynchronously.")]
+    private sealed class AsyncMemberSearch : IQueryViewSourceAsync<MemberSource, MemberContext, MemberView>
+    {
         public Task<IQueryable<MemberView>> CreateViewAsync(
             IQueryable<MemberContext> query,
             QueryExecutionContext executionContext,

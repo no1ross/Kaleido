@@ -1,6 +1,5 @@
 using Kaleido.Testing;
 using Microsoft.CodeAnalysis;
-using Xunit;
 using static Kaleido.Analyzers.Testing.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Testing.Fixtures.FixtureNamespaceAnalyzer>;
 
@@ -78,6 +77,47 @@ namespace Acme.Widgets.UnitTests
     }
 }" + Stubs,
             Expected.WithLocation(0).WithArguments("GadgetTests", "Acme.Gadget", "Acme.UnitTests"));
+    }
+
+    private const string HelpersFixture = @"
+namespace Acme.UnitTests
+{
+    public class HelpersTests
+    {
+        [Xunit.Fact]
+        public void M_S_E() { }
+    }
+}";
+
+    private static Task RunWithReferencesAsync(params (string AssemblyName, string Source)[] references)
+    {
+        var test = Create(HelpersFixture + Stubs);
+        test.TestState.ReferenceSources.AddRange(references);
+        return test.RunAsync();
+    }
+
+    [Fact]
+    public async Task NameResolvedSut_InaccessibleSameNamedTypeInAnEarlierReference_IsSkipped()
+    {
+        await RunWithReferencesAsync(
+            ("Castle.Core", "namespace Castle.Xml { internal static class Helpers { } }"),
+            ("TestProject", "namespace Acme { public static class Helpers { public static void M() { } } }"));
+    }
+
+    [Fact]
+    public async Task NameResolvedSut_SameNamedTypeInAnEarlierReference_SourceAssemblyWins()
+    {
+        await RunWithReferencesAsync(
+            ("Other.Library", "namespace Other { public class Helpers { } }"),
+            ("TestProject", "namespace Acme { public class Helpers { public void M() { } } }"));
+    }
+
+    [Fact]
+    public async Task NameResolvedSut_InternalSourceTypeVisibleToTheFixture_WinsOverAPublicSameNamedType()
+    {
+        await RunWithReferencesAsync(
+            ("Castle.Core", "namespace Castle.Xml { public static class Helpers { } }"),
+            ("TestProject", "[assembly: System.Runtime.CompilerServices.InternalsVisibleTo(\"TestProject.UnitTests\")] namespace Acme { internal static class Helpers { internal static void M() { } } }"));
     }
 
     [Fact]

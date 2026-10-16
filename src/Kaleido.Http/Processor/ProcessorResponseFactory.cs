@@ -8,7 +8,7 @@ namespace Kaleido.Http.Processor;
 /// Projects process runtime registry types into HTTP wire contract types.
 /// Injectable so endpoint and service tests can mock the projection boundary.
 /// </summary>
-public interface IProcessorResponseFactory
+internal interface IProcessorResponseFactory
 {
     ProcessorRegistryResponse CreateRegistryResponse(
         ProcessorRegistryItem registration,
@@ -28,7 +28,7 @@ public interface IProcessorResponseFactory
         string serviceName);
 }
 
-public sealed class ProcessorResponseFactory : IProcessorResponseFactory
+internal sealed class ProcessorResponseFactory : IProcessorResponseFactory
 {
     public ProcessorRegistryResponse CreateRegistryResponse(
         ProcessorRegistryItem registration,
@@ -48,20 +48,7 @@ public sealed class ProcessorResponseFactory : IProcessorResponseFactory
             IsEntryProcessor = registration.IsEntryProcessor,
             RegistryUrl = RegistryContractUrls.Registry(serviceName),
             InitialSteps = registration.InitialSteps
-                .Select(x => new ProcessStepSummary
-                {
-                    Name = x.Name,
-                    Description = x.Description,
-                    DisplayName = x.DisplayName,
-                    Version = x.Version,
-                    Repeatable = x.Repeatable,
-                    IsInformationStep = x.IsInformationStep,
-                    Destructive = x.Destructive,
-                    External = x.External,
-                    RequiresConfirmation = x.RequiresConfirmation,
-                    Authorization = x.Authorization,
-                    ExecuteUrl = string.Empty,
-                })
+                .Select(x => CreateStepSummary(x, serviceName))
                 .ToArray(),
             Steps = registration.Steps
                 .Select(x => CreateStepResponse(x, serviceName))

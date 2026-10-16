@@ -54,8 +54,10 @@ public static class QueryApiBodyExtensions
                 {
                     Field = node.Condition.Field,
                     Operator = node.Condition.Operator.ToString(),
+                    // The Kaleido wire format, like every other value Kaleido sends: an enum as its
+                    // camelCase name, never a number the receiving service would have to guess at.
                     Values = node.Condition.Values?
-                        .Select(v => JsonSerializer.SerializeToElement(v))
+                        .Select(v => JsonSerializer.SerializeToElement(v, KaleidoJsonOptions.Options))
                         .ToArray(),
                 },
             };
@@ -82,6 +84,16 @@ public static class QueryApiBodyExtensions
 
 // ── Query request body ────────────────────────────────────────────────────────
 
+/// <summary>
+/// The wire form of a query (the <c>query</c> member of a <c>QueryApiRequest</c>): free-text search,
+/// a filter tree, sort clauses and a page. Every member is optional; enum-like values (operators,
+/// sort direction) are strings so the body stays transport-neutral.
+/// </summary>
+/// <remarks>
+/// The HTTP transport converts the body to the runtime query, resolving operator and direction names
+/// case-insensitively and coercing filter values to each field's type; an unknown name or an
+/// unconvertible value is rejected as a validation error (<c>qry_invalid_filter_value</c>).
+/// </remarks>
 [ExcludeFromCodeCoverage]
 public record QueryApiBody
 {
@@ -89,7 +101,7 @@ public record QueryApiBody
     [JsonPropertyName("searchText")]
     public string? SearchText { get; init; }
 
-    /// <summary>Filter expression tree. Cannot coexist with itself.</summary>
+    /// <summary>The root of the filter expression tree: a single condition or a group of nodes. Null applies no filter.</summary>
     [JsonPropertyName("filter")]
     public QueryApiFilterNode? Filter { get; init; }
 
@@ -102,6 +114,12 @@ public record QueryApiBody
     public QueryApiPage? Page { get; init; }
 }
 
+/// <summary>
+/// A node of the filter tree: set exactly one of <see cref="Condition"/> or <see cref="Group"/>.
+/// </summary>
+/// <remarks>
+/// A node with both, or neither, is rejected as a validation error (<c>qry_invalid_filter_node</c>).
+/// </remarks>
 [ExcludeFromCodeCoverage]
 public sealed record QueryApiFilterNode
 {
@@ -114,6 +132,14 @@ public sealed record QueryApiFilterNode
     public QueryApiFilterGroup? Group { get; init; }
 }
 
+/// <summary>
+/// A leaf filter: compares a field with zero or more values using an operator, for example
+/// <c>{"field":"status","operator":"in","values":["open","pending"]}</c>.
+/// </summary>
+/// <remarks>
+/// The field must be a filterable field of the queried source that allows the operator; the HTTP
+/// transport coerces each value to that field's type.
+/// </remarks>
 [ExcludeFromCodeCoverage]
 public sealed record QueryApiFilterCondition
 {
@@ -136,6 +162,7 @@ public sealed record QueryApiFilterCondition
     public IReadOnlyList<JsonElement>? Values { get; init; }
 }
 
+/// <summary>A logical group of filter nodes joined by <c>and</c> or <c>or</c>; groups may nest.</summary>
 [ExcludeFromCodeCoverage]
 public sealed record QueryApiFilterGroup
 {
@@ -150,6 +177,7 @@ public sealed record QueryApiFilterGroup
     public IReadOnlyList<QueryApiFilterNode>? Filters { get; init; }
 }
 
+/// <summary>A sort clause: a sortable field and a direction.</summary>
 [ExcludeFromCodeCoverage]
 public sealed record QueryApiSort
 {

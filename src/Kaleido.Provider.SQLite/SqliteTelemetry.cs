@@ -5,7 +5,7 @@ namespace Kaleido.Provider.SQLite;
 /// <summary>
 /// Activity source and metric names for the SQLite process context store.
 /// </summary>
-public static class SqliteTelemetry
+internal static class SqliteTelemetry
 {
     // ── ActivitySource / Meter ────────────────────────────────────────────────
 
@@ -20,8 +20,6 @@ public static class SqliteTelemetry
     public const string SaveActivityName = "kaleido.sqlite.context.save";
 
     // ── Tag key names ─────────────────────────────────────────────────────────
-
-    public const string TagProcessId = "kaleido.processor.id";
 
     // ── Metric names ──────────────────────────────────────────────────────────
 

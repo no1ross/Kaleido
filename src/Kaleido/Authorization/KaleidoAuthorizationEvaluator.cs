@@ -19,7 +19,7 @@ namespace Kaleido.Authorization;
 /// systems (ADR 0010). The evaluator only checks the caller's identity and the
 /// roles/policies declared on the capability being called.
 /// </remarks>
-public interface IKaleidoAuthorizationEvaluator
+internal interface IKaleidoAuthorizationEvaluator
 {
     /// <summary>
     /// <see langword="true"/> when <see cref="KaleidoServiceOptions.AuthorizationMode"/> is

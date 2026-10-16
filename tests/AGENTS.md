@@ -8,6 +8,8 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Http.UnitTests` | `src/Kaleido.Http` (middleware, startup filter, correlation reader, endpoint extensions, queryable value normalizer) |
 | `Kaleido.Http.FunctionalTests` | `src/Kaleido.Http` and client contracts through TestServer |
 | `Kaleido.Http.Client.UnitTests` | `src/Kaleido.Http.Client` |
+| `Kaleido.Http.Mcp.UnitTests` | `src/Kaleido.Http.Mcp` (tool catalog and naming, schemas, the tool invoker) |
+| `Kaleido.Http.Mcp.FunctionalTests` | `src/Kaleido.Http.Mcp` through a real host and the SDK's MCP client |
 | `Kaleido.Http.Abstractions.UnitTests` | `src/Kaleido.Http.Abstractions` (`HttpHeaderSanitizer` and contract types) |
 | `Kaleido.Provider.SQLite.UnitTests` | `src/Kaleido.Provider.SQLite` (`IKaleidoContextStore` contract and SQLite fidelity) |
 | `Kaleido.Observability.OpenTelemetry.UnitTests` | `src/Kaleido.Observability.OpenTelemetry` (registration of every Kaleido source/meter, `AddOpenTelemetry` options, copied telemetry names equal the owning constants) |
@@ -55,8 +57,21 @@ functional or integration tests.
 
 ## Functional test fixtures
 
+### What a functional test is for
+A functional test proves that real Kaleido components agree with each other: it configures a host,
+performs a consumer action, and asserts the consumer-visible result (records, state read back with
+`GET /processes/{id}`, error codes, registry metadata, MCP tool results) - not which collaborator
+was called. Before adding one, name the production regression it would catch; if none, it belongs in
+a unit test or nowhere. The audit of what is protected, the gaps closed and the open risks is
+[`FUNCTIONAL-TEST-AUDIT.md`](./FUNCTIONAL-TEST-AUDIT.md); keep it current when you add or remove
+functional coverage.
+
+Models for one scenario family live in their own namespace and are registered with a `TypeFilter` on
+that namespace (e.g. `Processor/Behavior`, `IntegrationTests/EfCore`), so they cannot change what the
+shared fixtures publish.
+
 ### Shared fixture state
-`ProcessAspNetCoreFixture` and `QueryableAspNetCoreFixture` expose:
+`ProcessorAspNetCoreFixture` and `QueryableAspNetCoreFixture` expose:
 - `Client` — a pre-wired `HttpClient` pointed at the TestServer (use for raw HTTP assertions)
 - `ClientFactory` — the Kaleido client factory wired against the TestServer (use for client-level tests)
 - `TestServer` — the underlying `TestServer` instance (use when a test needs its own `CreateHandler()`)

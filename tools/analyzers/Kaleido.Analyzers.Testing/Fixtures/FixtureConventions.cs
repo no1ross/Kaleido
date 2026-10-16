@@ -31,8 +31,10 @@ internal static class FixtureConventions
 
     /// <summary>
     /// Resolves a fixture's name prefix ({Sut}Tests → {Sut}) to a type in the
-    /// compilation or its references. Returns null when the fixture isn't
-    /// named with the Tests suffix or no type matches the prefix.
+    /// compilation or its references. References are searched with the
+    /// source assembly the unit-test assembly is named after first, and only
+    /// types accessible to the fixture's assembly match. Returns null when the
+    /// fixture isn't named with the Tests suffix or no type matches the prefix.
     /// </summary>
     public static INamedTypeSymbol? ResolveSut(
         Compilation compilation,
@@ -62,14 +64,17 @@ internal static class FixtureConventions
             return sourceHit;
         }
 
-        foreach (var reference in compilation.References)
-        {
-            if (compilation.GetAssemblyOrModuleSymbol(reference) is not IAssemblySymbol assembly)
-            {
-                continue;
-            }
+        var sourceAssemblyName = SourceAssemblyName(compilation);
 
-            var hit = FindType(assembly.GlobalNamespace, prefix);
+        var assemblies =
+            compilation.References
+                .Select(compilation.GetAssemblyOrModuleSymbol)
+                .OfType<IAssemblySymbol>()
+                .OrderBy(a => a.Name == sourceAssemblyName ? 0 : 1);
+
+        foreach (var assembly in assemblies)
+        {
+            var hit = FindType(compilation, assembly.GlobalNamespace, prefix);
 
             if (hit is not null)
             {
@@ -79,6 +84,15 @@ internal static class FixtureConventions
 
         return null;
     }
+
+    /// <summary>
+    /// The source assembly a unit-test assembly is named after
+    /// (Kaleido.Http.UnitTests → Kaleido.Http); null for any other assembly.
+    /// </summary>
+    private static string? SourceAssemblyName(Compilation compilation) =>
+        IsUnitTestAssembly(compilation)
+            ? compilation.AssemblyName!.Substring(0, compilation.AssemblyName.Length - ".UnitTests".Length)
+            : null;
 
     /// <summary>
     /// True when the type inherits SutFixture or SutFixture&lt;TSut&gt;
@@ -198,18 +212,26 @@ internal static class FixtureConventions
         }
     }
 
+    /// <summary>
+    /// The first type named <paramref name="name"/> the fixture's assembly can
+    /// see: an internal type of a third-party reference (e.g. Castle's
+    /// TypeExtensions, reached through Moq) cannot be a subject under test.
+    /// </summary>
     private static INamedTypeSymbol? FindType(
+        Compilation compilation,
         INamespaceSymbol ns,
         string name)
     {
-        var members = ns.GetTypeMembers(name);
+        var member =
+            ns.GetTypeMembers(name)
+                .FirstOrDefault(t => compilation.IsSymbolAccessibleWithin(t, compilation.Assembly));
 
-        if (members.Length > 0)
+        if (member is not null)
         {
-            return members[0];
+            return member;
         }
 
-        foreach (var hit in ns.GetNamespaceMembers().Select(child => FindType(child, name)))
+        foreach (var hit in ns.GetNamespaceMembers().Select(child => FindType(compilation, child, name)))
         {
             if (hit is not null)
             {

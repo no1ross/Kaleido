@@ -24,9 +24,11 @@ public static class SqliteKaleidoContextStoreServiceCollectionExtensions
     /// <returns>The builder, for chaining.</returns>
     /// <exception cref="KaleidoConfigurationException">The connection string is invalid.</exception>
     /// <remarks>
-    /// The schema is created with <c>Database.EnsureCreated()</c>, which never changes an existing
-    /// database: a database created before a schema change (e.g. the <c>OutboxEvents</c> table) must
-    /// be recreated or migrated.
+    /// This call only registers services; it does not open or create the database. The host
+    /// creates the schema once at startup, e.g.
+    /// <c>scope.ServiceProvider.GetRequiredService&lt;SqliteKaleidoContextDbContext&gt;().Database.EnsureCreatedAsync()</c>.
+    /// <c>EnsureCreated</c> never changes an existing database: a database created before a
+    /// schema change (e.g. the <c>OutboxEvents</c> table) must be recreated or migrated.
     /// </remarks>
     public static IKaleidoBuilder UseSqliteKaleidoContextStore(
         this IKaleidoBuilder builder,

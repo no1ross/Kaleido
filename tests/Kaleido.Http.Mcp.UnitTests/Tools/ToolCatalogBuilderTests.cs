@@ -559,6 +559,349 @@ public sealed class ToolCatalogBuilderTests
     }
 
     [Fact]
+    public void Build_WithoutARegistry_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => CreateSut().Build(null!));
+    }
+
+    [Fact]
+    public void Build_AProcessorThatPublishesNoSteps_HasNoStepTools_AndNoBuiltIns()
+    {
+        var catalog = Build(new AggregatedRegistryResponse
+        {
+            Processes = [new ProcessorRegistryResponse { ServiceName = "clinic", Name = "clinic", Steps = null }]
+        });
+
+        Assert.Empty(catalog.Tools);
+        Assert.Empty(catalog.ProcessServices);
+    }
+
+    [Fact]
+    public void QueryTool_OfAnUndescribedSource_FallsBackToItsName_AndIsReported()
+    {
+        var bare = new QueryableSourceResponse
+        {
+            ServiceName = "clinic",
+            Name = "PatientSource",
+            QueryUrl = "/clinic/queryable/patients/query",
+            Fields = [new QueryableFieldMetadata { Name = "Name", Description = "The name.", DataType = Text, IsSearchable = true }],
+            Views = [new QueryableViewResponse { Name = "PatientCardViewSource", QueryUrl = "/clinic/queryable/patients/views/card/query" }]
+        };
+
+        var catalog = Build(new AggregatedRegistryResponse { Queryables = [bare] });
+        var source = Tool(catalog, "clinic_patientsource").Definition;
+        var view = Tool(catalog, "clinic_patientcardviewsource").Definition;
+
+        Assert.Equal("PatientSource", source.Title);
+        Assert.Equal(". Read-only.", source.Description);
+        Assert.Equal("PatientCardViewSource", view.Title);
+        Assert.Equal(". A view of PatientSource. Read-only.", view.Description);
+        Assert.Equal(["clinic_patientsource", "clinic_patientcardviewsource"], catalog.MissingDescriptions);
+        Assert.Contains("Name (contains, The name)", source.InputSchema.GetProperty("properties").GetProperty("searchText").GetProperty("description").GetString(), StringComparison.Ordinal);
+        Assert.False(source.InputSchema.GetProperty("properties").TryGetProperty("page", out _));
+        Assert.False(source.InputSchema.TryGetProperty("required", out _));
+    }
+
+    [Fact]
+    public void QueryTool_FiltersDescribeEnumsByTheirValues_AndTypesByTheirFormat()
+    {
+        var patients = Patients() with
+        {
+            Fields =
+            [
+                new QueryableFieldMetadata
+                {
+                    Name = "Kind",
+                    DataType = new DataTypeDescriptor("string", EnumValues: [new EnumValueDescriptor(0, "Outpatient", null), new EnumValueDescriptor(1, "Inpatient", null)]),
+                    IsFilterable = true,
+                    FilterOperators = [FilterOperator.Equals]
+                },
+                new QueryableFieldMetadata { Name = "Born", Description = "Date of birth.", DataType = new DataTypeDescriptor("string", "date"), IsFilterable = true, FilterOperators = [FilterOperator.Between] },
+                new QueryableFieldMetadata { Name = "Ignored", DataType = Text, IsFilterable = true, FilterOperators = [] }
+            ]
+        };
+
+        var filters = Tool(Build(new AggregatedRegistryResponse { Queryables = [patients] }), "clinic_patientsource")
+            .Definition.InputSchema.GetProperty("properties").GetProperty("filters");
+
+        Assert.Equal("Conditions, all of which must match. Fields and their operators: Kind (outpatient|inpatient): equals; Born (date, Date of birth): between. Pass values typed like the field (in/between take several values; isNull/isTrue take none).", filters.GetProperty("description").GetString());
+        Assert.Equal(["Kind", "Born"], filters.GetProperty("items").GetProperty("properties").GetProperty("field").GetProperty("enum").EnumerateArray().Select(x => x.GetString()));
+    }
+
+    [Fact]
+    public void QueryTool_ListsAtMostFifteenReturnedFields()
+    {
+        var patients = Patients() with
+        {
+            OutputFields = [.. Enumerable.Range(1, 16).Select(i => new QueryableQueryProperty { Name = $"F{i}", DataType = Text })]
+        };
+
+        var description = Tool(Build(new AggregatedRegistryResponse { Queryables = [patients] }), "clinic_patientsource").Definition.Description;
+
+        Assert.Contains($"Returns: {string.Join(", ", Enumerable.Range(1, 15).Select(i => $"F{i}"))}, ….", description, StringComparison.Ordinal);
+        Assert.DoesNotContain("F16", description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void QueryTool_WhoseSourceDeclaresAnOptionalUndescribedProcessId_TakesItWithoutProcesses()
+    {
+        var scoped = Patients() with
+        {
+            Parameters = [new QueryableQueryParameter { Name = "processId", DataType = Text }]
+        };
+
+        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [scoped] }), "clinic_patientsource");
+        var properties = tool.Definition.InputSchema.GetProperty("properties");
+
+        Assert.True(tool.ParametersTakeProcessId);
+        Assert.Equal(
+            "The process this query is for (returned by an earlier step). Also sent with the query so it is recorded with the process.",
+            properties.GetProperty("processId").GetProperty("description").GetString());
+        Assert.False(tool.Definition.InputSchema.TryGetProperty("required", out _));
+        Assert.Contains("Pass the processId of the process you are working on, when there is one.", tool.Definition.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void QueryTool_AViewsOptionalParameters_AreNotRequired()
+    {
+        var patients = Patients() with
+        {
+            Views =
+            [
+                new QueryableViewResponse
+                {
+                    Name = "PatientCardViewSource",
+                    Description = "A card.",
+                    QueryUrl = "/clinic/queryable/patients/views/card/query",
+                    Parameters = [new QueryableQueryParameter { Name = "Since", Description = "From this date.", DataType = Text }]
+                }
+            ]
+        };
+
+        var schema = Tool(Build(new AggregatedRegistryResponse { Queryables = [patients] }), "clinic_patientcardviewsource").Definition.InputSchema;
+
+        Assert.False(schema.TryGetProperty("required", out _));
+        Assert.False(schema.GetProperty("properties").GetProperty("parameters").TryGetProperty("required", out _));
+        Assert.Equal("From this date.", schema.GetProperty("properties").GetProperty("parameters").GetProperty("properties").GetProperty("since").GetProperty("description").GetString());
+    }
+
+    [Fact]
+    public void StepTool_OfAnUndescribedStep_FallsBackToItsName_IsReported_AndListsWhatClosesIt()
+    {
+        var processor = new ProcessorRegistryResponse
+        {
+            ServiceName = "clinic",
+            Name = "clinic",
+            Steps =
+            [
+                new ProcessStepResponse
+                {
+                    Name = "WaitStep",
+                    ExecuteUrl = "/clinic/processes/steps/WaitStep",
+                    AvailableUntil = [new ProcessStepSummary { Name = "CloseVisitStep" }, new ProcessStepSummary { Name = "CancelVisitStep" }]
+                }
+            ]
+        };
+
+        var catalog = Build(new AggregatedRegistryResponse { Processes = [processor] });
+        var tool = Tool(catalog, "clinic_waitstep");
+
+        Assert.Equal("WaitStep", tool.Definition.Title);
+        Assert.Equal("WaitStep", tool.Definition.Annotations?.Title);
+        Assert.StartsWith(". Continues an existing process: pass its processId. Changes state.", tool.Definition.Description, StringComparison.Ordinal);
+        Assert.Equal(["CloseVisitStep", "CancelVisitStep"], tool.ClosedBy);
+        Assert.Contains("clinic_waitstep", catalog.MissingDescriptions);
+    }
+
+    [Fact]
+    public void Build_ManyCapabilitiesDerivingOneName_AreNumbered_AndEachIsReported()
+    {
+        var processor = Visits() with
+        {
+            Steps =
+            [
+                new ProcessStepResponse { Name = "AStep", Description = "A.", ExecuteUrl = "/a" },
+                new ProcessStepResponse { Name = "BStep", Description = "B.", ExecuteUrl = "/b" },
+                new ProcessStepResponse { Name = "CStep", Description = "C.", ExecuteUrl = "/c" },
+                new ProcessStepResponse { Name = "DStep", Description = "D.", ExecuteUrl = "/d" }
+            ]
+        };
+
+        var catalog = CreateSut((_, _) => new ToolName("same", false)).Build(new AggregatedRegistryResponse { Processes = [processor] });
+
+        Assert.Equal(["same", "same_step", "same_step_2", "same_step_3"], catalog.Tools.Where(x => x.Kind == KaleidoToolKind.Step).Select(x => x.Definition.Name));
+        Assert.Equal(
+            [
+                "clinic/BStep -> same_step (derives same, already used)",
+                "clinic/CStep -> same_step_2 (derives same, already used)",
+                "clinic/DStep -> same_step_3 (derives same, already used)"
+            ],
+            catalog.NameCollisions);
+    }
+
+    [Fact]
+    public void Build_ACollisionAtTheLengthLimit_KeepsTheNameWithinIt()
+    {
+        var longName = new string('x', ToolNameBuilder.MaxLength);
+
+        var catalog = CreateSut((_, _) => new ToolName(longName, false)).Build(new AggregatedRegistryResponse { Queryables = [Patients()] });
+
+        var names = catalog.Tools.Select(x => x.Definition.Name).ToArray();
+        Assert.Equal([longName, new string('x', ToolNameBuilder.MaxLength - 5) + "_view"], names);
+        Assert.All(names, x => Assert.True(x.Length <= ToolNameBuilder.MaxLength));
+    }
+
+    [Fact]
+    public void StepTool_ALookupOfASource_FindsItsQueryTool_AmongToolsOfOtherServicesSourcesAndViews()
+    {
+        var appointments = new QueryableSourceResponse { ServiceName = "clinic", Name = "AppointmentSource", Description = "Appointments.", QueryUrl = "/clinic/queryable/appointments/query" };
+        var billingPatients = Patients() with { ServiceName = "billing", QueryUrl = "/billing/queryable/patients/query", Views = [] };
+        var alpha = new ProcessorRegistryResponse
+        {
+            ServiceName = "alpha",
+            Name = "alpha",
+            Steps = [new ProcessStepResponse { Name = "PingStep", Description = "Pings.", IsInitial = true, ExecuteUrl = "/alpha/processes/steps/PingStep" }]
+        };
+        var referrals = new ProcessorRegistryResponse
+        {
+            ServiceName = "referrals",
+            Name = "referrals",
+            Steps =
+            [
+                new ProcessStepResponse
+                {
+                    Name = "ReferPatientStep",
+                    Description = "Refers a patient",
+                    ExecuteUrl = "/referrals/processes/steps/ReferPatientStep",
+                    Fields =
+                    [
+                        new ProcessFieldMetadata
+                        {
+                            Name = "PatientId",
+                            Description = "The patient.",
+                            DataType = Text,
+                            Lookup = new Kaleido.Processor.Registry.LookupMetadata { Service = "clinic", Source = "PatientSource", Field = "Id", Group = "patient" }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var tool = Tool(
+            Build(new AggregatedRegistryResponse { Queryables = [appointments, billingPatients, Patients()], Processes = [alpha, referrals] }),
+            "referrals_referpatientstep");
+
+        var lookup = Assert.Single(tool.Lookups);
+        Assert.Equal("clinic_patientsource", lookup.QueryTool);
+        Assert.Equal("Patients", lookup.QueryTitle);
+        Assert.Null(lookup.View);
+        Assert.Empty(lookup.Display);
+        Assert.Equal(
+            "The patient. Value: the Id of one Patients result. Ask the user for details that identify the record, search with clinic_patientsource, show the matches and let the user pick one; never guess or invent it.",
+            ArgumentDescription(tool, "patientId"));
+    }
+
+    [Fact]
+    public void StepTool_ALookupOfASourceTheCallerCannotSearch_NamesTheSource()
+    {
+        var referrals = Referrals() with
+        {
+            Steps =
+            [
+                new ProcessStepResponse
+                {
+                    Name = "ReferPatientStep",
+                    Description = "Refers a patient",
+                    IsInitial = true,
+                    ExecuteUrl = "/referrals/processes/steps/ReferPatientStep",
+                    Fields =
+                    [
+                        new ProcessFieldMetadata
+                        {
+                            Name = "PatientId",
+                            DataType = Text,
+                            Lookup = new Kaleido.Processor.Registry.LookupMetadata { Service = "clinic", Source = "PatientSource", Field = "Id", Group = "patient" }
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var catalog = Build(new AggregatedRegistryResponse { Processes = [Visits(), referrals] });
+        var tool = Tool(catalog, "referrals_referpatientstep");
+
+        Assert.Equal(["referrals_referpatientstep.patientId -> clinic/PatientSource"], catalog.UnresolvedLookups);
+        Assert.Equal("Value: a PatientSource result's Id on clinic, which you cannot search: ask the user.", ArgumentDescription(tool, "patientId"));
+        Assert.Contains(" patientId come from PatientSource on clinic, which you cannot search: ask the user.", tool.Definition.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StepTool_ALookupThroughAViewTheCallerCannotSearch_NamesTheView()
+    {
+        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [Referrals()] }), "referrals_referpatientstep");
+
+        Assert.Contains(" patientId and patientName come from PatientCardViewSource on clinic, which you cannot search: ask the user.", tool.Definition.Description, StringComparison.Ordinal);
+        Assert.StartsWith("The patient. Value: a PatientCardViewSource result's Id on clinic", ArgumentDescription(tool, "patientId"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Tools_MarkClassifiedReturnedStepFields_AndDescribedClassifiedParameters()
+    {
+        string[] pii = ["Clinic:PII", "PHI"];
+        var visits = Visits() with
+        {
+            Steps =
+            [
+                new ProcessStepResponse
+                {
+                    Name = "StartVisitStep",
+                    Description = "Opens a visit.",
+                    IsInitial = true,
+                    ExecuteUrl = "/clinic/processes/steps/StartVisitStep",
+                    Fields = [new ProcessFieldMetadata { Name = "Phone", DataType = Text, Classifications = pii }],
+                    Result = new ProcessStepResultMetadata { OutputFields = [new ProcessOutputFieldMetadata { Name = "VisitId", DataType = Text }, new ProcessOutputFieldMetadata { Name = "Phone", DataType = Text, Classifications = pii }] }
+                }
+            ]
+        };
+        var patients = Patients() with
+        {
+            Parameters = [new QueryableQueryParameter { Name = "Ssn", Description = " The SSN. ", DataType = Text, Classifications = pii }]
+        };
+
+        var catalog = Build(new AggregatedRegistryResponse { Queryables = [patients], Processes = [visits] });
+        var step = Tool(catalog, "clinic_startvisitstep").Definition;
+        var query = Tool(catalog, "clinic_patientsource").Definition;
+
+        Assert.Contains("Returns: VisitId, Phone (PII, PHI).", step.Description, StringComparison.Ordinal);
+        Assert.Equal("Sensitive (PII, PHI).", step.InputSchema.GetProperty("properties").GetProperty("phone").GetProperty("description").GetString());
+        Assert.Equal("The SSN. Sensitive (PII, PHI).", query.InputSchema.GetProperty("properties").GetProperty("parameters").GetProperty("properties").GetProperty("ssn").GetProperty("description").GetString());
+    }
+
+    [Fact]
+    public void StepTool_AFieldWithoutAnyHint_HasNoDescription()
+    {
+        var visits = Visits() with
+        {
+            Steps = [new ProcessStepResponse { Name = "NoteStep", Description = "Adds a note.", IsInitial = true, ExecuteUrl = "/clinic/processes/steps/NoteStep", Fields = [new ProcessFieldMetadata { Name = "Note", DataType = Text }] }]
+        };
+
+        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [visits] }), "clinic_notestep");
+
+        Assert.False(tool.Definition.InputSchema.GetProperty("properties").GetProperty("note").TryGetProperty("description", out _));
+        Assert.False(tool.Definition.InputSchema.TryGetProperty("required", out _));
+    }
+
+    [Fact]
+    public void StepTool_ALookupThatIsNotListedAtTheFrontDoor_StaysUnlisted_WhenUnresolved()
+    {
+        var catalog = CreateSut(listing: McpToolListing.FrontDoor).Build(new AggregatedRegistryResponse { Processes = [Referrals()] });
+
+        Assert.True(Tool(catalog, "referrals_referpatientstep").Listed);
+        Assert.Empty(catalog.UnknownListedTools);
+        Assert.Equal(2, catalog.UnresolvedLookups.Count);
+    }
+
+    [Fact]
     public void StepTool_ALookupOfAnUnknownView_IsUnresolved()
     {
         var catalog = Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Referrals("NoSuchView")] });

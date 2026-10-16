@@ -81,6 +81,25 @@ public sealed class TypeDescriberTests
     }
 
     [Fact]
+    public void GetDescriptor_ANonGenericCollection_IsAnArrayOfObjects()
+    {
+        var descriptor = _sut.GetDescriptor(typeof(System.Collections.ArrayList));
+
+        Assert.Equal("array", descriptor.Type);
+        Assert.Equal("object", descriptor.ItemType!.Type);
+    }
+
+    [Fact]
+    public void GetDescriptor_ATypeArray_IsAnArrayOfItsElementType()
+    {
+        var descriptor = _sut.GetDescriptor(typeof(int[]));
+
+        Assert.Equal("array", descriptor.Type);
+        Assert.NotEqual("object", descriptor.ItemType!.Type);
+        Assert.False(descriptor.Nullable);
+    }
+
+    [Fact]
     public void GetDescriptor_WhenEnumWithDescription_MapsEnumValues()
     {
         var descriptor = _sut.GetDescriptor(typeof(TestModel).GetProperty(nameof(TestModel.Status))!);
@@ -147,6 +166,83 @@ public sealed class TypeDescriberTests
 
         Assert.Equal(expectedType, descriptor.Type);
         Assert.Equal(expectedFormat, descriptor.Format);
+    }
+
+    [Theory]
+    [InlineData(typeof(string), true)]
+    [InlineData(typeof(int?), true)]
+    [InlineData(typeof(TestStatus), true)]
+    [InlineData(typeof(TestStatus?), true)]
+    [InlineData(typeof(TestObject), false)]
+    [InlineData(typeof(List<int>), false)]
+    public void IsSupportedType_AcceptsScalarsAndEnums(Type type, bool expected)
+    {
+        Assert.Equal(expected, _sut.IsSupportedType(type));
+    }
+
+    [Fact]
+    public void IsSupportedType_WhenTypeIsNull_Throws()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(() => _sut.IsSupportedType(null!));
+
+        Assert.Equal("type", exception.ParamName);
+    }
+
+    [Fact]
+    public void GetDescriptor_WhenPropertyIsNull_Throws()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(() => _sut.GetDescriptor((System.Reflection.PropertyInfo)null!));
+
+        Assert.Equal("propertyInfo", exception.ParamName);
+    }
+
+    [Fact]
+    public void GetDescriptor_WhenTypeIsNull_Throws()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(() => _sut.GetDescriptor((Type)null!));
+
+        Assert.Equal("type", exception.ParamName);
+    }
+
+    [Fact]
+    public void GetDescriptor_WhenRealArray_MapsWithItemType()
+    {
+        var descriptor = _sut.GetDescriptor(typeof(int?[]));
+
+        Assert.Equal("array", descriptor.Type);
+        Assert.False(descriptor.Nullable);
+        Assert.Equal("integer", descriptor.ItemType!.Type);
+        Assert.True(descriptor.ItemType.Nullable);
+    }
+
+    [Fact]
+    public void GetDescriptor_WhenNonGenericEnumerable_MapsObjectItems()
+    {
+        var descriptor = _sut.GetDescriptor(typeof(System.Collections.ArrayList));
+
+        Assert.Equal("array", descriptor.Type);
+        Assert.Equal("object", descriptor.ItemType!.Type);
+    }
+
+    [Fact]
+    public void GetDescriptor_WhenComplexType_MapsObjectAndCachesIt()
+    {
+        var first = _sut.GetDescriptor(typeof(TestObject));
+        var second = _sut.GetDescriptor(typeof(TestObject));
+
+        Assert.Equal("object", first.Type);
+        Assert.Null(first.Format);
+        Assert.Equal(first, second);
+    }
+
+    [Fact]
+    public void GetDescriptor_WhenNullableEnumType_MarksNullableAndKeepsValues()
+    {
+        var descriptor = _sut.GetDescriptor(typeof(TestStatus?));
+
+        Assert.True(descriptor.Nullable);
+        Assert.Equal("enum", descriptor.Format);
+        Assert.Equal(2, descriptor.EnumValues!.Count);
     }
 
     private sealed class ScalarModel<T>

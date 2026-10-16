@@ -10,6 +10,19 @@ namespace Kaleido.Http.Client;
 [ExcludeFromCodeCoverage]
 public sealed class KaleidoHttpClientException : Exception
 {
+    /// <summary>
+    /// Creates the exception for a failed remote Kaleido call.
+    /// </summary>
+    /// <param name="code">The diagnostic code, a <see cref="HttpClientErrorCodes"/> value.</param>
+    /// <param name="message">A description of the call and why it failed.</param>
+    /// <param name="statusCode">
+    /// The status of the remote response, or the status that best describes a failure detected by
+    /// the client itself (e.g. <see cref="HttpStatusCode.NotFound"/> for a name missing from the
+    /// remote registry).
+    /// </param>
+    /// <param name="errors">
+    /// The structured errors from the remote error body; <see langword="null"/> becomes an empty list.
+    /// </param>
     public KaleidoHttpClientException(
         string code,
         string message,
@@ -22,6 +35,19 @@ public sealed class KaleidoHttpClientException : Exception
         Errors = errors ?? [];
     }
 
+    /// <summary>
+    /// Creates the exception for a failed remote Kaleido call, wrapping the exception that caused it.
+    /// </summary>
+    /// <param name="code">The diagnostic code, a <see cref="HttpClientErrorCodes"/> value.</param>
+    /// <param name="message">A description of the call and why it failed.</param>
+    /// <param name="statusCode">
+    /// The status of the remote response, or the status that best describes a failure detected by
+    /// the client itself.
+    /// </param>
+    /// <param name="innerException">The exception that caused the failure.</param>
+    /// <param name="errors">
+    /// The structured errors from the remote error body; <see langword="null"/> becomes an empty list.
+    /// </param>
     public KaleidoHttpClientException(
         string code,
         string message,
@@ -38,15 +64,27 @@ public sealed class KaleidoHttpClientException : Exception
     /// <summary>Stable machine-readable diagnostic code (see <see cref="HttpClientErrorCodes"/>).</summary>
     public string Code { get; }
 
+    /// <summary>
+    /// The status of the remote response, e.g. <see cref="HttpStatusCode.BadRequest"/> when the
+    /// service rejected the request or <see cref="HttpStatusCode.Conflict"/> for <see cref="HttpClientErrorCodes.Conflict"/>.
+    /// When the client detected the failure itself, the status that best describes it, e.g.
+    /// <see cref="HttpStatusCode.NotFound"/> for <see cref="HttpClientErrorCodes.NotFound"/>.
+    /// </summary>
     public HttpStatusCode StatusCode { get; }
 
+    /// <summary>
+    /// The structured errors from the remote error body, with the called service's own codes
+    /// (e.g. <c>pro_*</c>, <c>qry_*</c>); empty when the response carried none or the client
+    /// detected the failure itself.
+    /// </summary>
     public IReadOnlyList<KaleidoError> Errors { get; }
 }
 
 /// <summary>
-/// Stable machine-readable diagnostic codes for Kaleido HTTP client errors.
-/// Process-specific codes are prefixed <c>pro_</c>; Queryable-specific codes are prefixed <c>qry_</c>.
-/// Cross-cutting codes have no prefix.
+/// Stable machine-readable diagnostic codes for Kaleido HTTP client errors. Runtime codes are
+/// prefixed <c>httpclient_</c>; <c>missing_base_url</c> is a startup configuration code. The
+/// called service's own codes (<c>pro_*</c>, <c>qry_*</c>) arrive in
+/// <see cref="KaleidoHttpClientException.Errors"/>.
 /// </summary>
 public static class HttpClientErrorCodes
 {
@@ -74,4 +112,10 @@ public static class HttpClientErrorCodes
 
     /// <summary>A configured Kaleido client is missing a BaseUrl (neither client-level nor shared Kaleido:BaseUrl). Raised at startup as a configuration error.</summary>
     public const string MissingBaseUrl = "missing_base_url";
+
+    /// <summary>
+    /// <c>GetClient</c> was asked for a client name that is not configured under <c>Kaleido:Clients</c>.
+    /// Raised as a configuration error at the call; the message lists the configured clients.
+    /// </summary>
+    public const string UnknownClient = "httpclient_unknown_client";
 }

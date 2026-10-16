@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Http.Client;
 using Kaleido.Http.Client.Queryable;
 using Kaleido.Http.Queryable;
@@ -21,6 +22,20 @@ public sealed class KaleidoQueryableClientFactoryTests
                 httpClientFactory,
                 Mock.Of<IRegistrySnapshotStore>(),
                 NullLogger<KaleidoRemoteRegistry>.Instance));
+
+    [Fact]
+    public void GetClient_ForAnUnconfiguredName_FailsNamingTheConfiguredClients()
+    {
+        var httpClientFactory = new Mock<IHttpClientFactory>();
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(
+            () => CreateSut(httpClientFactory.Object, new KaleidoQueryableClientRouteOptionsMap()).GetClient("Member"));
+
+        Assert.Equal(HttpClientErrorCodes.UnknownClient, exception.Code);
+        Assert.Equal("Kaleido client 'Member' is not configured under Kaleido:Clients; no clients are configured.", exception.Message);
+        httpClientFactory.Verify(f => f.CreateClient(It.IsAny<string>()), Times.Never);
+    }
+
     [Fact]
     public void GetClient_WhenNamedClientIsRegistered_ReturnsClient()
     {

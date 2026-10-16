@@ -62,6 +62,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
         Assert.Equal(publisher.Published.Count, publisher.Published.Select(x => x.EventId).Distinct().Count());
         Assert.Equal(publisher.Published.Count + 2, publisher.Calls);
         Assert.Contains(publisher.Published, x => x.EventType == KaleidoEventTypes.ProcessCreated);
+        Assert.Contains(publisher.Published, x => x.EventType == KaleidoEventTypes.ProcessPlanBuilt);
         Assert.Contains(publisher.Published, x => x.EventType == KaleidoEventTypes.ProcessStepCompleted);
         Assert.Contains(publisher.Published, x => x.EventType == KaleidoEventTypes.ProcessExecutionCompleted);
     }
@@ -166,6 +167,30 @@ public sealed class EventOutboxTests : IAsyncLifetime
         var published = publisher.Events.First(x => x.EventType == KaleidoEventTypes.QueryExecuted).Event;
         Assert.NotEmpty(names);
         Assert.All(RecordNames(published), name => Assert.Equal(string.Empty, name));
+    }
+
+    // The same classification on a step input: the step-completed event carries the request, and
+    // the classified value must not reach the outbox or the publisher in the clear.
+    [Fact]
+    public async Task AClassifiedStepInput_IsRedactedInTheStepCompletedEvent()
+    {
+        const string remark = "patient said something private";
+        var publisher = new RecordingPublisher();
+        await StartHostAsync(publisher, configureServices: AddMaskingRedaction);
+        var host = _hosts[^1];
+
+        using var content = new StringContent(
+            $$$"""{"processStep":{"itemId":"{{{Guid.NewGuid()}}}","remark":"{{{remark}}}"}}""",
+            Encoding.UTF8,
+            "application/json");
+        using var response = await host.GetTestClient().PostAsync("/kaleido/processes/steps/runtimeinputstep", content, Cancel);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        await WaitUntilAsync(() => Task.FromResult(publisher.Events.Any(x => x.EventType == KaleidoEventTypes.ProcessStepCompleted)));
+
+        var published = publisher.Events.First(x => x.EventType == KaleidoEventTypes.ProcessStepCompleted).Event.ToJsonString();
+        Assert.DoesNotContain(remark, published, StringComparison.Ordinal);
+        Assert.Contains("***", published, StringComparison.Ordinal);
     }
 
     private static void AddMaskingRedaction(IServiceCollection services) =>

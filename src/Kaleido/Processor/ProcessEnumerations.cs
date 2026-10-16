@@ -28,7 +28,8 @@ public enum StepExecutionOutcome
     Blocked,
 
     /// <summary>
-    /// The step was intentionally stopped and will not continue.
+    /// The request was cancelled while the step was executing (status
+    /// <see cref="StepExecutionStatus.Canceled"/>); the step did not finish.
     /// </summary>
     Canceled,
 
@@ -67,7 +68,17 @@ public enum StepExecutionStatus
     /// </summary>
     Exception,
 
+    /// <summary>
+    /// The step was not run because it had already completed: the status an execution outcome
+    /// gets for a <see cref="StepCandidateStatus.Satisfied"/> candidate. Satisfied candidates are
+    /// kept out of the execution plan, so the runtime does not normally record it.
+    /// </summary>
     Skipped,
+
+    /// <summary>
+    /// The request was cancelled while the step was executing. The step's state is saved with this
+    /// status and the process moves to <see cref="ProcessExecutionState.Canceled"/>.
+    /// </summary>
     Canceled,
 
     /// <summary>
@@ -172,14 +183,54 @@ public enum ExecutionDecisionType
     Rejected,
 }
 
+/// <summary>
+/// The state of a process instance, stored in its process state and returned after each request.
+/// </summary>
+/// <remarks>
+/// Set when the process is created, from the <see cref="ExecutionDecisionType"/> of each step that
+/// runs on it, and on cancellation. A step its handler rejects, or one that fails with a validation
+/// error or an unexpected error, leaves the state unchanged.
+/// </remarks>
 public enum ProcessExecutionState
 {
+    /// <summary>
+    /// The process is running: the state of a new process, and the state saved after a step that
+    /// continues into another step submitted in the same request.
+    /// </summary>
     Active,
+
+    /// <summary>
+    /// The last step required no next step and the process rules make no further step available.
+    /// </summary>
     Complete,
+
+    /// <summary>
+    /// The last step's handler returned a business failure; that step is recorded as
+    /// <see cref="StepExecutionStatus.Failed"/>.
+    /// </summary>
     BusinessFailure,
+
+    /// <summary>
+    /// The last step's result broke a process rule, for example by requiring a step that is not
+    /// registered or not a legal next step, or an information step without a well-formed
+    /// information request.
+    /// </summary>
     ProcessViolation,
+
+    /// <summary>
+    /// The last step handed the process off to another processor, named by the process's
+    /// target processor name; the process continues there.
+    /// </summary>
     HandOff,
+
+    /// <summary>
+    /// The process waits for its required step, which the caller must submit next.
+    /// </summary>
     AwaitingRequiredStep,
+
+    /// <summary>
+    /// The process waits for the caller to submit one of its available steps.
+    /// </summary>
     AwaitingStepSelection,
 
     /// <summary>
@@ -188,6 +239,11 @@ public enum ProcessExecutionState
     /// </summary>
     Exception,
 
+    /// <summary>
+    /// The request was cancelled while a step was executing: that step is recorded as
+    /// <see cref="StepExecutionStatus.Canceled"/>, and the required step, target processor and
+    /// available steps are cleared.
+    /// </summary>
     Canceled,
 
     /// <summary>
