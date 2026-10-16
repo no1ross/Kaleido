@@ -85,6 +85,8 @@ public sealed class ProcessorResponseFactoryTests
         Assert.Equal(phi, Assert.Single(step.Result!.OutputFields).Classifications);
         var initial = Assert.Single(result.InitialSteps ?? []);
         Assert.True(initial.Destructive && initial.External && initial.RequiresConfirmation);
+        Assert.Equal(step.ExecuteUrl, initial.ExecuteUrl);
+        Assert.NotEmpty(initial.ExecuteUrl);
     }
 
     [Fact]
