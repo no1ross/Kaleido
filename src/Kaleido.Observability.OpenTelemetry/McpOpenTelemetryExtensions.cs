@@ -12,6 +12,11 @@ internal static class McpTelemetryNames
     public const string MeterName = "Kaleido.Http.Mcp";
 }
 
+/// <summary>
+/// Registers only the MCP adapter's telemetry (<c>Kaleido.Http.Mcp</c>) with an OpenTelemetry
+/// pipeline the consumer manages. <c>AddKaleidoInstrumentation()</c> registers it together with
+/// the rest of Kaleido's.
+/// </summary>
 public static class McpOpenTelemetryExtensions
 {
     /// <summary>Registers the MCP adapter's <c>ActivitySource</c> (tool call and tool listing spans). Signals are emitted only where Kaleido.Http.Mcp is hosted.</summary>

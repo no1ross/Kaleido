@@ -19,13 +19,13 @@ Each area owns its codes; there is no single catalog. Code string values are sta
 
 A request the HTTP layer cannot read (a body that is not JSON, a value that does not fit its type, a C# `required` member left out) is answered 400 `argument_error` (415 for a non-JSON content type) with a message naming the JSON path, by Kaleido's error handling on the per-step and query endpoints; a `JsonException` is never a 500.
 
-HTTP middleware exposes a validation exception's `Code` and `Message` in a 400 error body. A Process step handler's validation exception instead produces a failed step outcome; its original code and message appear in `FrameworkMessages` only when the transport enables framework diagnostics. Configuration and framework exception codes remain log-only.
+HTTP middleware exposes a validation exception's `Code` and `Message` in a 400 error body. A Process step handler's validation exception instead produces a failed step outcome; its original code and message appear in `FrameworkMessages` only when the transport enables framework diagnostics. A configuration or framework exception thrown during a request is logged and answered 500 with its `Code` and `Message`; one thrown at startup stops the host and never reaches a response.
 
 ---
 
 ## `QueryableErrorCodes` — Queryable startup and request validation
 
-One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup registration codes are raised as `KaleidoConfigurationException` (log-only); request-validation codes as `KaleidoValidationException` (400 body).
+One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup registration codes are raised as `KaleidoConfigurationException` at startup (they stop the host and never reach a response); request-validation codes as `KaleidoValidationException` (400 body).
 
 | Constant | Code | Meaning |
 |---|---|---|

@@ -71,6 +71,19 @@ public class KaleidoServiceOptions
     /// </summary>
     public KaleidoAuthorizationMode AuthorizationMode { get; init; }
 
+    /// <summary>
+    /// The service-wide authorization rule for process steps and query sources that declare no
+    /// <see cref="KaleidoAuthorizationAttribute"/> of their own; query views without one inherit
+    /// their source's rule. Default <see cref="AuthorizationMetadata.Unspecified"/> (no service rule).
+    /// Takes effect only when <see cref="AuthorizationMode"/> enforces authorization; in
+    /// <see cref="KaleidoAuthorizationMode.ZeroTrust"/> an explicit default makes every capability
+    /// explicit.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="AuthorizationMetadata.Roles"/> must not be <see langword="null"/>, and
+    /// <see cref="AuthorizationMetadata.AllowAnonymous"/> cannot be combined with roles or a policy;
+    /// <c>AddKaleido</c> throws a <see cref="KaleidoConfigurationException"/> otherwise.
+    /// </remarks>
     public AuthorizationMetadata DefaultAuthorization { get; init; } = AuthorizationMetadata.Unspecified;
 
     /// <summary>
@@ -202,6 +215,7 @@ public sealed class KaleidoServiceOptionsBuilder
     /// <inheritdoc cref="KaleidoServiceOptions.AuthorizationMode"/>
     public KaleidoAuthorizationMode AuthorizationMode { get; set; }
 
+    /// <inheritdoc cref="KaleidoServiceOptions.DefaultAuthorization"/>
     public AuthorizationMetadata DefaultAuthorization { get; set; } = new(Policy: null, []);
 
     /// <inheritdoc cref="KaleidoServiceOptions.Events"/>

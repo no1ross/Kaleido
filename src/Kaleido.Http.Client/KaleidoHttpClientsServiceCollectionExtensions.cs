@@ -6,6 +6,10 @@ using Microsoft.Extensions.Http;
 
 namespace Kaleido.Http.Client;
 
+/// <summary>
+/// Registers the typed Kaleido HTTP clients on an <see cref="IKaleidoBuilder"/>; the entry point is
+/// <see cref="AddHttpClients"/>.
+/// </summary>
 public static class KaleidoHttpClientsServiceCollectionExtensions
 {
     /// <summary>

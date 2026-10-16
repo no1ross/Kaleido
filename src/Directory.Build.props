@@ -19,7 +19,6 @@
         <Company>Andrew Ross</Company>
         <RepositoryUrl>https://github.com/no1ross/Kaleido</RepositoryUrl>
         <PackageTags>reference-data;metadata;query;framework</PackageTags>
-        <NoWarn>$(NoWarn);1591</NoWarn>
     </PropertyGroup>
     <ItemGroup>
         <!-- Git-height versioning: version.json → 1.0.0-preview.{height}; v* tags flip to stable. -->
