@@ -106,10 +106,14 @@ and the instructions tell the model to relay messages verbatim.
 
 When the client can show forms, questions go to the **user**, not the model:
 
-- clients on the stateless revisions (MRTR) get "input required" with the form, and call the tool
+- clients on the `2026-07-28` revision (MRTR) get "input required" with the form, and call the tool
   again with the answers; nothing is held between calls;
-- clients with a session get an elicitation request during the call;
 - otherwise the questions are returned in `next.informationRequest` for the agent to ask.
+
+The endpoint is stateless (no session affinity needed), so clients on `2025-11-25` or earlier, which
+rely on a session for server-to-client requests, are asked through the agent even when they can show
+forms. Sessions for those clients are an opt-in not offered yet
+([#350](https://github.com/no1ross/Kaleido/issues/350)).
 
 Proposed answers open the form pre-filled; the user confirms or corrects them.
 
