@@ -1,5 +1,6 @@
 using Kaleido.Http.Client.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.Client.HealthChecks.UnitTests;
@@ -9,13 +10,99 @@ public sealed class KaleidoClientHealthCheckTests
 {
     private static KaleidoClientHealthCheck CreateSut(
         IHttpClientFactory httpClientFactory,
-        TimeSpan? timeout = null) =>
+        TimeSpan? timeout = null,
+        ILogger<KaleidoClientHealthCheck>? logger = null) =>
         new(
             httpClientFactory,
             "test-client",
             "/test-client/registry",
             timeout ?? TimeSpan.FromSeconds(5),
-            NullLogger<KaleidoClientHealthCheck>.Instance);
+            logger ?? NullLogger<KaleidoClientHealthCheck>.Instance);
+
+    [Theory]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.NotFound)]
+    public async Task CheckHealthAsync_NonSuccessResponse_LogsAWarningWithTheStatusCode(HttpStatusCode statusCode)
+    {
+        var logger = new RecordingLogger();
+        var check = CreateSut(
+            FactoryFor((_, _) => Task.FromResult(new HttpResponseMessage(statusCode))),
+            logger: logger);
+
+        var result = await check.CheckHealthAsync(CreateContext(), TestContext.Current.CancellationToken);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Equal($"Kaleido client health check for 'test-client' received non-success status {(int)statusCode}.", entry.Message);
+        Assert.Null(entry.Exception);
+        Assert.Equal($"Kaleido remote 'test-client' returned {(int)statusCode}.", result.Description);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_TransportException_LogsAWarningWithTheException()
+    {
+        var failure = new HttpRequestException("Connection refused");
+        var logger = new RecordingLogger();
+        var check = CreateSut(
+            FactoryFor((_, _) => Task.FromException<HttpResponseMessage>(failure)),
+            logger: logger);
+
+        var result = await check.CheckHealthAsync(CreateContext(), TestContext.Current.CancellationToken);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Equal("Kaleido client health check for 'test-client' failed.", entry.Message);
+        Assert.Same(failure, entry.Exception);
+        Assert.Equal("Kaleido remote 'test-client' is unreachable: Connection refused", result.Description);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_WhenTheRemoteDoesNotAnswerInTime_LogsAWarning()
+    {
+        var logger = new RecordingLogger();
+        var check = CreateSut(
+            FactoryFor(async (_, cancellationToken) =>
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }),
+            TimeSpan.FromMilliseconds(50),
+            logger);
+
+        var result = await check.CheckHealthAsync(CreateContext(), TestContext.Current.CancellationToken);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal("Kaleido client health check for 'test-client' failed.", entry.Message);
+        Assert.IsAssignableFrom<OperationCanceledException>(entry.Exception);
+        Assert.Same(entry.Exception, result.Exception);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_SuccessResponse_LogsNothing()
+    {
+        var logger = new RecordingLogger();
+        var check = CreateSut(
+            FactoryFor((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK))),
+            logger: logger);
+
+        var result = await check.CheckHealthAsync(CreateContext(), TestContext.Current.CancellationToken);
+
+        Assert.Empty(logger.Entries);
+        Assert.Equal("Kaleido remote 'test-client' is reachable (200).", result.Description);
+    }
+
+    private sealed class RecordingLogger : ILogger<KaleidoClientHealthCheck>
+    {
+        public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Entries.Add((logLevel, formatter(state, exception), exception));
+    }
 
     // The health check must report quickly and honestly: never retried by the resilience pipeline.
     [Fact]

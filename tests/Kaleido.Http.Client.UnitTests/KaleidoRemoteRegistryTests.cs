@@ -1,4 +1,6 @@
+using System.Globalization;
 using Kaleido.Http.Registry;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.Client.UnitTests;
@@ -7,7 +9,8 @@ public sealed class KaleidoRemoteRegistryTests
     : Kaleido.UnitTests.SutFixture
 {
     private static KaleidoRemoteRegistry CreateSut(
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        ILogger<KaleidoRemoteRegistry>? logger = null)
     {
         var store = new Mock<IRegistrySnapshotStore>();
         var data = new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
@@ -33,7 +36,7 @@ public sealed class KaleidoRemoteRegistryTests
         return new KaleidoRemoteRegistry(
             httpClientFactory,
             store.Object,
-            NullLogger<KaleidoRemoteRegistry>.Instance);
+            logger ?? NullLogger<KaleidoRemoteRegistry>.Instance);
     }
 
     private static readonly AggregatedRegistryResponse FakeRegistry = new()
@@ -58,7 +61,8 @@ public sealed class KaleidoRemoteRegistryTests
     };
 
     private static (KaleidoRemoteRegistry sut, Mock<HttpMessageHandler> handler) CreateSutWithHandler(
-        Func<HttpRequestMessage, HttpResponseMessage>? respond = null)
+        Func<HttpRequestMessage, HttpResponseMessage>? respond = null,
+        ILogger<KaleidoRemoteRegistry>? logger = null)
     {
         var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         handler.Protected()
@@ -79,7 +83,38 @@ public sealed class KaleidoRemoteRegistryTests
             .Setup(f => f.CreateClient(It.IsAny<string>()))
             .Returns(httpClient);
 
-        return (CreateSut(factory.Object), handler);
+        return (CreateSut(factory.Object, logger), handler);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task GetAsync_WhenTheRemoteFails_LogsAWarningWithTheStatus(HttpStatusCode statusCode)
+    {
+        var logger = new RecordingLogger();
+        var (sut, _) = CreateSutWithHandler(_ => new HttpResponseMessage(statusCode), logger);
+
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
+            sut.GetAsync("remote", "remote-svc", null, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Equal(
+            string.Create(CultureInfo.InvariantCulture, $"Registry fetch from client 'remote' failed with status code {(int)statusCode} ({statusCode})."),
+            entry.Message);
+    }
+
+    private sealed class RecordingLogger : ILogger<KaleidoRemoteRegistry>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Entries.Add((logLevel, formatter(state, exception)));
     }
 
     private static HttpResponseMessage JsonOk<T>(T value) =>

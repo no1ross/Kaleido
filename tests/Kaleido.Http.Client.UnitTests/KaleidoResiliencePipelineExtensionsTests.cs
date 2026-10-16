@@ -66,6 +66,36 @@ public sealed class KaleidoResiliencePipelineExtensionsTests
     }
 
     [Fact]
+    public async Task ARequestWithNoRetrySetToFalse_IsRetried()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, "/svc/registry");
+        request.Options.Set(KaleidoResilienceOptions.NoRetry, value: false);
+
+        Assert.Equal(3, await AttemptsAsync(request, HttpStatusCode.ServiceUnavailable));
+    }
+
+    [Fact]
+    public async Task AHeadThatFailsTransiently_IsRetried()
+    {
+        Assert.Equal(3, await AttemptsAsync(new HttpRequestMessage(HttpMethod.Head, "/svc/registry"), HttpStatusCode.ServiceUnavailable));
+    }
+
+    [Fact]
+    public void IsSafeToRetry_WithoutARequestMessage_IsFalse()
+    {
+        var context = ResilienceContextPool.Shared.Get(TestContext.Current.CancellationToken);
+
+        try
+        {
+            Assert.False(context.IsSafeToRetry());
+        }
+        finally
+        {
+            ResilienceContextPool.Shared.Return(context);
+        }
+    }
+
+    [Fact]
     public async Task ANonTransientFailure_IsNotRetried()
     {
         Assert.Equal(1, await AttemptsAsync(new HttpRequestMessage(HttpMethod.Get, "/svc/registry"), HttpStatusCode.BadRequest));
