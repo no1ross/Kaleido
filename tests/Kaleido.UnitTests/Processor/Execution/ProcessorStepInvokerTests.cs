@@ -299,6 +299,30 @@ public sealed class ProcessorStepInvokerTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WhenTheRegistrationHasNoResultExtractor_ThrowsAfterTheHandlerRan()
+    {
+        var recorder = new CorrelationRecorder();
+        var invoker =
+            CreateSut(
+                services =>
+                {
+                    services.AddSingleton(recorder);
+                    services.AddTransient<CorrelationCapturingHandler>();
+                });
+
+        var exception =
+            await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
+                invoker.ExecuteAsync(
+                    CreateRegistration<CorrelationCapturingHandler>(withoutResultExtractor: true),
+                    new TestStep(),
+                    CreateContext()));
+
+        Assert.Equal(FrameworkErrorCodes.InvalidHandlerResult, exception.Code);
+        Assert.Contains("has no cached result extractor", exception.Message);
+        Assert.NotNull(recorder.Seen);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_SeedsHandlerScopeCorrelationWithProcessIdAndExecutingStep()
     {
         var recorder =
@@ -399,7 +423,8 @@ public sealed class ProcessorStepInvokerTests
     }
 
     private static ProcessStepRegistration CreateRegistration<THandler>(
-        Func<object, object, ProcessStepContext, CancellationToken, Task>? invokeHandlerAsync = null)
+        Func<object, object, ProcessStepContext, CancellationToken, Task>? invokeHandlerAsync = null,
+        bool withoutResultExtractor = false)
     {
         var executeAsyncMethod =
             typeof(THandler).GetMethod(
@@ -417,7 +442,7 @@ public sealed class ProcessorStepInvokerTests
             executeAsyncMethod?.ReturnType.GetProperty(
                 nameof(Task<object>.Result));
 
-        Func<Task, IProcessStepHandlerResult>? getResultFromTask = resultProperty is null
+        Func<Task, IProcessStepHandlerResult>? getResultFromTask = resultProperty is null || withoutResultExtractor
             ? null
             : task =>
             {

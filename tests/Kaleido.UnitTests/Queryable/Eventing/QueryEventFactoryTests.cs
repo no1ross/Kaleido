@@ -162,6 +162,26 @@ public sealed class QueryEventFactoryTests
         Assert.False(envelope.Event.FilterProvided);
     }
 
+    [Fact]
+    public void CreateQueryExecuted_WithSearchSortAndFilter_SummarizesThem()
+    {
+        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedSource);
+        var request =
+            new QueryRequest
+            {
+                Query = new QueryBody(
+                    SearchText: "smith",
+                    Filter: new QueryFilterNode(new QueryFilterCondition(nameof(TestView.Name), FilterOperator.Equals, ["test"]), null),
+                    Sort: [new QuerySort(nameof(TestView.Name), SortDirection.Ascending), new QuerySort(nameof(TestView.Id), SortDirection.Descending)])
+            };
+
+        var envelope = Sut.CreateQueryExecuted<TestView>(new KaleidoCorrelationContext(), details, request, new QueryResult<TestView>(0, 0, 10, []));
+
+        Assert.Equal("smith", envelope.Event.SearchText);
+        Assert.Equal(2, envelope.Event.SortCount);
+        Assert.True(envelope.Event.FilterProvided);
+    }
+
     private sealed class TestView
     {
         public int Id { get; init; }

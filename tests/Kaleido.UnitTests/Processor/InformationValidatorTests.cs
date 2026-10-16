@@ -301,6 +301,150 @@ public sealed class InformationValidatorTests
         Assert.Contains(CreateSut().ValidateResponse(Request, answers), x => x.Message.Contains("takes no answer"));
     }
 
+    [Fact]
+    public void ValidateRequest_ItemWithoutIdOrText_IsInvalid()
+    {
+        var problems =
+            CreateSut().ValidateRequest(Proposing(
+                new InformationItem { Id = " ", Text = "Unnamed", Type = InformationItemType.Text },
+                new InformationItem { Id = "blank", Text = " ", Type = InformationItemType.Text }));
+
+        Assert.Equal(2, problems.Count);
+        Assert.All(problems, x => Assert.Equal(ProcessorErrorCodes.InformationRequestInvalid, x.Code));
+        Assert.Contains(problems, x => x.Message.Contains("an item without an id"));
+        Assert.Contains(problems, x => x.Message.Contains("Item 'blank' has no text."));
+    }
+
+    [Fact]
+    public void ValidateRequest_ProposedAnswerOnAGroup_IsInvalid()
+    {
+        var group =
+            new InformationItem
+            {
+                Id = "details",
+                Text = "Details",
+                Type = InformationItemType.Group,
+                Items = [new InformationItem { Id = "note", Text = "Note", Type = InformationItemType.Text }],
+                ProposedAnswers = [new InformationAnswer { Value = "x" }]
+            };
+
+        var problem = Assert.Single(CreateSut().ValidateRequest(Proposing(group)));
+
+        Assert.Contains("is a Group and takes no proposed answer", problem.Message);
+    }
+
+    [Fact]
+    public void ValidateRequest_WithoutProposedAnswers_OrSeveralForARepeatingQuestion_IsWellFormed()
+    {
+        Assert.Empty(CreateSut().ValidateRequest(Proposing(
+            new InformationItem { Id = "plain", Text = "Plain", Type = InformationItemType.Text, ProposedAnswers = null! },
+            new InformationItem
+            {
+                Id = "codes",
+                Text = "Codes",
+                Type = InformationItemType.Text,
+                Repeats = true,
+                ProposedAnswers = [new InformationAnswer { Value = "M54.5" }, new InformationAnswer { Value = "M51.2" }]
+            })));
+    }
+
+    [Fact]
+    public void ValidateRequest_ANullProposedAnswer_DoesNotFit()
+    {
+        var item = new InformationItem { Id = "note", Text = "Note", Type = InformationItemType.Text, ProposedAnswers = [null!] };
+
+        var problem = Assert.Single(CreateSut().ValidateRequest(Proposing(item)));
+
+        Assert.Contains("Proposed answer '' does not fit question 'note' (expects non-empty text)", problem.Message);
+    }
+
+    [Theory]
+    [InlineData(InformationItemType.LongText, "free text", true)]
+    [InlineData(InformationItemType.Number, "3.5", true)]
+    [InlineData(InformationItemType.Number, "three", false)]
+    [InlineData(InformationItemType.DateTime, "2024-05-01T10:00:00Z", true)]
+    [InlineData(InformationItemType.DateTime, "later", false)]
+    [InlineData((InformationItemType)999, "anything", false)]
+    public void ValidateResponse_AnswerFit_FollowsTheItemType(InformationItemType type, string value, bool fits)
+    {
+        var request = new InformationRequest { InformationRequestId = "r", Items = [new InformationItem { Id = "q", Text = "Q?", Type = type }] };
+        var answers = new Answers { InformationRequestId = "r", Items = [Answer("q", value)] };
+
+        var problems = CreateSut().ValidateResponse(request, answers);
+
+        Assert.Equal(fits, problems.Count == 0);
+    }
+
+    [Theory]
+    [InlineData(InformationItemType.Boolean, "expects true or false")]
+    [InlineData(InformationItemType.WholeNumber, "expects a whole number")]
+    [InlineData(InformationItemType.Number, "expects a number")]
+    [InlineData(InformationItemType.Date, "expects a date, yyyy-MM-dd")]
+    [InlineData(InformationItemType.DateTime, "expects an ISO 8601 date and time")]
+    [InlineData(InformationItemType.Text, "expects non-empty text")]
+    public void ValidateResponse_AnAnswerThatDoesNotFit_DescribesWhatTheQuestionExpects(InformationItemType type, string expected)
+    {
+        var request = new InformationRequest { InformationRequestId = "r", Items = [new InformationItem { Id = "q", Text = "Q?", Type = type }] };
+        var answers = new Answers { InformationRequestId = "r", Items = [Answer("q", " ")] };
+
+        var problem = Assert.Single(CreateSut().ValidateResponse(request, answers));
+
+        Assert.Contains($"({expected})", problem.Message);
+    }
+
+    [Fact]
+    public void ValidateResponse_ANullAnswer_DoesNotFit()
+    {
+        var request = new InformationRequest { InformationRequestId = "r", Items = [new InformationItem { Id = "q", Text = "Q?", Type = InformationItemType.Text }] };
+        var answers = new Answers { InformationRequestId = "r", Items = [new InformationResponseItem { ItemId = "q", Answers = [null!] }] };
+
+        var problem = Assert.Single(CreateSut().ValidateResponse(request, answers));
+
+        Assert.Equal(ProcessorErrorCodes.InformationResponseInvalidAnswer, problem.Code);
+        Assert.Contains("Answer '' does not fit question 'q'", problem.Message);
+    }
+
+    [Fact]
+    public void ValidateResponse_AQuestionAnsweredTwice_IsInvalid()
+    {
+        var answers = ValidAnswers() with { Items = [.. ValidAnswers().Items, Answer("visits", "4")] };
+
+        Assert.Contains(CreateSut().ValidateResponse(Request, answers), x => x.Message.Contains("Item 'visits' is answered more than once."));
+    }
+
+    [Fact]
+    public void ValidateResponse_AnItemWithoutAnIdOrWithoutAnswers_IsReported()
+    {
+        var answers =
+            ValidAnswers() with
+            {
+                Items = [.. ValidAnswers().Items.Where(x => x.ItemId != "visits"), Answer(null!, "x"), Answer("visits")]
+            };
+
+        var problems = CreateSut().ValidateResponse(Request, answers);
+
+        Assert.Contains(problems, x => x.Message.Contains("Item '' is not part of"));
+        Assert.Contains(problems, x => x.Code == ProcessorErrorCodes.InformationResponseUnanswered && x.Message.Contains("'visits'"));
+    }
+
+    [Fact]
+    public void ValidateResponse_AnEmptyAnswerToAGroup_AndNoItemsAtAll_AreHandled()
+    {
+        var withGroup = ValidAnswers() with { Items = [.. ValidAnswers().Items, Answer("details")] };
+        Assert.Empty(CreateSut().ValidateResponse(Request, withGroup));
+
+        var withoutItems = ValidAnswers() with { Items = null! };
+        Assert.All(CreateSut().ValidateResponse(Request, withoutItems), x => Assert.Equal(ProcessorErrorCodes.InformationResponseUnanswered, x.Code));
+    }
+
+    [Fact]
+    public void Validate_WithNullArguments_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => CreateSut().ValidateRequest(null!));
+        Assert.Throws<ArgumentNullException>(() => CreateSut().ValidateResponse(null!, ValidAnswers()));
+        Assert.Throws<ArgumentNullException>(() => CreateSut().ValidateResponse(Request, null!));
+    }
+
     private static Answers ValidAnswers() =>
         new()
         {

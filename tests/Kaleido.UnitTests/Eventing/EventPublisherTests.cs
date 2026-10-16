@@ -1,6 +1,7 @@
 using Kaleido.Eventing;
 using Kaleido.Processor.Eventing;
 using Kaleido.UnitTests;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Eventing.UnitTests;
@@ -8,8 +9,8 @@ namespace Kaleido.Eventing.UnitTests;
 public sealed class EventPublisherTests
     : SutFixture
 {
-    private static EventPublisher CreateSut() =>
-        new(NullLogger<EventPublisher>.Instance);
+    private static EventPublisher CreateSut(ILogger<EventPublisher>? logger = null) =>
+        new(logger ?? NullLogger<EventPublisher>.Instance);
 
     [Fact]
     public async Task PublishAsync_CompletesWithoutThrowing()
@@ -36,5 +37,18 @@ public sealed class EventPublisherTests
         };
 
         await sut.PublishAsync(envelope);
+    }
+
+    [Fact]
+    public void Constructor_WarnsThatEventsAreDiscarded()
+    {
+        var logger = new Mock<ILogger<EventPublisher>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+
+        _ = CreateSut(logger.Object);
+
+        var logged = Assert.Single(logger.Invocations, x => x.Method.Name == nameof(ILogger.Log));
+        Assert.Equal(LogLevel.Warning, logged.Arguments[0]);
+        Assert.StartsWith("No IEventPublisher has been registered.", logged.Arguments[2].ToString(), StringComparison.Ordinal);
     }
 }

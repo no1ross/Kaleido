@@ -136,6 +136,22 @@ public sealed class StepExecutionEvaluatorTests
     }
 
     [Fact]
+    public void Evaluate_AnAvailableCandidateWithoutARegistration_CanStillContinue()
+    {
+        var unregistered = new StepCandidate { StepName = "step-b", Status = StepCandidateStatus.Built };
+
+        var decision =
+            CreateSut(["step-b"]).Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true },
+                [unregistered],
+                CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.Continue, decision.Type);
+        Assert.Same(unregistered, decision.NextCandidate);
+    }
+
+    [Fact]
     public void Evaluate_WhenAvailableCandidateExists_ReturnsContinue()
     {
         var evaluator =

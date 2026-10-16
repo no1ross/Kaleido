@@ -402,6 +402,32 @@ public sealed class StepCandidateConsistencyCheckerTests
         Assert.Equal(StepCandidateStatus.Built, candidateB.Status);
     }
 
+    [Fact]
+    public void Validate_WhenAValidCandidateHasNoRegistration_ThrowsAFrameworkException()
+    {
+        var candidate = new StepCandidate { StepName = "step-a", Status = StepCandidateStatus.Built };
+
+        var exception =
+            Assert.Throws<Kaleido.Exceptions.KaleidoFrameworkException>(() =>
+                CreateSut().Validate([candidate], new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" }));
+
+        Assert.Equal(Kaleido.Exceptions.FrameworkErrorCodes.MissingRegistration, exception.Code);
+        Assert.Contains("step-a", exception.Message);
+    }
+
+    [Fact]
+    public void Validate_AnInvalidCandidateWithoutARegistration_DoesNotSatisfyADependency()
+    {
+        var dependency = CreateRegistration<StepA>("step-a");
+        var target = CreateCandidate(CreateRegistration<StepB>("step-b", [dependency]));
+        var unregistered = StepCandidate.Invalid("unknown", ProcessorErrorCodes.InvalidRequest, "unknown step");
+
+        CreateSut().Validate([unregistered, target], new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" });
+
+        Assert.Equal(StepCandidateStatus.Invalid, target.Status);
+        Assert.Contains(target.Messages, x => x.Code == ProcessorErrorCodes.DependencyNotSatisfied);
+    }
+
     private static StepCandidateConsistencyChecker CreateSut()
     {
         return new StepCandidateConsistencyChecker();
