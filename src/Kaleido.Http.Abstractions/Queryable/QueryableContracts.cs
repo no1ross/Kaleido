@@ -31,35 +31,6 @@ public record QueryApiRequest<TParameters>(
 
 // ── Registry responses ────────────────────────────────────────────────────────
 
-/// <summary>Paging limits on the wire: the default and maximum page size.</summary>
-/// <remarks>
-/// The registry publishes <see cref="PageableMetadata"/> directly
-/// (<see cref="QueryableSourceResponse.Pageable"/>, <see cref="QueryableViewResponse.Pageable"/>);
-/// this contract carries only its sizes.
-/// </remarks>
-[ExcludeFromCodeCoverage]
-public sealed record PageableContract
-{
-    /// <summary>The page size used when the request does not specify one.</summary>
-    public int DefaultSize { get; init; }
-
-    /// <summary>The largest page size a request may ask for.</summary>
-    public int MaxSize { get; init; }
-
-    /// <summary>Copies the page sizes of <paramref name="metadata"/>; its default sort field is not carried.</summary>
-    /// <param name="metadata">The capability's paging metadata.</param>
-    /// <returns>A new <see cref="PageableContract"/> with the same sizes.</returns>
-    public static PageableContract FromMetadata(
-        PageableMetadata metadata)
-    {
-        return new PageableContract
-        {
-            DefaultSize = metadata.DefaultSize,
-            MaxSize = metadata.MaxSize,
-        };
-    }
-}
-
 /// <summary>
 /// A field of a source's query context as published in the registry
 /// (<see cref="QueryableSourceResponse.Fields"/>): its type and which query operations it supports.
