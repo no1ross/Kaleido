@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Compliance;
 using Kaleido;
 using Kaleido.Http;
 using Kaleido.Observability.OpenTelemetry;
@@ -10,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var configurationConnectionString =
     builder.Configuration.GetConnectionString("Configuration")
-    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(Kaleido.Exceptions.ConfigurationErrorCodes.InvalidServiceName, "ConnectionStrings:Configuration is required.");
+    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(PriorAuthErrorCodes.MissingConnectionString, "ConnectionStrings:Configuration is required.");
 
 builder.Services.AddDbContext<ConfigurationDbContext>(
     options => options.UseSqlite(configurationConnectionString));

@@ -16,4 +16,11 @@ public static class PriorAuthErrorCodes
 
     /// <summary>A provider search was sent without the plan whose networks decide network status.</summary>
     public const string PlanIdRequired = "PLAN_ID_REQUIRED";
+
+    /// <summary>
+    /// Startup, not a caller error: a host's required connection string is not configured. Thrown as
+    /// <c>KaleidoConfigurationException</c>; the sample's own code, so a log reader is not pointed at
+    /// one of Kaleido's settings.
+    /// </summary>
+    public const string MissingConnectionString = "MISSING_CONNECTION_STRING";
 }

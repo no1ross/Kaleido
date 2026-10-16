@@ -63,27 +63,20 @@ internal sealed class ECommerceSeeder
     private static T LoadJson<T>(
         string fileName)
     {
-        try
-        {
-            var path =
-                Path.Join(
-                    AppContext.BaseDirectory,
-                    "assets",
-                    fileName);
+        var path =
+            Path.Join(
+                AppContext.BaseDirectory,
+                "assets",
+                fileName);
 
-            var json =
-                File.ReadAllText(path);
+        var json =
+            File.ReadAllText(path);
 
-            return JsonSerializer.Deserialize<T>(
-                       json,
-                       JsonOptions)
-                   ?? throw new InvalidOperationException(
-                       $"Failed to deserialize '{fileName}'.");
-        }
-        catch (Exception)
-        {
-            throw;
-        }
+        return JsonSerializer.Deserialize<T>(
+                   json,
+                   JsonOptions)
+               ?? throw new InvalidOperationException(
+                   $"Failed to deserialize '{fileName}'.");
     }
 
 }

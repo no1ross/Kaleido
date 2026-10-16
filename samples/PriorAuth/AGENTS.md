@@ -7,8 +7,8 @@
 ## PriorAuth layout
 - `samples/PriorAuth/Compose/` contains local orchestration files
 - `samples/PriorAuth/priorauth-ui/` is the Angular frontend
-- `samples/PriorAuth/*/` folders are ASP.NET Core services targeting .NET 8
-- `samples/PriorAuth/*.Artifacts/` projects contain sample contracts/artifacts
+- `samples/PriorAuth/Services/*/` are the ASP.NET Core services (targeting .NET 8); `Router/` is the gateway with the MCP adapter, `EventCollector/` receives the services' events, and `Seeder/` seeds the shared databases
+- `samples/PriorAuth/Common/` holds the steps, handlers, query sources, data and dev auth the services share
 
 ## Verification
 - For backend changes, prefer `dotnet build` on the affected project
@@ -19,9 +19,8 @@
 - If a change touches UI + backend integration, validate both
 
 ## Local run workflow
-- Prefer compose files under `samples/PriorAuth/Compose/`
-- Use the smaller compose file for backend-only work
-- Use the full compose file when testing the full sample including router/UI/intake
+- Prefer the compose file under `samples/PriorAuth/Compose/` (`docker-compose.yml`, with `docker-compose.override.yml` setting `ASPNETCORE_ENVIRONMENT=Development`): it runs the router, every service and the UI
+- For backend-only work, `dotnet run` the affected services instead
 - If only the UI is changing, prefer running the Angular dev server directly
 - The PriorAuth seeder is now a local-only workflow; it is no longer run as a compose service
 - Seed shared databases locally before starting compose-backed services:
@@ -85,7 +84,7 @@ The sample's dev auth (`Common/Auth`) stands in for a real IdP. Kaleido itself o
 ## Cross-processor handoff convention
 
 When a step handler resolves a downstream processor (e.g. Intake routing to Radiology), it:
-1. Calls the downstream processor's `/processes/execute` endpoint with the full original payload and the same `ProcessId`
+1. Calls the downstream processor's entry step through the Kaleido process client (`ExecuteStepAsync`, i.e. `POST /{processor}/processes/steps/{step}`) with a typed payload built for it (e.g. `StartRadiologyIntakeStep`) and the same `ProcessId`; it does not forward the original request
 2. Returns `ProcessStepHandlerResult.HandOff(targetProcessorName: "radiology")` — leaving `RequiredStep` null
 
 The handler itself returns no typed response — the downstream processor is the source of truth for its own state.
@@ -106,8 +105,8 @@ This pattern applies uniformly for any cross-processor handoff (Intake → Radio
 - router: `8080`
 - referencedata: `8081`
 - codeset: `8082`
-- providersearch: `8083`
-- memberservice: `8084`
+- provider: `8083`
+- member: `8084`
 - intake: `8085`
 - eventcollector: `8086`
 - configuration: `8087`

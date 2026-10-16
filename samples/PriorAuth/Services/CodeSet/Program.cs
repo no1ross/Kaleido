@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Compliance;
 using Kaleido;
 using Kaleido.Http;
 using Kaleido.Observability.OpenTelemetry;
@@ -10,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var codeSetConnectionString =
     builder.Configuration.GetConnectionString("CodeSet")
-    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(Kaleido.Exceptions.ConfigurationErrorCodes.InvalidServiceName, "ConnectionStrings:CodeSet is required.");
+    ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(PriorAuthErrorCodes.MissingConnectionString, "ConnectionStrings:CodeSet is required.");
 
 builder.Services.AddDbContext<CodeSetDbContext>(
     options => options.UseSqlite(codeSetConnectionString));
