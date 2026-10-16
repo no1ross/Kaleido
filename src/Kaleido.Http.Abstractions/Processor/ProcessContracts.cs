@@ -22,7 +22,8 @@ public sealed record ExecuteProcessRequest
 {
     /// <summary>
     /// The submitted steps, each with its input. Step names are matched case-insensitively and must
-    /// be unique within the request. Defaults to an empty collection.
+    /// be unique within the request; a step named twice rejects the request (400,
+    /// <c>pro_invalid_request</c>) before anything runs. Defaults to an empty collection.
     /// </summary>
     public IReadOnlyCollection<ProcessStepRequest> Steps
     {
