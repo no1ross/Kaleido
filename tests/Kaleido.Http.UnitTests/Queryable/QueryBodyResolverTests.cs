@@ -261,6 +261,263 @@ public sealed class QueryBodyResolverTests
         Assert.Equal(20, result.Page.Offset);
     }
 
+    [Fact]
+    public void ToQueryBody_WithoutSortOrPage_LeavesThemNull()
+    {
+        var result = new QueryApiBody { SearchText = "x" }.ToQueryBody(Fields);
+
+        Assert.Null(result!.Sort);
+        Assert.Null(result.Page);
+    }
+
+    [Fact]
+    public void ToQueryBody_Sort_KeepsFieldAndSequence()
+    {
+        var body = new QueryApiBody
+        {
+            Sort = [new QueryApiSort { Field = "Name", Direction = "ASCENDING", Sequence = 2 }]
+        };
+
+        var sort = Assert.Single(body.ToQueryBody(Fields)!.Sort!);
+
+        Assert.Equal("Name", sort.Field);
+        Assert.Equal(SortDirection.Ascending, sort.Direction);
+        Assert.Equal(2, sort.Sequence);
+    }
+
+    [Fact]
+    public void ToQueryBody_WhenSortDirectionIsInvalid_ThrowsValidationException()
+    {
+        var body = new QueryApiBody
+        {
+            Sort = [new QueryApiSort { Field = "Id", Direction = "sideways" }]
+        };
+
+        var exception = Assert.Throws<KaleidoValidationException>(() => body.ToQueryBody(Fields));
+
+        Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
+        Assert.Contains("'sideways'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ToQueryBody_WhenLogicalOperatorIsInvalid_ThrowsValidationException()
+    {
+        var body = new QueryApiBody
+        {
+            Filter = new QueryApiFilterNode
+            {
+                Group = new QueryApiFilterGroup { Operator = "xor", Filters = [] }
+            }
+        };
+
+        var exception = Assert.Throws<KaleidoValidationException>(() => body.ToQueryBody(Fields));
+
+        Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
+        Assert.Contains("'xor'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ToQueryBody_WhenFilterOperatorIsInvalid_ReportsTheOperator()
+    {
+        var exception = Assert.Throws<KaleidoValidationException>(() =>
+            ApiBody("Name", "near", StringValue("x")).ToQueryBody(Fields));
+
+        Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
+        Assert.Equal("Filter operator 'near' is not valid.", exception.Message);
+    }
+
+    [Fact]
+    public void ToQueryBody_FilterNodeWithoutConditionOrGroup_ResolvesToNoFilter()
+    {
+        var body = new QueryApiBody { Filter = new QueryApiFilterNode() };
+
+        Assert.Null(body.ToQueryBody(Fields)!.Filter);
+    }
+
+    [Fact]
+    public void ToQueryBody_GroupWithoutFilters_ResolvesToAnEmptyGroup()
+    {
+        var body = new QueryApiBody
+        {
+            Filter = new QueryApiFilterNode
+            {
+                Group = new QueryApiFilterGroup { Operator = "or", Filters = null }
+            }
+        };
+
+        var group = body.ToQueryBody(Fields)!.Filter!.Group!;
+
+        Assert.Equal(LogicalOperator.Or, group.Operator);
+        Assert.Empty(group.Filters);
+    }
+
+    [Fact]
+    public void ToQueryBody_GroupDropsEmptyNodes()
+    {
+        var body = new QueryApiBody
+        {
+            Filter = new QueryApiFilterNode
+            {
+                Group = new QueryApiFilterGroup
+                {
+                    Operator = "and",
+                    Filters = [new QueryApiFilterNode(), ApiBody("Name", "equals", StringValue("a")).Filter!]
+                }
+            }
+        };
+
+        var filter = Assert.Single(body.ToQueryBody(Fields)!.Filter!.Group!.Filters);
+
+        Assert.Equal("Name", filter.Condition!.Field);
+    }
+
+    [Fact]
+    public void ToQueryBody_ConditionWithoutValues_ResolvesToNoValues()
+    {
+        var body = new QueryApiBody
+        {
+            Filter = new QueryApiFilterNode
+            {
+                Condition = new QueryApiFilterCondition { Field = "Name", Operator = "isnull", Values = null }
+            }
+        };
+
+        Assert.Empty(body.ToQueryBody(Fields)!.Filter!.Condition!.Values);
+    }
+
+    [Fact]
+    public void ToQueryBody_NullAndUndefinedValues_ResolveToNull()
+    {
+        var values = Resolve(typeof(int), JsonSerializer.SerializeToElement<object?>(null), default);
+
+        Assert.Equal(new object?[] { null, null }, values);
+    }
+
+    [Fact]
+    public void ToQueryBody_UnknownField_KeepsTheRawJson()
+    {
+        var body = ApiBody("Bogus", "equals", IntValue(7), StringValue("x"));
+
+        Assert.Equal(["7", "\"x\""], body.ToQueryBody(Fields)!.Filter!.Condition!.Values);
+    }
+
+    [Fact]
+    public void ToQueryBody_BooleanValues_ResolveToBooleans()
+    {
+        Assert.Equal(
+            [true, false],
+            Resolve(typeof(bool), JsonSerializer.SerializeToElement(true), JsonSerializer.SerializeToElement(false)));
+    }
+
+    public static TheoryData<Type> Int32FieldTypes { get; } =
+        new() { typeof(int), typeof(uint), typeof(short), typeof(ushort), typeof(byte), typeof(sbyte), typeof(int?) };
+
+    [Theory]
+    [MemberData(nameof(Int32FieldTypes))]
+    public void ToQueryBody_NumberForASmallIntegerField_ResolvesToInt32(Type fieldType)
+    {
+        Assert.Equal([5], Resolve(fieldType, IntValue(5)));
+    }
+
+    [Theory]
+    [InlineData(typeof(long))]
+    [InlineData(typeof(ulong))]
+    public void ToQueryBody_NumberForALongField_ResolvesToInt64(Type fieldType)
+    {
+        Assert.Equal([5_000_000_000L], Resolve(fieldType, JsonSerializer.SerializeToElement(5_000_000_000L)));
+    }
+
+    [Fact]
+    public void ToQueryBody_NumberForAFloatField_ResolvesToSingle()
+    {
+        Assert.Equal([1.5f], Resolve(typeof(float), JsonSerializer.SerializeToElement(1.5)));
+    }
+
+    [Fact]
+    public void ToQueryBody_NumberForADoubleField_ResolvesToDouble()
+    {
+        Assert.Equal([1.25d], Resolve(typeof(double), JsonSerializer.SerializeToElement(1.25)));
+    }
+
+    [Fact]
+    public void ToQueryBody_NumberForADecimalField_ResolvesToDecimal()
+    {
+        Assert.Equal([12.34m], Resolve(typeof(decimal), JsonSerializer.SerializeToElement(12.34m)));
+    }
+
+    [Fact]
+    public void ToQueryBody_NumberForANonNumericField_KeepsTheRawText()
+    {
+        Assert.Equal(["42"], Resolve(typeof(string), IntValue(42)));
+    }
+
+    [Fact]
+    public void ToQueryBody_UnsupportedJsonKind_ThrowsValidationException()
+    {
+        var exception = Assert.Throws<KaleidoValidationException>(() =>
+            Resolve(typeof(int), JsonDocument.Parse("[1]").RootElement));
+
+        Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
+        Assert.Equal("Unsupported JSON value kind 'Array' for field type 'Int32'.", exception.Message);
+    }
+
+    [Fact]
+    public void ToQueryBody_StringValues_ResolveToTheFieldsType()
+    {
+        var guid = Guid.Parse("6f1c2a9e-5d3b-4f7a-9c1e-2b8d4e6a0f13");
+
+        Assert.Equal([guid], Resolve(typeof(Guid), StringValue(guid.ToString())));
+        Assert.Equal([new DateOnly(2024, 2, 29)], Resolve(typeof(DateOnly), StringValue("2024-02-29")));
+        Assert.Equal([new TimeOnly(13, 45)], Resolve(typeof(TimeOnly), StringValue("13:45")));
+        Assert.Equal([new DateTime(2024, 2, 29, 13, 45, 0)], Resolve(typeof(DateTime), StringValue("2024-02-29T13:45:00")));
+        Assert.Equal(
+            [new DateTimeOffset(2024, 2, 29, 13, 45, 0, TimeSpan.FromHours(2))],
+            Resolve(typeof(DateTimeOffset), StringValue("2024-02-29T13:45:00+02:00")));
+        Assert.Equal([TimeSpan.FromMinutes(90)], Resolve(typeof(TimeSpan), StringValue("01:30:00")));
+        Assert.Equal([TestStatus.Inactive], Resolve(typeof(TestStatus?), StringValue("INACTIVE")));
+        Assert.Equal(["https://example"], Resolve(typeof(Uri), StringValue("https://example")));
+    }
+
+    [Theory]
+    [InlineData(typeof(Guid), "a valid Guid")]
+    [InlineData(typeof(DateOnly), "a valid date (yyyy-MM-dd)")]
+    [InlineData(typeof(TimeOnly), "a valid time")]
+    [InlineData(typeof(DateTime), "a valid date-time")]
+    [InlineData(typeof(DateTimeOffset), "a valid date-time-offset")]
+    [InlineData(typeof(TimeSpan), "a valid duration")]
+    public void ToQueryBody_InvalidStringForTheFieldsType_ThrowsValidationException(Type fieldType, string expected)
+    {
+        var exception = Assert.Throws<KaleidoValidationException>(() => Resolve(fieldType, StringValue("nope")));
+
+        Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
+        Assert.Equal($"Value 'nope' is not {expected}.", exception.Message);
+    }
+
+    [Fact]
+    public void ToQueryBody_InvalidEnumString_NamesTheEnum()
+    {
+        var exception = Assert.Throws<KaleidoValidationException>(() => Resolve(typeof(TestStatus), StringValue("nope")));
+
+        Assert.Equal("Value 'nope' is not a valid 'TestStatus' value.", exception.Message);
+    }
+
+    private static object?[] Resolve(Type fieldType, params JsonElement[] values)
+    {
+        IReadOnlyCollection<QueryableFieldDescriptor> fields =
+        [
+            new QueryableFieldDescriptor
+            {
+                Name = "Field",
+                FieldType = fieldType,
+                DataType = new DataTypeDescriptor("string"),
+                IsFilterable = true,
+                FilterOperators = [FilterOperator.Equals]
+            }
+        ];
+
+        return ApiBody("field", "equals", values).ToQueryBody(fields)!.Filter!.Condition!.Values.ToArray();
+    }
+
     // ---------------------------------------------------------------------------
     // Test types
     // ---------------------------------------------------------------------------

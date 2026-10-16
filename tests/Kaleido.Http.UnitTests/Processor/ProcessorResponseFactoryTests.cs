@@ -88,6 +88,50 @@ public sealed class ProcessorResponseFactoryTests
     }
 
     [Fact]
+    public void CreateStepResponse_PublishesTheStepRelationshipsInNameOrder()
+    {
+        var registration = new ProcessorStepRegistryItem
+        {
+            Name = "ApproveStep",
+            Dependencies = [new ProcessorStepSummary { Name = "ReviewStep" }, new ProcessorStepSummary { Name = "CaptureStep" }],
+            AvailableAfter = [new ProcessorStepSummary { Name = "ZetaStep" }, new ProcessorStepSummary { Name = "AlphaStep" }],
+            AvailableUntil = [new ProcessorStepSummary { Name = "CloseStep" }, new ProcessorStepSummary { Name = "ArchiveStep" }],
+        };
+
+        var response = CreateSut().CreateStepResponse(registration, "billing");
+
+        Assert.False(response.IsInitial);
+        Assert.Equal(["CaptureStep", "ReviewStep"], response.Dependencies.Select(x => x.Name));
+        Assert.Equal(["AlphaStep", "ZetaStep"], response.AvailableAfter.Select(x => x.Name));
+        Assert.Equal(["ArchiveStep", "CloseStep"], response.AvailableUntil.Select(x => x.Name));
+        Assert.Null(response.Result);
+        Assert.Equal(ProcessContractUrls.ExecuteStep("billing", "approvestep"), response.ExecuteUrl);
+    }
+
+    [Fact]
+    public void CreateStepResponse_AStepAvailableOnlyAfterAnother_IsNotInitial()
+    {
+        var registration = new ProcessorStepRegistryItem
+        {
+            Name = "FollowUpStep",
+            AvailableAfter = [new ProcessorStepSummary { Name = "IntakeStep" }],
+        };
+
+        var response = CreateSut().CreateStepResponse(registration, "billing");
+
+        Assert.False(response.IsInitial);
+        Assert.Empty(response.Dependencies);
+    }
+
+    [Fact]
+    public void CreateStepResponse_AStepWithoutRelationships_IsInitial()
+    {
+        var response = CreateSut().CreateStepResponse(new ProcessorStepRegistryItem { Name = "IntakeStep" }, "billing");
+
+        Assert.True(response.IsInitial);
+    }
+
+    [Fact]
     public void CreateStepSummaryAndRequiredStep_CarryTheDeclaredBehavior()
     {
         var sut = CreateSut();
