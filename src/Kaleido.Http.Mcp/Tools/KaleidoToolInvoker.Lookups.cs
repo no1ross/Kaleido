@@ -212,11 +212,16 @@ internal sealed partial class KaleidoToolInvoker
             ? await client.QueryViewAsync<JsonObject, JsonObject>(lookup.Source, view, request, cancellationToken)
             : await client.QuerySourceAsync<JsonObject, JsonObject>(lookup.Source, request, cancellationToken);
 
+        // A field the row does not have (or has as null) is left out: it fills nothing, and the row
+        // still serializes into the lookup state of an MRTR round.
         var rows = result.Results
-            .Select(row => (IReadOnlyDictionary<string, JsonElement>)lookup.Inputs.ToDictionary(
-                input => input.Argument,
-                input => row[Camel(input.Field)] is { } value ? JsonSerializer.SerializeToElement(value, KaleidoJsonOptions.Options) : default,
-                StringComparer.Ordinal))
+            .Select(row => (IReadOnlyDictionary<string, JsonElement>)lookup.Inputs
+                .Select(input => (input.Argument, Value: row[Camel(input.Field)]))
+                .Where(x => x.Value is not null)
+                .ToDictionary(
+                    x => x.Argument,
+                    x => JsonSerializer.SerializeToElement(x.Value, KaleidoJsonOptions.Options),
+                    StringComparer.Ordinal))
             .ToArray();
 
         var labels = result.Results.Select(row => Label(lookup, row)).ToArray();

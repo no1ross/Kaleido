@@ -2157,6 +2157,24 @@ public sealed class KaleidoToolInvokerTests
         Assert.Null(body["enrollmentId"]);
     }
 
+    [Fact]
+    public async Task AnMrtrLookup_OffersAResultThatLacksAnInput_AndFillsOnlyTheInputsItHas()
+    {
+        LookupForms();
+        PatientsFound(new JsonObject { ["patientId"] = "P-3", ["name"] = "Bo" });
+        var searchState = (await CreateSut().InvokeAsync(PickPatient, Call(new { processId = ProcessId }), LookupCatalog, Cancel)).InputRequired?.RequestState;
+
+        var pick = await CreateSut().InvokeAsync(PickPatient, Call(requestState: searchState, inputResponses: LookupAnswered()), LookupCatalog, Cancel);
+
+        Assert.StartsWith("kaleido-mcp-lookup:", Assert.IsType<InputRequiredResult>(pick.InputRequired).RequestState, StringComparison.Ordinal);
+
+        await CreateSut().InvokeAsync(PickPatient, Call(requestState: pick.InputRequired?.RequestState, inputResponses: LookupAnswered()), LookupCatalog, Cancel);
+
+        var body = Assert.Single(posts).Body;
+        Assert.Equal("P-3", body["patientId"]?.GetValue<string>());
+        Assert.Null(body["enrollmentId"]);
+    }
+
     [Theory]
     [InlineData("kaleido-mcp-lookup:%%%")]
     [InlineData("kaleido-mcp-lookup:bnVsbA==")]
