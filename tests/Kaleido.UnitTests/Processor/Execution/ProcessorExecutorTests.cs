@@ -623,6 +623,10 @@ public sealed class ProcessorExecutorTests
             outcome.Status);
 
         Assert.Equal(
+            StepExecutionOutcome.Canceled,
+            outcome.Outcome);
+
+        Assert.Equal(
             ExecutionDecisionType.ProcessViolation,
             outcome.Decision);
 

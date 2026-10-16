@@ -28,7 +28,8 @@ public enum StepExecutionOutcome
     Blocked,
 
     /// <summary>
-    /// The step was intentionally stopped and will not continue.
+    /// The request was cancelled while the step was executing (status
+    /// <see cref="StepExecutionStatus.Canceled"/>); the step did not finish.
     /// </summary>
     Canceled,
 
