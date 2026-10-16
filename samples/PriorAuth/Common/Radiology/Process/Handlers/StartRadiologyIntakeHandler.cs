@@ -186,7 +186,6 @@ public sealed class StartRadiologyIntakeHandler(
         }
         catch (KaleidoHttpClientException ex)
         {
-            Console.WriteLine($"[Radiology StartRadiologyIntake] KaleidoHttpClientException caught for process {context.ProcessId}: {ex.Message}");
             return ProcessStepHandlerResult.Reject(RadiologyProcessMessages.QueryableRequestFailed(
                     ex.Errors.FirstOrDefault()?.Code ?? "QUERYABLE_REQUEST_FAILED",
                     ex.Message));

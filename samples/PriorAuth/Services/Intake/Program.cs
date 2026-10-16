@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Compliance;
 using Kaleido;
 using Kaleido.Exceptions;
 using Kaleido.Http;
@@ -15,13 +16,13 @@ var builder = WebApplication.CreateBuilder(args);
 var intakeConnectionString =
     builder.Configuration.GetConnectionString("Intake")
     ?? throw new KaleidoConfigurationException(
-        ConfigurationErrorCodes.InvalidServiceName,
+        PriorAuthErrorCodes.MissingConnectionString,
         "ConnectionStrings:Intake is required.");
 
 var processConnectionString =
     builder.Configuration.GetConnectionString("IntakeProcess")
     ?? throw new KaleidoConfigurationException(
-        ConfigurationErrorCodes.InvalidServiceName,
+        PriorAuthErrorCodes.MissingConnectionString,
         "ConnectionStrings:IntakeProcess is required.");
 
 builder.Services.AddDbContext<IntakeDbContext>(

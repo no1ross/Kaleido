@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Compliance;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Kaleido.Samples.PriorAuth.EventCollector.Data;
@@ -47,7 +48,7 @@ builder.Services.AddOpenTelemetry()
 var eventCollectorConnectionString =
     builder.Configuration.GetConnectionString("EventCollector")
     ?? throw new Kaleido.Exceptions.KaleidoConfigurationException(
-        Kaleido.Exceptions.ConfigurationErrorCodes.InvalidServiceName,
+        PriorAuthErrorCodes.MissingConnectionString,
         "ConnectionStrings:EventCollector is required.");
 
 builder.Services.AddDbContext<EventCollectorDbContext>(

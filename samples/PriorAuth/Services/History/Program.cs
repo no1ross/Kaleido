@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Compliance;
 using Kaleido;
 using Kaleido.Exceptions;
 using Kaleido.Http;
@@ -12,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 var historyConnectionString =
     builder.Configuration.GetConnectionString("History")
     ?? throw new KaleidoConfigurationException(
-        ConfigurationErrorCodes.InvalidServiceName,
+        PriorAuthErrorCodes.MissingConnectionString,
         "ConnectionStrings:History is required.");
 
 builder.Services.AddDbContext<HistoryDbContext>(

@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.Processor;
 using Kaleido.Samples.ECommerce.Data;
 using Kaleido.Samples.ECommerce.Data.Entities;
@@ -152,7 +153,8 @@ internal sealed class ReconcileCartHandler(
         if (currentAnonymousCart is null ||
             customerCart is null)
         {
-            throw new InvalidOperationException(
+            throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.InvalidHandlerResult,
                 "Unexpected customer selection cart state.");
         }
 
