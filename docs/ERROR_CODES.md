@@ -12,9 +12,10 @@ Every Kaleido exception carries a machine-readable `Code`. Framework-defined cod
 | `KaleidoConfigurationException` | `Kaleido.Exceptions` | 500 Internal Server Error | the owning area's codes: `ConfigurationErrorCodes` (core), `QueryableErrorCodes`, `ProcessorErrorCodes`, `HttpClientErrorCodes`, `SqliteErrorCodes` |
 | `KaleidoFrameworkException` | `Kaleido.Exceptions` | 500 Internal Server Error | `FrameworkErrorCodes` |
 | `KaleidoConcurrencyException` | `Kaleido.Exceptions` | 409 Conflict | `ProcessorErrorCodes.ProcessConflict` (`pro_process_conflict`) |
+| `KaleidoAuthorizationException` | `Kaleido.Exceptions` | 401 (unauthenticated) or 403 (denied), answered by the host's authentication scheme (challenge / forbid) | none: carries `Capability` and `CallerIsAuthenticated` ([`AUTHORIZATION.md`](./AUTHORIZATION.md)) |
 | `KaleidoHttpClientException` | `Kaleido.Http.Client` | — (client-side) | `HttpClientErrorCodes` |
 
-Each area owns its codes; there is no single catalog. Code string values are stable regardless of which class declares them.
+Each area owns its codes; there is no single catalog. Code string values are stable regardless of which class declares them. Every failed Kaleido endpoint answers with the same body, `KaleidoErrorResponse`: `{ "errors": [{ "code", "message" }] }`. The MCP adapter's `mcp_*` codes are returned inside tool results and are listed in the [MCP README](../src/Kaleido.Http.Mcp/README.md#when-a-call-fails).
 
 A request the HTTP layer cannot read (a body that is not JSON, a value that does not fit its type, a C# `required` member left out) is answered 400 `argument_error` (415 for a non-JSON content type) with a message naming the JSON path, by Kaleido's error handling on the per-step and query endpoints; a `JsonException` is never a 500.
 
@@ -132,8 +133,17 @@ These indicate a framework bug or broken DI wiring, not a user error.
 | `TypeMismatch` | `type_mismatch` | Resolved type does not match the expected type |
 | `MissingRegistration` | `missing_registration` | Required entry not found in an internal registry |
 | `InvalidHandlerResult` | `invalid_handler_result` | Handler returned an unexpected or null result |
-| `UnsupportedDataType` | `unsupported_data_type` | `DataTypeMapper` does not support the CLR type |
-| `DataConversionError` | `data_conversion_error` | `DataTypeMapper` failed to convert a value |
+| `UnsupportedDataType` | `unsupported_data_type` | Reserved: defined but not raised by the current code (unsupported CLR types are described as generic objects) |
+| `DataConversionError` | `data_conversion_error` | Reserved: defined but not raised by the current code (value conversion failures surface as `argument_error` or `qry_invalid_filter_value`) |
+
+---
+
+## `KaleidoErrorCodes` - shared HTTP error-body codes
+
+| Constant | Code | Meaning |
+|---|---|---|
+| `ArgumentError` | `argument_error` | 400 (415 for a non-JSON content type): a body Kaleido cannot read - malformed JSON, a value that does not fit its type, a `required` member left out, a malformed correlation header such as a non-GUID `X-Kaleido-Process-Id` |
+| `FrameworkError` | `framework_error` | 500 for an unexpected failure; the message is generic and never carries the exception's detail |
 
 ---
 

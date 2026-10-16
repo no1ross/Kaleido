@@ -95,6 +95,36 @@ Rules:
   when nothing is required, a step available under the process rules
   (`pro_step_not_available` otherwise).
 
+## Lookup inputs (ids the user cannot type)
+
+A step input that takes an id from a query result declares where it comes from with `[Lookup]`:
+
+```csharp
+public sealed record CaptureMemberStep : IProcessStep
+{
+    [Lookup(Service = "member", Source = "Member", View = "MemberSearch", Field = "MemberId",
+        Display = ["DisplayName", "DateOfBirth", "MemberNumber", "PlanName"])]
+    public required Guid MemberId { get; init; }
+
+    [Lookup(Service = "member", Source = "Member", View = "MemberSearch", Field = "MemberEnrollmentId")]
+    public required Guid MemberEnrollmentId { get; init; }
+}
+```
+
+Rules:
+- `Service` is the publishing service's route prefix; `Source`, `View` (optional) and `Field` are
+  published names. The query may live on another service, so the names are checked where the
+  registries meet (the MCP adapter logs a lookup it cannot resolve), not at startup.
+- Inputs with the same `Group` (by default one group per query) are filled from the **same**
+  result. Name groups when a step looks up the same query twice (a requesting and a servicing
+  provider). `Display` names the fields that identify a result to a person; declaring it on one
+  input of the group is enough.
+- Kaleido publishes the link in the registry and never picks the record: a UI renders a lookup,
+  and the MCP adapter guides the agent or runs a guided lookup with forms
+  ([MCP README](../src/Kaleido.Http.Mcp/README.md#lookups)).
+- A lookup guides; it does not enforce. The step's handler still checks what it receives (for
+  example that the enrollment belongs to the member).
+
 ## Information step (runtime-decided questions)
 
 Known inputs are step properties. Questions decided at runtime (by rules engines,

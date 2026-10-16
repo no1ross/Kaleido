@@ -16,7 +16,7 @@ see [Who may continue a process](#who-may-continue-a-process).
 services.AddKaleido(configuration, o =>
 {
     o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
-    o.DefaultAuthorization = new AuthorizationMetadata("staff", []); // optional service default
+    o.DefaultAuthorization = new AuthorizationMetadata(Policy: null, Roles: ["staff"]); // optional service default
 });
 ```
 
@@ -37,7 +37,8 @@ Both can also be bound from configuration (`Kaleido:AuthorizationMode`,
 **Effective rule.** A capability's `[KaleidoAuthorization]` attribute, when present,
 **replaces** `DefaultAuthorization` entirely (it is not merged). Without an attribute the
 service default applies. An empty attribute (no `Roles`, `Policy` or `AllowAnonymous`)
-overrides the default with "no rule".
+overrides the default with "no rule". A query view without its own attribute uses its query
+source's rule (the source's attribute, or the service default).
 
 `None` is for samples, local development, and hosts without authentication; a startup
 warning is logged. `Authenticated` treats undeclared capabilities as "any logged-in
